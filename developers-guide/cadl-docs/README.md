@@ -165,9 +165,21 @@ alias purchaseMonth = string;
 ```
 
 ##### [Optional Values(Maybe)](https://package.elm-lang.org/packages/elm/core/latest/Maybe)
-The `maybe` type in morphir represents values that may or may not exist. This is directly supported in CADL through:
+The `maybe` type in morphir represents a type that may or may not exist. The type could exist as a standalone type or a field type in a record and both scenarios are supported directly in Cadl. 
 
-1. `optional field` in a model using the `?:` syntax.
+1. `maybe` as a standalone type, is presented in cadl as a union of the type or null using the pipe `|` syntax.
+
+   Elm:
+    ```elm
+    type alias Foo = 
+        Maybe Int
+   ```
+   Cadl:
+    ```cadl
+   alias Foo = int64 | null
+    ```
+   
+2. `maybe` as a field type in a record, is represented as `optional field` in a model in cadl using `optional field` `?:` syntax.
 
    Elm:
     ```elm
@@ -180,23 +192,32 @@ The `maybe` type in morphir represents values that may or may not exist. This is
    Cadl:
     ```cadl
     model FooBarBaz {
-        foo : int;
+        foo : int64;
         bar : float;
         baz ?: string
     }
    ``` 
 
-2. As a `union` type in alias definition using the `|` syntax.
+3. In a Scenario where a field type is `maybe` of another `maybe` type, it is represented as an `optional field` of the `union` type. <br/>
 
    Elm:
     ```elm
-    type alias Foo = 
-        Maybe Int
-   ```
+    type alias FooBarBaz = 
+        { foo: Int
+        , bar: Float
+        , baz: Maybe (Maybe String)
+        }
+    ```
    Cadl:
     ```cadl
-   alias Foo = int64 | null
-    ```
+    model FooBarBaz {
+        foo : int64;
+        bar : float;
+        baz ?: string | null
+    }
+   ```
+   _<span style="color:red">Note:</span>_ <br/>
+   _In the scenario of multiple `maybe` type for a field in a model, it shall be represented as just the type or null_
 
 ### Collection Types
 ##### [List](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-SDK-List)
