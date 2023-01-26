@@ -187,11 +187,10 @@ async function findFilesToDelete(outputPath, fileMap) {
         })
         const filesToDelete =
             entries
-                .filter(entry => {
-                    const entryPath = path.join(currentDir, entry.name)  
-                    return entry.isFile() && !generatedFiles.includes(entryPath)
-                })
-                .map(entry => path.join(currentDir, entry.name))  
+            .map(entry => [entry, path.resolve(path.join(currentDir, entry.name))])  
+            .filter(([entry, absolutePath]) => {
+                return entry.isFile() && !generatedFiles.includes(absolutePath)
+            })
         const subDirFilesToDelete =
             entries
                 .filter(entry => entry.isDirectory())
