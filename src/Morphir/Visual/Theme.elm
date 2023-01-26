@@ -1,6 +1,6 @@
 module Morphir.Visual.Theme exposing (..)
 
-import Element exposing (Attr, Attribute, Color, Element, el, fill, height, mouseOver, none, paddingXY, rgb, rgb255, rgba, row, spacing, table, toRgb, width)
+import Element exposing (Attr, Attribute, Color, Element, fill, height,  none, paddingXY, rgb, rgb255, rgba, row, spacing, table, toRgb, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font exposing (center)

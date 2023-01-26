@@ -13,7 +13,6 @@ import Svg
 import Svg.Attributes
 import Morphir.Visual.Config exposing (HighlightState(..))
 import Morphir.Visual.Theme exposing (smallPadding)
-import Element exposing (explain)
 import Morphir.Value.Interpreter exposing (Variables)
 
 
