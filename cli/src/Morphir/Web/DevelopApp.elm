@@ -71,6 +71,7 @@ import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
 import Morphir.Visual.Components.Card as Card
 import Morphir.Visual.Components.FieldList as FieldList
+import Morphir.Visual.Components.InputComponent as InputComponent
 import Morphir.Visual.Components.ModalComponent exposing (attachModal)
 import Morphir.Visual.Components.SectionComponent as SectionComponent
 import Morphir.Visual.Components.SelectableElement as SelectableElement
@@ -1525,9 +1526,9 @@ definitionFilters theme homeState =
         -- Creates a text input to search defintions by name
         definitionFilter : Element Msg
         definitionFilter =
-            Element.Input.search
-                [ Font.size theme.fontSize
-                , padding (theme |> Theme.scaled -2)
+            InputComponent.searchInput
+                theme
+                [ padding (theme |> Theme.scaled -2)
                 , width (fillPortion 7)
                 ]
                 { onChange = Filter << SearchDefinition
@@ -1539,22 +1540,22 @@ definitionFilters theme homeState =
         -- Creates a checkbox to filter out values from the definition list
         valueCheckbox : Element Msg
         valueCheckbox =
-            Element.Input.checkbox
+            InputComponent.checkBox
+                theme
                 [ width (fillPortion 2) ]
                 { onChange = Filter << ToggleValues
                 , checked = homeState.filterState.showValues
-                , icon = Element.Input.defaultCheckbox
                 , label = Element.Input.labelLeft [] (text "values:")
                 }
 
         -- Creates a checkbox to filter out types from the definition list
         typeCheckbox : Element Msg
         typeCheckbox =
-            Element.Input.checkbox
+            InputComponent.checkBox
+                theme
                 [ width (fillPortion 2) ]
                 { onChange = Filter << ToggleTypes
                 , checked = homeState.filterState.showTypes
-                , icon = Element.Input.defaultCheckbox
                 , label = Element.Input.labelLeft [] (text "types:")
                 }
     in
@@ -1647,8 +1648,6 @@ viewValue theme moduleName valueName valueDef docs =
         )
         (ifThenElse (docs == "") "[ This definition has no associated documentation. ]" docs)
         none
-
-
 
 
 
@@ -1935,15 +1934,16 @@ viewDefinitionDetails model =
 
         descriptionInput : Element Msg
         descriptionInput =
-            Element.Input.text
-                [ Font.size model.theme.fontSize
-                , padding (model.theme |> Theme.scaled -2)
+            InputComponent.textInput
+                model.theme
+                [ padding (model.theme |> Theme.scaled -2)
                 ]
                 { onChange = Testing << UpdateDescription
                 , text = model.testDescription
                 , placeholder = Just (Element.Input.placeholder [] (text "Write a test description here..."))
                 , label = Element.Input.labelHidden "Description"
                 }
+                Nothing
 
         viewActualOutput : Theme -> IR -> TestCase -> FQName -> Element Msg
         viewActualOutput theme ir testCase fQName =

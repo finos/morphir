@@ -33,7 +33,7 @@ view theme config node =
 
 
 viewSubTree : Theme -> Config comparable msg -> NodePath comparable -> Node comparable msg -> List (Element msg)
-viewSubTree theme config nodePath (Node label attributes children) =
+viewSubTree theme config nodePath (Node label _ children) =
     let
         depth : Int
         depth =
@@ -92,6 +92,7 @@ viewSubTree theme config nodePath (Node label attributes children) =
                     [ configurableStyles
                     , [ width fill
                       , padding 2
+                      , Element.focused [ Background.color theme.colors.gray ]
                       , mouseOver
                             [ Background.color theme.colors.gray
                             , Border.color theme.colors.primaryHighlight
