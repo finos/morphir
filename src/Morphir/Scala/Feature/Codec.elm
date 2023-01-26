@@ -521,7 +521,7 @@ mapTypeDefinitionToDecoder currentPackagePath currentModulePath ( typeName, acce
                         |> ResultList.keepFirstError
 
                 downApply =
-                    hCursor ++ ".downN(0)" ++ ".as[String]" ++ ".flatMap"
+                    hCursor ++ ".downN(0)" ++ ".as(morphir.sdk.string.Codec.decodeString)" ++ ".flatMap"
 
                 scalaValueResult : Result Error Scala.Value
                 scalaValueResult =
