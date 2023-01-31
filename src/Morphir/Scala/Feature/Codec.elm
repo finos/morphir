@@ -521,7 +521,7 @@ mapTypeDefinitionToDecoder currentPackagePath currentModulePath ( typeName, acce
                         |> ResultList.keepFirstError
 
                 downApply =
-                    hCursor ++ ".downN(0)" ++ ".as(morphir.sdk.string.Codec.decodeString)" ++ ".flatMap"
+                    hCursor ++ """.withFocus(_.withString(str => io.circe.Json.arr (io.circe.Json.fromString(str))))""" ++ ".downN(0)" ++ ".as(morphir.sdk.string.Codec.decodeString)" ++ ".flatMap"
 
                 scalaValueResult : Result Error Scala.Value
                 scalaValueResult =
@@ -547,10 +547,10 @@ mapConstructorsToDecoder (( _, _, ctorName ) as fqName_) ctorArgs name =
     let
         fqName =
             let
-                ( pn, mn, ln ) =
+                ( packageName, moduleName, localName ) =
                     fqName_
             in
-            ( pn, mn, ln )
+            ( packageName, moduleName, localName )
 
         ( tpePath, tpeName ) =
             ScalaBackend.mapFQNameToPathAndName fqName
