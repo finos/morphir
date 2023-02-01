@@ -18,7 +18,7 @@ const cliTsProject = ts.createProject('./cli2/tsconfig.json')
 const readFile = util.promisify(fs.readFile)
 
 const config = {
-    morphirJvmVersion: '0.10.0',
+    morphirJvmVersion: '0.11.0',
     morphirJvmCloneDir: tmp.dirSync()
 }
 
