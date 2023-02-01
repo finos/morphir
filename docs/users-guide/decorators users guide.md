@@ -1,4 +1,4 @@
-# Custom attributes user guide
+# Decorators user guide
 The contents of this document detail how to structure and load optional "sidecar" files for the purposes of adding custom attributes to Morphir types and values. Custom attributes can assign extra information to business concepts that is otherwise not included in the Morphir IR.
 
 **Contents:**
@@ -21,8 +21,8 @@ To define a custom attribute, we need at least three JSON files.
 ```
 {
 	"test-id-1":  {
-		"displayName" : "MS.Sensitivity"
-		, "entryPoint" : "Morphir.Attribute.Model.Sensitivity.Sensitivity"
+		"displayName" : "Sensitivity"
+		, "entryPoint" : "Morphir.Attribute.Model:Sensitivity:Sensitivity"
 		, "ir" : "attributes/sensitivity.ir.json"
 	}
 	"test-id-2":  {
@@ -31,9 +31,17 @@ To define a custom attribute, we need at least three JSON files.
 }
 ```
 The above example is a sample config file structure. The config file should contain key-value pairs in a JSON format, where the key is the attribute name, and the value is the attribute description. 
-The attribute description should include an entrypoint in the form of an [FQName](https://package.elm-lang.org/packages/finos/morphir-elm/latest/Morphir.IR.FQName) (this is the type describing your custom attribute), a display name, and a path to the IR file containing your type model
+The attribute description should include: 
+- a display name which will be used in Morphir Web
+- an entry point which is a reference to the type that describes the shape of your decoration
+  - this should be in the form of a fully-qualified name with the package name, module name and local name separated by `:`
+- and a path to the IR file containing your type model
+  - the entry point specified above needs to align exactly with the IR specified here so make sure that:
+    - the name of the package defined in the `morphir.json` of this IR matches with the first part of the entry point
+    - there is a module in the IR that matches the second part of the entry point
+    - there is a type in that module that matches the third part of the entry point
 
-### Attribute file
+### Decoration file
 ```
 {
 	"Morphir.Reference.Model.Issues.Issue401:bar": {

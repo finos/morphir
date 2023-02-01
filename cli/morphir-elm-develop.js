@@ -32,29 +32,34 @@ const port = program.opts().port;
 
 const wrap =
   (fn) =>
-  (...args) =>
-    fn(...args).catch(args[2]);
+    (...args) =>
+      fn(...args).catch(args[2]);
 
 
-async function indexHtmlWithVersion () {
+async function indexHtmlWithVersion() {
   const packageJson = require(path.join(__dirname, '../package.json'))
-  const _indexHtml = await readFile (path.join(webDir, "index.html"), 'utf8');
+  const _indexHtml = await readFile(path.join(webDir, "index.html"), 'utf8');
   return _indexHtml.replace('__VERSION_NUMBER__', packageJson.version.toString());
 
 }
 const webDir = path.join(__dirname, "web");
 
-const createSimpleGetJsonApi = (filePath) => {
+const createSimpleGetJsonApi = (filePath, defaultContent) => {
   app.get(
     "/server/" + filePath,
     wrap(async (req, res, next) => {
       const jsonPath = path.join(program.opts().projectDir, filePath);
-      const jsonContent = await readFile(jsonPath);
-      if (filePath == "morphir-tests.json" && jsonContent == ""){
-        res.send("{}")
-      }
-      else
+      try {
+        const jsonContent = await readFile(jsonPath);
         res.send(JSON.parse(jsonContent.toString()));
+      } catch (err) {
+        if (defaultContent && err.code === 'ENOENT') {
+          // file does not exist, send default content
+          res.send(defaultContent)
+        } else {
+          throw err
+        }
+      }
     })
   );
 };
@@ -74,17 +79,17 @@ async function getAttributeConfigJson() {
   }
 }
 
-app.use(express.static(webDir, {index: false}));
+app.use(express.static(webDir, { index: false }));
 app.use(express.json());
 
-app.get("/", wrap (async (req, res, next) => {
+app.get("/", wrap(async (req, res, next) => {
   res.setHeader('Content-type', 'text/html')
   res.send(await indexHtmlWithVersion());
 }));
 
 createSimpleGetJsonApi("morphir.json");
 createSimpleGetJsonApi("morphir-ir.json");
-createSimpleGetJsonApi("morphir-tests.json");
+createSimpleGetJsonApi("morphir-tests.json", "[]");
 
 app.get(
   "/server/attributes",
@@ -106,15 +111,15 @@ app.get(
       );
 
       if (!(await fsExists(attrFilePath))) {
-         await writeFile(attrFilePath, "{}");
+        await writeFile(attrFilePath, "{}");
       }
       const attrFileContent = await readFile(attrFilePath);
       const irFileContent = await readFile(irFilePath);
       responseJson[attrId] = {
-         data: JSON.parse(attrFileContent.toString()),
-         displayName: configJsonContent[attrId].displayName,
-         entryPoint: configJsonContent[attrId].entryPoint,
-         iR: JSON.parse(irFileContent.toString()),
+        data: JSON.parse(attrFileContent.toString()),
+        displayName: configJsonContent[attrId].displayName,
+        entryPoint: configJsonContent[attrId].entryPoint,
+        iR: JSON.parse(irFileContent.toString()),
       };
     }
     res.send(responseJson);
@@ -152,7 +157,7 @@ app.post(
   })
 );
 
-app.get("*", wrap (async (req, res, next) => {
+app.get("*", wrap(async (req, res, next) => {
   res.setHeader('Content-type', 'text/html')
   res.send(await indexHtmlWithVersion());
 }));
