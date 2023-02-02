@@ -669,6 +669,7 @@ update msg model =
 
                                                         Nothing ->
                                                             data
+                                                                |> SDKDict.remove valueDetail.nodeID
                                             in
                                             { decorationConfigAndData
                                                 | data =
