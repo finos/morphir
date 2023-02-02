@@ -92,7 +92,7 @@ import Task
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing (..)
 import Url.Parser.Query as Query
-
+import Morphir.IR.NodeId exposing (NodeID)
 
 
 -- MAIN
@@ -1260,7 +1260,9 @@ viewHome model packageName packageDef =
                                 )
 
                         Nothing ->
-                            row [ width fill, spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme) ] [ text <| "This package contains " ++ String.fromInt numberOfModules ++ " modules." ]
+                            row 
+                            [ width fill, spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme) ] 
+                            [ text <| "This package contains " ++ String.fromInt numberOfModules ++ " modules." ]
 
                 maybeModuleName =
                     model.homeState.selectedModule |> Maybe.map Tuple.second
@@ -1282,7 +1284,7 @@ viewHome model packageName packageDef =
                                     attributeTabContent =
                                         case maybeModuleName of
                                             Just moduleName ->
-                                                [ viewAttributeValues model (ModuleID ( packageName, moduleName )) ]
+                                                [ viewAttributeValues model (ModuleID ( packageName, moduleName)) ]
 
                                             Nothing ->
                                                 -- Since we don't annotate package for now, we don't show the Value Editors
@@ -1630,13 +1632,6 @@ viewValue theme moduleName valueName valueDef docs =
         isData =
             List.isEmpty valueDef.inputTypes
 
-        backgroundColor : Element.Color
-        backgroundColor =
-            if isData then
-                rgb 0.8 0.9 0.9
-
-            else
-                rgb 0.8 0.8 0.9
     in
     Card.viewAsCard theme
         cardTitle
@@ -2208,7 +2203,7 @@ viewDefinitionDetails model =
                                                                                 )
                                                                             , paddingXY 10 10
                                                                             ]
-                                                                            [ viewAttributeValues model (ValueID fullyQualifiedName) ]
+                                                                            [ viewAttributeValues model (ValueID fullyQualifiedName []) ]
                                                                   }
                                                                 ]
                                                         }
@@ -2257,7 +2252,7 @@ viewDefinitionDetails model =
                                                         )
                                                     , paddingXY 10 10
                                                     ]
-                                                    [ viewAttributeValues model (TypeID fullyQualifiedName) ]
+                                                    [ viewAttributeValues model (TypeID fullyQualifiedName []) ]
                                           }
                                         ]
                                 }

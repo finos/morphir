@@ -827,7 +827,7 @@ generateUniqueName : Value ta va -> Name
 generateUniqueName value =
     let
         existingVariableNames =
-            collectVariables (value |> Debug.log (toString value)) |> Debug.log "names"
+            collectVariables value
 
         chars =
             String.split "" "abcdefghijklmnopqrstuvwxyz" |> List.map List.singleton
