@@ -491,15 +491,27 @@ decoderLambda args body =
 
 {-|
 
-    Maps a Morphir Type Definition to a Decoder
+    Maps a Morphir Type Definition to a Decoder, for Custom types we have to handle them specially , this is
+    because Custom types with constructors can have 0 or more arguments.
+
+    Example :
+
+    type CustomType =
+        CustomOne String
+        CustomTwo Int
+        CustomThree
+
+In the example above, when the type CustomType is being decoded , the constructor CustomOne and its value are represented
+in an array. Same applies to CustomTwo. We can then use the downN method from the HCursor class to move to elements in
+the JSON array.
+CustomThree is represented as a string and should be handled differently. To handle this use case we make use of the withFocus
+method in the HCursor class. This allows us to modify the currently focused Json value with a function.
+A function can then be used to convert the string to a Json Array which can then be decoded like other constructors
 
 -}
 mapTypeDefinitionToDecoder : Package.PackageName -> Path -> ( Name, AccessControlled (Documented (Type.Definition ta)) ) -> Result Error (Scala.Annotated Scala.MemberDecl)
 mapTypeDefinitionToDecoder currentPackagePath currentModulePath ( typeName, accessControlledDocumentedTypeDef ) =
     let
-        hCursor =
-            "c"
-
         ( scalaTypePath, scalaTypeName ) =
             ScalaBackend.mapFQNameToPathAndName (FQName.fQName currentPackagePath currentModulePath typeName)
     in
@@ -520,8 +532,45 @@ mapTypeDefinitionToDecoder currentPackagePath currentModulePath ( typeName, acce
                             )
                         |> ResultList.keepFirstError
 
+                hCursor =
+                    Scala.Variable "c"
+
+                underscore =
+                    Scala.Variable "_"
+
+                wrapSingleConstructorsWithArray =
+                    Scala.Apply (Scala.Select hCursor "withFocus")
+                        [ Scala.ArgValue Nothing
+                            (Scala.Apply (Scala.Select underscore "withString")
+                                [ Scala.ArgValue Nothing
+                                    (Scala.Lambda [ ( "str", Nothing ) ]
+                                        (Scala.Apply (Scala.Ref circeJsonPath "arr")
+                                            [ Scala.ArgValue Nothing
+                                                (Scala.Apply (Scala.Ref circeJsonPath "fromString")
+                                                    [ Scala.ArgValue Nothing
+                                                        (Scala.Variable "str")
+                                                    ]
+                                                )
+                                            ]
+                                        )
+                                    )
+                                ]
+                            )
+                        ]
+
+                downApply : Scala.Value
                 downApply =
-                    hCursor ++ """.withFocus(_.withString(str => io.circe.Json.arr (io.circe.Json.fromString(str))))""" ++ ".downN(0)" ++ ".as(morphir.sdk.string.Codec.decodeString)" ++ ".flatMap"
+                    Scala.Select
+                        (Scala.Apply
+                            (Scala.Select
+                                (Scala.Apply (Scala.Select wrapSingleConstructorsWithArray "downN")
+                                    [ Scala.ArgValue Nothing (Scala.Literal (Scala.IntegerLit 0)) ]
+                                )
+                                "as"
+                            )
+                            [ Scala.ArgValue Nothing (Scala.Ref [ "morphir", "sdk", "string", "Codec" ] "decodeString") ]
+                        )
+                        "flatMap"
 
                 scalaValueResult : Result Error Scala.Value
                 scalaValueResult =
@@ -530,7 +579,7 @@ mapTypeDefinitionToDecoder currentPackagePath currentModulePath ( typeName, acce
                             (\patternMatch ->
                                 Scala.Lambda [ ( "c", Just (Scala.TypeRef circePackagePath "HCursor") ) ]
                                     (Scala.Apply
-                                        (Scala.Variable downApply)
+                                        downApply
                                         [ Scala.ArgValue Nothing
                                             (Scala.Lambda [ ( "tag", Nothing ) ]
                                                 (Scala.Match (Scala.Variable "tag") (Scala.MatchCases patternMatch))
