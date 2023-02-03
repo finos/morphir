@@ -1,87 +1,71 @@
-# Decorators user guide
-The contents of this document detail how to structure and load optional "sidecar" files for the purposes of adding custom attributes to Morphir types and values. Custom attributes can assign extra information to business concepts that is otherwise not included in the Morphir IR.
+# Decorations User Guide
 
-**Contents:**
-- [File format and naming convention](#file-format-and-naming-convention)
-	 - [Config file](#config-file)
-	 - [Attribute file](#attribute-file)
-- [Loading and updating the attribute files](#loading-and-updating-the-attribute-files)
+The Morphir IR contains all the domain models and business logic that you defined in your model but sometimes
+you want to add more information that cannot be captured in the language. Decorations provide a way to assign
+additional information to any part of the domain model or business logic that is stored in a separate (sidecar) 
+file. The shape of the decoration is defined in Morphir as well and stored using the standard JSON serialization 
+format that all Morphir tools integrate with.  
 
+Now let's see how you can set them up. This can be done in a few easy steps:
 
+- [Create or find the Morphir IR that describes the decoration](#create-or-find-the-morphir-ir-that-describes-the-decoration)
+- [Set up the decoration for your model](#set-up-the-decoration-for-your-model)
+- [Start adding decorations](#start-adding-decorations) 
 
+## Create or find the Morphir IR that describes the decoration
 
-## File format, and naming convention
-To define a custom attribute, we need at least three JSON files. 
+The first thing you will need is a Morphir IR that describes the shape of the decoration. If you want to use an existing 
+decoration you just need to make sure you have access to the `morphir-ir.json` for it. If you want to create your own
+decoration, you just need to set up another morphir project, define types that describe what you want and generate a 
+`morphir-ir.json` using `morphir make`.
 
- 1. A config file named `attribute.conf.json` that lists the attribute ID's, and maps them to display names.
- 2. At least one attribute file named `<someAttributeId>.json` in the `attributes`.
- 3. An IR containing a type definitions 
- 
-### Config file
+## Set up the decoration for your model
+
+Decorations can be configured in the `morphir-ir.json`. The `decorations` field is a simple object where you can list 
+out one or more decorations using an arbitrary key (it will only be used as an internal identifier within this project): 
+
 ```
 {
-	"test-id-1":  {
-		"displayName" : "Sensitivity"
-		, "entryPoint" : "Morphir.Attribute.Model:Sensitivity:Sensitivity"
-		, "ir" : "attributes/sensitivity.ir.json"
-	}
-	"test-id-2":  {
-		...
-	}
+    "name": "My.Package",
+    "sourceDirectory": "src",
+    "decorations": {
+        "myDecoration": {
+            "displayName": "My Amazing Decoration",
+            "ir": "decorations/my/morphir-ir.json", 
+            "entryPoint": "My.Amazing.Decoration:Foo:Shape",
+            "storageLocation": "my-decoration-values.json" 
+        }
+    }
 }
 ```
-The above example is a sample config file structure. The config file should contain key-value pairs in a JSON format, where the key is the attribute name, and the value is the attribute description. 
-The attribute description should include: 
+
+Each decoration section should include: 
 - a display name which will be used in Morphir Web
 - an entry point which is a reference to the type that describes the shape of your decoration
   - this should be in the form of a fully-qualified name with the package name, module name and local name separated by `:`
-- and a path to the IR file containing your type model
+- a path to the IR file containing your type model
   - the entry point specified above needs to align exactly with the IR specified here so make sure that:
     - the name of the package defined in the `morphir.json` of this IR matches with the first part of the entry point
     - there is a module in the IR that matches the second part of the entry point
     - there is a type in that module that matches the third part of the entry point
+- a storage location that specifies where the decoration data will be saved    
 
-### Decoration file
-```
-{
-	"Morphir.Reference.Model.Issues.Issue401:bar": {
-		"MNPI": false,
-		"PII": true
-	},
-	 "Morphir.Reference.Model.Issues.Issue401:foo": {
-		"MNPI": false,
-		"PII": false
-	}
-}
-```
-The above example is a sample attribute file structure. The attribute file should be a dictionary in a JSON  format, where the keys are Morphir [FQName](https://package.elm-lang.org/packages/finos/morphir-elm/latest/Morphir.IR.FQName)s, and the values are any valid JSON object.
+## Start adding decorations
 
+Once this is all set up you can use Morphir Web to start adding decorations on your model. First you need to run 
+`morphir-elm develop` and open a browser at the specified port on localhost. In the UI you will see a "Decorations"
+tab on the right as you click through modules/types and values. The tab should display all the decorations you 
+specified with editors that allow you to specify values. 
 
-## Loading and updating the attribute files
-We currently provide the following APIs.
-
-***GET /server/attributes/***
-Returns the a JSON file with a very similar structure to the config file, but amended with `data` fields containing the actual custom attribute values, and the `ir` field containing the actual IR instead of a path pointing to it
+Every edit is saved automatically as you make changes in the file you specified in the config (`storageLocation` field).
+If you open the file you should see something like this: 
 
 ```
 {
-	"test-id-1":  {
-		"displayName" : <displayName>
-		, "entryPoint" : <FQName>
-		, "ir" : "<a Morphir IR>"
-		, "data" : <custom attribute dictionary>
-	}
-	"test-id-2":  {
-		...
-	}
+	"My.Package:Foo:bar": ...,
+	"My.Package:Baz:bat": ...
 }
 ```
 
-***POST /server/updateattribute/\<yourattributename>***
-```
-{ 
-	"nodeId" : <fqname>,
-	"newAttribute: <JSON>
-}
-```
-Updates the given node with the given new attribute.
+It's an object with a node id that identifies the part of the model that you put the decoration on, and a value that
+you specified in the UI.
