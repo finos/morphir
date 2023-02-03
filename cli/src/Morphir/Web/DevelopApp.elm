@@ -1710,7 +1710,7 @@ httpTestModel ir =
 httpAttributes : Cmd Msg
 httpAttributes =
     Http.get
-        { url = "/server/attributes"
+        { url = "/server/decorations"
         , expect =
             Http.expectJson
                 (\response ->
@@ -1730,7 +1730,7 @@ httpSaveAttrValue decorationID allDecorationConfigAndData =
     case allDecorationConfigAndData |> Dict.get decorationID of
         Just decorationConfigAndData ->
             Http.post
-                { url = "/server/updateattribute/" ++ decorationID
+                { url = "/server/update-decoration/" ++ decorationID
                 , body = jsonBody (encodeDecorationData decorationConfigAndData.iR decorationConfigAndData.entryPoint decorationConfigAndData.data)
                 , expect =
                     Http.expectJson
