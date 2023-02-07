@@ -145,11 +145,21 @@ async function getMorphirConfig() {
 
 async function getDecorationConfig() {
   const morphirConfig = await getMorphirConfig()
-  return morphirConfig.decorations
+  if (morphirConfig.decorations) {
+    return morphirConfig.decorations
+  } else {
+    return []
+  }
 }
 
 async function getDecorationFilePath(decorationID) {
-  const storageLocation = (await getDecorationConfig())[decorationID].storageLocation
+  const decorationConfig = (await getDecorationConfig())[decorationID]
+  let storageLocation = null
+  if (decorationConfig.storageLocation) {
+    storageLocation = decorationConfig.storageLocation
+  } else {
+    storageLocation = `${decorationID}.json`
+  }
   return path.join(program.opts().projectDir, storageLocation)
 }
 
