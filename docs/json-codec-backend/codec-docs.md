@@ -1,7 +1,7 @@
 ## JSON serialization support for generated Scala classes
 
-The purpose of this documentation is to give an explanation on how the JSON Codec Backend works and how to use it.
-This backend is a feature built on top of the Scala backend, which allows you to read Scala types that the Scala backend generates from JSON and write to JSON.
+The purpose of this documentation is to give an explanation of how the JSON Codec Backend works and how to use it.
+This backend is a feature built on top of the Scala backend which allows you to read Scala types that the Scala backend generates from JSON and write to JSON.
 
 ### How to use the JSON Codec Backend
 
@@ -29,8 +29,8 @@ The model:
           - Reference
 	        - Model
               - BooksAndRecords.elm  
-	- morphir.json
-	- morphir-ir.json
+	- morphir.JSON
+	- morphir-ir.JSON
 
 
 Running the command  ```morphir-elm gen --include-codecs --copy-deps --output codecs/src``` to generate codecs means your codecs would be outputted into the ``` codecs/src```  folder in the structure:
@@ -43,8 +43,8 @@ Running the command  ```morphir-elm gen --include-codecs --copy-deps --output co
                 - model
                   - booksandrecords
                     - Codec.scala   <----- This is your genereated codec 
-	- morphir.json
-	- morphir-ir.json
+	- morphir.JSON
+	- morphir-ir.JSON
 
 The generated codecs ```Codec.scala```  has both encoders and decoders.
 
@@ -63,25 +63,34 @@ Inside ```UseCodecs.scala``` we need to import the codecs from the package in wh
 
 ```
 import morphir.reference.model.booksandrecords.Codec._
-import io.circe.Json._
-import io.circe.parser._
 
 object UseCodecs {
     def main(args: Array[Strings]): Unit = {
         val bookType = BookType("HardCover")
-        val encodedBookType = encodeBookType(bookType)      <--- Using encoder
         
-        val parseBookType = parse(encodedBookType.toString()).getOrElse(Null)
-        val decodedBookType = decodeBookType(parseBookType.hcursor)        <--- Using decoder
+        println(encodeBookType(bookType) <--- using encoder
+        
+        println(decodeBookType(bookType) <--- using decoder
     }
 }
 
 ```
-It is required to import ```io.circe.Json``` in the situation where you want to use methods from the ```circe``` library. Libraries such as ```io.circe.parser``` and ```io.circe.generic``` are usually used to work with encoders and decoders, you would need to add any additional library as a dependency to your project in order use them with the codecs.
+It is required to import ```io.circe.Json``` in the situation where you want to use methods from the ```circe``` library. Libraries such as ```io.circe.parser``` and ```io.circe.generic``` are usually used to work with encoders and decoders, you would need to any additional library as a dependency to your project in order import them when using the codecs.
+
+
+
+### Some useful flags to use with ```morphir-elm make```
+
+The JSON codec backend generates codecs for only types , however an IR is made up of types and values and codecs would be generated for only types. Below are some optional flags you might want to use when running the ```morphir-elm make``` command
+
+1. `-t`,` --types-only` flag : Only include type information in the IR, no values.
+2. `-o`, `--output <path>` flag : Target file location where the Morphir IR will be saved.'
+3. `-f`, `--fallback-cli` : Make use of the old cli make function.
+
 
 
 #### Unsupported Features
-Codecs are not generated for function types in the morphir ir.
+Codecs are not generated for Function types in the morphir ir.
 
 
 
