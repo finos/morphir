@@ -1,34 +1,17 @@
-module Morphir.CustomAttribute.Codec exposing (..)
+module Morphir.IR.Decoration.Codec exposing (..)
 
-import Dict exposing (Dict)
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeConfig, CustomAttributeDetail, CustomAttributeId, CustomAttributeInfo, CustomAttributeValueByNodeID)
 import Morphir.IR as IR exposing (IR)
+import Morphir.IR.Decoration exposing (AllDecorationConfigAndData, DecorationConfigAndData, DecorationData)
 import Morphir.IR.Distribution exposing (Distribution)
-import Morphir.IR.Distribution.Codec exposing (decodeVersionedDistribution, encodeVersionedDistribution)
+import Morphir.IR.Distribution.Codec exposing (decodeVersionedDistribution)
 import Morphir.IR.FQName as FQName exposing (FQName)
-import Morphir.IR.FQName.Codec as FQN
-import Morphir.IR.FQName.CodecV1 as FQName
 import Morphir.IR.NodeId exposing (NodeID(..), nodeIdFromString, nodeIdToString)
 import Morphir.IR.Type as Type
 import Morphir.IR.Type.DataCodec as DataCodec
 import Morphir.IR.Value as IRValue
-import Morphir.ListOfResults as ListOfResults
 import Morphir.SDK.Dict as SDKDict
-
-
-encodeCustomAttributeConfig : CustomAttributeConfig -> Encode.Value
-encodeCustomAttributeConfig customAttributeConfig =
-    Encode.object
-        [ ( "filePath", Encode.string customAttributeConfig.filePath )
-        ]
-
-
-decodeCustomAttributeConfig : Decode.Decoder CustomAttributeConfig
-decodeCustomAttributeConfig =
-    Decode.map CustomAttributeConfig
-        (Decode.field "filePath" Decode.string)
 
 
 decodeNodeIDByValuePairs : Decode.Decoder (SDKDict.Dict NodeID Decode.Value)
@@ -53,13 +36,13 @@ decodeNodeIDByValuePairs =
         |> Decode.map SDKDict.fromList
 
 
-decodeAttributes : Decode.Decoder CustomAttributeInfo
-decodeAttributes =
-    Decode.dict decodeCustomAttributeDetail
+decodeAllDecorationConfigAndData : Decode.Decoder AllDecorationConfigAndData
+decodeAllDecorationConfigAndData =
+    Decode.dict decodeDecorationConfigAndData
 
 
-valueDecoder : Distribution -> FQName -> Decode.Decoder IRValue.RawValue
-valueDecoder distro entryPointFqn =
+decodeDecorationValue : Distribution -> FQName -> Decode.Decoder IRValue.RawValue
+decodeDecorationValue distro entryPointFqn =
     let
         resultToFailure result =
             case result of
@@ -73,9 +56,9 @@ valueDecoder distro entryPointFqn =
         |> resultToFailure
 
 
-decodeCustomAttributeData : Distribution -> FQName -> Decode.Decoder (SDKDict.Dict NodeID (IRValue.Value () ()))
-decodeCustomAttributeData distro entryPointFqn =
-    Decode.keyValuePairs (valueDecoder distro entryPointFqn)
+decodeDecorationData : Distribution -> FQName -> Decode.Decoder DecorationData
+decodeDecorationData distro entryPointFqn =
+    Decode.keyValuePairs (decodeDecorationValue distro entryPointFqn)
         |> Decode.andThen
             (List.foldl
                 (\( nodeIdString, decodedValue ) decodedSoFar ->
@@ -95,17 +78,25 @@ decodeCustomAttributeData distro entryPointFqn =
         |> Decode.map SDKDict.fromList
 
 
-decodeCustomAttributeDetail : Decode.Decoder CustomAttributeDetail
-decodeCustomAttributeDetail =
+decodeDecorationConfigAndData : Decode.Decoder DecorationConfigAndData
+decodeDecorationConfigAndData =
     let
         entryPointDecoder =
             Decode.field "entryPoint" Decode.string
-                |> Decode.map (\fqnString -> FQName.fromString fqnString ":")
+                |> Decode.andThen
+                    (\fqnString ->
+                        case FQName.fromStringStrict fqnString ":" of
+                            Ok fqn ->
+                                Decode.succeed fqn
+
+                            Err error ->
+                                Decode.fail error
+                    )
     in
     Decode.map3
         (\displayName entryPoint distribution ->
-            Decode.field "data" (decodeCustomAttributeData distribution entryPoint)
-                |> Decode.map (CustomAttributeDetail displayName entryPoint distribution)
+            Decode.field "data" (decodeDecorationData distribution entryPoint)
+                |> Decode.map (DecorationConfigAndData displayName entryPoint distribution)
         )
         (Decode.field "displayName" Decode.string)
         entryPointDecoder
@@ -113,11 +104,11 @@ decodeCustomAttributeDetail =
         |> Decode.andThen identity
 
 
-encodeAttributeData : CustomAttributeDetail -> Encode.Value
-encodeAttributeData customAttrDetail =
+encodeDecorationData : Distribution -> FQName -> DecorationData -> Encode.Value
+encodeDecorationData ir entryPoint decorationData =
     let
         encodeIrValue =
-            customAttrDetail.data
+            decorationData
                 |> SDKDict.toList
                 |> List.map
                     (\( nodeId, irValue ) ->
@@ -132,8 +123,8 @@ encodeAttributeData customAttrDetail =
                         in
                         ( nodeIdToString nodeId
                         , DataCodec.encodeData
-                            (IR.fromDistribution customAttrDetail.iR)
-                            (Type.Reference () customAttrDetail.entryPoint [])
+                            (IR.fromDistribution ir)
+                            (Type.Reference () entryPoint [])
                             |> Result.andThen
                                 (\encoderValue ->
                                     irValue |> encoderValue

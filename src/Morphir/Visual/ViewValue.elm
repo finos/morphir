@@ -1,7 +1,7 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition, viewValue)
 
 import Dict
-import Element exposing (Element, column, el, explain, fill, htmlAttribute, padding, paddingEach, pointer, rgb, row, spacing, text, width)
+import Element exposing (Element, column, el, explain, fill, htmlAttribute, padding, paddingEach, pointer, rgb, rgb255, rgba, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
@@ -412,20 +412,18 @@ viewPopup config =
                     popUpStyle : Element msg -> Element msg
                     popUpStyle elementMsg =
                         el
-                            [ Border.shadow
-                                { offset = ( 2, 2 )
-                                , size = 2
-                                , blur = 2
-                                , color = config.state.theme.colors.darkest
+                            [ Border.width 2
+                            , Border.color (rgb 0.6 0.6 0.6)
+                            , Border.rounded 4
+                            , Border.shadow
+                                { offset = ( 1, 3 )
+                                , size = 0
+                                , blur = 3
+                                , color = rgba 0 0 0 0.16
                                 }
                             , Background.color config.state.theme.colors.lightest
-                            , Font.bold
-                            , Font.color config.state.theme.colors.darkest
-                            , Border.rounded 4
-                            , Font.center
                             , smallPadding config.state.theme |> padding
                             , htmlAttribute (style "position" "absolute")
-                            , htmlAttribute (style "transition" "all 0.2s ease-in-out")
                             ]
                             elementMsg
                 in
