@@ -123,8 +123,12 @@ mapTypeToDecoderReferenceTests =
         , positiveTest "4. Tuple with 2 fields"
             (Just ( [], [] ))
             (Type.Tuple () [ Type.Reference () (fqn "morphir.sdk" "basics" "string") [] ])
-            (Scala.Apply
-                (Scala.Ref [ "morphir", "sdk", "tuple", "Codec" ] "decodeTuple")
-                [ Scala.ArgValue Nothing (Scala.Ref [ "morphir", "sdk", "basics", "Codec" ] "decodeString") ]
+            (Scala.Lambda [ ( "c", Just (Scala.TypeRef [ "io", "circe" ] "HCursor") ) ]
+                (Scala.ForComp
+                    [ Scala.Extract (Scala.NamedMatch "arg1")
+                        (Scala.Apply (Scala.Ref [ "morphir", "sdk", "basics", "Codec" ] "decodeString") [ Scala.ArgValue Nothing (Scala.Variable "c") ])
+                    ]
+                    (Scala.Tuple [ Scala.Variable "arg0" ])
+                )
             )
         ]

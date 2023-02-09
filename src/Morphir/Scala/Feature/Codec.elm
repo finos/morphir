@@ -739,7 +739,7 @@ mapTypeToDecoderReference maybeTypeNameAndPath tpe =
                                         (\index decodedType ->
                                             Scala.Extract
                                                 (Scala.NamedMatch
-                                                    ("arg" ++ String.fromInt index)
+                                                    ("arg" ++ String.fromInt (index + 1))
                                                 )
                                                 (Scala.Apply decodedType [ Scala.ArgValue Nothing (Scala.Variable "c") ])
                                         )
