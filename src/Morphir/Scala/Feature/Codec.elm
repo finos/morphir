@@ -751,7 +751,7 @@ mapTypeToDecoderReference maybeTypeNameAndPath tpe =
                         (types
                             |> List.indexedMap
                                 (\index _ ->
-                                    Scala.Variable ("arg" ++ String.fromInt index)
+                                    Scala.Variable ("arg" ++ String.fromInt (index + 1))
                                 )
                         )
 
