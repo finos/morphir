@@ -9,7 +9,7 @@ The first step to using the JSON Codec backend is to add the Circe JSON library 
 
 1. Copy dependencies from ```morphir-jvm``` : This option allows you to copy the dependencies(morphir sdk) used by the generated code to the output path. You can achieve this by adding the ```-c``` or ```--copy-deps``` flag to the ```morphir-gen``` command.
 
-2. Adding from `Maven Repository` : The SDK can be added from the maven repository as a dependency . It can be found at [Morphir SDK Core](https://mvnrepository.com/artifact/org.morphir/morphir-sdk-core).
+2. Adding from `Maven Repository` : The SDK can be added from the maven repository as a dependency . It can be found at [Morphir SDK Core](https://search.maven.org/search?q=a:morphir-sdk-core_2.12).
 
 
 #### Generating Codecs from the IR
