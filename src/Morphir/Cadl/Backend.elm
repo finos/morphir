@@ -1,17 +1,18 @@
 module Morphir.Cadl.Backend exposing (..)
 
 import Dict exposing (Dict)
-import Morphir.Cadl.AST as AST exposing (ArrayType(..), Name, Namespace, NamespaceDeclaration, Type(..), TypeDefinition(..))
+import Morphir.Cadl.AST as AST exposing (ArrayType(..), ImportDeclaration(..), Name, Namespace, NamespaceDeclaration, Type(..), TypeDefinition(..))
 import Morphir.Cadl.PrettyPrinter as PrettyPrinter
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.Distribution exposing (Distribution(..))
-import Morphir.IR.FQName as FQName
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as IRName exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path
 import Morphir.IR.Type as IRType exposing (Type(..))
 import Morphir.SDK.ResultList as ResultList
+import Set exposing (Set)
 
 
 type alias Errors =
@@ -26,24 +27,29 @@ mapDistribution : Options -> Distribution -> Result Errors FileMap
 mapDistribution opt distro =
     case distro of
         Library packageName _ packageDef ->
+            let
+                shouldImportSDK : Bool
+                shouldImportSDK =
+                    packageDef.modules
+                        |> Dict.toList
+                        |> List.map (Tuple.second >> .value >> Module.collectTypeReferences)
+                        |> List.foldl Set.union Set.empty
+                        |> Set.member ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "decimal" ] ], [ "decimal" ] )
+
+                imports : List ImportDeclaration
+                imports =
+                    if shouldImportSDK then
+                        [ Absolute "@morphir/cadl" ]
+
+                    else
+                        []
+            in
             mapPackageDefinition packageDef
-                |> Result.map (prettyPrint packageName)
+                |> Result.map (PrettyPrinter.prettyPrint packageName imports)
                 |> Result.map (Dict.singleton ( [], Path.toString IRName.toTitleCase "." packageName ++ ".cadl" ))
 
 
-prettyPrint : PackageName -> Dict String NamespaceDeclaration -> String
-prettyPrint packageName namespaces =
-    namespaces
-        |> Dict.toList
-        |> List.map
-            (\( namespaceName, namespace ) ->
-                namespace
-                    |> PrettyPrinter.mapNamespace namespaceName
-            )
-        |> String.concat
-
-
-mapPackageDefinition : Package.Definition () (IRType.Type ()) -> Result Errors (Dict String NamespaceDeclaration)
+mapPackageDefinition : Package.Definition () (IRType.Type ()) -> Result Errors (Dict Namespace NamespaceDeclaration)
 mapPackageDefinition packageDef =
     packageDef.modules
         |> Dict.toList
@@ -52,9 +58,7 @@ mapPackageDefinition packageDef =
                 accessControlledModDef.value
                     |> mapModuleDefinition
                     |> Result.map
-                        (Tuple.pair
-                            (Path.toString IRName.toTitleCase "." moduleName)
-                        )
+                        (Tuple.pair (moduleName |> List.map IRName.toTitleCase))
             )
         |> ResultList.keepFirstError
         |> Result.map Dict.fromList
@@ -186,7 +190,7 @@ mapType tpe =
                     Ok PlainTime
 
                 ( "Morphir.SDK:Decimal:decimal", [] ) ->
-                    Ok String
+                    Ok (AST.Reference [] [ "Morphir", "SDK", "Decimal" ] "decimal")
 
                 ( "Morphir.SDK:Month:month", [] ) ->
                     Ok String

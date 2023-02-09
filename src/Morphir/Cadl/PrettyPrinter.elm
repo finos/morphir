@@ -1,12 +1,48 @@
 module Morphir.Cadl.PrettyPrinter exposing (..)
 
-import Dict
-import Morphir.Cadl.AST as AST exposing (Name, NamespaceDeclaration)
+import Dict exposing (Dict)
+import Morphir.Cadl.AST as AST exposing (ImportDeclaration(..), Name, Namespace, NamespaceDeclaration)
 import Morphir.File.SourceCode exposing (Doc, concat, empty, indent, newLine, semi, space)
+import Morphir.IR.Name as Name
+import Morphir.IR.Package exposing (PackageName)
+import Morphir.IR.Path as Path
 
 
-mapNamespace : Name -> NamespaceDeclaration -> Doc
-mapNamespace namespaceName namespace =
+prettyPrint : PackageName -> List ImportDeclaration -> Dict Namespace NamespaceDeclaration -> Doc
+prettyPrint packageName imports namespaces =
+    let
+        importsDoc : List Doc
+        importsDoc =
+            imports
+                |> List.map mapImports
+
+        namespacesDoc : List Doc
+        namespacesDoc =
+            namespaces
+                |> Dict.toList
+                |> List.map
+                    (\( namespaceName, namespace ) ->
+                        namespace
+                            |> mapNamespace packageName namespaceName
+                    )
+    in
+    importsDoc
+        ++ namespacesDoc
+        |> concat
+
+
+mapImports : ImportDeclaration -> Doc
+mapImports importDecl =
+    case importDecl of
+        Absolute morphirCadlPackage ->
+            [ "import", space, "'", morphirCadlPackage, "'", semi, newLine ] |> concat
+
+        Relative strings ->
+            ""
+
+
+mapNamespace : PackageName -> Namespace -> NamespaceDeclaration -> Doc
+mapNamespace pckgName namespaceName namespace =
     let
         namespaceContent : Doc
         namespaceContent =
@@ -24,7 +60,9 @@ mapNamespace namespaceName namespace =
     in
     [ "namespace"
     , space
-    , namespaceName
+    , pckgName |> Path.toString Name.toTitleCase "."
+    , "."
+    , namespaceName |> String.join "."
     , space
     , "{"
     , newLine
@@ -140,8 +178,8 @@ mapType tpe =
 
         AST.Reference _ namespace name ->
             name
-                :: List.drop 1 namespace
-                |> List.reverse
+                |> List.singleton
+                |> List.append namespace
                 |> List.intersperse "."
                 |> concat
 

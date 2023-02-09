@@ -17,6 +17,11 @@ type alias Fields =
     Dict Name FieldDef
 
 
+type ImportDeclaration
+    = Absolute String
+    | Relative (List String)
+
+
 type alias NamespaceDeclaration =
     Dict Name TypeDefinition
 
