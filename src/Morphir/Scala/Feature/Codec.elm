@@ -378,10 +378,6 @@ mapTypeToEncoderReference tpeName tpePath typeParams tpe =
 
         Type.Tuple a types ->
             let
-                tupleEncoderRef : Scala.Value
-                tupleEncoderRef =
-                    Scala.Ref [ "morphir", "sdk", "tuple", "Codec" ] "encodeTuple"
-
                 encodedTypesResult =
                     types
                         |> List.map
@@ -390,14 +386,26 @@ mapTypeToEncoderReference tpeName tpePath typeParams tpe =
                             )
                         |> ResultList.keepFirstError
                         |> Result.map
-                            (\x ->
-                                x |> List.map (\y -> Scala.ArgValue Nothing y)
+                            (\elementsEncoderReference ->
+                                elementsEncoderReference
+                                    |> List.indexedMap
+                                        (\index elEncodeRef ->
+                                            Scala.Apply elEncodeRef
+                                                [ Scala.ArgValue Nothing
+                                                    (Scala.Select (Scala.Variable (Name.toCamelCase tpeName))
+                                                        ("_" ++ String.fromInt (index + 1))
+                                                    )
+                                                ]
+                                        )
                             )
             in
             encodedTypesResult
                 |> Result.map
-                    (\argVal ->
-                        Scala.Apply tupleEncoderRef argVal
+                    (\encodedElements ->
+                        Scala.Lambda [ ( Name.toCamelCase tpeName, Just (ScalaBackend.mapType tpe) ) ]
+                            (Scala.Apply (Scala.Ref circeJsonPath "arr")
+                                (encodedElements |> List.map (Scala.ArgValue Nothing))
+                            )
                     )
 
         Type.Record a fields ->
@@ -709,10 +717,6 @@ mapTypeToDecoderReference maybeTypeNameAndPath tpe =
 
         Type.Tuple a types ->
             let
-                tupleDecoderRef : Scala.Value
-                tupleDecoderRef =
-                    Scala.Ref [ "morphir", "sdk", "tuple", "Codec" ] "decodeTuple"
-
                 decodedTypesResult =
                     types
                         |> List.map
@@ -722,13 +726,47 @@ mapTypeToDecoderReference maybeTypeNameAndPath tpe =
                         |> ResultList.keepFirstError
                         |> Result.map
                             (\val ->
-                                val |> List.map (\y -> Scala.ArgValue Nothing y)
+                                val |> List.map (\y -> y)
+                            )
+
+                generatorsResult : Result Error (List Scala.Generator)
+                generatorsResult =
+                    decodedTypesResult
+                        |> Result.map
+                            (\decodedTypes ->
+                                decodedTypes
+                                    |> List.indexedMap
+                                        (\index decodedType ->
+                                            Scala.Extract
+                                                (Scala.NamedMatch
+                                                    ("arg" ++ String.fromInt index)
+                                                )
+                                                (Scala.Apply decodedType [ Scala.ArgValue Nothing (Scala.Variable "c") ])
+                                        )
+                            )
+
+                yieldValue : Scala.Value
+                yieldValue =
+                    Scala.Tuple
+                        (types
+                            |> List.indexedMap
+                                (\index _ ->
+                                    Scala.Variable ("arg" ++ String.fromInt index)
+                                )
+                        )
+
+                forCompResult : Result Error Scala.Value
+                forCompResult =
+                    generatorsResult
+                        |> Result.map
+                            (\generators ->
+                                Scala.ForComp generators yieldValue
                             )
             in
-            decodedTypesResult
+            forCompResult
                 |> Result.map
-                    (\argVal ->
-                        Scala.Apply tupleDecoderRef argVal
+                    (\forComp ->
+                        Scala.Lambda [ ( "c", Just (Scala.TypeRef circePackagePath "HCursor") ) ] forComp
                     )
 
         Record a fields ->
