@@ -349,12 +349,7 @@ mapType opt tpe =
             name
 
         TypeRef path name ->
-            case name of
-                "type" ->
-                    dotSep (path ++ [ name ])
-
-                _ ->
-                    dotSep <| prefixKeywords (path ++ [ name ])
+            dotSep (path ++ [ name ])
 
         TypeApply ctor args ->
             mapType opt ctor
