@@ -196,7 +196,7 @@ mapModuleDefinitionToCodecs currentPackagePath currentModulePath accessControlle
                     , imports = []
                     , typeDecls =
                         [ Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
-                            (Scala.Annotated []
+                            (Scala.withoutAnnotation
                                 (Scala.Object
                                     { modifiers =
                                         case accessControlledModuleDef.access of
@@ -657,7 +657,7 @@ mapConstructorsToDecoder (( _, _, ctorName ) as fqName_) ctorArgs name =
     in
     if List.isEmpty ctorArgs then
         ( Scala.LiteralMatch (Scala.StringLit (ctorName |> Name.toTitleCase))
-        , Scala.Apply (Scala.Variable "Right")
+        , Scala.Apply (Scala.Ref [ "scala" ] "Right")
             [ Scala.ArgValue Nothing <| Scala.Variable scalaFqn
             ]
         )
