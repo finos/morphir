@@ -39,7 +39,7 @@ mapDistribution opt distro =
                 imports : List ImportDeclaration
                 imports =
                     if shouldImportSDK then
-                        [ Absolute "@morphir/cadl" ]
+                        [ Absolute "./sdk.cadl" ]
 
                     else
                         []

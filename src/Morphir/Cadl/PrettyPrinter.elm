@@ -35,7 +35,7 @@ mapImports : ImportDeclaration -> Doc
 mapImports importDecl =
     case importDecl of
         Absolute morphirCadlPackage ->
-            [ "import", space, "'", morphirCadlPackage, "'", semi, newLine ] |> concat
+            [ "import", space, "\"", morphirCadlPackage, "\"", semi, newLine ] |> concat
 
         Relative strings ->
             ""

@@ -17,14 +17,12 @@ const morphirIR = path.join(projectDir,"morphir-ir.json")
 // cli stuffs
 const cli = require("../../../../cli/cli.js")
 const makeCmdOpts = { typesOnly: false, output: projectDir }
-const genCmdOpts = { target: "Cadl"}
+const genCmdOpts = { target: "Cadl", copy_deps: true}
 
 // test
 describe("Validating Generated Cadl", () => {
     test("Compiling Cadl", async () => {
-        // remove all generated files
         const opts = {recursive: true, force: true}
-        //fs.rmSync(generatedCadlDir, opts)
 
         // run make cmd
         const IR = await cli.make(projectDir, makeCmdOpts)
