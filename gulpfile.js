@@ -42,7 +42,8 @@ async function cloneMorphirJVM() {
 
 function copyMorphirJVMAssets() {
     const sdkFiles = path.join(config.morphirJvmCloneDir.name, 'morphir/sdk/core/src*/**')
-    return src([sdkFiles]).pipe(dest('redistributable/Scala/sdk'))
+    const sdkCodecFiles = path.join(config.morphirJvmCloneDir.name, 'morphir/sdk/json/src*/**')
+    return src([sdkFiles, sdkCodecFiles]).pipe(dest('redistributable/Scala/sdk'))
 }
 
 async function cleanupMorphirJVM() {

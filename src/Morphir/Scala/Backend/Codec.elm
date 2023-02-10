@@ -79,3 +79,6 @@ encodeError error =
     case error of
         TestError errs ->
             TestBECodec.encodeErrors errs
+
+        CodecError err ->
+            Encode.string err
