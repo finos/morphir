@@ -9,6 +9,7 @@ import Morphir.IR.SDK.String exposing (stringType)
 import Morphir.IR.Type as IRType
 import Morphir.IR.Value as IRValue
 import Morphir.Scala.AST as Scala
+import Morphir.Scala.Common as Core
 import Morphir.Scala.Feature.Core as Core
 import Set exposing (Set)
 import Test exposing (Test, describe, test)
