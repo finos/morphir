@@ -128,7 +128,7 @@ mapTypeToDecoderReferenceTests =
                     [ Scala.Extract (Scala.NamedMatch "arg1")
                         (Scala.Apply (Scala.Ref [ "morphir", "sdk", "basics", "Codec" ] "decodeString") [ Scala.ArgValue Nothing (Scala.Variable "c") ])
                     ]
-                    (Scala.Tuple [ Scala.Variable "arg0" ])
+                    (Scala.Tuple [ Scala.Variable "arg1" ])
                 )
             )
         ]
