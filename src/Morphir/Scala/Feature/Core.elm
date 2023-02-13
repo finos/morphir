@@ -337,6 +337,20 @@ mapCustomTypeDefinition currentPackagePath currentModulePath moduleDef typeName 
                         )
                     ]
 
+                else if List.length ctorArgs == 0 then
+                    [ Scala.withoutAnnotation
+                        (Scala.TypeAlias
+                            { alias = typeName |> Name.toTitleCase
+                            , typeArgs = []
+                            , tpe = Scala.TypeRef [ typeName |> Name.toTitleCase ] "type"
+                            }
+                        )
+                    , Scala.withoutAnnotation
+                        (Scala.MemberTypeDecl
+                            (caseClass ctorName ctorArgs [])
+                        )
+                    ]
+
                 else
                     [ Scala.withoutAnnotation
                         (Scala.MemberTypeDecl
