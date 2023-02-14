@@ -17,7 +17,7 @@ const morphirIR = path.join(projectDir,"morphir-ir.json")
 // cli stuffs
 const cli = require("../../../../cli/cli.js")
 const makeCmdOpts = { typesOnly: false, output: projectDir }
-const genCmdOpts = { target: "Cadl", copy_deps: true}
+const genCmdOpts = { target: "Cadl" }
 
 // test
 describe("Validating Generated Cadl", () => {
@@ -32,7 +32,6 @@ describe("Validating Generated Cadl", () => {
 
         // run gen cmd
         await cli.gen(morphirIR, generatedCadl, genCmdOpts)
-
 
         // compile generated Cadl to look for errors
         const args = ['compile', path.join(generatedCadl,"TestModel.cadl")]
