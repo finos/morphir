@@ -2,7 +2,7 @@
   "name": "morphir-sdk",
   "version": "1.0.0",
   "description": "This is the cadl equivalance of the SDK types available in Morphir",
-  "main": "main.cadl",
+  "main": "sdk.cadl",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
