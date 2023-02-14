@@ -39,7 +39,7 @@ mapDistribution opt distro =
                 imports : List ImportDeclaration
                 imports =
                     if shouldImportSDK then
-                        [ Absolute "./sdk.cadl" ]
+                        [ LibraryImport "morphir-sdk" ]
 
                     else
                         []
@@ -190,7 +190,7 @@ mapType tpe =
                     Ok PlainTime
 
                 ( "Morphir.SDK:Decimal:decimal", [] ) ->
-                    Ok (AST.Reference [] [ "Morphir", "SDK", "Decimal" ] "decimal")
+                    Ok (AST.Reference [] [ "Morphir", "SDK", "Decimal" ] "Decimal")
 
                 ( "Morphir.SDK:Month:month", [] ) ->
                     Ok String

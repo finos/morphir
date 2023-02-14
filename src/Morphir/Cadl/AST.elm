@@ -18,8 +18,8 @@ type alias Fields =
 
 
 type ImportDeclaration
-    = Absolute String
-    | Relative (List String)
+    = LibraryImport String
+    | FileImport String
 
 
 type alias NamespaceDeclaration =

@@ -34,11 +34,27 @@ prettyPrint packageName imports namespaces =
 mapImports : ImportDeclaration -> Doc
 mapImports importDecl =
     case importDecl of
-        Absolute morphirCadlPackage ->
-            [ "import", space, "\"", morphirCadlPackage, "\"", semi, newLine ] |> concat
+        LibraryImport morphirCadlLibrary ->
+            [ "import"
+            , space
+            , "\""
+            , morphirCadlLibrary
+            , "\""
+            , semi
+            , newLine
+            ]
+                |> concat
 
-        Relative strings ->
-            ""
+        FileImport filePath ->
+            [ "import"
+            , space
+            , "\""
+            , filePath
+            , "\""
+            , semi
+            , newLine
+            ]
+                |> concat
 
 
 mapNamespace : PackageName -> Namespace -> NamespaceDeclaration -> Doc
