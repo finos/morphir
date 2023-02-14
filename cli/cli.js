@@ -128,9 +128,7 @@ function copyRedistributables(options, outputPath) {
         copyFiles(`Scala/sdk/src-${options.targetVersion}`, outputPath)
     } else if (options.target == 'TypeScript') {
         copyFiles('TypeScript/', outputPath)
-    } else if (options.target == 'Cadl') {
-        copyFiles('Cadl/sdk/src/', outputPath)
-    }
+    } 
 }
 
 function copyRecursiveSync(src, dest) {
