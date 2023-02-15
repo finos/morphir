@@ -1,6 +1,13 @@
 module Morphir.Correctness.BranchCoverage exposing (..)
 
-import Morphir.IR.Value as Value exposing (Pattern, Value)
+import Dict exposing (Dict)
+import Morphir.Correctness.Test exposing (TestCase)
+import Morphir.IR exposing (IR)
+import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.Name exposing (Name)
+import Morphir.IR.SDK as SDK
+import Morphir.IR.Value as Value exposing (Pattern, RawValue, Value)
+import Morphir.Value.Interpreter as Interpreter
 
 
 {-| A branch of execution is defined as a list of conditions. The interpretation requires an additional expression tree
@@ -33,7 +40,7 @@ a pattern.
 -}
 type Condition ta va
     = BoolCondition (BoolConditionDetail ta va)
-    | PatternCondition (PatternConditionDetail va)
+    | PatternCondition (PatternConditionDetail ta va)
 
 
 {-| Represents a boolean condition as criterion and expected value. For example, given the following logic:
@@ -83,8 +90,9 @@ keeping the sequential semantics of the pattern match intact. In many cases the 
 will always specify it so that it works consistently in every case.
 
 -}
-type alias PatternConditionDetail va =
-    { excludes : List (Pattern va)
+type alias PatternConditionDetail ta va =
+    { subject : Value ta va
+    , excludes : List (Pattern va)
     , includes : Pattern va
     }
 
@@ -115,7 +123,8 @@ valueBranches expandCriteria value =
                                 patternCondition : Condition ta va
                                 patternCondition =
                                     PatternCondition
-                                        { excludes = exclude
+                                        { subject = subject
+                                        , excludes = exclude
                                         , includes = nextCasePattern
                                         }
 
@@ -230,3 +239,103 @@ bothBranches leftBranches rightBranches =
 eitherBranches : List (Branch ta va) -> List (Branch ta va) -> List (Branch ta va)
 eitherBranches leftBranches rightBranches =
     leftBranches ++ rightBranches
+
+
+assignTestCasesToBranches : IR -> Value.Definition ta va -> List TestCase -> List (Branch ta va) -> List ( Branch ta va, List TestCase )
+assignTestCasesToBranches ir valueDef testCases branches =
+    branches
+        |> List.map
+            (\branch ->
+                ( branch
+                , testCases
+                    |> List.filter
+                        (\testCase ->
+                            let
+                                variables : Dict Name RawValue
+                                variables =
+                                    List.map2
+                                        (\( argName, _, _ ) maybeArgValue ->
+                                            maybeArgValue
+                                                |> Maybe.map (Tuple.pair argName)
+                                        )
+                                        valueDef.inputTypes
+                                        testCase.inputs
+                                        |> List.filterMap identity
+                                        |> Dict.fromList
+
+                                matchesConditions : List (Condition ta va) -> Bool
+                                matchesConditions conditions =
+                                    case conditions of
+                                        [] ->
+                                            True
+
+                                        nextCondition :: restOfConditions ->
+                                            case nextCondition of
+                                                BoolCondition cond ->
+                                                    let
+                                                        rawCriterion : Value () ()
+                                                        rawCriterion =
+                                                            cond.criterion |> Value.mapValueAttributes (always ()) (always ())
+                                                    in
+                                                    case Interpreter.evaluateValue SDK.nativeFunctions ir variables [] rawCriterion of
+                                                        Ok (Value.Literal _ (BoolLiteral actualResult)) ->
+                                                            if cond.expectedValue == actualResult then
+                                                                matchesConditions restOfConditions
+
+                                                            else
+                                                                False
+
+                                                        _ ->
+                                                            False
+
+                                                PatternCondition cond ->
+                                                    let
+                                                        rawSubject : RawValue
+                                                        rawSubject =
+                                                            cond.subject |> Value.mapValueAttributes (always ()) (always ())
+
+                                                        evaluatedSubject : RawValue
+                                                        evaluatedSubject =
+                                                            case Interpreter.evaluateValue SDK.nativeFunctions ir variables [] rawSubject of
+                                                                Ok result ->
+                                                                    result
+
+                                                                Err _ ->
+                                                                    Value.Unit ()
+
+                                                        matches : Pattern va -> Bool
+                                                        matches pattern =
+                                                            case
+                                                                Interpreter.matchPattern
+                                                                    (pattern |> Value.mapPatternAttributes (always ()))
+                                                                    evaluatedSubject
+                                                            of
+                                                                Ok _ ->
+                                                                    True
+
+                                                                _ ->
+                                                                    False
+
+                                                        matchesAny : List (Pattern va) -> Bool
+                                                        matchesAny patterns =
+                                                            case patterns of
+                                                                [] ->
+                                                                    False
+
+                                                                nextPattern :: restOfPatterns ->
+                                                                    if matches nextPattern then
+                                                                        True
+
+                                                                    else
+                                                                        matchesAny restOfPatterns
+                                                    in
+                                                    if matches cond.includes then
+                                                        matchesAny cond.excludes
+
+                                                    else
+                                                        False
+                            in
+                            matchesConditions branch
+                        )
+                )
+            )
