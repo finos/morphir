@@ -18,7 +18,7 @@ const cliTsProject = ts.createProject('./cli2/tsconfig.json')
 const readFile = util.promisify(fs.readFile)
 
 const config = {
-    morphirJvmVersion: '0.10.0',
+    morphirJvmVersion: '0.11.0',
     morphirJvmCloneDir: tmp.dirSync()
 }
 
@@ -42,7 +42,8 @@ async function cloneMorphirJVM() {
 
 function copyMorphirJVMAssets() {
     const sdkFiles = path.join(config.morphirJvmCloneDir.name, 'morphir/sdk/core/src*/**')
-    return src([sdkFiles]).pipe(dest('redistributable/Scala/sdk'))
+    const sdkCodecFiles = path.join(config.morphirJvmCloneDir.name, 'morphir/sdk/json/src*/**')
+    return src([sdkFiles, sdkCodecFiles]).pipe(dest('redistributable/Scala/sdk'))
 }
 
 async function cleanupMorphirJVM() {

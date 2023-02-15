@@ -15,6 +15,7 @@ import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
 import Morphir.Scala.AST as Scala exposing (Annotated, MemberDecl(..))
+import Morphir.Scala.Common exposing (mapValueName)
 import Morphir.Scala.WellKnownTypes exposing (anyVal)
 import Set exposing (Set)
 
@@ -782,86 +783,6 @@ mapPattern pattern =
 
 {-| Map IR value to Scala Value
 -}
-mapValueName : Name -> String
-mapValueName name =
-    let
-        scalaName : String
-        scalaName =
-            Name.toCamelCase name
-    in
-    if Set.member scalaName scalaKeywords || Set.member scalaName javaObjectMethods then
-        "_" ++ scalaName
-
-    else
-        scalaName
-
-
-{-| Scala keywords that cannot be used as variable name.
--}
-scalaKeywords : Set String
-scalaKeywords =
-    Set.fromList
-        [ "abstract"
-        , "case"
-        , "catch"
-        , "class"
-        , "def"
-        , "do"
-        , "else"
-        , "extends"
-        , "false"
-        , "final"
-        , "finally"
-        , "for"
-        , "forSome"
-        , "if"
-        , "implicit"
-        , "import"
-        , "lazy"
-        , "macro"
-        , "match"
-        , "new"
-        , "null"
-        , "object"
-        , "override"
-        , "package"
-        , "private"
-        , "protected"
-        , "return"
-        , "sealed"
-        , "super"
-        , "this"
-        , "throw"
-        , "trait"
-        , "try"
-        , "true"
-        , "type"
-        , "val"
-        , "var"
-        , "while"
-        , "with"
-        , "yield"
-        ]
-
-
-{-| We cannot use any method names in `java.lang.Object` because values are represented as functions/values in a Scala
-object which implicitly inherits those methods which can result in name collisions.
--}
-javaObjectMethods : Set String
-javaObjectMethods =
-    Set.fromList
-        [ "clone"
-        , "equals"
-        , "finalize"
-        , "getClass"
-        , "hashCode"
-        , "notify"
-        , "notifyAll"
-        , "toString"
-        , "wait"
-        ]
-
-
 uniqueVarName : Set Name -> Int -> String
 uniqueVarName varNamesInUse hint =
     let

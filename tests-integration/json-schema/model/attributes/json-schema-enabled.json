@@ -1,7 +1,0 @@
-{
-    "Module:BasicTypes": true,
-    "Type:TestModel:AdvancedTypes:entryTime": true,
-    "Type:TestModel:AdvancedTypes:acquisitionDate": true,
-    "Module:RecordTypes": true,
-    "Module:OptionalTypes": true
-}
