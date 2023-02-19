@@ -155,7 +155,8 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
                                         []
 
                                     Private ->
-                                        [ Scala.Private Nothing ]
+                                        --[ Scala.Private Nothing ]
+                                        []
                             , name =
                                 mapValueName valueName
                             , typeArgs =
@@ -203,12 +204,13 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
                                         []
 
                                     Private ->
-                                        [ Scala.Private
-                                            (currentPackagePath
-                                                |> ListExtra.last
-                                                |> Maybe.map (Name.toCamelCase >> String.toLower)
-                                            )
-                                        ]
+                                        --[ Scala.Private
+                                        --    (currentPackagePath
+                                        --        |> ListExtra.last
+                                        --        |> Maybe.map (Name.toCamelCase >> String.toLower)
+                                        --    )
+                                        --]
+                                        []
                             , name =
                                 moduleName |> Name.toTitleCase
                             , members =
