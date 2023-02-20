@@ -188,14 +188,30 @@ conditionBranches expandCriteria condition expectedValue =
 
                 else
                     eitherBranches
-                        (conditionBranches expandCriteria leftCondition False)
-                        (conditionBranches expandCriteria rightCondition False)
+                        [ bothBranches
+                            (conditionBranches expandCriteria leftCondition True)
+                            (conditionBranches expandCriteria rightCondition False)
+                        , bothBranches
+                            (conditionBranches expandCriteria leftCondition False)
+                            (conditionBranches expandCriteria rightCondition True)
+                        , bothBranches
+                            (conditionBranches expandCriteria leftCondition False)
+                            (conditionBranches expandCriteria rightCondition False)
+                        ]
 
             Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "or" ] )) leftCondition) rightCondition ->
                 if expectedValue == True then
                     eitherBranches
-                        (conditionBranches expandCriteria leftCondition True)
-                        (conditionBranches expandCriteria rightCondition True)
+                        [ bothBranches
+                            (conditionBranches expandCriteria leftCondition True)
+                            (conditionBranches expandCriteria rightCondition False)
+                        , bothBranches
+                            (conditionBranches expandCriteria leftCondition False)
+                            (conditionBranches expandCriteria rightCondition True)
+                        , bothBranches
+                            (conditionBranches expandCriteria leftCondition True)
+                            (conditionBranches expandCriteria rightCondition True)
+                        ]
 
                 else
                     bothBranches
@@ -236,14 +252,18 @@ bothBranches leftBranches rightBranches =
 
 {-| Utility to generate branches with conditions that satisfy either one or the other side
 -}
-eitherBranches : List (Branch ta va) -> List (Branch ta va) -> List (Branch ta va)
-eitherBranches leftBranches rightBranches =
-    leftBranches ++ rightBranches
+eitherBranches : List (List (Branch ta va)) -> List (Branch ta va)
+eitherBranches allBranches =
+    List.concat allBranches
 
 
-assignTestCasesToBranches : IR -> Value.Definition ta va -> List TestCase -> List (Branch ta va) -> List ( Branch ta va, List TestCase )
-assignTestCasesToBranches ir valueDef testCases branches =
-    branches
+{-| Function that classifies test cases by branch coverage. It takes an IR, a function definition and a list of test
+cases as an input and returns a list of branches and the test cases that cover that branch. If a certain branch is not
+covered by a test the list will be empty.
+-}
+assignTestCasesToBranches : IR -> Value.Definition ta va -> List TestCase -> List ( Branch ta va, List TestCase )
+assignTestCasesToBranches ir valueDef testCases =
+    valueBranches True valueDef.body
         |> List.map
             (\branch ->
                 ( branch
