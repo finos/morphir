@@ -1,7 +1,9 @@
 module Morphir.Scala.Feature.CoreTests exposing (..)
 
 import Expect
+import Morphir.IR.AccessControlled as Access
 import Morphir.IR.FQName as FQName
+import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as IRPath
 import Morphir.IR.SDK.Basics exposing (boolType, intType)
@@ -348,4 +350,37 @@ matTypeTests_Function =
             \_ ->
                 Core.mapType (IRType.Function () (IRType.Reference () (FQName.fqn "Morphir.sdk" "Basics" "String") []) (IRType.Reference () (FQName.fqn "Morphir.SDK" "Basics" "String") []))
                     |> Expect.equal (Scala.FunctionType (Scala.TypeRef [ "morphir", "sdk", "Basics" ] "String") (Scala.TypeRef [ "morphir", "sdk", "Basics" ] "String"))
+        ]
+
+
+mapPrivateMemberTests : Test
+mapPrivateMemberTests =
+    describe "Map private member test"
+        [ test "private modules should become public" <|
+            \_ ->
+                Core.mapModuleDefinition [ [ "foo" ] ]
+                    [ [ "bar" ] ]
+                    (Access.private
+                        Module.emptyDefinition
+                    )
+                    |> Expect.equal
+                        [ Scala.CompilationUnit [ "foo" ]
+                            "Bar.scala"
+                            [ "foo" ]
+                            []
+                            [ { doc = Just "Generated based on Bar"
+                              , value =
+                                    { annotations = []
+                                    , value =
+                                        Scala.Object
+                                            { modifiers = []
+                                            , name = "Bar"
+                                            , body = Nothing
+                                            , members = []
+                                            , extends = []
+                                            }
+                                    }
+                              }
+                            ]
+                        ]
         ]
