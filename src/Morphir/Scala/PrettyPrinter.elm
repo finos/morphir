@@ -351,6 +351,9 @@ mapType opt tpe =
         TypeRef path name ->
             dotSep (path ++ [ name ])
 
+        TypeOfValue path ->
+            dotSep (path ++ [ "type " ])
+
         TypeApply ctor args ->
             mapType opt ctor
                 ++ "["
