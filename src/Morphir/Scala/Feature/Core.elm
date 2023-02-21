@@ -274,7 +274,7 @@ mapCustomTypeDefinition currentPackagePath currentModulePath moduleDef typeName 
         companionObjectVal name =
             let
                 companionTypeRef =
-                    Scala.TypeRef (parentPackagePath ++ [ parentTraitName, name |> Name.toTitleCase ]) "type"
+                    Scala.TypeOfValue (parentPackagePath ++ [ parentTraitName, name |> Name.toTitleCase ])
             in
             Scala.ValueDecl
                 { modifiers = []
@@ -338,11 +338,12 @@ mapCustomTypeDefinition currentPackagePath currentModulePath moduleDef typeName 
                     ]
 
                 else if List.length ctorArgs == 0 then
+                    -- This handles constructors with no arguments. We explicitly create a type alias to represent the type
                     [ Scala.withoutAnnotation
                         (Scala.TypeAlias
                             { alias = typeName |> Name.toTitleCase
                             , typeArgs = []
-                            , tpe = Scala.TypeRef [ typeName |> Name.toTitleCase ] "type"
+                            , tpe = Scala.TypeOfValue [ typeName |> Name.toTitleCase ]
                             }
                         )
                     , Scala.withoutAnnotation
