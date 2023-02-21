@@ -805,7 +805,7 @@ implicitExposedModulesTest =
                 \_ ->
                     Expect.equal True
                         (Set.member modName <|
-                            Frontend.collectImplicitlyExposedModules
+                            Frontend.collectImplicitlyExposedModules packageName
                                 modules
                                 exposedModules
                         )
@@ -816,7 +816,7 @@ implicitExposedModulesTest =
                 \_ ->
                     Expect.equal False
                         (Set.member modName <|
-                            Frontend.collectImplicitlyExposedModules
+                            Frontend.collectImplicitlyExposedModules packageName
                                 modules
                                 exposedModules
                         )
