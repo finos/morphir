@@ -62,7 +62,7 @@ import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.Graph
 import Morphir.IR as IR exposing (IR)
-import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
+import Morphir.IR.AccessControlled as Access exposing (AccessControlled, private, public)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName as FQName exposing (fQName)
@@ -586,12 +586,16 @@ packageDefinitionFromSource opts packageInfo dependencies sourceFiles =
                     )
                 |> Result.map
                     (\moduleDefs ->
+                        let
+                            expandedExposedModules =
+                                expandExposedModules moduleDefs exposedModules
+                        in
                         { modules =
                             moduleDefs
                                 |> Dict.toList
                                 |> List.map
                                     (\( modulePath, m ) ->
-                                        if exposedModules |> Set.member modulePath then
+                                        if expandedExposedModules |> Set.member modulePath then
                                             ( modulePath, public m )
 
                                         else
@@ -2085,3 +2089,90 @@ withAccessControl isExposed a =
 withWellKnownOperators : ProcessContext -> ProcessContext
 withWellKnownOperators context =
     List.foldl Processing.addDependency context WellKnownOperators.wellKnownOperators
+
+
+expandExposedModules : Dict Path (Module.Definition SourceLocation SourceLocation) -> Set Path -> Set Path
+expandExposedModules moduleDefs exposedModules =
+    let
+        depsFromType : Module.ModuleName -> Type.Type ta -> Set Path -> Set Path
+        depsFromType modName tpe exposedFromType =
+            let
+                isInSDK fqn =
+                    case fqn of
+                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) ->
+                            True
+
+                        _ ->
+                            False
+
+                deps : Set Module.ModuleName
+                deps =
+                    Type.collectReferences tpe
+                        |> Set.filter (not << isInSDK)
+                        |> Set.map FQName.getModulePath
+                        |> Set.filter (\mn -> modName /= mn)
+            in
+            deps
+                |> Set.foldl depsFromModule (Set.union exposedFromType deps)
+
+        depsFromTypeDefs : Module.ModuleName -> Dict Name (AccessControlled (Documented (Type.Definition ta))) -> Set Path -> Set Path
+        depsFromTypeDefs modName tpeDefs exposedModulesSoFar =
+            tpeDefs
+                |> Dict.foldl
+                    (\_ accDocTpeDef modulesExposedFromTypes ->
+                        case ( accDocTpeDef.access, accDocTpeDef.value.value ) of
+                            -- we only want to collect deps for publicly exposed types
+                            ( Access.Public, Type.TypeAliasDefinition vars tpe ) ->
+                                depsFromType modName tpe modulesExposedFromTypes
+
+                            ( Access.Public, Type.CustomTypeDefinition vars accessControlledCtors ) ->
+                                if accessControlledCtors.access == Access.Public then
+                                    accessControlledCtors.value
+                                        |> Dict.toList
+                                        |> List.concatMap Tuple.second
+                                        |> List.map Tuple.second
+                                        |> List.foldl (depsFromType modName) modulesExposedFromTypes
+
+                                else
+                                    modulesExposedFromTypes
+
+                            _ ->
+                                modulesExposedFromTypes
+                    )
+                    exposedModulesSoFar
+
+        depsFromValueDefs : Module.ModuleName -> Dict Name (AccessControlled (Documented (Value.Definition ta va))) -> Set Path -> Set Path
+        depsFromValueDefs modName valDefs exposedModulesSoFar =
+            valDefs
+                |> Dict.foldl
+                    (\_ accDocValDef modulesExposedFromValueSign ->
+                        case accDocValDef.access of
+                            -- we only want to collect deps from publicly exposed value signatures
+                            Access.Public ->
+                                accDocValDef.value.value.inputTypes
+                                    |> List.foldl
+                                        (\( _, _, tpe ) ->
+                                            depsFromType modName tpe
+                                        )
+                                        modulesExposedFromValueSign
+
+                            _ ->
+                                modulesExposedFromValueSign
+                    )
+                    exposedModulesSoFar
+
+        depsFromModule : Module.ModuleName -> Set Path -> Set Path
+        depsFromModule modName modulesExposed =
+            moduleDefs
+                |> Dict.get modName
+                |> Maybe.map
+                    (\modDef ->
+                        depsFromTypeDefs modName modDef.types modulesExposed
+                            |> depsFromValueDefs modName modDef.values
+                    )
+                |> Maybe.withDefault modulesExposed
+    in
+    exposedModules
+        |> Set.foldl depsFromModule
+            exposedModules
+        |> Debug.log "Expanded exposed modules"
