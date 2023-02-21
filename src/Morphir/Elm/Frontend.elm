@@ -21,6 +21,7 @@ module Morphir.Elm.Frontend exposing
     , Options, ContentLocation, ContentRange, Error(..), Errors, PackageInfo, SourceFile, SourceLocation, mapSource
     , mapValueToFile
     , parseRawValue
+    , collectImplicitlyExposedModules
     )
 
 {-| The Elm frontend turns Elm source code into Morphir IR.
@@ -38,6 +39,7 @@ module Morphir.Elm.Frontend exposing
 @docs Options, ContentLocation, ContentRange, Error, Errors, PackageInfo, SourceFile, SourceLocation, mapSource
 @docs mapValueToFile
 @docs parseRawValue
+@docs expandExposedModules
 
 -}
 
@@ -587,15 +589,20 @@ packageDefinitionFromSource opts packageInfo dependencies sourceFiles =
                 |> Result.map
                     (\moduleDefs ->
                         let
-                            expandedExposedModules =
-                                expandExposedModules moduleDefs exposedModules
+                            implicitlyExposedModules : Set Path
+                            implicitlyExposedModules =
+                                collectImplicitlyExposedModules moduleDefs exposedModules
                         in
                         { modules =
                             moduleDefs
                                 |> Dict.toList
                                 |> List.map
                                     (\( modulePath, m ) ->
-                                        if expandedExposedModules |> Set.member modulePath then
+                                        if Set.member modulePath exposedModules then
+                                            ( modulePath, public m )
+
+                                        else if Set.member modulePath implicitlyExposedModules then
+                                            -- Module is implicitly exposed. Make it public
                                             ( modulePath, public m )
 
                                         else
@@ -2091,58 +2098,100 @@ withWellKnownOperators context =
     List.foldl Processing.addDependency context WellKnownOperators.wellKnownOperators
 
 
-expandExposedModules : Dict Path (Module.Definition SourceLocation SourceLocation) -> Set Path -> Set Path
-expandExposedModules moduleDefs exposedModules =
+{-| Returns a Set of implicitly exposed modules.
+A module `ModA` is implicitly exposed if an explicitly exposed module `ModB` uses one of it's type in a public interface.
+This could be as a result of a public type in `ModB` dependending on a type in `ModA` or a public function defined in
+`ModB` that takes, as an input, a type defined in `ModA`.
+
+The parameters are
+
+  - moduleDef - All the modules
+  - exposedModules - A set of exposed module-names
+
+-}
+collectImplicitlyExposedModules : Dict Path (Module.Definition ta va) -> Set Path -> Set Path
+collectImplicitlyExposedModules moduleDefs exposedModules =
     let
+        lookupTypeDef : FQName.FQName -> Maybe (AccessControlled (Documented (Type.Definition ta)))
+        lookupTypeDef fqn =
+            case fqn of
+                ( _, modPath, tpeName ) ->
+                    Dict.get modPath moduleDefs
+                        |> Maybe.andThen
+                            (Dict.get tpeName << .types)
+
         depsFromType : Module.ModuleName -> Type.Type ta -> Set Path -> Set Path
-        depsFromType modName tpe exposedFromType =
+        depsFromType modName tpe implicitlyExposedModules =
             let
-                isInSDK fqn =
+                removalPredicate : FQName.FQName -> Bool
+                removalPredicate fqn =
                     case fqn of
                         ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) ->
-                            True
-
-                        _ ->
+                            -- sdk refs
                             False
 
-                deps : Set Module.ModuleName
+                        ( _, mn, _ ) ->
+                            if mn == modName then
+                                -- ref within same module
+                                False
+
+                            else if Set.member mn exposedModules then
+                                -- modules exposed directly
+                                False
+
+                            else
+                                True
+
+                deps : Set FQName.FQName
                 deps =
                     Type.collectReferences tpe
-                        |> Set.filter (not << isInSDK)
-                        |> Set.map FQName.getModulePath
-                        |> Set.filter (\mn -> modName /= mn)
+                        |> Set.filter removalPredicate
             in
             deps
-                |> Set.foldl depsFromModule (Set.union exposedFromType deps)
+                |> Set.foldl
+                    (\fqn implicitlyExposedModulesSoFar ->
+                        lookupTypeDef fqn
+                            |> Maybe.map
+                                (\tpeDef ->
+                                    depFromTypeDef modName tpeDef implicitlyExposedModulesSoFar
+                                )
+                            |> Maybe.withDefault implicitlyExposedModulesSoFar
+                    )
+                    -- add all referenced modules as implicitly exposed modules
+                    (Set.union implicitlyExposedModules <| Set.map FQName.getModulePath deps)
+
+        depFromTypeDef : Module.ModuleName -> AccessControlled (Documented (Type.Definition ta)) -> Set Path -> Set Path
+        depFromTypeDef moduleName accessControlled implicitlyExposedModules =
+            case ( accessControlled.access, accessControlled.value.value ) of
+                -- we only want to collect deps for publicly exposed types
+                ( Access.Public, Type.TypeAliasDefinition vars tpe ) ->
+                    depsFromType moduleName tpe implicitlyExposedModules
+
+                ( Access.Public, Type.CustomTypeDefinition vars accessControlledCtors ) ->
+                    if accessControlledCtors.access == Access.Public then
+                        accessControlledCtors.value
+                            |> Dict.toList
+                            |> List.concatMap Tuple.second
+                            |> List.map Tuple.second
+                            |> List.foldl (depsFromType moduleName) implicitlyExposedModules
+
+                    else
+                        implicitlyExposedModules
+
+                _ ->
+                    implicitlyExposedModules
 
         depsFromTypeDefs : Module.ModuleName -> Dict Name (AccessControlled (Documented (Type.Definition ta))) -> Set Path -> Set Path
-        depsFromTypeDefs modName tpeDefs exposedModulesSoFar =
+        depsFromTypeDefs modName tpeDefs implicitlyExposedModules =
             tpeDefs
                 |> Dict.foldl
                     (\_ accDocTpeDef modulesExposedFromTypes ->
-                        case ( accDocTpeDef.access, accDocTpeDef.value.value ) of
-                            -- we only want to collect deps for publicly exposed types
-                            ( Access.Public, Type.TypeAliasDefinition vars tpe ) ->
-                                depsFromType modName tpe modulesExposedFromTypes
-
-                            ( Access.Public, Type.CustomTypeDefinition vars accessControlledCtors ) ->
-                                if accessControlledCtors.access == Access.Public then
-                                    accessControlledCtors.value
-                                        |> Dict.toList
-                                        |> List.concatMap Tuple.second
-                                        |> List.map Tuple.second
-                                        |> List.foldl (depsFromType modName) modulesExposedFromTypes
-
-                                else
-                                    modulesExposedFromTypes
-
-                            _ ->
-                                modulesExposedFromTypes
+                        depFromTypeDef modName accDocTpeDef modulesExposedFromTypes
                     )
-                    exposedModulesSoFar
+                    implicitlyExposedModules
 
         depsFromValueDefs : Module.ModuleName -> Dict Name (AccessControlled (Documented (Value.Definition ta va))) -> Set Path -> Set Path
-        depsFromValueDefs modName valDefs exposedModulesSoFar =
+        depsFromValueDefs modName valDefs implicitlyExposedModules =
             valDefs
                 |> Dict.foldl
                     (\_ accDocValDef modulesExposedFromValueSign ->
@@ -2159,20 +2208,27 @@ expandExposedModules moduleDefs exposedModules =
                             _ ->
                                 modulesExposedFromValueSign
                     )
-                    exposedModulesSoFar
+                    implicitlyExposedModules
 
-        depsFromModule : Module.ModuleName -> Set Path -> Set Path
-        depsFromModule modName modulesExposed =
-            moduleDefs
-                |> Dict.get modName
-                |> Maybe.map
-                    (\modDef ->
-                        depsFromTypeDefs modName modDef.types modulesExposed
-                            |> depsFromValueDefs modName modDef.values
-                    )
-                |> Maybe.withDefault modulesExposed
+        --extractImplicitDependencies : Dict FQName.FQName (AccessControlled (Documented (Type.Definition ta))) -> Set Path -> Set Path
+        --extractImplicitDependencies publiclyExposedTypes implicitlyExposedModules =
+        --    case Dict.toList publiclyExposedTypes of
+        --        [] ->
+        --            implicitlyExposedModules
+        --
+        --        ( tpeFqn, accessControlledTpeDef ) :: rest ->
+        --            Debug.todo "Implement this"
     in
     exposedModules
-        |> Set.foldl depsFromModule
-            exposedModules
-        |> Debug.log "Expanded exposed modules"
+        |> Set.foldl
+            (\modName implicitlyExposedModules ->
+                moduleDefs
+                    |> Dict.get modName
+                    |> Maybe.map
+                        (\modDef ->
+                            depsFromTypeDefs modName modDef.types implicitlyExposedModules
+                                |> depsFromValueDefs modName modDef.values
+                        )
+                    |> Maybe.withDefault implicitlyExposedModules
+            )
+            Set.empty
