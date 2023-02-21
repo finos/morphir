@@ -191,6 +191,9 @@ async function findFilesToDelete(outputPath, fileMap) {
             .filter(([entry, absolutePath]) => {
                 return entry.isFile() && !generatedFiles.includes(absolutePath)
             })
+            .map(([entry, absolutePath]) => {
+                return absolutePath
+            })
         const subDirFilesToDelete =
             entries
                 .filter(entry => entry.isDirectory())
