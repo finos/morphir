@@ -1153,7 +1153,8 @@ This could be as a result of a public type in `ModB` dependending on a type in `
 
 The parameters are
 
-  - moduleDef - All the modules
+  - packageName - Name of the package
+  - moduleDefs - All the modules
   - exposedModules - A set of exposed module-names
 
 -}

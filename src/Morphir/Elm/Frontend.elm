@@ -21,7 +21,6 @@ module Morphir.Elm.Frontend exposing
     , Options, ContentLocation, ContentRange, Error(..), Errors, PackageInfo, SourceFile, SourceLocation, mapSource
     , mapValueToFile
     , parseRawValue
-    , collectImplicitlyExposedModules
     )
 
 {-| The Elm frontend turns Elm source code into Morphir IR.
@@ -39,7 +38,6 @@ module Morphir.Elm.Frontend exposing
 @docs Options, ContentLocation, ContentRange, Error, Errors, PackageInfo, SourceFile, SourceLocation, mapSource
 @docs mapValueToFile
 @docs parseRawValue
-@docs collectImplicitlyExposedModules
 
 -}
 
@@ -61,6 +59,7 @@ import Graph exposing (Graph)
 import Json.Encode as Encode
 import Morphir.Compiler as Compiler
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver)
+import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.Graph
 import Morphir.IR as IR exposing (IR)
@@ -591,7 +590,7 @@ packageDefinitionFromSource opts packageInfo dependencies sourceFiles =
                         let
                             implicitlyExposedModules : Set Path
                             implicitlyExposedModules =
-                                collectImplicitlyExposedModules packageInfo.name moduleDefs exposedModules
+                                IncrementalFrontend.collectImplicitlyExposedModules packageInfo.name moduleDefs exposedModules
                         in
                         { modules =
                             moduleDefs
@@ -2096,128 +2095,3 @@ withAccessControl isExposed a =
 withWellKnownOperators : ProcessContext -> ProcessContext
 withWellKnownOperators context =
     List.foldl Processing.addDependency context WellKnownOperators.wellKnownOperators
-
-
-{-| Returns a Set of implicitly exposed modules.
-A module `ModA` is implicitly exposed if an explicitly exposed module `ModB` uses one of it's type in a public interface.
-This could be as a result of a public type in `ModB` dependending on a type in `ModA` or a public function defined in
-`ModB` that takes, as an input, a type defined in `ModA`.
-
-The parameters are
-
-  - moduleDef - All the modules
-  - exposedModules - A set of exposed module-names
-
--}
-collectImplicitlyExposedModules : Package.PackageName -> Dict Path (Module.Definition ta va) -> Set Path -> Set Path
-collectImplicitlyExposedModules packageName moduleDefs exposedModules =
-    let
-        exposedTypesRef : Set FQName.FQName
-        exposedTypesRef =
-            let
-                getPubliclyExposedTypeRefs : Module.Definition ta va -> Set FQName.FQName
-                getPubliclyExposedTypeRefs modDef =
-                    Set.union
-                        (modDef.types
-                            |> Dict.foldl
-                                (\_ accessControlledTpe publicExposedTypeRefSoFar ->
-                                    collectImplicitlyExposedReferencesFromDef accessControlledTpe
-                                        |> Set.union publicExposedTypeRefSoFar
-                                )
-                                Set.empty
-                        )
-                        (modDef.values
-                            |> Dict.foldl
-                                (\_ accessControlledVal publicExposedTypeRefsSoFar ->
-                                    if accessControlledVal.access == Access.Public then
-                                        accessControlledVal.value.value.inputTypes
-                                            |> List.map
-                                                (\( _, _, tpe ) ->
-                                                    Type.collectReferences tpe
-                                                )
-                                            |> List.foldl Set.union publicExposedTypeRefsSoFar
-
-                                    else
-                                        publicExposedTypeRefsSoFar
-                                )
-                                Set.empty
-                        )
-            in
-            exposedModules
-                |> Set.foldl
-                    (\modName exposedTypeRefsSoFar ->
-                        moduleDefs
-                            |> Dict.get modName
-                            |> Maybe.map getPubliclyExposedTypeRefs
-                            |> Maybe.withDefault Set.empty
-                            |> Set.union exposedTypeRefsSoFar
-                    )
-                    Set.empty
-
-        lookupTypeDef : FQName.FQName -> Maybe (AccessControlled (Documented (Type.Definition ta)))
-        lookupTypeDef fqn =
-            case fqn of
-                ( _, modPath, tpeName ) ->
-                    Dict.get modPath moduleDefs
-                        |> Maybe.andThen
-                            (Dict.get tpeName << .types)
-
-        collectImplicitlyExposedReferencesFromDef : AccessControlled (Documented (Type.Definition ta)) -> Set FQName.FQName
-        collectImplicitlyExposedReferencesFromDef accessControlledTpeDef =
-            if accessControlledTpeDef.access == Access.Public then
-                case accessControlledTpeDef.value.value of
-                    Type.TypeAliasDefinition _ tpe ->
-                        Type.collectReferences tpe
-
-                    Type.CustomTypeDefinition _ accessControlledCtors ->
-                        if accessControlledCtors.access == Access.Public then
-                            Dict.toList accessControlledCtors.value
-                                |> List.concatMap Tuple.second
-                                |> List.map
-                                    (Tuple.second
-                                        >> Type.collectReferences
-                                    )
-                                |> List.foldl Set.union Set.empty
-
-                        else
-                            Set.empty
-
-            else
-                Set.empty
-
-        extractImplicitDependencies : Set FQName.FQName -> Set Path -> Set Path
-        extractImplicitDependencies publiclyExposedTypes implicitlyExposedModules =
-            case Set.toList publiclyExposedTypes of
-                [] ->
-                    implicitlyExposedModules
-
-                tpeFQN :: otherExposedTypes ->
-                    case tpeFQN of
-                        ( pkgName, modName, _ ) ->
-                            if pkgName /= packageName then
-                                -- ignore refs from other packages
-                                extractImplicitDependencies (Set.fromList otherExposedTypes) implicitlyExposedModules
-
-                            else if Set.member modName exposedModules then
-                                -- ignore explicitly exposed modules
-                                extractImplicitDependencies (Set.fromList otherExposedTypes) implicitlyExposedModules
-
-                            else if Set.member modName implicitlyExposedModules then
-                                -- ignore already collected implicitly exposed
-                                extractImplicitDependencies (Set.fromList otherExposedTypes) implicitlyExposedModules
-
-                            else
-                                let
-                                    withNewRefs : Set FQName.FQName
-                                    withNewRefs =
-                                        lookupTypeDef tpeFQN
-                                            |> Maybe.map collectImplicitlyExposedReferencesFromDef
-                                            |> Maybe.withDefault Set.empty
-                                            |> Set.union (Set.fromList otherExposedTypes)
-                                in
-                                extractImplicitDependencies
-                                    withNewRefs
-                                    (Set.insert modName implicitlyExposedModules)
-    in
-    extractImplicitDependencies exposedTypesRef Set.empty
-        |> Debug.log "implicit dependencies"
