@@ -64,7 +64,7 @@ view config viewValue itemType items maybeItemToHighlight =
                         ]
                     }
         in
-        case config.ir |> IR.resolveType (itemType |> Debug.log "") of
+        case config.ir |> IR.resolveType itemType of
             Type.Record _ fields ->
                 indexedTable
                     [ centerX, centerY ]
