@@ -5,6 +5,7 @@ import Element exposing (Element, above, centerX, centerY, el, fill, moveUp, pad
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Elm.RawFile exposing (moduleName)
 import Html.Attributes exposing (value)
 import Morphir.IR as IR
 import Morphir.IR.FQName exposing (FQName)
@@ -18,9 +19,10 @@ import Morphir.Value.Interpreter exposing (evaluateFunctionValue, evaluateValue)
 import Morphir.Visual.Common exposing (nameToText, tooltip)
 import Morphir.Visual.Components.DrillDownPanel as DrillDownPanel exposing (Depth)
 import Morphir.Visual.Components.FieldList as FieldList
-import Morphir.Visual.Config exposing (Config, DrillDownFunctions(..), drillDownContains, evalIfPathTaken)
+import Morphir.Visual.Config exposing (Config, DrillDownFunctions(..), drillDownContains, evalIfPathTaken, evaluate)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, getId)
 import Morphir.Visual.Theme exposing (borderRounded, smallPadding, smallSpacing)
+import Morphir.Visual.ViewList as ViewList
 
 
 view : Config msg -> (Config msg -> Value.Definition () (Type ()) -> Element msg) -> (EnrichedValue -> Element msg) -> EnrichedValue -> List EnrichedValue -> Element msg
@@ -167,6 +169,24 @@ view config viewDefinitionBody viewValue functionValue argValues =
                     [ viewValue argValues1
                     , el [ Font.bold, Font.size (ceiling (toFloat config.state.theme.fontSize / 1.3)), moveUp (toFloat (config.state.theme.fontSize // 4)) ] (viewValue argValues2)
                     ]
+
+            else if moduleName == [ [ "list" ] ] && (localName == [ "member" ]) then
+                case argValues2 of
+                    Value.List ( _, Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ] ) items ->
+                        row
+                            styles
+                            [ viewValue argValues1
+                            , el [ Font.bold ] <| text "is one of"
+                            , ViewList.view config viewValue itemType items (Just argValues1)
+                            ]
+
+                    _ ->
+                        row
+                            styles
+                            [ viewValue argValues1
+                            , el [ Font.bold ] <| text "is one of"
+                            , viewValue argValues2
+                            ]
 
             else
                 case Dict.get functionName inlineBinaryOperators of
