@@ -4,7 +4,7 @@ module Morphir.IR.Repo exposing
     , mergeNativeFunctions, insertModule, deleteModule
     , insertType, insertValue, insertTypedValue
     , getPackageName, modules, dependsOnPackages, lookupModuleSpecification, typeDependencies, valueDependencies, lookupValue, moduleDependencies
-    , toDistribution
+    , toDistribution, updateModuleAccess
     , Errors, SourceCode, deleteType, deleteValue, removeUnusedModules, updateType, updateValue
     )
 
@@ -29,7 +29,7 @@ query a Repo without breaking the validity of the Repo.
 
 # Transform
 
-@docs toDistribution
+@docs toDistribution, updateModuleAccess
 
 -}
 
@@ -848,3 +848,20 @@ removeUnusedModules exposedModules repo =
         )
         (Ok repo)
         unusedModules
+
+
+{-| Update the Access level of a module.
+-}
+updateModuleAccess : AccessControlled.Access -> ModuleName -> Repo -> Repo
+updateModuleAccess access moduleName (Repo repo) =
+    Repo <|
+        { repo
+            | modules =
+                repo.modules
+                    |> Dict.update moduleName
+                        (Maybe.map
+                            (\{ value } ->
+                                AccessControlled access value
+                            )
+                        )
+        }

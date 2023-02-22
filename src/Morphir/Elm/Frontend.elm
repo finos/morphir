@@ -39,7 +39,7 @@ module Morphir.Elm.Frontend exposing
 @docs Options, ContentLocation, ContentRange, Error, Errors, PackageInfo, SourceFile, SourceLocation, mapSource
 @docs mapValueToFile
 @docs parseRawValue
-@docs expandExposedModules
+@docs collectImplicitlyExposedModules
 
 -}
 
@@ -2220,3 +2220,4 @@ collectImplicitlyExposedModules packageName moduleDefs exposedModules =
                                     (Set.insert modName implicitlyExposedModules)
     in
     extractImplicitDependencies exposedTypesRef Set.empty
+        |> Debug.log "implicit dependencies"

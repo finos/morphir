@@ -666,7 +666,7 @@ implicitExposedModulesTest =
                   , { emptyDef
                         | types =
                             Dict.fromList
-                                [ ( Name.fromString "name"
+                                [ ( Name.fromString "Name"
                                   , public
                                         { doc = ""
                                         , value =
