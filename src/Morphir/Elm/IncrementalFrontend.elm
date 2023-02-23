@@ -1173,6 +1173,10 @@ collectImplicitlyExposedModules packageName moduleDefs exposedModules =
         exposedTypesRef : Set FQName
         exposedTypesRef =
             let
+                inputTypes : List ( a, b, Type ta ) -> List (Type ta)
+                inputTypes =
+                    List.map (\( _, _, tpe ) -> tpe)
+
                 getPubliclyExposedTypeRefs : Module.Definition ta va -> Set FQName
                 getPubliclyExposedTypeRefs modDef =
                     Set.union
@@ -1188,11 +1192,9 @@ collectImplicitlyExposedModules packageName moduleDefs exposedModules =
                             |> Dict.foldl
                                 (\_ accessControlledVal publicExposedTypeRefsSoFar ->
                                     if accessControlledVal.access == AccessControlled.Public then
-                                        accessControlledVal.value.value.inputTypes
-                                            |> List.map
-                                                (\( _, _, tpe ) ->
-                                                    Type.collectReferences tpe
-                                                )
+                                        accessControlledVal.value.value.outputType
+                                            :: inputTypes accessControlledVal.value.value.inputTypes
+                                            |> List.map Type.collectReferences
                                             |> List.foldl Set.union publicExposedTypeRefsSoFar
 
                                     else
