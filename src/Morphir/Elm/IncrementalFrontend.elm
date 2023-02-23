@@ -12,7 +12,6 @@ import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.TypeAnnotation as TypeAnnotation
 import List.Extra as List
 import Morphir.Dependency.DAG as DAG exposing (CycleDetected(..), DAG)
-import Morphir.Elm.Frontend as Frontend
 import Morphir.Elm.IncrementalFrontend.Mapper as Mapper
 import Morphir.Elm.IncrementalResolve as IncrementalResolve
 import Morphir.Elm.ModuleName as ElmModuleName exposing (toIRModuleName)
@@ -33,6 +32,16 @@ import Morphir.IR.Value as Value exposing (Value)
 import Morphir.SDK.ResultList as ResultList
 import Parser
 import Set exposing (Set)
+
+
+{-| Options that modify the behavior of the frontend:
+
+    - `typesOnly` - only include type information in the IR, no values
+
+-}
+type alias Options =
+    { typesOnly : Bool
+    }
 
 
 type alias Errors =
@@ -158,7 +167,7 @@ filePathToModuleName packageName filePath =
             Err (InvalidSourceFilePath filePath "A valid file path must have at least one directory and one file.")
 
 
-applyFileChanges : PackageName -> List ModuleChange -> Frontend.Options -> Maybe (Set Path) -> Repo -> Result Errors Repo
+applyFileChanges : PackageName -> List ModuleChange -> Options -> Maybe (Set Path) -> Repo -> Result Errors Repo
 applyFileChanges packageName fileChanges opts maybeExposedModules repo =
     case maybeExposedModules of
         Just exposedModules ->
@@ -379,7 +388,7 @@ reOrderChanges repo orderedFileChanges =
     allChangesMerged
 
 
-applyChangesByOrder : List ModuleChange -> Frontend.Options -> Set Path -> Repo -> Result Errors Repo
+applyChangesByOrder : List ModuleChange -> Options -> Set Path -> Repo -> Result Errors Repo
 applyChangesByOrder orderedChanges opts exposedModules repo =
     orderedChanges
         |> List.foldl
@@ -435,12 +444,12 @@ applyChangesByOrder orderedChanges opts exposedModules repo =
             )
 
 
-applyInsert : ModuleName -> ParsedModule -> Frontend.Options -> Set Path -> Repo -> Result Errors Repo
+applyInsert : ModuleName -> ParsedModule -> Options -> Set Path -> Repo -> Result Errors Repo
 applyInsert moduleName parsedModule opts exposedModules repo =
     processModule moduleName parsedModule opts exposedModules repo
 
 
-applyUpdate : ModuleName -> ParsedModule -> Frontend.Options -> Set Path -> Repo -> Result Errors Repo
+applyUpdate : ModuleName -> ParsedModule -> Options -> Set Path -> Repo -> Result Errors Repo
 applyUpdate moduleName parsedModule opts exposedModules repo =
     processModule moduleName parsedModule opts exposedModules repo
 
@@ -536,7 +545,7 @@ applyDelete moduleName repo =
         |> Result.mapError (RepoError "Cannot delete module" >> List.singleton)
 
 
-processModule : ModuleName -> ParsedModule -> Frontend.Options -> Set Path -> Repo -> Result (List Error) Repo
+processModule : ModuleName -> ParsedModule -> Options -> Set Path -> Repo -> Result (List Error) Repo
 processModule moduleName parsedModule opts exposedModules repo =
     let
         accessOf : KindOfName -> Name -> Access
