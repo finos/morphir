@@ -21,10 +21,11 @@ import Expect exposing (Expectation)
 import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (ContentRange, Errors, SourceFile, SourceLocation, parseRawValue)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
+import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
 import Morphir.IR as IR
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName as FQName exposing (fQName, fqn)
+import Morphir.IR.FQName exposing (fQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name
@@ -805,7 +806,7 @@ implicitExposedModulesTest =
                 \_ ->
                     Expect.equal True
                         (Set.member modName <|
-                            Frontend.collectImplicitlyExposedModules packageName
+                            IncrementalFrontend.collectImplicitlyExposedModules packageName
                                 modules
                                 exposedModules
                         )
@@ -816,7 +817,7 @@ implicitExposedModulesTest =
                 \_ ->
                     Expect.equal False
                         (Set.member modName <|
-                            Frontend.collectImplicitlyExposedModules packageName
+                            IncrementalFrontend.collectImplicitlyExposedModules packageName
                                 modules
                                 exposedModules
                         )
