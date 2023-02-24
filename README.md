@@ -44,6 +44,25 @@ Defines a standard format for storing and sharing business logic. A clear set of
 ## Documentation
 If you want to start using Morphir, start with the [Documentation](docs/).
 
+## The Morphir Projects
+Morphir consists of a few projects based on the features they provide.  
+
+### Core Morphir Projects
+- **[morphir (this project)](https://github.com/finos/morphir/)** - The umbrella project
+- **[morphir-elm](https://github.com/finos/morphir-elm)** - Contains most of the core morphir functionality, including:
+  - The definition of the IR
+  - The Elm compiler for authoring morphir applications in Elm
+  - The morphir visualization components and developer tools
+  - The Scala, JSON Schema, TypeScript, TypeSpec (Cadl), cypher, semantic, and more backend processors.
+- **[morphir-jvm](https://github.com/finos/morphir)** - Supporting SDK and packaging for running morphir on the JVM.
+- **[morphir-examples](https://github.com/finos/morphir-examples)** - A whole lot of examples.
+
+### Incubator Morphir Projects
+- **[morphir-scala](https://github.com/finos/morphir-scala)** - Tight integration with Scala for authoring, execution, and writing tools.
+- **[morphir-bosque](https://github.com/finos/morphir-bosque)** - Integration with the Bosque language.
+- **[morphir-dotnet](https://github.com/finos/morphir-dotnet)** - Integration with .NET via F#.
+
+
 ## Other Resources
 [List of media](docs/media.md)
 
