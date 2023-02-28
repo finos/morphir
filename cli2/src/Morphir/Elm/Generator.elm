@@ -9,11 +9,9 @@ import Morphir.IR as IR
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistroCodec
 import Morphir.IR.FQName as FQName exposing (FQName)
-import Morphir.IR.FQName.Codec exposing (decodeFQName)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Type.DataCodec as DataCodec
 import Morphir.IR.Value exposing (RawValue)
-import Morphir.IR.Value.Codec exposing (encodeValue)
 import Morphir.SDK.ResultList as ResultList
 import Set exposing (Set)
 
@@ -188,8 +186,3 @@ update msg () =
 subscriptions : () -> Sub Msg
 subscriptions _ =
     Sub.batch [ generate Generate ]
-
-
-
--- BACKEND
---generateForTargets : Distribution -> Set FQName -> Int -> Result String (Dict FQName (Value))
