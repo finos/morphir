@@ -37,8 +37,6 @@ const { ir: irPath, tests: irTestPath, output: output } = program.opts();
 cli
     .testCoverage(irPath, irTestPath, output, program.opts())
     .then((data) => {
-        TODO:// Remove Comment 
-        console.log("data --", data);
         fsWriteFile(
             path.join(output, "morphir-test-coverage.json"),
             JSON.stringify(data)
