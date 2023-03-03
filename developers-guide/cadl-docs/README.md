@@ -1,160 +1,366 @@
-# [Morphir Type](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) Mappings To [CADL Type System](https://microsoft.github.io/cadl/docs/language-basics/type-relations/)
-### SDK Types to CADL
+# [Morphir](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) to [Cadl Type](https://microsoft.github.io/cadl/docs/language-basics/type-relations/) Mappings
+## Overview
+This is a documentation of the mapping strategy from Morphir types to Cadl types. This document describes how types in Morphir Models are represented in Cadl. 
+Below is a quick overview of the mapping in the table:
 
-#### Basic Types
-##### [Bool](https://package.elm-lang.org/packages/elm/core/latest/Basics#Bool) 
-Boolean, a `true` or `false` value in morphir, maps directly to the `boolean` type in CADL. 
+|                                                       | Type                                | Cadl Type                                | Comment                                             |
+|-------------------------------------------------------|-------------------------------------|------------------------------------------|-----------------------------------------------------|
+| [Basic Types](#basic-types)                           |                                     |                                          |                                                     |
+|                                                       | `Bool`                              | `boolean`                                |                                                     |
+|                                                       | `Int`                               | `int64`                                  |                                                     |
+|                                                       | `Float`                             | `float64`                                |                                                     |
+|                                                       | `String`                            | `string`                                 |                                                     |
+|                                                       | `Char`                              | `string`                                 | Not supported. Mapped to string                     |
+| [Advanced Types](#advance-types)                      |                                     |                                          |                                                     |
+|                                                       | `Decimal`                           | `string`                                 | Not supported. Mapped to string                     |
+|                                                       | `LocalDate`                         | `plainDate`                              |                                                     |
+|                                                       | `LocalTime`                         | `plainTime`                              |                                                     |
+|                                                       | `Month`                             | `string`                                 |                                                     |
+| [Optional Types](#advance-types)                      |                                     |                                          |                                                     |
+|                                                       | `Maybe a`                           | `a` &#124; `null`                        |                                                     |
+|                                                       | `{ foo: Maybe Float, bar: String }` | `{ foo ?: float64, bar: string }`        | Optional Fields are expressed using the `?:` syntax |
+| [Collection Types](#collection-types)                 |                                     |                                          |                                                     |
+|                                                       | `List A`                            | `Array<A>`                               |                                                     |
+|                                                       | `Set B`                             | `Array<B>`                               | Not Supported. Mapped to Array                      |
+|                                                       | `Dict A B`                          | `Array<[A,B]>`                           | Not Supported. Mapped to Array                      |
+| [Composite Types](#composite-types)                   |                                     |                                          |                                                     |
+| - [Tuple](#tuples)                                    | `(Int, String)`                     | `[int64, string]`                        |                                                     |
+| - [Result](#result)                                   | `Result e v`                        | `["Err", e]` &#124; `["Ok", v]`          | Expressed as tagged unions                          |
+| - [Record](#record-types)                             | `{ foo: Int, bar: String }`         | `{ foo: int64, bar: string }`            |                                                     |
+| - [Union Types](#custom-types)                        | `Foo Int` &#124; `Bar String`       | `["Foo", int64]` &#124; `["Bar, string]` |                                                     |
+| - [No Constructor Args (Special Case)](#custom-types) | `Foo` &#124; `Bar` &#124; `Baz`     | `Foo` &#124; `Bar` &#124; `Baz`          | Represented as Enum                                 |
+
+
+### Basic Types
+##### [Bool](https://package.elm-lang.org/packages/elm/core/latest/Basics#Bool)
+Boolean, a `true` or `false` value in morphir, maps directly to the `boolean` type in CADL.
+
+Elm:
+```elm
+type alias IsApplicable = 
+    Bool
 ```
-alias isValid = boolean
+Cadl
 ```
-        
+alias IsApplicable = boolean;
+```
+
+
 ##### [Int](https://package.elm-lang.org/packages/elm/core/latest/Basics#Int)
-In CADL, this maps to the subtype `integer`. The `integer` type assignment is valid CADL, but <br/>
-<span style="color: red; font-style:italic;"> Things to note :: </span>
-1. When dealing with emitters such as OpenApiSpec(OAS) it defaults to an object. To obtain an actual int value, specify a subtype `int64`.
-```
-alias Foo = integer;
+The `Int` type in morphir is a set of natural numbers(positive and negative) without a fraction component, maps directly to the `integer` type in cadl.
 
-// when dealing with emitters
-alias Foo = int64;
-                              |       }
+Elm:
+```elm
+type alias Foo = 
+    Int
 ```
+Cadl:
+```cadl
+alias Foo = int64;
+```
+<span style="color: red; font-style:italic;"> Note: </span>
+
+The `integer` type assignment is valid in Cadl but would default to **object** when dealing with the **OAS emitters**.
 
 ##### [Float](https://package.elm-lang.org/packages/elm/core/latest/Basics#Float)
-The `float` type in morphir, maps directly to subtype `float` in CADL. <span style="color: red; font-style:italic;">Same issues with `integer` type is applicable </span>
- 
-```
-alias PI = float
+The `Float` type; floating point number, in morphir maps directly to the `float` type in CADL.
 
-// when dealing with emitters
-alias Foo = float64;
-                             |       }
+Elm:
+```elm
+type alias Pi = 
+    Float
 ```
+Cadl:
+```cadl
+alias Pi = float64;
+```
+<span style="color: red; font-style:italic;">Note: </span>
+
+The `float` type assignment is valid in Cadl but would default to **object** when dealing with the **OAS emitters**.
+
 ##### [String](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-SDK-String)
-The `string` type; a sequence of characters, in morphir maps directly to `string` type in CADL.
-``` 
-alias foo = string 
+The `String` type; a sequence of characters, in morphir maps directly to `string` type in CADL.
+
+Elm:
+``` elm
+type alias Address = 
+    String
 ```
-##### [Char](https://package.elm-lang.org/packages/elm/core/latest/Char)
-The `char` type is a single character type in morphir and doesn't exist in CADL. An alternative mapping is the `string` type. 
-```
-alias Char = string
+Cadl:
+```cadl
+alias Address = string ;
 ```
 
-### Advanced Types
+##### [Char](https://package.elm-lang.org/packages/elm/core/latest/Char)
+The `char` type is a single character type in morphir and doesn't exist in Cadl. An alternative mapping is the `string` type.
+
+Elm:
+``` elm
+type alias AccountGroup = 
+    Char
+```
+Cadl:
+```cadl
+alias AccountGroup = string;
+```
+
+### Advance Types
 ##### [Decimal](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-SDK-Decimal)
 The `decimal` type in morphir defines a floating point number with accurate precision. This type is not supported directly in CADL and an alternative mapping is the `string` type.
+
+Elm:
+```elm
+import Morphir.SDK.Decimal exposing (Decimal)
+
+type alias Price = 
+    Decimal
 ```
-alias Decimal = string
+Cadl:
+```cadl
+alias Price = string
 ```
 ##### [LocalDate](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-SDK-LocalDate)
-The `localDate` type in morphir defines as a gregorian date with no timezone information. This type maps directly to `plainDate` type in CADL. 
+The `localDate` type in morphir defines as a gregorian date with no timezone information. This type maps directly to `plainDate` type in CADL.
+
+Elm:
+```elm
+import Morphir.SDK.LocalDate exposing (LocalDate)
+
+type alias DateOfBirth = 
+    LocalDate
 ```
-alias dateOfBirth = plainDate
+Cadl:
+```cadl
+alias dateOfBirth = plainDate;
 ```
 ##### [LocalTime](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-SDK-LocalTime)
-The `localTime` type in morphir defines as basic time without a timezone and its equivalent mapping in CADL is `plainTime` type. 
+The `localTime` type in morphir defines as basic time without a timezone and its equivalent mapping in CADL is `plainTime` type.
+
+Elm:
+```elm
+import Morphir.SDK.LocalTime exposing (LocalTime)
+
+type alias CurrentTime =
+    LocalTime
 ```
-alias LocaTime = plainTime
-```
-##### [Month](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-SDK-Month)
-The morphir type `month` derived from a localDate was purposefully created to aid in business modeling. This concept of `month` type does not 
-exist in CADL and the alternative mapping is the `string` type.
-```
-alias Month = string
-```
-##### [Optional Values(Maybe)](https://package.elm-lang.org/packages/elm/core/latest/Maybe)
-The `maybe` type in morphir represents values that or may not exist. This is directly supported in CADL through `optional fields` of models or as alias.
-```
-Examples : 
-    1. As an optional field of a model using the `?:` syntax. 
-        model Foo {
-            foo ?: string
-        }
-        
-    2. As an alias with of type T and null.
-        alias mayBe<T> = T | null
+Cadl:
+```cadl
+alias currentTime = plainTime;
 ```
 
-### Collections Types
+##### [Month](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-SDK-Month)
+The morphir type `month` derived from a localDate was purposefully created to aid in business modeling. This concept of `month` type does not
+exist in CADL and the alternative mapping is the `string` type.
+
+Elm:
+```elm
+import Morphir.SDK.Month exposing (Month)
+
+type alias CurrentMonth =
+    Month
+```
+Cadl:
+```cadl
+alias purchaseMonth = string;
+```
+
+##### [Optional Values(Maybe)](https://package.elm-lang.org/packages/elm/core/latest/Maybe)
+The `maybe` type in morphir represents a type that may or may not exist. The type could exist as a standalone type or a field type in a record and both scenarios are supported directly in Cadl. 
+
+1. `maybe` as a standalone type, is presented in cadl as a union of the type or null using the pipe `|` syntax.
+
+   Elm:
+    ```elm
+    type alias Foo = 
+        Maybe Int
+   ```
+   Cadl:
+    ```cadl
+   alias Foo = int64 | null
+    ```
+   
+2. `maybe` as a field type in a record, is represented as `optional field` in a model in cadl using `optional field` `?:` syntax.
+
+   Elm:
+    ```elm
+    type alias FooBarBaz = 
+        { foo: Int
+        , bar: Float
+        , baz: Maybe String
+        }
+    ```
+   Cadl:
+    ```cadl
+    model FooBarBaz {
+        foo : int64;
+        bar : float;
+        baz ?: string
+    }
+   ``` 
+
+3. In a Scenario where a field type is `maybe` of another `maybe` type, it is represented as an `optional field` of the `union` type. <br/>
+
+   Elm:
+    ```elm
+    type alias FooBarBaz = 
+        { foo: Int
+        , bar: Float
+        , baz: Maybe (Maybe String)
+        }
+    ```
+   Cadl:
+    ```cadl
+    model FooBarBaz {
+        foo : int64;
+        bar : float;
+        baz ?: string | null
+    }
+   ```
+   _<span style="color:red">Note:</span>_ <br/>
+   _In the scenario of multiple `maybe` type for a field in a model, it shall be represented as just the type or null_
+
+### Collection Types
 ##### [List](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-SDK-List)
-The `list` type in morphir, is a collection of items of homogeneous type. Its equivalent mapping in CADL is the `array` type. 
-Arrays in CADL are defined using the `T[] or Array<T>`syntax where T, is the type.
+The `list` type in morphir, is a collection of items of homogeneous type. Its equivalent mapping in CADL is the `array` type and is defined using the `Array<T>` syntax where T, is the type.
+
+Elm:
+```elm
+type alias Foo = 
+    List Int
+    
+type alias Bar a = 
+    List a
 ```
-alias List<T> = T[];
-        OR
-alias List<T> = Array<T>;
+Cadl:
+```cadl
+alias Foo = Array<int64>;
+
+alias Bar<A> = Array<A>;
 ```
-        
-##### [Set]()
-The `set` type is a collection of items where every item or value is unique. This is not supported directly in CADL. 
-An alternative mapping is the `array` type. 
+
+##### [Set](https://package.elm-lang.org/packages/elm/core/latest/Set)
+The `set` type is a collection of items where every item or value is unique. This is not supported directly in CADL hence its alternative mapping is to use the `array` type.
+
+Elm:
+```elm
+type alias  Foo = 
+    Set Int
+    
+type  alias Bar a =
+    Set a
 ```
-alias Set<T> = Array<T>; 
+Cadl:
+```cadl
+alias Foo = Array<int64>;
+
+alias Bar<A> = Array<A>; 
 ```
 
 ##### [Dict](https://package.elm-lang.org/packages/finos/morphir-elm/latest/Morphir-SDK-Dict)
-A dict or dictionary is a collection of unique key-value pairs. In morphir, a dict key could be a simple type; such as `string`, or a complex type; `custom type`. 
-This complex key type is not supported directly in CADL. To achieve such behaviour is to define the `dict` type as an` alias` template with the value as an array of tuples. 
+A dict or dictionary is a collection of unique key-value pairs. In morphir, a dict key could be a simple type such as `string`, or a complex type such as a `custom type`.
+This complex key type is not supported directly in CADL. To achieve such behaviour is to define the `dict` type as an` alias` template with the value as an array of tuples.
+
+Elm:
+```elm
+type alias Foo = 
+    Dict String Int
+    
+type alias Bar a b = 
+    Dict a b
 ```
-alias Dict<K,V> = Array<[K,V]> ;
+Cadl
+```cadl
+alias Foo = Array<[string,int64]>;
+
+alias Bar<A,B> = Array<[A,B]> ;
 ```
 
 ##### [Result](https://package.elm-lang.org/packages/elm/core/latest/Result)
 The `result` type in morphir is used to manage errors of a computation that may fail. The morphir type `result` returns the second argument if successful else
-it returns the first; which is the error. This concept is supported in CADL through the use of `template` alias whose values are tagged union types. 
+it returns the first; which is the error. This concept is supported in CADL through the use of `template` alias with tagged union types.
+
+Elm:
+```elm
+type alias Foo e v= 
+    Result e v
 ```
-alias Result<E,V> = ["Err", E] | ["Ok", V];
+Cadl:
+```cadl
+alias Foo<E,V> = ["Err", E] | ["Ok", V];
 ```      
 
 ### Composite Types
 #### [Tuples](https://package.elm-lang.org/packages/elm/core/latest/Tuple)
-The `tuple` type in morphir is data structure that holds elements of the same or different types as a single value. CADL directly support `tuples` as a subtype of array
-and hence uses the `[]`  syntax.
+The `tuple` type in morphir is data structure that holds elements of the same or different types as a single value. CADL directly support `tuples` using the `[]`  syntax.
+
+Elm:
+```elm
+type alias Foo = 
+    ( String, Int )
+    
+type alias Bar a b = 
+    ( a, b )
 ```
-alias Tuple<T,E> = [T,E];
+Cadl:
+```cadl
+alias Foo = [string, int64];
+
+alias Bar<A,B> = [A, B];
 ```
 ##### [Record Types](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Value#record)
-Morphir `record` represents a dictionary of fields where the keys are the field names, and the values are the field values. This maps to `model` type in CADL. 
+Morphir `record` represents a dictionary of fields where the keys are the field names, and the values are the field values. This maps to `model` type in CADL.
 Models are structures with fields called properties and used to represent data schemas.
+
+Elm:
+```elm
+type  alias FooBarBaz = 
+   { foo: Int
+     , bar: String
+     , baz: Float
+   }
 ```
+Cadl:
+```cadl
 model FooBarBaz {
-    foo: Foo,
+    foo: integer,
     bar: string,
-    baz: int, 
+    baz: float, 
 }
 ```    
-        
-### [Custom Types](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type)
-##### General
-A `custom` type in morphir is a user defined type used to represent a business term or type. This concept is supported in CADL through aliasing. 
-```
-// As `alias` of list of Tuples, where the first element represents type name in string followed by its args
-alias FooBarBaz 
-    = ["Foo", int]
-    | ["Bar", string]
-    | "Baz" // tuple with 1 item equals the same item.
-    
-    OR 
-// Another representation is alias all tuples.      
-alias Foo = ["Foo", int];
-alias Bar = ["Bar", string];
-alias Baz = "Baz";
 
-alias FooBarBax 
-    = Foo 
-    | Bar
-    | Baz
-    
+### [Custom Types](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type)
+##### [General Case]()
+A `custom` type in morphir is a user defined type used to represent a business term or type. This concept is not directly supported in CADL but can be achieved
+as tagged `union` of Tuples, where the first element represents type name in string, followed by its arguments.
+
+Elm:
+```elm
+type FooBarBaz 
+    = Foo Int
+    | Baz String
+    | Bar 
+```
+
+Cadl:
+```cadl
+alias FooBarBaz =  ["Foo", int64] | ["Bar", string] | "Baz";   
 ``` 
-##### [Special Cases]()
-A `custom` type in morphir with all no argument constructors is represented in CADL as an `enum` type.
+##### [Special Case]()
+A `custom` type in morphir whose constructors have no arguments would be represented in CADL as an `enum` type.
+
+Elm:
+```elm
+type Currency 
+    = USD
+    | GBP 
+    | GHS
+```
+Cadl:
 ```
 enum Currency {
     USD,
     GBP,
     GHS,
-    ...
 }
 ``` 
 
