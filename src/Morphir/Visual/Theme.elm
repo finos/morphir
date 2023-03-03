@@ -1,6 +1,6 @@
 module Morphir.Visual.Theme exposing (..)
 
-import Element exposing (Attr, Attribute, Color, Element, fill, height,  none, paddingXY, rgb, rgb255, rgba, row, spacing, table, toRgb, width)
+import Element exposing (Attribute, Color, Element, fill, height,  none, paddingXY, rgb, rgb255, rgba, rgba255, row, spacing, table, toRgb, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font exposing (center)
@@ -35,6 +35,7 @@ type alias Colors =
     , brandPrimaryLight : Color
     , brandSecondary : Color
     , brandSecondaryLight : Color
+    , warning : Color
     }
 
 
@@ -87,6 +88,7 @@ fromConfig maybeConfig =
             , brandPrimaryLight = rgba 0 0.639 0.882 0.3
             , brandSecondary = rgb 1 0.411 0
             , brandSecondaryLight = rgba 1 0.411 0 0.3
+            , warning = rgba255 238 210 2 0.9 
             }
 
         defaultIcons : Icons
