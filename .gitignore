@@ -6,6 +6,7 @@ dist
 .metals/
 morphir-ir.json
 morphir-hashes.json
+morphir-test-coverage.json
 generated/
 out/
 redistributable/Scala
