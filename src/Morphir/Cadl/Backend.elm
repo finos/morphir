@@ -28,7 +28,7 @@ mapDistribution opt distro =
         Library packageName _ packageDef ->
             mapPackageDefinition packageDef
                 |> Result.map (prettyPrint packageName)
-                |> Result.map (Dict.singleton ( [], Path.toString IRName.toTitleCase "." packageName ))
+                |> Result.map (Dict.singleton ( [], Path.toString IRName.toTitleCase "." packageName ++ ".cadl" ))
 
 
 prettyPrint : PackageName -> Dict String NamespaceDeclaration -> String
@@ -186,6 +186,9 @@ mapType tpe =
                     Ok PlainTime
 
                 ( "Morphir.SDK:Decimal:decimal", [] ) ->
+                    Ok String
+
+                ( "Morphir.SDK:Month:month", [] ) ->
                     Ok String
 
                 ( "Morphir.SDK:List:list", [ itemType ] ) ->

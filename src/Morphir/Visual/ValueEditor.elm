@@ -83,6 +83,7 @@ import Morphir.ListOfResults as ListOfResults
 import Morphir.SDK.Decimal as Decimal
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
+import Morphir.Visual.Components.InputComponent as InputComponent
 import Morphir.Visual.Components.Picklist as Picklist
 import Morphir.Visual.Theme exposing (Theme)
 import Svg
@@ -559,7 +560,6 @@ view theme ir valueType updateEditorState editorState =
         baseStyle =
             [ width <| Element.fillPortion 3
             , height fill
-            , paddingXY 10 3
             , Events.onLoseFocus
                 (updateEditorState (initEditorState ir valueType editorState.lastValidValue))
             ]
@@ -567,35 +567,6 @@ view theme ir valueType updateEditorState editorState =
         labelStyle : List (Element.Attr () msg)
         labelStyle =
             [ Background.color (rgb 0.2 0.3 0.4), centerY, Font.color (rgb 0.7 0.7 0.7), paddingEach { top = 5, bottom = 5, right = 10, left = 0 } ]
-
-        errorBorderStyle : List (Element.Attr () msg)
-        errorBorderStyle =
-            case editorState.errorState of
-                Just _ ->
-                    [ Border.color (rgb 1 0 0)
-                    , Border.width 2
-                    ]
-
-                Nothing ->
-                    [ Border.width 2
-                    ]
-
-        errorMessageStyle : List (Element.Attribute msg)
-        errorMessageStyle =
-            case editorState.errorState of
-                Just errorMessage ->
-                    [ below
-                        (el
-                            [ padding 5
-                            , Background.color (rgb 1 0.7 0.7)
-                            , moveDown 5
-                            ]
-                            (text errorMessage)
-                        )
-                    ]
-
-                Nothing ->
-                    []
     in
     case editorState.componentState of
         TextEditor currentText ->
@@ -620,7 +591,8 @@ view theme ir valueType updateEditorState editorState =
                         "?"
             in
             row [ width fill, spacing 5 ]
-                [ Input.text (baseStyle ++ errorBorderStyle ++ errorMessageStyle)
+                [ InputComponent.textInput theme
+                    baseStyle
                     { onChange =
                         \updatedText ->
                             let
@@ -696,10 +668,11 @@ view theme ir valueType updateEditorState editorState =
                         Just (placeholder [ center, paddingXY 0 1 ] (text "not set"))
                     , label = Input.labelLeft labelStyle (text <| iconLabel (IR.resolveType valueType ir))
                     }
+                    editorState.errorState
                 , if editorState.defaultValueCheckbox.show then
-                    Input.checkbox [ center ]
-                        { icon = Input.defaultCheckbox
-                        , label = Input.labelRight (labelStyle ++ [ Background.color <| rgba 0 0 0 0 ]) (text "empty (\"\")")
+                    InputComponent.checkBox theme
+                        [ center ]
+                        { label = Input.labelRight (labelStyle ++ [ Background.color <| rgba 0 0 0 0 ]) (text "empty (\"\")")
                         , checked = editorState.defaultValueCheckbox.checked
                         , onChange =
                             \updatedIsChecked ->
@@ -762,6 +735,21 @@ view theme ir valueType updateEditorState editorState =
                                                         fieldEditorStates
                                                             |> Dict.insert fieldName ( fieldType, newFieldEditorState )
 
+                                                    allFieldsAreEmpty : Bool
+                                                    allFieldsAreEmpty =
+                                                        newFieldEditorStates
+                                                            |> Dict.values
+                                                            |> List.filterMap
+                                                                (\( _, nextFieldEditorState ) ->
+                                                                    case editorStateToRawValueResult nextFieldEditorState of
+                                                                        Ok (Just value) ->
+                                                                            Just value
+
+                                                                        _ ->
+                                                                            Nothing
+                                                                )
+                                                            |> List.isEmpty
+
                                                     recordResult : Result String RawValue
                                                     recordResult =
                                                         newFieldEditorStates
@@ -791,14 +779,27 @@ view theme ir valueType updateEditorState editorState =
                                                                 (Ok [])
                                                             |> Result.map (Dict.fromList >> Value.Record ())
                                                 in
-                                                updateEditorState
-                                                    (applyResult recordResult
+                                                if allFieldsAreEmpty then
+                                                    updateEditorState
                                                         { editorState
                                                             | componentState =
                                                                 RecordEditor
                                                                     newFieldEditorStates
+                                                            , lastValidValue =
+                                                                Nothing
+                                                            , errorState =
+                                                                Nothing
                                                         }
-                                                    )
+
+                                                else
+                                                    updateEditorState
+                                                        (applyResult recordResult
+                                                            { editorState
+                                                                | componentState =
+                                                                    RecordEditor
+                                                                        newFieldEditorStates
+                                                            }
+                                                        )
                                             )
                                             fieldEditorState
                                         )
@@ -1219,52 +1220,52 @@ view theme ir valueType updateEditorState editorState =
                 ]
 
         GenericEditor currentText ->
-            el (baseStyle ++ errorMessageStyle)
-                (Input.multiline errorBorderStyle
-                    { onChange =
-                        \updatedText ->
-                            let
-                                valueResult tpe =
-                                    updatedText
-                                        |> Frontend.mapValueToFile ir tpe
-                                        |> Result.andThen
-                                            (\sourceFileIR ->
-                                                let
-                                                    packageName =
-                                                        Path.fromString "My.Package"
+            InputComponent.multiLine theme
+                baseStyle
+                { onChange =
+                    \updatedText ->
+                        let
+                            valueResult tpe =
+                                updatedText
+                                    |> Frontend.mapValueToFile ir tpe
+                                    |> Result.andThen
+                                        (\sourceFileIR ->
+                                            let
+                                                packageName =
+                                                    Path.fromString "My.Package"
 
-                                                    moduleName =
-                                                        Path.fromString "A"
+                                                moduleName =
+                                                    Path.fromString "A"
 
-                                                    localName =
-                                                        Name.fromString "fooFunction"
-                                                in
-                                                case sourceFileIR |> IR.lookupValueDefinition ( packageName, moduleName, localName ) of
-                                                    Just valDef ->
-                                                        Ok (valDef.body |> Value.toRawValue)
+                                                localName =
+                                                    Name.fromString "fooFunction"
+                                            in
+                                            case sourceFileIR |> IR.lookupValueDefinition ( packageName, moduleName, localName ) of
+                                                Just valDef ->
+                                                    Ok (valDef.body |> Value.toRawValue)
 
-                                                    Nothing ->
-                                                        Err "Function name Not found"
-                                            )
-                            in
-                            if updatedText == "" then
-                                updateEditorState
-                                    (initEditorState ir valueType Nothing)
+                                                Nothing ->
+                                                    Err "Function name Not found"
+                                        )
+                        in
+                        if updatedText == "" then
+                            updateEditorState
+                                (initEditorState ir valueType Nothing)
 
-                            else
-                                updateEditorState
-                                    (applyResult (valueResult (IR.resolveType valueType ir))
-                                        { editorState
-                                            | componentState = GenericEditor updatedText
-                                        }
-                                    )
-                    , text = currentText
-                    , placeholder =
-                        Just (placeholder [ center, paddingXY 0 1 ] (text "not set"))
-                    , label = Input.labelHidden ""
-                    , spellcheck = False
-                    }
-                )
+                        else
+                            updateEditorState
+                                (applyResult (valueResult (IR.resolveType valueType ir))
+                                    { editorState
+                                        | componentState = GenericEditor updatedText
+                                    }
+                                )
+                , text = currentText
+                , placeholder =
+                    Just (placeholder [ center, paddingXY 0 1 ] (text "not set"))
+                , label = Input.labelHidden ""
+                , spellcheck = False
+                }
+                editorState.errorState
 
 
 viewCustomTypeEditor : Theme -> List (Element.Attribute msg) -> IR -> (EditorState -> msg) -> EditorState -> FQName -> Type.Constructors () -> CustomTypeEditorState -> Element msg

@@ -45,7 +45,8 @@ import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Package as Package
 import Morphir.IR.Type exposing (Type)
-import Morphir.Scala.Feature.Codec exposing (mapModuleDefinitionToCodecs)
+import Morphir.SDK.ResultList as ResultList
+import Morphir.Scala.Feature.Codec as Codec exposing (mapModuleDefinitionToCodecs)
 import Morphir.Scala.Feature.Core exposing (mapModuleDefinition)
 import Morphir.Scala.Feature.TestBackend as TestBackend
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
@@ -65,6 +66,7 @@ type alias Options =
 -}
 type Error
     = TestError TestBackend.Errors
+    | CodecError Codec.Error
 
 
 {-| Entry point for the Scala backend. It takes the Morphir IR as the input and returns an in-memory
@@ -100,34 +102,37 @@ mapPackageDefinition opt testSuite distribution packagePath packageDef =
                             ]
                     )
 
-        generatedCodecs =
+        generatedCodecsResult =
             if opt.includeCodecs then
                 packageDef.modules
                     |> Dict.toList
-                    |> List.concatMap
+                    |> List.map
                         (\( modulePath, moduleImpl ) ->
-                            List.concat
-                                [ mapModuleDefinitionToCodecs packagePath modulePath moduleImpl
-                                ]
+                            mapModuleDefinitionToCodecs packagePath modulePath moduleImpl
+                                |> Result.map (List.singleton >> List.concat)
                         )
+                    |> ResultList.keepFirstError
+                    |> Result.map List.concat
+                    |> Result.mapError CodecError
 
             else
-                []
+                Ok []
     in
-    generatedTestsResult
-        |> Result.map
-            (\generatedTests ->
-                [ generatedScala, generatedCodecs, generatedTests ]
-                    |> List.concat
-                    |> List.map
-                        (\compilationUnit ->
-                            let
-                                fileContent : Doc
-                                fileContent =
-                                    compilationUnit
-                                        |> PrettyPrinter.mapCompilationUnit (PrettyPrinter.Options 2 80)
-                            in
-                            ( ( compilationUnit.dirPath, compilationUnit.fileName ), fileContent )
-                        )
-                    |> Dict.fromList
-            )
+    Result.map2
+        (\generatedTests generatedCodecs ->
+            [ generatedScala, generatedCodecs, generatedTests ]
+                |> List.concat
+                |> List.map
+                    (\compilationUnit ->
+                        let
+                            fileContent : Doc
+                            fileContent =
+                                compilationUnit
+                                    |> PrettyPrinter.mapCompilationUnit (PrettyPrinter.Options 2 80)
+                        in
+                        ( ( compilationUnit.dirPath, compilationUnit.fileName ), fileContent )
+                    )
+                |> Dict.fromList
+        )
+        generatedTestsResult
+        generatedCodecsResult

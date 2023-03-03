@@ -1,15 +1,16 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition, viewValue)
 
 import Dict
-import Element exposing (Element, column, el, explain, fill, htmlAttribute, padding, paddingEach, pointer, rgb, row, spacing, text, width)
+import Element exposing (Element, column, el, explain, fill, htmlAttribute, padding, paddingEach, pointer, rgb, rgb255, rgba, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
 import Element.Font as Font exposing (..)
 import Html.Attributes exposing (style)
+import List.Extra
 import Morphir.IR exposing (resolveType)
 import Morphir.IR.FQName exposing (FQName)
-import Morphir.IR.Name exposing (Name, toCamelCase)
+import Morphir.IR.Name exposing (Name, toCamelCase, toHumanWords)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type as Type exposing (Type)
@@ -146,7 +147,7 @@ viewValueByLanguageFeature config value =
                         ]
 
                 Value.List ( _, Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ] ) items ->
-                    ViewList.view config (viewValue config) itemType items
+                    ViewList.view config (viewValue config) itemType items Nothing
 
                 Value.Record _ items ->
                     ViewRecord.view config (viewValue config) items
@@ -214,49 +215,62 @@ viewValueByLanguageFeature config value =
 
                 Value.Field ( _, _ ) subjectValue fieldName ->
                     let
-                        defaultValue =
+                        readableFieldName : Name -> Element msg
+                        readableFieldName f =
+                            el [ Background.color config.state.theme.colors.backgroundColor ] <|
+                                text (" " ++ (f |> toHumanWords |> String.join " ") ++ " ")
+
+                        defaultFieldDisplay : Name -> Element msg
+                        defaultFieldDisplay f =
                             Element.row
                                 [ smallPadding config.state.theme |> padding, spacing 1, alignLeft ]
                                 [ viewValue config subjectValue
-                                , el [ Font.bold ] (text ".")
-                                , text (toCamelCase fieldName)
+                                , el [ Font.bold ] <| text "→"
+                                , readableFieldName f
                                 ]
                     in
-                    case Config.evaluate (subjectValue |> Value.toRawValue) config of
-                        Ok valueType ->
-                            case valueType |> fromRawValue config.ir of
-                                Ok (Value.Variable ( index, _ ) variableName) ->
+                    case subjectValue of
+                        Value.Variable ( index, _ ) variableName ->
+                            let
+                                variableValue : Maybe RawValue
+                                variableValue =
+                                    Dict.get variableName config.state.variables
+
+                                singularOrPlural : List String -> String
+                                singularOrPlural vname =
                                     let
-                                        variableValue : Maybe RawValue
-                                        variableValue =
-                                            Dict.get variableName config.state.variables
+                                        lastChar : Name -> Char
+                                        lastChar s =
+                                            ((s |> List.Extra.last |> Maybe.map (String.toList >> List.Extra.last >> Maybe.withDefault '_')) |> Maybe.withDefault '_')
                                     in
-                                    el
-                                        [ onMouseEnter (config.handlers.onHoverOver index config.nodePath variableValue)
-                                        , onMouseLeave (config.handlers.onHoverLeave index config.nodePath)
-                                        , Element.below
-                                            (if config.state.popupVariables.variableIndex == index then
-                                                el [ smallPadding config.state.theme |> padding ] (viewPopup config)
+                                    if (vname |> lastChar) == 's' then
+                                        "' "
 
-                                             else
-                                                Element.text "Not Found"
-                                            )
-                                        , center
-                                        ]
-                                        (String.concat
-                                            [ "the "
-                                            , nameToText variableName
-                                            , "'s "
-                                            , nameToText fieldName
-                                            ]
-                                            |> text
-                                        )
+                                    else
+                                        "'s "
+                            in
+                            row
+                                [ onMouseEnter (config.handlers.onHoverOver index config.nodePath variableValue)
+                                , onMouseLeave (config.handlers.onHoverLeave index config.nodePath)
+                                , Element.below
+                                    (if config.state.popupVariables.variableIndex == index then
+                                        el [ smallPadding config.state.theme |> padding ] (viewPopup config)
 
-                                _ ->
-                                    defaultValue
+                                     else
+                                        Element.none
+                                    )
+                                , center
+                                ]
+                                [ String.concat
+                                    [ nameToText variableName
+                                    , singularOrPlural variableName
+                                    ]
+                                    |> text
+                                , readableFieldName fieldName
+                                ]
 
-                        Err _ ->
-                            defaultValue
+                        _ ->
+                            defaultFieldDisplay fieldName
 
                 Value.Apply _ fun arg ->
                     let
@@ -412,20 +426,18 @@ viewPopup config =
                     popUpStyle : Element msg -> Element msg
                     popUpStyle elementMsg =
                         el
-                            [ Border.shadow
-                                { offset = ( 2, 2 )
-                                , size = 2
-                                , blur = 2
-                                , color = config.state.theme.colors.darkest
+                            [ Border.width 2
+                            , Border.color (rgb 0.6 0.6 0.6)
+                            , Border.rounded 4
+                            , Border.shadow
+                                { offset = ( 1, 3 )
+                                , size = 0
+                                , blur = 3
+                                , color = rgba 0 0 0 0.16
                                 }
                             , Background.color config.state.theme.colors.lightest
-                            , Font.bold
-                            , Font.color config.state.theme.colors.darkest
-                            , Border.rounded 4
-                            , Font.center
                             , smallPadding config.state.theme |> padding
                             , htmlAttribute (style "position" "absolute")
-                            , htmlAttribute (style "transition" "all 0.2s ease-in-out")
                             ]
                             elementMsg
                 in

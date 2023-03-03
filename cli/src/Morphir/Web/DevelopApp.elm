@@ -10,9 +10,11 @@ import Element
         ( Element
         , above
         , alignRight
+        , alignTop
         , centerX
         , centerY
         , clipX
+        , clipY
         , column
         , el
         , fill
@@ -49,9 +51,9 @@ import FontAwesome.Styles as Icon
 import Http exposing (emptyBody, jsonBody)
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
-import Morphir.CustomAttribute.Codec exposing (decodeAttributes, encodeAttributeData)
-import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeDetail, CustomAttributeId, CustomAttributeInfo)
 import Morphir.IR as IR exposing (IR)
+import Morphir.IR.Decoration exposing (AllDecorationConfigAndData, DecorationData, DecorationID)
+import Morphir.IR.Decoration.Codec exposing (decodeAllDecorationConfigAndData, decodeDecorationData, encodeDecorationData)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
@@ -62,8 +64,10 @@ import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Repo as Repo exposing (Repo)
 import Morphir.IR.SDK as SDK exposing (packageName)
+import Morphir.IR.SDK.Result exposing (err)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
+import Morphir.SDK.Bool exposing (false)
 import Morphir.SDK.Dict as SDKDict
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Error exposing (Error)
@@ -71,6 +75,7 @@ import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
 import Morphir.Visual.Components.Card as Card
 import Morphir.Visual.Components.FieldList as FieldList
+import Morphir.Visual.Components.InputComponent as InputComponent
 import Morphir.Visual.Components.ModalComponent exposing (attachModal)
 import Morphir.Visual.Components.SectionComponent as SectionComponent
 import Morphir.Visual.Components.SelectableElement as SelectableElement
@@ -78,16 +83,14 @@ import Morphir.Visual.Components.TabsComponent as TabsComponent
 import Morphir.Visual.Components.TreeViewComponent as TreeViewComponent
 import Morphir.Visual.Config exposing (DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
-import Morphir.Visual.Theme as Theme exposing (Theme, borderBottom, borderRounded, largePadding, largeSpacing)
-import Morphir.Visual.ValueEditor as ValueEditor exposing (initEditorState)
+import Morphir.Visual.Theme as Theme exposing (Theme, borderBottom, borderRounded, largePadding, largeSpacing, mediumPadding, smallPadding)
+import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewType as ViewType
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.Graph.DependencyGraph exposing (dependencyGraph)
 import Ordering
-import Process
 import Set exposing (Set)
-import Task
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing (..)
 import Url.Parser.Query as Query
@@ -127,13 +130,14 @@ type alias Model =
     , insightViewState : Morphir.Visual.Config.VisualState
     , argStates : InsightArgumentState
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
-    , customAttributes : CustomAttributeInfo
-    , attributeStates : AttributeEditorState
+    , allDecorationConfigAndData : AllDecorationConfigAndData
+    , decorationEditorStates : DecorationEditorStates
     , selectedTestcaseIndex : Int
     , testDescription : String
     , activeTabIndex : Int
     , openSections : Set Int
-    , isAboutOpen : Bool
+    , isModalOpen : Bool
+    , modalContent : Element Msg
     , version : String
     , showSaveTestError : Bool
     }
@@ -148,8 +152,8 @@ type alias InsightArgumentState =
     Dict Name ValueEditor.EditorState
 
 
-type alias AttributeEditorState =
-    SDKDict.Dict AttrValueDetail ValueEditor.EditorState
+type alias DecorationEditorStates =
+    SDKDict.Dict DecorationNodeID ValueEditor.EditorState
 
 
 type alias HomeState =
@@ -183,8 +187,9 @@ type IRState
 
 
 type ServerState
-    = ServerReady
-    | ServerHttpError Http.Error
+    = ServerOk
+    | ServerError String Http.Error
+    | ServerWarning String Http.Error
 
 
 init : Flags -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -194,7 +199,7 @@ init flags url key =
             { key = key
             , theme = Theme.fromConfig Nothing
             , irState = IRLoading
-            , serverState = ServerReady
+            , serverState = ServerOk
             , testSuite = Dict.empty
             , collapsedModules = Set.empty
             , showModules = True
@@ -214,13 +219,14 @@ init flags url key =
             , insightViewState = emptyVisualState
             , argStates = Dict.empty
             , expandedValues = Dict.empty
-            , customAttributes = Dict.empty
-            , attributeStates = SDKDict.empty
+            , allDecorationConfigAndData = Dict.empty
+            , decorationEditorStates = SDKDict.empty
             , selectedTestcaseIndex = -1
             , testDescription = ""
             , activeTabIndex = 0
             , openSections = Set.fromList [ 1 ]
-            , isAboutOpen = False
+            , isModalOpen = False
+            , modalContent = none
             , version = flags.version
             , showSaveTestError = False
             }
@@ -250,25 +256,27 @@ emptyVisualState =
 
 type Msg
     = Navigate NavigationMsg
-    | HttpError Http.Error
-    | DismissHttpError
+    | HttpError String Http.Error
+    | HttpWarning String Http.Error
     | ServerGetIRResponse Distribution
     | ServerGetTestsResponse TestSuite
-    | ServerGetAttributeResponse CustomAttributeInfo
+    | ServerGetAllDecorationConfigAndDataResponse AllDecorationConfigAndData
+    | ServerGetDecorationDataResponse DecorationID DecorationData
     | Filter FilterMsg
     | UI UIMsg
     | Insight InsightMsg
     | Testing TestingMsg
-    | Attribute AttributeMsg
+    | Decoration DecorationMsg
+    | DoNothing
 
 
-type AttributeMsg
-    = ValueUpdated AttrValueDetail ValueEditor.EditorState
+type DecorationMsg
+    = DecorationValueUpdated DecorationNodeID ValueEditor.EditorState
 
 
-type alias AttrValueDetail =
-    { attrId : CustomAttributeId
-    , nodeId : NodeID
+type alias DecorationNodeID =
+    { decorationID : DecorationID
+    , nodeID : NodeID
     }
 
 
@@ -294,7 +302,10 @@ type UIMsg
     | CollapseModule (TreeViewComponent.NodePath ModuleName)
     | SwitchTab Int
     | ToggleSection Int
-    | ToggleAboutModal Bool
+    | OpenAbout
+    | OpenHttpErrorModal Http.Error String Bool
+    | DismissHttpError
+    | CloseModal
 
 
 type FilterMsg
@@ -363,16 +374,15 @@ update msg model =
                 DefinitionSelected url ->
                     ( resetTabs model, Nav.pushUrl model.key url )
 
-        HttpError httpError ->
-            case model.irState of
-                IRLoaded _ ->
-                    ( model, Cmd.none )
+        HttpError errorSummary httpError ->
+            ( { model | serverState = ServerError errorSummary httpError }
+            , Cmd.none
+            )
 
-                _ ->
-                    ( { model | serverState = ServerHttpError httpError }
-                    , Process.sleep (10 * 1000)
-                        |> Task.perform (\_ -> DismissHttpError)
-                    )
+        HttpWarning errorSummary httpError ->
+            ( { model | serverState = ServerWarning errorSummary httpError }
+            , Cmd.none
+            )
 
         ServerGetIRResponse distribution ->
             let
@@ -394,7 +404,7 @@ update msg model =
                     ( { model
                         | irState = irLoaded
                         , serverState =
-                            ServerHttpError (Http.BadBody "Could not transform Distribution to Repo")
+                            ServerError "Could not transform Distribution to Repo" (Http.BadBody "Could not transform Distribution to Repo")
                       }
                     , httpTestModel (IR.fromDistribution distribution)
                     )
@@ -433,8 +443,22 @@ update msg model =
                     else
                         ( { model | openSections = Set.insert sectionId model.openSections }, Cmd.none )
 
-                ToggleAboutModal isOpen ->
-                    ( { model | isAboutOpen = isOpen }, Cmd.none )
+                OpenAbout ->
+                    ( { model | isModalOpen = True, modalContent = viewAbout model.theme model.version }, Cmd.none )
+
+                OpenHttpErrorModal error errorSummary isWarning ->
+                    ( { model | isModalOpen = True, serverState = ServerOk, modalContent = serverErrorModal model.theme error errorSummary isWarning }, Cmd.none )
+
+                DismissHttpError ->
+                    let
+                        newModel : Model
+                        newModel =
+                            { model | serverState = ServerOk }
+                    in
+                    ( newModel, Cmd.none )
+
+                CloseModal ->
+                    ( { model | isModalOpen = False }, Cmd.none )
 
         ServerGetTestsResponse testSuite ->
             ( { model | testSuite = fromStoredTestSuite testSuite }, Cmd.none )
@@ -624,65 +648,84 @@ update msg model =
                 ShowSaveTestError ->
                     ( { model | showSaveTestError = True }, Cmd.none )
 
-        ServerGetAttributeResponse attributes ->
-            ( { model | customAttributes = attributes }
+        ServerGetAllDecorationConfigAndDataResponse decorations ->
+            ( { model | allDecorationConfigAndData = decorations }
             , Cmd.none
             )
 
-        Attribute attributeMsg ->
-            case attributeMsg of
-                ValueUpdated valueDetail attrState ->
-                    let
-                        newEditState : AttributeEditorState
-                        newEditState =
-                            model.attributeStates |> SDKDict.insert valueDetail attrState
+        ServerGetDecorationDataResponse decorationID decorationData ->
+            ( { model
+                | allDecorationConfigAndData =
+                    model.allDecorationConfigAndData
+                        |> Dict.update decorationID
+                            (\maybeExistingDecorationConfigAndData ->
+                                maybeExistingDecorationConfigAndData
+                                    |> Maybe.map
+                                        (\existingDecorationConfigAndData ->
+                                            { existingDecorationConfigAndData
+                                                | data = decorationData
+                                            }
+                                        )
+                            )
+              }
+            , Cmd.none
+            )
 
-                        newCustomAttribute : CustomAttributeInfo
-                        newCustomAttribute =
-                            model.customAttributes
-                                |> Dict.update valueDetail.attrId
+        Decoration decorationMsg ->
+            case decorationMsg of
+                DecorationValueUpdated valueDetail editorState ->
+                    let
+                        updatedEditorStates : DecorationEditorStates
+                        updatedEditorStates =
+                            model.decorationEditorStates
+                                |> SDKDict.insert valueDetail editorState
+
+                        updatedDecorationsConfigAndData : AllDecorationConfigAndData
+                        updatedDecorationsConfigAndData =
+                            model.allDecorationConfigAndData
+                                |> Dict.update valueDetail.decorationID
                                     (Maybe.map
-                                        (\attrDetail ->
+                                        (\decorationConfigAndData ->
                                             let
                                                 irValueUpdate : SDKDict.Dict NodeID (Value () ()) -> SDKDict.Dict NodeID (Value () ())
                                                 irValueUpdate data =
-                                                    if SDKDict.member valueDetail.nodeId data then
-                                                        SDKDict.update valueDetail.nodeId
-                                                            (Maybe.andThen
-                                                                (\_ ->
-                                                                    attrState.lastValidValue
-                                                                )
-                                                            )
+                                                    case editorState.lastValidValue of
+                                                        Just validValue ->
                                                             data
+                                                                |> SDKDict.insert valueDetail.nodeID validValue
 
-                                                    else
-                                                        SDKDict.insert valueDetail.nodeId
-                                                            (attrState.lastValidValue |> Maybe.withDefault (Value.Unit ()))
+                                                        Nothing ->
                                                             data
+                                                                |> SDKDict.remove valueDetail.nodeID
                                             in
-                                            { attrDetail
+                                            { decorationConfigAndData
                                                 | data =
-                                                    attrDetail.data
+                                                    decorationConfigAndData.data
                                                         |> irValueUpdate
                                             }
                                         )
                                     )
                     in
-                    case attrState.errorState of
-                        Just error ->
-                            Debug.todo ""
-
-                        Nothing ->
-                            ( { model | customAttributes = newCustomAttribute, attributeStates = newEditState }
-                            , httpSaveAttrValue valueDetail.attrId newCustomAttribute
+                    case editorState.errorState of
+                        Just _ ->
+                            -- when the editor is in an invalid state we don't need to update the decoration data but
+                            -- we still need to update the editor states
+                            ( { model
+                                | decorationEditorStates = updatedEditorStates
+                              }
+                            , Cmd.none
                             )
 
-        DismissHttpError ->
-            let
-                newModel =
-                    { model | serverState = ServerReady }
-            in
-            ( newModel, Cmd.none )
+                        Nothing ->
+                            ( { model
+                                | allDecorationConfigAndData = updatedDecorationsConfigAndData
+                                , decorationEditorStates = updatedEditorStates
+                              }
+                            , httpSaveAttrValue valueDetail.decorationID updatedDecorationsConfigAndData
+                            )
+
+        DoNothing ->
+            ( model, Cmd.none )
 
 
 
@@ -969,7 +1012,11 @@ view model =
             , Font.size model.theme.fontSize
             , width fill
             , height fill
-            , attachModal model.theme { content = viewAbout model.theme model.version, isOpen = model.isAboutOpen, onClose = UI (ToggleAboutModal False) }
+            , attachModal model.theme
+                { content = model.modalContent
+                , isOpen = model.isModalOpen
+                , onClose = UI CloseModal
+                }
             ]
             (column
                 [ width fill
@@ -981,12 +1028,7 @@ view model =
                     , height fill
                     ]
                     (viewBody model)
-                , case model.serverState of
-                    ServerReady ->
-                        none
-
-                    ServerHttpError error ->
-                        viewServerError error
+                , serverErrorBar model.theme model.serverState
                 ]
             )
         ]
@@ -1030,7 +1072,7 @@ viewHeader model =
                 , Theme.borderBottom 1
                 , Border.color model.theme.colors.brandPrimary
                 , mouseOver [ Border.color model.theme.colors.lightest ]
-                , onClick (UI (ToggleAboutModal True))
+                , onClick (UI OpenAbout)
                 , Font.color model.theme.colors.lightest
                 , Font.size (Theme.scaled 5 model.theme)
                 ]
@@ -1042,8 +1084,61 @@ viewHeader model =
 
 {-| Display server errors on the UI
 -}
-viewServerError : Http.Error -> Element msg
-viewServerError error =
+serverErrorBar : Theme -> ServerState -> Element Msg
+serverErrorBar theme serverState =
+    let
+        clickable : msg -> Element.Color -> Element.Color -> String -> Element msg
+        clickable msg textColor borderColor label =
+            Element.Input.button
+                [ pointer
+                , Font.color textColor
+                , Theme.borderBottom 1
+                , Border.color borderColor
+                , mouseOver [ Border.color textColor ]
+                ]
+                { onPress = Just <| msg, label = text label }
+
+        barStyles : List (Element.Attribute msg)
+        barStyles =
+            [ width fill
+            , padding (largePadding theme)
+            , Font.size (Theme.scaled 3 theme)
+            , spacing (Theme.largeSpacing theme)
+            , height <| px 40
+            , clipY
+            ]
+    in
+    case serverState of
+        ServerOk ->
+            none
+
+        ServerError errorSummary error ->
+            row
+                ([ Background.color theme.colors.negativeLight
+                 , Font.color theme.colors.lightest
+                 ]
+                    ++ barStyles
+                )
+                [ el [ width fill ] (text errorSummary)
+                , clickable (UI <| OpenHttpErrorModal error errorSummary False) theme.colors.lightest theme.colors.negativeLight "See details"
+                , clickable (UI DismissHttpError) theme.colors.lightest theme.colors.negativeLight " X "
+                ]
+
+        ServerWarning errorSummary error ->
+            row
+                ([ Background.color theme.colors.backgroundColor
+                 , Font.color theme.colors.darkest
+                 ]
+                    ++ barStyles
+                )
+                [ el [ width fill ] (text errorSummary)
+                , clickable (UI <| OpenHttpErrorModal error errorSummary True) theme.colors.darkest theme.colors.warning "See details"
+                , clickable (UI DismissHttpError) theme.colors.darkest theme.colors.warning " X "
+                ]
+
+
+serverErrorModal : Theme -> Http.Error -> String -> Bool -> Element Msg
+serverErrorModal theme error errorSummary isWarning =
     let
         message : String
         message =
@@ -1063,13 +1158,40 @@ viewServerError error =
                 Http.BadBody body ->
                     "Unexpected response body: " ++ body
     in
-    el
-        [ width fill
-        , paddingXY 20 10
-        , Background.color (rgb 1 0.5 0.5)
-        , Font.color (rgb 1 1 1)
+    column
+        [ borderRounded theme
+        , spacing (Theme.mediumSpacing theme)
+        , width fill
+        , height fill
+        , padding (largePadding theme)
+        , Background.color theme.colors.lightest
         ]
-        (text message)
+        [ row [ width fill, Font.size (Theme.scaled 5 theme) ]
+            [ el [ ifThenElse isWarning (Font.color theme.colors.warning) (Font.color theme.colors.negativeLight), Font.bold ]
+                (text <| ifThenElse isWarning "Warning" "Error")
+            , el
+                [ alignRight
+                , alignTop
+                , onClick (UI CloseModal)
+                , pointer
+                , Background.color theme.colors.lightest
+                , Font.color theme.colors.darkest
+                , borderRounded theme
+                , Font.bold
+                ]
+                (text " x ")
+            ]
+        , row [ width fill ] [ text <| errorSummary ++ ":" ]
+        , row
+            [ clipY
+            , width fill
+            , Border.width 2
+            , padding (smallPadding theme)
+            , borderRounded theme
+            , height (px 250)
+            ]
+            [ el [ width fill, height fill, scrollbars, padding (smallPadding theme) ] (text message) ]
+        ]
 
 
 {-| Display the main part of home UI if the IR has loaded
@@ -1120,7 +1242,7 @@ viewAbout theme version =
 
         close : Element Msg
         close =
-            el [ alignRight, onClick (UI (ToggleAboutModal False)), pointer ] (text " x ")
+            el [ alignRight, onClick (UI CloseModal), pointer ] (text " x ")
 
         sectionTitleStyles : List (Element.Attribute msg)
         sectionTitleStyles =
@@ -1136,16 +1258,14 @@ viewAbout theme version =
         ]
 
 
-
--- View to display the ValueEditors for Custom Attributes when a node is selected
-
-
-viewAttributeValues : Model -> NodeID -> Element Msg
-viewAttributeValues model node =
+{-| View to display the ValueEditors for Decorations when a node is selected
+-}
+viewDecorationValues : Model -> NodeID -> Element Msg
+viewDecorationValues model node =
     let
         attributeToEditors : Element Msg
         attributeToEditors =
-            model.customAttributes
+            model.allDecorationConfigAndData
                 |> Dict.toList
                 |> List.map
                     (\( attrId, attrDetail ) ->
@@ -1155,13 +1275,13 @@ viewAttributeValues model node =
                                 attrDetail.data
                                     |> SDKDict.get node
 
-                            nodeDetail : AttrValueDetail
+                            nodeDetail : DecorationNodeID
                             nodeDetail =
-                                { attrId = attrId, nodeId = node }
+                                { decorationID = attrId, nodeID = node }
 
                             editorState : ValueEditor.EditorState
                             editorState =
-                                model.attributeStates
+                                model.decorationEditorStates
                                     |> SDKDict.get nodeDetail
                                     |> Maybe.withDefault
                                         (ValueEditor.initEditorState
@@ -1175,7 +1295,7 @@ viewAttributeValues model node =
                             model.theme
                             (IR.fromDistribution attrDetail.iR)
                             (Type.Reference () attrDetail.entryPoint [])
-                            (Attribute << ValueUpdated nodeDetail)
+                            (Decoration << DecorationValueUpdated nodeDetail)
                             editorState
                         )
                     )
@@ -1275,19 +1395,19 @@ viewHome model packageName packageDef =
                         , { name = "Dependency Graph"
                           , content = col [ dependencyGraph model.homeState.selectedModule model.repo ]
                           }
-                        , { name = "Custom Attributes"
+                        , { name = "Decorations"
                           , content =
                                 let
-                                    attributeTabContent =
+                                    decorationTabContent =
                                         case maybeModuleName of
                                             Just moduleName ->
-                                                [ viewAttributeValues model (ModuleID ( packageName, moduleName )) ]
+                                                [ viewDecorationValues model (ModuleID ( packageName, moduleName )) ]
 
                                             Nothing ->
                                                 -- Since we don't annotate package for now, we don't show the Value Editors
                                                 []
                                 in
-                                col attributeTabContent
+                                col decorationTabContent
                           }
                         ]
                 }
@@ -1525,9 +1645,9 @@ definitionFilters theme homeState =
         -- Creates a text input to search defintions by name
         definitionFilter : Element Msg
         definitionFilter =
-            Element.Input.search
-                [ Font.size theme.fontSize
-                , padding (theme |> Theme.scaled -2)
+            InputComponent.searchInput
+                theme
+                [ padding (theme |> Theme.scaled -2)
                 , width (fillPortion 7)
                 ]
                 { onChange = Filter << SearchDefinition
@@ -1539,22 +1659,22 @@ definitionFilters theme homeState =
         -- Creates a checkbox to filter out values from the definition list
         valueCheckbox : Element Msg
         valueCheckbox =
-            Element.Input.checkbox
+            InputComponent.checkBox
+                theme
                 [ width (fillPortion 2) ]
                 { onChange = Filter << ToggleValues
                 , checked = homeState.filterState.showValues
-                , icon = Element.Input.defaultCheckbox
                 , label = Element.Input.labelLeft [] (text "values:")
                 }
 
         -- Creates a checkbox to filter out types from the definition list
         typeCheckbox : Element Msg
         typeCheckbox =
-            Element.Input.checkbox
+            InputComponent.checkBox
+                theme
                 [ width (fillPortion 2) ]
                 { onChange = Filter << ToggleTypes
                 , checked = homeState.filterState.showTypes
-                , icon = Element.Input.defaultCheckbox
                 , label = Element.Input.labelLeft [] (text "types:")
                 }
     in
@@ -1628,14 +1748,6 @@ viewValue theme moduleName valueName valueDef docs =
         isData : Bool
         isData =
             List.isEmpty valueDef.inputTypes
-
-        backgroundColor : Element.Color
-        backgroundColor =
-            if isData then
-                rgb 0.8 0.9 0.9
-
-            else
-                rgb 0.8 0.8 0.9
     in
     Card.viewAsCard theme
         cardTitle
@@ -1647,8 +1759,6 @@ viewValue theme moduleName valueName valueDef docs =
         )
         (ifThenElse (docs == "") "[ This definition has no associated documentation. ]" docs)
         none
-
-
 
 
 
@@ -1664,7 +1774,7 @@ httpMakeModel =
                 (\response ->
                     case response of
                         Err httpError ->
-                            HttpError httpError
+                            HttpError "We encountered an issue while loading the IR" httpError
 
                         Ok result ->
                             ServerGetIRResponse result
@@ -1682,7 +1792,7 @@ httpTestModel ir =
                 (\response ->
                     case response of
                         Err httpError ->
-                            HttpError httpError
+                            HttpWarning "We encountered an issue while loading the test cases" httpError
 
                         Ok result ->
                             ServerGetTestsResponse result
@@ -1694,45 +1804,39 @@ httpTestModel ir =
 httpAttributes : Cmd Msg
 httpAttributes =
     Http.get
-        { url = "/server/attributes"
+        { url = "/server/decorations"
         , expect =
             Http.expectJson
                 (\response ->
                     case response of
                         Err httpError ->
-                            HttpError httpError
+                            HttpWarning "We encountered an issue while loading Decorations" httpError
 
                         Ok result ->
-                            ServerGetAttributeResponse result
+                            ServerGetAllDecorationConfigAndDataResponse result
                 )
-                decodeAttributes
+                decodeAllDecorationConfigAndData
         }
 
 
-httpSaveAttrValue : CustomAttributeId -> CustomAttributeInfo -> Cmd Msg
-httpSaveAttrValue attrId customAttributes =
-    let
-        updatedCustomAttrDetail : Maybe CustomAttributeDetail
-        updatedCustomAttrDetail =
-            customAttributes
-                |> Dict.get attrId
-    in
-    case updatedCustomAttrDetail of
-        Just customAttrData ->
+httpSaveAttrValue : DecorationID -> AllDecorationConfigAndData -> Cmd Msg
+httpSaveAttrValue decorationID allDecorationConfigAndData =
+    case allDecorationConfigAndData |> Dict.get decorationID of
+        Just decorationConfigAndData ->
             Http.post
-                { url = "/server/updateattribute/" ++ attrId
-                , body = jsonBody (encodeAttributeData customAttrData)
+                { url = "/server/update-decoration/" ++ decorationID
+                , body = jsonBody (encodeDecorationData decorationConfigAndData.iR decorationConfigAndData.entryPoint decorationConfigAndData.data)
                 , expect =
                     Http.expectJson
                         (\response ->
                             case response of
                                 Err httpError ->
-                                    HttpError httpError
+                                    HttpWarning "We encountered an issue while saving Decorations" httpError
 
                                 Ok result ->
-                                    ServerGetAttributeResponse result
+                                    ServerGetDecorationDataResponse decorationID result
                         )
-                        decodeAttributes
+                        (decodeDecorationData decorationConfigAndData.iR decorationConfigAndData.entryPoint)
                 }
 
         Nothing ->
@@ -1763,7 +1867,7 @@ httpSaveTestSuite ir newTestSuite oldTestSuite =
                 (\response ->
                     case response of
                         Err httpError ->
-                            HttpError httpError
+                            HttpWarning "There was inssue saving test cases" httpError
 
                         Ok result ->
                             ServerGetTestsResponse result
@@ -1935,15 +2039,16 @@ viewDefinitionDetails model =
 
         descriptionInput : Element Msg
         descriptionInput =
-            Element.Input.text
-                [ Font.size model.theme.fontSize
-                , padding (model.theme |> Theme.scaled -2)
+            InputComponent.textInput
+                model.theme
+                [ padding (model.theme |> Theme.scaled -2)
                 ]
                 { onChange = Testing << UpdateDescription
                 , text = model.testDescription
                 , placeholder = Just (Element.Input.placeholder [] (text "Write a test description here..."))
                 , label = Element.Input.labelHidden "Description"
                 }
+                Nothing
 
         viewActualOutput : Theme -> IR -> TestCase -> FQName -> Element Msg
         viewActualOutput theme ir testCase fQName =
@@ -2197,9 +2302,9 @@ viewDefinitionDetails model =
                                                                 , { name = "XRay View"
                                                                   , content = XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef
                                                                   }
-                                                                , { name = "Custom Attributes"
+                                                                , { name = "Decorations"
                                                                   , content =
-                                                                        row
+                                                                        column
                                                                             [ width fill
                                                                             , height fill
                                                                             , spacing
@@ -2208,7 +2313,7 @@ viewDefinitionDetails model =
                                                                                 )
                                                                             , paddingXY 10 10
                                                                             ]
-                                                                            [ viewAttributeValues model (ValueID fullyQualifiedName) ]
+                                                                            [ viewDecorationValues model (ValueID fullyQualifiedName) ]
                                                                   }
                                                                 ]
                                                         }
@@ -2246,9 +2351,9 @@ viewDefinitionDetails model =
                                           , content =
                                                 typeDetails
                                           }
-                                        , { name = "Custom Attributes"
+                                        , { name = "Decorations"
                                           , content =
-                                                row
+                                                column
                                                     [ width fill
                                                     , height fill
                                                     , spacing
@@ -2257,7 +2362,7 @@ viewDefinitionDetails model =
                                                         )
                                                     , paddingXY 10 10
                                                     ]
-                                                    [ viewAttributeValues model (TypeID fullyQualifiedName) ]
+                                                    [ viewDecorationValues model (TypeID fullyQualifiedName) ]
                                           }
                                         ]
                                 }

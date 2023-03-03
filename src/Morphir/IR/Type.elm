@@ -238,12 +238,14 @@ type Specification a
     = TypeAliasSpecification (List Name) (Type a)
     | OpaqueTypeSpecification (List Name)
     | CustomTypeSpecification (List Name) (Constructors a)
-    | DerivedTypeSpecification
-        (List Name)
-        { baseType : Type a
-        , fromBaseType : FQName
-        , toBaseType : FQName
-        }
+    | DerivedTypeSpecification (List Name) (DerivedTypeSpecificationDetails a)
+
+
+type alias DerivedTypeSpecificationDetails a =
+    { baseType : Type a
+    , fromBaseType : FQName
+    , toBaseType : FQName
+    }
 
 
 {-| This syntax represents a type definition. For example:
