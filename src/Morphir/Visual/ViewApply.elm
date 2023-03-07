@@ -1,7 +1,7 @@
 module Morphir.Visual.ViewApply exposing (view)
 
 import Dict exposing (Dict)
-import Element exposing (Element, above, centerX, centerY, el, fill, moveUp, padding, paddingEach, rgb, row, spacing, text, width)
+import Element exposing (Element, above, centerX, centerY, el, fill, moveUp, padding, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -14,12 +14,12 @@ import Morphir.IR.Path as Path
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value(..), toRawValue)
 import Morphir.Type.Infer as Infer
-import Morphir.Value.Error as Error exposing (Error(..))
+import Morphir.Value.Error exposing (Error(..))
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue, evaluateValue)
 import Morphir.Visual.Common exposing (nameToText, tooltip)
 import Morphir.Visual.Components.DrillDownPanel as DrillDownPanel exposing (Depth)
 import Morphir.Visual.Components.FieldList as FieldList
-import Morphir.Visual.Config exposing (Config, DrillDownFunctions(..), drillDownContains, evalIfPathTaken, evaluate)
+import Morphir.Visual.Config exposing (Config, DrillDownFunctions(..), drillDownContains, evalIfPathTaken)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, getId)
 import Morphir.Visual.Theme exposing (borderRounded, smallPadding, smallSpacing)
 import Morphir.Visual.ViewList as ViewList
@@ -113,13 +113,6 @@ view config viewDefinitionBody viewValue functionValue argValues =
 
                 _ ->
                     Element.row styles (viewValue constr :: (argValues |> List.map viewValue))
-
-        ( Value.Reference _ ( _, _, ("is" :: _) as localName ), [ argValue ] ) ->
-            row
-                (width fill :: styles)
-                [ viewValue argValue
-                , text (nameToText localName)
-                ]
 
         ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "negate" ] ), [ argValue ] ) ->
             row styles
@@ -222,13 +215,28 @@ view config viewDefinitionBody viewValue functionValue argValues =
 
                 ( _, _, valueName ) =
                     fqName
+                {-
+                    Reverse the order of fQName and arguments if the function starts with is, to improve readability
+                    "is foo x" -> "x is foo"
+                -}
+                reverseIfStartsWithIs : List a -> List a
+                reverseIfStartsWithIs l =
+                    if (List.head valueName |> Maybe.withDefault "") == "is" then
+                        List.reverse l
 
+                    else
+                        identity l
+
+                closedElement : Element msg
                 closedElement =
                     row [ smallSpacing config.state.theme |> spacing ]
-                        [ el [ Background.color <| config.state.theme.colors.selectionColor, smallPadding config.state.theme |> padding ] (text (nameToText valueName))
-                        , argList
-                        ]
+                        ([ el [ Background.color <| config.state.theme.colors.selectionColor, smallPadding config.state.theme |> padding ] (text (nameToText valueName))
+                         , argList
+                         ]
+                            |> reverseIfStartsWithIs
+                        )
 
+                openElement : Element msg
                 openElement =
                     case drillDown config.state.drillDownFunctions config.nodePath of
                         Just valueDef ->
@@ -245,13 +253,14 @@ view config viewDefinitionBody viewValue functionValue argValues =
                         Nothing ->
                             Element.none
 
+                openHeader : Element msg
                 openHeader =
                     row [ smallSpacing config.state.theme |> spacing ]
-                        [ el [ Background.color <| config.state.theme.colors.selectionColor, smallPadding config.state.theme |> padding ] (text (nameToText valueName))
-                        , argList
-
-                        --, text "="
-                        ]
+                        ([ el [ Background.color <| config.state.theme.colors.selectionColor, smallPadding config.state.theme |> padding ] (text (nameToText valueName))
+                         , argList
+                         ]
+                            |> reverseIfStartsWithIs
+                        )
             in
             drillDownPanel fqName (List.length config.nodePath) closedElement openHeader openElement (drillDownContains config.state.drillDownFunctions (getId functionValue) config.nodePath)
 
