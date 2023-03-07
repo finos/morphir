@@ -100,6 +100,21 @@ viewValueByLanguageFeature config value =
     let
         valueElem : Element msg
         valueElem =
+            let
+                valuePopup : Int -> Maybe (RawValue) -> List (Element.Attribute msg)
+                valuePopup index variableValue =
+                    [ onMouseEnter (config.handlers.onHoverOver index config.nodePath variableValue)
+                        , onMouseLeave (config.handlers.onHoverLeave index config.nodePath)
+                        , Element.below
+                            (if (config.state.popupVariables.variableIndex == index) && (config.state.popupVariables.nodePath == config.nodePath) then
+                                el [ smallPadding config.state.theme |> padding ] (viewPopup config)
+
+                             else
+                                Element.none
+                            )
+                        , center
+                        ]
+            in
             case value of
                 Value.PatternMatch _ _ [ ( Value.ConstructorPattern _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] ) [ _ ], _ ), ( Value.ConstructorPattern _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) [], _ ) ] ->
                     ViewIfThenElse.view config viewValue value
@@ -159,17 +174,7 @@ viewValueByLanguageFeature config value =
                             Dict.get name config.state.variables
                     in
                     el
-                        [ onMouseEnter (config.handlers.onHoverOver index config.nodePath variableValue)
-                        , onMouseLeave (config.handlers.onHoverLeave index config.nodePath)
-                        , Element.below
-                            (if (config.state.popupVariables.variableIndex == index) && (config.state.popupVariables.nodePath == config.nodePath) then
-                                el [ smallPadding config.state.theme |> padding ] (viewPopup config)
-
-                             else
-                                Element.none
-                            )
-                        , center
-                        ]
+                        (valuePopup index variableValue)
                         (text (nameToText name))
 
                 (Value.Reference _ (( _, _, localName ) as fQName)) as functionvalue ->
@@ -250,17 +255,7 @@ viewValueByLanguageFeature config value =
                                         "'s "
                             in
                             row
-                                [ onMouseEnter (config.handlers.onHoverOver index config.nodePath variableValue)
-                                , onMouseLeave (config.handlers.onHoverLeave index config.nodePath)
-                                , Element.below
-                                    (if config.state.popupVariables.variableIndex == index then
-                                        el [ smallPadding config.state.theme |> padding ] (viewPopup config)
-
-                                     else
-                                        Element.none
-                                    )
-                                , center
-                                ]
+                                (valuePopup index variableValue)
                                 [ String.concat
                                     [ nameToText variableName
                                     , singularOrPlural variableName
