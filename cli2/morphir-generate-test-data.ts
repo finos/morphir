@@ -47,47 +47,46 @@ async function generateData() {
 
 	// CREATE CONFIG OPTIONS
 	const morphirJsonPath: string = path.join(programOptions.projectDir, 'morphir-ir.json')
-    if (!(await fsExists(morphirJsonPath))) throw Error("Not a morphir directory")
+	if (!(await fsExists(morphirJsonPath))) throw Error('Not a morphir directory')
 	const distroData = (await fsReadFile(morphirJsonPath)).toString()
-    const distroJson = JSON.parse(distroData)
+	const distroJson = JSON.parse(distroData)
 
 	if (!programOptions.targets || programOptions.targets.length <= 0) throw 'targets not provided'
 
-
 	const opts: GenerationOptions = {
 		morphirIrJson: distroJson,
-        targets: programOptions.targets,
-        seed: parseInt(programOptions.seed),
-        size: parseInt(programOptions.size),
+		targets: programOptions.targets,
+		seed: parseInt(programOptions.seed),
+		size: parseInt(programOptions.size)
 	}
 
 	// SEND OFF TO ELM
 
 	worker.ports.decodeFailed.subscribe((err: any) => {
-        console.log("Decode Failed")
-        console.log(err)
+		console.log('Decode Failed')
+		console.log(err)
 	})
-    
+
 	worker.ports.generationFailed.subscribe((err: any) => {
-        console.log("Generation Failed", err)
-        console.log(err)
+		console.log('Generation Failed', err)
+		console.log(err)
 	})
 
-    worker.ports.generated.subscribe((data: any) => {
-        const dataString: string = JSON.stringify(data, null, 4)
-        const outputPath: string = path.join(programOptions.projectDir, programOptions.output)
+	worker.ports.generated.subscribe((data: any) => {
+		const dataString: string = JSON.stringify(data, null, 4)
+		const outputPath: string = path.join(programOptions.projectDir, programOptions.output)
 
-        console.log("Writing test data to " + outputPath)
-        fsWriteFile(outputPath, dataString)
-            .then(() => console.log("Done."))
-            .catch(err => {
-                console.log(err)
-            })
-    })
+		console.log('Writing test data to ' + outputPath)
+		fsWriteFile(outputPath, dataString)
+			.then(() => console.log('Done.'))
+			.catch(err => {
+				console.log(err)
+			})
+	})
 
 	console.log('starting test data generation with options', opts)
 
-    worker.ports.generate.send(opts)
+	worker.ports.generate.send(opts)
 }
 
 generateData()
