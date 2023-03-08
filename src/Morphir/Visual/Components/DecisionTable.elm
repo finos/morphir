@@ -9,7 +9,7 @@ module Morphir.Visual.Components.DecisionTable exposing
 
 -}
 
-import Element exposing (Color, Column, Element, el, fill, height, padding, rgb255, row, table, text, width)
+import Element exposing (Color, Column, Element, el, fill, height, padding, rgb255, row, table, text, width, shrink)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -91,7 +91,7 @@ tableHelp config viewValue headerFunctions rows =
                         ]
                         (text "Result")
                     )
-                    fill
+                    shrink
                     (\rules ->
                         el
                             [ Border.color (highlightStateToColor (List.head (List.reverse rules.highlightStates)))
