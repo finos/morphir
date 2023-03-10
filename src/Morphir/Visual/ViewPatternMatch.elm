@@ -1,12 +1,13 @@
 module Morphir.Visual.ViewPatternMatch exposing (..)
 
+import Dict
 import Element exposing (Element)
 import List
 import Morphir.IR.Literal as Value
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern, TypedValue)
-import Morphir.Value.Interpreter exposing (matchPattern)
-import Morphir.Visual.Components.DecisionTable as DecisionTable exposing (DecisionTable, Match(..), Rule, TypedPattern)
+import Morphir.Value.Interpreter exposing (Variables, matchPattern)
+import Morphir.Visual.Components.DecisionTable as DecisionTable exposing (DecisionTable, Rule, TypedPattern)
 import Morphir.Visual.Config as Config exposing (Config, HighlightState(..))
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 
@@ -14,7 +15,6 @@ import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 view : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> EnrichedValue -> List ( Pattern ( Int, Type () ), EnrichedValue ) -> Element msg
 view config viewValue subject matches =
     let
-
         typedMatches : List ( TypedPattern, EnrichedValue )
         typedMatches =
             List.map (\( a, b ) -> ( toTypedPattern a, b )) matches
@@ -33,7 +33,7 @@ toDecisionTable config subject matches =
         decomposedInput =
             decomposeInput subject
 
-        rules : List ( List Match, EnrichedValue )
+        rules : List ( List TypedPattern, EnrichedValue )
         rules =
             getRules decomposedInput matches
 
@@ -56,51 +56,51 @@ decomposeInput subject =
             [ subject ]
 
 
-getRules : List EnrichedValue -> List ( TypedPattern, EnrichedValue ) -> List ( List Match, EnrichedValue )
+getRules : List EnrichedValue -> List ( TypedPattern, EnrichedValue ) -> List ( List TypedPattern, EnrichedValue )
 getRules subject matches =
     matches |> List.concatMap (decomposePattern subject)
 
 
-decomposePattern : List EnrichedValue -> ( TypedPattern, EnrichedValue ) -> List ( List Match, EnrichedValue )
+decomposePattern : List EnrichedValue -> ( TypedPattern, EnrichedValue ) -> List ( List TypedPattern, EnrichedValue )
 decomposePattern subject match =
     case match of
         ( Value.WildcardPattern _, _ ) ->
             let
-                wildcardMatch : Match
+                wildcardMatch : TypedPattern
                 wildcardMatch =
-                    DecisionTable.Pattern (Tuple.first match)
+                    Tuple.first match
             in
             [ ( List.repeat (List.length subject) wildcardMatch, Tuple.second match ) ]
 
         ( Value.LiteralPattern _ _, _ ) ->
             let
-                literalMatch : Match
+                literalMatch : TypedPattern
                 literalMatch =
-                    DecisionTable.Pattern (Tuple.first match)
+                    Tuple.first match
             in
             [ ( [ literalMatch ], Tuple.second match ) ]
 
         ( Value.TuplePattern _ matches, _ ) ->
             let
-                tupleMatch : List Match
+                tupleMatch : List TypedPattern
                 tupleMatch =
-                    List.map DecisionTable.Pattern matches
+                    matches
             in
             [ ( tupleMatch, Tuple.second match ) ]
 
         ( Value.ConstructorPattern _ _ _, _ ) ->
             let
-                constructorMatch : Match
+                constructorMatch : TypedPattern
                 constructorMatch =
-                    DecisionTable.Pattern (Tuple.first match)
+                    Tuple.first match
             in
             [ ( [ constructorMatch ], Tuple.second match ) ]
 
         ( Value.AsPattern _ _ _, _ ) ->
             let
-                asMatch : Match
+                asMatch : TypedPattern
                 asMatch =
-                    DecisionTable.Pattern (Tuple.first match)
+                    Tuple.first match
             in
             [ ( [ asMatch ], Tuple.second match ) ]
 
@@ -108,14 +108,14 @@ decomposePattern subject match =
             []
 
 
-getHighlightStates : Config msg -> List EnrichedValue -> List ( List Match, EnrichedValue ) -> List (List HighlightState)
+getHighlightStates : Config msg -> List EnrichedValue -> List ( List TypedPattern, EnrichedValue ) -> List (List HighlightState)
 getHighlightStates config subject matches =
     let
-        patterns : List (List Match)
+        patterns : List (List TypedPattern)
         patterns =
             List.map (\x -> Tuple.first x) matches
 
-        referencedPatterns : List (List ( EnrichedValue, Match ))
+        referencedPatterns : List (List ( EnrichedValue, TypedPattern ))
         referencedPatterns =
             List.map (List.map2 Tuple.pair subject) patterns
     in
@@ -125,14 +125,14 @@ getHighlightStates config subject matches =
 
         Just highlightState ->
             case highlightState of
-                Matched ->
+                Matched v ->
                     List.foldl (comparePreviousHighlightStates config) [] referencedPatterns
 
                 _ ->
                     List.map (\x -> List.repeat (List.length x) Default) patterns
 
 
-comparePreviousHighlightStates : Config msg -> List ( EnrichedValue, Match ) -> List (List HighlightState) -> List (List HighlightState)
+comparePreviousHighlightStates : Config msg -> List ( EnrichedValue, TypedPattern ) -> List (List HighlightState) -> List (List HighlightState)
 comparePreviousHighlightStates config matches previousStates =
     let
         mostRecentRow : List HighlightState
@@ -146,6 +146,32 @@ comparePreviousHighlightStates config matches previousStates =
 
         nextMatches : List HighlightState
         nextMatches =
+            let
+                nextRow =
+                    let
+                        nextStates : List HighlightState
+                        nextStates =
+                            List.foldl (getNextHighlightState config) [] matches
+
+                        variablesSoFar : Variables
+                        variablesSoFar =
+                            let
+                                getVars state =
+                                    case state of
+                                        Matched v ->
+                                            v
+
+                                        _ ->
+                                            Dict.empty
+                            in
+                            nextStates |> List.map getVars |> List.foldl Dict.union Dict.empty
+                    in
+                    if isFullyMatchedRow nextStates then
+                        List.append nextStates [ Matched variablesSoFar ]
+
+                    else
+                        List.append nextStates [ Default ]
+            in
             --check whether the previous row is either untouched or fully matched, meaning we should stop checking highlight logic.
             case mostRecentRow of
                 _ :: _ ->
@@ -154,35 +180,22 @@ comparePreviousHighlightStates config matches previousStates =
 
                     else
                         --if we haven't matched a result yet, we need to check logic for the next row
-                        let
-                            nextStates : List HighlightState
-                            nextStates =
-                                List.foldl (getNextHighlightState config) [] matches
-                        in
-                        if isFullyMatchedRow nextStates then
-                            List.append nextStates [ Matched ]
-
-                        else
-                            List.append nextStates [ Default ]
+                        nextRow
 
                 [] ->
-                    let
-                        nextStates : List HighlightState
-                        nextStates =
-                            List.foldl (getNextHighlightState config) [] matches
-                    in
-                    if isFullyMatchedRow nextStates then
-                        List.append nextStates [ Matched ]
-
-                    else
-                        List.append nextStates [ Default ]
+                    nextRow
     in
     List.append previousStates [ nextMatches ]
 
 
 isNotMatchedHighlightState : HighlightState -> Bool
 isNotMatchedHighlightState highlightState =
-    highlightState /= Matched
+    case highlightState of
+        Matched _ ->
+            False
+
+        _ ->
+            True
 
 
 isNotDefaultHighlightState : HighlightState -> Bool
@@ -200,7 +213,7 @@ isFullyDefaultRow highlightStates =
     List.length (List.filter isNotDefaultHighlightState highlightStates) == 0
 
 
-getNextHighlightState : Config msg -> ( EnrichedValue, Match ) -> List HighlightState -> List HighlightState
+getNextHighlightState : Config msg -> ( EnrichedValue, TypedPattern ) -> List HighlightState -> List HighlightState
 getNextHighlightState config currentMatch previousStates =
     let
         lastState : HighlightState
@@ -210,32 +223,27 @@ getNextHighlightState config currentMatch previousStates =
                     x
 
                 [] ->
-                    Matched
+                    Matched Dict.empty
 
         nextState : HighlightState
         nextState =
             case lastState of
-                Matched ->
+                Matched variables ->
                     case currentMatch of
                         ( subject, match ) ->
-                            case match of
-                                Pattern pattern ->
-                                    let
-                                        rawPattern : Pattern ()
-                                        rawPattern =
-                                            pattern |> Value.mapPatternAttributes (always ())
-                                    in
-                                    case Config.evaluate (Value.toRawValue subject) config of
-                                        Ok value ->
-                                            case matchPattern rawPattern value of
-                                                Ok _ ->
-                                                    Matched
+                            let
+                                rawPattern : Pattern ()
+                                rawPattern =
+                                    match |> Value.mapPatternAttributes (always ())
+                            in
+                            case Config.evaluate (Value.toRawValue subject) config of
+                                Ok value ->
+                                    case matchPattern rawPattern value of
+                                        Ok newVariables ->
+                                            Matched (Dict.union variables newVariables)
 
-                                                Err _ ->
-                                                    Unmatched
-
-                                        _ ->
-                                            Default
+                                        Err _ ->
+                                            Unmatched
 
                                 _ ->
                                     Default

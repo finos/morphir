@@ -60,7 +60,7 @@ type alias PopupScreenRecord =
 
 
 type HighlightState
-    = Matched
+    = Matched Interpreter.Variables
     | Unmatched
     | Default
 
