@@ -1,5 +1,6 @@
 module Morphir.Visual.Components.DecisionTree exposing (BranchNode, Node(..), downArrow, downArrowHead, highlightColor, horizontalLayout, layout, noPadding, rightArrow, rightArrowHead, verticalLayout)
 
+import Dict
 import Element exposing (Attribute, Color, Element, alignLeft, alignTop, centerX, centerY, column, el, fill, height, html, padding, paddingEach, paddingXY, rgb255, row, shrink, spacing, text, width)
 import Element.Border as Border
 import Element.Font as Font
@@ -12,7 +13,6 @@ import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallPadding, smallSpacing)
 import Svg
 import Svg.Attributes
-import Html.Attributes exposing (start)
 
 
 type Node
@@ -258,21 +258,22 @@ layoutHelp currentDirection config highlightState viewValue rootNode =
                 horizontalLayout
                     config
                     conditionElement
-                (el
+                    (el
                         [ Font.color (elseState |> highlightStateToColor |> toElementColor)
                         , elseState |> highlightStateToFontWeight
                         ]
-                        (text branch.elseLabel))
-                (elseState)
-                (elseBranchWithDirection oppositeDirection)
-                (el
+                        (text branch.elseLabel)
+                    )
+                    elseState
+                    (elseBranchWithDirection oppositeDirection)
+                    (el
                         [ Font.color (thenState |> highlightStateToColor |> toElementColor)
                         , thenState |> highlightStateToFontWeight
                         ]
-                        (text branch.thenLabel))
-                (thenState)
-                (thenBranchWithDirection currentDirection)
-
+                        (text branch.thenLabel)
+                    )
+                    thenState
+                    (thenBranchWithDirection currentDirection)
 
         Leaf variables value ->
             el
@@ -522,4 +523,4 @@ branchHighlightToConfigHighLight branchHL =
             Unmatched
 
         Highlighted _ ->
-            Matched
+            Matched Dict.empty
