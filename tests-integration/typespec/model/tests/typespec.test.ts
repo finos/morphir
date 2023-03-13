@@ -10,14 +10,14 @@ const rmdir = util.promisify(fs.rmSync)
 const execa = require("execa")
 
 // cadl model related paths
-const projectDir = path.join("tests-integration","cadl", "model")
+const projectDir = path.join("tests-integration","typespec", "model")
 const generatedCadl = path.join(projectDir, "dist")
 const morphirIR = path.join(projectDir,"morphir-ir.json")
 
 // cli stuffs
 const cli = require("../../../../cli/cli.js")
 const makeCmdOpts = { typesOnly: false, output: projectDir }
-const genCmdOpts = { target: "Cadl" }
+const genCmdOpts = { target: "TypeSpec" }
 
 // test
 describe("Validating Generated Cadl", () => {
@@ -34,8 +34,8 @@ describe("Validating Generated Cadl", () => {
         await cli.gen(morphirIR, generatedCadl, genCmdOpts)
 
         // compile generated Cadl to look for errors
-        const args = ['compile', path.join(generatedCadl,"TestModel.cadl")]
-        const {stdout} = await execa('cadl', args)
+        const args = ['compile', path.join(generatedCadl,"TestModel.tsp")]
+        const {stdout} = await execa('tsp', args)
         
         expect(stdout).toContain("Compilation completed successfully")
     })

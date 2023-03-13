@@ -1,8 +1,6 @@
-module Morphir.Cadl.Backend exposing (..)
+module Morphir.TypeSpec.Backend exposing (..)
 
 import Dict exposing (Dict)
-import Morphir.Cadl.AST as AST exposing (ArrayType(..), ImportDeclaration(..), Name, Namespace, NamespaceDeclaration, Type(..), TypeDefinition(..))
-import Morphir.Cadl.PrettyPrinter as PrettyPrinter
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName as FQName exposing (FQName)
@@ -12,6 +10,8 @@ import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path
 import Morphir.IR.Type as IRType exposing (Type(..))
 import Morphir.SDK.ResultList as ResultList
+import Morphir.TypeSpec.AST as AST exposing (ArrayType(..), ImportDeclaration(..), Name, Namespace, NamespaceDeclaration, Type(..), TypeDefinition(..))
+import Morphir.TypeSpec.PrettyPrinter as PrettyPrinter
 import Set exposing (Set)
 
 
@@ -39,14 +39,14 @@ mapDistribution opt distro =
                 imports : List ImportDeclaration
                 imports =
                     if shouldImportSDK then
-                        [ LibraryImport "morphir-sdk" ]
+                        [ LibraryImport "@morphir/typespec-sdk" ]
 
                     else
                         []
             in
             mapPackageDefinition packageDef
                 |> Result.map (PrettyPrinter.prettyPrint packageName imports)
-                |> Result.map (Dict.singleton ( [], Path.toString IRName.toTitleCase "." packageName ++ ".cadl" ))
+                |> Result.map (Dict.singleton ( [], Path.toString IRName.toTitleCase "." packageName ++ ".tsp" ))
 
 
 mapPackageDefinition : Package.Definition () (IRType.Type ()) -> Result Errors (Dict Namespace NamespaceDeclaration)

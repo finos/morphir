@@ -1,11 +1,11 @@
-module Morphir.Cadl.PrettyPrinter exposing (..)
+module Morphir.TypeSpec.PrettyPrinter exposing (..)
 
 import Dict exposing (Dict)
-import Morphir.Cadl.AST as AST exposing (ImportDeclaration(..), Name, Namespace, NamespaceDeclaration)
 import Morphir.File.SourceCode exposing (Doc, concat, empty, indent, newLine, semi, space)
 import Morphir.IR.Name as Name
 import Morphir.IR.Package exposing (PackageName)
 import Morphir.IR.Path as Path
+import Morphir.TypeSpec.AST as AST exposing (ImportDeclaration(..), Name, Namespace, NamespaceDeclaration)
 
 
 prettyPrint : PackageName -> List ImportDeclaration -> Dict Namespace NamespaceDeclaration -> Doc
@@ -34,11 +34,11 @@ prettyPrint packageName imports namespaces =
 mapImports : ImportDeclaration -> Doc
 mapImports importDecl =
     case importDecl of
-        LibraryImport morphirCadlLibrary ->
+        LibraryImport morphirTypeSpecLibrary ->
             [ "import"
             , space
             , "\""
-            , morphirCadlLibrary
+            , morphirTypeSpecLibrary
             , "\""
             , semi
             , newLine

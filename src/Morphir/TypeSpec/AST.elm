@@ -1,4 +1,4 @@
-module Morphir.Cadl.AST exposing (..)
+module Morphir.TypeSpec.AST exposing (..)
 
 import Dict exposing (Dict)
 
