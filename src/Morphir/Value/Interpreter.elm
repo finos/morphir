@@ -283,7 +283,7 @@ evaluateValue nativeFunctions ir variables arguments value =
             -- Recursive let bindings will be evaluated simply by assigning them to variable names and evaluating the
             -- in value using them. The in value evaluation will evaluate the recursive definitions.
             let
-                defVariables : Dict Name (Value () ())
+                defVariables : Dict Name RawValue
                 defVariables =
                     defs |> Dict.map (\_ def -> Value.definitionToValue def)
             in
@@ -318,7 +318,7 @@ evaluateValue nativeFunctions ir variables arguments value =
                         case conditionValue of
                             Value.Literal _ (BoolLiteral conditionTrue) ->
                                 let
-                                    branchToFollow : Value () ()
+                                    branchToFollow : RawValue
                                     branchToFollow =
                                         if conditionTrue then
                                             thenBranch
@@ -336,7 +336,7 @@ evaluateValue nativeFunctions ir variables arguments value =
             -- For a pattern match we first need to evaluate the subject value then step through th cases, match
             -- each pattern until we find a matching case and when we do evaluate the body
             let
-                findMatch : List ( Pattern (), Value () () ) -> Value () () -> Result Error (Value () ())
+                findMatch : List ( Pattern (), RawValue ) -> RawValue -> Result Error RawValue
                 findMatch remainingCases evaluatedSubject =
                     case remainingCases of
                         ( nextPattern, nextBody ) :: restOfCases ->

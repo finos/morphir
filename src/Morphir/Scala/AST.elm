@@ -190,6 +190,7 @@ type MemberDecl
 type Type
     = TypeVar Name
     | TypeRef Path Name
+    | TypeOfValue Path
     | TypeApply Type (List Type)
     | TypeParametrized Type (List Type) Type
     | TupleType (List Type)
