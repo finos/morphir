@@ -17,7 +17,6 @@ port module Morphir.Elm.CLI exposing (..)
 import Dict
 import Json.Decode as Decode exposing (field, string)
 import Json.Encode as Encode
-import Morphir.Correctness.BranchCoverage as BranchCoverage
 import Morphir.Correctness.Codec as TestCodec
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
@@ -33,21 +32,15 @@ import Morphir.File.FileSnapshot.Codec as FileSnapshotCodec
 import Morphir.IR as IR
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..), lookupPackageName, lookupPackageSpecification)
 import Morphir.IR.Distribution.Codec as DistroCodec
-import Morphir.IR.FQName as FQName
-import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Name.CodecV1 exposing (encodeName)
-import Morphir.IR.NodeId as NodeID exposing (..)
 import Morphir.IR.Package exposing (PackageName, Specification)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Repo as Repo exposing (Error(..), Repo)
 import Morphir.IR.SDK as SDK
-import Morphir.IR.Type as Type exposing (Definition(..), Type(..))
-import Morphir.IR.Value as Value exposing (Value)
 import Morphir.JsonSchema.Backend
-import Morphir.SDK.ResultList as ResultList
 import Morphir.Stats.Backend as Stats
-import Morphir.TestCoverage.Backend exposing (Coverage, TestCoverageResult, encodeTestCoverageResult, getBranchCoverage)
+import Morphir.TestCoverage.Backend exposing (Coverage, TestCoverageResult, getBranchCoverage)
+import Morphir.TestCoverage.Codec exposing (encodeTestCoverageResult)
 import Process
 import Task
 
