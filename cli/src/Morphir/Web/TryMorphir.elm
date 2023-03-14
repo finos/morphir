@@ -421,6 +421,7 @@ viewValue valueState ir fullyQualifiedName irView valueDef =
                     , state =
                         { drillDownFunctions = DrillDownFunctions Dict.empty
                         , variables = Dict.empty
+                        , nonEvaluatedVariables = Dict.empty
                         , popupVariables =
                             { variableIndex = -1
                             , variableValue = Nothing

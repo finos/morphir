@@ -266,6 +266,7 @@ viewInsight ir fqn valueDef argValues =
             , state =
                 { drillDownFunctions = DrillDownFunctions Dict.empty
                 , variables = variables
+                , nonEvaluatedVariables = Dict.empty
                 , popupVariables =
                     { variableIndex = -1
                     , variableValue = Nothing

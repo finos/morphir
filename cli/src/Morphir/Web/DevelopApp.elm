@@ -240,6 +240,7 @@ emptyVisualState : Morphir.Visual.Config.VisualState
 emptyVisualState =
     { theme = Theme.fromConfig Nothing
     , variables = Dict.empty
+    , nonEvaluatedVariables = Dict.empty
     , highlightState = Nothing
     , popupVariables =
         { variableIndex = 0
