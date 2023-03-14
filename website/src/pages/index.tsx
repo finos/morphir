@@ -5,6 +5,7 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext'
 import styles from './index.module.css'
 import { Link } from '@docusaurus/router'
 import HomepageFeatures from '../components/HomepageFeatures'
+import MediaPanel from '../components/MediaPanel'
 
 function HomepageHeader() {
 	const { siteConfig } = useDocusaurusContext()
@@ -25,7 +26,9 @@ function HomepageHeader() {
 				<p className='hero__subtitle'>{siteConfig.tagline}</p>
 
 				<div className={styles.buttons}>
-					<a href='https://resources.finos.org/znglist/morphir/' class='button button--secondary'>Get To Know Morphir</a>
+					<a href='https://resources.finos.org/znglist/morphir/' class='button button--secondary'>
+						Get To Know Morphir
+					</a>
 				</div>
 			</div>
 		</header>
@@ -39,6 +42,9 @@ export default function Home(): JSX.Element {
 			<main>
 				<HomepageFeatures />
 			</main>
+			<section>
+				<MediaPanel />
+			</section>
 		</Layout>
 	)
 }
