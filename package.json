@@ -58,9 +58,9 @@
   },
   "homepage": "https://github.com/Morgan-Stanley/morphir-elm#readme",
   "devDependencies": {
-    "@cadl-lang/compiler": "^0.38.5",
     "@types/jest": "^27.4.0",
     "@types/mocha": "^9.0.0",
+    "@typespec/compiler": "^0.42.0",
     "@vercel/ncc": "^0.24.1",
     "del-cli": "3.0.1",
     "elm": "^0.19.1-5",

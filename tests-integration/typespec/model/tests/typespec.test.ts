@@ -20,8 +20,8 @@ const makeCmdOpts = { typesOnly: false, output: projectDir }
 const genCmdOpts = { target: "TypeSpec" }
 
 // test
-describe("Validating Generated Cadl", () => {
-    test("Compiling Cadl", async () => {
+describe("Validating Generated TypeSpec", () => {
+    test("Compiling TypeSpec", async () => {
         const opts = {recursive: true, force: true}
 
         // run make cmd
