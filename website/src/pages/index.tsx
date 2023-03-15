@@ -41,10 +41,8 @@ export default function Home(): JSX.Element {
 			<HomepageHeader />
 			<main>
 				<HomepageFeatures />
-			</main>
-			<section>
 				<MediaPanel />
-			</section>
+			</main>
 		</Layout>
 	)
 }
