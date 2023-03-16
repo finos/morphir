@@ -7,9 +7,10 @@ import Element.Border as Border
 import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
 import Element.Font as Font exposing (..)
 import Html.Attributes exposing (style)
+import List.Extra
 import Morphir.IR exposing (resolveType)
 import Morphir.IR.FQName exposing (FQName)
-import Morphir.IR.Name exposing (Name, toCamelCase)
+import Morphir.IR.Name exposing (Name, toCamelCase, toHumanWords)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type as Type exposing (Type)
@@ -99,6 +100,21 @@ viewValueByLanguageFeature config value =
     let
         valueElem : Element msg
         valueElem =
+            let
+                valuePopup : Int -> Maybe (RawValue) -> List (Element.Attribute msg)
+                valuePopup index variableValue =
+                    [ onMouseEnter (config.handlers.onHoverOver index config.nodePath variableValue)
+                        , onMouseLeave (config.handlers.onHoverLeave index config.nodePath)
+                        , Element.below
+                            (if (config.state.popupVariables.variableIndex == index) && (config.state.popupVariables.nodePath == config.nodePath) then
+                                el [ smallPadding config.state.theme |> padding ] (viewPopup config)
+
+                             else
+                                Element.none
+                            )
+                        , center
+                        ]
+            in
             case value of
                 Value.PatternMatch _ _ [ ( Value.ConstructorPattern _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] ) [ _ ], _ ), ( Value.ConstructorPattern _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) [], _ ) ] ->
                     ViewIfThenElse.view config viewValue value
@@ -146,7 +162,7 @@ viewValueByLanguageFeature config value =
                         ]
 
                 Value.List ( _, Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ] ) items ->
-                    ViewList.view config (viewValue config) itemType items
+                    ViewList.view config (viewValue config) itemType items Nothing
 
                 Value.Record _ items ->
                     ViewRecord.view config (viewValue config) items
@@ -158,17 +174,7 @@ viewValueByLanguageFeature config value =
                             Dict.get name config.state.variables
                     in
                     el
-                        [ onMouseEnter (config.handlers.onHoverOver index config.nodePath variableValue)
-                        , onMouseLeave (config.handlers.onHoverLeave index config.nodePath)
-                        , Element.below
-                            (if (config.state.popupVariables.variableIndex == index) && (config.state.popupVariables.nodePath == config.nodePath) then
-                                el [ smallPadding config.state.theme |> padding ] (viewPopup config)
-
-                             else
-                                Element.none
-                            )
-                        , center
-                        ]
+                        (valuePopup index variableValue)
                         (text (nameToText name))
 
                 (Value.Reference _ (( _, _, localName ) as fQName)) as functionvalue ->
@@ -214,49 +220,52 @@ viewValueByLanguageFeature config value =
 
                 Value.Field ( _, _ ) subjectValue fieldName ->
                     let
-                        defaultValue =
+                        readableFieldName : Name -> Element msg
+                        readableFieldName f =
+                            el [ Background.color config.state.theme.colors.backgroundColor ] <|
+                                text (" " ++ (f |> toHumanWords |> String.join " ") ++ " ")
+
+                        defaultFieldDisplay : Name -> Element msg
+                        defaultFieldDisplay f =
                             Element.row
                                 [ smallPadding config.state.theme |> padding, spacing 1, alignLeft ]
                                 [ viewValue config subjectValue
-                                , el [ Font.bold ] (text ".")
-                                , text (toCamelCase fieldName)
+                                , el [ Font.bold ] <| text "→"
+                                , readableFieldName f
                                 ]
                     in
-                    case Config.evaluate (subjectValue |> Value.toRawValue) config of
-                        Ok valueType ->
-                            case valueType |> fromRawValue config.ir of
-                                Ok (Value.Variable ( index, _ ) variableName) ->
+                    case subjectValue of
+                        Value.Variable ( index, _ ) variableName ->
+                            let
+                                variableValue : Maybe RawValue
+                                variableValue =
+                                    Dict.get variableName config.state.variables
+
+                                singularOrPlural : List String -> String
+                                singularOrPlural vname =
                                     let
-                                        variableValue : Maybe RawValue
-                                        variableValue =
-                                            Dict.get variableName config.state.variables
+                                        lastChar : Name -> Char
+                                        lastChar s =
+                                            ((s |> List.Extra.last |> Maybe.map (String.toList >> List.Extra.last >> Maybe.withDefault '_')) |> Maybe.withDefault '_')
                                     in
-                                    el
-                                        [ onMouseEnter (config.handlers.onHoverOver index config.nodePath variableValue)
-                                        , onMouseLeave (config.handlers.onHoverLeave index config.nodePath)
-                                        , Element.below
-                                            (if config.state.popupVariables.variableIndex == index then
-                                                el [ smallPadding config.state.theme |> padding ] (viewPopup config)
+                                    if (vname |> lastChar) == 's' then
+                                        "' "
 
-                                             else
-                                                Element.text "Not Found"
-                                            )
-                                        , center
-                                        ]
-                                        (String.concat
-                                            [ "the "
-                                            , nameToText variableName
-                                            , "'s "
-                                            , nameToText fieldName
-                                            ]
-                                            |> text
-                                        )
+                                    else
+                                        "'s "
+                            in
+                            row
+                                (valuePopup index variableValue)
+                                [ String.concat
+                                    [ nameToText variableName
+                                    , singularOrPlural variableName
+                                    ]
+                                    |> text
+                                , readableFieldName fieldName
+                                ]
 
-                                _ ->
-                                    defaultValue
-
-                        Err _ ->
-                            defaultValue
+                        _ ->
+                            defaultFieldDisplay fieldName
 
                 Value.Apply _ fun arg ->
                     let

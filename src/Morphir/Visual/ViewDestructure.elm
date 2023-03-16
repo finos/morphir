@@ -1,13 +1,12 @@
 module Morphir.Visual.ViewDestructure exposing (..)
 
-import Element exposing (Element, el, fill, padding, row, text, width)
+import Element exposing (Element, el, padding, text)
 import Element.Background as Background
 import Element.Border as Border
 import Morphir.IR.FQName exposing (getLocalName)
 import Morphir.IR.Type exposing (Type)
-import Morphir.IR.Value as Value exposing (Pattern(..), TypedValue, Value)
+import Morphir.IR.Value as Value exposing (Pattern(..), Value)
 import Morphir.Visual.Common exposing (nameToText)
-import Morphir.Visual.Components.DecisionTable exposing (Match(..))
 import Morphir.Visual.Config exposing (Config, HighlightState(..))
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (mediumPadding, smallPadding)

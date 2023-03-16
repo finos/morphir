@@ -10,9 +10,11 @@ import Element
         ( Element
         , above
         , alignRight
+        , alignTop
         , centerX
         , centerY
         , clipX
+        , clipY
         , column
         , el
         , fill
@@ -50,7 +52,7 @@ import Http exposing (emptyBody, jsonBody)
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
 import Morphir.IR as IR exposing (IR)
-import Morphir.IR.Decoration exposing (AllDecorationConfigAndData, DecorationConfigAndData, DecorationData, DecorationID)
+import Morphir.IR.Decoration exposing (AllDecorationConfigAndData, DecorationData, DecorationID)
 import Morphir.IR.Decoration.Codec exposing (decodeAllDecorationConfigAndData, decodeDecorationData, encodeDecorationData)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
@@ -62,8 +64,10 @@ import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Repo as Repo exposing (Repo)
 import Morphir.IR.SDK as SDK exposing (packageName)
+import Morphir.IR.SDK.Result exposing (err)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
+import Morphir.SDK.Bool exposing (false)
 import Morphir.SDK.Dict as SDKDict
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Error exposing (Error)
@@ -79,16 +83,14 @@ import Morphir.Visual.Components.TabsComponent as TabsComponent
 import Morphir.Visual.Components.TreeViewComponent as TreeViewComponent
 import Morphir.Visual.Config exposing (DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
-import Morphir.Visual.Theme as Theme exposing (Theme, borderBottom, borderRounded, largePadding, largeSpacing)
+import Morphir.Visual.Theme as Theme exposing (Theme, borderBottom, borderRounded, largePadding, largeSpacing, mediumPadding, smallPadding)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewType as ViewType
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.Graph.DependencyGraph exposing (dependencyGraph)
 import Ordering
-import Process
 import Set exposing (Set)
-import Task
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing (..)
 import Url.Parser.Query as Query
@@ -134,7 +136,8 @@ type alias Model =
     , testDescription : String
     , activeTabIndex : Int
     , openSections : Set Int
-    , isAboutOpen : Bool
+    , isModalOpen : Bool
+    , modalContent : Element Msg
     , version : String
     , showSaveTestError : Bool
     }
@@ -184,8 +187,9 @@ type IRState
 
 
 type ServerState
-    = ServerReady
-    | ServerHttpError Http.Error
+    = ServerOk
+    | ServerError String Http.Error
+    | ServerWarning String Http.Error
 
 
 init : Flags -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -195,7 +199,7 @@ init flags url key =
             { key = key
             , theme = Theme.fromConfig Nothing
             , irState = IRLoading
-            , serverState = ServerReady
+            , serverState = ServerOk
             , testSuite = Dict.empty
             , collapsedModules = Set.empty
             , showModules = True
@@ -221,7 +225,8 @@ init flags url key =
             , testDescription = ""
             , activeTabIndex = 0
             , openSections = Set.fromList [ 1 ]
-            , isAboutOpen = False
+            , isModalOpen = False
+            , modalContent = none
             , version = flags.version
             , showSaveTestError = False
             }
@@ -251,8 +256,8 @@ emptyVisualState =
 
 type Msg
     = Navigate NavigationMsg
-    | HttpError Http.Error
-    | DismissHttpError
+    | HttpError String Http.Error
+    | HttpWarning String Http.Error
     | ServerGetIRResponse Distribution
     | ServerGetTestsResponse TestSuite
     | ServerGetAllDecorationConfigAndDataResponse AllDecorationConfigAndData
@@ -262,6 +267,7 @@ type Msg
     | Insight InsightMsg
     | Testing TestingMsg
     | Decoration DecorationMsg
+    | DoNothing
 
 
 type DecorationMsg
@@ -296,7 +302,10 @@ type UIMsg
     | CollapseModule (TreeViewComponent.NodePath ModuleName)
     | SwitchTab Int
     | ToggleSection Int
-    | ToggleAboutModal Bool
+    | OpenAbout
+    | OpenHttpErrorModal Http.Error String Bool
+    | DismissHttpError
+    | CloseModal
 
 
 type FilterMsg
@@ -365,10 +374,14 @@ update msg model =
                 DefinitionSelected url ->
                     ( resetTabs model, Nav.pushUrl model.key url )
 
-        HttpError httpError ->
-            ( { model | serverState = ServerHttpError httpError }
-            , Process.sleep (10 * 1000)
-                |> Task.perform (\_ -> DismissHttpError)
+        HttpError errorSummary httpError ->
+            ( { model | serverState = ServerError errorSummary httpError }
+            , Cmd.none
+            )
+
+        HttpWarning errorSummary httpError ->
+            ( { model | serverState = ServerWarning errorSummary httpError }
+            , Cmd.none
             )
 
         ServerGetIRResponse distribution ->
@@ -391,7 +404,7 @@ update msg model =
                     ( { model
                         | irState = irLoaded
                         , serverState =
-                            ServerHttpError (Http.BadBody "Could not transform Distribution to Repo")
+                            ServerError "Could not transform Distribution to Repo" (Http.BadBody "Could not transform Distribution to Repo")
                       }
                     , httpTestModel (IR.fromDistribution distribution)
                     )
@@ -430,8 +443,22 @@ update msg model =
                     else
                         ( { model | openSections = Set.insert sectionId model.openSections }, Cmd.none )
 
-                ToggleAboutModal isOpen ->
-                    ( { model | isAboutOpen = isOpen }, Cmd.none )
+                OpenAbout ->
+                    ( { model | isModalOpen = True, modalContent = viewAbout model.theme model.version }, Cmd.none )
+
+                OpenHttpErrorModal error errorSummary isWarning ->
+                    ( { model | isModalOpen = True, serverState = ServerOk, modalContent = serverErrorModal model.theme error errorSummary isWarning }, Cmd.none )
+
+                DismissHttpError ->
+                    let
+                        newModel : Model
+                        newModel =
+                            { model | serverState = ServerOk }
+                    in
+                    ( newModel, Cmd.none )
+
+                CloseModal ->
+                    ( { model | isModalOpen = False }, Cmd.none )
 
         ServerGetTestsResponse testSuite ->
             ( { model | testSuite = fromStoredTestSuite testSuite }, Cmd.none )
@@ -697,12 +724,8 @@ update msg model =
                             , httpSaveAttrValue valueDetail.decorationID updatedDecorationsConfigAndData
                             )
 
-        DismissHttpError ->
-            let
-                newModel =
-                    { model | serverState = ServerReady }
-            in
-            ( newModel, Cmd.none )
+        DoNothing ->
+            ( model, Cmd.none )
 
 
 
@@ -989,7 +1012,11 @@ view model =
             , Font.size model.theme.fontSize
             , width fill
             , height fill
-            , attachModal model.theme { content = viewAbout model.theme model.version, isOpen = model.isAboutOpen, onClose = UI (ToggleAboutModal False) }
+            , attachModal model.theme
+                { content = model.modalContent
+                , isOpen = model.isModalOpen
+                , onClose = UI CloseModal
+                }
             ]
             (column
                 [ width fill
@@ -1001,12 +1028,7 @@ view model =
                     , height fill
                     ]
                     (viewBody model)
-                , case model.serverState of
-                    ServerReady ->
-                        none
-
-                    ServerHttpError error ->
-                        viewServerError error
+                , serverErrorBar model.theme model.serverState
                 ]
             )
         ]
@@ -1050,7 +1072,7 @@ viewHeader model =
                 , Theme.borderBottom 1
                 , Border.color model.theme.colors.brandPrimary
                 , mouseOver [ Border.color model.theme.colors.lightest ]
-                , onClick (UI (ToggleAboutModal True))
+                , onClick (UI OpenAbout)
                 , Font.color model.theme.colors.lightest
                 , Font.size (Theme.scaled 5 model.theme)
                 ]
@@ -1062,8 +1084,61 @@ viewHeader model =
 
 {-| Display server errors on the UI
 -}
-viewServerError : Http.Error -> Element msg
-viewServerError error =
+serverErrorBar : Theme -> ServerState -> Element Msg
+serverErrorBar theme serverState =
+    let
+        clickable : msg -> Element.Color -> Element.Color -> String -> Element msg
+        clickable msg textColor borderColor label =
+            Element.Input.button
+                [ pointer
+                , Font.color textColor
+                , Theme.borderBottom 1
+                , Border.color borderColor
+                , mouseOver [ Border.color textColor ]
+                ]
+                { onPress = Just <| msg, label = text label }
+
+        barStyles : List (Element.Attribute msg)
+        barStyles =
+            [ width fill
+            , padding (largePadding theme)
+            , Font.size (Theme.scaled 3 theme)
+            , spacing (Theme.largeSpacing theme)
+            , height <| px 40
+            , clipY
+            ]
+    in
+    case serverState of
+        ServerOk ->
+            none
+
+        ServerError errorSummary error ->
+            row
+                ([ Background.color theme.colors.negativeLight
+                 , Font.color theme.colors.lightest
+                 ]
+                    ++ barStyles
+                )
+                [ el [ width fill ] (text errorSummary)
+                , clickable (UI <| OpenHttpErrorModal error errorSummary False) theme.colors.lightest theme.colors.negativeLight "See details"
+                , clickable (UI DismissHttpError) theme.colors.lightest theme.colors.negativeLight " X "
+                ]
+
+        ServerWarning errorSummary error ->
+            row
+                ([ Background.color theme.colors.backgroundColor
+                 , Font.color theme.colors.darkest
+                 ]
+                    ++ barStyles
+                )
+                [ el [ width fill ] (text errorSummary)
+                , clickable (UI <| OpenHttpErrorModal error errorSummary True) theme.colors.darkest theme.colors.warning "See details"
+                , clickable (UI DismissHttpError) theme.colors.darkest theme.colors.warning " X "
+                ]
+
+
+serverErrorModal : Theme -> Http.Error -> String -> Bool -> Element Msg
+serverErrorModal theme error errorSummary isWarning =
     let
         message : String
         message =
@@ -1083,13 +1158,40 @@ viewServerError error =
                 Http.BadBody body ->
                     "Unexpected response body: " ++ body
     in
-    el
-        [ width fill
-        , paddingXY 20 10
-        , Background.color (rgb 1 0.5 0.5)
-        , Font.color (rgb 1 1 1)
+    column
+        [ borderRounded theme
+        , spacing (Theme.mediumSpacing theme)
+        , width fill
+        , height fill
+        , padding (largePadding theme)
+        , Background.color theme.colors.lightest
         ]
-        (text message)
+        [ row [ width fill, Font.size (Theme.scaled 5 theme) ]
+            [ el [ ifThenElse isWarning (Font.color theme.colors.warning) (Font.color theme.colors.negativeLight), Font.bold ]
+                (text <| ifThenElse isWarning "Warning" "Error")
+            , el
+                [ alignRight
+                , alignTop
+                , onClick (UI CloseModal)
+                , pointer
+                , Background.color theme.colors.lightest
+                , Font.color theme.colors.darkest
+                , borderRounded theme
+                , Font.bold
+                ]
+                (text " x ")
+            ]
+        , row [ width fill ] [ text <| errorSummary ++ ":" ]
+        , row
+            [ clipY
+            , width fill
+            , Border.width 2
+            , padding (smallPadding theme)
+            , borderRounded theme
+            , height (px 250)
+            ]
+            [ el [ width fill, height fill, scrollbars, padding (smallPadding theme) ] (text message) ]
+        ]
 
 
 {-| Display the main part of home UI if the IR has loaded
@@ -1140,7 +1242,7 @@ viewAbout theme version =
 
         close : Element Msg
         close =
-            el [ alignRight, onClick (UI (ToggleAboutModal False)), pointer ] (text " x ")
+            el [ alignRight, onClick (UI CloseModal), pointer ] (text " x ")
 
         sectionTitleStyles : List (Element.Attribute msg)
         sectionTitleStyles =
@@ -1648,7 +1750,6 @@ viewValue theme moduleName valueName valueDef docs =
         isData : Bool
         isData =
             List.isEmpty valueDef.inputTypes
-
     in
     Card.viewAsCard theme
         cardTitle
@@ -1675,7 +1776,7 @@ httpMakeModel =
                 (\response ->
                     case response of
                         Err httpError ->
-                            HttpError httpError
+                            HttpError "We encountered an issue while loading the IR" httpError
 
                         Ok result ->
                             ServerGetIRResponse result
@@ -1693,7 +1794,7 @@ httpTestModel ir =
                 (\response ->
                     case response of
                         Err httpError ->
-                            HttpError httpError
+                            HttpWarning "We encountered an issue while loading the test cases" httpError
 
                         Ok result ->
                             ServerGetTestsResponse result
@@ -1711,7 +1812,7 @@ httpAttributes =
                 (\response ->
                     case response of
                         Err httpError ->
-                            HttpError httpError
+                            HttpWarning "We encountered an issue while loading Decorations" httpError
 
                         Ok result ->
                             ServerGetAllDecorationConfigAndDataResponse result
@@ -1732,7 +1833,7 @@ httpSaveAttrValue decorationID allDecorationConfigAndData =
                         (\response ->
                             case response of
                                 Err httpError ->
-                                    HttpError httpError
+                                    HttpWarning "We encountered an issue while saving Decorations" httpError
 
                                 Ok result ->
                                     ServerGetDecorationDataResponse decorationID result
@@ -1768,7 +1869,7 @@ httpSaveTestSuite ir newTestSuite oldTestSuite =
                 (\response ->
                     case response of
                         Err httpError ->
-                            HttpError httpError
+                            HttpWarning "There was inssue saving test cases" httpError
 
                         Ok result ->
                             ServerGetTestsResponse result

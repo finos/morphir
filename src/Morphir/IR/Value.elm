@@ -826,9 +826,11 @@ collectVariables value =
 generateUniqueName : Value ta va -> Name
 generateUniqueName value =
     let
+        existingVariableNames : Set Name
         existingVariableNames =
             collectVariables value
 
+        chars : List (List String)
         chars =
             String.split "" "abcdefghijklmnopqrstuvwxyz" |> List.map List.singleton
     in
