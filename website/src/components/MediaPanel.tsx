@@ -86,17 +86,18 @@ const MediaList: MediaList[] = [
 export default function MedialPanel(): JSX.Element {
 	return (
 		<section>
-			{MediaList.map((props, idx) => {
-				;<Media key={idx} {...props} />
-			})}
+			{MediaList.map((props, idx) => (
+				<Media key={idx} {...props} />
+			))}
 		</section>
 	)
 }
+
 function Media({ ...props }: MediaList) {
 	return (
 		<div>
-			<div>{props.Episode}</div>
 			<div>{props.Description}</div>
+			<div>{props.Episode}</div>
 		</div>
 	)
 }
