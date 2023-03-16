@@ -66,33 +66,29 @@ nodeIdFromString str =
         returnError =
             Err <| InvalidNodeID ("Invalid NodeID: " ++ str)
 
-        mapToTypeOrValue : String -> String -> String -> String -> String -> Result Error NodeID
-        mapToTypeOrValue typeOrValue packageName moduleName localName nodePath =
-            case typeOrValue of
-                "values" ->
-                    Ok (ValueID (FQName.fqn packageName moduleName localName) (nodePathFromString nodePath))
+        mapToTypeOrValue : String -> String -> String -> String -> Result Error NodeID
+        mapToTypeOrValue packageName moduleName defName nodePath =
+            if String.endsWith ".value" defName then
+                Ok (ValueID (FQName.fqn packageName moduleName defName) (nodePathFromString nodePath))
+            else
+                Ok (TypeID (FQName.fqn packageName moduleName defName) (nodePathFromString nodePath))
 
-                "types" ->
-                    Ok (TypeID (FQName.fqn packageName moduleName localName) (nodePathFromString nodePath))
-
-                _ ->
-                    returnError
     in
     case String.split ":" str of
-        [ nodeKind, packageName, moduleName, localName ] ->
+        [ packageName, moduleName ] ->
+            Ok (ModuleID ( [ packageName |> Name.fromString ], [ moduleName |> Name.fromString ]))
+        [ packageName, moduleName, localName ] ->
             if String.contains "#" localName then
                 case String.split "#" localName of
                     [ defName, path ] ->
-                        mapToTypeOrValue nodeKind packageName moduleName defName path
+                        mapToTypeOrValue packageName moduleName defName path
 
                     _ ->
                         returnError
 
             else
-                mapToTypeOrValue nodeKind packageName moduleName localName ""
+                mapToTypeOrValue packageName moduleName localName ""
 
-        [ _, packageName, moduleName ] ->
-            Ok (ModuleID ( [ packageName |> Name.fromString ], [ moduleName |> Name.fromString ]))
 
         _ ->
             returnError
@@ -101,30 +97,28 @@ nodeIdFromString str =
 nodeIdToString : NodeID -> String
 nodeIdToString nodeId =
     let
-        mapToTypeOrValue typeOrValue packageName moduleName localName nodePath =
+        mapToTypeOrValue packageName moduleName localName suffix nodePath =
+            let
+                constructNodeIdString : String
+                constructNodeIdString =
+                    String.join ":"
+                        [ Path.toString Name.toTitleCase "." packageName
+                        , Path.toString Name.toTitleCase "." moduleName
+                        , (Name.toCamelCase localName) ++ suffix
+                        ]
+            in
             if List.isEmpty nodePath then
-                String.join ":"
-                    [ typeOrValue
-                    , Path.toString Name.toTitleCase "." packageName
-                    , Path.toString Name.toTitleCase "." moduleName
-                    , Name.toCamelCase localName
-                    ]
+                constructNodeIdString
             else
-                (String.join ":"
-                    [ typeOrValue
-                    , Path.toString Name.toTitleCase "." packageName
-                    , Path.toString Name.toTitleCase "." moduleName
-                    , Name.toCamelCase localName
-                    ])
-                    ++ nodePathToString nodePath
+               constructNodeIdString ++ (nodePathToString nodePath)
 
     in
     case nodeId of
         TypeID (packageName, moduleName, localName) nodePath ->
-            mapToTypeOrValue "types" packageName moduleName localName nodePath
+            mapToTypeOrValue packageName moduleName localName ".type" nodePath
 
         ValueID (packageName, moduleName, localName) nodePath ->
-            mapToTypeOrValue "values" packageName moduleName localName nodePath
+            mapToTypeOrValue packageName moduleName localName ".value" nodePath
 
         ModuleID ( packageName, moduleName) ->
             String.join ":"
@@ -149,6 +143,9 @@ nodePathToString nodePath =
 
                                 ChildByIndex index ->
                                     String.fromInt index
+
+                                ChildByPart _ ->
+                                    Debug.todo "branch 'ChildByPart _' not implemented"
                         )
                     |> String.join ":"
                )

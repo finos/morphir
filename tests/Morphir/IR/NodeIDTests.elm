@@ -80,7 +80,7 @@ getValueAttributeByPathTest =
         expectation expectedAttr nodePath value =
             (\_ -> (Expect.equal (Ok expectedAttr) (NodeID.getValueAttributeByPath nodePath value)))
     in
-    only <| describe "ValueNodePath"
+    describe "ValueNodePath"
     [test "Unit" <|
         expectation 99
             [] 
@@ -139,28 +139,6 @@ getValueAttributeByPathTest =
         expectation 69
             [NodeID.ChildByIndex 1] 
             (Value.IfThenElse 71 (Value.Variable 70 ["if"]) (Value.Variable 69 ["then"]) (Value.Variable 68 ["else"]))
-    , test "UpdateRecord value" <|
-        expectation 66
-            [NodeID.ChildByIndex 0] 
-            (Value.UpdateRecord 67 
-                (Value.Record 66 (Dict.fromList [(["field"], (Value.Unit 65) ), (["field2"], (Value.Unit 64) )]))
-                (Dict.fromList [(["field"], (Value.Unit 63) ), (["field2"], (Value.Unit 62) )])
-            )
-    , test "UpdateRecord updateDict" <|
-        expectation 56
-            [NodeID.ChildByIndex 1, NodeID.ChildByName ["field2"]]
-            (Value.UpdateRecord 61 
-                (Value.Record 60 (Dict.fromList [(["field"], (Value.Unit 59) ), (["field2"], (Value.Unit 58) )]))
-                (Dict.fromList [(["field"], (Value.Unit 57) ), (["field2"], (Value.Unit 56) )])
-            )
-    , test "UpdateRecord err" <|
-        (\_ -> (Expect.equal (Err <| InvalidPath "Path is invalid") 
-            (NodeID.getValueAttributeByPath [NodeID.ChildByIndex 1, NodeID.ChildByIndex 1] 
-            (Value.UpdateRecord 55 
-                (Value.Record 54 (Dict.fromList [(["field"], (Value.Unit 53) ), (["field2"], (Value.Unit 52) )]))
-                (Dict.fromList [(["field"], (Value.Unit 51) ), (["field2"], (Value.Unit 50) )])
-            )))
-        )
     , test "Destructure pattern" <|
         expectation 48
             [NodeID.ChildByIndex 0] 

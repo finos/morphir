@@ -94,7 +94,7 @@ import Set exposing (Set)
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing (..)
 import Url.Parser.Query as Query
-import Morphir.IR.NodeId exposing (NodeID)
+
 
 
 -- MAIN
@@ -1379,9 +1379,9 @@ viewHome model packageName packageDef =
                                 )
 
                         Nothing ->
-                            row 
-                            [ width fill, spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme) ] 
-                            [ text <| "This package contains " ++ String.fromInt numberOfModules ++ " modules." ]
+                            row
+                                [ width fill, spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme) ]
+                                [ text <| "This package contains " ++ String.fromInt numberOfModules ++ " modules." ]
 
                 maybeModuleName =
                     model.homeState.selectedModule |> Maybe.map Tuple.second
@@ -2315,7 +2315,7 @@ viewDefinitionDetails model =
                                                                                 )
                                                                             , paddingXY 10 10
                                                                             ]
-                                                                            [ viewDecorationValues model (ValueID fullyQualifiedName) ]
+                                                                            [ viewDecorationValues model (ValueID fullyQualifiedName []) ]
                                                                   }
                                                                 ]
                                                         }
@@ -2364,7 +2364,7 @@ viewDefinitionDetails model =
                                                         )
                                                     , paddingXY 10 10
                                                     ]
-                                                    [ viewDecorationValues model (TypeID fullyQualifiedName) ]
+                                                    [ viewDecorationValues model (TypeID fullyQualifiedName []) ]
                                           }
                                         ]
                                 }
