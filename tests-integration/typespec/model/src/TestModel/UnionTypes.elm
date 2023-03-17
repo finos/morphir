@@ -17,3 +17,15 @@ type Currency
 
 type Reference
     = Bar DateOfBirth
+
+type Valu
+    = Valu Int
+
+type Value =
+    Value Currency
+
+type alias Name =
+    String
+
+type Noun =
+    Noun Name

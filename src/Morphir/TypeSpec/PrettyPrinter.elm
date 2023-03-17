@@ -5,7 +5,7 @@ import Morphir.File.SourceCode exposing (Doc, concat, empty, indent, newLine, se
 import Morphir.IR.Name as Name
 import Morphir.IR.Package exposing (PackageName)
 import Morphir.IR.Path as Path
-import Morphir.TypeSpec.AST as AST exposing (ImportDeclaration(..), Name, Namespace, NamespaceDeclaration)
+import Morphir.TypeSpec.AST as AST exposing (ImportDeclaration(..), Name, Namespace, NamespaceDeclaration, ScalarType)
 
 
 prettyPrint : PackageName -> List ImportDeclaration -> Dict Namespace NamespaceDeclaration -> Doc
@@ -156,9 +156,21 @@ mapTypeDefinition name typeDefinition =
             ]
                 |> concat
 
+        AST.ScalarDefinition typ ->
+            [ "scalar"
+            , space
+            , name
+            , space
+            , "extends"
+            , space
+            , mapScalarType typ
+            , semi
+            ]
+                |> concat
 
-mapType : AST.Type -> String
-mapType tpe =
+
+mapScalarType : ScalarType -> Doc
+mapScalarType tpe =
     case tpe of
         AST.Boolean ->
             "boolean"
@@ -177,6 +189,16 @@ mapType tpe =
 
         AST.PlainTime ->
             "plainTime"
+
+        AST.Null ->
+            "null"
+
+
+mapType : AST.Type -> Doc
+mapType tpe =
+    case tpe of
+        AST.Scalar scalarTyp ->
+            mapScalarType scalarTyp
 
         AST.Array arrayType ->
             case arrayType of
@@ -198,9 +220,6 @@ mapType tpe =
                 |> List.append namespace
                 |> List.intersperse "."
                 |> concat
-
-        AST.Null ->
-            "null"
 
         AST.Variable name ->
             name

@@ -42,24 +42,34 @@ type TypeDefinition
     = Alias TemplateArgs Type
     | Model TemplateArgs Fields
     | Enum EnumValues
+    | ScalarDefinition ScalarType
 
 
-type Type
+{-| Scalar Types are types without fields. Some types are
+-}
+type ScalarType
     = Boolean
     | String
     | Integer
     | Float
     | PlainDate
     | PlainTime
+    | Null
+
+
+{-| -}
+type Type
+    = Scalar ScalarType
     | Array ArrayType
     | Variable Name
     | Reference (List Type) Namespace Name
     | Union (List Type)
     | Const String
     | Object Fields
-    | Null
 
 
+{-| Array type in TypeSpec is a superset that represents both the
+-}
 type ArrayType
     = ListType Type
     | TupleType (List Type)

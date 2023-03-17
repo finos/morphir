@@ -10,7 +10,7 @@ import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path
 import Morphir.IR.Type as IRType exposing (Type(..))
 import Morphir.SDK.ResultList as ResultList
-import Morphir.TypeSpec.AST as AST exposing (ArrayType(..), ImportDeclaration(..), Name, Namespace, NamespaceDeclaration, Type(..), TypeDefinition(..))
+import Morphir.TypeSpec.AST as AST exposing (ArrayType(..), ImportDeclaration(..), Name, Namespace, NamespaceDeclaration, ScalarType(..), Type(..), TypeDefinition(..))
 import Morphir.TypeSpec.PrettyPrinter as PrettyPrinter
 import Set exposing (Set)
 
@@ -21,6 +21,10 @@ type alias Errors =
 
 type alias Options =
     {}
+
+
+morphirTypeSpecSDK =
+    "@morphir/typespec-sdk"
 
 
 mapDistribution : Options -> Distribution -> Result Errors FileMap
@@ -39,7 +43,7 @@ mapDistribution opt distro =
                 imports : List ImportDeclaration
                 imports =
                     if shouldImportSDK then
-                        [ LibraryImport "@morphir/typespec-sdk" ]
+                        [ LibraryImport morphirTypeSpecSDK ]
 
                     else
                         []
@@ -103,8 +107,30 @@ mapTypeDefinition tpeName definition =
                         |> Dict.toList
                         |> List.map Tuple.second
                         |> List.all List.isEmpty
+
+                meetsScalarTypeRequirements : ( Bool, ScalarType )
+                meetsScalarTypeRequirements =
+                    case accessControlled.value |> Dict.toList of
+                        ( ctorName, ( argName, argType ) :: [] ) :: [] ->
+                            case argType |> mapType of
+                                Ok (Scalar typ) ->
+                                    ( tpeName == ctorName
+                                    , typ
+                                    )
+
+                                _ ->
+                                    ( False, Null )
+
+                        _ ->
+                            ( False, Null )
             in
-            if isNoArgConstructors then
+            if meetsScalarTypeRequirements |> Tuple.first then
+                Ok
+                    (ScalarDefinition (meetsScalarTypeRequirements |> Tuple.second)
+                        |> Tuple.pair (iRNameToName tpeName)
+                    )
+
+            else if isNoArgConstructors then
                 let
                     enumFields : AST.EnumValues
                     enumFields =
@@ -169,31 +195,31 @@ mapType tpe =
         IRType.Reference _ (( packageName, moduleName, localName ) as fQName) argTypes ->
             case ( FQName.toString fQName, argTypes ) of
                 ( "Morphir.SDK:Basics:bool", [] ) ->
-                    Ok Boolean
+                    Ok (AST.Scalar Boolean)
 
                 ( "Morphir.SDK:Basics:int", [] ) ->
-                    Ok Integer
+                    Ok (AST.Scalar Integer)
 
                 ( "Morphir.SDK:Basics:float", [] ) ->
-                    Ok Float
+                    Ok (AST.Scalar Float)
 
                 ( "Morphir.SDK:String:string", [] ) ->
-                    Ok String
+                    Ok (AST.Scalar String)
 
                 ( "Morphir.SDK:Char:char", [] ) ->
-                    Ok String
+                    Ok (AST.Scalar String)
 
                 ( "Morphir.SDK:LocalDate:localDate", [] ) ->
-                    Ok PlainDate
+                    Ok (AST.Scalar PlainDate)
 
                 ( "Morphir.SDK:LocalTime:localTime", [] ) ->
-                    Ok PlainTime
+                    Ok (AST.Scalar PlainTime)
 
                 ( "Morphir.SDK:Decimal:decimal", [] ) ->
                     Ok (AST.Reference [] [ "Morphir", "SDK", "Decimal" ] "Decimal")
 
                 ( "Morphir.SDK:Month:month", [] ) ->
-                    Ok String
+                    Ok (AST.Scalar String)
 
                 ( "Morphir.SDK:List:list", [ itemType ] ) ->
                     Result.map Array
@@ -222,7 +248,7 @@ mapType tpe =
                             (\itemTyp ->
                                 Union
                                     [ itemTyp
-                                    , Null
+                                    , AST.Scalar Null
                                     ]
                             )
 
