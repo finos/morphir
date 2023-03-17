@@ -45,7 +45,8 @@
     "src/Morphir/SDK/*",
     "redistributable/**",
     "cli2/lib/*",
-    "cli2/Morphir.Elm.CLI.js"
+    "cli2/Morphir.Elm.CLI.js",
+    "lib/**"
   ],
   "keywords": [
     "morphir",
