@@ -26,6 +26,7 @@ type alias Config msg =
 type alias VisualState =
     { drillDownFunctions : DrillDownFunctions
     , variables : Dict Name RawValue
+    , nonEvaluatedVariables : Dict Name RawValue
     , popupVariables : PopupScreenRecord
     , theme : Theme
     , highlightState : Maybe HighlightState
