@@ -2,13 +2,14 @@ module Morphir.TypeSpec.Backend exposing (..)
 
 import Dict exposing (Dict)
 import Morphir.File.FileMap exposing (FileMap)
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as IRName exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path
-import Morphir.IR.Type as IRType exposing (Type(..))
+import Morphir.IR.Type as IRType exposing (Specification(..), Type(..))
 import Morphir.SDK.ResultList as ResultList
 import Morphir.TypeSpec.AST as AST exposing (ArrayType(..), ImportDeclaration(..), Name, Namespace, NamespaceDeclaration, ScalarType(..), Type(..), TypeDefinition(..))
 import Morphir.TypeSpec.PrettyPrinter as PrettyPrinter
@@ -48,19 +49,19 @@ mapDistribution opt distro =
                     else
                         []
             in
-            mapPackageDefinition packageDef
+            mapPackageDefinition packageDef (distro |> IR.fromDistribution)
                 |> Result.map (PrettyPrinter.prettyPrint packageName imports)
                 |> Result.map (Dict.singleton ( [], Path.toString IRName.toTitleCase "." packageName ++ ".tsp" ))
 
 
-mapPackageDefinition : Package.Definition () (IRType.Type ()) -> Result Errors (Dict Namespace NamespaceDeclaration)
-mapPackageDefinition packageDef =
+mapPackageDefinition : Package.Definition () (IRType.Type ()) -> IR -> Result Errors (Dict Namespace NamespaceDeclaration)
+mapPackageDefinition packageDef ir =
     packageDef.modules
         |> Dict.toList
         |> List.map
             (\( moduleName, accessControlledModDef ) ->
                 accessControlledModDef.value
-                    |> mapModuleDefinition
+                    |> mapModuleDefinition ir
                     |> Result.map
                         (Tuple.pair (moduleName |> List.map IRName.toTitleCase))
             )
@@ -68,21 +69,21 @@ mapPackageDefinition packageDef =
         |> Result.map Dict.fromList
 
 
-mapModuleDefinition : Module.Definition () (IRType.Type ()) -> Result Errors NamespaceDeclaration
-mapModuleDefinition definition =
+mapModuleDefinition : IR -> Module.Definition () (IRType.Type ()) -> Result Errors NamespaceDeclaration
+mapModuleDefinition ir definition =
     definition.types
         |> Dict.toList
         |> List.map
             (\( tpeName, accessControlledDoc ) ->
                 accessControlledDoc.value.value
-                    |> mapTypeDefinition tpeName
+                    |> mapTypeDefinition ir tpeName
             )
         |> ResultList.keepFirstError
         |> Result.map Dict.fromList
 
 
-mapTypeDefinition : IRName.Name -> IRType.Definition ta -> Result Errors ( AST.Name, TypeDefinition )
-mapTypeDefinition tpeName definition =
+mapTypeDefinition : IR -> IRName.Name -> IRType.Definition () -> Result Errors ( AST.Name, TypeDefinition )
+mapTypeDefinition ir tpeName definition =
     case definition of
         IRType.TypeAliasDefinition tpeArgs tpe ->
             tpe
@@ -108,80 +109,86 @@ mapTypeDefinition tpeName definition =
                         |> List.map Tuple.second
                         |> List.all List.isEmpty
 
-                meetsScalarTypeRequirements : ( Bool, ScalarType )
-                meetsScalarTypeRequirements =
+                maybeScalarType : Maybe AST.Type
+                maybeScalarType =
                     case accessControlled.value |> Dict.toList of
                         ( ctorName, ( argName, argType ) :: [] ) :: [] ->
-                            case argType |> mapType of
-                                Ok (Scalar typ) ->
-                                    ( tpeName == ctorName
-                                    , typ
-                                    )
+                            if tpeName == ctorName then
+                                case mapType argType of
+                                    Ok (Scalar typ) ->
+                                        Just (Scalar typ)
 
-                                _ ->
-                                    ( False, Null )
+                                    Ok (AST.Reference _ _ _) ->
+                                        scalarTypeFromType ir argType
+
+                                    _ ->
+                                        Nothing
+
+                            else
+                                Nothing
 
                         _ ->
-                            ( False, Null )
+                            Nothing
             in
-            if meetsScalarTypeRequirements |> Tuple.first then
-                Ok
-                    (ScalarDefinition (meetsScalarTypeRequirements |> Tuple.second)
+            case maybeScalarType of
+                Just scalarTypeExp ->
+                    ScalarDefinition scalarTypeExp
                         |> Tuple.pair (iRNameToName tpeName)
-                    )
+                        |> Ok
 
-            else if isNoArgConstructors then
-                let
-                    enumFields : AST.EnumValues
-                    enumFields =
-                        accessControlled.value
-                            |> Dict.toList
-                            |> List.map
-                                (\( ctorName, _ ) ->
-                                    iRNameToName ctorName
-                                )
-                in
-                Ok
-                    (Enum enumFields
-                        |> Tuple.pair (iRNameToName tpeName)
-                    )
-
-            else
-                let
-                    unionTypeList : Result Errors (List AST.Type)
-                    unionTypeList =
+                Nothing ->
+                    if isNoArgConstructors then
                         let
-                            extractedTpe : IRType.ConstructorArgs a -> Result Errors (List AST.Type)
-                            extractedTpe ctorArgs =
-                                ctorArgs
-                                    |> List.map (Tuple.second >> mapType)
+                            enumFields : AST.EnumValues
+                            enumFields =
+                                accessControlled.value
+                                    |> Dict.toList
+                                    |> List.map
+                                        (\( ctorName, _ ) ->
+                                            iRNameToName ctorName
+                                        )
+                        in
+                        Ok
+                            (Enum enumFields
+                                |> Tuple.pair (iRNameToName tpeName)
+                            )
+
+                    else
+                        let
+                            unionTypeList : Result Errors (List AST.Type)
+                            unionTypeList =
+                                let
+                                    extractedTpe : IRType.ConstructorArgs a -> Result Errors (List AST.Type)
+                                    extractedTpe ctorArgs =
+                                        ctorArgs
+                                            |> List.map (Tuple.second >> mapType)
+                                            |> ResultList.keepFirstError
+                                in
+                                accessControlled.value
+                                    |> Dict.toList
+                                    |> List.map
+                                        (\( ctorName, ctorArgs ) ->
+                                            if List.isEmpty ctorArgs then
+                                                Ok (Const (iRNameToName ctorName))
+
+                                            else
+                                                extractedTpe ctorArgs
+                                                    |> Result.map
+                                                        (\lstOfTypesSoFar ->
+                                                            Const (iRNameToName ctorName)
+                                                                :: lstOfTypesSoFar
+                                                                |> TupleType
+                                                                |> Array
+                                                        )
+                                        )
                                     |> ResultList.keepFirstError
                         in
-                        accessControlled.value
-                            |> Dict.toList
-                            |> List.map
-                                (\( ctorName, ctorArgs ) ->
-                                    if List.isEmpty ctorArgs then
-                                        Ok (Const (iRNameToName ctorName))
-
-                                    else
-                                        extractedTpe ctorArgs
-                                            |> Result.map
-                                                (\lstOfTypesSoFar ->
-                                                    Const (iRNameToName ctorName)
-                                                        :: lstOfTypesSoFar
-                                                        |> TupleType
-                                                        |> Array
-                                                )
+                        unionTypeList
+                            |> Result.map
+                                (Union
+                                    >> Alias (tpeArgs |> List.map iRNameToName)
+                                    >> Tuple.pair (iRNameToName tpeName)
                                 )
-                            |> ResultList.keepFirstError
-                in
-                unionTypeList
-                    |> Result.map
-                        (Union
-                            >> Alias (tpeArgs |> List.map iRNameToName)
-                            >> Tuple.pair (iRNameToName tpeName)
-                        )
 
 
 iRNameToName : IRName.Name -> AST.Name
@@ -343,3 +350,75 @@ mapReferenceType packageName moduleName localName argTypes =
             (\cadlArgTypes ->
                 AST.Reference cadlArgTypes namespace name
             )
+
+
+mapScalarType : FQName -> List (IRType.Type ()) -> Maybe AST.Type
+mapScalarType fQName types =
+    case ( FQName.toString fQName, types ) of
+        ( "Morphir.SDK:Basics:bool", [] ) ->
+            Just (AST.Scalar Boolean)
+
+        ( "Morphir.SDK:Basics:int", [] ) ->
+            Just (AST.Scalar Integer)
+
+        ( "Morphir.SDK:Basics:float", [] ) ->
+            Just (AST.Scalar Float)
+
+        ( "Morphir.SDK:String:string", [] ) ->
+            Just (AST.Scalar String)
+
+        ( "Morphir.SDK:Char:char", [] ) ->
+            Just (AST.Scalar String)
+
+        ( "Morphir.SDK:LocalDate:localDate", [] ) ->
+            Just (AST.Scalar PlainDate)
+
+        ( "Morphir.SDK:LocalTime:localTime", [] ) ->
+            Just (AST.Scalar PlainTime)
+
+        ( "Morphir.SDK:Decimal:decimal", [] ) ->
+            Just (AST.Reference [] [ "Morphir", "SDK", "Decimal" ] "Decimal")
+
+        ( "Morphir.SDK:Month:month", [] ) ->
+            Just (AST.Scalar String)
+
+        _ ->
+            Nothing
+
+
+scalarTypeFromType : IR -> IRType.Type () -> Maybe AST.Type
+scalarTypeFromType ir typ =
+    case typ of
+        IRType.Reference _ (( packageName, moduleName, localName ) as fQName) argTypes ->
+            case argTypes |> mapScalarType fQName of
+                Just (Scalar tpe) ->
+                    Just (Scalar tpe)
+
+                _ ->
+                    case IR.lookupTypeSpecification fQName ir of
+                        Just typSpec ->
+                            case typSpec of
+                                TypeAliasSpecification [] tpe ->
+                                    case mapType tpe of
+                                        Ok (Scalar typp) ->
+                                            Just (Scalar typp)
+
+                                        _ ->
+                                            Nothing
+
+                                CustomTypeSpecification [] ctors ->
+                                    case ctors |> Dict.toList of
+                                        ( ctorName, ( argName, argType ) :: [] ) :: [] ->
+                                            scalarTypeFromType ir argType
+
+                                        _ ->
+                                            Nothing
+
+                                _ ->
+                                    Nothing
+
+                        _ ->
+                            Nothing
+
+        _ ->
+            Nothing

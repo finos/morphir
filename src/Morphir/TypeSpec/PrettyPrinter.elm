@@ -163,7 +163,7 @@ mapTypeDefinition name typeDefinition =
             , space
             , "extends"
             , space
-            , mapScalarType typ
+            , mapType typ
             , semi
             ]
                 |> concat
