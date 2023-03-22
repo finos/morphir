@@ -1,0 +1,29 @@
+// namespace Foo {
+//   namespace Bar {
+//     namespace Baz {
+//       model SampleModel {}
+//     }
+//   }
+// }
+// enum Direction {
+//   North,
+//   East,
+//   South,
+//   West,
+// }
+namespace Foo {
+    model School{
+        district: numeric
+    }
+}
+
+namespace Bar{
+    model Dog {
+        breed:Foo.School.district
+    }
+    model Person{
+        name:string;
+        age: numeric
+    }
+    using Foo;
+}
