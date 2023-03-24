@@ -1,13 +1,14 @@
 module Morphir.IR.NodeId exposing (..)
 
-import Dict
+import Dict exposing (Dict)
 import List.Extra
+import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Package as Package exposing (lookupValueDefinition)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Field, Type(..))
 import Morphir.IR.Value as Value exposing (Value(..))
-
 
 
 {-| Represents a path in the IR. This is a recursive structure made up of the following
@@ -46,13 +47,12 @@ type alias NodePath =
 type NodePathStep
     = ChildByName Name
     | ChildByIndex Int
-    | ChildByPart String
 
 
 type NodeID
     = TypeID FQName NodePath
     | ValueID FQName NodePath
-    | ModuleID (Path, Path)
+    | ModuleID ( Path, Path )
 
 
 type Error
@@ -70,13 +70,14 @@ nodeIdFromString str =
         mapToTypeOrValue packageName moduleName defName nodePath =
             if String.endsWith ".value" defName then
                 Ok (ValueID (FQName.fqn packageName moduleName defName) (nodePathFromString nodePath))
+
             else
                 Ok (TypeID (FQName.fqn packageName moduleName defName) (nodePathFromString nodePath))
-
     in
     case String.split ":" str of
         [ packageName, moduleName ] ->
-            Ok (ModuleID ( [ packageName |> Name.fromString ], [ moduleName |> Name.fromString ]))
+            Ok (ModuleID ( [ packageName |> Name.fromString ], [ moduleName |> Name.fromString ] ))
+
         [ packageName, moduleName, localName ] ->
             if String.contains "#" localName then
                 case String.split "#" localName of
@@ -88,7 +89,6 @@ nodeIdFromString str =
 
             else
                 mapToTypeOrValue packageName moduleName localName ""
-
 
         _ ->
             returnError
@@ -104,23 +104,23 @@ nodeIdToString nodeId =
                     String.join ":"
                         [ Path.toString Name.toTitleCase "." packageName
                         , Path.toString Name.toTitleCase "." moduleName
-                        , (Name.toCamelCase localName) ++ suffix
+                        , Name.toCamelCase localName ++ suffix
                         ]
             in
             if List.isEmpty nodePath then
                 constructNodeIdString
-            else
-               constructNodeIdString ++ (nodePathToString nodePath)
 
+            else
+                constructNodeIdString ++ nodePathToString nodePath
     in
     case nodeId of
-        TypeID (packageName, moduleName, localName) nodePath ->
+        TypeID ( packageName, moduleName, localName ) nodePath ->
             mapToTypeOrValue packageName moduleName localName ".type" nodePath
 
-        ValueID (packageName, moduleName, localName) nodePath ->
+        ValueID ( packageName, moduleName, localName ) nodePath ->
             mapToTypeOrValue packageName moduleName localName ".value" nodePath
 
-        ModuleID ( packageName, moduleName) ->
+        ModuleID ( packageName, moduleName ) ->
             String.join ":"
                 [ Path.toString Name.toTitleCase "." packageName
                 , Path.toString Name.toTitleCase "." moduleName
@@ -143,9 +143,6 @@ nodePathToString nodePath =
 
                                 ChildByIndex index ->
                                     String.fromInt index
-
-                                ChildByPart _ ->
-                                    Debug.todo "branch 'ChildByPart _' not implemented"
                         )
                     |> String.join ":"
                )
@@ -174,7 +171,8 @@ returnInvalidPathError : NodePath -> Result Error value
 returnInvalidPathError pathSoFar =
     case nodePathToString pathSoFar of
         "" ->
-            Err <| InvalidPath ("Path is invalid")
+            Err <| InvalidPath "Path is invalid"
+
         _ ->
             Err <| InvalidPath ("Path is invalid after " ++ nodePathToString pathSoFar)
 
@@ -190,6 +188,292 @@ getFromList nonEmptyPath pathSoFar recursiveFunction list =
 
         _ ->
             returnInvalidPathError pathSoFar
+
+
+getAttribute : Package.Definition attr attr -> NodeID -> Result Error attr
+getAttribute packageDef nodeId =
+    let
+        invalidNodeId : NodeID -> Result Error value
+        invalidNodeId ni =
+            Err <| InvalidNodeID (nodeIdToString ni)
+    in
+    case nodeId of
+        ModuleID ( _, _ ) ->
+            Debug.todo "not implemented for modules yet"
+
+        TypeID ( _, modulePath, localName ) nodePath ->
+            case Dict.get modulePath packageDef.modules of
+                Nothing ->
+                    invalidNodeId nodeId
+
+                Just accessControlledModuleDef ->
+                    case Dict.get localName accessControlledModuleDef.value.types of
+                        Nothing ->
+                            invalidNodeId nodeId
+
+                        Just typeDef ->
+                            case typeDef.value.value of
+                                Type.TypeAliasDefinition _ a ->
+                                    getTypeAttributeByPath nodePath a
+
+                                Type.CustomTypeDefinition _ accessControlledCtors ->
+                                    case accessControlledCtors.value |> Dict.toList of
+                                        [ ( ctorName, [ ( _, baseType ) ] ) ] ->
+                                            if ctorName == localName then
+                                                getTypeAttributeByPath nodePath baseType
+
+                                            else
+                                                invalidNodeId nodeId
+
+                                        _ ->
+                                            invalidNodeId nodeId
+
+        ValueID ( _, modulePath, localName ) _ ->
+            lookupValueDefinition modulePath localName packageDef
+                |> Maybe.map .body
+                |> Maybe.map (\v -> Value.valueAttribute v)
+                |> Result.fromMaybe (InvalidNodeID "")
+
+
+mapTypeAttributeWithNodePathRec : (NodePath -> attr -> attr2) -> NodePath -> Type attr -> Type attr2
+mapTypeAttributeWithNodePathRec mf pathToMe t =
+    let
+        mapList : List (Type attr) -> List (Type attr2)
+        mapList =
+            List.indexedMap
+                (\i el -> mapTypeAttributeWithNodePathRec mf (pathToMe ++ [ ChildByIndex i ]) el)
+
+        mapFieldList : List (Field attr) -> List (Field attr2)
+        mapFieldList =
+            List.map
+                (\el -> { name = el.name, tpe = mapTypeAttributeWithNodePathRec mf (pathToMe ++ [ ChildByName el.name ]) el.tpe })
+
+        mapAttribute : attr -> attr2
+        mapAttribute a =
+            mf pathToMe a
+    in
+    case t of
+        Type.Variable a name ->
+            Type.Variable (mapAttribute a) name
+
+        Type.Reference a fqn argList ->
+            Type.Reference (mapAttribute a)
+                fqn
+                (argList |> mapList)
+
+        Type.Tuple a tupleElems ->
+            Type.Tuple (mapAttribute a)
+                (tupleElems |> mapList)
+
+        Type.Record a fieldList ->
+            Type.Record (mapAttribute a)
+                (fieldList |> mapFieldList)
+
+        Type.ExtensibleRecord a name fieldList ->
+            Type.ExtensibleRecord (mapAttribute a)
+                name
+                (fieldList |> mapFieldList)
+
+        Type.Function a input output ->
+            Type.Function (mapAttribute a)
+                (mapTypeAttributeWithNodePathRec mf (pathToMe ++ [ ChildByIndex 0 ]) input)
+                (mapTypeAttributeWithNodePathRec mf (pathToMe ++ [ ChildByIndex 1 ]) output)
+
+        Type.Unit a ->
+            Type.Unit (mapAttribute a)
+
+
+mapTypeAttributeWithNodePath : (NodePath -> attr -> attr2) -> Type attr -> Type attr2
+mapTypeAttributeWithNodePath mapFunc tpe =
+    mapTypeAttributeWithNodePathRec mapFunc [] tpe
+
+
+mapValueAttributesWithNodePath : (NodePath -> attr -> attr2) -> Value attr attr -> Value attr2 attr2
+mapValueAttributesWithNodePath mapFunc value =
+    let
+        mapValueAttributesWithNodePathRec : (NodePath -> attr -> attr2) -> NodePath -> Value attr attr -> Value attr2 attr2
+        mapValueAttributesWithNodePathRec mf pathToMe v =
+            let
+                mapAttribute : attr -> attr2
+                mapAttribute a =
+                    mf pathToMe a
+
+                leafNodeMap : Value attr attr -> Value attr2 attr2
+                leafNodeMap leafnode =
+                    Value.mapValueAttributes mapAttribute mapAttribute leafnode
+
+                mapList : List (Value attr attr) -> List (Value attr2 attr2)
+                mapList =
+                    List.indexedMap
+                        (\i el -> mapValueAttributesWithNodePathRec mf (pathToMe ++ [ ChildByIndex i ]) el)
+
+                mapDict : NodePath -> Dict Name (Value attr attr) -> Dict Name (Value attr2 attr2)
+                mapDict path dict =
+                    dict
+                        |> Dict.toList
+                        |> List.map
+                            (\el -> el |> Tuple.mapSecond (mapValueAttributesWithNodePathRec mf (path ++ [ ChildByName (Tuple.first el) ])))
+                        |> Dict.fromList
+
+                mapDefinition : NodePath -> Value.Definition attr attr -> Value.Definition attr2 attr2
+                mapDefinition path def =
+                    let
+                        mapType : Int -> Type attr -> Type attr2
+                        mapType n t =
+                            mapTypeAttributeWithNodePathRec mf (path ++ [ ChildByName [ "inputTypes" ], ChildByIndex n, ChildByIndex 1 ]) t
+                    in
+                    Value.Definition
+                        (def.inputTypes
+                            |> List.indexedMap
+                                (\i ( name, a, inputType ) -> ( name, mf (path ++ [ ChildByName [ "inputTypes" ], ChildByIndex i, ChildByIndex 0 ]) a, mapType i inputType ))
+                        )
+                        (def.outputType |> mapTypeAttributeWithNodePathRec mf (path ++ [ ChildByName [ "outputType" ] ]))
+                        (def.body |> mapValueAttributesWithNodePathRec mf (path ++ [ ChildByName [ "body" ] ]))
+            in
+            case v of
+                Value.Unit _ ->
+                    leafNodeMap v
+
+                Value.Literal _ _ ->
+                    leafNodeMap v
+
+                Value.Constructor a fqn ->
+                    Value.Constructor (mapAttribute a) fqn
+
+                Value.Tuple a tupleList ->
+                    Value.Tuple (mapAttribute a) (mapList tupleList)
+
+                Value.List a list ->
+                    Value.List (mapAttribute a) (mapList list)
+
+                Value.Record a recordDict ->
+                    Value.Record (mapAttribute a)
+                        (mapDict pathToMe recordDict)
+
+                Value.Variable _ _ ->
+                    leafNodeMap v
+
+                Value.Reference _ _ ->
+                    leafNodeMap v
+
+                Value.Field a val name ->
+                    Value.Field
+                        (mapAttribute a)
+                        (mapValueAttributesWithNodePathRec mf (pathToMe ++ [ ChildByIndex 0 ]) val)
+                        name
+
+                Value.FieldFunction _ _ ->
+                    leafNodeMap v
+
+                Value.Apply a input output ->
+                    Value.Apply
+                        (mapAttribute a)
+                        (mapValueAttributesWithNodePathRec mf (pathToMe ++ [ ChildByIndex 0 ]) input)
+                        (mapValueAttributesWithNodePathRec mf (pathToMe ++ [ ChildByIndex 1 ]) output)
+
+                Value.Lambda a pattern lambdaVal ->
+                    Value.Lambda
+                        (mapAttribute a)
+                        (mapPatternAttributesWithNodePathRec mf (pathToMe ++ [ ChildByIndex 0 ]) pattern)
+                        (mapValueAttributesWithNodePathRec mf (pathToMe ++ [ ChildByIndex 1 ]) lambdaVal)
+
+                Value.LetDefinition a name def val ->
+                    Value.LetDefinition
+                        (mapAttribute a)
+                        name
+                        (mapDefinition (pathToMe ++ [ChildByIndex 0]) def)
+                        (mapValueAttributesWithNodePathRec mf (pathToMe ++ [ ChildByIndex 1 ]) val)
+
+                Value.LetRecursion a definitionDict val ->
+                    Value.LetRecursion
+                        (mapAttribute a)
+                        (Dict.map (\name definition -> mapDefinition (pathToMe ++ [ ChildByName name ]) definition) definitionDict)
+                        (mapValueAttributesWithNodePathRec mf (pathToMe ++ [ ChildByIndex 1 ]) val)
+
+                Value.Destructure a pattern v1 v2 ->
+                    Value.Destructure
+                        (mapAttribute a)
+                        (mapPatternAttributesWithNodePathRec mf (pathToMe ++ [ ChildByIndex 0 ]) pattern)
+                        (mapValueAttributesWithNodePathRec mf (pathToMe ++ [ ChildByIndex 1 ]) v1)
+                        (mapValueAttributesWithNodePathRec mf (pathToMe ++ [ ChildByIndex 2 ]) v2)
+
+                Value.IfThenElse a condition thenBranch elseBranch ->
+                    Value.IfThenElse
+                        (mapAttribute a)
+                        (mapValueAttributesWithNodePathRec mf (pathToMe ++ [ ChildByIndex 0 ]) condition)
+                        (mapValueAttributesWithNodePathRec mf (pathToMe ++ [ ChildByIndex 1 ]) thenBranch)
+                        (mapValueAttributesWithNodePathRec mf (pathToMe ++ [ ChildByIndex 2 ]) elseBranch)
+
+                Value.PatternMatch a val patternList ->
+                    Value.PatternMatch
+                        (mapAttribute a)
+                        (mapValueAttributesWithNodePathRec mf (pathToMe ++ [ ChildByIndex 0 ]) val)
+                        (patternList
+                            |> List.indexedMap
+                                (\i pv ->
+                                    Tuple.pair (mapPatternAttributesWithNodePathRec mf (pathToMe ++ [ ChildByIndex 1, ChildByIndex i, ChildByIndex 0 ]) (Tuple.first pv))
+                                        (mapValueAttributesWithNodePathRec mf (pathToMe ++ [ ChildByIndex 1, ChildByIndex i, ChildByIndex 1 ]) (Tuple.second pv))
+                                )
+                        )
+
+                Value.UpdateRecord a rec updateDict ->
+                    Value.UpdateRecord
+                        (mapAttribute a)
+                        (mapValueAttributesWithNodePathRec mf (pathToMe ++ [ ChildByIndex 0 ]) rec)
+                        (mapDict (pathToMe ++ [ChildByIndex 1]) updateDict)
+    in
+    mapValueAttributesWithNodePathRec mapFunc [] value
+
+
+mapPatternAttributesWithNodePath : (NodePath -> attr -> attr2) -> Value.Pattern attr -> Value.Pattern attr2
+mapPatternAttributesWithNodePath mapFunc pattern =
+    mapPatternAttributesWithNodePathRec mapFunc [] pattern
+
+
+mapPatternAttributesWithNodePathRec : (NodePath -> attr -> attr2) -> NodePath -> Value.Pattern attr -> Value.Pattern attr2
+mapPatternAttributesWithNodePathRec mapFunc pathToMe pattern =
+    let
+        mapList : List (Value.Pattern attr) -> List (Value.Pattern attr2)
+        mapList patternList =
+            patternList |> List.indexedMap (\i p -> mapPatternAttributesWithNodePathRec mapFunc (pathToMe ++ [ ChildByIndex i ]) p)
+    in
+    case pattern of
+        Value.UnitPattern a ->
+            Value.UnitPattern (mapFunc pathToMe a)
+
+        Value.WildcardPattern a ->
+            Value.WildcardPattern (mapFunc pathToMe a)
+
+        Value.AsPattern a p name ->
+            Value.AsPattern (mapFunc pathToMe a)
+                (mapPatternAttributesWithNodePathRec mapFunc (pathToMe ++ [ ChildByIndex 0 ]) p)
+                name
+
+        Value.TuplePattern a tupleList ->
+            Value.TuplePattern
+                (mapFunc pathToMe a)
+                (mapList tupleList)
+
+        Value.ConstructorPattern a fqn argList ->
+            Value.ConstructorPattern
+                (mapFunc pathToMe a)
+                fqn
+                (mapList argList)
+
+        Value.EmptyListPattern a ->
+            Value.EmptyListPattern
+                (mapFunc pathToMe a)
+
+        Value.HeadTailPattern a head tail ->
+            Value.HeadTailPattern
+                (mapFunc pathToMe a)
+                (mapPatternAttributesWithNodePathRec mapFunc (pathToMe ++ [ ChildByIndex 0 ]) head)
+                (mapPatternAttributesWithNodePathRec mapFunc (pathToMe ++ [ ChildByIndex 1 ]) tail)
+
+        Value.LiteralPattern a literal ->
+            Value.LiteralPattern
+                (mapFunc pathToMe a)
+                literal
 
 
 getTypeAttributeByPath : NodePath -> Type attr -> Result Error attr
@@ -253,6 +537,8 @@ getTypeAttributeByPath path tpea =
     in
     getTypeAttributeByPathRec path [] tpea
 
+
+
 getValueAttributeByPath : NodePath -> Value attr attr -> Result Error attr
 getValueAttributeByPath path value =
     let
@@ -270,13 +556,13 @@ getValueAttributeByPath path value =
                                 ChildByIndex n :: ys ->
                                     case ys of
                                         [ChildByIndex 0] ->
-                                            def.inputTypes 
+                                            def.inputTypes
                                             |> List.Extra.getAt n
                                             |> Maybe.map (\(name, va, typea) -> Ok va)
                                             |> Maybe.withDefault (returnInvalidPathError [])
 
                                         ChildByIndex 1 :: zs ->
-                                            def.inputTypes 
+                                            def.inputTypes
                                             |> List.Extra.getAt n
                                             |> Maybe.map (\(name, va, typea) -> getTypeAttributeByPath zs typea)
                                             |> Maybe.withDefault (returnInvalidPathError [])
@@ -301,10 +587,10 @@ getValueAttributeByPath path value =
                             getTypeAttributeByPath xs def.outputType
 
                         ((ChildByIndex 2) as curr) :: xs ->
-                            getValueAttributeByPathRec xs (List.append [ curr ] pathSoFar) def.body
+                            getValueAttributeByPathRec xs (pathSoFar ++ [curr]) def.body
 
                         ((ChildByName ["body"]) as curr) :: xs ->
-                            getValueAttributeByPathRec xs (List.append [ curr ] pathSoFar) def.body
+                            getValueAttributeByPathRec xs (pathSoFar ++ [curr]) def.body
 
                         _ ->
                             returnInvalidPathError nodePath
@@ -326,7 +612,7 @@ getValueAttributeByPath path value =
 
                                 ((ChildByName n) as curr) :: xs ->
                                     Dict.get n fieldDict
-                                        |> Maybe.map (getValueAttributeByPathRec xs (List.append [ curr ] pathSoFar))
+                                        |> Maybe.map (getValueAttributeByPathRec xs (pathSoFar ++ [curr]))
                                         |> Maybe.withDefault (returnInvalidPathError pathSoFar)
 
                                 _ ->
@@ -335,17 +621,17 @@ getValueAttributeByPath path value =
                         Value.Field _ v _ ->
                             case nonEmptyPath of
                                 ((ChildByIndex 0) as curr) :: xs ->
-                                    getValueAttributeByPathRec xs (List.append [ curr ] pathSoFar) v
+                                    getValueAttributeByPathRec xs (pathSoFar ++ [curr]) v
                                 _ ->
                                     returnInvalidPathError pathSoFar
 
                         Value.Apply _ x y ->
                             case nonEmptyPath of
                                 ((ChildByIndex 0) as curr) :: xs ->
-                                    getValueAttributeByPathRec xs (List.append [ curr ] pathSoFar) x
+                                    getValueAttributeByPathRec xs (pathSoFar ++ [curr]) x
 
                                 ((ChildByIndex 1) as curr) :: xs ->
-                                    getValueAttributeByPathRec xs (List.append [ curr ] pathSoFar) y
+                                    getValueAttributeByPathRec xs (pathSoFar ++ [curr]) y
 
                                 _ ->
                                     returnInvalidPathError pathSoFar
@@ -353,13 +639,13 @@ getValueAttributeByPath path value =
                         Value.IfThenElse _ cond thenBranch elseBranch ->
                             case nonEmptyPath of
                                 ((ChildByIndex 0) as curr) :: xs ->
-                                    getValueAttributeByPathRec xs (List.append [ curr ] pathSoFar) cond
+                                    getValueAttributeByPathRec xs (pathSoFar ++ [curr]) cond
 
                                 ((ChildByIndex 1) as curr) :: xs ->
-                                    getValueAttributeByPathRec xs (List.append [ curr ] pathSoFar) thenBranch
+                                    getValueAttributeByPathRec xs (pathSoFar ++ [curr]) thenBranch
 
                                 ((ChildByIndex 2) as curr) :: xs ->
-                                    getValueAttributeByPathRec xs (List.append [ curr ] pathSoFar) elseBranch
+                                    getValueAttributeByPathRec xs (pathSoFar ++ [curr]) elseBranch
 
                                 _ ->
                                     returnInvalidPathError pathSoFar
@@ -370,7 +656,7 @@ getValueAttributeByPath path value =
                                     pattern |> Value.patternAttribute |> Ok
 
                                 ((ChildByIndex 1) as curr) :: xs ->
-                                    getValueAttributeByPathRec xs (List.append [ curr ] pathSoFar) lambdaVal
+                                    getValueAttributeByPathRec xs (pathSoFar ++ [curr]) lambdaVal
 
                                 _ ->
                                     returnInvalidPathError pathSoFar
@@ -381,7 +667,7 @@ getValueAttributeByPath path value =
                                     getFromDefinition def xs
 
                                 ((ChildByIndex 1) as curr) :: xs ->
-                                    getValueAttributeByPathRec xs (List.append [ curr ] pathSoFar) v
+                                    getValueAttributeByPathRec xs (pathSoFar ++ [curr]) v
 
                                 _ ->
                                     returnInvalidPathError pathSoFar
@@ -395,7 +681,7 @@ getValueAttributeByPath path value =
                                     |> Maybe.withDefault (returnInvalidPathError pathSoFar)
 
                                 ((ChildByIndex 1) as curr) :: xs ->
-                                    getValueAttributeByPathRec xs (List.append [ curr ] pathSoFar) v
+                                    getValueAttributeByPathRec xs (pathSoFar ++ [curr]) v
 
                                 _ ->
                                     returnInvalidPathError pathSoFar
@@ -406,10 +692,10 @@ getValueAttributeByPath path value =
                                     pattern |> Value.patternAttribute |> Ok
 
                                 ((ChildByIndex 1) as curr) :: xs ->
-                                    getValueAttributeByPathRec xs (List.append [ curr ] pathSoFar) v1
+                                    getValueAttributeByPathRec xs (pathSoFar ++ [curr]) v1
 
                                 ((ChildByIndex 2) as curr) :: xs ->
-                                    getValueAttributeByPathRec xs (List.append [ curr ] pathSoFar) v2
+                                    getValueAttributeByPathRec xs (pathSoFar ++ [curr]) v2
 
                                 _ ->
                                     returnInvalidPathError pathSoFar
@@ -417,7 +703,7 @@ getValueAttributeByPath path value =
                         Value.PatternMatch _ v patternList ->
                             case nonEmptyPath of
                                 ((ChildByIndex 0) as curr) :: xs ->
-                                    getValueAttributeByPathRec xs (List.append [ curr ] pathSoFar) v
+                                    getValueAttributeByPathRec xs (pathSoFar ++ [curr]) v
 
                                 ChildByIndex 1 :: xs ->
                                     case xs of
@@ -425,22 +711,42 @@ getValueAttributeByPath path value =
                                             List.Extra.getAt n patternList
                                             |> Maybe.map (\maybeTuple ->
                                                 case ys of
-                                                    ChildByIndex 1 :: _ ->
+                                                    ChildByIndex 0 :: _ ->
                                                         maybeTuple |> Tuple.first |> Value.patternAttribute |> Ok
-                                                    ChildByIndex 2 :: zs ->
-                                                        getValueAttributeByPathRec zs (List.append [ curr2, ChildByIndex 2 ] pathSoFar) (Tuple.second maybeTuple)
+                                                    ChildByIndex 1 :: zs ->
+                                                        getValueAttributeByPathRec zs (List.append [ curr2, ChildByIndex 1 ] pathSoFar) (Tuple.second maybeTuple)
                                                     _ ->
-                                                        returnInvalidPathError (List.append [ ChildByIndex 1, curr2 ] pathSoFar)
+                                                      returnInvalidPathError (List.append [ ChildByIndex 1, curr2 ] pathSoFar)
                                                     )
                                             |> Maybe.withDefault (returnInvalidPathError pathSoFar)
+
                                         _ ->
                                             returnInvalidPathError (List.append [ ChildByIndex 1 ] pathSoFar)
 
                                 _ ->
                                     returnInvalidPathError pathSoFar
 
+                        Value.UpdateRecord _ recordToUpdate updateDict ->
+                            case nonEmptyPath of
+                                ((ChildByIndex 0) as curr) :: xs ->
+                                    getValueAttributeByPathRec xs (pathSoFar ++ [curr]) recordToUpdate
+
+                                (ChildByIndex 1) :: xs ->
+                                    case xs of
+                                        ((ChildByName m) as curr) :: ys ->
+                                            Dict.get m updateDict
+                                                |> Maybe.map (getValueAttributeByPathRec ys (List.append [ChildByIndex 1, curr ] pathSoFar))
+                                                |> Maybe.withDefault (returnInvalidPathError pathSoFar)
+                                        _ ->
+                                            returnInvalidPathError (pathSoFar ++ [ChildByIndex 1])
+
+                                _ ->
+                                    returnInvalidPathError pathSoFar
 
                         _ ->
                             returnInvalidPathError pathSoFar
+
+
+
     in
     getValueAttributeByPathRec path [] value

@@ -26,3 +26,13 @@ type alias DecorationConfigAndData =
     , iR : Morphir.IR.Distribution.Distribution
     , data : DecorationData
     }
+
+
+{-| Get every nodeId decorated with a given decoration
+-}
+getDecoratedNodeIds : DecorationID -> AllDecorationConfigAndData -> List NodeID
+getDecoratedNodeIds decorationId allDecorationConfigData =
+    allDecorationConfigData
+        |> Dict.get decorationId
+        |> Maybe.map (\decorationsConfigData -> SDKDict.keys decorationsConfigData.data)
+        |> Maybe.withDefault []
