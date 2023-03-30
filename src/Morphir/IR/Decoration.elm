@@ -32,7 +32,21 @@ type alias DecorationConfigAndData =
 -}
 getDecoratedNodeIds : DecorationID -> AllDecorationConfigAndData -> List NodeID
 getDecoratedNodeIds decorationId allDecorationConfigData =
+    filterDecorations decorationId (always << always True) allDecorationConfigData
+
+
+{-| Given a decoration type and value, get every node decorated with that value
+-}
+getNodeIdsDecoratedWithValue : DecorationID -> RawValue -> AllDecorationConfigAndData -> List NodeID
+getNodeIdsDecoratedWithValue decorationId decorationValue allDecorationConfigData =
+    filterDecorations decorationId (\_ v -> v == decorationValue) allDecorationConfigData
+
+{-| Given a decoration type and a predicate, return a List of NodeIDs where the decoration satisfies the predicate
+-}
+filterDecorations : DecorationID -> (DecorationID -> RawValue -> Bool) -> AllDecorationConfigAndData -> List NodeID
+filterDecorations decorationId filterFunction allDecorationConfigData =
     allDecorationConfigData
         |> Dict.get decorationId
-        |> Maybe.map (\decorationsConfigData -> SDKDict.keys decorationsConfigData.data)
+        |> Maybe.map (\decorationsConfigData -> SDKDict.filter filterFunction decorationsConfigData.data)
+        |> Maybe.map SDKDict.keys
         |> Maybe.withDefault []
