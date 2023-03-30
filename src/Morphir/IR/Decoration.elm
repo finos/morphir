@@ -43,7 +43,7 @@ getNodeIdsDecoratedWithValue decorationId decorationValue allDecorationConfigDat
 
 {-| Given a decoration type and a predicate, return a List of NodeIDs where the decoration satisfies the predicate
 -}
-filterDecorations : DecorationID -> (DecorationID -> RawValue -> Bool) -> AllDecorationConfigAndData -> List NodeID
+filterDecorations : DecorationID -> (NodeID -> RawValue -> Bool) -> AllDecorationConfigAndData -> List NodeID
 filterDecorations decorationId filterFunction allDecorationConfigData =
     allDecorationConfigData
         |> Dict.get decorationId
