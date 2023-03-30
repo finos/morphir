@@ -254,11 +254,6 @@ getNextHighlightState config currentMatch previousStates =
     List.append previousStates [ nextState ]
 
 
-toTypedValue : EnrichedValue -> TypedValue
-toTypedValue visualTypedValue =
-    visualTypedValue
-        |> Value.mapValueAttributes (always ()) (always Tuple.second (Value.valueAttribute visualTypedValue))
-
 
 toTypedPattern : Pattern ( Int, Type () ) -> TypedPattern
 toTypedPattern match =
