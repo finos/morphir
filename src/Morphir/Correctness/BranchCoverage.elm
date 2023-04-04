@@ -102,53 +102,61 @@ expressions made up of multiple criteria (combined with or, and or not) should g
 -}
 valueBranches : Bool -> Value ta va -> List (Branch ta va)
 valueBranches expandCriteria value =
-    case value of
-        Value.IfThenElse _ cond thenBranch elseBranch ->
-            List.concat
-                [ bothBranches
-                    (conditionBranches expandCriteria cond True)
-                    (valueBranches expandCriteria thenBranch)
-                , bothBranches
-                    (conditionBranches expandCriteria cond False)
-                    (valueBranches expandCriteria elseBranch)
-                ]
+    value
+        |> Value.reduceValueBottomUp
+            (\currentValue childBranches ->
+                case currentValue of
+                    Value.IfThenElse _ cond thenBranch elseBranch ->
+                        List.concat
+                            [ bothBranches
+                                (conditionBranches expandCriteria cond True)
+                                (valueBranches expandCriteria thenBranch)
+                            , bothBranches
+                                (conditionBranches expandCriteria cond False)
+                                (valueBranches expandCriteria elseBranch)
+                            ]
 
-        Value.PatternMatch _ subject cases ->
-            let
-                caseBranches : List ( Pattern va, Value ta va ) -> List (Pattern va) -> List (Branch ta va)
-                caseBranches remainingCases exclude =
-                    case remainingCases of
-                        ( nextCasePattern, nextCaseBody ) :: restOfCases ->
-                            let
-                                patternCondition : Condition ta va
-                                patternCondition =
-                                    PatternCondition
-                                        { subject = subject
-                                        , excludes = exclude
-                                        , includes = nextCasePattern
-                                        }
+                    Value.PatternMatch _ subject cases ->
+                        let
+                            caseBranches : List ( Pattern va, Value ta va ) -> List (Pattern va) -> List (Branch ta va)
+                            caseBranches remainingCases exclude =
+                                case remainingCases of
+                                    ( nextCasePattern, nextCaseBody ) :: restOfCases ->
+                                        let
+                                            patternCondition : Condition ta va
+                                            patternCondition =
+                                                PatternCondition
+                                                    { subject = subject
+                                                    , excludes = exclude
+                                                    , includes = nextCasePattern
+                                                    }
 
-                                nextCaseBranches : List (Branch ta va)
-                                nextCaseBranches =
-                                    bothBranches
-                                        [ [ patternCondition ] ]
-                                        (valueBranches expandCriteria nextCaseBody)
-                            in
-                            List.concat
-                                [ nextCaseBranches
-                                , caseBranches restOfCases (exclude ++ [ nextCasePattern ])
-                                ]
+                                            nextCaseBranches : List (Branch ta va)
+                                            nextCaseBranches =
+                                                bothBranches
+                                                    [ [ patternCondition ] ]
+                                                    (valueBranches expandCriteria nextCaseBody)
+                                        in
+                                        List.concat
+                                            [ nextCaseBranches
+                                            , caseBranches restOfCases (exclude ++ [ nextCasePattern ])
+                                            ]
 
-                        [] ->
-                            []
-            in
-            bothBranches
-                (valueBranches expandCriteria subject)
-                (caseBranches cases [])
+                                    [] ->
+                                        []
+                        in
+                        bothBranches
+                            (valueBranches expandCriteria subject)
+                            (caseBranches cases [])
 
-        _ ->
-            -- a single branch with no conditions
-            [ [] ]
+                    _ ->
+                        if List.isEmpty childBranches then
+                            -- a single branch with no conditions
+                            [ [] ]
+
+                        else
+                            eitherBranches childBranches
+            )
 
 
 {-| Generates branches (combinations of conditions) that will make the condition passed in produce the expected value

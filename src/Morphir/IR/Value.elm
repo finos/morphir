@@ -26,6 +26,7 @@ module Morphir.IR.Value exposing
     , collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
     , definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables, isData, toString
     , generateUniqueName
+    , reduceValueBottomUp
     )
 
 {-| In functional programming data and logic are treated the same way and we refer to both as values. This module
@@ -627,6 +628,102 @@ mapDefinitionAttributes f g d =
         (d.inputTypes |> List.map (\( name, attr, tpe ) -> ( name, g attr, Type.mapTypeAttributes f tpe )))
         (Type.mapTypeAttributes f d.outputType)
         (mapValueAttributes f g d.body)
+
+
+{-| Function to traverse a value expression tree bottom-up and apply a function to an accumulator value at each step
+to come up with a final value that was derived from the whole tree. It's very similar to a fold but there are a few
+differences since it works on a tree instead of a list.
+
+The function takes a lambda that will be invoked on each node with two arguments:
+
+1.  The value node that is currently being processed.
+2.  The list of accumulator values returned by the node's children (will be empty in case of a leaf node).
+
+The lambda should calculate and return an accumulator value that will be continuously rolled up to the top of the
+expression tree and returned at the root.
+
+This is a very flexible utility function that can be used to do a lot of things by supplying different lambdas.
+Here are a few examples:
+
+  - Count the number of nodes: \`reduceValueBottomUp (\_ childCounts -> List.sum childCounts + 1)
+  - Get the depth of the tree: `reduceValueBottomUp (\_ childDepths -> (List.maximum childDepths |> Maybe.withDefault 0) + 1)`
+
+These are simple examples that return a single value but you could also use a more complex accumulator value.
+For example you could collect things by using a list accumulator or build a new tree.
+
+-}
+reduceValueBottomUp : (Value typeAttribute valueAttribute -> List accumulator -> accumulator) -> Value typeAttribute valueAttribute -> accumulator
+reduceValueBottomUp mapNode currentValue =
+    case currentValue of
+        Tuple _ elements ->
+            elements
+                |> List.map (reduceValueBottomUp mapNode)
+                |> mapNode currentValue
+
+        List _ items ->
+            items
+                |> List.map (reduceValueBottomUp mapNode)
+                |> mapNode currentValue
+
+        Record _ fields ->
+            fields
+                |> Dict.values
+                |> List.map (reduceValueBottomUp mapNode)
+                |> mapNode currentValue
+
+        Field _ subjectValue _ ->
+            mapNode currentValue
+                [ reduceValueBottomUp mapNode subjectValue ]
+
+        Apply _ function argument ->
+            mapNode currentValue
+                [ reduceValueBottomUp mapNode function
+                , reduceValueBottomUp mapNode argument
+                ]
+
+        Lambda _ _ body ->
+            mapNode currentValue
+                [ reduceValueBottomUp mapNode body ]
+
+        LetDefinition _ _ _ inValue ->
+            mapNode currentValue
+                [ reduceValueBottomUp mapNode inValue ]
+
+        LetRecursion _ _ inValue ->
+            mapNode currentValue
+                [ reduceValueBottomUp mapNode inValue ]
+
+        Destructure _ _ valueToDestruct inValue ->
+            mapNode currentValue
+                [ reduceValueBottomUp mapNode valueToDestruct
+                , reduceValueBottomUp mapNode inValue
+                ]
+
+        IfThenElse _ condition thenBranch elseBranch ->
+            mapNode currentValue
+                [ reduceValueBottomUp mapNode condition
+                , reduceValueBottomUp mapNode thenBranch
+                , reduceValueBottomUp mapNode elseBranch
+                ]
+
+        PatternMatch _ branchOutOn cases ->
+            mapNode currentValue
+                (cases
+                    |> List.map Tuple.second
+                    |> List.map (reduceValueBottomUp mapNode)
+                    |> List.append [ reduceValueBottomUp mapNode branchOutOn ]
+                )
+
+        UpdateRecord _ valueToUpdate fieldsToUpdate ->
+            mapNode currentValue
+                (fieldsToUpdate
+                    |> Dict.values
+                    |> List.map (reduceValueBottomUp mapNode)
+                    |> List.append [ reduceValueBottomUp mapNode valueToUpdate ]
+                )
+
+        _ ->
+            mapNode currentValue []
 
 
 {-| -}
