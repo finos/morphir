@@ -117,6 +117,7 @@ which is just the specification of those. Value definitions can be typed or unty
 @docs collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
 @docs definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables, isData, toString
 @docs generateUniqueName
+@docs reduceValueBottomUp
 
 -}
 
