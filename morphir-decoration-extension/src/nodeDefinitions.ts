@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as util from "util";
 import * as path from "path";
 import { Morphir, toDistribution } from "morphir-elm";
+import { type } from "os";
 
 export class DepNodeProvider implements vscode.TreeDataProvider<Dependency> {
   private _onDidChangeTreeData: vscode.EventEmitter<
@@ -26,22 +27,12 @@ export class DepNodeProvider implements vscode.TreeDataProvider<Dependency> {
       vscode.window.showInformationMessage("No dependency in empty workspace");
       return Promise.resolve([]);
     }
-
+    const morphirIRPath = path.join(this.workspaceRoot, "morphir-ir.json");
     if (element) {
-      return Promise.resolve(
-        this.getDefsInIR(
-          path.join(
-            this.workspaceRoot,
-            "node_modules",
-            element.label,
-            "package.json"
-          )
-        )
-      );
+      return Promise.resolve(this.getDefinitionTree(morphirIRPath,element));
     } else {
-      const morphirIRPath = path.join(this.workspaceRoot, "morphir-ir.json");
       if (this.pathExists(morphirIRPath)) {
-        return Promise.resolve(this.getDefsInIR(morphirIRPath));
+        return Promise.resolve(this.getDefinitionTree(morphirIRPath));
       } else {
         vscode.window.showInformationMessage(
           "Workspace has no morphir-ir.json"
@@ -51,68 +42,103 @@ export class DepNodeProvider implements vscode.TreeDataProvider<Dependency> {
     }
   }
 
+  private toDefinitionTree = (moduleName: string, types?: Array<string>): Dependency => {
+    if (types && types.length !== 0) {
+      return new Dependency(
+        moduleName,
+        vscode.TreeItemCollapsibleState.Collapsed
+      );
+    } else {
+      return new Dependency(moduleName, vscode.TreeItemCollapsibleState.None, {
+        command: "extension.openPackageOnNpm",
+        title: "opening",
+        arguments: [moduleName],
+      });
+    }
+  };
+
+  private capitalize(str: string): string {
+    return str.substring(0, 1).toUpperCase() + str.substring(1).toLowerCase();
+  }
+
+  private definitionArr = (ir: Morphir.IR.Distribution.Distribution):Dependency[] => {
+    let moduleNameArr: Array<string> = [];
+    let moduleDef = new Map<string, Array<string>>();
+    switch (ir.kind) {
+      case "Library":
+        ir.arg3.modules.forEach((accessControlledModuleDef, moduleName) => {
+          let typeNames: Array<string> = [];
+          moduleNameArr.push(
+            moduleName.map((n) => n.map(this.capitalize).join("")).join(" ")
+          );
+
+          accessControlledModuleDef.value.types.forEach(
+            (documentedAccessControlledTypeDef, typeName) => {
+              typeNames.push(typeName.map(this.capitalize).join(" "));
+            }
+          );
+          
+          accessControlledModuleDef.value.values.forEach(
+            (documentedAccessControlledValueDef, valueName) => {
+              typeNames.push(valueName.map(this.capitalize).join(" "));
+            }
+          );
+
+          moduleDef.set(
+            moduleName.map((n) => n.map(this.capitalize).join("")).join(" "),
+            typeNames
+          );
+        });
+        return moduleNameArr.map((moduleStr) => {
+          let modType = moduleDef.get(moduleStr)!;
+          return this.toDefinitionTree(moduleStr, modType);
+        });
+    }
+  };
+
   /**
    * Given the path to the IR, read all its content.
    */
-  private getDefsInIR(iRPath: string): Dependency[] {
+  private getDefinitionTree(iRPath: string, element?:Dependency): Dependency[] {
     const workspaceRoot = this.workspaceRoot;
     if (this.pathExists(iRPath) && workspaceRoot) {
-      const toDep = (moduleName: string): Dependency => {
-        if (
-          this.pathExists(path.join(workspaceRoot, "node_modules", moduleName))
-        ) {
-          return new Dependency(
-            moduleName,
-            vscode.TreeItemCollapsibleState.Collapsed
-          );
-        } else {
-          return new Dependency(
-            moduleName,
-            vscode.TreeItemCollapsibleState.None,
-            {
-              command: "extension.openPackageOnNpm",
-              title: "opening",
-              arguments: [moduleName],
-            }
-          );
-        }
-      };
-
-      function capitalize(str: string): string {
-        return (
-          str.substring(0, 1).toUpperCase() + str.substring(1).toLowerCase()
-        );
+      const morphirIR = fs.readFileSync(iRPath!);
+      const ir = toDistribution(morphirIR.toString());
+      if(element){
+        return this.getDefinitionChildren(ir,element)
       }
-
-      const morphirIR = fs.readFileSync(iRPath);
-      function deps() {
-        const ir = toDistribution(morphirIR.toString());
-        let moduleNameArr: Array<string> = [];
-        switch (ir.kind) {
-          case "Library":
-            ir.arg3.modules.forEach((accessControlledModuleDef, moduleName) => {
-              moduleNameArr.push(
-                moduleName.map((n) => n.map(capitalize).join("")).join(" ")
-              );
-              //   console.log(strModuleName);
-              // accessControlledModuleDef.value.types.forEach(
-              //   (documentedAccessControlledTypeDef, typeName) => {
-              //     console.log(`${typeName.map(capitalize).join(" ")}`);
-              //   }
-              // );
-            });
-            return moduleNameArr.map((moduleStr) => toDep(moduleStr));
-        }
-      }
-      // console.log(deps)
-      // const devDeps = morphirIR.devDependencies
-      // 	? Object.keys(morphirIR.devDependencies).map(dep => toDep(dep, morphirIR.devDependencies[dep]))
-      // 	: [];
-      // return deps;
-      return deps();
-      // return deps.concat(devDeps);
+      return this.definitionArr(ir);
     } else {
       return [];
+    }
+  }
+
+  private getDefinitionChildren(ir: Morphir.IR.Distribution.Distribution, element:Dependency): Dependency[]{
+    let moduleDef = new Map<string, Array<string>>();
+    switch (ir.kind) {
+      case "Library":
+        ir.arg3.modules.forEach((accessControlledModuleDef, moduleName) => {
+          let moduleValues: Array<string> = [];
+
+          accessControlledModuleDef.value.types.forEach(
+            (documentedAccessControlledTypeDef, typeName) => {
+              moduleValues.push(typeName.map(this.capitalize).join(" "));
+            }
+          );
+          accessControlledModuleDef.value.values.forEach(
+            (documentedAccessControlledValueDef, valueName) => {
+              moduleValues.push(valueName.map(this.capitalize).join(" "));
+            }
+          );
+          moduleDef.set(
+            moduleName.map((n) => n.map(this.capitalize).join("")).join(" "),
+            moduleValues
+          );
+        });
+        let modType = moduleDef.get(element.label)!
+        return modType.map((typ)=>{
+          return this.toDefinitionTree(typ)
+        })
     }
   }
 
