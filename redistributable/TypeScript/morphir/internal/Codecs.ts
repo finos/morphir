@@ -133,8 +133,8 @@ export function decodeRecord<recordType>(
   const inputObject: object = input;
 
   const fieldNames: Array<string> = Array.from(fieldDecoders.keys());
-  for (var field in fieldNames) {
-    if (!(field in Object.keys(input))) {
+  for (var field of fieldNames) {
+    if (!(Object.keys(input).includes(field))) {
       throw new DecodeError(`Expected field ${field} was not found`);
     }
   }
