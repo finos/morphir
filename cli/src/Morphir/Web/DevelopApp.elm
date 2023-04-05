@@ -9,6 +9,7 @@ import Element
     exposing
         ( Element
         , above
+        , alignLeft
         , alignRight
         , alignTop
         , centerX
@@ -49,6 +50,7 @@ import Element.Input
 import Element.Keyed
 import FontAwesome.Styles as Icon
 import Http exposing (emptyBody, jsonBody)
+import List.Extra
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
 import Morphir.IR as IR exposing (IR)
@@ -64,10 +66,8 @@ import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Repo as Repo exposing (Repo)
 import Morphir.IR.SDK as SDK exposing (packageName)
-import Morphir.IR.SDK.Result exposing (err)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
-import Morphir.SDK.Bool exposing (false)
 import Morphir.SDK.Dict as SDKDict
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Error exposing (Error)
@@ -83,7 +83,7 @@ import Morphir.Visual.Components.TabsComponent as TabsComponent
 import Morphir.Visual.Components.TreeViewComponent as TreeViewComponent
 import Morphir.Visual.Config exposing (DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
-import Morphir.Visual.Theme as Theme exposing (Theme, borderBottom, borderRounded, largePadding, largeSpacing, mediumPadding, smallPadding)
+import Morphir.Visual.Theme as Theme exposing (Theme, borderBottom, borderRounded, largePadding, largeSpacing, smallPadding)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewType as ViewType
 import Morphir.Visual.ViewValue as ViewValue
@@ -1332,6 +1332,14 @@ viewHome model packageName packageDef =
                     )
                 )
 
+        maybeModuleName : Maybe ModuleName
+        maybeModuleName =
+            model.homeState.selectedModule |> Maybe.map Tuple.second
+
+        entryPoints : List FQName
+        entryPoints =
+            maybeModuleName |> Maybe.map (Repo.findModuleEntryPoints model.repo) |> Maybe.withDefault []
+
         -- Creates three tabs showing a summary, a dep. graph and decorators which are shown when no definition is selected
         homeTabs : Element Msg
         homeTabs =
@@ -1345,45 +1353,59 @@ viewHome model packageName packageDef =
                         ]
                         elements
 
-                leafModules : ModuleName -> List ModuleName
-                leafModules moduleName =
-                    packageDef.modules |> Dict.keys |> List.filter (\l -> List.concat l |> String.join "." |> String.startsWith (List.concat moduleName |> String.join "."))
-
-                summary : Element msg
+                summary : Element Msg
                 summary =
                     let
-                        numberOfModules : Int
-                        numberOfModules =
-                            packageDef.modules |> Dict.keys |> List.length
+                        displayModuleName : ModuleName -> Element msg
+                        displayModuleName mn =
+                            mn
+                                |> List.Extra.last
+                                >> Maybe.withDefault []
+                                |> (Name.toHumanWords >> String.join " ")
+                                |> (\name -> text <| ("Entrypoints of  " ++ name ++ " :"))
+                                |> el [ Font.bold, padding <| Theme.smallPadding model.theme ]
 
-                        displayNumberofValuesAndTypes : Module.Definition ta va -> List Name -> Element msg
-                        displayNumberofValuesAndTypes moduledef moduleName =
-                            row [ width fill ] [ text <| (moduleName |> List.map Name.toTitleCase |> String.join ".") ++ " : " ++ String.fromInt (moduledef.values |> Dict.keys |> List.length) ++ " definition(s) and " ++ String.fromInt (moduledef.types |> Dict.keys |> List.length) ++ " type(s)." ]
+                        displayEntryPoints : Element Msg
+                        displayEntryPoints =
+                            entryPoints
+                                |> List.map (\( _, moduleName, localName ) -> entrypointEl moduleName localName)
+                                |> column [ spacing (Theme.smallSpacing model.theme), paddingXY (Theme.smallPadding model.theme) 0 ]
 
-                        displayDocumentation : Module.Definition ta va -> Element msg
-                        displayDocumentation moduleWithDoc =
-                            row [ width fill ] [ text (moduleWithDoc.doc |> Maybe.withDefault "") ]
+                        linkToDefinition : ModuleName -> Name -> String
+                        linkToDefinition moduleName name =
+                            pathToFullUrl [ packageName, moduleName ] ++ "/" ++ Name.toCamelCase name ++ filterStateToQueryParams model.homeState.filterState
+
+                        entrypointEl : ModuleName -> Name -> Element Msg
+                        entrypointEl moduleName localName =
+                            let
+                                modulePathName : String
+                                modulePathName =
+                                    String.append
+                                        ((maybeModuleName
+                                            |> Maybe.map
+                                                (List.foldl List.Extra.remove moduleName
+                                                    >> List.intersperse [ " : " ]
+                                                    >> List.map Name.toTitleCase
+                                                    >> String.concat
+                                                )
+                                         )
+                                            |> Maybe.withDefault ""
+                                        )
+                                        " : "
+                            in
+                            SelectableElement.view model.theme
+                                { isSelected = False
+                                , content = text <| (" > " ++ modulePathName ++ (Name.toHumanWords >> String.join " ") localName)
+                                , onSelect = Navigate (DefinitionSelected (linkToDefinition moduleName localName))
+                                }
                     in
                     case model.homeState.selectedModule of
                         Just ( _, moduleName ) ->
-                            column [ spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme), height fill, scrollbars ]
-                                (leafModules moduleName
-                                    |> List.map
-                                        (\mn ->
-                                            case Dict.get mn packageDef.modules of
-                                                Just acmd ->
-                                                    column [ height fill ] [ displayDocumentation acmd.value, el [ height fill, spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme) ] <| displayNumberofValuesAndTypes acmd.value mn ]
-
-                                                Nothing ->
-                                                    Element.none
-                                        )
-                                )
+                            column [ spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme), height fill, width fill, scrollbars ]
+                                [ displayModuleName moduleName, displayEntryPoints ]
 
                         Nothing ->
-                            row [ width fill, spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme) ] [ text <| "This package contains " ++ String.fromInt numberOfModules ++ " modules." ]
-
-                maybeModuleName =
-                    model.homeState.selectedModule |> Maybe.map Tuple.second
+                            row [ width fill, spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme) ] []
             in
             TabsComponent.view model.theme
                 { onSwitchTab = UI << SwitchTab
@@ -1421,7 +1443,7 @@ viewHome model packageName packageDef =
             ]
             [ column [ width fill, height fill, scrollbars, spacing (Theme.smallSpacing model.theme) ]
                 [ ifThenElse model.showModules moduleTree none
-                , ifThenElse model.showDefinitions (definitionList packageDef model) none
+                , ifThenElse model.showDefinitions (definitionList packageDef model entryPoints) none
                 ]
             ]
         , column
@@ -1443,32 +1465,36 @@ viewHome model packageName packageDef =
         ]
 
 
-definitionList : Package.Definition () (Type ()) -> Model -> Element Msg
-definitionList packageDef model =
+definitionList : Package.Definition () (Type ()) -> Model -> List FQName -> Element Msg
+definitionList packageDef model entrypoints =
     let
         -- Given a module name and a module definition, returns a list of tuples with the module's definitions, and their human readable form
         moduleDefinitionsAsUiElements : ModuleName -> Module.Definition () (Type ()) -> List ( Definition, Element Msg )
         moduleDefinitionsAsUiElements moduleName moduleDef =
             let
+                definitionUiElement : Element Msg -> Definition -> Name -> (Name -> String) -> Element Msg
                 definitionUiElement icon definition name nameTransformation =
                     let
                         elem : Element Msg
                         elem =
                             row
                                 [ width fill
-                                , Font.size model.theme.fontSize
+                                , paddingXY 0 (Theme.smallPadding model.theme)
                                 ]
-                                [ icon
+                                [ el [ width <| fillPortion 1, alignLeft ] icon
                                 , el
-                                    [ paddingXY (model.theme |> Theme.scaled -10) (model.theme |> Theme.scaled -3)
+                                    [ width <| fillPortion 8
+                                    , clipX
+                                    , alignLeft
                                     ]
-                                    (text (nameToText name))
+                                    (Theme.ellipseText (" " ++ nameToText name))
                                 , el
                                     [ alignRight
                                     , Font.color model.theme.colors.secondaryInformation
-                                    , paddingXY (model.theme |> Theme.scaled -10) (model.theme |> Theme.scaled -3)
+                                    , width <| fillPortion 5
+                                    , clipX
                                     ]
-                                    (text (pathToDisplayString moduleName))
+                                    (Theme.ellipseText (pathToDisplayString moduleName))
                                 ]
                     in
                     SelectableElement.view model.theme
@@ -1492,18 +1518,35 @@ definitionList packageDef model =
                         |> List.map
                             (\( typeName, _ ) ->
                                 ( Type ( moduleName, typeName )
-                                , definitionUiElement (Element.Keyed.el [ Font.color model.theme.colors.brandPrimary ] ( createElementKey moduleName typeName, text " ⓣ " )) (Type ( moduleName, typeName )) typeName Name.toTitleCase
+                                , definitionUiElement
+                                    (Element.Keyed.el [ Font.color model.theme.colors.brandPrimary ]
+                                        ( createElementKey moduleName typeName, text "ⓣ" )
+                                    )
+                                    (Type ( moduleName, typeName ))
+                                    typeName
+                                    Name.toTitleCase
                                 )
                             )
 
                 values : List ( Definition, Element Msg )
                 values =
+                    let
+                        entryPointIndicator : Name -> Element msg
+                        entryPointIndicator valueName =
+                            row [ width fill ] [ el [ Font.bold ] <| text <| ifThenElse (entrypoints |> List.any (\( _, _, v ) -> v == valueName)) "ⓔ " "", text "ⓥ" ]
+                    in
                     moduleDef.values
                         |> Dict.toList
                         |> List.map
                             (\( valueName, _ ) ->
                                 ( Value ( moduleName, valueName )
-                                , definitionUiElement (Element.Keyed.el [ Font.color model.theme.colors.brandSecondary ] ( createElementKey moduleName valueName, text " ⓥ " )) (Value ( moduleName, valueName )) valueName Name.toCamelCase
+                                , definitionUiElement
+                                    (Element.Keyed.el [ Font.color model.theme.colors.brandSecondary ]
+                                        ( createElementKey moduleName valueName, entryPointIndicator valueName )
+                                    )
+                                    (Value ( moduleName, valueName ))
+                                    valueName
+                                    Name.toCamelCase
                                 )
                             )
             in
@@ -1584,6 +1627,7 @@ definitionList packageDef model =
                 |> column [ height fill, width fill ]
 
         -- A path to the currently selected module in an easily readable format
+        pathToSelectedModule : List (Element Msg)
         pathToSelectedModule =
             let
                 subPaths : Path -> List Path
