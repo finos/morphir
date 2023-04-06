@@ -101,6 +101,7 @@ export function decodeDict<K, V>(
 
   const inputArray: Array<any> = input;
 
+
   return new Map(
     inputArray.map((item: any) => {
       if (!(item instanceof Array)) {
@@ -133,8 +134,8 @@ export function decodeRecord<recordType>(
   const inputObject: object = input;
 
   const fieldNames: Array<string> = Array.from(fieldDecoders.keys());
-  for (var field in fieldNames) {
-    if (!(field in Object.keys(input))) {
+  for (var field of fieldNames) {
+    if (!(Object.keys(input).includes(field))) {
       throw new DecodeError(`Expected field ${field} was not found`);
     }
   }

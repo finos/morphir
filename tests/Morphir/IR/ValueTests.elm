@@ -5,7 +5,7 @@ import Expect
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK.String as String
-import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
+import Morphir.IR.Value as Value exposing (Pattern(..), Value(..), reduceValueBottomUp)
 import Test exposing (Test, describe, test)
 
 
@@ -148,4 +148,79 @@ rewriteMaybeToPatternMatchTests =
                 , ( ConstructorPattern () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) [], Value.Literal () (StringLiteral "") )
                 ]
             )
+        ]
+
+
+reduceValueBottomUpTests : Test
+reduceValueBottomUpTests =
+    let
+        nodeCount : Value ta va -> Int
+        nodeCount =
+            reduceValueBottomUp
+                (\_ childCounts ->
+                    List.sum childCounts + 1
+                )
+
+        depth : Value ta va -> Int
+        depth =
+            reduceValueBottomUp
+                (\_ childDepths ->
+                    (List.maximum childDepths |> Maybe.withDefault 0) + 1
+                )
+
+        assert desc value expected =
+            test desc
+                (\_ ->
+                    Expect.equal
+                        expected
+                        { nodeCount = nodeCount value
+                        , depth = depth value
+                        }
+                )
+    in
+    describe "reduceValueBottomUp"
+        [ assert "single variable"
+            (Value.Variable () [ "a" ])
+            { nodeCount = 1
+            , depth = 1
+            }
+        , assert "single if/else"
+            (Value.IfThenElse ()
+                (Value.Variable () [ "a" ])
+                (Value.Variable () [ "b" ])
+                (Value.Variable () [ "c" ])
+            )
+            { nodeCount = 4
+            , depth = 2
+            }
+        , assert "nested if/else"
+            (Value.IfThenElse ()
+                (Value.Variable () [ "a" ])
+                (Value.Variable () [ "b" ])
+                (Value.IfThenElse ()
+                    (Value.Variable () [ "ca" ])
+                    (Value.Variable () [ "cb" ])
+                    (Value.Variable () [ "cc" ])
+                )
+            )
+            { nodeCount = 7
+            , depth = 3
+            }
+        , assert "nested if/else 2"
+            (Value.IfThenElse ()
+                (Value.Variable () [ "a" ])
+                (Value.IfThenElse ()
+                    (Value.Variable () [ "ba" ])
+                    (Value.Variable () [ "bb" ])
+                    (Value.Variable () [ "bc" ])
+                )
+                (Value.IfThenElse ()
+                    (Value.Variable () [ "ca" ])
+                    (Value.Variable () [ "cb" ])
+                    (Value.Variable () [ "cc" ])
+                )
+            )
+            { nodeCount = 10
+            , depth = 3
+            }
         ]
