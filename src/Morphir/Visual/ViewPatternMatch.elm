@@ -235,15 +235,25 @@ getNextHighlightState config currentMatch previousStates =
                                 rawPattern : Pattern ()
                                 rawPattern =
                                     match |> Value.mapPatternAttributes (always ())
+
+                                isDefaultValue : Value.Value ta () -> Bool
+                                isDefaultValue v =
+                                    -- A Unit value indicates that the user has not provided an input yet.
+                                    -- In this case, instead of indicating that Unit does not match the given pattern, we don't highlight anything
+                                    v == Value.Unit ()
                             in
                             case Config.evaluate (Value.toRawValue subject) config of
                                 Ok value ->
-                                    case matchPattern rawPattern value of
-                                        Ok newVariables ->
-                                            Matched (Dict.union variables newVariables)
+                                    if isDefaultValue value then
+                                        Default
 
-                                        Err _ ->
-                                            Unmatched
+                                    else
+                                        case matchPattern rawPattern value of
+                                            Ok newVariables ->
+                                                Matched (Dict.union variables newVariables)
+
+                                            Err _ ->
+                                                Unmatched
 
                                 _ ->
                                     Default
@@ -252,7 +262,6 @@ getNextHighlightState config currentMatch previousStates =
                     Default
     in
     List.append previousStates [ nextState ]
-
 
 
 toTypedPattern : Pattern ( Int, Type () ) -> TypedPattern
