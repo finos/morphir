@@ -41,4 +41,4 @@ The purpose of the document is to provide a detailed explanation of how to use t
     3. [The First Logic](#)
     4. [Generating Code](#)
 14. [Generating Code](#)
-    1. [Generating a JSON Schema](generating-json-schema.md)
+    1. [Generating a JSON Schema](../../docs/users-guide/generating-json-schema.md)
