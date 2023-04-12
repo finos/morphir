@@ -45,5 +45,5 @@ mapTypeDefinitionTests =
         , positiveTest "Test for custom type with single constructor"
             ( [ [ "CustomTypes" ] ], [ "Employee" ] )
             accessControlledTypeDefinition2
-            [ ( "CustomTypes.Employee", OneOf [ Array (TupleType [ Const "Fullname", String (StringConstraints Nothing) ] 2) False ] ) ]
+            [ ( "CustomTypes.Employee", OneOf [ Array (TupleType [ Const "Fullname", String (StringConstraints Nothing) ]) False ] ) ]
         ]

@@ -1,0 +1,8 @@
+{
+  "targetVersion": "2020-12",
+  "filename": "",
+  "limitToModules": "BasicTypes,AdvancedTypes,OptionalTypes",
+  "groupSchemaBy": "module",
+  "target": "JsonSchema",
+  "include": "TypeAscription"
+}

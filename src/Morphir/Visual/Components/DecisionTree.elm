@@ -1,20 +1,18 @@
 module Morphir.Visual.Components.DecisionTree exposing (BranchNode, Node(..), downArrow, downArrowHead, highlightColor, horizontalLayout, layout, noPadding, rightArrow, rightArrowHead, verticalLayout)
 
+import Dict
 import Element exposing (Attribute, Color, Element, alignLeft, alignTop, centerX, centerY, column, el, fill, height, html, padding, paddingEach, paddingXY, rgb255, row, shrink, spacing, text, width)
 import Element.Border as Border
 import Element.Font as Font
 import Html exposing (Html)
 import Html.Attributes
+import Morphir.Value.Interpreter exposing (Variables)
 import Morphir.Visual.Common exposing (element)
-import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Config exposing (Config, HighlightState(..))
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
-import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallSpacing)
+import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallPadding, smallSpacing)
 import Svg
 import Svg.Attributes
-import Morphir.Visual.Config exposing (HighlightState(..))
-import Morphir.Visual.Theme exposing (smallPadding)
-import Element exposing (explain)
-import Morphir.Value.Interpreter exposing (Variables)
 
 
 type Node
@@ -32,7 +30,6 @@ type alias BranchNode =
     }
 
 
-
 highlightColor : { true : Color, false : Color, default : Color }
 highlightColor =
     { true = Color 100 180 100
@@ -48,6 +45,11 @@ type Color
 type HighlightState
     = Highlighted Bool
     | NotHighlighted
+
+
+type Direction
+    = Horizontal
+    | Vertical
 
 
 highlightStateToColor : HighlightState -> Color
@@ -106,22 +108,28 @@ toCssColor (Color r g b) =
 
 layout : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> Node -> Element msg
 layout config viewValue rootNode =
-    layoutHelp config NotHighlighted viewValue rootNode
+    layoutHelp Vertical config NotHighlighted viewValue rootNode
 
 
-layoutHelp : Config msg -> HighlightState -> ( Config msg -> EnrichedValue -> Element msg) -> Node -> Element msg
-layoutHelp config highlightState viewValue rootNode =
+layoutHelp : Direction -> Config msg -> HighlightState -> (Config msg -> EnrichedValue -> Element msg) -> Node -> Element msg
+layoutHelp currentDirection config highlightState viewValue rootNode =
     let
-        stateConfig = config.state
+        stateConfig =
+            config.state
 
-        depthOf : (BranchNode -> Node) -> Node -> Int
-        depthOf f node =
-            case node of
-                Branch branch ->
-                    depthOf f (f branch) + 1
+        isThenBranchLonger : BranchNode -> Bool
+        isThenBranchLonger node =
+            let
+                depthOf : (BranchNode -> Node) -> Node -> Int
+                depthOf f n =
+                    case n of
+                        Branch branch ->
+                            depthOf f (f branch) + 1
 
-                Leaf _ _ ->
-                    1
+                        Leaf _ _ ->
+                            1
+            in
+            max (depthOf .thenBranch node.thenBranch) (depthOf .elseBranch node.thenBranch) <= max (depthOf .thenBranch node.elseBranch) (depthOf .elseBranch node.elseBranch)
     in
     case rootNode of
         Branch branch ->
@@ -160,35 +168,112 @@ layoutHelp config highlightState viewValue rootNode =
 
                         _ ->
                             NotHighlighted
+
+                thenBranchWithDirection : Direction -> Element msg
+                thenBranchWithDirection direction =
+                    layoutHelp direction { config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight thenState } } thenState viewValue branch.thenBranch
+
+                elseBranchWithDirection : Direction -> Element msg
+                elseBranchWithDirection direction =
+                    layoutHelp direction { config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight elseState } } elseState viewValue branch.elseBranch
+
+                conditionElement : Element msg
+                conditionElement =
+                    el
+                        [ conditionState |> highlightStateToBorderWidth |> Border.width
+                        , Border.rounded 6
+                        , Border.color (conditionState |> highlightStateToColor |> toElementColor)
+                        , smallPadding config.state.theme |> padding
+                        , width fill
+                        ]
+                        (el [ centerX, centerY ] (viewValue { config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight conditionState } } branch.condition))
+
+                oppositeDirection : Direction
+                oppositeDirection =
+                    case currentDirection of
+                        Vertical ->
+                            Horizontal
+
+                        Horizontal ->
+                            Vertical
             in
-            -- TODO: choose vertical/horizontal left/right layout based on some heuristics
-            verticalLayout
-                config
-                (el
-                    [ conditionState |> highlightStateToBorderWidth |> Border.width
-                    , Border.rounded 6
-                    , Border.color (conditionState |> highlightStateToColor |> toElementColor)
-                    , smallPadding config.state.theme |> padding
-                    , width fill
-                    ]
-                    (el [centerX, centerY] (viewValue {config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight conditionState } } branch.condition))
-                )
-                (el
-                    [ Font.color (thenState |> highlightStateToColor |> toElementColor)
-                    , thenState |> highlightStateToFontWeight
-                    ]
-                    (text branch.thenLabel)
-                )
-                thenState
-                (layoutHelp {config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight thenState } } thenState viewValue branch.thenBranch)
-                (el
-                    [ Font.color (elseState |> highlightStateToColor |> toElementColor)
-                    , elseState |> highlightStateToFontWeight
-                    ]
-                    (text branch.elseLabel)
-                )
-                elseState
-                (layoutHelp {config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight elseState } } elseState viewValue branch.elseBranch)
+            if currentDirection == Vertical then
+                verticalLayout
+                    config
+                    conditionElement
+                    (if isThenBranchLonger branch then
+                        el
+                            [ Font.color (thenState |> highlightStateToColor |> toElementColor)
+                            , thenState |> highlightStateToFontWeight
+                            ]
+                            (text branch.thenLabel)
+
+                     else
+                        el
+                            [ Font.color (elseState |> highlightStateToColor |> toElementColor)
+                            , elseState |> highlightStateToFontWeight
+                            ]
+                            (text branch.elseLabel)
+                    )
+                    (if isThenBranchLonger branch then
+                        thenState
+
+                     else
+                        elseState
+                    )
+                    (if isThenBranchLonger branch then
+                        thenBranchWithDirection currentDirection
+
+                     else
+                        elseBranchWithDirection oppositeDirection
+                    )
+                    (if isThenBranchLonger branch then
+                        el
+                            [ Font.color (elseState |> highlightStateToColor |> toElementColor)
+                            , elseState |> highlightStateToFontWeight
+                            ]
+                            (text branch.elseLabel)
+
+                     else
+                        el
+                            [ Font.color (thenState |> highlightStateToColor |> toElementColor)
+                            , thenState |> highlightStateToFontWeight
+                            ]
+                            (text branch.thenLabel)
+                    )
+                    (if isThenBranchLonger branch then
+                        elseState
+
+                     else
+                        thenState
+                    )
+                    (if isThenBranchLonger branch then
+                        elseBranchWithDirection currentDirection
+
+                     else
+                        thenBranchWithDirection oppositeDirection
+                    )
+
+            else
+                horizontalLayout
+                    config
+                    conditionElement
+                    (el
+                        [ Font.color (elseState |> highlightStateToColor |> toElementColor)
+                        , elseState |> highlightStateToFontWeight
+                        ]
+                        (text branch.elseLabel)
+                    )
+                    elseState
+                    (elseBranchWithDirection oppositeDirection)
+                    (el
+                        [ Font.color (thenState |> highlightStateToColor |> toElementColor)
+                        , thenState |> highlightStateToFontWeight
+                        ]
+                        (text branch.thenLabel)
+                    )
+                    thenState
+                    (thenBranchWithDirection currentDirection)
 
         Leaf variables value ->
             el
@@ -197,7 +282,7 @@ layoutHelp config highlightState viewValue rootNode =
                 , Border.color (highlightState |> highlightStateToColor |> toElementColor)
                 , smallPadding config.state.theme |> padding
                 ]
-                (viewValue {config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight highlightState, variables = variables } } value)
+                (viewValue { config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight highlightState, variables = variables } } value)
 
 
 horizontalLayout : Config msg -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg
@@ -214,8 +299,7 @@ horizontalLayout config condition branch1Label branch1State branch1 branch2Label
                     [ alignTop
                     , width shrink
                     ]
-                    [ el [ width shrink ]
-                        condition
+                    [ condition
                     , row
                         [ alignLeft
                         , height fill
@@ -282,12 +366,12 @@ verticalLayout config condition branch1Label branch1State branch1 branch2Label b
                         [ paddingEach { noPadding | left = mediumPadding config.state.theme }
                         , height fill
                         ]
-                        (downArrow config branch1State)
+                        (downArrow config branch2State)
                     , el
                         [ centerY
                         , paddingXY 0 (mediumPadding config.state.theme)
                         ]
-                        branch1Label
+                        branch2Label
                     ]
                 ]
             , column [ alignTop ]
@@ -295,13 +379,13 @@ verticalLayout config condition branch1Label branch1State branch1 branch2Label b
                     [ width fill
                     , paddingEach { noPadding | top = mediumPadding config.state.theme }
                     ]
-                    (rightArrow config branch2State)
+                    (rightArrow config branch1State)
                 , el [ centerX, paddingXY (mediumPadding config.state.theme) 0 ]
-                    branch2Label
+                    branch1Label
                 ]
-            , el [ alignTop, paddingEach { noPadding | bottom = mediumPadding config.state.theme }] branch2
+            , el [ alignTop, paddingEach { noPadding | bottom = mediumPadding config.state.theme } ] branch1
             ]
-        , branch1
+        , branch2
         ]
 
 
@@ -433,10 +517,10 @@ noPadding =
 
 
 branchHighlightToConfigHighLight : HighlightState -> Morphir.Visual.Config.HighlightState
-branchHighlightToConfigHighLight branchHL = 
+branchHighlightToConfigHighLight branchHL =
     case branchHL of
         NotHighlighted ->
             Unmatched
 
         Highlighted _ ->
-            Matched
+            Matched Dict.empty

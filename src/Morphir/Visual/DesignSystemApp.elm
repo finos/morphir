@@ -170,9 +170,8 @@ viewComponents c =
             [ viewComponent "Tabs"
                 none
                 (text (Debug.toString c.activeTab))
-                (TabsComponent.view
-                    { theme = c.theme
-                    , tabs =
+                (TabsComponent.view c.theme
+                    { tabs =
                         Array.fromList
                             [ { name = "Tab 1"
                               , content = text "Content 1"
@@ -192,9 +191,9 @@ viewComponents c =
                     { openMsg = OpenDrillDown
                     , closeMsg = CloseDrillDown
                     , depth = 1
-                    , closedElement = text "Closed"
+                    , closedElement = text "Header"
                     , openHeader = text "Header"
-                    , openElement = text "Content"
+                    , openElement = text "Detail"
                     , isOpen = c.drillDownIsOpen
                     }
                 )

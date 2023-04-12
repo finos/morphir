@@ -12,11 +12,13 @@ const execa = require('execa');
 const shell = require('shelljs')
 const mocha = require('gulp-mocha');
 const ts = require('gulp-typescript');
-const tsProject = ts.createProject('./cli2/tsconfig.json')
+const { isExpressionWithTypeArguments } = require('typescript');
+const mainTsProject = ts.createProject('./tsconfig.json')
+const cliTsProject = ts.createProject('./cli2/tsconfig.json')
 const readFile = util.promisify(fs.readFile)
 
 const config = {
-    morphirJvmVersion: '0.10.0',
+    morphirJvmVersion: '0.12.0',
     morphirJvmCloneDir: tmp.dirSync()
 }
 
@@ -39,8 +41,8 @@ async function cloneMorphirJVM() {
 }
 
 function copyMorphirJVMAssets() {
-    const sdkFiles = path.join(config.morphirJvmCloneDir.name, 'morphir/sdk/core/src*/**')
-    return src([sdkFiles]).pipe(dest('redistributable/Scala/sdk'))
+    const sdkFiles = path.join(config.morphirJvmCloneDir.name, 'morphir/sdk/**')
+    return src(sdkFiles).pipe(dest('redistributable/Scala/sdk'))
 }
 
 async function cleanupMorphirJVM() {
@@ -89,12 +91,26 @@ const buildCLI2 =
         makeCLI2
     )
 
+const buildMorphirAPI2 = async ()=>{
+    try {
+        await morphirElmMakeRunOldCli('.', './morphir-ir.json', {typesOnly: true})
+        await morphirElmGen('./morphir-ir.json', './lib/generated', 'TypeScript')
+        src('./lib/sdk/**/*')
+        .pipe(dest('./lib/generated/morphir/sdk'))
+       return await execa('npx tsc', ['--project',path.join('.','lib','tsconfig.json')])
+    } catch (error) {
+        return error
+    }
+
+}
+
 const build =
     series(
         checkElmDocs,
         makeCLI,
         makeDevCLI,
         buildCLI2,
+        buildMorphirAPI2,
         makeDevServer,
         makeDevServerAPI,
         makeInsightAPI,
@@ -140,15 +156,15 @@ function morphirDockerize(projectDir, options = {}) {
     let funcLocation = './cli2/lib/morphir-dockerize.js'
     let projectDirFlag = '-p'
     let overwriteDockerfileFlag = '-f'
-    let projectDirArgs = [ projectDirFlag, projectDir ]
+    let projectDirArgs = [projectDirFlag, projectDir]
     args = [
-        funcLocation, 
-        command, 
-        projectDirArgs.join(' '), 
+        funcLocation,
+        command,
+        projectDirArgs.join(' '),
         overwriteDockerfileFlag
     ]
-    console.log("Running: "+ args.join);
-    return execa('node', args, {stdio})
+    console.log("Running: " + args.join);
+    return execa('node', args, { stdio })
 }
 
 
@@ -157,7 +173,12 @@ async function testUnit(cb) {
 }
 
 async function compileCli2Ts() {
-    src('./cli2/*.ts').pipe(tsProject()).pipe(dest('./cli2/lib/'))
+    src('./cli2/*.ts').pipe(cliTsProject()).pipe(dest('./cli2/lib/'))
+}
+
+
+async function compileMain2Ts() {
+    src('./lib/main.ts').pipe(cliTsProject()).pipe(dest('./cli2/lib/main.js'))
 }
 
 function testIntegrationClean() {
@@ -231,33 +252,33 @@ async function testIntegrationGenSpark(cb) {
 }
 
 async function testIntegrationBuildSpark(cb) {
-     try {
-         await execa(
-             'mill', ['__.compile'],
-             { stdio, cwd: 'tests-integration' },
-         )
-     } catch (err) {
-         if (err.code == 'ENOENT') {
-    console.log("Skipping testIntegrationBuildSpark as `mill` build tool isn't available.");
-         } else {
-             throw err;
-         }
-     }
+    try {
+        await execa(
+            'mill', ['__.compile'],
+            { stdio, cwd: 'tests-integration' },
+        )
+    } catch (err) {
+        if (err.code == 'ENOENT') {
+            console.log("Skipping testIntegrationBuildSpark as `mill` build tool isn't available.");
+        } else {
+            throw err;
+        }
+    }
 }
 
 async function testIntegrationTestSpark(cb) {
-     try {
-         await execa(
-             'mill', ['spark.test'],
-             { stdio, cwd: 'tests-integration' },
-         )
-     } catch (err) {
-         if (err.code == 'ENOENT') {
-    console.log("Skipping testIntegrationTestSpark as `mill` build tool isn't available.");
-         } else {
-             throw err;
-         }
-     }
+    try {
+        await execa(
+            'mill', ['spark.test'],
+            { stdio, cwd: 'tests-integration' },
+        )
+    } catch (err) {
+        if (err.code == 'ENOENT') {
+            console.log("Skipping testIntegrationTestSpark as `mill` build tool isn't available.");
+        } else {
+            throw err;
+        }
+    }
 }
 
 // Generate TypeScript API for reference model.
@@ -272,16 +293,16 @@ async function testIntegrationGenTypeScript(cb) {
 function testIntegrationTestTypeScript(cb) {
     return src('tests-integration/typescript/TypesTest-refModel.ts')
         .pipe(mocha({ require: 'ts-node/register' }));
-        
+
 }
 
 
 async function testCreateCSV(cb) {
-    if (!shell.which('bash')){
+    if (!shell.which('bash')) {
         console.log("Automatically creating CSV files is not available on this platform");
     } else {
-        code_no = shell.exec('bash ./create_csv_files.sh', {cwd : './tests-integration/spark/elm-tests/tests'}).code
-        if (code_no != 0){
+        code_no = shell.exec('bash ./create_csv_files.sh', { cwd: './tests-integration/spark/elm-tests/tests' }).code
+        if (code_no != 0) {
             console.log('ERROR: CSV files cannot be created')
             return false;
         }
@@ -301,7 +322,7 @@ const testIntegration = series(
     testCreateCSV,
     parallel(
         testIntegrationMorphirTest,
-	testIntegrationSpark,
+        testIntegrationSpark,
         series(
             testIntegrationGenScala,
             testIntegrationBuildScala,
@@ -338,15 +359,15 @@ function testMorphirIRTestTypeScript(cb) {
 async function checkPackageLockJson() {
     const packageLockJson = JSON.parse((await readFile('package-lock.json')).toString())
     const hasRuntimeDependencyOnPackage = (packageName) => {
-        const runtimeDependencyInPackages = 
-            packageLockJson.packages 
+        const runtimeDependencyInPackages =
+            packageLockJson.packages
             && packageLockJson.packages[`node_modules/${packageName}`]
             && !packageLockJson.packages[`node_modules/${packageName}`].dev
-        const runtimeDependencyInDependencies = 
-            packageLockJson.dependencies 
+        const runtimeDependencyInDependencies =
+            packageLockJson.dependencies
             && packageLockJson.dependencies[packageName]
             && !packageLockJson.dependencies[packageName].dev
-        return runtimeDependencyInPackages || runtimeDependencyInDependencies    
+        return runtimeDependencyInPackages || runtimeDependencyInDependencies
     }
     if (hasRuntimeDependencyOnPackage('binwrap')) {
         throw Error('Runtime dependency on binwrap was detected!')
@@ -367,17 +388,18 @@ const test =
         // testMorphirIR,
     )
 
-const csvfiles=series(
-        testCreateCSV,
+const csvfiles = series(
+    testCreateCSV,
 )
 
 exports.clean = clean;
 exports.makeCLI = makeCLI;
 exports.makeDevCLI = makeDevCLI;
 exports.buildCLI2 = buildCLI2;
+exports.compileMain2Ts = compileMain2Ts;
 exports.build = build;
 exports.test = test;
-exports.csvfiles=csvfiles;
+exports.csvfiles = csvfiles;
 exports.testIntegration = testIntegration;
 exports.testIntegrationSpark = testIntegrationSpark;
 exports.testMorphirIR = testMorphirIR;

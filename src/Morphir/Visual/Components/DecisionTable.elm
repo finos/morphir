@@ -1,5 +1,5 @@
 module Morphir.Visual.Components.DecisionTable exposing
-    ( DecisionTable, Match(..)
+    ( DecisionTable
     , Rule, TypedPattern, displayTable
     )
 
@@ -9,25 +9,19 @@ module Morphir.Visual.Components.DecisionTable exposing
 
 -}
 
-import Element exposing (Color, Column, Element, el, fill, height, padding, rgb255, row, table, text, width)
+import Dict
+import Element exposing (Color, Column, Element, el, fill, height, padding, rgb255, row, shrink, table, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Morphir.IR.FQName exposing (getLocalName)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value, indexedMapValue)
+import Morphir.Value.Interpreter exposing (Variables)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Config exposing (Config, HighlightState(..), VisualState)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (mediumPadding)
-
-
-type alias TypedValue =
-    Value () (Type ())
-
-
-type alias TypedPattern =
-    Pattern (Type ())
 
 
 
@@ -52,16 +46,12 @@ type alias DecisionTable =
     }
 
 
-{-| Represents a match which is visualized as a cell in the decision table. It could either be a pattern or a guard
-which is a function that takes some input and returns a boolean.
--}
-type Match
-    = Pattern TypedPattern
-    | Guard TypedValue
+type alias TypedPattern =
+    Pattern (Type ())
 
 
 type alias Rule =
-    { matches : List Match
+    { matches : List TypedPattern
     , result : EnrichedValue
     , highlightStates : List HighlightState
     }
@@ -91,7 +81,7 @@ tableHelp config viewValue headerFunctions rows =
                         ]
                         (text "Result")
                     )
-                    fill
+                    shrink
                     (\rules ->
                         el
                             [ Border.color (highlightStateToColor (List.head (List.reverse rules.highlightStates)))
@@ -139,81 +129,78 @@ updateConfig config highlightState =
         tableState =
             config.state
 
+        updateVariables : Variables
+        updateVariables =
+            case highlightState of
+                Just hls ->
+                    case hls of
+                        Matched vars ->
+                            vars
+
+                        _ ->
+                            Dict.empty
+
+                _ ->
+                    Dict.empty
+
         updatedTableState : VisualState
         updatedTableState =
-            { tableState | highlightState = highlightState }
+            { tableState | highlightState = highlightState, variables = Dict.union updateVariables config.state.variables }
     in
     { config | state = updatedTableState }
 
 
-getCaseFromIndex : Config msg -> EnrichedValue -> (Config msg -> EnrichedValue -> Element msg) -> Maybe HighlightState -> Maybe Match -> Element msg
+getCaseFromIndex : Config msg -> EnrichedValue -> (Config msg -> EnrichedValue -> Element msg) -> Maybe HighlightState -> Maybe (Pattern (Type ())) -> Element msg
 getCaseFromIndex config head viewValue highlightState rule =
     case rule of
         Just match ->
+            let
+                updatedConfig : Config msg
+                updatedConfig =
+                    updateConfig config highlightState
+
+                result : Color
+                result =
+                    highlightStateToColor highlightState
+            in
             case match of
-                Pattern pattern ->
+                Value.WildcardPattern _ ->
+                    el [ Background.color result, mediumPadding config.state.theme |> padding, Font.italic ] (text "anything else")
+
+                Value.LiteralPattern va literal ->
                     let
-                        updatedConfig : Config msg
-                        updatedConfig =
-                            updateConfig config highlightState
-
-                        result : Color
-                        result =
-                            highlightStateToColor highlightState
+                        value : EnrichedValue
+                        value =
+                            Value.Literal va literal |> indexedMapValue Tuple.pair 0 |> Tuple.first
                     in
-                    case pattern of
-                        Value.WildcardPattern _ ->
-                            el [ Background.color result, mediumPadding config.state.theme |> padding, Font.italic ] (text "anything else")
+                    el [ Background.color result, mediumPadding config.state.theme |> padding ] (viewValue updatedConfig value)
 
-                        Value.LiteralPattern va literal ->
-                            let
-                                value : EnrichedValue
-                                value =
-                                    toVisualTypedValue (Value.Literal va literal)
-                            in
-                            el [ Background.color result, mediumPadding config.state.theme |> padding ] (viewValue updatedConfig value)
+                Value.ConstructorPattern _ fQName matches ->
+                    let
+                        parsedMatches : List (Element msg)
+                        parsedMatches =
+                            List.map (getCaseFromIndex config head viewValue highlightState << Just << toTypedPattern) (matches |> Debug.log "matches")
 
-                        Value.ConstructorPattern _ fQName matches ->
-                            let
-                                parsedMatches : List (Element msg)
-                                parsedMatches =
-                                    List.map (getCaseFromIndex config head viewValue highlightState << Just << Pattern << toTypedPattern) matches
+                        --enclose in parentheses for nested constructors
+                    in
+                    row [ width fill, Background.color result, mediumPadding config.state.theme |> padding ] (List.concat [ [ text "(", text (nameToText (getLocalName fQName)) ], List.intersperse (text ",") parsedMatches, [ text ")" ] ])
 
-                                --enclose in parentheses for nested constructors
-                            in
-                            row [ width fill, Background.color result, mediumPadding config.state.theme |> padding ] (List.concat [ [ text "(", text (nameToText (getLocalName fQName)) ], List.intersperse (text ",") parsedMatches, [ text ")" ] ])
+                Value.AsPattern _ (Value.WildcardPattern _) name ->
+                    el [ Background.color result, mediumPadding config.state.theme |> padding ] (text (nameToText name))
 
-                        Value.AsPattern _ (Value.WildcardPattern _) name ->
-                            el [ Background.color result, mediumPadding config.state.theme |> padding ] (text (nameToText name))
-
-                        Value.AsPattern _ asPattern _ ->
-                            getCaseFromIndex config head viewValue highlightState (Just (patternToMatch asPattern))
-
-                        _ ->
-                            text "pattern type not implemented"
+                Value.AsPattern _ asPattern _ ->
+                    getCaseFromIndex config head viewValue highlightState (Just (toTypedPattern asPattern))
 
                 _ ->
-                    text "guard"
+                    text "pattern type not implemented"
 
         Nothing ->
             text "nothing"
 
 
-toVisualTypedValue : TypedValue -> EnrichedValue
-toVisualTypedValue typedValue =
-    typedValue
-        |> indexedMapValue Tuple.pair 0
-        |> Tuple.first
-
-
-toTypedPattern : Pattern (Type ()) -> TypedPattern
+toTypedPattern : Pattern (Type ()) -> Pattern (Type ())
 toTypedPattern match =
     match |> Value.mapPatternAttributes (always (Value.patternAttribute match))
-
-
-patternToMatch : Pattern (Type ()) -> Match
-patternToMatch pattern =
-    Pattern (toTypedPattern pattern)
 
 
 highlightStateToColor : Maybe HighlightState -> Color
@@ -221,7 +208,7 @@ highlightStateToColor highlightState =
     case highlightState of
         Just state ->
             case state of
-                Matched ->
+                Matched _ ->
                     highlightColor.true
 
                 Unmatched ->

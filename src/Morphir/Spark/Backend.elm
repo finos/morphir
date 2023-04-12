@@ -44,6 +44,7 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (TypedValue, Value)
 import Morphir.SDK.ResultList as ResultList
 import Morphir.Scala.AST as Scala
+import Morphir.Scala.Common as ScalaBackend
 import Morphir.Scala.Feature.Core as ScalaBackend
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Morphir.Spark.API as Spark

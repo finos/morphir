@@ -1,8 +1,11 @@
 module TestModel.CustomTypes exposing (..)
 
+import TestModel.AdvancedTypes exposing (Score)
+import Morphir.SDK.Month exposing (Month)
 
-type FullName
-    = Firstname
+
+type PersonalData
+    = Bio String Score
 
 
 type Employee
@@ -12,6 +15,7 @@ type Employee
 type Person
     = Adult String
     | Child String Int
+    | Infant (List Month)
 
 
 type Currencies
@@ -23,9 +27,9 @@ type Currencies
 
 
 type TransactionType
-    = Commit
-    | Rollback
-    | SavePoint
+    = Commit String
+    | Rollback String
+    | SavePoint Int
 
 
 type ObjectType

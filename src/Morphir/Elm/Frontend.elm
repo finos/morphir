@@ -59,10 +59,11 @@ import Graph exposing (Graph)
 import Json.Encode as Encode
 import Morphir.Compiler as Compiler
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver)
+import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.Graph
 import Morphir.IR as IR exposing (IR)
-import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
+import Morphir.IR.AccessControlled as Access exposing (AccessControlled, private, public)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName as FQName exposing (fQName)
@@ -586,12 +587,21 @@ packageDefinitionFromSource opts packageInfo dependencies sourceFiles =
                     )
                 |> Result.map
                     (\moduleDefs ->
+                        let
+                            implicitlyExposedModules : Set Path
+                            implicitlyExposedModules =
+                                IncrementalFrontend.collectImplicitlyExposedModules packageInfo.name moduleDefs exposedModules
+                        in
                         { modules =
                             moduleDefs
                                 |> Dict.toList
                                 |> List.map
                                     (\( modulePath, m ) ->
-                                        if exposedModules |> Set.member modulePath then
+                                        if Set.member modulePath exposedModules then
+                                            ( modulePath, public m )
+
+                                        else if Set.member modulePath implicitlyExposedModules then
+                                            -- Module is implicitly exposed. Make it public
                                             ( modulePath, public m )
 
                                         else
@@ -708,11 +718,25 @@ mapProcessedFile opts dependencies currentPackagePath processedFile modulesSoFar
                 mapDeclarationsToValue processedFile.parsedFile.sourceFile moduleExpose processedFile.file.declarations
                     |> Result.map Dict.fromList
 
+        documentationResult : Result error (Maybe String)
+        documentationResult =
+            Ok <|
+                if List.isEmpty processedFile.file.comments then
+                    Nothing
+
+                else
+                    processedFile.file.comments
+                        |> List.map Node.value
+                        |> List.filter (String.startsWith "{-|")
+                        |> List.head
+                        |> Maybe.map (String.dropLeft 3 >> String.dropRight 3)
+
         moduleResult : Result Errors (Module.Definition SourceLocation SourceLocation)
         moduleResult =
-            Result.map2 Module.Definition
+            Result.map3 Module.Definition
                 typesResult
                 valuesResult
+                documentationResult
     in
     moduleResult
         |> Result.andThen
@@ -1732,9 +1756,10 @@ resolveLocalNames moduleResolver moduleDef =
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
     in
-    Result.map2 Module.Definition
+    Result.map3 Module.Definition
         typesResult
         valuesResult
+        (Ok moduleDef.doc)
 
 
 resolveVariablesAndReferences : Dict Name SourceLocation -> ModuleResolver -> Value SourceLocation SourceLocation -> Result Errors (Value SourceLocation SourceLocation)

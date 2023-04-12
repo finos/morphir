@@ -1,6 +1,6 @@
 {
   "name": "morphir-elm",
-  "version": "2.69.0",
+  "version": "2.78.0",
   "description": "Elm bindings for Morphir",
   "types": "lib/dist/main.d.ts",
   "main": "lib/dist/main.js",
@@ -44,14 +44,9 @@
     "dist/morphir-server/*",
     "src/Morphir/SDK/*",
     "redistributable/**",
-    "cli2/lib/cli.js",
-    "cli2/lib/morphir-make.js",
-    "cli2/lib/morphir.js",
-    "cli2/lib/morphir-scala-gen.js",
-    "cli2/lib/morphir-stats.js",
-    "cli2/lib/FileChanges.js",
+    "cli2/lib/*",
     "cli2/Morphir.Elm.CLI.js",
-    "cli2/lib/cliAPI.js"
+    "lib/**"
   ],
   "keywords": [
     "morphir",
@@ -64,12 +59,13 @@
   },
   "homepage": "https://github.com/Morgan-Stanley/morphir-elm#readme",
   "devDependencies": {
+    "@cadl-lang/compiler": "^0.38.5",
     "@types/jest": "^27.4.0",
     "@types/mocha": "^9.0.0",
     "@vercel/ncc": "^0.24.1",
     "del-cli": "3.0.1",
     "elm": "^0.19.1-5",
-    "elm-doc-preview": "^3.0.4",
+    "elm-doc-preview": "^5.0.5",
     "elm-format": "^0.8.5",
     "elm-test": "^0.19.1-revision6",
     "execa": "^5.1.1",
@@ -93,7 +89,7 @@
     "chalk": "^4.1.1",
     "commander": "^9.0.0",
     "cookie-parser": "^1.4.6",
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "fs-extra": "^9.1.0",
     "get-stdin": "^8.0.0",
     "log-timestamp": "^0.3.0",

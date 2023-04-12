@@ -137,6 +137,7 @@ type TypeDecl
         , ctorArgs : List (List ArgDecl)
         , extends : List Type
         , members : List (Annotated MemberDecl)
+        , body : List Value
         }
     | Object
         { modifiers : List Mod
@@ -189,6 +190,7 @@ type MemberDecl
 type Type
     = TypeVar Name
     | TypeRef Path Name
+    | TypeOfValue Path
     | TypeApply Type (List Type)
     | TypeParametrized Type (List Type) Type
     | TupleType (List Type)
