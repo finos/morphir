@@ -18,7 +18,7 @@ const cliTsProject = ts.createProject('./cli2/tsconfig.json')
 const readFile = util.promisify(fs.readFile)
 
 const config = {
-    morphirJvmVersion: '0.10.0',
+    morphirJvmVersion: '0.12.0',
     morphirJvmCloneDir: tmp.dirSync()
 }
 
@@ -41,8 +41,8 @@ async function cloneMorphirJVM() {
 }
 
 function copyMorphirJVMAssets() {
-    const sdkFiles = path.join(config.morphirJvmCloneDir.name, 'morphir/sdk/core/src*/**')
-    return src([sdkFiles]).pipe(dest('redistributable/Scala/sdk'))
+    const sdkFiles = path.join(config.morphirJvmCloneDir.name, 'morphir/sdk/**')
+    return src(sdkFiles).pipe(dest('redistributable/Scala/sdk'))
 }
 
 async function cleanupMorphirJVM() {
@@ -91,12 +91,26 @@ const buildCLI2 =
         makeCLI2
     )
 
+const buildMorphirAPI2 = async ()=>{
+    try {
+        await morphirElmMakeRunOldCli('.', './morphir-ir.json', {typesOnly: true})
+        await morphirElmGen('./morphir-ir.json', './lib/generated', 'TypeScript')
+        src('./lib/sdk/**/*')
+        .pipe(dest('./lib/generated/morphir/sdk'))
+       return await execa('npx tsc', ['--project',path.join('.','lib','tsconfig.json')])
+    } catch (error) {
+        return error
+    }
+
+}
+
 const build =
     series(
         checkElmDocs,
         makeCLI,
         makeDevCLI,
         buildCLI2,
+        buildMorphirAPI2,
         makeDevServer,
         makeDevServerAPI,
         makeInsightAPI,

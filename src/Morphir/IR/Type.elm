@@ -210,17 +210,42 @@ type alias Field a =
     }
 
 
-{-| -}
+{-| Represents the specification (in other words the interface) of a type. There are 4 different shapes:
+
+  - **TypeAliasSpecification**
+      - Represents an alias for another type.
+      - An Elm example would be `type alias Foo = String`
+  - **OpaqueTypeSpecification**
+      - Represents a type with an unknown structure.
+      - In Elm you could achieve this with a custom type that doesn't expose its constructors.
+      - Opaque types cannot be automatically serialized by Morphir tools since the structure is unknown.
+      - If you need a type with a platform-specific representation but with the ability to serialize use
+        **DerivedTypeSpecification** instead.
+  - **CustomTypeSpecification**
+      - Represents a tagged union type.
+      - In Elm this corresponds to a custom type: `type Foo = Bar | Baz Int`
+  - **DerivedTypeSpecification**
+      - Represents a type with an unknown structure but with explicit functions to map from and to a known type.
+      - For example a `LocalDate` may have different representations on various platforms but we can define a standard
+        way to map from and to a string.
+      - Derived types are serializable by the Morphir tooling if the base type is serializable.
+
+The first `List Name` argument represents type parameters in each variant. For example `type alias Foo a b = ...`
+would map to `TypeAliasSpecification [ ["a"], ["b"] ] ...`.
+
+-}
 type Specification a
     = TypeAliasSpecification (List Name) (Type a)
     | OpaqueTypeSpecification (List Name)
     | CustomTypeSpecification (List Name) (Constructors a)
-    | DerivedTypeSpecification
-        (List Name)
-        { baseType : Type a
-        , fromBaseType : FQName
-        , toBaseType : FQName
-        }
+    | DerivedTypeSpecification (List Name) (DerivedTypeSpecificationDetails a)
+
+
+type alias DerivedTypeSpecificationDetails a =
+    { baseType : Type a
+    , fromBaseType : FQName
+    , toBaseType : FQName
+    }
 
 
 {-| This syntax represents a type definition. For example:

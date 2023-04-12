@@ -31,6 +31,8 @@ mapNamespace namespaceName namespace =
     , namespaceContent
     , newLine
     , "}"
+    , newLine
+    , newLine
     ]
         |> concat
 

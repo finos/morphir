@@ -1,6 +1,6 @@
 {
   "name": "morphir-elm",
-  "version": "2.72.1",
+  "version": "2.78.0",
   "description": "Elm bindings for Morphir",
   "types": "lib/dist/main.d.ts",
   "main": "lib/dist/main.js",
@@ -45,7 +45,8 @@
     "src/Morphir/SDK/*",
     "redistributable/**",
     "cli2/lib/*",
-    "cli2/Morphir.Elm.CLI.js"
+    "cli2/Morphir.Elm.CLI.js",
+    "lib/**"
   ],
   "keywords": [
     "morphir",
@@ -58,12 +59,13 @@
   },
   "homepage": "https://github.com/Morgan-Stanley/morphir-elm#readme",
   "devDependencies": {
+    "@cadl-lang/compiler": "^0.38.5",
     "@types/jest": "^27.4.0",
     "@types/mocha": "^9.0.0",
     "@vercel/ncc": "^0.24.1",
     "del-cli": "3.0.1",
     "elm": "^0.19.1-5",
-    "elm-doc-preview": "^3.0.4",
+    "elm-doc-preview": "^5.0.5",
     "elm-format": "^0.8.5",
     "elm-test": "^0.19.1-revision6",
     "execa": "^5.1.1",

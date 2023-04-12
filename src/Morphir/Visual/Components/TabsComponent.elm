@@ -37,6 +37,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
+import Element.Input
 import Morphir.Visual.Theme as Theme exposing (Theme)
 
 
@@ -89,26 +90,34 @@ view theme config =
                 isActive =
                     config.activeTab == index
 
+                activeStyles : List (Element.Attribute msg)
                 activeStyles =
                     if isActive then
                         [ Font.bold, Border.color theme.colors.primaryHighlight ]
 
                     else
                         []
+
+                focusedStyles : List (Element.Attr Never Never)
+                focusedStyles = 
+                    if not isActive then
+                        [ Background.color theme.colors.gray, Border.color theme.colors.primaryHighlight ]
+                    else
+                        [ Background.color theme.colors.lightest, Border.color theme.colors.primaryHighlight ]
             in
-            el
-                ([ onClick (config.onSwitchTab index)
-                 , pointer
+            Element.Input.button
+                ([ pointer
                  , Background.color theme.colors.lightest
                  , Font.size theme.fontSize
                  , Border.widthEach { top = 0, left = 0, right = 0, bottom = 2 }
-                 , mouseOver [ Border.color theme.colors.primaryHighlight ]
+                 , mouseOver [ Background.color theme.colors.gray, Border.color theme.colors.primaryHighlight ]
                  , padding (Theme.mediumPadding theme)
                  , Border.color theme.colors.lightest
+                 , Element.focused focusedStyles
                  ]
                     ++ activeStyles
                 )
-                (text name)
+                { onPress = Just <| config.onSwitchTab index, label = text name }
 
         tabHeaders : List (Element msg)
         tabHeaders =

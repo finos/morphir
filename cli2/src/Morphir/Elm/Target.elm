@@ -1,12 +1,14 @@
 module Morphir.Elm.Target exposing (..)
 
 import Json.Decode as Decode exposing (Error, Value)
+import Json.Encode as Encode
+import Morphir.Correctness.Test exposing (TestSuite)
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.Graph.Backend.Codec
 import Morphir.Graph.CypherBackend as Cypher
 import Morphir.Graph.SemanticBackend as SemanticBackend
 import Morphir.IR.Distribution exposing (Distribution)
-import Morphir.JsonSchema.Backend as JsonSchemaBackend exposing (Errors)
+import Morphir.JsonSchema.Backend as JsonSchemaBackend
 import Morphir.JsonSchema.Backend.Codec
 import Morphir.Scala.Backend
 import Morphir.Scala.Backend.Codec
@@ -28,6 +30,10 @@ type BackendOptions
     | TypeScriptOptions Morphir.TypeScript.Backend.Options
     | SparkOptions Morphir.Scala.Spark.Backend.Options
     | JsonSchemaOptions JsonSchemaBackend.Options
+
+
+type alias Errors =
+    List String
 
 
 decodeOptions : Result Error String -> Decode.Decoder BackendOptions
@@ -55,8 +61,8 @@ decodeOptions gen =
             Decode.map (\options -> ScalaOptions options) Morphir.Scala.Backend.Codec.decodeOptions
 
 
-mapDistribution : BackendOptions -> Distribution -> Result Errors FileMap
-mapDistribution backendOptions dist =
+mapDistribution : BackendOptions -> TestSuite -> Distribution -> Result Encode.Value FileMap
+mapDistribution backendOptions morphirTestSuite dist =
     case backendOptions of
         SpringBootOptions options ->
             Ok <| SpringBoot.mapDistribution options dist
@@ -68,7 +74,8 @@ mapDistribution backendOptions dist =
             Ok <| Cypher.mapDistribution options dist
 
         ScalaOptions options ->
-            Ok <| Morphir.Scala.Backend.mapDistribution options dist
+            Morphir.Scala.Backend.mapDistribution options morphirTestSuite dist
+                |> Result.mapError Morphir.Scala.Backend.Codec.encodeError
 
         TypeScriptOptions options ->
             Ok <| Morphir.TypeScript.Backend.mapDistribution options dist
@@ -78,3 +85,4 @@ mapDistribution backendOptions dist =
 
         JsonSchemaOptions options ->
             JsonSchemaBackend.mapDistribution options dist
+                |> Result.mapError Morphir.JsonSchema.Backend.Codec.encodeErrors

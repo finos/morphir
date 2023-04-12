@@ -30,87 +30,48 @@ program
 const app = express();
 const port = program.opts().port;
 
-const wrap =
-  (fn) =>
-  (...args) =>
-    fn(...args).catch(args[2]);
 
-
-async function indexHtmlWithVersion () {
-  const packageJson = require(path.join(__dirname, '../package.json'))
-  const _indexHtml = await readFile (path.join(webDir, "index.html"), 'utf8');
-  return _indexHtml.replace('__VERSION_NUMBER__', packageJson.version.toString());
-
-}
 const webDir = path.join(__dirname, "web");
 
-const createSimpleGetJsonApi = (filePath) => {
-  app.get(
-    "/server/" + filePath,
-    wrap(async (req, res, next) => {
-      const jsonPath = path.join(program.opts().projectDir, filePath);
-      const jsonContent = await readFile(jsonPath);
-      res.send(JSON.parse(jsonContent.toString()));
-    })
-  );
-};
 
 
-async function getAttributeConfigJson() {
-  const configPath = path.join(
-    program.opts().projectDir,
-    "attributes.conf.json"
-  );
-  try {
-    const fileContent = await readFile(configPath);
-    return JSON.parse(fileContent.toString());
-  } catch (ex) {
-    console.error(ex);
-    return {};
-  }
-}
-
-app.use(express.static(webDir, {index: false}));
+app.use(express.static(webDir, { index: false }));
 app.use(express.json());
 
-app.get("/", wrap (async (req, res, next) => {
+app.get("/", wrap(async (req, res, next) => {
   res.setHeader('Content-type', 'text/html')
   res.send(await indexHtmlWithVersion());
 }));
 
-createSimpleGetJsonApi("morphir.json");
-createSimpleGetJsonApi("morphir-ir.json");
-createSimpleGetJsonApi("morphir-tests.json");
+createSimpleGetJsonApi(app, "morphir.json");
+createSimpleGetJsonApi(app, "morphir-ir.json");
+createSimpleGetJsonApi(app, "morphir-tests.json", "[]");
 
 app.get(
-  "/server/attributes",
+  "/server/decorations",
   wrap(async (req, res, next) => {
-    const configJsonContent = await getAttributeConfigJson();
+    const configJsonContent = await getDecorationConfig();
 
-    const attributeIds = Object.keys(configJsonContent);
+    const decorationIDs = Object.keys(configJsonContent);
     let responseJson = {};
 
-    for (const attrId of attributeIds) {
-      const attrFilePath = path.join(
-        program.opts().projectDir,
-        "attributes",
-        attrId + ".json"
-      );
+    for (const decorationID of decorationIDs) {
+      const decorationFilePath = await getDecorationFilePath(decorationID)
       const irFilePath = path.join(
         program.opts().projectDir,
-        configJsonContent[attrId].ir
+        configJsonContent[decorationID].ir
       );
 
-      if (!(await fsExists(attrFilePath))) {
-         await writeFile(attrFilePath, "{}");
+      if (!(await fsExists(decorationFilePath))) {
+        await writeFile(decorationFilePath, "{}");
       }
-      const attrFileContent = await readFile(attrFilePath);
+      const attrFileContent = await readFile(decorationFilePath);
       const irFileContent = await readFile(irFilePath);
-      responseJson[attrId] = {
-         data: JSON.parse(attrFileContent.toString()),
-         displayName: configJsonContent[attrId].displayName,
-         entryPoint: configJsonContent[attrId].entryPoint,
-         iR: JSON.parse(irFileContent.toString()),
+      responseJson[decorationID] = {
+        data: JSON.parse(attrFileContent.toString()),
+        displayName: configJsonContent[decorationID].displayName,
+        entryPoint: configJsonContent[decorationID].entryPoint,
+        iR: JSON.parse(irFileContent.toString()),
       };
     }
     res.send(responseJson);
@@ -118,18 +79,11 @@ app.get(
 );
 
 app.post(
-  "/server/updateattribute/:attrId",
+  "/server/update-decoration/:decorationID",
   wrap(async (req, res, next) => {
-    const attrFilePath = path.join(
-      program.opts().projectDir,
-      "attributes",
-      req.params.attrId + ".json"
-    );
-
-    await writeFile(attrFilePath, JSON.stringify(req.body, null, 4));
-
-    const updatedJson = await readFile(attrFilePath);
-    res.send(updatedJson);
+    const decorationID = req.params.decorationID
+    await writeFile(await getDecorationFilePath(decorationID), JSON.stringify(req.body, null, 4))
+    res.send(req.body);
   })
 );
 
@@ -148,7 +102,7 @@ app.post(
   })
 );
 
-app.get("*", wrap (async (req, res, next) => {
+app.get("*", wrap(async (req, res, next) => {
   res.setHeader('Content-type', 'text/html')
   res.send(await indexHtmlWithVersion());
 }));
@@ -158,3 +112,65 @@ app.listen(port, program.opts().host, () => {
     `Developer server listening at http://${program.opts().host}:${port}`
   );
 });
+
+
+// --- Utility Functions ---
+
+function createSimpleGetJsonApi(app, filePath, defaultContent) {
+  app.get(
+    "/server/" + filePath,
+    wrap(async (req, res, next) => {
+      const jsonPath = path.join(program.opts().projectDir, filePath);
+      try {
+        const jsonContent = await readFile(jsonPath);
+        res.send(JSON.parse(jsonContent.toString()));
+      } catch (err) {
+        if (defaultContent && err.code === 'ENOENT') {
+          // file does not exist, send default content
+          res.send(defaultContent)
+        } else {
+          throw err
+        }
+      }
+    })
+  )
+}
+
+
+async function getMorphirConfig() {
+  const filePath = path.join(program.opts().projectDir, "morphir.json")
+  const fileContent = await readFile(filePath)
+  return JSON.parse(fileContent.toString())
+}
+
+async function getDecorationConfig() {
+  const morphirConfig = await getMorphirConfig()
+  if (morphirConfig.decorations) {
+    return morphirConfig.decorations
+  } else {
+    return []
+  }
+}
+
+async function getDecorationFilePath(decorationID) {
+  const decorationConfig = (await getDecorationConfig())[decorationID]
+  let storageLocation = null
+  if (decorationConfig.storageLocation) {
+    storageLocation = decorationConfig.storageLocation
+  } else {
+    storageLocation = `${decorationID}.json`
+  }
+  return path.join(program.opts().projectDir, storageLocation)
+}
+
+async function indexHtmlWithVersion() {
+  const packageJson = require(path.join(__dirname, '../package.json'))
+  const _indexHtml = await readFile(path.join(webDir, "index.html"), 'utf8');
+  return _indexHtml.replace('__VERSION_NUMBER__', packageJson.version.toString());
+
+}
+
+function wrap(fn) {
+  return (...args) =>
+    fn(...args).catch(args[2]);
+}
