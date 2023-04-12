@@ -9,9 +9,8 @@ Finally, it provides a step by step walk-throughs on how various Morphir compone
 3. Existing team members intending to improve their abilities on Language Design concepts
 
 ### Content
-[1. Morphir User's Guide](https://github.com/finos/morphir-elm/tree/main/docs/users-guide) <br>
-[2. Morphir Developer's Guide](https://github.com/finos/morphir-elm/tree/main/docs/developers-guide) <br>
-[3. Morphir Contributor's Guide](https://github.com/finos/morphir-elm/tree/main/docs/contribution-guide) <br>
+[1. Morphir User's Guide](https://github.com/finos/morphir/tree/main/docs/users-guide) <br>
+[2. Morphir Contributor's Guide](https://github.com/finos/morphir/tree/main/docs/contribution-guide) <br>
 <br>
 <br>
 **External Resources**
