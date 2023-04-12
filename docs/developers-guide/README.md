@@ -8,7 +8,7 @@ Finally, it provides a step by step walk-throughs on how various Morphir compone
 2. Existing team members intending to improve their abilities on Language Design concepts
 
 ##Content
-1. [Getting Started with Morphir](../README.md) <br>
+1. [Getting Started with Morphir](../../README.md) <br>
 2. [Overview of Morphir](#)
 3. [The Morphir Architecture](#) <br>
 4. [The Morphir SDK](#) <br>
