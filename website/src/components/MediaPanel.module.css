@@ -1,3 +1,10 @@
 .mediaPanel {
-	border: black;
+	box-sizing: border-box;
+	/* background-color: aqua; */
+	float: left;
+}
+table {
+	border-collapse: collapse;
+	display:block;
+	overflow:auto;
 }
