@@ -75,7 +75,7 @@ Morphir consists of a few projects based on the features they provide.
 | [Background](./docs/background.md)                                         | [Development Automation (Dev Bots)](./docs/dev_bots.md)                                                    | [Regulatory Technology](./docs/regtech_modeling.md)                                     |
 | [Community](./docs/morphir_community.md)                                   | [Modeling an Application](./docs/application_modeling.md)                                                  |                                                                                         |
 | [What's it all about?](./docs/whats_it_about.md)                           | [Modeling Decision Tables](https://github.com/finos/morphir-examples/tree/master/src/Morphir/Sample/Rules) |                                                                                         |
-| [Why we use Functional Programming?](./docs/why_functional_programming.md) | [Modeling for database developers](./docs/modeling/modeling-for-database-developers.md)                    |
+| [Why we use Functional Programming?](./docs/why_functional_programming.md) | [Modeling for database developers](docs/modeling-for-database-developers.md)                    |
 
 ## Roadmap
 

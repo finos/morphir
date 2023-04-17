@@ -8,7 +8,7 @@ Finally, it provides a step by step walk-throughs on how various Morphir compone
 2. Existing team members intending to improve their abilities on Language Design concepts
 
 ##Content
-1. [Getting Started with Morphir](../README.md) <br>
+1. [Getting Started with Morphir](README.md) <br>
 2. [Overview of Morphir](#)
 3. [The Morphir Architecture](#) <br>
 4. [The Morphir SDK](#) <br>
@@ -19,7 +19,7 @@ Finally, it provides a step by step walk-throughs on how various Morphir compone
     4. [morphir-elm develop](#) <br>
 6. [Interoperability With JavaScript](#) <br>
 7. [Testing Framework](#) <br>
-    1. [CSV testing guide ](files/spark-testing-framework.md)
+    1. [CSV testing guide ](spark-testing-framework.md)
 8. [The Morphir IR](#) <br>
     1. [Overview of the Morphir IR](#) <br>
     2. [Distribution](#) <br>
@@ -32,11 +32,11 @@ Finally, it provides a step by step walk-throughs on how various Morphir compone
     1. [Elm Frontend](#) <br>
     2. [Elm Incremental Frontend](#) <br>
 10. [The Morphir Backends](#) <br>
-    1. [Scala Backend](files/scala-backend.md)
-    2. [Spark Backend](files/spark-backend.md)
-    3. [Relational IR Backends](files/relational-backend.md)
-    4. [Scala Json Codecs Backend](files/scala-backend.md)
-    5. [Json Schema Backend](files/json-schema-mappings.md)
+    1. [Scala Backend](scala-backend.md)
+    2. [Spark Backend](spark-backend.md)
+    3. [Relational IR Backends](relational-backend.md)
+    4. [Scala Json Codecs Backend](scala-backend.md)
+    5. [Json Schema Backend](json-schema-mappings.md)
 11. [Working with CODECS](#) <br>
     1. [Introduction to Encoding/Decoding](#) <br>
     2. [JSON Decoder Building Blocks](#) <br>
