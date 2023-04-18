@@ -9,7 +9,7 @@ import Element.Font as Font exposing (..)
 import Html.Attributes exposing (style)
 import List.Extra
 import Morphir.IR exposing (resolveType)
-import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FQName exposing (FQName, getLocalName)
 import Morphir.IR.Name exposing (Name, toCamelCase, toHumanWords)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as Basics
@@ -21,8 +21,8 @@ import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
 import Morphir.Visual.Components.DrillDownPanel as DrillDownPanel
 import Morphir.Visual.Config as Config exposing (Config, DrillDownFunctions(..), drillDownContains)
-import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, fromTypedValue, getId)
-import Morphir.Visual.Theme exposing (borderRounded, mediumPadding, mediumSpacing, smallPadding, smallSpacing)
+import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, fromTypedValue, getId, getType, toTypedValue)
+import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallPadding, smallSpacing)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
@@ -100,6 +100,21 @@ viewValueByLanguageFeature config value =
     let
         valueElem : Element msg
         valueElem =
+            let
+                valuePopup : Int -> Maybe RawValue -> List (Element.Attribute msg)
+                valuePopup index variableValue =
+                    [ onMouseEnter (config.handlers.onHoverOver index config.nodePath variableValue)
+                    , onMouseLeave (config.handlers.onHoverLeave index config.nodePath)
+                    , Element.below
+                        (if (config.state.popupVariables.variableIndex == index) && (config.state.popupVariables.nodePath == config.nodePath) then
+                            el [ smallPadding config.state.theme |> padding ] (viewPopup config)
+
+                         else
+                            Element.none
+                        )
+                    , center
+                    ]
+            in
             case value of
                 Value.PatternMatch _ _ [ ( Value.ConstructorPattern _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] ) [ _ ], _ ), ( Value.ConstructorPattern _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) [], _ ) ] ->
                     ViewIfThenElse.view config viewValue value
@@ -152,66 +167,52 @@ viewValueByLanguageFeature config value =
                 Value.Record _ items ->
                     ViewRecord.view config (viewValue config) items
 
-                Value.Variable ( index, _ ) name ->
+                (Value.Variable ( index, _ ) name) as variable ->
                     let
                         variableValue : Maybe RawValue
                         variableValue =
                             Dict.get name config.state.variables
+
+                        nonevaluatedeValue : Maybe RawValue
+                        nonevaluatedeValue =
+                            Dict.get name config.state.nonEvaluatedVariables
+
+                        fakeFQName =
+                            ( [ name ], [ name ], name )
+
+                        valueWithPopup : Element msg
+                        valueWithPopup =
+                            el
+                                (valuePopup index variableValue)
+                                (text (nameToText name))
+
+                        openDrilldown : RawValue -> Maybe (Element msg)
+                        openDrilldown rawValue =
+                            case fromRawValue config.ir rawValue of
+                                Ok rw ->
+                                    Just (viewValue config rw)
+
+                                Err error ->
+                                    Just (text (Infer.typeErrorToMessage error))
                     in
-                    el
-                        [ onMouseEnter (config.handlers.onHoverOver index config.nodePath variableValue)
-                        , onMouseLeave (config.handlers.onHoverLeave index config.nodePath)
-                        , Element.below
-                            (if (config.state.popupVariables.variableIndex == index) && (config.state.popupVariables.nodePath == config.nodePath) then
-                                el [ smallPadding config.state.theme |> padding ] (viewPopup config)
+                    case variableValue of
+                        Just v ->
+                            case nonevaluatedeValue of
+                                Just nv ->
+                                    if Value.isData v && Value.isData nv then
+                                        valueWithPopup
 
-                             else
-                                Element.none
-                            )
-                        , center
-                        ]
-                        (text (nameToText name))
-
-                (Value.Reference _ (( _, _, localName ) as fQName)) as functionvalue ->
-                    let
-                        id : Int
-                        id =
-                            getId functionvalue
-
-                        drillDown : DrillDownFunctions -> List Int -> Maybe (Value.Definition () (Type ()))
-                        drillDown dict nodePath =
-                            if drillDownContains dict id nodePath then
-                                Dict.get fQName config.ir.valueDefinitions
-
-                            else
-                                Nothing
-
-                        closedElement =
-                            Element.row
-                                [ smallPadding config.state.theme |> padding
-                                , smallSpacing config.state.theme |> spacing
-                                , onClick (config.handlers.onReferenceClicked fQName id config.nodePath)
-                                , pointer
-                                ]
-                                [ text (nameToText localName) ]
-
-                        openElement =
-                            case drillDown config.state.drillDownFunctions config.nodePath of
-                                Just valueDef ->
-                                    definitionBody { config | nodePath = config.nodePath ++ [ id ] } { valueDef | body = Value.rewriteMaybeToPatternMatch valueDef.body }
+                                    else
+                                        viewDrillDown config variable fakeFQName (openDrilldown nv)
 
                                 Nothing ->
-                                    Element.none
-                    in
-                    DrillDownPanel.drillDownPanel config.state.theme
-                        { openMsg = config.handlers.onReferenceClicked fQName (getId functionvalue) config.nodePath
-                        , closeMsg = config.handlers.onReferenceClose fQName (getId functionvalue) config.nodePath
-                        , depth = List.length config.nodePath
-                        , closedElement = closedElement
-                        , openElement = openElement
-                        , openHeader = closedElement
-                        , isOpen = drillDownContains config.state.drillDownFunctions id config.nodePath
-                        }
+                                    valueWithPopup
+
+                        _ ->
+                            valueWithPopup
+
+                (Value.Reference _ fQName) as functionvalue ->
+                    viewDrillDown config functionvalue fQName Nothing
 
                 Value.Field ( _, _ ) subjectValue fieldName ->
                     let
@@ -241,7 +242,7 @@ viewValueByLanguageFeature config value =
                                     let
                                         lastChar : Name -> Char
                                         lastChar s =
-                                            ((s |> List.Extra.last |> Maybe.map (String.toList >> List.Extra.last >> Maybe.withDefault '_')) |> Maybe.withDefault '_')
+                                            (s |> List.Extra.last |> Maybe.map (String.toList >> List.Extra.last >> Maybe.withDefault '_')) |> Maybe.withDefault '_'
                                     in
                                     if (vname |> lastChar) == 's' then
                                         "' "
@@ -250,17 +251,7 @@ viewValueByLanguageFeature config value =
                                         "'s "
                             in
                             row
-                                [ onMouseEnter (config.handlers.onHoverOver index config.nodePath variableValue)
-                                , onMouseLeave (config.handlers.onHoverLeave index config.nodePath)
-                                , Element.below
-                                    (if config.state.popupVariables.variableIndex == index then
-                                        el [ smallPadding config.state.theme |> padding ] (viewPopup config)
-
-                                     else
-                                        Element.none
-                                    )
-                                , center
-                                ]
+                                (valuePopup index variableValue)
                                 [ String.concat
                                     [ nameToText variableName
                                     , singularOrPlural variableName
@@ -311,6 +302,16 @@ viewValueByLanguageFeature config value =
                                                                         |> Value.definitionToValue
                                                                     )
                                                             )
+                                                , nonEvaluatedVariables =
+                                                    Dict.union
+                                                        (currentState.nonEvaluatedVariables
+                                                            |> Dict.insert defName
+                                                                (def
+                                                                    |> Value.mapDefinitionAttributes (always ()) (always ())
+                                                                    |> Value.definitionToValue
+                                                                )
+                                                        )
+                                                        currentState.nonEvaluatedVariables
                                             }
 
                                         ( defs, bottomIn ) =
@@ -321,23 +322,10 @@ viewValueByLanguageFeature config value =
                                 notLet ->
                                     ( [], viewValue conf notLet )
 
-                        ( definitions, inValueElem ) =
+                        ( _, inValueElem ) =
                             unnest config value
                     in
-                    Element.column
-                        [ mediumSpacing config.state.theme |> spacing ]
-                        [ inValueElem
-                        , Element.column
-                            [ mediumSpacing config.state.theme |> spacing ]
-                            (definitions
-                                |> List.map
-                                    (\( defName, defElem ) ->
-                                        Element.column
-                                            [ mediumSpacing config.state.theme |> spacing ]
-                                            [ definition config (nameToText defName) defElem ]
-                                    )
-                            )
-                        ]
+                    inValueElem
 
                 Value.IfThenElse _ _ _ _ ->
                     ViewIfThenElse.view config viewValue value
@@ -449,3 +437,48 @@ viewPopup config =
                         popUpStyle (text (Infer.typeErrorToMessage error))
             )
         |> Maybe.withDefault (el [] (text ""))
+
+
+viewDrillDown : Config msg -> EnrichedValue -> FQName -> Maybe (Element msg) -> Element msg
+viewDrillDown config value fQName letDefOpenElement =
+    let
+        id : Int
+        id =
+            getId value
+
+        drillDown : DrillDownFunctions -> List Int -> Maybe (Value.Definition () (Type ()))
+        drillDown dict nodePath =
+            if drillDownContains dict id nodePath then
+                Dict.get fQName config.ir.valueDefinitions
+
+            else
+                Nothing
+
+        closedElement : Element msg
+        closedElement =
+            Element.row
+                [ smallPadding config.state.theme |> padding
+                , smallSpacing config.state.theme |> spacing
+                , onClick (config.handlers.onReferenceClicked fQName id config.nodePath)
+                , pointer
+                ]
+                [ text (nameToText (getLocalName fQName)) ]
+
+        openElement : Element msg
+        openElement =
+            case drillDown config.state.drillDownFunctions config.nodePath of
+                Just valueDef ->
+                    definitionBody { config | nodePath = config.nodePath ++ [ id ] } { valueDef | body = Value.rewriteMaybeToPatternMatch valueDef.body }
+
+                Nothing ->
+                    letDefOpenElement |> Maybe.withDefault Element.none
+    in
+    DrillDownPanel.drillDownPanel config.state.theme
+        { openMsg = config.handlers.onReferenceClicked fQName id config.nodePath
+        , closeMsg = config.handlers.onReferenceClose fQName id config.nodePath
+        , depth = List.length config.nodePath
+        , closedElement = closedElement
+        , openElement = openElement
+        , openHeader = closedElement
+        , isOpen = drillDownContains config.state.drillDownFunctions id config.nodePath
+        }
