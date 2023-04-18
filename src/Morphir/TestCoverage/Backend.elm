@@ -37,7 +37,9 @@ calculateNumberOfCoveredBranches branchCoverageResult =
         |> List.length
 
 
-{-| This method loops through all values in a model and
+{-| This function loops through all values in a model and returns a dictionary where
+    the key is the traceable path to a specific value(also know as the NodeID) and
+    the value, a record structure how many branches are there within the value and the number of branches with testcases
 -}
 getBranchCoverage : ( PackageName, ModuleName ) -> IR -> TestSuite -> Module.Definition ta va -> TestCoverageResult
 getBranchCoverage ( packageName, moduleName ) ir testSuite moduleDef =

@@ -15,6 +15,6 @@ program
     .command('json-schema-gen', 'Generate Json Schema from the Morphir IR')
     .command('stats', 'Collect morphir features used in a model into a document')
     .command('dockerize', 'Creates a docker image of a Morphir IR and Morphir Develop')
-    .command('test-coverage', 'Generate test coverage report of Morphir Models and their Test Cases')
+    .command('test-coverage', 'Generates report on number of branches in a Morphir value and TestCases covered')
     .command('generate-test-data', 'Creates a docker image of a Morphir IR and Morphir Develop')
     .parse(process.argv)
