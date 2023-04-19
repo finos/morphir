@@ -118,21 +118,26 @@ exampleWithPatternMatch =
                             }
                       ]
                     , [ PatternCondition
-                            { excludes =
-                                [ ConstructorPattern
-                                    ()
-                                    ( [ [] ], [], [] )
-                                    [ LiteralPattern () (StringLiteral "InternalServerError") ]
-                                ]
+                            { excludes = []
+                            , includes = ConstructorPattern () ( [ [] ], [], [] ) [ LiteralPattern () (StringLiteral "InternalServerError") ]
+                            , subject = Variable () [ "HTMLStatusCodes" ]
+                            }
+                      ]
+                    , [ PatternCondition
+                            { excludes = [ ConstructorPattern () ( [ [] ], [], [] ) [ LiteralPattern () (StringLiteral "InternalServerError") ] ]
+                            , includes = ConstructorPattern () ( [ [] ], [], [] ) [ LiteralPattern () (StringLiteral "BadGateway") ]
+                            , subject = Variable () [ "HTMLStatusCodes" ]
+                            }
+                      ]
+                    , [ PatternCondition
+                            { excludes = [ ConstructorPattern () ( [ [] ], [], [] ) [ LiteralPattern () (StringLiteral "InternalServerError") ] ]
                             , includes = ConstructorPattern () ( [ [] ], [], [] ) [ LiteralPattern () (StringLiteral "BadGateway") ]
                             , subject = Variable () [ "HTMLStatusCodes" ]
                             }
                       ]
                     , [ PatternCondition
                             { excludes =
-                                [ ConstructorPattern ()
-                                    ( [ [] ], [], [] )
-                                    [ LiteralPattern () (StringLiteral "InternalServerError") ]
+                                [ ConstructorPattern () ( [ [] ], [], [] ) [ LiteralPattern () (StringLiteral "InternalServerError") ]
                                 , ConstructorPattern () ( [ [] ], [], [] ) [ LiteralPattern () (StringLiteral "BadGateway") ]
                                 ]
                             , includes = ConstructorPattern () ( [ [] ], [], [] ) [ LiteralPattern () (StringLiteral "ServiceUnavailable") ]
@@ -141,12 +146,26 @@ exampleWithPatternMatch =
                       ]
                     , [ PatternCondition
                             { excludes =
-                                [ ConstructorPattern ()
-                                    ( [ [] ], [], [] )
-                                    [ LiteralPattern
-                                        ()
-                                        (StringLiteral "InternalServerError")
-                                    ]
+                                [ ConstructorPattern () ( [ [] ], [], [] ) [ LiteralPattern () (StringLiteral "InternalServerError") ]
+                                , ConstructorPattern () ( [ [] ], [], [] ) [ LiteralPattern () (StringLiteral "BadGateway") ]
+                                ]
+                            , includes = ConstructorPattern () ( [ [] ], [], [] ) [ LiteralPattern () (StringLiteral "ServiceUnavailable") ]
+                            , subject = Variable () [ "HTMLStatusCodes" ]
+                            }
+                      ]
+                    , [ PatternCondition
+                            { excludes =
+                                [ ConstructorPattern () ( [ [] ], [], [] ) [ LiteralPattern () (StringLiteral "InternalServerError") ]
+                                , ConstructorPattern () ( [ [] ], [], [] ) [ LiteralPattern () (StringLiteral "BadGateway") ]
+                                , ConstructorPattern () ( [ [] ], [], [] ) [ LiteralPattern () (StringLiteral "ServiceUnavailable") ]
+                                ]
+                            , includes = ConstructorPattern () ( [ [] ], [], [] ) [ LiteralPattern () (StringLiteral "GatewayTimeout") ]
+                            , subject = Variable () [ "HTMLStatusCodes" ]
+                            }
+                      ]
+                    , [ PatternCondition
+                            { excludes =
+                                [ ConstructorPattern () ( [ [] ], [], [] ) [ LiteralPattern () (StringLiteral "InternalServerError") ]
                                 , ConstructorPattern () ( [ [] ], [], [] ) [ LiteralPattern () (StringLiteral "BadGateway") ]
                                 , ConstructorPattern () ( [ [] ], [], [] ) [ LiteralPattern () (StringLiteral "ServiceUnavailable") ]
                                 ]
