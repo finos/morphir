@@ -18,6 +18,7 @@ import Dict
 import Json.Decode as Decode exposing (field, string)
 import Json.Encode as Encode
 import Morphir.Correctness.Codec as TestCodec
+import Morphir.Correctness.Test exposing (TestSuite)
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
 import Morphir.Elm.IncrementalFrontend as IncrementalFrontend exposing (Errors, ModuleChange(..), OrderedFileChanges)
@@ -39,8 +40,8 @@ import Morphir.IR.Repo as Repo exposing (Error(..), Repo)
 import Morphir.IR.SDK as SDK
 import Morphir.JsonSchema.Backend
 import Morphir.Stats.Backend as Stats
-import Morphir.TestCoverage.Backend exposing (Coverage, TestCoverageResult, getBranchCoverage)
-import Morphir.TestCoverage.Codec exposing (encodeTestCoverageResult)
+import Morphir.TestCoverage.Backend exposing (TestCoverageResult, getBranchCoverage)
+import Morphir.TestCoverage.Codec exposing (encodeTestCoverageError, encodeTestCoverageResult)
 import Process
 import Task
 
@@ -333,9 +334,11 @@ process msg =
 
         TestCoverage ( packageDistJson, testSuiteJson ) ->
             let
+                packageDistroResult : Result Decode.Error Distribution
                 packageDistroResult =
                     Decode.decodeValue DistroCodec.decodeVersionedDistribution packageDistJson
 
+                testSuiteResult : Result Decode.Error TestSuite
                 testSuiteResult =
                     packageDistroResult
                         |> Result.andThen
@@ -367,11 +370,26 @@ process msg =
                                                     |> getBranchCoverage ( packageName, modName ) (IR.fromDistribution packageDistro) Dict.empty
                                     )
                                 |> List.map encodeTestCoverageResult
-                                |> (\lstValues -> Encode.list identity [ Encode.null, Encode.list identity lstValues ])
-                                |> testCoverageResult
+                                |> (\lstValues ->
+                                        if not (lstValues |> List.isEmpty) then
+                                            Encode.list identity
+                                                [ Encode.null
+                                                , Encode.list identity lstValues
+                                                ]
+                                                |> testCoverageResult
 
-                Err errorMsg ->
-                    errorMsg |> Decode.errorToString |> jsonDecodeError
+                                        else
+                                            Encode.list identity
+                                                [ Encode.string "An Error Occurred From Elm"
+                                                , Encode.null
+                                                ]
+                                                |> testCoverageResult
+                                   )
+
+                Err err ->
+                    err
+                        |> encodeTestCoverageError
+                        |> testCoverageResult
 
 
 report : Msg -> Cmd Msg

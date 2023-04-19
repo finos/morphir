@@ -519,30 +519,20 @@ async function testCoverage(
 
   // output path 
   const output = path.join(path.resolve(outputPath), "morphir-test-coverage.json")
-
+  
   return  new Promise((resolve, reject) => {
-    worker.ports.testCoverageResult.subscribe(([err, ok]: any) => {
+    worker.ports.testCoverageResult.subscribe(([err, data]: any) => {
       if (err) {
         reject(err)
       }
       else {
-        resolve(ok)
-        // fsWriteFile(output, JSON.stringify(ok))
-        // .then(resolve)
-        // .catch(reject)
+        resolve(data)
       }
     })
 
     // send files through port
     worker.ports.testCoverage.send([morphirIRJson,morphirTestJson])
   });
-
-  // fj.then((data) => {console.log("got data", data)
-
-  // Promise.resolve(data)
-  // })
-  // . catch(Promise.reject)
-  
 }
 
 export = {
