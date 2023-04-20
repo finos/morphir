@@ -8,7 +8,7 @@ The purpose of the document is to provide a detailed explanation of how to use t
 1. [Background](#)
 2. [What is all About](#)
 3. [The Morphir Community](#)
-4. [Getting Started with Morphir](https://github.com/finos/morphir-elm/blob/main/README.md) <br>
+4. [Getting Started with Morphir](https://github.com/finos/morphir-elm/blob/main/README.md) \
 5. [Quick Install](#)
 6. [How to Write Business Logic](#)
     1. [What Makes a Good Model](#)

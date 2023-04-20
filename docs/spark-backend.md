@@ -8,10 +8,10 @@ The Spark API defines types for working with Spark.
 ## Values
 The current Spark API defines the following values:
 
-**_spark_** <br>
+**_spark_** \
 This is a variable maps to a Scala value
 
-**_dataFrame_** <br>
+**_dataFrame_** \
 A DataFrame maps to a Scala type and references org.apache.spark.sql.DataFrame.
 A dataframe is an untyped view of a spark datase. A dataframe is a dataset of Rows
 
@@ -22,9 +22,9 @@ dataFrame =
     Scala.TypeRef [ "org", "apache", "spark", "sql" ] "DataFrame"
 ```
 
-<br>
+\
 
-**_literal_**  <br>
+**_literal_**  \
 A literal returns a Scala.Value by applying a Scala.Ref type to a list of arguments.
 ```
 dataFrame : Scala.Type
@@ -33,7 +33,7 @@ dataFrame =
 ```
 
 
-_**column**_  <br>
+_**column**_  \
 This is a reference to a column in a Dataframe. This returns a Scala value by applying a reference to column
 to a string literal representing the name of the column
 ```
@@ -43,16 +43,16 @@ dataFrame =
 ```
 
 
-_**when**_  <br>
+_**when**_  \
 This method takes condition and a then branch and returns a Scala value
 
 
 
-**_andWhen_**  <br>
+**_andWhen_**  \
 This method takes  three parameters: a condition, a then branch and soFar and return a new value
 
 
-**_otherwise_**  <br>
+**_otherwise_**  \
 This method takes an elseBranch and a soFar and returns new Scala Value
 ```
 dataFrame : Scala.Type
@@ -61,7 +61,7 @@ dataFrame =
 ```
 
 
-_**alias**_  <br>
+_**alias**_  \
 An alias is used to reference column name, typed column and data set.
 ```
 dataFrame : Scala.Type
@@ -70,7 +70,7 @@ dataFrame =
 ```
 
 
-**_select_**  <br>
+**_select_**  \
 Select is used to represent a projection in a relation. It takes a list of columns and returns
 a Scala Value representing a dataset
 
@@ -87,7 +87,7 @@ select columns from =
         )
 ```
 
-**_filter_**  <br>
+**_filter_**  \
 This method is used to return a subset of the data items from a dataset
 
 ```
@@ -103,7 +103,7 @@ filter predicate from =
 ```
 
 
-_**join**_  <br>
+_**join**_  \
 This function is used to represent a join operation between two or more relations.
 ```
 filter : Scala.Value -> Scala.Value -> Scala.Value
@@ -117,7 +117,7 @@ filter predicate from =
         ]
 ```
 
-_**case statements**_ <br>
+_**case statements**_ \
 Simple case statements of:
 * a series of literals
 * ends with a default case
@@ -144,7 +144,7 @@ org.apache.spark.sql.functions.when(
 ).otherwise(false)
 ```
 
-_**List.member constructs**_ <br>
+_**List.member constructs**_ \
 When List.member is used in conjunction with a List.filter function, such as in the following examples:
 ```
 testEnumListMember : List { product : Product } -> List { product : Product }
@@ -317,7 +317,7 @@ antiques.select(
 ## Types
 The current Spark API processes the following types:
 
-_**Bool**_ <br>
+_**Bool**_ \
 Values translated form basic Elm Booleans are treated as basic Scala Booleans, i.e.
 ```
 testBool : List { foo : Bool } -> List { foo : Bool }
@@ -336,7 +336,7 @@ gets translated into
     source.filter((org.apache.spark.sql.functions.col("foo")) === (false))
 ```
 
-_**Float**_ <br>
+_**Float**_ \
 Values translated from basic Elm Floating-point numbers are treated as basic Scala Doubles.
 They use `org.apache.spark.sql.types.DoubleType` and their literals do not have a trailing 'f', i.e. `1.23` not `1.23f`.
 i.e.
@@ -357,7 +357,7 @@ gets translated into
     source.filter((org.apache.spark.sql.functions.col("foo")) === (9.99))
 ```
 
-_**Int**_ <br>
+_**Int**_ \
 Values translated from basic Elm Integers are treated as basic Scala Integers, i.e.
 ```
 testInt : List { foo : Int } -> List { foo : Int }
@@ -376,7 +376,7 @@ gets translated into
     source.filter((org.apache.spark.sql.functions.col("foo")) === (13))
 ```
 
-_**String**_ <br>
+_**String**_ \
 Values translated from basic Elm Strings are treated as basic Scala Strings, i.e.
 ```
 testString : List { foo : String } -> List { foo : String }
@@ -395,7 +395,7 @@ gets translated into
     source.filter((org.apache.spark.sql.functions.col("foo")) === ("bar"))
 ```
 
-_**Enum**_ <br>
+_**Enum**_ \
 Elm Union types with no arguments (or Constructors in Morphir IR), are translated into String Literals.
 For instance:
 ```
@@ -418,12 +418,12 @@ gets translated into
 Currently the implementation doesn't check that the Constructor has no arguments. 
 Nor does the current implementation check whether a Constructor has Public access, and only consider those to be Enums.
 
-_**Maybe**_ <br>
+_**Maybe**_ \
 Maybes are how Elm makes it possible to return a value or Nothing, equivalent to null in other languages.
 In Spark, all pure Spark functions and operators handle null gracefully
 (usually returning null itself if any operand is null).
 
-**Just** <br>
+**Just** \
 In Elm, comparison against Maybes must be explicitly against `Just <Value>`.
 In Spark, no special treatment is needed to compare against a value that may be null.
 Therefore, elm code that looks like:
@@ -444,7 +444,7 @@ gets translated in Spark to
     source.filter((org.apache.spark.sql.functions.col("foo")) === (true))
 ```
 
-**Nothing** <br>
+**Nothing** \
 Where Elm code compares against Nothing, Morphir will translate this into a comparison to null in Spark.
 
 For example, to take a list of records and filter out null records in Elm, we would do:
@@ -466,7 +466,7 @@ def testMaybeBoolConditional(
   source.filter(org.apache.spark.sql.functions.isnull(org.apache.spark.sql.functions.col("foo")))
 ```
 
-**Maybe.map** <br>
+**Maybe.map** \
 
 Elm has `Maybe.map` and `Maybe.defaultValue` to take a Maybe and execute one branch of code if the Maybe isn't Nothing,
 and another branch if it is.

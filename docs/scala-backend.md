@@ -3,9 +3,9 @@ The Scala backend takes the Morphir IR as the input and returns an in-memory
 representation of files generated - FileMap
 The consumer is responsible for getting the input IR and saving the output to the file-system.
 
-The transformation from the Morphir IR to the FileMap is based on the Scala AST.<br><br>
-[1. Reading the Input IR](#) <br>
-[2. Scala Code Generation](#)<br>
+The transformation from the Morphir IR to the FileMap is based on the Scala AST.\\
+[1. Reading the Input IR](#) \
+[2. Scala Code Generation](#)\
 [3. Writing Output to File System](#)
 
 ## **1. Reading Input IR**
@@ -37,7 +37,7 @@ fileMap =
 The code generation phase consists of  functions that transform the distribution into a FileMap
 
 
-<br>
+\
 
 ## **2. Code Generation**
 The code generation consists of a number of mapping functions that map the Morphir IR types to Scala Types.
@@ -47,15 +47,15 @@ This is the entry point for the Scala backend. This function take Morphir IR
 (as a Distribution type) and generates the FileMap of Scala Source codes.
 A FileMap is a Morphir type and is a dictionary of File path and file content.
 
-<br>
+\
 #### mapPackageDefinition
 This function takes the Distribution, Package path and Package definition
 and returns a FileMap.
 This function maps through the modules in the package definition and for each module, it
 generate a compilation unit for each module by calling the PrettyPrinter.mapCompilationUnit 
-which returns a compilation unit. <br>
+which returns a compilation unit. \
 A compilation unit is a record type with the following fields
-<br><br>
+\\
 
 ```
 type alias CompilationUnit =
@@ -67,13 +67,13 @@ type alias CompilationUnit =
     }
 ```
 
-<br>
+\
 
 #### mapFQNameToPathAndName
 Takes a Morphir IR fully-qualified name and maps it to tuple of Scala path and name.
 A fully qualified name consists of packagPath, modulePath and localName.
 
-<br>
+\
 
 #### mapFQNameToTypeRef
 Maps a Morphir IR fully-qualified name to Scala type reference. It extracts the path and name
@@ -89,45 +89,45 @@ mapFQNameToTypeRef fQName =
     Scala.TypeRef path (name |> Name.toTitleCase)
 ```
 
-<br>
+\
 
 #### mapTypeMember
 This function maps a type declaration in Morphir to a Scala member declaration.
 
-<br>
+\
 
 #### mapModuleDefinition
 This function maps a module definition to a list of Scala compilation units.
 
-<br>
+\
 
 #### mapCustomTypeDefinition
 Maps a custom type to a List of Scala member declaration
 
-<br>
+\
 
 #### mapType
 Maps a Morphir IR Type to a Scala type
 
-<br>
+\
 
 
 #### mapFunctionBody
 Maps an IR value defintion to a Scala value.
 
-<br>
+\
 
 
 #### mapValue
 Maps and IR Value type to a Scala value.
 
-<br>
+\
 
 
 #### mapPattern
 Maps an IR Pattern type to a Scala Pattern type
 
-<br>
+\
 
 
 #### mapValueName
@@ -136,19 +136,19 @@ Maps an IR value name (List String) to a Scala value (String)
 #### scalaKeywords
 A set of Scala keywords that cannot be used as a variable name.
 
-<br>
+\
 
 
 #### javaObjectMethods
 We cannot use any method names in `java.lang.Object` because values are represented as functions/values in a Scala
 object which implicitly inherits those methods which can result in name collisions.
 
-<br>
+\
 
 
 #### uniqueVarName
 
-<br>
+\
 
 
 ## **3. Saving Generated Files**

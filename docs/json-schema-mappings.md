@@ -2,7 +2,7 @@
 This is a documentation of the mapping strategy from Morphir types to Json Schema. 
 This document describes how Morphir Models maps to Json Schema.
 Json Schema Reference can be found [here](http://json-schema.org/understanding-json-schema/reference/index.html)
-<br>
+\
 Additional reading:
 * [Sample Json Schema](json-schema-sample.json)
 * [Testing Strategy](json-schema-backend-testplan.md)
@@ -36,16 +36,16 @@ Run the ```elm morphir-elm gen -t JsonSchema``` to generate the Json Schema
 **Note** - The generated schema is named `<package-name>.json` by default. But you can specify the filename
 optionally for the schema using the -f flag.
 
-<hr>
 
-<br><br>
+
+\
 Next, we will get into some specific cases that may need further explanation.
 
 The rest of the explains how each Morphir type maps to the Json Schema Types.
 
 1. ### [ SDK Types](#sdk-types) 
    #### [1.1. Basic types](#basic-types) 
-      [1.1.1. Bool ](#bool)<br>
+      [1.1.1. Bool ](#bool)\
       [1.1.2. Int ](#int)\
       [1.1.3. Float ](#float)\
        [1.1.4. Char ](#char)\
@@ -188,7 +188,7 @@ The format attribute in the JSON schema is used to provide the format for the ti
 Month types in Morphir are mapped OneOf schema type with a enum list of all the month names
 
 #### 1.3. Optional values (Maybe)
-<p> A Maybe type in Morphir refers to a value that may not exist. This means that it could either be a value or a null. There are two approaches to handling Maybes.\
+A Maybe type in Morphir refers to a value that may not exist. This means that it could either be a value or a null. There are two approaches to handling Maybes.\
 1. Set the value of the type to an array of two strings: the type, and "null" \
 2. Treat a Maybe as a [custom type](#custom-types) with two constructors: the type and null
 Here, we adopt the second approach.
@@ -519,6 +519,7 @@ type alias Address =
     }
 ```
 Json Schema:
+
 ```json
 "Records.Bank": {
     "type": "object",
@@ -534,4 +535,5 @@ Json Schema:
 ```
 
 ## anyOf
-The anyOf keyword is used to relate a schema with it's subschemas. 
+The anyOf keyword is used to relate a schema 
+with it's subschemas. 
