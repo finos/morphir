@@ -1,4 +1,4 @@
-## JSON serialization support for generated Scala classes
+# JSON serialization support for generated Scala classes
 
 The purpose of this documentation is to give an explanation on how the JSON Codec Backend works and how to use it.
 This backend is a feature built on top of the Scala backend, which allows you to read Scala types that the Scala backend generates from JSON and write to JSON.

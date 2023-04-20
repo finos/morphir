@@ -1,2 +1,2 @@
-# **Scala JSON Backend Documentation**
+# Scala JSON Backend Documentation
 

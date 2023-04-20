@@ -1,4 +1,4 @@
-# morphir-elm SpringBoot generator
+# SpringBoot Generator
 
 [Morphir](https://github.com/finos/morphir) is a multi-language system built on a data format that captures an 
 application's domain model and business logic in a technology agnostic manner. This document will guide you on 

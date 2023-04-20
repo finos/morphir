@@ -1,5 +1,5 @@
-## Morphir-Cadl Mapping
-# [Morphir](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) to [Cadl Type](https://microsoft.github.io/cadl/docs/language-basics/type-relations/) Mappings
+# Morphir-Cadl Mapping
+## [Morphir](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) to [Cadl Type](https://microsoft.github.io/cadl/docs/language-basics/type-relations/) Mappings
 This is a documentation of the mapping strategy from Morphir types to Cadl types. This document describes how types in Morphir Models are represented in Cadl. 
 Below is a quick overview of the mapping in the table:
 

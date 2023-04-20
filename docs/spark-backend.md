@@ -1,4 +1,4 @@
-# **Spark Backend/API Documentation**
+# Spark Backend/API Documentation
 This is the entry point for the Spark Backend.
 
 # The Spark API

@@ -4,7 +4,7 @@ This document describes how Morphir Models maps to Json Schema.
 Json Schema Reference can be found [here](http://json-schema.org/understanding-json-schema/reference/index.html)
 \
 Additional reading:
-* [Sample Json Schema](json-schema-sample.json)
+* [Sample Json Schema](json-schema-sample.md)
 * [Testing Strategy](json-schema-backend-testplan.md)
 
 ## Overview

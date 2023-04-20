@@ -1,4 +1,4 @@
-# Implement the Spark backend as a special case of a Relational backend
+# Spark backend as a special case of a Relational backend
 
 ## Context and Problem Statement
 

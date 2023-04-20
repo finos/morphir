@@ -1,4 +1,4 @@
-## Json Schema Backend Test Specification
+# Json Schema Backend Test Specification
 This document speficies the testing strategy for the Json Schema backend.
 
 1. [Unit Tests (Elm)](#unitTests)
