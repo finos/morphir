@@ -68,7 +68,7 @@ that shape is decided, a great deal of the actual coding is very repetative and 
 practices and team standards and you get a lot of boilerplate code that can be automated for faster production with
 fewer errors. Morphir relies heavily on such automation, which we call Dev Bots. As with any automation, smart use can
 lead to drastic efficiency improvements, like taking seconds to generate what a developer would take days to
-produce. Check out the [Dev Bot post](dev_bots) for more information on this topic.
+produce. Check out the [Dev Bot post](dev-bots) for more information on this topic.
 
 ### Eliminating Rewrites
 

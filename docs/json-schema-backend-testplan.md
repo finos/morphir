@@ -9,8 +9,8 @@ This document speficies the testing strategy for the Json Schema backend.
 
 The unit test aims to test all the ```elm mapType()``` and the ```elm mapTypeDefinition()``` methods defined in the [Json Schema Backend]('../../../src/JsonSchema/Backeng.elm')
 
-Test for each module would be defined in a file with the name patter <ModuleName>Tests.elm.
-For example:<br>
+Test for each module would be defined in a file with the name pattern &lt;ModuleName&gt; Tests.elm.
+For example \
 Test for BasicTypes would be  defined in a file named BasicTypesTests.elm
 
 ### 2. System Test (JavaScript)
@@ -21,7 +21,7 @@ Therefore this would be implemented using the Jest on the JavaScript end.
 The [Ajv Json Schema Validator](https://www.npmjs.com/package/ajv?activeTab=readme) library would be used for validation.
 
 We also need to ensure the validity of each subschema
-in the generated Json output.<br>
+in the generated Json output.\
 This tests are defined in the [json-schema.test.js](../../../tests-integration/json-schema/test/json-schema.test.js) file.
 This tests are performed in tandem with the Accetance Tests
 

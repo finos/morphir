@@ -2,14 +2,14 @@
 This post explains the Result type in the Elm Programming Language and use cases in Morphir.
 
 ##Content
-1. [Overview of the Result Type](#) <br>
+1. [Overview of the Result Type](#)
 2. [Mapping Results (map)](#)
-3. [Chaining Results (andThen)](#) <br>
-4. [Result Error Handling](#) <br>
-5. [Use Cases in Morphir](#) <br><br>
+3. [Chaining Results (andThen)](#) 
+4. [Result Error Handling](#) 
+5. [Use Cases in Morphir](#) 
 
 
-###1. [Overview of the Result Type](#) <br>
+###1. [Overview of the Result Type](#) 
 Result is a built-in type in Elm that accepts two arguments: error and value. It represents the result of a computation that has the possibility
 of failure. The two types of constructors for the result type are given below:
 ```
@@ -17,22 +17,22 @@ type Result error value
     = Ok value
     | Err error
 ```
- <br>
-A result could be either: <br>
- - OK - which means the operation succeeded  <br>
- - Err - which means that the operation failed <br><br>
+
+A result could be either: 
+ - OK - which means the operation succeeded  
+ - Err - which means that the operation failed \
 So the Result type has two parameters: error and value. It also has two constructors: Ok and Err.
 
-<br>
 
-###2. [Mapping Results (map)](#) <br>
+
+###2. [Mapping Results (map)](#) 
 When a computation returns a Result, it is common to use the map function to further process
 the Result. If the result is Ok (which means that it is successful), then the function is
 applied  and a value is returned. If however, the result fails, then the error is propagated.
 An example is given below taken from the [String.elm](#) file
 
 **Example 1**
-This example is taken from the String module <br>
+This example is taken from the String module 
 ```
 evaluate "" value 
 |> Result.map 
@@ -40,7 +40,7 @@ evaluate "" value
 ```
 In the snippet, the evaluate function is called which takes two string argumnents
 (an empty string and a value) and returns a **Result Error String**. The output of the evaluate
-function is transformed to a **Value Literal** using the map function.<br>
+function is transformed to a **Value Literal** using the map function.
 
 **Example 2**
 In the example below which is taken from the [List Module](#), we use the map function to
@@ -54,7 +54,7 @@ listItems
 ```
 
 
-**Example 3** <br>
+**Example 3** \
 This example is taken from the [CLI.elm module](#).
 
 ```
@@ -68,12 +68,11 @@ In the snippet, the **Decode.decodeValue** function takes a decoder and a value.
 The value argument is the distributionJson returned from IR.fromDistribution 
 while the decoder is returned from DistributionCodec.decodeVersionedDistribution function.
 The Decode.decodeValue returns a Result. A successful result (which is a distribution) is
-transformed into an IR using the map functon applied to IR.fromDistribution.
-<br>
-<br>
+transformed into an IR using the map function applied to IR.fromDistribution.
 
 
-### 3. [Chaining Results (andThen)](#) <br><br>
+
+### 3. [Chaining Results (andThen)](#) 
 Sometimes we could have a sequence of operations where each of them have the possibility of failure.
 The signature for the **andThen** function is given below:
 
@@ -84,44 +83,44 @@ andThen callback result =
       Ok value -> callback value
       Err msg -> Err msg
 ```
-In the code snippet above, the andThen function takes two arguments:<br>
+In the code snippet above, the andThen function takes two arguments: 
 * **the callback** - this is the function that gets called on the value when the result is OK
 * **result** = this is Result type returned by a prior computation
-<br><br>
 
 
-###4. [Result Error Handling](#) <br>
+
+###4. [Result Error Handling](#)
 In the previous examples, we covered how to handle successful results. Let's now examine
 how to handle errors.
 Elm provides the following function that could be used for handling errors with the result type
-<br>
+
 ```
 withDefault: a -> Result x a -> a
 ```
-This function returns a specified default value when the result is Err <br>
+This function returns a specified default value when the result is Err 
 
 ```
 toMaybe: Result x a -> Maybe a
 ```
-This function returns a specified default value when the result is Err <br>
+This function returns a specified default value when the result is Err 
 
 ```
 fromMaybe: x -> Maybe a -> Result x a
 ```
-This function converts a Maybe to a Result <br>
+This function converts a Maybe to a Result 
 
 ```
 mapError: (x -> y) -> Result x a -> Result y a
 ```
 Just like the map function mentioned earlier, the mapError function allows you to apply a function
-to a result if it is an error<br>
-<br>
+to a result if it is an error
 
-###5. [Use Cases in Morphir](#) <br>
+
+###5. [Use Cases in Morphir](#) 
 To understand the result type more clearly, we would look at a number of use cases from
 the Morphir codebase.
 
-**Returning a Result Type**<br>
+**Returning a Result Type** \
 In a computatation that contains the possibility of failure, it would be necessary to 
 return a Result type. For example, the code snippet below taken from the JSONBackend.elm 
 file contains a function that returns the encoder reference for a given type:
@@ -143,7 +142,7 @@ For **Type.Variable**, the operation produces a **Scala.Variable** type which is
 into a Result type using the Ok constructor.
 This could also achieved by piping the output into Result.Ok.
 
-**Handling Result Using mapError**<br>
+**Handling Result Using mapError** \
 The snippet below shows the use of mapError in handling Error from the Result type. It is
 taken from [Incremental Frontend](#) module
 
@@ -160,11 +159,11 @@ In the example, the parseSource function returns a **Result** type but the **Elm
 function returns a **Result (List Deadend) RawFile**. This means that we need to transform
 both the two parameters of the Result.
 The **mapError** transforms the **(List Deadend)** into **Error** while the *map* transforms
-the *RawFile* into *ParsedModule* <br>
+the *RawFile* into *ParsedModule* 
 
 **Chaining Result Example**
 The example below  shows the use of Result chaining taken from [Spark Backend](#) module.
-<br>
+
 ```
 mapFunctionBody : TypedValue -> Result Error Scala.Value
 mapFunctionBody body =

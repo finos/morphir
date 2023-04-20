@@ -72,10 +72,10 @@ Morphir consists of a few projects based on the features they provide.
 | Introduction & Background                                                  | Using Morphir                                                                                              | Applicability                                                                           |
 | :------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------- |
 | [Resource Centre](https://resources.finos.org/morphir/)                    | [What Makes a Good Model](./docs/what-makes-a-good-domain-model.md)                                        | [Sharing Business Logic Across Application Boundaries](./docs/shared_logic_modeling.md) |
-| [Background](./docs/background.md)                                         | [Development Automation (Dev Bots)](./docs/dev_bots.md)                                                    | [Regulatory Technology](./docs/regtech_modeling.md)                                     |
-| [Community](./docs/morphir_community.md)                                   | [Modeling an Application](./docs/application_modeling.md)                                                  |                                                                                         |
-| [What's it all about?](./docs/whats_it_about.md)                           | [Modeling Decision Tables](https://github.com/finos/morphir-examples/tree/master/src/Morphir/Sample/Rules) |                                                                                         |
-| [Why we use Functional Programming?](./docs/why_functional_programming.md) | [Modeling for database developers](docs/modeling-for-database-developers.md)                    |
+| [Background](./docs/background.md)                                         | [Development Automation (Dev Bots)](./docs/dev-bots.md)                                                    | [Regulatory Technology](./docs/regtech-modeling.md)                                     |
+| [Community](./docs/morphir-community.md)                                   | [Modeling an Application](./docs/application-modeling.md)                                                  |                                                                                         |
+| [What's it all about?](./docs/whats-it-about.md)                           | [Modeling Decision Tables](https://github.com/finos/morphir-examples/tree/master/src/Morphir/Sample/Rules) |                                                                                         |
+| [Why we use Functional Programming?](./docs/why-functional-programming.md) | [Modeling for database developers](docs/modeling-for-database-developers.md)                    |
 
 ## Roadmap
 
