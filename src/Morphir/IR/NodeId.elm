@@ -1,4 +1,4 @@
-module Morphir.IR.NodeId exposing (..)
+module Morphir.IR.NodeId exposing (Error(..), NodeID(..), NodePath, NodePathStep(..), getAttribute, mapPatternAttributesWithNodePath, mapTypeAttributeWithNodePath, mapValueAttributesWithNodePath, nodeIdFromString, nodeIdToString, nodePathFromString, nodePathToString, getTypeAttributeByPath, getValueAttributeByPath)
 
 import Dict exposing (Dict)
 import List.Extra
@@ -11,7 +11,13 @@ import Morphir.IR.Type as Type exposing (Field, Type(..))
 import Morphir.IR.Value as Value exposing (Value(..))
 
 
-{-| Represents a path in the IR. This is a recursive structure made up of the following
+{-|
+
+@docs NodeID, NodePath, NodePathStep, Error
+
+@docs nodeIdFromString, nodeIdToString, nodePathFromString, nodePathToString, getAttribute, mapPatternAttributesWithNodePath, mapTypeAttributeWithNodePath, mapValueAttributesWithNodePath
+
+Represents a path in the IR. This is a recursive structure made up of the following
 building blocks:
 
   - **ChildByName** traverses to a child node by name. It takes one argument
@@ -60,9 +66,13 @@ type Error
     | InvalidNodeID String
 
 
+{-| Try to parse a string into NodeID.
+Return an Error if it's not a valid NodeID
+-}
 nodeIdFromString : String -> Result Error NodeID
 nodeIdFromString str =
     let
+        returnError : Result Error value
         returnError =
             Err <| InvalidNodeID ("Invalid NodeID: " ++ str)
 
@@ -94,9 +104,12 @@ nodeIdFromString str =
             returnError
 
 
+{-| Convert NodeID to String
+-}
 nodeIdToString : NodeID -> String
 nodeIdToString nodeId =
     let
+        mapToTypeOrValue : Path -> Path -> Name -> String -> List NodePathStep -> String
         mapToTypeOrValue packageName moduleName localName suffix nodePath =
             let
                 constructNodeIdString : String
@@ -127,6 +140,8 @@ nodeIdToString nodeId =
                 ]
 
 
+{-| Convert NodePath to String
+-}
 nodePathToString : NodePath -> String
 nodePathToString nodePath =
     if List.isEmpty nodePath then
@@ -148,6 +163,8 @@ nodePathToString nodePath =
                )
 
 
+{-| Parse string into NodePath
+-}
 nodePathFromString : String -> NodePath
 nodePathFromString string =
     if String.isEmpty string then
@@ -167,6 +184,8 @@ nodePathFromString string =
                 )
 
 
+{-| Utility function to return an error if the path is invalid
+-}
 returnInvalidPathError : NodePath -> Result Error value
 returnInvalidPathError pathSoFar =
     case nodePathToString pathSoFar of
@@ -177,6 +196,9 @@ returnInvalidPathError pathSoFar =
             Err <| InvalidPath ("Path is invalid after " ++ nodePathToString pathSoFar)
 
 
+{-| Get attribbute from a list types of values by index
+Return error if the NodePath is invalid
+-}
 getFromList : List NodePathStep -> List NodePathStep -> (NodePath -> NodePath -> a -> Result Error attr) -> List a -> Result Error attr
 getFromList nonEmptyPath pathSoFar recursiveFunction list =
     case nonEmptyPath of
@@ -190,6 +212,9 @@ getFromList nonEmptyPath pathSoFar recursiveFunction list =
             returnInvalidPathError pathSoFar
 
 
+{-| Get attribbute from a moudle, type or value by nodeID
+Return erro if the NodeID is invalid
+-}
 getAttribute : Package.Definition attr attr -> NodeID -> Result Error attr
 getAttribute packageDef nodeId =
     let
@@ -237,6 +262,9 @@ getAttribute packageDef nodeId =
                     Err <| InvalidNodeID (nodeIdToString nodeId)
 
 
+{-| Get attribbute from a module, type or value by nodeID
+Return erro if the NodeID is invalid
+-}
 mapTypeAttributeWithNodePathRec : (NodePath -> attr -> attr2) -> NodePath -> Type attr -> Type attr2
 mapTypeAttributeWithNodePathRec mf pathToMe t =
     let
@@ -285,11 +313,15 @@ mapTypeAttributeWithNodePathRec mf pathToMe t =
             Type.Unit (mapAttribute a)
 
 
+{-| Map type attribute
+-}
 mapTypeAttributeWithNodePath : (NodePath -> attr -> attr2) -> Type attr -> Type attr2
 mapTypeAttributeWithNodePath mapFunc tpe =
     mapTypeAttributeWithNodePathRec mapFunc [] tpe
 
 
+{-| Map value attribute
+-}
 mapValueAttributesWithNodePath : (NodePath -> attr -> attr2) -> Value attr attr -> Value attr2 attr2
 mapValueAttributesWithNodePath mapFunc value =
     let
@@ -427,6 +459,8 @@ mapValueAttributesWithNodePath mapFunc value =
     mapValueAttributesWithNodePathRec mapFunc [] value
 
 
+{-| Map pattern attribute
+-}
 mapPatternAttributesWithNodePath : (NodePath -> attr -> attr2) -> Value.Pattern attr -> Value.Pattern attr2
 mapPatternAttributesWithNodePath mapFunc pattern =
     mapPatternAttributesWithNodePathRec mapFunc [] pattern
@@ -478,6 +512,9 @@ mapPatternAttributesWithNodePathRec mapFunc pathToMe pattern =
                 literal
 
 
+{-| Get type attribute by NodePath
+Return an Error if the NodePath is invalid
+-}
 getTypeAttributeByPath : NodePath -> Type attr -> Result Error attr
 getTypeAttributeByPath path tpea =
     let
@@ -540,6 +577,9 @@ getTypeAttributeByPath path tpea =
     getTypeAttributeByPathRec path [] tpea
 
 
+{-| Get value attribute by NodePath
+Return an Error if the NodePath is invalid
+-}
 getValueAttributeByPath : NodePath -> Value attr attr -> Result Error attr
 getValueAttributeByPath path value =
     let
@@ -550,6 +590,7 @@ getValueAttributeByPath path value =
                 getValueFromList nonEmptyPath list =
                     getFromList nonEmptyPath pathSoFar getValueAttributeByPathRec list
 
+                getFromDefinition : Value.Definition attr attr -> NodePath -> Result Error attr
                 getFromDefinition def nodePath =
                     let
                         getFromInputTypes xs =
