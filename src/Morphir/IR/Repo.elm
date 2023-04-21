@@ -895,5 +895,9 @@ findModuleEntryPoints (Repo repo) moduleName =
         dependsOnNothing : FQName -> Bool
         dependsOnNothing f =
             Set.isEmpty <| DAG.incomingEdges f filteredValueDepsDag
+
+        callsOthers : FQName -> Bool
+        callsOthers f =
+            not <| Set.isEmpty <| DAG.outgoingEdges f filteredValueDepsDag
     in
-    valuesUnderModule |> List.filter dependsOnNothing
+    valuesUnderModule |> List.filter dependsOnNothing |> List.filter callsOthers
