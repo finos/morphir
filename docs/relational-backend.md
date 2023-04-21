@@ -1,4 +1,4 @@
-# **Relational Backend Documentation**
+# Relational Backend Documentation
 
 ## Joins
 

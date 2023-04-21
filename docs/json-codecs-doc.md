@@ -1,4 +1,4 @@
-## Json Codec Backend
+# Json Codec Backend
 The purpose of this documentation is to give an explanation of how the Json Codec Backend works and how to use it.
 The Json Codec backend is a tool that generates encoders and decoders from a Morphir IR using the Circe JSON library. Codecs are generated in Scala
 

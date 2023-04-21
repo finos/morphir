@@ -1,3 +1,4 @@
+# Table Template
 |   Header col1  | Header col2  | Header col 3  |
 |:--------------:|:------------:|:--------------|
 |       A1       |    A2        |   A3          |

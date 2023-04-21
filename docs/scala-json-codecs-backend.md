@@ -1,7 +1,7 @@
 # Scala JSON-Codecs Backend Documentation
 
 This document provides a description of the JSON codecs backend.
-The Json Codecs Backend for Scala contains functions to generate Codecs from types in the IR.<br>
+The Json Codecs Backend for Scala contains functions to generate Codecs from types in the IR.\
 [Circe](https://circe.github.io/circe/) is used as the base JSON library.
 
 ```mermaid
@@ -9,7 +9,7 @@ graph TD;
     Backend-->Core;
     Backend-->Features
 ```
-The Scala backend is split into two aspects: <br>
+The Scala backend is split into two aspects: \
 1. **Core** - the core Scala codes representing the user business logic
 2. **Feature** - the Codecs for each type defined in the input model
 
@@ -66,16 +66,16 @@ Generates and decoder reference for the input type using the FQName
 
 
 #### mapTypeDefinitionToEncoder
-Type definition could be any of the following:<br>
-_**Type Alias Definition**_ - maps to an encoder for record type <br>
+Type definition could be any of the following:\
+_**Type Alias Definition**_ - maps to an encoder for record type \
 **_Custom Type Definition_** - uses helper functions to build encoder for custom
-types <br><br>
+types \\
 
 #### mapTypeDefinitionToDecoder
-Type definition could be any of the following:<br>
-_**Type Alias Definition**_ - maps to an encoder for record type <br>
+Type definition could be any of the following:\
+_**Type Alias Definition**_ - maps to an encoder for record type \
 **_Custom Type Definition_** - uses helper functions to build encoder for custom
-types <br><br>
+types \\
 
 
 #### mapCustomTypeDefinitionToEncoder

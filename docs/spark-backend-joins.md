@@ -1,4 +1,4 @@
-
+# Spark Backend Joins
 Let's start by defining an example model that does some joins:
 
 ```elm

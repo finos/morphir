@@ -8,45 +8,45 @@ Finally, it provides a step by step walk-throughs on how various Morphir compone
 2. Existing team members intending to improve their abilities on Language Design concepts
 
 ##Content
-1. [Getting Started with Morphir](https://github.com/finos/morphir-elm/blob/main/README.md) <br>
+1. [Getting Started with Morphir](https://github.com/finos/morphir-elm/blob/main/README.md) \
 2. [Overview of Morphir](#)
-3. [The Morphir Architecture](#) <br>
-4. [The Morphir SDK](#) <br>
-5. [Morphir Commands Processing](Morphir-elm Commands Processing) <br>
-   1. [morphir-elm make](#) <br>
-   2. [morphir-elm gen](#) <br>
-   3. [morphir-elm test](#) <br>
-   4. [morphir-elm develop](#) <br>
-6. [Interoperability With JavaScript](#) <br>
-7. [Testing Framework](#) <br>
-8. [The Morphir IR](#) <br>
-   1. [Overview of the Morphir IR](#) <br>
-   2. [Distribution](#) <br>
-   3. [Package](#) <br>
-   4. [Module](#) <br>
-   5. [Types](#) <br>
-   6. [Values](#) <br>
-   7. [Names](#) <br>
-9. [The Morphir Frontends](#) <br>
-   1. [Elm Frontend](#) <br>
-   2. [Elm Incremental Frontend](#) <br>
-10. [The Morphir Backends](#) <br>
+3. [The Morphir Architecture](#) \
+4. [The Morphir SDK](#) \
+5. [Morphir Commands Processing](Morphir-elm Commands Processing) \
+   1. [morphir-elm make](#) \
+   2. [morphir-elm gen](#) \
+   3. [morphir-elm test](#) \
+   4. [morphir-elm develop](#) \
+6. [Interoperability With JavaScript](#) \
+7. [Testing Framework](#) \
+8. [The Morphir IR](#) \
+   1. [Overview of the Morphir IR](#) \
+   2. [Distribution](#) \
+   3. [Package](#) \
+   4. [Module](#) \
+   5. [Types](#) \
+   6. [Values](#) \
+   7. [Names](#) \
+9. [The Morphir Frontends](#) \
+   1. [Elm Frontend](#) \
+   2. [Elm Incremental Frontend](#) \
+10. [The Morphir Backends](#) \
     1. [Scala Backend](#)
-11. [Working with CODECS](#) <br>
-    1. [Introduction to Encoding/Decoding](#) <br>
-    2. [JSON Decoder Building Blocks](#) <br>
-    3. [Combining Decoders](#) <br>
-    4. [JSON Decode Pipeline](#) <br>
-    5. [Writing Encoders and Decoders in Elm](#) <br>
-    6. [Standard Codecs in Morphir](#) <br>
-12. [NPM and Elm Packages](#) <br>
-13. [Introduction to Combinator Parsing in Scala](#) <br> 
-    1. [Overview of Combinator Parsing](#) <br>
-    2. [Parser or Basic Arithmetic Expression](#) <br>
-    3. [Implementing Parsers in Scala](#) <br>
-    4. [Regular Expressions Parser](#) <br>
-    5. [JSON Parser](#) <br>
-    6. [Low-Level Pull Parser API](#) <br>
+11. [Working with CODECS](#) \
+    1. [Introduction to Encoding/Decoding](#) \
+    2. [JSON Decoder Building Blocks](#) \
+    3. [Combining Decoders](#) \
+    4. [JSON Decode Pipeline](#) \
+    5. [Writing Encoders and Decoders in Elm](#) \
+    6. [Standard Codecs in Morphir](#) \
+12. [NPM and Elm Packages](#) \
+13. [Introduction to Combinator Parsing in Scala](#) \ 
+    1. [Overview of Combinator Parsing](#) \
+    2. [Parser or Basic Arithmetic Expression](#) \
+    3. [Implementing Parsers in Scala](#) \
+    4. [Regular Expressions Parser](#) \
+    5. [JSON Parser](#) \
+    6. [Low-Level Pull Parser API](#) \
     
     
     

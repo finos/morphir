@@ -2,9 +2,9 @@
 This is a documentation of the mapping strategy from Morphir types to Json Schema. 
 This document describes how Morphir Models maps to Json Schema.
 Json Schema Reference can be found [here](http://json-schema.org/understanding-json-schema/reference/index.html)
-<br>
+\
 Additional reading:
-* [Sample Json Schema](json-schema-sample.json)
+* [Sample Json Schema](json-schema-sample.md)
 * [Testing Strategy](json-schema-backend-testplan.md)
 
 ## Overview
@@ -33,41 +33,43 @@ Run the ```elm morphir-elm make ``` command to generate an IR
 * Step 2
 Run the ```elm morphir-elm gen -t JsonSchema``` to generate the Json Schema
 
-**Note** - The generated schema is named <package-name>.json by default. But you can specify the filename
+**Note** - The generated schema is named `<package-name>.json` by default. But you can specify the filename
 optionally for the schema using the -f flag.
 
-<br><br>
+
+
+\
 Next, we will get into some specific cases that may need further explanation.
 
 The rest of the explains how each Morphir type maps to the Json Schema Types.
 
-1. ### [ SDK Types](#sdk-types) <br>
-   #### [1.1. Basic types](#basic-types) <br>
-      [1.1.1. Bool ](#bool)<br>
-      [1.1.2. Int ](#int)<br>
-      [1.1.3. Float ](#float)<br>
-       [1.1.4. Char ](#char)<br>
-      [1.1.5. String ](#string)<br>
-   #### [1.2. Advanced types](#advanced-types) <br>
-      [1.2.1. Decimal](#decimal)<br>
-      [1.2.2. LocalDate ](#localdate)<br>
-      [1.2.3. LocalTime](#localtime)<br>
-      [1.2.4. Month](#month)<br>
-   #### [1.3. Optional values](#optional-values)<br>
+1. ### [ SDK Types](#sdk-types) 
+   #### [1.1. Basic types](#basic-types) 
+      [1.1.1. Bool ](#bool)\
+      [1.1.2. Int ](#int)\
+      [1.1.3. Float ](#float)\
+       [1.1.4. Char ](#char)\
+      [1.1.5. String ](#string)\
+   #### [1.2. Advanced types](#advanced-types) \
+      [1.2.1. Decimal](#decimal)\
+      [1.2.2. LocalDate ](#localdate)\
+      [1.2.3. LocalTime](#localtime)\
+      [1.2.4. Month](#month)\
+   #### [1.3. Optional values](#optional-values)\
    #### [1.4. Collections](#collections)
-    [1.4.1. List ](#list)<br>
-    [1.4.2. Set ](#set) <br>
-    [1.4.3. Dict](#dict) <br>
+    [1.4.1. List ](#list)\
+    [1.4.2. Set ](#set) \
+    [1.4.3. Dict](#dict) \
    ####  [1.4.5. Results](#result)
 
 2. ### [Composite Types](#composite-types)
-   ####  [2.1. Tuples](#tuples) <br>
-   ####  [2.2. Record Types ](#records) <br>
-   ####  [2.3. Custom Types](#custom-types) <br>
-    [2.3.1. General Case ](#general-case) <br>
-    [2.3.2. Special Cases](#special-cases) <br>
-    [- No-arg Constructor](#) <br>
-    [- Single Constructor](#) <br>
+   ####  [2.1. Tuples](#tuples) \
+   ####  [2.2. Record Types ](#records) \
+   ####  [2.3. Custom Types](#custom-types) \
+    [2.3.1. General Case ](#general-case) \
+    [2.3.2. Special Cases](#special-cases) \
+    [- No-arg Constructor](#) \
+    [- Single Constructor](#) \
 
 
 
@@ -186,12 +188,12 @@ The format attribute in the JSON schema is used to provide the format for the ti
 Month types in Morphir are mapped OneOf schema type with a enum list of all the month names
 
 #### 1.3. Optional values (Maybe)
-<p> A Maybe type in Morphir refers to a value that may not exist. This means that it could either be a value or a null. There are two approaches to handling Maybes.<br>
-1. Set the value of the type to an array of two strings: the type, and "null" <br>
+A Maybe type in Morphir refers to a value that may not exist. This means that it could either be a value or a null. There are two approaches to handling Maybes.\
+1. Set the value of the type to an array of two strings: the type, and "null" \
 2. Treat a Maybe as a [custom type](#custom-types) with two constructors: the type and null
 Here, we adopt the second approach.
 Therefore, the model
-<br>
+\
 
 ```elm
 type alias Manager =
@@ -461,7 +463,7 @@ The resulting "anyOf" schema would be as shown below:
 }
 ```
 #### 2.3.2. Special Cases
-  **- No-arg Constructor <br>**
+  **No-arg Constructor** \
     As mentioned previously, when a constructor in a union type has zero arguments, then it maps to a ```const``` schema
 The model:
 ```elm
@@ -475,7 +477,7 @@ would generate the schema:
 }
 ```
 
-  **- Single Constructor <br>**
+  **- Single Constructor \ **
   When a constructor doesn't have any arguments it behaves like an enum value. The format described
   above would dictate that we map those to single element arrays in JSON but for simplicity we will
   map them to just a string value:
@@ -517,6 +519,7 @@ type alias Address =
     }
 ```
 Json Schema:
+
 ```json
 "Records.Bank": {
     "type": "object",
@@ -532,4 +535,5 @@ Json Schema:
 ```
 
 ## anyOf
-The anyOf keyword is used to relate a schema with it's subschemas. 
+The anyOf keyword is used to relate a schema 
+with it's subschemas. 

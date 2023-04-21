@@ -1,7 +1,9 @@
-# [Morphir](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) to [Cadl Type](https://microsoft.github.io/cadl/docs/language-basics/type-relations/) Mappings
-## Overview
+# Morphir-Cadl Mapping
+## [Morphir](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) to [Cadl Type](https://microsoft.github.io/cadl/docs/language-basics/type-relations/) Mappings
 This is a documentation of the mapping strategy from Morphir types to Cadl types. This document describes how types in Morphir Models are represented in Cadl. 
 Below is a quick overview of the mapping in the table:
+
+
 
 |                                                       | Type                                | Cadl Type                                | Comment                                             |
 |-------------------------------------------------------|-------------------------------------|------------------------------------------|-----------------------------------------------------|
@@ -198,7 +200,7 @@ The `maybe` type in morphir represents a type that may or may not exist. The typ
     }
    ``` 
 
-3. In a Scenario where a field type is `maybe` of another `maybe` type, it is represented as an `optional field` of the `union` type. <br/>
+3. In a Scenario where a field type is `maybe` of another `maybe` type, it is represented as an `optional field` of the `union` type. 
 
    Elm:
     ```elm
@@ -216,7 +218,7 @@ The `maybe` type in morphir represents a type that may or may not exist. The typ
         baz ?: string | null
     }
    ```
-   _<span style="color:red">Note:</span>_ <br/>
+   _<span style="color:red">Note:</span>_ \
    _In the scenario of multiple `maybe` type for a field in a model, it shall be represented as just the type or null_
 
 ### Collection Types
@@ -329,7 +331,7 @@ model FooBarBaz {
 ```    
 
 ### [Custom Types](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type)
-##### [General Case]()
+##### [General Case](#)
 A `custom` type in morphir is a user defined type used to represent a business term or type. This concept is not directly supported in CADL but can be achieved
 as tagged `union` of Tuples, where the first element represents type name in string, followed by its arguments.
 
@@ -345,7 +347,7 @@ Cadl:
 ```cadl
 alias FooBarBaz =  ["Foo", int64] | ["Bar", string] | "Baz";   
 ``` 
-##### [Special Case]()
+##### [Special Case](#)
 A `custom` type in morphir whose constructors have no arguments would be represented in CADL as an `enum` type.
 
 Elm:
@@ -369,13 +371,13 @@ enum Currency {
 
 ---
 
-| <div style="width:100px"></div>                                                              | CADL Type <div style="width:450px"></div>                                                                                                                                                                                                                                                                                                                  | Morphir Type<div style="width: 350px"></div>                                | Comment <div style="width:350px"></div>                                                                                                                                                                                                                                              |
-|----------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [Namespaces](https://microsoft.github.io/cadl/language-basics/namespaces)                    | `namespace Petstore`                                                                                                                                                                                                                                                                                                                                       | `module PetStore exposing (...)`                                            | Namespaces in CADL map to [Modules](https://package.elm-lang.org/packages/Morgan-Stanley/morphir-elm/latest/Morphir-IR-Module) in Morphir                                                                                                                                            |      
-| [Models](https://microsoft.github.io/cadl/language-basics/models)                            | `model Dog { name: string;  age: number}`                                                                                                                                                                                                                                                                                                                  | `type alias Dog = { name: string, age: int}`                                | Models in CADL map to [Records](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Value#record) in Morphir                                                                                                                                                   |
-| [Enums](https://microsoft.github.io/cadl/language-basics/enums)                              | `enum Direction {East; West; North; South}`                                                                                                                                                                                                                                                                                                                | `type Direction `<br/> `= East` &#124; `West` &#124; `North` &#124; `South` | Enums in CADL map to [Union Types](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) in Mophir                                                                                                                                                         |
+| <div style="width:100px"></div>                                                              | CADL Type <div style="width:450px"></div>                                                                                                                                                                                                                                                                                                                                                | Morphir Type<div style="width: 350px"></div>                                                                                                               | Comment <div style="width:350px"></div>                                                                                                                                                                                                                                                       |
+|----------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [Namespaces](https://microsoft.github.io/cadl/language-basics/namespaces)                    | `namespace Petstore`                                                                                                                                                                                                                                                                                                                                                                     | `module PetStore exposing (...)`                                                                                                                           | Namespaces in CADL map to [Modules](https://package.elm-lang.org/packages/Morgan-Stanley/morphir-elm/latest/Morphir-IR-Module) in Morphir                                                                                                                                                     |      
+| [Models](https://microsoft.github.io/cadl/language-basics/models)                            | `model Dog { name: string;  age: number}`                                                                                                                                                                                                                                                                                                                                                | `type alias Dog = { name: string, age: int}`                                                                                                               | Models in CADL map to [Records](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Value#record) in Morphir                                                                                                                                                            |
+| [Enums](https://microsoft.github.io/cadl/language-basics/enums)                              | `enum Direction {East; West; North; South}`                                                                                                                                                                                                                                                                                                                                              | `type Direction `<br/> `= East` &#124; `West` &#124; `North` &#124; `South`                                                                                | Enums in CADL map to [Union Types](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) in Mophir                                                                                                                                                                  |
 | [Union Type](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) |||
-|                                                                                              | -<span style="color: grey; font-style: italic;" > Unnamed Union <br> `alias Breed = Breagle` &#124; `GermanShepherd` &#124; `GoldenRetriever` <br> <span style="color: grey; font-style: italic;" >- Named Union <br> `union Breed {`<br> &ensp; `beagle: Beagle,` <br> &ensp; `shepherd: GermanShepherd.` <br> &ensp; `retiever: GoldenRetriever`<br> `}` |`type Breed` <br> &ensp; `= Beagle Beagle`<br> &ensp; &ensp; &#124; `Shepherd GermanShepherd ` <br> &ensp; &ensp; &#124; `Retriever GoldenRetriever`| Named unions in CADL maps to a Custom Type with  a `type parameter` in Morphir. Any other detail of the type is captured in Morphir's `Decorators(Custom Attributes).` <br> <span style="color: red; font-style: italic;" >NB: unnamed Unions are currently not supported in morphir |
+|                                                                                              | -<span style="color: grey; font-style: italic;" > Unnamed Union </span> <br /> `alias Breed = Breagle` &#124; `GermanShepherd` &#124; `GoldenRetriever` <br /> <span style="color: grey; font-style: italic;" >- Named Union </span> <br /> `union Breed {`<br /> &ensp; `beagle: Beagle,` <br /> &ensp; `shepherd: GermanShepherd.` <br /> &ensp; `retiever: GoldenRetriever`<br /> `}` | `type Breed` <br /> &ensp; `= Beagle Beagle`<br /> &ensp; &ensp; &#124; `Shepherd GermanShepherd ` <br /> &ensp; &ensp; &#124; `Retriever GoldenRetriever` | Named unions in CADL maps to a Custom Type with  a `type parameter` in Morphir. Any other detail of the type is captured in Morphir's `Decorators(Custom Attributes).` <br /> <span style="color: red; font-style: italic;" >NB: unnamed Unions are currently not supported in morphir</span> |
 
 
 ## [Type Relations](https://microsoft.github.io/cadl/language-basics/type-relations)
@@ -384,7 +386,7 @@ enum Currency {
 Boolean in CADL, maps to [`bool`](https://package.elm-lang.org/packages/elm/core/latest/Basics#Bool), a `true` or `false` value in Morphir.
 
 ##### Integer
-In Morphir, this maps to the type [`int`.](https://package.elm-lang.org/packages/elm/core/latest/Basics#Int) The `integer` type assignment is valid CADL, but <br/>
+In Morphir, this maps to the type [`int`.](https://package.elm-lang.org/packages/elm/core/latest/Basics#Int) The `integer` type assignment is valid CADL, but \
 <span style="color: red; font-style:italic;"> Things to note :: </span>
 1. When dealing with emitters such as OpenApiSpec(OAS) it defaults to an object. To obtain an actual int value, specify a subtype `int64`.
 

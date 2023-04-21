@@ -1,3 +1,4 @@
+# Spark Testing Framework
 ## Spark CSV Testing guide 
 The purpose of this document is to show how someone can use and edit the spark tests.
 
@@ -46,7 +47,7 @@ testExampleMax source =
 ```
 
 #### 2) Write code to generate input test data
-- If a new type has been designed for the test then new data of that type needs to be generated to use as an input for the test. This can be done in `/morphir-elm/tests-integration/spark/elm-tests/tests` using some elm code placed in a Generate....elm file. This can be done using the 'flatten' and 'generator' functions defined in GenerateAntiqueTestData.elm. It is simple to create code to generate input data by following the example set by the other Generate....elm files in the same directory. All Generate*.elm files should be placed in the `/morphir-elm/tests-integration/spark/elm-tests/tests` directory. The Generate*.elm file and its counterpart *DataSource.elm must be of the form " Generate<Type>Data.elm" and "<Type>DataSource.elm".
+- If a new type has been designed for the test then new data of that type needs to be generated to use as an input for the test. This can be done in `/morphir-elm/tests-integration/spark/elm-tests/tests` using some elm code placed in a Generate....elm file. This can be done using the 'flatten' and 'generator' functions defined in GenerateAntiqueTestData.elm. It is simple to create code to generate input data by following the example set by the other Generate....elm files in the same directory. All Generate*.elm files should be placed in the `/morphir-elm/tests-integration/spark/elm-tests/tests` directory. The Generate*.elm file and its counterpart *DataSource.elm must be of the form " Generate `<Type>` Data.elm" and " `<Type>` DataSource.elm".
 Some example data generation code in elm can be seen below.
 
 ```

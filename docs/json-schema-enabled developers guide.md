@@ -27,7 +27,7 @@ and the CustomAttributesDetails
   * displayName - String display name of  the custom attribute
   * entryPoint - FQName or ModuleName being decorated
   * iR - Distribution for the custom attribute IR
-  * data - the custom attribute dictionary (content of the <unique-id.json> file)
+  * data - the custom attribute dictionary (content of the &lt;unique-id.json&gt; file)
 
 ## Setting Up json-schema-enabled for a New Project
 This section explains how the json-schema-enabled decorator is setup for a Morphir project

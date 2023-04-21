@@ -1,4 +1,4 @@
-## Testing Framework Guide
+# Testing Framework Guide
 The purpose of this document is how we can use Testing Framework within developer server.
 
 ## Prerequisites
