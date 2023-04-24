@@ -64,10 +64,8 @@ import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Repo as Repo exposing (Repo)
 import Morphir.IR.SDK as SDK exposing (packageName)
-import Morphir.IR.SDK.Result exposing (err)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
-import Morphir.SDK.Bool exposing (false)
 import Morphir.SDK.Dict as SDKDict
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Error exposing (Error)
@@ -1380,7 +1378,9 @@ viewHome model packageName packageDef =
                                 )
 
                         Nothing ->
-                            row [ width fill, spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme) ] [ text <| "This package contains " ++ String.fromInt numberOfModules ++ " modules." ]
+                            row
+                                [ width fill, spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme) ]
+                                [ text <| "This package contains " ++ String.fromInt numberOfModules ++ " modules." ]
 
                 maybeModuleName =
                     model.homeState.selectedModule |> Maybe.map Tuple.second
@@ -2314,7 +2314,7 @@ viewDefinitionDetails model =
                                                                                 )
                                                                             , paddingXY 10 10
                                                                             ]
-                                                                            [ viewDecorationValues model (ValueID fullyQualifiedName) ]
+                                                                            [ viewDecorationValues model (ValueID fullyQualifiedName []) ]
                                                                   }
                                                                 ]
                                                         }
@@ -2363,7 +2363,7 @@ viewDefinitionDetails model =
                                                         )
                                                     , paddingXY 10 10
                                                     ]
-                                                    [ viewDecorationValues model (TypeID fullyQualifiedName) ]
+                                                    [ viewDecorationValues model (TypeID fullyQualifiedName []) ]
                                           }
                                         ]
                                 }

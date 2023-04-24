@@ -59,7 +59,7 @@ getBranchCoverage ( packageName, moduleName ) ir testSuite moduleDef =
                     valueDef =
                         accesscontrolledValueDef.value.value
                 in
-                ( currentFQN |> ValueID
+                ( ValueID currentFQN []
                 , valueTestCases
                     |> BranchCoverage.assignTestCasesToBranches ir valueDef
                     |> (\lstOfBranchAndCoveredTestCases ->
