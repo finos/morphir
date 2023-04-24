@@ -67,7 +67,7 @@ type Error
 
 
 {-| Try to parse a string into NodeID.
-Return an Error if it's not a valid NodeID
+Return an Error if it's not a valid NodeID.
 -}
 nodeIdFromString : String -> Result Error NodeID
 nodeIdFromString str =
@@ -104,7 +104,7 @@ nodeIdFromString str =
             returnError
 
 
-{-| Convert NodeID to String
+{-| Convert a NodeID to String.
 -}
 nodeIdToString : NodeID -> String
 nodeIdToString nodeId =
@@ -140,7 +140,7 @@ nodeIdToString nodeId =
                 ]
 
 
-{-| Convert NodePath to String
+{-| Convert a NodePath to String.
 -}
 nodePathToString : NodePath -> String
 nodePathToString nodePath =
@@ -163,7 +163,7 @@ nodePathToString nodePath =
                )
 
 
-{-| Parse string into NodePath
+{-| Parse a String into a NodePath.
 -}
 nodePathFromString : String -> NodePath
 nodePathFromString string =
@@ -184,7 +184,7 @@ nodePathFromString string =
                 )
 
 
-{-| Utility function to return an error if the path is invalid
+{-| Utility function to return an error if the path is invalid.
 -}
 returnInvalidPathError : NodePath -> Result Error value
 returnInvalidPathError pathSoFar =
@@ -196,8 +196,8 @@ returnInvalidPathError pathSoFar =
             Err <| InvalidPath ("Path is invalid after " ++ nodePathToString pathSoFar)
 
 
-{-| Get attribute from a list of types or values by index
-Return error if the NodePath is invalid
+{-| Get attribute from a list of types or values by index.
+Return error if the NodePath is invalid.
 -}
 getFromList : List NodePathStep -> List NodePathStep -> (NodePath -> NodePath -> a -> Result Error attr) -> List a -> Result Error attr
 getFromList nonEmptyPath pathSoFar recursiveFunction list =
@@ -213,7 +213,7 @@ getFromList nonEmptyPath pathSoFar recursiveFunction list =
 
 
 {-| Get attribute from a module, type or value by NodeID.
-Return error, if the NodeID is invalid
+Return error, if the NodeID is invalid.
 -}
 getAttribute : Package.Definition attr attr -> NodeID -> Result Error attr
 getAttribute packageDef nodeId =
@@ -262,7 +262,7 @@ getAttribute packageDef nodeId =
                     Err <| InvalidNodeID (nodeIdToString nodeId)
 
 
-{-| Given a map function, a NodePath, and a type, recursively map the type's attributes using the provided map function
+{-| Given a map function, a NodePath, and a type, recursively map the type's attributes using the provided map function.
 -}
 mapTypeAttributeWithNodePathRec : (NodePath -> attr -> attr2) -> NodePath -> Type attr -> Type attr2
 mapTypeAttributeWithNodePathRec mf pathToMe t =
@@ -312,14 +312,14 @@ mapTypeAttributeWithNodePathRec mf pathToMe t =
             Type.Unit (mapAttribute a)
 
 
-{-| Applies the given map function to the attributes of every node of the given type
+{-| Applies the given map function to the attributes of every node of the given type.
 -}
 mapTypeAttributeWithNodePath : (NodePath -> attr -> attr2) -> Type attr -> Type attr2
 mapTypeAttributeWithNodePath mapFunc tpe =
     mapTypeAttributeWithNodePathRec mapFunc [] tpe
 
 
-{-| Applies the given map function to the attributes of every node of the given value
+{-| Applies the given map function to the attributes of every node of the given value.
 -}
 mapValueAttributesWithNodePath : (NodePath -> attr -> attr2) -> Value attr attr -> Value attr2 attr2
 mapValueAttributesWithNodePath mapFunc value =
@@ -458,13 +458,13 @@ mapValueAttributesWithNodePath mapFunc value =
     mapValueAttributesWithNodePathRec mapFunc [] value
 
 
-{-| Applies the given map function to the attributes of every node of the given pattern
+{-| Applies the given map function to the attributes of every node of the given pattern.
 -}
 mapPatternAttributesWithNodePath : (NodePath -> attr -> attr2) -> Value.Pattern attr -> Value.Pattern attr2
 mapPatternAttributesWithNodePath mapFunc pattern =
     mapPatternAttributesWithNodePathRec mapFunc [] pattern
 
-{-| Given a map function, a NodePath, and a pattern, recursively map the pattern's attributes using the provided map function
+{-| Given a map function, a NodePath, and a pattern, recursively map the pattern's attributes using the provided map function.
 -}
 mapPatternAttributesWithNodePathRec : (NodePath -> attr -> attr2) -> NodePath -> Value.Pattern attr -> Value.Pattern attr2
 mapPatternAttributesWithNodePathRec mapFunc pathToMe pattern =
@@ -512,8 +512,8 @@ mapPatternAttributesWithNodePathRec mapFunc pathToMe pattern =
                 literal
 
 
-{-| Get type attribute by NodePath
-Return an Error if the NodePath is invalid
+{-| Get type attribute by NodePath.
+Return an Error if the NodePath is invalid.
 -}
 getTypeAttributeByPath : NodePath -> Type attr -> Result Error attr
 getTypeAttributeByPath path tpea =
@@ -577,8 +577,8 @@ getTypeAttributeByPath path tpea =
     getTypeAttributeByPathRec path [] tpea
 
 
-{-| Get value attribute by NodePath
-Return an Error if the NodePath is invalid
+{-| Get value attribute by NodePath.
+Return an Error if the NodePath is invalid.
 -}
 getValueAttributeByPath : NodePath -> Value attr attr -> Result Error attr
 getValueAttributeByPath path value =

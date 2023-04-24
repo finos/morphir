@@ -238,12 +238,15 @@ mapModuleDefinitionToCodecs currentPackagePath currentModulePath accessControlle
 mapTypeDefinitionToEncoder : Package.PackageName -> Path -> ( Name, AccessControlled (Documented (Type.Definition ta)) ) -> Result Error (Scala.Annotated Scala.MemberDecl)
 mapTypeDefinitionToEncoder currentPackagePath currentModulePath ( typeName, accessControlledDocumentedTypeDef ) =
     let
+        typeFqn =
+            FQName.fQName currentPackagePath currentModulePath typeName
+
         ( scalaTypePath, scalaTypeName ) =
-            ScalaBackend.mapFQNameToPathAndName (FQName.fQName currentPackagePath currentModulePath typeName)
+            ScalaBackend.mapFQNameToPathAndName typeFqn
     in
     case accessControlledDocumentedTypeDef.value.value of
         Type.TypeAliasDefinition typeParams typeExp ->
-            mapTypeToEncoderReference scalaTypeName scalaTypePath typeParams typeExp
+            mapTypeToEncoderReference (Just typeFqn) typeName scalaTypePath typeParams typeExp
                 |> Result.map (scalaDeclaration "encode" "Encoder" (scalaType typeParams scalaTypeName scalaTypePath) scalaTypeName typeParams)
 
         Type.CustomTypeDefinition typeParams accessControlledCtors ->
@@ -289,7 +292,7 @@ mapConstructorsToEncoders tpePath (( _, _, ctorName ) as fqName) ctorArgs typePa
                             arg =
                                 Scala.Variable (argName |> Name.toCamelCase)
                         in
-                        mapTypeToEncoderReference argName [] typeParams argType
+                        mapTypeToEncoderReference Nothing argName [] typeParams argType
                             |> Result.map (\typeEncoder -> Scala.Apply typeEncoder [ Scala.ArgValue Nothing arg ])
                     )
                 |> ResultList.keepFirstError
@@ -339,8 +342,8 @@ mapConstructorsToEncoders tpePath (( _, _, ctorName ) as fqName) ctorArgs typePa
     Get an Encoder reference for a Type
 
 -}
-mapTypeToEncoderReference : Name -> Scala.Path -> List Name -> Type ta -> Result Error Scala.Value
-mapTypeToEncoderReference tpeName tpePath typeParams tpe =
+mapTypeToEncoderReference : Maybe FQName -> Name -> Scala.Path -> List Name -> Type ta -> Result Error Scala.Value
+mapTypeToEncoderReference maybeFqn tpeName tpePath typeParams tpe =
     case tpe of
         Type.Variable _ varName ->
             Scala.Variable ("encode" :: varName |> Name.toCamelCase)
@@ -371,7 +374,7 @@ mapTypeToEncoderReference tpeName tpePath typeParams tpe =
 
                 _ ->
                     typeArgs
-                        |> List.map (\typeArg -> mapTypeToEncoderReference tpeName tpePath typeParams typeArg)
+                        |> List.map (\typeArg -> mapTypeToEncoderReference maybeFqn tpeName tpePath typeParams typeArg)
                         |> ResultList.keepFirstError
                         |> Result.map (List.map (Scala.ArgValue Nothing))
                         |> Result.map (Scala.Apply scalaReference)
@@ -382,7 +385,7 @@ mapTypeToEncoderReference tpeName tpePath typeParams tpe =
                     types
                         |> List.map
                             (\currentType ->
-                                mapTypeToEncoderReference tpeName tpePath typeParams currentType
+                                mapTypeToEncoderReference maybeFqn tpeName tpePath typeParams currentType
                             )
                         |> ResultList.keepFirstError
                         |> Result.map
@@ -415,7 +418,7 @@ mapTypeToEncoderReference tpeName tpePath typeParams tpe =
                     fields
                         |> List.map
                             (\field ->
-                                mapTypeToEncoderReference tpeName tpePath typeParams field.tpe
+                                mapTypeToEncoderReference maybeFqn tpeName tpePath typeParams field.tpe
                                     |> Result.map
                                         (\fieldEncoder ->
                                             let
@@ -442,9 +445,19 @@ mapTypeToEncoderReference tpeName tpePath typeParams tpe =
                 objRef =
                     objFields
                         |> Result.map (Scala.Apply (Scala.Ref circeJsonPath "obj"))
+
+                recordTpe =
+                    case maybeFqn of
+                        Just fqn ->
+                            typeParams
+                                |> List.map (Variable a)
+                                |> Type.Reference a fqn
+
+                        Nothing ->
+                            tpe
             in
             objRef
-                |> Result.map (encoderLambda [ ( tpeName, ScalaBackend.mapType tpe |> Just ) ])
+                |> Result.map (encoderLambda [ ( tpeName, ScalaBackend.mapType recordTpe |> Just ) ])
 
         Type.ExtensibleRecord a name fields ->
             let
@@ -453,7 +466,7 @@ mapTypeToEncoderReference tpeName tpePath typeParams tpe =
                     fields
                         |> List.map
                             (\field ->
-                                mapTypeToEncoderReference tpeName tpePath typeParams field.tpe
+                                mapTypeToEncoderReference maybeFqn tpeName tpePath typeParams field.tpe
                                     |> Result.map
                                         (\fieldValueEncoder ->
                                             let
