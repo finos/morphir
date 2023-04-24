@@ -1,7 +1,7 @@
-module Morphir.Cadl.Backend.Codec exposing (..)
+module Morphir.TypeSpec.Backend.Codec exposing (..)
 
 import Json.Encode as Encode
-import Morphir.Cadl.Backend exposing (Errors)
+import Morphir.TypeSpec.Backend exposing (Errors)
 
 
 encodeErrors : Errors -> Encode.Value

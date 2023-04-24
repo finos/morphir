@@ -134,7 +134,7 @@ function copyRedistributables(options, outputPath) {
         copyScalaFeature('core')
     } else if (options.target == 'TypeScript') {
         copyFiles('TypeScript/', outputPath)
-    }
+    } 
 }
 
 function copyRecursiveSync(src, dest) {
