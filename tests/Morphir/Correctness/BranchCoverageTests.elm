@@ -7,7 +7,7 @@ import Morphir.IR as IR
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.SDK.Basics exposing (intType)
 import Morphir.IR.Type as Type
-import Morphir.IR.Value as Value
+import Morphir.IR.Value as Value exposing (Value)
 import Morphir.IR.Values exposing (apply, apply2, basics, litInt, unit, var)
 import Test exposing (Test, describe, test)
 
@@ -15,18 +15,35 @@ import Test exposing (Test, describe, test)
 valueBranchesTests : Test
 valueBranchesTests =
     let
-        assertExpand : String -> Value.Value ta va -> List (BranchCoverage.Branch ta va) -> Test
-        assertExpand msg input expectedOutput =
-            test msg
-                (\_ ->
+        wrapInLet : Value () () -> Value () ()
+        wrapInLet v =
+            Value.LetDefinition () [ "foo" ] (Value.Definition [] (Type.Unit ()) (Value.Unit ())) v
+
+        tests : String -> Value () () -> (Value () () -> Expect.Expectation) -> Test
+        tests msg input f =
+            describe msg
+                [ test "plain"
+                    (always (f input))
+                , test "wrapped in let"
+                    (always (f (wrapInLet input)))
+                , test "wrapped in double let"
+                    (always (f (wrapInLet (wrapInLet input))))
+                ]
+
+        assertExpand : String -> Value () () -> List (BranchCoverage.Branch () ()) -> Test
+        assertExpand msg inp expectedOutput =
+            tests msg
+                inp
+                (\input ->
                     BranchCoverage.valueBranches True input
                         |> Expect.equal expectedOutput
                 )
 
-        assertNoExpand : String -> Value.Value ta va -> List (BranchCoverage.Branch ta va) -> Test
-        assertNoExpand msg input expectedOutput =
-            test (msg ++ " - no expand")
-                (\_ ->
+        assertNoExpand : String -> Value.Value () () -> List (BranchCoverage.Branch () ()) -> Test
+        assertNoExpand msg inp expectedOutput =
+            tests (msg ++ " - no expand")
+                inp
+                (\input ->
                     BranchCoverage.valueBranches False input
                         |> Expect.equal expectedOutput
                 )
@@ -48,6 +65,22 @@ valueBranchesTests =
                     (eq "b" 2)
                     unit
                     unit
+                )
+                unit
+            )
+            [ [ BoolCondition { criterion = eq "a" 1, expectedValue = True }, BoolCondition { criterion = eq "b" 2, expectedValue = True } ]
+            , [ BoolCondition { criterion = eq "a" 1, expectedValue = True }, BoolCondition { criterion = eq "b" 2, expectedValue = False } ]
+            , [ BoolCondition { criterion = eq "a" 1, expectedValue = False } ]
+            ]
+        , assertExpand "nested if/else - one branch - let interleaved"
+            (Value.IfThenElse ()
+                (eq "a" 1)
+                (wrapInLet
+                    (Value.IfThenElse ()
+                        (eq "b" 2)
+                        unit
+                        unit
+                    )
                 )
                 unit
             )
