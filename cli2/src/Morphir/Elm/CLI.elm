@@ -18,6 +18,7 @@ import Dict
 import Json.Decode as Decode exposing (field, string)
 import Json.Encode as Encode
 import Morphir.Correctness.Codec as TestCodec
+import Morphir.Correctness.Test exposing (TestSuite)
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
 import Morphir.Elm.IncrementalFrontend as IncrementalFrontend exposing (Errors, ModuleChange(..), OrderedFileChanges)
@@ -32,13 +33,15 @@ import Morphir.File.FileSnapshot.Codec as FileSnapshotCodec
 import Morphir.IR as IR
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..), lookupPackageName, lookupPackageSpecification)
 import Morphir.IR.Distribution.Codec as DistroCodec
-import Morphir.IR.Name as Name
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package exposing (PackageName, Specification)
-import Morphir.IR.Path as Path
+import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Repo as Repo exposing (Error(..), Repo)
 import Morphir.IR.SDK as SDK
 import Morphir.JsonSchema.Backend
 import Morphir.Stats.Backend as Stats
+import Morphir.TestCoverage.Backend exposing (TestCoverageResult, getBranchCoverage)
+import Morphir.TestCoverage.Codec exposing (encodeTestCoverageError, encodeTestCoverageResult)
 import Process
 import Task
 
@@ -76,6 +79,12 @@ port stats : (Decode.Value -> msg) -> Sub msg
 port statsResult : Encode.Value -> Cmd msg
 
 
+port testCoverage : (( Decode.Value, Decode.Value ) -> msg) -> Sub msg
+
+
+port testCoverageResult : Encode.Value -> Cmd msg
+
+
 subscriptions : () -> Sub Msg
 subscriptions _ =
     Sub.batch
@@ -83,6 +92,7 @@ subscriptions _ =
         , buildIncrementally BuildIncrementally
         , generate Generate
         , stats Stats
+        , testCoverage TestCoverage
         ]
 
 
@@ -110,6 +120,7 @@ type Msg
     | ApplyFileChanges PackageInfo Frontend.Options (List ModuleChange) Repo
     | Generate ( Decode.Value, Decode.Value, Decode.Value )
     | Stats Decode.Value
+    | TestCoverage ( Decode.Value, Decode.Value )
 
 
 main : Platform.Program () () Msg
@@ -321,6 +332,65 @@ process msg =
                 Err errorMessage ->
                     errorMessage |> Decode.errorToString |> jsonDecodeError
 
+        TestCoverage ( packageDistJson, testSuiteJson ) ->
+            let
+                packageDistroResult : Result Decode.Error Distribution
+                packageDistroResult =
+                    Decode.decodeValue DistroCodec.decodeVersionedDistribution packageDistJson
+
+                testSuiteResult : Result Decode.Error TestSuite
+                testSuiteResult =
+                    packageDistroResult
+                        |> Result.andThen
+                            (\packageDist ->
+                                let
+                                    ir =
+                                        IR.fromDistribution packageDist
+                                in
+                                Decode.decodeValue
+                                    (TestCodec.decodeTestSuite ir)
+                                    testSuiteJson
+                            )
+            in
+            case packageDistroResult of
+                Ok packageDistro ->
+                    case packageDistro of
+                        Library packageName dependencies packageDef ->
+                            packageDef.modules
+                                |> Dict.toList
+                                |> List.map
+                                    (\( modName, accesscontrolledModDef ) ->
+                                        case testSuiteResult of
+                                            Ok testSuite ->
+                                                accesscontrolledModDef.value
+                                                    |> getBranchCoverage ( packageName, modName ) (IR.fromDistribution packageDistro) testSuite
+
+                                            Err err ->
+                                                accesscontrolledModDef.value
+                                                    |> getBranchCoverage ( packageName, modName ) (IR.fromDistribution packageDistro) Dict.empty
+                                    )
+                                |> List.map encodeTestCoverageResult
+                                |> (\lstValues ->
+                                        if not (lstValues |> List.isEmpty) then
+                                            Encode.list identity
+                                                [ Encode.null
+                                                , Encode.list identity lstValues
+                                                ]
+                                                |> testCoverageResult
+
+                                        else
+                                            Encode.list identity
+                                                [ Encode.string "An Error Occurred From Elm"
+                                                , Encode.null
+                                                ]
+                                                |> testCoverageResult
+                                   )
+
+                Err err ->
+                    err
+                        |> encodeTestCoverageError
+                        |> testCoverageResult
+
 
 report : Msg -> Cmd Msg
 report msg =
@@ -361,6 +431,9 @@ report msg =
 
         Stats _ ->
             reportProgress "Generating stats from IR ..."
+
+        TestCoverage ( _, _ ) ->
+            reportProgress "Generating Tests Coverage from testSuites ..."
 
 
 keepElmFilesOnly : FileChanges -> FileChanges
