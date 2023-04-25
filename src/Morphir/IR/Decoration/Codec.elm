@@ -28,7 +28,12 @@ decodeNodeIDByValuePairs =
                                         Decode.succeed <| ( nodeID, decodedValue ) :: nodeIdList
 
                                     Err message ->
-                                        Decode.fail message
+                                        case message of
+                                            Morphir.IR.NodeId.InvalidNodeID msg->
+                                                Decode.fail ("Invalid NodeID : " ++ msg)
+
+                                            Morphir.IR.NodeId.InvalidPath msg ->
+                                                Decode.fail ("Invalid Nodepath : " ++ msg)
                             )
                 )
                 (Decode.succeed [])
@@ -70,7 +75,12 @@ decodeDecorationData distro entryPointFqn =
                                         Decode.succeed <| ( nodeID, decodedValue ) :: nodeIdList
 
                                     Err message ->
-                                        Decode.fail message
+                                        case message of
+                                            Morphir.IR.NodeId.InvalidNodeID msg->
+                                                Decode.fail ("Invalid NodeID : " ++ msg)
+
+                                            Morphir.IR.NodeId.InvalidPath msg ->
+                                                Decode.fail ("Invalid Nodepath : " ++ msg)
                             )
                 )
                 (Decode.succeed [])
