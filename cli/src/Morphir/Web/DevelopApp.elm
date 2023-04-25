@@ -2358,7 +2358,7 @@ viewDefinitionDetails model =
                                                                                 )
                                                                             , paddingXY 10 10
                                                                             ]
-                                                                            [ viewDecorationValues model (ValueID fullyQualifiedName) ]
+                                                                            [ viewDecorationValues model (ValueID fullyQualifiedName []) ]
                                                                   }
                                                                 ]
                                                         }
@@ -2407,7 +2407,7 @@ viewDefinitionDetails model =
                                                         )
                                                     , paddingXY 10 10
                                                     ]
-                                                    [ viewDecorationValues model (TypeID fullyQualifiedName) ]
+                                                    [ viewDecorationValues model (TypeID fullyQualifiedName []) ]
                                           }
                                         ]
                                 }
