@@ -1,3 +1,7 @@
+---
+id: insight-api-guide
+---
+
 #Insight API Guide
 The purpose of this document is how we can use Insight API into any UI.
 

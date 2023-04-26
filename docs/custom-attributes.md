@@ -1,3 +1,7 @@
+---
+id: custom-attributes-users-guide
+---
+
 # Custom attributes user guide
 
 The contents of this document detail how to structure and load optional "sidecar" files for the purposes of adding custom attributes to Morphir types and values. Custom attributes can assign extra information to business concepts that is otherwise not included in the Morphir IR.

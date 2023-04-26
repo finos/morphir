@@ -21,9 +21,10 @@ const config = {
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: {
-          path: '../docs',
-          sidebarPath: require.resolve('./sidebars.js'),
-          editUrl: 'https://github.com/finos/morphir/tree/main/docs/',
+          "path": '../docs',
+          //"sidebarPath": "./sidebars.json",
+          sidebarPath: require.resolve('./sidebars.js')
+         // editUrl: 'https://github.com/finos/morphir/tree/main/docs/',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),

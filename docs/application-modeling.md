@@ -1,7 +1,6 @@
 ---
-sidebar_position: 4
-id: modeling-applications
-title: Modeling Entire Applications
+id: modeling-entire-application
+title: Modeling Entire Application
 ---
 
 # Modeling Entire Applications

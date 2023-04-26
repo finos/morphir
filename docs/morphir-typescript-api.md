@@ -1,3 +1,7 @@
+---
+id: morphir-typescript
+---
+
 #Morphir API for Typescript 
 The purpose of this documentation is to give a user an understanding of how to use the Morphir API created for Typescript.
 

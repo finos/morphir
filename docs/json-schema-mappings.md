@@ -1,3 +1,7 @@
+---
+id: json-schema-mappings
+---
+
 # Json Schema Mappings
 This is a documentation of the mapping strategy from Morphir types to Json Schema. 
 This document describes how Morphir Models maps to Json Schema.

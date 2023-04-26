@@ -1,5 +1,4 @@
 ---
-sidebar_position: 6
 id: morphir-community
 title: Morphir Community
 ---

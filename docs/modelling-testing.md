@@ -1,9 +1,9 @@
 ---
-id: morphir-setup
+id: morphir-testing-setup
 title: Setup
 ---
 
-# Setup
+# Testing Setup
 
 Elm's standard testing library is elm-test. You can install it by running the following command \
 in your project. It will ask questions, just say yes to everything:

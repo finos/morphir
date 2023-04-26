@@ -1,3 +1,8 @@
+---
+id: cli-cli2-merging
+title: Migrating From Old CLI To New CLI
+---
+
 # Migrating From Old CLI To New CLI
 ### Overview
 This document contains cli commands that were migrated from the old cli, which is `morphir-elm`, into the new  all cli commands supported by the old cli,  and the **current** cli, `morphir`.

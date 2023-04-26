@@ -1,3 +1,7 @@
+---
+id: command-line-tools
+title: Morphir Command Line Tools
+---
 # Morphir Command Line Tools
 
 At the moment, Morphir provides two CLI programs that provide the tools that morphir offers, `morphir-elm` and `morphir`.

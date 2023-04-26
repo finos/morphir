@@ -1,3 +1,7 @@
+---
+id: decorations-users-guide
+---
+
 # Decorations User Guide
 
 The Morphir IR contains all the domain models and business logic that you defined in your model but sometimes

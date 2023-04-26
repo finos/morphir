@@ -1,3 +1,7 @@
+---
+id: json-schema-sample
+---
+
 # Json Schema Sample
 ```json
 {
