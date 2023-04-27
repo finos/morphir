@@ -77,7 +77,7 @@ const sidebars = {
     {
       type: 'category',
       label: 'Further Readings',
-      items: ['dev-bots']
+      items: ['dev-bots', 'cli-cli2-merging']
     }
   ],
 
