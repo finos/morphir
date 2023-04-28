@@ -1,3 +1,7 @@
+---
+id: spark-optional-values
+---
+
 # Handling optiobnal values in Spark
 
 Optional values are handled differently in SQL and Morphir. In SQL every value can potentially be `NULL` and there are implicit rules about how each operator should behave when `NULL`s are passed to them. Spark follows the same approach as documented in the [NULL semantics](https://spark.apache.org/docs/latest/sql-ref-null-semantics.html) section. Morphir on the other hand requires the modeler to handle missing values explicitly. 

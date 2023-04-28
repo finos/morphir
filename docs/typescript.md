@@ -1,3 +1,7 @@
+---
+id: typescript-api
+---
+
 # TypeScript API
 
 The purpose of this document is describing the TypeScript API generated for Morphir

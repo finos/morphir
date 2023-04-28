@@ -1,3 +1,8 @@
+---
+id: scala-codecs
+title: Scala Json Codecs Backend
+---
+
 # Scala JSON-Codecs Backend Documentation
 
 This document provides a description of the JSON codecs backend.

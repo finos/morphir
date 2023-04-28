@@ -1,5 +1,5 @@
 ---
-id: application-article
+id: what-is-it-about
 title: I Have an Application
 ---
 

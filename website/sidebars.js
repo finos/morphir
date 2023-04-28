@@ -27,12 +27,26 @@ const sidebars = {
     {
       type: 'category',
       label: 'Overview',
-      items: ['intro', 'application-article', 'domain-model', 'modeling-entire-application'],
+      items: [
+          'intro',
+          'morphir-entail',
+          'what-is-it-about',
+          'domain-model',
+          'model-versioning',
+          'modeling-entire-application',
+          'modeling-database-developers',
+          'modeling-financial-concepts'
+      ],
     },
     {
       type: 'category',
       label: 'Getting Started',
-      items: ["installation",  "editor-setup"]
+      items: [
+          "installation",
+          "editor-setup",
+          'morphir-testing-setup',
+          'installation-and-usage'
+      ]
     },
     {
       type: 'category',
@@ -43,11 +57,31 @@ const sidebars = {
       type: 'category',
       label: 'Integration Guides',
       items: [
+          'scala-backend',
+          'scala-codecs',
+          'codec-docs',
+          'generate-scala-test-case',
           'morphir-spark',
+          'spark-backend-api',
+          'spark-testing-framework',
+          'spark-optional-values',
+          'spark-backend-joins',
+          'spark-backend-relational',
           'morphir-cadl-mapping',
           'insight-api-guide',
           'morphir-typescript',
-          'relational-backend'
+          'typescript-api',
+          'relational-backend',
+          'springboot-generator',
+          'json-schema-sample',
+          'json-schema-mappings',
+          'json-schema-enabled-decorator',
+          'json-schema-config',
+          'json-schema-backend-test',
+          'json-schema-backend-test2',
+          'json-codecs-doc',
+          'decorations-users-guide',
+          'custom-attributes-users-guide'
       ]
     },
     {
@@ -57,6 +91,8 @@ const sidebars = {
           'modeling-database-developers',
           'modeling-financial-concepts',
           'publishing-elm-package',
+          'morphir-quick-start',
+          'generating-json-schema',
         {
           type: 'link',
           label: 'Surfing Board Tutorial',
@@ -67,7 +103,12 @@ const sidebars = {
     {
       type: 'category',
       label: 'Contribution Guide',
-      items: ['code-of-conduct', 'contribution-guide', 'contribution-and-governance-policies']
+      items: [
+          'code-of-conduct',
+          'contribution-guide',
+          'contribution-and-governance-policies',
+          'contributing-to-morphir'
+      ]
     },
     {
       type: 'category',
@@ -77,7 +118,23 @@ const sidebars = {
     {
       type: 'category',
       label: 'Further Readings',
-      items: ['dev-bots', 'cli-cli2-merging']
+      items: [
+          'functional-programming',
+          'dev-bots',
+          'cli-cli2-merging',
+          'results-in-elm',
+          'user-guide-readme',
+          'testing-framework',
+          'table-template',
+          'automating-regtech',
+          'morphir-elm-commands-processing',
+          'morphir-community',
+          'adr-for-morphir-cli',
+          'media-about-morphir',
+          'soul-application',
+          'error-append-not-supported',
+          'command-line-tools'
+      ]
     }
   ],
 

@@ -1,3 +1,7 @@
+---
+id: table-template
+---
+
 # Table Template
 |   Header col1  | Header col2  | Header col 3  |
 |:--------------:|:------------:|:--------------|

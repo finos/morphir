@@ -1,3 +1,8 @@
+
+---
+id:  morphir-developers-guide
+---
+
 # Morphir Developers' Guide
 The purpose of the document is to provide a detailed explanation of how various Morphir code artefacts work.
 It also documents the standard coding practices adopted for the Morphir project.

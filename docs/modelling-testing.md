@@ -1,6 +1,6 @@
 ---
 id: morphir-testing-setup
-title: Setup
+title: Morphir Testing Setup
 ---
 
 # Testing Setup

@@ -1,3 +1,7 @@
+---
+id: springboot-generator
+---
+
 # SpringBoot Generator
 
 [Morphir](https://github.com/finos/morphir) is a multi-language system built on a data format that captures an 
