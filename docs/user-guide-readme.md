@@ -1,18 +1,21 @@
 # Morphir Users' Guide
-Morphir's core purpose is to collect and store the vital business logic of an application. To fulfull that goal,
-Morphir provides tools to write business logic, visualize and interac with it, and use it to generate useful things.
+
+Morphir's core purpose is to collect and store the vital business logic of an application. To fulfill that goal,
+Morphir provides tools to write business logic, visualize and interact with it, and use it to generate useful things.
 
 ## Who this Guide Designed For
+
 This guide is for business users, analysts, and developers who want to use Morphir to tap the potential in their business logic.  
 
 ## Content
+
 1. [Getting Setup](#)
     1. [Installation](installation.md)
-    1. [Editor Setup](editor_setup.md)
-    1. [The Morphir Tools](command_line_tools.md)
-        1. [Compile](command_line_tools.md#Compile)
-        1. [Visualize](command_line_tools.md#Visualize)
-        1. [Generate](command_line_tools.md#Generate)
+    1. [Editor Setup](editor-setup.md)
+    1. [The Morphir Tools](command-line-tools.md)
+        1. [Compile](command-line-tools.md#Compile)
+        1. [Visualize](command-line-tools.md#Visualize)
+        1. [Generate](command-line-tools.md#Generate)
 <br/>
 <br/>
 

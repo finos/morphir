@@ -44,6 +44,25 @@ Defines a standard format for storing and sharing business logic. A clear set of
 ## Documentation
 If you want to start using Morphir, start with the [Documentation](docs/).
 
+## The Morphir Projects
+Morphir consists of a few projects based on the features they provide.  
+
+### Core Morphir Projects
+- **[morphir (this project)](https://github.com/finos/morphir/)** - The umbrella project
+- **[morphir-elm](https://github.com/finos/morphir-elm)** - Contains most of the core morphir functionality, including:
+  - The definition of the IR
+  - The Elm compiler for authoring morphir applications in Elm
+  - The morphir visualization components and developer tools
+  - The Scala, JSON Schema, TypeScript, TypeSpec (Cadl), cypher, semantic, and more backend processors.
+- **[morphir-jvm](https://github.com/finos/morphir)** - Supporting SDK and packaging for running morphir on the JVM.
+- **[morphir-examples](https://github.com/finos/morphir-examples)** - A whole lot of examples.
+
+### Incubator Morphir Projects
+- **[morphir-scala](https://github.com/finos/morphir-scala)** - Tight integration with Scala for authoring, execution, and writing tools.
+- **[morphir-bosque](https://github.com/finos/morphir-bosque)** - Integration with the Bosque language.
+- **[morphir-dotnet](https://github.com/finos/morphir-dotnet)** - Integration with .NET via F#.
+
+
 ## Other Resources
 [List of media](docs/media.md)
 
@@ -53,10 +72,10 @@ If you want to start using Morphir, start with the [Documentation](docs/).
 | Introduction & Background                                                  | Using Morphir                                                                                              | Applicability                                                                           |
 | :------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------- |
 | [Resource Centre](https://resources.finos.org/morphir/)                    | [What Makes a Good Model](./docs/what-makes-a-good-domain-model.md)                                        | [Sharing Business Logic Across Application Boundaries](./docs/shared_logic_modeling.md) |
-| [Background](./docs/background.md)                                         | [Development Automation (Dev Bots)](./docs/dev_bots.md)                                                    | [Regulatory Technology](./docs/regtech_modeling.md)                                     |
-| [Community](./docs/morphir_community.md)                                   | [Modeling an Application](./docs/application_modeling.md)                                                  |                                                                                         |
-| [What's it all about?](./docs/whats_it_about.md)                           | [Modeling Decision Tables](https://github.com/finos/morphir-examples/tree/master/src/Morphir/Sample/Rules) |                                                                                         |
-| [Why we use Functional Programming?](./docs/why_functional_programming.md) | [Modeling for database developers](./docs/modeling/modeling-for-database-developers.md)                    |
+| [Background](./docs/background.md)                                         | [Development Automation (Dev Bots)](./docs/dev-bots.md)                                                    | [Regulatory Technology](./docs/regtech-modeling.md)                                     |
+| [Community](./docs/morphir-community.md)                                   | [Modeling an Application](./docs/application-modeling.md)                                                  |                                                                                         |
+| [What's it all about?](./docs/whats-it-about.md)                           | [Modeling Decision Tables](https://github.com/finos/morphir-examples/tree/master/src/Morphir/Sample/Rules) |                                                                                         |
+| [Why we use Functional Programming?](./docs/why-functional-programming.md) | [Modeling for database developers](docs/modeling-for-database-developers.md)                    |
 
 ## Roadmap
 
