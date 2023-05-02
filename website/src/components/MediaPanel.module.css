@@ -1,10 +1,21 @@
 .mediaPanel {
 	box-sizing: border-box;
-	/* background-color: aqua; */
+	display:table-cell;
 	float: left;
+	margin-left: auto;
+	border-collapse: collapse;
+	/* display:block; */
+	/* overflow:auto;
+	float: none;
+	line-height: 26.4px;
+	position: static;
+	z-index: auto; */
 }
 table {
-	border-collapse: collapse;
-	display:block;
-	overflow:auto;
+
+}
+
+table td, table th{
+	border: 1px;
+	padding: 12px;
 }

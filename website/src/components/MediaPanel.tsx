@@ -93,8 +93,8 @@ export default function MediaPanel (): JSX.Element{
 				<tbody>
 						<tr key={idx}>
 							<td>
-								<a href = {props.EpisodeUrl}>
-									<img width='250' src={props.EpisodeImg}></img>
+								<a href = {props.EpisodeUrl}> 
+								<img width='250' src={props.EpisodeImg}></img>
 								</a>
 							</td>
 							<td style={{ width: 478.2}}>
