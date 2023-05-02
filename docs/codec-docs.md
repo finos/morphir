@@ -1,6 +1,6 @@
 ---
 id: codec-docs
-title: JSON serialization for Scala
+title: Scala JSON Serialization
 ---
 
 # JSON serialization support for generated Scala classes

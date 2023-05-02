@@ -2,7 +2,7 @@
 id: contribution-and-governance-policies
 ---
 
-# Morphir Contribution and Governance Policies
+# Governance Policies
 
 This document describes the contribution process and governance policies of the FINOS Morphir project. The project is also governed by the Linux Foundation Antitrust Policy, and the FINOS IP Policy, Code of Conduct, Collaborative Principles, and Meeting Procedures.
 

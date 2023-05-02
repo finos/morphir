@@ -22,9 +22,8 @@ const config = {
       ({
         docs: {
           "path": '../docs',
-          //"sidebarPath": "./sidebars.json",
-          sidebarPath: require.resolve('./sidebars.js')
-         // editUrl: 'https://github.com/finos/morphir/tree/main/docs/',
+          sidebarPath: require.resolve('./sidebars.js'),
+          editUrl: 'https://github.com/finos/morphir/tree/main/docs/',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -46,7 +45,7 @@ const config = {
         items: [
           {
             type: 'doc',
-            docId: 'intro',
+            docId: 'introduction-to-morphir',
             position: 'right',
             label: 'Docs',
           },

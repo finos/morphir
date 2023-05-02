@@ -20,9 +20,8 @@ const sidebars = {
 
   tutorialSidebar: [
     {
-      type: 'link',
-      label: 'Introduction',
-      href: '#'
+      type: 'doc',
+      id: 'introduction-to-morphir',
     },
     {
       type: 'category',
@@ -30,14 +29,21 @@ const sidebars = {
       items: [
           'intro',
           'morphir-entail',
-          'what-is-it-about',
-          'domain-model',
-          'model-versioning',
-          'modeling-entire-application',
-          'modeling-database-developers',
-          'modeling-financial-concepts'
+          'what-is-it-about'
       ],
     },
+      {
+          type: 'category',
+          label: 'Application Modelling',
+          items: [
+              'domain-model',
+              'model-versioning',
+              'modeling-entire-application',
+              'modeling-database-developers',
+              'modeling-financial-concepts',
+              'regtech-modeling'
+          ],
+      },
     {
       type: 'category',
       label: 'Getting Started',
@@ -51,37 +57,65 @@ const sidebars = {
     {
       type: 'category',
       label: 'Concepts',
-      items: []
+      items: [
+          'morphir-sdk',
+          'morphir-ir'
+      ]
     },
     {
       type: 'category',
       label: 'Integration Guides',
       items: [
-          'scala-backend',
-          'scala-codecs',
-          'codec-docs',
-          'generate-scala-test-case',
-          'morphir-spark',
-          'spark-backend-api',
-          'spark-testing-framework',
-          'spark-optional-values',
-          'spark-backend-joins',
-          'spark-backend-relational',
-          'morphir-cadl-mapping',
-          'insight-api-guide',
-          'morphir-typescript',
-          'typescript-api',
+          {
+              type: 'category',
+              label: 'Scala Integration Guide',
+              items: [
+                  'scala-backend',
+                  'scala-codecs',
+                  'codec-docs',
+                  'generate-scala-test-case',
+              ]
+          },
+          {
+              type: 'category',
+              label: 'Spark Integration Guide',
+              items: [
+                  'morphir-spark',
+                  'spark-backend-api',
+                  'spark-testing-framework',
+                  'spark-optional-values',
+                  'spark-backend-joins',
+                  'spark-backend-relational',
+              ]
+          },
+          {
+              type: 'category',
+              label: 'TypeScript Integration Guide',
+              items: [
+                  'morphir-typescript',
+                  'typescript-api',
+                  ]
+          },
+
+          {
+              type: 'category',
+              label: 'Json Schema Integration',
+              items: [
+                  'json-schema-sample',
+                  'json-schema-mappings',
+                  'json-schema-enabled-decorator',
+                  'json-schema-config',
+                  'json-schema-backend-test',
+                  'json-schema-backend-test2',
+              ]
+          },
           'relational-backend',
           'springboot-generator',
-          'json-schema-sample',
-          'json-schema-mappings',
-          'json-schema-enabled-decorator',
-          'json-schema-config',
-          'json-schema-backend-test',
-          'json-schema-backend-test2',
           'json-codecs-doc',
           'decorations-users-guide',
-          'custom-attributes-users-guide'
+          'custom-attributes-users-guide',
+          'morphir-cadl-mapping',
+          'insight-api-guide',
       ]
     },
     {
@@ -126,7 +160,6 @@ const sidebars = {
           'user-guide-readme',
           'testing-framework',
           'table-template',
-          'automating-regtech',
           'morphir-elm-commands-processing',
           'morphir-community',
           'adr-for-morphir-cli',
@@ -135,9 +168,12 @@ const sidebars = {
           'error-append-not-supported',
           'command-line-tools'
       ]
-    }
-  ],
-
+    },
+      {
+          type: 'doc',
+          id: 'faqs',
+      }
+  ]
 };
 
 module.exports = sidebars;

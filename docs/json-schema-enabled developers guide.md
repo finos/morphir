@@ -1,5 +1,6 @@
 ---
 id: json-schema-enabled-decorator
+title: json-schema-enabled Decorator
 ---
 
 # The json-schema-enabled Decorator Developer's Guide

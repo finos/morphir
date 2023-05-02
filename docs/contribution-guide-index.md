@@ -1,5 +1,6 @@
 ---
 id: contributing-to-morphir
+title: Contributing to Morphir
 ---
 
 #Contributing to the Morphir Ecosystem
