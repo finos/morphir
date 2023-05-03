@@ -34,7 +34,7 @@ const sidebars = {
     },
       {
           type: 'category',
-          label: 'Application Modelling',
+          label: 'Modelling Guides',
           items: [
               'domain-model',
               'model-versioning',
@@ -146,12 +146,7 @@ const sidebars = {
     },
     {
       type: 'category',
-      label: 'Frequently Asked Questions',
-      items: []
-    },
-    {
-      type: 'category',
-      label: 'Further Readings',
+      label: 'Further Reading',
       items: [
           'functional-programming',
           'dev-bots',
