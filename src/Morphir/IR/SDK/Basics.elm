@@ -123,6 +123,7 @@ moduleSpec =
             , vSpec "composeRight" [ ( "f", tFun [ tVar "a" ] (tVar "b") ), ( "g", tFun [ tVar "b" ] (tVar "c") ) ] (tFun [ tVar "a" ] (tVar "c"))
             , vSpec "never" [ ( "a", neverType () ) ] (tVar "a")
             ]
+    , doc = Just "Types and functions representing basic mathematical concepts and operations"
     }
 
 

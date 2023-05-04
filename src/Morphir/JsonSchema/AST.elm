@@ -34,13 +34,17 @@ type alias UniqueItems =
 -}
 
 
-type alias NumberOfItems =
-    Int
-
-
 type alias StringConstraints =
     { format : Maybe String
     }
+
+
+
+{-
+   The SchemaType of a JsonSchema is modeled as one of
+   10 different types as given below:
+   |
+-}
 
 
 type SchemaType
@@ -56,6 +60,16 @@ type SchemaType
     | Null
 
 
+
+{-
+   The ArrayType argument to the Array indicates if
+   the array is validated as a List <br>
+   The UniqueItems argument to the Array indicates if the
+   array is a Set. In this case the UniqueItems is set to True.
+   The ArrayType is given below:|
+-}
+
+
 type ArrayType
     = ListType SchemaType
-    | TupleType (List SchemaType) NumberOfItems
+    | TupleType (List SchemaType)

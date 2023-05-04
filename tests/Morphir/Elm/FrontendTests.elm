@@ -19,13 +19,15 @@ module Morphir.Elm.FrontendTests exposing (..)
 import Dict exposing (Dict)
 import Expect exposing (Expectation)
 import Json.Encode as Encode
-import Morphir.Elm.Frontend as Frontend exposing (Errors, SourceFile, SourceLocation, parseRawValue)
+import Morphir.Elm.Frontend as Frontend exposing (ContentRange, Errors, SourceFile, SourceLocation, parseRawValue)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
+import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
 import Morphir.IR as IR
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName as FQName exposing (fQName, fqn)
+import Morphir.IR.FQName exposing (fQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
@@ -38,7 +40,7 @@ import Morphir.IR.SDK.Rule as Rule
 import Morphir.IR.SDK.String as String
 import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (Definition, Pattern(..), RawValue, Value(..))
-import Set
+import Set exposing (Set)
 import Test exposing (..)
 
 
@@ -160,6 +162,7 @@ frontendTest =
                 Just
                     (Set.fromList
                         [ moduleA
+                        , moduleB
                         ]
                     )
             }
@@ -237,10 +240,11 @@ frontendTest =
                                     ]
                             , values =
                                 Dict.empty
+                            , doc = Nothing
                             }
                       )
                     , ( moduleB
-                      , private
+                      , public
                             { types =
                                 Dict.fromList
                                     [ ( [ "bee" ]
@@ -254,6 +258,7 @@ frontendTest =
                                     ]
                             , values =
                                 Dict.empty
+                            , doc = Nothing
                             }
                       )
                     ]
@@ -284,6 +289,7 @@ valueTests =
                             Dict.empty
                         , values =
                             Dict.empty
+                        , doc = Nothing
                         }
                       )
                     ]
@@ -416,10 +422,10 @@ valueTests =
         , checkIR "( foo, bar, baz )" <| Tuple () [ ref "foo", ref "bar", ref "baz" ]
         , checkIR "( foo )" <| ref "foo"
         , checkIR "[ foo, bar, baz ]" <| List () [ ref "foo", ref "bar", ref "baz" ]
-        , checkIR "{ foo = foo, bar = bar, baz = baz }" <| Record ()  <| Dict.fromList [ ( [ "foo" ], ref "foo" ), ( [ "bar" ], ref "bar" ), ( [ "baz" ], ref "baz" ) ]
+        , checkIR "{ foo = foo, bar = bar, baz = baz }" <| Record () <| Dict.fromList [ ( [ "foo" ], ref "foo" ), ( [ "bar" ], ref "bar" ), ( [ "baz" ], ref "baz" ) ]
         , checkIR "foo.bar" <| Field () (ref "foo") [ "bar" ]
         , checkIR ".bar" <| FieldFunction () [ "bar" ]
-        , checkIR "{ a | foo = foo, bar = bar }" <| UpdateRecord () (Variable () [ "a" ]) <| Dict.fromList  [ ( [ "foo" ], ref "foo" ), ( [ "bar" ], ref "bar" ) ]
+        , checkIR "{ a | foo = foo, bar = bar }" <| UpdateRecord () (Variable () [ "a" ]) <| Dict.fromList [ ( [ "foo" ], ref "foo" ), ( [ "bar" ], ref "bar" ) ]
         , checkIR "\\() -> foo " <| Lambda () (UnitPattern ()) (ref "foo")
         , checkIR "\\() () -> foo " <| Lambda () (UnitPattern ()) (Lambda () (UnitPattern ()) (ref "foo"))
         , checkIR "\\_ -> foo " <| Lambda () (WildcardPattern ()) (ref "foo")

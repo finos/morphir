@@ -9,7 +9,7 @@
         margin: 0;
       }
     </style>
-    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js" integrity="sha384-GbzfludOrzCE1rDoNAJqwlW4ZhytkPlu66df3zSVpLQrC61zzQdtNFSPj2W3vMtV" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/standalone/umd/vis-network.min.js" integrity="sha512-OwMVEyxgfpnZtZDE4ZH1/SB3Xgvx5CwX+/xJJx7men0Vh6VjWp4uEytx34AHQKbh+Ve4KogeyYqZbujEmAQXLA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   </head>
 
   <body>
@@ -22,6 +22,7 @@ reference points to the file that holds the output for elm-make-->
       try {
         var app = Elm.Morphir.Web.DevelopApp.init({
           node: document.getElementById("elm"),
+          flags: {version : "__VERSION_NUMBER__"}
         });
       } catch (e) {
         // display initialization errors (e.g. bad flags, infinite recursion)

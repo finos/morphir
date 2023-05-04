@@ -328,6 +328,7 @@ view model =
                         , popupVariables = visualizationState.popupVariables
                         , theme = model.theme
                         , highlightState = Nothing
+                        , nonEvaluatedVariables = Dict.empty
                         }
                         { onReferenceClicked = ExpandReference
                         , onReferenceClose = ShrinkReference

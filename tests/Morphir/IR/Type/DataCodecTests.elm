@@ -59,6 +59,7 @@ packageDefinition =
                               )
                             ]
                     , values = Dict.empty
+                    , doc = Nothing
                     }
                 }
               )

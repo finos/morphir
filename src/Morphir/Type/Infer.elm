@@ -88,6 +88,7 @@ inferModuleDefinition refs moduleName moduleDef =
             (\mappedValues ->
                 { types = moduleDef.types
                 , values = Dict.fromList mappedValues
+                , doc = moduleDef.doc
                 }
             )
         |> Result.mapError (Compiler.ErrorsInSourceFile (moduleName |> Path.toString Name.toTitleCase "."))
@@ -160,7 +161,7 @@ typeErrorToMessage typeError =
 inferValueDefinition : IR -> Value.Definition () va -> Result TypeError (Value.Definition () ( va, Type () ))
 inferValueDefinition ir def =
     let
-        ( count, ( defVar, annotatedDef, constraints ) ) =
+        ( count, ( defVar, annotatedDef, ( constraints, typeVarToIndex ) ) ) =
             constrainDefinition ir Dict.empty def
                 |> Count.apply 0
 
@@ -169,7 +170,7 @@ inferValueDefinition ir def =
             solve ir constraints
     in
     solution
-        |> Result.map (applySolutionToAnnotatedDefinition ir annotatedDef)
+        |> Result.map (applySolutionToAnnotatedDefinition ir typeVarToIndex annotatedDef)
 
 
 inferValue : IR -> Value () va -> Result TypeError (TypedValue va)
@@ -205,7 +206,7 @@ Detailed description of inputs and outputs:
         - `ConstraintSet` - set of type constraints that use the meta type variables that were added to each value node
 
 -}
-constrainDefinition : IR -> Dict Name Variable -> Value.Definition () va -> Count ( Variable, Value.Definition () ( va, Variable ), ConstraintSet )
+constrainDefinition : IR -> Dict Name Variable -> Value.Definition () va -> Count ( Variable, Value.Definition () ( va, Variable ), ( ConstraintSet, Dict Name Variable ) )
 constrainDefinition ir vars def =
     let
         -- collect the names of all the type variables in all the input types
@@ -332,12 +333,14 @@ constrainDefinition ir vars def =
                                                               , outputType = def.outputType
                                                               , body = annotatedBody
                                                               }
-                                                            , ConstraintSet.concat
-                                                                [ bodyConstraints
-                                                                , inputConstraints
-                                                                , outputConstraint
-                                                                , defConstraints
-                                                                ]
+                                                            , ( ConstraintSet.concat
+                                                                    [ bodyConstraints
+                                                                    , inputConstraints
+                                                                    , outputConstraint
+                                                                    , defConstraints
+                                                                    ]
+                                                              , typeVarToMetaTypeVar
+                                                              )
                                                             )
                                                         )
                                                 )
@@ -636,7 +639,7 @@ constrainValue ir vars maybeThisTypeVar annotatedValue =
                                     subjectConstraint : ConstraintSet
                                     subjectConstraint =
                                         ConstraintSet.singleton
-                                            (equality (metaTypeVarForValue annotatedSubjectValue) (metaVar extendsVar))
+                                            (equality (metaTypeVarForValue annotatedSubjectValue) extensibleRecordType)
 
                                     fieldConstraints : ConstraintSet
                                     fieldConstraints =
@@ -760,7 +763,7 @@ constrainValue ir vars maybeThisTypeVar annotatedValue =
         Value.LetDefinition va defName def inValue ->
             constrainDefinition ir vars def
                 |> Count.andThen
-                    (\( defVar, annotatedDef, defConstraints ) ->
+                    (\( defVar, annotatedDef, ( defConstraints, _ ) ) ->
                         constrainValue ir (vars |> Dict.insert defName defVar) Nothing inValue
                             |> Count.andThen
                                 (\( annotatedInValue, inValueConstraints ) ->
@@ -813,7 +816,7 @@ constrainValue ir vars maybeThisTypeVar annotatedValue =
                             defVariables : Dict Name Variable
                             defVariables =
                                 defResults
-                                    |> List.map (\( defName, ( defVar, _, _ ) ) -> ( defName, defVar ))
+                                    |> List.map (\( defName, ( defVar, _, ( _, _ ) ) ) -> ( defName, defVar ))
                                     |> Dict.fromList
                         in
                         constrainValue ir (vars |> Dict.union defVariables) Nothing inValue
@@ -835,7 +838,7 @@ constrainValue ir vars maybeThisTypeVar annotatedValue =
                                                 defsConstraints : ConstraintSet
                                                 defsConstraints =
                                                     defResults
-                                                        |> List.map (\( _, ( _, _, defConstraints ) ) -> defConstraints)
+                                                        |> List.map (\( _, ( _, _, ( defConstraints, _ ) ) ) -> defConstraints)
                                                         |> ConstraintSet.concat
 
                                                 letConstraints : ConstraintSet
@@ -1485,8 +1488,16 @@ validateConstraints constraints =
         |> Result.mapError typeErrors
 
 
-applySolutionToAnnotatedDefinition : IR -> Value.Definition ta ( va, Variable ) -> ( ConstraintSet, SolutionMap ) -> Value.Definition ta ( va, Type () )
-applySolutionToAnnotatedDefinition ir annotatedDef ( residualConstraints, solutionMap ) =
+applySolutionToAnnotatedDefinition : IR -> Dict Name Variable -> Value.Definition ta ( va, Variable ) -> ( ConstraintSet, SolutionMap ) -> Value.Definition ta ( va, Type () )
+applySolutionToAnnotatedDefinition ir typeVarByIndex annotatedDef ( residualConstraints, solutionMap ) =
+    let
+        typeVarByType : Dict Name (Type ())
+        typeVarByType =
+            typeVarByIndex
+                |> Dict.toList
+                |> List.map (\( name, idx ) -> ( [ "t", String.fromInt idx ], Type.Variable () name ))
+                |> Dict.fromList
+    in
     annotatedDef
         |> Value.mapDefinitionAttributes identity
             (\( va, metaVar ) ->
@@ -1494,6 +1505,7 @@ applySolutionToAnnotatedDefinition ir annotatedDef ( residualConstraints, soluti
                 , solutionMap
                     |> Solve.get metaVar
                     |> Maybe.map (metaTypeToConcreteType solutionMap)
+                    |> Maybe.map (Type.substituteTypeVariables typeVarByType)
                     |> Maybe.withDefault (Type.Variable () [ "t", String.fromInt metaVar ])
                 )
             )

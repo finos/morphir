@@ -1,8 +1,8 @@
 {
-    "Value:Morphir.Reference.Model:Issues.Issue401:foo": [
-        "rBCHighRiskData"
+    "Morphir.Reference.Model:BooksAndRecords:dealCmd/type": [
+        "mNPI"
     ],
-    "Value:Morphir.Reference.Model:Issues.Issue401:bar": [
+    "Morphir.Reference.Model:BooksAndRecords:deal/type#product": [
         "mNPI"
     ]
 }

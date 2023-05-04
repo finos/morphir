@@ -1,23 +1,20 @@
 module Morphir.Scala.Feature.CodecTests exposing (..)
 
-import Dict
 import Expect
-import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
-import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (fqn)
 import Morphir.IR.Type as Type exposing (Definition(..), Type)
 import Morphir.Scala.AST as Scala exposing (ArgValue(..), Generator(..), Lit(..), Pattern(..), Value(..))
-import Morphir.Scala.Feature.Codec exposing (genDecodeReference, genEncodeReference, mapTypeDefinitionToEncoder)
+import Morphir.Scala.Feature.Codec exposing (mapTypeToDecoderReference, mapTypeToEncoderReference)
 import Test exposing (Test, describe, test)
 
 
-genEncodeReferenceTests : Test
-genEncodeReferenceTests =
+mapTypeToEncoderReferenceTests : Test
+mapTypeToEncoderReferenceTests =
     let
-        positiveTest name input expectedOutput =
+        positiveTest name maybeFqn tpeName tpePath typeParams tpe expectedOutput =
             test name
                 (\_ ->
-                    case genEncodeReference input of
+                    case mapTypeToEncoderReference maybeFqn tpeName tpePath typeParams tpe of
                         Ok output ->
                             output
                                 |> Expect.equal expectedOutput
@@ -28,73 +25,60 @@ genEncodeReferenceTests =
     in
     describe "Generate Encoder Reference Tests"
         [ positiveTest "1. Type Variable "
+            (Just ( [ [] ], [ [] ], [] ))
+            []
+            []
+            [ [] ]
             (Type.Variable () [ "foo" ])
             (Scala.Variable "encodeFoo")
         , positiveTest "2. Type Reference"
+            (Just ( [ [] ], [ [] ], [] ))
+            []
+            []
+            [ [] ]
             (Type.Reference () (fqn "morphir" "sdk" "string") [])
-            (Scala.Ref [ "morphir", "sdk" ] "encodeString")
-        , positiveTest "3. Type Record with two fields"
+            (Scala.Ref [ "morphir", "sdk", "Codec" ] "encodeString")
+        , positiveTest
+            "3. Type Record with two fields"
+            (Just ( [ [] ], [ [] ], [] ))
+            []
+            []
+            [ [] ]
             (Type.Record ()
                 [ Type.Field [ "name" ] (Type.Reference () (fqn "morphir.sdk" "Basics" "String") [])
                 , Type.Field [ "age" ] (Type.Reference () (fqn "morphir.sdk" "Basics" "Int") [])
                 ]
             )
-            (Scala.Apply (Scala.Ref [ "io", "circe", "Json" ] "obj")
-                [ Scala.ArgValue Nothing
-                    (Scala.Tuple
-                        [ Scala.Literal (Scala.StringLit "name")
-                        , Scala.Apply (Scala.Ref [ "morphir", "sdk", "basics" ] "encodeString") [ ArgValue Nothing (Select (Variable "a") "name") ]
-                        ]
-                    )
-                , Scala.ArgValue Nothing
-                    (Scala.Tuple
-                        [ Scala.Literal (Scala.StringLit "age")
-                        , Scala.Apply (Scala.Ref [ "morphir", "sdk", "basics" ] "encodeInt") [ ArgValue Nothing (Select (Variable "a") "age") ]
-                        ]
-                    )
-                ]
-            )
-        , positiveTest "4. Type Record with three fields"
-            (Type.Record ()
-                [ Type.Field [ "firstname" ] (Type.Reference () (fqn "morphir.sdk" "Basics" "String") [])
-                , Type.Field [ "lastname" ] (Type.Reference () (fqn "morphir.sdk" "Basics" "String") [])
-                , Type.Field [ "age" ] (Type.Reference () (fqn "morphir.sdk" "Basics" "Int") [])
-                ]
-            )
-            (Scala.Apply (Scala.Ref [ "io", "circe", "Json" ] "obj")
-                [ Scala.ArgValue Nothing
-                    (Scala.Tuple
-                        [ Scala.Literal (Scala.StringLit "firstname")
-                        , Scala.Apply (Scala.Ref [ "morphir", "sdk", "basics" ] "encodeString") [ ArgValue Nothing (Select (Variable "a") "firstname") ]
-                        ]
-                    )
-                , Scala.ArgValue Nothing
-                    (Scala.Tuple
-                        [ Scala.Literal (Scala.StringLit "lastname")
-                        , Scala.Apply (Scala.Ref [ "morphir", "sdk", "basics" ] "encodeString") [ ArgValue Nothing (Select (Variable "a") "lastname") ]
-                        ]
-                    )
-                , Scala.ArgValue Nothing
-                    (Scala.Tuple
-                        [ Scala.Literal (Scala.StringLit "age")
-                        , Scala.Apply (Scala.Ref [ "morphir", "sdk", "basics" ] "encodeInt") [ ArgValue Nothing (Select (Variable "a") "age") ]
-                        ]
-                    )
-                ]
+            (Scala.Lambda [ ( "", Just (Scala.TypeApply (Scala.TypeRef [ "", "" ] "") [ Scala.TypeVar "" ]) ) ]
+                (Scala.Apply (Scala.Ref [ "io", "circe", "Json" ] "obj")
+                    [ Scala.ArgValue Nothing
+                        (Scala.Tuple
+                            [ Scala.Literal (Scala.StringLit "name")
+                            , Scala.Apply (Scala.Ref [ "morphir", "sdk", "basics", "Codec" ] "encodeString") [ Scala.ArgValue Nothing (Scala.Select (Scala.Variable "") "name") ]
+                            ]
+                        )
+                    , Scala.ArgValue Nothing
+                        (Scala.Tuple
+                            [ Scala.Literal (Scala.StringLit "age")
+                            , Scala.Apply (Scala.Ref [ "morphir", "sdk", "basics", "Codec" ] "encodeInt") [ Scala.ArgValue Nothing (Scala.Select (Scala.Variable "") "age") ]
+                            ]
+                        )
+                    ]
+                )
             )
         ]
 
 
-genDecodeReferenceTests : Test
-genDecodeReferenceTests =
+mapTypeToDecoderReferenceTests : Test
+mapTypeToDecoderReferenceTests =
     let
-        positiveTest name inputRef outputRef =
+        positiveTest name maybeTypeNameAndPath tpe expectedOutput =
             test name
                 (\_ ->
-                    case genDecodeReference (fqn "Morphir" "sdk" "Foo") inputRef of
+                    case mapTypeToDecoderReference maybeTypeNameAndPath tpe of
                         Ok output ->
                             output
-                                |> Expect.equal outputRef
+                                |> Expect.equal expectedOutput
 
                         Err error ->
                             Expect.fail error
@@ -102,80 +86,43 @@ genDecodeReferenceTests =
     in
     describe "Generate Decoder Reference Test"
         [ positiveTest "1. Type Variable "
+            (Just ( [], [] ))
             (Type.Variable () [ "foo" ])
             (Scala.Variable "decodeFoo")
         , positiveTest "2. Type Reference"
+            (Just ( [], [] ))
             (Type.Reference () (fqn "foo" "bar" "baz") [])
             (Scala.Ref [ "foo", "bar", "Codec" ] "decodeBaz")
         , positiveTest "3. Type Record"
+            (Just ( [], [] ))
             (Type.Record ()
                 [ Type.Field [ "name" ] (Type.Reference () (fqn "morphir.sdk" "Basics" "String") [])
                 , Type.Field [ "age" ] (Type.Reference () (fqn "morphir.sdk" "Basics" "Int") [])
                 ]
             )
-            (ForComp
-                [ Extract (NamedMatch "name") (Apply (Select (Apply (Select (Variable "c") "downField") [ ArgValue Nothing (Literal (StringLit "name")) ]) "as") [ ArgValue Nothing (Ref [ "morphir", "sdk", "basics", "Codec" ] "decodeString") ])
-                , Extract (NamedMatch "age") (Apply (Select (Apply (Select (Variable "c") "downField") [ ArgValue Nothing (Literal (StringLit "age")) ]) "as") [ ArgValue Nothing (Ref [ "morphir", "sdk", "basics", "Codec" ] "decodeInt") ])
-                ]
-                (Apply (Ref [ "morphir", "Sdk" ] "foo") [ ArgValue Nothing (Variable "name"), ArgValue Nothing (Variable "age") ])
+            (Scala.Lambda [ ( "c", Just (Scala.TypeRef [ "io", "circe" ] "HCursor") ) ]
+                (Scala.ForComp
+                    [ Scala.Extract (Scala.NamedMatch "name_")
+                        (Scala.Apply (Scala.Select (Scala.Apply (Scala.Select (Scala.Variable "c") "downField") [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "name")) ]) "as")
+                            [ Scala.ArgValue Nothing (Scala.Ref [ "morphir", "sdk", "basics", "Codec" ] "decodeString") ]
+                        )
+                    , Scala.Extract (Scala.NamedMatch "age_")
+                        (Scala.Apply (Scala.Select (Scala.Apply (Scala.Select (Scala.Variable "c") "downField") [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "age")) ]) "as")
+                            [ Scala.ArgValue Nothing (Scala.Ref [ "morphir", "sdk", "basics", "Codec" ] "decodeInt") ]
+                        )
+                    ]
+                    (Scala.Apply (Scala.Ref [] "") [ Scala.ArgValue Nothing (Scala.Variable "name_"), Scala.ArgValue Nothing (Scala.Variable "age_") ])
+                )
             )
         , positiveTest "4. Tuple with 2 fields"
+            (Just ( [], [] ))
             (Type.Tuple () [ Type.Reference () (fqn "morphir.sdk" "basics" "string") [] ])
-            (Scala.Apply (Scala.Variable "io.circe.arr") [ ArgValue Nothing (Scala.Ref [ "morphir", "sdk", "basics", "Codec" ] "decodeString") ])
-        ]
-
-
-{-| -}
-mapTypeDefinitionToEncoderTests : Test
-mapTypeDefinitionToEncoderTests =
-    let
-        positiveTest name currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef ) outputResult =
-            test name
-                (\_ ->
-                    case mapTypeDefinitionToEncoder currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef ) of
-                        Ok output ->
-                            output
-                                |> Expect.equal outputResult
-
-                        Err error ->
-                            Expect.fail error
+            (Scala.Lambda [ ( "c", Just (Scala.TypeRef [ "io", "circe" ] "HCursor") ) ]
+                (Scala.ForComp
+                    [ Scala.Extract (Scala.NamedMatch "arg1")
+                        (Scala.Apply (Scala.Ref [ "morphir", "sdk", "basics", "Codec" ] "decodeString") [ Scala.ArgValue Nothing (Scala.Variable "c") ])
+                    ]
+                    (Scala.Tuple [ Scala.Variable "arg1" ])
                 )
-
-        accTypeDef : AccessControlled (Documented (Definition ()))
-        accTypeDef =
-            Documented "" (TypeAliasDefinition [ [ "foo" ] ] (Type.Unit ()))
-                |> AccessControlled Public
-
-        accModDef =
-            AccessControlled Public { values = Dict.empty, types = Dict.singleton [ "foo" ] accTypeDef }
-    in
-    describe "Tests for Generate Encoders for Custom Types"
-        [ positiveTest "Empty Type Definition"
-            []
-            []
-            accModDef
-            ( [ "foo" ], accTypeDef )
-            [ Scala.withoutAnnotation
-                (Scala.ValueDecl
-                    { modifiers = [ Scala.Implicit ]
-                    , pattern = Scala.NamedMatch "encodeFoo"
-                    , valueType = Just (Scala.TypeApply (Scala.TypeRef ["io","circe"] "Encoder") [Scala.TypeRef [] "Foo"])
-                    , value = Lambda [("a",Just (Scala.TypeRef [] "Foo"))] Unit
-                    }
-                )
-            ]
-        , positiveTest "Empty another Definition"
-            []
-            []
-            accModDef
-            ( [ "foo" ], accTypeDef )
-            [ Scala.withoutAnnotation
-                (Scala.ValueDecl
-                    { modifiers = [ Scala.Implicit ]
-                    , pattern = Scala.NamedMatch "encodeFoo"
-                    , valueType = Just (Scala.TypeApply (Scala.TypeRef ["io","circe"] "Encoder") [Scala.TypeRef [] "Foo"])
-                    , value = Scala.Lambda [("a",Just (Scala.TypeRef [] "Foo"))] Unit
-                    }
-                )
-            ]
+            )
         ]

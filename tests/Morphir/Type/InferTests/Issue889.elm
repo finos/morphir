@@ -42,6 +42,7 @@ testIR =
                                 ]
                         , values =
                             Dict.empty
+                        , doc = Nothing
                         }
                       )
                     ]
@@ -86,7 +87,7 @@ constraintTest =
         (\_ ->
             Infer.constrainDefinition testIR Dict.empty testDefinition
                 |> Count.apply 0
-                |> (\( _, ( _, _, cs ) ) -> cs)
+                |> (\( _, ( _, _, ( cs, _ ) ) ) -> cs)
                 |> Expect.equal
                     (ConstraintSet
                         [ Equality (Set.fromList [ 0, 6 ]) (MetaVar 6) (MetaRef (Set.fromList [ 0 ]) ( [ [ "test" ] ], [ [ "test" ] ], [ "bar", "record" ] ) [] (Just (MetaRecord (Set.fromList [ 0 ]) 0 False (Dict.fromList [ ( [ "bar" ], MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing ) ]))))

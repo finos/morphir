@@ -126,6 +126,7 @@ moduleSpec =
                 ]
                 (listType () (tVar "b"))
             ]
+    , doc = Just "Aggregation type and associated functions."
     }
 
 
