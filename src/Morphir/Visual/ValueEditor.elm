@@ -82,12 +82,14 @@ import Morphir.IR.Value as Value exposing (RawValue, Value(..))
 import Morphir.ListOfResults as ListOfResults
 import Morphir.SDK.Decimal as Decimal
 import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Components.DatePickerComponent as DatePicker
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.InputComponent as InputComponent
 import Morphir.Visual.Components.Picklist as Picklist
 import Morphir.Visual.Theme exposing (Theme)
 import Svg
 import Svg.Attributes
+import Morphir.SDK.LocalDate as LocalDate exposing (LocalDate)
 
 
 {-| Type that represents the state of the value editor. It's made up of the following pieces of information:
@@ -139,6 +141,7 @@ type ComponentState
     | GridEditor (List ( Name, Type () )) (List (Array EditorState))
     | DictEditor ( Type (), Type () ) (List ( EditorState, EditorState ))
     | GenericEditor String
+    | LocalDateEditor DatePicker.DatePickerState
 
 
 type alias CustomTypeEditorState =
@@ -252,6 +255,9 @@ initComponentState ir valueType maybeInitialValue =
 
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "dict" ] ) [ dictKeyType, dictValueType ] ->
             initDictEditor ir dictKeyType dictValueType maybeInitialValue
+
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "local", "date" ] ) [] ->
+            initLocalDateEditor maybeInitialValue (LocalDate.fromISO "1970-01-01")
 
         _ ->
             if valueType == Basics.boolType () then
@@ -542,6 +548,20 @@ initDictEditor ir dictKeyType dictValueType maybeInitialValue =
 
         Nothing ->
             ( Nothing, DictEditor ( dictKeyType, dictValueType ) [] )
+
+
+initLocalDateEditor : Maybe RawValue -> Maybe LocalDate -> ( Maybe Error, ComponentState )
+initLocalDateEditor maybeInitialValue maybeToday =
+    case maybeInitialValue of
+        Just initialValue ->
+            case initialValue of
+                (Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "local", "date" ] )) (Value.Literal () (StringLiteral dateString))) ->
+                    (Nothing, LocalDateEditor (DatePicker.initState maybeToday (LocalDate.fromISO dateString)))
+                _ ->
+                    (Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), LocalDateEditor (DatePicker.initState maybeToday Nothing))
+
+        Nothing ->
+            (Nothing, LocalDateEditor (DatePicker.initState maybeToday Nothing))
 
 
 {-| Display the editor. It takes the following inputs:
@@ -1266,6 +1286,34 @@ view theme ir valueType updateEditorState editorState =
                 , spellcheck = False
                 }
                 editorState.errorState
+
+        LocalDateEditor state ->
+            let
+                localDateValue : String -> Value ta ()
+                localDateValue str =
+                    (Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "local", "date" ] )) (Value.Literal () (StringLiteral str)))
+            in
+            DatePicker.view theme
+                { placeholder =
+                    Just (placeholder [ center, paddingXY 0 1 ] (text "not set"))
+                , label = Input.labelLeft labelStyle (text "local date")
+                , state = state
+                , onStateChange =
+                    \datePickerState ->
+                        updateEditorState
+                        (applyResult (datePickerState.date 
+                            |> Result.map (\maybeDate ->
+                                case maybeDate |> Debug.log "aaa" of
+                                    Just d ->
+                                        localDateValue (LocalDate.toISOString d)
+
+                                    Nothing ->
+                                        localDateValue ""
+                            ))
+                            { editorState
+                                | componentState = LocalDateEditor datePickerState
+                            })
+                }
 
 
 viewCustomTypeEditor : Theme -> List (Element.Attribute msg) -> IR -> (EditorState -> msg) -> EditorState -> FQName -> Type.Constructors () -> CustomTypeEditorState -> Element msg
