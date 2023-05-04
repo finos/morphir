@@ -6,7 +6,7 @@ const path = require('path')
 const commander = require('commander')
 const cli = require('./cli')
 
-// logging
+//logging
 require('log-timestamp')
 
 // Set up Commander
