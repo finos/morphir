@@ -1,12 +1,64 @@
-module Morphir.Cadl.PrettyPrinter exposing (..)
+module Morphir.TypeSpec.PrettyPrinter exposing (..)
 
-import Dict
-import Morphir.Cadl.AST as AST exposing (Name, NamespaceDeclaration)
+import Dict exposing (Dict)
 import Morphir.File.SourceCode exposing (Doc, concat, empty, indent, newLine, semi, space)
+import Morphir.IR.Name as Name
+import Morphir.IR.Package exposing (PackageName)
+import Morphir.IR.Path as Path
+import Morphir.TypeSpec.AST as AST exposing (ImportDeclaration(..), Name, Namespace, NamespaceDeclaration, ScalarType)
 
 
-mapNamespace : Name -> NamespaceDeclaration -> Doc
-mapNamespace namespaceName namespace =
+prettyPrint : PackageName -> List ImportDeclaration -> Dict Namespace NamespaceDeclaration -> Doc
+prettyPrint packageName imports namespaces =
+    let
+        importsDoc : List Doc
+        importsDoc =
+            imports
+                |> List.map mapImports
+
+        namespacesDoc : List Doc
+        namespacesDoc =
+            namespaces
+                |> Dict.toList
+                |> List.map
+                    (\( namespaceName, namespace ) ->
+                        namespace
+                            |> mapNamespace packageName namespaceName
+                    )
+    in
+    importsDoc
+        ++ namespacesDoc
+        |> concat
+
+
+mapImports : ImportDeclaration -> Doc
+mapImports importDecl =
+    case importDecl of
+        LibraryImport morphirTypeSpecLibrary ->
+            [ "import"
+            , space
+            , "\""
+            , morphirTypeSpecLibrary
+            , "\""
+            , semi
+            , newLine
+            ]
+                |> concat
+
+        FileImport filePath ->
+            [ "import"
+            , space
+            , "\""
+            , filePath
+            , "\""
+            , semi
+            , newLine
+            ]
+                |> concat
+
+
+mapNamespace : PackageName -> Namespace -> NamespaceDeclaration -> Doc
+mapNamespace pckgName namespaceName namespace =
     let
         namespaceContent : Doc
         namespaceContent =
@@ -24,7 +76,9 @@ mapNamespace namespaceName namespace =
     in
     [ "namespace"
     , space
-    , namespaceName
+    , pckgName |> Path.toString Name.toTitleCase "."
+    , "."
+    , namespaceName |> String.join "."
     , space
     , "{"
     , newLine
@@ -102,9 +156,21 @@ mapTypeDefinition name typeDefinition =
             ]
                 |> concat
 
+        AST.ScalarDefinition typ ->
+            [ "scalar"
+            , space
+            , name
+            , space
+            , "extends"
+            , space
+            , mapType typ
+            , semi
+            ]
+                |> concat
 
-mapType : AST.Type -> String
-mapType tpe =
+
+mapScalarType : ScalarType -> Doc
+mapScalarType tpe =
     case tpe of
         AST.Boolean ->
             "boolean"
@@ -124,6 +190,16 @@ mapType tpe =
         AST.PlainTime ->
             "plainTime"
 
+        AST.Null ->
+            "null"
+
+
+mapType : AST.Type -> Doc
+mapType tpe =
+    case tpe of
+        AST.Scalar scalarTyp ->
+            mapScalarType scalarTyp
+
         AST.Array arrayType ->
             case arrayType of
                 AST.ListType typ ->
@@ -140,13 +216,10 @@ mapType tpe =
 
         AST.Reference _ namespace name ->
             name
-                :: List.drop 1 namespace
-                |> List.reverse
+                |> List.singleton
+                |> List.append namespace
                 |> List.intersperse "."
                 |> concat
-
-        AST.Null ->
-            "null"
 
         AST.Variable name ->
             name
