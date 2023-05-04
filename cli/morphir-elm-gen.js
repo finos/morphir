@@ -22,6 +22,7 @@ program
     .option('-m, --modules-to-include <comma.separated,list.of,module.names>', 'Limit the set of modules that will be included.')
     .option('-s, --include-codecs', 'Generate JSON codecs', false)
     .option('-f, --filename <filename>', 'Filename of the generated JSON Schema.', '')
+    .option('-ls, --include <comma.separated,list.of,strings>', 'Limit what will be included.', '')
     .parse(process.argv)
 
 cli.gen(program.opts().input, path.resolve(program.opts().output), program.opts())
