@@ -257,7 +257,7 @@ initComponentState ir valueType maybeInitialValue =
             initDictEditor ir dictKeyType dictValueType maybeInitialValue
 
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "local", "date" ] ) [] ->
-            initLocalDateEditor maybeInitialValue (LocalDate.fromISO "1970-01-01")
+            initLocalDateEditor maybeInitialValue (LocalDate.fromISO "2023-01-01")
 
         _ ->
             if valueType == Basics.boolType () then
