@@ -426,7 +426,7 @@ const generate = async (options: any, ir: string): Promise<string[]> => {
       }
     });
 
-    worker.ports.generate.send([options, ir]);
+    worker.ports.generate.send([options, ir, []]);
   });
 };
 
