@@ -89,7 +89,7 @@ import Morphir.Visual.Components.Picklist as Picklist
 import Morphir.Visual.Theme exposing (Theme)
 import Svg
 import Svg.Attributes
-import Morphir.SDK.LocalDate as LocalDate exposing (LocalDate)
+import Morphir.SDK.LocalDate as LocalDate exposing (LocalDate, toISOString)
 
 
 {-| Type that represents the state of the value editor. It's made up of the following pieces of information:
@@ -257,7 +257,7 @@ initComponentState ir valueType maybeInitialValue =
             initDictEditor ir dictKeyType dictValueType maybeInitialValue
 
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "local", "date" ] ) [] ->
-            initLocalDateEditor maybeInitialValue (LocalDate.fromISO "2023-01-01")
+            initLocalDateEditor maybeInitialValue
 
         _ ->
             if valueType == Basics.boolType () then
@@ -550,18 +550,18 @@ initDictEditor ir dictKeyType dictValueType maybeInitialValue =
             ( Nothing, DictEditor ( dictKeyType, dictValueType ) [] )
 
 
-initLocalDateEditor : Maybe RawValue -> Maybe LocalDate -> ( Maybe Error, ComponentState )
-initLocalDateEditor maybeInitialValue maybeToday =
+initLocalDateEditor : Maybe RawValue -> ( Maybe Error, ComponentState )
+initLocalDateEditor maybeInitialValue =
     case maybeInitialValue of
         Just initialValue ->
             case initialValue of
                 (Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "local", "date" ] )) (Value.Literal () (StringLiteral dateString))) ->
-                    (Nothing, LocalDateEditor (DatePicker.initState maybeToday (LocalDate.fromISO dateString)))
+                    (Nothing, LocalDateEditor (DatePicker.initState (LocalDate.fromISO dateString)))
                 _ ->
-                    (Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), LocalDateEditor (DatePicker.initState maybeToday Nothing))
+                    (Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), LocalDateEditor (DatePicker.initState Nothing))
 
         Nothing ->
-            (Nothing, LocalDateEditor (DatePicker.initState maybeToday Nothing))
+            (Nothing, LocalDateEditor (DatePicker.initState Nothing))
 
 
 {-| Display the editor. It takes the following inputs:
@@ -1296,20 +1296,18 @@ view theme ir valueType updateEditorState editorState =
             DatePicker.view theme
                 { placeholder =
                     Just (placeholder [ center, paddingXY 0 1 ] (text "not set"))
-                , label = Input.labelLeft labelStyle (text "local date")
+                , label = el labelStyle (text "local date")
                 , state = state
                 , onStateChange =
                     \datePickerState ->
                         updateEditorState
-                        (applyResult (datePickerState.date 
-                            |> Result.map (\maybeDate ->
-                                case maybeDate |> Debug.log "aaa" of
-                                    Just d ->
-                                        localDateValue (LocalDate.toISOString d)
-
-                                    Nothing ->
-                                        localDateValue ""
-                            ))
+                        (applyResult (
+                            case datePickerState.date of
+                                Just date ->
+                                    Ok <| localDateValue (toISOString date)
+                                Nothing ->
+                                    Err "Invalid Date!"
+                        )
                             { editorState
                                 | componentState = LocalDateEditor datePickerState
                             })
