@@ -1,4 +1,4 @@
-module Morphir.IR.NodeId exposing (Error(..), NodeID(..), NodePath, NodePathStep(..), getAttribute, mapPatternAttributesWithNodePath, mapTypeAttributeWithNodePath, mapValueAttributesWithNodePath, nodeIdFromString, nodeIdToString, nodePathFromString, nodePathToString, getTypeAttributeByPath, getValueAttributeByPath)
+module Morphir.IR.NodeId exposing (Error(..), NodeID(..), NodePath, NodePathStep(..), getAttribute, getTypeAttributeByPath, getValueAttributeByPath, mapPatternAttributesWithNodePath, mapTypeAttributeWithNodePath, mapValueAttributesWithNodePath, nodeIdFromString, nodeIdToString, nodePathFromString, nodePathToString)
 
 import Dict exposing (Dict)
 import List.Extra
@@ -77,12 +77,17 @@ nodeIdFromString str =
             Err <| InvalidNodeID ("Invalid NodeID: " ++ str)
 
         mapToTypeOrValue : String -> String -> String -> String -> Result Error NodeID
-        mapToTypeOrValue packageName moduleName defName nodePath =
-            if String.endsWith ".value" defName then
-                Ok (ValueID (FQName.fqn packageName moduleName defName) (nodePathFromString nodePath))
+        mapToTypeOrValue packageName moduleName defNameWithSuffix nodePath =
+            let
+                getDefname : String -> String
+                getDefname suffix =
+                    String.dropRight (String.length suffix) defNameWithSuffix
+            in
+            if String.endsWith ".value" defNameWithSuffix then
+                Ok (ValueID (FQName.fqn packageName moduleName (getDefname ".value")) (nodePathFromString nodePath))
 
             else
-                Ok (TypeID (FQName.fqn packageName moduleName defName) (nodePathFromString nodePath))
+                Ok (TypeID (FQName.fqn packageName moduleName (getDefname ".type")) (nodePathFromString nodePath))
     in
     case String.split ":" str of
         [ packageName, moduleName ] ->
@@ -463,6 +468,7 @@ mapValueAttributesWithNodePath mapFunc value =
 mapPatternAttributesWithNodePath : (NodePath -> attr -> attr2) -> Value.Pattern attr -> Value.Pattern attr2
 mapPatternAttributesWithNodePath mapFunc pattern =
     mapPatternAttributesWithNodePathRec mapFunc [] pattern
+
 
 {-| Given a map function, a NodePath, and a pattern, recursively map the pattern's attributes using the provided map function.
 -}
