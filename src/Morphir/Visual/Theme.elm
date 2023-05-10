@@ -36,6 +36,8 @@ type alias Colors =
     , brandSecondary : Color
     , brandSecondaryLight : Color
     , warning : Color
+    , highlighted : Color
+    , notHighlighted : Color
     }
 
 
@@ -88,7 +90,9 @@ fromConfig maybeConfig =
             , brandPrimaryLight = rgba 0 0.639 0.882 0.3
             , brandSecondary = rgb 1 0.411 0
             , brandSecondaryLight = rgba 1 0.411 0 0.3
-            , warning = rgba255 238 210 2 0.9 
+            , warning = rgba255 238 210 2 0.9
+            , highlighted = rgb255 0 163 255
+            , notHighlighted = rgb255 120 120 120
             }
 
         defaultIcons : Icons
