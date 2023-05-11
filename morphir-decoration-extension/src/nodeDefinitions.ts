@@ -3,7 +3,6 @@ import * as fs from "fs";
 import * as util from "util";
 import * as path from "path";
 import { Morphir, toDistribution } from "morphir-elm";
-import { type } from "os";
 
 export class DepNodeProvider implements vscode.TreeDataProvider<Dependency> {
   private _onDidChangeTreeData: vscode.EventEmitter<
@@ -29,7 +28,7 @@ export class DepNodeProvider implements vscode.TreeDataProvider<Dependency> {
     }
     const morphirIRPath = path.join(this.workspaceRoot, "morphir-ir.json");
     if (element) {
-      return Promise.resolve(this.getDefinitionTree(morphirIRPath,element));
+      return Promise.resolve(this.getDefinitionTree(morphirIRPath, element));
     } else {
       if (this.pathExists(morphirIRPath)) {
         return Promise.resolve(this.getDefinitionTree(morphirIRPath));
@@ -42,17 +41,26 @@ export class DepNodeProvider implements vscode.TreeDataProvider<Dependency> {
     }
   }
 
-  private toDefinitionTree = (moduleName: string, types?: Array<string>): Dependency => {
+  private toDefinitionTree = (
+    fQname: string,
+    types?: Array<string>
+  ): Dependency => {
+    let displayName = fQname.split(".").pop()
     if (types && types.length !== 0) {
-      return new Dependency(
-        moduleName,
-        vscode.TreeItemCollapsibleState.Collapsed
+      return new Dependency(displayName!,
+        fQname,
+        vscode.TreeItemCollapsibleState.Collapsed,
+        {
+          command: "nodeDependencies.editor",
+          title: "opening",
+          arguments: [fQname],
+        }
       );
     } else {
-      return new Dependency(moduleName, vscode.TreeItemCollapsibleState.None, {
-        command: "extension.openPackageOnNpm",
+      return new Dependency(displayName!, fQname, vscode.TreeItemCollapsibleState.None, {
+        command: "nodeDependencies.editor",
         title: "opening",
-        arguments: [moduleName],
+        arguments: [fQname],
       });
     }
   };
@@ -61,34 +69,47 @@ export class DepNodeProvider implements vscode.TreeDataProvider<Dependency> {
     return str.substring(0, 1).toUpperCase() + str.substring(1).toLowerCase();
   }
 
-  private definitionArr = (ir: Morphir.IR.Distribution.Distribution):Dependency[] => {
+  private definitionArr = (
+    ir: Morphir.IR.Distribution.Distribution,
+    element?: Dependency
+  ): Dependency[] => {
     let moduleNameArr: Array<string> = [];
     let moduleDef = new Map<string, Array<string>>();
     switch (ir.kind) {
       case "Library":
         ir.arg3.modules.forEach((accessControlledModuleDef, moduleName) => {
-          let typeNames: Array<string> = [];
+          let childrenNames: Array<string> = [];
+          let fQName = [...ir.arg1, moduleName.map((n) => n.map(this.capitalize).join("")).join("")].join(".")
           moduleNameArr.push(
-            moduleName.map((n) => n.map(this.capitalize).join("")).join(" ")
+            fQName
+            // moduleName.map((n) => n.map(this.capitalize).join("")).join(" ")
           );
 
           accessControlledModuleDef.value.types.forEach(
             (documentedAccessControlledTypeDef, typeName) => {
-              typeNames.push(typeName.map(this.capitalize).join(" "));
+              let childFQName = [fQName, typeName.join("")].join(".")
+              childrenNames.push(childFQName);
             }
           );
-          
+
           accessControlledModuleDef.value.values.forEach(
             (documentedAccessControlledValueDef, valueName) => {
-              typeNames.push(valueName.map(this.capitalize).join(" "));
+              let childFQName = [fQName, valueName.join("")].join(".")
+              childrenNames.push(childFQName);
             }
           );
 
           moduleDef.set(
-            moduleName.map((n) => n.map(this.capitalize).join("")).join(" "),
-            typeNames
+            fQName,
+            childrenNames
           );
         });
+        if (element) {
+          let modType = moduleDef.get(element.version)!;
+          return modType.map((typ) => {
+            return this.toDefinitionTree(typ);
+          });
+        }
         return moduleNameArr.map((moduleStr) => {
           let modType = moduleDef.get(moduleStr)!;
           return this.toDefinitionTree(moduleStr, modType);
@@ -99,48 +120,52 @@ export class DepNodeProvider implements vscode.TreeDataProvider<Dependency> {
   /**
    * Given the path to the IR, read all its content.
    */
-  private getDefinitionTree(iRPath: string, element?:Dependency): Dependency[] {
+  private getDefinitionTree(
+    iRPath: string,
+    element?: Dependency
+  ): Dependency[] {
     const workspaceRoot = this.workspaceRoot;
     if (this.pathExists(iRPath) && workspaceRoot) {
       const morphirIR = fs.readFileSync(iRPath!);
-      const ir = toDistribution(morphirIR.toString());
-      if(element){
-        return this.getDefinitionChildren(ir,element)
-      }
-      return this.definitionArr(ir);
+      const dist = toDistribution(morphirIR.toString());
+      console.log(dist)
+      return this.definitionArr(dist, element);
     } else {
       return [];
     }
   }
 
-  private getDefinitionChildren(ir: Morphir.IR.Distribution.Distribution, element:Dependency): Dependency[]{
-    let moduleDef = new Map<string, Array<string>>();
-    switch (ir.kind) {
-      case "Library":
-        ir.arg3.modules.forEach((accessControlledModuleDef, moduleName) => {
-          let moduleValues: Array<string> = [];
+  // private getDefinitionChildren(
+  //   ir: Morphir.IR.Distribution.Distribution,
+  //   element: Dependency
+  // ): Dependency[] {
+  //   let moduleDef = new Map<string, Array<string>>();
+  //   switch (ir.kind) {
+  //     case "Library":
+  //       ir.arg3.modules.forEach((accessControlledModuleDef, moduleName) => {
+  //         let moduleValues: Array<string> = [];
 
-          accessControlledModuleDef.value.types.forEach(
-            (documentedAccessControlledTypeDef, typeName) => {
-              moduleValues.push(typeName.map(this.capitalize).join(" "));
-            }
-          );
-          accessControlledModuleDef.value.values.forEach(
-            (documentedAccessControlledValueDef, valueName) => {
-              moduleValues.push(valueName.map(this.capitalize).join(" "));
-            }
-          );
-          moduleDef.set(
-            moduleName.map((n) => n.map(this.capitalize).join("")).join(" "),
-            moduleValues
-          );
-        });
-        let modType = moduleDef.get(element.label)!
-        return modType.map((typ)=>{
-          return this.toDefinitionTree(typ)
-        })
-    }
-  }
+  //         accessControlledModuleDef.value.types.forEach(
+  //           (documentedAccessControlledTypeDef, typeName) => {
+  //             moduleValues.push(typeName.map(this.capitalize).join(" "));
+  //           }
+  //         );
+  //         accessControlledModuleDef.value.values.forEach(
+  //           (documentedAccessControlledValueDef, valueName) => {
+  //             moduleValues.push(valueName.map(this.capitalize).join(" "));
+  //           }
+  //         );
+  //         moduleDef.set(
+  //           moduleName.map((n) => n.map(this.capitalize).join("")).join(" "),
+  //           moduleValues
+  //         );
+  //       });
+  //       let modType = moduleDef.get(element.label)!;
+  //       return modType.map((typ) => {
+  //         return this.toDefinitionTree(typ);
+  //       });
+  //   }
+  // }
 
   private pathExists(p: string): boolean {
     try {
@@ -155,13 +180,14 @@ export class DepNodeProvider implements vscode.TreeDataProvider<Dependency> {
 export class Dependency extends vscode.TreeItem {
   constructor(
     public readonly label: string,
+    public readonly version: string,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
     public readonly command?: vscode.Command
   ) {
     super(label, collapsibleState);
 
     this.tooltip = `${this.label}`;
-    // this.description = this.version;
+    this.description = this.version;
   }
 
   iconPath = {

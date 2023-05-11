@@ -10,7 +10,6 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand: morphirdecorations.helloWorld",
     "onView:morphir-deco-sidebar"
   ],
   "main": "./dist/extension.js",
@@ -44,16 +43,16 @@
         }
       },
       {
+        "command": "nodeDependencies.editor",
+        "title": "Editor"
+      },
+      {
         "command": "nodeDependencies.addEntry",
         "title": "Add"
       },
       {
         "command": "nodeDependencies.editEntry",
-        "title": "Edit",
-        "icon": {
-          "light": "media/ligh-edit.svg",
-          "dark": "media/dark-edit.svg"
-        }
+        "title": "Edit"
       },
       {
         "command": "nodeDependencies.deleteEntry",

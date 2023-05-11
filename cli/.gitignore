@@ -2,4 +2,6 @@ Morphir.*.js
 web/main.js
 web/index.js
 web/insight.js
+web/valueEditor.js
+web/editor-custom-element.js
 web/try-morphir.html

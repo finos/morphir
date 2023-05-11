@@ -18,7 +18,8 @@
     "ncc-morphir": "ncc build cli/morphir.js -o dist/morphir",
     "ncc-morphir-server": "ncc build cli/morphir-elm-develop.js -o dist/morphir-server",
     "build": "gulp && npm run ncc-morphir && npm run ncc-morphir-server && npx jest",
-    "test-coverage": "elm-coverage src/ --open"
+    "test-coverage": "elm-coverage src/ --open",
+    "build-value-editor": "elm make cli/src/Morphir/Web/Editor.elm --output=cli/web/valueEditor.js"
   },
   "repository": {
     "type": "git",
@@ -93,6 +94,7 @@
     "fs-extra": "^9.1.0",
     "get-stdin": "^8.0.0",
     "log-timestamp": "^0.3.0",
+    "morphir-elm": "^2.78.0",
     "prettier": "^2.4.1",
     "vis-network": "^9.1.2"
   }

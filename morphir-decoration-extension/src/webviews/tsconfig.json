@@ -1,0 +1,12 @@
+{
+  "include": ["./**/*"],
+  "exclude": ["../node_modules/*"],
+  "compilerOptions": {
+    "outDir": "../../out/compiled",
+    "strict": true,
+    "lib": ["DOM"],
+    "moduleResolution": "node",
+    "rootDir": "pages",
+    "skipLibCheck": true
+  }
+}
