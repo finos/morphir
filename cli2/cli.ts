@@ -94,7 +94,7 @@ async function make(
       // We invoke file change detection but pass in no hashes which will generate inserts only
       const fileChanges = await FileChanges.detectChanges(
         new Map(),
-        path.join(projectDir, morphirJson.sourceDirectory) 
+        path.join(projectDir, morphirJson.sourceDirectory)
       );
       const fileSnapshot = FileChanges.toFileSnapshotJson(fileChanges);
       const newIR: string = await buildFromScratch(
@@ -292,7 +292,7 @@ const stats = async (
     });
   };
 
-  const morphirIrJson: Buffer = await fsReadFile(path.resolve(input)); 
+  const morphirIrJson: Buffer = await fsReadFile(path.resolve(input));
 
   const stats: string[] = await collectStats(
     JSON.parse(morphirIrJson.toString())
@@ -325,10 +325,9 @@ const stats = async (
   return Promise.all(writePromises);
 };
 
-
 const fileExist = async (filePath: string) => {
   return new Promise((resolve, reject) => {
-    fs.access(filePath, fs.constants.F_OK, (err) => { 
+    fs.access(filePath, fs.constants.F_OK, (err) => {
       if (err) {
         resolve(false);
       } else {
@@ -366,10 +365,10 @@ const findFilesToDelete = async (outputPath: string, fileMap: string[]) => {
   };
   const files = fileMap.map(([[dirPath, fileName], content]: any) => {
     const fileDir = dirPath.reduce(
-      (accum: string, next: string) => path.join(accum, next), 
+      (accum: string, next: string) => path.join(accum, next),
       outputPath
     );
-    return path.resolve(fileDir, fileName); 
+    return path.resolve(fileDir, fileName);
   });
   return Promise.all(await readDir(outputPath, files));
 };
@@ -414,11 +413,7 @@ async function writeFile(filePath: string, content: string) {
   return await fsWriteFile(filePath, content);
 }
 
-
-const generate = async (
-  options: any,
-  ir: string
-): Promise<string[]> => {
+const generate = async (options: any, ir: string): Promise<string[]> => {
   return new Promise((resolve, reject) => {
     worker.ports.jsonDecodeError.subscribe((err: any) => {
       reject(err);
@@ -431,15 +426,11 @@ const generate = async (
       }
     });
 
-    worker.ports.generate.send([options, ir]);
+    worker.ports.generate.send([options, ir, []]);
   });
 };
 
-const gen = async (
-  input: string,
-  outputPath: string,
-  options: any
-) => {
+const gen = async (input: string, outputPath: string, options: any) => {
   await fsMakeDir(outputPath, {
     recursive: true,
   });
@@ -482,7 +473,6 @@ const gen = async (
   return Promise.all(writePromises.concat(deletePromises));
 };
 
-
 async function writeDockerfile(
   projectDir: string,
   programOpts: any
@@ -513,4 +503,47 @@ async function writeDockerfile(
   }
 }
 
-export = {gen,  make, writeFile, fileExist, stats, writeDockerfile, findFilesToDelete, copyRedistributables, worker };
+async function testCoverage(
+  irPath: string,
+  testsPath: string,
+  outputPath: string,
+  options: CommandOptions
+) {
+  // Morphir IR
+  const morphirIR: Buffer = await fsReadFile(path.resolve(irPath))
+  const morphirIRJson: JSON = JSON.parse(morphirIR.toString())
+
+  // read Morphir Test
+  const morphirTest: Buffer = await fsReadFile(path.resolve(testsPath))
+  const morphirTestJson: JSON = JSON.parse(morphirTest.toString())
+
+  // output path 
+  const output = path.join(path.resolve(outputPath), "morphir-test-coverage.json")
+  
+  return  new Promise((resolve, reject) => {
+    worker.ports.testCoverageResult.subscribe(([err, data]: any) => {
+      if (err) {
+        reject(err)
+      }
+      else {
+        resolve(data)
+      }
+    })
+
+    // send files through port
+    worker.ports.testCoverage.send([morphirIRJson,morphirTestJson])
+  });
+}
+
+export = {
+  gen,
+  make,
+  writeFile,
+  fileExist,
+  stats,
+  writeDockerfile,
+  findFilesToDelete,
+  copyRedistributables,
+  testCoverage,
+  worker,
+};

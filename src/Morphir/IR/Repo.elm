@@ -3,7 +3,7 @@ module Morphir.IR.Repo exposing
     , empty, fromDistribution, insertDependencySpecification
     , mergeNativeFunctions, insertModule, deleteModule
     , insertType, insertValue, insertTypedValue
-    , getPackageName, modules, dependsOnPackages, lookupModuleSpecification, typeDependencies, valueDependencies, lookupValue, moduleDependencies
+    , getPackageName, modules, dependsOnPackages, lookupModuleSpecification, typeDependencies, valueDependencies, lookupValue, moduleDependencies, findModuleEntryPoints
     , toDistribution, updateModuleAccess
     , Errors, SourceCode, deleteType, deleteValue, removeUnusedModules, updateType, updateValue
     )
@@ -24,7 +24,7 @@ query a Repo without breaking the validity of the Repo.
 
 # Query
 
-@docs getPackageName, modules, dependsOnPackages, lookupModuleSpecification, typeDependencies, valueDependencies, lookupValue, moduleDependencies
+@docs getPackageName, modules, dependsOnPackages, lookupModuleSpecification, typeDependencies, valueDependencies, lookupValue, moduleDependencies, findModuleEntryPoints
 
 
 # Transform
@@ -34,6 +34,7 @@ query a Repo without breaking the validity of the Repo.
 -}
 
 import Dict exposing (Dict)
+import List.Extra
 import Morphir.Dependency.DAG as DAG exposing (CycleDetected, DAG)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.AccessControlled as AccessControlled exposing (Access, AccessControlled, public, withAccess)
@@ -43,6 +44,7 @@ import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
+import Morphir.IR.Path exposing (Path, isPrefixOf)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Type.Infer as Infer
@@ -865,3 +867,37 @@ updateModuleAccess access moduleName (Repo repo) =
                             )
                         )
         }
+
+
+findModuleEntryPoints : Repo -> Path -> List FQName
+findModuleEntryPoints (Repo repo) moduleName =
+    let
+        fullFQNameList : List FQName
+        fullFQNameList =
+            repo.valueDependencies |> DAG.toList |> List.map Tuple.first
+
+        valuesUnderModule : List FQName
+        valuesUnderModule =
+            fullFQNameList
+                |> List.filter
+                    (\( _, m, _ ) ->
+                        isPrefixOf m moduleName
+                    )
+
+        valuesNotUnderModule : List FQName
+        valuesNotUnderModule =
+            List.foldl List.Extra.remove fullFQNameList valuesUnderModule
+
+        filteredValueDepsDag : DAG FQName
+        filteredValueDepsDag =
+            valuesNotUnderModule |> List.foldl DAG.removeNode repo.valueDependencies
+
+        dependsOnNothing : FQName -> Bool
+        dependsOnNothing f =
+            Set.isEmpty <| DAG.incomingEdges f filteredValueDepsDag
+
+        callsOthers : FQName -> Bool
+        callsOthers f =
+            not <| Set.isEmpty <| DAG.outgoingEdges f filteredValueDepsDag
+    in
+    valuesUnderModule |> List.filter dependsOnNothing |> List.filter callsOthers

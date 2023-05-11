@@ -6,7 +6,7 @@ const path = require('path')
 const commander = require('commander')
 const cli = require('./cli')
 
-// logging
+//logging
 require('log-timestamp')
 
 // Set up Commander
@@ -22,7 +22,7 @@ program
     .option('-m, --modules-to-include <comma.separated,list.of,module.names>', 'Limit the set of modules that will be included.')
     .option('-s, --include-codecs', 'Generate JSON codecs', false)
     .option('-f, --filename <filename>', 'Filename of the generated JSON Schema.', '')
-    .option('-cc, --custom-config <filepath>', 'A filepath to load additional configuration for the backend.', null)
+    .option('-ls, --include <comma.separated,list.of,strings>', 'Limit what will be included.', '')
     .parse(process.argv)
 
 cli.gen(program.opts().input, path.resolve(program.opts().output), program.opts())

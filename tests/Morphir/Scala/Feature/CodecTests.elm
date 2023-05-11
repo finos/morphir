@@ -11,10 +11,10 @@ import Test exposing (Test, describe, test)
 mapTypeToEncoderReferenceTests : Test
 mapTypeToEncoderReferenceTests =
     let
-        positiveTest name tpeName tpePath typeParams tpe expectedOutput =
+        positiveTest name maybeFqn tpeName tpePath typeParams tpe expectedOutput =
             test name
                 (\_ ->
-                    case mapTypeToEncoderReference tpeName tpePath typeParams tpe of
+                    case mapTypeToEncoderReference maybeFqn tpeName tpePath typeParams tpe of
                         Ok output ->
                             output
                                 |> Expect.equal expectedOutput
@@ -25,12 +25,14 @@ mapTypeToEncoderReferenceTests =
     in
     describe "Generate Encoder Reference Tests"
         [ positiveTest "1. Type Variable "
+            (Just ( [ [] ], [ [] ], [] ))
             []
             []
             [ [] ]
             (Type.Variable () [ "foo" ])
             (Scala.Variable "encodeFoo")
         , positiveTest "2. Type Reference"
+            (Just ( [ [] ], [ [] ], [] ))
             []
             []
             [ [] ]
@@ -38,6 +40,7 @@ mapTypeToEncoderReferenceTests =
             (Scala.Ref [ "morphir", "sdk", "Codec" ] "encodeString")
         , positiveTest
             "3. Type Record with two fields"
+            (Just ( [ [] ], [ [] ], [] ))
             []
             []
             [ [] ]
@@ -46,16 +49,7 @@ mapTypeToEncoderReferenceTests =
                 , Type.Field [ "age" ] (Type.Reference () (fqn "morphir.sdk" "Basics" "Int") [])
                 ]
             )
-            (Scala.Lambda
-                [ ( ""
-                  , Just
-                        (Scala.StructuralType
-                            [ Scala.FunctionDecl { args = [], body = Nothing, modifiers = [], name = "name", returnType = Just (Scala.TypeRef [ "morphir", "sdk", "Basics" ] "String"), typeArgs = [] }
-                            , Scala.FunctionDecl { args = [], body = Nothing, modifiers = [], name = "age", returnType = Just (Scala.TypeRef [ "morphir", "sdk", "Basics" ] "Int"), typeArgs = [] }
-                            ]
-                        )
-                  )
-                ]
+            (Scala.Lambda [ ( "", Just (Scala.TypeApply (Scala.TypeRef [ "", "" ] "") [ Scala.TypeVar "" ]) ) ]
                 (Scala.Apply (Scala.Ref [ "io", "circe", "Json" ] "obj")
                     [ Scala.ArgValue Nothing
                         (Scala.Tuple
