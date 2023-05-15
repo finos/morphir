@@ -84,7 +84,7 @@ tableHelp config viewValue headerFunctions rows =
                     shrink
                     (\rules ->
                         el
-                            [ Border.color (highlightStateToColor (List.head (List.reverse rules.highlightStates)))
+                            [ Border.color (highlightStateToColor config (List.head (List.reverse rules.highlightStates)))
                             , Border.width 5
                             , mediumPadding config.state.theme |> padding
                             ]
@@ -161,7 +161,7 @@ getCaseFromIndex config head viewValue highlightState rule =
 
                 result : Color
                 result =
-                    highlightStateToColor highlightState
+                    highlightStateToColor config highlightState 
             in
             case match of
                 Value.WildcardPattern _ ->
@@ -203,27 +203,22 @@ toTypedPattern match =
     match |> Value.mapPatternAttributes (always (Value.patternAttribute match))
 
 
-highlightStateToColor : Maybe HighlightState -> Color
-highlightStateToColor highlightState =
+highlightStateToColor : Config msg -> Maybe HighlightState -> Color
+highlightStateToColor config highlightState =
     case highlightState of
         Just state ->
             case state of
                 Matched _ ->
-                    highlightColor.true
+                    config.state.theme.colors.highlighted
 
                 Unmatched ->
-                    highlightColor.false
+                    config.state.theme.colors.lightest
 
                 Default ->
-                    highlightColor.default
+                    config.state.theme.colors.lightest
 
         Nothing ->
-            highlightColor.default
+            config.state.theme.colors.lightest
 
 
-highlightColor : { true : Color, false : Color, default : Color }
-highlightColor =
-    { true = rgb255 100 180 100
-    , false = rgb255 180 100 100
-    , default = rgb255 255 255 255
-    }
+
