@@ -1,3 +1,7 @@
+---
+id: springboot-generator
+---
+
 # SpringBoot Generator
 
 [Morphir](https://github.com/finos/morphir) is a multi-language system built on a data format that captures an 
@@ -7,7 +11,7 @@ it to [Spring Boot](https://spring.io/projects/spring-boot/).
 
 ## Prerequisites
 
-Morphir-elm package installed. Installation instructions: [morphir-elm installation](Readme.md)
+Morphir-elm package installed. Installation instructions: [morphir-elm installation](installation.md)
 
 If you make changes to the morphir-elm code, you should run
 
@@ -17,7 +21,7 @@ npm run build
 
 ## Translate Elm sources to Morphir IR
 
-For detailed instructions refer to [morphir-elm installation](Readme.md).
+For detailed instructions refer to [morphir-elm installation](installation.md).
 
 Example:
 If we have a file with module name defined as: 

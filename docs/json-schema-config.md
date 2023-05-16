@@ -1,3 +1,7 @@
+---
+id: json-schema-config
+---
+
 # Json Schema Config Algorithm
 This a basic program execution flow algorithm that runs (for json-schema backend configuration) when a code
 generation command is issued:

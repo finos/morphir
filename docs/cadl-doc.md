@@ -1,3 +1,8 @@
+---
+id: morphir-cadl-mapping
+title: Morphir-Cadl Mapping
+---
+
 # Morphir-Cadl Mapping
 ## [Morphir](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) to [Cadl Type](https://microsoft.github.io/cadl/docs/language-basics/type-relations/) Mappings
 This is a documentation of the mapping strategy from Morphir types to Cadl types. This document describes how types in Morphir Models are represented in Cadl. 
@@ -5,32 +10,32 @@ Below is a quick overview of the mapping in the table:
 
 
 
-|                                                       | Type                                | Cadl Type                                | Comment                                             |
-|-------------------------------------------------------|-------------------------------------|------------------------------------------|-----------------------------------------------------|
-| [Basic Types](#basic-types)                           |                                     |                                          |                                                     |
-|                                                       | `Bool`                              | `boolean`                                |                                                     |
-|                                                       | `Int`                               | `int64`                                  |                                                     |
-|                                                       | `Float`                             | `float64`                                |                                                     |
-|                                                       | `String`                            | `string`                                 |                                                     |
-|                                                       | `Char`                              | `string`                                 | Not supported. Mapped to string                     |
-| [Advanced Types](#advance-types)                      |                                     |                                          |                                                     |
-|                                                       | `Decimal`                           | `string`                                 | Not supported. Mapped to string                     |
-|                                                       | `LocalDate`                         | `plainDate`                              |                                                     |
-|                                                       | `LocalTime`                         | `plainTime`                              |                                                     |
-|                                                       | `Month`                             | `string`                                 |                                                     |
-| [Optional Types](#advance-types)                      |                                     |                                          |                                                     |
-|                                                       | `Maybe a`                           | `a` &#124; `null`                        |                                                     |
-|                                                       | `{ foo: Maybe Float, bar: String }` | `{ foo ?: float64, bar: string }`        | Optional Fields are expressed using the `?:` syntax |
-| [Collection Types](#collection-types)                 |                                     |                                          |                                                     |
-|                                                       | `List A`                            | `Array<A>`                               |                                                     |
-|                                                       | `Set B`                             | `Array<B>`                               | Not Supported. Mapped to Array                      |
-|                                                       | `Dict A B`                          | `Array<[A,B]>`                           | Not Supported. Mapped to Array                      |
-| [Composite Types](#composite-types)                   |                                     |                                          |                                                     |
-| - [Tuple](#tuples)                                    | `(Int, String)`                     | `[int64, string]`                        |                                                     |
-| - [Result](#result)                                   | `Result e v`                        | `["Err", e]` &#124; `["Ok", v]`          | Expressed as tagged unions                          |
-| - [Record](#record-types)                             | `{ foo: Int, bar: String }`         | `{ foo: int64, bar: string }`            |                                                     |
-| - [Union Types](#custom-types)                        | `Foo Int` &#124; `Bar String`       | `["Foo", int64]` &#124; `["Bar, string]` |                                                     |
-| - [No Constructor Args (Special Case)](#custom-types) | `Foo` &#124; `Bar` &#124; `Baz`     | `Foo` &#124; `Bar` &#124; `Baz`          | Represented as Enum                                 |
+|                                                       | Type                                       | Cadl Type                         | Comment                                             |
+|-------------------------------------------------------|--------------------------------------------|-----------------------------------|-----------------------------------------------------|
+| [Basic Types](#basic-types)                           |                                            |                                   |                                                     |
+|                                                       | `Bool`                                     | `boolean`                         |                                                     |
+|                                                       | `Int`                                      | `int64`                           |                                                     |
+|                                                       | `Float`                                    | `float64`                         |                                                     |
+|                                                       | `String`                                   | `string`                          |                                                     |
+|                                                       | `Char`                                     | `string`                          | Not supported. Mapped to string                     |
+| [Advanced Types](#advance-types)                      |                                            |                                   |                                                     |
+|                                                       | `Decimal`                                  | `string`                          | Not supported. Mapped to string                     |
+|                                                       | `LocalDate`                                | `plainDate`                       |                                                     |
+|                                                       | `LocalTime`                                | `plainTime`                       |                                                     |
+|                                                       | `Month`                                    | `string`                          |                                                     |
+| [Optional Types](#advance-types)                      |                                            |                                   |                                                     |
+|                                                       | `Maybe a`                                  | `a`<code>&#124;</code> `null`               |                                                     |
+|                                                       | `{ foo: Maybe Float, bar: String }`        | `{ foo ?: float64, bar: string }` | Optional Fields are expressed using the `?:` syntax |
+| [Collection Types](#collection-types)                 |                                            |                                   |                                                     |
+|                                                       | `List A`                                   | `Array<A>`                        |                                                     |
+|                                                       | `Set B`                                    | `Array<B>`                        | Not Supported. Mapped to Array                      |
+|                                                       | `Dict A B`                                 | `Array<[A,B]>`                    | Not Supported. Mapped to Array                      |
+| [Composite Types](#composite-types)                   |                                            |                                   |                                                     |
+| - [Tuple](#tuples)                                    | `(Int, String)`                            | `[int64, string]`                 |                                                     |
+| - [Result](#result)                                   | `Result e v`                               | `["Err", e]` <code>&#124;</code> `["Ok", v]`   | Expressed as tagged unions                          |
+| - [Record](#record-types)                             | `{ foo: Int, bar: String }`                | `{ foo: int64, bar: string }`     |                                                     |
+| - [Union Types](#custom-types)                        | `Foo Int` <code>&#124;</code> `Bar String` | `["Foo", int64]` <code>&#124;</code> `["Bar, string]` |                                                     |
+| - [No Constructor Args (Special Case)](#custom-types) | `Foo` <code>&#124;</code> `Bar` <code>&#124;</code> `Baz`            | `Foo` <code>&#124;</code> `Bar` <code>&#124;</code> `Baz`   | Represented as Enum                                 |
 
 
 ### Basic Types
@@ -60,7 +65,7 @@ Cadl:
 ```cadl
 alias Foo = int64;
 ```
-<span style="color: red; font-style:italic;"> Note: </span>
+***Note:***
 
 The `integer` type assignment is valid in Cadl but would default to **object** when dealing with the **OAS emitters**.
 
@@ -76,7 +81,7 @@ Cadl:
 ```cadl
 alias Pi = float64;
 ```
-<span style="color: red; font-style:italic;">Note: </span>
+***Note:***>
 
 The `float` type assignment is valid in Cadl but would default to **object** when dealing with the **OAS emitters**.
 
@@ -218,7 +223,7 @@ The `maybe` type in morphir represents a type that may or may not exist. The typ
         baz ?: string | null
     }
    ```
-   _<span style="color:red">Note:</span>_ \
+   _***Note:***_ \
    _In the scenario of multiple `maybe` type for a field in a model, it shall be represented as just the type or null_
 
 ### Collection Types
@@ -371,13 +376,13 @@ enum Currency {
 
 ---
 
-| <div style="width:100px"></div>                                                              | CADL Type <div style="width:450px"></div>                                                                                                                                                                                                                                                                                                                                                | Morphir Type<div style="width: 350px"></div>                                                                                                               | Comment <div style="width:350px"></div>                                                                                                                                                                                                                                                       |
-|----------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [Namespaces](https://microsoft.github.io/cadl/language-basics/namespaces)                    | `namespace Petstore`                                                                                                                                                                                                                                                                                                                                                                     | `module PetStore exposing (...)`                                                                                                                           | Namespaces in CADL map to [Modules](https://package.elm-lang.org/packages/Morgan-Stanley/morphir-elm/latest/Morphir-IR-Module) in Morphir                                                                                                                                                     |      
-| [Models](https://microsoft.github.io/cadl/language-basics/models)                            | `model Dog { name: string;  age: number}`                                                                                                                                                                                                                                                                                                                                                | `type alias Dog = { name: string, age: int}`                                                                                                               | Models in CADL map to [Records](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Value#record) in Morphir                                                                                                                                                            |
-| [Enums](https://microsoft.github.io/cadl/language-basics/enums)                              | `enum Direction {East; West; North; South}`                                                                                                                                                                                                                                                                                                                                              | `type Direction `<br/> `= East` &#124; `West` &#124; `North` &#124; `South`                                                                                | Enums in CADL map to [Union Types](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) in Mophir                                                                                                                                                                  |
+|                                                           | CADL Type                                                                                                                                                                                                                                                                                                                                                                           | Morphir Type                                                                                                                                      | Comment                                                                                                                                                                                                                                                      |
+|----------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [Namespaces](https://microsoft.github.io/cadl/language-basics/namespaces)                    | `namespace Petstore`                                                                                                                                                                                                                                                                                                                                                                                                      | `module PetStore exposing (...)`                                                                                                                                                     | Namespaces in CADL map to [Modules](https://package.elm-lang.org/packages/Morgan-Stanley/morphir-elm/latest/Morphir-IR-Module) in Morphir                                                                                                                                                          |      
+| [Models](https://microsoft.github.io/cadl/language-basics/models)                            | `model Dog { name: string;  age: number}`                                                                                                                                                                                                                                                                                                                                                                                 | `type alias Dog = { name: string, age: int}`                                                                                                                                         | Models in CADL map to [Records](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Value#record) in Morphir                                                                                                                                                                 |
+| [Enums](https://microsoft.github.io/cadl/language-basics/enums)                              | `enum Direction {East; West; North; South}`                                                                                                                                                                                                                                                                                                                                                                               | `type Direction `<br/> `= East` <code>&#124;</code> `West` <code>&#124;</code> `North` <code>&#124;</code> `South`                                                                   | Enums in CADL map to [Union Types](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) in Mophir                                                                                                                                                                       |
 | [Union Type](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) |||
-|                                                                                              | -<span style="color: grey; font-style: italic;" > Unnamed Union </span> <br /> `alias Breed = Breagle` &#124; `GermanShepherd` &#124; `GoldenRetriever` <br /> <span style="color: grey; font-style: italic;" >- Named Union </span> <br /> `union Breed {`<br /> &ensp; `beagle: Beagle,` <br /> &ensp; `shepherd: GermanShepherd.` <br /> &ensp; `retiever: GoldenRetriever`<br /> `}` | `type Breed` <br /> &ensp; `= Beagle Beagle`<br /> &ensp; &ensp; &#124; `Shepherd GermanShepherd ` <br /> &ensp; &ensp; &#124; `Retriever GoldenRetriever` | Named unions in CADL maps to a Custom Type with  a `type parameter` in Morphir. Any other detail of the type is captured in Morphir's `Decorators(Custom Attributes).` <br /> <span style="color: red; font-style: italic;" >NB: unnamed Unions are currently not supported in morphir</span> |
+|                                                                                              | -<span> Unnamed Union </span> <br /> `alias Breed = Breagle` <code>&#124;</code> `GermanShepherd` <code>&#124;</code> `GoldenRetriever` <br /> <span>- Named Union </span> <br /> `union Breed {`<br /> &ensp; `beagle: Beagle,` <br /> &ensp; `shepherd: GermanShepherd.` <br /> &ensp; `retiever: GoldenRetriever`<br /> `}` | `type Breed` <br /> &ensp; `= Beagle Beagle`<br /> &ensp; &ensp; <code>&#124;</code> `Shepherd GermanShepherd ` <br /> &ensp; &ensp; <code>&#124;</code> `Retriever GoldenRetriever` | Named unions in CADL maps to a Custom Type with  a `type parameter` in Morphir. Any other detail of the type is captured in Morphir's `Decorators(Custom Attributes).` <br /> <span> NB: unnamed Unions are currently not supported in morphir </span> |
 
 
 ## [Type Relations](https://microsoft.github.io/cadl/language-basics/type-relations)
@@ -387,11 +392,11 @@ Boolean in CADL, maps to [`bool`](https://package.elm-lang.org/packages/elm/core
 
 ##### Integer
 In Morphir, this maps to the type [`int`.](https://package.elm-lang.org/packages/elm/core/latest/Basics#Int) The `integer` type assignment is valid CADL, but \
-<span style="color: red; font-style:italic;"> Things to note :: </span>
+***Note:***
 1. When dealing with emitters such as OpenApiSpec(OAS) it defaults to an object. To obtain an actual int value, specify a subtype `int64`.
 
 ##### Float
-The `float` type in CADL, maps directly to type [`float`](https://package.elm-lang.org/packages/elm/core/latest/Basics#Float) in Morphi. <span style="color: red; font-style:italic;">Same issues with `integer` type is applicable </span>
+The `float` type in CADL, maps directly to type [`float`](https://package.elm-lang.org/packages/elm/core/latest/Basics#Float) in Morphi. <span >Same issues with `integer` type is applicable </span>
 
 ##### String
 The `string` type, in CADL maps directly to [`string`](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-SDK-String) type in Morphir, a sequence of characters,

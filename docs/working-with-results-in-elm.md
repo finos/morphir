@@ -1,3 +1,8 @@
+---
+id: results-in-elm
+title: Working With Results in Elm
+---
+
 # Working With Results in Elm - With Morphir Examples
 This post explains the Result type in the Elm Programming Language and use cases in Morphir.
 

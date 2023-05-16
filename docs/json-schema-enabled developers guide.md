@@ -1,3 +1,8 @@
+---
+id: json-schema-enabled-decorator
+title: json-schema-enabled Decorator
+---
+
 # The json-schema-enabled Decorator Developer's Guide
 This is a developer's guide on how the json-schema-enabled decorator works and how it is applied to:
 * types

@@ -1,9 +1,9 @@
 ---
 id: morphir-spark
-title: Morphir to Spark mapping
+title: Mapping Morphir to Spark
 ---
 
-# Morphir to Spark mapping
+# Spark - Morphir to Spark mapping
 
 To understand how the Morphir to Apache Spark mapping works let's begin with an example Morphir domain model and business logic that we might want to transpile to Spark. We present the Morphir logic using Elm syntax to make it easy to read:
 

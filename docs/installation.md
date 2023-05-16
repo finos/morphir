@@ -1,3 +1,7 @@
+---
+id: installation
+title: Installation
+---
 # Morphir Tools Installation and Setup
 Morphir provides command line tools for executing morphir tasks. 
 These tools are delivered by the ```npm``` package management system. Therefore, installation

@@ -1,3 +1,8 @@
+---
+id: spark-backend-api
+title: API Documentation
+---
+
 # Spark Backend/API Documentation
 This is the entry point for the Spark Backend.
 

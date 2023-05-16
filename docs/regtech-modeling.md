@@ -1,6 +1,6 @@
 ---
 sidebar_position: 7
-id: automating-regtech
+id: regtech-modeling
 title: Automating RegTech
 ---
 

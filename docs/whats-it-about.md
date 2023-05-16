@@ -1,6 +1,5 @@
 ---
-sidebar_position: 10
-id: application-article
+id: what-is-it-about
 title: I Have an Application
 ---
 

@@ -1,3 +1,7 @@
+---
+id: publishing-elm-package
+---
+
 This document describes how maintainers can push new releases of `morphir-elm` into NPM and the Elm package repo. 
 
 # Publishing the Elm package

@@ -1,3 +1,7 @@
+---
+id: adr-for-morphir-cli
+---
+
 # ADR for Morphir CLI incremental build approach
 
 ## Context and Problem Statement

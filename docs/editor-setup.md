@@ -1,3 +1,8 @@
+---
+id: editor-setup
+title: Editor Setup
+---
+
 # Editor Setup for Writing Business Logic
 Morphir is designed to allow users to write business logic in multiple ways. That currently includes the following:
 

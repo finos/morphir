@@ -1,3 +1,7 @@
+---
+id: generating-json-schema
+---
+
 # Generating a JSON Schema
 This document explains how to generate a JSON Schema. It covers how to specify code generation parameters via 
 commandline, configuration file and the Develop UI.
