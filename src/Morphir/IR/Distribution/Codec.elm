@@ -41,7 +41,7 @@ import Morphir.IR.Type.Codec exposing (decodeType, encodeType)
 -}
 currentFormatVersion : Int
 currentFormatVersion =
-    2
+    3
 
 
 {-| Encode distribution including a version number.
