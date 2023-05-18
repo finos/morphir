@@ -15,7 +15,7 @@
 -}
 
 
-module Morphir.IR.Distribution.Codec exposing (encodeVersionedDistribution, decodeVersionedDistribution, encodeDistribution, decodeDistribution)
+module Morphir.IR.Distribution.CodecV2 exposing (encodeVersionedDistribution, decodeVersionedDistribution, encodeDistribution, decodeDistribution)
 
 {-| Codecs for types in the `Morphir.IR.Distribution` module.
 
@@ -32,7 +32,6 @@ import Json.Encode as Encode
 import Morphir.Codec exposing (decodeUnit, encodeUnit)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.CodecV1 as CodecV1
-import Morphir.IR.Distribution.CodecV2 as CodecV2
 import Morphir.IR.Package.Codec as PackageCodec
 import Morphir.IR.Path.Codec exposing (decodePath, encodePath)
 import Morphir.IR.Type.Codec exposing (decodeType, encodeType)
@@ -42,7 +41,7 @@ import Morphir.IR.Type.Codec exposing (decodeType, encodeType)
 -}
 currentFormatVersion : Int
 currentFormatVersion =
-    3
+    2
 
 
 {-| Encode distribution including a version number.
@@ -68,9 +67,6 @@ decodeVersionedDistribution =
 
                     else if formatVersion == 1 then
                         Decode.field "distribution" CodecV1.decodeDistribution
-
-                    else if formatVersion == 2 then
-                        Decode.field "distribution" CodecV2.decodeDistribution
 
                     else
                         Decode.fail
