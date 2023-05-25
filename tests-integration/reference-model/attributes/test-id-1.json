@@ -3,6 +3,13 @@
         "pII"
     ],
     "Morphir.Reference.Model:BooksAndRecords:deal/type#product": [
-        "pHI"
+        "nPI"
+    ],
+    "morphir.reference.model.BooksAndRecords.dealevent/type": [
+        "pII"
+    ],
+    "morphir.reference.model.BooksAndRecords:deal/type": null,
+    "morphir.reference.model.BooksAndRecords.id/type": [
+        "sPI"
     ]
 }

@@ -89,3 +89,10 @@ input::placeholder,
 textarea::placeholder {
 	color: var(--vscode-input-placeholderForeground);
 }
+
+.editor-wrapper {
+	display: flex;
+	flex-direction: column-reverse;
+	align-items: stretch;
+	color:white
+}

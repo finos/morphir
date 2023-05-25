@@ -32,7 +32,7 @@ export function getDecorationValues(rootPath: string, fqName: string) {
   let jsonVal: { [key: string]: any } = {};
   return Object.entries(docs).reduce((accum, [decId, decConfig]) => {
     const filteredNodeId = Object.keys(decConfig.data).find(
-      (nodeId) => nodeIDtoFqname(nodeId) === fqName.toLowerCase()
+      (nodeId) => nodeIDtoFqname(nodeId) === fqName.split("/")[0].toLowerCase()
     );
     accum[decId] = {
       distro: decConfig.iR,
@@ -70,11 +70,12 @@ export class DecorationPanel {
       DecorationPanel.currentPanel._panel.reveal(column);
       return;
     }
+    const title = nodeIDtoFqname(moduleName)
 
     // Otherwise, create a new panel.
     let panel = vscode.window.createWebviewPanel(
       moduleName,
-      moduleName.split(".").pop()!,
+      title.split(".").pop()!,
       column || vscode.ViewColumn.One,
       getWebviewOptions(extensionUri)
     );
@@ -175,6 +176,19 @@ export class DecorationPanel {
             value: updateValue,
           };
           return updateDecorations(payload.id, jsonVal, rootPath!);
+        }else{
+          if(!fqName.split("/").pop()){
+            jsonVal = {
+              nodeID : `${fqName}/module`,
+              value : updateValue
+            }
+            return updateDecorations(payload.id, jsonVal, rootPath!)
+          }
+          jsonVal = {
+            nodeID : fqName,
+            value : updateValue
+          }
+          return updateDecorations(payload.id, jsonVal, rootPath!)
         }
       }
     });
@@ -210,8 +224,10 @@ export class DecorationPanel {
 
     // Use a nonce to only allow specific scripts to be run
     const nonce = getNonce();
-
-    const editors = Object.entries(flagValues)
+      /* List of editors reversed in order to handle the display of editors in an order of nth element appearing on top, 
+        so that
+      */
+    const editors = Object.entries(flagValues).reverse()
       .map(([decorationID, decorationConfig]) => {
         return `
         <div class="value-editor">
@@ -230,6 +246,7 @@ export class DecorationPanel {
     return `<!DOCTYPE html>
 			<html lang="en">
 			<head>
+
 				<meta charset="UTF-8">
 
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -240,9 +257,9 @@ export class DecorationPanel {
 				<title>Value Editor</title>
 			</head>
 			<body>
-        
+        <div class="editor-wrapper">
         ${editors}
-        
+        </div>
         <script nonce="${nonce}" src="${customEditorUri}"></script>  
         <script nonce="${nonce}" src="${customElementUri}"></script> 
         <script nonce="${nonce}">
@@ -254,11 +271,7 @@ export class DecorationPanel {
               valueElements.forEach((valueUpdate)=>{
                 valueUpdate.addEventListener("valueUpdated", (event) => {
                   const target = event.target;
-                  if(target.classList.contains('editor')){
-                    const editor = target.closest('.value-editor')
-                    const dropDownHeight = target.offsetHeight;
-                    editor.style.marginBottom = dropDownHeight + "%"
-                  }
+                  
                   const updatedValue = event.detail;
                   const jsonData = {
                     id: target.id,

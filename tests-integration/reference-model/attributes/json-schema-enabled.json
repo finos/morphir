@@ -1,3 +1,6 @@
 {
-    "Morphir.Reference.Model:BooksAndRecords:deal/type": true
+    "Morphir.Reference.Model:BooksAndRecords:deal/type": true,
+    "morphir.reference.model.BooksAndRecords.dealcmd/type": false,
+    "morphir.reference.model.BooksAndRecords.productid/type": false,
+    "morphir.reference.model.BooksAndRecords.id/type": false
 }

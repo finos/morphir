@@ -44,9 +44,10 @@ export class DepNodeProvider implements vscode.TreeDataProvider<Decoration> {
     fQname: string,
     types?: Array<string>
   ): Decoration => {
-    let displayName = fQname.split(".").pop()
+    let displayName = fQname.split(".").pop();
     if (types && types.length !== 0) {
-      return new Decoration(displayName!,
+      return new Decoration(
+        displayName!.split("/")[0] ? displayName!.split("/")[0] : displayName!,
         fQname,
         vscode.TreeItemCollapsibleState.Collapsed,
         {
@@ -56,11 +57,16 @@ export class DepNodeProvider implements vscode.TreeDataProvider<Decoration> {
         }
       );
     } else {
-      return new Decoration(displayName!, fQname, vscode.TreeItemCollapsibleState.None, {
-        command: "decorations.editor",
-        title: "opening",
-        arguments: [fQname],
-      });
+      return new Decoration(
+        displayName!.split("/")[0] ? displayName!.split("/")[0] : displayName!,
+        fQname,
+        vscode.TreeItemCollapsibleState.None,
+        {
+          command: "decorations.editor",
+          title: "opening",
+          arguments: [fQname],
+        }
+      );
     }
   };
 
@@ -78,7 +84,10 @@ export class DepNodeProvider implements vscode.TreeDataProvider<Decoration> {
       case "Library":
         ir.arg3.modules.forEach((accessControlledModuleDef, moduleName) => {
           let childrenNames: Array<string> = [];
-          let fQName = [...ir.arg1, moduleName.map((n) => n.map(this.capitalize).join("")).join("")].join(".")
+          let fQName = [
+            ...ir.arg1,
+            moduleName.map((n) => n.map(this.capitalize).join("")).join(""),
+          ].join(".");
           moduleNameArr.push(
             fQName
             // moduleName.map((n) => n.map(this.capitalize).join("")).join(" ")
@@ -86,22 +95,20 @@ export class DepNodeProvider implements vscode.TreeDataProvider<Decoration> {
 
           accessControlledModuleDef.value.types.forEach(
             (documentedAccessControlledTypeDef, typeName) => {
-              let childFQName = [fQName, typeName.join("")].join(".")
+              let childFQName = [fQName, typeName.join("")].join(".") + "/type";
               childrenNames.push(childFQName);
             }
           );
 
           accessControlledModuleDef.value.values.forEach(
             (documentedAccessControlledValueDef, valueName) => {
-              let childFQName = [fQName, valueName.join("")].join(".")
+              let childFQName =
+                [fQName, valueName.join("")].join(".") + "/value";
               childrenNames.push(childFQName);
             }
           );
 
-          moduleDef.set(
-            fQName,
-            childrenNames
-          );
+          moduleDef.set(fQName, childrenNames);
         });
         if (element) {
           let modType = moduleDef.get(element.version)!;
