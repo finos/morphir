@@ -1,12 +1,5 @@
 import * as path from "path";
-import * as vscode from "vscode";
 import * as fs from "fs";
-
-// const rootPath =
-//   vscode.workspace.workspaceFolders &&
-//   vscode.workspace.workspaceFolders.length > 0
-//     ? vscode.workspace.workspaceFolders[0].uri.fsPath
-//     : "";
 
 function getMorphirConfig(rootPath: string) {
   const filePath = path.join(rootPath, "morphir.json");
@@ -50,19 +43,19 @@ export function getDecorations(rootPath: string) {
         fs.accessSync(decorationFilePath);
         const attrFileContent = fs.readFileSync(decorationFilePath);
         const irFileContent = fs.readFileSync(irFilePath);
-        (accum[decorationID] = {
+        accum[decorationID] = {
           data: JSON.parse(attrFileContent.toString()),
           displayName: configJsonContent[decorationID].displayName,
           entryPoint: configJsonContent[decorationID].entryPoint,
           iR: JSON.parse(irFileContent.toString()),
-        });
-        return accum
+        };
+        return accum;
       } catch (error) {
         fs.writeFileSync(decorationFilePath, "{}");
       }
     }
     return accum;
-  }, responseJson) 
+  }, responseJson);
 }
 
 export function updateDecorations(
@@ -71,11 +64,13 @@ export function updateDecorations(
   rootPath: string
 ) {
   try {
-    const data = getDecorationFilePath(decorationID, rootPath);
-    if (data) {
-      fs.writeFileSync(data, JSON.stringify(decorationValue, null, 4));
-    }
-    return decorationValue;
+    let jsonData;
+    const decIDPath = getDecorationFilePath(decorationID, rootPath);
+    const decorationContent = fs.readFileSync(decIDPath);
+    jsonData = JSON.parse(decorationContent.toString());
+    jsonData[decorationValue.nodeID] = decorationValue.value;
+    fs.writeFileSync(decIDPath, JSON.stringify(jsonData, null, 4));
+    return jsonData;
   } catch (error) {
     return error;
   }

@@ -26,7 +26,7 @@
     "views": {
       "morphir-deco-sidebar-view": [
         {
-          "id": "nodeDependencies",
+          "id": "decorations",
           "name": "Morphir Decorations",
           "icon": "media/logo.svg"
         }
@@ -35,7 +35,7 @@
     },
     "commands": [
       {
-        "command": "nodeDependencies.refreshEntry",
+        "command": "decorations.refreshEntry",
         "title": "Refresh",
         "icon": {
           "light": "media/light-refresh.svg",
@@ -43,43 +43,16 @@
         }
       },
       {
-        "command": "nodeDependencies.editor",
+        "command": "decorations.editor",
         "title": "Editor"
-      },
-      {
-        "command": "nodeDependencies.addEntry",
-        "title": "Add"
-      },
-      {
-        "command": "nodeDependencies.editEntry",
-        "title": "Edit"
-      },
-      {
-        "command": "nodeDependencies.deleteEntry",
-        "title": "Delete"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "nodeDependencies.refreshEntry",
-          "when": "view == nodeDependencies",
+          "command": "decorations.refreshEntry",
+          "when": "view == Decorations",
           "group": "navigation"
-        },
-        {
-          "command": "nodeDependencies.addEntry",
-          "when": "view == nodeDependencies"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "nodeDependencies.editEntry",
-          "when": "view == nodeDependencies && viewItem == dependency",
-          "group": "inline"
-        },
-        {
-          "command": "nodeDependencies.deleteEntry",
-          "when": "view == nodeDependencies && viewItem == dependency"
         }
       ]
     },

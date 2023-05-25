@@ -3,19 +3,15 @@ port module Morphir.Web.Editor exposing (..)
 import Browser
 import Element
 import Html exposing (Html)
-import Json.Decode as Decode exposing (Decoder, decodeString)
+import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
-import Morphir.Codec exposing (decodeUnit, encodeUnit)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.Distribution.Codec exposing (decodeVersionedDistribution)
 import Morphir.IR.FQName as FQName exposing (FQName)
-import Morphir.IR.FQName.Codec exposing (decodeFQName)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Type.Codec exposing (decodeType)
-import Morphir.IR.Type.DataCodec exposing (decodeData)
+import Morphir.IR.Type.DataCodec as DataCodec exposing (decodeData)
 import Morphir.IR.Value exposing (RawValue, Value(..))
-import Morphir.IR.Value.Codec exposing (encodeValue)
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
 
@@ -65,15 +61,14 @@ init flags =
                 initEditorState =
                     ValueEditor.initEditorState (IR.fromDistribution flag.distribution) tpe flag.initialValue
 
-                _ =
-                    Debug.log "InitialValue" flag.initialValue
+                model =
+                    { ir = IR.fromDistribution flag.distribution
+                    , theme = Theme.fromConfig Nothing
+                    , valueType = tpe
+                    , editorState = initEditorState
+                    }
             in
-            ( Ok
-                { ir = IR.fromDistribution flag.distribution
-                , theme = Theme.fromConfig Nothing
-                , valueType = tpe
-                , editorState = initEditorState
-                }
+            ( Ok model
             , Cmd.none
             )
 
@@ -126,27 +121,41 @@ subscriptions _ =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case model of
-        Ok _ ->
+        Ok m ->
             case msg of
                 UpdatedEditor editorState ->
                     case editorState.errorState of
                         Just a ->
-                            let
-                                err =
-                                    Debug.log
-                            in
-                            ( model, Cmd.none )
+                            ( model, reportError "Editor State Error" )
 
                         Nothing ->
                             let
+                                resultToFailure result =
+                                    case result of
+                                        Ok encoder ->
+                                            encoder
+
+                                        Err error ->
+                                            Encode.null
+
                                 valueJson =
                                     editorState.lastValidValue
-                                        |> Maybe.map (encodeValue encodeUnit encodeUnit)
+                                        |> Maybe.map
+                                            (\val ->
+                                                DataCodec.encodeData m.ir m.valueType
+                                                    |> Result.andThen
+                                                        (\encoderValue ->
+                                                            val |> encoderValue
+                                                        )
+                                                    |> resultToFailure
+                                            )
                                         |> Maybe.withDefault Encode.null
                             in
-                            ( model, valueUpdated valueJson )
+                            ( Result.map (\mod -> { mod | editorState = editorState }) model
+                            , valueUpdated valueJson
+                            )
 
-        Err _ ->
+        Err error ->
             ( model, Cmd.none )
 
 
