@@ -36,7 +36,7 @@ import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value
-import Morphir.ListOfResults as List
+import Morphir.SDK.ResultList as ResultList
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 
@@ -279,7 +279,7 @@ update msg model =
                                                             ]
                                                         )
                                             )
-                                        |> List.liftAllErrors
+                                        |> ResultList.keepAllErrors
                             in
                             case finalResult of
                                 Ok passList ->

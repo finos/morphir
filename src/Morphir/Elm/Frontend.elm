@@ -79,8 +79,8 @@ import Morphir.IR.SDK.List as List
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Type.Rewrite exposing (rewriteType)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
-import Morphir.ListOfResults as ListOfResults
 import Morphir.Rewrite as Rewrite
+import Morphir.SDK.ResultList as ListOfResults
 import Morphir.Type.Infer as Infer
 import Morphir.Type.Infer.Codec exposing (encodeTypeError)
 import Parser exposing (DeadEnd)
@@ -507,7 +507,7 @@ packageDefinitionFromSource opts packageInfo dependencies sourceFiles =
                                 )
                             |> Result.mapError (ParseError sourceFile.path)
                     )
-                |> ListOfResults.liftAllErrors
+                |> ListOfResults.keepAllErrors
 
         treeShakeModules : Set ModuleName -> List ( ModuleName, ParsedFile ) -> List ( ModuleName, ParsedFile )
         treeShakeModules exposedModuleNames allModules =
@@ -888,7 +888,7 @@ mapDeclarationsToType sourceFile expose decls =
                                                                             )
                                                                         )
                                                             )
-                                                        |> ListOfResults.liftAllErrors
+                                                        |> ListOfResults.keepAllErrors
                                                         |> Result.mapError List.concat
                                             in
                                             ctorArgsResult
@@ -897,7 +897,7 @@ mapDeclarationsToType sourceFile expose decls =
                                                         ( ctorName, ctorArgs )
                                                     )
                                         )
-                                    |> ListOfResults.liftAllErrors
+                                    |> ListOfResults.keepAllErrors
                                     |> Result.map Dict.fromList
                                     |> Result.mapError List.concat
 
@@ -917,7 +917,7 @@ mapDeclarationsToType sourceFile expose decls =
                     _ ->
                         Nothing
             )
-        |> ListOfResults.liftAllErrors
+        |> ListOfResults.keepAllErrors
         |> Result.mapError List.concat
 
 
@@ -957,7 +957,7 @@ mapDeclarationsToValue sourceFile expose decls =
                     _ ->
                         Nothing
             )
-        |> ListOfResults.liftAllErrors
+        |> ListOfResults.keepAllErrors
         |> Result.mapError List.concat
 
 
@@ -976,7 +976,7 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                 (Type.Reference sourceLocation (fQName [] (moduleName |> List.map Name.fromString) (Name.fromString localName)))
                 (argNodes
                     |> List.map (mapTypeAnnotation sourceFile)
-                    |> ListOfResults.liftAllErrors
+                    |> ListOfResults.keepAllErrors
                     |> Result.mapError List.concat
                 )
 
@@ -986,7 +986,7 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
         Tupled elemNodes ->
             elemNodes
                 |> List.map (mapTypeAnnotation sourceFile)
-                |> ListOfResults.liftAllErrors
+                |> ListOfResults.keepAllErrors
                 |> Result.map (Type.Tuple sourceLocation)
                 |> Result.mapError List.concat
 
@@ -998,7 +998,7 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                         mapTypeAnnotation sourceFile fieldTypeNode
                             |> Result.map (Type.Field (fieldName |> Name.fromString))
                     )
-                |> ListOfResults.liftAllErrors
+                |> ListOfResults.keepAllErrors
                 |> Result.map (Type.Record sourceLocation)
                 |> Result.mapError List.concat
 
@@ -1010,7 +1010,7 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                         mapTypeAnnotation sourceFile fieldTypeNode
                             |> Result.map (Type.Field (fieldName |> Name.fromString))
                     )
-                |> ListOfResults.liftAllErrors
+                |> ListOfResults.keepAllErrors
                 |> Result.map (Type.ExtensibleRecord sourceLocation (argName |> Name.fromString))
                 |> Result.mapError List.concat
 
@@ -1134,7 +1134,7 @@ mapExpression sourceFile (Node range exp) =
             in
             expNodes
                 |> List.map (mapExpression sourceFile)
-                |> ListOfResults.liftAllErrors
+                |> ListOfResults.keepAllErrors
                 |> Result.mapError List.concat
                 |> Result.andThen (List.reverse >> toApply)
 
@@ -1213,7 +1213,7 @@ mapExpression sourceFile (Node range exp) =
         Expression.TupledExpression expNodes ->
             expNodes
                 |> List.map (mapExpression sourceFile)
-                |> ListOfResults.liftAllErrors
+                |> ListOfResults.keepAllErrors
                 |> Result.mapError List.concat
                 |> Result.map (Value.Tuple sourceLocation)
 
@@ -1233,7 +1233,7 @@ mapExpression sourceFile (Node range exp) =
                                 (mapPattern sourceFile patternNode)
                                 (mapExpression sourceFile bodyNode)
                         )
-                    |> ListOfResults.liftAllErrors
+                    |> ListOfResults.keepAllErrors
                     |> Result.mapError List.concat
                 )
 
@@ -1260,7 +1260,7 @@ mapExpression sourceFile (Node range exp) =
                         mapExpression sourceFile fieldValue
                             |> Result.map (Tuple.pair (fieldName |> Name.fromString))
                     )
-                |> ListOfResults.liftAllErrors
+                |> ListOfResults.keepAllErrors
                 |> Result.mapError List.concat
                 |> Result.map Dict.fromList
                 |> Result.map (Value.Record sourceLocation)
@@ -1268,7 +1268,7 @@ mapExpression sourceFile (Node range exp) =
         Expression.ListExpr itemNodes ->
             itemNodes
                 |> List.map (mapExpression sourceFile)
-                |> ListOfResults.liftAllErrors
+                |> ListOfResults.keepAllErrors
                 |> Result.mapError List.concat
                 |> Result.map (Value.List sourceLocation)
 
@@ -1290,7 +1290,7 @@ mapExpression sourceFile (Node range exp) =
                         mapExpression sourceFile fieldValue
                             |> Result.map (Tuple.pair (fieldName |> Name.fromString))
                     )
-                |> ListOfResults.liftAllErrors
+                |> ListOfResults.keepAllErrors
                 |> Result.mapError List.concat
                 |> Result.map Dict.fromList
                 |> Result.map
@@ -1331,7 +1331,7 @@ mapPattern sourceFile (Node range pattern) =
         Pattern.TuplePattern elemNodes ->
             elemNodes
                 |> List.map (mapPattern sourceFile)
-                |> ListOfResults.liftAllErrors
+                |> ListOfResults.keepAllErrors
                 |> Result.mapError List.concat
                 |> Result.map (Value.TuplePattern sourceLocation)
 
@@ -1379,7 +1379,7 @@ mapPattern sourceFile (Node range pattern) =
                 _ ->
                     argNodes
                         |> List.map (mapPattern sourceFile)
-                        |> ListOfResults.liftAllErrors
+                        |> ListOfResults.keepAllErrors
                         |> Result.mapError List.concat
                         |> Result.map (Value.ConstructorPattern sourceLocation qualifiedName)
 
@@ -1625,7 +1625,7 @@ mapLetExpression sourceFile sourceLocation letBlock =
                                                 Node range (Expression.LetDestructuring _ _) ->
                                                     Err [ NotSupported sourceLocation "Recursive destructuring" ]
                                         )
-                                    |> ListOfResults.liftAllErrors
+                                    |> ListOfResults.keepAllErrors
                                     |> Result.mapError List.concat
                                     |> Result.map Dict.fromList
                                 )
@@ -1728,7 +1728,7 @@ resolveLocalNames moduleResolver moduleDef =
                             |> Result.map (Tuple.pair typeName)
                             |> Result.mapError List.concat
                     )
-                |> ListOfResults.liftAllErrors
+                |> ListOfResults.keepAllErrors
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
 
@@ -1752,7 +1752,7 @@ resolveLocalNames moduleResolver moduleDef =
                             |> Result.map (Tuple.pair valueName)
                             |> Result.mapError List.concat
                     )
-                |> ListOfResults.liftAllErrors
+                |> ListOfResults.keepAllErrors
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
     in
@@ -1853,7 +1853,7 @@ resolveVariablesAndReferences variables moduleResolver value =
                             rewriteTypes moduleResolver argType
                                 |> Result.map (\t -> ( argName, a, t ))
                         )
-                    |> ListOfResults.liftAllErrors
+                    |> ListOfResults.keepAllErrors
                     |> Result.mapError List.concat
                 )
                 (rewriteTypes moduleResolver def.outputType)
@@ -1935,7 +1935,7 @@ resolveVariablesAndReferences variables moduleResolver value =
                                                         (resolveValueDefinition def variablesDefNamesAndArgs)
                                                 )
                                     )
-                                |> ListOfResults.liftAllErrors
+                                |> ListOfResults.keepAllErrors
                                 |> Result.mapError List.concat
                                 |> Result.map Dict.fromList
                             )
@@ -1976,21 +1976,21 @@ resolveVariablesAndReferences variables moduleResolver value =
                                         )
                                 )
                         )
-                    |> ListOfResults.liftAllErrors
+                    |> ListOfResults.keepAllErrors
                     |> Result.mapError List.concat
                 )
 
         Value.Tuple a elems ->
             elems
                 |> List.map (resolveVariablesAndReferences variables moduleResolver)
-                |> ListOfResults.liftAllErrors
+                |> ListOfResults.keepAllErrors
                 |> Result.mapError List.concat
                 |> Result.map (Value.Tuple a)
 
         Value.List a items ->
             items
                 |> List.map (resolveVariablesAndReferences variables moduleResolver)
-                |> ListOfResults.liftAllErrors
+                |> ListOfResults.keepAllErrors
                 |> Result.mapError List.concat
                 |> Result.map (Value.List a)
 
@@ -2002,7 +2002,7 @@ resolveVariablesAndReferences variables moduleResolver value =
                         resolveVariablesAndReferences variables moduleResolver fieldValue
                             |> Result.map (Tuple.pair fieldName)
                     )
-                |> ListOfResults.liftAllErrors
+                |> ListOfResults.keepAllErrors
                 |> Result.mapError List.concat
                 |> Result.map (Dict.fromList >> Value.Record a)
 
@@ -2031,7 +2031,7 @@ resolveVariablesAndReferences variables moduleResolver value =
                             resolveVariablesAndReferences variables moduleResolver fieldValue
                                 |> Result.map (Tuple.pair fieldName)
                         )
-                    |> ListOfResults.liftAllErrors
+                    |> ListOfResults.keepAllErrors
                     |> Result.mapError List.concat
                     |> Result.map Dict.fromList
                 )
@@ -2054,7 +2054,7 @@ resolvePatternReferences moduleResolver pattern =
             Result.map (\resolvedElems -> Value.TuplePattern sourceLocation resolvedElems)
                 (elems
                     |> List.map (resolvePatternReferences moduleResolver)
-                    |> ListOfResults.liftAllErrors
+                    |> ListOfResults.keepAllErrors
                     |> Result.mapError List.concat
                 )
 
@@ -2070,7 +2070,7 @@ resolvePatternReferences moduleResolver pattern =
                 )
                 (argPatterns
                     |> List.map (resolvePatternReferences moduleResolver)
-                    |> ListOfResults.liftAllErrors
+                    |> ListOfResults.keepAllErrors
                     |> Result.mapError List.concat
                 )
 

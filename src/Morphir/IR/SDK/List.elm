@@ -28,7 +28,6 @@ import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.SDK.Maybe exposing (just, maybeType, nothing)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (RawValue, Value)
-import Morphir.ListOfResults as ListOfResults
 import Morphir.SDK.ResultList as ResultList
 import Morphir.Value.Error exposing (Error(..))
 import Morphir.Value.Native as Native exposing (Eval, decodeFun1, decodeList, decodeLiteral, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeRaw, encodeResultList, encodeTuple2, eval1, eval2, floatLiteral, intLiteral, oneOf)
@@ -506,7 +505,7 @@ nativeFunctions =
                                                 )
                                         )
                                         listItems1
-                                        |> ListOfResults.liftFirstError
+                                        |> ResultList.keepFirstError
                                         |> Result.map (Value.List ())
 
                                 _ ->
@@ -539,7 +538,7 @@ nativeFunctions =
                                         )
                                         listItems1
                                         listItems2
-                                        |> ListOfResults.liftFirstError
+                                        |> ResultList.keepFirstError
                                         |> Result.map (Value.List ())
 
                                 _ ->
@@ -577,7 +576,7 @@ nativeFunctions =
                                         listItems1
                                         listItems2
                                         listItems3
-                                        |> ListOfResults.liftFirstError
+                                        |> ResultList.keepFirstError
                                         |> Result.map (Value.List ())
 
                                 _ ->
@@ -620,7 +619,7 @@ nativeFunctions =
                                         listItems2
                                         listItems3
                                         listItems4
-                                        |> ListOfResults.liftFirstError
+                                        |> ResultList.keepFirstError
                                         |> Result.map (Value.List ())
 
                                 _ ->
@@ -668,7 +667,7 @@ nativeFunctions =
                                         listItems3
                                         listItems4
                                         listItems5
-                                        |> ListOfResults.liftFirstError
+                                        |> ResultList.keepFirstError
                                         |> Result.map (Value.List ())
 
                                 _ ->
