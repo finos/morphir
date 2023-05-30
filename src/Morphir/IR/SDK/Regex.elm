@@ -63,26 +63,6 @@ moduleSpec =
               )
             ]
     , values =
-        let
-            -- Used temporarily as a placeholder for function values until we can generate them based on the SDK.
-            dummyValueSpec : Value.Specification ()
-            dummyValueSpec =
-                Value.Specification [] (Type.Unit ())
-
-            valueNames : List String
-            valueNames =
-                [ "fromString"
-                , "fromStringWith"
-                , "never"
-                , "contains"
-                , "split"
-                , "find"
-                , "replace"
-                , "splitAtMost"
-                , "findAtMost"
-                , "replaceAtMost"
-                ]
-        in
         Dict.fromList
             [ vSpec "fromString"
                 [ ( "string", stringType () )
