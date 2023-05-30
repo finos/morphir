@@ -26,7 +26,6 @@ export function activate(context: vscode.ExtensionContext) {
     "decorations.editor",
     (nodeDetail) => {
       decorationNodeDetail = nodeDetail;
-      console.log(nodeDetail)
       DecorationPanel.createOrShow(context.extensionUri, nodeDetail);
     }
   );

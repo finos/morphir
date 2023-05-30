@@ -2,7 +2,6 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import { Morphir, toDistribution } from "morphir-elm";
-import { data } from "vis-network";
 
 export interface NodeDetail {
   name: string;
@@ -49,7 +48,6 @@ export class DepNodeProvider implements vscode.TreeDataProvider<TreeItem> {
     node: NodeDetail,
     treeNodes?: Array<NodeDetail>
   ): TreeItem => {
-    // console.dir(`${node}: ${treeNodes}`)
     let displayName = node.name.split(":").pop();
     if (treeNodes && treeNodes.length !== 0) {
       return new TreeItem(
@@ -79,6 +77,7 @@ export class DepNodeProvider implements vscode.TreeDataProvider<TreeItem> {
   private capitalize(str: string): string {
     return str.substring(0, 1).toUpperCase() + str.substring(1).toLowerCase();
   }
+
   private toCamelCase(array: string[]) {
     if (array.length === 0) {
       return "";
@@ -100,7 +99,6 @@ export class DepNodeProvider implements vscode.TreeDataProvider<TreeItem> {
   ) => {
     let parentNode: NodeDetail;
     let parentArr: Array<NodeDetail> = [];
-    // let childNodes: Array<NodeDetail> = [];
     let treeNodes: [NodeDetail, Array<NodeDetail>][] = [];
     switch (ir.kind) {
       case "Library":
@@ -133,14 +131,6 @@ export class DepNodeProvider implements vscode.TreeDataProvider<TreeItem> {
 
           treeNodes.push([parentNode, childNodes]);
         });
-        // if (element) {
-        //   const res = treeNodes.find(([node]) =>
-        //     console.log(JSON.stringify(node) === JSON.stringify(element.data))
-        //   );
-        //   res![1].map((node) => {
-        //     return this.creatTreeItems(node);
-        //   });
-        // }
         for (const [k, v] of treeNodes) {
           if (element && JSON.stringify(k) === JSON.stringify(element.data)) {
             return v.map((node) => {
@@ -191,7 +181,6 @@ export class TreeItem extends vscode.TreeItem {
     super(label, collapsibleState);
 
     this.tooltip = `${this.label}`;
-    // this.description = this.version;
   }
 
   iconPath = {
