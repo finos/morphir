@@ -5,6 +5,7 @@ import Morphir.Type.MetaType as MetaType exposing (MetaType(..))
 
 type Class
     = Number
+    | Appendable
 
 
 member : MetaType -> Class -> Bool
@@ -24,6 +25,17 @@ member metaType class =
             numberTypes
                 |> List.member (targetType metaType)
 
+        Appendable ->
+            case targetType metaType of
+                MetaRef _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "string" ] ], [ "string" ] ) [] _ ->
+                    True
+
+                MetaRef _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ _ ] _ ->
+                    True
+
+                _ ->
+                    False
+
 
 numberTypes : List MetaType
 numberTypes =
@@ -35,3 +47,6 @@ toString class =
     case class of
         Number ->
             "number"
+
+        Appendable ->
+            "appendable"

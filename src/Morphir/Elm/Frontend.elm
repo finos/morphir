@@ -1419,7 +1419,7 @@ mapOperator sourceLocation op =
             Ok <| SDKBasics.greaterThanOrEqual sourceLocation
 
         "++" ->
-            Err [ NotSupported sourceLocation "The ++ operator is currently not supported. Please use String.append or List.append. See docs/error-append-not-supported.md" ]
+            Ok <| SDKBasics.append sourceLocation
 
         "+" ->
             Ok <| SDKBasics.add sourceLocation

@@ -15,7 +15,7 @@
 -}
 
 
-module Morphir.IR.SDK.Basics exposing (add, and, boolType, composeLeft, composeRight, divide, encodeOrder, equal, floatType, greaterThan, greaterThanOrEqual, intType, integerDivide, isNumber, lessThan, lessThanOrEqual, moduleName, moduleSpec, multiply, nativeFunctions, negate, neverType, notEqual, or, orderType, power, subtract)
+module Morphir.IR.SDK.Basics exposing (add, and, append, boolType, composeLeft, composeRight, divide, encodeOrder, equal, floatType, greaterThan, greaterThanOrEqual, intType, integerDivide, isNumber, lessThan, lessThanOrEqual, moduleName, moduleSpec, multiply, nativeFunctions, negate, neverType, notEqual, or, orderType, power, subtract)
 
 import Dict exposing (Dict)
 import Morphir.IR.Documented exposing (Documented)
@@ -377,6 +377,11 @@ negate refAttributes valueAttributes arg =
 add : a -> Value ta a
 add a =
     Value.Reference a (toFQName moduleName "add")
+
+
+append : a -> Value ta a
+append a =
+    Value.Reference a (toFQName moduleName "append")
 
 
 subtract : a -> Value ta a
