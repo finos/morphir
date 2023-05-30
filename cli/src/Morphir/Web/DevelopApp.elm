@@ -72,7 +72,7 @@ import Morphir.SDK.Dict as SDKDict
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Error exposing (Error)
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
-import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
+import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToTitleText, pathToUrl, tooltip)
 import Morphir.Visual.Components.Card as Card
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.InputComponent as InputComponent
@@ -1956,7 +1956,7 @@ viewModuleNames model packageName parentModule allModuleNames =
                         }
 
                 Nothing ->
-                    link [ pointer, onClick (handleModuleClick packageName) ] { label = text (pathToUrl packageName), url = pathToFullUrl [ packageName ] ++ filterStateToQueryParams model.homeState.filterState }
+                    link [ pointer, onClick (handleModuleClick packageName) ] { label = text (pathToTitleText packageName), url = pathToFullUrl [ packageName ] ++ filterStateToQueryParams model.homeState.filterState }
         )
         Array.empty
         (childModuleNames

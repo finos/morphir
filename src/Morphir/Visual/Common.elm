@@ -1,4 +1,4 @@
-module Morphir.Visual.Common exposing (colorToSvg, cssClass, element, grayScale, nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
+module Morphir.Visual.Common exposing (colorToSvg, cssClass, element, grayScale, nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToTitleText, pathToUrl, tooltip)
 
 import Element exposing (Attribute, Color, Element, el, fill, height, htmlAttribute, inFront, mouseOver, none, rgb, shrink, transparent, width)
 import Html exposing (Html)
@@ -25,6 +25,13 @@ nameToTitleText name =
         |> Name.toHumanWords
         |> List.map (\word -> Name.toTitleCase [ word ])
         |> String.join " "
+
+
+pathToTitleText : Path -> String
+pathToTitleText path =
+    path
+        |> List.map nameToTitleText
+        |> String.join " - "
 
 
 element : Element msg -> Html msg

@@ -448,12 +448,14 @@ keepElmFilesOnly fileChanges =
 returnDistribution : Result IncrementalFrontend.Errors Repo -> Cmd Msg
 returnDistribution repoResult =
     let
-        removeDependencies (Library packageName _ packageDefinition) =
-            Library packageName Dict.empty packageDefinition
+        removeMorphirSDK (Library packageName dependencies packageDefinition) =
+            Library packageName
+                (dependencies |> Dict.remove [ [ "morphir" ], [ "s", "d", "k" ] ])
+                packageDefinition
     in
     repoResult
         |> Result.map Repo.toDistribution
-        |> Result.map removeDependencies
+        |> Result.map removeMorphirSDK
         |> encodeResult (Encode.list IncrementalFrontendCodec.encodeError) DistroCodec.encodeVersionedDistribution
         |> buildCompleted
 
