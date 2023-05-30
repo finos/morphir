@@ -2,12 +2,17 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import { Morphir, toDistribution } from "morphir-elm";
+import { data } from "vis-network";
 
-export class DepNodeProvider implements vscode.TreeDataProvider<Decoration> {
+export interface NodeDetail {
+  name: string;
+  type: string;
+}
+export class DepNodeProvider implements vscode.TreeDataProvider<TreeItem> {
   private _onDidChangeTreeData: vscode.EventEmitter<
-    Decoration | undefined | void
-  > = new vscode.EventEmitter<Decoration | undefined | void>();
-  readonly onDidChangeTreeData: vscode.Event<Decoration | undefined | void> =
+    TreeItem | undefined | void
+  > = new vscode.EventEmitter<TreeItem | undefined | void>();
+  readonly onDidChangeTreeData: vscode.Event<TreeItem | undefined | void> =
     this._onDidChangeTreeData.event;
 
   constructor(private workspaceRoot: string | undefined) {}
@@ -16,21 +21,21 @@ export class DepNodeProvider implements vscode.TreeDataProvider<Decoration> {
     this._onDidChangeTreeData.fire();
   }
 
-  getTreeItem(element: Decoration): vscode.TreeItem {
+  getTreeItem(element: TreeItem): vscode.TreeItem {
     return element;
   }
 
-  getChildren(element?: Decoration): Thenable<Decoration[]> {
+  getChildren(element?: TreeItem): Thenable<TreeItem[]> {
     if (!this.workspaceRoot) {
-      vscode.window.showInformationMessage("No Decoration in empty workspace");
+      vscode.window.showInformationMessage("No TreeItem in empty workspace");
       return Promise.resolve([]);
     }
     const morphirIRPath = path.join(this.workspaceRoot, "morphir-ir.json");
     if (element) {
-      return Promise.resolve(this.getDefinitionTree(morphirIRPath, element));
+      return Promise.resolve(this.getNodeTree(morphirIRPath, element));
     } else {
       if (this.pathExists(morphirIRPath)) {
-        return Promise.resolve(this.getDefinitionTree(morphirIRPath));
+        return Promise.resolve(this.getNodeTree(morphirIRPath));
       } else {
         vscode.window.showInformationMessage(
           "Workspace has no morphir-ir.json"
@@ -40,31 +45,32 @@ export class DepNodeProvider implements vscode.TreeDataProvider<Decoration> {
     }
   }
 
-  private toDefinitionTree = (
-    fQname: string,
-    types?: Array<string>
-  ): Decoration => {
-    let displayName = fQname.split(".").pop();
-    if (types && types.length !== 0) {
-      return new Decoration(
-        displayName!.split("/")[0] ? displayName!.split("/")[0] : displayName!,
-        fQname,
+  private creatTreeItems = (
+    node: NodeDetail,
+    treeNodes?: Array<NodeDetail>
+  ): TreeItem => {
+    // console.dir(`${node}: ${treeNodes}`)
+    let displayName = node.name.split(":").pop();
+    if (treeNodes && treeNodes.length !== 0) {
+      return new TreeItem(
+        displayName!,
+        node,
         vscode.TreeItemCollapsibleState.Collapsed,
         {
           command: "decorations.editor",
           title: "opening",
-          arguments: [fQname],
+          arguments: [node],
         }
       );
     } else {
-      return new Decoration(
-        displayName!.split("/")[0] ? displayName!.split("/")[0] : displayName!,
-        fQname,
+      return new TreeItem(
+        displayName!,
+        node,
         vscode.TreeItemCollapsibleState.None,
         {
           command: "decorations.editor",
           title: "opening",
-          arguments: [fQname],
+          arguments: [node],
         }
       );
     }
@@ -73,52 +79,80 @@ export class DepNodeProvider implements vscode.TreeDataProvider<Decoration> {
   private capitalize(str: string): string {
     return str.substring(0, 1).toUpperCase() + str.substring(1).toLowerCase();
   }
+  private toCamelCase(array: string[]) {
+    if (array.length === 0) {
+      return "";
+    }
+    const camelCaseString = array
+      .map((word, index) => {
+        if (index === 0) {
+          return word.toLowerCase();
+        }
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join("");
+    return camelCaseString;
+  }
 
-  private definitionArr = (
+  private createTree = (
     ir: Morphir.IR.Distribution.Distribution,
-    element?: Decoration
-  ): Decoration[] => {
-    let moduleNameArr: Array<string> = [];
-    let moduleDef = new Map<string, Array<string>>();
+    element?: TreeItem
+  ) => {
+    let parentNode: NodeDetail;
+    let parentArr: Array<NodeDetail> = [];
+    // let childNodes: Array<NodeDetail> = [];
+    let treeNodes: [NodeDetail, Array<NodeDetail>][] = [];
     switch (ir.kind) {
       case "Library":
         ir.arg3.modules.forEach((accessControlledModuleDef, moduleName) => {
-          let childrenNames: Array<string> = [];
-          let fQName = [
-            ...ir.arg1,
-            moduleName.map((n) => n.map(this.capitalize).join("")).join(""),
-          ].join(".");
-          moduleNameArr.push(
-            fQName
-            // moduleName.map((n) => n.map(this.capitalize).join("")).join(" ")
-          );
+          let childNodes: Array<NodeDetail> = [];
+          let packageName = ir.arg1.map((p) => p.join(".")).join(".");
+          let nodeName = [
+            packageName,
+            moduleName.map((n) => n.map(this.capitalize).join("")).join("."),
+          ].join(":");
+          parentNode = {
+            name: nodeName,
+            type: "module",
+          };
+          parentArr.push(parentNode);
 
           accessControlledModuleDef.value.types.forEach(
             (documentedAccessControlledTypeDef, typeName) => {
-              let childFQName = [fQName, typeName.join("")].join(".") + "/type";
-              childrenNames.push(childFQName);
+              let childFQName = [nodeName, this.toCamelCase(typeName)].join(":");
+              childNodes.push({ name: childFQName, type: "type" });
             }
           );
 
           accessControlledModuleDef.value.values.forEach(
             (documentedAccessControlledValueDef, valueName) => {
-              let childFQName =
-                [fQName, valueName.join("")].join(".") + "/value";
-              childrenNames.push(childFQName);
+              let childFQName = [nodeName, this.toCamelCase(valueName)].join(":");
+              childNodes.push({ name: childFQName, type: "value" });
             }
           );
 
-          moduleDef.set(fQName, childrenNames);
+          treeNodes.push([parentNode, childNodes]);
         });
-        if (element) {
-          let modType = moduleDef.get(element.version)!;
-          return modType.map((typ) => {
-            return this.toDefinitionTree(typ);
-          });
+        // if (element) {
+        //   const res = treeNodes.find(([node]) =>
+        //     console.log(JSON.stringify(node) === JSON.stringify(element.data))
+        //   );
+        //   res![1].map((node) => {
+        //     return this.creatTreeItems(node);
+        //   });
+        // }
+        for (const [k, v] of treeNodes) {
+          if (element && JSON.stringify(k) === JSON.stringify(element.data)) {
+            return v.map((node) => {
+              return this.creatTreeItems(node);
+            });
+          }
         }
-        return moduleNameArr.map((moduleStr) => {
-          let modType = moduleDef.get(moduleStr)!;
-          return this.toDefinitionTree(moduleStr, modType);
+        return parentArr.map((pNode) => {
+          const res = treeNodes.find(
+            ([node]) => node.name == pNode.name && node.type == node.type
+          );
+          return this.creatTreeItems(res![0], res![1]);
         });
     }
   };
@@ -126,15 +160,12 @@ export class DepNodeProvider implements vscode.TreeDataProvider<Decoration> {
   /**
    * Given the path to the IR, read all its content.
    */
-  private getDefinitionTree(
-    iRPath: string,
-    element?: Decoration
-  ): Decoration[] {
+  private getNodeTree(iRPath: string, element?: TreeItem) {
     const workspaceRoot = this.workspaceRoot;
     if (this.pathExists(iRPath) && workspaceRoot) {
       const morphirIR = fs.readFileSync(iRPath!);
       const dist = toDistribution(morphirIR.toString());
-      return this.definitionArr(dist, element);
+      return this.createTree(dist, element);
     } else {
       return [];
     }
@@ -150,17 +181,17 @@ export class DepNodeProvider implements vscode.TreeDataProvider<Decoration> {
   }
 }
 
-export class Decoration extends vscode.TreeItem {
+export class TreeItem extends vscode.TreeItem {
   constructor(
     public readonly label: string,
-    public readonly version: string,
+    public readonly data: NodeDetail,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
     public readonly command?: vscode.Command
   ) {
     super(label, collapsibleState);
 
     this.tooltip = `${this.label}`;
-    this.description = this.version;
+    // this.description = this.version;
   }
 
   iconPath = {

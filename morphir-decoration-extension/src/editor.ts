@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { getDecorations, updateDecorations } from "./decoration-manager";
+import { NodeDetail } from "./nodeDefinitions";
 
 export function getWebviewOptions(
   extensionUri: vscode.Uri
@@ -24,15 +25,18 @@ const rootPath =
     : undefined;
 
 function nodeIDtoFqname(nodeID: string) {
-  return nodeID.split("/")[0].replace(new RegExp(":", "g"), ".").toLowerCase();
+  return nodeID.split("/")[0].toLowerCase()
+  // return nodeID.split("/")[0].replace(new RegExp(":", "g"), ".").toLowerCase();
 }
 
-export function getDecorationValues(rootPath: string, fqName: string) {
+export function getDecorationValues(rootPath: string, nodeDetail: NodeDetail) {
   let docs = getDecorations(rootPath);
   let jsonVal: { [key: string]: any } = {};
   return Object.entries(docs).reduce((accum, [decId, decConfig]) => {
     const filteredNodeId = Object.keys(decConfig.data).find(
-      (nodeId) => nodeIDtoFqname(nodeId) === fqName.split("/")[0].toLowerCase()
+      // console.log(nodeDetail.name)
+      (nodeId) => nodeIDtoFqname(nodeId) === nodeDetail.name.toLowerCase()
+      
     );
     accum[decId] = {
       distro: decConfig.iR,
@@ -60,7 +64,7 @@ export class DecorationPanel {
   private readonly _extensionUri: vscode.Uri;
   private _disposables: vscode.Disposable[] = [];
 
-  public static createOrShow(extensionUri: vscode.Uri, moduleName: string) {
+  public static createOrShow(extensionUri: vscode.Uri, nodeDetail: NodeDetail) {
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
       : undefined;
@@ -70,12 +74,12 @@ export class DecorationPanel {
       DecorationPanel.currentPanel._panel.reveal(column);
       return;
     }
-    const title = nodeIDtoFqname(moduleName)
+    // const title = nodeIDtoFqname(moduleName)
 
     // Otherwise, create a new panel.
     let panel = vscode.window.createWebviewPanel(
-      moduleName,
-      title.split(".").pop()!,
+      nodeDetail.name,
+      nodeDetail.name.split(":").pop()!,
       column || vscode.ViewColumn.One,
       getWebviewOptions(extensionUri)
     );
@@ -83,32 +87,32 @@ export class DecorationPanel {
     DecorationPanel.currentPanel = new DecorationPanel(
       panel,
       extensionUri,
-      moduleName
+      nodeDetail
     );
   }
 
   public static revive(
     panel: vscode.WebviewPanel,
     extensionUri: vscode.Uri,
-    fqName: string
+    nodeDetail: NodeDetail
   ) {
     DecorationPanel.currentPanel = new DecorationPanel(
       panel,
       extensionUri,
-      fqName
+      nodeDetail
     );
   }
 
   private constructor(
     panel: vscode.WebviewPanel,
     extensionUri: vscode.Uri,
-    fqName: string
+    nodeDetail: NodeDetail
   ) {
     this._panel = panel;
     this._extensionUri = extensionUri;
 
     // Set the webview's initial html content
-    this._update(fqName);
+    this._update(nodeDetail);
 
     // Listen for when the panel is disposed
     // This happens when the user closes the panel or when the panel is closed programmatically
@@ -118,7 +122,7 @@ export class DecorationPanel {
     this._panel.onDidChangeViewState(
       (e) => {
         if (this._panel.visible) {
-          this._update(fqName);
+          this._update(nodeDetail);
         }
       },
       null,
@@ -153,17 +157,17 @@ export class DecorationPanel {
     }
   }
 
-  private _update(fqName: string) {
+  private _update(nodeDetail: NodeDetail) {
     const webview = this._panel.webview;
-    this._updateForDecorations(webview, fqName);
+    this._updateForDecorations(webview, nodeDetail);
   }
 
-  private _updateForDecorations(webview: vscode.Webview, fqName: string) {
-    this._panel.webview.html = this._getHtmlForWebview(webview, fqName);
+  private _updateForDecorations(webview: vscode.Webview, nodeDetail: NodeDetail) {
+    this._panel.webview.html = this._getHtmlForWebview(webview, nodeDetail);
   }
 
-  private _getHtmlForWebview(webview: vscode.Webview, fqName: string) {
-    let flagValues = getDecorationValues(rootPath!, fqName);
+  private _getHtmlForWebview(webview: vscode.Webview, nodeDetail: NodeDetail) {
+    let flagValues = getDecorationValues(rootPath!, nodeDetail);
     let jsonVal = {};
     webview.onDidReceiveMessage(async (data) => {
       if (data.type == "update") {
@@ -177,18 +181,17 @@ export class DecorationPanel {
           };
           return updateDecorations(payload.id, jsonVal, rootPath!);
         }else{
-          if(!fqName.split("/").pop()){
             jsonVal = {
-              nodeID : `${fqName}/module`,
+              nodeID : `${nodeDetail.name}/${nodeDetail.type}`,
               value : updateValue
             }
             return updateDecorations(payload.id, jsonVal, rootPath!)
-          }
-          jsonVal = {
-            nodeID : fqName,
-            value : updateValue
-          }
-          return updateDecorations(payload.id, jsonVal, rootPath!)
+          
+          // jsonVal = {
+          //   nodeID : fqName,
+          //   value : updateValue
+          // }
+          // return updateDecorations(payload.id, jsonVal, rootPath!)
         }
       }
     });

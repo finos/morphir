@@ -1,15 +1,8 @@
 {
     "Morphir.Reference.Model:BooksAndRecords:dealCmd/type": [
-        "pII"
+        "privateInformation"
     ],
     "Morphir.Reference.Model:BooksAndRecords:deal/type#product": [
         "nPI"
-    ],
-    "morphir.reference.model.BooksAndRecords.dealevent/type": [
-        "pII"
-    ],
-    "morphir.reference.model.BooksAndRecords:deal/type": null,
-    "morphir.reference.model.BooksAndRecords.id/type": [
-        "sPI"
     ]
 }
