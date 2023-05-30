@@ -46,9 +46,9 @@ Various utilities to help with implementing native functions.
 
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Value as Value exposing (RawValue, Value)
-import Morphir.ListOfResults as ListOfResults
 import Morphir.SDK.Decimal exposing (Decimal)
 import Morphir.SDK.LocalDate as LocalDate exposing (LocalDate)
+import Morphir.SDK.ResultList as ListOfResults
 import Morphir.Value.Error exposing (Error(..))
 
 
@@ -233,7 +233,7 @@ decodeList decodeItem eval value =
         Ok (Value.List _ values) ->
             values
                 |> List.map (decodeItem eval)
-                |> ListOfResults.liftFirstError
+                |> ListOfResults.keepFirstError
 
         Ok _ ->
             Err (ExpectedList value)
@@ -351,7 +351,7 @@ encodeLiteral toLit a =
 encodeResultList : List (Result Error RawValue) -> Result Error RawValue
 encodeResultList listOfValueResults =
     listOfValueResults
-        |> ListOfResults.liftFirstError
+        |> ListOfResults.keepFirstError
         |> Result.map (Value.List ())
 
 
@@ -374,7 +374,7 @@ encodeList : Encode a -> List a -> Result Error RawValue
 encodeList encodeA list =
     list
         |> List.map encodeA
-        |> ListOfResults.liftFirstError
+        |> ListOfResults.keepFirstError
         |> Result.map (Value.List ())
 
 

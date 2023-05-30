@@ -14,7 +14,7 @@ import Morphir.IR.Path as Path
 import Morphir.IR.SDK.Basics exposing (floatType)
 import Morphir.IR.Type as Type exposing (Specification(..), Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value)
-import Morphir.ListOfResults as ListOfResults
+import Morphir.SDK.ResultList as ListOfResults
 import Morphir.Type.Class as Class exposing (Class)
 import Morphir.Type.Constraint as Constraint exposing (Constraint(..), class, equality, isRecursive)
 import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet(..))
@@ -52,7 +52,7 @@ inferPackageDefinition refs packageDef =
                     |> Result.map (AccessControlled moduleDef.access)
                     |> Result.map (Tuple.pair moduleName)
             )
-        |> ListOfResults.liftAllErrors
+        |> ListOfResults.keepAllErrors
         |> Result.map
             (\mappedModules ->
                 { modules = Dict.fromList mappedModules
@@ -83,7 +83,7 @@ inferModuleDefinition refs moduleName moduleDef =
                                 []
                         )
             )
-        |> ListOfResults.liftAllErrors
+        |> ListOfResults.keepAllErrors
         |> Result.map
             (\mappedValues ->
                 { types = moduleDef.types
@@ -1484,7 +1484,7 @@ validateConstraints constraints =
                         else
                             Ok constraint
             )
-        |> ListOfResults.liftAllErrors
+        |> ListOfResults.keepAllErrors
         |> Result.mapError typeErrors
 
 

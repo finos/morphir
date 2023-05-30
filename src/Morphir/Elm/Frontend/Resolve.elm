@@ -36,7 +36,7 @@ import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Path.Codec exposing (encodePath)
 import Morphir.IR.Type as Type
 import Morphir.JsonExtra as JsonExtra
-import Morphir.ListOfResults as ListOfResults
+import Morphir.SDK.ResultList as ListOfResults
 import Set
 
 
@@ -387,7 +387,7 @@ createModuleResolver ctx =
                                             ]
                                         )
                     )
-                |> ListOfResults.liftFirstError
+                |> ListOfResults.keepFirstError
                 |> Result.map (List.concat >> Dict.fromList)
 
         resolveWithoutModuleName : Trace -> NameType -> LocalName -> Result Error FQName

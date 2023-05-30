@@ -11,8 +11,8 @@ import Morphir.IR.SDK as SDK
 import Morphir.IR.SDK.Maybe exposing (just, nothing)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
-import Morphir.ListOfResults as ListOfResults
 import Morphir.SDK.Decimal as Decimal
+import Morphir.SDK.ResultList as ListOfResults
 import Morphir.Value.Interpreter as Interpreter
 
 
@@ -95,7 +95,7 @@ encodeData ir tpe =
                                     Value.List _ items ->
                                         items
                                             |> List.map encodeItem
-                                            |> ListOfResults.liftFirstError
+                                            |> ListOfResults.keepFirstError
                                             |> Result.map (Encode.list identity)
 
                                     _ ->
@@ -138,7 +138,7 @@ encodeData ir tpe =
                         encodeData ir field.tpe
                             |> Result.map (Tuple.pair field.name)
                     )
-                |> ListOfResults.liftFirstError
+                |> ListOfResults.keepFirstError
                 |> Result.map
                     (\fieldEncoders value ->
                         case value of
@@ -152,7 +152,7 @@ encodeData ir tpe =
                                                 |> Result.andThen fieldEncoder
                                                 |> Result.map (Tuple.pair (fieldName |> Name.toCamelCase))
                                         )
-                                    |> ListOfResults.liftFirstError
+                                    |> ListOfResults.keepFirstError
                                     |> Result.map Encode.object
 
                             _ ->
@@ -162,13 +162,13 @@ encodeData ir tpe =
         Type.Tuple _ elemTypes ->
             elemTypes
                 |> List.map (encodeData ir)
-                |> ListOfResults.liftFirstError
+                |> ListOfResults.keepFirstError
                 |> Result.map
                     (\elemEncoders value ->
                         case value of
                             Value.Tuple _ elems ->
                                 List.map2 identity elemEncoders elems
-                                    |> ListOfResults.liftFirstError
+                                    |> ListOfResults.keepFirstError
                                     |> Result.map (Encode.list identity)
 
                             _ ->
@@ -361,11 +361,11 @@ encodeTypeSpecification ir (( typePackageName, typeModuleName, _ ) as fQName) ty
                                                 (\constructorArgTypes ->
                                                     constructorArgTypes
                                                         |> List.map (Tuple.second >> Type.substituteTypeVariables argVariables >> encodeData ir)
-                                                        |> ListOfResults.liftFirstError
+                                                        |> ListOfResults.keepFirstError
                                                         |> Result.andThen
                                                             (\constructorArgEncoders ->
                                                                 List.map2 identity constructorArgEncoders constructorArgs
-                                                                    |> ListOfResults.liftFirstError
+                                                                    |> ListOfResults.keepFirstError
                                                                     |> Result.map
                                                                         (\encodedArgs ->
                                                                             Encode.list identity

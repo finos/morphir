@@ -15,7 +15,6 @@ import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (Pattern, RawValue, Value, toRawValue)
-import Morphir.ListOfResults as ListOfResults
 import Morphir.SDK.ResultList as ResultList
 import Morphir.Value.Error exposing (Error(..), PatternMismatch(..))
 import Morphir.Value.Native as Native
@@ -81,7 +80,7 @@ evaluateValue nativeFunctions ir variables arguments value =
             arguments
                 |> List.map (evaluateValue nativeFunctions ir variables [])
                 -- If any of those fails we return the first failure.
-                |> ListOfResults.liftFirstError
+                |> ResultList.keepFirstError
                 |> Result.andThen
                     (\evaluatedArgs ->
                         case ir |> IR.lookupTypeSpecification (ir |> IR.resolveAliases fQName) of
@@ -115,7 +114,7 @@ evaluateValue nativeFunctions ir variables arguments value =
                 -- We evaluate each element separately.
                 |> List.map (evaluateValue nativeFunctions ir variables [])
                 -- If any of those fails we return the first failure.
-                |> ListOfResults.liftFirstError
+                |> ResultList.keepFirstError
                 -- If nothing fails we wrap the result in a tuple.
                 |> Result.map (Value.Tuple ())
 
@@ -125,7 +124,7 @@ evaluateValue nativeFunctions ir variables arguments value =
                 -- We evaluate each element separately.
                 |> List.map (evaluateValue nativeFunctions ir variables [])
                 -- If any of those fails we return the first failure.
-                |> ListOfResults.liftFirstError
+                |> ResultList.keepFirstError
                 -- If nothing fails we wrap the result in a list.
                 |> Result.map (Value.List ())
 
@@ -140,7 +139,7 @@ evaluateValue nativeFunctions ir variables arguments value =
                             |> Result.map (Tuple.pair fieldName)
                     )
                 -- If any of those fails we return the first failure.
-                |> ListOfResults.liftFirstError
+                |> ResultList.keepFirstError
                 -- If nothing fails we wrap the result in a record.
                 |> Result.map (Dict.fromList >> Value.Record ())
 
@@ -448,7 +447,7 @@ matchPattern pattern value =
                         -- We recursively match each element
                         List.map2 matchPattern elemPatterns elemValues
                             -- If there is a mismatch we return the first error
-                            |> ListOfResults.liftFirstError
+                            |> ResultList.keepFirstError
                             -- If the match is successful we union the variables returned
                             |> Result.map (List.foldl Dict.union Dict.empty)
 
@@ -494,7 +493,7 @@ matchPattern pattern value =
                         -- Then the arguments
                         if patternLength == valueLength then
                             List.map2 matchPattern argPatterns argValues
-                                |> ListOfResults.liftFirstError
+                                |> ResultList.keepFirstError
                                 |> Result.map (List.foldl Dict.union Dict.empty)
 
                         else
