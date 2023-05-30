@@ -127,8 +127,8 @@ import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.ListOfResults as ListOfResults
 import Morphir.SDK.Decimal as Decimal
+import Morphir.SDK.ResultList as ListOfResults
 import Set exposing (Set)
 
 
@@ -400,7 +400,7 @@ mapDefinition mapType mapValue def =
                                 ( name, attr, t )
                             )
                 )
-            |> ListOfResults.liftAllErrors
+            |> ListOfResults.keepAllErrors
         )
         (mapType def.outputType |> Result.mapError List.singleton)
         (mapValue def.body |> Result.mapError List.singleton)

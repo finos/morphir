@@ -1,0 +1,7 @@
+{
+  "name": "Child.One",
+  "sourceDirectory": "src",
+  "localDependencies": [
+    "../parent-1/morphir-ir.json"
+  ]
+}

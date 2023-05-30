@@ -11,7 +11,7 @@ import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Type.DataCodec as DataCodec
 import Morphir.IR.Value as Value exposing (RawValue)
-import Morphir.ListOfResults as ListOfResults
+import Morphir.SDK.ResultList as ListOfResults
 
 
 encodeTestSuite : IR -> TestSuite -> Result String Encode.Value
@@ -35,7 +35,7 @@ encodeTestSuite ir testSuite =
                     Nothing ->
                         Err "Cannot find function in IR"
             )
-        |> ListOfResults.liftFirstError
+        |> ListOfResults.keepFirstError
         |> Result.map (Encode.list identity)
 
 
@@ -73,13 +73,14 @@ encodeTestCases ir valueSpec testCases =
                                 case maybeTestCaseInput of
                                     Just testCaseInput ->
                                         testCaseInput |> encoder
+
                                     Nothing ->
                                         Ok Encode.null
                             )
                 )
                 inputTypes
                 testCase.inputs
-                |> ListOfResults.liftFirstError
+                |> ListOfResults.keepFirstError
                 |> Result.map (Encode.list identity)
     in
     testCases
@@ -108,7 +109,7 @@ encodeTestCases ir valueSpec testCases =
                     inputEncoder
                     outputEncoder
             )
-        |> ListOfResults.liftFirstError
+        |> ListOfResults.keepFirstError
         |> Result.map (Encode.list identity)
 
 

@@ -79,8 +79,9 @@ import Morphir.IR.SDK.Dict as SDKDict
 import Morphir.IR.SDK.String as Basics
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
-import Morphir.ListOfResults as ListOfResults
 import Morphir.SDK.Decimal as Decimal
+import Morphir.SDK.LocalDate as LocalDate exposing (LocalDate, toISOString)
+import Morphir.SDK.ResultList as ListOfResults
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.DatePickerComponent as DatePicker
 import Morphir.Visual.Components.FieldList as FieldList
@@ -89,7 +90,6 @@ import Morphir.Visual.Components.Picklist as Picklist
 import Morphir.Visual.Theme exposing (Theme)
 import Svg
 import Svg.Attributes
-import Morphir.SDK.LocalDate as LocalDate exposing (LocalDate, toISOString)
 
 
 {-| Type that represents the state of the value editor. It's made up of the following pieces of information:
@@ -534,7 +534,7 @@ initDictEditor ir dictKeyType dictValueType maybeInitialValue =
                                             _ ->
                                                 Err ("Invalid Dict entry: " ++ Debug.toString item)
                                     )
-                                |> ListOfResults.liftFirstError
+                                |> ListOfResults.keepFirstError
                     in
                     case editorResult of
                         Ok editors ->
@@ -555,13 +555,14 @@ initLocalDateEditor maybeInitialValue =
     case maybeInitialValue of
         Just initialValue ->
             case initialValue of
-                (Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "local", "date" ] )) (Value.Literal () (StringLiteral dateString))) ->
-                    (Nothing, LocalDateEditor (DatePicker.initState (LocalDate.fromISO dateString)))
+                Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "local", "date" ] )) (Value.Literal () (StringLiteral dateString)) ->
+                    ( Nothing, LocalDateEditor (DatePicker.initState (LocalDate.fromISO dateString)) )
+
                 _ ->
-                    (Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), LocalDateEditor (DatePicker.initState Nothing))
+                    ( Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), LocalDateEditor (DatePicker.initState Nothing) )
 
         Nothing ->
-            (Nothing, LocalDateEditor (DatePicker.initState Nothing))
+            ( Nothing, LocalDateEditor (DatePicker.initState Nothing) )
 
 
 {-| Display the editor. It takes the following inputs:
@@ -1018,10 +1019,10 @@ view theme ir valueType updateEditorState editorState =
                                                                                 )
                                                            )
                                                 )
-                                            |> ListOfResults.liftFirstError
+                                            |> ListOfResults.keepFirstError
                                             |> Result.map (Dict.fromList >> Value.Record ())
                                     )
-                                |> ListOfResults.liftFirstError
+                                |> ListOfResults.keepFirstError
                                 |> Result.map (Value.List ())
                     in
                     updateEditorState
@@ -1291,7 +1292,7 @@ view theme ir valueType updateEditorState editorState =
             let
                 localDateValue : String -> Value ta ()
                 localDateValue str =
-                    (Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "local", "date" ] )) (Value.Literal () (StringLiteral str)))
+                    Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "local", "date" ] )) (Value.Literal () (StringLiteral str))
             in
             DatePicker.view theme
                 { placeholder =
@@ -1301,16 +1302,18 @@ view theme ir valueType updateEditorState editorState =
                 , onStateChange =
                     \datePickerState ->
                         updateEditorState
-                        (applyResult (
-                            case datePickerState.date of
-                                Just date ->
-                                    Ok <| localDateValue (toISOString date)
-                                Nothing ->
-                                    Err "Invalid Date!"
-                        )
-                            { editorState
-                                | componentState = LocalDateEditor datePickerState
-                            })
+                            (applyResult
+                                (case datePickerState.date of
+                                    Just date ->
+                                        Ok <| localDateValue (toISOString date)
+
+                                    Nothing ->
+                                        Err "Invalid Date!"
+                                )
+                                { editorState
+                                    | componentState = LocalDateEditor datePickerState
+                                }
+                            )
                 }
 
 

@@ -4,7 +4,7 @@ import Dict exposing (Dict)
 import Morphir.IR exposing (IR)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
-import Morphir.ListOfResults as ListOfResults
+import Morphir.SDK.ResultList as ListOfResults
 import Morphir.Type.Constraint exposing (Constraint(..))
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaFun, metaRecord, metaRef, metaTuple, metaVar, variableGreaterThan, wrapInAliases)
 import Set exposing (Set)
@@ -263,7 +263,7 @@ unifyTuple ir aliases elems1 metaType2 =
         MetaTuple _ elems2 ->
             if List.length elems1 == List.length elems2 then
                 List.map2 (unifyMetaType ir []) elems1 elems2
-                    |> ListOfResults.liftAllErrors
+                    |> ListOfResults.keepAllErrors
                     |> Result.mapError UnificationErrors
                     |> Result.andThen (concatSolutions ir)
 
@@ -281,7 +281,7 @@ unifyRef ir aliases ref1 args1 metaType2 =
             if ref1 == ref2 then
                 if List.length args1 == List.length args2 then
                     List.map2 (unifyMetaType ir []) args1 args2
-                        |> ListOfResults.liftAllErrors
+                        |> ListOfResults.keepAllErrors
                         |> Result.mapError UnificationErrors
                         |> Result.andThen (concatSolutions ir)
 
@@ -378,7 +378,7 @@ unifyFields ir oldRecordVar oldIsOpen oldFields newRecordVar newIsOpen newFields
                             |> Result.fromMaybe (CouldNotFindField fieldName)
                             |> Result.andThen (unifyMetaType ir [] originalType)
                     )
-                |> ListOfResults.liftAllErrors
+                |> ListOfResults.keepAllErrors
                 |> Result.mapError UnificationErrors
                 |> Result.andThen (concatSolutions ir)
 

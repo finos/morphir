@@ -32,7 +32,7 @@ import Morphir.IR.SDK.List exposing (listType)
 import Morphir.IR.SDK.Maybe exposing (maybeType)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
-import Morphir.ListOfResults as ListOfResults
+import Morphir.SDK.ResultList as ListOfResults
 import Morphir.Value.Error exposing (Error(..))
 import Morphir.Value.Native as Native
 
