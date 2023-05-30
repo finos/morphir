@@ -257,35 +257,35 @@ resolveImports repo imports =
 
                 _ ->
                     resolvedImports
+
         moduleSpecToVisibleNames : Module.Specification () -> VisibleNames
         moduleSpecToVisibleNames moduleSpec =
-            { types = 
+            { types =
                 moduleSpec.types |> Dict.keys |> Set.fromList
-            , constructors = 
-                moduleSpec.types 
+            , constructors =
+                moduleSpec.types
                     |> Dict.toList
                     |> List.concatMap
                         (\( _, typeSpec ) ->
                             case typeSpec.value of
                                 Type.CustomTypeSpecification _ constructors ->
-                                    constructors |> Dict.keys 
+                                    constructors |> Dict.keys
 
                                 _ ->
-                                    []   
+                                    []
                         )
-                    |> Set.fromList    
-            , values = 
+                    |> Set.fromList
+            , values =
                 moduleSpec.values |> Dict.keys |> Set.fromList
-            }    
+            }
 
-        addModuleSpec :  QualifiedModuleName -> Module.Specification () -> ResolvedImports -> ResolvedImports
+        addModuleSpec : QualifiedModuleName -> Module.Specification () -> ResolvedImports -> ResolvedImports
         addModuleSpec qualifiedModuleName moduleSpec resolvedImports =
-                { resolvedImports
-                        | visibleNamesByModuleName =
-                            resolvedImports.visibleNamesByModuleName
-                                |> Dict.update qualifiedModuleName (always (Just (moduleSpecToVisibleNames moduleSpec)))
-
-                }        
+            { resolvedImports
+                | visibleNamesByModuleName =
+                    resolvedImports.visibleNamesByModuleName
+                        |> Dict.update qualifiedModuleName (always (Just (moduleSpecToVisibleNames moduleSpec)))
+            }
 
         addLocalName : KindOfName -> QualifiedModuleName -> Name -> ResolvedImports -> ResolvedImports
         addLocalName kindOfName qualifiedModuleName name resolvedImports =
@@ -382,7 +382,7 @@ resolveImports repo imports =
                                                                     resolvedImportsSoFar
                                                                         |> Result.map
                                                                             (\soFar ->
-                                                                                soFar 
+                                                                                soFar
                                                                                     |> addLocalName Type qualifiedModuleName typeName
                                                                                     |> addLocalName Constructor qualifiedModuleName typeName
                                                                             )

@@ -9,5 +9,10 @@ encodeClass class =
     case class of
         Number ->
             Encode.list identity
-                [ Encode.string "number"
+                [ Encode.string "Number"
+                ]
+
+        Appendable ->
+            Encode.list identity
+                [ Encode.string "Appendable"
                 ]

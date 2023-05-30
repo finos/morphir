@@ -40,7 +40,7 @@ moduleSpec =
     , values =
         Dict.fromList
             [ vSpec "pair"
-                [ ( "a", tVar "b" )
+                [ ( "a", tVar "a" )
                 , ( "b", tVar "b" )
                 ]
                 (Type.Tuple () [ tVar "a", tVar "b" ])

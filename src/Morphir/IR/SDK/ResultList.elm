@@ -83,6 +83,14 @@ moduleSpec =
                 [ ( "list", resultListType () (tVar "e") (tVar "a") )
                 ]
                 (Type.Tuple () [ listType () (tVar "e"), listType () (tVar "a") ])
+            , vSpec "keepAllErrors"
+                [ ( "list", resultListType () (tVar "e") (tVar "a") )
+                ]
+                (resultType () (listType () (tVar "e")) (listType () (tVar "a")))
+            , vSpec "keepFirstError"
+                [ ( "list", resultListType () (tVar "e") (tVar "a") )
+                ]
+                (resultType () (tVar "e") (listType () (tVar "a")))
             ]
     , doc = Just "Contains the ResultList type, and related functions."
     }
