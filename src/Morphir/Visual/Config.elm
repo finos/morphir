@@ -30,6 +30,7 @@ type alias VisualState =
     , popupVariables : PopupScreenRecord
     , theme : Theme
     , highlightState : Maybe HighlightState
+    , zIndex : Int
     }
 
 

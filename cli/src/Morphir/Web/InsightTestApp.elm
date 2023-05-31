@@ -274,6 +274,7 @@ viewInsight ir fqn valueDef argValues =
                     }
                 , theme = Theme.fromConfig Nothing
                 , highlightState = Nothing
+                , zIndex = 9999
                 }
             , handlers =
                 { onReferenceClicked = \_ _ _ -> DoNothing

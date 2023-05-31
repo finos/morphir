@@ -329,6 +329,7 @@ view model =
                         , theme = model.theme
                         , highlightState = Nothing
                         , nonEvaluatedVariables = Dict.empty
+                        , zIndex = 9999
                         }
                         { onReferenceClicked = ExpandReference
                         , onReferenceClose = ShrinkReference

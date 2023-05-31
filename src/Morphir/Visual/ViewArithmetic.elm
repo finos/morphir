@@ -9,8 +9,18 @@ import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
 
 
-view : Config msg -> (EnrichedValue -> Element msg) -> ArithmeticOperatorTree -> Element msg
+view : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> ArithmeticOperatorTree -> Element msg
 view config viewValue arithmeticOperatorTree =
+    let
+        reduceZIndex : Int -> Config msg -> Config msg
+        reduceZIndex i conf =
+            let
+                state : Morphir.Visual.Config.VisualState
+                state =
+                    conf.state
+            in
+            { conf | state = { state | zIndex = state.zIndex - i } }
+    in
     case arithmeticOperatorTree of
         ArithmeticOperatorBranch arithmeticOperator arithmeticOperatorTrees ->
             let
@@ -24,8 +34,8 @@ view config viewValue arithmeticOperatorTree =
                         ]
             in
             arithmeticOperatorTrees
-                |> List.map
-                    (view config viewValue)
+                |> List.indexedMap
+                    (\ind a -> view (config |> reduceZIndex ind) viewValue a)
                 |> List.indexedMap
                     (\i b ->
                         if dropInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
@@ -93,7 +103,7 @@ view config viewValue arithmeticOperatorTree =
                                             , smallPadding config.state.theme |> padding
                                             , centerX
                                             ]
-                                            [ viewValue typedValue1
+                                            [ viewValue (config |> reduceZIndex 2) typedValue1
                                             ]
                                         ]
                                     , row
@@ -103,7 +113,7 @@ view config viewValue arithmeticOperatorTree =
                                         , Border.widthEach { bottom = 0, left = 0, right = 0, top = 1 }
                                         , smallPadding config.state.theme |> padding
                                         ]
-                                        [ viewValue typedValue2
+                                        [ viewValue (config |> reduceZIndex 3) typedValue2
                                         ]
                                     ]
                                 ]
@@ -123,8 +133,8 @@ view config viewValue arithmeticOperatorTree =
 
                                         mainBody =
                                             arithmeticOperatorTrees
-                                                |> List.map
-                                                    (view config viewValue)
+                                                |> List.indexedMap
+                                                    (\ind a -> view (config |> reduceZIndex ind) viewValue a)
                                                 |> List.indexedMap
                                                     (\i b ->
                                                         if dropInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
@@ -184,7 +194,7 @@ view config viewValue arithmeticOperatorTree =
                                                 , paddingEach { left = 0, top = 0, right = 0, bottom = 4 }
                                                 , centerX
                                                 ]
-                                                [ viewValue typedValue1
+                                                [ viewValue (config |> reduceZIndex 1) typedValue1
                                                 ]
                                             ]
                                         , row
@@ -205,7 +215,7 @@ view config viewValue arithmeticOperatorTree =
                     Element.none
 
         ArithmeticValueLeaf typedValue ->
-            viewValue typedValue
+            viewValue (config |> reduceZIndex 1) typedValue
 
         _ ->
             Element.none
