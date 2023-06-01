@@ -21,7 +21,7 @@ import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
 import Morphir.Visual.Components.DrillDownPanel as DrillDownPanel
 import Morphir.Visual.Config as Config exposing (Config, DrillDownFunctions(..), drillDownContains)
-import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, fromTypedValue, getId, getType, toTypedValue)
+import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, fromTypedValue, getId)
 import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallPadding, smallSpacing)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
@@ -89,7 +89,7 @@ viewValue config typedValue =
             arithmeticOperatorTree =
                 ArithmeticOperatorTree.fromArithmeticTypedValue typedValue
         in
-        ViewArithmetic.view config (viewValueByLanguageFeature config) arithmeticOperatorTree
+        ViewArithmetic.view config viewValueByLanguageFeature arithmeticOperatorTree
 
     else
         viewValueByLanguageFeature config typedValue
@@ -100,21 +100,6 @@ viewValueByLanguageFeature config value =
     let
         valueElem : Element msg
         valueElem =
-            let
-                valuePopup : Int -> Maybe RawValue -> List (Element.Attribute msg)
-                valuePopup index variableValue =
-                    [ onMouseEnter (config.handlers.onHoverOver index config.nodePath variableValue)
-                    , onMouseLeave (config.handlers.onHoverLeave index config.nodePath)
-                    , Element.below
-                        (if (config.state.popupVariables.variableIndex == index) && (config.state.popupVariables.nodePath == config.nodePath) then
-                            el [ smallPadding config.state.theme |> padding ] (viewPopup config)
-
-                         else
-                            Element.none
-                        )
-                    , center
-                    ]
-            in
             case value of
                 Value.PatternMatch _ _ [ ( Value.ConstructorPattern _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] ) [ _ ], _ ), ( Value.ConstructorPattern _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) [], _ ) ] ->
                     ViewIfThenElse.view config viewValue value
@@ -138,8 +123,7 @@ viewValueByLanguageFeature config value =
 
                         _ ->
                             Element.row
-                                [ smallPadding config.state.theme |> padding
-                                , smallSpacing config.state.theme |> spacing
+                                [ smallSpacing config.state.theme |> spacing
                                 , onClick (config.handlers.onReferenceClicked fQName (getId functionvalue) config.nodePath)
                                 ]
                                 [ text (nameToText localName) ]
@@ -183,7 +167,12 @@ viewValueByLanguageFeature config value =
                         valueWithPopup : Element msg
                         valueWithPopup =
                             el
-                                (valuePopup index variableValue)
+                                [ onMouseEnter (config.handlers.onHoverOver index config.nodePath variableValue)
+                                , onMouseLeave (config.handlers.onHoverLeave index config.nodePath)
+                                , htmlAttribute (style "z-index" (String.fromInt config.state.zIndex))
+                                , center
+                                , Element.below (viewPopup config ((config.state.popupVariables.variableIndex == index) && (config.state.popupVariables.nodePath == config.nodePath)))
+                                ]
                                 (text (nameToText name))
 
                         openDrilldown : RawValue -> Maybe (Element msg)
@@ -251,7 +240,13 @@ viewValueByLanguageFeature config value =
                                         "'s "
                             in
                             row
-                                (valuePopup index variableValue)
+                                [ onMouseEnter (config.handlers.onHoverOver index config.nodePath variableValue)
+                                , onMouseLeave (config.handlers.onHoverLeave index config.nodePath)
+                                , htmlAttribute (style "z-index" (String.fromInt config.state.zIndex))
+                                , Element.below
+                                    (viewPopup config ((config.state.popupVariables.variableIndex == index) && (config.state.popupVariables.nodePath == config.nodePath)))
+                                , center
+                                ]
                                 [ String.concat
                                     [ nameToText variableName
                                     , singularOrPlural variableName
@@ -317,10 +312,10 @@ viewValueByLanguageFeature config value =
                                         ( defs, bottomIn ) =
                                             unnest { conf | state = newState } inVal
                                     in
-                                    ( ( defName, viewValue conf def.body ) :: defs, bottomIn )
+                                    ( ( defName, viewValue config def.body ) :: defs, bottomIn )
 
                                 notLet ->
-                                    ( [], viewValue conf notLet )
+                                    ( [], viewValue config notLet )
 
                         ( _, inValueElem ) =
                             unnest config value
@@ -401,8 +396,8 @@ pathToStringWithSeparator =
     Path.toString (Morphir.IR.Name.toHumanWords >> String.join " ")
 
 
-viewPopup : Config msg -> Element msg
-viewPopup config =
+viewPopup : Config msg -> Bool -> Element msg
+viewPopup config condition =
     config.state.popupVariables.variableValue
         |> Maybe.map
             (\rawValue ->
@@ -425,16 +420,20 @@ viewPopup config =
                                 }
                             , Background.color config.state.theme.colors.lightest
                             , smallPadding config.state.theme |> padding
-                            , htmlAttribute (style "position" "absolute")
+                            , htmlAttribute <| style "position" "absolute"
                             ]
                             elementMsg
                 in
-                case visualTypedVal of
-                    Ok visualTypedValue ->
-                        popUpStyle (viewValue config visualTypedValue)
+                if not condition then
+                    Element.none
 
-                    Err error ->
-                        popUpStyle (text (Infer.typeErrorToMessage error))
+                else
+                    case visualTypedVal of
+                        Ok visualTypedValue ->
+                            popUpStyle (viewValue config visualTypedValue)
+
+                        Err error ->
+                            popUpStyle (text (Infer.typeErrorToMessage error))
             )
         |> Maybe.withDefault (el [] (text ""))
 
@@ -481,4 +480,5 @@ viewDrillDown config value fQName letDefOpenElement =
         , openElement = openElement
         , openHeader = closedElement
         , isOpen = drillDownContains config.state.drillDownFunctions id config.nodePath
+        , zIndex = config.state.zIndex - 2
         }

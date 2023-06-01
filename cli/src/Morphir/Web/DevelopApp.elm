@@ -248,6 +248,7 @@ emptyVisualState =
         , nodePath = []
         }
     , drillDownFunctions = DrillDownFunctions Dict.empty
+    , zIndex = 9999
     }
 
 
@@ -2315,7 +2316,7 @@ viewDefinitionDetails model =
                                                                                 { title = "Insight view"
                                                                                 , onToggle = UI (ToggleSection 1)
                                                                                 , isOpen = Set.member 1 model.openSections
-                                                                                , content = el [ Theme.borderRounded model.theme, Border.width 1, Border.color model.theme.colors.gray ] <| ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
+                                                                                , content = el [ Theme.borderRounded model.theme, Border.width 1, Border.color model.theme.colors.gray] <| ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
                                                                                 }
                                                                             , SectionComponent.view model.theme
                                                                                 { title = "Inputs & Output"

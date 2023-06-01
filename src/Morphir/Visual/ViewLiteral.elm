@@ -50,4 +50,4 @@ view config literal =
 
 viewLiteralText : String -> String -> Element msg
 viewLiteralText className literalText =
-    el [ Common.cssClass className, centerX, centerY, padding 3, alignLeft ] (text literalText)
+    el [ Common.cssClass className, centerX, centerY, alignLeft ] (text literalText)
