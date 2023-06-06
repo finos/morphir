@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import { Morphir, toDistribution } from "morphir-elm";
+import { isConfigured } from "./decoration-manager";
 
 export interface NodeDetail {
   name: string;
@@ -30,17 +31,15 @@ export class DepNodeProvider implements vscode.TreeDataProvider<TreeItem> {
       return Promise.resolve([]);
     }
     const morphirIRPath = path.join(this.workspaceRoot, "morphir-ir.json");
+
+    if(!isConfigured(this.workspaceRoot) && !this.pathExists(morphirIRPath)){
+      vscode.commands.executeCommand('setContext', 'decorations.isConfigured', true)
+      return Promise.resolve([])
+    }
     if (element) {
       return Promise.resolve(this.getNodeTree(morphirIRPath, element));
     } else {
-      if (this.pathExists(morphirIRPath)) {
-        return Promise.resolve(this.getNodeTree(morphirIRPath));
-      } else {
-        vscode.window.showInformationMessage(
-          "Workspace has no morphir-ir.json"
-        );
-        return Promise.resolve([]);
-      }
+      return Promise.resolve(this.getNodeTree(morphirIRPath));
     }
   }
 
@@ -87,7 +86,7 @@ export class DepNodeProvider implements vscode.TreeDataProvider<TreeItem> {
         if (index === 0) {
           return word.toLowerCase();
         }
-        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        return this.capitalize(word);
       })
       .join("");
     return camelCaseString;
@@ -117,14 +116,18 @@ export class DepNodeProvider implements vscode.TreeDataProvider<TreeItem> {
 
           accessControlledModuleDef.value.types.forEach(
             (documentedAccessControlledTypeDef, typeName) => {
-              let childFQName = [nodeName, this.toCamelCase(typeName)].join(":");
+              let childFQName = [nodeName, this.toCamelCase(typeName)].join(
+                ":"
+              );
               childNodes.push({ name: childFQName, type: "type" });
             }
           );
 
           accessControlledModuleDef.value.values.forEach(
             (documentedAccessControlledValueDef, valueName) => {
-              let childFQName = [nodeName, this.toCamelCase(valueName)].join(":");
+              let childFQName = [nodeName, this.toCamelCase(valueName)].join(
+                ":"
+              );
               childNodes.push({ name: childFQName, type: "value" });
             }
           );

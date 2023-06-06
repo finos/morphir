@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { getDecorations, updateDecorations } from "./decoration-manager";
+import { getDecorations, isConfigured, updateDecorations } from "./decoration-manager";
 import { NodeDetail } from "./nodeDefinitions";
 
 export function getWebviewOptions(
@@ -25,8 +25,7 @@ const rootPath =
     : undefined;
 
 function nodeIDtoFqname(nodeID: string) {
-  return nodeID.split("/")[0].toLowerCase()
-  // return nodeID.split("/")[0].replace(new RegExp(":", "g"), ".").toLowerCase();
+  return nodeID.split("/")[0].toLowerCase();
 }
 
 export function getDecorationValues(rootPath: string, nodeDetail: NodeDetail) {
@@ -34,9 +33,7 @@ export function getDecorationValues(rootPath: string, nodeDetail: NodeDetail) {
   let jsonVal: { [key: string]: any } = {};
   return Object.entries(docs).reduce((accum, [decId, decConfig]) => {
     const filteredNodeId = Object.keys(decConfig.data).find(
-      // console.log(nodeDetail.name)
       (nodeId) => nodeIDtoFqname(nodeId) === nodeDetail.name.toLowerCase()
-      
     );
     accum[decId] = {
       distro: decConfig.iR,
@@ -74,7 +71,6 @@ export class DecorationPanel {
       DecorationPanel.currentPanel._panel.reveal(column);
       return;
     }
-    // const title = nodeIDtoFqname(moduleName)
 
     // Otherwise, create a new panel.
     let panel = vscode.window.createWebviewPanel(
@@ -128,19 +124,6 @@ export class DecorationPanel {
       null,
       this._disposables
     );
-
-    // // Handle messages from the webview
-    this._panel.webview.onDidReceiveMessage(
-      (message) => {
-        switch (message.command) {
-          case "alert":
-            vscode.window.showErrorMessage(message.text);
-            return;
-        }
-      },
-      null,
-      this._disposables
-    );
   }
 
   public dispose() {
@@ -162,39 +145,40 @@ export class DecorationPanel {
     this._updateForDecorations(webview, nodeDetail);
   }
 
-  private _updateForDecorations(webview: vscode.Webview, nodeDetail: NodeDetail) {
+  private _updateForDecorations(
+    webview: vscode.Webview,
+    nodeDetail: NodeDetail
+  ) {
     this._panel.webview.html = this._getHtmlForWebview(webview, nodeDetail);
   }
 
   private _getHtmlForWebview(webview: vscode.Webview, nodeDetail: NodeDetail) {
     let flagValues = getDecorationValues(rootPath!, nodeDetail);
     let jsonVal = {};
-    webview.onDidReceiveMessage(async (data) => {
-      if (data.type == "update") {
-        const payload = data.payload;
-        let val = flagValues[payload.id];
-        let updateValue = payload.value;
-        if (val.nodeID !== null) {
-          jsonVal = {
-            nodeID: val.nodeID,
-            value: updateValue,
-          };
-          return updateDecorations(payload.id, jsonVal, rootPath!);
-        }else{
+    webview.onDidReceiveMessage(
+      async (data) => {
+        if (data.type == "update") {
+          const payload = data.payload;
+          let val = flagValues[payload.id];
+          let updateValue = payload.value;
+          if (val.nodeID !== null) {
             jsonVal = {
-              nodeID : `${nodeDetail.name}/${nodeDetail.type}`,
-              value : updateValue
-            }
-            return updateDecorations(payload.id, jsonVal, rootPath!)
-          
-          // jsonVal = {
-          //   nodeID : fqName,
-          //   value : updateValue
-          // }
-          // return updateDecorations(payload.id, jsonVal, rootPath!)
+              nodeID: val.nodeID,
+              value: updateValue,
+            };
+            return updateDecorations(payload.id, jsonVal, rootPath!);
+          } else {
+            jsonVal = {
+              nodeID: `${nodeDetail.name}/${nodeDetail.type}`,
+              value: updateValue,
+            };
+            return updateDecorations(payload.id, jsonVal, rootPath!);
+          }
         }
-      }
-    });
+      },
+      null,
+      this._disposables
+    );
 
     const customValueEditorPath = vscode.Uri.joinPath(
       this._extensionUri,
@@ -227,10 +211,14 @@ export class DecorationPanel {
 
     // Use a nonce to only allow specific scripts to be run
     const nonce = getNonce();
-      /* List of editors reversed in order to handle the display of editors in an order of nth element appearing on top, 
-        so that
-      */
-    const editors = Object.entries(flagValues).reverse()
+
+    /* Each Editor is a custom element and as a result, creates its own stacking context.
+    * This causes editors that appear later to have a stacking valuethat is higher than the editors above them.
+    * The list is reversed here but also reserved later on in the  flex-direction, so that the elements can be laid out
+    * in the prefered  stacking order.
+    */
+    const editors = Object.entries(flagValues)
+      .reverse()
       .map(([decorationID, decorationConfig]) => {
         return `
         <div class="value-editor">

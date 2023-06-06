@@ -1,6 +1,11 @@
 import * as path from "path";
 import * as fs from "fs";
 
+export function isConfigured(rootPath:string):boolean{
+  const decorationConfig = getMorphirConfig(rootPath);
+  return Boolean(decorationConfig.decorations)
+}
+
 function getMorphirConfig(rootPath: string) {
   const filePath = path.join(rootPath, "morphir.json");
   const fileContent = fs.readFileSync(filePath);
@@ -16,7 +21,7 @@ function getDecorationConfig(rootPath: string) {
   }
 }
 
-function getDecorationFilePath(decorationID: string, rootPath: string) {
+function getDecorationFilePath(decorationID: string, rootPath: string): string {
   const decorationConfig = getDecorationConfig(rootPath)[decorationID];
   let storageLocation = null;
   if (decorationConfig.storageLocation) {
@@ -27,7 +32,11 @@ function getDecorationFilePath(decorationID: string, rootPath: string) {
   return path.join(rootPath, storageLocation);
 }
 
-export function getDecorations(rootPath: string) {
+function createEmptyDecorations (decorationFilePath : string){
+  fs.writeFileSync(decorationFilePath, "{}")
+}
+
+export function getDecorations(rootPath: string):{ [key: string]: any } {
   const configJsonContent = getDecorationConfig(rootPath);
 
   const decorationIDs = Object.keys(configJsonContent);
@@ -51,7 +60,7 @@ export function getDecorations(rootPath: string) {
         };
         return accum;
       } catch (error) {
-        fs.writeFileSync(decorationFilePath, "{}");
+        createEmptyDecorations;
       }
     }
     return accum;

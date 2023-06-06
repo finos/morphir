@@ -23,6 +23,13 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "decorations",
+        "contents": "In order to use the Morphir Decorations features, you need to have generated an IR and also configure Decorations on the Morphir Project by creating a folder that will contain the model of the Decorations. \nTo learn more about how to configure the morphir decorations in VS Code [read our docs](https://morphir.finos.org/docs/decorations-users-guide).",
+        "when": "decorations.isConfigured == true"
+      }
+    ],
     "views": {
       "morphir-deco-sidebar-view": [
         {

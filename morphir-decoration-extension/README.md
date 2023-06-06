@@ -1,71 +1,41 @@
-# morphirdecorations README
+# Morphir Decorations Editor
 
-This is the README for your extension "morphirdecorations". After writing up a brief description, we recommend including the following sections.
+The Morphir Decorations Editor is a Visual Studio Code (VSCode) extension that enhances the editing experience for developers working with Morphir. It provides a tree view that reads the Intermediate Representation (IR) of your Morphir project and displays decorations for various modules, types, and values. This extension allows you to edit decorations while working with Morphir.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **Tree View**: The Morphir Decorations Editor extension provides a tree view in the VSCode sidebar that represents the structure of your Morphir project based on its IR. It displays modules, types, and values in a hierarchical manner, allowing you to navigate and explore the different elements.
 
-For example if there is an image subfolder under your extension project workspace:
+- **Edit Existing Decorations**: With the Morphir Decorations Editor, you can easily edit the existing decorations associated with modules, types, and values in your Morphir project. The extension provides a user-friendly interface to modify and customize the decorations based on your requirements.
 
-\!\[feature X\]\(images/feature-x.png\)
+- **Decorations Per Selection**: When you select a specific module, type, or value in the tree view, the Morphir Decorations Editor displays the associated decorations for that selection. This feature enables you to quickly identify and modify the decorations applied to individual elements of your Morphir project.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+## Usage
 
-## Requirements
+1. Install the Morphir Decorations Editor extension from the VSCode Marketplace.
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+2. Open your Morphir project in VSCode.
 
-## Extension Settings
+3. In the VSCode sidebar, locate the Icon for the Morphir Decoration Editor
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+4. Once Icon is cliicked, locate the tree view of the various modules, types and values in the IR, in the exploerer view.
 
-For example:
+5. Explore the tree view to navigate through the modules, types, and values of your Morphir project.
 
-This extension contributes the following settings:
+6. To edit the existing decorations, select the desired module, type, or value in the tree view. The existing decorations will be displayed, and you can modify them as needed.
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+7. Changes are saved in edit, so the edit will be applied to the respective elements in your Morphir project.
 
-## Known Issues
+## Benefits
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+The Morphir Decorations Editor extension offers several benefits to developers working with Morphir:
 
-## Release Notes
+- **Enhanced Editing Experience**: By providing a tree view of your Morphir project's IR, the extension simplifies navigation and exploration of the project's modules, types, and values. This makes it easier to locate and work with specific elements of your Morphir codebase.
 
-Users appreciate release notes as you update your extension.
+- **Efficient Decoration Management**: With the ability to edit existing decorations, the extension streamlines the process of customizing the visual representation of your Morphir code. Developers can easily attach and modify decorations, improving code readability and comprehension.
 
-### 1.0.0
+## Feedback and Contributions
 
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+We welcome your feedback, bug reports, and contributions to the Morphir Decorations Editor extension. If you have any questions or suggestions, please feel free to open an issue in the [GitHub repository](https://github.com/finos/morphir-elm/tree/main/morphir-decoration-extension). We appreciate your support in improving the extension and making it even more useful for the Morphir community.
 
 **Enjoy!**

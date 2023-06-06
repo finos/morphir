@@ -29,6 +29,7 @@ type alias ModelState =
     , theme : Theme
     , valueType : Type ()
     , editorState : ValueEditor.EditorState
+    , encoder : RawValue -> Result String Encode.Value
     }
 
 
@@ -58,17 +59,29 @@ init flags =
                 tpe =
                     Type.Reference () flag.entryPoint []
 
+                ir =
+                    IR.fromDistribution flag.distribution
+
                 initEditorState =
-                    ValueEditor.initEditorState (IR.fromDistribution flag.distribution) tpe flag.initialValue
+                    ValueEditor.initEditorState ir tpe flag.initialValue
+
+                encoderResult : Result String (RawValue -> Result String Encode.Value)
+                encoderResult =
+                    DataCodec.encodeData ir tpe
 
                 model =
-                    { ir = IR.fromDistribution flag.distribution
-                    , theme = Theme.fromConfig Nothing
-                    , valueType = tpe
-                    , editorState = initEditorState
-                    }
+                    encoderResult
+                        |> Result.map
+                            (\encoder ->
+                                { ir = ir
+                                , theme = Theme.fromConfig Nothing
+                                , valueType = tpe
+                                , editorState = initEditorState
+                                , encoder = encoder
+                                }
+                            )
             in
-            ( Ok model
+            ( model
             , Cmd.none
             )
 
@@ -125,35 +138,24 @@ update msg model =
             case msg of
                 UpdatedEditor editorState ->
                     case editorState.errorState of
-                        Just a ->
-                            ( model, reportError "Editor State Error" )
+                        Just error ->
+                            ( model, reportError error )
 
                         Nothing ->
                             let
-                                resultToFailure result =
-                                    case result of
-                                        Ok encoder ->
-                                            encoder
-
-                                        Err error ->
-                                            Encode.null
-
-                                valueJson =
+                                jsonResult =
                                     editorState.lastValidValue
-                                        |> Maybe.map
-                                            (\val ->
-                                                DataCodec.encodeData m.ir m.valueType
-                                                    |> Result.andThen
-                                                        (\encoderValue ->
-                                                            val |> encoderValue
-                                                        )
-                                                    |> resultToFailure
-                                            )
-                                        |> Maybe.withDefault Encode.null
+                                        |> Maybe.map m.encoder
+                                        |> Maybe.withDefault (Ok Encode.null)
                             in
-                            ( Result.map (\mod -> { mod | editorState = editorState }) model
-                            , valueUpdated valueJson
-                            )
+                            case jsonResult of
+                                Ok json ->
+                                    ( Result.map (\mod -> { mod | editorState = editorState }) model
+                                    , valueUpdated json
+                                    )
+
+                                Err error ->
+                                    ( model, reportError error )
 
         Err error ->
             ( model, Cmd.none )

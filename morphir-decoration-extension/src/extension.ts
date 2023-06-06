@@ -1,8 +1,9 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
-import { DepNodeProvider,NodeDetail } from "./nodeDefinitions";
+import { DepNodeProvider } from "./nodeDefinitions";
 import { DecorationPanel, getWebviewOptions } from "./editor";
+import { isConfigured } from "./decoration-manager";
 
 export function activate(context: vscode.ExtensionContext) {
   const rootPath =
@@ -12,13 +13,11 @@ export function activate(context: vscode.ExtensionContext) {
       : undefined;
 
   // Samples of `window.registerTreeDataProvider`
+  // context.workspaceState.update('decorations.isTreeViewVisible', true)
   const nodeDependenciesProvider = new DepNodeProvider(rootPath);
   vscode.window.registerTreeDataProvider(
     "decorations",
     nodeDependenciesProvider
-  );
-  vscode.commands.registerCommand("decorations.refreshEntry", () =>
-    nodeDependenciesProvider.refresh()
   );
 
   let decorationNodeDetail: any;
@@ -41,10 +40,13 @@ export function activate(context: vscode.ExtensionContext) {
         console.log(`Got state: ${state}`);
         // Reset the webview options so we use latest uri for `localResourceRoots`.
         webviewPanel.webview.options = getWebviewOptions(context.extensionUri);
-        DecorationPanel.revive(webviewPanel, context.extensionUri, decorationNodeDetail);
+        DecorationPanel.revive(
+          webviewPanel,
+          context.extensionUri,
+          decorationNodeDetail
+        );
       },
     });
-    // context.subscriptions.push(webviewSerializer)
   }
 }
 
