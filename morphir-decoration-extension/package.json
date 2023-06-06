@@ -26,7 +26,7 @@
     "viewsWelcome": [
       {
         "view": "decorations",
-        "contents": "In order to use the Morphir Decorations features, you need to have generated an IR and also configure Decorations on the Morphir Project by creating a folder that will contain the model of the Decorations. \nTo learn more about how to configure the morphir decorations in VS Code [read our docs](https://morphir.finos.org/docs/decorations-users-guide).",
+        "contents": "In order to use this extension, you need to have generated a Morphir IR and also configured Decorations on the Morphir Project. \nTo learn more about how to configure the morphir decorations [read our docs](https://morphir.finos.org/docs/decorations-users-guide).",
         "when": "decorations.isConfigured == true"
       }
     ],

@@ -31,8 +31,11 @@ export class DepNodeProvider implements vscode.TreeDataProvider<TreeItem> {
       return Promise.resolve([]);
     }
     const morphirIRPath = path.join(this.workspaceRoot, "morphir-ir.json");
-
-    if(!isConfigured(this.workspaceRoot) && !this.pathExists(morphirIRPath)){
+    if (!this.pathExists(morphirIRPath)) {
+      vscode.commands.executeCommand('setContext', 'decorations.isConfigured', true)
+      return Promise.resolve([])
+    }
+    if(!isConfigured(this.workspaceRoot)){
       vscode.commands.executeCommand('setContext', 'decorations.isConfigured', true)
       return Promise.resolve([])
     }
@@ -103,7 +106,7 @@ export class DepNodeProvider implements vscode.TreeDataProvider<TreeItem> {
       case "Library":
         ir.arg3.modules.forEach((accessControlledModuleDef, moduleName) => {
           let childNodes: Array<NodeDetail> = [];
-          let packageName = ir.arg1.map((p) => p.join(".")).join(".");
+          let packageName = ir.arg1.map((p) => p.map(this.capitalize).join(".")).join(".");
           let nodeName = [
             packageName,
             moduleName.map((n) => n.map(this.capitalize).join("")).join("."),
@@ -182,13 +185,8 @@ export class TreeItem extends vscode.TreeItem {
     public readonly command?: vscode.Command
   ) {
     super(label, collapsibleState);
-
+    this.description = this.data.type == "type" ? "ⓣ" : this.data.type == "value" ? "ⓥ" : ""
     this.tooltip = `${this.label}`;
   }
-
-  iconPath = {
-    light: path.join(__filename, "..", "..", "media", "light-Decoration.svg"),
-    dark: path.join(__filename, "..", "..", "media", "dark-Decoration.svg"),
-  };
   contextValue = "Decoration";
 }
