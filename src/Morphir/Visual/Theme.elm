@@ -31,6 +31,7 @@ type alias Colors =
     , secondaryInformation : Color
     , gray : Color
     , mediumGray : Color
+    , lightGray : Color
     , brandPrimary : Color
     , brandPrimaryLight : Color
     , brandSecondary : Color
@@ -86,6 +87,7 @@ fromConfig maybeConfig =
             , secondaryInformation = rgb 0.5 0.5 0.5
             , gray = rgb 0.9 0.9 0.9
             , mediumGray = rgb 0.5 0.5 0.5
+            , lightGray = rgba 0.9 0.9 0.9 0.5
             , brandPrimary = rgb 0 0.639 0.882
             , brandPrimaryLight = rgba 0 0.639 0.882 0.3
             , brandSecondary = rgb 1 0.411 0

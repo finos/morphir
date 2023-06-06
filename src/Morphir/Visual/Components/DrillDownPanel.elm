@@ -21,6 +21,7 @@ type alias PanelConfig msg =
     , openHeader : Element msg
     , openElement : Element msg
     , isOpen : Bool
+    , zIndex : Int
     }
 
 
@@ -59,6 +60,7 @@ drillDownPanel theme config =
                     }
                 , Background.color (rgba 1 1 1 1)
                 , htmlAttribute (style "filter" "brightness(97%)")
+                , htmlAttribute (style "z-index" (String.fromInt config.zIndex))
                 ]
                 config.openElement
             ]

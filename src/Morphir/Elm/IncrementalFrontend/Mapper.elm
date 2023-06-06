@@ -668,11 +668,7 @@ mapOperator moduleName range op =
             Ok <| SDKBasics.greaterThanOrEqual defaultValueAttribute
 
         "++" ->
-            Err
-                [ NotSupported
-                    (SourceLocation moduleName range)
-                    "The ++ operator is currently not supported. Please use String.append or List.append. See docs/error-append-not-supported.md"
-                ]
+            Ok <| SDKBasics.append defaultValueAttribute
 
         "+" ->
             Ok <| SDKBasics.add defaultValueAttribute
