@@ -40,3 +40,15 @@ target2 a1 a2 =
 target3 : (String -> Int -> Custom) -> Bool
 target3 ctor =
     True
+
+
+letRecursion items =
+    let
+        addHelper prev lst =
+            case lst of
+                [] ->
+                    prev
+                head :: rest ->
+                    addHelper (prev + head) rest
+    in
+    addHelper 0 items

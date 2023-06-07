@@ -655,16 +655,16 @@ mapValue inScopeVars value =
                                         []
 
                                     else
-                                        [ def.inputTypes
+                                         def.inputTypes
                                             |> List.map
                                                 (\( argName, _, argType ) ->
-                                                    { modifiers = []
+                                                    [{ modifiers = []
                                                     , tpe = mapType argType
                                                     , name = argName |> Name.toCamelCase
                                                     , defaultValue = Nothing
-                                                    }
+                                                    }]
                                                 )
-                                        ]
+
                                 , returnType =
                                     Just (mapType def.outputType)
                                 , body =
