@@ -1,17 +1,19 @@
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Value Editor</title>
-    <script src="./valueEditor.js"></script>
-  </head>
-  <body>
-    <h1>Hello Deco</h1>
-    <value-editor id="app" onclick="this.updated()"></value-editor>
-    <script>
-      var ir ={
-    "formatVersion": 2,
+    <script type="application/json" src="./../../cli/web/valueEditor.js" ></script>
+    <script type="application/json" src="./../../cli/web/editor-custom-element.js" ></script>
+</head>
+<body>
+<h1>Hello Deco</h1>
+<value-editor id="app" onclick="this.updated()"></value-editor>
+<script>
+      var ir =
+      {
+    "formatVersion": 3,
     "distribution": [
         "Library",
         [
@@ -192,7 +194,7 @@
         }
     ]
 }
-      
+
       var app = Elm.Morphir.Web.Editor.init({
         node: document.getElementById("app"),
         flags: {
@@ -216,5 +218,5 @@
         // });
       }
     </script>
-  </body>
+</body>
 </html>

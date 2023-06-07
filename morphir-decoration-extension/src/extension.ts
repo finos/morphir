@@ -12,8 +12,6 @@ export function activate(context: vscode.ExtensionContext) {
       ? vscode.workspace.workspaceFolders[0].uri.fsPath
       : undefined;
 
-  // Samples of `window.registerTreeDataProvider`
-  // context.workspaceState.update('decorations.isTreeViewVisible', true)
   const nodeDependenciesProvider = new DepNodeProvider(rootPath);
   vscode.window.registerTreeDataProvider(
     "decorations",

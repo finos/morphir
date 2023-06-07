@@ -9,7 +9,7 @@ export function getWebviewOptions(
     // Enable javascript in the webview
     enableScripts: true,
 
-    // And restrict the webview to only loading content from our extension's `media` directory.
+    // And restrict the webview to only loading content from the directory paths added in here.
     localResourceRoots: [
       vscode.Uri.joinPath(extensionUri, "media"),
       vscode.Uri.joinPath(extensionUri, "../cli/web"),

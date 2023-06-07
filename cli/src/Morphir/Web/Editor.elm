@@ -56,12 +56,15 @@ init flags =
     case flags |> Decode.decodeValue decodeFlag of
         Ok flag ->
             let
+                tpe : Type ()
                 tpe =
                     Type.Reference () flag.entryPoint []
 
+                ir : IR
                 ir =
                     IR.fromDistribution flag.distribution
 
+                initEditorState : ValueEditor.EditorState
                 initEditorState =
                     ValueEditor.initEditorState ir tpe flag.initialValue
 
@@ -69,6 +72,7 @@ init flags =
                 encoderResult =
                     DataCodec.encodeData ir tpe
 
+                model : Model
                 model =
                     encoderResult
                         |> Result.map
@@ -143,6 +147,7 @@ update msg model =
 
                         Nothing ->
                             let
+                                jsonResult : Result String Encode.Value
                                 jsonResult =
                                     editorState.lastValidValue
                                         |> Maybe.map m.encoder
