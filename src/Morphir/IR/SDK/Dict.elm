@@ -15,7 +15,7 @@
 -}
 
 
-module Morphir.IR.SDK.Dict exposing (dictType, fromListValue, moduleName, moduleSpec, nativeFunctions)
+module Morphir.IR.SDK.Dict exposing (dictType, fromListValue, moduleName, moduleSpec, nativeFunctions, typeSpec)
 
 import Dict
 import Morphir.IR.Documented exposing (Documented)
@@ -39,11 +39,20 @@ moduleName =
     Path.fromString "Dict"
 
 
+typeSpec : Specification ()
+typeSpec =
+    DerivedTypeSpecification [["comparable"], ["v"] ]
+        { baseType = listType () (Type.Tuple () [ tVar "comparable", tVar "v" ])
+        , toBaseType = toFQName moduleName "toList"
+        , fromBaseType = toFQName moduleName "fromList"
+        }
+
+
 moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( Name.fromString "Dict", OpaqueTypeSpecification [ [ "k", "v" ] ] |> Documented "Type that represents a dictionary of key-value pairs." )
+            [ ( Name.fromString "Dict", typeSpec |> Documented "Type that represents a dictionary of key-value pairs." )
             ]
     , values =
         Dict.fromList
@@ -139,10 +148,6 @@ fromListValue : va -> Value ta va -> Value ta va
 fromListValue a list =
     Value.Apply a (Value.Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) list
 
-
-toListValue : a -> Value ta a -> Value ta a
-toListValue a list =
-    Value.Apply a (Value.Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "to", "list" ] )) list
 
 
 nativeFunctions : List ( String, Native.Function )
@@ -483,6 +488,12 @@ nativeFunctions =
                         Err (UnexpectedArguments [ dict ])
             )
       )
-    , ( "toList", Native.unaryStrict (\_ arg -> Ok (toListValue () arg)) )
+    , ( "toList", Native.unaryStrict (\_ arg -> 
+        case arg of
+            Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) list ->
+                Ok list
+            _ ->
+                Err (UnexpectedArguments [ arg ])
+        ))
     , ( "fromList", Native.unaryStrict (\_ arg -> Ok (fromListValue () arg)) )
     ]

@@ -137,10 +137,9 @@ decodeTestCase ir valueSpec =
                                     Decode.index index
                                         (DataCodec.decodeData ir argType
                                             |> resultToFailure
-                                            |> Decode.maybe
                                             |> Decode.map
                                                 (\input ->
-                                                    List.append inputsSoFar [ input ]
+                                                    List.append inputsSoFar [ Just input ]
                                                 )
                                         )
                                 )

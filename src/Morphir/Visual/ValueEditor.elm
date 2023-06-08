@@ -77,10 +77,11 @@ import Morphir.IR.SDK.Char as Basics
 import Morphir.IR.SDK.Decimal as Decimal
 import Morphir.IR.SDK.Dict as SDKDict
 import Morphir.IR.SDK.String as Basics
+import Morphir.IR.SDK.LocalDate exposing (fromISO)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
 import Morphir.SDK.Decimal as Decimal
-import Morphir.SDK.LocalDate as LocalDate exposing (LocalDate, toISOString)
+import Morphir.SDK.LocalDate as LocalDate exposing ( toISOString)
 import Morphir.SDK.ResultList as ListOfResults
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.DatePickerComponent as DatePicker
@@ -555,7 +556,7 @@ initLocalDateEditor maybeInitialValue =
     case maybeInitialValue of
         Just initialValue ->
             case initialValue of
-                Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "local", "date" ] )) (Value.Literal () (StringLiteral dateString)) ->
+                Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "from", "i", "s", "o" ] )) (Value.Literal () (StringLiteral dateString)) ->
                     ( Nothing, LocalDateEditor (DatePicker.initState (LocalDate.fromISO dateString)) )
 
                 _ ->
@@ -1290,9 +1291,9 @@ view theme ir valueType updateEditorState editorState =
 
         LocalDateEditor state ->
             let
-                localDateValue : String -> Value ta ()
+                localDateValue : String -> Value () ()
                 localDateValue str =
-                    Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "local", "date" ] )) (Value.Literal () (StringLiteral str))
+                    fromISO () (Value.Literal () (StringLiteral str))
             in
             DatePicker.view theme
                 { placeholder =
