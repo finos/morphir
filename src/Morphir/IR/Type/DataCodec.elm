@@ -8,12 +8,14 @@ import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.SDK as SDK
+import Morphir.IR.SDK.Dict as Dict
 import Morphir.IR.SDK.Maybe exposing (just, nothing)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.SDK.Decimal as Decimal
 import Morphir.SDK.ResultList as ListOfResults
 import Morphir.Value.Interpreter as Interpreter
+import Morphir.Value.Error as Error
 
 
 encodeData : IR -> Type () -> Result String (RawValue -> Result String Encode.Value)
@@ -116,6 +118,7 @@ encodeData ir tpe =
                                     _ ->
                                         Err (String.concat [ "Expected Just or Nothing but found: ", Debug.toString value ])
                             )
+
 
                 _ ->
                     -- Handle references that are not part of the SDK
@@ -419,9 +422,10 @@ encodeTypeSpecification ir (( typePackageName, typeModuleName, _ ) as fQName) ty
                         )
                         (Interpreter.evaluate SDK.nativeFunctions ir valueAsBaseType
                             |> Result.mapError
-                                (always
+                                (\err ->
                                     ("Interpreter Error: Failed to evaluate Value "
                                         ++ FQName.toString config.toBaseType
+                                        ++ " : " ++ Error.toString err
                                     )
                                 )
                         )
@@ -553,9 +557,7 @@ decodeTypeSpecification ir (( typePackageName, typeModuleName, _ ) as fQName) ty
 
                                             -- only Maybe and Result types are expected, we can fail
                                             _ ->
-                                                "Invalid Return Type for "
-                                                    ++ fnName
-                                                    |> Decode.fail
+                                               Decode.succeed val
 
                                     Err error ->
                                         "Interpreter Evaluation Error: "

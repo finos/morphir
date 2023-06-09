@@ -30,6 +30,8 @@ import Morphir.IR.SDK.String exposing (stringType)
 import Morphir.IR.Type exposing (Specification(..), Type(..))
 import Morphir.SDK.LocalDate as LocalDate
 import Morphir.Value.Native as Native
+import Morphir.IR.Value as Value
+import Morphir.IR.Value exposing (Value)
 
 
 moduleName : ModuleName
@@ -113,3 +115,7 @@ nativeFunctions =
       , Native.eval2 LocalDate.addYears (Native.decodeLiteral Native.intLiteral) Native.decodeLocalDate Native.encodeLocalDate
       )
     ]
+
+fromISO : a -> Value a a -> Value a a
+fromISO a value =
+    Value.Apply a (Value.Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "from", "i", "s", "o" ] )) value
