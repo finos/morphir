@@ -1439,7 +1439,7 @@ viewCustomTypeEditor theme labelStyle ir updateEditorState editorState (( packag
         [ el labelStyle (text <| nameToText typeName)
         , viewConstructor
         , row
-            [ spacing 5
+            [ width fill, spacing 5
             ]
             viewArguments
         ]
