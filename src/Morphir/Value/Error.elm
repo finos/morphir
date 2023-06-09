@@ -119,7 +119,7 @@ toString error =
             "Exactly one argument expected, but got multiple: " ++ String.concat (List.map (\arg -> Value.toString arg ++ ", ") argList)
 
         ErrorWhileEvaluatingReference fqName e ->
-            "Error while evaluating variable " ++ FQName.toString fqName ++ " : " ++ toString e
+            "Error while evaluating reference " ++ FQName.toString fqName ++ " : " ++ toString e
 
         ErrorWhileEvaluatingDerivedType s ->
             "Error while evaluating derived type: " ++ s

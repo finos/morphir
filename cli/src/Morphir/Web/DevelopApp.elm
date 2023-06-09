@@ -386,8 +386,11 @@ update msg model =
             , Cmd.none
             )
 
-        ServerGetIRResponse distribution ->
+        ServerGetIRResponse (Library packageName dependencies packageDef) ->
             let
+
+                distribution =
+                    (Library packageName (dependencies |> Dict.insert SDK.packageName SDK.packageSpec) packageDef)
                 irLoaded : IRState
                 irLoaded =
                     IRLoaded distribution
