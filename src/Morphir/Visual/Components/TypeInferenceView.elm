@@ -120,7 +120,7 @@ viewSolution solutionMap =
         }
 
 
-viewSolveSteps : Int -> IR -> SolutionMap -> ConstraintSet -> List (Element msg)
+viewSolveSteps : Int -> Distribution -> SolutionMap -> ConstraintSet -> List (Element msg)
 viewSolveSteps depth ir solutionMap constraintSet =
     let
         thisStep : Element msg

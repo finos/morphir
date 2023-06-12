@@ -3,22 +3,21 @@ module Morphir.IR.Type.DataCodec exposing (decodeData, encodeData)
 import Dict exposing (Dict)
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.IR as IR exposing (IR)
+import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.SDK as SDK
-import Morphir.IR.SDK.Dict as Dict
 import Morphir.IR.SDK.Maybe exposing (just, nothing)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.SDK.Decimal as Decimal
 import Morphir.SDK.ResultList as ListOfResults
-import Morphir.Value.Interpreter as Interpreter
 import Morphir.Value.Error as Error
+import Morphir.Value.Interpreter as Interpreter
 
 
-encodeData : IR -> Type () -> Result String (RawValue -> Result String Encode.Value)
+encodeData : Distribution -> Type () -> Result String (RawValue -> Result String Encode.Value)
 encodeData ir tpe =
     case tpe of
         Type.Reference _ (( [ [ "morphir" ], [ "s", "d", "k" ] ], typeModuleName, localName ) as fQName) typeArgs ->
@@ -119,18 +118,17 @@ encodeData ir tpe =
                                         Err (String.concat [ "Expected Just or Nothing but found: ", Debug.toString value ])
                             )
 
-
                 _ ->
                     -- Handle references that are not part of the SDK
                     ir
-                        |> IR.lookupTypeSpecification fQName
+                        |> Distribution.lookupTypeSpecification fQName
                         |> Result.fromMaybe (String.concat [ "Cannot find reference: ", FQName.toString fQName ])
                         |> Result.andThen (encodeTypeSpecification ir fQName typeArgs)
 
         Type.Reference _ fQName typeArgs ->
             -- Handle references that are not part of the SDK
             ir
-                |> IR.lookupTypeSpecification fQName
+                |> Distribution.lookupTypeSpecification fQName
                 |> Result.fromMaybe (String.concat [ "Cannot find reference: ", FQName.toString fQName ])
                 |> Result.andThen (encodeTypeSpecification ir fQName typeArgs)
 
@@ -182,7 +180,7 @@ encodeData ir tpe =
             Debug.log "" a |> Debug.todo "implement"
 
 
-decodeData : IR -> Type () -> Result String (Decode.Decoder RawValue)
+decodeData : Distribution -> Type () -> Result String (Decode.Decoder RawValue)
 decodeData ir tpe =
     case tpe of
         Type.Reference _ (( [ [ "morphir" ], [ "s", "d", "k" ] ], typeModuleName, localName ) as fQName) typeArgs ->
@@ -253,14 +251,14 @@ decodeData ir tpe =
                 _ ->
                     -- Handle references that are not part of the SDK
                     ir
-                        |> IR.lookupTypeSpecification fQName
+                        |> Distribution.lookupTypeSpecification fQName
                         |> Result.fromMaybe (String.concat [ "Cannot find reference: ", FQName.toString fQName ])
                         |> Result.andThen (decodeTypeSpecification ir fQName typeArgs)
 
         Type.Reference _ fQName typeArgs ->
             -- Handle references that are not part of the SDK
             ir
-                |> IR.lookupTypeSpecification fQName
+                |> Distribution.lookupTypeSpecification fQName
                 |> Result.fromMaybe (String.concat [ "Cannot find reference: ", FQName.toString fQName ])
                 |> Result.andThen (decodeTypeSpecification ir fQName typeArgs)
 
@@ -323,7 +321,7 @@ decodeData ir tpe =
             Err "Cannot Decode this type"
 
 
-encodeTypeSpecification : IR -> FQName -> List (Type ()) -> Type.Specification () -> Result String (RawValue -> Result String Encode.Value)
+encodeTypeSpecification : Distribution -> FQName -> List (Type ()) -> Type.Specification () -> Result String (RawValue -> Result String Encode.Value)
 encodeTypeSpecification ir (( typePackageName, typeModuleName, _ ) as fQName) typeArgs typeSpec =
     case typeSpec of
         Type.TypeAliasSpecification typeArgNames typeExp ->
@@ -423,10 +421,10 @@ encodeTypeSpecification ir (( typePackageName, typeModuleName, _ ) as fQName) ty
                         (Interpreter.evaluate SDK.nativeFunctions ir valueAsBaseType
                             |> Result.mapError
                                 (\err ->
-                                    ("Interpreter Error: Failed to evaluate Value "
+                                    "Interpreter Error: Failed to evaluate Value "
                                         ++ FQName.toString config.toBaseType
-                                        ++ " : " ++ Error.toString err
-                                    )
+                                        ++ " : "
+                                        ++ Error.toString err
                                 )
                         )
                         |> Result.andThen identity
@@ -434,7 +432,7 @@ encodeTypeSpecification ir (( typePackageName, typeModuleName, _ ) as fQName) ty
             Ok encode
 
 
-decodeTypeSpecification : IR -> FQName -> List (Type ()) -> Type.Specification () -> Result String (Decode.Decoder RawValue)
+decodeTypeSpecification : Distribution -> FQName -> List (Type ()) -> Type.Specification () -> Result String (Decode.Decoder RawValue)
 decodeTypeSpecification ir (( typePackageName, typeModuleName, _ ) as fQName) typeArgs typeSpec =
     case typeSpec of
         Type.TypeAliasSpecification typeArgNames typeExp ->
@@ -557,7 +555,7 @@ decodeTypeSpecification ir (( typePackageName, typeModuleName, _ ) as fQName) ty
 
                                             -- only Maybe and Result types are expected, we can fail
                                             _ ->
-                                               Decode.succeed val
+                                                Decode.succeed val
 
                                     Err error ->
                                         "Interpreter Evaluation Error: "

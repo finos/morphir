@@ -30,7 +30,7 @@ type alias AlephNumber =
 
 {-| Calculate the cardinality of a type going down recursively in the type expression tree.
 -}
-cardinality : IR -> Dict Name (Type ()) -> Type () -> Cardinality
+cardinality : Distribution -> Dict Name (Type ()) -> Type () -> Cardinality
 cardinality ir vars tpe =
     case IR.resolveType tpe ir of
         Type.Variable _ _ ->

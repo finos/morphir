@@ -269,7 +269,7 @@ eitherBranches allBranches =
 cases as an input and returns a list of branches and the test cases that cover that branch. If a certain branch is not
 covered by a test the list will be empty.
 -}
-assignTestCasesToBranches : IR -> Value.Definition ta va -> List TestCase -> List ( Branch ta va, List TestCase )
+assignTestCasesToBranches : Distribution -> Value.Definition ta va -> List TestCase -> List ( Branch ta va, List TestCase )
 assignTestCasesToBranches ir valueDef testCases =
     valueBranches True valueDef.body
         |> List.map

@@ -67,7 +67,7 @@ type HighlightState
     | Default
 
 
-fromIR : IR -> VisualState -> EventHandlers msg -> Config msg
+fromIR : Distribution -> VisualState -> EventHandlers msg -> Config msg
 fromIR ir visualState eventHandlers =
     { ir = ir
     , nativeFunctions = SDK.nativeFunctions

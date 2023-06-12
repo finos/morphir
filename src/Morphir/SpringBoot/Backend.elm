@@ -196,7 +196,7 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
             typeNamesStatefulApp
                 |> List.concatMap
                     (\name ->
-                        case lookupTypeSpecification currentPackagePath currentModulePath (Name.fromString name) distribution of
+                        case lookupTypeSpecification ( currentPackagePath, currentModulePath, Name.fromString name ) distribution of
                             Just (TypeAliasSpecification _ aliasType) ->
                                 case mapType aliasType of
                                     TypeRef _ typeName ->

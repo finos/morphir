@@ -76,12 +76,12 @@ import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.SDK.Char as Basics
 import Morphir.IR.SDK.Decimal as Decimal
 import Morphir.IR.SDK.Dict as SDKDict
-import Morphir.IR.SDK.String as Basics
 import Morphir.IR.SDK.LocalDate exposing (fromISO)
+import Morphir.IR.SDK.String as Basics
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
 import Morphir.SDK.Decimal as Decimal
-import Morphir.SDK.LocalDate as LocalDate exposing ( toISOString)
+import Morphir.SDK.LocalDate as LocalDate exposing (toISOString)
 import Morphir.SDK.ResultList as ListOfResults
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.DatePickerComponent as DatePicker
@@ -192,7 +192,7 @@ handleTypeCases typeCases valueType =
   - `maybeInitialValue` - Optional starting value for the editor.
 
 -}
-initEditorState : IR -> Type () -> Maybe RawValue -> EditorState
+initEditorState : Distribution -> Type () -> Maybe RawValue -> EditorState
 initEditorState ir valueType maybeInitialValue =
     let
         adjustedInitialValue : Maybe RawValue
@@ -237,7 +237,7 @@ initEditorState ir valueType maybeInitialValue =
 An error might be reported when the initial value being passed in is invalid for the given editor.
 
 -}
-initComponentState : IR -> Type () -> Maybe RawValue -> ( Maybe Error, ComponentState )
+initComponentState : Distribution -> Type () -> Maybe RawValue -> ( Maybe Error, ComponentState )
 initComponentState ir valueType maybeInitialValue =
     let
         textEditorTypes : List (Type ())
@@ -350,7 +350,7 @@ initBoolEditor maybeInitialValue =
 
 {-| Creates a component state for a record editor with an optional error.
 -}
-initRecordEditor : IR -> List (Type.Field ()) -> Maybe RawValue -> ( Maybe Error, ComponentState )
+initRecordEditor : Distribution -> List (Type.Field ()) -> Maybe RawValue -> ( Maybe Error, ComponentState )
 initRecordEditor ir fieldTypes maybeInitialValue =
     let
         recordEditor initialFieldValues =
@@ -382,7 +382,7 @@ initRecordEditor ir fieldTypes maybeInitialValue =
 
 {-| Creates a component state for a custom type editor with an optional error.
 -}
-initCustomEditor : IR -> FQName -> Type.Constructors () -> Maybe RawValue -> ( Maybe Error, ComponentState )
+initCustomEditor : Distribution -> FQName -> Type.Constructors () -> Maybe RawValue -> ( Maybe Error, ComponentState )
 initCustomEditor ir fqn constructors maybeSelected =
     let
         findConstructor : Name -> Maybe (Type.Constructor ())
@@ -434,7 +434,7 @@ initCustomEditor ir fqn constructors maybeSelected =
 
 {-| Creates a component state for a optional values.
 -}
-initMaybeEditor : IR -> Type () -> Maybe RawValue -> ( Maybe Error, ComponentState )
+initMaybeEditor : Distribution -> Type () -> Maybe RawValue -> ( Maybe Error, ComponentState )
 initMaybeEditor ir itemType maybeInitialValue =
     case maybeInitialValue of
         Just initialValue ->
@@ -454,7 +454,7 @@ initMaybeEditor ir itemType maybeInitialValue =
 
 {-| Creates a component state for a list values.
 -}
-initListEditor : IR -> Type () -> Maybe RawValue -> ( Maybe Error, ComponentState )
+initListEditor : Distribution -> Type () -> Maybe RawValue -> ( Maybe Error, ComponentState )
 initListEditor ir itemType maybeInitialValue =
     case ir |> IR.resolveType itemType of
         Type.Record _ fieldTypes ->
@@ -514,7 +514,7 @@ initListEditor ir itemType maybeInitialValue =
 
 {-| Creates a component state for a list values.
 -}
-initDictEditor : IR -> Type () -> Type () -> Maybe RawValue -> ( Maybe Error, ComponentState )
+initDictEditor : Distribution -> Type () -> Type () -> Maybe RawValue -> ( Maybe Error, ComponentState )
 initDictEditor ir dictKeyType dictValueType maybeInitialValue =
     case maybeInitialValue of
         Just initialValue ->
@@ -575,7 +575,7 @@ initLocalDateEditor maybeInitialValue =
   - `editorState` - The current editor state.
 
 -}
-view : Theme -> IR -> Type () -> (EditorState -> msg) -> EditorState -> Element msg
+view : Theme -> Distribution -> Type () -> (EditorState -> msg) -> EditorState -> Element msg
 view theme ir valueType updateEditorState editorState =
     let
         baseStyle : List (Element.Attribute msg)
@@ -1318,7 +1318,7 @@ view theme ir valueType updateEditorState editorState =
                 }
 
 
-viewCustomTypeEditor : Theme -> List (Element.Attribute msg) -> IR -> (EditorState -> msg) -> EditorState -> FQName -> Type.Constructors () -> CustomTypeEditorState -> Element msg
+viewCustomTypeEditor : Theme -> List (Element.Attribute msg) -> Distribution -> (EditorState -> msg) -> EditorState -> FQName -> Type.Constructors () -> CustomTypeEditorState -> Element msg
 viewCustomTypeEditor theme labelStyle ir updateEditorState editorState (( packageName, moduleName, typeName ) as fqn) constructors customTypeEditorState =
     let
         viewConstructor : Element msg
@@ -1440,7 +1440,8 @@ viewCustomTypeEditor theme labelStyle ir updateEditorState editorState (( packag
         [ el labelStyle (text <| nameToText typeName)
         , viewConstructor
         , row
-            [ width fill, spacing 5
+            [ width fill
+            , spacing 5
             ]
             viewArguments
         ]

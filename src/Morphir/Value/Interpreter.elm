@@ -9,7 +9,7 @@ takes a `Value` and returns a `Value` (or an error for invalid expressions):
 -}
 
 import Dict exposing (Dict)
-import Morphir.IR as IR exposing (IR)
+import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
@@ -27,10 +27,10 @@ type alias Variables =
 
 
 {-| -}
-evaluateFunctionValue : Dict FQName Native.Function -> IR -> FQName -> List (Maybe RawValue) -> Result Error RawValue
+evaluateFunctionValue : Dict FQName Native.Function -> Distribution -> FQName -> List (Maybe RawValue) -> Result Error RawValue
 evaluateFunctionValue nativeFunctions ir fQName variableValues =
     ir
-        |> IR.lookupValueDefinition fQName
+        |> Distribution.lookupValueDefinition fQName
         -- If we cannot find the value in the IR we return an error.
         |> Result.fromMaybe (ReferenceNotFound fQName)
         |> Result.andThen
@@ -61,7 +61,7 @@ by fully-qualified name that will be used for lookup if the expression contains 
         -- (Value.Literal () (BoolLiteral False))
 
 -}
-evaluate : Dict FQName Native.Function -> IR -> RawValue -> Result Error RawValue
+evaluate : Dict FQName Native.Function -> Distribution -> RawValue -> Result Error RawValue
 evaluate nativeFunctions ir value =
     evaluateValue nativeFunctions ir Dict.empty [] value
 
@@ -69,7 +69,7 @@ evaluate nativeFunctions ir value =
 {-| Evaluates a value expression recursively in a single pass while keeping track of variables and arguments along the
 evaluation.
 -}
-evaluateValue : Dict FQName Native.Function -> IR -> Variables -> List RawValue -> RawValue -> Result Error RawValue
+evaluateValue : Dict FQName Native.Function -> Distribution -> Variables -> List RawValue -> RawValue -> Result Error RawValue
 evaluateValue nativeFunctions ir variables arguments value =
     case value of
         Value.Literal _ _ ->
@@ -83,7 +83,7 @@ evaluateValue nativeFunctions ir variables arguments value =
                 |> ResultList.keepFirstError
                 |> Result.andThen
                     (\evaluatedArgs ->
-                        case ir |> IR.lookupTypeSpecification (ir |> IR.resolveAliases fQName) of
+                        case ir |> Distribution.lookupTypeSpecification (ir |> Distribution.resolveAliases fQName) of
                             Just (Type.TypeAliasSpecification _ (Type.Record _ fields)) ->
                                 Ok
                                     (Value.Record ()

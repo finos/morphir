@@ -66,7 +66,7 @@ collectFeaturesFromDistribution distribution =
                 |> Dict.fromList
 
 
-collectFeaturesFromPackage : IR -> Package.Definition ta va -> FeatureCollection
+collectFeaturesFromPackage : Distribution -> Package.Definition ta va -> FeatureCollection
 collectFeaturesFromPackage ir definition =
     let
         emptyFeatureCollection =
@@ -89,7 +89,7 @@ collectFeaturesFromPackage ir definition =
         |> collectFeaturesFromValueDefs ir values
 
 
-collectTypeFeatures : IR -> List (AccessControlled (Documented (Type.Definition ta))) -> FeatureCollection -> FeatureCollection
+collectTypeFeatures : Distribution -> List (AccessControlled (Documented (Type.Definition ta))) -> FeatureCollection -> FeatureCollection
 collectTypeFeatures ir types featureCollection =
     let
         typeFeaturesFromTypes : FeatureCollection
@@ -135,7 +135,7 @@ collectTypeFeatures ir types featureCollection =
     typeFeaturesFromTypes
 
 
-collectFeaturesFromType : IR -> Type.Type ta -> FeatureCollection -> FeatureCollection
+collectFeaturesFromType : Distribution -> Type.Type ta -> FeatureCollection -> FeatureCollection
 collectFeaturesFromType ir tpe featureCollection =
     case tpe of
         Type.Variable _ _ ->
@@ -197,7 +197,7 @@ collectFeaturesFromType ir tpe featureCollection =
             incrementOrAdd "Type.Unit" featureCollection
 
 
-collectFeaturesFromValueDefs : IR -> List (Value.Definition ta va) -> FeatureCollection -> FeatureCollection
+collectFeaturesFromValueDefs : Distribution -> List (Value.Definition ta va) -> FeatureCollection -> FeatureCollection
 collectFeaturesFromValueDefs ir values featureCollection =
     let
         collectTypesFromValueDef : Value.Definition ta va -> List (Type.Type ta)
@@ -219,7 +219,7 @@ collectFeaturesFromValueDefs ir values featureCollection =
     typeAndValueFeaturesFromValueSign
 
 
-collectFeaturesFromValue : IR -> Value.Value ta va -> FeatureCollection -> FeatureCollection
+collectFeaturesFromValue : Distribution -> Value.Value ta va -> FeatureCollection -> FeatureCollection
 collectFeaturesFromValue ir value featureCollection =
     case value of
         Value.Literal _ literal ->

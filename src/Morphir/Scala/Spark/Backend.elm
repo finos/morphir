@@ -91,7 +91,7 @@ mapDistribution opt distro =
                 |> Dict.fromList
 
 
-mapFunctionDefinition : IR -> FQName -> Result Error Scala.MemberDecl
+mapFunctionDefinition : Distribution -> FQName -> Result Error Scala.MemberDecl
 mapFunctionDefinition ir (( _, _, localFunctionName ) as fullyQualifiedFunctionName) =
     let
         mapFunctionInputs : List ( Name, va, Type () ) -> Result Error (List Scala.ArgDecl)

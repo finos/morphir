@@ -18,7 +18,7 @@ type alias Error =
     String
 
 
-fromType : IR -> Type () -> Result Error (Generator RawValue)
+fromType : Distribution -> Type () -> Result Error (Generator RawValue)
 fromType ir tpe =
     case tpe of
         Type.Reference _ (( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ) as fqn) args ->

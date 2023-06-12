@@ -13,11 +13,13 @@ import Morphir.Elm.IncrementalResolve as IncrementalResolve
 import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.IR as IR exposing (IR)
+import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.KindOfName exposing (KindOfName(..))
 import Morphir.IR.Literal as Literal
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Package as Package
 import Morphir.IR.SDK.Basics as SDKBasics
 import Morphir.IR.SDK.List as List
 import Morphir.IR.Type as Type exposing (Type)
@@ -458,9 +460,13 @@ mapFunction resolveName moduleName variables (Node functionRange function) =
                     }
                 )
 
+        emptyDistribution : Distribution
+        emptyDistribution =
+            Library [ [ "empty" ] ] Dict.empty Package.emptyDefinition
+
         inferValue : Value () ValueAttribute -> Result Errors (Value () (Type ()))
         inferValue value =
-            Infer.inferValue IR.empty value
+            Infer.inferValue emptyDistribution value
                 |> Result.map (Value.mapValueAttributes identity Tuple.second)
                 |> Result.mapError
                     (TypeCheckError
