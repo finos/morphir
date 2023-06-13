@@ -116,13 +116,19 @@ mapTypeToDecoderReferenceTests =
             )
         , positiveTest "4. Tuple with 2 fields"
             (Just ( [], [] ))
-            (Type.Tuple () [ Type.Reference () (fqn "morphir.sdk" "basics" "string") [] ])
+            (Type.Tuple () [ Type.Reference () (fqn "morphir.sdk" "basics" "string") [], Type.Reference () (fqn "morphir.sdk" "basics" "int") [] ])
             (Scala.Lambda [ ( "c", Just (Scala.TypeRef [ "io", "circe" ] "HCursor") ) ]
                 (Scala.ForComp
                     [ Scala.Extract (Scala.NamedMatch "arg1")
-                        (Scala.Apply (Scala.Ref [ "morphir", "sdk", "basics", "Codec" ] "decodeString") [ Scala.ArgValue Nothing (Scala.Variable "c") ])
+                        (Scala.Apply (Scala.Select (Scala.Apply (Scala.Select (Scala.Variable "c") "downN") [ Scala.ArgValue Nothing (Scala.Literal (Scala.IntegerLit 1)) ]) "as")
+                            [ Scala.ArgValue Nothing (Scala.Ref [ "morphir", "sdk", "basics", "Codec" ] "decodeString") ]
+                        )
+                    , Scala.Extract (Scala.NamedMatch "arg2")
+                        (Scala.Apply (Scala.Select (Scala.Apply (Scala.Select (Scala.Variable "c") "downN") [ Scala.ArgValue Nothing (Scala.Literal (Scala.IntegerLit 2)) ]) "as")
+                            [ Scala.ArgValue Nothing (Scala.Ref [ "morphir", "sdk", "basics", "Codec" ] "decodeInt") ]
+                        )
                     ]
-                    (Scala.Tuple [ Scala.Variable "arg1" ])
+                    (Scala.Tuple [ Scala.Variable "arg1", Scala.Variable "arg2" ])
                 )
             )
         ]

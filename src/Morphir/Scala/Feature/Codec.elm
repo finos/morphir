@@ -582,14 +582,8 @@ mapTypeDefinitionToDecoder currentPackagePath currentModulePath ( typeName, acce
                 downApply : Scala.Value
                 downApply =
                     Scala.Select
-                        (Scala.Apply
-                            (Scala.Select
-                                (Scala.Apply (Scala.Select wrapSingleConstructorsWithArray "downN")
-                                    [ Scala.ArgValue Nothing (Scala.Literal (Scala.IntegerLit 0)) ]
-                                )
-                                "as"
-                            )
-                            [ Scala.ArgValue Nothing (Scala.Ref [ "morphir", "sdk", "string", "Codec" ] "decodeString") ]
+                        (circeAs (downN wrapSingleConstructorsWithArray 0)
+                            (Scala.Ref [ "morphir", "sdk", "string", "Codec" ] "decodeString")
                         )
                         "flatMap"
 
@@ -634,23 +628,16 @@ mapConstructorsToDecoder (( _, _, ctorName ) as fqName_) ctorArgs name =
         generatorsResult : Result Error (List Scala.Generator)
         generatorsResult =
             ctorArgs
-                |> List.map
-                    (\arg ->
+                |> List.indexedMap
+                    (\index arg ->
                         let
-                            argIndex =
-                                String.right 1 (Tuple.first arg |> Name.toCamelCase)
-
                             downApply =
-                                Scala.Variable ("c" ++ ".downN(" ++ argIndex ++ ")")
-
-                            asSelect : Scala.Value
-                            asSelect =
-                                Scala.Select downApply "as"
+                                downN c index
 
                             generatorRHS : Result Error Scala.Value
                             generatorRHS =
                                 mapTypeToDecoderReference Nothing (Tuple.second arg)
-                                    |> Result.map (Scala.Apply asSelect << List.singleton << Scala.ArgValue Nothing)
+                                    |> Result.map (circeAs downApply)
                         in
                         generatorRHS
                             |> Result.map
@@ -730,31 +717,30 @@ mapTypeToDecoderReference maybeTypeNameAndPath tpe =
 
         Type.Tuple a types ->
             let
-                decodedTypesResult =
+                typeDecodersResult : Result Error (List Scala.Value)
+                typeDecodersResult =
                     types
                         |> List.map
                             (\currentType ->
                                 mapTypeToDecoderReference maybeTypeNameAndPath currentType
                             )
                         |> ResultList.keepFirstError
-                        |> Result.map
-                            (\val ->
-                                val |> List.map (\y -> y)
-                            )
 
                 generatorsResult : Result Error (List Scala.Generator)
                 generatorsResult =
-                    decodedTypesResult
+                    typeDecodersResult
                         |> Result.map
-                            (\decodedTypes ->
-                                decodedTypes
+                            (\typeDecoders ->
+                                typeDecoders
                                     |> List.indexedMap
-                                        (\index decodedType ->
+                                        (\index typeDecoderRef ->
                                             Scala.Extract
                                                 (Scala.NamedMatch
                                                     ("arg" ++ String.fromInt (index + 1))
                                                 )
-                                                (Scala.Apply decodedType [ Scala.ArgValue Nothing (Scala.Variable "c") ])
+                                                (circeAs (downN c (index + 1))
+                                                    typeDecoderRef
+                                                )
                                         )
                             )
 
@@ -793,21 +779,13 @@ mapTypeToDecoderReference maybeTypeNameAndPath tpe =
                                     |> Result.map
                                         (\fieldValueDecoder ->
                                             let
-                                                fieldNameLiteral : Scala.Value
-                                                fieldNameLiteral =
-                                                    Scala.Literal (Scala.StringLit (field.name |> Name.toCamelCase))
-
                                                 downFieldApply : Scala.Value
                                                 downFieldApply =
-                                                    Scala.Apply (Scala.Select (Scala.Variable "c") "downField") [ Scala.ArgValue Nothing fieldNameLiteral ]
-
-                                                downFieldApplyWithAs : Scala.Value
-                                                downFieldApplyWithAs =
-                                                    Scala.Select downFieldApply "as"
+                                                    downField c (field.name |> Name.toCamelCase)
 
                                                 forCompFieldRHS : Scala.Value
                                                 forCompFieldRHS =
-                                                    Scala.Apply downFieldApplyWithAs [ Scala.ArgValue Nothing fieldValueDecoder ]
+                                                    circeAs downFieldApply fieldValueDecoder
 
                                                 forCompField : Scala.Generator
                                                 forCompField =
@@ -865,21 +843,13 @@ mapTypeToDecoderReference maybeTypeNameAndPath tpe =
                                     |> Result.map
                                         (\fieldValueDecoder ->
                                             let
-                                                fieldNameLiteral : Scala.Value
-                                                fieldNameLiteral =
-                                                    Scala.Literal (Scala.StringLit (field.name |> Name.toCamelCase))
-
                                                 downFieldApply : Scala.Value
                                                 downFieldApply =
-                                                    Scala.Apply (Scala.Select (Scala.Variable "c") "downField") [ Scala.ArgValue Nothing fieldNameLiteral ]
-
-                                                downFieldApplyWithAs : Scala.Value
-                                                downFieldApplyWithAs =
-                                                    Scala.Select downFieldApply "as"
+                                                    downField c (field.name |> Name.toCamelCase)
 
                                                 forCompFieldRHS : Scala.Value
                                                 forCompFieldRHS =
-                                                    Scala.Apply downFieldApplyWithAs [ Scala.ArgValue Nothing fieldValueDecoder ]
+                                                    circeAs downFieldApply fieldValueDecoder
 
                                                 forCompField : Scala.Generator
                                                 forCompField =
@@ -918,3 +888,37 @@ mapTypeToDecoderReference maybeTypeNameAndPath tpe =
                         Scala.ForComp generators yieldValue
                             |> decoderLambda [ ( Name.fromString "c", typeRef (Name.fromString "HCursor") circePackagePath [] |> Just ) ]
                     )
+
+
+
+-- Circe API
+
+
+c =
+    Scala.Variable "c"
+
+
+circeAs : Scala.Value -> Scala.Value -> Scala.Value
+circeAs cursor decoder =
+    Scala.Apply (Scala.Select cursor "as")
+        [ Scala.ArgValue Nothing
+            decoder
+        ]
+
+
+downField : Scala.Value -> Scala.Name -> Scala.Value
+downField cursor fieldName =
+    Scala.Apply
+        (Scala.Select cursor "downField")
+        [ Scala.ArgValue Nothing
+            (Scala.Literal (Scala.StringLit fieldName))
+        ]
+
+
+downN : Scala.Value -> Int -> Scala.Value
+downN cursor n =
+    Scala.Apply
+        (Scala.Select cursor "downN")
+        [ Scala.ArgValue Nothing
+            (Scala.Literal (Scala.IntegerLit n))
+        ]
