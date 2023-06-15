@@ -2,7 +2,6 @@ module Morphir.Scala.Spark.Backend exposing (..)
 
 import Dict exposing (Dict)
 import Morphir.File.FileMap exposing (FileMap)
-import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
@@ -34,11 +33,6 @@ mapDistribution : Options -> Distribution -> FileMap
 mapDistribution opt distro =
     case distro of
         Distribution.Library packageName _ packageDef ->
-            let
-                ir : IR
-                ir =
-                    IR.fromDistribution distro
-            in
             packageDef.modules
                 |> Dict.toList
                 |> List.map
@@ -61,7 +55,7 @@ mapDistribution opt distro =
                                             |> Dict.toList
                                             |> List.filterMap
                                                 (\( valueName, _ ) ->
-                                                    case mapFunctionDefinition ir ( packageName, moduleName, valueName ) of
+                                                    case mapFunctionDefinition distro ( packageName, moduleName, valueName ) of
                                                         Ok memberDecl ->
                                                             Just (Scala.withoutAnnotation memberDecl)
 
@@ -121,7 +115,7 @@ mapFunctionDefinition ir (( _, _, localFunctionName ) as fullyQualifiedFunctionN
                 |> Result.andThen mapRelation
     in
     ir
-        |> IR.lookupValueDefinition fullyQualifiedFunctionName
+        |> Distribution.lookupValueDefinition fullyQualifiedFunctionName
         |> Result.fromMaybe (FunctionNotFound fullyQualifiedFunctionName)
         |> Result.andThen
             (\functionDef ->

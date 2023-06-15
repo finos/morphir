@@ -3,9 +3,8 @@ module Morphir.Stats.Backend exposing (..)
 import Dict exposing (Dict)
 import Json.Encode as Encode
 import Morphir.File.FileMap exposing (FileMap)
-import Morphir.IR as IR exposing (IR)
 import Morphir.IR.AccessControlled exposing (AccessControlled)
-import Morphir.IR.Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal as Literal
@@ -37,12 +36,8 @@ collectFeaturesFromDistribution distribution =
     case distribution of
         Library _ _ packageDefinition ->
             let
-                ir : IR
-                ir =
-                    IR.fromDistribution distribution
-
                 featureList =
-                    collectFeaturesFromPackage ir packageDefinition
+                    collectFeaturesFromPackage distribution packageDefinition
 
                 encodedFeatureListAsJSON : String
                 encodedFeatureListAsJSON =
@@ -145,7 +140,7 @@ collectFeaturesFromType ir tpe featureCollection =
         Type.Reference _ fQName types ->
             let
                 extractTypes fqn =
-                    case IR.lookupTypeSpecification fqn ir of
+                    case Distribution.lookupTypeSpecification fqn ir of
                         Just spec ->
                             case spec of
                                 Type.TypeAliasSpecification _ t ->

@@ -28,7 +28,6 @@ import Morphir.Elm.Frontend.Codec as FrontendCodec
 import Morphir.Elm.Target exposing (BackendOptions, decodeOptions, mapDistribution)
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.File.FileMap.Codec exposing (encodeFileMap)
-import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName as FQName
@@ -121,11 +120,14 @@ update msg model =
                                                     |> Package.definitionToSpecificationWithPrivate
                                                     |> Package.mapSpecificationAttributes (\_ -> ())
 
-                                            ir : IR
+                                            ir : Distribution
                                             ir =
-                                                Frontend.defaultDependencies
-                                                    |> Dict.insert packageInfo.name thisPackageSpec
-                                                    |> IR.fromPackageSpecifications
+                                                Library
+                                                    packageInfo.name
+                                                    (Frontend.defaultDependencies
+                                                        |> Dict.insert packageInfo.name thisPackageSpec
+                                                    )
+                                                    Package.emptyDefinition
                                         in
                                         packageDef
                                             |> Package.mapDefinitionAttributes (\_ -> ()) identity
@@ -185,10 +187,10 @@ update msg model =
 
         RunTestCases ( distributionJson, testSuiteJson ) ->
             let
+                resultIR : Result Decode.Error Distribution
                 resultIR =
                     distributionJson
                         |> Decode.decodeValue DistributionCodec.decodeVersionedDistribution
-                        |> Result.map IR.fromDistribution
             in
             case resultIR of
                 Ok ir ->

@@ -7,7 +7,7 @@ module Morphir.Type.Cardinality exposing (Cardinality, AlephNumber, cardinality)
 -}
 
 import Dict exposing (Dict)
-import Morphir.IR as IR exposing (IR)
+import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
 
@@ -32,12 +32,12 @@ type alias AlephNumber =
 -}
 cardinality : Distribution -> Dict Name (Type ()) -> Type () -> Cardinality
 cardinality ir vars tpe =
-    case IR.resolveType tpe ir of
+    case Distribution.resolveType tpe ir of
         Type.Variable _ _ ->
             Unbound
 
         Type.Reference _ fQName typeArgs ->
-            case IR.lookupTypeSpecification fQName ir of
+            case Distribution.lookupTypeSpecification fQName ir of
                 Just typeSpec ->
                     case typeSpec of
                         Type.TypeAliasSpecification _ _ ->

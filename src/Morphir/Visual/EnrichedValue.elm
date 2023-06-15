@@ -10,7 +10,7 @@ easier.
 
 -}
 
-import Morphir.IR exposing (IR)
+import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value, indexedMapValue)
 import Morphir.Type.Infer as Infer exposing (TypeError)

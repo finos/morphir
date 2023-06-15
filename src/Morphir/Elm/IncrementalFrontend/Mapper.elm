@@ -12,7 +12,6 @@ import Graph exposing (Graph)
 import Morphir.Elm.IncrementalResolve as IncrementalResolve
 import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
-import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.KindOfName exposing (KindOfName(..))

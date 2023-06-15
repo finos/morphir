@@ -30,7 +30,6 @@ import Morphir.File.FileMap exposing (FileMap)
 import Morphir.File.FileMap.Codec exposing (encodeFileMap)
 import Morphir.File.FileSnapshot as FileSnapshot exposing (FileSnapshot)
 import Morphir.File.FileSnapshot.Codec as FileSnapshotCodec
-import Morphir.IR as IR
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..), lookupPackageName, lookupPackageSpecification)
 import Morphir.IR.Distribution.Codec as DistroCodec
 import Morphir.IR.Name as Name exposing (Name)
@@ -274,12 +273,8 @@ process msg =
                     packageDistroResult
                         |> Result.andThen
                             (\packageDist ->
-                                let
-                                    ir =
-                                        IR.fromDistribution packageDist
-                                in
                                 Decode.decodeValue
-                                    (TestCodec.decodeTestSuite ir)
+                                    (TestCodec.decodeTestSuite packageDist)
                                     testSuiteJson
                             )
             in
@@ -343,12 +338,8 @@ process msg =
                     packageDistroResult
                         |> Result.andThen
                             (\packageDist ->
-                                let
-                                    ir =
-                                        IR.fromDistribution packageDist
-                                in
                                 Decode.decodeValue
-                                    (TestCodec.decodeTestSuite ir)
+                                    (TestCodec.decodeTestSuite packageDist)
                                     testSuiteJson
                             )
             in
@@ -363,11 +354,11 @@ process msg =
                                         case testSuiteResult of
                                             Ok testSuite ->
                                                 accesscontrolledModDef.value
-                                                    |> getBranchCoverage ( packageName, modName ) (IR.fromDistribution packageDistro) testSuite
+                                                    |> getBranchCoverage ( packageName, modName ) packageDistro testSuite
 
                                             Err err ->
                                                 accesscontrolledModDef.value
-                                                    |> getBranchCoverage ( packageName, modName ) (IR.fromDistribution packageDistro) Dict.empty
+                                                    |> getBranchCoverage ( packageName, modName ) packageDistro Dict.empty
                                     )
                                 |> List.map encodeTestCoverageResult
                                 |> (\lstValues ->

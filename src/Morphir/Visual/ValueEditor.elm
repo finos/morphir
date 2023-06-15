@@ -67,7 +67,7 @@ import Element.Events as Events
 import Element.Font as Font exposing (center)
 import Element.Input as Input exposing (placeholder)
 import Morphir.Elm.Frontend as Frontend
-import Morphir.IR as IR exposing (IR)
+import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
@@ -270,7 +270,7 @@ initComponentState ir valueType maybeInitialValue =
             else
                 case valueType of
                     Type.Reference _ fQName _ ->
-                        case ir |> IR.lookupTypeSpecification fQName of
+                        case ir |> Distribution.lookupTypeSpecification fQName of
                             Just typeSpec ->
                                 case typeSpec of
                                     Type.TypeAliasSpecification _ typeExp ->
@@ -456,7 +456,7 @@ initMaybeEditor ir itemType maybeInitialValue =
 -}
 initListEditor : Distribution -> Type () -> Maybe RawValue -> ( Maybe Error, ComponentState )
 initListEditor ir itemType maybeInitialValue =
-    case ir |> IR.resolveType itemType of
+    case ir |> Distribution.resolveType itemType of
         Type.Record _ fieldTypes ->
             let
                 columnTypes : List ( Name, Type () )
@@ -665,7 +665,7 @@ view theme ir valueType updateEditorState editorState =
                                                         localName =
                                                             Name.fromString "fooFunction"
                                                     in
-                                                    case sourceFileIR |> IR.lookupValueDefinition ( packageName, moduleName, localName ) of
+                                                    case sourceFileIR |> Distribution.lookupValueDefinition ( packageName, moduleName, localName ) of
                                                         Just valDef ->
                                                             Ok (valDef.body |> Value.toRawValue)
 
@@ -679,7 +679,7 @@ view theme ir valueType updateEditorState editorState =
 
                             else
                                 updateEditorState
-                                    (applyResult (valueResult (IR.resolveType valueType ir))
+                                    (applyResult (valueResult (Distribution.resolveType valueType ir))
                                         { editorState
                                             | componentState = TextEditor updatedText
                                             , defaultValueCheckbox = { show = editorState.defaultValueCheckbox.show, checked = False }
@@ -688,7 +688,7 @@ view theme ir valueType updateEditorState editorState =
                     , text = currentText
                     , placeholder =
                         Just (placeholder [ center, paddingXY 0 1 ] (text "not set"))
-                    , label = Input.labelLeft labelStyle (text <| iconLabel (IR.resolveType valueType ir))
+                    , label = Input.labelLeft labelStyle (text <| iconLabel (Distribution.resolveType valueType ir))
                     }
                     editorState.errorState
                 , if editorState.defaultValueCheckbox.show then
@@ -699,7 +699,7 @@ view theme ir valueType updateEditorState editorState =
                         , onChange =
                             \updatedIsChecked ->
                                 updateEditorState
-                                    (applyResult ((\_ -> Ok (Value.Literal () (StringLiteral ""))) (IR.resolveType valueType ir))
+                                    (applyResult ((\_ -> Ok (Value.Literal () (StringLiteral ""))) (Distribution.resolveType valueType ir))
                                         { editorState
                                             | componentState = TextEditor ""
                                             , defaultValueCheckbox = { show = True, checked = updatedIsChecked }
@@ -1262,7 +1262,7 @@ view theme ir valueType updateEditorState editorState =
                                                 localName =
                                                     Name.fromString "fooFunction"
                                             in
-                                            case sourceFileIR |> IR.lookupValueDefinition ( packageName, moduleName, localName ) of
+                                            case sourceFileIR |> Distribution.lookupValueDefinition ( packageName, moduleName, localName ) of
                                                 Just valDef ->
                                                     Ok (valDef.body |> Value.toRawValue)
 
@@ -1276,7 +1276,7 @@ view theme ir valueType updateEditorState editorState =
 
                         else
                             updateEditorState
-                                (applyResult (valueResult (IR.resolveType valueType ir))
+                                (applyResult (valueResult (Distribution.resolveType valueType ir))
                                     { editorState
                                         | componentState = GenericEditor updatedText
                                     }

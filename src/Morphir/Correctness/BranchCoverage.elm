@@ -2,7 +2,7 @@ module Morphir.Correctness.BranchCoverage exposing (..)
 
 import Dict exposing (Dict)
 import Morphir.Correctness.Test exposing (TestCase)
-import Morphir.IR exposing (IR)
+import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK as SDK
