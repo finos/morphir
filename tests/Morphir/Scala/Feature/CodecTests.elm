@@ -120,11 +120,11 @@ mapTypeToDecoderReferenceTests =
             (Scala.Lambda [ ( "c", Just (Scala.TypeRef [ "io", "circe" ] "HCursor") ) ]
                 (Scala.ForComp
                     [ Scala.Extract (Scala.NamedMatch "arg1")
-                        (Scala.Apply (Scala.Select (Scala.Apply (Scala.Select (Scala.Variable "c") "downN") [ Scala.ArgValue Nothing (Scala.Literal (Scala.IntegerLit 1)) ]) "as")
+                        (Scala.Apply (Scala.Select (Scala.Apply (Scala.Select (Scala.Variable "c") "downN") [ Scala.ArgValue Nothing (Scala.Literal (Scala.IntegerLit 0)) ]) "as")
                             [ Scala.ArgValue Nothing (Scala.Ref [ "morphir", "sdk", "basics", "Codec" ] "decodeString") ]
                         )
                     , Scala.Extract (Scala.NamedMatch "arg2")
-                        (Scala.Apply (Scala.Select (Scala.Apply (Scala.Select (Scala.Variable "c") "downN") [ Scala.ArgValue Nothing (Scala.Literal (Scala.IntegerLit 2)) ]) "as")
+                        (Scala.Apply (Scala.Select (Scala.Apply (Scala.Select (Scala.Variable "c") "downN") [ Scala.ArgValue Nothing (Scala.Literal (Scala.IntegerLit 1)) ]) "as")
                             [ Scala.ArgValue Nothing (Scala.Ref [ "morphir", "sdk", "basics", "Codec" ] "decodeInt") ]
                         )
                     ]

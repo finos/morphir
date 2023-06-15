@@ -632,7 +632,7 @@ mapConstructorsToDecoder (( _, _, ctorName ) as fqName_) ctorArgs name =
                     (\index arg ->
                         let
                             downApply =
-                                downN c index
+                                downN c (index + 1)
 
                             generatorRHS : Result Error Scala.Value
                             generatorRHS =
@@ -738,7 +738,7 @@ mapTypeToDecoderReference maybeTypeNameAndPath tpe =
                                                 (Scala.NamedMatch
                                                     ("arg" ++ String.fromInt (index + 1))
                                                 )
-                                                (circeAs (downN c (index + 1))
+                                                (circeAs (downN c index)
                                                     typeDecoderRef
                                                 )
                                         )
