@@ -66,6 +66,41 @@ mathTests =
                 Date.fromCalendarDate 2020 Feb 1
                     |> LocalDate.addYears -1
                     |> Expect.equal (Date.fromCalendarDate 2019 Feb 1)
+        , test "fromISO string to localDate" <|
+            \_ ->
+                LocalDate.fromISO "2023-06-13"
+                    |> Maybe.withDefault (Date.fromCalendarDate 2019 Feb 1)
+                    |> Expect.equal (Date.fromCalendarDate 2023 Jun 13)
+        , test "toISOString" <|
+            \_ ->
+                Date.fromCalendarDate 2023 Jun 13
+                    |> LocalDate.toISOString
+                    |> Expect.equal "2023-06-13"
+        , test "fromParts" <|
+            \_ ->
+                LocalDate.fromParts 2023 6 9
+                    |> Maybe.withDefault (Date.fromCalendarDate 2019 Feb 1)
+                    |> Expect.equal (Date.fromCalendarDate 2023 Jun 9)
+        , test "diffInDays" <|
+            \_ ->
+                Date.fromCalendarDate 2023 Jun 19
+                    |> LocalDate.diffInDays (Date.fromCalendarDate 2023 Jun 9)
+                    |> Expect.equal 10
+        , test "diffInWeeks" <|
+            \_ ->
+                Date.fromCalendarDate 2023 Jun 19
+                    |> LocalDate.diffInWeeks (Date.fromCalendarDate 2023 Jun 9)
+                    |> Expect.equal 1
+        , test "diffInMonths" <|
+            \_ ->
+                Date.fromCalendarDate 2023 Jun 19
+                    |> LocalDate.diffInMonths (Date.fromCalendarDate 2023 Jun 9)
+                    |> Expect.equal 0
+        , test "diffInYears" <|
+            \_ ->
+                Date.fromCalendarDate 2024 Jun 19
+                    |> LocalDate.diffInYears (Date.fromCalendarDate 2023 Jun 9)
+                    |> Expect.equal 1
         ]
 
 
