@@ -1,9 +1,7 @@
 module Morphir.Visual.Config exposing (..)
 
 import Dict exposing (Dict)
-import Html exposing (node)
-import Json.Decode exposing (dict)
-import Morphir.IR exposing (IR)
+import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK as SDK
@@ -15,7 +13,7 @@ import Morphir.Visual.Theme exposing (Theme)
 
 
 type alias Config msg =
-    { ir : IR
+    { ir : Distribution
     , nativeFunctions : Dict FQName Native.Function
     , state : VisualState
     , handlers : EventHandlers msg
@@ -67,7 +65,7 @@ type HighlightState
     | Default
 
 
-fromIR : IR -> VisualState -> EventHandlers msg -> Config msg
+fromIR : Distribution -> VisualState -> EventHandlers msg -> Config msg
 fromIR ir visualState eventHandlers =
     { ir = ir
     , nativeFunctions = SDK.nativeFunctions

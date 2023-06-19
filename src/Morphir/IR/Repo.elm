@@ -36,7 +36,6 @@ query a Repo without breaking the validity of the Repo.
 import Dict exposing (Dict)
 import List.Extra
 import Morphir.Dependency.DAG as DAG exposing (CycleDetected, DAG)
-import Morphir.IR as IR exposing (IR)
 import Morphir.IR.AccessControlled as AccessControlled exposing (Access, AccessControlled, public, withAccess)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Documented as Documented exposing (Documented)
@@ -533,11 +532,10 @@ and store it. This function might fail if the inferred type is not compatible wi
 insertValue : ModuleName -> Name -> Maybe (Type ()) -> Value () () -> Access -> String -> Repo -> Result Errors Repo
 insertValue moduleName valueName maybeValueType value access valueDoc repo =
     let
-        ir : IR
+        ir : Distribution
         ir =
             repo
                 |> toDistribution
-                |> IR.fromDistribution
     in
     case maybeValueType of
         -- If the modeler defined a value type
@@ -573,11 +571,10 @@ and store it. This function might fail if the inferred type is not compatible wi
 updateValue : ModuleName -> Name -> Maybe (Type ()) -> Value () () -> Access -> String -> Repo -> Result Errors Repo
 updateValue moduleName valueName maybeValueType value access doc repo =
     let
-        ir : IR
+        ir : Distribution
         ir =
             repo
                 |> toDistribution
-                |> IR.fromDistribution
 
         -- remove the existing value from the repo and
         -- cleanup existing dependency edges for the value as it will be recalculated

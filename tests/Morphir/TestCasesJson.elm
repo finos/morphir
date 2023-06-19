@@ -5,14 +5,15 @@ import Expect exposing (Expectation)
 import Json.Decode as Decode
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
-import Morphir.IR as IR exposing (IR)
+import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.Package as Package
 import Morphir.IR.Value exposing (RawValue, Value(..))
 import Test exposing (Test, test)
 
 
-ir : IR
+ir : Distribution
 ir =
     let
         versionedDistribution =
@@ -24,8 +25,7 @@ ir =
                 ]
     in
     Decode.decodeString DistributionCodec.decodeVersionedDistribution versionedDistribution
-        |> Result.map IR.fromDistribution
-        |> Result.withDefault IR.empty
+        |> Result.withDefault (Library [ [ "empty" ] ] Dict.empty Package.emptyDefinition)
 
 
 expectedTestSuite : TestSuite

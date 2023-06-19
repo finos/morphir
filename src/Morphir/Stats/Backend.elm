@@ -3,9 +3,8 @@ module Morphir.Stats.Backend exposing (..)
 import Dict exposing (Dict)
 import Json.Encode as Encode
 import Morphir.File.FileMap exposing (FileMap)
-import Morphir.IR as IR exposing (IR)
 import Morphir.IR.AccessControlled exposing (AccessControlled)
-import Morphir.IR.Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal as Literal
@@ -37,12 +36,8 @@ collectFeaturesFromDistribution distribution =
     case distribution of
         Library _ _ packageDefinition ->
             let
-                ir : IR
-                ir =
-                    IR.fromDistribution distribution
-
                 featureList =
-                    collectFeaturesFromPackage ir packageDefinition
+                    collectFeaturesFromPackage distribution packageDefinition
 
                 encodedFeatureListAsJSON : String
                 encodedFeatureListAsJSON =
@@ -66,7 +61,7 @@ collectFeaturesFromDistribution distribution =
                 |> Dict.fromList
 
 
-collectFeaturesFromPackage : IR -> Package.Definition ta va -> FeatureCollection
+collectFeaturesFromPackage : Distribution -> Package.Definition ta va -> FeatureCollection
 collectFeaturesFromPackage ir definition =
     let
         emptyFeatureCollection =
@@ -89,7 +84,7 @@ collectFeaturesFromPackage ir definition =
         |> collectFeaturesFromValueDefs ir values
 
 
-collectTypeFeatures : IR -> List (AccessControlled (Documented (Type.Definition ta))) -> FeatureCollection -> FeatureCollection
+collectTypeFeatures : Distribution -> List (AccessControlled (Documented (Type.Definition ta))) -> FeatureCollection -> FeatureCollection
 collectTypeFeatures ir types featureCollection =
     let
         typeFeaturesFromTypes : FeatureCollection
@@ -135,7 +130,7 @@ collectTypeFeatures ir types featureCollection =
     typeFeaturesFromTypes
 
 
-collectFeaturesFromType : IR -> Type.Type ta -> FeatureCollection -> FeatureCollection
+collectFeaturesFromType : Distribution -> Type.Type ta -> FeatureCollection -> FeatureCollection
 collectFeaturesFromType ir tpe featureCollection =
     case tpe of
         Type.Variable _ _ ->
@@ -145,7 +140,7 @@ collectFeaturesFromType ir tpe featureCollection =
         Type.Reference _ fQName types ->
             let
                 extractTypes fqn =
-                    case IR.lookupTypeSpecification fqn ir of
+                    case Distribution.lookupTypeSpecification fqn ir of
                         Just spec ->
                             case spec of
                                 Type.TypeAliasSpecification _ t ->
@@ -197,7 +192,7 @@ collectFeaturesFromType ir tpe featureCollection =
             incrementOrAdd "Type.Unit" featureCollection
 
 
-collectFeaturesFromValueDefs : IR -> List (Value.Definition ta va) -> FeatureCollection -> FeatureCollection
+collectFeaturesFromValueDefs : Distribution -> List (Value.Definition ta va) -> FeatureCollection -> FeatureCollection
 collectFeaturesFromValueDefs ir values featureCollection =
     let
         collectTypesFromValueDef : Value.Definition ta va -> List (Type.Type ta)
@@ -219,7 +214,7 @@ collectFeaturesFromValueDefs ir values featureCollection =
     typeAndValueFeaturesFromValueSign
 
 
-collectFeaturesFromValue : IR -> Value.Value ta va -> FeatureCollection -> FeatureCollection
+collectFeaturesFromValue : Distribution -> Value.Value ta va -> FeatureCollection -> FeatureCollection
 collectFeaturesFromValue ir value featureCollection =
     case value of
         Value.Literal _ literal ->

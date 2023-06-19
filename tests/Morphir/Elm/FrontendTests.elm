@@ -21,13 +21,12 @@ import Expect exposing (Expectation)
 import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (ContentRange, Errors, SourceFile, SourceLocation, parseRawValue)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
-import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
-import Morphir.IR as IR
-import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
+import Morphir.IR.AccessControlled exposing (AccessControlled, public)
+import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (fQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.IR.Module as Module
+import Morphir.IR.Module
 import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
@@ -57,7 +56,7 @@ parseRawValueTests =
         positiveTest input expectedResult =
             test input
                 (\_ ->
-                    parseRawValue IR.empty input
+                    parseRawValue (Library [ [ "empty" ] ] Dict.empty Package.emptyDefinition) input
                         |> Expect.equal (Ok expectedResult)
                 )
     in

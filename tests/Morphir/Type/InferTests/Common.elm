@@ -1,7 +1,7 @@
 module Morphir.Type.InferTests.Common exposing (..)
 
 import Expect exposing (Expectation)
-import Morphir.IR as IR exposing (IR)
+import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Type.Infer as Infer
@@ -11,7 +11,7 @@ import Morphir.Type.Infer as Infer
 to infer the types again and compares the result with the original. This makes it very easy to check if the inferred
 types align with the expectations even on complex expressions.
 -}
-checkValueTypes : IR -> Value () (Type ()) -> Expectation
+checkValueTypes : Distribution -> Value () (Type ()) -> Expectation
 checkValueTypes ir typedValue =
     let
         untypedValue : Value () ()
@@ -28,7 +28,7 @@ checkValueTypes ir typedValue =
 to infer the types again and compares the result with the original. This makes it very easy to check if the inferred
 types align with the expectations even on complex expressions.
 -}
-checkValueDefinitionTypes : IR -> Value.Definition () (Type ()) -> Expectation
+checkValueDefinitionTypes : Distribution -> Value.Definition () (Type ()) -> Expectation
 checkValueDefinitionTypes ir typedValueDef =
     let
         untypedValueDef : Value.Definition () ()

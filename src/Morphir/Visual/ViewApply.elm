@@ -1,13 +1,11 @@
 module Morphir.Visual.ViewApply exposing (view)
 
 import Dict exposing (Dict)
-import Element exposing (Element, above, centerX, centerY, el, fill, htmlAttribute, moveUp, padding, row, spacing, text, width)
+import Element exposing (Element, above, centerX, centerY, el, fill, moveUp, padding, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import Elm.RawFile exposing (moduleName)
-import Html.Attributes exposing (style, value)
-import Morphir.IR as IR
+import Morphir.IR.Distribution as Distribution
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
@@ -82,7 +80,7 @@ view config viewDefinitionBody viewValue functionValue argValues =
             let
                 variables : List (Maybe RawValue)
                 variables =
-                    case Dict.get fqName config.ir.valueDefinitions of
+                    case config.ir |> Distribution.lookupValueDefinition fqName of
                         Just valueDef ->
                             Dict.fromList (List.map2 (\( name, _, _ ) argValue -> ( name, argValue |> evalIfPathTaken config )) valueDef.inputTypes argValues) |> Dict.values
 
@@ -127,7 +125,7 @@ view config viewDefinitionBody viewValue functionValue argValues =
     in
     case ( functionValue, argValues ) of
         ( (Value.Constructor _ fQName) as constr, _ ) ->
-            case config.ir |> IR.lookupTypeSpecification (config.ir |> IR.resolveAliases fQName) of
+            case config.ir |> Distribution.lookupTypeSpecification (config.ir |> Distribution.resolveAliases fQName) of
                 Just (Type.TypeAliasSpecification _ (Type.Record _ fields)) ->
                     FieldList.view
                         (List.map2
@@ -235,7 +233,7 @@ view config viewDefinitionBody viewValue functionValue argValues =
                 drillDown : DrillDownFunctions -> List Int -> Maybe (Value.Definition () (Type ()))
                 drillDown dict nodePath =
                     if drillDownContains dict (getId functionValue) nodePath then
-                        Dict.get fqName config.ir.valueDefinitions
+                        config.ir |> Distribution.lookupValueDefinition fqName
 
                     else
                         Nothing
