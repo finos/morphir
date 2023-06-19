@@ -20,7 +20,7 @@ import Morphir.Visual.Common exposing (nameToText, tooltip)
 import Morphir.Visual.Components.DrillDownPanel as DrillDownPanel exposing (Depth)
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Config exposing (Config, DrillDownFunctions(..), drillDownContains, evalIfPathTaken)
-import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, getId)
+import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, getId, toTypedValue)
 import Morphir.Visual.Theme as Theme exposing (borderRounded, smallPadding, smallSpacing)
 import Morphir.Visual.ViewList as ViewList
 
@@ -269,14 +269,14 @@ view config viewDefinitionBody viewValue functionValue argValues =
                     case drillDown config.state.drillDownFunctions config.nodePath of
                         Just valueDef ->
                             let
-                                variables =
-                                    Dict.fromList (List.map2 (\( name, _, _ ) argValue -> ( name, argValue |> evalIfPathTaken config |> Maybe.withDefault (Value.Unit ()) )) valueDef.inputTypes argValues)
-
-                                visualState : Morphir.Visual.Config.VisualState
-                                visualState =
-                                    config.state
+                                mapping : Dict Name.Name Value.TypedValue
+                                mapping =
+                                    List.map2 (\val originalName -> ( originalName, toTypedValue val ))
+                                        argValues
+                                        (List.map (\( name, _, _ ) -> name) valueDef.inputTypes)
+                                        |> Dict.fromList
                             in
-                            viewDefinitionBody { config | state = { visualState | variables = variables }, nodePath = config.nodePath ++ [ getId functionValue ] } { valueDef | body = Value.rewriteMaybeToPatternMatch valueDef.body }
+                            viewDefinitionBody { config | nodePath = config.nodePath ++ [ getId functionValue ] } { valueDef | body = Value.replaceVariables (Value.rewriteMaybeToPatternMatch valueDef.body) mapping }
 
                         Nothing ->
                             Element.none
@@ -284,11 +284,8 @@ view config viewDefinitionBody viewValue functionValue argValues =
                 openHeader : Element msg
                 openHeader =
                     row [ smallSpacing config.state.theme |> spacing ]
-                        ([ el [ Background.color <| config.state.theme.colors.selectionColor, smallPadding config.state.theme |> padding ] (text (nameToText valueName))
-                         , argList
-                         ]
-                            |> reverseIfStartsWithIs
-                        )
+                        [ el [ Background.color <| config.state.theme.colors.selectionColor, smallPadding config.state.theme |> padding ] (text (nameToText valueName))
+                        ]
             in
             drillDownPanel fqName (List.length config.nodePath) closedElement openHeader openElement (drillDownContains config.state.drillDownFunctions (getId functionValue) config.nodePath)
 
