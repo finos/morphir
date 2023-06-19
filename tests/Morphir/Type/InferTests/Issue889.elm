@@ -2,7 +2,8 @@ module Morphir.Type.InferTests.Issue889 exposing (..)
 
 import Dict
 import Expect
-import Morphir.IR as IR exposing (IR)
+import Morphir.IR.AccessControlled exposing (public)
+import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.SDK.Basics exposing (boolType, floatType)
@@ -13,7 +14,7 @@ import Morphir.Type.ConstraintSet exposing (ConstraintSet(..))
 import Morphir.Type.Count as Count
 import Morphir.Type.Infer as Infer
 import Morphir.Type.InferTests.Common exposing (checkValueDefinitionTypes)
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..))
+import Morphir.Type.MetaType exposing (MetaType(..))
 import Morphir.Type.Solve exposing (SolutionMap(..))
 import Set
 import Test exposing (Test, test)
@@ -26,30 +27,29 @@ barRecordType =
         ]
 
 
-testIR : IR
+testIR : Distribution
 testIR =
-    Dict.fromList
-        [ ( [ [ "test" ] ]
-          , { modules =
-                Dict.fromList
-                    [ ( [ [ "test" ] ]
-                      , { types =
+    Library [ [ "test" ] ]
+        Dict.empty
+        { modules =
+            Dict.fromList
+                [ ( [ [ "test" ] ]
+                  , public <|
+                        { types =
                             Dict.fromList
                                 [ ( [ "bar", "record" ]
-                                  , Documented ""
-                                        (Type.TypeAliasSpecification [] barRecordType)
+                                  , public <|
+                                        Documented ""
+                                            (Type.TypeAliasDefinition [] barRecordType)
                                   )
                                 ]
                         , values =
                             Dict.empty
                         , doc = Nothing
                         }
-                      )
-                    ]
-            }
-          )
-        ]
-        |> IR.fromPackageSpecifications
+                  )
+                ]
+        }
 
 
 testDefinition : Value.Definition () (Type ())

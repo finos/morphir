@@ -57,7 +57,7 @@ lookupModuleSpecification packageName modulePath distribution =
         Library libraryPackageName dependencies packageDef ->
             if packageName == libraryPackageName then
                 packageDef
-                    |> Package.definitionToSpecification
+                    |> Package.definitionToSpecificationWithPrivate
                     |> Package.lookupModuleSpecification modulePath
 
             else

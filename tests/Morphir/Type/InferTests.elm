@@ -2,7 +2,8 @@ module Morphir.Type.InferTests exposing (..)
 
 import Dict exposing (Dict)
 import Expect
-import Morphir.IR as IR exposing (IR)
+import Morphir.IR.AccessControlled exposing (public)
+import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (fQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
@@ -28,55 +29,58 @@ import Morphir.Type.Solve as Solve exposing (UnificationError(..), UnificationEr
 import Test exposing (Test, describe, test)
 
 
-testReferences : IR
+testReferences : Distribution
 testReferences =
-    Dict.fromList
-        [ ( [ [ "morphir" ], [ "s", "d", "k" ] ]
-          , SDK.packageSpec
-          )
-        , ( [ [ "test" ] ]
-          , { modules =
-                Dict.fromList
-                    [ ( [ [ "test" ] ]
-                      , { types =
+    Library [ [ "test" ] ]
+        (Dict.fromList
+            [ ( [ [ "morphir" ], [ "s", "d", "k" ] ]
+              , SDK.packageSpec
+              )
+            , ( Path.fromString "BooksAndRecords"
+              , BooksAndRecordsTests.packageSpec
+              )
+            , ( Path.fromString "RecordAccess"
+              , RecordFieldAccessTests.packageSpec
+              )
+            ]
+        )
+        { modules =
+            Dict.fromList
+                [ ( [ [ "test" ] ]
+                  , public <|
+                        { types =
                             Dict.fromList
                                 [ ( [ "custom" ]
-                                  , Documented ""
-                                        (Type.CustomTypeSpecification []
-                                            (Dict.fromList
-                                                [ ( [ "custom", "zero" ], [] )
-                                                ]
+                                  , public <|
+                                        Documented ""
+                                            (Type.CustomTypeDefinition []
+                                                (public <|
+                                                    Dict.fromList
+                                                        [ ( [ "custom", "zero" ], [] )
+                                                        ]
+                                                )
                                             )
-                                        )
                                   )
                                 , ( [ "foo", "bar", "baz", "record" ]
-                                  , Documented ""
-                                        (Type.TypeAliasSpecification []
-                                            (Type.Record ()
-                                                [ Type.Field [ "foo" ] (stringType ())
-                                                , Type.Field [ "bar" ] (boolType ())
-                                                , Type.Field [ "baz" ] (intType ())
-                                                ]
+                                  , public <|
+                                        Documented ""
+                                            (Type.TypeAliasDefinition []
+                                                (Type.Record ()
+                                                    [ Type.Field [ "foo" ] (stringType ())
+                                                    , Type.Field [ "bar" ] (boolType ())
+                                                    , Type.Field [ "baz" ] (intType ())
+                                                    ]
+                                                )
                                             )
-                                        )
                                   )
                                 ]
                         , values =
                             Dict.empty
                         , doc = Nothing
                         }
-                      )
-                    ]
-            }
-          )
-        , ( Path.fromString "BooksAndRecords"
-          , BooksAndRecordsTests.packageSpec
-          )
-        , ( Path.fromString "RecordAccess"
-          , RecordFieldAccessTests.packageSpec
-          )
-        ]
-        |> IR.fromPackageSpecifications
+                  )
+                ]
+        }
 
 
 positiveOutcomes : List (Value () (Type ()))

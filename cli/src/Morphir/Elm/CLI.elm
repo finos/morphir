@@ -123,7 +123,7 @@ update msg model =
                                             ir : Distribution
                                             ir =
                                                 Library
-                                                    packageInfo.name
+                                                    [ [ "empty" ] ]
                                                     (Frontend.defaultDependencies
                                                         |> Dict.insert packageInfo.name thisPackageSpec
                                                     )

@@ -2,10 +2,11 @@ module Morphir.Value.InterpreterTests exposing (..)
 
 import Dict
 import Expect
-import Morphir.IR as IR
+import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName exposing (FQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module exposing (ModuleName)
+import Morphir.IR.Package as Package
 import Morphir.IR.QName as QName exposing (QName(..))
 import Morphir.IR.SDK as SDK
 import Morphir.IR.Value as Value
@@ -256,7 +257,7 @@ evaluateValueTests =
         positiveCheck desc input expectedOutput =
             test desc
                 (\_ ->
-                    evaluate SDK.nativeFunctions IR.empty input
+                    evaluate SDK.nativeFunctions (Library [ [ "empty" ] ] Dict.empty Package.emptyDefinition) input
                         |> Expect.equal
                             (Ok expectedOutput)
                 )

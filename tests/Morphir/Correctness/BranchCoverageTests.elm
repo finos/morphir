@@ -1,10 +1,12 @@
 module Morphir.Correctness.BranchCoverageTests exposing (..)
 
+import Dict
 import Expect
 import Morphir.Correctness.BranchCoverage as BranchCoverage exposing (Branch, Condition(..))
 import Morphir.Correctness.Test exposing (TestCase)
-import Morphir.IR as IR
+import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.Package as Package
 import Morphir.IR.SDK.Basics exposing (intType)
 import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (Value)
@@ -221,7 +223,7 @@ assignTestCasesToBranchesTests : Test
 assignTestCasesToBranchesTests =
     let
         ir =
-            IR.empty
+            Library [ [ "empty" ] ] Dict.empty Package.emptyDefinition
 
         assert : String -> Value.Definition () () -> List TestCase -> List ( Branch () (), List TestCase ) -> Test
         assert msg valueDef testCases expectedResult =

@@ -3,7 +3,6 @@ module Morphir.IR.Type.DataCodecTests exposing (decodeDataTest)
 import Dict
 import Expect exposing (Expectation)
 import Json.Decode as Decode
-import Morphir.IR as IR exposing (IR)
 import Morphir.IR.AccessControlled as Access
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Package as Package
@@ -73,11 +72,6 @@ distribution =
         |> Distribution.insertDependency SDK.packageName SDK.packageSpec
 
 
-ir : IR
-ir =
-    IR.fromDistribution distribution
-
-
 decodeDataTest : Test
 decodeDataTest =
     describe "JsonDecoderTest"
@@ -104,7 +98,7 @@ decodeDataTest =
 
 encodeDecodeTest : Type () -> Test
 encodeDecodeTest tpe =
-    fuzz (ValueFuzzer.fromType ir tpe)
+    fuzz (ValueFuzzer.fromType distribution tpe)
         (Debug.toString tpe)
         (\value ->
             Result.map2
@@ -113,7 +107,7 @@ encodeDecodeTest tpe =
                         |> Result.andThen (Decode.decodeValue decoder >> Result.mapError Decode.errorToString)
                         |> Expect.equal (Ok value)
                 )
-                (encodeData ir tpe)
-                (decodeData ir tpe)
+                (encodeData distribution tpe)
+                (decodeData distribution tpe)
                 |> Result.withDefault (Expect.fail ("Could not create codec for " ++ Debug.toString tpe))
         )
