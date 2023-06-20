@@ -40,7 +40,6 @@ import List
 import Morphir.Correctness.Test exposing (TestSuite)
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.File.SourceCode exposing (Doc)
-import Morphir.IR as IR
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Package as Package
@@ -89,7 +88,7 @@ mapPackageDefinition opt testSuite distribution packagePath packageDef =
     let
         generatedTestsResult =
             testSuite
-                |> TestBackend.genTestSuite opt.testOptions packagePath (IR.fromDistribution distribution)
+                |> TestBackend.genTestSuite opt.testOptions packagePath distribution
                 |> Result.mapError TestError
 
         generatedScala =

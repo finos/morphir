@@ -19,7 +19,6 @@
         "Morphir.SDK.Dict",
         "Morphir.SDK.ResultList",
         "Morphir.SDK.LocalTime",
-        "Morphir.IR",
         "Morphir.IR.Name",
         "Morphir.IR.Path",
         "Morphir.IR.QName",

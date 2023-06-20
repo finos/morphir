@@ -18,7 +18,7 @@
 module Morphir.IR.Value exposing
     ( Value(..), RawValue, TypedValue, literal, constructor, apply, field, fieldFunction, lambda, letDef, letDestruct, letRec, list, record, reference
     , tuple, variable, ifThenElse, patternMatch, update, unit
-    , mapValueAttributes, rewriteMaybeToPatternMatch
+    , mapValueAttributes, rewriteMaybeToPatternMatch, replaceVariables
     , Pattern(..), wildcardPattern, asPattern, tuplePattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
     , Specification, mapSpecificationAttributes
     , Definition, mapDefinition, mapDefinitionAttributes
@@ -83,7 +83,7 @@ Value is the top level building block for data and logic. See the constructor fu
 
 @docs Value, RawValue, TypedValue, literal, constructor, apply, field, fieldFunction, lambda, letDef, letDestruct, letRec, list, record, reference
 @docs tuple, variable, ifThenElse, patternMatch, update, unit
-@docs mapValueAttributes, rewriteMaybeToPatternMatch
+@docs mapValueAttributes, rewriteMaybeToPatternMatch, replaceVariables
 
 
 # Pattern
@@ -969,6 +969,22 @@ rewriteMaybeToPatternMatch value =
                                         [ ( ConstructorPattern maybetpe ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] ) [ AsPattern tpe (WildcardPattern tpe) argName ], Apply tpe (rewriteMaybeToPatternMatch mapLambda) (Variable tpe argName) )
                                         , ( ConstructorPattern maybetpe ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) [], defaultValue )
                                         ]
+
+                    _ ->
+                        Nothing
+            )
+
+
+{-| Find and replace variables with another value based on the mapping provided.
+-}
+replaceVariables : Value ta va -> Dict Name.Name (Value ta va) -> Value ta va
+replaceVariables value mapping =
+    value
+        |> rewriteValue
+            (\val ->
+                case val of
+                    Variable _ name ->
+                        Just (Dict.get name mapping |> Maybe.withDefault val)
 
                     _ ->
                         Nothing

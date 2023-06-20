@@ -22,7 +22,7 @@ module Morphir.Scala.Feature.TestBackend exposing (..)
 
 import Dict
 import Morphir.Correctness.Test as T
-import Morphir.IR as IR exposing (IR)
+import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package exposing (PackageName)
@@ -140,8 +140,8 @@ and the params are: packageName, ir, includeScalaTest (generate the test cases f
 The TestCases are generated at the root of the scala package as `MorphirTests.scala` and may contain runnable test cases
 if `includeScalaTest = True`.
 -}
-genTestSuite : Options -> PackageName -> IR -> MorphirTestSuite -> Result Errors (List CompilationUnit)
-genTestSuite opts packageName ir morphirTestSuite =
+genTestSuite : Options -> PackageName -> Distribution -> MorphirTestSuite -> Result Errors (List CompilationUnit)
+genTestSuite opts packageName distro morphirTestSuite =
     let
         testsToGenerate : List ( TestKind, Bool )
         testsToGenerate =
@@ -154,7 +154,7 @@ genTestSuite opts packageName ir morphirTestSuite =
 
         scalaTestCasesResult : Result Error (List ScalaTestCase)
         scalaTestCasesResult =
-            morphirTestCaseToScalaTestCase ir fullySpecifiedTestCases
+            morphirTestCaseToScalaTestCase distro fullySpecifiedTestCases
     in
     testsToGenerate
         |> List.filterMap
@@ -270,7 +270,7 @@ createTestDecl testKind scalaTestCases =
 maintaining the record structure. This allows creation of different kinds of test without having to do
 the value mappings again.
 -}
-morphirTestCaseToScalaTestCase : IR -> List ( FQName, FullySpecified ) -> Result Error (List ScalaTestCase)
+morphirTestCaseToScalaTestCase : Distribution -> List ( FQName, FullySpecified ) -> Result Error (List ScalaTestCase)
 morphirTestCaseToScalaTestCase ir fullySpecifiedMorphirTestCases =
     let
         mapper : Int -> ( FQName, FullySpecified ) -> Result Error ScalaTestCase
@@ -278,7 +278,7 @@ morphirTestCaseToScalaTestCase ir fullySpecifiedMorphirTestCases =
             let
                 valueSpecResult : Result Error (Value.Specification ())
                 valueSpecResult =
-                    IR.lookupValueSpecification fqn ir
+                    Distribution.lookupValueSpecification fqn ir
                         |> Result.fromMaybe (TestError ("Could not find a function with FQN: " ++ FQName.toString fqn))
 
                 applyArgsOnRef : List RawValue -> RawValue -> RawValue
@@ -416,7 +416,7 @@ If a type is supplied to this function, it creates a value definition and then p
 If no type information is supplied, then it attempts to infer the type.
 In case of an error while inferring the type, this returns a `Nothing`
 -}
-rawValueToTypedValue : IR -> Maybe (Type.Type ()) -> RawValue -> Result Error Value.TypedValue
+rawValueToTypedValue : Distribution -> Maybe (Type.Type ()) -> RawValue -> Result Error Value.TypedValue
 rawValueToTypedValue ir valueType rawValue =
     let
         mapInferResult : Result Infer.TypeError (Value () ( b, Type.Type () )) -> Result Error (Value () (Type.Type ()))

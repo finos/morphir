@@ -38,7 +38,7 @@ generator uses.
 
 import Array exposing (Array)
 import Dict exposing (Dict)
-import Morphir.IR as IR exposing (..)
+import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
@@ -275,14 +275,15 @@ mergeSelects expressions =
                 |> List.map
                     (\expression ->
                         case expression of
-                            Select [namedExpression] (From _) ->
+                            Select [ namedExpression ] (From _) ->
                                 namedExpression |> Ok
-                            Select [(exprName, Function funcName [funcArg])] (Filter filterExpression (From _)) ->
-                                -- i.e. `source.filter(...).select(...)` into `source.select(...)`
-                                Ok ( exprName
-                                , Function funcName [ Function "when" [ filterExpression, funcArg ] ]
-                                )
 
+                            Select [ ( exprName, Function funcName [ funcArg ] ) ] (Filter filterExpression (From _)) ->
+                                -- i.e. `source.filter(...).select(...)` into `source.select(...)`
+                                Ok
+                                    ( exprName
+                                    , Function funcName [ Function "when" [ filterExpression, funcArg ] ]
+                                    )
 
                             other ->
                                 UnhandledObjectExpression other |> Err
@@ -294,54 +295,64 @@ mergeSelects expressions =
             case relation of
                 From _ ->
                     Ok relation
+
                 Filter _ sourceRelation ->
                     getRootSourceRelation sourceRelation
+
                 Select _ sourceRelation ->
                     getRootSourceRelation sourceRelation
+
                 Join _ _ _ _ ->
                     -- XXX: Joins merge two source relations, no one "root"
                     Err (UnhandledObjectExpression relation)
+
                 Aggregate _ _ _ ->
                     -- XXX: I don't expect to ever see this
                     Err (UnhandledObjectExpression relation)
+
         unique_items : List ObjectExpression -> List ObjectExpression
         unique_items items =
             List.foldr
                 (\item list ->
                     if List.member item list then
                         list
+
                     else
                         item :: list
                 )
                 []
                 items
+
         unique_roots =
             expressions
                 |> List.map getRootSourceRelation
                 |> ResultList.keepFirstError
                 |> Result.map unique_items
+
         only_root =
             unique_roots
                 |> Result.andThen
-                    ( \roots ->
+                    (\roots ->
                         case roots of
                             head :: [] ->
                                 head |> Ok
+
                             _ ->
                                 ObjectExpressionsNotUnique roots |> Err
                     )
     in
-        Result.map2
-            Select
-            collectNamedExpressions
-            only_root
+    Result.map2
+        Select
+        collectNamedExpressions
+        only_root
 
 
 substituteOnlyFieldName : Name -> ObjectExpression -> Result Error ObjectExpression
 substituteOnlyFieldName fieldName sourceExpression =
     case sourceExpression of
-        Select [ (name, expression) ] source ->
-            Select [ (fieldName, expression) ] source |> Ok
+        Select [ ( name, expression ) ] source ->
+            Select [ ( fieldName, expression ) ] source |> Ok
+
         _ ->
             Err (UnhandledObjectExpression sourceExpression)
 
@@ -350,7 +361,7 @@ substituteOnlyFieldName fieldName sourceExpression =
 This is where support for various top level expression is added. This function fails to produce an ObjectExpression
 when it encounters a value that is not supported.
 -}
-objectExpressionFromValue : IR -> TypedValue -> Result Error ObjectExpression
+objectExpressionFromValue : Distribution -> TypedValue -> Result Error ObjectExpression
 objectExpressionFromValue ir morphirValue =
     case morphirValue of
         Value.Variable _ varName ->
@@ -391,16 +402,16 @@ objectExpressionFromValue ir morphirValue =
             objectExpressionFromValue ir sourceRelation
                 |> Result.andThen (appendFunctionToSelect applyFuncName)
 
-        Value.Apply applyType ( Value.Lambda lamType lamArgs ( Value.List _ [ (Value.Record _ _ ) as record ] ) ) sourceRelation ->
-            Value.Apply applyType ( Value.Lambda lamType lamArgs record) sourceRelation
+        Value.Apply applyType (Value.Lambda lamType lamArgs (Value.List _ [ (Value.Record _ _) as record ])) sourceRelation ->
+            Value.Apply applyType (Value.Lambda lamType lamArgs record) sourceRelation
                 |> objectExpressionFromValue ir
 
-        Value.Apply _ ((Value.Lambda _ _ (Value.Record ta relations) ) as lam) sourceRelation ->
+        Value.Apply _ ((Value.Lambda _ _ (Value.Record ta relations)) as lam) sourceRelation ->
             relations
                 |> Dict.toList
                 |> List.map
                     (\( name, value ) ->
-                        inlineArguments (collectLambdaParams lam [] ) [sourceRelation] value
+                        inlineArguments (collectLambdaParams lam []) [ sourceRelation ] value
                             |> Tuple.pair name
                     )
                 |> Dict.fromList
@@ -420,7 +431,7 @@ objectExpressionFromValue ir morphirValue =
 
         Value.Apply _ (Value.Lambda _ (Value.AsPattern _ (WildcardPattern _) label) body) sourceRelation ->
             -- Attempt to inline simple lambdas to see if that makes it readable before erroring
-            inlineArguments [label] [sourceRelation] body
+            inlineArguments [ label ] [ sourceRelation ] body
                 |> objectExpressionFromValue ir
 
         other ->
@@ -431,7 +442,7 @@ objectExpressionFromValue ir morphirValue =
             Err (UnhandledValue other)
 
 
-buildJoin : IR -> JoinType -> TypedValue -> TypedValue -> TypedValue -> Result Error ObjectExpression
+buildJoin : Distribution -> JoinType -> TypedValue -> TypedValue -> TypedValue -> Result Error ObjectExpression
 buildJoin ir joinType baseRelation joinedRelation onClause =
     Result.map3 (Join joinType)
         (objectExpressionFromValue ir baseRelation)
@@ -439,7 +450,7 @@ buildJoin ir joinType baseRelation joinedRelation onClause =
         (expressionFromValue ir onClause)
 
 
-namedExpressionsFromFields : IR -> Dict Name TypedValue -> Result Error NamedExpressions
+namedExpressionsFromFields : Distribution -> Dict Name TypedValue -> Result Error NamedExpressions
 namedExpressionsFromFields ir fields =
     fields
         |> Dict.toList
@@ -451,18 +462,19 @@ namedExpressionsFromFields ir fields =
         |> ResultList.keepFirstError
 
 
-objectExpressionFromAggregationCall : IR -> AggregationCall -> Result Error ObjectExpression
+objectExpressionFromAggregationCall : Distribution -> AggregationCall -> Result Error ObjectExpression
 objectExpressionFromAggregationCall ir aggregationCall =
     let
         spliceFilterIntoFunction : Expression -> Expression -> Result Error Expression
         spliceFilterIntoFunction filterExpr function =
             case function of
-                Function funcName [funcArg] ->
-                    Function funcName [Function "when" [filterExpr, funcArg] ] |> Ok
+                Function funcName [ funcArg ] ->
+                    Function funcName [ Function "when" [ filterExpr, funcArg ] ] |> Ok
+
                 other ->
                     UnhandledExpression other |> Err
 
-        namedExpressionFromAggValue : AggregateValue -> Result Error (Name, Expression)
+        namedExpressionFromAggValue : AggregateValue -> Result Error ( Name, Expression )
         namedExpressionFromAggValue aggValue =
             case aggValue of
                 AggregateValue fieldName filterFunc aggName aggArg ->
@@ -471,20 +483,20 @@ objectExpressionFromAggregationCall ir aggregationCall =
                             aggArg
                                 |> Maybe.map List.singleton
                                 |> Maybe.withDefault []
+
                         aggExpr =
                             mapSDKFunctions ir aggArgs aggName
-
                     in
                     case filterFunc of
                         Just filt ->
                             Result.map2
                                 spliceFilterIntoFunction
                                 (expressionFromValue ir filt)
-                                (aggExpr)
-                            |> Result.andThen (Result.map (Tuple.pair fieldName))
+                                aggExpr
+                                |> Result.andThen (Result.map (Tuple.pair fieldName))
+
                         Nothing ->
                             aggExpr |> Result.map (Tuple.pair fieldName)
-
     in
     case aggregationCall of
         AggregationCall groupKey _ aggValues sourceRelation ->
@@ -501,7 +513,7 @@ objectExpressionFromAggregationCall ir aggregationCall =
 
 {-| Provides a way to create NamedExpressions from a Morphir Value.
 -}
-namedExpressionsFromValue : IR -> TypedValue -> Result Error NamedExpressions
+namedExpressionsFromValue : Distribution -> TypedValue -> Result Error NamedExpressions
 namedExpressionsFromValue ir typedValue =
     case typedValue of
         Value.Lambda _ _ (Value.List _ [ Value.Record _ fields ]) ->
@@ -545,7 +557,7 @@ replaceLambdaArg replacementValue lam =
             UnhandledValue other |> Err
 
 
-constructWhenEqualsOtherwise : IR -> TypedValue -> List ( Pattern (Type.Type ()), TypedValue ) -> TypedValue -> Expression -> Result Error Expression
+constructWhenEqualsOtherwise : Distribution -> TypedValue -> List ( Pattern (Type.Type ()), TypedValue ) -> TypedValue -> Expression -> Result Error Expression
 constructWhenEqualsOtherwise ir thenValue remainingCases leftValue rightExpr =
     Result.map3
         (\leftExpr thenExpr otherwiseExpr ->
@@ -561,7 +573,7 @@ constructWhenEqualsOtherwise ir thenValue remainingCases leftValue rightExpr =
 
 {-| Transforms a list of pattern,value tuples into Expressions
 -}
-mapPatterns : IR -> TypedValue -> List ( Pattern (Type.Type ()), TypedValue ) -> Result Error Expression
+mapPatterns : Distribution -> TypedValue -> List ( Pattern (Type.Type ()), TypedValue ) -> Result Error Expression
 mapPatterns ir onValue cases =
     case cases of
         [] ->
@@ -591,7 +603,7 @@ mapPatterns ir onValue cases =
 This is where support for various column expression is added. This function fails to produce an Expression
 when it encounters a value that is not supported.
 -}
-expressionFromValue : IR -> TypedValue -> Result Error Expression
+expressionFromValue : Distribution -> TypedValue -> Result Error Expression
 expressionFromValue ir morphirValue =
     case morphirValue of
         Value.Literal _ literal ->
@@ -740,11 +752,11 @@ param variables with the arguments. If the `target` is a lambda, it first attemp
 the lambda body and rewrite any enclosed variables and then repeats the process for
 the lambda's params.
 -}
-mapApply : IR -> List TypedValue -> TypedValue -> Result Error Expression
+mapApply : Distribution -> List TypedValue -> TypedValue -> Result Error Expression
 mapApply ir args target =
     case target of
         Value.Reference _ (( pkgName, modName, _ ) as fqn) ->
-            case IR.lookupValueDefinition fqn ir of
+            case Distribution.lookupValueDefinition fqn ir of
                 Just def ->
                     inlineArguments
                         (List.map (\( n, _, _ ) -> n) def.inputTypes)
@@ -780,7 +792,6 @@ mapApply ir args target =
 inlineArguments : List Name -> List TypedValue -> TypedValue -> TypedValue
 inlineArguments paramList argList fnBody =
     let
-
         overwriteValue : Name -> TypedValue -> TypedValue -> TypedValue
         overwriteValue searchTerm replacement scope =
             -- TODO handle replacement of the variable within a lambda
@@ -788,6 +799,7 @@ inlineArguments paramList argList fnBody =
                 Value.Variable _ name ->
                     if name == searchTerm then
                         replacement
+
                     else
                         scope
 
@@ -856,21 +868,25 @@ fQNameToPartialSparkFunction fQName =
         -- Aggregation Functions
         "Morphir.SDK:Aggregate:sumOf" ->
             Function "sum" |> Ok
+
         "Morphir.SDK:Aggregate:averageOf" ->
             Function "avg" |> Ok
+
         "Morphir.SDK:Aggregate:minimumOf" ->
             Function "min" |> Ok
+
         "Morphir.SDK:Aggregate:maximumOf" ->
             Function "max" |> Ok
+
         "Morphir.SDK:Aggregate:weightedAverageOf" ->
-          -- XXX: I can't see a Spark equivalent
-          UnsupportedSDKFunction fQName |> Err
+            -- XXX: I can't see a Spark equivalent
+            UnsupportedSDKFunction fQName |> Err
 
         _ ->
             FunctionNotFound fQName |> Err
 
 
-mapSDKFunctions : IR -> List TypedValue -> FQName -> Result Error Expression
+mapSDKFunctions : Distribution -> List TypedValue -> FQName -> Result Error Expression
 mapSDKFunctions ir args fQName =
     case ( FQName.toString fQName, args ) of
         ( "Morphir.SDK:String:replace", pattern :: replacement :: target :: [] ) ->

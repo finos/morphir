@@ -4,7 +4,7 @@ import Dict
 import Element exposing (Element, column, el, none, padding, rgb, row, shrink, spacing, table, text)
 import Element.Background as Background
 import Element.Border as Border
-import Morphir.IR exposing (IR)
+import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.Name as Name
 import Morphir.Type.Constraint exposing (Constraint(..))
 import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet)
@@ -120,7 +120,7 @@ viewSolution solutionMap =
         }
 
 
-viewSolveSteps : Int -> IR -> SolutionMap -> ConstraintSet -> List (Element msg)
+viewSolveSteps : Int -> Distribution -> SolutionMap -> ConstraintSet -> List (Element msg)
 viewSolveSteps depth ir solutionMap constraintSet =
     let
         thisStep : Element msg

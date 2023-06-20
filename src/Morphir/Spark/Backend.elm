@@ -32,7 +32,6 @@ This uses a two-step process
 
 import Dict exposing (Dict)
 import Morphir.File.FileMap exposing (FileMap)
-import Morphir.IR as IR exposing (IR)
 import Morphir.IR.AccessControlled as AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Documented as Documented exposing (Documented)
@@ -73,9 +72,9 @@ mapDistribution _ distro =
     case fixedDistro of
         Distribution.Library packageName _ packageDef ->
             let
-                ir : IR
+                ir : Distribution
                 ir =
-                    IR.fromDistribution fixedDistro
+                    fixedDistro
             in
             packageDef.modules
                 |> Dict.toList
@@ -208,7 +207,7 @@ mapEnumToLiteral value =
 
 {-| Maps function definitions defined within the current package to scala
 -}
-mapFunctionDefinition : IR -> FQName -> Result Error Scala.MemberDecl
+mapFunctionDefinition : Distribution -> FQName -> Result Error Scala.MemberDecl
 mapFunctionDefinition ir (( _, _, localFunctionName ) as fullyQualifiedFunctionName) =
     let
         mapFunctionInputs : List ( Name, va, Type () ) -> Result Error (List Scala.ArgDecl)
@@ -231,7 +230,7 @@ mapFunctionDefinition ir (( _, _, localFunctionName ) as fullyQualifiedFunctionN
                 |> ResultList.keepFirstError
     in
     ir
-        |> IR.lookupValueDefinition fullyQualifiedFunctionName
+        |> Distribution.lookupValueDefinition fullyQualifiedFunctionName
         |> Result.fromMaybe (FunctionNotFound fullyQualifiedFunctionName)
         |> Result.andThen
             (\functionDef ->
@@ -253,7 +252,7 @@ mapFunctionDefinition ir (( _, _, localFunctionName ) as fullyQualifiedFunctionN
 
 {-| Maps morphir values to scala values
 -}
-mapValue : IR -> TypedValue -> Result Error Scala.Value
+mapValue : Distribution -> TypedValue -> Result Error Scala.Value
 mapValue ir body =
     body
         |> SparkAST.objectExpressionFromValue ir

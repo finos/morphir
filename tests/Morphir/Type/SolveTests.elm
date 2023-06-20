@@ -2,14 +2,16 @@ module Morphir.Type.SolveTests exposing (..)
 
 import Dict
 import Expect
-import Morphir.IR as IR exposing (IR)
+import Morphir.IR.AccessControlled exposing (public)
+import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (fqn)
+import Morphir.IR.Package as Package
 import Morphir.IR.SDK as SDK
 import Morphir.IR.SDK.Basics exposing (boolType, intType)
 import Morphir.IR.SDK.String exposing (stringType)
 import Morphir.IR.Type as Type
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaAlias, metaClosedRecord, metaFun, metaOpenRecord, metaRecord, variableByIndex)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaAlias, metaClosedRecord, metaFun, metaOpenRecord, variableByIndex)
 import Morphir.Type.Solve as Solve exposing (SolutionMap, unifyMetaType)
 import Test exposing (Test, describe, test)
 
@@ -68,7 +70,7 @@ addSolutionTests =
             test msg
                 (\_ ->
                     original
-                        |> Solve.addSolution IR.empty var newSolution
+                        |> Solve.addSolution (Library [ [ "empty" ] ] Dict.empty Package.emptyDefinition) var newSolution
                         |> Expect.equal (Ok expected)
                 )
     in
@@ -194,46 +196,49 @@ unifyTests =
         ]
 
 
-testIR : IR
+testIR : Distribution
 testIR =
-    Dict.fromList
-        [ ( [ [ "morphir" ], [ "s", "d", "k" ] ]
-          , SDK.packageSpec
-          )
-        , ( [ [ "test" ] ]
-          , { modules =
-                Dict.fromList
-                    [ ( [ [ "test" ] ]
-                      , { types =
+    Library [ [ "test" ] ]
+        (Dict.fromList
+            [ ( [ [ "morphir" ], [ "s", "d", "k" ] ]
+              , SDK.packageSpec
+              )
+            ]
+        )
+        { modules =
+            Dict.fromList
+                [ ( [ [ "test" ] ]
+                  , public <|
+                        { types =
                             Dict.fromList
                                 [ ( [ "custom" ]
-                                  , Documented ""
-                                        (Type.CustomTypeSpecification []
-                                            (Dict.fromList
-                                                [ ( [ "custom", "zero" ], [] )
-                                                ]
+                                  , public <|
+                                        Documented ""
+                                            (Type.CustomTypeDefinition []
+                                                (public <|
+                                                    Dict.fromList
+                                                        [ ( [ "custom", "zero" ], [] )
+                                                        ]
+                                                )
                                             )
-                                        )
                                   )
                                 , ( [ "foo", "bar", "baz", "record" ]
-                                  , Documented ""
-                                        (Type.TypeAliasSpecification []
-                                            (Type.Record ()
-                                                [ Type.Field [ "foo" ] (stringType ())
-                                                , Type.Field [ "bar" ] (boolType ())
-                                                , Type.Field [ "baz" ] (intType ())
-                                                ]
+                                  , public <|
+                                        Documented ""
+                                            (Type.TypeAliasDefinition []
+                                                (Type.Record ()
+                                                    [ Type.Field [ "foo" ] (stringType ())
+                                                    , Type.Field [ "bar" ] (boolType ())
+                                                    , Type.Field [ "baz" ] (intType ())
+                                                    ]
+                                                )
                                             )
-                                        )
                                   )
                                 ]
                         , values =
                             Dict.empty
                         , doc = Nothing
                         }
-                      )
-                    ]
-            }
-          )
-        ]
-        |> IR.fromPackageSpecifications
+                  )
+                ]
+        }

@@ -53,7 +53,6 @@ import Http exposing (emptyBody, jsonBody)
 import List.Extra
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
-import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Decoration exposing (AllDecorationConfigAndData, DecorationData, DecorationID)
 import Morphir.IR.Decoration.Codec exposing (decodeAllDecorationConfigAndData, decodeDecorationData, encodeDecorationData)
 import Morphir.IR.Distribution exposing (Distribution(..))
@@ -388,9 +387,9 @@ update msg model =
 
         ServerGetIRResponse (Library packageName dependencies packageDef) ->
             let
-
                 distribution =
-                    (Library packageName (dependencies |> Dict.insert SDK.packageName SDK.packageSpec) packageDef)
+                    Library packageName (dependencies |> Dict.insert SDK.packageName SDK.packageSpec) packageDef
+
                 irLoaded : IRState
                 irLoaded =
                     IRLoaded distribution
@@ -402,7 +401,7 @@ update msg model =
             case Repo.fromDistribution distribution of
                 Ok r ->
                     ( { model | irState = irLoaded, repo = r, argStates = initialArgumentStates, insightViewState = initInsightViewState initialArgumentStates }
-                    , httpTestModel (IR.fromDistribution distribution)
+                    , httpTestModel distribution
                     )
 
                 Err _ ->
@@ -411,7 +410,7 @@ update msg model =
                         , serverState =
                             ServerError "Could not transform Distribution to Repo" (Http.BadBody "Could not transform Distribution to Repo")
                       }
-                    , httpTestModel (IR.fromDistribution distribution)
+                    , httpTestModel distribution
                     )
 
         UI uiMsg ->
@@ -582,7 +581,7 @@ update msg model =
                                 model.testSuite
                     in
                     ( { model | testSuite = newTestSuite, selectedTestcaseIndex = -1, testDescription = "", argStates = initalArgState, insightViewState = initInsightViewState initalArgState, showSaveTestError = False }
-                    , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
+                    , httpSaveTestSuite getDistribution (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
 
                 DeleteTestCase fQName index ->
@@ -594,7 +593,7 @@ update msg model =
                                 model.testSuite
                     in
                     ( { model | testSuite = newTestSuite, selectedTestcaseIndex = ifThenElse (model.selectedTestcaseIndex == index) -1 model.selectedTestcaseIndex }
-                    , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
+                    , httpSaveTestSuite getDistribution (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
 
                 LoadTestCase inputTypes values description index ->
@@ -616,7 +615,7 @@ update msg model =
 
                         newArgState : Type () -> Maybe RawValue -> ValueEditor.EditorState
                         newArgState tpe val =
-                            ValueEditor.initEditorState (IR.fromDistribution getDistribution) tpe val
+                            ValueEditor.initEditorState getDistribution tpe val
 
                         newArgStates : InsightArgumentState
                         newArgStates =
@@ -647,7 +646,7 @@ update msg model =
                                 model.testSuite
                     in
                     ( { model | testSuite = newTestSuite, selectedTestcaseIndex = -1, testDescription = "", argStates = initalArgState, insightViewState = initInsightViewState initalArgState, showSaveTestError = False }
-                    , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
+                    , httpSaveTestSuite getDistribution (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
 
                 ShowSaveTestError ->
@@ -1290,7 +1289,7 @@ viewDecorationValues model node =
                                     |> SDKDict.get nodeDetail
                                     |> Maybe.withDefault
                                         (ValueEditor.initEditorState
-                                            (IR.fromDistribution attrDetail.iR)
+                                            attrDetail.iR
                                             (Type.Reference () attrDetail.entryPoint [])
                                             irValue
                                         )
@@ -1298,7 +1297,7 @@ viewDecorationValues model node =
                         ( Name.fromString attrDetail.displayName
                         , ValueEditor.view
                             model.theme
-                            (IR.fromDistribution attrDetail.iR)
+                            attrDetail.iR
                             (Type.Reference () attrDetail.entryPoint [])
                             (Decoration << DecorationValueUpdated nodeDetail)
                             editorState
@@ -1832,7 +1831,7 @@ httpMakeModel =
         }
 
 
-httpTestModel : IR -> Cmd Msg
+httpTestModel : Distribution -> Cmd Msg
 httpTestModel ir =
     Http.get
         { url = "/server/morphir-tests.json"
@@ -1892,7 +1891,7 @@ httpSaveAttrValue decorationID allDecorationConfigAndData =
             Cmd.none
 
 
-httpSaveTestSuite : IR -> TestSuite -> TestSuite -> Cmd Msg
+httpSaveTestSuite : Distribution -> TestSuite -> TestSuite -> Cmd Msg
 httpSaveTestSuite ir newTestSuite oldTestSuite =
     let
         encodedTestSuite =
@@ -2000,7 +1999,7 @@ definitionName definition =
 viewDefinitionDetails : Model -> Element Msg
 viewDefinitionDetails model =
     let
-        insightViewConfig : IR -> Morphir.Visual.Config.Config Msg
+        insightViewConfig : Distribution -> Morphir.Visual.Config.Config Msg
         insightViewConfig ir =
             let
                 referenceClicked : FQName -> Int -> List Int -> Msg
@@ -2028,7 +2027,7 @@ viewDefinitionDetails model =
                 , onHoverLeave = hoverLeave
                 }
 
-        viewArgumentEditors : IR -> InsightArgumentState -> List ( Name, a, Type () ) -> Element Msg
+        viewArgumentEditors : Distribution -> InsightArgumentState -> List ( Name, a, Type () ) -> Element Msg
         viewArgumentEditors ir argState inputTypes =
             inputTypes
                 |> List.map
@@ -2099,7 +2098,7 @@ viewDefinitionDetails model =
                 }
                 Nothing
 
-        viewActualOutput : Theme -> IR -> TestCase -> FQName -> Element Msg
+        viewActualOutput : Theme -> Distribution -> TestCase -> FQName -> Element Msg
         viewActualOutput theme ir testCase fQName =
             ifThenElse (List.isEmpty testCase.inputs)
                 none
@@ -2131,11 +2130,11 @@ viewDefinitionDetails model =
                     )
                 )
 
-        evaluateOutput : IR -> List (Maybe RawValue) -> FQName -> Result Error RawValue
+        evaluateOutput : Distribution -> List (Maybe RawValue) -> FQName -> Result Error RawValue
         evaluateOutput ir inputs fQName =
             evaluateFunctionValue SDK.nativeFunctions ir fQName inputs
 
-        viewRawValue : Morphir.Visual.Config.Config Msg -> IR -> RawValue -> Element Msg
+        viewRawValue : Morphir.Visual.Config.Config Msg -> Distribution -> RawValue -> Element Msg
         viewRawValue config ir rawValue =
             case fromRawValue ir rawValue of
                 Ok typedValue ->
@@ -2144,7 +2143,7 @@ viewDefinitionDetails model =
                 Err error ->
                     el [ centerX, centerY ] (text (Infer.typeErrorToMessage error))
 
-        scenarios : FQName -> IR -> List ( Name, a, Type () ) -> Element Msg
+        scenarios : FQName -> Distribution -> List ( Name, a, Type () ) -> Element Msg
         scenarios fQName ir inputTypes =
             let
                 listOfTestcases : Array TestCase
@@ -2282,11 +2281,6 @@ viewDefinitionDetails model =
         IRLoaded ((Library packageName _ packageDef) as distribution) ->
             case model.homeState.selectedDefinition of
                 Just selectedDefinition ->
-                    let
-                        ir : IR
-                        ir =
-                            IR.fromDistribution distribution
-                    in
                     case selectedDefinition of
                         Value ( moduleName, valueName ) ->
                             case packageDef.modules |> Dict.get moduleName of
@@ -2319,7 +2313,7 @@ viewDefinitionDetails model =
                                                                                 { title = "Insight view"
                                                                                 , onToggle = UI (ToggleSection 1)
                                                                                 , isOpen = Set.member 1 model.openSections
-                                                                                , content = el [ Theme.borderRounded model.theme, Border.width 1, Border.color model.theme.colors.gray] <| ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
+                                                                                , content = el [ Theme.borderRounded model.theme, Border.width 1, Border.color model.theme.colors.gray ] <| ViewValue.viewDefinition (insightViewConfig distribution) fullyQualifiedName valueDef
                                                                                 }
                                                                             , SectionComponent.view model.theme
                                                                                 { title = "Inputs & Output"
@@ -2332,10 +2326,10 @@ viewDefinitionDetails model =
                                                                                                 |> Theme.scaled 4
                                                                                             )
                                                                                         ]
-                                                                                        [ el [ borderBottom 2, paddingXY 0 5, Border.color model.theme.colors.gray ] (viewArgumentEditors ir model.argStates valueDef.inputTypes)
+                                                                                        [ el [ borderBottom 2, paddingXY 0 5, Border.color model.theme.colors.gray ] (viewArgumentEditors distribution model.argStates valueDef.inputTypes)
                                                                                         , viewActualOutput
                                                                                             model.theme
-                                                                                            ir
+                                                                                            distribution
                                                                                             { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
                                                                                             fullyQualifiedName
                                                                                         ]
@@ -2344,7 +2338,7 @@ viewDefinitionDetails model =
                                                                                 { title = "Test Cases"
                                                                                 , onToggle = UI (ToggleSection 3)
                                                                                 , isOpen = Set.member 3 model.openSections
-                                                                                , content = scenarios fullyQualifiedName ir valueDef.inputTypes
+                                                                                , content = scenarios fullyQualifiedName distribution valueDef.inputTypes
                                                                                 }
                                                                             ]
                                                                   }
@@ -2439,18 +2433,13 @@ initArgumentStates irState maybeSelectedDefinition =
                                         |> Maybe.map .value
                                         |> Maybe.andThen
                                             (\valueDef ->
-                                                let
-                                                    ir : IR
-                                                    ir =
-                                                        IR.fromDistribution distribution
-                                                in
                                                 Just <|
                                                     Dict.fromList
                                                         (valueDef.inputTypes
                                                             |> List.map
                                                                 (\( argName, _, argType ) ->
                                                                     ( argName
-                                                                    , ValueEditor.initEditorState ir argType Nothing
+                                                                    , ValueEditor.initEditorState distribution argType Nothing
                                                                     )
                                                                 )
                                                         )

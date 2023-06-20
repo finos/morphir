@@ -2,30 +2,22 @@ module Morphir.Web.TryMorphir exposing (..)
 
 import Browser
 import Dict exposing (Dict)
-import Element exposing (Element, alignRight, column, el, fill, height, layout, none, padding, paddingEach, paddingXY, paragraph, px, rgb, row, scrollbars, shrink, spacing, table, text, width)
+import Element exposing (Element, alignRight, column, el, fill, height, layout, none, padding, paddingEach, paddingXY, paragraph, px, rgb, row, scrollbars, shrink, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
-import Json.Encode as Encode
 import Morphir.Compiler as Compiler
 import Morphir.Elm.Frontend as Frontend exposing (SourceFile)
-import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution exposing (Distribution(..))
-import Morphir.IR.FQName as FQName exposing (FQName, fqn)
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
-import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Type.Codec as TypeCodec
 import Morphir.IR.Value as Value
-import Morphir.IR.Value.Codec as ValueCodec
-import Morphir.Type.Constraint exposing (Constraint(..))
-import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet)
 import Morphir.Type.Count as Count
 import Morphir.Type.Infer as Infer
-import Morphir.Type.MetaType exposing (MetaType(..))
 import Morphir.Type.Solve as Solve exposing (SolutionMap)
 import Morphir.Visual.Common exposing (nameToText, pathToUrl)
 import Morphir.Visual.Components.Card as Card
@@ -126,23 +118,7 @@ update msg model =
                     frontendResult
                         |> Result.andThen
                             (\packageDef ->
-                                let
-                                    thisPackageSpec : Package.Specification ()
-                                    thisPackageSpec =
-                                        packageDef
-                                            |> Package.definitionToSpecificationWithPrivate
-                                            |> Package.mapSpecificationAttributes (\_ -> ())
-
-                                    ir : IR
-                                    ir =
-                                        Frontend.defaultDependencies
-                                            |> Dict.insert packageInfo.name thisPackageSpec
-                                            |> IR.fromPackageSpecifications
-                                in
                                 packageDef
-                                    --|> Package.mapDefinitionAttributes (\_ -> ()) identity
-                                    --|> Infer.inferPackageDefinition ir
-                                    --|> Result.map (Package.mapDefinitionAttributes (\_ -> ()) (\( _, tpe ) -> tpe))
                                     |> Package.mapDefinitionAttributes (\_ -> ()) (\_ -> Type.Unit ())
                                     |> Ok
                             )
@@ -303,10 +279,9 @@ viewPackageDefinition model viewAttribute packageDef =
         packageName =
             [ [ "my" ] ]
 
-        ir : IR
+        ir : Distribution
         ir =
-            IR.fromDistribution
-                (Library packageName Frontend.defaultDependencies packageDef)
+            Library packageName Frontend.defaultDependencies packageDef
     in
     packageDef.modules
         |> Dict.toList
@@ -317,7 +292,7 @@ viewPackageDefinition model viewAttribute packageDef =
         |> column []
 
 
-viewModuleDefinition : Model -> IR -> PackageName -> ModuleName -> (va -> Html Msg) -> Module.Definition () (Type ()) -> Element Msg
+viewModuleDefinition : Model -> Distribution -> PackageName -> ModuleName -> (va -> Html Msg) -> Module.Definition () (Type ()) -> Element Msg
 viewModuleDefinition model ir packageName moduleName _ moduleDef =
     let
         typeViews : List (Element msg)
@@ -409,7 +384,7 @@ viewModuleDefinition model ir packageName moduleName _ moduleDef =
         |> column [ spacing 20 ]
 
 
-viewValue : ValueState -> IR -> FQName -> IRView -> Value.Definition () (Type ()) -> Element Msg
+viewValue : ValueState -> Distribution -> FQName -> IRView -> Value.Definition () (Type ()) -> Element Msg
 viewValue valueState ir fullyQualifiedName irView valueDef =
     case irView of
         InsightView ->
@@ -463,7 +438,7 @@ viewValue valueState ir fullyQualifiedName irView valueDef =
             viewValueAsIR valueState ir fullyQualifiedName irView valueDef
 
 
-viewValueAsIR : ValueState -> IR -> FQName -> IRView -> Value.Definition () (Type ()) -> Element Msg
+viewValueAsIR : ValueState -> Distribution -> FQName -> IRView -> Value.Definition () (Type ()) -> Element Msg
 viewValueAsIR valueState ir fullyQualifiedName irView valueDef =
     let
         untypedValueDef : Value.Definition () ()
