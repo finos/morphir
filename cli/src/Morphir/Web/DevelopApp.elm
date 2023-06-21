@@ -2167,7 +2167,7 @@ viewDefinitionDetails model =
                             , padding (model.theme |> Theme.scaled 3)
                             ]
                             [ column []
-                                [ row [ Font.bold, Font.size 22, paddingXY 0 10 ] [ text "Text Coverage Percentage - ", text <| String.fromInt (Basics.floor ((toFloat numberOfCoveredBranches / toFloat numberOfBranches) * 100)) ++ "%" ]
+                                [ row [ Font.bold, Font.size 22, paddingXY 0 10 ] [ text "Test Coverage Percentage - ", text <| String.fromInt (Basics.floor ((toFloat numberOfCoveredBranches / toFloat numberOfBranches) * 100)) ++ "%" ]
                                 , row [ Font.bold, Font.size 15, paddingXY 0 10 ] [ text "Break down" ]
                                 , row [ Font.bold, Font.size 15, paddingXY 0 10 ] [ text "Number of branches - ", text <| String.fromInt numberOfBranches ]
                                 , row [ Font.bold, Font.size 15, paddingXY 0 10 ] [ text "Number of covered branches - ", text <| String.fromInt numberOfCoveredBranches ]
