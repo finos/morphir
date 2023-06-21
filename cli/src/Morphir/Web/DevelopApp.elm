@@ -2160,15 +2160,21 @@ viewDefinitionDetails model =
                 |> Maybe.map (\valueDef -> getValueBranchCoverage valueDef testCases distro)
                 |> Maybe.map
                     (\{ numberOfBranches, numberOfCoveredBranches } ->
-                        Element.row []
-                            [ Element.column [] [ Element.text "Number of branches", Element.text "Number of covered branches " ]
-                            , Element.column []
-                                [ Element.text <| String.fromInt numberOfBranches
-                                , Element.text <| String.fromInt numberOfCoveredBranches
+                        row
+                            [ Border.width 1
+                            , Border.color model.theme.colors.darkest
+                            , Border.roundEach { topLeft = 5, bottomLeft = 5, topRight = 5, bottomRight = 5 }
+                            , padding (model.theme |> Theme.scaled 3)
+                            ]
+                            [ column []
+                                [ row [ Font.bold, Font.size 22, paddingXY 0 10 ] [ text "Text Coverage Percentage - ", text <| String.fromInt (Basics.floor ((toFloat numberOfCoveredBranches / toFloat numberOfBranches) * 100)) ++ "%" ]
+                                , row [ Font.bold, Font.size 15, paddingXY 0 10 ] [ text "Break down" ]
+                                , row [ Font.bold, Font.size 15, paddingXY 0 10 ] [ text "Number of branches - ", text <| String.fromInt numberOfBranches ]
+                                , row [ Font.bold, Font.size 15, paddingXY 0 10 ] [ text "Number of covered branches - ", text <| String.fromInt numberOfCoveredBranches ]
                                 ]
                             ]
                     )
-                |> Maybe.withDefault (Element.text "")
+                |> Maybe.withDefault (text "")
 
         scenarios : FQName -> Distribution -> List ( Name, a, Type () ) -> Element Msg
         scenarios fQName ir inputTypes =
@@ -2365,15 +2371,11 @@ viewDefinitionDetails model =
                                                                                 { title = "Test Cases"
                                                                                 , onToggle = UI (ToggleSection 3)
                                                                                 , isOpen = Set.member 3 model.openSections
-                                                                                , content = scenarios fullyQualifiedName distribution valueDef.inputTypes
-                                                                                }
-                                                                            , SectionComponent.view model.theme
-                                                                                { title = "Test Coverage"
-                                                                                , onToggle = UI (ToggleSection 4)
-                                                                                , isOpen = Set.member 4 model.openSections
                                                                                 , content =
                                                                                     column [ spacing (model.theme |> Theme.scaled 4) ]
-                                                                                        [ testCoverageMetrics distribution fullyQualifiedName ]
+                                                                                        [ testCoverageMetrics distribution fullyQualifiedName
+                                                                                        , scenarios fullyQualifiedName distribution valueDef.inputTypes
+                                                                                        ]
                                                                                 }
                                                                             ]
                                                                   }
