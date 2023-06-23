@@ -19,7 +19,7 @@ program
     "Start up a web server and expose developer tools through a web UI"
   )
   .option("-p, --port <port>", "Port to bind the web server to.", "3000")
-  .option("-o, --host <host>", "Host to bind the web server to.", "0.0.0.0")
+  .option("-o, --host <host>", "Host to bind the web server to.", "localhost")
   .option(
     "-i, --project-dir <path>",
     "Root directory of the project where morphir.json is located.",
