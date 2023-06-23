@@ -2,13 +2,13 @@ module Morphir.TypeSpec.Backend exposing (..)
 
 import Dict exposing (Dict)
 import Morphir.File.FileMap exposing (FileMap)
-import Morphir.IR as IR exposing (IR)
-import Morphir.IR.Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as IRName exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path
+import Morphir.IR.Repo as Distribution
 import Morphir.IR.Type as IRType exposing (Specification(..), Type(..))
 import Morphir.SDK.ResultList as ResultList
 import Morphir.TypeSpec.AST as AST exposing (ArrayType(..), ImportDeclaration(..), Name, Namespace, NamespaceDeclaration, ScalarType(..), Type(..), TypeDefinition(..))
@@ -49,12 +49,12 @@ mapDistribution opt distro =
                     else
                         []
             in
-            mapPackageDefinition packageDef (distro |> IR.fromDistribution)
+            mapPackageDefinition packageDef distro
                 |> Result.map (PrettyPrinter.prettyPrint packageName imports)
                 |> Result.map (Dict.singleton ( [], Path.toString IRName.toTitleCase "." packageName ++ ".tsp" ))
 
 
-mapPackageDefinition : Package.Definition () (IRType.Type ()) -> IR -> Result Errors (Dict Namespace NamespaceDeclaration)
+mapPackageDefinition : Package.Definition () (IRType.Type ()) -> Distribution -> Result Errors (Dict Namespace NamespaceDeclaration)
 mapPackageDefinition packageDef ir =
     packageDef.modules
         |> Dict.toList
@@ -69,7 +69,7 @@ mapPackageDefinition packageDef ir =
         |> Result.map Dict.fromList
 
 
-mapModuleDefinition : IR -> Module.Definition () (IRType.Type ()) -> Result Errors NamespaceDeclaration
+mapModuleDefinition : Distribution -> Module.Definition () (IRType.Type ()) -> Result Errors NamespaceDeclaration
 mapModuleDefinition ir definition =
     definition.types
         |> Dict.toList
@@ -82,7 +82,7 @@ mapModuleDefinition ir definition =
         |> Result.map Dict.fromList
 
 
-mapTypeDefinition : IR -> IRName.Name -> IRType.Definition () -> Result Errors ( AST.Name, TypeDefinition )
+mapTypeDefinition : Distribution -> IRName.Name -> IRType.Definition () -> Result Errors ( AST.Name, TypeDefinition )
 mapTypeDefinition ir tpeName definition =
     case definition of
         IRType.TypeAliasDefinition tpeArgs tpe ->
@@ -386,7 +386,7 @@ mapScalarType fQName types =
             Nothing
 
 
-scalarTypeFromType : IR -> IRType.Type () -> Maybe AST.Type
+scalarTypeFromType : Distribution -> IRType.Type () -> Maybe AST.Type
 scalarTypeFromType ir typ =
     case typ of
         IRType.Reference _ (( packageName, moduleName, localName ) as fQName) argTypes ->
@@ -395,7 +395,7 @@ scalarTypeFromType ir typ =
                     Just (Scalar tpe)
 
                 _ ->
-                    case IR.lookupTypeSpecification fQName ir of
+                    case Distribution.lookupTypeSpecification fQName ir of
                         Just typSpec ->
                             case typSpec of
                                 TypeAliasSpecification [] tpe ->

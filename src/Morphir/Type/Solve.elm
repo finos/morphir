@@ -1,7 +1,7 @@
 module Morphir.Type.Solve exposing (..)
 
 import Dict exposing (Dict)
-import Morphir.IR exposing (IR)
+import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.SDK.ResultList as ListOfResults
@@ -111,7 +111,7 @@ type UnificationErrorType
     | FieldMismatch
 
 
-findSubstitution : IR -> List Constraint -> Result UnificationError (Maybe SolutionMap)
+findSubstitution : Distribution -> List Constraint -> Result UnificationError (Maybe SolutionMap)
 findSubstitution ir constraints =
     case constraints of
         [] ->
@@ -134,7 +134,7 @@ findSubstitution ir constraints =
                     findSubstitution ir restOfConstraints
 
 
-addSolution : IR -> Variable -> MetaType -> SolutionMap -> Result UnificationError SolutionMap
+addSolution : Distribution -> Variable -> MetaType -> SolutionMap -> Result UnificationError SolutionMap
 addSolution ir var newSolution (SolutionMap currentSolutions) =
     let
         substitutedNewSolution : MetaType
@@ -167,7 +167,7 @@ addSolution ir var newSolution (SolutionMap currentSolutions) =
                 |> Ok
 
 
-mergeSolutions : IR -> SolutionMap -> SolutionMap -> Result UnificationError SolutionMap
+mergeSolutions : Distribution -> SolutionMap -> SolutionMap -> Result UnificationError SolutionMap
 mergeSolutions refs (SolutionMap newSolutions) currentSolutions =
     newSolutions
         |> Dict.toList
@@ -179,7 +179,7 @@ mergeSolutions refs (SolutionMap newSolutions) currentSolutions =
             (Ok currentSolutions)
 
 
-concatSolutions : IR -> List SolutionMap -> Result UnificationError SolutionMap
+concatSolutions : Distribution -> List SolutionMap -> Result UnificationError SolutionMap
 concatSolutions refs solutionMaps =
     solutionMaps
         |> List.foldl
@@ -197,7 +197,7 @@ type alias Aliases =
     List ( FQName, List MetaType )
 
 
-unifyMetaType : IR -> Aliases -> MetaType -> MetaType -> Result UnificationError SolutionMap
+unifyMetaType : Distribution -> Aliases -> MetaType -> MetaType -> Result UnificationError SolutionMap
 unifyMetaType ir aliases metaType1 metaType2 =
     let
         handleCommon mt2 specific =
@@ -257,7 +257,7 @@ unifyVariable aliases var1 metaType2 =
             Ok (singleSolution aliases var1 metaType2)
 
 
-unifyTuple : IR -> Aliases -> List MetaType -> MetaType -> Result UnificationError SolutionMap
+unifyTuple : Distribution -> Aliases -> List MetaType -> MetaType -> Result UnificationError SolutionMap
 unifyTuple ir aliases elems1 metaType2 =
     case metaType2 of
         MetaTuple _ elems2 ->
@@ -274,7 +274,7 @@ unifyTuple ir aliases elems1 metaType2 =
             Err (CouldNotUnify NoUnificationRule (metaTuple elems1) metaType2)
 
 
-unifyRef : IR -> Aliases -> FQName -> List MetaType -> MetaType -> Result UnificationError SolutionMap
+unifyRef : Distribution -> Aliases -> FQName -> List MetaType -> MetaType -> Result UnificationError SolutionMap
 unifyRef ir aliases ref1 args1 metaType2 =
     case metaType2 of
         MetaRef _ ref2 args2 Nothing ->
@@ -298,7 +298,7 @@ unifyRef ir aliases ref1 args1 metaType2 =
             Err (CouldNotUnify NoUnificationRule (metaRef ref1 args1) metaType2)
 
 
-unifyFun : IR -> Aliases -> MetaType -> MetaType -> MetaType -> Result UnificationError SolutionMap
+unifyFun : Distribution -> Aliases -> MetaType -> MetaType -> MetaType -> Result UnificationError SolutionMap
 unifyFun ir aliases arg1 return1 metaType2 =
     case metaType2 of
         MetaFun _ arg2 return2 ->
@@ -312,7 +312,7 @@ unifyFun ir aliases arg1 return1 metaType2 =
             Err (CouldNotUnify NoUnificationRule (metaFun arg1 return1) metaType2)
 
 
-unifyRecord : IR -> Aliases -> Variable -> Bool -> Dict Name MetaType -> MetaType -> Result UnificationError SolutionMap
+unifyRecord : Distribution -> Aliases -> Variable -> Bool -> Dict Name MetaType -> MetaType -> Result UnificationError SolutionMap
 unifyRecord refs aliases recordVar1 isOpen1 fields1 metaType2 =
     case metaType2 of
         MetaRecord _ recordVar2 isOpen2 fields2 ->
@@ -351,7 +351,7 @@ unifyRecord refs aliases recordVar1 isOpen1 fields1 metaType2 =
             Err (CouldNotUnify NoUnificationRule (metaRecord recordVar1 isOpen1 fields1) metaType2)
 
 
-unifyFields : IR -> Variable -> Bool -> Dict Name MetaType -> Variable -> Bool -> Dict Name MetaType -> Result UnificationError ( Dict Name MetaType, SolutionMap )
+unifyFields : Distribution -> Variable -> Bool -> Dict Name MetaType -> Variable -> Bool -> Dict Name MetaType -> Result UnificationError ( Dict Name MetaType, SolutionMap )
 unifyFields ir oldRecordVar oldIsOpen oldFields newRecordVar newIsOpen newFields =
     let
         extraOldFields : Dict Name MetaType

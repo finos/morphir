@@ -1,14 +1,14 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition, viewValue)
 
 import Dict
-import Element exposing (Element, column, el, explain, fill, htmlAttribute, padding, paddingEach, pointer, rgb, rgb255, rgba, row, spacing, text, width)
+import Element exposing (Element, column, el, fill, htmlAttribute, padding, paddingEach, pointer, rgb, rgba, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
 import Element.Font as Font exposing (..)
 import Html.Attributes exposing (style)
 import List.Extra
-import Morphir.IR exposing (resolveType)
+import Morphir.IR.Distribution as Distribution
 import Morphir.IR.FQName exposing (FQName, getLocalName)
 import Morphir.IR.Name exposing (Name, toCamelCase, toHumanWords)
 import Morphir.IR.Path as Path exposing (Path)
@@ -73,7 +73,7 @@ viewValue config typedValue =
     let
         valueType : Type ()
         valueType =
-            resolveType (Value.valueAttribute typedValue |> Tuple.second) config.ir
+            Distribution.resolveType (Value.valueAttribute typedValue |> Tuple.second) config.ir
     in
     if valueType == Basics.boolType () then
         let
@@ -448,7 +448,7 @@ viewDrillDown config value fQName letDefOpenElement =
         drillDown : DrillDownFunctions -> List Int -> Maybe (Value.Definition () (Type ()))
         drillDown dict nodePath =
             if drillDownContains dict id nodePath then
-                Dict.get fQName config.ir.valueDefinitions
+                config.ir |> Distribution.lookupValueDefinition fQName
 
             else
                 Nothing

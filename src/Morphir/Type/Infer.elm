@@ -2,8 +2,8 @@ module Morphir.Type.Infer exposing (..)
 
 import Dict exposing (Dict)
 import Morphir.Compiler as Compiler
-import Morphir.IR as IR exposing (IR)
 import Morphir.IR.AccessControlled exposing (AccessControlled)
+import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
@@ -16,7 +16,7 @@ import Morphir.IR.Type as Type exposing (Specification(..), Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value)
 import Morphir.SDK.ResultList as ListOfResults
 import Morphir.Type.Class as Class exposing (Class)
-import Morphir.Type.Constraint as Constraint exposing (Constraint(..), class, equality, isRecursive)
+import Morphir.Type.Constraint exposing (Constraint(..), class, equality, isRecursive)
 import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet(..))
 import Morphir.Type.Count as Count exposing (Count)
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaClosedRecord, metaFun, metaOpenRecord, metaTuple, metaUnit, metaVar)
@@ -42,7 +42,7 @@ type TypeError
     | UnifyError UnificationError
 
 
-inferPackageDefinition : IR -> Package.Definition () va -> Result (List Compiler.Error) (Package.Definition () ( va, Type () ))
+inferPackageDefinition : Distribution -> Package.Definition () va -> Result (List Compiler.Error) (Package.Definition () ( va, Type () ))
 inferPackageDefinition refs packageDef =
     packageDef.modules
         |> Dict.toList
@@ -60,7 +60,7 @@ inferPackageDefinition refs packageDef =
             )
 
 
-inferModuleDefinition : IR -> ModuleName -> Module.Definition () va -> Result Compiler.Error (Module.Definition () ( va, Type () ))
+inferModuleDefinition : Distribution -> ModuleName -> Module.Definition () va -> Result Compiler.Error (Module.Definition () ( va, Type () ))
 inferModuleDefinition refs moduleName moduleDef =
     moduleDef.values
         |> Dict.toList
@@ -158,7 +158,7 @@ typeErrorToMessage typeError =
             String.concat [ "Recursive constraint: '", MetaType.toString metaType1, "' == '", MetaType.toString metaType2, "'" ]
 
 
-inferValueDefinition : IR -> Value.Definition () va -> Result TypeError (Value.Definition () ( va, Type () ))
+inferValueDefinition : Distribution -> Value.Definition () va -> Result TypeError (Value.Definition () ( va, Type () ))
 inferValueDefinition ir def =
     let
         ( count, ( defVar, annotatedDef, ( constraints, typeVarToIndex ) ) ) =
@@ -173,7 +173,7 @@ inferValueDefinition ir def =
         |> Result.map (applySolutionToAnnotatedDefinition ir typeVarToIndex annotatedDef)
 
 
-inferValue : IR -> Value () va -> Result TypeError (TypedValue va)
+inferValue : Distribution -> Value () va -> Result TypeError (TypedValue va)
 inferValue ir untypedValue =
     let
         ( count, ( annotatedValue, constraints ) ) =
@@ -206,7 +206,7 @@ Detailed description of inputs and outputs:
         - `ConstraintSet` - set of type constraints that use the meta type variables that were added to each value node
 
 -}
-constrainDefinition : IR -> Dict Name Variable -> Value.Definition () va -> Count ( Variable, Value.Definition () ( va, Variable ), ( ConstraintSet, Dict Name Variable ) )
+constrainDefinition : Distribution -> Dict Name Variable -> Value.Definition () va -> Count ( Variable, Value.Definition () ( va, Variable ), ( ConstraintSet, Dict Name Variable ) )
 constrainDefinition ir vars def =
     let
         -- collect the names of all the type variables in all the input types
@@ -365,7 +365,7 @@ Detailed description of inputs and outputs:
         - `ConstraintSet` - set of type constraints that use the meta type variables that were added to each value node
 
 -}
-constrainValue : IR -> Dict Name Variable -> Maybe Variable -> Value () va -> Count ( Value () ( va, Variable ), ConstraintSet )
+constrainValue : Distribution -> Dict Name Variable -> Maybe Variable -> Value () va -> Count ( Value () ( va, Variable ), ConstraintSet )
 constrainValue ir vars maybeThisTypeVar annotatedValue =
     case annotatedValue of
         Value.Literal va literalValue ->
@@ -1108,7 +1108,7 @@ constrainValue ir vars maybeThisTypeVar annotatedValue =
 
 {-| Function that extracts variables and generates constraints for a pattern.
 -}
-constrainPattern : IR -> Maybe Variable -> Pattern va -> Count ( Dict Name Variable, Pattern ( va, Variable ), ConstraintSet )
+constrainPattern : Distribution -> Maybe Variable -> Pattern va -> Count ( Dict Name Variable, Pattern ( va, Variable ), ConstraintSet )
 constrainPattern ir maybeThisTypeVar pattern =
     case pattern of
         Value.WildcardPattern va ->
@@ -1395,12 +1395,12 @@ constrainLiteral thisTypeVar literalValue =
                 (class (metaVar thisTypeVar) Class.Number)
 
 
-solve : IR -> ConstraintSet -> Result TypeError ( ConstraintSet, SolutionMap )
+solve : Distribution -> ConstraintSet -> Result TypeError ( ConstraintSet, SolutionMap )
 solve refs constraintSet =
     solveHelp refs Solve.emptySolution constraintSet
 
 
-solveHelp : IR -> SolutionMap -> ConstraintSet -> Result TypeError ( ConstraintSet, SolutionMap )
+solveHelp : Distribution -> SolutionMap -> ConstraintSet -> Result TypeError ( ConstraintSet, SolutionMap )
 solveHelp ir solutionsSoFar ((ConstraintSet constraints) as constraintSet) =
     --let
     --    _ =
@@ -1430,7 +1430,7 @@ solveHelp ir solutionsSoFar ((ConstraintSet constraints) as constraintSet) =
             Err error
 
 
-solveStep : IR -> SolutionMap -> ConstraintSet -> Result TypeError (Maybe ( ConstraintSet, SolutionMap ))
+solveStep : Distribution -> SolutionMap -> ConstraintSet -> Result TypeError (Maybe ( ConstraintSet, SolutionMap ))
 solveStep refs solutionsSoFar ((ConstraintSet constraints) as constraintSet) =
     case validateConstraints constraints of
         Ok nonTrivialConstraints ->
@@ -1488,7 +1488,7 @@ validateConstraints constraints =
         |> Result.mapError typeErrors
 
 
-applySolutionToAnnotatedDefinition : IR -> Dict Name Variable -> Value.Definition ta ( va, Variable ) -> ( ConstraintSet, SolutionMap ) -> Value.Definition ta ( va, Type () )
+applySolutionToAnnotatedDefinition : Distribution -> Dict Name Variable -> Value.Definition ta ( va, Variable ) -> ( ConstraintSet, SolutionMap ) -> Value.Definition ta ( va, Type () )
 applySolutionToAnnotatedDefinition ir typeVarByIndex annotatedDef ( residualConstraints, solutionMap ) =
     let
         typeVarByType : Dict Name (Type ())
@@ -1512,7 +1512,7 @@ applySolutionToAnnotatedDefinition ir typeVarByIndex annotatedDef ( residualCons
         |> (\valDef -> { valDef | body = valDef.body |> fixNumberLiterals ir })
 
 
-applySolutionToAnnotatedValue : IR -> Value () ( va, Variable ) -> ( ConstraintSet, SolutionMap ) -> TypedValue va
+applySolutionToAnnotatedValue : Distribution -> Value () ( va, Variable ) -> ( ConstraintSet, SolutionMap ) -> TypedValue va
 applySolutionToAnnotatedValue ir annotatedValue ( residualConstraints, solutionMap ) =
     annotatedValue
         |> Value.mapValueAttributes identity
@@ -1527,14 +1527,14 @@ applySolutionToAnnotatedValue ir annotatedValue ( residualConstraints, solutionM
         |> fixNumberLiterals ir
 
 
-fixNumberLiterals : IR -> Value ta ( va, Type () ) -> Value ta ( va, Type () )
+fixNumberLiterals : Distribution -> Value ta ( va, Type () ) -> Value ta ( va, Type () )
 fixNumberLiterals ir typedValue =
     typedValue
         |> Value.rewriteValue
             (\value ->
                 case value of
                     Value.Literal ( va, tpe ) (WholeNumberLiteral v) ->
-                        if (ir |> IR.resolveType tpe) == floatType () then
+                        if (ir |> Distribution.resolveType tpe) == floatType () then
                             Value.Literal ( va, tpe ) (FloatLiteral (toFloat v)) |> Just
 
                         else

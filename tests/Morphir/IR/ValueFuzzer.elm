@@ -3,7 +3,7 @@ module Morphir.IR.ValueFuzzer exposing (boolFuzzer, charFuzzer, floatFuzzer, fro
 import Date
 import Dict exposing (Dict)
 import Fuzz exposing (Fuzzer)
-import Morphir.IR as IR exposing (IR)
+import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
@@ -13,7 +13,7 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue)
 
 
-fromType : IR -> Type () -> Fuzzer RawValue
+fromType : Distribution -> Type () -> Fuzzer RawValue
 fromType ir tpe =
     case tpe of
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ) args ->
@@ -48,7 +48,7 @@ fromType ir tpe =
         Type.Reference _ (( typePackageName, typeModuleName, _ ) as fQName) typeArgs ->
             -- Handle references that are not part of the SDK
             ir
-                |> IR.lookupTypeSpecification fQName
+                |> Distribution.lookupTypeSpecification fQName
                 |> Result.fromMaybe (String.concat [ "Cannot find reference: ", FQName.toString fQName ])
                 |> Result.map
                     (\typeSpec ->

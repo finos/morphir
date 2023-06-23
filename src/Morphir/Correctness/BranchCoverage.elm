@@ -2,7 +2,7 @@ module Morphir.Correctness.BranchCoverage exposing (..)
 
 import Dict exposing (Dict)
 import Morphir.Correctness.Test exposing (TestCase)
-import Morphir.IR exposing (IR)
+import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK as SDK
@@ -269,7 +269,7 @@ eitherBranches allBranches =
 cases as an input and returns a list of branches and the test cases that cover that branch. If a certain branch is not
 covered by a test the list will be empty.
 -}
-assignTestCasesToBranches : IR -> Value.Definition ta va -> List TestCase -> List ( Branch ta va, List TestCase )
+assignTestCasesToBranches : Distribution -> Value.Definition ta va -> List TestCase -> List ( Branch ta va, List TestCase )
 assignTestCasesToBranches ir valueDef testCases =
     valueBranches True valueDef.body
         |> List.map

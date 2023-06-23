@@ -1,7 +1,7 @@
 module Morphir.Type.MetaTypeMapping exposing (..)
 
 import Dict exposing (Dict)
-import Morphir.IR as IR exposing (IR)
+import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
@@ -19,15 +19,15 @@ type LookupError
     | ExpectedAlias FQName
 
 
-lookupConstructor : IR -> FQName -> Result LookupError (Count MetaType)
+lookupConstructor : Distribution -> FQName -> Result LookupError (Count MetaType)
 lookupConstructor ir ctorFQN =
-    case ir |> IR.lookupTypeConstructor ctorFQN of
+    case ir |> Distribution.lookupTypeConstructor ctorFQN of
         Just ( typeFQN, paramNames, ctorArgs ) ->
             Ok (ctorToMetaType ir typeFQN paramNames (ctorArgs |> List.map Tuple.second) Nothing)
 
         Nothing ->
             -- a constructor may refer to a record type alias
-            case ir |> IR.lookupTypeSpecification ctorFQN of
+            case ir |> Distribution.lookupTypeSpecification ctorFQN of
                 Just (Type.TypeAliasSpecification paramNames ((Type.Record _ fields) as recordType)) ->
                     concreteTypeToMetaType ir Dict.empty recordType
                         |> Count.andThen
@@ -40,18 +40,18 @@ lookupConstructor ir ctorFQN =
                     Err (CouldNotFindConstructor ctorFQN)
 
 
-lookupValue : IR -> FQName -> Result LookupError (Count MetaType)
+lookupValue : Distribution -> FQName -> Result LookupError (Count MetaType)
 lookupValue ir valueFQN =
     ir
-        |> IR.lookupValueSpecification valueFQN
+        |> Distribution.lookupValueSpecification valueFQN
         |> Maybe.map (valueSpecToMetaType ir)
         |> Result.fromMaybe (CouldNotFindValue valueFQN)
 
 
-lookupAliasedType : IR -> FQName -> List (Type ()) -> Result LookupError (Type ())
+lookupAliasedType : Distribution -> FQName -> List (Type ()) -> Result LookupError (Type ())
 lookupAliasedType ir typeFQN concreteTypeParams =
     ir
-        |> IR.lookupTypeSpecification typeFQN
+        |> Distribution.lookupTypeSpecification typeFQN
         |> Result.fromMaybe (CouldNotFindAlias typeFQN)
         |> Result.andThen
             (\typeSpec ->
@@ -120,7 +120,7 @@ metaTypeToConcreteType solutionMap metaType =
             Type.Unit ()
 
 
-concreteTypeToMetaType : IR -> Dict Name Variable -> Type () -> Count MetaType
+concreteTypeToMetaType : Distribution -> Dict Name Variable -> Type () -> Count MetaType
 concreteTypeToMetaType ir varToMeta tpe =
     case tpe of
         Type.Variable _ varName ->
@@ -196,7 +196,7 @@ concreteTypeToMetaType ir varToMeta tpe =
             Count.none metaUnit
 
 
-ctorToMetaType : IR -> FQName -> List Name -> List (Type ()) -> Maybe MetaType -> Count MetaType
+ctorToMetaType : Distribution -> FQName -> List Name -> List (Type ()) -> Maybe MetaType -> Count MetaType
 ctorToMetaType ir ctorFQName paramNames ctorArgs maybeActualType =
     let
         argVariables : Set Name
@@ -252,7 +252,7 @@ ctorToMetaType ir ctorFQName paramNames ctorArgs maybeActualType =
             )
 
 
-valueSpecToMetaType : IR -> Value.Specification () -> Count MetaType
+valueSpecToMetaType : Distribution -> Value.Specification () -> Count MetaType
 valueSpecToMetaType ir valueSpec =
     let
         specToFunctionType : List (Type ()) -> Type () -> Type ()

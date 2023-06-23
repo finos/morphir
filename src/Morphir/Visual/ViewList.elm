@@ -5,7 +5,7 @@ import Element exposing (Element, centerX, centerY, el, fill, height, indexedTab
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import Morphir.IR as IR
+import Morphir.IR.Distribution as Distribution
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value
@@ -64,7 +64,7 @@ view config viewValue itemType items maybeItemToHighlight =
                         ]
                     }
         in
-        case config.ir |> IR.resolveType itemType of
+        case config.ir |> Distribution.resolveType itemType of
             Type.Record _ fields ->
                 indexedTable
                     [ centerX, centerY ]
@@ -72,7 +72,7 @@ view config viewValue itemType items maybeItemToHighlight =
                         items
                             |> List.map
                                 (\item ->
-                                    config.ir |> IR.resolveRecordConstructors item
+                                    config.ir |> Distribution.resolveRecordConstructors item
                                 )
                     , columns =
                         fields

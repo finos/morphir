@@ -2,17 +2,13 @@ module Morphir.TestCoverage.Backend exposing (TestCoverageResult, getBranchCover
 
 import AssocList as AssocDict
 import Dict exposing (Dict)
-import Json.Encode as Encode
 import Morphir.Correctness.BranchCoverage as BranchCoverage exposing (..)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
-import Morphir.IR as IR exposing (..)
 import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
-import Morphir.IR.Name exposing (Name)
-import Morphir.IR.NodeId as NodeId exposing (..)
+import Morphir.IR.NodeId exposing (..)
 import Morphir.IR.Package exposing (PackageName)
-import Morphir.IR.Value as Value
 
 
 type alias Coverage =
@@ -38,10 +34,10 @@ calculateNumberOfCoveredBranches branchCoverageResult =
 
 
 {-| This function loops through all values in a model and returns a dictionary where
-    the key is the traceable path to a specific value(also know as the NodeID) and
-    the value, a record structure how many branches are there within the value and the number of branches with testcases
+the key is the traceable path to a specific value(also know as the NodeID) and
+the value, a record structure how many branches are there within the value and the number of branches with testcases
 -}
-getBranchCoverage : ( PackageName, ModuleName ) -> IR -> TestSuite -> Module.Definition ta va -> TestCoverageResult
+getBranchCoverage : ( PackageName, ModuleName ) -> Distribution -> TestSuite -> Module.Definition ta va -> TestCoverageResult
 getBranchCoverage ( packageName, moduleName ) ir testSuite moduleDef =
     moduleDef.values
         |> Dict.toList

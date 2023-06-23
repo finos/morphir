@@ -2,18 +2,18 @@ module Morphir.IR.TypeFuzzer exposing (referenceFuzzer, typeFuzzer)
 
 import Dict
 import Fuzz exposing (Fuzzer)
-import Morphir.IR as IR exposing (IR)
+import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
 
 
-typeFuzzer : IR -> Int -> Fuzzer (Type ())
+typeFuzzer : Distribution -> Int -> Fuzzer (Type ())
 typeFuzzer ir depth =
     referenceFuzzer ir depth
 
 
-referenceFuzzer : IR -> Int -> Fuzzer (Type ())
+referenceFuzzer : Distribution -> Int -> Fuzzer (Type ())
 referenceFuzzer ir depth =
     let
         typeArgs : Type.Specification () -> List Name
@@ -49,7 +49,7 @@ referenceFuzzer ir depth =
     in
     Fuzz.oneOf
         (ir
-            |> IR.typeSpecifications
+            |> Distribution.typeSpecifications
             |> Dict.toList
             |> List.map fuzzerForType
         )

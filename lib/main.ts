@@ -33,7 +33,7 @@ fsReadFile("./morphir-ir.json")
 function toDistribution(text: string): Distribution.Distribution {
   let data = JSON.parse(text);
 
-  if (data["formatVersion"] != 2) {
+  if (data["formatVersion"] != 3) {
     throw "Unsupported morphir-ir.json format";
   }
 

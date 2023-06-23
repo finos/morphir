@@ -62,8 +62,7 @@ import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver)
 import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.Graph
-import Morphir.IR as IR exposing (IR)
-import Morphir.IR.AccessControlled as Access exposing (AccessControlled, private, public)
+import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName as FQName exposing (fQName)
@@ -187,7 +186,7 @@ defaultDependencies =
 
 {-| Parses an expression written in the Elm syntax into a RawValue.
 -}
-parseRawValue : IR -> String -> Result String RawValue
+parseRawValue : Distribution -> String -> Result String RawValue
 parseRawValue ir valueSourceCode =
     let
         dummyPackageName : Path
@@ -245,7 +244,7 @@ parseRawValue ir valueSourceCode =
 
 
 {-| -}
-mapValueToFile : IR -> Type () -> String -> Result String IR
+mapValueToFile : Distribution -> Type () -> String -> Result String Distribution
 mapValueToFile ir outputType content =
     let
         sourceA =
@@ -284,7 +283,6 @@ mapValueToFile ir outputType content =
                     |> Package.mapDefinitionAttributes (\_ -> ()) identity
                     |> Package.mapDefinitionAttributes identity (\_ -> outputType)
                     |> Library packageName Dict.empty
-                    |> IR.fromDistribution
             )
         |> Result.mapError (always "Unknown error")
 
@@ -1057,11 +1055,15 @@ mapFunction sourceFile (Node functionRange function) =
             let
                 exp =
                     mapExpression sourceFile expression
+
+                emptyDistribution : Distribution
+                emptyDistribution =
+                    Library [ [ "empty" ] ] Dict.empty Package.emptyDefinition
             in
             exp
                 |> Result.andThen
                     (\body ->
-                        Infer.inferValue IR.empty (body |> Value.mapValueAttributes (always ()) identity)
+                        Infer.inferValue emptyDistribution (body |> Value.mapValueAttributes (always ()) identity)
                             |> Result.mapError (\err -> [ TypeInferenceError (sourceLocation functionRange) err ])
                             |> Result.map (Value.valueAttribute >> Tuple.second >> Type.mapTypeAttributes (always (sourceLocation functionRange)))
                     )

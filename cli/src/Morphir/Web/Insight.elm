@@ -6,17 +6,17 @@ import Element exposing (padding, spacing)
 import Element.Font as Font
 import Html exposing (Html)
 import Json.Decode as Decode exposing (Decoder, string)
-import Morphir.IR as IR exposing (IR, fromDistribution)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
+import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.QName as QName exposing (QName(..))
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Type.DataCodec exposing (decodeData)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.Visual.Components.VisualizationState exposing (VisualizationState)
-import Morphir.Visual.Config as Config exposing (Config, DrillDownFunctions(..), PopupScreenRecord, ExpressionTreePath, addToDrillDown, removeFromDrillDown)
+import Morphir.Visual.Config as Config exposing (Config, DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.Theme as Theme exposing (Theme, ThemeConfig, smallPadding, smallSpacing)
 import Morphir.Visual.Theme.Codec exposing (decodeThemeConfig)
 import Morphir.Visual.ViewValue as ViewValue
@@ -48,7 +48,7 @@ type alias Flag =
 type alias Model =
     { theme : Theme
     , modelState : ModelState
-    , ir : Maybe IR
+    , ir : Maybe Distribution
     }
 
 
@@ -64,7 +64,7 @@ init json =
         model =
             case json |> Decode.decodeValue decodeFlag of
                 Ok flag ->
-                    { theme = Theme.fromConfig flag.config, modelState = IRLoaded flag.distribution, ir = Just <| IR.fromDistribution flag.distribution }
+                    { theme = Theme.fromConfig flag.config, modelState = IRLoaded flag.distribution, ir = Just flag.distribution }
 
                 Err error ->
                     { theme = Theme.fromConfig Nothing, modelState = Failed ("Wrong IR: " ++ Decode.errorToString error), ir = Nothing }
@@ -125,8 +125,13 @@ update msg model =
                     getDistribution
                         |> Maybe.andThen
                             (\distribution ->
+                                let
+                                    fQName : FQName
+                                    fQName =
+                                        ( getPackageName distribution, QName.getModulePath qName, QName.getLocalName qName )
+                                in
                                 distribution
-                                    |> Distribution.lookupValueDefinition qName
+                                    |> Distribution.lookupValueDefinition fQName
                                     |> Maybe.map
                                         (\funDef ->
                                             { model
@@ -150,14 +155,15 @@ update msg model =
 
         FunctionArgumentsReceived jsonList ->
             let
-                getIR : IR
+                getIR : Distribution
                 getIR =
                     case getDistribution of
                         Just distribution ->
-                            fromDistribution distribution
+                            distribution
 
                         Nothing ->
-                            IR.empty
+                            -- empty distribution
+                            Library [ [ "empty" ] ] Dict.empty Package.emptyDefinition
 
                 getTypes : Type ()
                 getTypes =
@@ -322,7 +328,7 @@ view model =
 
                 config : Config Msg
                 config =
-                    Config.fromIR (IR.fromDistribution visualizationState.distribution)
+                    Config.fromIR visualizationState.distribution
                         { drillDownFunctions = visualizationState.drillDownFunctions
                         , variables = validArgValues
                         , popupVariables = visualizationState.popupVariables
@@ -357,3 +363,8 @@ decodeFlag =
     Decode.map2 Flag
         (Decode.field "distribution" DistributionCodec.decodeVersionedDistribution)
         (Decode.field "config" decodeThemeConfig |> Decode.maybe)
+
+
+getPackageName : Distribution -> PackageName
+getPackageName (Library packageName _ _) =
+    packageName

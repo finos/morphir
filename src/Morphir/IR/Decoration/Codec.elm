@@ -2,7 +2,6 @@ module Morphir.IR.Decoration.Codec exposing (..)
 
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Decoration exposing (AllDecorationConfigAndData, DecorationConfigAndData, DecorationData)
 import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.Distribution.Codec exposing (decodeVersionedDistribution)
@@ -29,7 +28,7 @@ decodeNodeIDByValuePairs =
 
                                     Err message ->
                                         case message of
-                                            Morphir.IR.NodeId.InvalidNodeID msg->
+                                            Morphir.IR.NodeId.InvalidNodeID msg ->
                                                 Decode.fail ("Invalid NodeID : " ++ msg)
 
                                             Morphir.IR.NodeId.InvalidPath msg ->
@@ -57,7 +56,7 @@ decodeDecorationValue distro entryPointFqn =
                 Err error ->
                     Decode.fail error
     in
-    DataCodec.decodeData (IR.fromDistribution distro) (Type.Reference () entryPointFqn [])
+    DataCodec.decodeData distro (Type.Reference () entryPointFqn [])
         |> resultToFailure
 
 
@@ -76,7 +75,7 @@ decodeDecorationData distro entryPointFqn =
 
                                     Err message ->
                                         case message of
-                                            Morphir.IR.NodeId.InvalidNodeID msg->
+                                            Morphir.IR.NodeId.InvalidNodeID msg ->
                                                 Decode.fail ("Invalid NodeID : " ++ msg)
 
                                             Morphir.IR.NodeId.InvalidPath msg ->
@@ -115,7 +114,7 @@ decodeDecorationConfigAndData =
 
 
 encodeDecorationData : Distribution -> FQName -> DecorationData -> Encode.Value
-encodeDecorationData ir entryPoint decorationData =
+encodeDecorationData distribution entryPoint decorationData =
     let
         encodeIrValue =
             decorationData
@@ -133,7 +132,7 @@ encodeDecorationData ir entryPoint decorationData =
                         in
                         ( nodeIdToString nodeId
                         , DataCodec.encodeData
-                            (IR.fromDistribution ir)
+                            distribution
                             (Type.Reference () entryPoint [])
                             |> Result.andThen
                                 (\encoderValue ->
