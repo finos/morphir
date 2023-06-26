@@ -14,5 +14,5 @@ type alias DatabaseName =
 
 type Repositories
     = Database DatabaseName
-    | FileSystem
+    | FileSystem String
     | Memory
