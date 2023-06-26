@@ -3,7 +3,7 @@
     "name": "finos/morphir-elm",
     "summary": "Morphir Elm bindings",
     "license": "Apache-2.0",
-    "version": "19.0.0",
+    "version": "20.0.0",
     "exposed-modules": [
         "Morphir.SDK.Decimal",
         "Morphir.SDK.Int",
