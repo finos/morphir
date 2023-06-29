@@ -1,4 +1,7 @@
-module Morphir.Visual.Components.Picklist exposing (State, init, getSelectedTag, view)
+module Morphir.Visual.Components.Picklist exposing
+    ( State, init, view
+    , getSelectedValue
+    )
 
 {-| This module implements a component that allows users to pick an item from a dropdown list.
 
@@ -47,21 +50,51 @@ module Morphir.Visual.Components.Picklist exposing (State, init, getSelectedTag,
                 -- check out the Config type docs for further details
                 { state = model.picklist
                 , onStateChange = PicklistChanged
-                , selectedTag = model.selectedOption
+                , selectedvalue = model.selectedOption
                 , onSelectionChange = OptionSelected
                 }
                 -- this is where you specify the selectable values
-                -- each entry is a tuple where the first element is the "tag" that represents the selection
-                [ ( Option1, "Option A" )
-                , ( Option2, "Option B" )
-                ]
+                -- each entry is a (DropdownElement msg value ) type record
+                -- with .displayElement field for displaying the value to the user
+                -- a .value field to store the actual used value
+                -- and a .tag field for search purposes
             ]
 
-@docs State, init, getSelectedTag, view
+@docs State, init, getSelectedvalue, view
 
 -}
 
-import Element exposing (Element, alignRight, behindContent, below, column, el, fill, focused, height, html, htmlAttribute, maximum, minimum, mouseOver, moveDown, none, paddingEach, paddingXY, px, rgb255, rgba, row, shrink, spacing, text, transparent, width)
+import Element
+    exposing
+        ( Element
+        , alignRight
+        , below
+        , column
+        , el
+        , explain
+        , fill
+        , focused
+        , height
+        , html
+        , inFront
+        , maximum
+        , minimum
+        , mouseOver
+        , moveDown
+        , none
+        , padding
+        , paddingEach
+        , paddingXY
+        , pointer
+        , px
+        , rgb255
+        , rgba
+        , row
+        , shrink
+        , spacing
+        , text
+        , width
+        )
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
@@ -70,42 +103,48 @@ import Element.Input as Input
 import FontAwesome as Icon
 import FontAwesome.Attributes as Icon
 import FontAwesome.Solid as Icon
-import Html.Attributes
 import Morphir.Visual.Common exposing (colorToSvg)
+import Morphir.Visual.Components.InputComponent exposing (searchInput)
+import Morphir.Visual.Components.SelectableElement as SelectableElement
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Svg.Attributes
 
 
 {-| Type that contains the internal state of this component.
 -}
-type alias State tag =
-    { selectedTag : Maybe tag
+type alias State value =
+    { selectedValue : Maybe value
     , dropDownOpen : Bool
+    , searchText : Maybe String
+    , targeted : Bool
     }
 
 
 {-| Initialize the state of the component.
 -}
-init : Maybe tag -> State tag
-init selectedTag =
-    { selectedTag = selectedTag
+init : Maybe value -> State value
+init selectedValue =
+    { selectedValue = selectedValue
     , dropDownOpen = False
+    , searchText = Nothing
+    , targeted = True
     }
 
 
-{-| Get the currently selected tag value.
+{-| Get the currently selected value value.
 -}
-getSelectedTag : State tag -> Maybe tag
-getSelectedTag state =
-    state.selectedTag
+getSelectedValue : State value -> Maybe value
+getSelectedValue state =
+    state.selectedValue
 
 
-type Msg tag
+type Msg value
     = ToggleDropdown
     | CloseDropdown
+    | SearchText String
 
 
-update : Msg tag -> State tag -> State tag
+update : Msg value -> State value -> State value
 update msg state =
     case msg of
         ToggleDropdown ->
@@ -114,9 +153,27 @@ update msg state =
             }
 
         CloseDropdown ->
-            { state
-                | dropDownOpen = False
-            }
+            if not state.targeted then
+                { state
+                    | dropDownOpen = False
+                }
+
+            else
+                state
+
+        SearchText searchText ->
+            case searchText of
+                "" ->
+                    { state
+                        | searchText = Nothing
+                    }
+
+                _ ->
+                    { state
+                        | searchText = Just searchText
+                        , dropDownOpen = True
+                        , selectedValue = Nothing
+                    }
 
 
 {-| Configuration for the Picklist:
@@ -127,9 +184,26 @@ update msg state =
       - Called when the internal state of the component changes.
 
 -}
-type alias Config msg tag =
-    { state : State tag
-    , onStateChange : State tag -> msg
+type alias Config msg value =
+    { state : State value
+    , onStateChange : State value -> msg
+    }
+
+
+{-| An element of the OrderedDropdown:
+
+  - _tag_
+      - Used for search purposes
+  - _value_
+      - The value of the selected element we'd like to use.
+      - _displayElement_
+          - How the elment should be displayed in the dropdown.
+
+-}
+type alias DropdownElement msg value =
+    { tag : String
+    , value : value
+    , displayElement : Element msg
     }
 
 
@@ -141,33 +215,75 @@ type alias Config msg tag =
       - This is where you should do your wiring of states and event handlers. See the docs on `Config` for more details.
   - _selectableValues_
       - This is where you can specify what will be in the drop-down list. It's a tuple with 2 elements:
-          - The "tag" value that is returned by the selection change event.
+          - The "value" value that is returned by the selection change event.
           - The visual representation.
 
 -}
-view : Theme -> Config msg tag -> List ( tag, Element msg ) -> Element msg
-view theme config selectableValues =
+view : Theme -> Config msg value -> List (DropdownElement msg value) -> List (DropdownElement msg value) -> Element msg
+view theme config priorityElements generalElements =
     let
+
+        state : State value
+        state =
+            config.state
+
         selectedValue : Maybe (Element msg)
         selectedValue =
             config.state
-                |> getSelectedTag
+                |> getSelectedValue
                 |> Maybe.andThen
                     (\selected ->
-                        selectableValues
+                        (priorityElements ++ generalElements)
                             |> List.filterMap
-                                (\( tag, content ) ->
-                                    if tag == selected then
-                                        Just content
+                                (\element ->
+                                    if element.value == selected then
+                                        Just <|
+                                            element.displayElement
 
                                     else
                                         Nothing
                                 )
                             |> List.head
                     )
-    in
-    el []
-        (Input.button
+
+        displaySelectedvalue : Element msg
+        displaySelectedvalue =
+            case selectedValue of
+                Just selected ->
+                    case config.state.searchText of
+                        Just _ ->
+                            Element.none
+
+                        Nothing ->
+                            row [ width fill, height fill, Background.color theme.colors.lightest, pointer, paddingXY 2 0, Theme.borderRounded theme ]
+                                [ el [ width fill ]
+                                    selected
+                                , el [ alignRight ]
+                                    (html (Icon.caretDown |> Icon.styled [ Icon.lg ] |> Icon.view))
+                                ]
+
+                Nothing ->
+                    Element.none
+
+        displayDropDown : Element msg
+        displayDropDown =
+            if config.state.dropDownOpen then
+                let
+                    onSelectionChange : Maybe value -> msg
+                    onSelectionChange selected =
+                        config.onStateChange (init selected)
+                in
+                viewDropdown theme config.state.selectedValue onSelectionChange (priorityElements ++ generalElements) config.state.searchText
+                    |> el
+                        [ Events.onMouseEnter <| config.onStateChange { state | targeted = True }
+                        , Events.onMouseLeave <| config.onStateChange { state | targeted = False }
+                        ]
+
+            else
+                none
+
+        inputElementAttributes : List (Element.Attribute msg)
+        inputElementAttributes =
             [ width (shrink |> minimum (theme.fontSize * 14) |> maximum (theme.fontSize * 20))
             , paddingXY (theme |> Theme.mediumPadding) (theme |> Theme.smallPadding)
             , Border.width 1
@@ -184,84 +300,50 @@ view theme config selectableValues =
                     , color = theme.colors.primaryHighlight
                     }
                 ]
-            , below
-                (if config.state.dropDownOpen then
-                    let
-                        onSelectionChange : Maybe tag -> msg
-                        onSelectionChange selectedTag =
-                            let
-                                state : State tag
-                                state =
-                                    config.state
-                            in
-                            config.onStateChange { state | selectedTag = selectedTag, dropDownOpen = False }
-                    in
-                    viewDropdown theme config.state.selectedTag onSelectionChange selectableValues
-
-                 else
-                    none
-                )
+            , below displayDropDown
+            , inFront displaySelectedvalue
             , Events.onLoseFocus (config.onStateChange (update CloseDropdown config.state))
             ]
-            { onPress =
-                if config.state.dropDownOpen then
-                    Nothing
+                ++ (if not config.state.dropDownOpen then
+                        [ Events.onClick (config.onStateChange (update ToggleDropdown config.state)) ]
 
-                else
-                    Just (config.onStateChange (update ToggleDropdown config.state))
-            , label =
-                let
-                    labelContent : Element msg
-                    labelContent =
-                        case selectedValue of
-                            Just selected ->
-                                el [ width fill ]
-                                    selected
-
-                            Nothing ->
-                                el
-                                    [ width fill
-                                    , Font.color (grey 160)
-                                    ]
-                                    viewUnselected
-                in
-                row [ width fill, height fill ]
-                    [ labelContent
-                    , el [ alignRight ]
-                        (html (Icon.caretDown |> Icon.styled [ Icon.lg ] |> Icon.view))
-                    ]
-            }
-        )
+                    else
+                        []
+                   )
+    in
+    searchInput
+        theme
+        inputElementAttributes
+        { onChange = \s -> config.onStateChange (update (SearchText s) config.state)
+        , text = config.state.searchText |> Maybe.withDefault ""
+        , label = Input.labelHidden "Search for an option"
+        , placeholder = Just <| Input.placeholder [] viewUnselected
+        }
 
 
-viewDropdown : Theme -> Maybe tag -> (Maybe tag -> msg) -> List ( tag, Element msg ) -> Element msg
-viewDropdown theme selectedTag onSelectionChange selectableValues =
+viewDropdown : Theme -> Maybe value -> (Maybe value -> msg) -> List (DropdownElement msg value) -> Maybe String -> Element msg
+viewDropdown theme selectedvalue onSelectionChange selectableValues searchText =
     let
         viewListItem : { icon : Element msg, label : Element msg, onClick : msg } -> Element msg
         viewListItem args =
-            row
-                [ height (px (theme.fontSize * 2))
-                , width fill
-                , paddingEach
-                    { top = theme |> Theme.smallPadding
-                    , right = theme |> Theme.mediumPadding
-                    , bottom = theme |> Theme.smallPadding
-                    , left = theme |> Theme.mediumPadding
-                    }
-                , spacing (theme |> Theme.smallSpacing)
-                , Font.color (grey 24)
-                , mouseOver
-                    [ Background.color (grey 243)
-                    ]
-                , Events.onClick args.onClick
-                ]
-                [ el [ width (px 20) ] args.icon
-                , args.label
-                ]
+            SelectableElement.view theme
+                { onSelect = args.onClick
+                , isSelected = False
+                , content =
+                    row
+                        [ width fill
+                        , paddingXY (theme |> Theme.mediumPadding) (theme |> Theme.smallPadding)
+                        , spacing (theme |> Theme.smallSpacing)
+                        , Font.color (grey 24)
+                        ]
+                        [ el [ width (px 20) ] args.icon
+                        , args.label
+                        ]
+                }
 
         unselectElem : List (Element msg)
         unselectElem =
-            if selectedTag == Nothing then
+            if selectedvalue == Nothing then
                 []
 
             else
@@ -277,19 +359,27 @@ viewDropdown theme selectedTag onSelectionChange selectableValues =
         selectableValueElems : List (Element msg)
         selectableValueElems =
             selectableValues
+                |> (\list ->
+                        case searchText of
+                            Nothing ->
+                                list
+
+                            Just s ->
+                                List.filter (\le -> String.contains (s |> String.toLower) (le.tag |> String.toLower)) list
+                   )
                 |> List.map
-                    (\( tag, content ) ->
+                    (\dropdownElement ->
                         viewListItem
                             { icon =
-                                if selectedTag == Just tag then
+                                if selectedvalue == Just dropdownElement.value then
                                     html (Icon.check |> Icon.styled [ Icon.lg, Svg.Attributes.color (colorToSvg theme.colors.primaryHighlight) ] |> Icon.view)
 
                                 else
                                     none
                             , label =
-                                content
+                                dropdownElement.displayElement
                             , onClick =
-                                onSelectionChange (Just tag)
+                                onSelectionChange (Just dropdownElement.value)
                             }
                     )
     in

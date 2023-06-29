@@ -57,7 +57,7 @@ import Morphir.IR.Decoration exposing (AllDecorationConfigAndData, DecorationDat
 import Morphir.IR.Decoration.Codec exposing (decodeAllDecorationConfigAndData, decodeDecorationData, encodeDecorationData)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
-import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.NodeId exposing (NodeID(..))
@@ -65,7 +65,7 @@ import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Repo as Repo exposing (Repo)
 import Morphir.IR.SDK as SDK exposing (packageName)
-import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Type as Type exposing (Type(..))
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
 import Morphir.SDK.Dict as SDKDict
 import Morphir.Type.Infer as Infer
@@ -80,6 +80,7 @@ import Morphir.Visual.Components.SectionComponent as SectionComponent
 import Morphir.Visual.Components.SelectableElement as SelectableElement
 import Morphir.Visual.Components.TabsComponent as TabsComponent
 import Morphir.Visual.Components.TreeViewComponent as TreeViewComponent
+import Morphir.Visual.Components.TypeBuilder as TypeBuilder
 import Morphir.Visual.Config exposing (DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
 import Morphir.Visual.Theme as Theme exposing (Theme, borderBottom, borderRounded, largePadding, largeSpacing, smallPadding)
@@ -127,6 +128,7 @@ type alias Model =
     , homeState : HomeState
     , repo : Repo
     , insightViewState : Morphir.Visual.Config.VisualState
+    , typeBuilderState : TypeBuilder.State
     , argStates : InsightArgumentState
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
     , allDecorationConfigAndData : AllDecorationConfigAndData
@@ -216,6 +218,7 @@ init flags url key =
                 }
             , repo = Repo.empty []
             , insightViewState = emptyVisualState
+            , typeBuilderState = TypeBuilder.init
             , argStates = Dict.empty
             , expandedValues = Dict.empty
             , allDecorationConfigAndData = Dict.empty
@@ -307,6 +310,8 @@ type UIMsg
     | OpenHttpErrorModal Http.Error String Bool
     | DismissHttpError
     | CloseModal
+    | TypeBuilderChanged TypeBuilder.State
+    | TypeSaved TypeBuilder.NewType
 
 
 type FilterMsg
@@ -463,6 +468,27 @@ update msg model =
 
                 CloseModal ->
                     ( { model | isModalOpen = False }, Cmd.none )
+
+                TypeBuilderChanged newTypeBuilderState ->
+                    ( { model | typeBuilderState = newTypeBuilderState }, Cmd.none )
+
+                TypeSaved newType ->
+                    let
+                        maybeModuleName : Maybe ModuleName
+                        maybeModuleName =
+                            Maybe.map Tuple.second model.homeState.selectedModule
+                    in
+                    case maybeModuleName of
+                        Just moduleName ->
+                            case model.repo |> Repo.insertType moduleName newType.name newType.definition newType.access newType.documentation of
+                                Ok newRepo ->
+                                    ( { model | typeBuilderState = TypeBuilder.init, repo = newRepo, irState = IRLoaded (Repo.toDistribution newRepo) }, Cmd.none )
+
+                                _ ->
+                                    ( model, Cmd.none )
+
+                        Nothing ->
+                            ( model, Cmd.none )
 
         ServerGetTestsResponse testSuite ->
             ( { model | testSuite = fromStoredTestSuite testSuite }, Cmd.none )
@@ -1434,6 +1460,16 @@ viewHome model packageName packageDef =
                                                 []
                                 in
                                 col decorationTabContent
+                          }
+                        , { name = "Add new term"
+                          , content =
+                                col <|
+                                    [ TypeBuilder.view model.theme
+                                        { state = model.typeBuilderState, onStateChange = UI << TypeBuilderChanged, onTypeSave = UI << TypeSaved }
+                                        packageName
+                                        packageDef
+                                        (model.homeState.selectedModule |> Maybe.map Tuple.second |> Maybe.withDefault [])
+                                    ]
                           }
                         ]
                 }

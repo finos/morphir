@@ -108,7 +108,7 @@ viewValueByLanguageFeature config value =
                     ViewIfThenElse.view config viewValue value
 
                 Value.Literal _ literal ->
-                    ViewLiteral.view config literal
+                    ViewLiteral.view config literal |>Debug.log "lit"
 
                 (Value.Constructor _ (( _, _, localName ) as fQName)) as functionvalue ->
                     case fQName of
