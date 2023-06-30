@@ -1,18 +1,19 @@
+.media {
+}
+
 .mediaPanel {
 	box-sizing: border-box;
 	display:table-cell;
 	float: left;
 	margin-left: auto;
 	border-collapse: collapse;
+	width:45%;
 	/* display:block; */
 	/* overflow:auto;
 	float: none;
 	line-height: 26.4px;
 	position: static;
 	z-index: auto; */
-}
-table {
-
 }
 
 table td, table th{
