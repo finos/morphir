@@ -1439,37 +1439,35 @@ viewHome model packageName packageDef =
                 , activeTab = model.activeTabIndex
                 , tabs =
                     Array.fromList
-                        [ { name = "Summary"
-                          , content = col [ summary ]
-                          }
-                        , { name = "Dependency Graph"
-                          , content = col [ dependencyGraph model.homeState.selectedModule model.repo ]
-                          }
-                        , { name = "Decorations"
-                          , content =
-                                let
-                                    decorationTabContent =
-                                        case maybeModuleName of
-                                            Just moduleName ->
-                                                [ viewDecorationValues model (ModuleID ( packageName, moduleName )) ]
+                        ([ { name = "Summary"
+                           , content = col [ summary ]
+                           }
+                         , { name = "Dependency Graph"
+                           , content = col [ dependencyGraph model.homeState.selectedModule model.repo ]
+                           }
+                         ]
+                            ++ (case maybeModuleName of
+                                    Just moduleName ->
+                                        [ { name = "Decorations"
+                                          , content =
+                                                col [ viewDecorationValues model (ModuleID ( packageName, moduleName )) ]
+                                          }
+                                        , { name = "Add new term"
+                                          , content =
+                                                col <|
+                                                    [ TypeBuilder.view model.theme
+                                                        { state = model.typeBuilderState, onStateChange = UI << TypeBuilderChanged, onTypeSave = UI << TypeSaved }
+                                                        packageName
+                                                        packageDef
+                                                        moduleName
+                                                    ]
+                                          }
+                                        ]
 
-                                            Nothing ->
-                                                -- Since we don't annotate package for now, we don't show the Value Editors
-                                                []
-                                in
-                                col decorationTabContent
-                          }
-                        , { name = "Add new term"
-                          , content =
-                                col <|
-                                    [ TypeBuilder.view model.theme
-                                        { state = model.typeBuilderState, onStateChange = UI << TypeBuilderChanged, onTypeSave = UI << TypeSaved }
-                                        packageName
-                                        packageDef
-                                        (model.homeState.selectedModule |> Maybe.map Tuple.second |> Maybe.withDefault [])
-                                    ]
-                          }
-                        ]
+                                    Nothing ->
+                                        []
+                               )
+                        )
                 }
     in
     row [ width fill, height fill, Background.color model.theme.colors.gray, spacing (Theme.smallSpacing model.theme) ]
