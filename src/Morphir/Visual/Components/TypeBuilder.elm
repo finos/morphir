@@ -28,6 +28,7 @@ import Ordering
 type alias State =
     { typeName : String
     , typePickerState : Picklist.State (Type.Definition ())
+    , modulePickerState : Picklist.State ModuleName
     , customTypeEditorState : CustomTypeEditorState
     }
 
@@ -47,7 +48,8 @@ type alias Config msg =
 
 
 type alias NewType =
-    { name : Name
+    { moduleName : ModuleName
+    , name : Name
     , definition : Type.Definition ()
     , access : Access
     , documentation : String
@@ -56,7 +58,8 @@ type alias NewType =
 
 type Msg
     = UpdateTypeName String
-    | PicklistChanged (Picklist.State (Type.Definition ()))
+    | TypePicklistChanged (Picklist.State (Type.Definition ()))
+    | ModulePicklistChanged (Picklist.State ModuleName)
     | UpdateConstructorName String
     | SaveConstructorName
     | DeleteConstructorName Name
@@ -72,7 +75,7 @@ update typeBuildermsg state =
         UpdateTypeName n ->
             { state | typeName = n }
 
-        PicklistChanged newState ->
+        TypePicklistChanged newState ->
             { state | typePickerState = newState }
 
         UpdateConstructorName ctrName ->
@@ -82,6 +85,9 @@ update typeBuildermsg state =
                         | currentlyEditedConstructor = ctrName
                     }
             }
+
+        ModulePicklistChanged newState ->
+            { state | modulePickerState = newState }
 
         SaveConstructorName ->
             let
@@ -115,10 +121,11 @@ update typeBuildermsg state =
             }
 
 
-init : State
-init =
+init : Maybe ModuleName -> State
+init maybeModuleName =
     { typeName = ""
     , typePickerState = Picklist.init Nothing
+    , modulePickerState = Picklist.init maybeModuleName
     , customTypeEditorState = initCustomTypeEditor
     }
 
@@ -134,8 +141,8 @@ initCustomTypeEditor =
 view : Theme -> Config msg -> PackageName -> Package.Definition () (Type ()) -> ModuleName -> Element msg
 view theme config packageName packageDef moduleName =
     let
-        tpyeNameInput : Element msg
-        tpyeNameInput =
+        typeNameInput : Element msg
+        typeNameInput =
             el [ above (el [ padding (Theme.smallPadding theme), Font.color theme.colors.mediumGray ] (text "Name")), width fill ]
                 (InputComponent.textInput
                     theme
@@ -148,19 +155,19 @@ view theme config packageName packageDef moduleName =
                     Nothing
                 )
 
+        createDropdownElement : a -> String -> String -> { displayElement : Element msg, tag : String, value : a }
+        createDropdownElement def tag dispalyName =
+            { displayElement =
+                row [ padding <| Theme.smallPadding theme ]
+                    [ dispalyName |> text
+                    ]
+            , tag = tag
+            , value = def
+            }
+
         typePicklist : Element msg
         typePicklist =
             let
-                createDropdownElement : Type.Definition () -> String -> String -> { displayElement : Element msg, tag : String, value : Type.Definition () }
-                createDropdownElement def tag dispalyName =
-                    { displayElement =
-                        row [ padding <| Theme.smallPadding theme ]
-                            [ dispalyName |> text
-                            ]
-                    , tag = tag
-                    , value = def
-                    }
-
                 typeList : List { displayElement : Element msg, value : Definition (), tag : String }
                 typeList =
                     packageDef.modules
@@ -182,10 +189,59 @@ view theme config packageName packageDef moduleName =
             el [ above (el [ padding (Theme.smallPadding theme), Font.color theme.colors.mediumGray ] (text "Basis type")), width fill ]
                 (Picklist.view theme
                     { state = config.state.typePickerState
-                    , onStateChange = \pickListState -> config.onStateChange (update (PicklistChanged pickListState) config.state)
+                    , onStateChange = \pickListState -> config.onStateChange (update (TypePicklistChanged pickListState) config.state)
                     }
                     (sdkTypes |> List.map (\( name, def ) -> createDropdownElement def name name))
                     typeList
+                )
+
+        modulePicklist : Element msg
+        modulePicklist =
+            let
+                getIntermediaryModules : ModuleName -> List ModuleName
+                getIntermediaryModules mn =
+                    List.foldl
+                        (\m soFar ->
+                            case m of
+                                [] ->
+                                    [ [ m ] ]
+
+                                _ ->
+                                    let
+                                        lastSubPath =
+                                            List.reverse (List.head soFar |> Maybe.withDefault [])
+
+                                        newSubPath =
+                                            m :: lastSubPath
+                                    in
+                                    List.reverse newSubPath :: soFar
+                        )
+                        []
+                        mn
+
+                moduleList : List { displayElement : Element msg, value : ModuleName, tag : String }
+                moduleList =
+                    (packageDef.modules
+                        |> Dict.keys
+                        |> List.concatMap getIntermediaryModules
+                        |> List.Extra.unique
+                        |> List.map
+                            (\mn ->
+                                createDropdownElement
+                                    mn
+                                    (List.map nameToTitleText mn |> List.reverse |> List.intersperse " " |> List.foldl (++) "")
+                                    (List.map nameToTitleText mn |> List.reverse |> List.intersperse "> " |> List.foldl (++) "")
+                            )
+                    )
+                        |> List.sortWith (Ordering.byField .tag)
+            in
+            el [ above (el [ padding (Theme.smallPadding theme), Font.color theme.colors.mediumGray ] (text "Module")), width fill ]
+                (Picklist.view theme
+                    { state = config.state.modulePickerState
+                    , onStateChange = \pickListState -> config.onStateChange (update (ModulePicklistChanged pickListState) config.state)
+                    }
+                    []
+                    moduleList
                 )
 
         customTypeEditor : Element msg
@@ -264,6 +320,7 @@ view theme config packageName packageDef moduleName =
                                         def
                             , access = Public
                             , documentation = ""
+                            , moduleName = config.state.modulePickerState.selectedValue |> Maybe.withDefault []
                             }
                     in
                     if config.state.typeName |> String.isEmpty then
@@ -294,13 +351,11 @@ view theme config packageName packageDef moduleName =
         [ row
             [ spacing (Theme.mediumSpacing theme)
             ]
-            [ tpyeNameInput
-            , el [ Font.bold ] (text " is a(n) ")
+            [ typeNameInput
+            , el [ Font.bold ] (text " is a kind of ")
             , typePicklist
             , el [ Font.bold ] (text " in ")
-            , 
-                -- (text <| "In module: " ++ (List.foldr (++) "" <| List.map nameToTitleText moduleName))
-                (text "< TODO: Module Dropdown >")
+            , modulePicklist
             ]
         , case config.state.typePickerState.selectedValue of
             Just (CustomTypeDefinition _ _) ->

@@ -218,7 +218,7 @@ init flags url key =
                 }
             , repo = Repo.empty []
             , insightViewState = emptyVisualState
-            , typeBuilderState = TypeBuilder.init
+            , typeBuilderState = TypeBuilder.init Nothing
             , argStates = Dict.empty
             , expandedValues = Dict.empty
             , allDecorationConfigAndData = Dict.empty
@@ -473,21 +473,11 @@ update msg model =
                     ( { model | typeBuilderState = newTypeBuilderState }, Cmd.none )
 
                 TypeSaved newType ->
-                    let
-                        maybeModuleName : Maybe ModuleName
-                        maybeModuleName =
-                            Maybe.map Tuple.second model.homeState.selectedModule
-                    in
-                    case maybeModuleName of
-                        Just moduleName ->
-                            case model.repo |> Repo.insertType moduleName newType.name newType.definition newType.access newType.documentation of
-                                Ok newRepo ->
-                                    ( { model | typeBuilderState = TypeBuilder.init, repo = newRepo, irState = IRLoaded (Repo.toDistribution newRepo) }, Cmd.none )
+                    case model.repo |> Repo.insertType newType.moduleName newType.name newType.definition newType.access newType.documentation of
+                        Ok newRepo ->
+                            ( { model | typeBuilderState = TypeBuilder.init (Just newType.moduleName), repo = newRepo, irState = IRLoaded (Repo.toDistribution newRepo) }, Cmd.none )
 
-                                _ ->
-                                    ( model, Cmd.none )
-
-                        Nothing ->
+                        _ ->
                             ( model, Cmd.none )
 
         ServerGetTestsResponse testSuite ->
@@ -819,10 +809,18 @@ updateHomeState pack mod def filterState =
                 initialArgState =
                     initArgumentStates model.irState maybeSelectedDefinition
             in
-            { model | homeState = newState, insightViewState = initInsightViewState initialArgState, argStates = initialArgState, selectedTestcaseIndex = -1, testDescription = "", openSections = Set.fromList [ 1 ] }
+            { model
+                | homeState = newState
+                , insightViewState = initInsightViewState initialArgState
+                , argStates = initialArgState
+                , selectedTestcaseIndex = -1
+                , testDescription = ""
+                , openSections = Set.fromList [ 1 ]
+                , typeBuilderState = TypeBuilder.init (newState.selectedModule |> Maybe.map Tuple.second)
+            }
 
         -- When selecting a definition, we should not change the selected module, once the user explicitly selected one
-        keepOrChangeSelectedModule : ( List Path, List Name )
+        keepOrChangeSelectedModule : ( List Path, ModuleName )
         keepOrChangeSelectedModule =
             if filterState.moduleClicked == pack then
                 ( urlFragmentToNodePath "", [] )
