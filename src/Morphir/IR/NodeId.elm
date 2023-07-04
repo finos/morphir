@@ -91,7 +91,7 @@ nodeIdFromString str =
     in
     case String.split ":" str of
         [ packageName, moduleName ] ->
-            Ok (ModuleID ( [ packageName |> Name.fromString ], [ moduleName |> Name.fromString ] ))
+            Ok (ModuleID ( packageName |> Path.fromString, moduleName |> String.dropRight (String.length ".module") |> Path.fromString ))
 
         [ packageName, moduleName, localName ] ->
             if String.contains "#" localName then
@@ -114,16 +114,21 @@ nodeIdFromString str =
 nodeIdToString : NodeID -> String
 nodeIdToString nodeId =
     let
-        mapToTypeOrValue : Path -> Path -> Name -> String -> List NodePathStep -> String
-        mapToTypeOrValue packageName moduleName localName suffix nodePath =
+        mapToTypeOrValueOrModule : Path -> Path -> Maybe Name -> String -> List NodePathStep -> String
+        mapToTypeOrValueOrModule packageName moduleName maybeLocalName suffix nodePath =
             let
                 constructNodeIdString : String
                 constructNodeIdString =
-                    String.join ":"
-                        [ Path.toString Name.toTitleCase "." packageName
-                        , Path.toString Name.toTitleCase "." moduleName
-                        , Name.toCamelCase localName ++ suffix
-                        ]
+                    case maybeLocalName of
+                        Just localName ->
+                            FQName.toString ( packageName, moduleName, localName ) ++ suffix
+
+                        Nothing ->
+                            String.join ":"
+                                [ Path.toString Name.toTitleCase "." packageName
+                                , Path.toString Name.toTitleCase "." moduleName
+                                ]
+                                ++ suffix
             in
             if List.isEmpty nodePath then
                 constructNodeIdString
@@ -133,16 +138,13 @@ nodeIdToString nodeId =
     in
     case nodeId of
         TypeID ( packageName, moduleName, localName ) nodePath ->
-            mapToTypeOrValue packageName moduleName localName ".type" nodePath
+            mapToTypeOrValueOrModule packageName moduleName (Just localName) ".type" nodePath
 
         ValueID ( packageName, moduleName, localName ) nodePath ->
-            mapToTypeOrValue packageName moduleName localName ".value" nodePath
+            mapToTypeOrValueOrModule packageName moduleName (Just localName) ".value" nodePath
 
         ModuleID ( packageName, moduleName ) ->
-            String.join ":"
-                [ Path.toString Name.toTitleCase "." packageName
-                , Path.toString Name.toTitleCase "." moduleName
-                ]
+            mapToTypeOrValueOrModule packageName moduleName Nothing ".module" []
 
 
 {-| Convert a NodePath to String.
