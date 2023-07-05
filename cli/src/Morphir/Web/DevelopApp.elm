@@ -22,6 +22,7 @@ import Element
         , fillPortion
         , height
         , image
+        , inFront
         , layout
         , link
         , maximum
@@ -51,6 +52,7 @@ import Element.Keyed
 import FontAwesome.Styles as Icon
 import Http exposing (emptyBody, jsonBody)
 import List.Extra
+import Loading
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
 import Morphir.IR.Decoration exposing (AllDecorationConfigAndData, DecorationData, DecorationID)
@@ -184,6 +186,7 @@ type Definition
 
 type IRState
     = IRLoading
+    | IRReloading Distribution
     | IRLoaded Distribution
 
 
@@ -475,7 +478,9 @@ update msg model =
                 TypeSaved newType ->
                     case model.repo |> Repo.insertType newType.moduleName newType.name newType.definition newType.access newType.documentation of
                         Ok newRepo ->
-                            ( { model | typeBuilderState = TypeBuilder.init (Just newType.moduleName), repo = newRepo, irState = IRLoaded (Repo.toDistribution newRepo) }, Cmd.none )
+                            ( { model | irState = IRReloading (Repo.toDistribution newRepo) }
+                            , httpSaveDistribution (Repo.toDistribution newRepo)
+                            )
 
                         _ ->
                             ( model, Cmd.none )
@@ -1240,6 +1245,17 @@ viewBody model =
                     (text "Loading the IR ...")
                 )
 
+        IRReloading (Library packageName _ packageDef) ->
+            el
+                [ width fill
+                , height fill
+                , centerX, centerY
+                , inFront <|
+                    el [ Background.color model.theme.colors.lightGray, onClick DoNothing, width fill, height fill] <|
+                        el [centerX, centerY ] <|Element.html (Loading.render Loading.Circle Loading.defaultConfig Loading.On)
+                ]
+                (viewHome model packageName packageDef)
+
         IRLoaded (Library packageName _ packageDef) ->
             viewHome model packageName packageDef
 
@@ -1956,6 +1972,25 @@ httpSaveTestSuite ir newTestSuite oldTestSuite =
         }
 
 
+httpSaveDistribution : Distribution -> Cmd Msg
+httpSaveDistribution distribution =
+    Http.post
+        { url = "/server/morphir-ir.json"
+        , body = jsonBody <| DistributionCodec.encodeVersionedDistribution distribution
+        , expect =
+            Http.expectJson
+                (\response ->
+                    case response of
+                        Err httpError ->
+                            HttpError "We encountered an issue while saving the IR" httpError
+
+                        Ok result ->
+                            ServerGetIRResponse result
+                )
+                DistributionCodec.decodeVersionedDistribution
+        }
+
+
 {-| Display a Tree View of clickable module names in the given package, with urls pointing to the give module
 -}
 viewModuleNames : Model -> PackageName -> ModuleName -> List ModuleName -> TreeViewComponent.Node ModuleName Msg
@@ -2445,7 +2480,7 @@ viewDefinitionDetails model =
                 Nothing ->
                     none
 
-        IRLoading ->
+        _ ->
             none
 
 
@@ -2487,7 +2522,7 @@ initArgumentStates irState maybeSelectedDefinition =
                 Nothing ->
                     Dict.empty
 
-        IRLoading ->
+        _ ->
             Dict.empty
 
 

@@ -71,7 +71,6 @@ import Element
         , below
         , column
         , el
-        , explain
         , fill
         , focused
         , height
@@ -79,10 +78,8 @@ import Element
         , inFront
         , maximum
         , minimum
-        , mouseOver
         , moveDown
         , none
-        , padding
         , paddingEach
         , paddingXY
         , pointer
@@ -156,6 +153,7 @@ update msg state =
             if not state.targeted then
                 { state
                     | dropDownOpen = False
+                    , targeted = False
                 }
 
             else
@@ -255,8 +253,8 @@ view theme config priorityElements generalElements =
                             Element.none
 
                         Nothing ->
-                            row [ width fill, height fill, Background.color theme.colors.lightest, pointer, paddingXY 2 0, Theme.borderRounded theme ]
-                                [ el [ width fill ]
+                            row [ width fill, height (shrink |> minimum (Theme.scaled 5 theme) |> maximum (Theme.scaled 5 theme)), Background.color theme.colors.lightest, pointer, paddingXY 2 0, Theme.borderRounded theme, Element.clipY ]
+                                [ el [ width fill, height fill ]
                                     selected
                                 , el [ alignRight ]
                                     (html (Icon.caretDown |> Icon.styled [ Icon.lg ] |> Icon.view))
@@ -286,6 +284,7 @@ view theme config priorityElements generalElements =
         inputElementAttributes =
             [ width (shrink |> minimum (theme.fontSize * 14) |> maximum (theme.fontSize * 20))
             , paddingXY (theme |> Theme.mediumPadding) (theme |> Theme.smallPadding)
+            , height fill
             , Border.width 1
             , theme |> Theme.borderRounded
             , Border.color (grey 201)

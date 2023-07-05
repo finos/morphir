@@ -23,6 +23,8 @@ import Morphir.Visual.Components.InputComponent as InputComponent
 import Morphir.Visual.Components.Picklist as Picklist
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Ordering
+import Element exposing (clipY)
+import Element exposing (clipX)
 
 
 type alias State =
@@ -155,15 +157,19 @@ view theme config packageName packageDef moduleName =
                     Nothing
                 )
 
-        createDropdownElement : a -> String -> String -> { displayElement : Element msg, tag : String, value : a }
-        createDropdownElement def tag dispalyName =
+        createDropdownElement : a -> String -> String -> String -> { displayElement : Element msg, tag : String, value : a }
+        createDropdownElement def tag displayName path =
             { displayElement =
-                row [ padding <| Theme.smallPadding theme ]
-                    [ dispalyName |> text
+                column [ padding (Theme.smallPadding theme), Element.clip, width fill ]
+                    [ (displayName |> Theme.ellipseText) 
+                    , el [Font.color theme.colors.mediumGray, Font.size (Theme.scaled 0 theme), paddingXY 0 2] (Theme.ellipseText path)
                     ]
             , tag = tag
             , value = def
             }
+
+        modulePath mn =
+            (List.map nameToTitleText mn |> List.reverse |> List.intersperse "> " |> List.foldl (++) "")
 
         typePicklist : Element msg
         typePicklist =
@@ -173,7 +179,7 @@ view theme config packageName packageDef moduleName =
                     packageDef.modules
                         |> Dict.toList
                         |> List.concatMap
-                            (\( _, accessControlledModuleDef ) ->
+                            (\( mn, accessControlledModuleDef ) ->
                                 accessControlledModuleDef.value.types
                                     |> Dict.toList
                                     |> List.map
@@ -182,6 +188,7 @@ view theme config packageName packageDef moduleName =
                                                 (Type.typeAliasDefinition [] (Type.Reference () (FQName.fQName packageName moduleName typeName) []))
                                                 (typeName |> nameToTitleText)
                                                 (typeName |> nameToTitleText)
+                                                (modulePath mn)
                                         )
                             )
                         |> List.sortWith (Ordering.byField .tag)
@@ -191,7 +198,7 @@ view theme config packageName packageDef moduleName =
                     { state = config.state.typePickerState
                     , onStateChange = \pickListState -> config.onStateChange (update (TypePicklistChanged pickListState) config.state)
                     }
-                    (sdkTypes |> List.map (\( name, def ) -> createDropdownElement def name name))
+                    (sdkTypes |> List.map (\( name, def ) -> createDropdownElement def name name "SDK"))
                     typeList
                 )
 
@@ -230,7 +237,8 @@ view theme config packageName packageDef moduleName =
                                 createDropdownElement
                                     mn
                                     (List.map nameToTitleText mn |> List.reverse |> List.intersperse " " |> List.foldl (++) "")
-                                    (List.map nameToTitleText mn |> List.reverse |> List.intersperse "> " |> List.foldl (++) "")
+                                    (mn |> List.reverse |> List.head |> Maybe.withDefault [] |> nameToTitleText )
+                                    (modulePath mn)
                             )
                     )
                         |> List.sortWith (Ordering.byField .tag)

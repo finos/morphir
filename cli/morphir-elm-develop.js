@@ -36,7 +36,7 @@ const webDir = path.join(__dirname, "web");
 
 
 app.use(express.static(webDir, { index: false }));
-app.use(express.json());
+app.use(express.json({limit: "100mb"}));
 
 app.get("/", wrap(async (req, res, next) => {
   res.setHeader('Content-type', 'text/html')
@@ -99,6 +99,21 @@ app.post(
     const morphirTestsJsonContent = await readFile(morphirTestsJsonPath);
     const morphirTestsJson = JSON.parse(morphirTestsJsonContent.toString());
     res.send(morphirTestsJson);
+  })
+);
+
+app.post(
+  "/server/morphir-ir.json",
+  wrap(async (req, res, next) => {
+    const morphirIRJsonPath = path.join(
+      program.opts().projectDir,
+      "morphir-ir.json"
+    );
+    var jsonContent = JSON.stringify(req.body, null, 4);
+    await writeFile(morphirIRJsonPath, jsonContent);
+    const morphirIRJsonContent = await readFile(morphirIRJsonPath);
+    const morphirIRJson = JSON.parse(morphirIRJsonContent.toString());
+    res.send(morphirIRJson);
   })
 );
 
