@@ -1,5 +1,6 @@
 ---
 id: scala-api
+title: Scala API Guide
 ---
 
 
