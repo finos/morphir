@@ -220,7 +220,6 @@ type alias DropdownElement msg value =
 view : Theme -> Config msg value -> List (DropdownElement msg value) -> List (DropdownElement msg value) -> Element msg
 view theme config priorityElements generalElements =
     let
-
         state : State value
         state =
             config.state
@@ -253,8 +252,8 @@ view theme config priorityElements generalElements =
                             Element.none
 
                         Nothing ->
-                            row [ width fill, height fill , Background.color theme.colors.lightest, pointer, paddingXY 2 0, Theme.borderRounded theme]
-                                [ el [ width fill, height (shrink |> minimum (Theme.scaled 5 theme) |> maximum (Theme.scaled 5 theme)), Element.clipY  ]
+                            row [ width fill, height fill, Background.color theme.colors.lightest, pointer, paddingXY 2 0, Theme.borderRounded theme ]
+                                [ el [ width fill, height (shrink |> minimum (Theme.scaled 5 theme) |> maximum (Theme.scaled 5 theme)), Element.clipY ]
                                     selected
                                 , el [ alignRight ]
                                     (html (Icon.caretDown |> Icon.styled [ Icon.lg ] |> Icon.view))

@@ -1,7 +1,8 @@
 module Morphir.Visual.Components.TypeBuilder exposing (NewType, State, init, view)
 
+import Bootstrap.Form.Radio exposing (name)
 import Dict
-import Element exposing (Element, above, column, el, fill, height, padding, paddingXY, row, scrollbars, spacing, text, width)
+import Element exposing (Element, above, clipX, clipY, column, el, fill, height, padding, paddingXY, row, scrollbars, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -17,14 +18,12 @@ import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.SDK.Basics exposing (boolType, floatType, intType)
 import Morphir.IR.SDK.Decimal exposing (decimalType)
 import Morphir.IR.SDK.String exposing (stringType)
-import Morphir.IR.Type as Type exposing (Definition(..), Type)
+import Morphir.IR.Type as Type exposing (Definition(..), Field, Type, record)
 import Morphir.Visual.Common exposing (nameToTitleText)
 import Morphir.Visual.Components.InputComponent as InputComponent
 import Morphir.Visual.Components.Picklist as Picklist
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Ordering
-import Element exposing (clipY)
-import Element exposing (clipX)
 
 
 type alias State =
@@ -32,12 +31,21 @@ type alias State =
     , typePickerState : Picklist.State (Type.Definition ())
     , modulePickerState : Picklist.State ModuleName
     , customTypeEditorState : CustomTypeEditorState
+    , recordTypeEditorState : RecordTypeEditorState
     }
 
 
 type alias CustomTypeEditorState =
     { constructorNames : List Name
     , currentlyEditedConstructor : String
+    , error : Maybe String
+    }
+
+
+type alias RecordTypeEditorState =
+    { recordFields : List (Field ())
+    , currentlyEditedFieldName : String
+    , currentlyEditedFieldType : Picklist.State (Type ())
     , error : Maybe String
     }
 
@@ -62,17 +70,25 @@ type Msg
     = UpdateTypeName String
     | TypePicklistChanged (Picklist.State (Type.Definition ()))
     | ModulePicklistChanged (Picklist.State ModuleName)
-    | UpdateConstructorName String
+    | ConstructorEditor ConstructorEditorMsg
+    | RecordEditor RecordEditorMsg
+
+
+type ConstructorEditorMsg
+    = UpdateConstructorName String
     | SaveConstructorName
     | DeleteConstructorName Name
 
 
+type RecordEditorMsg
+    = UpdateRecordFieldName String
+    | RecordTypePicklistChanged (Picklist.State (Type ()))
+    | DeleteField Name
+    | SaveField (Maybe (Type ()))
+
+
 update : Msg -> State -> State
 update typeBuildermsg state =
-    let
-        customTypeEditorState =
-            state.customTypeEditorState
-    in
     case typeBuildermsg of
         UpdateTypeName n ->
             { state | typeName = n }
@@ -80,47 +96,121 @@ update typeBuildermsg state =
         TypePicklistChanged newState ->
             { state | typePickerState = newState }
 
-        UpdateConstructorName ctrName ->
-            { state
-                | customTypeEditorState =
-                    { customTypeEditorState
-                        | currentlyEditedConstructor = ctrName
-                    }
-            }
-
         ModulePicklistChanged newState ->
             { state | modulePickerState = newState }
 
-        SaveConstructorName ->
+        ConstructorEditor msg ->
             let
-                ctrName =
-                    Name.fromString customTypeEditorState.currentlyEditedConstructor
+                customTypeEditorState =
+                    state.customTypeEditorState
             in
-            if not <| (List.member ctrName customTypeEditorState.constructorNames || String.isEmpty customTypeEditorState.currentlyEditedConstructor) then
-                { state
-                    | customTypeEditorState =
-                        { customTypeEditorState
-                            | constructorNames = (ctrName :: customTypeEditorState.constructorNames) |> List.sort
-                            , currentlyEditedConstructor = ""
-                            , error = Nothing
-                        }
-                }
-
-            else
-                { state
-                    | customTypeEditorState =
-                        { customTypeEditorState
-                            | error = Just "This enum already has a member by this name"
-                        }
-                }
-
-        DeleteConstructorName ctrToDelete ->
-            { state
-                | customTypeEditorState =
-                    { customTypeEditorState
-                        | constructorNames = List.Extra.remove ctrToDelete customTypeEditorState.constructorNames
+            case msg of
+                UpdateConstructorName ctrName ->
+                    { state
+                        | customTypeEditorState =
+                            { customTypeEditorState
+                                | currentlyEditedConstructor = ctrName
+                            }
                     }
-            }
+
+                SaveConstructorName ->
+                    let
+                        ctrName =
+                            Name.fromString customTypeEditorState.currentlyEditedConstructor
+                    in
+                    if not <| (List.member ctrName customTypeEditorState.constructorNames || String.isEmpty customTypeEditorState.currentlyEditedConstructor) then
+                        { state
+                            | customTypeEditorState =
+                                { customTypeEditorState
+                                    | constructorNames = (ctrName :: customTypeEditorState.constructorNames) |> List.sort
+                                    , currentlyEditedConstructor = ""
+                                    , error = Nothing
+                                }
+                        }
+
+                    else
+                        { state
+                            | customTypeEditorState =
+                                { customTypeEditorState
+                                    | error = Just "This not a valid name"
+                                }
+                        }
+
+                DeleteConstructorName ctrToDelete ->
+                    { state
+                        | customTypeEditorState =
+                            { customTypeEditorState
+                                | constructorNames = List.Extra.remove ctrToDelete customTypeEditorState.constructorNames
+                            }
+                    }
+
+        RecordEditor msg ->
+            let
+                recordTypeEditorState =
+                    state.recordTypeEditorState
+            in
+            case msg of
+                UpdateRecordFieldName fieldName ->
+                    { state
+                        | recordTypeEditorState =
+                            { recordTypeEditorState
+                                | currentlyEditedFieldName = fieldName
+                            }
+                    }
+
+                RecordTypePicklistChanged newState ->
+                    { state
+                        | recordTypeEditorState =
+                            { recordTypeEditorState
+                                | currentlyEditedFieldType = newState
+                            }
+                    }
+
+                DeleteField fieldName ->
+                    { state
+                        | recordTypeEditorState =
+                            { recordTypeEditorState
+                                | recordFields = List.filter (\field -> not (field.name == fieldName)) recordTypeEditorState.recordFields
+                            }
+                    }
+
+                SaveField maybeTpe->
+                    let
+                        fieldName : Name
+                        fieldName =
+                            Name.fromString recordTypeEditorState.currentlyEditedFieldName
+
+                        doesFieldExist : Name -> Bool
+                        doesFieldExist fName =
+                            recordTypeEditorState.recordFields |> List.any (\field -> field.name == fName)
+                    in
+                    case maybeTpe of
+                        Just tpe ->
+                            if not <| (doesFieldExist fieldName || String.isEmpty recordTypeEditorState.currentlyEditedFieldName) then
+                                { state
+                                    | recordTypeEditorState =
+                                        { recordTypeEditorState
+                                            | recordFields = ({ name = fieldName, tpe = tpe } :: recordTypeEditorState.recordFields) |> List.sortWith (Ordering.byField .name)
+                                            , currentlyEditedFieldName = ""
+                                            , error = Nothing
+                                            , currentlyEditedFieldType = Picklist.init Nothing
+                                        }
+                                }
+
+                            else
+                                { state
+                                    | recordTypeEditorState =
+                                        { recordTypeEditorState
+                                            | error = Just "This record already has a field by this name"
+                                        }
+                                }
+                        Nothing ->
+                            { state
+                                    | recordTypeEditorState =
+                                        { recordTypeEditorState
+                                            | error = Just "Please select a type"
+                                        }
+                                }
 
 
 init : Maybe ModuleName -> State
@@ -129,6 +219,7 @@ init maybeModuleName =
     , typePickerState = Picklist.init Nothing
     , modulePickerState = Picklist.init maybeModuleName
     , customTypeEditorState = initCustomTypeEditor
+    , recordTypeEditorState = initRecordTypeEditorState
     }
 
 
@@ -136,6 +227,15 @@ initCustomTypeEditor : CustomTypeEditorState
 initCustomTypeEditor =
     { constructorNames = []
     , currentlyEditedConstructor = ""
+    , error = Nothing
+    }
+
+
+initRecordTypeEditorState : RecordTypeEditorState
+initRecordTypeEditorState =
+    { recordFields = []
+    , currentlyEditedFieldName = ""
+    , currentlyEditedFieldType = Picklist.init Nothing
     , error = Nothing
     }
 
@@ -157,20 +257,6 @@ view theme config packageName packageDef moduleName =
                     Nothing
                 )
 
-        createDropdownElement : a -> String -> String -> String -> { displayElement : Element msg, tag : String, value : a }
-        createDropdownElement def tag displayName path =
-            { displayElement =
-                column [ padding (Theme.smallPadding theme), Element.clip, width fill ]
-                    [ (displayName |> Theme.ellipseText) 
-                    , el [Font.color theme.colors.mediumGray, Font.size (Theme.scaled 0 theme), paddingXY 0 2] (Theme.ellipseText path)
-                    ]
-            , tag = tag
-            , value = def
-            }
-
-        modulePath mn =
-            (List.map nameToTitleText mn |> List.reverse |> List.intersperse "> " |> List.foldl (++) "")
-
         typePicklist : Element msg
         typePicklist =
             let
@@ -183,8 +269,9 @@ view theme config packageName packageDef moduleName =
                                 accessControlledModuleDef.value.types
                                     |> Dict.toList
                                     |> List.map
-                                        (\( typeName, typedef ) ->
+                                        (\( typeName, _ ) ->
                                             createDropdownElement
+                                                theme
                                                 (Type.typeAliasDefinition [] (Type.Reference () (FQName.fQName packageName moduleName typeName) []))
                                                 (typeName |> nameToTitleText)
                                                 (typeName |> nameToTitleText)
@@ -198,7 +285,7 @@ view theme config packageName packageDef moduleName =
                     { state = config.state.typePickerState
                     , onStateChange = \pickListState -> config.onStateChange (update (TypePicklistChanged pickListState) config.state)
                     }
-                    (sdkTypes |> List.map (\( name, def ) -> createDropdownElement def name name "SDK"))
+                    (builtInTypes |> List.map (\( name, def ) -> createDropdownElement theme def name name "SDK"))
                     typeList
                 )
 
@@ -235,9 +322,10 @@ view theme config packageName packageDef moduleName =
                         |> List.map
                             (\mn ->
                                 createDropdownElement
+                                    theme
                                     mn
                                     (List.map nameToTitleText mn |> List.reverse |> List.intersperse " " |> List.foldl (++) "")
-                                    (mn |> List.reverse |> List.head |> Maybe.withDefault [] |> nameToTitleText )
+                                    (mn |> List.reverse |> List.head |> Maybe.withDefault [] |> nameToTitleText)
                                     (modulePath mn)
                             )
                     )
@@ -252,64 +340,6 @@ view theme config packageName packageDef moduleName =
                     moduleList
                 )
 
-        customTypeEditor : Element msg
-        customTypeEditor =
-            let
-                constructorNames : Element msg
-                constructorNames =
-                    let
-                        deleteConstructorBtn : Name -> Element msg
-                        deleteConstructorBtn ctrName =
-                            Input.button
-                                [ theme |> Theme.borderRounded
-                                , Background.color theme.colors.darkest
-                                , Font.color theme.colors.lightest
-                                , Font.bold
-                                , Font.size theme.fontSize
-                                , padding 2
-                                ]
-                                { onPress = Just <| config.onStateChange (update (DeleteConstructorName ctrName) config.state)
-                                , label = text " x "
-                                }
-                    in
-                    if List.isEmpty config.state.customTypeEditorState.constructorNames then
-                        Element.none
-
-                    else
-                        List.map
-                            (\n -> row [ spacing (Theme.smallSpacing theme) ] [ el [ Font.bold, Theme.borderBottom 1, Border.color theme.colors.mediumGray ] (text <| nameToTitleText n), deleteConstructorBtn n ])
-                            config.state.customTypeEditorState.constructorNames
-                            ++ [ el [ Font.bold ] (text "or") ]
-                            |> column [ spacing <| Theme.smallSpacing theme, padding <| Theme.smallPadding theme ]
-
-                ctrNameEditor : Element msg
-                ctrNameEditor =
-                    InputComponent.textInput
-                        theme
-                        [ onEnter <| config.onStateChange (update SaveConstructorName config.state) ]
-                        { onChange = \s -> config.onStateChange (update (UpdateConstructorName s) config.state)
-                        , text = config.state.customTypeEditorState.currentlyEditedConstructor
-                        , placeholder = Just (Input.placeholder [] (text "Name..."))
-                        , label = Input.labelHidden "Next consturctor name"
-                        }
-                        config.state.customTypeEditorState.error
-
-                ctrSaveButton : Element msg
-                ctrSaveButton =
-                    Input.button
-                        [ theme |> Theme.borderRounded
-                        , Background.color theme.colors.darkest
-                        , Font.color theme.colors.lightest
-                        , Font.bold
-                        , Font.size theme.fontSize
-                        , padding (Theme.smallPadding theme)
-                        ]
-                        { onPress = Just <| config.onStateChange (update SaveConstructorName config.state)
-                        , label = text " + "
-                        }
-            in
-            column [ padding <| Theme.mediumPadding theme, spacing <| Theme.mediumSpacing theme ] [ constructorNames, row [ spacing (Theme.smallSpacing theme) ] [ ctrNameEditor, ctrSaveButton ] ]
-
         saveButton : Element msg
         saveButton =
             let
@@ -323,6 +353,9 @@ view theme config packageName packageDef moduleName =
                                 case def of
                                     CustomTypeDefinition _ _ ->
                                         Type.customTypeDefinition [] (AccessControlled.public <| Dict.fromList (List.map (\n -> Tuple.pair n []) config.state.customTypeEditorState.constructorNames))
+
+                                    TypeAliasDefinition _ (Type.Record _ _) ->
+                                        Type.typeAliasDefinition [] (record () config.state.recordTypeEditorState.recordFields)
 
                                     _ ->
                                         def
@@ -346,7 +379,7 @@ view theme config packageName packageDef moduleName =
                 , Font.size theme.fontSize
                 ]
                 { onPress = saveTypeMessage
-                , label = row [ spacing (theme |> Theme.scaled -6) ] [ text "Save new term" ]
+                , label = text "Save new term"
                 }
     in
     column
@@ -367,7 +400,14 @@ view theme config packageName packageDef moduleName =
             ]
         , case config.state.typePickerState.selectedValue of
             Just (CustomTypeDefinition _ _) ->
-                column [ spacing (Theme.smallSpacing theme) ] [ el [ Font.bold ] (text " which can be one of: "), customTypeEditor ]
+                column 
+                    [ spacing (Theme.smallSpacing theme) ] 
+                    [ el [ Font.bold ] (text " which can be one of: "), customTypeEditor theme config ]
+
+            Just (TypeAliasDefinition _ (Type.Record _ _)) ->
+                column 
+                    [ spacing (Theme.smallSpacing theme) ] 
+                    [ el [ Font.bold ] (text " whith the following fields:  "), recordTypeEditor theme config packageName packageDef moduleName ]
 
             _ ->
                 Element.none
@@ -375,22 +415,202 @@ view theme config packageName packageDef moduleName =
         ]
 
 
-sdkTypes : List ( String, Type.Definition () )
+sdkTypes : List ( String, Type () )
 sdkTypes =
+    [ ( "Boolean", boolType () )
+    , ( "Decimal", decimalType () )
+    , ( "Integer", intType () )
+    , ( "Floating Point Number", floatType () )
+    , ( "Text", stringType () )
+    ]
+
+
+builtInTypes : List ( String, Type.Definition () )
+builtInTypes =
     let
-        customType : List ( String, Definition a )
+        customType : List ( String, Type.Definition () )
         customType =
             [ ( "Enum", Type.customTypeDefinition [] (AccessControlled.public Dict.empty) ) ]
+
+        recordType : List ( String, Type.Definition () )
+        recordType =
+            [ ( "Record", Type.typeAliasDefinition [] (record () []) ) ]
     in
-    customType
-        ++ ([ ( "Boolean", boolType () )
-            , ( "Decimal", decimalType () )
-            , ( "Integer", intType () )
-            , ( "Floating Point Number", floatType () )
-            , ( "Text", stringType () )
+    customType ++ recordType ++ (sdkTypes |> List.map (Tuple.mapSecond (Type.typeAliasDefinition [])))
+
+
+createDropdownElement : Theme -> a -> String -> String -> String -> { displayElement : Element msg, tag : String, value : a }
+createDropdownElement theme def tag displayName path =
+    { displayElement =
+        column [ padding (Theme.smallPadding theme), Element.clip, width fill ]
+            [ displayName |> Theme.ellipseText
+            , el [ Font.color theme.colors.mediumGray, Font.size (Theme.scaled 0 theme), paddingXY 0 2 ] (Theme.ellipseText path)
             ]
-                |> List.map (Tuple.mapSecond (Type.typeAliasDefinition []))
-           )
+    , tag = tag
+    , value = def
+    }
+
+
+modulePath : ModuleName -> String
+modulePath mn =
+    List.map nameToTitleText mn |> List.reverse |> List.intersperse "> " |> List.foldl (++) ""
+
+
+customTypeEditor : Theme -> Config msg -> Element msg
+customTypeEditor theme config =
+    let
+        constructorNames : Element msg
+        constructorNames =
+            let
+                deleteConstructorBtn : Name -> Element msg
+                deleteConstructorBtn ctrName =
+                    Input.button
+                        [ theme |> Theme.borderRounded
+                        , Background.color theme.colors.darkest
+                        , Font.color theme.colors.lightest
+                        , Font.bold
+                        , Font.size theme.fontSize
+                        , padding 2
+                        ]
+                        { onPress = Just <| config.onStateChange (update (ConstructorEditor <| DeleteConstructorName ctrName) config.state)
+                        , label = text " x "
+                        }
+            in
+            if List.isEmpty config.state.customTypeEditorState.constructorNames then
+                Element.none
+
+            else
+                List.map
+                    (\n -> row [ spacing (Theme.smallSpacing theme) ] [ el [ Font.bold, Theme.borderBottom 1, Border.color theme.colors.mediumGray ] (text <| nameToTitleText n), deleteConstructorBtn n ])
+                    config.state.customTypeEditorState.constructorNames
+                    ++ [ el [ Font.bold ] (text "or") ]
+                    |> column [ spacing <| Theme.smallSpacing theme, padding <| Theme.smallPadding theme ]
+
+        ctrNameEditor : Element msg
+        ctrNameEditor =
+            InputComponent.textInput
+                theme
+                [ onEnter <| config.onStateChange (update (ConstructorEditor SaveConstructorName) config.state) ]
+                { onChange = \s -> config.onStateChange (update (ConstructorEditor <| UpdateConstructorName s) config.state)
+                , text = config.state.customTypeEditorState.currentlyEditedConstructor
+                , placeholder = Just (Input.placeholder [] (text "Name..."))
+                , label = Input.labelHidden "Next constructor name"
+                }
+                config.state.customTypeEditorState.error
+
+        ctrSaveButton : Element msg
+        ctrSaveButton =
+            Input.button
+                [ theme |> Theme.borderRounded
+                , Background.color theme.colors.darkest
+                , Font.color theme.colors.lightest
+                , Font.bold
+                , Font.size theme.fontSize
+                , padding (Theme.smallPadding theme)
+                ]
+                { onPress = Just <| config.onStateChange (update (ConstructorEditor SaveConstructorName) config.state)
+                , label = text " + "
+                }
+    in
+    column [ paddingXY (Theme.smallPadding theme) (Theme.mediumPadding theme), spacing <| Theme.mediumSpacing theme ] [ constructorNames, row [ spacing (Theme.smallSpacing theme) ] [ ctrNameEditor, ctrSaveButton ] ]
+
+
+recordTypeEditor : Theme -> Config msg -> PackageName -> Package.Definition () (Type ()) -> ModuleName -> Element msg
+recordTypeEditor theme config packageName packageDef moduleName =
+    let
+        fields : Element msg
+        fields =
+            let
+                deleteFieldBtn : Name -> Element msg
+                deleteFieldBtn fieldName =
+                    Input.button
+                        [ theme |> Theme.borderRounded
+                        , Background.color theme.colors.darkest
+                        , Font.color theme.colors.lightest
+                        , Font.bold
+                        , Font.size theme.fontSize
+                        , padding 2
+                        ]
+                        { onPress = Just <| config.onStateChange (update (RecordEditor <| DeleteField fieldName) config.state)
+                        , label = text " x "
+                        }
+            in
+            if List.isEmpty config.state.recordTypeEditorState.recordFields then
+                text "{ }"
+
+            else
+                column [ spacing <| Theme.smallSpacing theme, padding <| Theme.smallPadding theme ]
+                    ((text "{") ::
+                    (List.map
+                        (\field ->
+                            row
+                                [ spacing (Theme.smallSpacing theme), paddingXY (Theme.largeSpacing theme) 0
+                                ]
+                                [ el [ Font.bold, Theme.borderBottom 1, Border.color theme.colors.mediumGray ] (text <| nameToTitleText field.name ++ " : " ++ Type.toString field.tpe)
+                                , deleteFieldBtn field.name
+                                ]
+                        )
+                        config.state.recordTypeEditorState.recordFields) ++ [text "}"])
+
+        fieldSaveButton : Element msg
+        fieldSaveButton =
+            Input.button
+                [ padding 7
+                , theme |> Theme.borderRounded
+                , Background.color theme.colors.darkest
+                , Font.color theme.colors.lightest
+                , Font.bold
+                , Font.size theme.fontSize
+                ]
+                { onPress = Just <| config.onStateChange (update (RecordEditor <| SaveField config.state.recordTypeEditorState.currentlyEditedFieldType.selectedValue) config.state)
+                , label = text "Add field"
+                }
+
+        fieldNameEditor : Element msg
+        fieldNameEditor =
+            InputComponent.textInput
+                theme
+                []
+                { onChange = \s -> config.onStateChange (update (RecordEditor <| UpdateRecordFieldName s) config.state)
+                , text = config.state.recordTypeEditorState.currentlyEditedFieldName
+                , placeholder = Just (Input.placeholder [] (text "Name..."))
+                , label = Input.labelHidden "Next field name"
+                }
+                config.state.recordTypeEditorState.error
+
+        typePicklist : Element msg
+        typePicklist =
+            let
+                typeList : List { displayElement : Element msg, value : Type (), tag : String }
+                typeList =
+                    packageDef.modules
+                        |> Dict.toList
+                        |> List.concatMap
+                            (\( mn, accessControlledModuleDef ) ->
+                                accessControlledModuleDef.value.types
+                                    |> Dict.toList
+                                    |> List.map
+                                        (\( typeName, _ ) ->
+                                            createDropdownElement
+                                                theme
+                                                (Type.Reference () (FQName.fQName packageName moduleName typeName) [])
+                                                (typeName |> nameToTitleText)
+                                                (typeName |> nameToTitleText)
+                                                (modulePath mn)
+                                        )
+                            )
+                        |> List.sortWith (Ordering.byField .tag)
+            in
+            el [ above (el [ padding (Theme.smallPadding theme), Font.color theme.colors.mediumGray ] (text "Field type")), width fill ]
+                (Picklist.view theme
+                    { state = config.state.recordTypeEditorState.currentlyEditedFieldType
+                    , onStateChange = \pickListState -> config.onStateChange (update (RecordEditor (RecordTypePicklistChanged pickListState)) config.state)
+                    }
+                    (sdkTypes |> List.map (\( name, def ) -> createDropdownElement theme def name name "SDK"))
+                    typeList
+                )
+    in
+    column [ paddingXY (Theme.smallPadding theme) (Theme.mediumPadding theme), spacing <| Theme.mediumSpacing theme ] [ fields, row [ spacing (Theme.smallSpacing theme) ] [ fieldNameEditor, text " is a ", typePicklist, fieldSaveButton ] ]
 
 
 onEnter : msg -> Element.Attribute msg

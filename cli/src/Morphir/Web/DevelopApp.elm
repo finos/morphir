@@ -478,7 +478,7 @@ update msg model =
                 TypeSaved newType ->
                     case model.repo |> Repo.insertType newType.moduleName newType.name newType.definition newType.access newType.documentation of
                         Ok newRepo ->
-                            ( { model | irState = IRReloading (Repo.toDistribution newRepo) }
+                            ( { model | irState = IRReloading (Repo.toDistribution newRepo), typeBuilderState = TypeBuilder.init Nothing }
                             , httpSaveDistribution (Repo.toDistribution newRepo)
                             )
 
