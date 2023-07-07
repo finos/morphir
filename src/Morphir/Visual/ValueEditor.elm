@@ -60,6 +60,10 @@ import Element
         , table
         , text
         , width
+        , shrink
+        , minimum
+        , maximum
+        , centerX
         )
 import Element.Background as Background
 import Element.Border as Border
@@ -91,6 +95,7 @@ import Morphir.Visual.Components.Picklist as Picklist
 import Morphir.Visual.Theme exposing (Theme)
 import Svg
 import Svg.Attributes
+import Morphir.Visual.Theme as Theme
 
 
 {-| Type that represents the state of the value editor. It's made up of the following pieces of information:
@@ -588,7 +593,7 @@ view theme ir valueType updateEditorState editorState =
 
         labelStyle : List (Element.Attr () msg)
         labelStyle =
-            [ Background.color (rgb 0.2 0.3 0.4), centerY, Font.color (rgb 0.7 0.7 0.7), paddingEach { top = 5, bottom = 5, right = 10, left = 0 } ]
+            [ centerY, centerX, paddingEach { top = 5, bottom = 5, right = 10, left = 0 }, width (shrink |> minimum (Theme.scaled 10 theme) |> maximum (Theme.scaled 15 theme)), Font.italic ]
     in
     case editorState.componentState of
         TextEditor currentText ->
@@ -730,11 +735,11 @@ view theme ir valueType updateEditorState editorState =
 
         RecordEditor fieldEditorStates ->
             row [] <|
-                [ el [ Background.color (rgb 0.2 0.3 0.4), centerY, Font.color (rgb 0.7 0.7 0.7), paddingXY 10 5 ] (text "record")
+                [ el [ Font.italic, paddingXY 10 5 ] (text "record")
                 , el
                     [ padding 7
-                    , Background.color (rgb 0.7 0.8 0.9)
-                    , Border.rounded 7
+                    , Background.color theme.colors.brandPrimaryLight
+                    , Theme.borderRounded theme
                     ]
                     (FieldList.view
                         (fieldEditorStates
@@ -866,7 +871,7 @@ view theme ir valueType updateEditorState editorState =
                         itemEditorState
             in
             row [] <|
-                [ el [ Background.color (rgb 0.2 0.3 0.4), centerY, Font.color (rgb 0.7 0.7 0.7), paddingXY 0 5 ] (text "optional ")
+                [ el [ centerY, paddingXY 0 5, Font.italic ] (text "optional ")
                 , itemEditor
                     (maybeItemEditorState
                         |> Maybe.withDefault (initEditorState ir itemType Nothing)
@@ -1369,7 +1374,8 @@ viewCustomTypeEditor theme labelStyle ir updateEditorState editorState (( packag
                         (\(( ctorName, ctorArgs ) as ctor) ->
                             ( {tag  = ctorName |> Name.toTitleCase
                             , value = ctor
-                            , displayElement = text (ctorName |> Name.toHumanWordsTitle |> String.join " ")} )
+                            , displayElement = el [padding <| Theme.smallPadding theme, width fill] (Theme.ellipseText (ctorName |> Name.toHumanWordsTitle |> String.join " "))
+                            } )
                         )
                 )
                 []

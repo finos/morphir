@@ -81,6 +81,7 @@ import Element
         , moveDown
         , none
         , paddingEach
+        , padding
         , paddingXY
         , pointer
         , px
@@ -330,8 +331,7 @@ viewDropdown theme selectedvalue onSelectionChange selectableValues searchText =
                 , content =
                     row
                         [ width fill
-                        , paddingXY (theme |> Theme.mediumPadding) (theme |> Theme.smallPadding)
-                        , spacing (theme |> Theme.smallSpacing)
+                        , paddingXY 0 (theme |> Theme.smallPadding)
                         , Font.color (grey 24)
                         ]
                         [ el [ width (px 20) ] args.icon

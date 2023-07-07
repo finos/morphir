@@ -20,12 +20,11 @@ view fields =
               , view =
                     \( fieldName, _ ) ->
                         el
-                            [ width fill
+                            [ width shrink
                             , paddingXY 10 5
                             , centerY
-                            , Font.color (rgb 1 1 1)
                             , Font.bold
-                            , Background.color (rgb 0.2 0.3 0.4)
+                            --, Background.color (rgb 0.2 0.3 0.4)
                             , Border.roundEach
                                 { topLeft = 6
                                 , bottomLeft = 6
