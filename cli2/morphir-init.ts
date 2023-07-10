@@ -23,7 +23,7 @@ program
 console.log(chalk.blue('-- NEW MORPHIR PROJECT ---------------------------------------\n'))
 
 console.log("I'll create a new morphir project for you, you just need to provide some details.\n")
-inquirer
+inquirer 
 	.prompt<InitAnswers>([
 		{
 			type: 'list',
@@ -38,22 +38,25 @@ inquirer
 			message: 'Project Name (no spaces)',
 			default: 'Demo',
 			validate(input: string) {
+				// prevent spaces, leading digits and a leading lowercase.
 				if (input.includes(' '))
-					return `You can't have spaces in there. You could try ${input.replace(' ', '.')}`
-				if (input[0] === input[0].toLowerCase()) return `It can't start with a lowercase character`
+					return `You can't have spaces in there. You could try: ${getSuggestions(input)}`
 				if (input.match(/^\d/)) return `Project name can't start with a number`
+				if (input[0] === input[0].toLowerCase()) return `It can't start with a lowercase character`
 				return true
 			}
 		},
 		{
 			type: 'input',
 			name: 'dir',
-			message: 'Where do you want to create it?',
-			default: '.'
+			message: 'Where do you want to create it? (use `.` for current directory)',
+			default(answer: { name: string }) {
+				return `./${answer.name}`
+			}
 		}
 	])
 	.then(async (answers: InitAnswers) => {
-		const { name, type, dir } = answers
+		const { name, dir } = answers
 
 		console.log()
 		console.log(chalk.blue(`Creating your new morphir project\n`))
@@ -95,10 +98,14 @@ inquirer
 		}
 
 		// create the the morphir.json
-		const morphirJson = JSON.stringify({
-			name: name,
-			sourceDirectory: 'src'
-		})
+		const morphirJson = JSON.stringify(
+			{
+				name: name,
+				sourceDirectory: 'src'
+			},
+			null,
+			4
+		)
 		const morphirJsonPath = path.join(projectPath, 'morphir.json')
 		try {
 			fs.writeFileSync(morphirJsonPath, morphirJson)
@@ -121,3 +128,17 @@ inquirer
 		console.log()
 		console.log(chalk.blue('-- ALL DONE --------------------------------------------------\n'))
 	})
+
+/**
+ * Creates suggestions for use based on their inputs.
+ * Performs some basic string cleanup before creating combinations.
+ *
+ * @param input original user input
+ * @returns comma separated string of suggestions.
+ */
+function getSuggestions(input: string): string {
+	const noLeadingDigits = input.replace(/^(\d*\s*\d*)/, '').trim()
+	const capitalized = noLeadingDigits[0].toUpperCase() + noLeadingDigits.substring(1)
+	const suggestions = new Set([capitalized.replace(' ', ''), capitalized.replace(' ', '.')])
+	return [...suggestions].join(', ')
+}
