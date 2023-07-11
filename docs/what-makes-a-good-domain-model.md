@@ -1,7 +1,6 @@
 ---
-sidebar_position: 9
 id: domain-model
-title: What Makes a Good Domain Model?
+title: What Makes a Good Model?
 ---
 
 # What Makes a Good Domain Model?
