@@ -78,33 +78,50 @@ const MediaList: MediaList[] = [
 // 			</table>
 // 		</div>
 // 	)
+// export default function MediaPanel (): JSX.Element{
+// 	return(
+// 		<div>
+// 			{MediaList.map(({...props}, idx) => (
+// 		<div className={Styles.mediaPanel}>
+// 			<table>
+// 				<thead>
+// 					<tr>
+// 					<th>Episode</th>
+// 					<th>Description</th>
+// 					</tr>
+// 				</thead>
+// 				<tbody>
+// 						<tr key={idx}>
+// 							<td>
+// 								<a href = {props.EpisodeUrl}> 
+// 								<img width='250' src={props.EpisodeImg}></img>
+// 								</a>
+// 							</td>
+// 							<td style={{ width: 478.2}}>
+// 								<a href={props.EpisodeUrl}>{props.Description}</a>
+// 							</td>	
+// 						</tr>
+// 				</tbody>
+// 			</table>
+// 		</div>
+// 					))}
+// 	</div>
+// 	)
+// }
 export default function MediaPanel (): JSX.Element{
 	return(
-		<div>
+		<div className='container'>
 			{MediaList.map(({...props}, idx) => (
-		<div className={Styles.mediaPanel}>
-			<table>
-				<thead>
-					<tr>
-					<th>Episode</th>
-					<th>Description</th>
-					</tr>
-				</thead>
-				<tbody>
-						<tr key={idx}>
-							<td>
-								<a href = {props.EpisodeUrl}> 
-								<img width='250' src={props.EpisodeImg}></img>
-								</a>
-							</td>
-							<td style={{ width: 478.2}}>
-								<a href={props.EpisodeUrl}>{props.Description}</a>
-							</td>	
-						</tr>
-				</tbody>
-			</table>
-		</div>
-					))}
+			<div className={Styles.mediaPanel}>
+				<div>
+					<a href = {props.EpisodeUrl}> 
+					<img src={props.EpisodeImg}></img>
+					</a>
+				</div>
+				<div>
+					<a href={props.EpisodeUrl}>{props.Description}</a>
+				</div>	
+			</div>
+			))}
 	</div>
-	)
-}
+	)}
