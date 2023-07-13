@@ -1,22 +1,12 @@
-.media {
+.videoContainer {
+	width:100%;
+	padding: 15px;
 }
 
-.mediaPanel {
-	box-sizing: border-box;
-	display:table-cell;
-	float: left;
-	margin-left: auto;
-	border-collapse: collapse;
-	width:45%;
-	/* display:block; */
-	/* overflow:auto;
-	float: none;
-	line-height: 26.4px;
-	position: static;
-	z-index: auto; */
+.descriptionContainer {
+	float:none;
 }
 
-table td, table th{
-	border: 1px;
-	padding: 12px;
+.videoContainer img {
+	border: 1px solid black;
 }
