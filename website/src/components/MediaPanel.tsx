@@ -44,84 +44,20 @@ const MediaList: MediaList[] = [
 		Description: 'Morphir Showcase – Full Show',
 	},
 ]
-
-// export default function MedialPanel(): JSX.Element {
-// 	return (
-// 		<section>
-// 			{MediaList.map((props, idx) => (
-// 				<Media key={idx} {...props} />
-// 			))}
-// 		</section>
-// 	)
-// }
-
-// function Media({ ...props }: MediaList) {
-// 	return (
-// 		<div className='mediaPanel'>
-// 			<table>
-// 				<thead>
-// 				<tr>
-// 					<th>Episode</th>
-// 					<th>Description</th>
-// 				</tr>
-// 				</thead>
-// 				<tr>
-// 					<td>
-// 						<a href={props.EpisodeUrl}>
-// 							<img width='250' src={props.EpisodeImg}></img>
-// 						</a>
-// 					</td>
-// 					<td style={{ width: 478.2 }}>
-// 						<a href={props.EpisodeUrl}>{props.Description} </a>
-// 					</td>
-// 				</tr>
-// 			</table>
-// 		</div>
-// 	)
-// export default function MediaPanel (): JSX.Element{
-// 	return(
-// 		<div>
-// 			{MediaList.map(({...props}, idx) => (
-// 		<div className={Styles.mediaPanel}>
-// 			<table>
-// 				<thead>
-// 					<tr>
-// 					<th>Episode</th>
-// 					<th>Description</th>
-// 					</tr>
-// 				</thead>
-// 				<tbody>
-// 						<tr key={idx}>
-// 							<td>
-// 								<a href = {props.EpisodeUrl}> 
-// 								<img width='250' src={props.EpisodeImg}></img>
-// 								</a>
-// 							</td>
-// 							<td style={{ width: 478.2}}>
-// 								<a href={props.EpisodeUrl}>{props.Description}</a>
-// 							</td>	
-// 						</tr>
-// 				</tbody>
-// 			</table>
-// 		</div>
-// 					))}
-// 	</div>
-// 	)
-// }
 export default function MediaPanel (): JSX.Element{
 	return(
-		<div className='container'>
+		<div>
 			{MediaList.map(({...props}, idx) => (
 			<div className={Styles.mediaPanel}>
-				<div>
+				<div className= {Styles.videoContainer}>
 					<a href = {props.EpisodeUrl}> 
-					<img src={props.EpisodeImg}></img>
+					<img src = {props.EpisodeImg}></img>
 					</a>
 				</div>
-				<div>
-					<a href={props.EpisodeUrl}>{props.Description}</a>
+				<div className= {Styles.descriptionContainer}>
+						<a href = {props.EpisodeUrl}>{props.Description}</a>
 				</div>	
-			</div>
+		     </div>
 			))}
-	</div>
+	      </div>
 	)}

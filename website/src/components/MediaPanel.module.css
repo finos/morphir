@@ -1,21 +1,29 @@
 .mediaPanel {
 	box-sizing: border-box;
-	display:table-cell;
 	float: left;
-	margin-left: auto;
-	border-collapse: collapse;
+	line-height: 26.4px;
+	/* display:table-cell; */
+	/* margin-left: auto; */
+	/* border-collapse: collapse; */
+	/* list-style: list-style-image; */
+	/* margin: 0 auto; */
 	/* display:block; */
 	/* overflow:auto;
 	float: none;
-	line-height: 26.4px;
 	position: static;
 	z-index: auto; */
 }
-table {
-
+.videoContainer{
+	margin: auto;
+	border: 15px solid black;
+	padding: 15px;
 }
-
-table td, table th{
-	border: 1px;
-	padding: 12px;
+.descriptionContainer{
+float:none;
+}
+img{
+width: 250pt;
+}
+a{
+width: 478.2;
 }
