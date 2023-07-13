@@ -49,6 +49,11 @@ export default function MediaPanel (): JSX.Element{
 	return(
 		<div className='container padding--lg'>
 			<section className='row text--center padding-horiz--md'>
+				<div className="col col--12">
+					<h2>Morphir in the Media</h2>
+				</div>
+			</section>
+			<section className='row text--center padding-horiz--md'>
 				{MediaList.map(({...props}, idx) => (
 				<div className="col col--4">
 					<div className={Styles.videoContainer}>
