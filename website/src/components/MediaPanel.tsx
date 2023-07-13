@@ -47,19 +47,19 @@ const MediaList: MediaList[] = [
 
 export default function MediaPanel (): JSX.Element{
 	return(
-		<div className='container'>
-			{MediaList.map(({...props}, idx) => (
-			<div className={Styles.mediaPanel}>
-				<div>
-					<a href = {props.EpisodeUrl}> 
-						<img src={props.EpisodeImg}></img>
-					</a>
+		<div className='container padding--lg'>
+			<section className='row text--center padding-horiz--md'>
+				{MediaList.map(({...props}, idx) => (
+				<div className="col col--4">
+					<div className={Styles.videoContainer}>
+						<a href={props.EpisodeUrl}> 
+							<img src={props.EpisodeImg} alt={props.Description}></img>
+						</a>
+						<br/>
+						<a href={props.EpisodeUrl}>{props.Description}</a>
+					</div>
 				</div>
-				<div>
-					<a href={props.EpisodeUrl}>{props.Description}</a>
-				</div>	
-			</div>
-			))}
-	</div>
-	)
-}
+				))}
+			</section>
+	    </div>
+	)}
