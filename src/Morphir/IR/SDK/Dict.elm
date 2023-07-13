@@ -29,8 +29,10 @@ import Morphir.IR.SDK.List exposing (listType)
 import Morphir.IR.SDK.Maybe exposing (just, maybeType, nothing)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (RawValue, Value)
+import Morphir.SDK.Dict as SDKDict
+import Morphir.SDK.ResultList as ResultList
 import Morphir.Value.Error exposing (Error(..))
-import Morphir.Value.Native as Native
+import Morphir.Value.Native as Native exposing (eval1)
 import Morphir.Value.Native.Comparable exposing (compareValue)
 
 
@@ -41,7 +43,7 @@ moduleName =
 
 typeSpec : Specification ()
 typeSpec =
-    DerivedTypeSpecification [["comparable"], ["v"] ]
+    DerivedTypeSpecification [ [ "comparable" ], [ "v" ] ]
         { baseType = listType () (Type.Tuple () [ tVar "comparable", tVar "v" ])
         , toBaseType = toFQName moduleName "toList"
         , fromBaseType = toFQName moduleName "fromList"
@@ -147,7 +149,6 @@ dictType attributes keyType valueType =
 fromListValue : va -> Value ta va -> Value ta va
 fromListValue a list =
     Value.Apply a (Value.Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) list
-
 
 
 nativeFunctions : List ( String, Native.Function )
@@ -300,6 +301,8 @@ nativeFunctions =
                         Err (UnexpectedArguments [ dict ])
             )
       )
+
+    {- Query -}
     , ( "isEmpty"
       , Native.unaryStrict
             (\_ dict ->
@@ -458,7 +461,7 @@ nativeFunctions =
                         Err (UnexpectedArguments [ dict ])
             )
       )
-    , ( "value"
+    , ( "values"
       , Native.unaryStrict
             (\_ dict ->
                 case dict of
@@ -488,12 +491,257 @@ nativeFunctions =
                         Err (UnexpectedArguments [ dict ])
             )
       )
-    , ( "toList", Native.unaryStrict (\_ arg -> 
-        case arg of
-            Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) list ->
-                Ok list
-            _ ->
-                Err (UnexpectedArguments [ arg ])
-        ))
+    , ( "toList"
+      , Native.unaryStrict
+            (\eval arg ->
+                case eval arg of
+                    Ok (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) list) ->
+                        Ok list
+
+                    e ->
+                        let
+                            _ =
+                                Debug.log "err" e
+                        in
+                        Err (UnexpectedArguments [ arg |> Debug.log "toListErr" ])
+            )
+      )
     , ( "fromList", Native.unaryStrict (\_ arg -> Ok (fromListValue () arg)) )
+
+    --, ( "map"
+    --  , Native.eval2 SDKDict.map
+    --        (Native.decodeFun2 Native.encodeRaw Native.encodeRaw Native.decodeRaw)
+    --        (Native.decodeDict Native.decodeRaw Native.decodeRaw)
+    --        (Native.encodeDict Native.encodeRaw Native.encodeRaw Native.encodeMaybeResult)
+    --  )
+    , ( "map"
+      , \eval args ->
+            case args of
+                [ func, dict ] ->
+                    case eval dict of
+                        Ok (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) arg) ->
+                            case arg of
+                                Value.List _ list ->
+                                    let
+                                        map ls resList =
+                                            case ls of
+                                                [] ->
+                                                    Ok resList
+
+                                                (Value.Tuple _ [ key, value ]) :: rest ->
+                                                    eval (Value.Apply () (Value.Apply () func key) value)
+                                                        |> Result.map (\newValue -> resList ++ [ Value.Tuple () [ key, newValue ] ])
+                                                        |> Result.andThen (map rest)
+
+                                                _ ->
+                                                    Err TupleExpected
+                                    in
+                                    map list []
+                                        |> Result.map (Value.List ())
+                                        |> Result.map (fromListValue ())
+
+                                _ ->
+                                    Err (ExpectedList arg)
+
+                        _ ->
+                            Err (UnexpectedArguments [ dict ])
+
+                _ ->
+                    Err (UnexpectedArguments (args |> Debug.log "args"))
+      )
+    , ( "foldl"
+      , \eval args ->
+            case args of
+                [ func, acc, dict ] ->
+                    case eval dict of
+                        Ok (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) arg) ->
+                            eval arg
+                                |> Result.andThen
+                                    (\evaluatedDict ->
+                                        case evaluatedDict of
+                                            Value.List () list ->
+                                                --let
+                                                --    foldl ls rest =
+                                                --        case ls of
+                                                --            [] ->
+                                                --                Ok rest
+                                                --            head :: tail ->
+                                                --                case head of
+                                                --                    Value.Tuple () [key, value]->
+                                                --                        eval (Value.Apply () (Value.Apply () func key) value)
+                                                --
+                                                --
+                                                --in
+                                                --
+                                                list
+                                                    |> List.foldl
+                                                        (\next resultSoFar ->
+                                                            resultSoFar
+                                                                |> Result.andThen
+                                                                    (\soFar ->
+                                                                        eval next
+                                                                            |> Result.andThen
+                                                                                (\evaluatedNext ->
+                                                                                    eval (Value.Apply () (Value.Apply () func evaluatedNext) soFar)
+                                                                                )
+                                                                    )
+                                                        )
+                                                        (eval acc)
+
+                                            _ ->
+                                                Err (ExpectedList evaluatedDict)
+                                    )
+
+                        _ ->
+                            Err (UnexpectedArguments [ dict ])
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "foldr"
+      , \eval args ->
+            case args of
+                [ func, acc, dict ] ->
+                    case dict of
+                        Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) arg ->
+                            eval arg
+                                |> Result.andThen
+                                    (\evaluatedDict ->
+                                        case evaluatedDict of
+                                            Value.List () list ->
+                                                list
+                                                    |> List.foldr
+                                                        (\next resultSoFar ->
+                                                            resultSoFar
+                                                                |> Result.andThen
+                                                                    (\soFar ->
+                                                                        eval next
+                                                                            |> Result.andThen
+                                                                                (\evaluatedNext ->
+                                                                                    eval (Value.Apply () (Value.Apply () func evaluatedNext) soFar)
+                                                                                )
+                                                                    )
+                                                        )
+                                                        (eval acc)
+
+                                            _ ->
+                                                Err (ExpectedList evaluatedDict)
+                                    )
+
+                        _ ->
+                            Err (UnexpectedArguments [ dict ])
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "filter"
+      , \eval args ->
+            case args of
+                [ func, dict ] ->
+                    case dict of
+                        Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) arg ->
+                            eval arg
+                                |> Result.andThen
+                                    (\evaluatedArg1 ->
+                                        case evaluatedArg1 of
+                                            Value.List () listItems ->
+                                                let
+                                                    evaluate : List RawValue -> List RawValue -> Result Error (List RawValue)
+                                                    evaluate list items =
+                                                        case items of
+                                                            [] ->
+                                                                Ok list
+
+                                                            head :: tail ->
+                                                                case eval (Value.Apply () func head) of
+                                                                    Ok (Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) value) ->
+                                                                        evaluate (list ++ [ value ]) tail
+
+                                                                    Ok (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] )) ->
+                                                                        evaluate list tail
+
+                                                                    Ok other ->
+                                                                        Err (ExpectedBoolLiteral other)
+
+                                                                    Err other ->
+                                                                        Err other
+                                                in
+                                                listItems |> evaluate [] |> Result.map (Value.List ())
+
+                                            _ ->
+                                                Err (ExpectedList evaluatedArg1)
+                                    )
+
+                        _ ->
+                            Err (UnexpectedArguments [ dict ])
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "partition"
+      , \eval args ->
+            case args of
+                [ fun, dict ] ->
+                    case dict of
+                        Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) arg ->
+                            eval arg
+                                |> Result.andThen
+                                    (\evaluatedArg1 ->
+                                        case evaluatedArg1 of
+                                            Value.List () listItems ->
+                                                let
+                                                    evaluate : List RawValue -> List RawValue -> List RawValue -> Result Error ( List RawValue, List RawValue )
+                                                    evaluate list1 list2 items =
+                                                        case items of
+                                                            [] ->
+                                                                Ok ( list1, list2 )
+
+                                                            head1 :: tail1 ->
+                                                                case eval (Value.Apply () fun head1) of
+                                                                    Ok (Value.Literal _ (BoolLiteral True)) ->
+                                                                        evaluate (list1 ++ [ head1 ]) list2 tail1
+
+                                                                    Ok (Value.Literal _ (BoolLiteral False)) ->
+                                                                        evaluate list1 (list2 ++ [ head1 ]) tail1
+
+                                                                    Ok other ->
+                                                                        Err (ExpectedBoolLiteral other)
+
+                                                                    Err other ->
+                                                                        Err other
+                                                in
+                                                listItems
+                                                    |> evaluate [] []
+                                                    |> Result.map
+                                                        (\( list1, list2 ) ->
+                                                            Value.Tuple () [ Value.List () list1, Value.List () list2 ]
+                                                        )
+
+                                            _ ->
+                                                Err (ExpectedList evaluatedArg1)
+                                    )
+
+                        _ ->
+                            Err (UnexpectedArguments [ dict ])
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+
+    --, ("union"
+    --  , \eval args ->
+    --        case args of
+    --            [dict1, dict2]->
+    --                case (dict1, dict2) of
+    --                    (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) arg1, Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) arg2) ->
+    --                        case (arg1, arg2) of
+    --                            [Value.List _ list1, Value.List _ list2] ->
+    --
+    --                            _->
+    --                                Err (ExpectedList arg1, ExpectedList arg2)
+    --                    _->
+    --                        Err (UnexpectedArguments [ dict1, dict2 ])
+    --            _->
+    --               Err (UnexpectedArguments args)
+    --  )
     ]

@@ -3,7 +3,7 @@ module Morphir.Value.Native exposing
     , Eval
     , unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval0, eval1, eval2, eval3
     , floatLiteral, intLiteral, oneOf, stringLiteral, decimalLiteral
-    , decodeFun1, decodeList, decodeLiteral, decodeMaybe, decodeLocalDate, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeLocalDate, encodeMaybeResult, encodeRaw, encodeResultList, encodeTuple2
+    , decodeFun1, decodeList, decodeLiteral, decodeMaybe, decodeLocalDate, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeLocalDate, encodeMaybeResult, encodeRaw, encodeResultList, encodeTuple2, decodeDict, decodeFun2, encodeDict
     , trinaryLazy, trinaryStrict
     )
 
@@ -39,7 +39,7 @@ Various utilities to help with implementing native functions.
 
 @docs unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval0, eval1, eval2, eval3
 @docs floatLiteral, intLiteral, oneOf, stringLiteral, decimalLiteral
-@docs decodeFun1, decodeList, decodeLiteral, decodeMaybe, decodeLocalDate, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeLocalDate, encodeMaybeResult, encodeRaw, encodeResultList, encodeTuple2
+@docs decodeFun1, decodeList, decodeLiteral, decodeMaybe, decodeLocalDate, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeLocalDate, encodeMaybeResult, encodeRaw, encodeResultList, encodeTuple2, decodeDict, decodeFun2, encodeDict
 @docs trinaryLazy, trinaryStrict
 
 -}
@@ -47,6 +47,7 @@ Various utilities to help with implementing native functions.
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.SDK.Decimal exposing (Decimal)
+import Morphir.SDK.Dict as Dict exposing (Dict)
 import Morphir.SDK.LocalDate as LocalDate exposing (LocalDate)
 import Morphir.SDK.ResultList as ListOfResults
 import Morphir.Value.Error exposing (Error(..))
@@ -243,6 +244,28 @@ decodeList decodeItem eval value =
 
 
 {-| -}
+decodeDict : Decoder k -> Decoder v -> Decoder (Dict k v)
+decodeDict decodeKey decodeValue eval value =
+    case eval value of
+        Ok (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) list) ->
+            list
+                |> decodeList (decodeTuple2 ( decodeKey, decodeValue )) eval
+                |> Result.map Dict.fromList
+
+        Ok _ ->
+            Err (ExpectedList value)
+
+        Err error ->
+            Err error
+
+
+encodeDict : Encode k -> Encode v -> Dict k v -> Result Error RawValue
+encodeDict encodeKey encodeValue dict =
+    Dict.toList dict
+        |> encodeList (encodeTuple2 ( encodeKey, encodeValue ))
+
+
+{-| -}
 encodeTuple2 : ( Encode a, Encode b ) -> ( a, b ) -> Result Error RawValue
 encodeTuple2 ( encodeA, encodeB ) ( a, b ) =
     encodeB b
@@ -272,6 +295,24 @@ decodeFun1 encodeA decodeR eval fun =
                 |> Result.andThen
                     (\arg -> eval (Value.Apply () fun arg))
                 |> Result.andThen (decodeR eval)
+        )
+
+
+{-| -}
+decodeFun2 : Encode a -> Encode b -> Decoder r -> Decoder (a -> b -> Result Error r)
+decodeFun2 encodeA encodeB decodeR eval fun =
+    Ok
+        (\a b ->
+            encodeA a
+                |> Result.andThen
+                    (\arg1 ->
+                        encodeB b
+                            |> Result.andThen
+                                (\arg2 ->
+                                    eval (Value.Apply () (Value.Apply () fun arg1) arg2)
+                                        |> Result.andThen (decodeR eval)
+                                )
+                    )
         )
 
 

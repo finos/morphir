@@ -229,6 +229,98 @@
             ],
             [
                 [
+                    "s",
+                    "d",
+                    "k"
+                ],
+                [
+                    "dict"
+                ]
+            ],
+            [
+                "dict",
+                "is",
+                "empty"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    [
+                        [
+                            "hi",
+                            "hi"
+                        ]
+                    ]
+                ],
+                "expectedOutput": false,
+                "description": ""
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "s",
+                    "d",
+                    "k"
+                ],
+                [
+                    "dict"
+                ]
+            ],
+            [
+                "map",
+                "users"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    [
+                        [
+                            "el",
+                            "er"
+                        ]
+                    ]
+                ],
+                "expectedOutput": [
+                    [
+                        "el",
+                        "eler"
+                    ]
+                ],
+                "description": ""
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
                     "test",
                     "model"
                 ],
