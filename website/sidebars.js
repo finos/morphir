@@ -70,6 +70,7 @@ const sidebars = {
               type: 'category',
               label: 'Scala Integration Guide',
               items: [
+                  'scala-api',
                   'scala-backend',
                   'scala-codecs',
                   'codec-docs',

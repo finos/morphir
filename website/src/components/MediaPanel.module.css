@@ -1,29 +1,12 @@
-.mediaPanel {
-	box-sizing: border-box;
-	float: left;
-	line-height: 26.4px;
-	/* display:table-cell; */
-	/* margin-left: auto; */
-	/* border-collapse: collapse; */
-	/* list-style: list-style-image; */
-	/* margin: 0 auto; */
-	/* display:block; */
-	/* overflow:auto;
-	float: none;
-	position: static;
-	z-index: auto; */
-}
-.videoContainer{
-	margin: auto;
-	border: 15px solid black;
+.videoContainer {
+	width:100%;
 	padding: 15px;
 }
-.descriptionContainer{
-float:none;
+
+.descriptionContainer {
+	float:none;
 }
-img{
-width: 250pt;
-}
-a{
-width: 478.2;
+
+.videoContainer img {
+	border: 1px solid black;
 }
