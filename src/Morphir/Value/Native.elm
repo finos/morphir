@@ -259,6 +259,7 @@ decodeDict decodeKey decodeValue eval value =
             Err error
 
 
+{-| -}
 encodeDict : Encode k -> Encode v -> Dict k v -> Result Error RawValue
 encodeDict encodeKey encodeValue dict =
     Dict.toList dict
