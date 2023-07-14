@@ -560,33 +560,34 @@ nativeFunctions =
                                     (\evaluatedDict ->
                                         case evaluatedDict of
                                             Value.List () list ->
-                                                --let
-                                                --    foldl ls rest =
-                                                --        case ls of
-                                                --            [] ->
-                                                --                Ok rest
-                                                --            head :: tail ->
-                                                --                case head of
-                                                --                    Value.Tuple () [key, value]->
-                                                --                        eval (Value.Apply () (Value.Apply () func key) value)
-                                                --
-                                                --
-                                                --in
-                                                --
-                                                list
-                                                    |> List.foldl
-                                                        (\next resultSoFar ->
-                                                            resultSoFar
-                                                                |> Result.andThen
-                                                                    (\soFar ->
-                                                                        eval next
-                                                                            |> Result.andThen
-                                                                                (\evaluatedNext ->
-                                                                                    eval (Value.Apply () (Value.Apply () func evaluatedNext) soFar)
-                                                                                )
-                                                                    )
+                                                eval acc
+                                                    |> Result.andThen
+                                                        (\evalAcc ->
+                                                            let
+                                                                foldl ls res =
+                                                                    case ls of
+                                                                        [] ->
+                                                                            Ok res
+
+                                                                        head :: tail ->
+                                                                            case head of
+                                                                                Value.Tuple () [ key, value ] ->
+                                                                                    --eval acc
+                                                                                    --    |> Result.andThen
+                                                                                    --        (\soFar ->
+                                                                                    eval
+                                                                                        (Value.Apply ()
+                                                                                            (Value.Apply () (Value.Apply () func key) value)
+                                                                                            res
+                                                                                        )
+                                                                                        |> Result.andThen (foldl tail)
+
+                                                                                --)
+                                                                                _ ->
+                                                                                    Err TupleExpected
+                                                            in
+                                                            foldl list evalAcc
                                                         )
-                                                        (eval acc)
 
                                             _ ->
                                                 Err (ExpectedList evaluatedDict)
@@ -605,24 +606,62 @@ nativeFunctions =
                     case dict of
                         Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) arg ->
                             eval arg
+                                |> Debug.log "arg"
                                 |> Result.andThen
                                     (\evaluatedDict ->
                                         case evaluatedDict of
                                             Value.List () list ->
-                                                list
-                                                    |> List.foldr
-                                                        (\next resultSoFar ->
-                                                            resultSoFar
-                                                                |> Result.andThen
-                                                                    (\soFar ->
-                                                                        eval next
-                                                                            |> Result.andThen
-                                                                                (\evaluatedNext ->
-                                                                                    eval (Value.Apply () (Value.Apply () func evaluatedNext) soFar)
-                                                                                )
-                                                                    )
+                                                eval acc
+                                                    |> Debug.log "acc"
+                                                    |> Result.andThen
+                                                        (\evalAcc ->
+                                                            let
+                                                                foldr ls res =
+                                                                    case ls |> Debug.log "todo" of
+                                                                        [] ->
+                                                                            Ok res
+
+                                                                        head :: tail ->
+                                                                            foldr tail res
+                                                                                |> Debug.log "todo"
+                                                                                |> Result.andThen
+                                                                                    (\result ->
+                                                                                        case head of
+                                                                                            Value.Tuple () [ key, value ] ->
+                                                                                                eval
+                                                                                                    (Value.Apply ()
+                                                                                                        (Value.Apply ()
+                                                                                                            (Value.Apply () func key)
+                                                                                                            value
+                                                                                                        )
+                                                                                                        result
+                                                                                                    )
+
+                                                                                            _ ->
+                                                                                                Err TupleExpected
+                                                                                    )
+
+                                                                --case head of
+                                                                --    Value.Tuple () [ key, value ] ->
+                                                                --        tailRes
+                                                                --            |> Debug.log "tail"
+                                                                --            |> Result.andThen
+                                                                --                (\result ->
+                                                                --                    eval
+                                                                --                        (Value.Apply ()
+                                                                --                            (Value.Apply ()
+                                                                --                                (Value.Apply () func key)
+                                                                --                                value
+                                                                --                            )
+                                                                --                            result
+                                                                --                        )
+                                                                --                )
+                                                                --
+                                                                --    _ ->
+                                                                --        Err TupleExpected
+                                                            in
+                                                            foldr list evalAcc
                                                         )
-                                                        (eval acc)
 
                                             _ ->
                                                 Err (ExpectedList evaluatedDict)
@@ -646,27 +685,31 @@ nativeFunctions =
                                         case evaluatedArg1 of
                                             Value.List () listItems ->
                                                 let
-                                                    evaluate : List RawValue -> List RawValue -> Result Error (List RawValue)
-                                                    evaluate list items =
-                                                        case items of
+                                                    evaluate list res =
+                                                        case list of
                                                             [] ->
-                                                                Ok list
+                                                                Ok res
 
                                                             head :: tail ->
-                                                                case eval (Value.Apply () func head) of
-                                                                    Ok (Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) value) ->
-                                                                        evaluate (list ++ [ value ]) tail
+                                                                case head of
+                                                                    Value.Tuple () [ key, value ] ->
+                                                                        case eval (Value.Apply () (Value.Apply () func key) value) of
+                                                                            Ok (Value.Literal _ (BoolLiteral True)) ->
+                                                                                evaluate tail (res ++ [ Value.Tuple () [ key, value ] ])
 
-                                                                    Ok (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] )) ->
-                                                                        evaluate list tail
+                                                                            Ok (Value.Literal _ (BoolLiteral False)) ->
+                                                                                evaluate tail tail
 
-                                                                    Ok other ->
-                                                                        Err (ExpectedBoolLiteral other)
+                                                                            Ok other ->
+                                                                                Err (ExpectedBoolLiteral other)
 
-                                                                    Err other ->
-                                                                        Err other
+                                                                            Err other ->
+                                                                                Err other
+
+                                                                    _ ->
+                                                                        Err TupleExpected
                                                 in
-                                                listItems |> evaluate [] |> Result.map (Value.List ())
+                                                evaluate listItems [] |> Result.map (Value.List ()) |> Result.map (fromListValue ())
 
                                             _ ->
                                                 Err (ExpectedList evaluatedArg1)

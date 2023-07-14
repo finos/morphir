@@ -68,7 +68,23 @@ mapUsers dict =
     Dict.map (\id name -> id ++ name) dict
 
 
+type alias Person =
+    { name : String
+    , age : Int
+    }
 
---dictFoldl : Dict String String -> List String
---dictFoldl dict =
---    Dict.foldl (\_ x acc -> x :: acc) [] dict
+
+dictFoldl : Dict String Person -> Int
+dictFoldl dict =
+    Dict.foldl (\_ person acc -> acc + person.age) 0 dict
+
+
+
+--dictFoldr : Dict String Person -> List Int
+--dictFoldr dict =
+--    Dict.foldr (\_ person acc -> person.age :: acc) [] dict
+--
+--
+--filter : Dict String Person -> Dict String Person
+--filter dict =
+--    Dict.filter (\name person -> name == person.name) dict

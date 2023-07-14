@@ -44,6 +44,23 @@
                     ]
                 ],
                 "description": ""
+            },
+            {
+                "inputs": [
+                    [
+                        [
+                            "2",
+                            "elor"
+                        ]
+                    ]
+                ],
+                "expectedOutput": [
+                    [
+                        "2",
+                        "2elor"
+                    ]
+                ],
+                "description": ""
             }
         ]
     ]
