@@ -1,8 +1,14 @@
+import FileSystemModule from 'fs'
 import chalk from 'chalk'
+import path from 'path'
+import { promisify } from 'util'
 import { Command } from 'commander'
 import inquirer, { Answers, Question } from 'inquirer'
-import fs from 'fs'
-import path from 'path'
+
+const exists = promisify(FileSystemModule.exists)
+const writeFile = promisify(FileSystemModule.writeFile)
+const readFile = promisify(FileSystemModule.readFile)
+const mkdir = promisify(FileSystemModule.mkdir)
 
 interface InitAnswers extends Answers {
 	name: string
@@ -23,7 +29,7 @@ program
 console.log(chalk.blue('-- NEW MORPHIR PROJECT ---------------------------------------\n'))
 
 console.log("I'll create a new morphir project for you, you just need to provide some details.\n")
-inquirer 
+inquirer
 	.prompt<InitAnswers>([
 		{
 			type: 'list',
@@ -64,13 +70,13 @@ inquirer
 		const projectPath = path.resolve(dir)
 
 		// check if there's a morphir.json at the directory
-		if (fs.existsSync(path.join(projectPath, 'morphir.json'))) {
+		if (await exists(path.join(projectPath, 'morphir.json'))) {
 			console.log(chalk.blue(`The path you specified already contains a morphir project. Exiting.`))
 			process.exit(0)
 		}
 
 		// ask to create a new dir if it doesn't exist
-		if (!fs.existsSync(projectPath)) {
+		if (!(await exists(projectPath))) {
 			try {
 				const { shouldCreate }: CreateDirAnswer = await inquirer.prompt<CreateDirAnswer>([
 					{
@@ -81,7 +87,7 @@ inquirer
 					}
 				])
 
-				if (shouldCreate) fs.mkdirSync(projectPath)
+				if (shouldCreate) await mkdir(projectPath)
 				else {
 					console.log(
 						chalk.blue(
@@ -108,7 +114,7 @@ inquirer
 		)
 		const morphirJsonPath = path.join(projectPath, 'morphir.json')
 		try {
-			fs.writeFileSync(morphirJsonPath, morphirJson)
+			await writeFile(morphirJsonPath, morphirJson)
 		} catch (error) {
 			console.log(chalk.red(`Could not create morphir.json`))
 			console.error(error)
@@ -118,7 +124,7 @@ inquirer
 		// create the src directory
 		const srcDir = path.join(projectPath, 'src')
 		try {
-			fs.mkdirSync(srcDir)
+			mkdir(srcDir)
 		} catch (error) {
 			console.log(chalk.red(`Failed to create directory: ${srcDir}`))
 			console.error(error)
