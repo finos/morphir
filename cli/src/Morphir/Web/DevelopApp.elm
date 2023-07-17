@@ -1,4 +1,4 @@
-module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), ServerState(..), httpMakeModel, init, main, routeParser, subscriptions, update, view, viewBody, viewHeader)
+port module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), ServerState(..), httpMakeModel, init, main, routeParser, subscriptions, update, view, viewBody, viewHeader)
 
 import Array exposing (Array)
 import Array.Extra
@@ -114,6 +114,9 @@ main =
         }
 
 
+port unsavedChangesPort : Bool -> Cmd msg
+
+
 
 -- MODEL
 
@@ -143,6 +146,7 @@ type alias Model =
     , modalContent : Element Msg
     , version : String
     , showSaveTestError : Bool
+    , unsavedChanges : Bool
     }
 
 
@@ -221,7 +225,7 @@ init flags url key =
                 }
             , repo = Repo.empty []
             , insightViewState = emptyVisualState
-            , typeBuilderState = TypeBuilder.init Nothing
+            , typeBuilderState = TypeBuilder.init Nothing False
             , argStates = Dict.empty
             , expandedValues = Dict.empty
             , allDecorationConfigAndData = Dict.empty
@@ -234,6 +238,7 @@ init flags url key =
             , modalContent = none
             , version = flags.version
             , showSaveTestError = False
+            , unsavedChanges = False
             }
     in
     ( toRoute url initModel
@@ -314,7 +319,8 @@ type UIMsg
     | DismissHttpError
     | CloseModal
     | TypeBuilderChanged TypeBuilder.State
-    | TypeSaved TypeBuilder.NewType
+    | TypeAdded TypeBuilder.NewType
+    | SaveIR
 
 
 type FilterMsg
@@ -408,8 +414,8 @@ update msg model =
             in
             case Repo.fromDistribution distribution of
                 Ok r ->
-                    ( { model | irState = irLoaded, repo = r, argStates = initialArgumentStates, insightViewState = initInsightViewState initialArgumentStates }
-                    , httpTestModel distribution
+                    ( { model | irState = irLoaded, repo = r, argStates = initialArgumentStates, insightViewState = initInsightViewState initialArgumentStates, unsavedChanges = False }
+                    , Cmd.batch [ httpTestModel distribution, unsavedChangesPort False ]
                     )
 
                 Err _ ->
@@ -475,15 +481,18 @@ update msg model =
                 TypeBuilderChanged newTypeBuilderState ->
                     ( { model | typeBuilderState = newTypeBuilderState }, Cmd.none )
 
-                TypeSaved newType ->
+                TypeAdded newType ->
                     case model.repo |> Repo.insertType newType.moduleName newType.name newType.definition newType.access newType.documentation of
                         Ok newRepo ->
-                            ( { model | irState = IRReloading (Repo.toDistribution newRepo), typeBuilderState = TypeBuilder.init Nothing }
-                            , httpSaveDistribution (Repo.toDistribution newRepo)
+                            ( { model | typeBuilderState = TypeBuilder.init (model.homeState.selectedModule |> Maybe.map Tuple.second) True, unsavedChanges = True, irState = IRLoaded (Repo.toDistribution newRepo), repo = newRepo }
+                            , unsavedChangesPort True
                             )
 
                         _ ->
                             ( model, Cmd.none )
+
+                SaveIR ->
+                    ( { model | irState = IRReloading (Repo.toDistribution model.repo) }, httpSaveDistribution (Repo.toDistribution model.repo) )
 
         ServerGetTestsResponse testSuite ->
             ( { model | testSuite = fromStoredTestSuite testSuite }, Cmd.none )
@@ -821,7 +830,7 @@ updateHomeState pack mod def filterState =
                 , selectedTestcaseIndex = -1
                 , testDescription = ""
                 , openSections = Set.fromList [ 1 ]
-                , typeBuilderState = TypeBuilder.init (newState.selectedModule |> Maybe.map Tuple.second)
+                , typeBuilderState = TypeBuilder.init (newState.selectedModule |> Maybe.map Tuple.second) model.unsavedChanges
             }
 
         -- When selecting a definition, we should not change the selected module, once the user explicitly selected one
@@ -1101,6 +1110,13 @@ viewHeader model =
                 }
             , el
                 [ alignRight
+                , Font.color model.theme.colors.lightest
+                , Font.size (Theme.scaled 5 model.theme)
+                ]
+              <|
+                ifThenElse model.unsavedChanges (text " You have unsaved changes! ") Element.none
+            , el
+                [ alignRight
                 , pointer
                 , Theme.borderBottom 1
                 , Border.color model.theme.colors.brandPrimary
@@ -1249,10 +1265,12 @@ viewBody model =
             el
                 [ width fill
                 , height fill
-                , centerX, centerY
+                , centerX
+                , centerY
                 , inFront <|
-                    el [ Background.color model.theme.colors.lightGray, onClick DoNothing, width fill, height fill] <|
-                        el [centerX, centerY ] <|Element.html (Loading.render Loading.Circle Loading.defaultConfig Loading.On)
+                    el [ Background.color model.theme.colors.lightGray, onClick DoNothing, width fill, height fill ] <|
+                        el [ centerX, centerY ] <|
+                            Element.html (Loading.render Loading.Circle Loading.defaultConfig Loading.On)
                 ]
                 (viewHome model packageName packageDef)
 
@@ -1472,7 +1490,7 @@ viewHome model packageName packageDef =
                                           , content =
                                                 col <|
                                                     [ TypeBuilder.view model.theme
-                                                        { state = model.typeBuilderState, onStateChange = UI << TypeBuilderChanged, onTypeSave = UI << TypeSaved }
+                                                        { state = model.typeBuilderState, onStateChange = UI << TypeBuilderChanged, onTypeAdd = UI << TypeAdded, onIRSave = UI SaveIR }
                                                         packageName
                                                         packageDef
                                                         moduleName

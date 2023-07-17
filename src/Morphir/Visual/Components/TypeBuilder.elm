@@ -32,6 +32,7 @@ type alias State =
     , modulePickerState : Picklist.State ModuleName
     , customTypeEditorState : CustomTypeEditorState
     , recordTypeEditorState : RecordTypeEditorState
+    , showSaveIR : Bool
     }
 
 
@@ -53,7 +54,8 @@ type alias RecordTypeEditorState =
 type alias Config msg =
     { state : State
     , onStateChange : State -> msg
-    , onTypeSave : NewType -> msg
+    , onTypeAdd : NewType -> msg
+    , onIRSave : msg
     }
 
 
@@ -174,7 +176,7 @@ update typeBuildermsg state =
                             }
                     }
 
-                SaveField maybeTpe->
+                SaveField maybeTpe ->
                     let
                         fieldName : Name
                         fieldName =
@@ -204,22 +206,24 @@ update typeBuildermsg state =
                                             | error = Just "This record already has a field by this name"
                                         }
                                 }
+
                         Nothing ->
                             { state
-                                    | recordTypeEditorState =
-                                        { recordTypeEditorState
-                                            | error = Just "Please select a type"
-                                        }
-                                }
+                                | recordTypeEditorState =
+                                    { recordTypeEditorState
+                                        | error = Just "Please select a type"
+                                    }
+                            }
 
 
-init : Maybe ModuleName -> State
-init maybeModuleName =
+init : Maybe ModuleName -> Bool -> State
+init maybeModuleName showSaveIR =
     { typeName = ""
     , typePickerState = Picklist.init Nothing
     , modulePickerState = Picklist.init maybeModuleName
     , customTypeEditorState = initCustomTypeEditor
     , recordTypeEditorState = initRecordTypeEditorState
+    , showSaveIR = showSaveIR
     }
 
 
@@ -342,6 +346,20 @@ view theme config packageName packageDef moduleName =
 
         saveButton : Element msg
         saveButton =
+            Input.button
+                [ padding 7
+                , theme |> Theme.borderRounded
+                , Background.color theme.colors.darkest
+                , Font.color theme.colors.lightest
+                , Font.bold
+                , Font.size theme.fontSize
+                ]
+                { onPress = Just config.onIRSave
+                , label = text "Save model"
+                }
+
+        addTypeButton : Element msg
+        addTypeButton =
             let
                 saveTypeMessage : Maybe msg
                 saveTypeMessage =
@@ -368,7 +386,7 @@ view theme config packageName packageDef moduleName =
                         Nothing
 
                     else
-                        config.state.typePickerState.selectedValue |> Maybe.map (saveType >> config.onTypeSave)
+                        config.state.typePickerState.selectedValue |> Maybe.map (saveType >> config.onTypeAdd)
             in
             Input.button
                 [ padding 7
@@ -379,7 +397,7 @@ view theme config packageName packageDef moduleName =
                 , Font.size theme.fontSize
                 ]
                 { onPress = saveTypeMessage
-                , label = text "Save new term"
+                , label = text "Add new term"
                 }
     in
     column
@@ -400,18 +418,26 @@ view theme config packageName packageDef moduleName =
             ]
         , case config.state.typePickerState.selectedValue of
             Just (CustomTypeDefinition _ _) ->
-                column 
-                    [ spacing (Theme.smallSpacing theme) ] 
+                column
+                    [ spacing (Theme.smallSpacing theme) ]
                     [ el [ Font.bold ] (text " which can be one of: "), customTypeEditor theme config ]
 
             Just (TypeAliasDefinition _ (Type.Record _ _)) ->
-                column 
-                    [ spacing (Theme.smallSpacing theme) ] 
+                column
+                    [ spacing (Theme.smallSpacing theme) ]
                     [ el [ Font.bold ] (text " whith the following fields:  "), recordTypeEditor theme config packageName packageDef moduleName ]
 
             _ ->
                 Element.none
-        , el [ paddingXY 0 (Theme.mediumPadding theme) ] saveButton
+        , row [ spacing <| Theme.largeSpacing theme ]
+            (el [ paddingXY 0 (Theme.mediumPadding theme) ] addTypeButton
+                :: (if config.state.showSaveIR then
+                        [ el [ paddingXY 0 (Theme.mediumPadding theme) ] saveButton ]
+
+                    else
+                        []
+                   )
+            )
         ]
 
 
@@ -540,17 +566,20 @@ recordTypeEditor theme config packageName packageDef moduleName =
 
             else
                 column [ spacing <| Theme.smallSpacing theme, padding <| Theme.smallPadding theme ]
-                    ((text "{") ::
-                    (List.map
-                        (\field ->
-                            row
-                                [ spacing (Theme.smallSpacing theme), paddingXY (Theme.largeSpacing theme) 0
-                                ]
-                                [ el [ Font.bold, Theme.borderBottom 1, Border.color theme.colors.mediumGray ] (text <| nameToTitleText field.name ++ " : " ++ Type.toString field.tpe)
-                                , deleteFieldBtn field.name
-                                ]
-                        )
-                        config.state.recordTypeEditorState.recordFields) ++ [text "}"])
+                    (text "{"
+                        :: List.map
+                            (\field ->
+                                row
+                                    [ spacing (Theme.smallSpacing theme)
+                                    , paddingXY (Theme.largeSpacing theme) 0
+                                    ]
+                                    [ el [ Font.bold, Theme.borderBottom 1, Border.color theme.colors.mediumGray ] (text <| nameToTitleText field.name ++ " : " ++ Type.toString field.tpe)
+                                    , deleteFieldBtn field.name
+                                    ]
+                            )
+                            config.state.recordTypeEditorState.recordFields
+                        ++ [ text "}" ]
+                    )
 
         fieldSaveButton : Element msg
         fieldSaveButton =

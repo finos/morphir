@@ -24,6 +24,18 @@ reference points to the file that holds the output for elm-make-->
           node: document.getElementById("elm"),
           flags: {version : "__VERSION_NUMBER__"}
         });
+        var unsaved = false;
+
+        app.ports.unsavedChangesPort.subscribe(message => {
+          unsaved = message;
+        });
+
+        window.addEventListener("beforeunload", event => {
+          if (unsaved) {
+            event.returnValue = "unsaved changes";
+            return event.returnValue;
+          }
+        });
       } catch (e) {
         // display initialization errors (e.g. bad flags, infinite recursion)
         var header = document.createElement("h1");
