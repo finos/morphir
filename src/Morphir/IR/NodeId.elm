@@ -75,6 +75,8 @@ type NodeID
     | ModuleID ( Path, Path )
 
 
+{-| Represents an error that might occur during node operations
+-}
 type Error
     = InvalidPath String
     | InvalidNodeID String
