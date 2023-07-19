@@ -1,4 +1,18 @@
-module Morphir.IR.NodeId exposing (Error(..), NodeID(..), NodePath, NodePathStep(..), getAttribute, getTypeAttributeByPath, getValueAttributeByPath, mapPatternAttributesWithNodePath, mapTypeAttributeWithNodePath, mapValueAttributesWithNodePath, nodeIdFromString, nodeIdToString, nodePathFromString, nodePathToString)
+module Morphir.IR.NodeId exposing
+    ( NodeID(..), NodePath, NodePathStep(..), Error(..)
+    , nodeIdFromString, nodeIdToString, nodePathFromString, nodePathToString, getAttribute
+    , mapPatternAttributesWithNodePath, mapTypeAttributeWithNodePath, mapValueAttributesWithNodePath
+    , getTypeAttributeByPath, getValueAttributeByPath
+    )
+
+{-| A data type that represents a node in the IR
+
+@docs NodeID, NodePath, NodePathStep, Error
+@docs nodeIdFromString, nodeIdToString, nodePathFromString, nodePathToString, getAttribute, getFromList, returnInvalidPathError
+@docs mapPatternAttributesWithNodePath, mapTypeAttributeWithNodePath, mapValueAttributesWithNodePath
+@docs mapPatternAttributesWithNodePathRec, getTypeAttributeByPath, getValueAttributeByPath
+
+-}
 
 import Dict exposing (Dict)
 import List.Extra
@@ -11,13 +25,7 @@ import Morphir.IR.Type as Type exposing (Field, Type(..))
 import Morphir.IR.Value as Value exposing (Value(..))
 
 
-{-|
-
-@docs NodeID, NodePath, NodePathStep, Error
-
-@docs nodeIdFromString, nodeIdToString, nodePathFromString, nodePathToString, getAttribute, mapPatternAttributesWithNodePath, mapTypeAttributeWithNodePath, mapValueAttributesWithNodePath
-
-Represents a path in the IR. This is a recursive structure made up of the following
+{-| Represents a path in the IR. This is a recursive structure made up of the following
 building blocks:
 
   - **ChildByName** traverses to a child node by name. It takes one argument
