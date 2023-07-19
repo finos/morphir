@@ -7,6 +7,7 @@ import Element.Font as Font exposing (center)
 import Element.Input as Input
 import Html exposing (div, text)
 import Html.Attributes exposing (style)
+import Element exposing (shrink)
 
 
 type alias Theme =
@@ -224,11 +225,11 @@ twoColumnTableView tableData leftView rightView =
         ]
         { columns =
             [ { header = none
-              , width = fill
+              , width = shrink
               , view = leftView
               }
             , { header = none
-              , width = fill
+              , width = shrink
               , view = rightView
               }
             ]
