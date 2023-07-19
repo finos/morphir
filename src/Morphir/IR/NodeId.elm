@@ -1,13 +1,14 @@
 module Morphir.IR.NodeId exposing
-    ( NodeID(..), NodePath, NodePathStep(..), Error(..)
+    ( NodeID(..), NodePath, NodePathStep(..)
     , nodeIdFromString, nodeIdToString, nodePathFromString, nodePathToString, getAttribute
     , mapPatternAttributesWithNodePath, mapTypeAttributeWithNodePath, mapValueAttributesWithNodePath
     , getTypeAttributeByPath, getValueAttributeByPath
+    , Error(..)
     )
 
 {-| A data type that represents a node in the IR
 
-@docs NodeID, NodePath, NodePathStep, Error
+@docs NodeID, NodePath, NodePathStep
 @docs nodeIdFromString, nodeIdToString, nodePathFromString, nodePathToString, getAttribute
 @docs mapPatternAttributesWithNodePath, mapTypeAttributeWithNodePath, mapValueAttributesWithNodePath
 @docs getTypeAttributeByPath, getValueAttributeByPath
@@ -58,11 +59,15 @@ type alias NodePath =
     List NodePathStep
 
 
+{-| Represents a part to a child node
+-}
 type NodePathStep
     = ChildByName Name
     | ChildByIndex Int
 
 
+{-| Represents a node in the IR. Could be a Type, Value or Module
+-}
 type NodeID
     = TypeID FQName NodePath
     | ValueID FQName NodePath
