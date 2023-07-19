@@ -1,8 +1,12 @@
-module Morphir.IR.Decoration.Codec exposing (..)
+module Morphir.IR.Decoration.Codec exposing
+    ( decodeNodeIDByValuePairs, decodeAllDecorationConfigAndData
+    , decodeDecorationValue, decodeDecorationData, decodeDecorationConfigAndData, encodeDecorationData
+    )
 
 {-| Codecs for types in the `Morphir.IR.Decoration` module
 
-@docs decodeNodeIDByValuePairs, decodeAllDecorationConfigAndData, decodeDecorationValue, decodeDecorationData, decodeDecorationConfigAndData, encodeDecorationData
+@docs decodeNodeIDByValuePairs, decodeAllDecorationConfigAndData
+@docs decodeDecorationValue, decodeDecorationData, decodeDecorationConfigAndData, encodeDecorationData
 
 -}
 

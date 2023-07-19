@@ -1,8 +1,12 @@
-module Morphir.IR.Decoration exposing (..)
+module Morphir.IR.Decoration exposing
+    ( DecorationID, AllDecorationConfigAndData, DecorationData, DecorationConfigAndData
+    , getDecoratedNodeIds, getNodeIdsDecoratedWithValue, filterDecorations
+    )
 
 {-| Module to work with Decorations. A decoration is an additional piece of information added to your model that is not captured in the langauge
 
-@docs DecorationID, AllDecorationConfigAndData, DecorationData, DecorationConfigAndData, getDecoratedNodeIds, getNodeIdsDecoratedWithValue, filterDecorations
+@docs DecorationID, AllDecorationConfigAndData, DecorationData, DecorationConfigAndData
+@docs getDecoratedNodeIds, getNodeIdsDecoratedWithValue, filterDecorations
 
 -}
 
