@@ -8,9 +8,9 @@ module Morphir.IR.NodeId exposing
 {-| A data type that represents a node in the IR
 
 @docs NodeID, NodePath, NodePathStep, Error
-@docs nodeIdFromString, nodeIdToString, nodePathFromString, nodePathToString, getAttribute, getFromList, returnInvalidPathError
+@docs nodeIdFromString, nodeIdToString, nodePathFromString, nodePathToString, getAttribute
 @docs mapPatternAttributesWithNodePath, mapTypeAttributeWithNodePath, mapValueAttributesWithNodePath
-@docs mapPatternAttributesWithNodePathRec, getTypeAttributeByPath, getValueAttributeByPath
+@docs getTypeAttributeByPath, getValueAttributeByPath
 
 -}
 
