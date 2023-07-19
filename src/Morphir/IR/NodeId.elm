@@ -12,6 +12,7 @@ module Morphir.IR.NodeId exposing
 @docs nodeIdFromString, nodeIdToString, nodePathFromString, nodePathToString, getAttribute
 @docs mapPatternAttributesWithNodePath, mapTypeAttributeWithNodePath, mapValueAttributesWithNodePath
 @docs getTypeAttributeByPath, getValueAttributeByPath
+@docs Error
 
 -}
 
