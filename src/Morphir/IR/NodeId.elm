@@ -60,7 +60,7 @@ type alias NodePath =
     List NodePathStep
 
 
-{-| Represents a part to a child node
+{-| Represents a path to a child node
 -}
 type NodePathStep
     = ChildByName Name
