@@ -1,4 +1,14 @@
-module Morphir.IR.Decoration exposing (..)
+module Morphir.IR.Decoration exposing
+    ( DecorationID, AllDecorationConfigAndData, DecorationData, DecorationConfigAndData
+    , getDecoratedNodeIds, getNodeIdsDecoratedWithValue, filterDecorations
+    )
+
+{-| Module to work with Decorations. A decoration is an additional piece of information added to your model that is not captured in the langauge
+
+@docs DecorationID, AllDecorationConfigAndData, DecorationData, DecorationConfigAndData
+@docs getDecoratedNodeIds, getNodeIdsDecoratedWithValue, filterDecorations
+
+-}
 
 import Dict exposing (Dict)
 import Morphir.IR.Distribution
@@ -8,18 +18,23 @@ import Morphir.IR.Value exposing (RawValue)
 import Morphir.SDK.Dict as SDKDict
 
 
+{-| -}
 type alias DecorationID =
     String
 
 
+{-| -}
 type alias AllDecorationConfigAndData =
     Dict DecorationID DecorationConfigAndData
 
 
+{-| Represents the contend of a sidecar file.
+-}
 type alias DecorationData =
     SDKDict.Dict NodeID RawValue
 
 
+{-| -}
 type alias DecorationConfigAndData =
     { displayName : String
     , entryPoint : FQName
@@ -40,6 +55,7 @@ getDecoratedNodeIds decorationId allDecorationConfigData =
 getNodeIdsDecoratedWithValue : DecorationID -> RawValue -> AllDecorationConfigAndData -> List NodeID
 getNodeIdsDecoratedWithValue decorationId decorationValue allDecorationConfigData =
     filterDecorations decorationId (\_ v -> v == decorationValue) allDecorationConfigData
+
 
 {-| Given a decoration type and a predicate, return a List of NodeIDs where the decoration satisfies the predicate.
 -}
