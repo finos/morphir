@@ -107,7 +107,7 @@ nodeIdFromString str =
     in
     case String.split ":" str of
         [ packageName, moduleName ] ->
-            Ok (ModuleID ( [ packageName |> Name.fromString ], [ moduleName |> Name.fromString ] ))
+            Ok (ModuleID ( packageName |> Path.fromString, moduleName |> Path.fromString ))
 
         [ packageName, moduleName, localName ] ->
             if String.contains "#" localName then
