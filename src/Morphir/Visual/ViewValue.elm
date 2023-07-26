@@ -268,17 +268,17 @@ viewValueByLanguageFeature config value =
                 Value.LetDefinition _ _ _ _ ->
                     let
                         unnest : Config msg -> EnrichedValue -> ( List ( Name, Element msg ), Element msg )
-                        unnest conf v =
+                        unnest configWithLetDefsSoFar v =
                             case v of
                                 Value.LetDefinition _ defName def inVal ->
                                     let
                                         currentState =
-                                            conf.state
+                                            configWithLetDefsSoFar.state
 
                                         newState =
                                             { currentState
                                                 | variables =
-                                                    conf
+                                                    configWithLetDefsSoFar
                                                         |> Config.evaluate
                                                             (def
                                                                 |> Value.mapDefinitionAttributes (always ()) (always ())
@@ -310,12 +310,12 @@ viewValueByLanguageFeature config value =
                                             }
 
                                         ( defs, bottomIn ) =
-                                            unnest { conf | state = newState } inVal
+                                            unnest { configWithLetDefsSoFar | state = newState } inVal
                                     in
                                     ( ( defName, viewValue config def.body ) :: defs, bottomIn )
 
-                                notLet ->
-                                    ( [], viewValue config notLet )
+                                notALetNode ->
+                                    ( [], viewValue configWithLetDefsSoFar notALetNode )
 
                         ( _, inValueElem ) =
                             unnest config value
