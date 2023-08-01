@@ -1,16 +1,16 @@
 ---
-id: morphir-cadl-mapping
-title: Morphir-Cadl Mapping
+id: morphir-typespec-mapping
+title: Morphir-TypeSpec Mapping
 ---
 
-# Morphir-Cadl Mapping
-## [Morphir](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) to [Cadl Type](https://microsoft.github.io/cadl/docs/language-basics/type-relations/) Mappings
-This is a documentation of the mapping strategy from Morphir types to Cadl types. This document describes how types in Morphir Models are represented in Cadl. 
+# Morphir-Typespec Mapping
+## [Morphir](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) to [TypeSpec Type](https://microsoft.github.io/typespec/language-basics/type-relations/) Mappings
+This is a documentation of the mapping strategy from Morphir types to Typespec types. This document describes how types in Morphir Models are represented in Typespec. 
 Below is a quick overview of the mapping in the table:
 
 
 
-|                                                       | Type                                       | Cadl Type                         | Comment                                             |
+|                                                       | Type                                       | TypeSpec Type                         | Comment                                             |
 |-------------------------------------------------------|--------------------------------------------|-----------------------------------|-----------------------------------------------------|
 | [Basic Types](#basic-types)                           |                                            |                                   |                                                     |
 |                                                       | `Bool`                                     | `boolean`                         |                                                     |
@@ -47,7 +47,7 @@ Elm:
 type alias IsApplicable = 
     Bool
 ```
-Cadl
+TypeSpec
 ```
 alias IsApplicable = boolean;
 ```
@@ -61,13 +61,13 @@ Elm:
 type alias Foo = 
     Int
 ```
-Cadl:
+TypeSpec:
 ```cadl
 alias Foo = int64;
 ```
 ***Note:***
 
-The `integer` type assignment is valid in Cadl but would default to **object** when dealing with the **OAS emitters**.
+The `integer` type assignment is valid in TypeSpec but would default to **object** when dealing with the **OAS emitters**.
 
 ##### [Float](https://package.elm-lang.org/packages/elm/core/latest/Basics#Float)
 The `Float` type; floating point number, in morphir maps directly to the `float` type in CADL.
@@ -77,13 +77,13 @@ Elm:
 type alias Pi = 
     Float
 ```
-Cadl:
+TypeSpec:
 ```cadl
 alias Pi = float64;
 ```
 ***Note:***>
 
-The `float` type assignment is valid in Cadl but would default to **object** when dealing with the **OAS emitters**.
+The `float` type assignment is valid in TypeSpec but would default to **object** when dealing with the **OAS emitters**.
 
 ##### [String](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-SDK-String)
 The `String` type; a sequence of characters, in morphir maps directly to `string` type in CADL.
@@ -93,20 +93,20 @@ Elm:
 type alias Address = 
     String
 ```
-Cadl:
+TypeSpec:
 ```cadl
 alias Address = string ;
 ```
 
 ##### [Char](https://package.elm-lang.org/packages/elm/core/latest/Char)
-The `char` type is a single character type in morphir and doesn't exist in Cadl. An alternative mapping is the `string` type.
+The `char` type is a single character type in morphir and doesn't exist in TypeSpec. An alternative mapping is the `string` type.
 
 Elm:
 ``` elm
 type alias AccountGroup = 
     Char
 ```
-Cadl:
+TypeSpec:
 ```cadl
 alias AccountGroup = string;
 ```
@@ -122,7 +122,7 @@ import Morphir.SDK.Decimal exposing (Decimal)
 type alias Price = 
     Decimal
 ```
-Cadl:
+TypeSpec:
 ```cadl
 alias Price = string
 ```
@@ -136,7 +136,7 @@ import Morphir.SDK.LocalDate exposing (LocalDate)
 type alias DateOfBirth = 
     LocalDate
 ```
-Cadl:
+TypeSpec:
 ```cadl
 alias dateOfBirth = plainDate;
 ```
@@ -150,7 +150,7 @@ import Morphir.SDK.LocalTime exposing (LocalTime)
 type alias CurrentTime =
     LocalTime
 ```
-Cadl:
+TypeSpec:
 ```cadl
 alias currentTime = plainTime;
 ```
@@ -166,13 +166,13 @@ import Morphir.SDK.Month exposing (Month)
 type alias CurrentMonth =
     Month
 ```
-Cadl:
+TypeSpec:
 ```cadl
 alias purchaseMonth = string;
 ```
 
 ##### [Optional Values(Maybe)](https://package.elm-lang.org/packages/elm/core/latest/Maybe)
-The `maybe` type in morphir represents a type that may or may not exist. The type could exist as a standalone type or a field type in a record and both scenarios are supported directly in Cadl. 
+The `maybe` type in morphir represents a type that may or may not exist. The type could exist as a standalone type or a field type in a record and both scenarios are supported directly in TypeSpec. 
 
 1. `maybe` as a standalone type, is presented in cadl as a union of the type or null using the pipe `|` syntax.
 
@@ -181,12 +181,12 @@ The `maybe` type in morphir represents a type that may or may not exist. The typ
     type alias Foo = 
         Maybe Int
    ```
-   Cadl:
+   TypeSpec:
     ```cadl
    alias Foo = int64 | null
     ```
    
-2. `maybe` as a field type in a record, is represented as `optional field` in a model in cadl using `optional field` `?:` syntax.
+2. `maybe` as a field type in a record, is represented as `optional field` in a model in TypeSpec using `optional field` `?:` syntax.
 
    Elm:
     ```elm
@@ -196,7 +196,7 @@ The `maybe` type in morphir represents a type that may or may not exist. The typ
         , baz: Maybe String
         }
     ```
-   Cadl:
+   TypeSpec:
     ```cadl
     model FooBarBaz {
         foo : int64;
@@ -215,7 +215,7 @@ The `maybe` type in morphir represents a type that may or may not exist. The typ
         , baz: Maybe (Maybe String)
         }
     ```
-   Cadl:
+   TypeSpec:
     ```cadl
     model FooBarBaz {
         foo : int64;
@@ -238,7 +238,7 @@ type alias Foo =
 type alias Bar a = 
     List a
 ```
-Cadl:
+TypeSpec:
 ```cadl
 alias Foo = Array<int64>;
 
@@ -256,7 +256,7 @@ type alias  Foo =
 type  alias Bar a =
     Set a
 ```
-Cadl:
+TypeSpec:
 ```cadl
 alias Foo = Array<int64>;
 
@@ -275,7 +275,7 @@ type alias Foo =
 type alias Bar a b = 
     Dict a b
 ```
-Cadl
+TypeSpec
 ```cadl
 alias Foo = Array<[string,int64]>;
 
@@ -291,7 +291,7 @@ Elm:
 type alias Foo e v= 
     Result e v
 ```
-Cadl:
+TypeSpec:
 ```cadl
 alias Foo<E,V> = ["Err", E] | ["Ok", V];
 ```      
@@ -308,7 +308,7 @@ type alias Foo =
 type alias Bar a b = 
     ( a, b )
 ```
-Cadl:
+TypeSpec:
 ```cadl
 alias Foo = [string, int64];
 
@@ -326,7 +326,7 @@ type  alias FooBarBaz =
      , baz: Float
    }
 ```
-Cadl:
+TypeSpec:
 ```cadl
 model FooBarBaz {
     foo: integer,
@@ -348,7 +348,7 @@ type FooBarBaz
     | Bar 
 ```
 
-Cadl:
+TypeSpec:
 ```cadl
 alias FooBarBaz =  ["Foo", int64] | ["Bar", string] | "Baz";   
 ``` 
@@ -362,7 +362,7 @@ type Currency
     | GBP 
     | GHS
 ```
-Cadl:
+TypeSpec:
 ```
 enum Currency {
     USD,
@@ -372,20 +372,20 @@ enum Currency {
 ``` 
 
 
-# Mapping [Cadl feature concepts](https://microsoft.github.io/cadl/language-basics/overview) to [Morphir](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type)
+# Mapping [TypeSpec feature concepts](https://microsoft.github.io/typespec/language-basics/overview) to [Morphir](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type)
 
 ---
 
 |                                                           | CADL Type                                                                                                                                                                                                                                                                                                                                                                           | Morphir Type                                                                                                                                      | Comment                                                                                                                                                                                                                                                      |
 |----------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [Namespaces](https://microsoft.github.io/cadl/language-basics/namespaces)                    | `namespace Petstore`                                                                                                                                                                                                                                                                                                                                                                                                      | `module PetStore exposing (...)`                                                                                                                                                     | Namespaces in CADL map to [Modules](https://package.elm-lang.org/packages/Morgan-Stanley/morphir-elm/latest/Morphir-IR-Module) in Morphir                                                                                                                                                          |      
-| [Models](https://microsoft.github.io/cadl/language-basics/models)                            | `model Dog { name: string;  age: number}`                                                                                                                                                                                                                                                                                                                                                                                 | `type alias Dog = { name: string, age: int}`                                                                                                                                         | Models in CADL map to [Records](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Value#record) in Morphir                                                                                                                                                                 |
-| [Enums](https://microsoft.github.io/cadl/language-basics/enums)                              | `enum Direction {East; West; North; South}`                                                                                                                                                                                                                                                                                                                                                                               | `type Direction `<br/> `= East` <code>&#124;</code> `West` <code>&#124;</code> `North` <code>&#124;</code> `South`                                                                   | Enums in CADL map to [Union Types](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) in Mophir                                                                                                                                                                       |
+| [Namespaces](https://microsoft.github.io/typespec/language-basics/namespaces)                    | `namespace Petstore`                                                                                                                                                                                                                                                                                                                                                                                                      | `module PetStore exposing (...)`                                                                                                                                                     | Namespaces in CADL map to [Modules](https://package.elm-lang.org/packages/Morgan-Stanley/morphir-elm/latest/Morphir-IR-Module) in Morphir                                                                                                                                                          |      
+| [Models](https://microsoft.github.io/typespec/language-basics/models)                            | `model Dog { name: string;  age: number}`                                                                                                                                                                                                                                                                                                                                                                                 | `type alias Dog = { name: string, age: int}`                                                                                                                                         | Models in CADL map to [Records](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Value#record) in Morphir                                                                                                                                                                 |
+| [Enums](https://microsoft.github.io/typespec/language-basics/enums)                              | `enum Direction {East; West; North; South}`                                                                                                                                                                                                                                                                                                                                                                               | `type Direction `<br/> `= East` <code>&#124;</code> `West` <code>&#124;</code> `North` <code>&#124;</code> `South`                                                                   | Enums in CADL map to [Union Types](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) in Mophir                                                                                                                                                                       |
 | [Union Type](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) |||
 |                                                                                              | -<span> Unnamed Union </span> <br /> `alias Breed = Breagle` <code>&#124;</code> `GermanShepherd` <code>&#124;</code> `GoldenRetriever` <br /> <span>- Named Union </span> <br /> `union Breed {`<br /> &ensp; `beagle: Beagle,` <br /> &ensp; `shepherd: GermanShepherd.` <br /> &ensp; `retiever: GoldenRetriever`<br /> `}` | `type Breed` <br /> &ensp; `= Beagle Beagle`<br /> &ensp; &ensp; <code>&#124;</code> `Shepherd GermanShepherd ` <br /> &ensp; &ensp; <code>&#124;</code> `Retriever GoldenRetriever` | Named unions in CADL maps to a Custom Type with  a `type parameter` in Morphir. Any other detail of the type is captured in Morphir's `Decorators(Custom Attributes).` <br /> <span> NB: unnamed Unions are currently not supported in morphir </span> |
 
 
-## [Type Relations](https://microsoft.github.io/cadl/language-basics/type-relations)
+## [Type Relations](https://microsoft.github.io/typespec/language-basics/type-relations)
 
 ##### Boolean
 Boolean in CADL, maps to [`bool`](https://package.elm-lang.org/packages/elm/core/latest/Basics#Bool), a `true` or `false` value in Morphir.

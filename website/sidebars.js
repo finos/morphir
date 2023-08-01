@@ -114,8 +114,7 @@ const sidebars = {
           'springboot-generator',
           'json-codecs-doc',
           'decorations-users-guide',
-          'custom-attributes-users-guide',
-          'morphir-cadl-mapping',
+          'morphir-typespec-mapping',
           'insight-api-guide',
       ]
     },
