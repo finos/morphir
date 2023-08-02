@@ -9,16 +9,18 @@ import Morphir.IR.Value as Value exposing (Pattern(..), Value)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Config exposing (Config, HighlightState(..))
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
-import Morphir.Visual.Theme exposing (mediumPadding, smallPadding)
+import Morphir.Visual.Theme exposing (mediumPadding, smallPadding, borderRounded)
 import Morphir.Visual.ViewLiteral as ViewLiteral
 
 
 view : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> Pattern ( Int, Type () ) -> Value () ( Int, Type () ) -> Element msg
 view config viewValue pattern val =
     let
+        styles : List (Element.Attribute msg)
         styles =
-            [ Background.color config.state.theme.colors.backgroundColor, smallPadding config.state.theme |> padding, Border.rounded 6 ]
+            [ Background.color config.state.theme.colors.backgroundColor, smallPadding config.state.theme |> padding, borderRounded config.state.theme ]
 
+        viewHelper : Pattern a -> List (Element msg)
         viewHelper p =
             case p of
                 Value.WildcardPattern _ ->
