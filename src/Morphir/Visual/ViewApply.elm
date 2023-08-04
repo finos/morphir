@@ -371,9 +371,9 @@ pipeVisualisation config applyValue viewValue=
                         , Element.centerY
                         , tooltip Element.below (functionOutput config fqName mapFunctionValue args viewValue)
                         , htmlAttribute (style "z-index" "10000")
-                        , width (Element.shrink |> Element.minimum (config.state.theme.fontSize * 3) |> Element.maximum (config.state.theme.fontSize * 5))
+                        , width (Element.shrink |> Element.minimum (config.state.theme.fontSize * 3) |> Element.maximum (config.state.theme.fontSize * 15))
                         ]
                     <|
                         DecisionTree.rightArrow config False
             in
-            row [ spacing <| Theme.smallSpacing config.state.theme ] <|( getMapsRec applyValue) ++ [el [Font.italic] <| text " output "]
+            row [ spacing <| Theme.smallSpacing config.state.theme, Element.paddingEach {top = Theme.largePadding config.state.theme, bottom = 0, left = 0, right = 0} ] <|( getMapsRec applyValue) ++ [el [Font.italic] <| text " output "]
