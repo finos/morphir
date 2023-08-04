@@ -60,6 +60,10 @@ import Element
         , table
         , text
         , width
+        , centerX
+        , shrink
+        , minimum
+        , maximum
         )
 import Element.Background as Background
 import Element.Border as Border
@@ -88,7 +92,7 @@ import Morphir.Visual.Components.DatePickerComponent as DatePicker
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.InputComponent as InputComponent
 import Morphir.Visual.Components.Picklist as Picklist
-import Morphir.Visual.Theme exposing (Theme)
+import Morphir.Visual.Theme as Theme exposing (Theme)
 import Svg
 import Svg.Attributes
 
@@ -588,7 +592,12 @@ view theme ir valueType updateEditorState editorState =
 
         labelStyle : List (Element.Attr () msg)
         labelStyle =
-            [ Background.color (rgb 0.2 0.3 0.4), centerY, Font.color (rgb 0.7 0.7 0.7), paddingEach { top = 5, bottom = 5, right = 10, left = 0 } ]
+            [ centerY
+            , centerX
+            , paddingEach { top = 5, bottom = 5, right = 10, left = 0 }
+            , width (shrink |> minimum (Theme.scaled 10 theme) |> maximum (Theme.scaled 15 theme))
+            , Font.italic
+            ]
     in
     case editorState.componentState of
         TextEditor currentText ->
@@ -730,13 +739,13 @@ view theme ir valueType updateEditorState editorState =
 
         RecordEditor fieldEditorStates ->
             row [] <|
-                [ el [ Background.color (rgb 0.2 0.3 0.4), centerY, Font.color (rgb 0.7 0.7 0.7), paddingXY 10 5 ] (text "record")
+                [ el [ Font.italic, paddingXY 10 5 ] (text "record")
                 , el
-                    [ padding 7
-                    , Background.color (rgb 0.7 0.8 0.9)
-                    , Border.rounded 7
+                    [ padding <| Theme.largePadding theme
+                    , Background.color theme.colors.brandPrimaryLight
+                    , Theme.borderRounded theme
                     ]
-                    (FieldList.view
+                    (FieldList.view theme
                         (fieldEditorStates
                             |> Dict.toList
                             |> List.map
@@ -866,7 +875,7 @@ view theme ir valueType updateEditorState editorState =
                         itemEditorState
             in
             row [] <|
-                [ el [ Background.color (rgb 0.2 0.3 0.4), centerY, Font.color (rgb 0.7 0.7 0.7), paddingXY 0 5 ] (text "optional ")
+                [ el [ centerY, paddingXY 0 5, Font.italic ] (text "optional ")
                 , itemEditor
                     (maybeItemEditorState
                         |> Maybe.withDefault (initEditorState ir itemType Nothing)
