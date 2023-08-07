@@ -1,4 +1,14 @@
-module Morphir.IR.Decoration.Codec exposing (..)
+module Morphir.IR.Decoration.Codec exposing
+    ( decodeNodeIDByValuePairs, decodeAllDecorationConfigAndData
+    , decodeDecorationValue, decodeDecorationData, decodeDecorationConfigAndData, encodeDecorationData
+    )
+
+{-| Codecs for types in the `Morphir.IR.Decoration` module
+
+@docs decodeNodeIDByValuePairs, decodeAllDecorationConfigAndData
+@docs decodeDecorationValue, decodeDecorationData, decodeDecorationConfigAndData, encodeDecorationData
+
+-}
 
 import Json.Decode as Decode
 import Json.Encode as Encode
@@ -13,6 +23,7 @@ import Morphir.IR.Value as IRValue
 import Morphir.SDK.Dict as SDKDict
 
 
+{-| -}
 decodeNodeIDByValuePairs : Decode.Decoder (SDKDict.Dict NodeID Decode.Value)
 decodeNodeIDByValuePairs =
     Decode.keyValuePairs Decode.value
@@ -40,11 +51,13 @@ decodeNodeIDByValuePairs =
         |> Decode.map SDKDict.fromList
 
 
+{-| -}
 decodeAllDecorationConfigAndData : Decode.Decoder AllDecorationConfigAndData
 decodeAllDecorationConfigAndData =
     Decode.dict decodeDecorationConfigAndData
 
 
+{-| -}
 decodeDecorationValue : Distribution -> FQName -> Decode.Decoder IRValue.RawValue
 decodeDecorationValue distro entryPointFqn =
     let
@@ -60,6 +73,7 @@ decodeDecorationValue distro entryPointFqn =
         |> resultToFailure
 
 
+{-| -}
 decodeDecorationData : Distribution -> FQName -> Decode.Decoder DecorationData
 decodeDecorationData distro entryPointFqn =
     Decode.keyValuePairs (decodeDecorationValue distro entryPointFqn)
@@ -87,6 +101,7 @@ decodeDecorationData distro entryPointFqn =
         |> Decode.map SDKDict.fromList
 
 
+{-| -}
 decodeDecorationConfigAndData : Decode.Decoder DecorationConfigAndData
 decodeDecorationConfigAndData =
     let
@@ -113,6 +128,7 @@ decodeDecorationConfigAndData =
         |> Decode.andThen identity
 
 
+{-| -}
 encodeDecorationData : Distribution -> FQName -> DecorationData -> Encode.Value
 encodeDecorationData distribution entryPoint decorationData =
     let

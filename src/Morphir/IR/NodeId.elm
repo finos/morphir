@@ -1,4 +1,20 @@
-module Morphir.IR.NodeId exposing (Error(..), NodeID(..), NodePath, NodePathStep(..), getAttribute, getTypeAttributeByPath, getValueAttributeByPath, mapPatternAttributesWithNodePath, mapTypeAttributeWithNodePath, mapValueAttributesWithNodePath, nodeIdFromString, nodeIdToString, nodePathFromString, nodePathToString)
+module Morphir.IR.NodeId exposing
+    ( NodeID(..), NodePath, NodePathStep(..)
+    , nodeIdFromString, nodeIdToString, nodePathFromString, nodePathToString, getAttribute
+    , mapPatternAttributesWithNodePath, mapTypeAttributeWithNodePath, mapValueAttributesWithNodePath
+    , getTypeAttributeByPath, getValueAttributeByPath
+    , Error(..)
+    )
+
+{-| A data type that represents a node in the IR
+
+@docs NodeID, NodePath, NodePathStep
+@docs nodeIdFromString, nodeIdToString, nodePathFromString, nodePathToString, getAttribute
+@docs mapPatternAttributesWithNodePath, mapTypeAttributeWithNodePath, mapValueAttributesWithNodePath
+@docs getTypeAttributeByPath, getValueAttributeByPath
+@docs Error
+
+-}
 
 import Dict exposing (Dict)
 import List.Extra
@@ -11,13 +27,7 @@ import Morphir.IR.Type as Type exposing (Field, Type(..))
 import Morphir.IR.Value as Value exposing (Value(..))
 
 
-{-|
-
-@docs NodeID, NodePath, NodePathStep, Error
-
-@docs nodeIdFromString, nodeIdToString, nodePathFromString, nodePathToString, getAttribute, mapPatternAttributesWithNodePath, mapTypeAttributeWithNodePath, mapValueAttributesWithNodePath
-
-Represents a path in the IR. This is a recursive structure made up of the following
+{-| Represents a path in the IR. This is a recursive structure made up of the following
 building blocks:
 
   - **ChildByName** traverses to a child node by name. It takes one argument
@@ -50,17 +60,23 @@ type alias NodePath =
     List NodePathStep
 
 
+{-| Represents a path to a child node
+-}
 type NodePathStep
     = ChildByName Name
     | ChildByIndex Int
 
 
+{-| Represents a node in the IR. Could be a Type, Value or Module
+-}
 type NodeID
     = TypeID FQName NodePath
     | ValueID FQName NodePath
     | ModuleID ( Path, Path )
 
 
+{-| Represents an error that might occur during node operations
+-}
 type Error
     = InvalidPath String
     | InvalidNodeID String
@@ -91,7 +107,7 @@ nodeIdFromString str =
     in
     case String.split ":" str of
         [ packageName, moduleName ] ->
-            Ok (ModuleID ( [ packageName |> Name.fromString ], [ moduleName |> Name.fromString ] ))
+            Ok (ModuleID ( packageName |> Path.fromString, moduleName |> Path.fromString ))
 
         [ packageName, moduleName, localName ] ->
             if String.contains "#" localName then

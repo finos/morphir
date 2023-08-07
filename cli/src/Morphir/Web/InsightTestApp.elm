@@ -11,8 +11,7 @@ import Html exposing (Html)
 import Http
 import Morphir.Correctness.Codec exposing (decodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCases, TestSuite)
-import Morphir.IR as IR exposing (IR)
-import Morphir.IR.Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
@@ -39,8 +38,8 @@ type alias Flags =
 
 type Model
     = LoadingDistribution
-    | LoadingTests Distribution IR
-    | Initialized Distribution IR TestSuite
+    | LoadingTests Distribution
+    | Initialized Distribution TestSuite
     | Errored String
 
 
@@ -76,7 +75,7 @@ httpGetDistribution =
         }
 
 
-httpGetTestModel : IR -> Cmd Msg
+httpGetTestModel : Distribution -> Cmd Msg
 httpGetTestModel ir =
     Http.get
         { url = "/server/morphir-tests.json"
@@ -103,19 +102,15 @@ update msg model =
         _ ->
             case ( model, msg ) of
                 ( LoadingDistribution, HttpGetDistributionResponse distro ) ->
-                    let
-                        ir =
-                            IR.fromDistribution distro
-                    in
-                    ( LoadingTests distro ir, httpGetTestModel ir )
+                    ( LoadingTests distro, httpGetTestModel distro )
 
                 ( LoadingDistribution, HttpError error ) ->
                     ( Errored "Error while loading distribution", Cmd.none )
 
-                ( LoadingTests distro ir, HttpGetTestsResponse testSuite ) ->
-                    ( Initialized distro ir testSuite, Cmd.none )
+                ( LoadingTests distro, HttpGetTestsResponse testSuite ) ->
+                    ( Initialized distro testSuite, Cmd.none )
 
-                ( LoadingTests distro ir, HttpError error ) ->
+                ( LoadingTests distro, HttpError error ) ->
                     ( Errored "Error while loading tests", Cmd.none )
 
                 _ ->
@@ -146,35 +141,34 @@ viewModel model =
         LoadingDistribution ->
             text "Loading distribution ..."
 
-        LoadingTests _ _ ->
+        LoadingTests _ ->
             text "Loading tests ..."
 
-        Initialized distro ir testSuite ->
-            viewInitialized distro ir testSuite
+        Initialized distro testSuite ->
+            viewInitialized distro testSuite
 
         Errored string ->
             text string
 
 
-viewInitialized : Distribution -> IR -> TestSuite -> Element Msg
-viewInitialized distro ir testSuite =
+viewInitialized : Distribution -> TestSuite -> Element Msg
+viewInitialized distro testSuite =
     testSuite
         |> Dict.toList
         |> List.filterMap
             (\( fqn, testCases ) ->
-                ir
-                    |> IR.lookupValueDefinition fqn
+                distro
+                    |> Distribution.lookupValueDefinition fqn
                     |> Maybe.map
                         (\valueDef ->
-                            viewValue ir fqn valueDef testCases
+                            viewValue distro fqn valueDef testCases
                         )
             )
         |> column [ spacing 10 ]
 
 
-
-viewValue : IR -> FQName -> Value.Definition () (Type ()) -> TestCases -> Element Msg
-viewValue ir (( _, moduleName, localName ) as fqn) valueDefinition testCases =
+viewValue : Distribution -> FQName -> Value.Definition () (Type ()) -> TestCases -> Element Msg
+viewValue distro (( _, moduleName, localName ) as fqn) valueDefinition testCases =
     let
         cardColor : Element.Color
         cardColor =
@@ -205,7 +199,7 @@ viewValue ir (( _, moduleName, localName ) as fqn) valueDefinition testCases =
                     , padding 10
                     , Background.color (rgb 1 1 1)
                     ]
-                    (viewInsight ir
+                    (viewInsight distro
                         fqn
                         valueDefinition
                         inputs
@@ -245,8 +239,8 @@ viewValue ir (( _, moduleName, localName ) as fqn) valueDefinition testCases =
         viewCases
 
 
-viewInsight : IR -> FQName -> Value.Definition () (Type ()) -> List (Maybe RawValue) -> Element Msg
-viewInsight ir fqn valueDef argValues =
+viewInsight : Distribution -> FQName -> Value.Definition () (Type ()) -> List (Maybe RawValue) -> Element Msg
+viewInsight distro fqn valueDef argValues =
     let
         variables : Dict Name RawValue
         variables =
@@ -261,7 +255,7 @@ viewInsight ir fqn valueDef argValues =
                 |> Dict.fromList
 
         config =
-            { ir = ir
+            { ir = distro
             , nativeFunctions = SDK.nativeFunctions
             , state =
                 { drillDownFunctions = DrillDownFunctions Dict.empty

@@ -5,7 +5,6 @@ import Element
 import Html exposing (Html)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
-import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.Distribution.Codec exposing (decodeVersionedDistribution)
 import Morphir.IR.FQName as FQName exposing (FQName)
@@ -25,7 +24,7 @@ type alias Model =
 
 
 type alias ModelState =
-    { ir : IR
+    { ir : Distribution
     , theme : Theme
     , valueType : Type ()
     , editorState : ValueEditor.EditorState
@@ -60,24 +59,24 @@ init flags =
                 tpe =
                     Type.Reference () flag.entryPoint []
 
-                ir : IR
-                ir =
-                    IR.fromDistribution flag.distribution
+                distro : Distribution
+                distro =
+                    flag.distribution
 
                 initEditorState : ValueEditor.EditorState
                 initEditorState =
-                    ValueEditor.initEditorState ir tpe flag.initialValue
+                    ValueEditor.initEditorState distro tpe flag.initialValue
 
                 encoderResult : Result String (RawValue -> Result String Encode.Value)
                 encoderResult =
-                    DataCodec.encodeData ir tpe
+                    DataCodec.encodeData distro tpe
 
                 model : Model
                 model =
                     encoderResult
                         |> Result.map
                             (\encoder ->
-                                { ir = ir
+                                { ir = distro
                                 , theme = Theme.fromConfig Nothing
                                 , valueType = tpe
                                 , editorState = initEditorState
@@ -200,7 +199,7 @@ decodeFlag =
             in
             Decode.field "initialValue"
                 (Decode.maybe
-                    (decodeData (IR.fromDistribution distribution) tpe
+                    (decodeData distribution tpe
                         |> decodeResultToFailure
                     )
                 )

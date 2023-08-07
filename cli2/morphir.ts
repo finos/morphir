@@ -17,4 +17,5 @@ program
     .command('dockerize', 'Creates a docker image of a Morphir IR and Morphir Develop')
     .command('test-coverage', 'Generates report on number of branches in a Morphir value and TestCases covered')
     .command('generate-test-data', 'Creates a docker image of a Morphir IR and Morphir Develop')
+    .command('init', 'Launches an interactive session to initialize a new morphir project.')
     .parse(process.argv)

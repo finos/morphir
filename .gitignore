@@ -16,6 +16,7 @@ cli/index.html
 lib/geneated
 cadl-Frontend/cadl-output
 Morphir.Elm.CLI.js
+Morphir.Elm.Generator.js
 docs.json
 /.coverage/
 tests-integration/reference-model/Dockerfile
