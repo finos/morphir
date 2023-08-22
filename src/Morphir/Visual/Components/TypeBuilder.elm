@@ -34,6 +34,7 @@ type alias State =
     , customTypeEditorState : CustomTypeEditorState
     , recordTypeEditorState : RecordTypeEditorState
     , showSaveIR : Bool
+    , documentation : String
     , nameError : Maybe String
     }
 
@@ -75,6 +76,7 @@ type Msg
     = UpdateTypeName String
     | TypePicklistChanged (Picklist.State (Type.Definition ()))
     | ModulePicklistChanged (Picklist.State ModuleName)
+    | DocumentationChanged String
     | ConstructorEditor ConstructorEditorMsg
     | RecordEditor RecordEditorMsg
 
@@ -268,6 +270,9 @@ update typeBuildermsg state =
                 ToggleNewFieldOptional optional ->
                     { state | recordTypeEditorState = { recordTypeEditorState | currentlyEditedFieldOptional = optional } }
 
+        DocumentationChanged documentation ->
+            {state | documentation = documentation}
+
 
 init : Maybe ModuleName -> Bool -> State
 init maybeModuleName showSaveIR =
@@ -277,6 +282,7 @@ init maybeModuleName showSaveIR =
     , customTypeEditorState = initCustomTypeEditor
     , recordTypeEditorState = initRecordTypeEditorState
     , showSaveIR = showSaveIR
+    , documentation = ""
     , nameError = Nothing
     }
 
@@ -413,6 +419,18 @@ view theme config packageName packageDef moduleName =
                 , label = text "Save model"
                 }
 
+        documentationInput : Element msg
+        documentationInput =
+            InputComponent.multiLine theme
+                [width fill]
+                { onChange = \txt -> config.onStateChange (update (DocumentationChanged txt) config.state)
+                , text = config.state.documentation
+                , placeholder = Just (Input.placeholder [] (text "Add some documentation explaining the purpose of this term..."))
+                , spellcheck = False
+                , label = Input.labelAbove [] <| text "Documentation"
+                }
+                Nothing
+
         addTypeButton : Element msg
         addTypeButton =
             let
@@ -433,7 +451,7 @@ view theme config packageName packageDef moduleName =
                                     _ ->
                                         def
                             , access = Public
-                            , documentation = ""
+                            , documentation = config.state.documentation
                             , moduleName = config.state.modulePickerState.selectedValue |> Maybe.withDefault []
                             }
                     in
@@ -480,10 +498,11 @@ view theme config packageName packageDef moduleName =
             Just (TypeAliasDefinition _ (Type.Record _ _)) ->
                 column
                     [ spacing (Theme.smallSpacing theme) ]
-                    [ el [ Font.bold ] (text " whith the following fields:  "), recordTypeEditor theme config packageName packageDef moduleName ]
+                    [ el [ Font.bold ] (text " with the following fields:  "), recordTypeEditor theme config packageName packageDef moduleName ]
 
             _ ->
                 Element.none
+        , documentationInput
         , row [ spacing <| Theme.largeSpacing theme ]
             (el [ paddingXY 0 (Theme.mediumPadding theme) ] addTypeButton
                 :: (if config.state.showSaveIR then
