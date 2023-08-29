@@ -25,17 +25,20 @@ import Morphir.Visual.Components.InputComponent as InputComponent
 import Morphir.Visual.Components.Picklist as Picklist
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Ordering
+import Morphir.IR.Path as Path
 
 
 type alias State =
     { typeName : String
+    , newModuleName : String
+    , createNewModule : Bool
     , typePickerState : Picklist.State (Type.Definition ())
     , modulePickerState : Picklist.State ModuleName
     , customTypeEditorState : CustomTypeEditorState
     , recordTypeEditorState : RecordTypeEditorState
     , showSaveIR : Bool
     , documentation : String
-    , nameError : Maybe String
+    , typeNameError : Maybe String
     }
 
 
@@ -74,6 +77,8 @@ type alias NewType =
 
 type Msg
     = UpdateTypeName String
+    | UpdateNewModuleName String
+    | ToggleNewModule
     | TypePicklistChanged (Picklist.State (Type.Definition ()))
     | ModulePicklistChanged (Picklist.State ModuleName)
     | DocumentationChanged String
@@ -102,12 +107,17 @@ update typeBuildermsg state =
         UpdateTypeName n ->
             { state
                 | typeName = n
-                , nameError =
+                , typeNameError =
                     if not <| isValidName [ n ] then
                         Just "This is not a valid name"
 
                     else
                         Nothing
+            }
+
+        UpdateNewModuleName n ->
+            { state
+                | newModuleName = n
             }
 
         TypePicklistChanged newState ->
@@ -271,19 +281,24 @@ update typeBuildermsg state =
                     { state | recordTypeEditorState = { recordTypeEditorState | currentlyEditedFieldOptional = optional } }
 
         DocumentationChanged documentation ->
-            {state | documentation = documentation}
+            { state | documentation = documentation }
+
+        ToggleNewModule ->
+            { state | createNewModule = not state.createNewModule }
 
 
 init : Maybe ModuleName -> Bool -> State
 init maybeModuleName showSaveIR =
     { typeName = ""
+    , newModuleName = ""
+    , createNewModule = False
     , typePickerState = Picklist.init Nothing
     , modulePickerState = Picklist.init maybeModuleName
     , customTypeEditorState = initCustomTypeEditor
     , recordTypeEditorState = initRecordTypeEditorState
     , showSaveIR = showSaveIR
     , documentation = ""
-    , nameError = Nothing
+    , typeNameError = Nothing
     }
 
 
@@ -319,7 +334,7 @@ view theme config packageName packageDef moduleName =
                     , placeholder = Just (Input.placeholder [] (text "Name your new term"))
                     , label = Input.labelHidden "Type's name"
                     }
-                    config.state.nameError
+                    config.state.typeNameError
                 )
 
         typePicklist : Element msg
@@ -353,6 +368,46 @@ view theme config packageName packageDef moduleName =
                     (builtInTypes |> List.map (\( name, def ) -> createDropdownElement theme def name name "SDK"))
                     typeList
                 )
+
+        newModuleNameInput : Element msg
+        newModuleNameInput =
+            el [ above (el [ padding (Theme.smallPadding theme), Font.color theme.colors.mediumGray ] (text "New Module's name")), width fill ]
+                (InputComponent.textInput
+                    theme
+                    []
+                    { onChange = \s -> config.onStateChange (update (UpdateNewModuleName s) config.state)
+                    , text = config.state.newModuleName
+                    , placeholder = Just (Input.placeholder [] (text "Name your new module"))
+                    , label = Input.labelHidden "New Module's name"
+                    }
+                    config.state.typeNameError
+                )
+
+        toggleNewModuleButton : Element msg
+        toggleNewModuleButton =
+            Input.button
+                [ padding 7
+                , theme |> Theme.borderRounded
+                , Background.color theme.colors.darkest
+                , Font.color theme.colors.lightest
+                , Font.bold
+                , Font.size theme.fontSize
+                ]
+                { onPress = Just (config.onStateChange (update ToggleNewModule config.state))
+                , label =
+                    if config.state.createNewModule then
+                        text "Pick Existing Module"
+
+                    else
+                        text "Create New Module"
+                }
+
+        getModuleName : ModuleName
+        getModuleName = 
+            if config.state.createNewModule then
+                Path.fromString config.state.newModuleName
+            else
+                config.state.modulePickerState.selectedValue |> Maybe.withDefault []
 
         modulePicklist : Element msg
         modulePicklist =
@@ -422,7 +477,7 @@ view theme config packageName packageDef moduleName =
         documentationInput : Element msg
         documentationInput =
             InputComponent.multiLine theme
-                [width fill]
+                [ width fill ]
                 { onChange = \txt -> config.onStateChange (update (DocumentationChanged txt) config.state)
                 , text = config.state.documentation
                 , placeholder = Just (Input.placeholder [] (text "Add some documentation explaining the purpose of this term..."))
@@ -452,7 +507,7 @@ view theme config packageName packageDef moduleName =
                                         def
                             , access = Public
                             , documentation = config.state.documentation
-                            , moduleName = config.state.modulePickerState.selectedValue |> Maybe.withDefault []
+                            , moduleName = getModuleName
                             }
                     in
                     if (config.state.typeName |> String.isEmpty) || not ([ config.state.typeName ] |> isValidName) then
@@ -478,7 +533,6 @@ view theme config packageName packageDef moduleName =
         , padding (Theme.largePadding theme)
         , height fill
         , width fill
-        , scrollbars
         ]
         [ row
             [ spacing (Theme.mediumSpacing theme)
@@ -487,7 +541,14 @@ view theme config packageName packageDef moduleName =
             , el [ Font.bold ] (text " is a kind of ")
             , typePicklist
             , el [ Font.bold ] (text " in ")
-            , modulePicklist
+            , column [ spacing (Theme.mediumPadding theme), width fill ]
+                [ if config.state.createNewModule then
+                    newModuleNameInput
+
+                  else
+                    modulePicklist
+                , toggleNewModuleButton
+                ]
             ]
         , case config.state.typePickerState.selectedValue of
             Just (CustomTypeDefinition _ _) ->
