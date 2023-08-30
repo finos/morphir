@@ -12,8 +12,8 @@ import Http
 import Morphir.Correctness.Codec exposing (decodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCases, TestSuite)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
-import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FormatVersion.Codec as DistributionCodec
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)

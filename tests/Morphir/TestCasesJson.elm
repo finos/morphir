@@ -6,7 +6,7 @@ import Json.Decode as Decode
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
 import Morphir.IR.Distribution exposing (Distribution(..))
-import Morphir.IR.Distribution.Codec as DistributionCodec
+import Morphir.IR.FormatVersion.Codec as DistributionCodec
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Package as Package
 import Morphir.IR.Value exposing (RawValue, Value(..))

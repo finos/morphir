@@ -7,7 +7,7 @@ import Json.Encode as Encode
 import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.IR.AccessControlled exposing (private, public)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
-import Morphir.IR.Distribution.Codec as DistributionCodec
+import Morphir.IR.FormatVersion.Codec as DistributionCodec
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (fQName)
 import Morphir.IR.Package as Package

@@ -29,8 +29,8 @@ import Morphir.Elm.Target exposing (BackendOptions, decodeOptions, mapDistributi
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.File.FileMap.Codec exposing (encodeFileMap)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
-import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName as FQName
+import Morphir.IR.FormatVersion.Codec as DistributionCodec
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)

@@ -31,7 +31,7 @@ import Morphir.File.FileMap.Codec exposing (encodeFileMap)
 import Morphir.File.FileSnapshot as FileSnapshot exposing (FileSnapshot)
 import Morphir.File.FileSnapshot.Codec as FileSnapshotCodec
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..), lookupPackageName, lookupPackageSpecification)
-import Morphir.IR.Distribution.Codec as DistroCodec
+import Morphir.IR.FormatVersion.Codec as DistroCodec
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package exposing (PackageName, Specification)
 import Morphir.IR.Path as Path exposing (Path)

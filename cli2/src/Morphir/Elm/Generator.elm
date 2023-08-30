@@ -5,10 +5,9 @@ import Json.Decode as Decode
 import Json.Encode as Encode exposing (Value)
 import Morphir.Elm.Generator.API as Generator
 import Morphir.Elm.Generator.ValueGenerators as ValueGenerator
-import Morphir.IR as IR
-import Morphir.IR.Distribution exposing (Distribution(..))
-import Morphir.IR.Distribution.Codec as DistroCodec
+import Morphir.IR.Distribution as IR exposing (Distribution(..))
 import Morphir.IR.FQName as FQName exposing (FQName)
+import Morphir.IR.FormatVersion.Codec as DistroCodec
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Type.DataCodec as DataCodec
 import Morphir.IR.Value exposing (RawValue)
@@ -87,7 +86,7 @@ update msg () =
                     else
                         let
                             ir =
-                                IR.fromDistribution distro
+                                distro
 
                             fqnByTpeSpecsResult =
                                 targets

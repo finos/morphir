@@ -56,8 +56,8 @@ import Morphir.Correctness.Test exposing (TestCase, TestSuite)
 import Morphir.IR.Decoration exposing (AllDecorationConfigAndData, DecorationData, DecorationID)
 import Morphir.IR.Decoration.Codec exposing (decodeAllDecorationConfigAndData, decodeDecorationData, encodeDecorationData)
 import Morphir.IR.Distribution exposing (Distribution(..))
-import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FormatVersion.Codec as DistributionCodec
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.NodeId exposing (NodeID(..))

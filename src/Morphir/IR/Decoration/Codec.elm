@@ -14,8 +14,8 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.Decoration exposing (AllDecorationConfigAndData, DecorationConfigAndData, DecorationData)
 import Morphir.IR.Distribution exposing (Distribution)
-import Morphir.IR.Distribution.Codec exposing (decodeVersionedDistribution)
 import Morphir.IR.FQName as FQName exposing (FQName)
+import Morphir.IR.FormatVersion.Codec exposing (decodeVersionedDistribution)
 import Morphir.IR.NodeId exposing (NodeID(..), nodeIdFromString, nodeIdToString)
 import Morphir.IR.Type as Type
 import Morphir.IR.Type.DataCodec as DataCodec
