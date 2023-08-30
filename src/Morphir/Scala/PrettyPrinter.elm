@@ -339,7 +339,7 @@ mapArgDecl opt argDecl =
                 Nothing ->
                     empty
     in
-    mapModifiers argDecl.modifiers ++ argDecl.name ++ ": " ++ mapType opt argDecl.tpe ++ defaultValueDoc
+    mapModifiers argDecl.modifiers ++ prefixKeyword argDecl.name ++ ": " ++ mapType opt argDecl.tpe ++ defaultValueDoc
 
 
 mapType : Options -> Type -> Doc
@@ -623,7 +623,7 @@ mapPattern pattern =
             "Nil"
 
         HeadTailMatch headPattern tailPattern ->
-            mapPattern headPattern ++ " :: " ++ mapPattern tailPattern
+            parens (mapPattern headPattern ++ " :: " ++ mapPattern tailPattern)
 
         CommentedPattern childPattern message ->
             mapPattern childPattern ++ " /* " ++ message ++ " */ "
@@ -643,7 +643,7 @@ mapLit lit =
             "'" ++ String.fromChar char ++ "'"
 
         StringLit string ->
-            "\"" ++ string ++ "\""
+            "\"\"\"" ++ string ++ "\"\"\""
 
         IntegerLit int ->
             String.fromInt int
