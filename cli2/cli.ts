@@ -135,7 +135,7 @@ async function buildFromScratch(
       if (err) {
         reject(err);
       } else {
-        resolve(JSON.stringify(ok, null, 4));
+        resolve(JSON.stringify(ok, null, options.indentJson ? 4 : 0));
       }
     });
 
@@ -176,7 +176,7 @@ async function buildIncrementally(
       if (err) {
         reject(err);
       } else {
-        resolve(JSON.stringify(ok, null, 4));
+        resolve(JSON.stringify(ok, null, options.indentJson ? 4 : 0));
       }
     });
 
@@ -519,8 +519,8 @@ async function testCoverage(
 
   // output path 
   const output = path.join(path.resolve(outputPath), "morphir-test-coverage.json")
-  
-  return  new Promise((resolve, reject) => {
+
+  return new Promise((resolve, reject) => {
     worker.ports.testCoverageResult.subscribe(([err, data]: any) => {
       if (err) {
         reject(err)
@@ -531,7 +531,7 @@ async function testCoverage(
     })
 
     // send files through port
-    worker.ports.testCoverage.send([morphirIRJson,morphirTestJson])
+    worker.ports.testCoverage.send([morphirIRJson, morphirTestJson])
   });
 }
 
