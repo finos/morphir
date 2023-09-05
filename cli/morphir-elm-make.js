@@ -18,6 +18,7 @@ program
     .option('-o, --output <path>', 'Target file location where the Morphir IR will be saved.', 'morphir-ir.json')
     .option('-t, --types-only', 'Only include type information in the IR, no values.', false)
     .option('-f, --fallback-cli', 'Use old cli make function.', false)
+    .option('-i, --indent-json', 'Use indentation in the generated JSON file.', false)
     .parse(process.argv)
 
 const programOptions = program.opts()
@@ -43,7 +44,7 @@ function make(projectDir, opts) {
     cli.make(projectDir, opts)
         .then((packageDef) => {
             console.log(`Writing file ${opts.output}.`)
-            cli.writeFile(opts.output, JSON.stringify(packageDef, null, 4))
+            cli.writeFile(opts.output, JSON.stringify(packageDef, null, opts.indentJson ? 4 : 0))
                 .then(() => {
                     console.log('Done.')
                 })
