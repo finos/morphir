@@ -58,7 +58,7 @@ drillDownPanel theme config =
                     , blur = 4
                     , color = rgba 0 0 0 0.2
                     }
-                , Background.color (rgba 1 1 1 1)
+                , Background.color theme.colors.lightest
                 , htmlAttribute (style "filter" "brightness(97%)")
                 , htmlAttribute (style "z-index" (String.fromInt config.zIndex))
                 ]
@@ -74,6 +74,7 @@ drillDownPanel theme config =
             , Border.rounded 4
             , Border.width 2
             , Border.color (rgba 0 0 0 0.1)
+            , Background.color theme.colors.lightest
             ]
             [ el [ width (theme |> Theme.largeSpacing |> px) ] (expandIcon theme)
             , config.closedElement

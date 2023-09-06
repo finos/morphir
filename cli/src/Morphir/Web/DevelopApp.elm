@@ -1303,7 +1303,7 @@ viewDecorationValues model node =
                             editorState
                         )
                     )
-                |> FieldList.view
+                |> FieldList.view model.theme
     in
     column [ spacing (model.theme |> Theme.scaled 5) ]
         [ attributeToEditors ]
@@ -2040,7 +2040,7 @@ viewDefinitionDetails model =
                             (argState |> Dict.get argName |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing))
                         )
                     )
-                |> FieldList.view
+                |> FieldList.view model.theme
 
         buttonStyles : List (Element.Attribute msg)
         buttonStyles =
