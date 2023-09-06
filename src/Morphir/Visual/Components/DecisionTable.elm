@@ -180,7 +180,7 @@ getCaseFromIndex config head viewValue highlightState rule =
                     let
                         parsedMatches : List (Element msg)
                         parsedMatches =
-                            List.map (getCaseFromIndex config head viewValue highlightState << Just << toTypedPattern) (matches)
+                            List.map (getCaseFromIndex config head viewValue highlightState << Just << toTypedPattern) matches
 
                         --enclose in parentheses for nested constructors
                     in

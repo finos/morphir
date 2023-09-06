@@ -1,4 +1,4 @@
-module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), ServerState(..), httpMakeModel, init, main, routeParser, subscriptions, update, view, viewBody, viewHeader)
+port module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), ServerState(..), httpMakeModel, init, main, routeParser, subscriptions, update, view, viewBody, viewHeader)
 
 import Array exposing (Array)
 import Array.Extra
@@ -22,6 +22,7 @@ import Element
         , fillPortion
         , height
         , image
+        , inFront
         , layout
         , link
         , maximum
@@ -51,13 +52,14 @@ import Element.Keyed
 import FontAwesome.Styles as Icon
 import Http exposing (emptyBody, jsonBody)
 import List.Extra
+import Loading
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
 import Morphir.IR.Decoration exposing (AllDecorationConfigAndData, DecorationData, DecorationID)
 import Morphir.IR.Decoration.Codec exposing (decodeAllDecorationConfigAndData, decodeDecorationData, encodeDecorationData)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
-import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.NodeId exposing (NodeID(..))
@@ -65,7 +67,7 @@ import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Repo as Repo exposing (Repo)
 import Morphir.IR.SDK as SDK exposing (packageName)
-import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Type as Type exposing (Type(..))
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
 import Morphir.SDK.Dict as SDKDict
 import Morphir.Type.Infer as Infer
@@ -80,6 +82,7 @@ import Morphir.Visual.Components.SectionComponent as SectionComponent
 import Morphir.Visual.Components.SelectableElement as SelectableElement
 import Morphir.Visual.Components.TabsComponent as TabsComponent
 import Morphir.Visual.Components.TreeViewComponent as TreeViewComponent
+import Morphir.Visual.Components.TypeBuilder as TypeBuilder
 import Morphir.Visual.Config exposing (DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
 import Morphir.Visual.Theme as Theme exposing (Theme, borderBottom, borderRounded, largePadding, largeSpacing, smallPadding)
@@ -111,6 +114,9 @@ main =
         }
 
 
+port unsavedChangesPort : Bool -> Cmd msg
+
+
 
 -- MODEL
 
@@ -127,6 +133,7 @@ type alias Model =
     , homeState : HomeState
     , repo : Repo
     , insightViewState : Morphir.Visual.Config.VisualState
+    , typeBuilderState : TypeBuilder.State
     , argStates : InsightArgumentState
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
     , allDecorationConfigAndData : AllDecorationConfigAndData
@@ -139,6 +146,7 @@ type alias Model =
     , modalContent : Element Msg
     , version : String
     , showSaveTestError : Bool
+    , unsavedChanges : Bool
     }
 
 
@@ -182,6 +190,7 @@ type Definition
 
 type IRState
     = IRLoading
+    | IRReloading Distribution
     | IRLoaded Distribution
 
 
@@ -216,6 +225,7 @@ init flags url key =
                 }
             , repo = Repo.empty []
             , insightViewState = emptyVisualState
+            , typeBuilderState = TypeBuilder.init Nothing False
             , argStates = Dict.empty
             , expandedValues = Dict.empty
             , allDecorationConfigAndData = Dict.empty
@@ -228,6 +238,7 @@ init flags url key =
             , modalContent = none
             , version = flags.version
             , showSaveTestError = False
+            , unsavedChanges = False
             }
     in
     ( toRoute url initModel
@@ -307,6 +318,9 @@ type UIMsg
     | OpenHttpErrorModal Http.Error String Bool
     | DismissHttpError
     | CloseModal
+    | TypeBuilderChanged TypeBuilder.State
+    | TypeAdded TypeBuilder.NewType
+    | SaveIR
 
 
 type FilterMsg
@@ -400,8 +414,8 @@ update msg model =
             in
             case Repo.fromDistribution distribution of
                 Ok r ->
-                    ( { model | irState = irLoaded, repo = r, argStates = initialArgumentStates, insightViewState = initInsightViewState initialArgumentStates }
-                    , httpTestModel distribution
+                    ( { model | irState = irLoaded, repo = r, argStates = initialArgumentStates, insightViewState = initInsightViewState initialArgumentStates, unsavedChanges = False }
+                    , Cmd.batch [ httpTestModel distribution, unsavedChangesPort False ]
                     )
 
                 Err _ ->
@@ -463,6 +477,22 @@ update msg model =
 
                 CloseModal ->
                     ( { model | isModalOpen = False }, Cmd.none )
+
+                TypeBuilderChanged newTypeBuilderState ->
+                    ( { model | typeBuilderState = newTypeBuilderState }, Cmd.none )
+
+                TypeAdded newType ->
+                    case model.repo |> Repo.insertType newType.moduleName newType.name newType.definition newType.access newType.documentation of
+                        Ok newRepo ->
+                            ( { model | typeBuilderState = TypeBuilder.init (model.homeState.selectedModule |> Maybe.map Tuple.second) True, unsavedChanges = True, irState = IRLoaded (Repo.toDistribution newRepo), repo = newRepo }
+                            , unsavedChangesPort True
+                            )
+
+                        _ ->
+                            ( model, Cmd.none )
+
+                SaveIR ->
+                    ( { model | irState = IRReloading (Repo.toDistribution model.repo) }, httpSaveDistribution (Repo.toDistribution model.repo) )
 
         ServerGetTestsResponse testSuite ->
             ( { model | testSuite = fromStoredTestSuite testSuite }, Cmd.none )
@@ -793,10 +823,18 @@ updateHomeState pack mod def filterState =
                 initialArgState =
                     initArgumentStates model.irState maybeSelectedDefinition
             in
-            { model | homeState = newState, insightViewState = initInsightViewState initialArgState, argStates = initialArgState, selectedTestcaseIndex = -1, testDescription = "", openSections = Set.fromList [ 1 ] }
+            { model
+                | homeState = newState
+                , insightViewState = initInsightViewState initialArgState
+                , argStates = initialArgState
+                , selectedTestcaseIndex = -1
+                , testDescription = ""
+                , openSections = Set.fromList [ 1 ]
+                , typeBuilderState = TypeBuilder.init (newState.selectedModule |> Maybe.map Tuple.second) model.unsavedChanges
+            }
 
         -- When selecting a definition, we should not change the selected module, once the user explicitly selected one
-        keepOrChangeSelectedModule : ( List Path, List Name )
+        keepOrChangeSelectedModule : ( List Path, ModuleName )
         keepOrChangeSelectedModule =
             if filterState.moduleClicked == pack then
                 ( urlFragmentToNodePath "", [] )
@@ -1072,6 +1110,13 @@ viewHeader model =
                 }
             , el
                 [ alignRight
+                , Font.color model.theme.colors.lightest
+                , Font.size (Theme.scaled 5 model.theme)
+                ]
+              <|
+                ifThenElse model.unsavedChanges (text " You have unsaved changes! ") Element.none
+            , el
+                [ alignRight
                 , pointer
                 , Theme.borderBottom 1
                 , Border.color model.theme.colors.brandPrimary
@@ -1215,6 +1260,19 @@ viewBody model =
                     ]
                     (text "Loading the IR ...")
                 )
+
+        IRReloading (Library packageName _ packageDef) ->
+            el
+                [ width fill
+                , height fill
+                , centerX
+                , centerY
+                , inFront <|
+                    el [ Background.color model.theme.colors.lightGray, onClick DoNothing, width fill, height fill ] <|
+                        el [ centerX, centerY ] <|
+                            Element.html (Loading.render Loading.Circle Loading.defaultConfig Loading.On)
+                ]
+                (viewHome model packageName packageDef)
 
         IRLoaded (Library packageName _ packageDef) ->
             viewHome model packageName packageDef
@@ -1415,27 +1473,35 @@ viewHome model packageName packageDef =
                 , activeTab = model.activeTabIndex
                 , tabs =
                     Array.fromList
-                        [ { name = "Summary"
-                          , content = col [ summary ]
-                          }
-                        , { name = "Dependency Graph"
-                          , content = col [ dependencyGraph model.homeState.selectedModule model.repo ]
-                          }
-                        , { name = "Decorations"
-                          , content =
-                                let
-                                    decorationTabContent =
-                                        case maybeModuleName of
-                                            Just moduleName ->
-                                                [ viewDecorationValues model (ModuleID ( packageName, moduleName )) ]
+                        ([ { name = "Summary"
+                           , content = col [ summary ]
+                           }
+                         , { name = "Dependency Graph"
+                           , content = col [ dependencyGraph model.homeState.selectedModule model.repo ]
+                           }
+                         ]
+                            ++ (case maybeModuleName of
+                                    Just moduleName ->
+                                        [ { name = "Decorations"
+                                          , content =
+                                                col [ viewDecorationValues model (ModuleID ( packageName, moduleName )) ]
+                                          }
+                                        , { name = "Add new term"
+                                          , content =
+                                                col <|
+                                                    [ TypeBuilder.view model.theme
+                                                        { state = model.typeBuilderState, onStateChange = UI << TypeBuilderChanged, onTypeAdd = UI << TypeAdded, onIRSave = UI SaveIR }
+                                                        packageName
+                                                        packageDef
+                                                        moduleName
+                                                    ]
+                                          }
+                                        ]
 
-                                            Nothing ->
-                                                -- Since we don't annotate package for now, we don't show the Value Editors
-                                                []
-                                in
-                                col decorationTabContent
-                          }
-                        ]
+                                    Nothing ->
+                                        []
+                               )
+                        )
                 }
     in
     row [ width fill, height fill, Background.color model.theme.colors.gray, spacing (Theme.smallSpacing model.theme) ]
@@ -1921,6 +1987,25 @@ httpSaveTestSuite ir newTestSuite oldTestSuite =
                             ServerGetTestsResponse result
                 )
                 (decodeTestSuite ir)
+        }
+
+
+httpSaveDistribution : Distribution -> Cmd Msg
+httpSaveDistribution distribution =
+    Http.post
+        { url = "/server/morphir-ir.json"
+        , body = jsonBody <| DistributionCodec.encodeVersionedDistribution distribution
+        , expect =
+            Http.expectJson
+                (\response ->
+                    case response of
+                        Err httpError ->
+                            HttpError "We encountered an issue while saving the IR" httpError
+
+                        Ok result ->
+                            ServerGetIRResponse result
+                )
+                DistributionCodec.decodeVersionedDistribution
         }
 
 
@@ -2413,7 +2498,7 @@ viewDefinitionDetails model =
                 Nothing ->
                     none
 
-        IRLoading ->
+        _ ->
             none
 
 
@@ -2455,7 +2540,7 @@ initArgumentStates irState maybeSelectedDefinition =
                 Nothing ->
                     Dict.empty
 
-        IRLoading ->
+        _ ->
             Dict.empty
 
 

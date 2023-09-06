@@ -2,7 +2,6 @@ module Morphir.Visual.Components.FieldList exposing (..)
 
 import Element exposing (Element, centerY, el, fill, padding, shrink, spacingXY, table, text, width)
 import Element.Border as Border
-import Element.Font as Font
 import Morphir.IR.Name exposing (Name)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Theme as Theme exposing (Theme)
@@ -22,7 +21,6 @@ view theme fields =
                         el
                             [ width shrink
                             , centerY
-                            , Font.bold
                             , padding <| Theme.smallPadding theme
                             , Border.roundEach
                                 { topLeft = 6
@@ -31,7 +29,7 @@ view theme fields =
                                 , bottomRight = 0
                                 }
                             ]
-                            (text <| (nameToText fieldName) ++ " : ")
+                            (text <| nameToText fieldName ++ " : ")
               }
             , { header = text ""
               , width = shrink

@@ -95,6 +95,7 @@ import Morphir.Visual.Components.Picklist as Picklist
 import Morphir.Visual.Theme as Theme exposing (Theme, scaled)
 import Svg
 import Svg.Attributes
+import Morphir.Visual.Theme as Theme
 
 
 {-| Type that represents the state of the value editor. It's made up of the following pieces of information:
@@ -1336,7 +1337,7 @@ viewCustomTypeEditor theme labelStyle ir updateEditorState editorState (( packag
                 { state = customTypeEditorState.constructorPicklistState
                 , onStateChange =
                     \constructorPicklistState ->
-                        case constructorPicklistState |> Picklist.getSelectedTag of
+                        case constructorPicklistState |> Picklist.getSelectedValue of
                             Nothing ->
                                 updateEditorState
                                     { componentState =
@@ -1375,10 +1376,14 @@ viewCustomTypeEditor theme labelStyle ir updateEditorState editorState (( packag
                 (constructors
                     |> Dict.toList
                     |> List.map
-                        (\( ctorName, ctorArgs ) ->
-                            ( ( ctorName, ctorArgs ), text (ctorName |> Name.toHumanWordsTitle |> String.join " ") )
+                        (\(( ctorName, ctorArgs ) as ctor) ->
+                            ( {tag  = ctorName |> Name.toTitleCase
+                            , value = ctor
+                            , displayElement = el [padding <| Theme.smallPadding theme, width fill] (Theme.ellipseText (ctorName |> Name.toHumanWordsTitle |> String.join " "))
+                            } )
                         )
                 )
+                []
 
         viewArguments : List (Element msg)
         viewArguments =
@@ -1404,7 +1409,7 @@ viewCustomTypeEditor theme labelStyle ir updateEditorState editorState (( packag
                                         selectedConstructorResult : Result Error (Value () ())
                                         selectedConstructorResult =
                                             customTypeEditorState.constructorPicklistState
-                                                |> Picklist.getSelectedTag
+                                                |> Picklist.getSelectedValue
                                                 |> Maybe.map
                                                     (\( ctorName, _ ) ->
                                                         Value.Constructor () ( packageName, moduleName, ctorName )
