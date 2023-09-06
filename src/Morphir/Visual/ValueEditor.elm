@@ -75,7 +75,7 @@ import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.Path as Path
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.SDK.Char as Basics
 import Morphir.IR.SDK.Decimal as Decimal
@@ -92,7 +92,7 @@ import Morphir.Visual.Components.DatePickerComponent as DatePicker
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.InputComponent as InputComponent
 import Morphir.Visual.Components.Picklist as Picklist
-import Morphir.Visual.Theme exposing (Theme)
+import Morphir.Visual.Theme exposing (Theme, scaled)
 import Svg
 import Svg.Attributes
 import Morphir.Visual.Theme as Theme
@@ -585,7 +585,7 @@ view theme ir valueType updateEditorState editorState =
     let
         baseStyle : List (Element.Attribute msg)
         baseStyle =
-            [ width <| Element.fillPortion 3
+            [ width (fill |> minimum (scaled 12 theme) |> maximum (scaled 20 theme))
             , height fill
             , Events.onLoseFocus
                 (updateEditorState (initEditorState ir valueType editorState.lastValidValue))
@@ -698,7 +698,7 @@ view theme ir valueType updateEditorState editorState =
                     editorState.errorState
                 , if editorState.defaultValueCheckbox.show then
                     InputComponent.checkBox theme
-                        [ center ]
+                        [ center, width shrink ]
                         { label = Input.labelRight (labelStyle ++ [ Background.color <| rgba 0 0 0 0 ]) (text "empty (\"\")")
                         , checked = editorState.defaultValueCheckbox.checked
                         , onChange =
@@ -748,8 +748,7 @@ view theme ir valueType updateEditorState editorState =
                                 (\( fieldName, ( fieldType, fieldEditorState ) ) ->
                                     ( fieldName
                                     , el
-                                        [ width fill
-                                        , height fill
+                                        [ height fill
                                         , centerY
                                         ]
                                         (view theme
@@ -1055,7 +1054,7 @@ view theme ir valueType updateEditorState editorState =
                                     { header =
                                         el [ width fill, height fill, paddingXY 10 5, Font.bold, Background.color (rgb 1 1 1) ]
                                             (el [ width fill, center ] (text (columnName |> Name.toHumanWords |> String.join " ")))
-                                    , width = fill
+                                    , width = shrink
                                     , view =
                                         \( rowIndex, rowEditorStates ) ->
                                             let
@@ -1085,6 +1084,7 @@ view theme ir valueType updateEditorState editorState =
                                             el
                                                 [ width fill
                                                 , height fill
+                                                , padding 1
                                                 , Background.color (rgb 1 1 1)
                                                 , inFront (addButton (emptyRowEditors :: cellEditorStates))
                                                 , if rowIndex == List.length cellEditorStates - 1 then
