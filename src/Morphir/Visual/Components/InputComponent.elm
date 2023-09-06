@@ -1,12 +1,13 @@
 module Morphir.Visual.Components.InputComponent exposing (textInput, searchInput, checkBox, multiLine)
 
-import Element exposing (Element, below, el, moveDown, padding, paddingXY, rgb, text)
+import Element exposing (Element, below, el, moveDown, padding, paddingXY, rgb, text, fill, minimum, maximum, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Element exposing (rgba)
+import Morphir.Visual.Theme exposing (scaled)
 
 
 type alias TextInputConfig msg =
