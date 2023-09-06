@@ -341,8 +341,8 @@ viewValueByLanguageFeature config value =
                     el [ Element.centerX, Element.centerY, smallPadding config.state.theme |> padding ] (text "not set")
 
                 Value.UpdateRecord _ record newFields ->
-                    Element.column [ Element.height fill ]
-                        [ Element.row [ smallPadding config.state.theme |> padding ] [ text "updating ", viewValue config record, text " with" ]
+                    Element.column [ Background.color config.state.theme.colors.lightest, Theme.borderRounded config.state.theme ]
+                        [ Element.row [ smallPadding config.state.theme |> padding ] [ text "updating the following fields of ", viewValue config record]
                         , ViewRecord.view config (viewValue config) newFields
                         ]
 
