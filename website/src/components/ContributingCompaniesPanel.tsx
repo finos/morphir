@@ -2,7 +2,7 @@ import React from 'react'
 import Styles from './ContributingCompaniesPanel.module.css'
 
 type ContributingCompaniesList = {
-	name: string
+	BannerName: string
 	bannerUrl: string
 }
 
@@ -17,14 +17,27 @@ const users: ContributingCompaniesList[] = [
 	},
 	
 ]
-export default function UserShowcase (){
-        const pinnedUsers = users.filter(user => user.pinned);
-          pinnedUsers.sort((a, b) => a.name.localeCompare(b.name))
-        
-          return (
-            <div className="userShowcase productShowcaseSection padding-top--lg padding-bottom--lg" style={{textAlign: 'center'}}>
-              <h2>Our contributing partners</h2>
-              <Showcase users={pinnedUsers} />
-            </div>
-          );
-        };
+export default function UserShowcase(){
+	return (
+		<section className={Styles.features}>
+			<div className='container'>
+				<div className='row'>
+					{
+						users.map((props, idx) => (
+						<Feature key={idx} {...props} />
+					))
+					}
+				</div>
+			</div>
+		</section>
+	)
+};
+// const pinnedUsers = users.filter(user => user.pinned);
+//   pinnedUsers.sort((a, b) => a.name.localeCompare(b.name))
+
+//   return (
+//     <div className="userShowcase productShowcaseSection padding-top--lg padding-bottom--lg" style={{textAlign: 'center'}}>
+//       <h2>Our contributing partners</h2>
+//       <Showcase users={pinnedUsers} />
+//     </div>
+//   );
