@@ -19,17 +19,26 @@ const users: ContributingCompaniesList[] = [
 ]
 export default function UserShowcase(){
 	return (
-		<section className={Styles.features}>
-			<div className='container'>
-				<div className='row'>
-					{
-						users.map((props, idx) => (
-						<Feature key={idx} {...props} />
-					))
-					}
+		<div className='container padding--lg'>
+			<section className='row text--center padding-horiz--md'>
+				<div className="col col--12">
+					<h2>Our contributing Partners</h2>
 				</div>
-			</div>
-		</section>
+			</section>
+			<section className='row text--center padding-horiz--md'>
+				{users.map(({...props}, idx) => (
+				<div className="col col--4">
+					<div className={Styles.videoContainer}>
+						<a href={props.EpisodeUrl}> 
+							<img src={props.EpisodeImg} alt={props.Description}></img>
+						</a>
+						<br/>
+						<a href={props.EpisodeUrl}>{props.Description}</a>
+					</div>
+				</div>
+				))}
+			</section>
+	    </div>
 	)
 };
 // const pinnedUsers = users.filter(user => user.pinned);
