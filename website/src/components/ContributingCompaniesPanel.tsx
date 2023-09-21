@@ -33,7 +33,6 @@ export default function UserShowcase(){
 							<img src={props.BannerUrl} alt={props.BannerUrl}></img>
 						</a>
 						<br/>
-						<a href={props.BannerUrl}>{props.BannerName}</a>
 					</div>
 				</div>
 				))}
