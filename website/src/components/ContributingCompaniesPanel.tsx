@@ -3,17 +3,17 @@ import Styles from './ContributingCompaniesPanel.module.css'
 
 type ContributingCompaniesList = {
 	BannerName: string
-	bannerUrl: string
+	BannerUrl: string
 }
 
 const users: ContributingCompaniesList[] = [
 	{
 		BannerName: 'Morgan Stanley',
-		bannerUrl: 'https://www.morganstanley.com/etc.clientlibs/msdotcomr4/clientlibs/clientlib-site/resources/img/logo-black.png',
+		BannerUrl: 'https://www.morganstanley.com/etc.clientlibs/msdotcomr4/clientlibs/clientlib-site/resources/img/logo-black.png',
 	},
 	{
 		BannerName: 'Capital One',
-		BannerUrl: 'https://www.capitalone.co.uk/images/c1/brand/logo.svg',
+		BannerUrl: 'https://upload.wikimedia.org/wikipedia/commons/9/98/Capital_One_logo.svg',
 	},
 	
 ]
@@ -28,12 +28,12 @@ export default function UserShowcase(){
 			<section className='row text--center padding-horiz--md'>
 				{users.map(({...props}, idx) => (
 				<div className="col col--4">
-					<div className={Styles.videoContainer}>
-						<a href={props.EpisodeUrl}> 
-							<img src={props.EpisodeImg} alt={props.Description}></img>
+					<div className="">
+						<a href={props.BannerUrl}> 
+							<img src={props.BannerUrl} alt={props.BannerUrl}></img>
 						</a>
 						<br/>
-						<a href={props.EpisodeUrl}>{props.Description}</a>
+						<a href={props.BannerUrl}>{props.BannerName}</a>
 					</div>
 				</div>
 				))}
@@ -41,12 +41,3 @@ export default function UserShowcase(){
 	    </div>
 	)
 };
-// const pinnedUsers = users.filter(user => user.pinned);
-//   pinnedUsers.sort((a, b) => a.name.localeCompare(b.name))
-
-//   return (
-//     <div className="userShowcase productShowcaseSection padding-top--lg padding-bottom--lg" style={{textAlign: 'center'}}>
-//       <h2>Our contributing partners</h2>
-//       <Showcase users={pinnedUsers} />
-//     </div>
-//   );
