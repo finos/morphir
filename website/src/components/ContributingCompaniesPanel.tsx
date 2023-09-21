@@ -28,9 +28,9 @@ export default function UserShowcase(){
 			<section className='row text--center padding-horiz--md'>
 				{users.map(({...props}, idx) => (
 				<div className="col col--4">
-					<div className="">
+					<div className="company-logo">
 						<a href={props.BannerUrl}> 
-							<img src={props.BannerUrl} alt={props.BannerUrl}></img>
+							<img src={props.BannerUrl} alt={props.BannerName}></img>
 						</a>
 						<br/>
 					</div>
