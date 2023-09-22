@@ -1,2 +1,0 @@
-# Scala JSON Backend Documentation
-

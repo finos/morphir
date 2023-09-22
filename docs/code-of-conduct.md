@@ -1,3 +1,8 @@
+---
+id: code-of-conduct
+title: Code of Conduct
+---
+
 # Contributor Covenant Code of Conduct
 
 ## Our Pledge

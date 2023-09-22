@@ -1,3 +1,8 @@
+---
+id: codec-docs
+title: Scala JSON Serialization
+---
+
 # JSON serialization support for generated Scala classes
 
 The purpose of this documentation is to give an explanation on how the JSON Codec Backend works and how to use it.

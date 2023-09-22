@@ -1,4 +1,4 @@
-[![FINOS - Incubating](https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-incubating.svg)](https://finosfoundation.atlassian.net/wiki/display/FINOS/Incubating)
+[![FINOS - Active](https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-active.svg)](https://community.finos.org/docs/governance/Software-Projects/stages/active)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/6526/badge)](https://bestpractices.coreinfrastructure.org/projects/6526)
 [<img src="https://img.shields.io/badge/slack-@finos/morphir-green.svg?logo=slack">](https://finos-lf.slack.com/messages/morphir/)
 
@@ -72,7 +72,7 @@ Morphir consists of a few projects based on the features they provide.
 | Introduction & Background                                                  | Using Morphir                                                                                              | Applicability                                                                           |
 | :------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------- |
 | [Resource Centre](https://resources.finos.org/morphir/)                    | [What Makes a Good Model](./docs/what-makes-a-good-domain-model.md)                                        | [Sharing Business Logic Across Application Boundaries](./docs/shared_logic_modeling.md) |
-| [Background](./docs/background.md)                                         | [Development Automation (Dev Bots)](./docs/dev-bots.md)                                                    | [Regulatory Technology](./docs/regtech-modeling.md)                                     |
+| [Background](docs/Morphir%20Overview/background.md)                                         | [Development Automation (Dev Bots)](./docs/dev-bots.md)                                                    | [Regulatory Technology](./docs/regtech-modeling.md)                                     |
 | [Community](./docs/morphir-community.md)                                   | [Modeling an Application](./docs/application-modeling.md)                                                  |                                                                                         |
 | [What's it all about?](./docs/whats-it-about.md)                           | [Modeling Decision Tables](https://github.com/finos/morphir-examples/tree/master/src/Morphir/Sample/Rules) |                                                                                         |
 | [Why we use Functional Programming?](./docs/why-functional-programming.md) | [Modeling for database developers](docs/modeling-for-database-developers.md)                    |

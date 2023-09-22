@@ -1,4 +1,9 @@
-# Spark Backend Joins
+---
+id: spark-backend-joins
+title: Backend Joins
+---
+
+# Spark - Backend Joins
 Let's start by defining an example model that does some joins:
 
 ```elm

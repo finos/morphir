@@ -1,3 +1,7 @@
+---
+id: media-about-morphir
+---
+
 # Media About Morphir
 
 If you're interested in learning more about the project, [Morphir Resource Centre](https://resources.finos.org/morphir/), has many links.

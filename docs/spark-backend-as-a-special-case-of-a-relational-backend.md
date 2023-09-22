@@ -1,4 +1,9 @@
-# Spark backend as a special case of a Relational backend
+---
+id: spark-backend-relational
+title: Spark Relational
+---
+
+# Spark backend as a Special Form of Relational backend
 
 ## Context and Problem Statement
 

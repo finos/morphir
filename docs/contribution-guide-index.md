@@ -1,3 +1,8 @@
+---
+id: contributing-to-morphir
+title: Contributing to Morphir
+---
+
 #Contributing to the Morphir Ecosystem
 Morphir contains a few components for different aspects of the development process.
 These can be organized into the following:

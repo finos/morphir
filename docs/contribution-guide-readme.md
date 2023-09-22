@@ -1,3 +1,8 @@
+---
+id: contribution-guide
+title: Contribution Guide
+---
+
 # Contribution Guide
 
 The purpose of this document is to make it easier for new contributors to get up-to-speed on the project.

@@ -1,10 +1,8 @@
 ---
-sidebar_position: 1
 id: intro
-title: Introduction
 ---
 
-# Morphir
+# Introduction to Morphir
 
 Morphir is a multi-language system built on a data format that captures an application's domain model and business logic
 in a technology agnostic manner. Having all the business knowledge available as data allows you to process it

@@ -1,6 +1,6 @@
 ---
 id: modeling-database-developers
-title: Modeling for database developers
+title: Databases Modeling
 ---
 
 # Modeling for database developers
