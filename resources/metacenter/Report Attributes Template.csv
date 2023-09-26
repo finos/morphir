@@ -1,0 +1,11 @@
+Report Group Name ,Report Name,Attribute ID,Attribute Name,Report ID,Report Metric Name,Technical Data Type,Regulatory Requirement,Collibra Catalog ID,DGC Data Element
+LCR Firm,LCR Firm - HQLA,R-LCR-HQLA-6G_Product,6G Product,R-LCR-HQLA,High Quality Liquid Assets,String,Yes,,Product Classification
+LCR Firm,LCR Firm - HQLA,R-LCR-HQLA-LCR_Rule_Reference,LCR Rule Reference,R-LCR-HQLA,High Quality Liquid Assets,String,Yes,,LCR Rule Reference
+LCR Firm,LCR Firm - HQLA,R-LCR-HQLA-Weighting,Weighting,R-LCR-HQLA,High Quality Liquid Assets,Float,Yes,,LCR Weighting
+LCR Firm,LCR Firm - HQLA,R-LCR-HQLA-Unweighted_Amount,Unweighted Amount,R-LCR-HQLA,High Quality Liquid Assets,Float,Yes,,Original Notional USD
+LCR Firm,LCR Firm - HQLA,R-LCR-HQLA-Weighted_Amount,Weighted Amount,R-LCR-HQLA,High Quality Liquid Assets,Float,Yes,,Original Notional USD
+NSFR Firm,LCR Firm - TNCO,R-LCR-TNCO-6G_Product,6G Product,R-LCR-TNCO,Total Net Cash Outflows,String,Yes,,Product Classification
+NSFR Firm,LCR Firm - TNCO,R-LCR-TNCO-LCR_Rule_Reference,LCR Rule Reference,R-LCR-TNCO,Total Net Cash Outflows,String,Yes,,LCR Rule Reference
+NSFR Firm,LCR Firm - TNCO,R-LCR-TNCO-Weighting,Weighting,R-LCR-TNCO,Total Net Cash Outflows,Float,Yes,,LCR Weighting
+NSFR Firm,LCR Firm - TNCO,R-LCR-TNCO-Unweighted_Amount,Unweighted Amount,R-LCR-TNCO,Total Net Cash Outflows,Float,Yes,,Original Notional USD
+NSFR Firm,LCR Firm - TNCO,R-LCR-TNCO-Weighted_Amount,Weighted Amount,R-LCR-TNCO,Total Net Cash Outflows,Float,Yes,,Original Notional USD

@@ -1,0 +1,1833 @@
+﻿Name,Description
+Account Status,"Current status of an account, such as active or inactive"
+Business Date,The date when the business transaction occurred
+Cost Center Identifier,Unique identifier for each cost center within the organization
+Default Setting Indicator,Indicates whether a specific account setting is set as the default option
+Account Bridge Timestamp,The date and time when an account bridge was created or updated
+Exception Row Indicator,A flag indicating if a row in the Account Bridge table contains exceptional or unusual data
+Exception Sign-off,Indicates whether an exception has been signed off or not
+Fill Forward Flag,Indicates whether the account bridge should be used for filling forward data
+General Ledger Account,Unique identifier for financial transactions in the General Ledger system
+Legal Entity Identifier,"Unique identifier assigned to a legal entity, such as a company or organization, for regulatory and compliance purposes"
+Maturity Date,"The date when a financial instrument, such as a bond, becomes due and any outstanding principal and interest must be repaid"
+Unique Identifier,A unique identifier assigned to each row in the Account Bridge table
+Account Bridge Identifier,Unique identifier for each account bridge in the system
+Trading Account Identifier,Unique identifier for trading accounts used for bridge transactions
+Booking Details,Booking information related to financial transactions
+Business Area,The primary business unit within the organization
+Entity Description,"A brief textual description of an entity, such as a company or organization, represented in the system"
+Business Application Access Code,Unique identifier for each business application
+Division,Organizational unit within the company
+Product Line,The specific product or service offered by the company
+Regional Designation,Identifies the geographical region associated with a specific business area
+Business Area Allocation Strategy,Specifies the strategy for allocating costs to different business areas
+Business Area Activity Code,Unique identifier for each business area's activity within the organization
+Business Activity Date,Date when a specific business activity occurred
+Cost Center Code,A unique identifier for each cost center within the organization
+Default Setting Flag,Indicates whether a default setting is applied to a specific record
+Account Activity,Indicates the account activity status in the system
+Timestamp,Records the exact time when a transaction or event occurs
+Bond Maturity Date,Date on which a bond reaches its final maturity and the principal amount is repaid to the bondholder
+Business Activity Type,The type of business activity being performed
+Process Identifier,Unique identifier for each process in the system
+BAAC Run Identifier,Unique identifier for each batch processing run in the BAAC system
+Table Identifier,Unique identifier for each table in the system
+Trading Book,A record of financial instruments and positions held by a trading desk
+Account Identifier,Unique identifier for each account in the Bank Deposits Program
+Account Type,Type of account held by customers in the Bank Deposits Program
+Accrued Interest,The interest earned but not yet paid on a deposit account
+Account Balance,The total amount of money held in a bank account
+Bank Identifier,Unique identifier for each bank involved in the Bank Deposits Program
+BAU Balance,"The balance of the Bank Deposits Program (BDP) account, representing the business-as-usual (BAU) deposits"
+Business Account Indicator,A flag indicating whether the account is a business account or not
+Option Type,Indicates whether the option is a call (C) or put (P) option in the Bank Deposits Program
+Cash Flow Date,Date when cash flow occurs in the Bank Deposits Program
+Source of Bank Deposit Data,"Identifies the source of the bank deposit data, such as internal or external systems"
+Client Type,Type of client associated with a bank deposit program
+Client Account Housekeeping,Client account maintenance and housekeeping activities
+Cost Center,Organizational unit responsible for tracking costs and expenses
+Counterparty Account Number,Unique identifier for the counterparty account in the Bank Deposits Program
+Counterparty Type,Type of counterparty involved in a bank deposit program transaction
+Currency,The currency in which the bank deposit is denominated
+Currency Code,The three-letter ISO 4217 currency code representing the currency of a bank deposit
+Currency 1 Amount,The amount in the first currency for each bank deposit program transaction
+Currency Amount,The amount of money in a specific currency held in a bank deposit program
+CUSIP,"Unique identifier for financial instruments, such as bonds, in the US and Canada"
+Unique Deal Identifier,A unique alphanumeric code assigned to each deal or transaction in the Bank Deposits Program
+Delivery Status,Indicates whether the program has delivered its intended functionality
+Deposit Expiration Date,The date when a specific deposit in the Bank Deposits Program expires
+Bank Deposit Timestamp,The date and time when a bank deposit was made
+Bank Deposit Timestamps,Timestamps indicating when bank deposits are made or updated in the system
+Exchange Type,Type of exchange associated with a bank deposit program transaction
+Expiration Date,"Date on which a financial instrument, such as a deposit or contract, is due to expire"
+Expiry Settlement Date,Date on which the bank deposit program expires and settlement occurs
+Facility Identifier,Unique identifier for each facility in the Bank Deposits Program
+Facility Name,Name of the facility where the bank deposit program is located
+Facility Purpose,The intended use of a facility or service within the Bank Deposits Program
+Facility Type,Type of facility associated with a bank deposit program
+FDIC Insurance Limit,Maximum amount of deposits insured by the Federal Deposit Insurance Corporation (FDIC) for each depositor in a bank
+General Ledger Account Number,Unique identifier for each financial account in the general ledger system
+Insurance Coverage Indicator,Indicates whether the bank deposit is insured by a specific insurance program
+Insured Deposit Amount,The amount of a deposit that is insured by a financial institution
+Interest Rate,The rate at which interest is paid on deposits in the Bank Deposits Program
+Bank Deposit Amount,The amount of money in a bank deposit program
+Internal or External Indicator,Indicates whether the deposit is internal (from another Morgan Stanley account) or external (from an outside source)
+External Interface Indicator,Indicates whether the record is related to an external interface or not
+Loan Amount,The total amount of money lent to a borrower by the financial institution
+Managed Account Indicator,A flag indicating whether the account is managed by an external wealth manager or not
+Bank Deposit Transaction Type,Indicates whether the transaction is a buy or sell operation for a bank deposit
+Internal Credit Rating,Internal credit rating assigned to a bank deposit program by Morgan Stanley
+Date of Account Opening,The date when a bank account was opened or a financial product was initiated
+Ownership Indicator,A code representing the ownership status of a bank deposit
+Party Identifier,Unique identifier for parties involved in bank deposit transactions
+Portfolio Identifier,Unique identifier for a portfolio in the Bank Deposits Program
+Insurance Indicator,Indicates if insurance is associated with the bank deposit program
+Product Identifier,Unique identifier for each product in the Bank Deposits Program
+Product Type,Type of financial product or service offered by the Bank Deposits Program
+Promotional Balance,The balance of promotional offers provided to customers in the Bank Deposits Program
+Promotion Expiry Date,The date when a specific promotion or offer in the Bank Deposits Program ends
+Promotional Interest Rate,Interest rate applied to promotional deposits in the Bank Deposits Program
+Promotion Start Date,Date when a specific promotion in the Bank Deposits Program begins
+Promotion Eligibility Indicator,A flag indicating if a customer is eligible for a promotional offer within the next 90 days
+Reciprocal Program,"A program that involves mutual or shared interactions between parties, such as financial institutions or other entities."
+Reporting Date,Date when the bank deposit program information is reported
+Reporting Tier Bucket,Categorization of bank deposits based on their size
+Reporting Tier Bucket Name,The name of the bucket in the reporting tier of the Bank Deposits Program
+Reporting Tier Name,Name of the reporting tier in the Bank Deposits Program
+Retirement Account Indicator,A flag indicating if a bank deposit is associated with a retirement account
+Bank Deposit Program Unique Identifier,A unique identifier assigned to each run of the Bank Deposit Program
+Unique Run Identifier,A unique alphanumeric identifier assigned to each execution of a program or process
+Savings Program Description,A textual description of the savings program offered by the Bank Deposits Program
+Strike Price,The price at which an option can be exercised in a financial contract
+Deposit Type Indicator,A character string representing the type of deposit in the Bank Deposits Program
+Trade Date,Date of a specific transaction in the Bank Deposits Program
+Trade Identifier,Unique identifier for each trade transaction in the Bank Deposits Program
+Trade Status,Current status of a trade in the Bank Deposits Program
+Trust Subtype,Type of trust associated with a bank deposit program
+Uninsured Deposit Amount,The amount of deposits in a bank account that is not insured by a government agency
+Waterfall Phase Name,Name of the phase in the Waterfall methodology of the Bank Deposits Program
+Listed Business Unit Allocation,Allocation of listed business units for cost center planning
+Cost Center Parent Identifier,Unique identifier for the parent cost center in the organization
+Cost Center Level 5,The fifth level of the cost center hierarchy representing specific departments or divisions within a Morgan Stanley business unit
+Cost Center Level 6,Sixth level of cost center hierarchy for organization and allocation purposes
+Listed Business Unit Allocation Timestamps,Timestamps indicating when specific business units were allocated in the system
+Exception Signoff,A string field indicating the exception signoff status for each record
+Region,Geographic location of the business operations
+Record Identifier,Unique identifier for each record in the table
+Run Identifier,Unique identifier for each run of a specific process or operation
+Collateral Group,A group of collateral assets used to back up financial transactions
+CVA Margin Requirement Timestamp,The timestamp indicating when the CVA margin requirement was created or updated
+CVA Margin Requirements,The amount of collateral required to cover the potential loss on a Credit Valuation Adjustment (CVA) transaction
+CVA Margin Requirements Metric,The specific metric used to calculate Credit Value Adjustment (CVA) margin requirements
+Netting Group Identifier,Unique identifier for a group of financial transactions that are subject to netting
+Reporting Plane Identifier,Unique identifier for each reporting plane in the CVA Margin Requirements system
+Counterparty Credit Risk Margin Requirement,The amount of collateral required to cover the counterparty credit risk in a derivatives transaction
+Scenario Type,Different scenarios for calculating margin requirements in the Credit Valuation Adjustment (CVA) process
+Unique Identifier for CVA Margin Requirements,A unique alphanumeric code used to identify each set of margin requirements related to Credit Valuation Adjustment (CVA) in the financial institution's system
+Time Horizon,The duration of time used for calculating margin requirements in the CVA model
+CVA Margin Requirement,Estimated potential exposure due to changes in the credit quality of a counterparty
+CVA Netting Group Type,The type of netting group used for Credit Value Adjustment (CVA) calculations
+Default Set Flag,Indicates whether a party is set as the default party for netting calculations
+End Date,The final date for which the CVA Netting Group is applicable
+CVA Netting Group Entry Timestamp,Timestamp indicating when a record was created or updated in the CVA Netting Group database table
+Credit or Debit Direction,Indicates whether the financial transaction is a credit (money received) or debit (money paid) for a specific party in the CVA Netting Group
+Internal/External Indicator,Indicates whether a party is internal or external to the organization
+Maximum Net Exposure,The maximum possible net exposure amount for each counterparty in a netting group
+CVA Netting Group Identifier,Unique identifier for each counterparty netting group in the Credit Value Adjustment (CVA) process
+Netting Indicator,Indicates whether the transaction is a net or gross transaction for the party
+Regional Classification,A region code representing the geographical location of a party involved in a financial transaction
+Account Description,A textual description of an account in the cash assets inventory
+Branch Identifier,Unique identifier for each branch location in the financial institution
+Cash Account Identifier,Unique identifier for each cash account in the inventory
+Cash Account Location,Identifies the specific account location where the cash asset is held
+Client Margin,The amount of margin provided by a client in their trading account
+Counterparty Account,Account number of the counterparty associated with the cash asset
+Cash Asset Netting Payment,"The payment made for cash asset netting, which is the process of settling the net cash positions between counterparties in a financial transaction"
+Cash Asset Netting,The net amount of cash assets after accounting for all cash transactions and adjustments
+Currency Type,The type of currency being used in the cash assets inventory
+Cash Asset Identifier,Unique identifier for cash assets in the inventory
+Cash Asset Inventory End Date,The final date for which the cash asset inventory is accurate
+Cash Asset Transaction Timestamp,Records the date and time when a cash asset transaction occurred
+Cash Asset Transaction Timestamps,Timestamps indicating when cash asset transactions occurred
+Financial Asset Identifier,Unique identifier for financial assets in the cash assets inventory
+Cash Asset Split Ranking,Ranking of cash assets after being split into different categories
+Cash Asset Flow Indicator,"Indicator of the cash asset flow type, such as inflow or outflow"
+Cash Asset Credit Balance,The available credit balance in cash assets for each account
+Cash Assets Value,"The total value of cash assets in US Dollars, before any adjustments or netting"
+Cash Asset Value,"The value of cash assets held in US Dollars, including both long and short positions"
+Gross Short Position in US Dollars,"The total value of assets that have been sold short in US Dollar denominated securities, representing the potential profit from a price decline"
+Internal or External Asset Indicator,A flag indicating whether an asset is held internally (true) or externally (false) by the organization
+Liquidity Impact,The effect of cash assets on the overall liquidity position of the company
+Maximum Cash Amount,The highest amount of cash available in the inventory
+Netting Flag,Indicates whether the asset is subject to netting or not
+Netting Group,A group of financial transactions that are combined for settlement purposes
+Cash Asset Net Balance,The net balance of cash assets held by the financial institution
+Cash Assets Inventory,"A record of the cash assets held by the financial institution, including currency, deposits, and other liquid assets"
+Non-Performing Loans,Loans where the borrower has stopped making interest or principal payments and are classified as non-performing
+Physical Inventory Value Max,Maximum value of the physical inventory for cash assets
+Physical Inventory Value,"The actual market value of the physical assets in the inventory, in US Dollars"
+Product Maturity Date,Date on which a financial product or investment reaches its maturity or expiration
+Cash Asset Inventory Unique Identifier,A unique identifier assigned to each cash asset inventory record
+Security Location Account,Unique identifier for the security location where the asset is held
+Cash Asset Inventory Start Date,The date when the cash asset inventory was started or acquired
+Trade Type,The type of trade or transaction associated with a specific cash asset
+Central Bank Identifier,Unique identifier for each central bank in the system
+Central Bank Access,Indicates whether the central bank has access to the system
+Central Bank Access Timestamp,The exact time when the central bank access was granted or last modified
+Central Bank Access Exception Signoff,Indicates whether an exception signoff is required for Central Bank access
+Central Bank Access Identifier,Unique identifier for each instance of accessing the central bank's system
+Cost Center Description,A brief textual representation of the purpose or function of a cost center
+Cost Center Hierarchy,The top-level cost center identifier in the cost center hierarchy
+Cost Center Default Setting,Indicates whether a Cost Center has a default setting or not
+Cost Center Timestamps,Records the date and time when a cost center was created or updated
+Cost Center Maturity Date,Date when a Cost Center was established or is expected to be fully operational
+Management Region Level 1,First-level management region in the organizational structure
+Management Region Level 2,Second-level management division for cost centers
+Management Region Level 3,The third-level management division within the organization
+Management Region Level 4,Fourth-level management division for organizational structure
+Management Region Level 5,The highest level of management division within the organization
+Management Region Level 6,The highest level of management hierarchy in a specific region
+Management Region Level 7,The highest level of management hierarchy for regional divisions within the organization
+Organizational Hierarchy,The hierarchy of cost centers within the organization
+Counterparty Risk Classification,"The risk classification of a counterparty, which helps assess the creditworthiness of the party involved in a financial transaction"
+Counterparty Identifier,Unique identifier for each counterparty involved in a financial transaction
+Country of Counterparty,The country where the counterparty is located
+Country of Organization,The country where the counterparty's organization is located
+Country of Origin,The country where a counterparty is located or conducts business
+Time Stamp,Records the exact time when a new entry is added or updated in the counterparty details
+Industry Classification,"The industry or sector that a counterparty belongs to, as defined by the Financial Stability Board's (FSB) Global Legal Entity Identifier System (GLEIS)"
+Legal Entity Structure,"The legal form of a counterparty, representing its organizational structure"
+Unique Counterparty Identifier,A unique alphanumeric code assigned to each counterparty in the system
+Unique Identifier for Counterparty,A unique identifier assigned to each counterparty in the system
+Ultimate Party Identifier,Unique identifier for the ultimate party involved in a financial transaction
+Ultimate Party Name,The name of the final counterparty involved in a financial transaction
+Above Barrier,Indicates whether the counterparty's commercial paper is above the barrier level
+Activity Type,Type of activity related to the commercial paper issued by a counterparty
+Unutilized Balance Limit,The maximum unutilized balance limit for commercial paper transactions with counterparties
+Adjusted Balance Utilized,"The adjusted balance of the commercial paper account, which may include any unutilized amounts or adjustments"
+Adjusted Maximum Amount,The maximum amount of money that can be adjusted for a commercial paper issued by a counterparty
+Asset Class,"The type of financial asset, such as equity, debt, or cash"
+Available Market Value,The current market value of the commercial paper that is available for trading
+Available Commercial Paper Quantity,The quantity of commercial paper available for trading or investment purposes
+Average Age of Commercial Papers,The average age of commercial papers issued by counterparties
+Counterparty Commercial Paper Balance,The outstanding balance of commercial paper issued by counterparties
+Barrier Direction,"The direction of the barrier in a financial contract, which can be either 'Long' or 'Short'"
+Barrier Proximity,"The proximity of a barrier in a financial instrument, often used in exotic options"
+Fair Value of Commercial Paper,Estimated market value of commercial paper issued by counterparties
+Fixed Spread for Counterparty Commercial Paper,The fixed interest rate spread applied to the commercial paper issued by counterparties
+Broker-Dealer Present Value - USD,"Estimated present value of commercial paper issued by counterparties, denominated in US dollars"
+Business Division,The department or unit within the organization responsible for a specific function or set of activities
+Cash or Non-Cash Collateral,Indicates whether the collateral provided for a commercial paper transaction is in cash or non-cash form
+Restated Cash Value,"The cash value of commercial papers, restated in the counterparty's currency"
+Central Bank Name,The name of the central bank associated with the commercial paper issuer
+Average Commercial Paper Life,The average remaining maturity period of commercial papers issued by counterparties
+Commercial Paper Maturity Date,The date on which the commercial paper issued by a counterparty will mature
+Average Life of Counterparty Issued Commercial Paper,"The average duration, in years, of counterparty issued commercial paper before maturity"
+Commercial Paper Expiration Date,The date on which a commercial paper (debt security issued by a corporation) is due to expire
+Average Market Life of Counterparty Commercial Paper,The average remaining time until maturity for commercial paper issued by counterparties
+Commercial Paper Rate,Interest rate applied to commercial paper issued by counterparties
+Worst Expected Maturity Date,The date on which the commercial paper is expected to have the worst possible interest rate among all its maturity dates
+Average Reverse Life,"The average remaining maturity of the commercial paper, calculated from the current date to the maturity date, assuming the commercial paper is issued continuously."
+Reverse Exposure Maturity Date,The date when the counterparty's reverse exposure matures
+City of Counterparty,The city where the counterparty is located or operates
+Client Identifier,Unique alphanumeric code assigned to each client for identification purposes
+Counterparty Risk Complexity,"The level of risk associated with a counterparty's commercial paper investment, taking into account various factors such as region, industry, and other relevant characteristics"
+Counterparty Commercial Paper Identifier,Unique identifier for commercial paper issued by a counterparty
+Compound Master Position,Aggregated position information for a specific counterparty's commercial paper
+Compound Master Price,"The price of a financial instrument, which may include multiple components or factors"
+Counterparty Currency,The currency in which the commercial paper is issued by the counterparty
+Currency Exchange Rate,Rate at which one currency is exchanged for another in commercial paper transactions
+Current Notional Amount,"The current face value of a financial instrument, typically used for calculating cash flows or payments"
+CUSIP Identifier,Unique identifier for commercial paper issued by a counterparty
+Average Life of Commercial Paper,"The average duration, in days, of commercial paper issued by a counterparty"
+Maturity Period,The number of days until the commercial paper issued by a counterparty reaches its maturity
+Commercial Paper Identifier,Unique identifier assigned to each commercial paper deal issued by a counterparty
+Debit Cash Allocation,The amount of cash debited from the account for commercial paper transactions
+Unutilized Debit Cash Amount,The amount of unused cash from debit transactions for commercial paper issuance
+Debit Cash Utilized,The amount of cash debited from the account for commercial paper transactions
+Default Status Indicator,Indicates whether the counterparty has a default status or not
+Trading Direction,Indicates whether the commercial paper is being bought or sold
+Early Termination Type,The type of early termination clause present in commercial paper agreements
+Counterparty Deal Type,Type of financial deal involving a counterparty in the commercial paper market
+Commercial Paper Issuance Timestamp,The exact time when a commercial paper was first entered into the system
+Expected Maturity Date,The anticipated date on which a commercial paper will reach its full maturity and the principal amount must be repaid
+Unique Financial Asset Identifier,A unique identifier assigned to each financial asset issued by a counterparty
+Financial Account Identifier,Unique identifier for financial accounts in the system
+Feed Type,Type of data feed used for commercial paper transactions
+Flow Indicator,Indicates whether the commercial paper is part of a flow transaction or not
+French Over-the-Counter (OTC) Indicator,Indicates whether the commercial paper is issued by a French counterparty and traded over-the-counter
+Fund Strategy,The investment strategy or objective followed by a fund
+Haircut Value,"The difference between the market value of a security and its book value, expressed as a percentage"
+Hedging Instrument Identifier,Unique identifier for a hedging instrument issued by a counterparty
+Hedge Value Used,The amount of hedge value utilized for commercial paper transactions with counterparties
+Hedge Swap Mark,The mark-to-market value of a hedge swap transaction related to commercial paper issued by counterparties
+Hybrid Indicator,Indicates whether the commercial paper is a hybrid product or not
+Unique Identifier for Counterparty Issued Commercial Paper,A unique alphanumeric identifier assigned to each counterparty-issued commercial paper
+Instrument Role,The type of financial instrument issued by the counterparty
+International Securities Identification Number (ISIN),"A unique identifier for financial instruments, including commercial papers, issued by a counterparty"
+Issuance Buyback Type,Type of buyback arrangement for issued commercial paper
+Counterparty Issued Commercial Paper,"A financial instrument issued by a counterparty, typically a financial institution, in the form of a short-term, unsecured debt instrument"
+Currency of Issue,The currency in which the commercial paper is issued by the counterparty
+Issue Date,Date on which the commercial paper was issued by the counterparty
+Issue Price,Price at which the commercial paper is issued by the counterparty
+Funding Status,Indicates whether the commercial paper is funded or not
+Counterparty Risk Level,Risk level associated with a counterparty involved in commercial paper transactions
+Loan Foundations Daily Call Payment Amount,The daily payment amount for call options on loan foundations
+Counterparty Commercial Paper Spread,Difference between the interest rate on a commercial paper issued by a counterparty and the current market rate
+Commercial Paper Spread,Difference between the interest rate on a commercial paper and a benchmark interest rate
+Pre-Call Spread,"Difference between the interest rate on a loan and the interest rate on a commercial paper, before the call option is exercised"
+Loan Initial Staturement Date,Date when the loan agreement was initially established
+Commercial Paper Notional Value,The total value of the commercial paper issued by a counterparty
+Market Designation,The market where the commercial paper is issued
+Market Value of Commercial Paper,The current market price of commercial paper issued by counterparties
+Markit Identifier,Unique identifier assigned by Markit to a specific financial instrument
+Master Agreement,Overarching contract governing the relationship between counterparties in commercial paper transactions
+Maximum Barrier Percentage,The highest percentage of the total notional amount of a commercial paper that can be used as collateral
+Negative Excess Reserves in USD,The negative value of excess reserves held by counterparties in US Dollars
+Minimum Barrier Percentage,The lowest acceptable value for a specific financial barrier in a commercial paper transaction
+Counterparty CUSIP,Unique identifier for counterparties issued commercial paper
+Funding Currency,The currency in which the counterparty issues commercial paper
+Next Call Date,The date on which the issuer of commercial paper may call the security for redemption
+Next External Notice Date,The date by which the counterparty must provide notice to the bank if they plan to exercise their right to call the commercial paper
+Next Call Interest Notice Date,The date on which the next interest payment is scheduled to be made on a commercial paper issued by a counterparty
+Probability of Next Call Event,"The likelihood of a specific event occurring in the next period, in the context of commercial paper transactions with counterparties"
+Next Call Settlement Date,The date on which the next interest payment or principal payment is scheduled to be made on a commercial paper issued by a counterparty
+Note Currency,Currency in which the commercial paper is denominated
+Notional Amount,"The nominal or face value of a financial instrument, often used in derivatives trading"
+Notional Amount - Tax Disadvantaged Monetary Instruments,The total amount of tax disadvantaged financial instruments issued by counterparties
+Notional Amount - Commercial Paper,"The total amount of money involved in commercial paper transactions, excluding interest"
+Payoff Model,The specific financial model used to calculate payoffs for commercial paper transactions
+Counterparty Commercial Paper Portfolio,A list of commercial papers issued by counterparties and held in the portfolio
+Currency Exposure Adjustment,The difference in the value of a financial instrument due to fluctuations in currency exchange rates
+Counterparty Issued Commercial Paper Gamma,Sensitivity of the commercial paper's value to changes in the underlying interest rates
+Counterparty Risk Exposure,The financial exposure resulting from a counterparty's potential inability to fulfill its contractual obligations
+Position Rho Asset,Sensitivity of the position's value to changes in the interest rate
+Premium Currency,The currency in which the premium is denominated for commercial paper transactions
+Commercial Paper Premium Currency Rate,The premium rate associated with commercial paper transactions in a specific currency
+Pricing Type,The type of pricing used for commercial papers issued by counterparties
+Counterparty Process,The process related to the counterparty involved in the commercial paper issuance
+Pre-tax VaR Weekly Exc Rate USD,Pre-tax Value-at-Risk (VaR) weekly exposure rate in US Dollars
+Commercial Paper Quantity,The total amount of commercial paper issued by counterparties
+Commercial Paper Ratio,The ratio of the total amount of commercial paper issued by a counterparty to the total amount of commercial paper outstanding
+Regional Risk Manager,The person responsible for managing risks associated with commercial paper issued by counterparties in a specific region
+Unutilized Balance,The remaining balance of a line of credit that has not yet been utilized
+Restated Balance Utilized,The restated balance of the utilized amount for commercial paper issued by a counterparty
+Risk Manager,The person responsible for managing risk related to commercial paper issued by counterparties
+Risk Management System,A software application used to manage and analyze risks associated with commercial paper transactions
+Unique Identifier for Commercial Paper,A unique alphanumeric code assigned to each commercial paper issued by a counterparty
+Counterparty Commercial Paper Program Unique Identifier,A unique identifier assigned to each commercial paper program issued by a counterparty
+Sales Desk Name,The name of the sales desk responsible for managing commercial paper transactions
+Sales Person Identifier,Unique identifier for the sales person responsible for the commercial paper transaction
+Settlement Date,Date on which the commercial paper transaction is scheduled to be settled
+Data Source,Identifies the source of the data in the system
+Counterparty State,State of the counterparty involved in the commercial paper transaction
+Strike Date,The date on which the commercial paper will reach its maturity and the underlying contract will be exercised
+Survival Probability,The likelihood that a counterparty will survive or default on its commercial paper obligations
+Previous 10% Expected Exposure Matrix,"A matrix displaying the expected exposure of the financial institution to counterparties, with a focus on the previous 10% of the total exposure."
+Expected Exposure at Expiration,Estimated financial exposure of a commercial paper at its expiration date
+Average Life of 5% Minus Bonds,"The average remaining life of commercial paper (CP) issued by counterparties, considering a 5% decrease in the face value of the bond"
+Expected 5-Year Exponential Moving Average Spread,Projected average spread of the 5-year exponential moving average for commercial paper issued by counterparties
+Average Life of S&P 10% Percentage Increase,The average remaining time until the S&P 10% Percentage Increase security matures
+Average Life of S&P 20 Percent Issued Commercial Paper,"The average remaining life of Standard & Poor's 20 Percent Issued Commercial Paper, expressed as a percentage of the original maturity."
+S&P 20 Percent Expected Maturity Amount,Expected maturity amount for Standard & Poor's 20 Percent commercial paper
+Average Life of S&P 500 Percentage of Notional Outstanding,The average remaining life of Standard & Poor's 500 percentage of notional outstanding commercial paper issued by counterparties
+Trading Book Indicator,Indicates whether a commercial paper is part of the trading book or not
+Trading Region,Geographic area where the commercial paper is traded
+Triparty Market Value,"The current market value of the commercial paper, as determined by a third-party entity"
+Triparty Quantity,"The amount of commercial paper issued by a counterparty, managed by a third party"
+Underlying Assets,The financial instruments or investments that a commercial paper is linked to
+Underlying Issue Type,Type of financial instrument underlying the commercial paper issued by the counterparty
+Market Value of Unused Available Commercial Paper,The current market value of unused available commercial paper issued by counterparties
+Maximum Exposure,The maximum possible exposure or risk associated with a financial instrument
+Commercial Paper Utilization,The amount of commercial paper issued by counterparties that has been utilized or drawn upon
+Wrapper Type,Type of wrapper used for commercial paper issued by counterparties
+Counterparty ZIP Code,Postal code of the counterparty issuing commercial paper
+Cross Currency Cash Flow Reference,Reference to the booking details of cross currency cash flows in the system
+Cross Currency Cashflows,Records of financial transactions in multiple currencies
+Buy Currency,Currency in which the financial institution is buying assets or securities
+Cross Currency Cash Flows,Records the buy side of cross currency cash flow positions
+Cross Currency Cashflow Default Setting,Indicates whether the cross currency cash flow setting is default or not
+Cross Currency Cashflow End Date,The date when the cross currency cash flow process is completed
+Cross Currency Cashflow Timestamps,Timestamps indicating when cash flow transactions occurred in different currencies
+Cross Currency Cashflows Signoff,Indicates whether the signoff process for cross currency cashflows has been completed
+Feed Name,Name of the data feed providing cross currency cash flow information
+Master Swap Identifier,Unique identifier for the master swap transaction in cross-currency cash flow deals
+Cross Currency Cashflow Maturity Date,Date on which a cross currency cash flow transaction is scheduled to mature
+Cross Currency Cashflow Identifier,Unique identifier for each cross currency cash flow transaction
+Sell Currency,Currency in which the financial institution is selling an asset or settling a transaction
+Sell Currency Amount,The amount of currency sold in a cross-currency cash flow transaction
+Cross Currency Cash Flow Origin,Identifies the source of cross currency cash flows in the financial transactions
+Cross Currency Cashflow Start Date,The date when the cross currency cash flow event begins
+Cross Currency Cashflow Unique Identifier,A unique identifier assigned to each cross currency cash flow transaction in the system
+Accrued Interest Amount,The cumulative interest earned or owed on a financial instrument up to a specific date
+Business Definition,A brief description of the business or purpose of the financial instrument
+Business Unit,The department or division within the organization responsible for the transaction
+Buy Currency in Cross Currency Interest Rate Swap,The currency that the party purchases in a cross currency interest rate swap transaction
+Cross Currency Interest Rate Swap Notional,The nominal amount of the underlying assets exchanged in a cross currency interest rate swap
+Remaining Notional Amount,The outstanding principal amount of a cross-currency interest rate swap that is still to be exchanged between the counterparties
+Purchase Amount,The amount of money in the original currency that the buyer agrees to purchase in the swap transaction
+Trade Category,Classification of trades into different categories for organizational and reporting purposes
+Clearing Intention,Indicates whether a cross currency interest rate swap transaction is intended to be cleared through a central counterparty
+Collateral Value,The value of collateral associated with a cross currency interest rate swap
+Cross Currency Interest Rate Swap Identifier,Unique identifier for each cross currency interest rate swap contract
+Counterparty Account Identifier,Unique identifier for the counterparty account involved in a financial transaction
+Counterparty Designation,The unique identifier for the counterparty involved in the transaction
+Credit Exposure,The maximum potential loss that a party in a financial transaction can face due to the counterparty's default or failure to meet their obligations
+Current Exposure,The current market value of a cross currency interest rate swap
+Day Count Convention,Method used to calculate the number of days between two dates in a financial transaction
+Cross Currency IR Swap End Date,The date on which a cross currency interest rate swap transaction is scheduled to terminate
+Cross Currency Interest Rate Swap Expiration Date,"The date on which a cross currency interest rate swap contract expires, determining the final settlement of the agreement"
+Feed Identifier,Unique identifier for the data feed used in the Cross Currency IR Swaps
+Final Exchange Indicator,A flag indicating whether the final exchange has occurred in a cross currency interest rate swap
+Notional Schedule Presence,Indicates whether a Notional Schedule exists for the Cross Currency IR Swap
+Index Spread,Difference between the cost of borrowing and the income from lending for an index swap transaction
+Currency Swap Inflow/Outflow Indicator,Indicates whether the currency swap transaction is an inflow (true) or outflow (false) of funds for the company
+Initial Exchange Indicator,Indicates whether the initial exchange of cash flows between counterparties in a Cross Currency Interest Rate Swap (IRS) has occurred
+Designation Status,Indicates whether a Cross Currency IR Swap transaction is designated for risk management purposes
+Legal Entity Group,A group of legal entities within the organization
+Loan Identifier,Unique identifier for each loan in the cross currency IR swap transactions
+Market Value of Cross Currency IR Swaps,The current market value of cross currency interest rate swap transactions
+Market Value Net MX,"The net market value of cross currency interest rate swaps, expressed in millions"
+Mark-to-Market Reset Indicator,A boolean flag indicating if the mark-to-market (MTM) reset condition is met for a cross currency interest rate swap
+Netting Agreement Indicator,Indicates whether a netting agreement is in place for cross currency interest rate swaps
+Non-Deliverable Indicator,Indicates whether the currency swap transaction is non-deliverable or not
+Trade Origination Date,Date when the trade was originated or executed
+Original Notional Amount,The initial principal amount agreed upon in a cross-currency interest rate swap transaction
+Payment Coupon Rate,Interest rate paid by the receiver of the cross currency interest rate swap
+Processing Date,Date on which the Cross Currency IR Swap transaction was processed
+Interest Rate Benchmark,The reference interest rate used for calculating payments in cross currency interest rate swap transactions
+Interest Rate Type,Specifies the type of interest rate used in a cross currency interest rate swap
+Cross Currency IR Swap Unique Identifier,A unique identifier assigned to each Cross Currency Interest Rate Swap transaction
+Interest Rate Swap Run Identifier,Unique identifier for each Interest Rate Swap transaction run
+Sell Currency in Cross Currency IR Swap,The currency that the bank sells in a cross currency interest rate swap transaction
+Sell MTM Notional,The current market value of the sold portion of a cross currency interest rate swap
+Sell MTM Remaining Notional,The remaining notional amount of the sell side of an Interest Rate Swap (IRS) that has been marked-to-market (MTM)
+Sell Cross Currency Interest Rate Swap Notional Amount,The amount in the foreign currency that one party agrees to pay in a cross currency interest rate swap transaction
+Trade Source,Identifies the source of the trade or transaction in the system
+Swap Leg Type,Identifies the type of leg in a cross currency interest rate swap
+Trade Start Date,Date when the financial trade begins
+Liquidity Group Identifier,Unique identifier for each defined liquidity group in the system
+Liquidity Group Timestamps,Timestamps indicating when liquidity groups were created or updated
+Account Classification,Categorization of accounts based on their type or purpose
+Collateral Type,"Type of collateral pledged for derivatives transactions, either cash or non-cash assets"
+Client Netting Group,Grouping of clients for netting purposes in derivatives transactions
+Client Rehypothecation,Indicates whether a client's collateral has been rehypothecated by the firm
+Collateral Relationship Identifier,Unique identifier for each collateral relationship in the derivatives portfolio
+Derivatives Collateral Default Setting,Indicates whether a specific collateral asset for a derivatives transaction has been marked as defaulted
+Division for Derivatives Collateral,Division within the organization responsible for managing collateral related to derivatives transactions
+Derivatives Collateral Expiration Date,The date when the collateral provided for a derivatives transaction expires
+Collateral Transaction Timestamps,Records the date and time when a collateral transaction occurred or when it was last updated
+Derivatives Collateral Flag,Indicator of whether a specific collateral is related to a derivatives transaction
+Derivatives Collateral Flow Indicator,Indicator for the flow of collateral related to derivatives transactions
+Derivatives Collateral Allocation,The allocation of collateral for derivatives transactions
+Unique Security Identifier,"A unique alphanumeric code used to identify specific financial instruments, such as securities or derivatives, in the system"
+Derivatives Collateral Group,A group of collateral assets used to back up derivatives transactions
+Market Value of Collateral,The current market value of the collateral associated with derivatives transactions
+Rehypothecation Status,Indicates whether the collateral has been rehypothecated by Morgan Stanley
+Maximum Collateral Amount,The highest amount of collateral that can be pledged for derivatives transactions
+Netting Identifier,Unique identifier for netting transactions in derivatives collateral management
+Derivatives Collateral Values,The current market value of collateral associated with derivatives transactions
+Primary Account Identifier,Unique identifier for the primary account associated with a derivatives transaction
+Derivatives Collateral Amount,The amount of collateral associated with derivatives transactions
+Risk Assessment and Monitoring,"Risk status of the derivatives collateral, indicating the level of risk associated with the collateral"
+Rehypothecation Indicator,A boolean flag indicating whether the collateral asset can be rehypothecated
+Derivatives Collateral Unique Identifier,Unique identifier assigned to each derivatives collateral transaction
+Unique Identifier for Derivatives Collateral,A unique code assigned to each collateral record related to derivatives transactions
+Collateral Status,Indicates whether a derivatives position requires collateral
+Unique Identifier for Derivatives,A unique identifier for each derivative position in the system
+Derivatives Positions Default Setting,Indicates whether a specific derivatives position has a default setting or not
+Derivatives Positions End Date,Date when a specific derivatives position is scheduled to terminate or expire
+Derivatives Positions Timestamp,Timestamp indicating when a specific derivatives position was entered into the system
+Derivatives Exchange Identifier,Unique identifier for the exchange where the derivative position is held
+Derivatives Position Flag,A flag indicating the status of a derivatives position in the system
+Derivatives Trading Flow Type,Indicates whether a derivatives position is a flow position or not
+Market Value of Derivatives Positions,"The current market value of all open derivatives positions, expressed in monetary units"
+Notional Value,"The nominal or face value of a financial instrument, used for calculating contractual payments but not representing the market value of the instrument"
+Over-the-Counter (OTC) Derivatives,Indicates whether a derivative position is traded over-the-counter or listed on an exchange
+Derivatives Positions Price,The current market price of a derivative contract held by the financial institution
+Derivative Product Type,Type of derivative instrument held in the portfolio
+Derivatives Positions Unique Identifier,Unique identifier assigned to each derivatives position in the system
+Derivatives Positions Start Date,Date when the derivatives position was initiated
+Unique Identifier for Derivatives Positions,A unique code assigned to each derivatives position in the system
+Initial Margin Requirement,The initial margin required to cover potential losses on derivative positions
+Downgrade Trigger Threshold,The threshold value that triggers a downgrade action in the system
+Triggered Currency,Currency in which the downgrade trigger is set for a specific cost object
+Downgrade Trigger,A condition that triggers a downgrade action in the system
+Downgrade Trigger Type,The type of downgrade trigger that activates a specific action in the system
+Trigger Timestamps,Timestamps indicating when a downgrade trigger event occurred or will occur
+Downgrade Exception Sign-off,A flag indicating if an exception has been signed off for downgrading a client's account status
+Downgrade Trigger Feed,The feed containing information about downgrade triggers for financial instruments
+Row Identifier,Unique identifier for each row in the Downgrade Triggers table
+Downgrade Trigger Identifier,Unique identifier for each downgrade trigger in the system
+Downgrade Trigger Source,Identifies the source of a downgrade trigger in the system
+Downgrade Trigger Value,The numerical value that triggers a downgrade action in the system
+Business Segment,The specific division or unit within a company that the financing transaction is related to
+Financing Category,The type of financing provided by the EBS (Electronic Banking System)
+Contingency Plan,A predefined course of action to address potential risks or unforeseen events
+Unsecured Financing Transaction Timestamps,Timestamps indicating when unsecured financing transactions occurred
+Loan Maturity Date,The date on which the loan is scheduled to be fully repaid
+Unsecured Financing Identifier,Unique identifier for each unsecured financing transaction in the system
+EBS Unsecured Financing Run Identifier,Unique identifier for each run of the EBS Unsecured Financing process
+Subcategory of Unsecured Financing,The specific type of unsecured financing within the EBS Unsecured Financing category
+Unsecured Financing Table Identifier,Unique identifier for the unsecured financing records in the system
+Unsecured Financing Amount,The amount of unsecured financing provided by the financial institution
+Counterparty Name,The name of the counterparty involved in a financial transaction
+Country Code,Unique alphanumeric identifier for each country within the European Economic Area (EEA)
+Country Rating,Rating assigned to each country in the European Economic Area (EEA)
+Default State Setting,Indicates whether a specific state is set as the default for new records
+EEA Membership Status,Indicates whether a state is a member of the European Economic Area (EEA)
+Entry Timestamp,Records the date and time when a record was created or updated in the EEA States table
+Country Credit Rating,Credit rating assigned by Fitch to a specific country
+EEA State Identifier,Unique identifier for each EEA state in the system
+Entity Identifier,Unique identifier for each entity in the system
+Adjusted Margin Percentage for USD Call,The adjusted margin percentage in USD for call options on the collateral
+Excess Margin Allocation,Excess margin allocation for collateralized trades in USD
+Calculation Type,Type of calculation applied to the sleeper collateral CUSIP
+Cash Flow,The amount of cash generated or used by a financial instrument or investment
+Counterparty Type Identifier,Unique identifier for the counterparty involved in a financial transaction
+5G Collateral Identifier,Unique identifier for 5G collateral in the EGTS Sleeper system
+Collateral Identifier,Unique identifier for collateral associated with a specific sleeper account
+Credit Exposure Threshold,The maximum credit exposure allowed for a specific collateral
+Average Age of Directly Observed Assets,"The average age of assets whose age has been directly observed, calculated as a weighted average"
+Direct Observation Weighted Count,A weighted count based on direct observations in the EGTS Sleeper Collateral Cusip dataset
+Settlement Time,Time when the transaction is settled or completed
+Average Age of Direct Observations,The average age of direct observations for a specific collateral
+Execution Direct Observation Weighted Count,A measure of the weighted count of direct observations in the execution process
+Foreign Exchange Rate,Rate at which one currency is exchanged for another in the context of financial transactions
+High Quality Liquid Asset (HQLA) 30-Day Price Drop,The potential price drop for a High Quality Liquid Asset over a 30-day period
+HQLA 30 Day PX Drop Anls Start Date,Date when the 30-day period starts for the haircut drop analysis on the securities
+High-Quality Liquid Asset Eligibility,Indicates whether a specific financial instrument is considered a High-Quality Liquid Asset (HQLA) and meets the eligibility criteria for the 5G Liquidity Coverage Ratio (LCR)
+High Quality Liquid Asset (HQLA) Eligibility for Australian Sovereign Bonds,Indicates whether a specific Australian sovereign bond is considered a High Quality Liquid Asset (HQLA) and its designated description.
+High Quality Liquid Asset (HQLA) Basel III Eligibility,Indicates whether a specific financial instrument is considered a High Quality Liquid Asset under the Basel III regulatory framework
+High Quality Liquid Asset (HQLA) Eligibility for Cash Account Designation,Indicates whether a specific cash account is eligible for designation as a High Quality Liquid Asset (HQLA)
+High Quality Liquid Asset Eligibility Status,Indicates whether a specific financial instrument is considered a High Quality Liquid Asset (HQLA) and meets the eligibility criteria for designation as a sleeping collateral asset in the European market.
+High Quality Liquid Asset Japan Eligibility Designation,Specifies whether a financial asset meets the eligibility criteria for being considered a High Quality Liquid Asset (HQLA) in Japan
+High Quality Liquid Asset (HQLA) Index Flag,Indicates whether a specific asset is classified as a High Quality Liquid Asset
+High Quality Liquid Asset (HQLA) Maximum 30-Day PX Drop Date,The maximum date by which the value of High Quality Liquid Asset (HQLA) can drop by 30% without causing a collateral shortfall
+High Quality Liquid Asset US Eligibility Designation,Indicates whether a US-based asset is eligible to be considered as a High Quality Liquid Asset (HQLA)
+Unique Identifier for Sleeper Collateral,A unique alphanumeric identifier assigned to each sleeper collateral in the system
+Exposure Value,The value of exposure related to the collateralized sleeper deals in the EGTS (Euro Government & Treasury Securities) market
+Indicative Directional Observation Weighted Average Age,A weighted average age of directional observations for a specific collateral
+Indicative Directional Observation Weighted Threshold Counter,A counter that tracks the weighted threshold of directional observations in the system
+Issue Currency,Currency in which the financial instrument is issued
+Last Agreed Margin Call Date,The last date on which a margin call was agreed upon for the collateral
+Long or Short Position Flag,Indicates whether a financial position is long (ownership) or short (borrowed and sold) for a specific asset
+Margin Amount,The amount of margin required to be maintained for a specific collateral
+Margin Type,Type of margin applied to a collateralized financial transaction
+Matured Trade Exposure,The total exposure of a trade that has reached its maturity date
+Sleeper Account Movement,The movement or change in the value of sleeper accounts in the EGTS system
+Sleeper EGTS Collateral Movement,Monitors the movement of collateral in the Sleeper EGTS (Electronic Gross Treasury System)
+EGTS Sleeper Collateral CUSIP Weight,The weight assigned to the EGTS Sleeper Collateral CUSIP in the calculation of the Morgan Stanley Master Trust Account (MS MTA)
+Threshold Value,A predefined value used as a threshold for monitoring purposes
+Mark-to-Market Value,"The current market value of a financial instrument, used for calculating profit or loss"
+Exceeding Threshold,Indicates whether the mark-to-market (MTM) value of a collateral has dropped below a specified threshold
+New Trade Exposure,The exposure to new trades in the EGTS Sleeper Collateral Cusip database
+Previous Less Threshold,"The value that the threshold was previously less than, indicating a change in the threshold"
+Risk Rating Key,Unique identifier for the risk rating assigned to a collateral
+Security Pool,"A group of securities that are combined for a specific purpose, such as collateral or investment"
+Security Pool Identifier,Unique identifier for a group of securities within the system
+Street CUSIP,Unique identifier for a security issued by a specific organization or entity
+Unique Identifier for EGTS Sleeper Collateral Cusip Table,A unique 166-digit integer assigned to each EGTS Sleeper Collateral Cusip table to distinguish it from other tables
+Unique Identifier for Sleeper Collateral Cusip Table,A unique 167-bit identifier assigned to each sleeper collateral CUSIP record in the database
+Basel III Standardized Risk-Weighted Assets,"The amount of risk-weighted assets calculated using the Basel III regulatory framework, which is used to determine the minimum capital requirements for a financial institution"
+Unique Asset Identifier,A unique alphanumeric code assigned to each eligible security in the Bank of England (BOE) database
+Security Identifier,"Unique identifier for financial securities, used for tracking and reporting purposes"
+BOE Default Set Flag,Indicates whether a security is part of the default set for the Bank of England (BOE)
+Security Eligibility Timestamps,Records the date and time when a security was first deemed eligible for inclusion in the system
+Unique Identifier for Eligible Securities,A unique alphanumeric code assigned to each eligible security in the Bank of England database
+Security Identifiers,Unique alphanumeric codes used to identify securities in the system
+Eligible Securities Load Time,Time taken to load eligible securities data from the Bank of England
+Unique Identifier for BOE Securities,A unique identifier assigned to each security in the Bank of England's eligible securities list
+Eligible Securities - CUSIP,Unique identifier for eligible securities in the European Central Bank
+ECB Eligibility Flag,Indicates whether a security is eligible for the European Central Bank (ECB) monetary policy operations
+Unique Identifier for ECB Securities,A unique identifier assigned to each security eligible for the European Central Bank (ECB) operations
+Loan Default Setting,Indicates whether a loan is marked as default or not
+Loan Expiration Date,The date when the employee loan expires or is scheduled to be fully repaid
+Employee Loan Timestamps,Records the date and time when an employee loan was created or updated
+Employee Loan Amount,The amount of money an employee has borrowed through the employee loan program
+Unique Loan Identifier,A unique alphanumeric identifier assigned to each employee loan
+Employee Loan Record Identifier,Unique identifier for each employee loan record in the system
+Employee Loan Commencement Date,The date when an employee loan was initiated
+Unique Identifier for Employee Loans,A unique code assigned to each employee loan record in the system
+Employee Loan Term Year,The year in which the employee loan term begins or ends
+Collateral Account Number,Unique identifier for the collateral account associated with equity swap transactions
+Equity Swap Bridge Collateral Timestamp,The date and time when the equity swap bridge collateral was entered into the system
+Party Placing Order,Unique identifier for the party placing the order in the equity swap bridge collateral system
+P_I_FLAG,Indicator of the type of transaction for equity swap bridge collateral
+Equity Swap Bridge Collateral Quantity,The amount of collateral associated with equity swap bridge transactions
+Rehypothecation Enablement,Indicates whether the rehypothecation process is enabled for the equity swap bridge collateral
+Equity Swap Bridge Collateral Identifier,Unique identifier for each equity swap bridge collateral record
+Collateral Source,The origin or type of collateral used for equity swap transactions
+FX Cash Flows Forward,Foreign exchange cash flow positions for forward contracts
+Forward FX Cash Flow End Date,The date when the forward foreign exchange cash flow settles or matures
+FX Cashflows Timestamps,Timestamps indicating when FX cashflow transactions are entered into the system
+Data Feed Identifier,Unique identifier for the data feed used in the FX Cashflows system
+FX Cashflow Forward Flag,Indicates whether a cash flow is a forward transaction in the foreign exchange market
+FX Cashflow Fixing Date,The date on which the foreign exchange cash flow is fixed
+Mark-to-Market Code,A unique identifier for mark-to-market valuation of financial instruments
+Forward Cash Flow Maturity Date,Date on which a forward cash flow contract is scheduled to be settled or mature
+FX Cashflow Run Identifier,Unique identifier for each Foreign Exchange cashflow run
+Sell Rate,Rate at which a financial instrument is sold in a foreign exchange transaction
+FX Cashflows Forward Start Date,The date when the foreign exchange cash flow starts in the FX Cashflows Forward transaction
+Transaction Status,"Indicates the status of a foreign exchange transaction, such as pending, completed, or failed"
+Trade Delivery Type,Specifies the type of trade delivery for FX cashflows
+FX Cashflows Spot - Buy Amount,The amount of foreign currency bought in a spot transaction
+FX Cashflows Timestamp,The exact time when a transaction occurred in the FX Cashflows market
+FX Cashflows Spot Fill Forward Flag,Indicates whether the FX cashflow spot transaction has a fill forward flag or not
+FX Cashflows Spot Job Identifier,Unique identifier for each FX cashflows spot job run in the system
+Sell Price,The price at which a financial instrument is sold in the foreign exchange (FX) cash flow market
+FX Cashflows Start Date,The date when the foreign exchange cash flow starts
+Exchange Rate,The ratio of the value of one currency to another currency in a foreign exchange market
+Default FX Rate Set,Indicates whether the FX rate is set as the default rate for a specific currency pair
+FX Rate Timestamps,Timestamps indicating when the exchange rates were entered into the system
+Currency Pair,The currency being converted in a foreign exchange rate
+Currency Conversion Indicator,Indicates whether the currency pair is for multiplication (M) or division (D) in currency conversion calculations
+FX Rate Unique Identifier,Unique identifier for each foreign exchange rate data point
+Currency Conversion,The target currency for the exchange rate
+Cash Bond Indicator,A flag indicating if a security is a cash bond
+Unique Identifier for Securities,"A unique alphanumeric identifier for securities, used for identification and reporting purposes"
+Department Code,Unique identifier for each department in the organization
+Failure Timestamps,Records the date and time when a system failure occurred
+Exception Indication,A flag indicating if a row in the data represents an exception or an error condition
+Exception Handling,Indicates whether an exception occurred during the processing of a data record
+Failure Workgroup,Group of people responsible for addressing system failures
+Failure Event,An event indicating a failure in the system or process
+Financial Side Failures,Financial side failures encountered during the processing of financial data
+Payment Flow Direction,Indicates whether a payment is incoming or outgoing for a particular cost center
+Journal Mnemonic,A unique alphanumeric code representing a specific journal entry in the system
+Market Value,The current market value of a financial instrument or position
+Mission Identifier,Unique identifier for each mission or project in the system
+Maximum Amount of Failures,The highest amount of failed transactions or operations recorded in the system
+Price,The price of a financial instrument or transaction
+Pricing Currency,The currency used for pricing in financial transactions
+Failure Count,Number of failures or errors occurring in a specific context
+Repository Flag,Indicates whether a specific data record is associated with a repository
+Failure Identifier,Unique identifier for each data integrity failure detected in the system
+Job Run Identifier,Unique identifier for each job run in the system
+Failure Source Code,A unique identifier for the source of a system failure
+Failure Occurrence Date,Date when a system failure or issue was first detected
+Transaction Timestamps,Records the date and time when each transaction occurred
+General Ledger Account Codes,Unique alphanumeric identifiers for financial accounts in the general ledger system
+General Ledger Account Description,A brief textual description of a specific financial account in the General Ledger system
+General Ledger Account Level 2,Second-level categorization of financial accounts in the general ledger system
+General Ledger Account Hierarchy,Hierarchical structure of account codes used for financial reporting and analysis
+General Ledger Account Level 4,Fourth level of detail in the General Ledger account hierarchy
+General Ledger Account Level,Hierarchical level of general ledger accounts used for financial reporting
+General Ledger Account Level 6,Sixth level of detail in the General Ledger Account hierarchy
+General Ledger Account Level 8,Eight levels of hierarchy in the General Ledger Account structure
+GL Account Instance Identifier,Unique identifier for each General Ledger account in the system
+General Ledger Account Identifier,Unique identifier for each account in the General Ledger system
+IPB Free Cash Balances,"The available cash balance in the IPB (Integrated Portfolio Bank) system, denominated in the original currency"
+Cash Management Flag,Indicates the cash management status of the account
+Currency Balance Allocation,The allocation of currency balances for each currency held in the system
+Feed Product Identifier,Unique identifier for each feed product in the system
+Free Cash Flag,Indicator for the availability of free cash in the account
+Excess Margin,The difference between the available cash balance and the required cash balance in a given cost center
+Maximum Free Cash Balance,The highest amount of available cash in the account at any given time
+Free Cash Balance,The available cash in the bank account after accounting for any outstanding debts or obligations
+Free Cash Balance in IPB,The available cash balance in the IPB (Integrated Banking System) in the specified currency
+Party Name,The name of the party associated with the free cash balance
+Short Credit Exposure,The short credit exposure is the potential loss that a financial institution may incur due to a counterparty's failure to fulfill its contractual obligations in a credit transaction.
+Free Cash Balance Origin,Identifies the source of the available cash balance in the system
+Trading Name,The name of the legal entity associated with a specific account
+Trading Name Identifier,Unique identifier for each trading name in the system
+Index Set Default,Indicates whether the index set is the default set for the specific index
+Index Constituent Timestamps,Timestamps indicating when an index constituent was added or removed from the index
+Index CUSIP,Unique identifier for an index constituent in the financial market
+Index Composition,"Description of the index constituents, which are the components of a stock index"
+Index Eligibility,Indicates whether a specific security is eligible for inclusion in an index
+Index Identifier,Unique identifier for each index in the system
+Unique Identifier for Index Constituents,A unique identifier assigned to each index constituent in the system
+Index Status,Indicates whether an index is set as the default index for a table
+Index Creation Timestamps,Timestamps indicating when indexes were created in the system
+Exception Signoff Indication,A flag indicating whether an exception has been signed off by a designated approver
+Index List Presence,Indicates whether a specific index is part of the EBA (European Banking Authority) LCR (Liquidity Coverage Ratio) index list
+LCR Index Indication,Indicates whether a specific index is subject to the Liquidity Coverage Ratio (LCR) regulation
+Index Run Identifier,Unique identifier for each index run in the system
+Accrued Interest to Date,The total interest accumulated on a security or investment up to a specific date
+Amortization Date,The date on which the loan or investment is fully paid off
+Amortization Delay,The number of days after the settlement date that the amortization of a security begins
+Amortization Type,Type of amortization method applied to cash flows
+Asset Identifier,Unique identifier for each asset in the Intellimatch Cash system
+Asset Sub-Type Description,"A detailed description of the asset's sub-type, such as its characteristics or classification"
+Asset Type Description,A detailed description of the asset type in the Intellimatch Cash system
+Reporting Region,Geographical area for which reporting is done
+Cash Balance,The amount of cash held in an account or investment
+Broker-Dealer Account Identifier,Unique identifier for each broker-dealer account in the Intellimatch Cash system
+Customer Lifetime Value (CLTV),Estimated revenue a customer will generate throughout their entire relationship with the company
+Intellimatch Cash Identifier,Unique identifier for Intellimatch cash transactions
+Intellimatch Cash Indicator,"An indicator related to the Intellimatch Cash process, which may be used to track the status or outcome of specific cash transactions"
+Intellimatch Cash Instrument,The specific financial instrument being referenced in the Intellimatch Cash system
+Intellimatch Cash Transaction Date,Date of the cash transaction recorded in the Intellimatch system
+Intellimatch Cash Value,The value of the cash position in the Intellimatch system
+Commitment Maximum,The maximum amount of funds that can be committed to a specific investment or trading decision
+Commitment Limit,Maximum amount of funds committed to a specific investment or trading strategy
+Intellimatch Cash Compliance,Indicates whether the cash transaction is conforming to the established rules and regulations
+Conversion Ratio,The ratio used to convert cash flows in the Intellimatch Cash system
+Credit Score,"A numerical representation of an individual's creditworthiness, calculated based on their credit history"
+Deal Identifier,Unique identifier for each deal or transaction in the Intellimatch Cash system
+Intellimatch Cash Default Setting,Indicates whether the Intellimatch Cash feature is set as the default option for cash transactions
+Delinquency Status,Indicates the status of a loan or account with respect to delinquency
+Disbursement Date,Date on which a payment is scheduled to be made
+Country of Issue,Country where a financial instrument or security is issued
+Deal Description,A brief description of a financial deal or transaction
+Deal Name,The name of the deal or transaction in the Intellimatch Cash system
+Deal Type,Type of financial deal or transaction in the Intellimatch Cash system
+Intellimatch Cash Data Source,Identifies the source of data used by the Intellimatch Cash system
+Effective Date,The date when a specific record or setting becomes active or takes effect
+Extended Maturity Date,"The date when the investment matures, taking into account any extensions or rollovers"
+Extended Maturity Indicator,A flag indicating if the maturity of a security has been extended
+External CUSIP,Unique identifier for external securities in the Intellimatch Cash system
+External Fid1 Identifier,Unique identifier for an external fid1 record related to the cash transaction
+Unique Identifier for Cash Transactions,A unique alphanumeric identifier assigned to each cash transaction for identification and tracking purposes
+Cash Matching Confidence,Confidence level of matching cash transactions in the system
+Intellimatch Cash Equivalent,The cash equivalent value calculated by the Intellimatch system for a specific security
+First Payment Date,Date when the first payment for a transaction is scheduled to occur
+Unique Identifier for Intellimatch Cash,A unique alphanumeric identifier assigned to each Intellimatch Cash record
+Funding Indicator,A flag indicating if an item is related to funding or not
+Forward Start Bucket,A bucket representing the forward start leg of a swap transaction
+Industry Classification Code,A unique identifier for the specific industry of a company or organization
+Interest Rate Reference,The interest rate used as a reference for calculations in financial transactions
+Interest Type,Type of interest rate applied to the cash holdings
+Conformance Status,Indicates whether the Intellimatch Cash data adheres to the predefined rules and standards
+Cash Transaction Indicator,Indicator for cash transactions in the Intellimatch Cash system
+Home Equity Line of Credit Indicator,A boolean flag indicating if a customer has a Home Equity Line of Credit (HELOC) account
+Structured Note Indicator,Indicates whether the financial instrument is a structured note or not
+Lien Priority Position,The position of a lien in the hierarchy of claims against an asset
+Loan Amount Funded,The total amount of funds provided as loans to customers
+Loan Type,Type of loan being processed in the Intellimatch Cash system
+Loan-to-Value Ratio,"The ratio of the total loan amount to the value of the collateral, expressed as a percentage"
+Margin,"The difference between the market value of a security and its cost basis, or the difference between the sale price and the purchase price of a security"
+Market Value of Assets,The current market value of assets held in the Intellimatch Cash system
+Market Value Pending,The pending market value of the Intellimatch Cash transactions
+Mortgage Lifecycle Stage,"Current stage of the mortgage process, such as application, approval, or funding"
+Intellimatch Cash Adjustment Factor,A floating-point number used to adjust the cash positions in the Intellimatch system
+Intellimatch Cash Factor,A floating-point number used to adjust the cash amount in the Intellimatch Cash system
+Short Value,Short position value in the Intellimatch Cash trading book
+Net Life Cap,The maximum amount of life that can be allocated to a position
+Net Life Floor,The minimum net value that a position must not fall below during its life
+Next Payment Date,Date when the next payment is due for the Intellimatch Cash instrument
+Next Option Exercise Date,Date when the next option to exercise a financial contract will occur
+Next Cash Settlement Date,The date on which the next cash settlement for a financial transaction will occur
+Next Reset Date,The date when the Intellimatch Cash system will be reset or re-evaluated
+Notional Exposure,The total nominal value of a financial instrument or transaction
+Notional Pending Amount,The pending notional amount for transactions in the Intellimatch Cash system
+Pending Notional Amount,The pending notional amount in US dollars for transactions that have not yet been processed
+Notional Cash Value,Theoretical cash value of transactions in US Dollars
+Notional Trading Exposure,The total nominal value of trading positions in cash instruments
+Original Maturity Date,The original date on which a financial instrument is scheduled to be repaid or expire
+Origination Date,Date when a financial transaction or deal was initiated
+Origin Date,Date when the transaction or event was initiated
+Par Value,"The face value of a financial instrument, usually used for bonds, which indicates the principal amount that will be repaid at maturity"
+Payment Frequency,The frequency at which payments are made or received in a financial transaction
+Annual Yield,"The annual yield of a financial instrument, expressed as a percentage"
+Penalty Amount,The amount of penalty incurred for a specific transaction or situation
+Loan Performance Indicator,A flag indicating whether a loan is performing or non-performing
+Periodic Cash Cap,Maximum allowed cash balance for a specific period
+Periodic Floor,A minimum value that must be reached by a variable during specific time intervals
+Pledged Mortgage Indicator,A boolean flag indicating if a mortgage has been pledged as collateral for a loan
+Security Price,The current market price of a security or financial instrument
+Price Quote,The quoted price of a financial instrument or security
+Property Occupancy,Indicates whether a property is occupied by an investor or not
+Property Type,The type of property associated with a cash transaction
+Purchase Status,Indicates the status of a purchase order or transaction
+Cash Quantity,The amount of cash held in the Intellimatch Cash account
+Interest Rate Index,Identifies the interest rate index used for the cash instrument
+Rate Modification Date,Date when the interest rate of a financial instrument was last modified
+Relationship Type,The type of relationship between financial instruments or entities
+Reset Interval,Time duration between consecutive resets of the Intellimatch Cash system
+Intellimatch Cash Job Identifier,Unique identifier for each Intellimatch Cash job run
+Security Type,Type of security being matched in the Intellimatch Cash system
+Service Fee Strip Indicator,Indicates whether the service fee has been stripped from the cash holdings
+Short Code,A unique alphanumeric identifier used for identification and reference purposes
+Spread Value,Difference between the bid and ask prices of a financial instrument
+Intellimatch Cash Start Date,The date when the Intellimatch Cash process begins
+Intellimatch Cash Status,"The current status of the Intellimatch Cash transaction, such as 'Issued' or 'Completed'"
+Matching Status Description,A textual description of the matching status in the Intellimatch Cash system
+Loan Status,Indicates the current status of a loan in the Intellimatch Cash system
+Intellimatch Cash Sweep Bank Code,Unique identifier for the bank account associated with the Intellimatch Cash sweep function
+Sweep Bank Name,The name of the bank account where excess cash is swept to
+Transaction Identifier,Unique identifier for each transaction in the Intellimatch Cash system
+Type of Debt Instrument,The type of debt instrument involved in the financial transactions
+Unused Quantity,The remaining available quantity of a specific item or resource that has not been utilized or allocated
+Cash Amount,The amount of cash in US Dollars represented as a floating-point number
+USD Amount Individual Position,The US Dollar amount associated with a specific position in the Intellimatch Cash system
+Initial US Dollar Amount,Initial US dollar amount for transactions in the Intellimatch Cash system
+Security Identification Number,Unique identifier for financial instruments in the system
+Default Coverage Setting,Indicates whether a default coverage setting is applied to a client
+Timestamp of Data Entry,Records the exact time when a new entry or modification was made to the data
+Client Information,Identification of clients covered by the financial institution
+Trading Strategy,Code representing the trading strategy applied to a specific financial instrument
+Internal Coverage Metric,The metric used to measure the performance of internal coverage
+Maximum Internal Coverage,The highest possible limit for internal coverage in the system
+Order Placement Entity Identifier,Unique identifier for the entity placing an order in the internal coverage system
+Internal Coverage Quantity,The numerical representation of the degree or extent to which the financial institution's services or products are provided to its clients or within the organization
+Internal Coverage Identifier,Unique identifier for each internal coverage report
+Scenario,A specific situation or use case considered for analysis or planning purposes
+Source of Internal Coverage,The origin or department within the organization providing coverage for internal activities
+Source Type,Type of source related to the Internal Coverage
+Application Usage,Indicates which applications are using the data in the system
+Business Entity Type,Type of business entity involved in a financial transaction or operation
+Internal Coverage Value,The current market value of the financial instruments covered internally by the firm
+Portfolio Value,The total value of the financial portfolio managed by the company
+Legacy SAP GL Account Mapping,Mapping between the legacy SAP General Ledger accounts and the new chart of accounts
+Legacy SAP General Ledger Account,A unique identifier for an account in the legacy SAP General Ledger system
+Legacy SAP GL Account Mapping Identifier,Unique identifier for each record in the Legacy SAP GL Account Mapping
+Legacy SAP Account Mapping,Mapping of legacy SAP General Ledger accounts to the new system
+Trading Partner,Entity with which the organization conducts business transactions
+Business Unit Identifier,Unique identifier for each business unit within a legal entity
+Country of Legal Entity,"The country where a legal entity, such as a company or organization, is registered or operates"
+Legal Entity Timestamps,Records the date and time when a legal entity was added or modified in the system
+UK Group Indicator,Indicates if a legal entity is part of the UK group of companies
+Legal Entity Status,"The current operational status of a legal entity, such as active or inactive"
+Entity Type,"The type of entity, such as a subsidiary or other legal entity, associated with the financial institution"
+Legal Entity Maturity Date,"Date when a legal entity, such as a company, is expected to reach full maturity"
+Parent Legal Entity,The legal entity that owns or controls another legal entity
+Unique Party Identifier,A unique alphanumeric code assigned to identify each legal entity associated with the financial institution
+Primary Division,The main division within a legal entity responsible for its operations
+Applicant Entity,The entity applying for a Letter of Credit
+Bank Letter of Credit Identifier,Unique identifier for each letter of credit issued by the bank
+Bank Name,The name of the bank that is involved in the Letter of Credit transaction
+Beneficiary Name,The name of the beneficiary (recipient) of the letter of credit
+Letter of Credit Expiration Date,"The date on which the Letter of Credit expires, after which it is no longer valid"
+Letter of Credit Creation Timestamp,The date and time when a Letter of Credit was created
+Financial Instrument Type,Type of financial instrument related to Letters of Credit
+Funding Purpose,The reason for which the funds are being requested in a Letter of Credit
+Maximum Amount,The highest amount of money that can be guaranteed by a letter of credit
+Letter of Credit Transaction ID,Unique identifier for each letter of credit transaction
+Source of Letter of Credit,"Identifies the source of the Letter of Credit, which could be a specific cost center, business unit, or other entity within the organization"
+Letter of Credit Start Date,Date when the Letter of Credit becomes active or effective
+Accepted Currencies,List of currencies accepted for collateral in the Libra Exchange
+Collateral Description,A detailed description of the collateral provided for the Libra Exchange
+Collateral Entry Timestamp,The date and time when the collateral was entered into the Libra Exchange system
+Unique Identifier for Collateral,A unique identifier assigned to each collateral run in the Libra Exchange
+Unique Identifier for Collateral Table,A unique identifier assigned to each collateral record in the Libra Exchange database
+Cash or Non-Cash Classification,Indicates whether the derivative is cash-based or non-cash-based
+Closing Balance,The final balance of a financial instrument at the end of a trading day
+Unique Identifier for Listed Derivatives,"A unique 51-character alphanumeric identifier for listed derivatives, used for identification and tracking purposes"
+Derivative Expiration Date,"The date on which a derivative contract expires, determining the final settlement of the contract"
+Listed Derivatives Timestamp,Date and time when a derivative contract was entered into the system
+Feed Source,The source of data feed for listed derivatives
+Trade Flow Indicator,Indicates whether a trade is a flow trade or not
+Initial Margin for Listed Derivatives,The initial margin required for listed derivatives transactions
+Market Value of Derivatives,The current market value of listed derivatives contracts
+Maximum Amount for Listed Derivatives,The maximum amount of listed derivatives that can be traded in the market
+Equity Balance,The balance of equity-related derivatives in the listed derivatives market
+Listed Derivatives Quantity,The number of listed derivatives contracts
+Derivative Unique Identifier,Unique identifier assigned to each derivative instrument in the listed derivatives market
+US Dollar Amount,The amount of US Dollars associated with a financial derivative contract
+Accounting Method,The method used for accounting purposes related to the Loan IQ system
+Accrual Status,"Indicates the accrual status of a loan, which can be 'ACCR' (Accruing) or 'nan' (Not Applicable)"
+All-In Interest Rate,"The total interest rate charged on a loan, including all fees and costs"
+Loan Amortization Status,Indicates whether the loan is amortizing or not
+Banking Book Identifier,Unique identifier for a specific banking book related to the loan
+Loan IQ - Drawn Call Report,A report containing information about the status of loans in the Loan IQ system
+Loan Repayment Type,"The type of cash flow associated with loan repayments, such as principal or interest"
+Loan Classification,Categorization of loans based on specific criteria
+Loan Deal Identifier,Unique identifier for each loan deal in the system
+Loan IQ - Drawn Timestamps,Timestamps indicating when a loan was drawn or processed
+Event Indicator,A flag indicating the occurrence of a specific event related to the loan
+Loan Extension Option,Indicates whether a loan has an extension option available
+Loan Purpose,"The specific reason or intent behind a loan, such as a term loan or a first lien"
+Facility Credit Rating,Credit rating of a facility or project being financed by a loan
+Federal Loan Eligibility,Indicates whether a loan is eligible for federal funding or not
+Fixed Coupon Rate,The interest rate that remains constant throughout the loan term
+Loan Funding Direction,Indicates whether funds are being drawn or returned for a loan
+Fronting Amount,The amount of money provided by a fronting company in a loan transaction
+Fronting Legal Entity,The legal entity responsible for providing a loan to the borrower
+Funded Currency Code,Currency in which the loan has been funded
+Internal Rating,Internal credit rating assigned by the financial institution to a loan
+Loan Renewal Status,Indicates whether a loan is currently being renewed or not
+Loan Modifier,An optional attribute used to track additional information related to a loan
+Maximum Amount Drawn,The highest amount of funds that have been borrowed from a loan account
+Original TAPS Account,The original account number associated with a loan in the Loan IQ system
+Pledge Status,Indicates the status of a pledge associated with a loan
+Pledge to Federal,Indicates whether the loan is backed by a federal guarantee
+Loan Portfolio,A collection of loans grouped together for management and reporting purposes
+Repayment Start Date,The date on which the loan repayment process begins
+Repricing Date,Date when the loan's interest rate or terms may be adjusted
+Loan Reset Frequency,The frequency at which the loan's interest rate or other terms may be reset
+Loan Risk Type,"The type of risk associated with a loan, such as amortizing or non-amortizing loans"
+SAP General Ledger Account,Identifies the specific financial account in the SAP system associated with the drawn loan
+Secured Indicator,Indicates whether a loan is secured by collateral or not
+Loan Settlement Date,Date on which the loan was settled or is scheduled to settle
+Loan Drawdown Date,Date when a loan is drawn down or first disbursed to the borrower
+Loan Indicator,Indicates whether a loan has been drawn or not
+Traders' Mark,A numerical value representing the traders' performance or contribution in the Loan IQ system
+Trade Value,The value of a trade or transaction in the Loan IQ system
+Funded Amount on Trade Date,The amount of funds drawn on the trade date for a loan
+Loan Eligibility,Indicates whether a loan is eligible for a specific report or not
+Cash Flow Type,"Type of cash flow related to a loan, such as principal or interest"
+Pending Loan Currency,Currency denomination of the pending loan
+Pending Loan Timestamps,Timestamps indicating when pending loan records were created or updated
+Transaction Flow Direction,Indicates the direction of the transaction in the Loan IQ system
+Maximum Loan Amount,The highest loan amount that can be approved for a borrower
+Loan IQ Pending Run Identifier,Unique identifier for each pending run of the Loan IQ process
+Data Origin,Identifies the source of the data in the system
+Pending Loan Start Date,The date when a pending loan was scheduled to begin
+Pending Loan Values,The current market value of pending loans in the Loan IQ system
+Loan Cash Flow Type,"Type of cash flow related to a loan, such as principal or interest payments"
+Loan IQ - Undrawn Timestamps,Timestamps indicating when the undrawn loan data was entered or updated in the system
+Undrawn Loan Fee Rate,Interest rate applied to the undrawn portion of a loan
+Flow Direction,Indicates the direction of the flow of funds for a loan or credit line
+Maximum Undrawn Amount,The highest amount that can be borrowed but has not been drawn yet
+Loan IQ - Undrawn Run Identifier,Unique identifier for each undrawn loan in the Loan IQ system
+Loan Inquiry - Undrawn,Loan inquiries that have not yet been drawn upon by the borrower
+Loan Term Indicator,A character string representing the type of loan term for undrawn loans
+Trader's Mark,"A numerical value assigned to a trader, representing their performance or contribution to the company"
+Undrawn Loan Balance,The outstanding balance of a loan that has not yet been withdrawn by the borrower
+Maximum Uncommitted Undrawn Amount,The highest amount of untapped available funds in a loan account
+Lockup Category,The category of a lockup situation in the system
+Category Identifier,Unique identifier for categorizing items in the Lockup table
+Lockup Status,Indicates whether a specific lockup has been set or not
+Lockup Period,Time period during which funds are committed and cannot be withdrawn from an investment
+Maximum Lockup Amount,The highest amount of funds that can be locked up in an investment
+Sub-Category,A specific category within a broader classification
+Subcategory Code,A unique identifier for categorizing data within a specific subcategory
+Debt Currency,The currency in which the long-term debt is denominated
+Long-Term Debt Instrument Identifier,Unique identifier for each long-term debt instrument in the financial records
+Effective Date of Long-Term Debt,The date when a long-term debt obligation becomes effective or starts
+Debt Maturity Date,The date on which a long-term debt is scheduled to be repaid in full
+Long-Term Debt Entry Timestamp,The date and time when a long-term debt record was created or updated
+Market Value of Long-Term Debt,The current market value of all long-term debt obligations
+Debt Payoff,The amount or method of repaying a debt obligation
+Long-Term Debt Securities Price,Market price of long-term debt securities issued by the company
+Debt Instrument Type,"Type of long-term debt instrument, such as bonds or loans, used by the financial institution"
+Long-Term Debt Identifier,Unique identifier for each record of long-term debt in the system
+Trading Account Number,Unique identifier for a trading account used for long-term debt transactions
+Transaction Currency,The currency used for a specific transaction
+Use Type Categorization,Categorization of the type of use for each record in the system
+Business Unit Organization Name,The name of the organization within the business unit responsible for issuing securities
+Consolidated Financial Indicator,A string-based identifier representing the consolidated financial information of an issued security
+Country of Issuance,The country where a security is issued by the company
+Division Organization Name,Name of the division within the organization responsible for issuing securities
+Security Issuance Timestamp,Date and time when a security was issued
+Legal Entity Name,The name of the legal entity that issued the security
+Legal Entity Type,"The type of legal entity issuing the security, such as a corporation, partnership, or government agency"
+Unique Identifier for Issued Securities,A unique identifier assigned to each security issued by Morgan Stanley
+Unique Identifier for Security Transactions,A unique identifier assigned to each security transaction for tracking and reporting purposes
+Security Description,A unique identifier or name that represents a specific security or financial instrument
+Organization Segment Name,The name of the organization segment related to the issued securities
+Security Status,Indicates the current status of a security issued by Morgan Stanley
+Accrued Day Count,"The number of days accrued in a financial calculation, often used in accrual accounting"
+Amortization Payment,The amount paid towards the reduction of a loan or financial obligation over time
+Balloon Indicator,A flag indicating whether a balloon is attached to a specific data record
+Capitalization Rate,"The rate of return on an investment property, expressed as the ratio of annual net operating income to the property's capital cost (purchase price)."
+Charge-Off Principal Balance,The amount of principal balance written off in the event of a loan charge-off
+Client Code,Unique identifier for each client in the system
+Client Portfolio Performance,"The performance of a client's portfolio, represented by a string"
+Workstream Identifier,Unique identifier for each workstream in the project
+Future Date,A string representation of a future date in the format of DD/MM/YYYY
+Entity Name and Related Information,"The name of the entity, its ownership percentage, maturity date, trade date, and settlement currency for financial instruments"
+Maximum Commitment Limit,The highest amount that can be committed by a client in the system
+Maximum Commitment,The highest amount of money that can be committed to a specific investment or transaction
+Contractual Commitment,The amount of money committed by the financial institution to fulfill contractual obligations
+Client Portfolio ID,Unique identifier for each client's portfolio in the system
+Default Probability,The default probability value assigned to a client in the system
+Loan Demand Indicator,A boolean flag indicating if a loan demand exists for a client
+Depository Address,The location where the depository is situated
+Depository Party,Entity responsible for holding and safeguarding financial assets
+Unique Identifier for Data Warehouse,A unique alphanumeric identifier assigned to each data warehouse client in the system
+Unique Identifier for Data Request,A unique alphanumeric identifier assigned to each data request submitted to the system
+Effective Days,The number of days for which the data is effective or valid
+Facility Origination Date,Date when a facility was established or started operations
+Client Reference,Unique identifier for each client of the financial institution
+Floor Rate,Minimum acceptable price for a financial transaction
+Forward Start Amount,The initial notional amount for forward transactions at the start of the trade
+Forward Start Date,The date on which a financial instrument or contract becomes active or starts in the future
+Funded Amount,The total amount of funds allocated to a specific investment or financial instrument
+Unfunded Loan Amount,The total amount of loans that have not been fully funded by investors in the system
+Unfunded Committed Loan Amount,The total amount of loans committed to but not yet funded by the financial institution
+Loan Collection Indicator,A flag indicating if a loan is part of a collection
+Account Location,The specific account location associated with a financial transaction
+Loss Given Default,Estimated loss that would be incurred if a counterparty defaults on its obligations
+Next Rate Change Date,Date when the interest rate of a financial instrument is expected to change
+Notional Swap Exposure,"The theoretical exposure of a swap transaction, representing the potential gain or loss from the transaction"
+Original Origination Date,Date when the financial instrument was first originated or issued
+Loan Origination Date,Date when a loan was originated or created
+Original Plan Number,Unique identifier for the original investment plan in the system
+Payment Calculation Method,The method used to calculate payments in the system
+Product Classification,Categorization of financial products offered by the institution
+Product Type Description,A brief description of the product type in the financial database
+Client View Purpose Indicator,An alphanumeric code representing the purpose of a client view in the system
+Trade Quantity,The number of trades executed in the financial market
+Data Reset Frequency,Specifies the frequency at which data is reset or refreshed in the system
+Reset Frequency,Specifies the frequency at which the data in the system is reset or refreshed
+Unique Identifier for Execution,A unique identifier assigned to each execution of a specific process or task
+Unique Identifier for Data Processing Job,A unique alphanumeric identifier assigned to each data processing job in the system
+Security Long Description,"A detailed description of a security, often used for identification purposes"
+Settlement Status Indicator,"A flag indicating whether a transaction has been settled or not, used for tracking the status of financial transactions"
+Unique Identifier for Database Tables,A unique identifier assigned to each table within the database
+Debt Type,The type of debt instrument being managed in the system
+Encumbrance Status,"Indicates whether an asset is encumbered or unencumbered, affecting its availability for trading or other transactions"
+Unfunded Liability,"The present value of benefits earned by employees but not yet funded, used in pension accounting"
+Unfunded Collateralized Exposure Percentage,The percentage of unfunded collateralized exposure in the financial transactions
+Unfunded Liabilities for Others,The amount of unfunded liabilities attributed to other parties in the financial system
+Unfunded Swap Balance Percentage,The percentage of unfunded swap balance in the client's account
+Client Trading Amount,The total US Dollar trading amount executed by the client
+Accounting Treatment,The method used to account for financial transactions in the system
+Account Tier,Categorization of accounts based on their balance or transaction value
+Account Treatment,Specifies how accounts should be treated in the context of a market shock scenario
+Market Shock Sensitivity,The degree to which the financial institution's commitments are affected by market shocks
+Adjusted Maturity Date,The date when the financial instrument's maturity is adjusted due to a market shock event
+Market Shock Affiliation,Indicates the affiliation of a market shock event to a specific entity or group within the organization
+Market Shock Allocated Stress Loss Ratio,The allocated stress loss ratio for a specific market shock scenario
+Market Shock Allocation,Allocation of trade profit and loss (PnL) for market shock scenarios
+Market Shock Financial Impact,"The financial impact of a market shock event on the company, represented as a floating-point number"
+Market Shock Balance Bank 1,The balance of Bank 1 affected by a market shock event
+Market Shock Balance Bank,The balance of a bank account that may be affected by market shocks
+Market Shock Balance Impact,The impact of a simulated market shock event on the balance of a specific bank account
+Market Shock Inflow,The impact of a market shock event on the cash inflows of a financial institution
+Market Shock Outflow,The potential outflow of funds due to a market shock event
+Asset Classification,Categorization of assets based on their type or nature
+Asset Class Group,Classification of assets based on their economic characteristics
+Asset Sub-Type,Categorization of financial assets within a specific tier
+Asset Tier,Categorization of assets based on risk and return characteristics
+Asset Type,Type of asset affected by a market shock event
+Market Shock Assessment Date,The specific date used for evaluating the impact of a market shock event
+Average Age,The average age of the data or the time series in the dataset
+Average Life,The average duration of a financial instrument's cash flows
+Book Name,Name of the book containing the market shock impact data
+Book Identifier,Unique identifier for a specific book in the Market Shock Impact database
+Company Identifier,Unique identifier for each company in the market shock impact analysis
+Market Shock Impact Region,Region affected by a market shock event in the financial system
+Market Shock Strategy,The strategy employed to mitigate the impact of market shocks on the financial institution
+Maximum Balance Amount,The highest balance amount recorded for a specific financial instrument
+Market Shock Balance,The balance of a financial portfolio after simulating the impact of a market shock event
+Market Shock Impact,Assessing the impact of market shocks on the financial institution's risk exposure
+Basel III Local BTI,"A measure of the impact of a market shock on the bank's risk-weighted assets, as defined by the Basel III regulatory framework."
+Base Currency,The primary currency used for calculations and analysis in the Market Shock Impact model
+Market Shock Forward Amount,The amount of financial exposure in the market due to potential shocks
+Base Forward Exchange Rate,The starting exchange rate used for calculating the impact of market shocks on financial instruments
+Base Forward Rate,The starting point for calculating forward rates for different maturity dates
+Market Shock Index,Identifier for the market shock index used in the analysis
+Market Shock Index Rate,Rate used to measure the impact of market shocks on financial instruments
+Base Maturity Amount,The initial principal amount used in calculating the impact of market shocks on financial instruments
+Base Maturity Amount in Local Currency,"The original amount of a financial instrument at its maturity date, expressed in the local currency"
+BBB Open Date,The date when the BBB (Baa3) bond opened in the market
+Market Shock Open Date,Date when the market shock event occurred
+Market Shock Beneficiary,Entity or individual that benefits from a market shock event
+Market Shock Beneficiaries,Identification of the parties that benefit from a market shock event
+Beneficiary Identifier,Unique identifier for each beneficiary in the Market Shock Impact analysis
+Market Shock Loss,Estimated loss incurred by the company due to a market shock event
+Market Shock Indicator,Indicator of the impact of a market shock event on a specific financial instrument
+Market Shock Impact Book,Identifies the specific book related to market shock impact analysis
+Booking Region,Geographical region where a transaction is booked
+Brokered Deposit Indicator,A flag indicating if a deposit is brokered or not
+Market Shock Net Long Position in US Dollars,The financial market's exposure to potential losses or gains due to fluctuations in currency exchange rates
+Market Shock Net Short Position,The net short position in US Dollars resulting from a market shock scenario
+Budget Commitment Amount,Estimated financial commitment required to address market shocks
+Budget Allocation,The amount of budget allocated for a specific purpose or project
+Budget Month,The month for which the budget data is being considered
+Currency Exposure,Identifies the currency in which the market shock impact is being measured
+Market Shock Notional Exposure,The total nominal value of financial instruments exposed to market shocks
+Maximum Original Notional Amount for Buy Transactions,The highest possible notional amount for buy transactions in the market shock impact analysis
+Trading Indicator,Indicates whether a trade is a buy (B) or sell (S) transaction
+Business Unit Risk System,Identifies the risk management system associated with each business unit
+Book of Business,The set of financial products and services offered by a specific unit within the organization
+Market Shock Calculation Type,Type of calculation used to assess the impact of market shocks on the financial institution
+Market Shock Probability,Estimated probability of a market shock event occurring
+Carry Value,The value of a position that could be lost or gained due to market shocks
+Market Shock Impact Category,Classification of the impact of market shocks on different aspects of the business
+Market Shock Impact Categories,Categories of financial instruments or products affected by market shocks
+CCAR Asset Product Category,Risk classification of assets in the Comprehensive Capital Analysis and Review (CCAR) process
+CCAR Business Category,Classification of business units for Comprehensive Capital Analysis and Review (CCAR) purposes
+Division Name,Name of the division within the Cost Center
+Client Entity Identifier,Unique identifier for a client in the Market Shock Impact analysis
+Market Shock Type,Type of market shock impacting the financial institution
+FDIC Insurance Type,Type of FDIC insurance associated with a market shock event
+FDIC Institution Type,The type of financial institution regulated by the Federal Deposit Insurance Corporation (FDIC)
+FDIC Coverage Type,Type of FDIC coverage applicable to a financial institution
+FDIC Type,Federal Deposit Insurance Corporation (FDIC) type for a specific market shock event
+Market Shock Report Group,Identifies the group of reports related to market shock scenarios
+Market Shock Report Group Revenue,Revenue generated by the Market Shock Report group
+Market Shock Source,Identifies the source of a market shock event in the financial system
+Reference Identifier,Unique identifier for referencing specific data elements
+Market Shock Risk Weighted Assets,"The risk associated with potential market shocks, expressed as a weighted asset value"
+Average Life of Combined Portfolio,"The average remaining lifetime of a combined portfolio in years, calculated using the Cash Flow Parallel (CFP) method"
+Market Shock Combined Exposure Matrix Date,"Date of the Market Shock Combined Exposure Matrix, which is a tool used to analyze the impact of market shocks on the financial institution"
+Market Shock Combined Exposure Material Date,The date when the combined exposure data is available for market shock analysis
+Average Life of Portfolio,"The average duration of a portfolio's life, calculated based on the market shock impact"
+Market Shock Synchronization Expiration Date,Date when the market shock impact synchronization expires
+Market Shock Average Life,The average duration of market shocks experienced by the financial institution
+Market Shock Impact Date,Date of the market shock materiality assessment
+Market Shock Exposure Matrix Date,Date when the market shock exposure matrix is calculated
+Worst Expected Materialization Date,The date on which the worst expected change in the Constant Proportion Portfolio Insurance (CPPI) rates is projected to occur
+Client Cleared Leg Type,"The type of leg in a client's cleared trade, representing the specific financial instrument or transaction"
+Client Household Identifier,Unique identifier for each client household in the Market Shock Impact analysis
+Closed Position Market Value,The current market value of a closed position in a financial instrument
+Closed Structure Structural Market Value,"The structural market value of a financial instrument or portfolio under a closed-structure assumption, which means that no trading or price discovery is allowed."
+Interest Rate Sensitivity,The sensitivity of the financial instrument's value to changes in interest rates
+Commodity Type Code,A unique identifier for each commodity type in the market shock impact analysis
+COB (Close of Business) Date,The date when the market shock impact data was last updated
+Collateral Classification,Categorization of collateral assets based on their type and characteristics
+Collateral CUSIP,Unique identifier for financial instruments used as collateral in financial transactions
+Collateral Indicator,A flag indicating whether a specific market shock impact is related to collateral
+Collateral Net Liquidity,The net liquidity available in collateral after accounting for its obligations
+Collateral Par Value,The value of collateral used to mitigate the impact of market shocks
+Collateral Quantity,The amount of collateral used to mitigate the impact of market shocks
+Collateral Account Identifier,Unique identifier for a collateral account in the Market Shock Impact analysis
+Collateral Type Description,A brief description of the collateral type used in the Market Shock Impact analysis
+Collateral Value Conversion,The converted value of collateral in the Market Shock Impact analysis
+Collateral Value Currency,The currency in which the collateral value is denominated
+Market Shock Collection Group,A categorization of market shocks for better organization and analysis
+Collection Group,A unique identifier for a group of related collections in the system
+Market Shock Timestamp,Date and time when a market shock event occurred
+Market Shock Identifier,A unique identifier for each market shock event
+Market Shock Scenario,A hypothetical situation simulating the impact of an unexpected event on the financial markets
+Market Shock Comment,A text field to provide additional information or context about the impact of a market shock event
+Market Shock Component Identifier,Unique identifier for each component affected by a market shock event
+Credit Rating,A standardized measure of the creditworthiness of a debtor or a financial instrument
+Consent Required,Indicates whether consent is required for a specific market shock impact
+Consolidated 10Q Level 2,"Second-level hierarchy of financial data in the 10Q report, which provides detailed information about the company's liabilities and shareholders' equity"
+Consolidated 10Q Level 3,"The lowest level of detail in the 10Q financial report, providing a breakdown of the company's financial data"
+Consolidated 10Q Level 4,A specific level of detail in the financial reporting process
+Consolidated 10Q Level 5,A specific level of detail in the financial reporting of a company's performance
+Consolidated 10Q Level 7,A specific level of financial data consolidation in the 10Q report
+Consolidated 10Q Level 8,The 10Q is a financial report filed by public companies with the U.S. Securities and Exchange Commission (SEC). Consolidated 10Q Level 8 refers to a specific level of detail within the report.
+Consolidated 10Q Level 9,A specific level of financial data consolidation in the 10Q report
+Consolidated Cost Center,A group of cost centers combined for reporting and analysis purposes
+Consolidated Center Level 3,High-level grouping of cost centers for financial reporting purposes
+Consolidated Center Level 5,High-level grouping of cost centers for market shock impact analysis
+Consolidated Center Level 6,The highest level of consolidation for cost and revenue reporting purposes
+Consolidated Center Level 7,The highest level of consolidation for cost centers within a specific region or division
+Consolidated Center Level 8,Eight level hierarchy for consolidating financial data from different cost centers
+Consolidated Center Level,A specific level of consolidation within the organization for financial reporting purposes
+Consolidated Group,A group of related legal entities that are consolidated for financial reporting purposes
+Consolidation Group,A group of financial instruments that are consolidated for risk management purposes
+Management Consolidation Level 1,First-level management consolidation group for market shock impact analysis
+Management Consolidation Level 2,Second-level management consolidation group for assessing market shock impact
+Management Consolidation Level,Hierarchical level of management consolidation within the organization
+Market Shock Management Level,Level of management for assessing the impact of market shocks on the organization
+Market Shock Conversion,Indicates whether a Market Shock scenario has been converted into an actionable task
+Cost Center Region,Geographic region associated with a specific cost center
+Cost Center Level 1,First-level cost center classification for tracking and managing costs
+Cost Center Level 2,Second-level organizational unit within the Cost Center hierarchy
+Cost Center Level 3,Third-level division within the organization for cost allocation and reporting purposes
+Cost Center Level 4,Fourth-level grouping of cost centers within the organization
+Cost Center Level 7,The seventh level of cost center hierarchy for tracking and managing expenses
+Counterparty Representative,The representative of a counterparty involved in a transaction or trade
+Counterparty Sector,The industry or sector of a financial counterparty involved in a market shock event
+Country,The country where the market shock impact is being analyzed
+Country of Jurisdiction,The country where the legal and regulatory jurisdiction of a market shock event applies
+Country Risk Exposure,The country where the financial risk originates from
+Bond Coupon Rate,Interest rate paid by a bond issuer to the bondholder
+Bond Coupon Class,"The type or category of a bond's interest payment, such as fixed or floating rate"
+Coupon Rate,Interest rate paid on a bond's face value
+Bond Type,Type of bond associated with a market shock event
+Client Account Identifier,Unique identifier for each client account in the system
+Market Shock Netting Benefit,The net positive impact on the company due to market shocks
+Hypothecable Reconstitution Flag,Indicator of whether the portfolio can be reconstructed in the event of a market shock
+Credit Adjustment,The change in credit exposure due to a market shock event
+Credit Ultimate Party Identifier,Unique identifier for the party ultimately responsible for the credit exposure
+CRM Flag,Indicator of whether a Market Shock event is related to a Customer Relationship Management (CRM) issue
+Market Shock Netting Group,Identifies the group of financial instruments affected by a market shock event
+Currency of Measure,The currency used for expressing the value of financial transactions or amounts in the system
+Market Shock Notional Value,The current notional value of financial instruments affected by a market shock event
+Curve Name,Identifies the specific curve used for market shock impact analysis
+Customer Account Identifier,Unique identifier for each customer account in the system
+Days to Maturity,Number of days remaining until the maturity of a financial instrument
+Day Count,"Number of days in a specific period, often used for calculating accrued interest or tracking performance metrics"
+Decomposed Swap Chain,A detailed breakdown of the swap chain structure in the context of market shock impact analysis
+Market Shock Flag,Indicator of whether a market shock scenario is applied to the data
+Market Shock Depth,The maximum possible negative impact due to a market shock event
+Previous Dependent Market Shock Amount,The amount of dependent market shocks that occurred in the past
+Market Shock Reclassification Amount,The amount of re-classification required due to market shocks in the financial system
+Pre-Reclassification Maximum Impact Amount,The maximum possible impact on the portfolio before reclassification
+Reclassification Amount,The amount of money being reclassified in the Market Shock Impact analysis
+Previous Reclassification Amount,The amount of data previously reclassified in the Market Shock Impact analysis
+Trading Desk Identifier,Unique identifier for each trading desk within the financial institution
+Market Shock Direction,"Indicates the direction of the market shock, such as positive or negative, for a specific financial instrument"
+Market Shock Display Level,Level of detail at which the impact of market shocks is displayed in the system
+Market Shock Impact Display Level,Level of detail displayed in the Market Shock Impact analysis
+Exposure at Default (EAD),Estimated loss that would be suffered if a counterparty defaults on its obligations
+Earliest Maturity Date,The earliest date on which a financial instrument may mature or be redeemed
+Early Redemption Subtype,The specific type of early redemption event that occurred
+Early Termination Date,The date when a financial contract is terminated early due to market shocks
+Market Shock Effect,The impact of a market shock event on the allocation of funds
+Market Shock Effective Date,The date when the market shock impact becomes effective
+Market Shock End Date,The date when the market shock event ends
+Entity Consolidation,The process of combining multiple entities into a single one for reporting and analysis purposes
+Entity Group,Classification of entities according to their type or category
+Equity Trade Maturity Date,Date on which an equity trade is scheduled to mature or expire
+Market Shock Exception Indicator,Indicates if a row in the Market Shock Impact table is an exception or not
+Market Shock Exception Sign-off,A flag indicating that an exception has been signed off in the Market Shock Impact analysis
+Market Shock Sign-off,Indicates whether an exception related to a market shock has been signed off
+Market Shock Exclusion,Indicates whether a specific market shock scenario is excluded from the analysis
+Facility ID for Loans Collateral,Unique identifier for each facility that serves as collateral for loans
+Facility Origin Date,Date when a facility was originated or created
+Facility Source Code,Unique identifier for the facility source in the Market Shock Impact analysis
+Facility Status,"The current operational status of a facility, such as active or inactive"
+Market Shock Failure Type,Type of failure in the market shock impact analysis
+Funding and Derivatives Wisdom (FDW) Source,Identifies the source of funding and derivatives data used in the Market Shock Impact analysis
+Market Shock Feed,Feed containing information about the impact of market shocks on the financial institution
+Feed Product,The specific feed product used in the Market Shock Impact analysis
+Unique Identifier for Market Shock Scenarios,A unique alphanumeric code assigned to each Market Shock scenario for identification and tracking purposes
+Fill Forward Date,The date on which the missing data points will be filled forward in the Market Shock Impact analysis
+Hedging Instrument Type,The specific type of hedging instrument used to mitigate market risks
+Market Shock Entity Type,"Type of entity impacted by a market shock event, either the firm or a client"
+First Accrual Date,The date when the first accrual period starts for a Market Shock Impact event
+Floating Rate Day Count Convention,Specifies how interest rates are calculated for floating-rate financial instruments
+Floater Investor Identifier,Unique identifier for an investor participating in a floating rate note transaction
+Floater Margin,The margin earned from floating rate financial instruments in a portfolio
+Floating Rate Index,A standardized measure of the cost of borrowing used in financial markets
+Floater Reset Frequency,"The frequency at which the floater resets, used for risk management purposes"
+Floating Share Value,"The value of floating shares in a portfolio, which can change based on market conditions"
+Forward Starting Trade,"A trade that starts at a specific date in the future, typically used for risk management or hedging purposes"
+Market Shock Simulation,The amount of funds initially invested in a market shock simulation
+Forward Start Legacy Bucket Identifier,Unique identifier for the forward start legacy bucket in the Market Shock Impact analysis
+Forward Start Legacy Basket Maturity End,The end date of the legacy basket maturity for the forward start
+Market Shock Bucket,Categorization of market shock events based on their impact
+Forward Start Value,The value of an option contract at the start of the forward period
+Forward Start Value Currency,The currency in which the forward start value is denominated
+Market Shock Occurrence,Indicates the frequency of market shock events
+Market Shock Tenor,The duration or time period of a market shock event
+Funding Type,Type of funding used by the financial institution
+Currency Pairs for Market Shock Analysis,List of currency pairs used for assessing the impact of market shocks on foreign exchange transactions
+Market Shock Netting,Indicates whether the market shock netting record is applicable or not
+GAAP Code,A unique identifier for each financial instrument in the system
+General Ledger Type,The type of general ledger account that the Market Shock Impact data is associated with
+Market Shock Classification,Categorization of market shock impacts on different financial aspects
+Market Shock Inclusion,Indicates whether a specific market shock scenario is included in the analysis
+Financial Statement Level,Hierarchical level of financial statements in the accounting system
+General Ledger Account Code,A unique alphanumeric code used to identify specific financial accounts in the general ledger system
+GL Account Level 2,Second-level general ledger account code used for tracking and reporting financial data
+GL Account Level 3,Third-level general ledger account code for categorizing financial transactions
+GL Account Level 4,Fourth level of General Ledger account hierarchy for cost allocation
+GL Account Level 5,Fifth level of granularity in the General Ledger account hierarchy
+General Ledger Account Payable,Accounting record of money owed by the company to its creditors
+Accounts Receivable Account Code,The unique identifier for each account receivable in the financial system
+Currency Balance Amount,"The amount of currency held in a portfolio, which can be positive or negative"
+Market Shock Haircut,The percentage of loss applied to the position during a market shock scenario
+Hedging Entity,The entity responsible for managing risk through hedging strategies
+Hedge Type,Type of hedge used to mitigate market risks
+High Quality Liquid Asset Eligibility,Indicates whether an asset is considered a High Quality Liquid Asset (HQLA) and is eligible to be included in the Securities Pool (SECPOOL)
+High Quality Liquid Asset Level,The level of High Quality Liquid Assets (HQLA) held by the financial institution to withstand market shocks
+IFRS Net Loss Market Value,The net loss in market value of financial instruments due to a market shock event
+IFRS Net SMV,The net market value of financial instruments according to the International Financial Reporting Standards (IFRS)
+Market Shock Sensitivity Indicator,Indicator of whether a market shock impacts the population or not
+Market Shock Impact on Cash Collection,The negative impact on cash collections due to a market shock event
+Market Shock Cash Collection,The amount of cash received during a market shock event
+Market Shock Sensitivity Segment,Segment representing the sensitivity of a market shock in the financial system
+Initial Hedge Type,The type of hedge initially applied to a position in the market shock impact analysis
+Initial Margin Exposure,The initial margin required to cover potential losses from market shocks
+Instrument Type,The type of financial instrument being analyzed for market shock impact
+Insurance Coverage,Indicates whether a financial instrument or position is insured against market shocks
+Market Shock Insurance,Indicates whether a specific financial instrument is insured against market shocks
+Intercompany ELM Group,A group of related entities within the organization for intercompany transactions and reporting
+Intercompany Indicator,A flag indicating whether a record is related to intercompany transactions or not
+Intercompany Relationship,Relationship between different companies or business units within the organization
+Interest Rate Reset Frequency,The frequency at which the interest rate of a financial instrument is reset or adjusted
+Interest Sensitivity,Indicates the sensitivity of a financial instrument or portfolio to changes in interest rates
+Market Shock Internal Indicator,Indicates whether the Market Shock Impact is internal or external
+Market Shock Internal,Internal indicator of the impact of a market shock event on the financial institution
+Internal Party Name,Name of the internal party involved in the market shock impact assessment
+Market Shock Indicator Type,Indicates whether the market shock impact is internal or external to the organization
+Market Shock Relationship,Relationship between different factors affected by a market shock
+Investor Entity,The legal entity responsible for making investment decisions
+Investor Name,The name of the investor affected by a market shock event
+Market Shock Amount,The amount of impact on the financial position due to a market shock event
+Previous Impact Amount,The previous impact amount of a market shock event
+Pre-Reclassification Impact Amount,The amount of money affected by a market shock event before reclassification
+Previous IR Reclass Amount,The amount of interest rate reclassification applied to the portfolio in the previous period
+Issuer Identifier,Unique identifier for the issuer of a financial instrument
+Issuer Name,The name of the issuer in the Market Shock Impact analysis
+Market Shock Issue Date,Date when a specific market shock event occurred
+Business Recovery Management,Indicates whether business recovery management is required in response to a market shock event
+Market Shock Callability,Indicates whether a financial instrument can be exercised in case of a market shock event
+Market Shock Guarantee,Indicates whether a financial instrument is guaranteed in case of a market shock event
+Market Shock Impact Indicator,Indicates whether the market shock impact is related to an internal financial holding company or not
+Internal Legal Entity Flag,Indicates whether the legal entity is internal or external to the organization
+Market Shock Puttable Attribute,"Indicates if a market shock event is puttable, or can be exercised, by the counterparty"
+Liquidity Coverage Ratio Category,Categorical description of the liquidity coverage ratio calculation
+Legacy General Ledger Account,Account numbers from the previous financial system used for tracking transactions
+Market Shock Lendable Value,Estimated value of loans that can be provided during a market shock event
+Lendable Value,The value of assets that can be lent or borrowed in a financial market
+Lendable Value Conversion,The conversion of lendable value into a different format or currency
+Lendable Value Currency,Currency denomination of the lendable value for a specific market shock scenario
+Liquidity Facility Currency,The currency in which the liquidity facility is provided
+Liquidity Facility Letter of Credit,A letter of credit issued by a financial institution to ensure the availability of funds in case of a liquidity crisis
+Liquidity Net Shortfall Agreement,Indicates whether a liquidity net shortfall agreement is present for the market shock impact analysis
+Market Shock Loss Value,Estimated loss in value due to a market shock event
+Loan Account Identifier,Unique identifier for each loan account in the system
+Loan Amount Unfunded Max,Maximum unfunded loan amount for a specific market shock scenario
+Maximum Unfunded Committed Loan Amount,The highest possible unfunded loan commitment amount for a given market shock scenario
+Loan Application Identifier,Unique identifier for each loan application
+Loan Facility Control Number,Unique identifier for each loan facility in the Market Shock Impact analysis
+Loan Index Identifier,Unique identifier for each loan in the Market Shock Impact analysis
+Loan Opening Date,Date on which a loan account was opened
+Loan Outstanding Balance,"The remaining amount to be repaid on a loan, excluding interest and fees"
+Margin Account Entity,Identifies the specific margin account associated with a trade
+Margin Account Type,Type of margin account associated with a specific trading strategy
+Margin Account Type Description,A string representation of the type of margin account held by the client
+Market Shock Entity,Identification of the specific market shock event affecting the financial institution
+Margin Frequency,The frequency at which margin calculations are performed for risk management
+Market Shock Currency,Currency in which the market shock impact is measured
+Market Shock Value,The value of the market shock impact in millions of dollars
+Master Agreement Description,A brief summary of the terms and conditions of a financial contract
+Maturity Bucket End,The end date of a specific maturity bucket used for market shock impact analysis
+Maturity Bucket Start,The beginning date of a specific maturity range for market shock impact analysis
+Maturity Value,"The value of a financial instrument at its maturity date, when the principal amount and any accrued interest are repaid to the investor."
+Currency Denomination,The currency in which the market shock impact is denominated
+Market Shock Symbol,Unique identifier for each market shock event in the system
+Micro Underlier,The smallest component of a financial instrument or contract that can be priced or traded independently
+Market Shock Notional,The nominal or notional value of the financial instruments used in the model to calculate the impact of market shocks
+Market Shock Re-hypothecation Flag,Indicator of whether the re-hypothecation process has been applied to the market shock data
+Market Shock Rehypothecation,Indicates whether the Market Shock rehypothecation process has been applied to the data
+Market Shock Hypothetical Right,Hypothetical right or option to rehypothecate collateral in a market shock scenario
+Market Shock Negative Impact,The negative impact on the market due to a specific market shock event
+Market Shock Price Data,Historical market prices during the period of a market shock event
+Maximum Impact Amount,The highest possible positive or negative impact on the market under consideration
+Maximum Absolute Impact,The maximum possible positive or negative change in value for a specific market shock scenario
+Maximum Amount Prior to Shock,The highest value recorded for a specific financial metric before a market shock occurred
+Netting Eligibility,Indicates whether a position is eligible for netting or not
+Netting Group Count,Number of netting groups used to calculate the impact of market shocks on the portfolio
+Netting Legal Master Voucher Account,Account used for netting legal master vouchers in the system
+Netting Account for Market Shock Impact,Account used for netting purposes in the Market Shock Impact analysis
+Product Name,Name of the product or service offered by the financial institution
+Market Shock Impact Quantity,Estimated quantity of non-retail MSBNA securities affected by a market shock event
+Market Shock Eligibility,Indicates whether a security is eligible to be used as collateral in the event of a market shock
+Notional Currency Amount,The total nominal amount of financial transactions in a specific currency
+Notional Exposure for Market Shock,"The total exposure of the financial instruments in terms of their notional values, which are used to calculate potential losses or gains due to market shocks"
+Notional Exposure in US Dollars,"Theoretical amount of money involved in a financial transaction, used to calculate potential losses or gains"
+Notional Stress Duration in USD,"The hypothetical change in the value of a financial position or portfolio in US dollars, considering a specific stress scenario"
+Notional Steps,Notional values representing the number of steps in a financial instrument or contract
+Number of Aggregated Records,Total number of records combined from different sources for analysis
+Account Identification,Unique identifier for each account in the Market Shock Impact analysis
+Number of Offices,The number of offices affected by a market shock event
+Object Identifier Fees,Unique identifier for fee records related to financial instruments
+On-Balance Sheet Indicator,Indicates whether an asset or liability is on the balance sheet
+On Balance Sheet Indicator,A boolean flag indicating whether an item is on the company's balance sheet or not
+Operational Deposit Indicator,A flag indicating whether a specific market shock impact is related to an operational deposit
+Market Shock Optionality,The degree to which a financial contract can be modified or terminated in response to market shocks
+Oracle Account Number,Unique identifier for an Oracle account within the system
+Order Identifier,Unique identifier for each order in the Market Shock Impact analysis
+Organizational Structure,The hierarchy of divisions and departments within an organization
+Market Shock Origin Date,Date when a market shock event occurred or was recorded
+Original Party Identifier,Unique identifier for the original party involved in a market shock event
+Over-the-Counter (OTC) Legal Entity Indicator,Indicates whether a legal entity is involved in Over-the-Counter (OTC) transactions
+Over-the-Counter (OTC) Trade Indicator,A flag indicating if a trade is an OTC trade or not
+Over-the-Counter (OTC) Derivative Trade Indicator,Indicates whether a trade is related to an OTC derivative
+Over-the-Counter (OTC) Net Liquidity Value,"Estimated market value of OTC derivatives positions, accounting for netting and collateral agreements"
+Over-the-Counter (OTC) Net Small Market Value,The net small market value of Over-the-Counter (OTC) positions in the financial market
+Payoff Structure,"The specific structure of a financial instrument's payoff, which may include capped, floored, collared, or fixed/floating components."
+Payoff,The financial return or outcome of a specific market shock event
+Risk Type,Type of risk associated with a market shock event
+Market Shock Event Timestamp,Date of the market shock event
+Market Shock Sensitivity Factor,Measure of the sensitivity of a financial instrument or portfolio to market shocks
+Market Shock Transaction Indicator,Indicates whether a transaction is related to a market shock event
+Party Name in Market Shock Analysis,Name of the party involved in the market shock impact assessment
+Party Identifier for Market Shock Analysis,Unique identifier for counterparties involved in market shock impact analysis
+Pre-Reciprocal Insurance Indicator,A flag indicating whether a pre-reciprocal insurance arrangement is in place for a given market shock
+Market Shock Insurance Indicator,Indicator of whether a specific financial instrument is insured against market shocks
+Market Shock Refund Status,Indicates if a refund has been issued for a market shock event
+Market Shock Relationship Indicator,Indicates the relationship between a market shock event and a specific data point
+Market Shock Price Impact,The potential price fluctuation due to a market shock event
+Prime Brokerage,The primary brokerage firm that provides services to hedge funds or other investment partnerships
+Principal Balance,The total amount of money invested in a security or financial instrument before any adjustments or transactions
+Market Shock Process,Identification of the specific process affected by a market shock event
+Product,A unique identifier for each financial product or service offered by the company
+Product Accrued Interest,Interest accumulated on financial products within a specific period
+Product Category,Classification of financial products or services offered by the institution
+Product Description,A brief description of the financial product or service affected by a market shock event
+Product Hierarchy Level 1,First level of the product hierarchy in the Market Shock Impact analysis
+Product Hierarchy Level 2,Second level of product categorization in the market shock impact analysis
+Product Hierarchy Level 3,Third level of the product hierarchy in the Market Shock Impact analysis
+Product Hierarchy Level 4,Fourth level of the product hierarchy in the Market Shock Impact analysis
+Product Hierarchy Level 5,The fifth level of the product hierarchy in the Market Shock Impact analysis
+Product Hierarchy Level 6,Sixth level of the product hierarchy in the Market Shock Impact analysis
+Product Hierarchy Level 7,The seventh level of the product hierarchy in the Market Shock Impact analysis
+Product Principal Balance,"The total outstanding balance of a financial product, excluding interest and fees"
+Program Identifier,Unique identifier for each program in the system
+Proxy Name,A unique identifier for each proxy asset in the Market Shock Impact analysis
+Counterparty Exposure,Identification of the counterparty (client or institution) exposed to a market shock event
+Market Shock Loss Date,Date when a financial loss occurred due to a market shock event
+Debt Qualification Indicator,Indicator of whether a debt instrument meets specific qualification criteria
+Quantity of Market Shock Impact,The number of records related to market shock impact in the system
+Risk Assessment Category,A unique identifier for categorizing the level of risk associated with a market shock event
+Risk Assessment Status,Risk assessment status of a market shock impact event
+Reciprocal Deposit Indicator,A flag indicating if a reciprocal deposit is present in the system
+Market Shock Region,Region affected by a specific market shock event
+Regulatory Environment,The regulatory framework governing the financial institution's operations in a specific country
+Market Shock Requirement,The amount of funds required to cover potential market shocks in the financial system
+Market Shock Recovery,Indicates whether a market shock event has been recovered from
+Market Shock Reporting Date,Date when the market shock impact data was reported
+Reporting Entity,The specific entity for which the market shock impact is being reported
+Reporting Group,Group of cost centers for reporting purposes
+Market Shock Impact Reporting Tier Bucket,Categorization of the impact of market shocks on the financial institution
+Market Shock Report Date,Date of the market shock impact report
+Market Shock Impact Report,A report detailing the impact of market shocks on the financial institution
+Repo Rate,The interest rate at which banks can borrow funds from the central bank in the short-term
+Repo Type,Type of repurchase agreement in the financial market
+Market Shock Requirement Type,The type of requirement that needs to be addressed in response to a market shock event
+Residual CUSIP,Unique identifier for securities that remain after a market shock event
+Market Shock Residual Floater Share,The percentage of residual floater shares remaining after a market shock event
+Residual Maturity Years,The number of years remaining until the final payment is due on a financial contract or obligation
+Market Shock Analysis Identifier,Unique identifier for each market shock impact analysis run
+Retail Quantity Impact,Estimated impact on the retail quantity due to a market shock event
+Retail Position Quantity,The number of retail positions held in a market shock scenario
+Risk Manager Name,Name of the risk manager assigned to assess the impact of market shocks
+Risk Manager Location,The physical location of the risk manager responsible for assessing and mitigating market shock impacts
+Risk Measure Type,Type of risk measure used to assess the impact of market shocks
+Market Shock Risk,The potential financial impact of a market shock event on the portfolio
+Market Shock Risk Weight,"The relative risk exposure of a financial instrument or portfolio to market shocks, represented as a floating-point number"
+Market Shock Adjustment,Indicates whether a specific data row has been adjusted due to a market shock event
+Market Shock Unique Identifier,Unique identifier for each row in the Market Shock Impact table
+Market Shock Scenario Range,Range of unique scenario identifiers for market shock impact analysis
+Market Shock Simulation Identifier,Unique identifier for each market shock simulation run
+Market Shock Simulation Run Identifier,Unique identifier for each market shock simulation run
+Market Shock Simulation Range,Range of unique simulation runs for market shock impact analysis
+Risk Weighted Assets,The value of assets that are used to calculate the capital requirements for a financial institution
+Netting Set Identifier,Unique identifier for the netting set used for calculating the shock impact on the market
+Market Shock Sensitivity Type,Categorization of the sensitivity of financial instruments to market shocks
+Safe Region,Identification of a geographical area that is considered safe during market shock events
+Safe Source Classification,Identifying the source of funding as safe or risky in the context of market shocks
+Safe Source Reference,Unique identifier for the safe source of data in the Market Shock Impact analysis
+Schedule Identifier,Unique identifier for a specific schedule in the Market Shock Impact analysis
+Securitization Indicator,A flag indicating if a market shock impact is related to securitization or not
+Security Adapter Number,Unique identifier for security adapter in the Market Shock Impact analysis
+Security Category,Classification of securities based on their type or nature
+Market Shock Impact Segment,Division within the Fixed Income Division that the Market Shock Impact applies to
+Market Shock Segregation Indicator,Indicator of whether a market shock event is segregated or not
+Market Shock Segregation,Categorization of market shock events based on specific criteria
+Currency for Selling,The currency in which assets are sold during a market shock event
+Market Shock Sell Notional Value,The hypothetical value of assets that would need to be sold in a market shock scenario
+Market Shock Sell Notional Amount,The original notional amount of securities to be sold in the event of a market shock scenario
+Seniority Level,The level of seniority assigned to a specific market shock event
+Settlement Currency,Currency used for settlement of financial transactions
+Settlement Mechanism,"The process by which financial transactions are settled, such as delivery versus payment (DVP) or free delivery"
+Market Shock Settlement Flag,Indicator of whether a market shock event has been settled or not
+Stress Test Results,Results of stress tests conducted to assess the impact of extreme market conditions on the financial institution
+SOFR Migration Date,The date when the SOFR (Secured Overnight Financing Rate) migration process is scheduled to begin
+Market Shock Origin,Identifies the source of a market shock event in the financial system
+Market Shock Data Source,Identifies the source of market shock data used for analysis
+Market Shock Stability Indicator,Indicator of the stability of a market shock event
+Market Shock Start Date,Date when a specific market shock event begins
+Market Shock Status,Indicates the current status of a market shock event
+Market Shock Sub-Product,Identifies the specific sub-product affected by a market shock event
+Sub-Product Classification,Identification of specific sub-products within the financial institution's portfolio
+Market Shock Subtype,Categorization of market shock events based on their specific characteristics
+Swap Identifier,Unique identifier for a specific swap transaction in the system
+SWAP CUSIP Identifier,Unique identifier for a specific interest rate swap in the system
+Swap Reference,Unique identifier for a specific financial swap transaction
+Market Shock Reference,Identifier for the reference swap in the market shock impact analysis
+Market Shock Termination Notice Period,The duration of time (in days) required for a party to terminate a swap contract due to a market shock event
+Market Shock Unwinding,The process of reversing the impact of a market shock on the financial instruments
+Sweep Deposit Indicator,A flag indicating if a sweep deposit feature is enabled for a specific market shock event
+Account Name,The name of the account associated with the Market Shock Impact analysis
+Target Forward Stress Value,Estimated value of a financial instrument under a specific stress scenario
+Target Maturity Amount in Local Currency,The target amount of funds to be invested at maturity in the local currency for each cost center
+Market Shock Scenario Template,A predefined structure or pattern for creating market shock scenarios in the system
+Tenor Period,Duration of time used in financial transactions or investments
+Tenor Premium,The difference in yield between two bonds with different maturity dates but with the same credit quality and coupon rate
+Market Shock Reconciler,"A unique identifier for the Market Shock Reconciler, which is responsible for managing and resolving discrepancies in the data."
+Market Shock Impact Reporting,Identifying the three responsible reporters for market shock impact analysis
+Market Shock Risk Reporter,A unique identifier for the risk reporter responsible for assessing the impact of market shocks on the financial institution
+Market Shock Review Designation,Indicates the designated reviewer for the Market Shock Review process
+Market Shock Review,Indicates the person responsible for reviewing the impact of market shocks on the financial products
+Interest Rate Shock Indicator,Indicator of whether the interest rate shock has occurred for a specific deposit
+Maturity Feature,Characteristic of the maturity date of a financial instrument
+Total Book Value of Derivative Positions,The sum of the book value of all derivative positions held by the firm
+Market Shock Risk Exposure,"Total risk exposure due to market shocks, represented as a floating-point number"
+Total Portfolio Balance,"The sum of all assets held in a portfolio, including cash and securities"
+Total Insured Amount,The sum of all insured values for a specific risk or group of risks
+Total Insured Principal Amount,The total amount of principal that is insured in a financial contract or instrument
+Total Uninsured Amount,The total amount of uninsured losses in a market shock scenario
+Total Uninsured Principal Amount,The total amount of uninsured principal in a market shock scenario
+Trade Book Detail,Specific information about a trade book within the Market Shock Impact database
+Trade Book Details,Specific information about trades in the market shock impact analysis
+Market Shock Impact Timestamp,Date and time when the market shock impact occurred
+Market Shock Trade Date,Date when a market shock event occurred
+Trade Maturity Date,The date on which a trade or financial contract expires or is scheduled to be completed
+Trading Currency,Currency in which financial transactions are conducted
+Trading Flat,A measure of the sensitivity of a financial instrument to changes in market conditions
+Trading Flat Indicator,"A boolean flag indicating if the trading desk is flat, meaning no open positions"
+Transaction Category,The type of financial transactions in the market shock impact analysis
+Transaction Timestamp,Time of the transaction in milliseconds since the Unix Epoch
+Transaction to Trade Shock ID,Unique identifier linking transactions to trade shocks
+Transaction Currency Balance Amount,"The amount of currency held in a transaction account, used to calculate the impact of market shocks on the financial position of the institution"
+Treasury Control,A measure of the impact of market shocks on the treasury operations of the financial institution
+Market Shock Trigger,Identification of the specific event causing a market shock in the financial system
+Triparty Market Shock Impact,The impact of a market shock event on the triparty repo transactions
+Trust Identifier,Unique identifier for a trust in the Market Shock Impact analysis
+Trust Maturity Date,The date on which a trust agreement is scheduled to end or mature
+Type of Non-Debt Instrument,The type of non-debt financial instrument that may be affected by market shocks
+Underwriting Fees,Fees charged by a financial institution for assuming the risk of issuing a security
+Unencumbered Assets,"The value of assets that are not restricted or tied up in any way, and can be easily liquidated or used as collateral"
+Market Shock Monetary Impact,The financial impact of a market shock event in US Dollars
+USD Balance Sheet,"The USD balance sheet represents the financial position of the company in US Dollars, including assets, liabilities, and equity."
+US Dollar Exchange Rate,The exchange rate of the US Dollar against other currencies in the market
+Currency Exchange Rate Change,The difference between the current and hypothetical currency exchange rates in US Dollars
+USD FX Realized,Foreign exchange rate impact on USD cash flows
+USD FX Unrealized,Unrealized gains or losses in US Dollar (USD) foreign exchange transactions
+USD Interest Rate Sensitivity,Measure of the change in the present value of a bond or other financial instrument due to a 1% change in the USD interest rate
+Verification Status,Indicates whether the verification process for market shock impact has been completed or not
+Market Shock Verification,Verification of the current face amount of a position in the context of a market shock scenario
+Market Shock Version,Identifies the specific version of the Market Shock Impact analysis
+Market Shock Impact on Cash Collection Net Long APLD,The financial impact on cash collection net long APLD due to a market shock event
+Market Shock Impact on Cash Collection Net Short APLD,The financial impact of a market shock event on the cash collection net short amount for a specific trading desk
+Waterfall Name,Name of the waterfall in the Market Shock Impact analysis
+Product Hierarchy,Organization of products in a structured format for easy navigation and analysis
+Market Shock Account Identifier,Unique identifier for each account affected by a market shock event
+Market Shock Option,Indicates whether a market shock event has been written for a specific financial instrument
+Market Shock Risk Type,The type of market shock risk associated with a specific financial instrument or portfolio
+Adjusted Amount in USD,The US dollar equivalent of the adjusted value of the OTC derivatives exposure
+OTC Derivatives Exposure,The amount of exposure in US Dollars for Over-the-Counter (OTC) Derivatives contracts
+Rehypothecation Flag,Indicates whether the OTC Derivatives position can be rehypothecated
+Derivatives Exposure Default Setting,Indicates whether a specific derivatives exposure has been set as the default for a cost center or not
+Eliminations Amount,The amount of eliminations in US Dollars for OTC Derivatives transactions
+OTC Derivatives Exposure End Date,The date when the Over-the-Counter (OTC) derivatives contract expires or ends
+OTC Derivatives Exposure Timestamp,The date and time when a specific OTC derivatives exposure was entered into the system
+Accounts Payable Account,Account used to record the liability for goods and services purchased on credit from suppliers
+Accounts Receivable Account,Account used to record money owed to the company by its clients or counterparties
+Gross Mark-to-Market Revaluation Exposure,The total exposure resulting from the revaluation of all open over-the-counter (OTC) derivatives contracts before the application of netting or other offsetting arrangements
+Cash Collateral Received,Amount of cash received as collateral in over-the-counter (OTC) derivatives transactions
+Maximum Exposure Value,The maximum possible exposure amount for OTC (Over-the-Counter) Derivatives contracts
+Net Exposure Value,"The net exposure value of OTC Derivatives contracts, expressed in US Dollars"
+OTC Derivatives Exposure Identifier,Unique identifier for each OTC derivatives exposure record
+OTC Derivatives Unique Identifier,Unique identifier assigned to each OTC derivatives transaction or position in the system
+Unique Identifier for OTC Derivatives Exposure,A unique alphanumeric code assigned to each record in the OTC Derivatives Exposure database
+Counterparty Entity,The legal entity on the other side of an over-the-counter (OTC) derivatives transaction
+OTC Derivatives Net Long Exposure,"The net long exposure of over-the-counter (OTC) derivatives, representing the difference between the total long and short positions in OTC derivatives contracts"
+Collateral Resource,The value of assets pledged as collateral for off-balance-sheet commitments and guarantees
+Country of Issuer,The country where the issuer of the off-balance-sheet commitments and guarantees is located
+Off-Balance Sheet Commitments and Guarantees End Date,"The final date for off-balance sheet commitments and guarantees, indicating the expiration or termination of these financial obligations"
+Off-Balance Sheet Commitments and Guarantees,Records of off-balance sheet commitments and guarantees provided by the financial institution
+Forward Fill Flag,Indicates whether the forward fill method should be applied to the missing data in the financial statement
+Off-Balance Sheet Commitments and Guarantees Maturity Date,The date when the off-balance sheet commitments and guarantees expire or are fulfilled
+Maximum Off-Balance Sheet Amount,The highest possible off-balance sheet commitments and guarantees provided by the financial institution
+Off-Balance Sheet Commitments and Guarantees Reporting,Identifies the person responsible for reporting off-balance sheet commitments and guarantees
+Off-Balance Sheet Transactions,Unconsolidated financial transactions not reported on the balance sheet
+Off-Balance Sheet Commitments and Guarantees Source,Identifies the source of off-balance sheet commitments and guarantees
+Source System,The originating system that provides the data for the Off-Balance Sheet Commitments and Guarantees
+Off-Balance Sheet Summary,A summary of off-balance sheet commitments and guarantees provided by the financial institution
+Off-Balance Sheet Composition,Off-balance sheet commitments and guarantees provided by the financial institution
+Off-Balance Sheet Category,The category of off-balance sheet commitments and guarantees
+Business Transaction Date,Date when a business transaction occurred
+Cross-Region Data Relationship,Link between data from different geographical regions
+Omni Taps Transaction Relationships,Relationships between Omni Taps transactions in the system
+Omni Taps Transaction Relationship,Relationship between Omni Taps transactions in the system
+Omni Taps Transaction Amount,The monetary amount associated with each transaction in the Omni Taps system
+Omni Taps Transaction Identifier,Unique identifier for each transaction in the Omni Taps system
+SAP Internal Relationship,Unique identifier for the internal relationship within the SAP system
+SAP Legal Entity,Identifies the legal entity within the SAP system
+Omni Taps Transaction Origin,Identifies the source of the transaction in the Omni Taps system
+Omni Taps Transactions Reconciler,Reconciler responsible for the three-way reconciliation process in the Omni Taps Transactions system
+Omni Taps Transaction Reporter,Individual or system responsible for reporting transactions in the Omni Taps system
+Omni Taps Transaction Approval,Indicates the approval status of a transaction in the Omni Taps system
+Account Owner,The entity responsible for an account in the Omni Taps Transactions system
+Margin Excess Settings,Indicates whether the margin excess settings are applied to the account
+PB Margin Excess Timestamps,Timestamps indicating when the excess margin was recorded in the system
+Margin Excess,Positive difference between the available margin and the required margin for a specific position or trade
+PB Margin Excess Run Identifier,Unique identifier for each margin excess run in the system
+Term Length,The duration of a financial term or contract in days
+Excess Collateral Posted,The amount of collateral posted in excess of the required margin for borrowing
+Collateral Posted Segment,Segment of the collateral posted for margin lending purposes
+Utilized Collateral Percentage,The percentage of collateral posted that is being utilized for margin lending purposes
+Contractual Maturity Date,Date on which a financial contract is scheduled to be completed or settled
+Margin Lending Default Setting,Indicates whether a margin lending account has a default setting applied to it
+Margin Loan Balance,The outstanding balance of a margin loan provided by the financial institution
+Remaining Days to Maturity,Number of days remaining until the maturity date of a margin lending transaction
+Margin Lending Transaction ID,Unique identifier for each margin lending transaction
+Funding Source,The origin of the margin lending facility
+Margin Lending End Date,The date when the margin lending agreement expires or is terminated
+Margin Lending Transaction Timestamp,The date and time when a margin lending transaction was initiated or completed
+Maximum Margin Amount,The maximum amount of margin that can be lent to a client by the Portfolio Management team
+Margin Lending Job Identifier,Unique identifier for each margin lending job in the Portfolio Withdrawal Margin Lending system
+Account Category,Classification of accounts based on their type or function
+Pending Trade Currency,Currency denomination of the pending trade
+Pending Trade Identifier,Unique identifier for pending trades in the financial system
+Pending Trade Status,Indicates the status of a pending trade in the system
+Trade Expiration Date,The date when a trade is expected to be completed or expire
+Pending Trade Timestamp,The exact time when a trade was entered into the system
+Exclusion Reason,Specifies the reason for excluding a trade from the processing queue
+Pending Trade Feed,Feed containing information about pending trades in the system
+Trade Flow Direction,"Indicates the direction of the trade (e.g., buy or sell) in the pending trade"
+Market Value of Pending Trades,The total value of all pending trades in the financial markets
+Trade Default Status,Indicates whether a trade has defaulted or not
+Maximum Trade Amount,The maximum allowed trade amount for pending trades
+Pending Trade Prices,The price at which a trade is pending execution
+Unique Identifier for Pending Trades,A unique identifier assigned to each pending trade in the system
+Trade Origin,"The source of a trade, indicating where the trade is coming from"
+Pending Trade Start Date,Date when a pending trade was initiated
+Central Bank Eligibility,Indicates whether the funding pool is eligible to be used as collateral for central bank funding
+Funding Pool Timestamps,Records the date and time when transactions are entered into the funding pool
+High Loss of Securities Funding,The potential high loss of funding due to securities in the Phoenix Funding Pools
+Secured Funding Loss Rate,Percentage of secured funding that may be subject to loss
+Market Capacity,The total available market value for a specific purpose or investment strategy
+Market Capacity Currency,Currency denoting the market capacity for a specific funding pool
+Funding Maturity Date,Date on which a funding pool reaches its maturity
+Risk Rating,"Risk assessment of a funding pool, represented by a string"
+Regional Representation,Identifies the regional representation for each funding pool
+Phoenix Funding Pool Job Identifier,Unique identifier for each funding pool job in the Phoenix system
+Funding Scope,The range of funding sources available for investment
+Security Pool Type,Type of security associated with a funding pool
+Stress Long Ratio,A financial ratio used to assess the risk of a funding pool during periods of financial stress
+Stress Short Ratio,A measure of the potential impact of market stress on the fund's performance
+Unique Identifier for Phoenix Funding Pools,A unique 15-digit integer assigned to each Phoenix Funding Pool for identification purposes
+High Loss of Securities Funding Term,The term during which a significant loss of funding due to securities is expected
+Day Basis Code,Identifies the day count basis used for calculating interest rates for funding transactions
+Day Lag,The number of days by which the funding rate is shifted forward or backward in time
+Funding Eligibility,Indicates whether a funding request is eligible for approval
+Issue Currency Indicator,Indicates whether the funding rate is related to the issue currency
+Shortable Status,Indicates whether a security can be shorted or not
+Long Rate,Long-term interest rate used for funding purposes
+Funding Rate Override Code,A code representing the funding rate override for the Phoenix system
+Long Ratio,The ratio of the total notional amount of long positions to the total notional amount of short positions in a portfolio
+Funding Rate Type,Type of funding rate used for the Phoenix funding mechanism
+Funding Rate Expiration Date,The date on which the funding rate is scheduled to expire or has expired
+Unique Identifier for Funding Rate Calculations,A unique identifier assigned to each funding rate calculation run
+Short Rate,The short-term interest rate applied to the funding of financial transactions
+Funding Rate Identifier,Unique identifier for each funding rate in the Phoenix Funding Rates system
+Short Ratio,The ratio of a trader's total short positions to their total long positions
+Short Ratio Code,A unique identifier for the short ratio calculation method used in the Phoenix Funding Rates system
+Special Product Indicator,Indicates whether a funding deal is a special product or not
+Unique Identifier for Funding Rate Tables,A unique 16-digit identifier assigned to each funding rate table in the Phoenix system
+Portfolio Movement,The change in the value of a portfolio of financial instruments
+Portfolio Agreement Value,The monetary value of the portfolio agreement between Morgan Stanley and its clients
+Portfolio Agreement Type,The type of symmetry agreement applied to a portfolio
+Call Date,The date on which a call option can be exercised
+Call Status,"The current state of a financial instrument, such as active or inactive"
+Communication Cost Split,The proportion of communication costs allocated to each party in a portfolio agreement
+Disputed Amount,The amount of money in dispute for a portfolio agreement
+Cross-Entity Agreement,Indicates whether a portfolio agreement spans across multiple legal entities within the organization
+Dispute Age,"The age of a dispute in the Portfolio Agreement, measured in days"
+Dispute Reason Codes,Codes representing the reasons for disputes in portfolio agreements
+Portfolio Agreement Timestamp,The date and time when a portfolio agreement was created or updated
+Excess Exposure,The amount by which a portfolio's exposure exceeds the agreed limit
+Foreign Exchange Split,The proportion of a portfolio's value subject to foreign exchange risk
+Government Law Identifier,Unique identifier for government laws related to a portfolio agreement
+Portfolio Split Percentage,Percentage of a portfolio allocated to a specific investment
+Investment Management Virtual Machine Segregation,Identifies the virtual machine allocation for investment management purposes
+Listed Split Percentage,Percentage of a portfolio's value that is allocated to listed securities
+Loan Split Percentage,Percentage of a loan allocated to a specific portfolio agreement
+Lockup Margin Indicator,Indicates whether a lockup margin is present in the portfolio agreement
+Margin Call Date,"The date on which a margin call is issued to a client, requesting additional collateral to maintain the required margin level"
+Margin Group,A categorization of financial instruments in a portfolio agreement
+Master Agreement Entity,The legal entity responsible for the master agreement in a portfolio
+Master Agreement Reference,Unique identifier for the master agreement governing the relationship between the financial institution and its clients
+Dispute Amount,The amount of money involved in a dispute related to a portfolio agreement
+Net or Gross Portfolio Indicator,Indicates whether the portfolio is valued on a net or gross basis
+Portfolio Agreement Notes,Free-form text fields capturing additional information related to a portfolio agreement
+Notification Time,Time when a notification is sent or received in the context of a portfolio agreement
+Portfolio Swap Split,The proportion of a portfolio swap transaction allocated to a specific cost center
+Portfolio Agreement Reference,Unique identifier for each portfolio agreement
+Project Risk Indicator,"Indicator of the project risk status, using the RAG (Red, Amber, Green) system"
+Repo Split Percentage,Percentage of a portfolio's notional amount that is subject to a repurchase agreement
+Rounding Amount,The amount used for rounding off financial figures in a portfolio agreement
+Rounding Type,Specifies the type of rounding applied to financial figures in a portfolio agreement
+Unique Identifier for Portfolio Agreement,A unique alphanumeric code assigned to each portfolio agreement for identification and tracking purposes
+Sleeper Age,Age of a sleeper in a portfolio agreement
+Portfolio Sleepers Value,The value of portfolio sleeper positions in US Dollars
+SLEEPER\_USD\_INT,Interest rate for sleeper USD positions in the portfolio agreement
+Swap Split Ratio,Ratio of the notional amount of a swap that is subject to a specific cost center's risk
+Task Type,Type of task associated with a portfolio agreement
+Portfolio Threshold,"The minimum or maximum value of a portfolio's assets, used as a trigger for action or notification"
+Time Zone,Time zone setting for the portfolio agreement
+Transfer Deadline,The date by which a transfer of assets must be completed in a portfolio agreement
+Transfer Type,Type of transfer or security associated with a portfolio agreement
+Uncollateralized Payable,The amount owed by the financial institution without any collateral
+Valuation Agent,Entity responsible for providing valuations of financial instruments in a portfolio agreement
+Current Account Balance,"The current balance of a financial product, which may be positive, negative, or NaN"
+Product Default Setting,Indicates whether a product has a default setting or not
+Product Data Sign-off Status,Indicates whether the product data has been signed off or not
+Exchange Identifier,Unique identifier for financial exchanges in the system
+Trading Venue Identifier,Unique identifier for the trading venue where the product is being traded
+Unique Product Identifier,A unique alphanumeric code assigned to each product for identification purposes
+Product Issue Date,Date when a product was issued or released
+Security Identification,Unique identifier for each security issued by Morgan Stanley
+Product Data,"Information related to financial products, such as bonds, stocks, or derivatives"
+Product Identification Code,Unique alphanumeric code representing a specific product in the system
+Product Data Identifier,Unique identifier for each product in the system
+Underlying Security Identifier,Unique identifier for the underlying security associated with a financial product
+Unique Identifier for Financial Instruments,"A unique 9-character alphanumeric identifier for financial instruments, such as bonds, used for identification and reporting purposes"
+Product Rating Default Setting,Indicates whether the product rating is set as the default option
+Long/Short Term Indicator,Indicates whether a product rating is based on a long-term or short-term investment perspective
+Rating Source,The origin or provider of the product rating
+Rating Source Description,The source of the rating and its corresponding description
+Rating Type,"The type of rating assigned to a product, such as 'LT' for Long Term"
+Unique Identifier for Product Ratings,A unique alphanumeric code assigned to each product rating for identification and tracking purposes
+Product Rating Unique Identifier,Unique identifier for each product rating in the system
+Account Region,Geographic location of an account within the organization
+Refined Data Amount,The quantity of refined data used in the system
+Preloaded Reference Data Balance,The preloaded balance value of reference data in US Dollar currency format
+Credit Limit,Maximum amount of credit a bank allows for a specific account or customer
+Maximum Break Amount,"The highest amount at which a security's price can move up or down during a trading day, as specified by the exchange"
+Reference Data Code,Unique identifier for reference data records
+Continuous Journal Data Availability,Indicates whether the continuous journal data is available for the specific record
+Reference Data Currency,The currency represented in the reference data
+Reference Data Identifier,Unique identifier for reference data records
+Default Data Set Inclusion,Indicates whether a specific data set is included as the default option during the data preloading process
+Reference Data Preload Timestamp,Date and time when the reference data was preloaded into the system
+Reference Data Preloading Timestamp,Timestamp indicating when the reference data was preloaded into the system
+Reference Data Feed,The specific reference data feed used for preloading
+Data Flow Direction,Indicates the direction of data flow in the reference data preloading process
+Interest Rate Identifier,Unique identifier for each interest rate used in the system
+ISIN Code,"International Securities Identification Number, a unique identifier for financial instruments"
+Libra Account Type,Identifies the type of account associated with a specific Libra reference data record
+Liquidity Arrangement Maximum,Maximum limit for liquidity arrangements in the financial system
+Margin Rollup Code,Unique identifier for the margin rollup in the reference data preloading process
+Maturity Type,The type of maturity associated with a reference data record
+Notional Maximum Exposure,"The maximum possible exposure for a financial instrument, used for risk management purposes"
+Data Preload Path Type,The type of path used for data preloading in the system
+Portfolio Funding Reference,Unique identifier for reference data related to portfolio funding
+Principal Amount,The total amount of money invested in a security or financial instrument
+Reference Data RAG Key,Unique identifier for reference data risk assessment and grading
+Regional Data Identifier,Unique identifier for the region where the data is being preloaded
+Ref Data Preload Job Identifier,Unique identifier for each reference data preload job in the system
+Secured USD Amount,The amount of US Dollars secured in financial transactions
+Security Pool Reference Data,"Reference data related to securities, used for various financial calculations and operations"
+Segment Identifier,Unique identifier for a specific segment within the reference data preloading process
+Signatory Entity Identifier,Unique identifier for the entity that signs off on the reference data
+Ref Data Preload Status,The current status of reference data preloading process
+Trade Purpose,The purpose of a trade or financial transaction
+Reference Data Value Date,The date on which the reference data is applicable
+Allocated Market Value,The allocated market value of a financial instrument or position in the Repos - BRM system
+Axiom Ult Trading ID,Unique identifier for trading instruments in the Axiom database
+Benchmark,"A standard or point of reference for comparison, typically in the context of financial or performance metrics"
+Booked Maturity Date,The date when a financial transaction or contract is scheduled to be completed or settled
+Cash or Non-Cash Indicator,Indicates whether a transaction is cash (N) or non-cash (C) related
+Collateralized Value,The value of collateral used to secure a financial transaction or obligation
+Collateralized Value Currency,Currency in which the collateralized value of a repo transaction is denominated
+Repository Category,The category of a repository in the BRM system
+Settlement Days,Number of days required for the settlement of a financial transaction
+Stress Maturity Days,Number of days until the next stress maturity date for a repo transaction
+Deal Rate,Rate at which transactions are executed in the financial market
+Repository Setting Flag,Indicates whether a specific repository setting has been applied or not
+Repository End Date,The date when the repository is scheduled to end or has ended
+Repository Entry Timestamp,Records the exact time when a new entry was added to the repository
+Equity Index,"A standardized measure of the performance of a group of stocks, representing a specific market or sector."
+Evergreen Call Date,The date when the Evergreen process is called for the Repos - BRM system
+Evergreen Indicator,A flag indicating whether a repository is part of the Evergreen project or not
+Execution Date,Date when a specific operation or process was executed
+Execution Time,Duration it takes to complete a task or process
+Extendable Call Date,Date when a financial contract can be extended or renewed
+Extendable Period,The duration for which a financial transaction can be extended
+Repository Extendability,Indicates whether the repository can be extended or not
+Repository Type,Indicates whether a repository is fixed or floating in the BRM system
+Flow Schedule Indicator,An indicator that represents the flow schedule status of a repository
+Forward Indicator,A flag indicating whether a specific data record is forwarded or not
+Forward Starting Indicator,A flag indicating if the repo transaction starts in the future
+Funding Agent,Entity responsible for providing funding or financial support
+Funding Calculation Category,The category used for funding calculation purposes in the Repos - BRM system
+Initial Maturity Date,The date when a financial transaction or contract reaches its beginning stage
+Internal/External Repository Indicator,Indicates whether a repository is internal or external to the organization
+BRM Repository Override,An optional field to manually override the internal coverage value for a specific BRM Repository
+Repository Status,Indicates whether a repository is accessible or not
+Repository - Business Resiliency Management,Repository for storing data related to Business Resiliency Management
+Firm Funding Indicator,Indicates whether a repository is funded by the firm or not
+Last Sequence Number,The latest sequence number for each record in the repository
+Market Haircut,"The difference between the market value and the book value of a security, used to account for potential changes in the security's value due to market fluctuations"
+Market Value Shell,"The market value of the shell, which represents the value of the repo transaction excluding the value of the collateral"
+Maturing Amount,The total amount of funds that will mature or become due at a specific point in time
+Maturity Override Type,Type of maturity override applied to a repo transaction
+Maximum USD Exposure,The highest possible exposure to US Dollar (USD) transactions in the system
+Minimum Maximum Exposure,The lowest and highest possible exposure limits for a specific financial instrument or position
+Minimum Exposure,The lowest possible exposure in US Dollars for a specific financial instrument
+Repository Identifier,Unique identifier for each repository in the system
+Market Value Price Date,Date when the market value of a financial instrument was last calculated
+Price Source for Repositories,Identifies the source of the market value for the repos in the system
+Maximum Accrued Fees,The highest amount of fees that have been accumulated but not yet invoiced for each Repository
+Maximum Accrued Interest for Deals,The highest amount of accrued interest calculated for each deal in the system
+Maximum Dirty Market Value,The highest possible market value of a position before it has been settled or closed
+Maximum External Fund Loss,The maximum possible loss incurred by external funds managed by the BRM (Business Risk Management) team
+Maximum External Unfound Collateral,The maximum possible amount of external collateral that has not been found or identified
+Maximum Funding Value,The highest amount of funding available for a specific repository
+Maximum High Fund Loss,The highest possible loss incurred by a fund
+Maximum Unfound Collateral Amount,The highest amount of unfound collateral recorded for a specific Repository
+Maximum Median Fund Loss,The highest amount of median fund loss allowed for a specific financial instrument
+Maximum Repository Interest Rate,The highest interest rate allowed for a repository in the system
+Maximum Shell Value,The highest possible value for the shell in the Repos - BRM system
+New Funding Amount,The amount of new funding being requested or approved for a project or initiative
+Offside Order Number,Unique identifier for an order placed outside the normal trading system
+Offshore Net Amount,"The offshore net amount represents the total value of transactions processed offshore, which is used to calculate fees and commissions."
+Order Reference Number,Unique identifier for each order placed by the client
+Other Legal Entity Identifier,Unique identifier for other legal entities related to a specific repository
+Pool Utilization Factor,Ratio of the number of tasks assigned to a resource compared to the total number of tasks the resource can handle
+Security Prices,Market prices of securities in the Repos - BRM trading system
+Principal Party Company Identifier,Unique identifier for the main party involved in a transaction or agreement
+Repository Quantity,Number of repositories in the BRM system
+Risk Status,"Risk assessment status of a repository, using a standardized Red, Amber, Green (RAG) scale"
+Remaining Deposit Time,The remaining time until a deposit is due for a specific financial transaction
+Rolled Trade,"A trade that has been rolled over, which means the settlement date has been postponed to a future date."
+Rollover Amount,The amount of funds reinvested in a financial instrument upon maturity
+Repository Record Number,Unique identifier for each record in the repository
+Repository Run Identifier,Unique identifier for each execution of a repository process
+Repository Sequence Number,Unique identifier for each repository in the BRM system
+Settlement Type,Type of settlement for financial transactions in a repository
+Source Repository,Identifies the source of the repository in the system
+Repository Start Date,Date when a specific repository was created or became active
+Stress Haircut Factor,A measure of the additional loss applied to a position's value due to stress events or market turbulence
+Stress Maturity Date,Date on which the financial stress test is scheduled to be completed
+Total Maximum Upgrade Cost,The total maximum cost associated with upgrading the BRM Repos
+Trade Currency,Currency in which financial transactions are denominated
+Third-Party Repository Indicator,Indicates whether the repository is managed by an external third-party provider
+SAP Account Hierarchy,Hierarchical representation of SAP account numbers
+SAP General Ledger Account Code,Unique identifier for each account in the SAP General Ledger system
+SAP Account Hierarchy Level,Fourteen-character code representing a specific level in the SAP account hierarchy
+SAP Account Hierarchy Level 15,Fifteenth level of the account hierarchy in SAP's accounting system
+SAP Account Hierarchy Level 16,Sixteenth level of the account hierarchy in SAP's accounting system
+SAP General Ledger Account Level,Second level of detail in SAP General Ledger account structure
+General Ledger Account Level 5,"The fifth level of a hierarchical structure in the General Ledger account, used for organizing and tracking financial data"
+Unique Record Identifier,A unique identifier assigned to each record in the SAP General Ledger Account feed
+SAP GL Account Feed Unique Identifier,Unique identifier for each SAP General Ledger account feed
+SAP General Ledger Account Reference,Unique identifier for each SAP General Ledger account
+Standard Industrial Classification Code,A four-digit code used to classify businesses based on the type of economic activity they engage in
+SSIC Name,Name of the Security Symbol Identifier Code (SSIC)
+Unique Identifier for Data Tables,A unique identifier assigned to each data table in the system
+Stock Loan Benchmark,A reference point or standard used to compare the performance of stock loans in the financial market
+Stock Loan Maturity Date,Date on which the stock loan transaction is scheduled to be completed
+Stock Loan Business Date,The date when the stock loan transaction occurred
+Stock Loan Type,Indicates whether the stock loan is cash or non-cash
+Client Classification,Categorization of clients based on specific criteria
+Client Margin Requirement,The minimum amount of collateral required from a client for a stock loan transaction
+Stock Loan Collateral Identifier,Unique identifier for the collateral in a stock loan transaction
+Stock Loan Creation Time,Timestamp indicating when a stock loan was created
+Stock Loan Currency,The currency in which the stock loan transaction is denominated
+Stock Loan Identifier,Unique identifier for stock loans in the system
+Settlement Period,Number of days required for the settlement of a stock loan transaction
+Stock Loan Category,The category of stock loan transactions in the system
+Stock Loan Default Setting,Indicates whether a stock loan account has a default setting or not
+Stock Loan Expiration Date,The date when a stock loan is scheduled to end
+Stock Loan Transaction Timestamp,Records the date and time when a stock loan transaction occurred
+Stock Loan Exception Signoff,Indicates whether an exception has been signed off for a stock loan transaction
+Stock Loan Execution Date,Date on which the stock loan transaction was executed
+Extendable Type,Type of extendable feature in the Stock Loan system
+Stock Loan Fee Rate,The fee charged for a stock loan transaction in the financial market
+Stock Loan Indicator,Indicates whether a stock loan transaction is in progress
+Funding Region,The geographical area where the funding for a stock loan is being provided
+Stock Loan Haircut,The difference between the loan value and the market value of a stock used as collateral in a stock loan transaction
+Stock Loan Firm Funding Indicator,Indicates whether a stock loan is funded by the firm or not
+Stock Loan Prepaid Indicator,Indicates whether the stock loan is prepaid or not
+Stock Loan Loss Rate,Percentage of secured funding lost due to stock loan transactions
+Stock Loan Maturity Value,The total amount of stock loans that will mature on a specific date or within a specified period
+Stock Loan Maturity Override Type,The type of override applied to the maturity date of a stock loan
+Maximum Stock Loan Exposure,The highest possible exposure amount for a specific stock loan transaction
+Minimum Exposure Limit,The lowest acceptable level of exposure for a specific stock loan transaction
+Stock Loan Price Date,Date when the stock loan price was last updated
+Price Source for Stock Loan,Identifies the source of the market value for stock loan transactions
+Maximum Borrow Amount,The highest amount that can be borrowed for a specific stock loan transaction
+Maximum Excess Unfound Collateral,The maximum possible excess collateral that is not found in the system
+Maximum Unfound Collateral,The highest amount of unfound collateral recorded for a specific stock loan transaction
+Maximum Excess Fund Loss,The maximum possible excess fund loss due to stock loan transactions
+Maximum Unfunded Collateral,The highest amount of unfunded collateral that can be provided for a stock loan transaction
+Original Row Identifier,Unique identifier for the original record in the Stock Loan system
+Original Counterparty ID,Unique identifier for the original counterparty in a stock loan transaction
+Parent Code,Unique identifier for the parent entity in the stock loan system
+Stock Borrower Name,The name of the party borrowing stocks in a securities lending transaction
+Stock Loan Pending Event Identifier,Unique identifier for a pending event in the stock loan process
+Stock Loan Price,The price at which stocks are being loaned in the financial market
+Stock Loan Participants,Unique identifier for the principal party involved in a stock loan transaction
+Product Origin,Identifies the source of the product in the stock loan process
+Stock Loan Quantity,The number of stocks borrowed in a stock loan transaction
+Stock Loan Interest Rate,Interest rate applied to stock loans in the financial system
+Stock Loan Transaction ID,Unique identifier for each stock loan transaction in the system
+Stock Loan Data Source,Identifies the source of the stock loan data in the system
+Stock Loan Start Date,Date when a stock loan transaction begins
+Stock Loan Strategy,Identification code for the specific stock loan strategy
+Stock Loan Database Identifier,Unique identifier for each record in the Stock Loan database
+Stock Loan Term Indicator,Indicator of the term date for stock loan transactions
+Stock Loan Transaction Date,Date of the stock loan transaction
+Triparty Indicator,Indicates whether the stock loan transaction involves a triparty agent or not
+Ultimate Trading Name,The official name of the company or organization that is engaged in trading activities
+Stock Loan Amount,The amount of money involved in a stock loan transaction
