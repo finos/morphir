@@ -1,0 +1,345 @@
+Feed Name,Feed Source Name
+Derivatives Positions,E*GTS
+GL Accounts,ATLAS
+Cost Centres,ATLAS
+BAAC,Datalink (SRD)
+TAPS Account Data,Datalink (SRD)
+Legal Entities,Datalink (SRD)
+Defined Liquidity Groups,LiquityHub
+Central Bank Access,LiquityHub
+Product Data,Datalink (SRD)
+Product Ratings,Datalink (SRD)
+FX Rates,Datalink (SRD)
+Phoenix Funding Pools,Market1
+Phoenix Funding Rates,Market1
+Counterparty Details,Datalink (SRD)
+PB Free Cash,Wire-D
+Derivatives Collateral,E*GTS
+IPB Free Cash Balances,IPBFinance
+TAPS Cash at Bank,BaselHub
+Loan IQ - Pending,LoanIQ (SPG)
+Loan IQ - Drawn,LoanIQ (SPG)
+Loan IQ - Undrawn,LoanIQ (SPG)
+Unencumbered Assets - AS,Global Inventory Manager
+Unencumbered Assets - EU,Global Inventory Manager
+Unencumbered Assets - NA,Global Inventory Manager
+GL Only Cash,Basel
+GWM Cash,Basel
+Triton Sub-Debt,Triton/Avalon
+Triton Money Markets,Triton/Avalon
+Downgrade Triggers,E*GTS
+Pending Trades,TAPS_EUR
+Listed Derivatives,LD Data Hubs
+Omni Taps Transactions,Finance Data Warehouse
+Fails,SafeMetrics
+Letters of Credit,Global Creditor Relations LC (Letter of Credit)
+Cross Currency Cashflows,WISE Warehouse
+PWM Margin Lending,RTM -- Portfolio Margin
+FX Cashflows Fwd,DerivOne
+FX Cashflows Spot,DerivOne
+MS Issued Securities,LEXI
+Physical Commodities,WISE Warehouse
+Eligible Securities - BOE,FID1
+Eligible Securities - ECB,FID1
+Stock Loan - BRM,BRM Metrics and Reporting
+Index Lists,LiquityHub
+Index Constituents,Datalink (SRD)
+EEA States,LiquityHub
+Off Bal Sheet Com and Guarantees,Manual
+Repos - BRM,BRM Metrics and Reporting
+Tender Option Bonds,MuniTrust
+Equity Swap Bridge Collateral,Arranging
+Non Dated Capital Resources,Manual
+PB Margin Lending,RTM -- Portfolio Margin
+Primary Issuances,Manual
+Tbas,MAC Allocations
+Portfolio Agreement,E*GTS
+Internal Coverage,Global Inventory Manager
+CVA Margin Requirements,CVA Trader
+CVA Netting Group - Party,CVA Trader
+Unencumbered Assets - MSSB,Bank Resource Management (MSSB mainframe)
+Lockup,AQUA
+Stock Loan/Repo-MSSB,Bank Resource Management (MSSB mainframe)
+Account Bridge,Datalink (SRD)
+Long Term Debt - C1,CreditOne
+Long Term Debt - DSP,Pharos (Swap Trade Capture)
+GICS CLASSIFICATION,Datalink (SRD)
+GWM Mortgages,PBG Finance Framework
+Product Attribute,Datalink (SRD)
+Funding Links,Market1
+Aqua Allocations,AQUA
+Equity Swap Bridge Collateral naa,Libra
+MSWM FA Debit/Crdit Balance,Retail Banking Data Warehouse (RBDW)
+MSWM Collateral,Retail Banking Data Warehouse (RBDW)
+MSWM Branch,Retail Banking Data Warehouse (RBDW)
+Long Term Debt - STS,Ripple
+PB Global Assets,PB Funding engine - Coffer
+Global Currency Deposits,Retail Banking Data Warehouse (RBDW)
+Long Term Debt - Subledger,FDW ODESSA
+CRE Loans,RESI-ALP
+Intellimatch Cash,Intellimatch (Ops Control Apps)
+Libra Exchange Collateral,Libra
+Counterparty Issued Commercial Paper,Manual
+Bloomberg Data,P2
+PB Trade Date Positions,PB Funding engine - Coffer
+PB Wires,PB Funding engine - Coffer
+PB Margin Excess,PB Funding engine - Coffer
+WM Client Assets,BaselHub
+WM Wires,BaselHub
+WM Free Credits,BaselHub
+WM Margin,BaselHub
+Taps Business Definition,Datalink (SRD)
+Long Term Debt ELN,GRS
+Unencumbered Asset Location,Global Inventory Manager
+GWM Loans - PLA/LAL,Retail Banking Data Warehouse (RBDW)
+WM Margin Loans,BaselHub
+WM Shorts Longs,BaselHub
+Agent Lender Disclosure,BRM Metrics and Reporting
+Interest Payable-Receivable,Finance Data Warehouse
+CRE Loans Collateral,CREL-AMOS
+UK Client Money Protection-Aqua,AQUA
+Dividends Payable-Receivable,WISE Warehouse
+GWM Loans - TL,Retail Banking Data Warehouse (RBDW)
+Unsecured Debt Manual,Manual
+Bloomberg Central Bank Haircut,FID1
+Brokered CD,Big Mac
+Derivatives MTM HLBA,E*GTS
+EGTS Sleeper Collateral Cusip,E*GTS
+Cross Currency IR Swaps,DerivOne
+SSIC Data,Datalink (SRD)
+Funding Pool Mapping,T3
+MSWM FDB Client View,Cage (KGS)
+Structured CD - SD Feed,OTCDB
+Legacy SAP GL Account Mapping,ATLAS
+SAP GL Account feed,ATLAS
+IT Cusip Feed,LiquityHub
+PWM Loans and Deposits,Temenos T24
+Employee Loans,Manual
+Cash Assets Inventory,WISE Warehouse
+Loan Hub,LoanHub
+FIN41 Netting Summary,Regal
+FIN41 Nettable Detail,Regal
+CVA MTM SCENARIO,CVA Trader
+CVA Entity Grouping (CVA TRADES),Credit Risk RDX
+Gold Swaps and OPALS ,Manual
+Net Client Distribution,BaselHub
+CVA GRS Drop Trade Delta (CVA TRADES),Credit Risk RDX
+Listed Derivative Exposure,Raven
+OTC Derivatives Exposure,FDW FDWDB
+Savings Deposit Program (SDP),RBDW-BDP
+Bank Deposits Program (BDP),RBDW-BDP
+Joint Ventures,COMPASS
+CVA Expected Trade Cashflows,CVA Trader
+FID Structured CD TD,Ripple
+PB Simulation Feeds,PB Funding engine - Coffer
+Warforge Side Letter RAG Feed,Warforge
+GRS-IED Risk Leg Details,GRS
+RIPPLE-FID-Risk Leg Details,Ripple
+RFM01-payin,Magnet
+RFM02-swap,Magnet
+RFM06-mcr_var_monthly_forcast,Manual
+RFM07-mcr_var_daily_forcast,Manual
+RFM08-mcr_market_risk_spot,Manual
+Fronting and Participation,DSL Loans
+FX open options,DerivOne
+RFM09-mcr_capital_resource_spot,Manual
+RFM10-mcr_basic_risk_spot,Manual
+RFM13-mcr_ia_pb_percentage_upload,Manual
+PWM Banking Credit Limit,Credit File Application
+MOL,CM Core
+RFM14-DS_0303_FACT_FINANCE_TRADE,DerivOne
+Ref Data Preload,LiquityHub
+RFM15-wwr,CVA Trader
+RFM16-mrdw,Market Risk RAVE
+RFM17-bmetExtract,BMET
+RFM18-IEDExtract,Horizon
+Triton SPV,Triton/Avalon
+FCA Attribution,Financing Cost Attribution
+Third party Sideletters,Manual
+CCP IM Cleared BU Allocation ,LiquityHub
+CCP IM Listed  BU Allocation,LiquityHub
+EBS Unsecured Financing,RDRS EBS
+Third Party Deposits,MSWM Thor
+Market Shock Impact,LiquityHub
+RFM19-DS_2201_FACT_DOWNGRADE_ATES,Manual
+RFM20-DS_2202_FACT_ATES_IMPORT_EXPORT,Manual
+RFM21-DS_2203_FACT_DOWNGRADE_COLLATERAL_IMPACT,Manual
+BTB Cash,TAPS_EUR
+CVA Trade Equity IA,Credit Risk RDX
+CVA Group Equity IA,Credit Risk RDX
+Long Term Debt - BTB,FDW FDWDB
+RFM22-DS_2204_FACT_REPLACEMENT_COST,Manual
+OTC Collateral,E*GTS
+RFM23-DS_2205_DOWNGRADE_VM,Manual
+FID Structured CD SD,FDW ODESSA
+Equity BU Allocation,Manual
+RFM24-DS_1601_REF_LEGAL_ENTITY,Manual
+RFM25-DS_1602_REF_LEGAL_ENTITY,Manual
+RFM26-DS_1603_REF_LEGAL_ENTITY,Manual
+RFM27-egts_counterparty,Manual
+RFM28-egts_umr,Manual
+RFM29-rrp_DS_REF_CURRENCY,Manual
+RFM31-rrp_SRC_CDS_NET_LONG,Manual
+RFM34-rrp_SRC_US_CREDIT_WATCHLIST,Manual
+RFM35-rrp_SRC_CCF_MAPPING,Manual
+RFM37-0302_CoRep_Forecasting_Export,FDW Axiom LN
+RFM38-9177_CoRep_Forecasting_Export,FDW Axiom LN
+Asset Tier,Market Risk RAVE
+Average Daily Volume,Horizon
+FX Principal Derivatives,CVA Trader
+Budget Allocation,LiquityHub
+FTP Tenor,LiquityHub
+Raven JV,Raven
+Account Beneficiary Mapping,MSWM
+BDP Position,MSWM
+Savings Position,MSWM
+MS Global Currency Deposits,MSWM
+MS Issued CDs Position,MSWM
+FX Swaps,DerivOne
+GCBM OTC POSITIONS,Race
+GCBM LISTED POSITIONS,Race
+MRDW MTM Risk,Market Risk RAVE
+Long Term Debt Libra Cashflow,Libra
+SAP GL IFRS Hierarchy,ATLAS
+U.S. Bank FTP Spread Rates,PBG Finance Framework
+Equity Margin Lending,DSL Loans
+CVA Market Shocks,CVA Trader
+RFM39-mcr_other_assets_spot,Manual
+RFM40-HEADCOUNT,Query
+DELTA STRUCTURED PRODUCT,PB Funding engine - Coffer
+Failed Sales and Purchases,LiquityHub
+FID Unsecured Funding TD,Ripple
+Etrade,LiquityHub
+Etrade HLA,LiquityHub
+IFRS Derivative Collateral,TAPS_EUR
+IFRS Listed Derivative Exposures,TAPS_EUR
+Etrade Deposits,LiquityHub
+Eaton Vance,LiquityHub
+IFRS OTC Derivative Exposures,TAPS_EUR
+Tender Option Bonds Floater Notes,MuniTrust
+Tender Option Bonds Collateral,MuniTrust
+Tender Option Bonds Residual,MuniTrust
+Tender Option Bonds Floater Investor,MuniTrust
+Failed Sales and Purchases,TAPS_EUR
+Omni Renovated GL Balances,WISE/WebServices
+Inter-Affiliate Funding – BTB Feed,TAPS_EUR
+ETrade Stock Borrow and Loans,LiquityHub
+ETrade RegU Loans,LiquityHub
+ETrade Reverse Repo and Repo,LiquityHub
+Trade Payables And Receivables,TAPS_EUR
+ETrade BDP Position,MSWM
+Collateral Balances,TAPS_EUR
+ETrade REGU,Manual
+Etrade Deposits RBDP,MSWM
+HQLA Collateral Eligibility,T3Collateral
+Collateral HQLA Eligible Sec Pool,T3Collateral
+CSA Derivatives,Race
+EQ TRS,Pharos (Swap Trade Capture)
+FID TRS ,RICE
+RFM41-ACTIVITY,Query
+RFM42-ATLAS,Lexicon
+RFM43-FOALLOCATION,COMPASS
+RFM44-NONCOMPGL_MTD,Query
+RFM45-AquaNetCapital_5711,AQUA
+RFM46-AquaNetCapital_0201,AQUA
+RFM48-ds_0404_ref_counterparty,Manual
+RFM59-winddown_profile_upload_0302,Manual
+RFM60-winddown_profile_upload_9177,Manual
+RFM61-fdw_balance_sheet,Manual
+RFM62-balance_sheet_curve,Manual
+RFM63-income_statement_curve,Manual
+RFM64-month_off_balance_sheet,Manual
+RFM65-quarter_off_balance_sheet,Manual
+RFM66-us_bank_income_statement_forecast,Manual
+RFM67-rwa_density_0201,Manual
+RFM68-rwa_density_0302,Manual
+RFM69-rwa_density_9177,Manual
+RFM70-RFM_MOE_ME,Finance Data Warehouse
+RFM71-RFM_MOE_DAILY,Finance Data Warehouse
+RFM72-fdw_gl_subledger,CWB
+RFM73-CapitalRiskChargeByProduct,Race
+RFM74-CapitalRiskChargeByNettingSet,Race
+RFM75-LargeExposureDetail,Manual
+RFM76-CapitalRiskChargeByProductManual,Manual
+RFM77-RFM_MSE_ME,Finance Data Warehouse
+RFM78-RFM_MSE_DAILY,Finance Data Warehouse
+RFM79-msim_income_statement_forecast,Manual
+RFM81-FDW_IFRS_MOE_DAILY,Finance Data Warehouse
+RFM82-FDW_IFRS_MOE_ME,Finance Data Warehouse
+RFM83-FDW_IFRS_MSE_DAILY,Finance Data Warehouse
+RFM84-FDW_IFRS_MSE_ME,Finance Data Warehouse
+RFM85-risk_controller_spot_0201,Manual
+RFM86-risk_controller_spot_0302,Manual
+RFM87-risk_controller_spot_9177,Manual
+RFM88-NONCOMPGL_YTD,Query
+RFM89-ILST Contingency output,LiquidityRisk
+RFM90-MSSB Margin Data Upload,Manual
+RFM91-Client Margin Excess & Netting Benefit,Manual
+RFM92-Tax Repatriation,Manual
+RFM93-MSCS Daily Net Capital Computation,Manual
+RFM94-MSCG Daily Capital Estimates,Manual
+RFM96-Valuation Adjustments,Manual
+RFM97-Litigation,Manual
+RFM98-WIM,Manual
+RFM99-company,Legend
+RFM100-entity_default_currency,Manual
+RFM102-opex_fmi_annual_costs,Manual
+RFM103-opex_litigation_cost,Manual
+RFM104-distress_loss_manual_adjustment,Manual
+RFM105-other_bs_initial_balance_upload,Manual
+RFM106-VA_Input_CC_6_Upload_Id,Manual
+RFM107-VA_Input_CC_7_Upload_Id,Manual
+RFM108-mssb_schedule,Manual
+RFM109-mssb_pnl,Manual
+RFM110-mssb_margin_data,Manual
+RFM111-usbanks_dta_impact,Manual
+RFM112-usbanks_etb_deductions,Manual
+RFM113-usbanks_manual_total_assets,Manual
+RFM114-usbanks_upfront_losses,Manual
+RFM115-MSIM_COMP_CHANGE,Manual
+RFM116-MSIM_OTHER_LIABILITIES,Manual
+RFM117-MSIM_RECEIVABLES_CURVE,Manual
+RFM118-MSIM_RETENTION_PAYMENTS,Manual
+RFM119-MSIM_CAPITAL_CALL_CHANGE,Manual
+RFM120-MSIM_TRADING_DCP_CHANGE,Manual
+RFM121-MSIM_ACCURED_FORMULAIC,Manual
+RFM122-MSIM_SEED_AMOUNT_CHANGE,Manual
+RFM123-MSIM_DISTRESS_LOSSES,Manual
+RFM124-choir_treasury_sensitivity,Market Risk RAVE
+RFM125-choir_treasury_pnl,Market Risk RAVE
+AFS/HTM/MTM Wise Feed,Finance Data Warehouse
+COLLATERAL SUBSTITUTION BRM,T3Collateral
+OFF BALANCE SHEET DEPOSITS,RBDW-BDP
+Failed Sales and purchases Bonds,Finance Data Warehouse
+ETrade LOC,Retail Banking Data Warehouse (RBDW)
+Failed Settlements,TAPS_EUR
+ILST BDP Position,MSWM
+C1-FRN-Feed,Big Mac
+Trend-FRN-Feed,IRD Trend
+TX-FRN-Feed,OTCDB
+Structured CD - TD Feed,GRS
+Warforge Principal Protection Feed,Warforge
+LTD Distribution Info Puller,Big Mac
+Senior Loans Amortization schedule,LoanIQ (SPG)
+SACCR Derivative Trade,
+Collateral LD,TAPS_EUR
+FID Broker Dealer Trades Feed,Brain
+FID Allocations for Sales Trades,Brain
+GCM Activity Feed,Big Mac
+IED Unsecfunding Activity Feed,OTCDB
+IED Unsecured Underliers,LCM System
+Loans Collateral,TAPS_EUR
+Fully Paid Lending,RBDW-BDP
+Renovated OTC Derivatives Exposure,FDW El Hombre
+FID1 TLAC API,
+Notional Feed File,
+Optionality Report Feed File,
+Trend API,
+TX Liquidity Schedule Feed File,
+SACCR_DERIVATIVE_TRADE_LD,
+Renovated Listed Derivative Exposure,Finance Data Warehouse
+Collateral Substitution,RTM -- Portfolio Margin
+CCAR_QST_BHC_RWA,
+CCAR_QST_BHC_SLR,
+fdw_gl_subledger_automated,
+Renovated Global Currency Deposits,Retail Banking Data Warehouse (RBDW)

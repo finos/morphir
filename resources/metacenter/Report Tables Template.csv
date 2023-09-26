@@ -1,0 +1,737 @@
+Report Table Group,Report Table Name,Report Table ID,Reporting Class,Server Name,Schema Name,Table Name,Products,Feed ID,Feed Name,Source Report Table Name,Logic
+6G - Product,6G - Inflows - Assets - Capacity,RT-6G-IA-2,6G,nyqd_lmfr_ate,,,Capacity,33; N/A,Loan IQ - Drawn; Federal Home Loan Bank of New York Statement,6G - Order of Allocation - Firm Long; 6G - Order of Allocation - Unencumbered Central Bank Prepositioned; 6G - Order of Allocation - Unencumbered IP FHLB; 6G - Order of Allocation - Unencumbered IP FRB,"OOFA Use in (""UNENC_IP_FRB"", ""UNENC_CENTRAL_BANK_PREPOSITIONED"", ""UNENC_IP_FHLB"") and OOFA Source is “Firm Long” (App C-III)
+
+Loan IQ - Drawn Feed, where Pledge Status is “PLEDG” and Loan Amount Funded USD > 0
+
+Manual Dataset, derived from FHLB NY Statement"
+6G - Product,6G - Inflows - Assets - Encumbered Assets,RT-6G-IA-7,6G,nyqd_lmfr_ate,,,Encumbered Assets,89; N/A,Internal Coverage; Federal Home Loan Bank of New York Statement,6G - Order of Allocation - Client Short PB; 6G - Order of Allocation - Client Short WM; 6G - Order of Allocation - Customer Affiliate Short; 6G - Order of Allocation - Firm Bank Loans; 6G - Order of Allocation - Firm Short; 6G - Order of Allocation - House IM Posted; 6G - Order of Allocation - House VM Posted; 6G - Order of Allocation - House VM Posted Excess; 6G - Order of Allocation - Lockup; 6G - Order of Allocation - NCSA Short; 6G - Order of Allocation - PDS Short; 6G - Order of Allocation - Stock Loan,"OOFA Use NOT in (""UNENC_DEFUNDED"", ""UNENC_FIRM"", ""UNENC_INVESTMENT_PORTFOLIO"", ""UNENC_OVERBORROW"", “UNENC_TREASURY_SEC_POOL"", “UNENC_CENTRAL_BANK_PREPOSITIONED"", ""CLIENT_DEPOT"", ""UNENC_IP_FRB"", ""UNENC_IP_FHLB"") and OOFA Source is “Firm Long” (App C-III) [Report MS Issued Securities on the basis of CUSIP Issuer Party ID not issued within the same DLG and Ultimate Counterparty ID is “BBB00319701”]
+
+Internal Coverage Feed, where SOURCE_TYPE is “Firm”, LONG_SHORT_CODE is “L”, PRODUCT_HIERARCHY_LEVEL_1 NOT in (“Cash And Other Equivalents”, “Derivative Contracts”, “DO NOT POST”), PRODUCT NOT “123456808”, SOURCE is “Regulatory Investment Portfolio” and (DLG_TYPE is “CONSOLIDATED” OR DLG_ID is NOT NULL)
+
+Manual Product, adjusted from I.A.2, where securities collateral is pledged at the Federal Home Loan Bank of New York  and/or Federal Reserve Bank"
+6G - Product,6G - Inflows - Assets - Forward Asset Purchases,RT-6G-IA-6,6G,nyqd_lmfr_ate,,,Forward Asset Purchases,48; 330,Pending Trades; Failed Settlements,,"Pending Trades Feed, where Trade Date <= Reporting Date, Start Date > Reporting Date, End Date >= Reporting Date, Product Hierarchy Level 1 not “Derivative Contracts” or “Referential Instruments”, CUSIPs not like 99X%, RW NRW  is “NRW” and (Net Buy Trades  or (Nettable is “False” and Flow Ind is “B”)) 
+
+Failed Settlements Feed, where Global COA Level 2 = “LIABILITIES” and PL Date – Settlement Date > 5 working days"
+6G - Product,6G - Inflows - Assets - Restricted Reserve Balances,RT-6G-IA-4,6G,nyqd_lmfr_ate,,,Restricted Reserve Balances,44; 256,Triton Money Markets; BTB Cash,,"BTB Cash and Triton Money Markets TH Feeds, where Entity Type is “Central Bank”, Feed Product is not in (“OVERDRAFT”,”REC”) [BTB Cash only] and TenQ Level 4 is in (“Segregated Cash”, ”Non-Interest Bearing Segregated Cash”, ”Interest Bearing Segregated Cash”)  "
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA-1,6G,nyqd_lmfr_ate,,,Secured Loans; Unsecured Loans,33; 125; 142; 180; 186; 187; 213; 331; 336,Loan IQ - Drawn; GWM Mortgages; CRE Loans; PWM Loans and Deposits; GWM Loans - TL; GWM Loans - PLA/LAL; Employee Loans; ETrade LOC; Loans Collateral,6G - Order of Allocation - Firm Long; 6G - Order of Allocation - Client Depot; 6G - Order of Allocation - Unencumbered Firm; 6G - Order of Allocation - Unencumbered Investment Portfolio; 6G - Order of Allocation - Unencumbered Overborrow; 6G - Order of Allocation - Unencumbered Treasury Sec Pool,"OOFA Use in (“CLIENT_DEPOT"", ""UNENC_FIRM"", ""UNENC_TREASURY_SEC_POOL"", ""UNENC_INVESTMENT_PORTFOLIO"", ""UNENC_OVERBORROW"", ""UNENC_DEFUNDED"") AND OOFA Source is “Firm Long” (App C-III)
+
+Secured Loans
+Loan IQ-Drawn Feed, Accrual Status not “NACC” or ""NAIFP"", Maturity Date > Reporting Date, Is Being Renewed is “N”, Market Value Ccy USD <= 0, MX AMT > 0, Risk Type not “Interest Only Strip”, collateral From FDW Loans Collateral Feed = N and Term Indicator is “Y” 
+(Market Value Ccy USD <= 0 excludes data with pro-rated collateral)
+Loan IQ-Drawn Feed, Accrual Status not “NACC” or ""NAIFP"", Maturity Date > Reporting Date, Is Being Renewed is “N”, MX AMT > 0, Risk Type not “Interest Only Strip”, collateral From FDW Loans Collateral Feed = Y and Term Indicator is “Y”
+GWM Loans PLA/LAL Feed, where Loan Type is in (“PL”, NULL, ""NPL"") and Loan Coll Ind is “C”
+GWM Loans - TL Feed, where Loan Amount Funded MX > 0 and Collateral Value > 0
+GWM Mortgages Feed, where Mortgage Lifecycle is “Long” and Collateral Value > 0 
+CRE Loans Feed, where Status Loans is in (“Long”, ""Sold Forward"") and Product Type not “IO Strip”
+ETrade LOC Feed [No Restrictions]
+
+Unsecured Loans
+Loan IQ - Drawn Feed, where Risk Type not “Interest Only Strip”, Accrual Status not “NACC” or “NAIFP”, Maturity Date > Reporting Date, MX AMT > 0, Is Being Renewed is “N”  MarketValueCcyUSD <= 0,  collateral From FDW Loans Collateral Feed = N Pledge Status is not “PLEDG” and Loan Amount Funded USD > 0 
+Loan IQ - Drawn Feed, where Risk Type not “Interest Only Strip”, Accrual Status not “NACC” or “NAIFP”, Maturity Date > Reporting Date, MX AMT > 0, Is Being Renewed is “N”,  collateral From FDW Loans Collateral Feed= Y Pledge Status is not “PLEDG” and Loan Amount Funded USD >   0
+
+PWM Loans and Deposits Feed, where Counterparty BBB ID is not NULL and PB Cash Value USD > 0 (on Legal Entity, Counterparty BBB ID and Currency Basis)
+GWM Loans – TL Feed, where Loan Amount Funded MX > 0, Collateral Value = 0 and Loan Coll Ind is “C”
+Employee Loans Feed, where Performing is “Performing”"
+6G - Product,6G - Inflows - Assets - Unrestricted Reserve Balances,RT-6G-IA-3,6G,nyqd_lmfr_ate,,,Unrestricted Reserve Balances,44; 256,Triton Money Markets; BTB Cash,,"BTB Cash Feed, where Version is “DailyEtrade”, Entity Type not “Central Bank”, Feed Product not in (“OVERDRAFT”,”DREC”), TenQ Level 4 in (“Interest Bearing Dep With Clr Orgs”, “Non-Interest Bearing Dep With Clr Orgs”, ""Brokers Dealers and Clearing Orgs Rec"") and 
+ADJUSTED_USD_AMT >= 0
+(Determined by Business Date, Legal Entity, Party ID, Currency and Product Type)"
+6G - Product,6G - Inflows - Assets - Unsettled Asset Purchases,RT-6G-IA-5,6G,nyqd_lmfr_ate,,,Unsettled Asset Purchases,48; 330,Pending Trades; Failed Settlements,,"Pending Trades Feed, where Trade Date <= Reporting Date, Start Date > Reporting Date, End Date >= Reporting Date, Product Hierarchy Level 1 not “Derivative Contracts” or “Referential Instruments”, CUSIPs not like 99X%, RW NRW  is “RW” and (Net Buy Trades  or (Nettable is “False” and Flow Ind is “B”)) 
+Failed Settlements Feed, where Global COA Level 2 = “LIABILITIES” and PL Date – Settlement Date <= 5 working days"
+6G - Product,6G - Inflows - Other - Collateral Called for Receipt,RT-6G-IO-2,6G,nyqd_lmfr_ate,,,Collateral Called for Receipt,87,Portfolio Agreement,,"Portfolio Agreement Feed, where Task Type is “Margin Call Action” and Margin Call Date not NULL"
+6G - Product,6G - Inflows - Other - Derivative Receivables,RT-6G-IO-1,6G,nyqd_lmfr_ate,,,Derivative Receivables,94,CVA Expected Cashflows,,"CVA Expected Cashflows Feed
+Scenario is ""Base"" and Reporting Plane ID is 0 and Feed Version is ""uncoll"" and Metric like (CFPAY%, CFRECEIVE%)) or (Feed Version is ""ra"", Time Horizon >=271, Time Horizon <=365 and Metric like PECF_%)) and Not on exclusion list
+Exclusion list is based on following Netting id:
+2546547, 2546546, 0617U0NZ6, 0617U0O02, 0617U0AX5, 0617U0AV9     
+Netting:
+- Single value calculated (as driven by Net Gross Indicator as “N” or “G” for Netting Allowed or Disallowed) per Netting ID, Time Horizon, Currency and (for Net Gross Indicator as “G”) Metric > 0 then report under I.O.1 
+- Netting is on a Netting Group ID, Counterparty and Time Horizon Basis. For currency reporting, netting is also based on currency.
+Netting group IDs starting with ETP% are considered for netting, where Net Gross Indicator is “N”.
+Netting group IDs starting with ETP% are not considered for netting, where Net Gross Indicator is “G”.   "
+6G - Product,6G - Inflows - Other - Interest and Dividends Receivable,RT-6G-IO-6,6G,nyqd_lmfr_ate,,,Interest and Dividends Receivable,43; 207; 208,Triton Sub-Debt; Interest Payable-Receivable; Dividends Payable-Receivable,,"Dividends Payable-Receivable & Interest Payable-Receivable Feeds, where GL Account begins “1”
+Triton Sub-Debt Feed where MX Cash Value > 0"
+6G - Product,6G - Inflows - Other - Lock-up Balance,RT-6G-IO-5,6G,nyqd_lmfr_ate,,,Lock-up Balance,184; 256; 316,UK Client Money Protection-Aqua; BTB Cash; ETrade Reverse Repo and Repo,,"UK Client Money Protection-Aqua Feed, where Business Unit in (“IPB (3558)”, “PWM Americas (5121)”, “PWM Australia (T569)”, “PWM - Hong Kong - Employee (3804)”, “PWM - London - Employee (3314)”, “PWM Hong Kong (3829)”, “PWM Singapore (3829)”, “PWM - London (3331)”)
+Lockup Feed, where Business Division in (“Prime Brokerage”, “MSSB”)
+E*TRADE:
+BTB Cash Feed, where Feed Product not in (“OVERDRAFT”,”DREC”), Party ID for Legal Entity in (“9540”, “9541”), TenQ Level 4 in (“Interest Bearing Customer Reserve”, “Non-Interest Bearing Customer Reserve”) and ADJUSTED_USD_AMT >= 0
+(Determined by Business Date, Entity, Party ID, Currency and Product Type)
+ETRADE Reverse Repo and Repo Feed, where RepoType is “15c3”"
+6G - Product,6G - Inflows - Other - Net 30-Day Derivative Receivables,RT-6G-IO-7,6G,nyqd_lmfr_ate,,,Net 30-Day Derivative Receivables,94; 95,CVA Expected Cashflows; CVA Margin Requirements,,"CVA Expected Cashflows & CVA Margin Requirements Feeds, where Version is “Net30”, Not on Exclusion List, Reporting Plane ID = 0, Scenario is “base”, Metric in (CFPAYMEAN_%, CFRECEIVEMEAN_%, FNFLOWMEAN_%), Time Horizon in (0 to 29) and Future value is not 0
+Single value calculated (as driven by Net Gross Indicator as “N” or “G” for Netting Allowed or Disallowed) per Netting ID, Time Horizon, Currency and (for Net Gross Indicator as “G”) Metric > 0"
+6G - Product,6G - Inflows - Other - Other Cash Inflows,RT-6G-IO-9,6G,nyqd_lmfr_ate,,,Other Cash Inflows,125; 158,GWM Mortgages; MSWM FA Debit/Crdit Balance,,"MSWM FA Debit/Crdit Balance Feed, where Account Type is “0”, Product Type is “CASH” and Flow Ind is “D”"
+6G - Product,6G - Inflows - Other - Principal Payments Receivable on Unencumbered Investment Securities,RT-6G-IO-8,6G,nyqd_lmfr_ate,,,Principal Payments Receivable on Unencumbered Investment Securities,35; 36; 37; 101,Unencumbered Assets - AS; Unencumbered Assets - EU; Unencumbered Assets - NA; Unencumbered Assets - MSSB,,"Unencumbered Assets - [AS, EU, MSSB, NA] Feed, where Firm Client is “Investment Portfolio”"
+6G - Product,6G - Inflows - Other - TBA Sales,RT-6G-IO-3,6G,nyqd_lmfr_ate,,,TBA Sales,86,Tbas,,"Tbas Feed, where Buy Sell Ind is “S” and Product like 99X% and DLG_NAME NOT IN (“Morgan Stanley Private Bank NA”, “Morgan Stanley Bank NA”) AND RELATED_DLG_NAME NOT IN (“Morgan Stanley Private Bank NA”, “Morgan Stanley Bank NA”)
+Intercompany replication logic (from O.O.3)
+Where 6G_CODE is “O.O.3” AND DLG_NAME=“Morgan Stanley and Co LLC” AND RELATED_DLG_NAME=“Morgan Stanley and Co International plc” create 6G_CODE is “I.O.3” AND DLG_NAME=“ Morgan Stanley and Co International plc “ AND RELATED_DLG_NAME=“ Morgan Stanley and Co LLC “ AND 6G_CODE is “O.O.3” AND DLG_NAME=“ Morgan Stanley and Co International plc “ AND RELATED_DLG_NAME=“External”"
+6G - Product,6G - Inflows - Other - Undrawn Committed Facilities Purchased,RT-6G-IO-4,6G,nyqd_lmfr_ate,,,Undrawn Committed Facilities Purchased,33; 34; 76; 79; 125; 142; 186; 187; 233; 307; 308; 309; 310,Loan IQ - Drawn; Loan IQ - Undrawn; Off Bal Sheet Com and Guarantees; Repos - BRM; GWM Mortgages; CRE Loans; GWM Loans - TL; GWM Loans - PLA/LAL; Fronting and Participation; Tender Option Bonds Floater Notes; Tender Option Bonds Collateral; Tender Option Bonds Residual; Tender Option Bonds Floater Investor,,"This leverages O.O.4 & O.O.5 Reporting Logic with regards to Contractual Fronting Exposures and Sub-participations identified on the basis of Deal ID, Counterparty, Legal Entity, Currency and Maturity Date, where Fronting Legal Entity is Not Null (Inter-affiliate Fronting)."
+6G - Product,6G - Inflows - Secured - Collateral Swaps,RT-6G-IS-4,6G,nyqd_lmfr_ate,,,Collateral Swaps,79,Repos - BRM,6G - Order of Allocation - On BS Asset Exchange Borrow; 6G - Order of Allocation - Reverse Repo; 6G - Order of Allocation - Stock Borrow,"OOFA Source is “Reverse Repo” and OOFA Source is Cash is “N” (App C-III)   
+Or when Source is “Reverse Repo”  and COUNTERPARTY_ID = 'BBB00238530' AND TRADE TYPE IN ('BVF', 'PLG', 'APLG') and OOFA Source is Cash “Y”.
+
+OOFA Source is “Stock Borrow” and OOFA Source is Cash is “N” (App C-III)     
+OOFA Source is “On BS Asset Exchange Borrow (PDS)” (App C-III) (Liquidity Interpretation Forum Decision LIF153) and Source is Cash is “N”
+
+Uncollateralized Borrows
+Repos - BRM Feed, where Sec Fin Exclude (App C-III) is NULL, Flow Ind is “B” and TAPS Trading Account is “07700A0T3”  "
+6G - Product,6G - Inflows - Secured - Margin Loans,RT-6G-IS-5,6G,nyqd_lmfr_ate,,,Margin Loans,33; 89; 162; 187; 200; 292; 336,Loan IQ - Drawn; Internal Coverage; PB Global Assets; GWM Loans - PLA/LAL; WM Margin Loans; Equity Margin Lending; Loans Collateral,6G - Order of Allocation - Client Long PB; 6G - Order of Allocation - Client Long WM; 6G - Order of Allocation - NCSA Long,"OOFA Source in (“Client Long PB”, “NCSA Long”) and (SOURCE_CASH_VALUE > 0 OR MARKET_VALUE > 0 ) (App C-III)
+
+OOFA Source is “Client Long WM” and Product Type is “MGN” (App C-III)
+
+PB Global Assets Feed: Non-Rehypothecatable Collateral is derived directly from the TH Feed where Flow Ind is “D” (Available Market Value USD and Cash Value Restated USD are aggregated at the Counterparty BBB ID Level.  The counterparties having aggregate Available Market Value = 0 and aggregate Cash Value Restated > 0 are excluded from the Order of Allocation.  Unencumbered is defaulted to “false” in this case.)
+
+GWM Loans PLA/LAL Feed, where Loan Type in (“PL”, NULL) and Loan Coll Ind is “C”
+
+Loan IQ - Drawn Feed, where Market Value CCY>0 (on Facility ID Basis) for Equity Margin Lending Feed (on MS Entity/LoanIQ Facility Control Number Basis) and collateral From FDW Loans Collateral Feed = N
+
+WM Margin Loans Feed, where DLG in (ETS, ETALLOTH) and type is “MGN” – (E*TRADE Bank, E*TRADE Securities LLC,  E*TRADE - All Other, E*TRADE - All Other Entities , 50 51 52) and version is ETRADE"
+6G - Product,6G - Inflows - Secured - Other Secured Loans - Non-Rehypothecatable,RT-6G-IS-8,6G,nyqd_lmfr_ate,,,Other Secured Loans - Non-Rehypothecatable,33; 125; 142; 186; 187; 331; 336,Loan IQ - Drawn; GWM Mortgages; CRE Loans; GWM Loans - TL; GWM Loans - PLA/LAL; ETrade LOC; Loans Collateral,,"GWM Mortgages Feed, where Mortgage Lifecycle in (“Long”, “Forward Sale”), Collateral Value > 0 and Is Heloc is “N”
+
+CRE Loans Feed, where Status Loans in (“Long”, “Sold Forward”) and Product Type <> “IO Strip”
+
+Loan IQ-Drawn Feed, Accrual Status not in (“NACC”, “NAIFP”), Maturity Date > Reporting Date, Is Being Renewed is “N”, MX AMT > 0, Risk Type not “Interest Only Strip” and Term Indicator is “Y” and collateral From FDW Loans Collateral Feed = Y
+
+GWM Loans - PLA/LAL Feed, where Loan Type is “NPL”, Loan Coll Ind is “C” and Product Type is “LAL Term Loan”
+
+GWM Loans - TL Feed, where Loan Amount Funded MX > 0, Collateral Value > 0 and Product Type is “TL Term Loan” and Loan Coll Ind is “C”
+
+ETrade LOC Feed [No Constraints]"
+6G - Product,6G - Inflows - Secured - Other Secured Loans - Rehypothecatable,RT-6G-IS-6,6G,nyqd_lmfr_ate,,,Other Secured Loans - Rehypothecatable,79; 89; 200,Repos - BRM; Internal Coverage; WM Margin Loans,6G - Order of Allocation - Client Long WM; 6G - Order of Allocation - Customer Affiliate Long; 6G - Order of Allocation - Reverse Repo,"OOFA Source is “Reverse Repo”, Trade Type not in (“APRP”, “BSB”, “DTC”, “GEN”, “MEG”, “MGN”, “MTA”, “PBX”, “PRP”, “PVR”, “REP”, “RGC”, “RVF”, “APLG”, “BCI”, “BVC”, “BVF”, “BVM”, “BVU”, “PLG”, “SLC”, “TKR”, “CAR”, “DRV”, “CCL”, “REK”, “MMK”, “CLF”, “CLP”, “PLD”, “LNT”, “SLF”, “SLK”, “EXC”, “EXN”) and OOFA Source is Cash is “Y” (App C-III)
+
+OOFA Source is “Client Long WM” and Product Type is “NPL” (App C-III)
+OOFA Source is “Customer Affiliate Long” (App C-III)
+
+Repos-BRM Feed, where Start Date>Reporting Date, Sec Fin Exclude (App C-III) is NULL, Flow Ind is “B” and Trade Type not in (“APRP”, “BSB”, “DTC”, “GEN”, “MEG”, “MGN”, “MTA”, “PBX”, “PRP”, “PVR”, “REP”, “RGC”, “RVF”, “APLG”, “BCI”, “BVC”, “BVF”, “BVM”, “BVU”, “PLG”, “SLC”, “TKR”, “CAR”, “DRV”, “CCL”, “REK”, “MMK”, “CLF”, “CLP”, “PLD”, “LNT”, “SLF”, “SLK”, “EXC”, “EXN”) (App C-III) "
+6G - Product,6G - Inflows - Secured - Outstanding Draws on Secured Revolving Facilities,RT-6G-IS-7,6G,nyqd_lmfr_ate,,,Outstanding Draws on Secured Revolving Facilities,33; 125; 186; 187,Loan IQ - Drawn; GWM Mortgages; GWM Loans - TL; GWM Loans - PLA/LAL,,"GWM Mortgages Feed, where Mortgage Lifecycle is “Long”, Collateral Value > 0, and Is Heloc is “Y”
+
+GWM Loans - PLA/LAL Feed, where Loan Type is “NPL”, Loan Coll Ind is “C” and Product Type NOT “LAL Term Loan”
+
+GWM Loans - TL Feed, where Loan Amount Funded MX > 0, Collateral Value > 0 and Product Type NOT “TL Term Loan” and Loan Coll Ind is “C”
+
+Loan IQ-Drawn Feed, Accrual Status not in (“NACC”, “NAIFP”), Maturity Date > Reporting Date, Is Being Renewed is “N”, MX AMT > 0, Risk Type not “Interest Only Strip” and Term Indicator is “N” and collateral From FDW Loans Collateral Feed = Y"
+6G - Product,6G - Inflows - Secured - Reverse Repo,RT-6G-IS-1,6G,nyqd_lmfr_ate,,,Reverse Repo,79; 105; 316,Repos - BRM; Stock Loan/Repo-MSSB; ETrade Reverse Repo and Repo,6G - Order of Allocation - Reverse Repo,"OOFA Source is “Reverse Repo”, Trade Type in (“APRP”, “BSB”, “GEN”, “MEG”, “MGN”, “PBX”, “PRP”, “PVR”, “REP”, “RGC”, “RVF”, “CAR”, “DRV”, “CCL”, “REK”, “MMK”, “CLF”, “CLP”, “PLD”) and OOFA Source is Cash is “Y” (App C-III) 
+   
+GCF Gross Up Exclusion, LEGAL_ENTITY = 0201 and COUNTERPARTY_ID = BBB01807140 and TRI_PARTY_IND = TriParty
+
+Repos-BRM Feed, where Start Date>Reporting Date, Sec Fin Exclude (App C-III) is NULL, Flow Ind is “B”, Trade Type in (“APRP”, “BSB”, “GEN”, “MEG”, “MGN”, “PBX”, “PRP”, “PVR”, “REP”, “RGC”, “RVF”, “CAR”, “DRV”, “CCL”, “REK”, “MMK”, “CLF”, “CLP”, “PLD”) (App C-III) and Funding Calc Category is “Cash”
+
+Stock Loan/Repo-MSSB Feed, where Start Date>Reporting Date, Sec Fin Exclude (App C-III) is NULL, Flow Ind is “B”, Trade Type is “REP” and Funding Calc Category is “Cash”
+
+ETrade Reverse Repo and Repo Feed, RepoType is “15c3” or “Firm”"
+6G - Product,6G - Inflows - Secured - Securities Borrowing,RT-6G-IS-2,6G,nyqd_lmfr_ate,,,Securities Borrowing,71; 79; 105; 162; 314,Stock Loan - BRM; Repos - BRM; Stock Loan/Repo-MSSB; PB Global Assets; ETrade Stock Borrow and Loans,6G - Order of Allocation - On BS Asset Exchange Borrow; 6G - Order of Allocation - PDS Long; 6G - Order of Allocation - Reverse Repo; 6G - Order of Allocation - Stock Borrow,"OOFA Source is “Reverse Repo”, Trade Type in (“APLG”, “BCI”, “BVC”, “BVF”, “BVM”, “BVU”, “PLG”, “SLC”, “TKR”, “LNT”, “SLF”, “SLK”, “EXC”, “EXN”, “MTA”, “DTC”) and OOFA Source is Cash is “Y” (App C-III)
+COUNTERPARTY_ID = 'BBB00238530' AND TRADE TYPE IN ('BVF', 'PLG', 'APLG') THEN Exclude
+
+OOFA Source is “Stock Borrow” and OOFA Source is Cash is “Y” (App C-III)
+
+OOFA Source in (“On BS Asset Exchange Borrow (PDS)”, “PDS Long”) (App C-III) and Source is Cash is “Y”
+
+Repos - BRM Feed, where Start Date>Reporting Date, Sec Fin Exclude (App C-III) is NULL, Flow Ind is “B”, Trade Type in (“APLG”, “BCI”, “BVC”, “BVF”, “BVM”, “BVU”, “PLG”, “SLC”, “TKR”, “LNT”, “SLF”, “SLK”, “EXC”, “EXN”, “MTA”, “DTC”) (App C-III) and Funding Calc Category is “Cash”, in concert with the Order of Allocation (App C-III) 
+
+Stock Loan - BRM Feed, where Start Date>Reporting Date, Sec Fin Exclude (App C-III) is NULL, ((Cash Non Cash is “C” and Flow Ind in (“B”, “P”)) OR (Cash Non Cash is “N” and Flow Ind in (“B”, “R”))) and Funding Calc Category is “Cash”, in concert with the Order of Allocation (App C-III) 
+
+Stock Loan/Repo-MSSB Feed, where Start Date>Reporting Date, Sec Fin Exclude (App C-III) is NULL, Flow Ind is “B”, Trade Type not “REP” and Funding Calc Category is “Cash”, in concert with the Order of Allocation (App C-III) 
+
+PB Global Assets Feed, where Start Date>Reporting Date, Flow Ind is “D”, Legal Entity is “0302” and Counterparty BBB ID is “BBB01371367”
+
+Etrade Stock Borrow and Loans Feed, where PID is I.S.2 and Counterparty Number not in (0385, 1051)"
+6G - Product,6G - Inflows - Secured - Synthetic Customer Longs,RT-6G-IS-9,6G,nyqd_lmfr_ate,,,Synthetic Customer Longs,325; 326,EQ TRS; FID TRS ,,"FID TRS Feed, where Product Type not “BondForward” and longshort field  is “Short”
+
+Equity TRS Feed, where longshort field is “Long” and  lrdClassfication in ""Client, Closed Struct-Failed Sale-IFRS+GAAP, Closed Struct-Failed Sale-IFRS,Closed Struct-True Sale, Closed Struct"""
+6G - Product,6G - Inflows - Secured - Synthetic Firm Sourcing,RT-6G-IS-10,6G,nyqd_lmfr_ate,,,Synthetic Firm Sourcing,325,EQ TRS,,"Equity TRS Feed, where longshort field is “Long” and lrdClassfication not in ""Client, Closed Struct-Failed Sale-IFRS+GAAP, Closed Struct-Failed Sale-IFRS,Closed Struct-True Sale, Closed Struct"" or NULL"
+6G - Product,6G - Inflows - Unsecured - Excess Operational Balances,RT-6G-IU-4,6G,nyqd_lmfr_ate,,,Excess Operational Balances,25; 44; 256; 312,Derivatives Collateral; Triton Money Markets; BTB Cash; Omni Renovated GL Balances,,"Triton Money Markets or BTB Cash Feeds, where Entity Type not “Central Bank”, Feed Product not in (“OVERDRAFT”,”DREC”) [BTB Cash only], TenQ Level 4 in (“Interest Bearing Deposits”, “Non-Interest Bearing Deposits”) and (USD_AMT >= 0 (Triton Money Markets Feed) or ADJUSTED_USD_AMT >= 0 (BTB Cash Feed))
+(Determined by Business Date, Legal Entity, Party ID, Currency and Product Type)
+
+Derivatives Collateral Feed, where Counterparty Account in (“027AAZBF4”, “027SBDOU6”, “027X000B3”, “027X000U1”)
+
+Omni Renovated GL Balances Feed, where Legal Entity is “5711”, Cost Centre is “N022” and GL Account is “102356”"
+6G - Product,6G - Inflows - Unsecured - Offshore Placements,RT-6G-IU-2,6G,nyqd_lmfr_ate,,,Offshore Placements,44,Triton Money Markets,,"Triton Money Markets Feed, where Entity Type not “Central Bank”, TenQ Level 4 in (“Interest Bearing Deposits”, “Non-Interest Bearing Deposits”), USD_AMT >= 0, Not (Entity Country = Currency Country = Party Country), Cost Centre not “5C55” and Maturity Date less Business Date <= 7 Days
+(Determined by Business Date, Legal Entity, Party ID, Currency and Product Type)"
+6G - Product,6G - Inflows - Unsecured - Onshore Placements,RT-6G-IU-1,6G,nyqd_lmfr_ate,,,Onshore Placements,44,Triton Money Markets,,"Triton Money Markets Feed, where Entity Type not “Central Bank”, TenQ Level 4 in (“Interest Bearing Deposits”, “Non-Interest Bearing Deposits”), USD_AMT >= 0, Entity Country = Currency Country = Party Country, Cost Centre not “5C55” and Maturity Date less Business Date <= 7 Days
+(Determined by Business Date, Legal Entity, Party ID, Currency and Product Type)"
+6G - Product,6G - Inflows - Unsecured - Other Loans,RT-6G-IU-6,6G,nyqd_lmfr_ate,,,Other Loans,33; 43; 53; 180; 186; 213; 253; 268; 312; 313,Loan IQ - Drawn; Triton Sub-Debt; Omni Taps Transactions; PWM Loans and Deposits; GWM Loans - TL; Employee Loans; Triton SPV; Long Term Debt - BTB; Omni Renovated GL Balances; Inter-Affiliate Funding – BTB Feed,,"Loan IQ - Drawn Feed, where Term Indicator is “Y”, Risk Type not “Interest Only Strip”, Accrual Status not in (“NACC”, “NAIFP”), Maturity Date > Reporting Date, Market Value Ccy USD <= 0, MX AMT > 0, Is Being Renewed is “N”  and Collateral from FDW = N
+
+(Market Value Ccy USD <= 0 excludes rows which have pro-rated collateral)
+
+Omni Renovated GL Balances & Omni TAPS Transactions Feeds, where Internal Rel 3 is ""INTERCO"" and MX Cash Amount > 0
+
+Employee Loans Feed, where Performing is “Performing”
+
+PWM Loans and Deposits Feed, where Counterparty BBB ID is not NULL and PB Cash Value USD > 0 (on Legal Entity, 
+Counterparty BBB ID and Currency Basis)
+
+GWM Loans – TL Feed, where Loan Amount Funded MX > 0, Collateral Value = 0 and Loan Coll Ind is “C”
+
+Triton Sub-Debt, where USD Cash Value > 0
+
+Triton SPV Feed, where MX Amt >=0
+
+Long Term Debt – BTB (USFM) Feed, where Legal Entity in (“1946”, “4061”, “0329”)
+
+Interaffiliate Funding BTB Feed, where Internal Rel 3 is “Interco” and Market Value MX > 0
+"
+6G - Product,6G - Inflows - Unsecured - Outstanding Draws on Unsecured Revolving Facilities,RT-6G-IU-5,6G,nyqd_lmfr_ate,,,Outstanding Draws on Unsecured Revolving Facilities,33,Loan IQ - Drawn,,"Loan IQ - Drawn Feed, where Term Indicator is “N”, Risk Type not “Interest Only Strip”, Accrual Status not in (“NACC”, “NAIFP”), Maturity Date > Reporting Date, Market Value Ccy USD <= 0, MX AMT > 0 and Is Being Renewed is “N” and Collateral from FDW = N
+
+(Market Value Ccy USD <= 0 excludes rows which have pro-rated collateral)"
+6G - Product,6G - Inflows - Unsecured - Required Operational Balances,RT-6G-IU-3,6G,nyqd_lmfr_ate,,,Required Operational Balances,256,BTB Cash,,"BTB Cash Feed, where Version is “DailyEtrade”, Entity Type not “Central Bank”, Feed Product not in (“OVERDRAFT”,”DREC”), TenQ Level 4 in (“Interest Bearing Dep With Clr Orgs”, “Non-Interest Bearing Dep With Clr Orgs”, ""Brokers Dealers and Clearing Orgs Rec"") and 
+ADJUSTED_USD_AMT >= 0
+
+(Determined by Business Date, Legal Entity, Party ID, Currency and Product Type)"
+6G - Product,6G - Inflows - Unsecured - Short-Term Investments,RT-6G-IU-8,6G,nyqd_lmfr_ate,,,Short-Term Investments,44,Triton Money Markets,,"Triton Money Markets Feed, where Entity Type not “Central Bank”, TenQ Level 4 in (“Interest Bearing Deposits”, “Non-Interest Bearing Deposits”), USD_AMT >= 0, Cost Centre not “5C55” and Maturity Date less Business Date is > 7 Days
+
+ (Determined by Business Date, Legal Entity, Party ID, Currency and Product Type)"
+6G - Order of Allocation,6G - Order of Allocation - Client Depot,RT-6G-Use-Client_Depot,6G,nyqd_lmfr_ate,,,,35; 36; 37; 101,Unencumbered Assets - AS; Unencumbered Assets - EU; Unencumbered Assets - NA; Unencumbered Assets - MSSB,,"Type: Use
+
+Unencumbered Assets – AS, Unencumbered Assets – EU, Unencumbered Assets – NA or Unencumbered Assets – MSSB Feed, where Firm Client is “PB Client” and Product Hierarchy Level 1 not in (“Cash And Other Equivalents”, “Derivative Contracts”, “DO NOT POST”)
+
+[Use On BS is Y when Source is Unallocated, else N]
+[Use is Cash defaults to Y]
+[Maturity Bucket is defaulted to Open]"
+6G - Order of Allocation,6G - Order of Allocation - Client Long PB,RT-6G-Source-Client_Long_PB,6G,nyqd_lmfr_ate,,,,162,PB Global Assets,,"Type: Source
+
+PB Global Assets Feed, where Flow Ind is “D”, (Legal Entity not “0302” and Counterparty ID not “BBB01371367”) and Legal Entity not “0530""
+
+[2][Source is Cash defaults to Y]
+[Market Value USD is Available Market Value USD]
+[Cash Value USD is Cash Value Restated USD]
+[Netted Market Value USD is Off Balance Sheet Receivable Market Value]"
+6G - Order of Allocation,6G - Order of Allocation - Client Long WM,RT-6G-Source-Client_Long_WM,6G,nyqd_lmfr_ate,,,,200,WM Margin Loans,,"Type: Source
+
+WM Margin Loans Feed, where Unencumbered Flag is “N” and Product Type in (“NPL”, “MGN”)
+
+[Source On BS defaults to Y]
+[Source is Cash defaults to Y]"
+6G - Order of Allocation,6G - Order of Allocation - Client Short PB,RT-6G-Use-Client_Short_PB,6G,nyqd_lmfr_ate,,,,162,PB Global Assets,,"Type: Use
+
+PB Global Assets Feed, where Flow Ind is “S”, (Legal Entity not “0201” and Counterparty ID not “BBB00319961”) and Legal Entity not in (“0530”, “0321”)
+[Use is Cash defaults to Y]
+[Market Value USD is PB Market Value USD]
+[Cash Value USD is Debit Cash Allocation USD]
+[Netted Market Value USD is Off Balance Sheet Payable Market Value]
+[Maturity Bucket is defaulted to Open]"
+6G - Order of Allocation,6G - Order of Allocation - Client Short WM,RT-6G-Use-Client_Short_WM,6G,nyqd_lmfr_ate,,,,203,WM Shorts Longs,,"Type: Use
+
+WM Shorts Longs Feed, where Settled Unsettled Flag is “SCS”
+[Use On BS defaults to Y]
+[Use is Cash defaults to Y]
+[Maturity Bucket is defaulted to Open]"
+6G - Order of Allocation,6G - Order of Allocation - Customer Affiliate Long,RT-6G-Source-Customer_Affiliate_Long,6G,nyqd_lmfr_ate,,,,53; 89,Omni TAPS Transactions; Internal Coverage,,"Type: Source
+
+Internal Coverage Feed, where Market Value USD <>0, Long Short Code is “S”, Legal Entity is “0201”, Use is “Non-Conform SA Short” and Counterparty ID in (“BBB00319836”, “BBB02400218”, “BBB02498810”, “BBB02622127”), Short CCY Ratio[1] >0, Short CCY Ratio*Market Value USD>1 and DLG ID not “21”
+[1] Short CCY Ratio=Short CCY Cash/Total Short Cash; Short CCY Cash=Sum(Abs(Case When USD Amt<0 Then USD Amt else 0)), Omni TAPS Transactions Feed, where Counterparty Account in (“033099995”, “062AAAPR4”, “053BAAAB4”, “053AAAAT7”, “053A40547”, “053ABD053”) and USD Amt not 0 (Grouped by Business Date, Legal Entity, Counterparty ID, Currency); Total Short Cash=Sum(Abs(Case When USD Amt<0 Then USD Amt else 0)), Omni TAPS Transactions Feed, where Counterparty Account in (“033099995”, “062AAAPR4”, “053BAAAB4”, “053AAAAT7”, “053A40547”, “053ABD053”) and USD Amt not 0 (Grouped by Business Date, Legal Entity, Counterparty ID)"
+6G - Order of Allocation,6G - Order of Allocation - Customer Affiliate Short,RT-6G-Use-Customer_Affiliate_Short,6G,nyqd_lmfr_ate,,,,53; 89,Omni TAPS Transactions; Internal Coverage,,"Type: Use
+
+Internal Coverage Feed, where Market Value USD <>0, Long Short Code is “L”, Legal Entity is “0201”, Source Code is “Non-Conform SA Freed”, Counterparty ID in (“BBB00319836”, “BBB02400218”, “BBB02498810”, “BBB02622127”), Long CCY Ratio >0, Margin Loan Ratio[1] >0, Long CCY Ratio[2]*Market Value USD>1 and DLG ID not “21”
+[1] Margin Loan Ratio=Total SMV/Total LMV; Total SMV=Sum(Market Value USD) where Long Short Code is “S”, Use is “Non-Conform SA Short”, Legal Entity is “0201” and Counterparty ID in (“BBB00319836”, “BBB02400218”, “BBB02498810”, “BBB02622127”); Total LMV=Sum(Market Value USD) where Long Short Code is “L”, Source is “Non-Conform SA Freed”, Legal Entity is “0201” and Counterparty ID in (“BBB00319836”, “BBB02400218”, “BBB02498810”, “BBB02622127”)
+[2] Long CCY Ratio=Long CCY Cash/Total Long Cash; Long CCY Cash=Sum(Case When USD Amt>0 Then USD Amt else 0), Omni TAPS Transactions Feed, where Counterparty Account in (“033099995”, “062AAAPR4”, “053BAAAB4”, “053AAAAT7”, “053A40547”, “053ABD053”) and USD Amt not 0 (Grouped by Business Date, Legal Entity, Counterparty ID, Currency); Total Long Cash=Sum(Case When USD Amt>0 Then USD Amt else 0), Omni TAPS Transactions Feed, where Counterparty Account in (“033099995”, “062AAAPR4”, “053BAAAB4”, “053AAAAT7”, “053A40547”, “053ABD053”) and USD Amt not 0 (Grouped by Business Date, Legal Entity, Counterparty ID)"
+6G - Order of Allocation,6G - Order of Allocation - Firm Bank Loans,RT-6G-Use-Firm_Bank_Loans,6G,nyqd_lmfr_ate,,,,71; 79,Stock Loan - BRM; Repos - BRM,,"Type: Use
+
+Repos - BRM Feed, where Trade Type is “TFL”, Flow Ind is “S”, ((Market Value USD not NULL or USD Amt not NULL) and (Market Value USD <> 0 or USD Amt <> 0)) and [1]
+Stock Loan - BRM Feed, where Trade Type is “TFL”, (Cash Non Cash is “C” and Flow Ind in (“L”, “R”)) or (Cash Non Cash is “N” and Flow Ind in (“L”, “P”)) and [2]
+
+[1] Counterparty TAPS Account not “04096B755” , Counterparty Account General Usage not “Firm” , Trade Type not in (“TSY”, “IRP”) , Counterparty ID not in (NULL, “N/A”) , Security Pool not “Funding Buckets not for RR SecPools” , Trade Type not in (“MAR”, “MAS”) , Legal Entity not “0925” , (Legal Entity not “0127” and Counterparty Identifier (BBB) not “BBB02674324”) , Counterparty TAPS Account not “04066CAZ9” , Trade Type not “TRS” , (Start Date > Business Date Sec Fin Exclude (App C-III) is NULL) , (Trade Type not “CAR” and Counterparty Name not “FIXED INCOME CLEARING CORPORATION” and Counterparty Account not “0430007M4) and (Trade Type not “CAR” and Counterparty Name is “FIXED INCOME CLEARING CORPORATION”) , Trade Type not “MTA”  and Trade Type not “TAL” 
+[2] Client Category not in (“CC”, “TR”, “PC”, “SU”, “OP”), Parent Code not in (“US0050CO”, “GBMSICO”), (Legal Entity not in (“0201”, “0205”) and Client Code not “0101”), Legal Entity not “0925” , Counterparty ID not NULL  and (Start Date <= Business Date and Sec Fin Exclude (App C-III) is NULL) 
+"
+6G - Order of Allocation,6G - Order of Allocation - Firm Long,RT-6G-Source-Firm_Long,6G,nyqd_lmfr_ate,,,,89; 203,Internal Coverage; WM Shorts Longs,,"Type: Source
+
+Internal Coverage Feed, where Source Type is “Firm”, Long Short Code is “L”, Source in (“Firm Long”, “Investment Portfolio”, “EUREX LD Client Seg”, “Principle Financing (Long)”, “DSP BRM Funding Longs”, “DSP Client Facilitation Longs”, “DSP Netting Longs”), TA Account Category not “3S”, Legal Entity not in (NULL, Cusip issuer party ID is a MS legal entity’s party ID) and Product Hierarchy Level 1 not “Referential Instruments”
+WM Shorts Longs Feed, where Settled Unsettled Flag is “SFL”, Legal Entity not in (NULL, Cusip issuer party ID is a MS legal entity’s party ID) and Product Hierarchy Level 1 not “Referential Instruments”
+[Source On BS is N when inventory attracts FAS166 Netting]
+[Source is Cash defaults to Y]
+[Counterparty Type dependent upon Issuer of Security]
+[Maturity Bucket is defaulted to Open]"
+6G - Order of Allocation,6G - Order of Allocation - Firm Short,RT-6G-Use-Firm_Short,6G,nyqd_lmfr_ate,,,,89; 203,Internal Coverage; WM Shorts Longs,,"Type: Use
+
+Internal Coverage Feed, where Source Type is “Firm”, Long Short Code is “S”, Use in (“Firm Short”, “DSP BRM Funding Shorts”, “DSP Client Facilitation Shorts”, “DSP Netting Shorts”) (including selection of TRS Trades, on CUSIP/Quantity Basis, leveraging Trade Type “TRS” in the BRM Metrics Hub), Legal Entity not in (NULL, Cusip issuer party ID is a MS legal entity’s party ID) and Product Hierarchy Level 1 not “Referential Instruments”
+WM Shorts Longs Feed, where Settled Unsettled Flag is “SFS”, Legal Entity not in (NULL, Cusip issuer party ID is a MS legal entity’s party ID) and Product Hierarchy Level 1 not “Referential Instruments”
+[Use On BS defaults to N where inventory attracts FAS166 Netting]
+[Use is Cash defaults to Y]
+[Maturity Bucket is defaulted to Open]"
+6G - Order of Allocation,6G - Order of Allocation - House IM Posted,RT-6G-Use-House_IM_Posted,6G,nyqd_lmfr_ate,,,,25; 150,Derivatives Collateral; Libra Exchange Collateral,,"Type: Use
+
+Libra Exchange Collateral Feed, where (Cost Centre Level 9 is “FIRM LISTED DERIVATIVES MARGIN” or Cost Centre Level 8 is
+“OTC DERIVS CLEARING FIRM”), Bal Pos Ind is “P”, Flow Ind is “P” and (Business Definitions is “INITIAL MARGIN” or
+Business Definitions is “GUARANTEED FUNDS”)
+Derivatives Collateral Feed, where Flow Ind is “P”, Cash Non Cash is “SEC”, P I Flag is “P”, EGTS Division in (“Swaps”, “FX”, “Commodities”, “Equity Derivatives”, “Securitized Products Group”), Customer Account General Account Usage not like “Banking/Clearing/Exchange” and Customer Account Business Definition not like (“%OTC CLEARED - FIRM%”, “%OTC CLEARED - CLIENT%”, “%VARIATION MARGIN%”, “%INITIAL MARGIN%”, “%GUARANTEED FUNDS%”)
+[Use On BS defaults to N]
+[Use is Cash defaults to N]
+[For Derivatives Collateral Feed: Market Value USD is IM Allocation MX * USD Rate]
+[Maturity Bucket is defaulted to 31 Days]"
+6G - Order of Allocation,6G - Order of Allocation - House IM Received,RT-6G-Source-House_IM_Received,6G,nyqd_lmfr_ate,,,,25; 150,Derivatives Collateral; Libra Exchange Collateral,,"Type: Source
+
+Libra Exchange Collateral Feed, where (Cost Centre Level 9 is “FIRM LISTED DERIVATIVES MARGIN” or Cost Centre Level 8 is
+“OTC DERIVS CLEARING FIRM”), Bal Pos Ind is “P”, Flow Ind is “R” and Business Definitions is “INITIAL MARGIN”
+Derivatives Collateral Feed, where Flow Ind is “R”, Cash Non Cash is “SEC”, P I Flag is “P”, Rehypothecable Ind is “Y”, Account Classification not in (“IM Third Party”, “Third Party Held”, “HYR Third Party”, “IM Rec TriParty”, “HYP MS Held”, “VM Third Party”, “IM Rec Third Party”, “Dormant”, ”GPA MS Held”, “Third Party Rec”), EGTS Division in (“Swaps”, “FX”, “Commodities”, “Equity Derivatives”, “Securitized Products Group”), Customer Account General Account Usage not like “Banking/Clearing/Exchange” and Customer Account Business Definition not like (“%OTC CLEARED - FIRM%”, “%OTC CLEARED - CLIENT%”, “%VARIATION MARGIN%”, “%INITIAL MARGIN%”, “%GUARANTEED FUNDS%”)
+[Source On BS defaults to N]
+[Source is Cash defaults to N]
+[For Derivatives Collateral Feed: Market Value USD is IM Allocation MX * USD Rate]
+[Maturity Bucket is defaulted to Open]"
+6G - Order of Allocation,6G - Order of Allocation - House VM Posted,RT-6G-Use-House_VM_Posted,6G,nyqd_lmfr_ate,,,,25,Derivatives Collateral,,"Type: Use
+
+Derivatives Collateral Feed, where Flow Ind is “P”, Account Type Name not “3-OTC CC - CLIENT Account” and Cash Non Cash is “SEC”
+[Use On BS defaults to N]
+[Use is Cash defaults to N]
+[Market Value USD is Non Excess Amount]
+[Maturity Bucket is defaulted to 31 Days]"
+6G - Order of Allocation,6G - Order of Allocation - House VM Posted Excess,RT-6G-Use-House_VM_Posted_Excess,6G,nyqd_lmfr_ate,,,,25,Derivatives Collateral,,"Type: Use
+
+Derivatives Collateral Feed, where Flow Ind is “P”, Account Type Name not “3-OTC CC - CLIENT Account” and Cash Non Cash is “SEC”
+[Use On BS defaults to N]
+[Use is Cash defaults to N]
+[Market Value USD is Excess Amount]
+[Maturity Bucket is defaulted to 31 Days]"
+6G - Order of Allocation,6G - Order of Allocation - House VM Received,RT-6G-Source-House_VM_Received,6G,nyqd_lmfr_ate,,,,25,Derivatives Collateral,,"Type: Source
+
+Derivatives Collateral Feed, where Flow Ind is “R”, Account Type Name not “3-OTC CC - CLIENT Account”, Rehypothecable Ind is “Y”, Cash Non Cash is “SEC”, Account Classification not in
+(“IM Third Party”, “Third Party Held”, “HYR Third Party”, “IM Rec TriParty”, “HYP MS Held”, “VM Third Party”, “IM Rec Third Party”, “Dormant”, “GPA MS Held”, “Third Party Rec”)
+[Source On BS defaults to N]
+[Source is Cash defaults to N]
+[Market Value USD is Excess Amount + Non Excess Amount]
+[Maturity Bucket is defaulted to Open]"
+6G - Order of Allocation,6G - Order of Allocation - Lockup,RT-6G-Use-Lockup,6G,nyqd_lmfr_ate,,,,79,Repos - BRM,,"Type: Use
+
+Repos - BRM Feed, where Attribute Value is “BONY Lockup”
+[Use On BS defaults to N]
+[Use is Cash defaults to N]
+[Maturity Bucket is defaulted to Open]"
+6G - Order of Allocation,6G - Order of Allocation - NCSA Long,RT-6G-Source-NCSA_Long,6G,nyqd_lmfr_ate,,,,53; 89,Omni TAPS Transactions; Internal Coverage,,"Type: Source
+
+Internal Coverage Feed, where Market Value USD <>0, Long Short Code is “L”, Legal Entity is “0201”, Source Code is “Non-Conform SA Freed”, Cusip is not “123456808”, Counterparty ID in (“BBB00319836”, “BBB02400218”, “BBB02498810”, “BBB02622127”), Long CCY Ratio[1] >0, Margin Loan Ratio[1] >0, Long CCY Ratio[2]*Market Value USD>1 and DLG ID is “15”
+[1] Margin Loan Ratio=Total SMV/Total LMV; Total SMV=Sum(Market Value USD) where Long Short Code is “S”, Use is “Non-Conform SA Short”, Legal Entity is “0201” and Counterparty ID in (“BBB00319836”, “BBB02400218”, “BBB02498810”, “BBB02622127”); Total LMV=Sum(Market Value USD) where Long Short Code is “L”, Source is “Non-Conform SA Freed”, Legal Entity is “0201” and Counterparty ID in (“BBB00319836”, “BBB02400218”, “BBB02498810”, “BBB02622127”)
+[1] Long CCY Ratio=Long CCY Cash/Total Long Cash; Long CCY Cash=Sum(Case When USD Amt>0 Then USD Amt else 0), Omni TAPS Transactions Feed, where Counterparty Account in (“033099995”, “062AAAPR4”, “053BAAAB4”, “053AAAAT7”, “053A40547”, “053ABD053”) and USD Amt not 0 (Grouped by Business Date, Legal Entity, Counterparty ID, Currency); Total Long Cash=Sum(Case When USD Amt>0 Then USD Amt else 0), Omni TAPS Transactions Feed, where Counterparty Account in (“033099995”, “062AAAPR4”, “053BAAAB4”, “053AAAAT7”, “053A40547”, “053ABD053”) and USD Amt not 0 (Grouped by Business Date, Legal Entity, Counterparty ID)"
+6G - Order of Allocation,6G - Order of Allocation - NCSA Short,RT-6G-Use-NCSA_Short,6G,nyqd_lmfr_ate,,,,53; 89,Omni TAPS Transactions; Internal Coverage,,"Type: Use
+
+Internal Coverage Feed, where Market Value USD <>0, Long Short Code is “S”, Legal Entity is “0201”, Use is “Non-Conform SA Short” and Counterparty ID in (“BBB00319836”, “BBB02400218”, “BBB02498810”, “BBB02622127”), Short CCY Ratio[1] >0, Short CCY Ratio*Market Value USD>1 and DLG ID is “15”
+[1] Short CCY Ratio=Short CCY Cash/Total Short Cash; Short CCY Cash=Sum(Abs(Case When USD Amt<0 Then USD Amt else 0)), Omni TAPS Transactions Feed, where Counterparty Account in (“033099995”, “062AAAPR4”, “053BAAAB4”, “053AAAAT7”, “053A40547”, “053ABD053”) and USD Amt not 0 (Grouped by Business Date, Legal Entity, Counterparty ID, Currency); Total Short Cash=Sum(Abs(Case When USD Amt<0 Then USD Amt else 0)), Omni TAPS Transactions Feed, where Counterparty Account in (“033099995”, “062AAAPR4”, “053BAAAB4”, “053AAAAT7”, “053A40547”, “053ABD053”) and USD Amt not 0 (Grouped by Business Date, Legal Entity, Counterparty ID)"
+6G - Order of Allocation,6G - Order of Allocation - On BS Asset Exchange Borrow,RT-6G-Source-On_BS_Asset_Exchange_Borrow,6G,nyqd_lmfr_ate,,,,71; 162,Stock Loan - BRM; PB Global Assets,,"Type: Source
+
+PB Global Assets Feed, where Flow Ind is “D” and Legal Entity is “0530” and Cash Non Cash is “O”
+Stock Loan – BRM Feed, where ((Cash Non Cash is “C” and Flow Ind in (“B”, “P”)) or (Cash Non Cash is “N” and Flow Ind in (“B”, “R”))), (Trade Type in (“B”, “L”) and Parent Code is “8775”) and
+[2]
+[2] Client Category not in (“CC”, “TR”, “PC”, “SU”, “OP”), Parent Code not in (“US0050CO”, “GBMSICO”), (Legal Entity not in (“0201”, “0205”) and Client Code not in “0101”), Legal Entity not “0925”, Counterparty ID not NULL and (Start Date <= Business Date and Sec Fin Exclude (App C-III) is NULL) 
+[Source On BS defaults to N when attracting FAS166 Netting]
+[Where PB Global Assets Feed, Source is Cash is Y, where Cash Non Cash is “N”, else Source is Cash is N, where Cash Non Cash is “O”; Else Source is Cash defaults to N]"
+6G - Order of Allocation,6G - Order of Allocation - PDS Long,RT-6G-Source-PDS_Long,6G,nyqd_lmfr_ate,,,,162,PB Global Assets,,"Type: Source
+
+PB Global Assets Feed, where legal entity is “0530”
+[Source is Cash defaults to Y]"
+6G - Order of Allocation,6G - Order of Allocation - PDS Short,RT-6G-Use-PDS_Short,6G,nyqd_lmfr_ate,,,,162,PB Global Assets,,"Type: Use
+
+PB Global Assets Feed, where legal entity is “0530”
+[Use is Cash defaults to Y]
+PDS Short Amount is calculated by taking a proportion of the amount at a CP ID level with the ratio below
+(Net Debit for Flow Ind = S + (Flow Ind = D and Cash Non Cash = O)) / (Short Debit Cash for Flow Ind = S)"
+6G - Order of Allocation,6G - Order of Allocation - Repo,RT-6G-Source-Repo,6G,nyqd_lmfr_ate,,,,79; 105,Repos - BRM; Stock Loan/Repo-MSSB,,"Type: Source
+
+Repos - BRM Feed, where Flow Ind is “S”, ((Market Value USD not NULL or USD Amt not NULL) and (Market Value USD <> 0 or USD Amt <> 0)) and [1]
+Stock Loan/Repo-MSSB, where Source Feed is “Repo”, Flow Ind is “S” and [1]
+[1] (Legal Entity not “0302”, Counterparty TAPS Account not “0393391F3” and Tri Party Ind not “TriParty”) , (Legal Entity not “0201”, Counterparty Identifier (BBB) not “BBB01807140” and Tri Party Ind not “TriParty”) , Counterparty TAPS Account not “04096B755” , Counterparty Account General Usage not “Firm” , Trade Type not in (“TSY”, “IRP”) , Counterparty ID not in (NULL, “N/A”) , Security Pool not “Funding Buckets not for RR SecPools” , Trade Type not in (“MAR”, “MAS”) , Legal Entity not “0925” , (Legal Entity not “0127” and Counterparty Identifier (BBB) not “BBB02674324”) , Counterparty TAPS Account not “04066CAZ9” , Trade Type not “TRS” , (Start Date <= Reporting Date and Sec Fin Exclude (App C-III) is NULL) , (Trade Type not “CAR” and Counterparty Name not “FIXED INCOME CLEARING CORPORATION” and Counterparty Account not “0430007M4) and (Trade Type not “CAR” and Counterparty Name is “FIXED INCOME CLEARING CORPORATION”) , Trade Type not “MTA”  and Trade Type not “TAL” 
+[Use is Cash is Y for transactions booked against cash, else N]
+[Use On BS is Y where payable is booked against cash and is on balance sheet (if order is in the Treasury Hub, but not in RACE, source is defaulted On BS); Use On BS is N where payable is not on balance sheet (booked against cash that receives FIN41 Netting; Excess Cash Value for Order in Hub > RACE; Non-Cash Asset Exchanges; State of Georgia, Counterparty ID in (“BBB00254888”, “BBB02517222”); Trade Type in (“BVF”, “PLG”, “APLG”))]"
+6G - Order of Allocation,6G - Order of Allocation - Reverse Repo,RT-6G-Source-Reverse_Repo,6G,nyqd_lmfr_ate,,,,79; 105,Repos - BRM; Stock Loan/Repo-MSSB,,"Type: Source
+
+Repos - BRM Feed, where Flow Ind is “B”, ((Market Value USD not NULL or USD Amt not NULL) and (Market Value USD <> 0 or USD Amt <> 0)) and [1]
+
+Stock Loan/Repo-MSSB, where Source Feed is “Repo”, Flow Ind is “B” and [1]
+
+[1] (Legal Entity not “0302”, Counterparty TAPS Account not “0393391F3” and Tri Party Ind not “TriParty”)[3], (Legal Entity not “0201”, Counterparty Identifier (BBB) not “BBB01807140” and Tri Party Ind not “TriParty”)[4], Counterparty TAPS Account not “04096B755”[5], Counterparty Account General Usage not “Firm”[6], Trade Type not in (“TSY”, “IRP”)[7], Counterparty ID not in (NULL, “N/A”)[8], Security Pool not “Funding Buckets not for RR SecPools”[9], Trade Type not in (“MAR”, “MAS”)[10], Legal Entity not “0925”[11], (Legal Entity not “0127” and Counterparty Identifier (BBB) not “BBB02674324”)[12], Counterparty TAPS Account not “04066CAZ9”[13], Trade Type not “TRS”[14], (Start Date <= Reporting Date and Sec Fin Exclude (App C-III) is NULL) [15], (Trade Type not “CAR” and Counterparty Name not “FIXED INCOME CLEARING CORPORATION” and Counterparty Account not “0430007M4) and (Trade Type not “CAR” and Counterparty Name is “FIXED INCOME CLEARING CORPORATION”) [16] , Trade Type not “MTA” [17]  and Trade Type not “TAL” [18]
+
+[Source On BS is N: (i) FIN41 Netting: if Total Cash Value for Order in Hub > RACE, Excess Cash Value is defaulted to N, (ii) Non-Cash Asset Exchanges, (iii) State of Georgia, Counterparty ID in (“BBB00254888”, “BBB02517222”), and (iv) Trade Type in (“BVF”, “PLG”, “APLG”)]
+[Source is Cash is Y for transactions booked against cash, else N]
+
+Source Is Cash (for Rev Repo/Stock Borrow) and Use Is Cash (for Repo/Stock Loan) is defaulted to N if CP = FEDERAL RESERVE BANK OF NEW YORK and (source trade type = BVF or use trade type = PLG/APLG)."
+6G - Order of Allocation,6G - Order of Allocation - Stock Borrow,RT-6G-Source-Stock_Borrow,6G,nyqd_lmfr_ate,,,,71; 105,Stock Loan - BRM; Stock Loan/Repo-MSSB,,"Type: Source
+
+Stock Loan - BRM Feed, where (Cash Non Cash is “C” and Flow Ind in (“B”, “P”)) or (Cash Non Cash is “N” and Flow Ind in (“B”, “R”)), (Trade Type not in (“B”, “L”) and Parent Code not “8775”) and [2]
+PB Global Assets Feed, where Flow Ind is “D”, Legal Entity is “0302” and Counterparty ID “BBB01371367”
+Stock Loan/Repo-MSSB Feed, where Source Feed is “Stock Loan”, ((Cash Non Cash is “C” and Flow Ind in (“B”, “P”)) or (Cash Non Cash is “N” and Flow Ind in (“B”, “R”))), (Trade Type not in (“B”, “L”) and Parent Code not “8775”) and [2]
+[2] Client Category not in (“CC”, “TR”, “PC”, “SU”, “OP”), Parent Code not in (“US0050CO”, “GBMSICO”), (Legal Entity not in (“0201”, “0205”) and Client Code not “0101”), Legal Entity not “0925” , Counterparty ID not NULL  and (Start Date <= Business Date and Sec Fin Exclude (App C-III) is NULL) 
+[Source On BS is N for Non-Cash Asset Exchanges; State of Georgia Counterparty ID in (“BBB00254888”, “BBB02517222”); OCC Netting Parent Code in (“X008”, “X010”, “X011”, “X014”, “X01A”, “X032”, “X034”, “X287”); State of Florida & Bermuda Parent Code in (“F715”, “F620”, “F717”, “F753”, “F260”, “F317”, “F580”, “F638”, “F311”, “F183”, “F070”, “F518”, “F660”, “F291”, “F610”, “F440”, “F718”, “F719”, “F702”, “XILB”, “F452”, “F762”, “F020”, “F714”, “F339”, “XLVO”, “FLOR”); Forward Starting Trades Trade Type in (“FPDNE”, “FPDRE”, “ODNE”, “PD”, “FODNE”)]
+[Source is Cash is Y for transactions booked against cash, else N]"
+6G - Order of Allocation,6G - Order of Allocation - Stock Loan,RT-6G-Use-Stock_Loan,6G,nyqd_lmfr_ate,,,,71; 105; 162,Stock Loan - BRM; Stock Loan/Repo-MSSB; PB Global Assets,,"Type: Use
+
+Stock Loan - BRM Feed, where (Cash Non Cash is “C” and Flow Ind in (“L”, “R”)) or (Cash Non Cash is “N” and Flow Ind in (“L”, “P”)) and [2]
+PB Global Assets Feed, where Flow Ind is “S” and (Legal Entity in (“0321”, “0530”) or (Legal Entity is “0201” and Counterparty ID “BBB00319961”)) Use Is Cash defaults to N
+For PB Global Assets – the amount is calculated by taking a proportion of the amount at a CP ID level with the ratio below
+1 - (Net Debit for Flow Ind = S + (Flow Ind = D and Cash Non Cash = O)) / (Short Debit Cash for Flow Ind = S)
+Stock Loan/Repo-MSSB Feed, where Source Feed is “Stock Loan”, ((Cash Non Cash is “C” and Flow Ind in (“L”, “R”)) or (Cash Non Cash is “N” and Flow Ind in (“L”, “P”))) and [2]
+[2] Client Category not in (“CC”, “TR”, “PC”, “SU”, “OP”), Parent Code not in (“US0050CO”, “GBMSICO”), (Legal Entity not in (“0201”, “0205”) and Client Code not “0101”), Legal Entity not “0925” , Counterparty ID not NULL  and (Start Date <= Business Date and Sec Fin Exclude (App C-III) is NULL) 
+[Use is Cash is Y for transactions booked against cash, else N]
+[Use On BS is Y where booked against cash; Use On BS is N where (non-cash trades where Morgan Stanley is not deemed the lender; State of Georgia Counterparty ID in (“BBB00254888”, “BBB02517222”); OCC Netting Parent Code in (“X008”, “X010”, “X011”, “X014”, “X01A”, “X032”, “X034”, “X287”); State of Florida & Bermuda Parent Code in (“F715”, “F620”, “F717”, “F753”, “F260”, “F317”, “F580”, “F638”, “F311”, “F183”, “F070”, “F518”, “F660”, “F291”, “F610”, “F440”, “F718”, “F719”, “F702”, “XILB”, “F452”, “F762”, “F020”, “F714”, “F339”, “XLVO”, “FLOR”); Forward Starting Trades Trade Type in (“FPDNE”, “FPDRE”, “ODNE”, “PD”, “FODNE”))]"
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Central Bank Prepositioned,RT-6G-Use-Unencumbered_Central_Bank_Prepositioned,6G,nyqd_lmfr_ate,,,,35; 36,Unencumbered Assets - AS; Unencumbered Assets - EU,,"Type: Use
+
+Unencumbered Assets – AS, Unencumbered Assets – EU or Unencumbered Assets – AP Feed where Firm Client is “Central Bank PrePositioning” and Product Hierarchy Level 1 not in (“Cash And Other Equivalents”, “Derivative Contracts”, “DO NOT POST”)"
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Defunded,RT-6G-Use-Unencumbered_Defunded,6G,nyqd_lmfr_ate,,,,35; 36; 37; 101,Unencumbered Assets - AS; Unencumbered Assets - EU; Unencumbered Assets - NA; Unencumbered Assets - MSSB,,"Type: Use
+
+Unencumbered Assets – AS, Unencumbered Assets – EU, Unencumbered Assets – NA or Unencumbered Assets – MSSB Feed, where Firm Client is “Firm Fundable”
+[Use On BS is Y when Source is Unallocated, else N]
+[Use is Cash defaults to Y]
+[Maturity Bucket is defaulted to Open]"
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Firm,RT-6G-Use-Unencumbered_Firm,6G,nyqd_lmfr_ate,,,,35; 36; 37; 101,Unencumbered Assets - AS; Unencumbered Assets - EU; Unencumbered Assets - NA; Unencumbered Assets - MSSB,,"Type: Use
+
+Unencumbered Assets – AS, Unencumbered Assets – EU, Unencumbered Assets – NA or Unencumbered Assets – MSSB Feed, where Firm Client is “Firm”, Product Hierarchy Level 1 not in (“Cash And Other Equivalents”, “Derivative Contracts”, “DO NOT POST”), Legal Entity not in (NULL, Cusip issuer party ID is a MS legal entity’s party ID) and Product Hierarchy Level 1 not “Referential Instruments”
+[Use On BS is Y when Source is Unallocated, else N]
+[Use is Cash defaults to Y]
+[Maturity Bucket is defaulted to Open]"
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Investment Portfolio,RT-6G-Use-Unencumbered_Investment_Portfolio,6G,nyqd_lmfr_ate,,,,35; 36; 37; 101,Unencumbered Assets - AS; Unencumbered Assets - EU; Unencumbered Assets - NA; Unencumbered Assets - MSSB,,"Type: Use
+
+Unencumbered Assets – AS, Unencumbered Assets – EU, Unencumbered Assets – NA or Unencumbered Assets – MSSB Feed, where Firm Client is “Investment Portfolio” and Product Hierarchy Level 1 not in (“Cash And Other Equivalents”, “Derivative Contracts”, “DO NOT POST”)
+[Use On BS is Y when Source is Unallocated, else N]
+[Use is Cash defaults to Y]
+[Maturity Bucket is defaulted to Open]"
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered IP FHLB,RT-6G-Use-Unencumbered_IP_FHLB,6G,nyqd_lmfr_ate,,,,35; 36; 37; 101,Unencumbered Assets - AS; Unencumbered Assets - EU; Unencumbered Assets - NA; Unencumbered Assets - MSSB,,"Type: Use
+
+Unencumbered Assets – AS, Unencumbered Assets – EU, Unencumbered Assets – NA or Unencumbered Assets – MSSB Feed, where Firm Client is “Investment Port FHLB” and Product Hierarchy Level 1 not in (“Cash And Other Equivalents”, “Derivative Contracts”, “DO NOT POST”)
+[Use On BS is Y when Source is Unallocated, else N]
+[Use is Cash defaults to Y]
+[Maturity Bucket is defaulted to Open]"
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered IP FRB,RT-6G-Use-Unencumbered_IP_FRB,6G,nyqd_lmfr_ate,,,,35; 36; 37; 101,Unencumbered Assets - AS; Unencumbered Assets - EU; Unencumbered Assets - NA; Unencumbered Assets - MSSB,,"Type: Use
+
+Unencumbered Assets – AS, Unencumbered Assets – EU, Unencumbered Assets – NA or Unencumbered Assets – MSSB Feed, where Firm Client is “Investment Port FRB Borrowing” and Product Hierarchy Level 1 not in (“Cash And Other Equivalents”, “Derivative Contracts”, “DO NOT POST”)
+[Use On BS is Y when Source is Unallocated, else N]
+[Use is Cash defaults to Y]
+[Maturity Bucket is defaulted to Open]"
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Overborrow,RT-6G-Use-Unencumbered_Overborrow,6G,nyqd_lmfr_ate,,,,35; 36; 37; 101,Unencumbered Assets - AS; Unencumbered Assets - EU; Unencumbered Assets - NA; Unencumbered Assets - MSSB,,"Type: Use
+
+Unencumbered Assets – AS, Unencumbered Assets – EU, Unencumbered Assets – NA or Unencumbered Assets – MSSB Feed, where Firm Client is “Overborrow” and Product Hierarchy Level 1 not in (“Cash And Other Equivalents”, “Derivative Contracts”, “DO NOT POST”)
+[Use On BS is Y when Source is Unallocated, else N]
+[Use is Cash defaults to Y]
+[Maturity Bucket is defaulted to Open]"
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Treasury Sec Pool,RT-6G-Use-Unencumbered_Treasury_Sec_Pool,6G,nyqd_lmfr_ate,,,,35; 36; 37; 101,Unencumbered Assets - AS; Unencumbered Assets - EU; Unencumbered Assets - NA; Unencumbered Assets - MSSB,,"Type: Use
+
+Unencumbered Assets – AS, Unencumbered Assets – EU, Unencumbered Assets – NA or Unencumbered Assets – MSSB Feed, where Firm Client is “Treasury Liq Pool” and Product Hierarchy Level 1 not in (“Cash And Other Equivalents”, “Derivative Contracts”, “DO NOT POST”)
+[Use On BS is Y when Source is Unallocated, else N]
+[Use is Cash defaults to Y]
+[Maturity Bucket is defaulted to Open]"
+6G - Product,6G - Outflows -  Deposits - Less Stable Affiliated Sweep Account Balances,RT-6G-OD-10,6G,nyqd_lmfr_ate,,,Less Stable Affiliated Sweep Account Balances,146; 230; 262; 321; 337,Global Currency Deposits; Bank Deposits Program (BDP); Third Party Deposits; Etrade Deposits RBDP; Fully Paid Lending,,"Bank Deposits Program Feed, where Product Name is not ‘RECIPROCAL’
+Global Currency Deposits Feed [no constraints]
+
+Etrade Deposits RBDP Feed, where Counterparty Type is not “Municipalities”, Brokered Deposit Indicator is “Y”, Reciprocal Deposit Indicator is “N”, Affiliate Indicator is “Y”, and (Product Name is “FPL” and Transactional Deposit Flag is “N”, OR Product Name not “FPL”)
+
+Third Party Deposits Feed, where Business Segment Starts with ‘RECIPROCAL’ and Uninsured Amount USD > 0
+
+FULLY PAID LENDING Feed [no constraints]"
+6G - Product,6G - Outflows -  Deposits - Non-Affiliated Sweep Accounts,RT-6G-OD-11,6G,nyqd_lmfr_ate,,,Non-Affiliated Sweep Accounts,262,Third Party Deposits,,"Third Party Deposits Feed  where Business Segment Starts not ‘RECIPROCAL’ and Insured Flag ≠ ‘FDIC’ and Insured Amount USD not > 0, or Business Segment does not start with ‘RECIPROCAL’ and Uninsured Amount USD not > 0"
+6G - Product,6G - Outflows -  Deposits - Non-Operational Account Balances,RT-6G-OD-6,6G,nyqd_lmfr_ate,,,Non-Operational Account Balances,25; 44; 180; 232; 256; 312; 321,Derivatives Collateral; Triton Money Markets; PWM Loans and Deposits; Savings Deposit Program (SDP); BTB Cash; Omni Renovated GL Balances; Etrade Deposits RBDP,,"PWM Loans and Deposits Feed, where Version is “T24”, Legal Entity in (“7713”, “7714”, “7715”), Counterparty not in (“Retail”, “Small Business”) and PB Cash Value USD < 0 (on Legal Entity, Counterparty BBB ID and Currency basis)
+Derivatives Collateral Feed, where Counterparty Account in (“027AAZBE7”, “027X000A5”, “027X000V9”, “027XAABK8”)
+
+BTB Cash (Daily) Feed, where feedProduct is not in (""OVERDRAFT"", ""DREC""), counterparty is not “Central Bank”, TenQ Level 4 in (“Interest Bearing Deposits”, “Non-Interest Bearing Deposits”) and (TAPS Trading Account in (“098A006K1”, “098330VU4”) OR GL Account in (“102560”,”100374”))
+
+BTB Cash (Daily ETrade) Feed, where feedProduct is not in (""OVERDRAFT"", ""DREC""), counterparty is not “Central Bank”, TenQ Level 4 in (“Interest Bearing Deposits”, “Non-Interest Bearing Deposits”) and Counterparty = BBB00311594
+
+Triton Money Markets Feed, where counterparty is not “Central Bank”, TenQ Level 4 in (“Interest Bearing Deposits”, “Non-Interest Bearing Deposits”) and Cost Centre is “5C55”
+
+Etrade Deposits RBDP Feed, where Counterparty_Type not in (“Retail”, “Small Business”, “Municipalities”) and Brokered Deposit Indicator is “N”
+
+Omni Renovated GL Balances Feed, where Legal Entity is “6635”, Cost Centre is “N022” and Account is “201494”
+
+Savings Deposit Program Feed, where Counterparty_Type not in (“Retail”, “Small Business”)"
+6G - Product,6G - Outflows -  Deposits - Non-Reciprocal Brokered Accounts,RT-6G-OD-8,6G,nyqd_lmfr_ate,,,Non-Reciprocal Brokered Accounts,108; 210; 271; 321,Brokered CD; Structured CD - SD Feed; FID Structured CD SD; Etrade Deposits RBDP,,"Brokered CD Feed, where Issue Date <= Business Date
+Debt Structured CD SD Feed, where Issuance Buy Back Type is “ISSUANCE” 
+FID Structured CD SD Feed, where Funding Indicator is “Issuance”
+Etrade Deposits RBDP Feed, where Counterparty_Type is not “Municipalities”, Brokered Deposit Indicator is “Y”, Reciprocal Deposit Indicator is “N” and Affiliate Indicator is “N”"
+6G - Product,6G - Outflows -  Deposits - Non-Transactional Non-Relationship Accounts,RT-6G-OD-3,6G,nyqd_lmfr_ate,,,Non-Transactional Non-Relationship Accounts,321,Etrade Deposits RBDP,,"Etrade Deposits RBDP Feed, where Counterparty_Type in (“Retail”, “Small Business”), Brokered Deposit Indicator is “N”, Transactional Deposit Indicator is “N” and (Pre-existing Relationship Indicator is “N” or Stable Indicator is “N”) "
+6G - Product,6G - Outflows -  Deposits - Non-Transactional Relationship Accounts,RT-6G-OD-2,6G,nyqd_lmfr_ate,,,Non-Transactional Relationship Accounts,180; 321,PWM Loans and Deposits; Etrade Deposits RBDP,,"PWM Loans and Deposits Feed, where Version is “T24”, Legal Entity in (“7713”, “7714”, “7715”), Counterparty in (“Retail”, “Small Business”) and PB Cash Value USD < 0 (on Legal Entity, Counterparty BBB ID and Currency basis)
+Etrade Deposits RBDP Feed, where Counterparty_Type in (“Retail”, “Small Business”), Brokered Deposit Indicator is “N”, Transactional Deposit Indicator is “N” and (Pre-existing Relationship Indicator is “Y” or Stable Indicator is “Y”)"
+6G - Product,6G - Outflows -  Deposits - Other Third‐Party Deposits,RT-6G-OD-14,6G,nyqd_lmfr_ate,,,Other Third‐Party Deposits,232,Savings Deposit Program (SDP),,"Savings Deposit Program Feed, where Counterparty Type in (“Retail”, “Small Business”)"
+6G - Product,6G - Outflows -  Deposits - Reciprocal Accounts,RT-6G-OD-13,6G,nyqd_lmfr_ate,,,Reciprocal Accounts,262; 321,Third Party Deposits; Etrade Deposits RBDP,,"Etrade Deposits RBDP Feed, where Counterparty Type is not “Municipalities”, Brokered Deposit Indicator is “Y” and Reciprocal Deposit Indicator is “Y”
+Third Party Deposits Feed, where Business Segment starts with ‘RECIPROCAL’, Insured Flag = ‘FDIC’ and Insured Amount USD > 0"
+6G - Product,6G - Outflows -  Deposits - Transactional Accounts,RT-6G-OD-1,6G,nyqd_lmfr_ate,,,Transactional Accounts,321,Etrade Deposits RBDP,,"Etrade Deposits RBDP Feed, where Counterparty_Type in (“Retail”, “Small Business”), Brokered Deposit Indicator is “N” and Transactional Deposit Indicator is “Y” "
+6G - Product,6G - Outflows -  Other - Collateral Called for Delivery,RT-6G-OO-2,6G,nyqd_lmfr_ate,,,Collateral Called for Delivery,87,Portfolio Agreement,,"Portfolio Agreement Feed, where Task Type is “Margin Call Anticipation” and Margin Call Date not NULL"
+6G - Product,6G - Outflows -  Other - Credit Facilities,RT-6G-OO-4,6G,nyqd_lmfr_ate,,,Credit Facilities,33; 34; 76; 79; 125; 142; 186; 187; 233,Loan IQ - Drawn; Loan IQ - Undrawn; Off Bal Sheet Com and Guarantees; Repos - BRM; GWM Mortgages; CRE Loans; GWM Loans - TL; GWM Loans - PLA/LAL; Fronting and Participation,,"CRE Loans Feed, where Status in (“Forward”, “Commitment-No Lock” & “Commitment-RATELOCK”), Product Type not “IO Strip” and Currency not NULL; 
+GWM Loans - PLA/LAL Feed, where Loan Coll Ind is “L” and Maturity Date > Reporting Date; 
+GWM Loans - TL Feed, where Loan Coll Ind is “L” ; 
+GWM Mortgages, where Is Heloc is “Y” and Collateral Value > 0; 
+Loan IQ – Drawn (where Risk Type not “Interest Only Strip” and Is Being Renewed = “N” and facilityType = “Credit” and Loan Amount Funded USD > 0 and loanAmountUnfundedUsd is not Null) or (where Risk Type not “Interest Only Strip” and facilityType = “liquidity” and counterparty Name in (“NATIONAL SECURITIES CLEARING CORPORATION”, “THE DEPOSITORY TRUST COMPANY”) and Loan Amount Funded USD > 0 and loanAmountUnfundedUsd is not Null); 
+Loan IQ – Undrawn (where dealId is not “MSCI (11/14 A1 8/16 A2 05/18)” and Is Being Renewed = “N” and facilityType = “Credit” and Loan Amount Funded USD > 0 and loanAmountUnfundedUsd is not Null) or (where dealId is not “MSCI (11/14 A1 8/16 A2 05/18)” and facilityType = “liquidity” and counterparty Name in (“NATIONAL SECURITIES CLEARING CORPORATION”, “THE DEPOSITORY TRUST COMPANY”) and Loan Amount Funded USD > 0 and loanAmountUnfundedUsd is not Null);
+Fronting and Participation – Loans Feeds where facilityType = “Credit” or where facilityType = “Liquidity” and counterparty Name in (“NATIONAL SECURITIES CLEARING CORPORATION”, “THE DEPOSITORY TRUST COMPANY”).
+With regards to the above, Contractual Fronting Exposures and Sub-participations require to be disaggregated.  To avoid double counting, this population is removed from the values derived from the Loan IQ – Drawn and Loan IQ – Undrawn Feeds.  These facilities are identified on the basis of Deal ID, Counterparty, Legal Entity, Currency and Maturity Date.
+Off Bal Sheet Com and Guarantees Feed, where Summary Line in (“Business Scape”, “Commercial and residential"", “Investment Activities”, “Letters of credit and oth”, “Other Commitments”, “Underwriting Commitments”); 
+Repos – BRM Feed, where Trade Type is “MTA” "
+6G - Product,6G - Outflows -  Other - Derivative Payables,RT-6G-OO-1,6G,nyqd_lmfr_ate,,,Derivative Payables,94,CVA Expected Cashflows,,"CVA Expected Cashflows Feed
+Scenario is ""Base"", Reporting Plane ID is 0, Feed Version is ""uncoll"" and Metric like (CFPAY%, CFRECEIVE%)) or (Feed Version is ""ra"", Time Horizon >=271, Time Horizon <=365 and Metric like PECF_%) and Not on Exclusion list
+Exclusion list is based on following Netting id: 
+2546547, 2546546, 0617U0NZ6, 0617U0O02, 0617U0AX5, 0617U0AV9
+
+Netting: 
+- Single value calculated (as driven by Net Gross Indicator as “N” or “G” for Netting Allowed or Disallowed) per Netting ID, Time Horizon, Currency and (for Net Gross Indicator as “G”) Metric < 0 then report under O.O.1 
+- Netting is on a Netting Group ID, Counterparty and Time Horizon Basis. For currency reporting, netting is also based on currency.
+Netting group IDs starting with ETP% are considered for netting, where Net Gross Indicator is “N”.
+Netting group IDs starting with ETP% are not considered for netting, where Net Gross Indicator is “G”."
+6G - Product,6G - Outflows -  Other - Excess Margin,RT-6G-OO-17,6G,nyqd_lmfr_ate,,,Excess Margin,165; 173,PB Margin Excess; WM Margin,,"WM Margin Feed, where Margin Type is “Excess Margin”
+PB Margin Excess Feed , where Flow Indicator is “E”"
+6G - Product,6G - Outflows -  Other - Interest and Dividends Payable,RT-6G-OO-19,6G,nyqd_lmfr_ate,,,Interest and Dividends Payable,43; 207; 208,Triton Sub-Debt; Interest Payable-Receivable; Dividends Payable-Receivable,,"Dividends Payable-Receivable & Interest Payable-Receivable Feeds, where GL Account begins “2”
+Triton Sub-Debt Feed, where MX Cash Value < 0"
+6G - Product,6G - Outflows -  Other - Liquidity Facilities,RT-6G-OO-5,6G,nyqd_lmfr_ate,,,Liquidity Facilities,33; 34; 233; 307; 308; 309; 310,Loan IQ - Drawn; Loan IQ - Undrawn; Fronting and Participation; Tender Option Bonds Floater Notes; Tender Option Bonds Collateral; Tender Option Bonds Residual; Tender Option Bonds Floater Investor,,"Loan IQ – Drawn (where Risk Type not “Interest Only Strip” and Loan Amount Funded USD is > 0 and loanAmountUnfundedUsd is not Null); 
+
+Loan IQ – Undrawn (where dealId is not “MSCI (11/14 A1 8/16 A2 05/18)” and Loan Amount Funded USD > 0 and loanAmountUnfundedUsd is not Null);
+
+Fronting and Participation – Loans Feeds where facilityType = ‘Liquidity’; 
+
+Tender Option Bonds Floater Investor, Tender Option Bonds Residual, Tender Option Bonds Collateral & Tender Option Bonds Floater Notes Feeds are joined via TRUST_ID; where Program is “Customer”
+
+With regards to the above, Contractual Fronting Exposures and Sub-participations require to be disaggregated.  To avoid double counting, this population is removed from the values derived from the Loan IQ – Drawn and Loan IQ – Undrawn Feeds.  These facilities are identified on the basis of Deal ID, Counterparty, Legal Entity, Currency and Maturity Date"
+6G - Product,6G - Outflows -  Other - Loss of Rehypothecation Rights Due to a 1 Notch Downgrade,RT-6G-OO-9,6G,nyqd_lmfr_ate,,,Loss of Rehypothecation Rights Due to a 1 Notch Downgrade,47,Downgrade Triggers,,"Downgrade Triggers Feed, where Notch DG is “1”"
+6G - Product,6G - Outflows -  Other - Loss of Rehypothecation Rights Due to a 2 Notch Downgrade,RT-6G-OO-10,6G,nyqd_lmfr_ate,,,Loss of Rehypothecation Rights Due to a 2 Notch Downgrade,47,Downgrade Triggers,,"Downgrade Triggers Feed, where Notch DG is “2”"
+6G - Product,6G - Outflows -  Other - Loss of Rehypothecation Rights Due to a 3 Notch Downgrade,RT-6G-OO-11,6G,nyqd_lmfr_ate,,,Loss of Rehypothecation Rights Due to a 3 Notch Downgrade,47,Downgrade Triggers,,"Downgrade Triggers Feed, where Notch DG is “3”"
+6G - Product,6G - Outflows -  Other - Loss of Rehypothecation Rights Due to a Change in Financial Condition,RT-6G-OO-12,6G,nyqd_lmfr_ate,,,Loss of Rehypothecation Rights Due to a Change in Financial Condition,47,Downgrade Triggers,,"Downgrade Triggers Feed, where Notch DG is “10”"
+6G - Product,6G - Outflows -  Other - MTM Impact on Derivative Positions,RT-6G-OO-8,6G,nyqd_lmfr_ate,,,MTM Impact on Derivative Positions,168,Derivatives MTM HLBA,,"Derivatives MTM HLBA Feed, where Primary Account is “MAX24M”"
+6G - Product,6G - Outflows -  Other - Net 30-Day Derivative Payables,RT-6G-OO-20,6G,nyqd_lmfr_ate,,,Net 30-Day Derivative Payables,94; 95,CVA Expected Cashflows; CVA Margin Requirements,,"CVA Expected Cashflows & CVA Margin Requirements Feeds, where Version is “Net30”, Not on Exclusion List, Reporting Plane ID = 0, Scenario is “base”, Metric in (CFPAYMEAN_%, CFRECEIVEMEAN_%, FNFLOWMEAN_%), Time Horizon in (0 to 29) and Future value is not 0
+
+Single value calculated (as driven by Net Gross Indicator as “N” or “G” for Netting Allowed or Disallowed) per Netting ID, Time Horizon, Currency and (for Net Gross Indicator as “G”) Metric < 0
+
+CVA Expected Cashflows Feed
+Scenario is ""Base"", Reporting Plane ID is 0, Feed Version is ""ra"", Time Horizon = 9999, Metric like PECE_%), Not on Exclusion List and Future value is not 0
+Exclusion list is based on following Netting id: 
+2546547, 2546546, 0617U0NZ6, 0617U0O02, 0617U0AX5, 0617U0AV9  
+Single value calculated per Netting ID"
+6G - Product,6G - Outflows -  Other - Other Cash Outflows,RT-6G-OO-22,6G,nyqd_lmfr_ate,,,Other Cash Outflows,,Manual Cash Outflows,,"Material, exceptional other cash flows are monitored regularly with Treasury and reported under O.O.22 as necessary.  This includes dividends declared on the U.S. Banks.
+This is presently manually sourced."
+6G - Product,6G - Outflows -  Other - Other Outflows Related to Structured Transactions,RT-6G-OO-21,6G,nyqd_lmfr_ate,,,Other Outflows Related to Structured Transactions,,,,"No value is presently reported. The assessment will be monitored on a periodic basis through reviewing movement in new non-consolidated VIE exposures, as provided by FSS Disclosures."
+6G - Product,6G - Outflows -  Other - Retail Mortgage Commitments,RT-6G-OO-6,6G,nyqd_lmfr_ate,,,Retail Mortgage Commitments,,Manual GWM Mortgages,,"Manual GWM Mortgages Dataset, obtained from Liquidity Coverage Ratio Daily Report Email from Home Loans Group"
+6G - Product,6G - Outflows -  Other - TBA Purchases,RT-6G-OO-3,6G,nyqd_lmfr_ate,,,TBA Purchases,86,Tbas,,"Tbas Feed, where Buy Sell Ind is “B” and Product like 99X% and DLG_NAME NOT IN ('Morgan Stanley Private Bank NA', 'Morgan Stanley Bank NA') AND RELATED_DLG_NAME NOT IN ('Morgan Stanley Private Bank NA', 'Morgan Stanley Bank NA')
+
+Intercompany replication logic (from I.O.3)
+Where 6G_CODE is 'I.O.3' AND DLG_NAME='Morgan Stanley and Co LLC' AND RELATED_DLG_NAME='Morgan Stanley and Co International plc' create 6G_CODE is 'O.O.3' AND DLG_NAME=' Morgan Stanley and Co International plc ' AND RELATED_DLG_NAME=' Morgan Stanley and Co LLC ' AND 6G_CODE is 'I.O.3' AND DLG_NAME=' Morgan Stanley and Co International plc ' AND RELATED_DLG_NAME='External'"
+6G - Product,6G - Outflows -  Other - Total Collateral Required Due to a 1 Notch Downgrade,RT-6G-OO-13,6G,nyqd_lmfr_ate,,,Total Collateral Required Due to a 1 Notch Downgrade,47,Downgrade Triggers,,"Downgrade Triggers Feed, where Notch DG is “1”"
+6G - Product,6G - Outflows -  Other - Total Collateral Required Due to a 2 Notch Downgrade,RT-6G-OO-14,6G,nyqd_lmfr_ate,,,Total Collateral Required Due to a 2 Notch Downgrade,47,Downgrade Triggers,,"Downgrade Triggers Feed, where Notch DG is “2”"
+6G - Product,6G - Outflows -  Other - Total Collateral Required Due to a 3 Notch Downgrade,RT-6G-OO-15,6G,nyqd_lmfr_ate,,,Total Collateral Required Due to a 3 Notch Downgrade,47,Downgrade Triggers,,"Downgrade Triggers Feed, where Notch DG is “3”"
+6G - Product,6G - Outflows -  Other - Total Collateral Required Due to a Change in Financial Condition,RT-6G-OO-16,6G,nyqd_lmfr_ate,,,Total Collateral Required Due to a Change in Financial Condition,47,Downgrade Triggers,,"Downgrade Triggers Feed, where Notch DG is “10”"
+6G - Product,6G - Outflows -  Other - Unfunded Term Margin,RT-6G-OO-18,6G,nyqd_lmfr_ate,,,Unfunded Term Margin,165; 173,PB Margin Excess; WM Margin,,"WM Margin Feed, where Margin Type is “Unfunded Term Margin”
+PB Margin Excess Feed, where Flow Indicator is “D”"
+6G - Product,6G - Outflows -  Secured - Collateral Swaps,RT-6G-OS-4,6G,nyqd_lmfr_ate,,,Collateral Swaps,71; 79,Stock Loan - BRM; Repos - BRM,6G - Order of Allocation - Repo; 6G - Order of Allocation - Stock Loan,"OOFA Use is “Repo” and OOFA Use is Cash is “N” (App C-III)
+
+OOFA Use is “Repo” and COUNTERPARTY_ID = 'BBB00238530' AND TRADE TYPE IN ('BVF', 'PLG', 'APLG') and OOFA Use is Cash “Y”.
+
+OOFA Use is “Stock Loan” and OOFA Use is Cash is “N” (App C-III)
+
+Uncollateralized Loans
+Repos - BRM Feed, where Sec Fin Exclude (App C-III) is NULL, Flow Ind is “S” and TAPS Trading Account is “07700A0T3”"
+6G - Product,6G - Outflows -  Secured - Customer Shorts,RT-6G-OS-7,6G,nyqd_lmfr_ate,,,Customer Shorts,162; 203,PB Global Assets; WM Shorts Longs,6G - Order of Allocation - Client Long PB; 6G - Order of Allocation - Client Long WM; 6G - Order of Allocation - NCSA Short,"OOFA Use in (“Client Short PB”, “Client Short WM”, “NCSA Short”) (App C-III)
+
+WM Longs Shorts Feed, where DLG in (ETS, ETALLOTH), where Settled_Unsettled_Flag is “SCS” or “UCS”"
+6G - Product,6G - Outflows -  Secured - Exceptional Central Bank Operations,RT-6G-OS-6,6G,nyqd_lmfr_ate,,,Exceptional Central Bank Operations,79; 105,Repos - BRM; Stock Loan/Repo-MSSB,,"For Non Bank Entities Manual Product, adjusted from O.S.1, where Counterparty Name is “Federal Reserve Bank”
+
+For Bank Entities Manual Product, adjusted based on advice from Corporate Treasury"
+6G - Product,6G - Outflows -  Secured - FHLB Advances,RT-6G-OS-5,6G,nyqd_lmfr_ate,,,FHLB Advances,79; 105,Repos - BRM; Stock Loan/Repo-MSSB,,"Manual Product, adjusted from O.S.1, where Counterparty Name is “Federal Home Loan Bank of New York”"
+6G - Product,6G - Outflows -  Secured - Firm Shorts,RT-6G-OS-8,6G,nyqd_lmfr_ate,,,Firm Shorts,48; 89; 125; 203; 330,Pending Trades; Internal Coverage; GWM Mortgages; WM Shorts Longs; Failed Settlements,6G - Order of Allocation - Firm Short,"OOFA Use is “Firm Short” (App C-III)
+
+WM Shorts Longs Feed, where Settled Unsettled Flag is “UFS”
+
+Pending Trades Feed, where Trade Date <= Reporting Date, Start Date > Reporting Date, End Date >= Reporting Date, Product Hierarchy Level 1 not “Derivative Contracts”, CUSIPs not like 99X% and (Net Sell Trades  or (Nettable is “False” and Flow Ind is “S”)) 
+
+GWM Mortgages Feed, where Mortgage Lifecycle is “FORWARD_SALE”
+
+Failed Settlements Feed, where Global COA Level 2= ""ASSETS"""
+6G - Product,6G - Outflows -  Secured - Other Secured Financing Transactions,RT-6G-OS-11,6G,nyqd_lmfr_ate,,,Other Secured Financing Transactions,79,Repos - BRM,6G - Order of Allocation - Repo; 6G - Order of Allocation - Customer Affiliate Short; 6G - Order of Allocation - Firm Bank Loans,"OOFA Use is “Repo”, OOFA Source not “Firm Bank Loans”, Trade Type not in (“APRP”, “BSB”, “DTC”, “GEN”, “MEG”, “MGN”, “MTA”, “PBX”, “PRP”, “PVR”, “REP”, “RGC”, “RVF”, “APLG”, “BCI”, “BVC”, “BVF”, “BVM”, “BVU”, “PLG”, “SLC”, “TKR”, “CAR”, “DRV”, “CCL”, “REK”, “MMK”, “CLF”, “CLP”, “PLD”, “LNT”, “SLF”, “SLK”, “EXC”, “EXN”) and OOFA Use is Cash is “Y” (App C-III)
+
+OOFA Use is “Firm Bank Loans” and Use is Cash “Y” (App C-III)
+
+OOFA Use is “Customer Affiliate Short” (App C-III)
+
+Repos-BRM Feed, where Start Date > Reporting Date, Sec Fin Exclude (App C-III) is NULL, Flow Ind is “S” and Trade Type not in (“APRP”, “BSB”, “DTC”, “GEN”, “MEG”, “MGN”, “MTA”, “PBX”, “PRP”, “PVR”, “REP”, “RGC”, “RVF”, “APLG”, “BCI”, “BVC”, “BVF”, “BVM”, “BVU”, “PLG”, “SLC”, “TKR”, “CAR”, “DRV”, “CCL”, “REK”, “MMK”, “CLF”, “CLP”, “PLD”, “LNT”, “SLF”, “SLK”, “EXC”, “EXN”) (App C-III) and Funding Calc Category is “Cash”"
+6G - Product,6G - Outflows -  Secured - Repo,RT-6G-OS-1,6G,nyqd_lmfr_ate,,,Repo,79; 105,Repos - BRM; Stock Loan/Repo-MSSB,6G - Order of Allocation - Repo,"OOFA Use is “Repo”, OOFA Source not “Firm Bank Loans”, Trade Type in (“APRP”, “BSB”, “GEN”, “MEG”, “MGN”, “PBX”, “PRP”, “PVR”, “REP”, “RGC”, “RVF”, “CAR”, “DRV”, “CCL”, “REK”, “MMK”, “CLF”, “CLP”, “PLD”) and OOFA Use is Cash is “Y” (App C-III)
+
+GCF Gross Up Exclusion, LEGAL_ENTITY = 0201 and COUNTERPARTY_ID = BBB01807140 and TRI_PARTY_IND = TriParty
+Repos-BRM Feed, where Start Date>Reporting Date, Sec Fin Exclude (App C-III) is NULL, Flow Ind is “S”, Trade Type in (“APRP”, “BSB”, “GEN”, “MEG”, “MGN”, “PBX”, “PRP”, “PVR”, “REP”, “RGC”, “RVF”, “CAR”, “DRV”, “CCL”, “REK”, “MMK”, “CLF”, “CLP”, “PLD”) (App C-III) and Funding Calc Category is “Cash” 
+Stock Loan/Repo-MSSB Feed, where Start Date>Reporting Date, Sec Fin Exclude (App C-III) is NULL, Flow Ind is “S”, Trade Type is “REP” and Funding Calc Category is “Cash” "
+6G - Product,6G - Outflows -  Secured - Securities Lending,RT-6G-OS-2,6G,nyqd_lmfr_ate,,,Securities Lending,71; 79; 105; 162; 314,Stock Loan - BRM; Repos - BRM; Stock Loan/Repo-MSSB; PB Global Assets; ETrade Stock Borrow and Loans,6G - Order of Allocation - Repo; 6G - Order of Allocation - Firm Bank Loans; 6G - Order of Allocation - PDS Short; 6G - Order of Allocation - Stock Loan,"OOFA Use is “Repo”, Trade Type in (“APLG”, “BCI”, “BVC”, “BVF”, “BVM”, “BVU”, “PLG”, “SLC”, “TKR”, “LNT”, “SLF”, “SLK”, “EXC”, “EXN”, “MTA”, “DTC”) and OOFA Use is Cash is “Y” (App C-III)
+COUNTERPARTY_ID = 'BBB00238530' AND TRADE TYPE IN ('BVF', 'PLG', 'APLG') THEN Exclude
+
+OOFA Use in (“Stock Loan”, “PDS Short”, “Firm Bank Loan”) and OOFA Use is Cash is “Y” (App C-III)
+Repos - BRM Feed, where Start Date>Reporting Date, Sec Fin Exclude (App C-III) is NULL, Flow Ind is “S”, Trade Type in (“APLG”, “BCI”, “BVC”, “BVF”, “BVM”, “BVU”, “PLG”, “SLC”, “TKR”, “LNT”, “SLF”, “SLK”, “EXC”, “EXN”, “MTA”, “DTC”) (App C-III) and Funding Calc Category is “Cash” 
+Stock Loan - BRM Feed, where Start Date>Reporting Date, Sec Fin Exclude (App C-III) is NULL, ((Cash Non Cash is “C” and Flow Ind in (“L”, “R”)) OR (Cash Non Cash is “N” and Flow Ind in (“L”, “P”))) and Funding Calc Category is “Cash”
+
+Stock Loan/Repo-MSSB Feed, where Start Date>Reporting Date, Sec Fin Exclude (App C-III) is NULL, Flow Ind is “L”, Trade Type not “REP” and Funding Calc Category is “Cash”
+
+PB Global Assets Feed, where Start Date>Reporting Date, Flow Ind is “S”, ((Legal Entity is “0201” and Counterparty BBB ID is “BBB00319961”) OR Legal Entity in (“0530”, “0321”))
+
+Etrade Stock Borrow and Loans Feed, where PID is O.S.2 and Counterparty Number not in (“385”, “0385”, “1051”)"
+6G - Product,6G - Outflows -  Secured - Synthetic Customer Shorts,RT-6G-OS-9,6G,nyqd_lmfr_ate,,,Synthetic Customer Shorts,325; 326,EQ TRS; FID TRS ,,"FID TRS Feed, where Product Type not “BondForward” and longshort field  is “Long”
+
+Equity TRS Feed, where longshort field is “Short” and lrdClassfication in (""Client”, “Closed Struct-Failed Sale-IFRS+GAAP”, “Closed Struct-Failed Sale-IFRS”, “Closed Struct-True Sale”, “Closed Struct"")"
+6G - Product,6G - Outflows -  Secured - Synthetic Firm Financing,RT-6G-OS-10,6G,nyqd_lmfr_ate,,,Synthetic Firm Financing,325,EQ TRS,,"Equity TRS Feed, where longshort field is “Short” and  lrdClassfication NOT in (""Client”, “Closed Struct-Failed Sale-IFRS+GAAP”, “Closed Struct-Failed Sale-IFRS”, “Closed Struct-True Sale”, “Closed Struct"" or NULL"
+6G - Product,6G - Outflows -  Wholesale - Free Credits,RT-6G-OW-18,6G,nyqd_lmfr_ate,,,Free Credits,162; 174; 180,PB Global Assets; WM Free Credits; PWM Loans and Deposits,,"PB Global Assets Feed, where Flow Ind is “C” 
+
+WM Free Credits Feed [no constraints]
+
+PWM Loans and Deposits Feed, where Legal Entity not in (“0390”, “5848”, “7714”, “7715”, “5849”, “7713”) and PB Cash Value USD < 0 (on Legal Entity, Counterparty BBB ID and Currency basis)"
+6G - Product,6G - Outflows -  Wholesale - Offshore Borrowing,RT-6G-OW-10,6G,nyqd_lmfr_ate,,,Offshore Borrowing,44; 256,Triton Money Markets; BTB Cash,,"BTB Cash and Triton Money Markets TH Feeds, where Entity Type not “Central Bank”, Feed Product not in (“OVERDRAFT”,”DREC”) [BTB Cash Only], TenQ Level 4 in (“Interest Bearing Deposits”, “Non-Interest Bearing Deposits”), USD_AMT < 0 (Triton) or ADJUSTED_USD_AMT < 0 (BTB)  and Not Entity Country = Currency Country = Party Country
+(Determined by Business Date, Entity, Party ID, Currency and Product Type)"
+6G - Product,6G - Outflows -  Wholesale - Onshore Borrowing,RT-6G-OW-9,6G,nyqd_lmfr_ate,,,Onshore Borrowing,44; 256,Triton Money Markets; BTB Cash,,"BTB Cash and Triton Money Markets TH Feeds, where Entity Type not “Central Bank”, Feed Product not in (“OVERDRAFT”,”DREC”) [BTB Cash Only], TenQ Level 4 in (“Interest Bearing Deposits”, “Non-Interest Bearing Deposits”), USD_AMT < 0 (Triton) or ADJUSTED_USD_AMT < 0 (BTB) and Entity Country = Currency Country = Party Country
+(Determined by Business Date, Entity, Party ID, Currency and Product Type)"
+6G - Product,6G - Outflows -  Wholesale - Other Unsecured Financing,RT-6G-OW-19,6G,nyqd_lmfr_ate,,,Other Unsecured Financing,53; 253; 312; 313,Omni Taps Transactions; Triton SPV; Omni Renovated GL Balances; Inter-Affiliate Funding – BTB Feed,,"Omni Renovated GL Balances, Omni TAPS Transactions & Interaffiliate Funding BTB Feeds, where Internal Rel 3 is “INTERCO” and MX Cash Amount < 0
+
+Triton SPV Feed, where MX Amt <0"
+6G - Product,6G - Outflows -  Wholesale - Structured Long Term Debt,RT-6G-OW-12,6G,nyqd_lmfr_ate,,,Structured Long Term Debt,268,Long Term Debt - BTB,,"Long Term Debt BTB (USFM) Feed [where Funding Type not “Deposits”], where Structure Type (App C-VI) not “Vanilla” and Days Until Calculated Maturity  >365 days (and notionalAtCalculatedMaturityDateUSD < 0 or notionalAtCalcMaturityDateMX < 0)"
+6G - Product,6G - Outflows -  Wholesale - Structured Notes,RT-6G-OW-15,6G,nyqd_lmfr_ate,,,Structured Notes,43; 268,Triton Sub-Debt; Long Term Debt - BTB,,"Long Term Debt BTB (USFM) Feed [where Funding Type not “Deposits”], where Structure Type (App C-VI) not “Vanilla” and Days Until Calculated Maturity  <=365 days (and notionalAtCalculatedMaturityDateUSD < 0 or notionalAtCalcMaturityDateMX < 0)"
+6G - Product,6G - Outflows -  Wholesale - Tender Option Bonds,RT-6G-OW-6,6G,nyqd_lmfr_ate,,,Tender Option Bonds,307; 308; 309; 310,Tender Option Bonds Floater Notes; Tender Option Bonds Collateral; Tender Option Bonds Residual; Tender Option Bonds Floater Investor,,"Tender Option Bonds Floater Investor, Tender Option Bonds Residual, Tender Option Bonds Collateral & Tender Option Bonds Floater Notes Feeds are joined via TRUST_ID; where Program is “Principal”"
+6G - Product,6G - Outflows -  Wholesale - Unsecured Notes,RT-6G-OW-14,6G,nyqd_lmfr_ate,,,Unsecured Notes,191; 268,Unsecured Debt Manual; Long Term Debt - BTB,,"Long Term Debt BTB (USFM) Feed [where Funding Type not “Deposits”] , where Structure Type (App C-VI) is “Vanilla” and Days Until Maturity  <=365 days (and notionalAtCalculatedMaturityDateUSD < 0 or notionalAtCalcMaturityDateMX < 0)"
+6G - Product,6G - Outflows -  Wholesale - Unstructured Long Term Debt,RT-6G-OW-11,6G,nyqd_lmfr_ate,,,Unstructured Long Term Debt,43; 191; 268,Triton Sub-Debt; Unsecured Debt Manual; Long Term Debt - BTB,,"Long Term Debt BTB (USFM) Feed [where Funding Type not “Deposits”], where Structure Type (App C-VI) is “Vanilla” and Days Until Maturity  >365 days (and notionalAtCalculatedMaturityDateUSD < 0 or notionalAtCalcMaturityDateMX < 0) 
+
+Triton Sub-Debt Feed, where USD Amount < 0"
+6G - Product,6G - Supplemental -  Balance Sheet - Carrying Value Adjustment,RT-6G-SB-6,6G,nyqd_lmfr_ate,,,Carrying Value Adjustment,,Manually Sourced,,As per NSFR Product Details below this table
+6G - Product,6G - Supplemental -  Balance Sheet - Counterparty Netting,RT-6G-SB-5,6G,nyqd_lmfr_ate,,,Counterparty Netting,,Order of Allocation - N/A,6G - Order of Allocation - Client Long PB; 6G - Order of Allocation - Client Long WM; 6G - Order of Allocation - NCSA Long; 6G - Order of Allocation - On BS Asset Exchange Borrow; 6G - Order of Allocation - PDS Long; 6G - Order of Allocation - Repo; 6G - Order of Allocation - Reverse Repo; 6G - Order of Allocation - Stock Borrow; 6G - Order of Allocation - Client Short PB; 6G - Order of Allocation - Client Short WM; 6G - Order of Allocation - Firm Bank Loans; 6G - Order of Allocation - NCSA Short; 6G - Order of Allocation - Stock Loan,"Where OOFA Source is “Client Long WM” and Source On BS is “N”
+
+Where OOFA Use is “Client Short WM” and Use On BS is “N”
+
+Where OOFA Source in (“On BS Asset Exchange Borrow (PDS)”, “PDS Long”), Source is Cash is “Y"" and Source On BS is ""N""
+
+Where OOFA Source in (“Client Long PB”, “NCSA Long”) and Source On BS is ""N""
+
+Where OOFA Use in (“Client Short PB”, “NCSA Short”) and Use On BS is ""N""
+
+Where OOFA Source in (“Reverse Repo”, “Stock Borrow”) and Source On BS is “N”
+
+Where OOFA Use in (“Repo”, “Stock Loan”, “Firm Bank Loan”) and Use On BS is “N”"
+6G - Product,6G - Supplemental -  Balance Sheet - Non-Performing Assets,RT-6G-SB-3,6G,nyqd_lmfr_ate,,,Non-Performing Assets,33; 213; 336,Loan IQ - Drawn; Employee Loans; Loans Collateral,,"I.U.5
+Loan IQ - Drawn Feed, where Term Indicator is “N”, Risk Type not “Interest Only Strip”, Accrual Status is ""NACC"" or ""NAIFP"", Maturity Date > Reporting Date, MX AMT > 0 and Is Being Renewed is “N” and ((SAP Level 4 in (“OTHER LOANS NON FAIR VALUE HFI”, “OTHER LOANS NON FAIR VALUE HFS”) OR (Legacy GL Account Level 4 is “ASSETS.FINSTROWN” and Legacy GL Account Level 6 is “LMVLOAN”)) and Facility Purpose Code not “CREIO”). Where Accrual Status is ""NACC"" then Currency not ""JPY""and collateral from FDW Loans Collateral Feed = N
+
+I.U.6
+Employee Loans Feed, where Performing is “Non-Performing”
+
+I.S.7
+Loan IQ-Drawn Feed, Accrual Status is ""NACC"" or ""NAIFP"", Maturity Date > Reporting Date, Is Being Renewed is “N”, MX AMT > 0, Risk Type not “Interest Only Strip” and Term Indicator is “N” and ((SAP Level 4 in (“OTHER LOANS NON FAIR VALUE HFI”, “OTHER LOANS NON FAIR VALUE HFS”) OR (Legacy GL Account Level 4 is “ASSETS.FINSTROWN” and Legacy GL Account Level 6 is “LMVLOAN”)) and Facility Purpose Code not “CREIO”). Where Accrual Status is ""NACC"" then Currency not ""JPY"" and collateral from FDW Loans Collateral Feed = Y
+
+I.S.8
+Loan IQ-Drawn Feed, Accrual Status is ""NACC"" or ""NAIFP"", Maturity Date > Reporting Date, Is Being Renewed is “N”, MX AMT > 0, Risk Type not “Interest Only Strip” and Term Indicator is “Y” and ((SAP Level 4 in (“OTHER LOANS NON FAIR VALUE HFI”, “OTHER LOANS NON FAIR VALUE HFS”) OR (Legacy GL Account Level 4 is “ASSETS.FINSTROWN” and Legacy GL Account Level 6 is “LMVLOAN”)) and Facility Purpose Code not “CREIO”). Where Accrual Status is ""NACC"" then Currency not ""JPY"" and collateral from FDW Loans Collateral Feed = Y
+Planet Query, re-allocating performing Unencumbered Assets to non-performing, where (""TAPS EUR"",""{Instrument Facts_Is Trading Flat Ind} = 'Y' AND ({Component Id} = 46 OR {Component Id} = 228)"") and Consolidated Centre in (“CREDIT-CORPORATES”, “SECURITIZED PRODUCTS GRP”)"
+6G - Product,6G - Supplemental -  Balance Sheet - Other Assets,RT-6G-SB-4,6G,nyqd_lmfr_ate,,,Other Assets,330; N/A,Failed Settlements; Controllers WorkBench Query,,"Controllers WorkBench Query:
+(BS or PnL Indicator is “BALANCE SHEET” and Global COA Level 3 in (“INTANGIBLE ASSETS”, “GOODWILL”, “OTHER INVESTMENTS NON FAIR VALUE”, “OTHER ASSETS”) and Trading Partner Indicator in (N/A, “INTRA”, “OPTIONAL”)) and Corporate Consolidation Indicator is “Y”
+Failed Settlements Feed where Global COA Level 2 = “ASSETS” and P L Date – Settlement Date > 5 Working Days"
+6G - Product,6G - Supplemental -  Balance Sheet - Other Liabilities,RT-6G-SB-2,6G,nyqd_lmfr_ate,,,Other Liabilities,,Controllers WorkBench Query,,"Controllers WorkBench Query:
+(BS or PnL Indicator is “BALANCE SHEET”, Trading Partner Indicator is N/A and Global COA Level 4 is “OTHER LIABILITIES AND ACCRUED EXPENSES”) and Corporate Consolidation Indicator is “Y”"
+6G - Product,6G - Supplemental -  Balance Sheet - Regulatory Capital Element,RT-6G-SB-1,6G,nyqd_lmfr_ate,,,Regulatory Capital Element,,Manually Sourced,,Manually sourced
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Collateral Disputes Deliverables,RT-6G-SDC-13,6G,nyqd_lmfr_ate,,,Collateral Disputes Deliverables,87,Portfolio Agreement,,"Portfolio Agreement Feed, where Task Type is “Margin Call Anticipation”, Margin Group Exclude is “false” and Margin Call Date not NULL"
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Collateral Disputes Receivables,RT-6G-SDC-14,6G,nyqd_lmfr_ate,,,Collateral Disputes Receivables,87,Portfolio Agreement,,"Portfolio Agreement Feed, where Task Type is “Margin Call Action”, Margin Group Exclude is “false” and Margin Call Date not NULL"
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Derivative CCP Default Fund Contribution,RT-6G-SDC-11,6G,nyqd_lmfr_ate,,,Derivative CCP Default Fund Contribution,150,Libra Exchange Collateral,,"Libra Exchange Collateral Feed, where Counterparty Account Business Definition not like (%OTC CLEARED - CLIENT%, %LISTED DERIVATIVES - CLIENT CLASSIFICATION%), Counterparty Account Business Definition like %GUARANTEED FUNDS%, Cost Centre Level 9 not in (“Exchanges Cash”, “Sec Funding Trans”), Counterparty Account General Usage in (“Banking/Clearing/Exchange”, “Broker/Dealer”), TAPS Trading Account not like 07%, TAPS Trading Account not in (“0980ALTG0”, “0980SABM1”, “098TUIMC8”, “097011233”, “039CIA412”, “0909000C6”, “0909036C4”, “081100737”, “081102220”, “097060ZX8”, “097A00J10”, “097A00YO3”, “097KABY99”, “097KABZA5”, “097NMAN03”), Collateral Type is “GF” and Flow Ind is “P”"
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Derivative Collateral Substitution Capacity,RT-6G-SDC-19,6G,nyqd_lmfr_ate,,,Derivative Collateral Substitution Capacity,318; 328,HQLA Collateral Eligibility; COLLATERAL SUBSTITUTION BRM,,"Collateral Substitution BRM Feed where Consent Required is “N”, Posted Received Ind is “P” and Rehypothecable Indicator is “Y”, then look up at Pprimary Account level to the HQLA Collateral Eligibility Feed where Direction is ""P"""
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Derivative Collateral Substitution Risk,RT-6G-SDC-18,6G,nyqd_lmfr_ate,,,Derivative Collateral Substitution Risk,318; 328,HQLA Collateral Eligibility; COLLATERAL SUBSTITUTION BRM,,"Collateral Substitution BRM Feed, where Consent Required is “N”, Posted Received Ind is “R” and Rehypothecable Indicator is “Y”, then look up at Primary Account level to the HQLA Collateral Eligibility Feed where Direction is ""R"""
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Derivative Settlement Payments Delivered,RT-6G-SDC-3,6G,nyqd_lmfr_ate,,,Derivative Settlement Payments Delivered,333,Collateral LD,,"[Manual Product]
+Collateral LD Feed, where Collateral type is ""VM"" and Flow Ind is ""P"""
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Derivative Settlement Payments Received,RT-6G-SDC-4,6G,nyqd_lmfr_ate,,,Derivative Settlement Payments Received,333,Collateral LD,,"[Manual Product]
+Collateral LD Feed, where Collateral type is ""VM"" and Flow Ind is ""R"""
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Gross Derivative Asset Values,RT-6G-SDC-1,6G,nyqd_lmfr_ate,,,Gross Derivative Asset Values,227; 339,Listed Derivative Exposure; Renovated OTC Derivatives Exposure,,"Renovated OTC Derivative Exposure Feed, where ACCOUNT_TYPE_NAME not “3-OTC CC - CLIENT Account” and COUNTERPARTY_ID not like UL%
+Listed Derivative Exposure Feed, where GL Account like 1%
+[Values are Post Counterparty Netting & Pre VM Netting]"
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Gross Derivative Liability Values,RT-6G-SDC-2,6G,nyqd_lmfr_ate,,,Gross Derivative Liability Values,227; 339,Listed Derivative Exposure; Renovated OTC Derivatives Exposure,,"Renovated OTC Derivative Exposure Feed, where ACCOUNT_TYPE_NAME not “3-OTC CC - CLIENT Account” and COUNTERPARTY_ID not like UL%
+Listed Derivative Exposure Feed, where GL Account like 2%
+[Values are Post Counterparty Netting & Pre VM Netting]"
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Initial Margin Posted - Customer,RT-6G-SDC-6,6G,nyqd_lmfr_ate,,,Initial Margin Posted - Customer,25; 333,Derivatives Collateral; Collateral LD,,"S.DC.6.2 and S.DC.6.3
+Derivatives Collateral Feed, where Counterparty Account Business Definition like (%DERIVATIVES%CUSTOMER CLEAR SWAPS CLASSIFICATION%, or %DERIVATIVES%CUSTOMER%SWAPS%HOUSE%CLASSIFICATION% or %OTC CLEARED - CLIENT%)
+
+S.DC.6.4 and S.DC.6.5
+Derivatives Collateral Feed, where Counterparty Account Business Definition like %OTC CLEARED - CLIENT%
+S.DC.6.*
+And Counterparty Account General Usage like “Banking/Clearing/Exchange”, Flow Ind is “P”, P I Flag is “P” and Counterparty Account not in (“027AAZBF4”, “027SBDOU6”, “027X000B3”, “027X000U1”, “027AAZBE7”, “027X000A5”, “027X000V9”, “027XAABK8”)
+
+S.DC.6.2.3, S.DC.6.3.3, S.DC.6.4.3, S.DC.6.5.3
+Derivatives Collateral Feed, where (EGTS Division = “Swaps Cleared” or Cost Centre Level 6 = “OTC CLIENT CLEARING”), Counterparty Account General Usage like “%Customer%” and Flow Ind is “P”, P I Flag is “P
+
+S.DC.6.3.5 and S.DC.6.4.5
+Collateral LD Feed, where Collateral type is ""IM"" and Flow Ind is ""P"""
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Initial Margin Posted - House,RT-6G-SDC-5,6G,nyqd_lmfr_ate,,,Initial Margin Posted - House,25; 81; 149; 150,Derivatives Collateral; Equity Swap Bridge Collateral; Equity Swap Bridge Collateral naa; Libra Exchange Collateral,6G - Order of Allocation - House IM Posted,"Where OOFA Use is “House IM Posted” (App C-III)
+
+Derivatives Collateral Feed, where Counterparty Account Business Definition not like (%OTC CLEARED - FIRM%, %OTC CLEARED - CLIENT%, %VARIATION MARGIN%, %INITIAL MARGIN%, %GUARANTEED FUNDS%), Counterparty Account General Usage not like “Banking/Clearing/Exchange”, Flow Ind is “P”, P I Flag is “P”, EGTS Division in (“Swaps”, “FX”, “Commodities”, “Equity Derivatives”, “Securitized Products Group”) and Counterparty Account not in (“027AAZBF4”, “027SBDOU6”, “027X000B3”, “027X000U1”, “027AAZBE7”, “027X000A5”, “027X000V9”, “027XAABK8”)
+
+Libra Exchange Collateral Feed, where Counterparty Account Business Definition not like (%OTC CLEARED - CLIENT%, %LISTED DERIVATIVES - CLIENT CLASSIFICATION%), Counterparty Account Business Definition like %INITIAL MARGIN%, Counterparty Account General Usage in (“Banking/Clearing/Exchange”, “Broker/Dealer”), TAPS Trading Account not like 07%, TAPS Trading Account not in (“0980ALTG0”, “0980SABM1”, “098TUIMC8”, “097011233”, “039CIA412”, “0909000C6”, “0909036C4”, “081100737”, “081102220”, “097060ZX8”, “097A00J10”, “097A00YO3”, “097KABY99”, “097KABZA5”, “097NMAN03”), Collateral Type is “IM” and Flow Ind is “P” and Cost Centre Level 9 not in “EXCHANGES CASH”,”SEC FUNDING TRANS”)
+
+Equity Swap Bridge Collateral Feed, where Margin Type is “IM” and Flow Ind is “P”
+
+Equity Swap Bridge Collateral naa Feed, where Margin Type is “IM”, Collateral TAPS Account not in (“04FA00897”, “04FA01960”, “04FA07611”) and Flow Ind is “P”"
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Initial Margin Received,RT-6G-SDC-7,6G,nyqd_lmfr_ate,,,Initial Margin Received,25; 81; 149; 333,Derivatives Collateral; Equity Swap Bridge Collateral; Equity Swap Bridge Collateral naa; Collateral LD,6G - Order of Allocation - House IM Received,"OOFA Source is “House IM Received” (App C-III)
+When Use in (“CLIENT_DEPOT”, “UNENC_TREASURY_SEC_POOL”, “UNENC_INVESTMENT_PORTFOLIO”, “UNENC_IP_FHLB”, “UNENC_IP_FRB”, “UNENC_DEFUNDED”, “UNENC_FIRM”, “UNENC_OVERBORROW”, “UNENC_CENTRAL_BANK_PREPOSITIONED”, “UNENC”) and Feed ID is 25, “S.DC.7.1.1”, else when Feed ID not 25, “S.DC.7.1.2”, else when Use not listed above and Feed ID is 25, “S.DC.7.2.1”, else “S.DC.7.2.2”
+
+Derivatives Collateral Feed, where Flow Ind is “R”, P I Flag is “P”, and
+S.DC.7.3.1, S.DC.7.4.1, S.DC.7.5.1
+Counterparty Account Business Definition not like (%OTC CLEARED - FIRM%, %OTC CLEARED - CLIENT%, %VARIATION MARGIN%, %INITIAL MARGIN%, %GUARANTEED FUNDS%),Counterparty Account General Usage not like “Banking/Clearing/Exchange”, EGTS Division in (“Swaps”, “FX”, “Commodities”, “Equity Derivatives”, “Securitized Products Group”)
+S.DC.7.3.2, S.DC.7.4.2, S.DC.7.5.2
+Counterparty Account Business Definition like (%OTC CLEARED - CLIENT%), Counterparty Account General Usage is like “Banking/Clearing/Exchange” 
+S.DC.7.*
+And Counterparty Account not in (“027AAZBF4”, “027SBDOU6”, “027X000B3”, “027X000U1”, “027AAZBE7”, “027X000A5”, “027X000V9”, “027XAABK8”)
+
+S.DC.7.3.3, S.DC.7.4.3, S.DC.7.5.3
+Derivatives Collateral Feed, where (EGTS Division = “Swaps Cleared” or Cost Centre Level 6 = “OTC CLIENT CLEARING”), Counterparty Account General Usage like “%Customer%”, Flow Ind is “R” and P I Flag is “P”
+
+
+Equity Swap Bridge Collateral Feed, where Margin Type is “IM” and Flow Ind is “R”
+Equity Swap Bridge Collateral naa Feed, where Margin Type is “IM”, Collateral TAPS Account not in (“04FA00897”, “04FA01960”, “04FA07611”) and Flow Ind is “R”
+
+S.DC.7.3.5 and S.DC.7.4.5
+Collateral LD Feed, where Collateral type is ""IM"" and Flow Ind is ""R”"
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Other CCP Pledges and Contributions,RT-6G-SDC-12,6G,nyqd_lmfr_ate,,,Other CCP Pledges and Contributions,25; 81; 149; 150,Derivatives Collateral; Equity Swap Bridge Collateral; Equity Swap Bridge Collateral naa; Libra Exchange Collateral,,"Libra Exchange Collateral Feed, where Counterparty Account Business Definition not like (%OTC CLEARED - CLIENT%, %LISTED DERIVATIVES - CLIENT CLASSIFICATION%), Counterparty Account Business Definition like %GUARANTEED FUNDS% or like “%INITIAL MARGIN%”, Cost Centre Level 9 in (“Exchanges Cash”, “Sec Funding Trans”), Counterparty Account General Usage in (“Banking/Clearing/Exchange”, “Broker/Dealer”), TAPS Trading Account not like 07%, TAPS Trading Account not in (“0980ALTG0”, “0980SABM1”, “098TUIMC8”, “097011233”, “039CIA412”, “0909000C6”, “0909036C4”, “081100737”, “081102220”, “097060ZX8”, “097A00J10”, “097A00YO3”, “097KABY99”, “097KABZA5”, “097NMAN03”), Collateral Type in (‘GF”,“IM”) and Flow Ind is “P”"
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Other Collateral Substitution Capacity,RT-6G-SDC-21,6G,nyqd_lmfr_ate,,,Other Collateral Substitution Capacity,148,Collateral Substitution - Capacity ,,"Spare Capacity Feed, where Has Schedule is “true”"
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Other Collateral Substitution Risk,RT-6G-SDC-20,6G,nyqd_lmfr_ate,,,Other Collateral Substitution Risk,79,Repos - BRM,,"This is a two stage process
+1)	Identify Trade IDs from Repos - BRM Feed, where Legal Entity is “1633”, Flow Direction is “B”, Tri Party Indicator is “TriParty” and Counterparty ID is not “BBB00319701”
+2)	Repos - BRM Feed, where Trade IDs as per (1), Tri Party Indicator is “Y”, Trade Date <= Business Date and Forward Ind in (“Y”, “N”)"
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Required Collateral Deliverables,RT-6G-SDC-16,6G,nyqd_lmfr_ate,,,Required Collateral Deliverables,91,EGTS Sleeper Collateral Cusip,,"EGTS Sleeper Collateral CUSIP Feed, where Balance Type like UNDR%"
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Sleeper Collateral Deliverables,RT-6G-SDC-15,6G,nyqd_lmfr_ate,,,Sleeper Collateral Deliverables,91,EGTS Sleeper Collateral Cusip,,"EGTS Sleeper Collateral CUSIP Feed, where Balance Type not like UNDR%"
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Posted - Customer,RT-6G-SDC-9,6G,nyqd_lmfr_ate,,,Variation Margin Posted - Customer,25; 81; 149; 150; 226,Derivatives Collateral; Equity Swap Bridge Collateral; Equity Swap Bridge Collateral naa; Libra Exchange Collateral; OTC Derivatives Exposure,,"Derivatives Collateral Feed, where Counterparty Account Business Definition like (%OTC CLEARED - CLIENT%), Counterparty Account General Usage like “Banking/Clearing/Exchange”, Flow Ind is “P”, P I Flag is “P”, EGTS Division in (“Swaps”, “FX”, “Commodities”, “Equity Derivatives”, “Securitized Products Group”) and Counterparty Account not in (“027AAZBF4”, “027SBDOU6”, “027X000B3”, “027X000U1”, “027AAZBE7”, “027X000A5”, “027X000V9”, “027XAABK8”)
+
+S.DC.9.2.3, S.DC.9.3.3, S.DC.9.4.3, S.DC.9.5.3
+Derivatives Collateral Feed, where (EGTS Division = “Swaps Cleared” or Cost Centre Level 6 = “OTC CLIENT CLEARING”), Counterparty Account General Usage like “%Customer%”, Flow Ind is “P” and P I Flag is “P”"
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Posted - House,RT-6G-SDC-8,6G,nyqd_lmfr_ate,,,Variation Margin Posted - House,25; 81; 149; 150,Derivatives Collateral; Equity Swap Bridge Collateral; Equity Swap Bridge Collateral naa; Libra Exchange Collateral,6G - Order of Allocation - House VM Posted; 6G - Order of Allocation - House VM Posted Excess,"OOFA Use in (“House VM Posted”, “House VM Posted Excess”) (App C-III)
+
+Derivatives Collateral Feed, where Counterparty Account Business Definition not like (%OTC CLEARED - FIRM%, %OTC CLEARED - CLIENT%, %VARIATION MARGIN%, %INITIAL MARGIN%, %GUARANTEED FUNDS%), Counterparty Account General Usage not like “Banking/Clearing/Exchange”, Flow Ind is “P”, P I Flag is “P”, EGTS Division in (“Swaps”, “FX”, “Commodities”, “Equity Derivatives”, “Securitized Products Group”) and Counterparty Account not in (“027AAZBF4”, “027SBDOU6”, “027X000B3”, “027X000U1”, “027AAZBE7”, “027X000A5”, “027X000V9”, “027XAABK8”)
+
+Libra Exchange Collateral Feed, where Counterparty Account Business Definition like %OTC CLEARED - FIRM%, Counterparty Account General Usage is “Banking/Clearing/Exchange”, Collateral Type is “VM”, TAPS Trading Account not in (“0980ALTG0”, “0980SABM1”, “098TUIMC8”, “097011233”, “039CIA412”, “0909000C6”, “0909036C4”, “081100737”, “081102220”, “097060ZX8”, “097A00J10”, “097A00YO3”, “097KABY99”, “097KABZA5”, “097NMAN03”) and Flow Ind is “P”
+
+Equity Swap Bridge Collateral Feed, where Margin Type is “VM”, and Flow Ind is “P”
+
+Equity Swap Bridge Collateral naa Feed, where Margin Type is “VM”, Collateral TAPS Account not in (“04FA00897”, “04FA01960”, “04FA07611”) and Flow Ind is “P”"
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Received,RT-6G-SDC-10,6G,nyqd_lmfr_ate,,,Variation Margin Received,25; 81; 149; 150,Derivatives Collateral; Equity Swap Bridge Collateral; Equity Swap Bridge Collateral naa; Libra Exchange Collateral,6G - Order of Allocation - House VM Received,"OOFA Source is “House VM Received” (App C-III)
+When Use in (“CLIENT_DEPOT”, “UNENC_TREASURY_SEC_POOL”, “UNENC_INVESTMENT_PORTFOLIO”, “UNENC_IP_FHLB”, “UNENC_IP_FRB”, “UNENC_DEFUNDED”, “UNENC_FIRM”, “UNENC_OVERBORROW”, “UNENC_CENTRAL_BANK_PREPOSITIONED”, “UNENC”) and Feed ID is 25, “S.DC.10.1.1”, else when Feed ID not 25, “S.DC.10.1.2”, else when Use not listed above and Feed ID is 25, “S.DC.10.2.1”, else “S.DC.10.2.2”
+
+Derivatives Collateral Feed, where Flow Ind is “R” and P I Flag is “P”, 
+
+S.DC.10.3.1, S.DC.10.4.1, S.DC.10.5.1
+(Counterparty Account Business Definition not like (%OTC CLEARED - FIRM%, %OTC CLEARED - CLIENT%, %VARIATION MARGIN%, %INITIAL MARGIN%, %GUARANTEED FUNDS%), Counterparty Account General Usage not like “Banking/Clearing/Exchange”, EGTS Division in (“Swaps”, “FX”, “Commodities”, “Equity Derivatives”, “Securitized Products Group”) and Counterparty Account not in (“027AAZBF4”, “027SBDOU6”, “027X000B3”, “027X000U1”, “027AAZBE7”, “027X000A5”, “027X000V9”, “027XAABK8”)
+
+S.DC.10.3.2, S.DC.10.4.2, S.DC.10.5.2
+(Counterparty Account Business Definition like %OTC CLEARED - CLIENT%) and Counterparty Account General Usage is “Banking/Clearing/Exchange” and Counterparty Account not in (“027AAZBF4”, “027SBDOU6”, “027X000B3”, “027X000U1”, “027AAZBE7”, “027X000A5”, “027X000V9”, “027XAABK8”)
+
+S.DC.10.3.3, S.DC.10.4.3, S.DC.10.5.3
+(EGTS Division = “Swaps Cleared” or Cost Centre Level 6 = “OTC CLIENT CLEARING”), Counterparty Account General Usage like “%Customer%” and Counterparty Account not in (“027AAZBF4”, “027SBDOU6”, “027X000B3”, “027X000U1”, “027AAZBE7”, “027X000A5”, “027X000V9”, “027XAABK8”)
+
+Equity Swap Bridge Collateral or Equity Swap Bridge Collateral naa Feed, where Margin Type is “VM”, Collateral TAPS Account not in (“04FA00897”, “04FA01960”, “04FA07611”) and Flow Ind is “R”
+Libra Exchange Collateral Feed, where Counterparty Account Business Definition like %OTC CLEARED - FIRM%, Counterparty Account General Usage is “Banking/Clearing/Exchange”, Collateral Type is “VM”, TAPS Trading Account not in (“0980ALTG0”, “0980SABM1”, “098TUIMC8”, “097011233”, “039CIA412”, “0909000C6”, “0909036C4”, “081100737”, “081102220”, “097060ZX8”, “097A00J10”, “097A00YO3”, “097KABY99”, “097KABZA5”, “097NMAN03”) and Flow Ind is “R”"
+6G - Product,6G - Supplemental -  Foreign Exchange - Forwards and Futures,RT-6G-SFX-2,6G,nyqd_lmfr_ate,,,Forwards and Futures,64; 65; 177; 234,FX Cashflows Fwd; FX Cashflows Spot; Cross Currency IR Swaps; FX open options,,"FX Cashflows Spot Feed, where Trade Delivery Type in (“REG”, “NULL”) and Maturity Date > Trade Date + 2 Business Days
+
+FX Cashflows Fwd Feed, where Trade Delivery Type in (“REG”, “NULL”)
+
+FX Open Options, where (SUB PRODUCT not in (“average_basket”, “basket_channel”, “best_worst_basket”, “bin_double_knockout”, “bin_knockout”, “bin_rev_knockout”, “binary”, “binary_note”, “capped_varswap”, “cash_settled_fwd”, “channel”, “compound_portfolio”, “delayed_settle_binary”, “discrete_binary”, “double_average_basket”, “double_no_touch”, “dual_bin”, “eko_basket”, “etf”, “etf_basket”, “etn_fwd”, “etn_spot”, “fva”, “inverse”) or DELIVERABLE INDICATOR not “N”) AND ((EXCS TYPE is “E” and EXPIRY SETTLE DT > TRADE DT + 2 Business Days) OR EXPIRY DT > TRADE DT + 2 Business Days)
+
+Cross Currency IR Swaps Feed, where Trade Type not in (“FormulaTrade”, “Generic”), (Maturity Date > Reporting Date OR Has Notional Schedule is “Y”), (Buy Currency Initial Exchange Ind is “N” and Sell Currency Initial Exchange Ind is “Y” OR Buy Currency Initial Exchange Ind is “Y” and Sell Currency Initial Exchange Ind is “N”) and Maturity Date less Trade Date > 2 days"
+6G - Product,6G - Supplemental -  Foreign Exchange - Spot,RT-6G-SFX-1,6G,nyqd_lmfr_ate,,,Spot,65; 177; 234,FX Cashflows Spot; Cross Currency IR Swaps; FX open options,,"FX Cashflows Spot Feed, where Trade Delivery Type in (“REG”, “NULL”) and Maturity Date <= Trade Date + 2 Business Days
+FX Open Options, where (SUB PRODUCT not in (“average_basket”, “basket_channel”, “best_worst_basket”, “bin_double_knockout”, “bin_knockout”, “bin_rev_knockout”, “binary”, “binary_note”, “capped_varswap”, “cash_settled_fwd”, “channel”, “compound_portfolio”, “delayed_settle_binary”, “discrete_binary”, “double_average_basket”, “double_no_touch”, “dual_bin”, “eko_basket”, “etf”, “etf_basket”, “etn_fwd”, “etn_spot”, “fva”, “inverse”) or DELIVERABLE INDICATOR not “N”) AND ((EXCS TYPE is “E” and EXPIRY SETTLE DT <= TRADE DT + 2 Business Days) OR EXPIRY DT <= TRADE DT + 2 Business Days)
+Cross Currency IR Swaps Feed, where Trade Type not in (“FormulaTrade”, “Generic”), (Maturity Date > Reporting Date OR Has Notional Schedule is “Y”), (Buy Currency Initial Exchange Ind is “N” and Sell Currency Initial Exchange Ind is “Y” OR Buy Currency Initial Exchange Ind is “Y” and Sell Currency Initial Exchange Ind is “N”) and Maturity Date less Trade Date <= 2 days"
+6G - Product,6G - Supplemental -  Foreign Exchange - Swaps,RT-6G-SFX-3,6G,nyqd_lmfr_ate,,,Swaps,177; 234,Cross Currency IR Swaps; FX open options,,"Cross Currency IR Swaps Feed, where Trade Type not in (“FormulaTrade”, “Generic”), Initial Exchange Ind is “Y”, Final Exchange Ind is “Y” and (Maturity Date > Reporting Date OR (Has Notional Schedule is “Y” and Sourced Rownum = 1))"
+6G - Product,6G - Supplemental -  Informational Items - FRB 23A Capacity,RT-6G-SI-5,6G,nyqd_lmfr_ate,,,FRB 23A Capacity,,Manual,,Manual Product
+6G - Product,6G - Supplemental -  Informational Items - Gross Client Wires Paid,RT-6G-SI-4,6G,nyqd_lmfr_ate,,,Gross Client Wires Paid,164,PB Wires,,"PB Wires feed, where Market Value MX < 0"
+6G - Product,6G - Supplemental -  Informational Items - Gross Client Wires Received,RT-6G-SI-3,6G,nyqd_lmfr_ate,,,Gross Client Wires Received,164,PB Wires,,"PB Wires, where Market Value MX > 0"
+6G - Product,6G - Supplemental -  Informational Items - Long Market Value Client Assets,RT-6G-SI-1,6G,nyqd_lmfr_ate,,,Long Market Value Client Assets,166; 172,PB Trade Date Positions; WM Client Assets,,"PB Trade Date Positions Feed, where Market Value MX > 0
+WM Client Assets Feed, where Long Short Flag is “Long”"
+6G - Product,6G - Supplemental -  Informational Items - Short Market Value Client Assets,RT-6G-SI-2,6G,nyqd_lmfr_ate,,,Short Market Value Client Assets,166; 172,PB Trade Date Positions; WM Client Assets,,"PB Trade Date Positions Feed, where Market Value MX < 0
+WM Client Assets Feed, where Long Short Flag is “Short”"
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Additional Funding Requirement for Off‐Balance Sheet Rehypothecated Assets,RT-6G-SL-9,6G,nyqd_lmfr_ate,,,Additional Funding Requirement for Off‐Balance Sheet Rehypothecated Assets,,Manual Trapped Liquidity Dataset,6G - Order of Allocation - Client Long PB; 6G - Order of Allocation - Firm Long; 6G - Order of Allocation - On BS Asset Exchange Borrow; 6G - Order of Allocation - PDS Long; 6G - Order of Allocation - Reverse Repo; 6G - Order of Allocation - Stock Borrow,"Where OOFA Source in (“Reverse Repo”, “Stock Borrow”, “PDS Long”, “Firm Long”, “Client Long PB”, “On BS AE Borrow”)
+Scenario 1: Cash Trades (collateral does not go through AE)
+Source on BS = N 
+Use on BS = Y 
+Through AE = N 
+Use Maturity = >6m 
+Scenario 2: Non-Cash Trades (collateral goes through AE)
+Ultimate Source on BS = N 
+Ultimate Source = Y
+Ultimate Use on BS = Y 
+Through AE = Y 
+Ultimate Use Maturity = >6m
+AE on BS = N 
+Scenario 3: Non-Cash Trades (collateral goes through AE).
+Ultimate Source on BS = N 
+Ultimate Source = Y
+Use on BS = Y 
+Through AE = Y 
+Use Maturity = >6m
+AE on BS = Y"
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Non-Structured Debt Maturing in Greater than 30-days – Primary Market Maker,RT-6G-SL-4,6G,nyqd_lmfr_ate,,,Non-Structured Debt Maturing in Greater than 30-days – Primary Market Maker,191; 268,Unsecured Debt Manual; Long Term Debt - BTB,,"Long Term Debt BTB [where Funding Type not “Deposits”] and Unsecured Debt Manual Feed, where Structure Type (App C-VI) is “Vanilla” and Days Until Calculated Maturity (App C-VI) > 30"
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Structured Debt Maturing in Greater than 30-days – Primary Market Maker,RT-6G-SL-5,6G,nyqd_lmfr_ate,,,Structured Debt Maturing in Greater than 30-days – Primary Market Maker,191; 268,Unsecured Debt Manual; Long Term Debt - BTB,,"Long Term Debt BTB [where Funding Type not “Deposits”] and Unsecured Debt Manual Feed, where Structure Type (App C-VI) is not “Vanilla” and Days Until Calculated Maturity (App C-VI) > 30"
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Subsidiary Funding Available for Transfer,RT-6G-SL-8,6G,nyqd_lmfr_ate,,,Subsidiary Funding Available for Transfer,,Manual Trapped Liquidity Dataset,,Excess ASF after Trapped ASF from S.L.7
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Subsidiary Funding That Cannot Be Transferred,RT-6G-SL-7,6G,nyqd_lmfr_ate,,,Subsidiary Funding That Cannot Be Transferred,,Manual Trapped Liquidity Dataset,,Manual Trapped Calculation (LR1 System)
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Subsidiary Liquidity Available for Transfer,RT-6G-SL-2,6G,nyqd_lmfr_ate,,,Subsidiary Liquidity Available for Transfer,,Manual Trapped Liquidity Dataset,,Excess HQLA after Trapped Liquidity from Manual Trapped Liquidity Dataset
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Subsidiary Liquidity That Cannot be Transferred,RT-6G-SL-1,6G,nyqd_lmfr_ate,,,Subsidiary Liquidity That Cannot be Transferred,,Manual Trapped Liquidity Dataset,,Manual Trapped Liquidity Dataset

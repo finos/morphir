@@ -1,0 +1,75 @@
+Target Report Table Group,Target Report Table Name,Source Report Table Group,Report Table Name
+6G - Product,6G - Inflows - Assets - Capacity,6G - Order of Allocation,6G - Order of Allocation - Firm Long
+6G - Product,6G - Inflows - Assets - Capacity,6G - Order of Allocation,6G - Order of Allocation - Unencumbered Central Bank Prepositioned
+6G - Product,6G - Inflows - Assets - Capacity,6G - Order of Allocation,6G - Order of Allocation - Unencumbered IP FHLB
+6G - Product,6G - Inflows - Assets - Capacity,6G - Order of Allocation,6G - Order of Allocation - Unencumbered IP FRB
+6G - Product,6G - Inflows - Assets - Encumbered Assets,6G - Order of Allocation,6G - Order of Allocation - Client Short PB
+6G - Product,6G - Inflows - Assets - Encumbered Assets,6G - Order of Allocation,6G - Order of Allocation - Client Short WM
+6G - Product,6G - Inflows - Assets - Encumbered Assets,6G - Order of Allocation,6G - Order of Allocation - Customer Affiliate Short
+6G - Product,6G - Inflows - Assets - Encumbered Assets,6G - Order of Allocation,6G - Order of Allocation - Firm Bank Loans
+6G - Product,6G - Inflows - Assets - Encumbered Assets,6G - Order of Allocation,6G - Order of Allocation - Firm Short
+6G - Product,6G - Inflows - Assets - Encumbered Assets,6G - Order of Allocation,6G - Order of Allocation - House IM Posted
+6G - Product,6G - Inflows - Assets - Encumbered Assets,6G - Order of Allocation,6G - Order of Allocation - House VM Posted
+6G - Product,6G - Inflows - Assets - Encumbered Assets,6G - Order of Allocation,6G - Order of Allocation - House VM Posted Excess
+6G - Product,6G - Inflows - Assets - Encumbered Assets,6G - Order of Allocation,6G - Order of Allocation - Lockup
+6G - Product,6G - Inflows - Assets - Encumbered Assets,6G - Order of Allocation,6G - Order of Allocation - NCSA Short
+6G - Product,6G - Inflows - Assets - Encumbered Assets,6G - Order of Allocation,6G - Order of Allocation - PDS Short
+6G - Product,6G - Inflows - Assets - Encumbered Assets,6G - Order of Allocation,6G - Order of Allocation - Stock Loan
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,6G - Order of Allocation,6G - Order of Allocation - Firm Long
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,6G - Order of Allocation,6G - Order of Allocation - Client Depot
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,6G - Order of Allocation,6G - Order of Allocation - Unencumbered Firm
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,6G - Order of Allocation,6G - Order of Allocation - Unencumbered Investment Portfolio
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,6G - Order of Allocation,6G - Order of Allocation - Unencumbered Overborrow
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,6G - Order of Allocation,6G - Order of Allocation - Unencumbered Treasury Sec Pool
+6G - Product,6G - Inflows - Secured - Collateral Swaps,6G - Order of Allocation,6G - Order of Allocation - On BS Asset Exchange Borrow
+6G - Product,6G - Inflows - Secured - Collateral Swaps,6G - Order of Allocation,6G - Order of Allocation - Reverse Repo
+6G - Product,6G - Inflows - Secured - Collateral Swaps,6G - Order of Allocation,6G - Order of Allocation - Stock Borrow
+6G - Product,6G - Inflows - Secured - Margin Loans,6G - Order of Allocation,6G - Order of Allocation - Client Long PB
+6G - Product,6G - Inflows - Secured - Margin Loans,6G - Order of Allocation,6G - Order of Allocation - Client Long WM
+6G - Product,6G - Inflows - Secured - Margin Loans,6G - Order of Allocation,6G - Order of Allocation - NCSA Long
+6G - Product,6G - Inflows - Secured - Other Secured Loans - Rehypothecatable,6G - Order of Allocation,6G - Order of Allocation - Client Long WM
+6G - Product,6G - Inflows - Secured - Other Secured Loans - Rehypothecatable,6G - Order of Allocation,6G - Order of Allocation - Customer Affiliate Long
+6G - Product,6G - Inflows - Secured - Other Secured Loans - Rehypothecatable,6G - Order of Allocation,6G - Order of Allocation - Reverse Repo
+6G - Product,6G - Inflows - Secured - Reverse Repo,6G - Order of Allocation,6G - Order of Allocation - Reverse Repo
+6G - Product,6G - Inflows - Secured - Securities Borrowing,6G - Order of Allocation,6G - Order of Allocation - On BS Asset Exchange Borrow
+6G - Product,6G - Inflows - Secured - Securities Borrowing,6G - Order of Allocation,6G - Order of Allocation - PDS Long
+6G - Product,6G - Inflows - Secured - Securities Borrowing,6G - Order of Allocation,6G - Order of Allocation - Reverse Repo
+6G - Product,6G - Inflows - Secured - Securities Borrowing,6G - Order of Allocation,6G - Order of Allocation - Stock Borrow
+6G - Product,6G - Outflows -  Secured - Collateral Swaps,6G - Order of Allocation,6G - Order of Allocation - Repo
+6G - Product,6G - Outflows -  Secured - Collateral Swaps,6G - Order of Allocation,6G - Order of Allocation - Stock Loan
+6G - Product,6G - Outflows -  Secured - Customer Shorts,6G - Order of Allocation,6G - Order of Allocation - Client Long PB
+6G - Product,6G - Outflows -  Secured - Customer Shorts,6G - Order of Allocation,6G - Order of Allocation - Client Long WM
+6G - Product,6G - Outflows -  Secured - Customer Shorts,6G - Order of Allocation,6G - Order of Allocation - NCSA Short
+6G - Product,6G - Outflows -  Secured - Firm Shorts,6G - Order of Allocation,6G - Order of Allocation - Firm Short
+6G - Product,6G - Outflows -  Secured - Other Secured Financing Transactions,6G - Order of Allocation,6G - Order of Allocation - Repo
+6G - Product,6G - Outflows -  Secured - Other Secured Financing Transactions,6G - Order of Allocation,6G - Order of Allocation - Customer Affiliate Short
+6G - Product,6G - Outflows -  Secured - Other Secured Financing Transactions,6G - Order of Allocation,6G - Order of Allocation - Firm Bank Loans
+6G - Product,6G - Outflows -  Secured - Repo,6G - Order of Allocation,6G - Order of Allocation - Repo
+6G - Product,6G - Outflows -  Secured - Securities Lending,6G - Order of Allocation,6G - Order of Allocation - Repo
+6G - Product,6G - Outflows -  Secured - Securities Lending,6G - Order of Allocation,6G - Order of Allocation - Firm Bank Loans
+6G - Product,6G - Outflows -  Secured - Securities Lending,6G - Order of Allocation,6G - Order of Allocation - PDS Short
+6G - Product,6G - Outflows -  Secured - Securities Lending,6G - Order of Allocation,6G - Order of Allocation - Stock Loan
+6G - Product,6G - Supplemental -  Balance Sheet - Counterparty Netting,6G - Order of Allocation,6G - Order of Allocation - Client Long PB
+6G - Product,6G - Supplemental -  Balance Sheet - Counterparty Netting,6G - Order of Allocation,6G - Order of Allocation - Client Long WM
+6G - Product,6G - Supplemental -  Balance Sheet - Counterparty Netting,6G - Order of Allocation,6G - Order of Allocation - NCSA Long
+6G - Product,6G - Supplemental -  Balance Sheet - Counterparty Netting,6G - Order of Allocation,6G - Order of Allocation - On BS Asset Exchange Borrow
+6G - Product,6G - Supplemental -  Balance Sheet - Counterparty Netting,6G - Order of Allocation,6G - Order of Allocation - PDS Long
+6G - Product,6G - Supplemental -  Balance Sheet - Counterparty Netting,6G - Order of Allocation,6G - Order of Allocation - Repo
+6G - Product,6G - Supplemental -  Balance Sheet - Counterparty Netting,6G - Order of Allocation,6G - Order of Allocation - Reverse Repo
+6G - Product,6G - Supplemental -  Balance Sheet - Counterparty Netting,6G - Order of Allocation,6G - Order of Allocation - Stock Borrow
+6G - Product,6G - Supplemental -  Balance Sheet - Counterparty Netting,6G - Order of Allocation,6G - Order of Allocation - Client Short PB
+6G - Product,6G - Supplemental -  Balance Sheet - Counterparty Netting,6G - Order of Allocation,6G - Order of Allocation - Client Short WM
+6G - Product,6G - Supplemental -  Balance Sheet - Counterparty Netting,6G - Order of Allocation,6G - Order of Allocation - Firm Bank Loans
+6G - Product,6G - Supplemental -  Balance Sheet - Counterparty Netting,6G - Order of Allocation,6G - Order of Allocation - NCSA Short
+6G - Product,6G - Supplemental -  Balance Sheet - Counterparty Netting,6G - Order of Allocation,6G - Order of Allocation - Stock Loan
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Initial Margin Posted - House,6G - Order of Allocation,6G - Order of Allocation - House IM Posted
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Initial Margin Received,6G - Order of Allocation,6G - Order of Allocation - House IM Received
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Posted - House,6G - Order of Allocation,6G - Order of Allocation - House VM Posted
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Posted - House,6G - Order of Allocation,6G - Order of Allocation - House VM Posted Excess
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Received,6G - Order of Allocation,6G - Order of Allocation - House VM Received
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Additional Funding Requirement for Off‐Balance Sheet Rehypothecated Assets,6G - Order of Allocation,6G - Order of Allocation - Client Long PB
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Additional Funding Requirement for Off‐Balance Sheet Rehypothecated Assets,6G - Order of Allocation,6G - Order of Allocation - Firm Long
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Additional Funding Requirement for Off‐Balance Sheet Rehypothecated Assets,6G - Order of Allocation,6G - Order of Allocation - On BS Asset Exchange Borrow
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Additional Funding Requirement for Off‐Balance Sheet Rehypothecated Assets,6G - Order of Allocation,6G - Order of Allocation - PDS Long
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Additional Funding Requirement for Off‐Balance Sheet Rehypothecated Assets,6G - Order of Allocation,6G - Order of Allocation - Reverse Repo
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Additional Funding Requirement for Off‐Balance Sheet Rehypothecated Assets,6G - Order of Allocation,6G - Order of Allocation - Stock Borrow

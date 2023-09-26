@@ -1,0 +1,366 @@
+Report Table Group,Report Table Name,Feed Name
+6G - Product,6G - Inflows - Assets - Capacity,Loan IQ - Drawn
+6G - Product,6G - Inflows - Assets - Capacity,Federal Home Loan Bank of New York Statement
+6G - Product,6G - Inflows - Assets - Encumbered Assets,Internal Coverage
+6G - Product,6G - Inflows - Assets - Encumbered Assets,Federal Home Loan Bank of New York Statement
+6G - Product,6G - Inflows - Assets - Forward Asset Purchases,Pending Trades
+6G - Product,6G - Inflows - Assets - Forward Asset Purchases,Failed Settlements
+6G - Product,6G - Inflows - Assets - Restricted Reserve Balances,Triton Money Markets
+6G - Product,6G - Inflows - Assets - Restricted Reserve Balances,BTB Cash
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,Loan IQ - Drawn
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,GWM Mortgages
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,CRE Loans
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,PWM Loans and Deposits
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,GWM Loans - TL
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,GWM Loans - PLA/LAL
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,Employee Loans
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,ETrade LOC
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,Loans Collateral
+6G - Product,6G - Inflows - Assets - Unrestricted Reserve Balances,Triton Money Markets
+6G - Product,6G - Inflows - Assets - Unrestricted Reserve Balances,BTB Cash
+6G - Product,6G - Inflows - Assets - Unsettled Asset Purchases,Pending Trades
+6G - Product,6G - Inflows - Assets - Unsettled Asset Purchases,Failed Settlements
+6G - Product,6G - Inflows - Other - Collateral Called for Receipt,Portfolio Agreement
+6G - Product,6G - Inflows - Other - Derivative Receivables,CVA Expected Cashflows
+6G - Product,6G - Inflows - Other - Interest and Dividends Receivable,Triton Sub-Debt
+6G - Product,6G - Inflows - Other - Interest and Dividends Receivable,Interest Payable-Receivable
+6G - Product,6G - Inflows - Other - Interest and Dividends Receivable,Dividends Payable-Receivable
+6G - Product,6G - Inflows - Other - Lock-up Balance,UK Client Money Protection-Aqua
+6G - Product,6G - Inflows - Other - Lock-up Balance,BTB Cash
+6G - Product,6G - Inflows - Other - Lock-up Balance,ETrade Reverse Repo and Repo
+6G - Product,6G - Inflows - Other - Net 30-Day Derivative Receivables,CVA Expected Cashflows
+6G - Product,6G - Inflows - Other - Net 30-Day Derivative Receivables,CVA Margin Requirements
+6G - Product,6G - Inflows - Other - Other Cash Inflows,GWM Mortgages
+6G - Product,6G - Inflows - Other - Other Cash Inflows,MSWM FA Debit/Crdit Balance
+6G - Product,6G - Inflows - Other - Principal Payments Receivable on Unencumbered Investment Securities,Unencumbered Assets - AS
+6G - Product,6G - Inflows - Other - Principal Payments Receivable on Unencumbered Investment Securities,Unencumbered Assets - EU
+6G - Product,6G - Inflows - Other - Principal Payments Receivable on Unencumbered Investment Securities,Unencumbered Assets - NA
+6G - Product,6G - Inflows - Other - Principal Payments Receivable on Unencumbered Investment Securities,Unencumbered Assets - MSSB
+6G - Product,6G - Inflows - Other - TBA Sales,Tbas
+6G - Product,6G - Inflows - Other - Undrawn Committed Facilities Purchased,Loan IQ - Drawn
+6G - Product,6G - Inflows - Other - Undrawn Committed Facilities Purchased,Loan IQ - Undrawn
+6G - Product,6G - Inflows - Other - Undrawn Committed Facilities Purchased,Off Bal Sheet Com and Guarantees
+6G - Product,6G - Inflows - Other - Undrawn Committed Facilities Purchased,Repos - BRM
+6G - Product,6G - Inflows - Other - Undrawn Committed Facilities Purchased,GWM Mortgages
+6G - Product,6G - Inflows - Other - Undrawn Committed Facilities Purchased,CRE Loans
+6G - Product,6G - Inflows - Other - Undrawn Committed Facilities Purchased,GWM Loans - TL
+6G - Product,6G - Inflows - Other - Undrawn Committed Facilities Purchased,GWM Loans - PLA/LAL
+6G - Product,6G - Inflows - Other - Undrawn Committed Facilities Purchased,Fronting and Participation
+6G - Product,6G - Inflows - Other - Undrawn Committed Facilities Purchased,Tender Option Bonds Floater Notes
+6G - Product,6G - Inflows - Other - Undrawn Committed Facilities Purchased,Tender Option Bonds Collateral
+6G - Product,6G - Inflows - Other - Undrawn Committed Facilities Purchased,Tender Option Bonds Residual
+6G - Product,6G - Inflows - Other - Undrawn Committed Facilities Purchased,Tender Option Bonds Floater Investor
+6G - Product,6G - Inflows - Secured - Collateral Swaps,Repos - BRM
+6G - Product,6G - Inflows - Secured - Margin Loans,Loan IQ - Drawn
+6G - Product,6G - Inflows - Secured - Margin Loans,Internal Coverage
+6G - Product,6G - Inflows - Secured - Margin Loans,PB Global Assets
+6G - Product,6G - Inflows - Secured - Margin Loans,GWM Loans - PLA/LAL
+6G - Product,6G - Inflows - Secured - Margin Loans,WM Margin Loans
+6G - Product,6G - Inflows - Secured - Margin Loans,Equity Margin Lending
+6G - Product,6G - Inflows - Secured - Margin Loans,Loans Collateral
+6G - Product,6G - Inflows - Secured - Other Secured Loans - Non-Rehypothecatable,Loan IQ - Drawn
+6G - Product,6G - Inflows - Secured - Other Secured Loans - Non-Rehypothecatable,GWM Mortgages
+6G - Product,6G - Inflows - Secured - Other Secured Loans - Non-Rehypothecatable,CRE Loans
+6G - Product,6G - Inflows - Secured - Other Secured Loans - Non-Rehypothecatable,GWM Loans - TL
+6G - Product,6G - Inflows - Secured - Other Secured Loans - Non-Rehypothecatable,GWM Loans - PLA/LAL
+6G - Product,6G - Inflows - Secured - Other Secured Loans - Non-Rehypothecatable,ETrade LOC
+6G - Product,6G - Inflows - Secured - Other Secured Loans - Non-Rehypothecatable,Loans Collateral
+6G - Product,6G - Inflows - Secured - Other Secured Loans - Rehypothecatable,Repos - BRM
+6G - Product,6G - Inflows - Secured - Other Secured Loans - Rehypothecatable,Internal Coverage
+6G - Product,6G - Inflows - Secured - Other Secured Loans - Rehypothecatable,WM Margin Loans
+6G - Product,6G - Inflows - Secured - Outstanding Draws on Secured Revolving Facilities,Loan IQ - Drawn
+6G - Product,6G - Inflows - Secured - Outstanding Draws on Secured Revolving Facilities,GWM Mortgages
+6G - Product,6G - Inflows - Secured - Outstanding Draws on Secured Revolving Facilities,GWM Loans - TL
+6G - Product,6G - Inflows - Secured - Outstanding Draws on Secured Revolving Facilities,GWM Loans - PLA/LAL
+6G - Product,6G - Inflows - Secured - Reverse Repo,Repos - BRM
+6G - Product,6G - Inflows - Secured - Reverse Repo,Stock Loan/Repo-MSSB
+6G - Product,6G - Inflows - Secured - Reverse Repo,ETrade Reverse Repo and Repo
+6G - Product,6G - Inflows - Secured - Securities Borrowing,Stock Loan - BRM
+6G - Product,6G - Inflows - Secured - Securities Borrowing,Repos - BRM
+6G - Product,6G - Inflows - Secured - Securities Borrowing,Stock Loan/Repo-MSSB
+6G - Product,6G - Inflows - Secured - Securities Borrowing,PB Global Assets
+6G - Product,6G - Inflows - Secured - Securities Borrowing,ETrade Stock Borrow and Loans
+6G - Product,6G - Inflows - Secured - Synthetic Customer Longs,EQ TRS
+6G - Product,6G - Inflows - Secured - Synthetic Customer Longs,FID TRS 
+6G - Product,6G - Inflows - Secured - Synthetic Firm Sourcing,EQ TRS
+6G - Product,6G - Inflows - Unsecured - Excess Operational Balances,Derivatives Collateral
+6G - Product,6G - Inflows - Unsecured - Excess Operational Balances,Triton Money Markets
+6G - Product,6G - Inflows - Unsecured - Excess Operational Balances,BTB Cash
+6G - Product,6G - Inflows - Unsecured - Excess Operational Balances,Omni Renovated GL Balances
+6G - Product,6G - Inflows - Unsecured - Offshore Placements,Triton Money Markets
+6G - Product,6G - Inflows - Unsecured - Onshore Placements,Triton Money Markets
+6G - Product,6G - Inflows - Unsecured - Other Loans,Loan IQ - Drawn
+6G - Product,6G - Inflows - Unsecured - Other Loans,Triton Sub-Debt
+6G - Product,6G - Inflows - Unsecured - Other Loans,Omni Taps Transactions
+6G - Product,6G - Inflows - Unsecured - Other Loans,PWM Loans and Deposits
+6G - Product,6G - Inflows - Unsecured - Other Loans,GWM Loans - TL
+6G - Product,6G - Inflows - Unsecured - Other Loans,Employee Loans
+6G - Product,6G - Inflows - Unsecured - Other Loans,Triton SPV
+6G - Product,6G - Inflows - Unsecured - Other Loans,Long Term Debt - BTB
+6G - Product,6G - Inflows - Unsecured - Other Loans,Omni Renovated GL Balances
+6G - Product,6G - Inflows - Unsecured - Other Loans,Inter-Affiliate Funding – BTB Feed
+6G - Product,6G - Inflows - Unsecured - Outstanding Draws on Unsecured Revolving Facilities,Loan IQ - Drawn
+6G - Product,6G - Inflows - Unsecured - Required Operational Balances,BTB Cash
+6G - Product,6G - Inflows - Unsecured - Short-Term Investments,Triton Money Markets
+6G - Order of Allocation,6G - Order of Allocation - Client Depot,Unencumbered Assets - AS
+6G - Order of Allocation,6G - Order of Allocation - Client Depot,Unencumbered Assets - EU
+6G - Order of Allocation,6G - Order of Allocation - Client Depot,Unencumbered Assets - NA
+6G - Order of Allocation,6G - Order of Allocation - Client Depot,Unencumbered Assets - MSSB
+6G - Order of Allocation,6G - Order of Allocation - Client Long PB,PB Global Assets
+6G - Order of Allocation,6G - Order of Allocation - Client Long WM,WM Margin Loans
+6G - Order of Allocation,6G - Order of Allocation - Client Short PB,PB Global Assets
+6G - Order of Allocation,6G - Order of Allocation - Client Short WM,WM Shorts Longs
+6G - Order of Allocation,6G - Order of Allocation - Customer Affiliate Long,Omni TAPS Transactions
+6G - Order of Allocation,6G - Order of Allocation - Customer Affiliate Long,Internal Coverage
+6G - Order of Allocation,6G - Order of Allocation - Customer Affiliate Short,Omni TAPS Transactions
+6G - Order of Allocation,6G - Order of Allocation - Customer Affiliate Short,Internal Coverage
+6G - Order of Allocation,6G - Order of Allocation - Firm Bank Loans,Stock Loan - BRM
+6G - Order of Allocation,6G - Order of Allocation - Firm Bank Loans,Repos - BRM
+6G - Order of Allocation,6G - Order of Allocation - Firm Long,Internal Coverage
+6G - Order of Allocation,6G - Order of Allocation - Firm Long,WM Shorts Longs
+6G - Order of Allocation,6G - Order of Allocation - Firm Short,Internal Coverage
+6G - Order of Allocation,6G - Order of Allocation - Firm Short,WM Shorts Longs
+6G - Order of Allocation,6G - Order of Allocation - House IM Posted,Derivatives Collateral
+6G - Order of Allocation,6G - Order of Allocation - House IM Posted,Libra Exchange Collateral
+6G - Order of Allocation,6G - Order of Allocation - House IM Received,Derivatives Collateral
+6G - Order of Allocation,6G - Order of Allocation - House IM Received,Libra Exchange Collateral
+6G - Order of Allocation,6G - Order of Allocation - House VM Posted,Derivatives Collateral
+6G - Order of Allocation,6G - Order of Allocation - House VM Posted Excess,Derivatives Collateral
+6G - Order of Allocation,6G - Order of Allocation - House VM Received,Derivatives Collateral
+6G - Order of Allocation,6G - Order of Allocation - Lockup,Repos - BRM
+6G - Order of Allocation,6G - Order of Allocation - NCSA Long,Omni TAPS Transactions
+6G - Order of Allocation,6G - Order of Allocation - NCSA Long,Internal Coverage
+6G - Order of Allocation,6G - Order of Allocation - NCSA Short,Omni TAPS Transactions
+6G - Order of Allocation,6G - Order of Allocation - NCSA Short,Internal Coverage
+6G - Order of Allocation,6G - Order of Allocation - On BS Asset Exchange Borrow,Stock Loan - BRM
+6G - Order of Allocation,6G - Order of Allocation - On BS Asset Exchange Borrow,PB Global Assets
+6G - Order of Allocation,6G - Order of Allocation - PDS Long,PB Global Assets
+6G - Order of Allocation,6G - Order of Allocation - PDS Short,PB Global Assets
+6G - Order of Allocation,6G - Order of Allocation - Repo,Repos - BRM
+6G - Order of Allocation,6G - Order of Allocation - Repo,Stock Loan/Repo-MSSB
+6G - Order of Allocation,6G - Order of Allocation - Reverse Repo,Repos - BRM
+6G - Order of Allocation,6G - Order of Allocation - Reverse Repo,Stock Loan/Repo-MSSB
+6G - Order of Allocation,6G - Order of Allocation - Stock Borrow,Stock Loan - BRM
+6G - Order of Allocation,6G - Order of Allocation - Stock Borrow,Stock Loan/Repo-MSSB
+6G - Order of Allocation,6G - Order of Allocation - Stock Loan,Stock Loan - BRM
+6G - Order of Allocation,6G - Order of Allocation - Stock Loan,Stock Loan/Repo-MSSB
+6G - Order of Allocation,6G - Order of Allocation - Stock Loan,PB Global Assets
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Central Bank Prepositioned,Unencumbered Assets - AS
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Central Bank Prepositioned,Unencumbered Assets - EU
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Defunded,Unencumbered Assets - AS
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Defunded,Unencumbered Assets - EU
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Defunded,Unencumbered Assets - NA
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Defunded,Unencumbered Assets - MSSB
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Firm,Unencumbered Assets - AS
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Firm,Unencumbered Assets - EU
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Firm,Unencumbered Assets - NA
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Firm,Unencumbered Assets - MSSB
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Investment Portfolio,Unencumbered Assets - AS
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Investment Portfolio,Unencumbered Assets - EU
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Investment Portfolio,Unencumbered Assets - NA
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Investment Portfolio,Unencumbered Assets - MSSB
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered IP FHLB,Unencumbered Assets - AS
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered IP FHLB,Unencumbered Assets - EU
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered IP FHLB,Unencumbered Assets - NA
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered IP FHLB,Unencumbered Assets - MSSB
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered IP FRB,Unencumbered Assets - AS
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered IP FRB,Unencumbered Assets - EU
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered IP FRB,Unencumbered Assets - NA
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered IP FRB,Unencumbered Assets - MSSB
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Overborrow,Unencumbered Assets - AS
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Overborrow,Unencumbered Assets - EU
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Overborrow,Unencumbered Assets - NA
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Overborrow,Unencumbered Assets - MSSB
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Treasury Sec Pool,Unencumbered Assets - AS
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Treasury Sec Pool,Unencumbered Assets - EU
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Treasury Sec Pool,Unencumbered Assets - NA
+6G - Order of Allocation,6G - Order of Allocation - Unencumbered Treasury Sec Pool,Unencumbered Assets - MSSB
+6G - Product,6G - Outflows -  Deposits - Less Stable Affiliated Sweep Account Balances,Global Currency Deposits
+6G - Product,6G - Outflows -  Deposits - Less Stable Affiliated Sweep Account Balances,Bank Deposits Program (BDP)
+6G - Product,6G - Outflows -  Deposits - Less Stable Affiliated Sweep Account Balances,Third Party Deposits
+6G - Product,6G - Outflows -  Deposits - Less Stable Affiliated Sweep Account Balances,Etrade Deposits RBDP
+6G - Product,6G - Outflows -  Deposits - Less Stable Affiliated Sweep Account Balances,Fully Paid Lending
+6G - Product,6G - Outflows -  Deposits - Non-Affiliated Sweep Accounts,Third Party Deposits
+6G - Product,6G - Outflows -  Deposits - Non-Operational Account Balances,Derivatives Collateral
+6G - Product,6G - Outflows -  Deposits - Non-Operational Account Balances,Triton Money Markets
+6G - Product,6G - Outflows -  Deposits - Non-Operational Account Balances,PWM Loans and Deposits
+6G - Product,6G - Outflows -  Deposits - Non-Operational Account Balances,Savings Deposit Program (SDP)
+6G - Product,6G - Outflows -  Deposits - Non-Operational Account Balances,BTB Cash
+6G - Product,6G - Outflows -  Deposits - Non-Operational Account Balances,Omni Renovated GL Balances
+6G - Product,6G - Outflows -  Deposits - Non-Operational Account Balances,Etrade Deposits RBDP
+6G - Product,6G - Outflows -  Deposits - Non-Reciprocal Brokered Accounts,Brokered CD
+6G - Product,6G - Outflows -  Deposits - Non-Reciprocal Brokered Accounts,Structured CD - SD Feed
+6G - Product,6G - Outflows -  Deposits - Non-Reciprocal Brokered Accounts,FID Structured CD SD
+6G - Product,6G - Outflows -  Deposits - Non-Reciprocal Brokered Accounts,Etrade Deposits RBDP
+6G - Product,6G - Outflows -  Deposits - Non-Transactional Non-Relationship Accounts,Etrade Deposits RBDP
+6G - Product,6G - Outflows -  Deposits - Non-Transactional Relationship Accounts,PWM Loans and Deposits
+6G - Product,6G - Outflows -  Deposits - Non-Transactional Relationship Accounts,Etrade Deposits RBDP
+6G - Product,6G - Outflows -  Deposits - Other Third‐Party Deposits,Savings Deposit Program (SDP)
+6G - Product,6G - Outflows -  Deposits - Reciprocal Accounts,Third Party Deposits
+6G - Product,6G - Outflows -  Deposits - Reciprocal Accounts,Etrade Deposits RBDP
+6G - Product,6G - Outflows -  Deposits - Transactional Accounts,Etrade Deposits RBDP
+6G - Product,6G - Outflows -  Other - Collateral Called for Delivery,Portfolio Agreement
+6G - Product,6G - Outflows -  Other - Credit Facilities,Loan IQ - Drawn
+6G - Product,6G - Outflows -  Other - Credit Facilities,Loan IQ - Undrawn
+6G - Product,6G - Outflows -  Other - Credit Facilities,Off Bal Sheet Com and Guarantees
+6G - Product,6G - Outflows -  Other - Credit Facilities,Repos - BRM
+6G - Product,6G - Outflows -  Other - Credit Facilities,GWM Mortgages
+6G - Product,6G - Outflows -  Other - Credit Facilities,CRE Loans
+6G - Product,6G - Outflows -  Other - Credit Facilities,GWM Loans - TL
+6G - Product,6G - Outflows -  Other - Credit Facilities,GWM Loans - PLA/LAL
+6G - Product,6G - Outflows -  Other - Credit Facilities,Fronting and Participation
+6G - Product,6G - Outflows -  Other - Derivative Payables,CVA Expected Cashflows
+6G - Product,6G - Outflows -  Other - Excess Margin,PB Margin Excess
+6G - Product,6G - Outflows -  Other - Excess Margin,WM Margin
+6G - Product,6G - Outflows -  Other - Interest and Dividends Payable,Triton Sub-Debt
+6G - Product,6G - Outflows -  Other - Interest and Dividends Payable,Interest Payable-Receivable
+6G - Product,6G - Outflows -  Other - Interest and Dividends Payable,Dividends Payable-Receivable
+6G - Product,6G - Outflows -  Other - Liquidity Facilities,Loan IQ - Drawn
+6G - Product,6G - Outflows -  Other - Liquidity Facilities,Loan IQ - Undrawn
+6G - Product,6G - Outflows -  Other - Liquidity Facilities,Fronting and Participation
+6G - Product,6G - Outflows -  Other - Liquidity Facilities,Tender Option Bonds Floater Notes
+6G - Product,6G - Outflows -  Other - Liquidity Facilities,Tender Option Bonds Collateral
+6G - Product,6G - Outflows -  Other - Liquidity Facilities,Tender Option Bonds Residual
+6G - Product,6G - Outflows -  Other - Liquidity Facilities,Tender Option Bonds Floater Investor
+6G - Product,6G - Outflows -  Other - Loss of Rehypothecation Rights Due to a 1 Notch Downgrade,Downgrade Triggers
+6G - Product,6G - Outflows -  Other - Loss of Rehypothecation Rights Due to a 2 Notch Downgrade,Downgrade Triggers
+6G - Product,6G - Outflows -  Other - Loss of Rehypothecation Rights Due to a 3 Notch Downgrade,Downgrade Triggers
+6G - Product,6G - Outflows -  Other - Loss of Rehypothecation Rights Due to a Change in Financial Condition,Downgrade Triggers
+6G - Product,6G - Outflows -  Other - MTM Impact on Derivative Positions,Derivatives MTM HLBA
+6G - Product,6G - Outflows -  Other - Net 30-Day Derivative Payables,CVA Expected Cashflows
+6G - Product,6G - Outflows -  Other - Net 30-Day Derivative Payables,CVA Margin Requirements
+6G - Product,6G - Outflows -  Other - Other Cash Outflows,Manual Cash Outflows
+6G - Product,6G - Outflows -  Other - Other Outflows Related to Structured Transactions,nan
+6G - Product,6G - Outflows -  Other - Retail Mortgage Commitments,Manual GWM Mortgages
+6G - Product,6G - Outflows -  Other - TBA Purchases,Tbas
+6G - Product,6G - Outflows -  Other - Total Collateral Required Due to a 1 Notch Downgrade,Downgrade Triggers
+6G - Product,6G - Outflows -  Other - Total Collateral Required Due to a 2 Notch Downgrade,Downgrade Triggers
+6G - Product,6G - Outflows -  Other - Total Collateral Required Due to a 3 Notch Downgrade,Downgrade Triggers
+6G - Product,6G - Outflows -  Other - Total Collateral Required Due to a Change in Financial Condition,Downgrade Triggers
+6G - Product,6G - Outflows -  Other - Unfunded Term Margin,PB Margin Excess
+6G - Product,6G - Outflows -  Other - Unfunded Term Margin,WM Margin
+6G - Product,6G - Outflows -  Secured - Collateral Swaps,Stock Loan - BRM
+6G - Product,6G - Outflows -  Secured - Collateral Swaps,Repos - BRM
+6G - Product,6G - Outflows -  Secured - Customer Shorts,PB Global Assets
+6G - Product,6G - Outflows -  Secured - Customer Shorts,WM Shorts Longs
+6G - Product,6G - Outflows -  Secured - Exceptional Central Bank Operations,Repos - BRM
+6G - Product,6G - Outflows -  Secured - Exceptional Central Bank Operations,Stock Loan/Repo-MSSB
+6G - Product,6G - Outflows -  Secured - FHLB Advances,Repos - BRM
+6G - Product,6G - Outflows -  Secured - FHLB Advances,Stock Loan/Repo-MSSB
+6G - Product,6G - Outflows -  Secured - Firm Shorts,Pending Trades
+6G - Product,6G - Outflows -  Secured - Firm Shorts,Internal Coverage
+6G - Product,6G - Outflows -  Secured - Firm Shorts,GWM Mortgages
+6G - Product,6G - Outflows -  Secured - Firm Shorts,WM Shorts Longs
+6G - Product,6G - Outflows -  Secured - Firm Shorts,Failed Settlements
+6G - Product,6G - Outflows -  Secured - Other Secured Financing Transactions,Repos - BRM
+6G - Product,6G - Outflows -  Secured - Repo,Repos - BRM
+6G - Product,6G - Outflows -  Secured - Repo,Stock Loan/Repo-MSSB
+6G - Product,6G - Outflows -  Secured - Securities Lending,Stock Loan - BRM
+6G - Product,6G - Outflows -  Secured - Securities Lending,Repos - BRM
+6G - Product,6G - Outflows -  Secured - Securities Lending,Stock Loan/Repo-MSSB
+6G - Product,6G - Outflows -  Secured - Securities Lending,PB Global Assets
+6G - Product,6G - Outflows -  Secured - Securities Lending,ETrade Stock Borrow and Loans
+6G - Product,6G - Outflows -  Secured - Synthetic Customer Shorts,EQ TRS
+6G - Product,6G - Outflows -  Secured - Synthetic Customer Shorts,FID TRS 
+6G - Product,6G - Outflows -  Secured - Synthetic Firm Financing,EQ TRS
+6G - Product,6G - Outflows -  Wholesale - Free Credits,PB Global Assets
+6G - Product,6G - Outflows -  Wholesale - Free Credits,WM Free Credits
+6G - Product,6G - Outflows -  Wholesale - Free Credits,PWM Loans and Deposits
+6G - Product,6G - Outflows -  Wholesale - Offshore Borrowing,Triton Money Markets
+6G - Product,6G - Outflows -  Wholesale - Offshore Borrowing,BTB Cash
+6G - Product,6G - Outflows -  Wholesale - Onshore Borrowing,Triton Money Markets
+6G - Product,6G - Outflows -  Wholesale - Onshore Borrowing,BTB Cash
+6G - Product,6G - Outflows -  Wholesale - Other Unsecured Financing,Omni Taps Transactions
+6G - Product,6G - Outflows -  Wholesale - Other Unsecured Financing,Triton SPV
+6G - Product,6G - Outflows -  Wholesale - Other Unsecured Financing,Omni Renovated GL Balances
+6G - Product,6G - Outflows -  Wholesale - Other Unsecured Financing,Inter-Affiliate Funding – BTB Feed
+6G - Product,6G - Outflows -  Wholesale - Structured Long Term Debt,Long Term Debt - BTB
+6G - Product,6G - Outflows -  Wholesale - Structured Notes,Triton Sub-Debt
+6G - Product,6G - Outflows -  Wholesale - Structured Notes,Long Term Debt - BTB
+6G - Product,6G - Outflows -  Wholesale - Tender Option Bonds,Tender Option Bonds Floater Notes
+6G - Product,6G - Outflows -  Wholesale - Tender Option Bonds,Tender Option Bonds Collateral
+6G - Product,6G - Outflows -  Wholesale - Tender Option Bonds,Tender Option Bonds Residual
+6G - Product,6G - Outflows -  Wholesale - Tender Option Bonds,Tender Option Bonds Floater Investor
+6G - Product,6G - Outflows -  Wholesale - Unsecured Notes,Unsecured Debt Manual
+6G - Product,6G - Outflows -  Wholesale - Unsecured Notes,Long Term Debt - BTB
+6G - Product,6G - Outflows -  Wholesale - Unstructured Long Term Debt,Triton Sub-Debt
+6G - Product,6G - Outflows -  Wholesale - Unstructured Long Term Debt,Unsecured Debt Manual
+6G - Product,6G - Outflows -  Wholesale - Unstructured Long Term Debt,Long Term Debt - BTB
+6G - Product,6G - Supplemental -  Balance Sheet - Carrying Value Adjustment,Manually Sourced
+6G - Product,6G - Supplemental -  Balance Sheet - Counterparty Netting,Order of Allocation - N/A
+6G - Product,6G - Supplemental -  Balance Sheet - Non-Performing Assets,Loan IQ - Drawn
+6G - Product,6G - Supplemental -  Balance Sheet - Non-Performing Assets,Employee Loans
+6G - Product,6G - Supplemental -  Balance Sheet - Non-Performing Assets,Loans Collateral
+6G - Product,6G - Supplemental -  Balance Sheet - Other Assets,Failed Settlements
+6G - Product,6G - Supplemental -  Balance Sheet - Other Assets,Controllers WorkBench Query
+6G - Product,6G - Supplemental -  Balance Sheet - Other Liabilities,Controllers WorkBench Query
+6G - Product,6G - Supplemental -  Balance Sheet - Regulatory Capital Element,Manually Sourced
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Collateral Disputes Deliverables,Portfolio Agreement
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Collateral Disputes Receivables,Portfolio Agreement
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Derivative CCP Default Fund Contribution,Libra Exchange Collateral
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Derivative Collateral Substitution Capacity,HQLA Collateral Eligibility
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Derivative Collateral Substitution Capacity,COLLATERAL SUBSTITUTION BRM
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Derivative Collateral Substitution Risk,HQLA Collateral Eligibility
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Derivative Collateral Substitution Risk,COLLATERAL SUBSTITUTION BRM
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Derivative Settlement Payments Delivered,Collateral LD
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Derivative Settlement Payments Received,Collateral LD
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Gross Derivative Asset Values,Listed Derivative Exposure
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Gross Derivative Asset Values,Renovated OTC Derivatives Exposure
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Gross Derivative Liability Values,Listed Derivative Exposure
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Gross Derivative Liability Values,Renovated OTC Derivatives Exposure
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Initial Margin Posted - Customer,Derivatives Collateral
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Initial Margin Posted - Customer,Collateral LD
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Initial Margin Posted - House,Derivatives Collateral
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Initial Margin Posted - House,Equity Swap Bridge Collateral
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Initial Margin Posted - House,Equity Swap Bridge Collateral naa
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Initial Margin Posted - House,Libra Exchange Collateral
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Initial Margin Received,Derivatives Collateral
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Initial Margin Received,Equity Swap Bridge Collateral
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Initial Margin Received,Equity Swap Bridge Collateral naa
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Initial Margin Received,Collateral LD
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Other CCP Pledges and Contributions,Derivatives Collateral
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Other CCP Pledges and Contributions,Equity Swap Bridge Collateral
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Other CCP Pledges and Contributions,Equity Swap Bridge Collateral naa
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Other CCP Pledges and Contributions,Libra Exchange Collateral
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Other Collateral Substitution Capacity,Collateral Substitution - Capacity 
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Other Collateral Substitution Risk,Repos - BRM
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Required Collateral Deliverables,EGTS Sleeper Collateral Cusip
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Sleeper Collateral Deliverables,EGTS Sleeper Collateral Cusip
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Posted - Customer,Derivatives Collateral
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Posted - Customer,Equity Swap Bridge Collateral
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Posted - Customer,Equity Swap Bridge Collateral naa
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Posted - Customer,Libra Exchange Collateral
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Posted - Customer,OTC Derivatives Exposure
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Posted - House,Derivatives Collateral
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Posted - House,Equity Swap Bridge Collateral
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Posted - House,Equity Swap Bridge Collateral naa
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Posted - House,Libra Exchange Collateral
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Received,Derivatives Collateral
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Received,Equity Swap Bridge Collateral
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Received,Equity Swap Bridge Collateral naa
+6G - Product,6G - Supplemental -  Derivatives & Collateral - Variation Margin Received,Libra Exchange Collateral
+6G - Product,6G - Supplemental -  Foreign Exchange - Forwards and Futures,FX Cashflows Fwd
+6G - Product,6G - Supplemental -  Foreign Exchange - Forwards and Futures,FX Cashflows Spot
+6G - Product,6G - Supplemental -  Foreign Exchange - Forwards and Futures,Cross Currency IR Swaps
+6G - Product,6G - Supplemental -  Foreign Exchange - Forwards and Futures,FX open options
+6G - Product,6G - Supplemental -  Foreign Exchange - Spot,FX Cashflows Spot
+6G - Product,6G - Supplemental -  Foreign Exchange - Spot,Cross Currency IR Swaps
+6G - Product,6G - Supplemental -  Foreign Exchange - Spot,FX open options
+6G - Product,6G - Supplemental -  Foreign Exchange - Swaps,Cross Currency IR Swaps
+6G - Product,6G - Supplemental -  Foreign Exchange - Swaps,FX open options
+6G - Product,6G - Supplemental -  Informational Items - FRB 23A Capacity,Manual
+6G - Product,6G - Supplemental -  Informational Items - Gross Client Wires Paid,PB Wires
+6G - Product,6G - Supplemental -  Informational Items - Gross Client Wires Received,PB Wires
+6G - Product,6G - Supplemental -  Informational Items - Long Market Value Client Assets,PB Trade Date Positions
+6G - Product,6G - Supplemental -  Informational Items - Long Market Value Client Assets,WM Client Assets
+6G - Product,6G - Supplemental -  Informational Items - Short Market Value Client Assets,PB Trade Date Positions
+6G - Product,6G - Supplemental -  Informational Items - Short Market Value Client Assets,WM Client Assets
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Additional Funding Requirement for Off‐Balance Sheet Rehypothecated Assets,Manual Trapped Liquidity Dataset
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Non-Structured Debt Maturing in Greater than 30-days – Primary Market Maker,Unsecured Debt Manual
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Non-Structured Debt Maturing in Greater than 30-days – Primary Market Maker,Long Term Debt - BTB
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Structured Debt Maturing in Greater than 30-days – Primary Market Maker,Unsecured Debt Manual
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Structured Debt Maturing in Greater than 30-days – Primary Market Maker,Long Term Debt - BTB
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Subsidiary Funding Available for Transfer,Manual Trapped Liquidity Dataset
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Subsidiary Funding That Cannot Be Transferred,Manual Trapped Liquidity Dataset
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Subsidiary Liquidity Available for Transfer,Manual Trapped Liquidity Dataset
+6G - Product,6G - Supplemental -  Liquidity Risk Measurement - Subsidiary Liquidity That Cannot be Transferred,Manual Trapped Liquidity Dataset

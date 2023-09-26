@@ -1,0 +1,62 @@
+Report Table Group,Report Table Name,Attribute ID,Attribute Name,Technical Data Type,Regulatory Requirement,Collibra Catalog ID,DGC Data Element,Logic,Reporting Entities,Reporting Data Concept
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-Reporting_Entity,Reporting Entity,String,Yes,,,Derived from DLG mapping logic,,
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-Product,Product,String,Yes,,,"""Unencumbered Assets”",,
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-Sub-Product,Sub-Product,String,No,,,,,
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-Market_Value,Market Value,Float,Yes,,,"Where OOFA Use, if Converted is “true” then USD OOFA Market Value, else MX OOFA Market Value
+Where Loan IQ - Drawn Feed, GWM Loans PLA/LAL Feed, GWM Mortgages Feed, GWM Loans – TL Feed or CRE Loans Feed, and Traders Value not 0, if Converted is “true”, then Traders Value USD else Traders Value MX. When Traders Value is 0, if Converted is “true”, then Loan Amount Funded USD else Loan Amount Funded MX (for Loan IQ – Drawn Feed all values prorated by collateral ratio if collateral from FDW Loans Collateral Feed = Y)
+Where PWM Loans and Deposits Feed, if Converted is “true”, then USD Amt else MX Amt
+Where Employee Loans Feed, Loan Amount USD 
+Where ETrade LOC Feed, Maturity Amount",LCR Firm; NSFR Firm,HQLA; RSF
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-Lendable_Value,Lendable Value,Float,Yes,,,"Where OOFA, if Converted is “true” then USD OOFA Market Value else MX OOFA Market Value, Haircut on the basis of Firm Internal Rates and Ratios (where no Ratio, based upon RAG: SG 2%, G 10%, A 15% & R (or blank) 20%)
+
+Where not OOFA, 80% of Market Value (for Loan IQ-Drawn feed, prorated by collateral ratio if collateral from FDW Loans Collateral Feed = Y)",,
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-Maturity_Bucket,Maturity Bucket,String,Yes,,,"Where OOFA, Maturity Date of the CUSIP, else where GWM Loans - TL Feed, GWM Mortgages Feed, CRE Loans or ETrade LOC Feed, “P0D”, else based upon Maturity Date",,
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-Forward_Start_Amount,Forward Start Amount,Float,No,,,0,NSFR Firm,ASF
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-Forward_Start_Bucket,Forward Start Bucket,String,No,,,,,
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-Collateral_Class,Collateral Class,String,Yes,,,"Where Employee Loans Feed, L-8
+Where GWM Mortgages Feed, “L-3”
+Determined using Asset Categorization (App C-II), else as per Loans Collateral Class  (defaulting to “L-8”)",,
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-Treasury_Control,Treasury Control,String,Yes,,,"OOFA Use Treasury Control Flag, else “false”",,
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-Accounting_Designation,Accounting Designation,String,Yes,,,"Where OOFA,  If Source_CCL10 = ""IP - AFS HA Portfolio"", ""IP - AFS Portfolio"" or ""AFS Portfolio"" or ""IP AFS HA Portfolio"" map to ""Available for Sale"" If Source_CCL10 = ""IP - HTM Portfolio"" or ""HTM Portfolio"" map to ""Held to Maturity"", If Source_CCL10 != ""IP - AFS HA Portfolio"" ""IP - AFS Portfolio"", ""AFS Portfolio"", ""IP - HTM Portfolio"" or ""HTM Portfolio"" map to ""Trading Asset"", Else ""Not Applicable""
+Where Loan IQ – Drawn, Employee Loans, CRE Loans, PWM Loans and Deposits Feed, GWM Loans PLA/LAL Feed, GWM Mortgages Feed, GWM Loans – TL Feed, if SAP Level 4 is “OTHER LOANS NON-FAIR VALUE HFS”, ""Available for Sale"", else if SAP Level 4 is “OTHER LOANS NON-FAIR VALUE HFI”, ""Held to Maturity"", else if 10Q level 5 is ""LMV CORPORATE LOANS"" or Legacy GL Account Level 6 is “LMVLOAN”, ""Trading Asset"", else ""Held to Maturity""
+
+When the above requirements are not met then the following feeds should be defaulted to the following:
+ 
+""Employee Loans"", ""PWM Loans and Deposits"", ""GWM Mortgages"", ""GWM Loans - PLA/LAL"" and ""GWM Loans - TL"" map to ""Held to Maturity"".
+""CRE Loans"" map to ""Trading Asset""",,
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-Effective_Maturity_Bucket,Effective Maturity Bucket,String,No,,,,,
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-Encumberance_Type,Encumberance Type,String,No,,,,,
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-Internal_Counterparty,Internal Counterparty,String,No,,,Derived from DLG mapping logic,,
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-Business_Line,Business Line,String,Yes,,,"1	The Business Line Field denotes the business line responsible for or associated with all applicable exposures.
+2	Business Lines applicable for Morgan Stanley are: Institutional Securities (IS)  [including Prime Brokerage (PB)], Wealth Management (WM) , Investment Management (IM) , & Corporate Treasury/BRM (CT).
+3	Mapping is achieved via a Waterfall Approach, in the following order:
+Corporate Treasury/BRM (CT)
+4	Liquid assets managed by Treasury: HQLA + Other HLA + Non-HLA (including agent bank cash in multiple currencies and segregated Initial Amount)
+5	Treasury Control is “TRUE” and 6G PID is not “I.O.8”
+6	6G PID is in (“S.DC.7.1.1”, “S.DC.10.1.1”) and Asset Type is in (“LEVEL 1 ASSETS”, “LEVEL 2A ASSETS”, “LEVEL 2B ASSETS”)
+7	Feed Name is like “UNENCUMBERED ASSETS%” and Cost Center is in (“8H06”, “8H07”)
+8	Feed Name is “BTB CASH”, 6G PID is “I.U.4” and Internal Counterparty is “NULL”
+9	6G PID is in (“O.W.11”, “O.W.12”, “O.W.14”, “O.W.15”, “S.L.4”, “S.L.5”, “O.S.5”, “S.B.1”) or Feed Name is in (""TRITON SUB-DEBT"", ""TRITON SPV"", ""OMNI TAPS TRANSACTIONS"", ""THIRD PARTY DEPOSITS"", ""DEBT STRUCTURED CD SD"", ""FID STRUCTURED CD SD"", ""BROKERED CD"", ""BANK DEPOSITS PROGRAM"", ""SAVINGS"", ""GLOBAL CURRENCY DEPOSITS"")
+10	Feed Name is “Derivatives Collateral” and 6G PID is “O.D.6”
+11	Feed Name is in (“REPOS - BRM”, “STOCK LOAN - BRM”) and (Cost Center Level 7 is not in (“CLIENT FINANCING”, “RATES FUNDING”, “FI SECURITIES LENDING”, “SECURITIES LENDING EQ”, “FIRM FUNDING”) )
+Prime Brokerage (PB)
+12	Where Cost Center Level 6 is “PRIME BROKERAGE”, or (Business Division is “PRIME BROKERAGE” and Feed Name is “LOCKUP”), or Feed Name is in (""PB GLOBAL ASSETS"", ""PB WIRES"", ""PB TRADE DATE POSITIONS"", ""PB MARGIN EXCESS"", ""UK CLIENT MONEY PROTECTION-AQUA"")
+Institutional Securities (IS)
+13	Where Cost Center Level 2 is “INSTITUTIONAL SECURITIES”
+Investment Management (IM)
+14	Where Cost Center Level 2 is in (“INVESTMENT MANAGEMENT”, “ASSET MANAGEMENT”)
+Wealth Management (WM)
+15	Where Cost Center Level 2 is “WEALTH MANAGEMENT”
+Allocation of Parent Deposit
+16	Where Feed Name in (“BTB CASH”, “TRITON MONEY MARKETS”) and Legal Entity in (“1633”, “6635”) and Related DLG Name in (""MORGAN STANLEY"", ""MORGAN STANLEY CAPITAL SERVICES"", ""MORGAN STANLEY HOLDINGS LLC"", ""MORGAN STANLEY CAPITAL GROUP INC""), map to “IS”
+Allocation of Remaining Balances where Cost Centre Data is unavailable
+17	Where DLG Name in (“MORGAN STANLEY INVESTMENT MANAGEMENT, INC”, “MORGAN STANLEY INVESTMENT MANAGEMENT LIMITED”), map to “IM”
+18	Where DLG Name is “MS – ALL OTHER ENTITIES” and Legal Entity in (“9617”, “9619”, “9621”, “9622”, “9623”, “9624”, “9625”, “9626”, “9627”, “9628”, “9629”, “9632”, “9633”, “9635”, “9636”, “9641”, “9643”, “9644”, “9645”, “9646”, “9647”, “9648”, “9649”, “9670”, “9680”, “9681”, “9684”, “9687”, “9688”, “9689”, “9690”, “9692”, “9700”, “9701”, “9703”, “9704”, “9707”, “9708”, “9709”, “9710”, “9711”), map to “IM”
+19	Where DLG Name in (“MORGAN STANLEY SMITH BARNEY”, “E*TRADE SECURITIES LLC”), map to “WM“
+20	Where DLG Name is “MORGAN STANLEY BANK NA”, map to “WM”, except where Feed Name in (""COLLATERAL SUBSTITUTION"", “COLLATERAL SUBSTITUTION BRM”, ""CRE LOANS"", ""CROSS CURRENCY IR SWAPS"", ""CVA"", ""CVA EXPECTED CASHFLOWS"", ""DERIVATIVES COLLATERAL"", ""DERIVATIVES MTM HLBA"", ""DOWNGRADE TRIGGERS"", ""EGTS SLEEPER COLLATERAL CUSIP"", ""FRONTING AND PARTICIPATION - LOANS"", ""FX CASHFLOWS FWD"", ""FX CASHFLOWS SPOT"", ""FX OPEN OPTIONS"", ""INTERNAL COVERAGE"", ""LOAN IQ - DRAWN"", ""LOANS"", ""OMNI RENOVATED GL BALANCES"", ""TENDER OPTION BONDS FLOATER NOTES""), map to “IS“
+21	Where (DLG Name is “MORGAN STANLEY PRIVATE BANK NA” or (DLG Name is “MS – ALL OTHER ENTITIES” and Legal Entity in (""9503"", ""9513"", ""9529"", ""9532"", ""9533"", ""9537"", ""9538"", ""9539"", ""9541"", ""9543"", ""9546"", ""9549"", ""9598""))), map to “WM”, except where Feed Name in (""COLLATERAL SUBSTITUTION"",  “COLLATERAL SUBSTITUTION BRM”, ""CRE LOANS"", ""CROSS CURRENCY IR SWAPS"", ""CVA"", ""CVA EXPECTED CASHFLOWS"", ""DERIVATIVES COLLATERAL"", ""DERIVATIVES MTM HLBA"", ""DOWNGRADE TRIGGERS"", ""EGTS SLEEPER COLLATERAL CUSIP"", ""FRONTING AND PARTICIPATION - LOANS"", ""FX CASHFLOWS FWD"", ""FX CASHFLOWS SPOT"", ""FX OPEN OPTIONS"", ""INTERNAL COVERAGE"", ""OMNI RENOVATED GL BALANCES"", ""TENDER OPTION BONDS FLOATER NOTES""), map to “IS“
+22	Where DLG Name not in (""MORGAN STANLEY INVESTMENT MANAGEMENT, INC"", ""MORGAN STANLEY INVESTMENT MANAGEMENT LIMITED"", ""MORGAN STANLEY SMITH BARNEY"", ""E*TRADE Securities LLC"", ""MORGAN STANLEY BANK NA"", ""MORGAN STANLEY PRIVATE BANK NA""), map to “IS”",,
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-Currency,Currency,String,No,,,Determined using Currency of Market Value,,
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-Converted,Converted,String,No,,,"Report this field as ""true"" if Currency values have been converted to USD, otherwise ""false""",,
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-PID,PID,Integer,No,,,"""1""",,
+6G - Product,6G - Inflows - Assets - Unencumbered Assets,RT-6G-IA1-SID,SID,String,No,,,,,
