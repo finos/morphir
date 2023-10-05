@@ -1,6 +1,21 @@
+<<<<<<< HEAD
+=======
+.companyLogos {
+	padding: 15px;
+        float: none;
+        display: flex;
+        justify-content: center;
+        text-align: center;
+}
+
+>>>>>>> 920432a (Add capitalone and databricks logo the panel)
 .companyLogos img {
         width: 386.667px;
+<<<<<<< HEAD
         height: 193.333px; 
         object-fit: cover;
         object-position: center center;
+=======
+        /* height: 386.667px */
+>>>>>>> a4267b9 (add styling to the images in the contributingCompaniesPanel)
 }
