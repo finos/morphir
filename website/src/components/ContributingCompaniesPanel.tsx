@@ -9,12 +9,16 @@ type ContributingCompaniesList = {
 const users: ContributingCompaniesList[] = [
 	{
 		BannerName: 'Morgan Stanley',
-		BannerUrl: 'https://www.morganstanley.com/etc.clientlibs/msdotcomr4/clientlibs/clientlib-site/resources/img/logo-black.png',
+		BannerUrl: 'https://www.finos.org/hubfs/morgan-stanley-platinum-12-21.png',
 	},
 	{
 		BannerName: 'Capital One',
-		BannerUrl: 'https://upload.wikimedia.org/wikipedia/commons/9/98/Capital_One_logo.svg',
+		BannerUrl: 'https://www.finos.org/hubfs/capital-one-gold-09-20.png',
 	},
+	{
+		BannerName: 'databricks',
+		BannerUrl: 'https://www.finos.org/hubfs/databricks-apr-21.png',
+	}
 	
 ]
 export default function UserShowcase(){

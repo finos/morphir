@@ -2,9 +2,10 @@
 	width:100%;
 	padding: 15px;
         float: none;
+        display: flex;
+        justify-content: center;
+        text-align: center;
 }
-
-
 
 .companyLogos img {
         width: 100%;
