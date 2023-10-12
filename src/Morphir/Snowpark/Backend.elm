@@ -3,14 +3,19 @@ module Morphir.Snowpark.Backend exposing (..)
 import Dict
 import List
 import Morphir.File.FileMap exposing (FileMap)
+import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (..)
 import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package
-import Morphir.IR.Path exposing (Path)
+import Morphir.IR.Module as Module 
+import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type exposing (Type)
 import Morphir.Scala.AST as Scala
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Morphir.TypeSpec.Backend exposing (mapModuleDefinition)
+import Morphir.IR.Type  exposing (Type)
+import Morphir.Scala.Common exposing (mapValueName)
+import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
 
 type alias Options =
     {}
@@ -29,8 +34,8 @@ mapPackageDefinition _ packagePath packageDef =
             packageDef.modules
                 |> Dict.toList
                 |> List.concatMap
-                    (\( modulePath, _ ) ->
-                        mapModuleDefinition packagePath modulePath
+                    (\( modulePath, moduleImpl ) ->
+                        mapModuleDefinition packagePath modulePath moduleImpl
                     )
     in
     generatedScala
@@ -46,8 +51,8 @@ mapPackageDefinition _ packagePath packageDef =
         |> Dict.fromList
 
 
-mapModuleDefinition : Package.PackageName -> Path -> List Scala.CompilationUnit
-mapModuleDefinition currentPackagePath currentModulePath =
+mapModuleDefinition : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List Scala.CompilationUnit
+mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleDef =
     let
         ( scalaPackagePath, moduleName ) =
             case currentModulePath |> List.reverse of
@@ -61,13 +66,60 @@ mapModuleDefinition currentPackagePath currentModulePath =
                     in
                     ( parts |> (List.concat >> List.map String.toLower), lastName )
 
+        functionMembers : List (Scala.Annotated Scala.MemberDecl)
+        functionMembers =
+            accessControlledModuleDef.value.values
+                |> Dict.toList
+                |> List.concatMap
+                    (\( valueName, accessControlledValueDef ) ->
+                        [ Scala.FunctionDecl
+                            { modifiers = []
+                            , name = mapValueName valueName
+                            , typeArgs = []                                
+                            , args = []                                
+                            , returnType = Nothing
+                            , body =
+                                mapFunctionBody accessControlledValueDef.value.value
+                            }
+                        ]
+                    )
+                |> List.map Scala.withoutAnnotation
         moduleUnit : Scala.CompilationUnit
         moduleUnit =
             { dirPath = scalaPackagePath
             , fileName = (moduleName |> Name.toTitleCase) ++ ".scala"
             , packageDecl = scalaPackagePath
             , imports = []
-            , typeDecls = []
+            , typeDecls = [ Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
+                    (Scala.Annotated []
+                        (Scala.Object
+                            { modifiers =
+                                case accessControlledModuleDef.access of
+                                    Public ->
+                                        []
+
+                                    Private ->
+                                        []
+                            , name =
+                                moduleName |> Name.toTitleCase
+                            , members = 
+                                List.append [] functionMembers
+                            , extends =
+                                []
+                            , body = Nothing
+                            }
+                        )
+                    )
+                ]
             }
     in
     [ moduleUnit ]
+
+
+mapFunctionBody : Value.Definition ta (Type ()) -> Maybe Scala.Value
+mapFunctionBody value =
+           Maybe.Just (mapValue value.body)
+
+mapValue : Value ta (Type ()) -> Scala.Value
+mapValue _ =
+    Scala.Literal (Scala.StringLit "To Do")
