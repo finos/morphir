@@ -1,11 +1,8 @@
 module Morphir.Snowpark.MappingContextTests exposing (typeClassificationTests)
 
-import Dict exposing (Dict)
-import Set exposing (Set)
+import Dict
 import Test exposing (Test, describe, test)
 import Expect
-import Morphir.IR.Distribution exposing (Distribution)
-import Morphir.IR.Distribution as Distribution
 import Morphir.IR.Path as Path
 import Morphir.IR.Module exposing (emptyDefinition)
 import Morphir.IR.AccessControlled exposing (public)
@@ -64,15 +61,7 @@ testDistributionPackage =
                     { name = Name.fromString "head", tpe = (Reference () (FQName.fromString "UTest:MyMod:Emp1" ":") []) }
                  ]) })
               ] } )
-        ]})
-
-testDistribution : Distribution        
-testDistribution =
-    Distribution.Library 
-        testDistributionName
-        Dict.empty
-        testDistributionPackage
-        
+        ]}) 
 
 typeClassificationTests : Test
 typeClassificationTests =

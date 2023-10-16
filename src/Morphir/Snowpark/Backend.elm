@@ -18,6 +18,8 @@ import Morphir.Scala.Common exposing (mapValueName)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
 import Morphir.Snowpark.MappingContext as MappingContext
 import Morphir.IR.FQName as FQName
+import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.Snowpark.Constants as Constants
 
 type alias Options =
     {}
@@ -126,5 +128,25 @@ mapFunctionBody value =
            Maybe.Just (mapValue value.body)
 
 mapValue : Value ta (Type ()) -> Scala.Value
-mapValue _ =
-    Scala.Literal (Scala.StringLit "To Do")
+mapValue value =
+    case value of
+        Literal tpe literal ->
+            mapLiteral tpe literal
+        _ ->
+            Scala.Literal (Scala.StringLit "To Do")
+
+mapLiteral : ta -> Literal -> Scala.Value
+mapLiteral tpe literal =
+    case literal of
+                CharLiteral val ->
+                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.CharacterLit val))]
+                StringLiteral val ->                    
+                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.StringLit val))]
+                BoolLiteral val ->
+                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.BooleanLit val))]
+                WholeNumberLiteral val ->
+                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.IntegerLit val))]
+                FloatLiteral val ->
+                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.FloatLit val))]
+                _ ->
+                    Debug.todo "The type '_' is not implemented"
