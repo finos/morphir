@@ -16,6 +16,8 @@ import Morphir.TypeSpec.Backend exposing (mapModuleDefinition)
 import Morphir.IR.Type  exposing (Type)
 import Morphir.Scala.Common exposing (mapValueName)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
+import Morphir.Snowpark.MappingContext as MappingContext
+import Morphir.IR.FQName as FQName
 
 type alias Options =
     {}
@@ -30,6 +32,9 @@ mapDistribution _ distro =
 mapPackageDefinition : Distribution -> Package.PackageName -> Package.Definition ta (Type ()) -> FileMap
 mapPackageDefinition _ packagePath packageDef =
     let
+        contextInfo = MappingContext.processDistributionModules packagePath packageDef
+        -- TODO: remove the following defintion
+        tmp = Debug.log (String.join "\n" (contextInfo |> Dict.toList |> List.map (\(n,v) -> (FQName.toString n) ++ ", " ++ (Debug.toString v))) ) 1
         generatedScala =
             packageDef.modules
                 |> Dict.toList
