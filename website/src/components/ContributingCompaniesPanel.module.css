@@ -1,5 +1,4 @@
 .companyLogos {
-	width:100%;
 	padding: 15px;
         float: none;
         display: flex;
@@ -8,5 +7,6 @@
 }
 
 .companyLogos img {
-        width: 100%;
+        width: 386.667px;
+        /* height: 386.667px */
 }
