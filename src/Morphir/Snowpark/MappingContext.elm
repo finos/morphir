@@ -4,7 +4,8 @@ module Morphir.Snowpark.MappingContext exposing
       , isRecordWithComplexTypes
       , isTypeAlias
       , isUnionTypeWithoutParams
-      , isUnionTypeWithParams )
+      , isUnionTypeWithParams
+      , MappingContextInfo )
 
 {-| This module contains functions to collect information about type definitions in a distribution.
 It classifies type definitions in the following kinds:
@@ -74,8 +75,7 @@ classifyType : Type.Definition a -> MappingContextInfo a -> (TypeClassificationS
 classifyType typeDefinition ctx =
    case typeDefinition of
        Type.TypeAliasDefinition _ t ->
-          --Debug.log ("=>>>" ++ (Debug.toString t)) 
-          (classifyActualType t ctx)
+         classifyActualType t ctx
        Type.CustomTypeDefinition _  {value} -> 
          let
              zeroArgConstructors =
@@ -145,7 +145,6 @@ classifyActualType  tpe ctx =
        _ -> TypeNotClassified
 
 simpleName packagePath modName name = 
-  --Name.toCamelCase name
   FQName.fQName packagePath modName name
 
 processModuleDefinition : Package.PackageName -> ModuleName -> MappingContextInfo ta -> AccessControlled (Module.Definition ta (Type ())) -> MappingContextInfo ta

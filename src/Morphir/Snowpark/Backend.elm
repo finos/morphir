@@ -20,6 +20,9 @@ import Morphir.Snowpark.MappingContext as MappingContext
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.Snowpark.Constants as Constants
+import Morphir.Snowpark.RecordWrapperGenerator as RecordWrapperGenerator
+import Morphir.Snowpark.MappingContext exposing (MappingContextInfo)
+
 
 type alias Options =
     {}
@@ -42,7 +45,7 @@ mapPackageDefinition _ packagePath packageDef =
                 |> Dict.toList
                 |> List.concatMap
                     (\( modulePath, moduleImpl ) ->
-                        mapModuleDefinition packagePath modulePath moduleImpl
+                        mapModuleDefinition packagePath modulePath moduleImpl contextInfo
                     )
     in
     generatedScala
@@ -58,8 +61,8 @@ mapPackageDefinition _ packagePath packageDef =
         |> Dict.fromList
 
 
-mapModuleDefinition : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List Scala.CompilationUnit
-mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleDef =
+mapModuleDefinition : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> MappingContextInfo a -> List Scala.CompilationUnit
+mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleDef mappingCtx =
     let
         ( scalaPackagePath, moduleName ) =
             case currentModulePath |> List.reverse of
@@ -72,6 +75,11 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
                             List.append currentPackagePath (List.reverse reverseModulePath)
                     in
                     ( parts |> (List.concat >> List.map String.toLower), lastName )
+
+        classDefinitions : List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
+        classDefinitions = 
+            accessControlledModuleDef.value.types
+                |> RecordWrapperGenerator.generateRecordWrappers currentPackagePath currentModulePath mappingCtx
 
         functionMembers : List (Scala.Annotated Scala.MemberDecl)
         functionMembers =
@@ -97,7 +105,7 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
             , fileName = (moduleName |> Name.toTitleCase) ++ ".scala"
             , packageDecl = scalaPackagePath
             , imports = []
-            , typeDecls = [ Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
+            , typeDecls = (( Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
                     (Scala.Annotated []
                         (Scala.Object
                             { modifiers =
@@ -117,7 +125,7 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
                             }
                         )
                     )
-                ]
+                ) :: classDefinitions)
             }
     in
     [ moduleUnit ]

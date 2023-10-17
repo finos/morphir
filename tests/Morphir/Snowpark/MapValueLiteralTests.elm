@@ -8,7 +8,7 @@ import Morphir.IR.Value as Value
 import Morphir.IR.Type as Type
 
 functionNamespace : List String
-functionNamespace = ["com", "snowpark", "functions"]
+functionNamespace = ["com", "snowflake", "snowpark", "functions"]
 
 booleanReference : Type.Type ()
 booleanReference = Type.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "boolean" ] ) []

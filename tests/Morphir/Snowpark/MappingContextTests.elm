@@ -13,6 +13,7 @@ import Morphir.Snowpark.MappingContext as MappingContext
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.FQName as FQName
 
+
 floatTypeInstance : Type ()
 floatTypeInstance = Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) []
 
