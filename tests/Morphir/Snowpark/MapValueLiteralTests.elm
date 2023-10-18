@@ -6,6 +6,7 @@ import Morphir.Snowpark.Backend exposing (mapValue)
 import Morphir.Scala.AST as Scala
 import Morphir.IR.Value as Value
 import Morphir.IR.Type as Type
+import Morphir.Snowpark.MappingContext as MappingContext
 
 functionNamespace : List String
 functionNamespace = ["com", "snowflake", "snowpark", "functions"]
@@ -54,26 +55,27 @@ integerTest =  Scala.Apply
 mapValueLiteralTests: Test
 mapValueLiteralTests =
     let
+        emptyContext = MappingContext.emptyContext
         assertBooleanLiteral =
             test ("Convert boolean") <|
             \_ ->
-                Expect.equal booleanTest (mapValue (Value.Literal booleanReference (Literal.BoolLiteral True)))
+                Expect.equal booleanTest (mapValue (Value.Literal booleanReference (Literal.BoolLiteral True)) emptyContext)
         assertStringLiteral =
             test ("Convert string") <|
             \_ ->
-                Expect.equal stringTest (mapValue (Value.Literal stringReference (Literal.StringLiteral "Hello world")))
+                Expect.equal stringTest (mapValue (Value.Literal stringReference (Literal.StringLiteral "Hello world")) emptyContext)
         assertCharacterLiteral =
             test ("Convert character") <|
             \_ ->
-                Expect.equal characterTest (mapValue (Value.Literal characterReference (Literal.CharLiteral 'C')))
+                Expect.equal characterTest (mapValue (Value.Literal characterReference (Literal.CharLiteral 'C')) emptyContext)
         assertFloatLiteral =
             test ("Convert float") <|
             \_ ->
-                Expect.equal floatTest (mapValue (Value.Literal floatReference (Literal.FloatLiteral 3.24)))
+                Expect.equal floatTest (mapValue (Value.Literal floatReference (Literal.FloatLiteral 3.24)) emptyContext)
         assertIntegerLiteral =
             test ("Convert integer") <|
             \_ ->
-                Expect.equal integerTest (mapValue (Value.Literal integerReference (Literal.WholeNumberLiteral 5)))
+                Expect.equal integerTest (mapValue (Value.Literal integerReference (Literal.WholeNumberLiteral 5)) emptyContext)
     in
     describe "literalMapTransform"
         [

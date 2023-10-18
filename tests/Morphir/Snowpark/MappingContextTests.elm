@@ -42,7 +42,7 @@ testDistributionPackage =
                     (Name.fromString "Hr", [] ),
                     (Name.fromString "It", [] )
                  ])) }), 
-                 -- A Union type without constructors parameters
+                 -- A Union type with constructors with parameters
                 (Name.fromString "FloatOptionType", 
                  public { doc =  "", value = Type.CustomTypeDefinition [] (public (Dict.fromList [
                     (Name.fromString "No", [] ),

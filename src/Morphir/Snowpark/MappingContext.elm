@@ -5,7 +5,9 @@ module Morphir.Snowpark.MappingContext exposing
       , isTypeAlias
       , isUnionTypeWithoutParams
       , isUnionTypeWithParams
-      , MappingContextInfo )
+      , isBasicType
+      , MappingContextInfo
+      , emptyContext )
 
 {-| This module contains functions to collect information about type definitions in a distribution.
 It classifies type definitions in the following kinds:
@@ -34,6 +36,10 @@ type TypeDefinitionClassification a =
 
 type alias MappingContextInfo a = 
     Dict FQName (TypeClassificationState a)
+
+
+emptyContext : MappingContextInfo a
+emptyContext = Dict.empty
 
 isRecordWithSimpleTypes : FQName -> MappingContextInfo a -> Bool
 isRecordWithSimpleTypes name ctx = 
@@ -71,7 +77,7 @@ type TypeClassificationState a =
    | TypeWithPendingClassification (Maybe (Type a))
    | TypeNotClassified
 
-classifyType : Type.Definition a -> MappingContextInfo a -> (TypeClassificationState a)
+classifyType : Type.Definition () -> MappingContextInfo () -> (TypeClassificationState ())
 classifyType typeDefinition ctx =
    case typeDefinition of
        Type.TypeAliasDefinition _ t ->
@@ -147,7 +153,7 @@ classifyActualType  tpe ctx =
 simpleName packagePath modName name = 
   FQName.fQName packagePath modName name
 
-processModuleDefinition : Package.PackageName -> ModuleName -> MappingContextInfo ta -> AccessControlled (Module.Definition ta (Type ())) -> MappingContextInfo ta
+processModuleDefinition : Package.PackageName -> ModuleName -> MappingContextInfo () -> AccessControlled (Module.Definition () (Type ())) -> MappingContextInfo ()
 processModuleDefinition packagePath modulePath currentResult moduleDefinition =
     moduleDefinition.value.types
     |> Dict.toList
@@ -157,7 +163,7 @@ processModuleDefinition packagePath modulePath currentResult moduleDefinition =
     |> Dict.union currentResult
 
 
-processSecondPassOnType : FQName -> TypeClassificationState a -> MappingContextInfo a -> MappingContextInfo a
+processSecondPassOnType : FQName -> TypeClassificationState () -> MappingContextInfo () -> MappingContextInfo ()
 processSecondPassOnType name typeClassification ctx =
    case typeClassification of
        TypeClassified _ -> ctx
@@ -171,7 +177,7 @@ processSecondPassOnType name typeClassification ctx =
                _ -> ctx
        _ -> ctx
 
-processDistributionModules : Package.PackageName -> Package.Definition ta (Type ()) -> MappingContextInfo ta
+processDistributionModules : Package.PackageName -> Package.Definition () (Type ()) -> MappingContextInfo ()
 processDistributionModules packagePath package =
    let 
       firstPass = package.modules 

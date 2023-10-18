@@ -13,7 +13,6 @@ import Morphir.IR.Type exposing (Type)
 import Morphir.Scala.AST as Scala
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Morphir.TypeSpec.Backend exposing (mapModuleDefinition)
-import Morphir.IR.Type  exposing (Type)
 import Morphir.Scala.Common exposing (mapValueName)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
 import Morphir.Snowpark.MappingContext as MappingContext
@@ -22,7 +21,12 @@ import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.Snowpark.Constants as Constants
 import Morphir.Snowpark.RecordWrapperGenerator as RecordWrapperGenerator
 import Morphir.Snowpark.MappingContext exposing (MappingContextInfo)
-
+import Morphir.IR.FQName as FQName
+import Morphir.Snowpark.AccessElementMapping exposing (
+    mapFieldAccess
+    , mapReferenceAccess
+    , mapVariableAccess
+    , mapConstructorAccess)
 
 type alias Options =
     {}
@@ -34,7 +38,7 @@ mapDistribution _ distro =
             mapPackageDefinition distro packageName packageDef
 
 
-mapPackageDefinition : Distribution -> Package.PackageName -> Package.Definition ta (Type ()) -> FileMap
+mapPackageDefinition : Distribution -> Package.PackageName -> Package.Definition () (Type ()) -> FileMap
 mapPackageDefinition _ packagePath packageDef =
     let
         contextInfo = MappingContext.processDistributionModules packagePath packageDef
@@ -61,7 +65,7 @@ mapPackageDefinition _ packagePath packageDef =
         |> Dict.fromList
 
 
-mapModuleDefinition : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> MappingContextInfo a -> List Scala.CompilationUnit
+mapModuleDefinition : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> MappingContextInfo () -> List Scala.CompilationUnit
 mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleDef mappingCtx =
     let
         ( scalaPackagePath, moduleName ) =
@@ -74,12 +78,13 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
                         parts =
                             List.append currentPackagePath (List.reverse reverseModulePath)
                     in
-                    ( parts |> (List.concat >> List.map String.toLower), lastName )
+                    ( parts |> (List.map Name.toCamelCase), lastName )
 
-        classDefinitions : List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
-        classDefinitions = 
+        moduleTypeDefinitions : List (Scala.Annotated Scala.MemberDecl)
+        moduleTypeDefinitions = 
             accessControlledModuleDef.value.types
                 |> RecordWrapperGenerator.generateRecordWrappers currentPackagePath currentModulePath mappingCtx
+                |> List.map (\doc -> { annotations = doc.value.annotations, value = Scala.MemberTypeDecl (doc.value.value) } )
 
         functionMembers : List (Scala.Annotated Scala.MemberDecl)
         functionMembers =
@@ -94,7 +99,7 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
                             , args = []                                
                             , returnType = Nothing
                             , body =
-                                mapFunctionBody accessControlledValueDef.value.value
+                                mapFunctionBody accessControlledValueDef.value.value mappingCtx
                             }
                         ]
                     )
@@ -105,7 +110,7 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
             , fileName = (moduleName |> Name.toTitleCase) ++ ".scala"
             , packageDecl = scalaPackagePath
             , imports = []
-            , typeDecls = (( Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
+            , typeDecls = [( Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
                     (Scala.Annotated []
                         (Scala.Object
                             { modifiers =
@@ -118,28 +123,36 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
                             , name =
                                 moduleName |> Name.toTitleCase
                             , members = 
-                                List.append [] functionMembers
+                                (moduleTypeDefinitions ++ functionMembers)
                             , extends =
                                 []
                             , body = Nothing
                             }
                         )
                     )
-                ) :: classDefinitions)
+                )]
             }
     in
     [ moduleUnit ]
 
 
-mapFunctionBody : Value.Definition ta (Type ()) -> Maybe Scala.Value
-mapFunctionBody value =
-           Maybe.Just (mapValue value.body)
+mapFunctionBody : Value.Definition ta (Type ()) -> MappingContextInfo () -> Maybe Scala.Value
+mapFunctionBody value ctx =
+           Maybe.Just (mapValue value.body ctx)
 
-mapValue : Value ta (Type ()) -> Scala.Value
-mapValue value =
+mapValue : Value ta (Type ()) -> MappingContextInfo () -> Scala.Value
+mapValue value ctx =
     case value of
         Literal tpe literal ->
             mapLiteral tpe literal
+        Field tpe val name ->
+            mapFieldAccess tpe val name ctx
+        Variable tpe name ->
+            mapVariableAccess tpe name ctx
+        Constructor tpe name ->
+            mapConstructorAccess tpe name ctx
+        Reference tpe name ->
+            mapReferenceAccess tpe name
         _ ->
             Scala.Literal (Scala.StringLit "To Do")
 
@@ -158,3 +171,4 @@ mapLiteral tpe literal =
                     Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.FloatLit val))]
                 _ ->
                     Debug.todo "The type '_' is not implemented"
+

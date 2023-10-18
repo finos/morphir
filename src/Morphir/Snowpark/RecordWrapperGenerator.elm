@@ -14,21 +14,24 @@ import Morphir.IR.Type exposing (Field)
 import Morphir.IR.Name as Name
 import Morphir.Snowpark.Constants exposing (applySnowparkFunc)
 import Morphir.Snowpark.Constants exposing (typeRefForSnowparkType)
+import Morphir.Snowpark.MappingContext exposing (isUnionTypeWithoutParams)
 
 
 {-| This module contains to create wrappers for record declarations that represent tables.
 
 For each record a Trait and an Object is generated with `Column` fields for each member.
+
+For union types without parameters we are going to generate an object definition with accessors for each option.
 |-}
 
-generateRecordWrappers : Package.PackageName -> ModuleName -> MappingContextInfo a -> Dict Name (AccessControlled (Documented (Type.Definition ta))) -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
+generateRecordWrappers : Package.PackageName -> ModuleName -> MappingContextInfo () -> Dict Name (AccessControlled (Documented (Type.Definition ta))) -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
 generateRecordWrappers packageName moduleName ctx typesInModule = 
     typesInModule
        |> Dict.toList
        |> List.concatMap (processTypeDeclaration packageName moduleName ctx)
        
 
-processTypeDeclaration : Package.PackageName -> ModuleName -> MappingContextInfo a -> (Name, (AccessControlled (Documented (Type.Definition ta)))) -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
+processTypeDeclaration : Package.PackageName -> ModuleName -> MappingContextInfo () -> (Name, (AccessControlled (Documented (Type.Definition ta)))) -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
 processTypeDeclaration packageName moduleName ctx (name, typeDeclAc) =
     -- For the moment we are going generating wrappers for record types
     case typeDeclAc.value.value of
@@ -38,7 +41,23 @@ processTypeDeclaration packageName moduleName ctx (name, typeDeclAc) =
                      typeDeclAc.value.doc
                      members
                      (isRecordWithSimpleTypes (FQName.fQName packageName moduleName name) ctx)
+        Type.CustomTypeDefinition _ constructorsAccess ->
+            processUnionTypeDeclaration 
+                     name 
+                     constructorsAccess.value
+                     (isUnionTypeWithoutParams (FQName.fQName packageName moduleName name) ctx)
         _ -> []
+
+
+processUnionTypeDeclaration : Name -> Morphir.IR.Type.Constructors ta -> Bool -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
+processUnionTypeDeclaration name constructors noParams =
+    if noParams then
+        [ 
+            objectForUnionWithNoParamsValues name constructors
+        ]
+    else 
+        []
+
 
 processRecordDeclaration : Name -> String -> (List (Field a)) ->  Bool -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
 processRecordDeclaration name doc fields recordWithSimpleTypes =
@@ -123,3 +142,48 @@ generateObjectMember field =
             , returnType = Just (typeRefForSnowparkType "Column") 
             , body = Just (applySnowparkFunc "col" [(Scala.Literal (Scala.StringLit (field.name |> Name.toCamelCase)))])
             }))
+
+
+
+generateUnionTypeNameMember : String -> (Scala.Annotated Scala.MemberDecl)
+generateUnionTypeNameMember optionName =
+  (Scala.Annotated
+            []
+            (Scala.FunctionDecl
+            {
+             modifiers = []
+            , name = optionName
+            , typeArgs = []
+            , args = []
+            , returnType = Just (typeRefForSnowparkType "Column") 
+            , body = Just (applySnowparkFunc "lit" [(Scala.Literal (Scala.StringLit optionName))])
+            }))
+
+
+objectForUnionWithNoParamsValues : Name -> Morphir.IR.Type.Constructors ta -> (Scala.Documented (Scala.Annotated Scala.TypeDecl))
+objectForUnionWithNoParamsValues name constructors = 
+  let 
+     nameToUse = name |> toTitleCase
+     members = constructors 
+               |> Dict.toList
+               |> List.map (\(constructorName, _) -> generateUnionTypeNameMember (Name.toTitleCase constructorName))
+  in 
+  ( Scala.Documented 
+        Nothing
+        (Scala.Annotated []
+            (Scala.Object
+                { modifiers = 
+                    []
+                , name =
+                    nameToUse
+                , members = 
+                    members
+                , extends =
+                    []
+                , body = 
+                    Nothing
+                }
+            )
+        )) 
+
+        
