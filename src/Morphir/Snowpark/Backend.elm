@@ -32,6 +32,8 @@ import Morphir.Snowpark.MappingContext exposing (isRecordWithSimpleTypes)
 import Morphir.Snowpark.ReferenceUtils exposing (isTypeReferenceToSimpleTypesRecord)
 import Morphir.Snowpark.TypeRefMapping exposing (mapTypeReference)
 import Morphir.Snowpark.MappingContext exposing (ValueMappingContext)
+import Morphir.Snowpark.MapFunctionsMapping as MapFunctionsMapping
+
 
 type alias Options =
     {}
@@ -208,8 +210,14 @@ mapValue value ctx =
             mapVariableAccess tpe name ctx
         Constructor tpe name ->
             mapConstructorAccess tpe name ctx
+        List _ values ->
+            Scala.Apply 
+                (Scala.Variable "Seq")
+                (values |> List.map (\v -> Scala.ArgValue Nothing (mapValue v ctx)))
         Reference tpe name ->
             mapReferenceAccess tpe name
+        Apply _ _ _ ->
+            MapFunctionsMapping.mapFunctionsMapping value mapValue ctx
         _ ->
             Scala.Literal (Scala.StringLit "To Do")
 
