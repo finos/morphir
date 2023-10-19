@@ -7,6 +7,7 @@ import Morphir.Scala.AST as Scala
 import Morphir.IR.Value as Value
 import Morphir.IR.Type as Type
 import Morphir.Snowpark.MappingContext as MappingContext
+import Morphir.Snowpark.MappingContext exposing (emptyValueMappingContext)
 
 functionNamespace : List String
 functionNamespace = ["com", "snowflake", "snowpark", "functions"]
@@ -55,7 +56,7 @@ integerTest =  Scala.Apply
 mapValueLiteralTests: Test
 mapValueLiteralTests =
     let
-        emptyContext = MappingContext.emptyContext
+        emptyContext = emptyValueMappingContext
         assertBooleanLiteral =
             test ("Convert boolean") <|
             \_ ->

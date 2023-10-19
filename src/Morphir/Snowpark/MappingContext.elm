@@ -7,7 +7,10 @@ module Morphir.Snowpark.MappingContext exposing
       , isUnionTypeWithParams
       , isBasicType
       , MappingContextInfo
-      , emptyContext )
+      , emptyContext
+      , isCandidateForDataFrame
+      , ValueMappingContext
+      , emptyValueMappingContext )
 
 {-| This module contains functions to collect information about type definitions in a distribution.
 It classifies type definitions in the following kinds:
@@ -26,6 +29,7 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Package as Package
 import Morphir.IR.Module exposing (ModuleName)
+import Morphir.IR.Name exposing (Name)
 
 type TypeDefinitionClassification a =
    RecordWithSimpleTypes
@@ -36,6 +40,15 @@ type TypeDefinitionClassification a =
 
 type alias MappingContextInfo a = 
     Dict FQName (TypeClassificationState a)
+
+type alias ValueMappingContext = 
+   { parameters: List Name
+   , typesContextInfo : MappingContextInfo ()
+   }
+
+emptyValueMappingContext : ValueMappingContext
+emptyValueMappingContext = { parameters = []
+                           , typesContextInfo = emptyContext }
 
 
 emptyContext : MappingContextInfo a
@@ -71,6 +84,15 @@ isTypeAlias name ctx =
        Just (TypeClassified (TypeAlias _)) -> True
        _ -> False
    
+isCandidateForDataFrame : (Type ()) -> MappingContextInfo () -> Bool
+isCandidateForDataFrame typeRef ctx=
+   case typeRef of
+      Type.Reference _ 
+                     ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) 
+                     [ Type.Reference _  itemTypeName [] ] ->
+         isRecordWithSimpleTypes itemTypeName ctx
+      _ -> False
+
 
 type TypeClassificationState a = 
    TypeClassified (TypeDefinitionClassification a)

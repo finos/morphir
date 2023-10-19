@@ -16,17 +16,22 @@ import Morphir.TypeSpec.Backend exposing (mapModuleDefinition)
 import Morphir.Scala.Common exposing (mapValueName)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
 import Morphir.Snowpark.MappingContext as MappingContext
-import Morphir.IR.FQName as FQName
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.Snowpark.Constants as Constants
 import Morphir.Snowpark.RecordWrapperGenerator as RecordWrapperGenerator
 import Morphir.Snowpark.MappingContext exposing (MappingContextInfo)
-import Morphir.IR.FQName as FQName
 import Morphir.Snowpark.AccessElementMapping exposing (
     mapFieldAccess
     , mapReferenceAccess
     , mapVariableAccess
     , mapConstructorAccess)
+import Morphir.IR.Documented exposing (Documented)
+import Morphir.Visual.BoolOperatorTree exposing (functionName)
+import Morphir.IR.Type as Type
+import Morphir.Snowpark.MappingContext exposing (isRecordWithSimpleTypes)
+import Morphir.Snowpark.ReferenceUtils exposing (isTypeReferenceToSimpleTypesRecord)
+import Morphir.Snowpark.TypeRefMapping exposing (mapTypeReference)
+import Morphir.Snowpark.MappingContext exposing (ValueMappingContext)
 
 type alias Options =
     {}
@@ -42,8 +47,6 @@ mapPackageDefinition : Distribution -> Package.PackageName -> Package.Definition
 mapPackageDefinition _ packagePath packageDef =
     let
         contextInfo = MappingContext.processDistributionModules packagePath packageDef
-        -- TODO: remove the following defintion
-        tmp = Debug.log (String.join "\n" (contextInfo |> Dict.toList |> List.map (\(n,v) -> (FQName.toString n) ++ ", " ++ (Debug.toString v))) ) 1
         generatedScala =
             packageDef.modules
                 |> Dict.toList
@@ -65,7 +68,7 @@ mapPackageDefinition _ packagePath packageDef =
         |> Dict.fromList
 
 
-mapModuleDefinition : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> MappingContextInfo () -> List Scala.CompilationUnit
+mapModuleDefinition : Package.PackageName -> Path -> AccessControlled (Module.Definition () (Type ())) -> MappingContextInfo () -> List Scala.CompilationUnit
 mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleDef mappingCtx =
     let
         ( scalaPackagePath, moduleName ) =
@@ -92,15 +95,7 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
                 |> Dict.toList
                 |> List.concatMap
                     (\( valueName, accessControlledValueDef ) ->
-                        [ Scala.FunctionDecl
-                            { modifiers = []
-                            , name = mapValueName valueName
-                            , typeArgs = []                                
-                            , args = []                                
-                            , returnType = Nothing
-                            , body =
-                                mapFunctionBody accessControlledValueDef.value.value mappingCtx
-                            }
+                        [ mapFunctionDefinition valueName accessControlledValueDef mappingCtx
                         ]
                     )
                 |> List.map Scala.withoutAnnotation
@@ -136,11 +131,73 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
     [ moduleUnit ]
 
 
-mapFunctionBody : Value.Definition ta (Type ()) -> MappingContextInfo () -> Maybe Scala.Value
+mapFunctionDefinition : Name.Name -> AccessControlled (Documented (Value.Definition () (Type ()))) -> MappingContextInfo () -> Scala.MemberDecl
+mapFunctionDefinition functionName body mappingCtx =
+    let
+       (parameters, localVariables) = processParameters body.value.value.inputTypes mappingCtx
+       parameterNames = body.value.value.inputTypes |> List.map (\(name, _, _) -> name)
+       valueMappingContext = { typesContextInfo = mappingCtx, parameters = parameterNames } 
+       bodyCandidate = mapFunctionBody body.value.value valueMappingContext 
+       
+       resultingBody = case (localVariables, bodyCandidate) of
+                            ([], _) -> bodyCandidate
+                            (declarations, Just bodyToUse) -> Just (Scala.Block declarations bodyToUse)
+                            (_, _) -> Nothing
+       
+       returnTypeToGenerate = mapTypeReference body.value.value.outputType mappingCtx
+    in
+    Scala.FunctionDecl
+            { modifiers = []
+            , name = mapValueName functionName
+            , typeArgs = []                                
+            , args = parameters
+            , returnType = 
+                Just returnTypeToGenerate
+            , body =
+                resultingBody
+            }
+
+generateLocalVariableForRowRecord : MappingContextInfo () -> ( Name.Name, Type (), Type a ) -> Scala.MemberDecl
+generateLocalVariableForRowRecord ctx (name, _, tpe) =
+   let
+      nameInfo =  isTypeReferenceToSimpleTypesRecord tpe ctx
+      typeNameInfo = Maybe.map 
+                           (\(typePath, simpleTypeName) -> Just (Scala.TypeRef typePath (simpleTypeName |> Name.toTitleCase) ))
+                           nameInfo
+      objectReference = Maybe.map 
+                           (\(typePath, simpleTypeName) -> Scala.Ref typePath (simpleTypeName |> Name.toTitleCase))
+                           nameInfo
+   in
+   Scala.ValueDecl {
+    modifiers = []
+    , pattern = (Scala.NamedMatch (name |> Name.toCamelCase))
+    , valueType = Maybe.withDefault Nothing typeNameInfo
+    , value = Maybe.withDefault Scala.Unit objectReference
+    }
+    
+generateArgumentDeclarationForFunction : MappingContextInfo () -> ( Name.Name, Type (), Type () ) -> List Scala.ArgDecl
+generateArgumentDeclarationForFunction ctx (name, _, tpe) =
+    [Scala.ArgDecl [] (mapTypeReference tpe ctx) (name |> Name.toCamelCase) Nothing]
+
+processParameters : List ( Name.Name, Type (), Type () ) -> MappingContextInfo () -> (List (List Scala.ArgDecl), List (Scala.MemberDecl) )
+processParameters inputTypes ctx =
+    let
+        recWithSimpleTypesPred : ( Name.Name, Type (), Type a ) -> Bool
+        recWithSimpleTypesPred tpe = 
+            case tpe of
+                (_, _, Type.Reference _ fqName []) -> not(isRecordWithSimpleTypes fqName ctx)
+                _ -> True
+        (typesToProcess, typesWithRecords) = inputTypes |> List.partition recWithSimpleTypesPred
+    in
+    (typesToProcess |> List.map (generateArgumentDeclarationForFunction ctx),
+     typesWithRecords |> List.map (generateLocalVariableForRowRecord ctx))
+
+
+mapFunctionBody : Value.Definition ta (Type ()) -> ValueMappingContext -> Maybe Scala.Value
 mapFunctionBody value ctx =
            Maybe.Just (mapValue value.body ctx)
 
-mapValue : Value ta (Type ()) -> MappingContextInfo () -> Scala.Value
+mapValue : Value ta (Type ()) -> ValueMappingContext -> Scala.Value
 mapValue value ctx =
     case value of
         Literal tpe literal ->
@@ -157,7 +214,7 @@ mapValue value ctx =
             Scala.Literal (Scala.StringLit "To Do")
 
 mapLiteral : ta -> Literal -> Scala.Value
-mapLiteral tpe literal =
+mapLiteral _ literal =
     case literal of
                 CharLiteral val ->
                     Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.CharacterLit val))]
