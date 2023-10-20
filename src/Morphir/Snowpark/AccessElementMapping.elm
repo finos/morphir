@@ -19,7 +19,9 @@ import Morphir.Snowpark.MappingContext exposing (isUnionTypeWithoutParams)
 import Html.Attributes exposing (name)
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Value exposing (Value(..))
-import Morphir.Snowpark.ReferenceUtils exposing (isValueReferenceToSimpleTypesRecord, scalaPathToModule)
+import Morphir.Snowpark.ReferenceUtils exposing (isValueReferenceToSimpleTypesRecord
+           , scalaReferenceToUnionTypeCase
+           , scalaPathToModule)
 import Morphir.IR.Value as Value
 
 mapFieldAccess : va -> (Value ta (IrType.Type a)) -> Name.Name -> ValueMappingContext -> Scala.Value
@@ -41,17 +43,14 @@ mapVariableAccess : (IrType.Type a) -> Name.Name -> ValueMappingContext -> Scala
 mapVariableAccess _ name _ =
    Scala.Variable (name |> Name.toCamelCase)   
 
+
+
 mapConstructorAccess : (IrType.Type a) -> FQName.FQName -> ValueMappingContext -> Scala.Value
 mapConstructorAccess tpe name ctx =
     case tpe of
         IrType.Reference _ typeName _ ->
             if isUnionTypeWithoutParams typeName ctx.typesContextInfo then
-                let
-                    nsName = scalaPathToModule name
-                    containerObjectName = FQName.getLocalName typeName |> Name.toTitleCase
-                    containerObjectFieldName = FQName.getLocalName name |> Name.toTitleCase
-                in 
-                Scala.Ref (nsName ++ [containerObjectName]) containerObjectFieldName
+                scalaReferenceToUnionTypeCase typeName name
             else 
                 (Scala.Literal (Scala.StringLit "Field access not converted"))
         _ -> (Scala.Literal (Scala.StringLit "Field access not converted"))

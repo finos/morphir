@@ -29,11 +29,11 @@ import Morphir.IR.Documented exposing (Documented)
 import Morphir.Visual.BoolOperatorTree exposing (functionName)
 import Morphir.IR.Type as Type
 import Morphir.Snowpark.MappingContext exposing (isRecordWithSimpleTypes)
-import Morphir.Snowpark.ReferenceUtils exposing (isTypeReferenceToSimpleTypesRecord)
+import Morphir.Snowpark.ReferenceUtils exposing (isTypeReferenceToSimpleTypesRecord, mapLiteral)
 import Morphir.Snowpark.TypeRefMapping exposing (mapTypeReference)
 import Morphir.Snowpark.MappingContext exposing (ValueMappingContext)
 import Morphir.Snowpark.MapFunctionsMapping as MapFunctionsMapping
-
+import Morphir.Snowpark.PatternMatchMapping exposing (mapPatternMatch)
 
 type alias Options =
     {}
@@ -218,22 +218,11 @@ mapValue value ctx =
             mapReferenceAccess tpe name
         Apply _ _ _ ->
             MapFunctionsMapping.mapFunctionsMapping value mapValue ctx
+        PatternMatch tpe expr cases ->
+            mapPatternMatch (tpe, expr, cases) mapValue ctx
         _ ->
             Scala.Literal (Scala.StringLit "To Do")
 
-mapLiteral : ta -> Literal -> Scala.Value
-mapLiteral _ literal =
-    case literal of
-                CharLiteral val ->
-                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.CharacterLit val))]
-                StringLiteral val ->                    
-                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.StringLit val))]
-                BoolLiteral val ->
-                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.BooleanLit val))]
-                WholeNumberLiteral val ->
-                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.IntegerLit val))]
-                FloatLiteral val ->
-                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.FloatLit val))]
-                _ ->
-                    Debug.todo "The type '_' is not implemented"
+
+
 

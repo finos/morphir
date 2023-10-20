@@ -5,6 +5,7 @@ module Morphir.Snowpark.MappingContext exposing
       , isTypeAlias
       , isUnionTypeWithoutParams
       , isUnionTypeWithParams
+      , isUnionTypeRefWithoutParams
       , isBasicType
       , MappingContextInfo
       , emptyContext
@@ -72,12 +73,18 @@ isUnionTypeWithoutParams name ctx =
        Just (TypeClassified UnionTypeWithoutParams) -> True
        _ -> False
 
+isUnionTypeRefWithoutParams : Type a -> MappingContextInfo a -> Bool
+isUnionTypeRefWithoutParams tpe ctx =
+   case tpe of
+       Type.Reference _ name _ -> isUnionTypeWithoutParams name ctx
+       _ -> False
+
+
 isUnionTypeWithParams : FQName -> MappingContextInfo a -> Bool
 isUnionTypeWithParams name ctx = 
    case Dict.get name ctx of
        Just (TypeClassified UnionTypeWithParams) -> True
        _ -> False
-
 isTypeAlias : FQName -> MappingContextInfo a -> Bool
 isTypeAlias name ctx = 
    case Dict.get name ctx of

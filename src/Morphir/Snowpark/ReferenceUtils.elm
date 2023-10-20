@@ -1,7 +1,9 @@
 module Morphir.Snowpark.ReferenceUtils exposing (
     scalaPathToModule
     , isTypeReferenceToSimpleTypesRecord
-    , isValueReferenceToSimpleTypesRecord)
+    , isValueReferenceToSimpleTypesRecord
+    , mapLiteral
+    , scalaReferenceToUnionTypeCase)
 
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as IrType
@@ -12,6 +14,7 @@ import Morphir.Snowpark.MappingContext exposing (MappingContextInfo, isRecordWit
 import Html.Attributes exposing (name)
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Value exposing (Value(..))
+import Morphir.Snowpark.Constants as Constants
 
 scalaPathToModule : FQName.FQName -> Scala.Path
 scalaPathToModule name =
@@ -41,3 +44,30 @@ isTypeReferenceToSimpleTypesRecord typeReference ctx =
             else
                 Nothing
         _ -> Nothing
+
+
+mapLiteral : ta -> Literal -> Scala.Value
+mapLiteral _ literal =
+    case literal of
+                CharLiteral val ->
+                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.CharacterLit val))]
+                StringLiteral val ->                    
+                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.StringLit val))]
+                BoolLiteral val ->
+                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.BooleanLit val))]
+                WholeNumberLiteral val ->
+                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.IntegerLit val))]
+                FloatLiteral val ->
+                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.FloatLit val))]
+                _ ->
+                    Debug.todo "The type '_' is not implemented"
+
+
+scalaReferenceToUnionTypeCase : FQName.FQName -> FQName.FQName -> Scala.Value
+scalaReferenceToUnionTypeCase typeName constructorName =
+    let
+        nsName = scalaPathToModule constructorName
+        containerObjectName = FQName.getLocalName typeName |> Name.toTitleCase
+        containerObjectFieldName = FQName.getLocalName constructorName |> Name.toTitleCase
+    in 
+    Scala.Ref (nsName ++ [containerObjectName]) containerObjectFieldName
