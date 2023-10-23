@@ -11,7 +11,8 @@ module Morphir.Snowpark.MappingContext exposing
       , emptyContext
       , isCandidateForDataFrame
       , ValueMappingContext
-      , emptyValueMappingContext )
+      , emptyValueMappingContext
+      , isAnonymousRecordWithSimpleTypes )
 
 {-| This module contains functions to collect information about type definitions in a distribution.
 It classifies type definitions in the following kinds:
@@ -79,7 +80,6 @@ isUnionTypeRefWithoutParams tpe ctx =
        Type.Reference _ name _ -> isUnionTypeWithoutParams name ctx
        _ -> False
 
-
 isUnionTypeWithParams : FQName -> MappingContextInfo a -> Bool
 isUnionTypeWithParams name ctx = 
    case Dict.get name ctx of
@@ -100,6 +100,13 @@ isCandidateForDataFrame typeRef ctx=
          isRecordWithSimpleTypes itemTypeName ctx
       _ -> False
 
+isAnonymousRecordWithSimpleTypes : Type.Type () -> MappingContextInfo () -> Bool
+isAnonymousRecordWithSimpleTypes tpe ctx = 
+   case tpe of
+       Type.Record _ fields -> 
+           List.all (\field -> isDataFrameFriendlyType field.tpe ctx) fields
+       _ -> 
+           False
 
 type TypeClassificationState a = 
    TypeClassified (TypeDefinitionClassification a)
@@ -162,13 +169,26 @@ isAliasOfBasicType tpe ctx =
            |> Maybe.withDefault False
       _ -> False
 
+isMaybeOfDataFrameFriendlyType : Type a -> MappingContextInfo a -> Bool
+isMaybeOfDataFrameFriendlyType tpe ctx =
+   case tpe of
+      Type.Reference _ ([["morphir"],["s","d","k"]],[["maybe"]],["maybe"]) [typeArg] ->
+         isDataFrameFriendlyType typeArg ctx
+      _ -> 
+         False
+
+isDataFrameFriendlyType : Type a -> MappingContextInfo a -> Bool
+isDataFrameFriendlyType tpe ctx =
+      isBasicType tpe
+      || (isUnionType tpe ctx)
+      || (isAliasOfBasicType tpe ctx)
+      || (isMaybeOfDataFrameFriendlyType tpe ctx)
+
 classifyActualType : Type a -> MappingContextInfo a -> TypeClassificationState a
 classifyActualType  tpe ctx = 
    case tpe of
        Record _ members ->
-            if List.all (\t -> (isBasicType t.tpe) 
-                               || (isUnionType t.tpe ctx) 
-                               || (isAliasOfBasicType t.tpe ctx)) members then
+            if List.all (\t -> isDataFrameFriendlyType t.tpe ctx) members then
                TypeClassified RecordWithSimpleTypes 
             else 
                TypeWithPendingClassification (Just tpe)

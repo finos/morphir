@@ -77,7 +77,7 @@ memberTest =
 memberExpectedTest: Scala.Value
 memberExpectedTest =
     Scala.Apply (Scala.Select (Scala.Variable "v") "in") [ Scala.ArgValue Nothing listExpectedTest ]
-
+  
 mapValueListTest : Test
 mapValueListTest =
     let
@@ -93,7 +93,7 @@ mapValueListTest =
     in
     describe "List functions"
         [
-            assertListTest,
-            assertMemberTest 
+        assertListTest
+        , assertMemberTest
         ]
     

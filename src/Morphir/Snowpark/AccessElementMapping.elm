@@ -43,8 +43,6 @@ mapVariableAccess : (IrType.Type a) -> Name.Name -> ValueMappingContext -> Scala
 mapVariableAccess _ name _ =
    Scala.Variable (name |> Name.toCamelCase)   
 
-
-
 mapConstructorAccess : (IrType.Type a) -> FQName.FQName -> ValueMappingContext -> Scala.Value
 mapConstructorAccess tpe name ctx =
     case tpe of
