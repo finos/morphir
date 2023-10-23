@@ -8,6 +8,8 @@ import Morphir.IR.AccessControlled exposing (public)
 import Morphir.IR.Module exposing (emptyDefinition)
 import Morphir.IR.Name as Name
 
+morphirNamespace : List (List String)
+morphirNamespace = [["morphir"],["s","d","k"]]
 
 stringTypeInstance : Type.Type ()
 stringTypeInstance = Type.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "string" ] ], [ "string" ] ) []

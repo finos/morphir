@@ -7,15 +7,11 @@ snowflakeNamespace = ["com", "snowflake", "snowpark"]
 functionsNamespace : List String
 functionsNamespace = snowflakeNamespace ++  ["functions"]
 
-
-
 applySnowparkFunc : String -> List Scala.Value -> Scala.Value
 applySnowparkFunc name args =
     Scala.Apply 
         (Scala.Ref functionsNamespace name)
         (args |> List.map (\v -> Scala.ArgValue Nothing v))
-
-
 
 typeRefForSnowparkType : String -> Scala.Type
 typeRefForSnowparkType typeName =

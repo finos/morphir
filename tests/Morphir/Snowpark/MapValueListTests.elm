@@ -8,9 +8,8 @@ import Morphir.IR.Literal as Literal
 import Morphir.IR.Type as TypeIR
 import Morphir.Scala.AST as Scala
 import Morphir.Snowpark.MappingContext exposing (emptyValueMappingContext)
+import Morphir.Snowpark.CommonTestUtils exposing (morphirNamespace)
 
-morphirNamespace : List (List String)
-morphirNamespace = [["morphir"],["s","d","k"]]
 
 createLiteral : String -> ValueIR.Value va (TypeIR.Type ())
 createLiteral name = 

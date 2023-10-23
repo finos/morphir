@@ -2,35 +2,64 @@ module Morphir.Snowpark.MapFunctionsMapping exposing (mapFunctionsMapping)
 
 import Dict as Dict
 import Morphir.Scala.AST as Scala
-import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
+import Morphir.IR.Value as ValueIR exposing (Pattern(..), Value(..))
 import Morphir.IR.Type exposing (Type)
 import Morphir.Snowpark.MappingContext exposing (ValueMappingContext, isCandidateForDataFrame)
 import Morphir.IR.Value exposing (valueAttribute)
-import Morphir.IR.Type as Type
+import Morphir.IR.Type as TypeIR
 import Morphir.Snowpark.MappingContext exposing (isAnonymousRecordWithSimpleTypes)
 import Morphir.IR.Name as Name
 import Morphir.Snowpark.Constants exposing (applySnowparkFunc)
 import Morphir.Snowpark.MappingContext exposing (isBasicType)
+import Morphir.Snowpark.Operatorsmaps exposing (mapOperator)
 
-type alias MapValueType ta = Value ta (Type ()) -> ValueMappingContext -> Scala.Value
+type alias MapValueType ta = ValueIR.Value ta (TypeIR.Type ()) -> ValueMappingContext -> Scala.Value
 
-mapFunctionsMapping : Value ta (Type ()) -> MapValueType ta -> ValueMappingContext -> Scala.Value
+mapFunctionsMapping : ValueIR.Value ta (TypeIR.Type ()) -> MapValueType ta -> ValueMappingContext -> Scala.Value
 mapFunctionsMapping value mapValue ctx =
+    
     case value of
-        Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "member" ] )) predicate) sourceRelation ->
+        ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "member" ] )) predicate) sourceRelation ->
             let
                 variable = mapValue predicate ctx
                 applySequence = mapValue sourceRelation ctx
             in
             Scala.Apply (Scala.Select variable "in") [ Scala.ArgValue Nothing applySequence ]
-        Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "map" ] )) projection) sourceRelation ->
+        ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "map" ] )) projection) sourceRelation ->
             generateForListMap projection sourceRelation ctx mapValue
-        Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "filter" ] )) predicate) sourceRelation ->
+        ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "filter" ] )) predicate) sourceRelation ->
             generateForListFilter predicate sourceRelation ctx mapValue
-        Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "filter", "map" ] )) predicateAction) sourceRelation ->
+        ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "filter", "map" ] )) predicateAction) sourceRelation ->
             generateForListFilterMap predicateAction sourceRelation ctx mapValue
-        Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "sum" ] )) collection ->
+        ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "sum" ] )) collection ->
             generateForListSum collection ctx mapValue
+        ValueIR.Apply 
+            (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]], _) [])
+            (ValueIR.Apply 
+                (TypeIR.Function 
+                    () 
+                    (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]], _ ) [])
+                    (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]], _ ) [])
+                )
+                (ValueIR.Reference
+                    (TypeIR.Function
+                        () 
+                        (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]], _ ) [])
+                        (TypeIR.Function 
+                            () 
+                            (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]], _ ) []) 
+                            (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]], _ ) []))
+                    )
+                    ([["morphir"],["s","d","k"]],[["basics"]], optname)
+                )
+                left )
+            right ->
+            let
+                leftValue = mapValue left ctx
+                rightValue = mapValue right ctx
+                operatorname = mapOperator optname
+            in
+            Scala.BinOp leftValue operatorname rightValue
         _ ->
             Scala.Literal (Scala.StringLit "To Do")
 
@@ -38,7 +67,7 @@ mapFunctionsMapping value mapValue ctx =
 generateForListSum : Value ta (Type ()) -> ValueMappingContext -> MapValueType ta -> Scala.Value
 generateForListSum collection ctx mapValue =
     case collection of
-        Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "map" ] )) _) sourceRelation ->
+        ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "map" ] )) _) sourceRelation ->
             if isCandidateForDataFrame (valueAttribute sourceRelation) ctx.typesContextInfo then
                 case mapValue collection ctx of
                     Scala.Apply col [Scala.ArgValue argName projectedExpr] ->
@@ -60,7 +89,7 @@ generateForListFilter : Value ta (Type ()) -> (Value ta (Type ())) -> ValueMappi
 generateForListFilter predicate sourceRelation ctx mapValue =
     if isCandidateForDataFrame (valueAttribute sourceRelation) ctx.typesContextInfo then
         case predicate of
-           Value.Lambda _ _ binExpr ->
+           ValueIR.Lambda _ _ binExpr ->
               Scala.Apply (Scala.Select (mapValue sourceRelation ctx) "filter") [Scala.ArgValue Nothing <| mapValue binExpr ctx]
            _ ->
               Scala.Literal (Scala.StringLit "To Do")
@@ -72,7 +101,7 @@ generateForListFilterMap : Value ta (Type ()) -> (Value ta (Type ())) -> ValueMa
 generateForListFilterMap predicate sourceRelation ctx mapValue =
     if isCandidateForDataFrame (valueAttribute sourceRelation) ctx.typesContextInfo then
         case predicate of
-           Value.Lambda _ _ binExpr ->
+           ValueIR.Lambda _ _ binExpr ->
               let 
                   selectCall = Scala.Apply (Scala.Select (mapValue sourceRelation ctx) "select") [Scala.ArgValue Nothing <| mapValue binExpr ctx]
                   resultId = Scala.Literal <| Scala.StringLit "result"
@@ -99,7 +128,7 @@ generateForListMap projection sourceRelation ctx mapValue =
 processLambdaWithRecordBody : Value ta (Type ()) -> ValueMappingContext -> MapValueType ta -> Maybe (List Scala.ArgValue)
 processLambdaWithRecordBody functionExpr ctx mapValue =
     case functionExpr of
-        Value.Lambda (Type.Function _ _  returnType) (Value.AsPattern _ _ _) (Value.Record _ fields) ->
+        ValueIR.Lambda (TypeIR.Function _ _  returnType) (ValueIR.AsPattern _ _ _) (ValueIR.Record _ fields) ->
              if isAnonymousRecordWithSimpleTypes returnType ctx.typesContextInfo then
                Just (fields  
                         |> Dict.toList
@@ -108,7 +137,7 @@ processLambdaWithRecordBody functionExpr ctx mapValue =
                         |> List.map (Scala.ArgValue Nothing))
              else  
                 Nothing
-        Value.Lambda (Type.Function _ _  returnType) (Value.AsPattern _ _ _) expr ->
+        ValueIR.Lambda (TypeIR.Function _ _  returnType) (ValueIR.AsPattern _ _ _) expr ->
              if isBasicType returnType then
                Just [ Scala.ArgValue Nothing <| mapValue expr ctx ]
              else  
