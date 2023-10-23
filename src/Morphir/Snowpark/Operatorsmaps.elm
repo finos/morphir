@@ -15,5 +15,17 @@ mapOperator name =
             "/"
         ["float", "divide"] ->
             "/"
+        ["equal"] ->
+            "==="
+        ["not", "equal"] ->
+            "=!="
+        ["greater", "than"] ->
+            ">"
+        ["less", "than"] ->
+            "<"
+        ["less", "than", "or", "equal"] ->
+            "<="
+        ["greater", "than", "or", "equal"] ->
+            ">="
         _ ->
             "Unsupported"

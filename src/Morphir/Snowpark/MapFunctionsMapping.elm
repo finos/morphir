@@ -60,6 +60,33 @@ mapFunctionsMapping value mapValue ctx =
                 operatorname = mapOperator optname
             in
             Scala.BinOp leftValue operatorname rightValue
+        ValueIR.Apply 
+            (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]],["bool"]) [])
+            (ValueIR.Apply (TypeIR.Function 
+                        ()
+                        (TypeIR.Variable () ["t","0"])
+                        (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]],["bool"]) [])
+                    )
+                    (ValueIR.Reference (TypeIR.Function 
+                                            ()
+                                            (TypeIR.Variable () ["t","0"])
+                                            (TypeIR.Function 
+                                                ()
+                                                (TypeIR.Variable () ["t","0"])
+                                                (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]],["bool"]) [])
+                                            )
+                                        )
+                                ([["morphir"],["s","d","k"]],[["basics"]], optname)
+                    )
+                    left
+            )
+            right ->
+            let
+                leftValue = mapValue left ctx
+                rightValue = mapValue right ctx
+                operatorname = mapOperator optname
+            in
+            Scala.BinOp leftValue operatorname rightValue
         _ ->
             Scala.Literal (Scala.StringLit "To Do")
 
