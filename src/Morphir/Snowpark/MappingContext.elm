@@ -5,6 +5,7 @@ module Morphir.Snowpark.MappingContext exposing
       , isTypeAlias
       , isUnionTypeWithoutParams
       , isUnionTypeWithParams
+      , isUnionTypeRefWithParams
       , isUnionTypeRefWithoutParams
       , isBasicType
       , MappingContextInfo
@@ -12,7 +13,11 @@ module Morphir.Snowpark.MappingContext exposing
       , isCandidateForDataFrame
       , ValueMappingContext
       , emptyValueMappingContext
-      , isAnonymousRecordWithSimpleTypes )
+      , isAnonymousRecordWithSimpleTypes
+      , getReplacementForIdentifier
+      , isDataFrameFriendlyType
+      , isLocalFunctionName
+      , isTypeRefToRecordWithSimpleTypes )
 
 {-| This module contains functions to collect information about type definitions in a distribution.
 It classifies type definitions in the following kinds:
@@ -24,6 +29,7 @@ It classifies type definitions in the following kinds:
 |-}
 
 import Dict exposing (Dict)
+import Morphir.Scala.AST as Scala
 import Morphir.IR.Type as Type exposing (Type, Type(..), Definition(..))
 import Morphir.IR.Module as Module
 import Morphir.IR.AccessControlled exposing (AccessControlled)
@@ -32,6 +38,7 @@ import Morphir.IR.FQName as FQName
 import Morphir.IR.Package as Package
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name exposing (Name)
+import Morphir.IR.Path as Path
 
 type TypeDefinitionClassification a =
    RecordWithSimpleTypes
@@ -46,21 +53,37 @@ type alias MappingContextInfo a =
 type alias ValueMappingContext = 
    { parameters: List Name
    , typesContextInfo : MappingContextInfo ()
+   , inlinedIds: Dict Name Scala.Value
+   , packagePath: Path.Path
    }
 
 emptyValueMappingContext : ValueMappingContext
 emptyValueMappingContext = { parameters = []
-                           , typesContextInfo = emptyContext }
+                           , inlinedIds = Dict.empty
+                           , typesContextInfo = emptyContext
+                           , packagePath = Path.fromString "default" 
+                           }
 
+getReplacementForIdentifier : Name -> ValueMappingContext -> Maybe Scala.Value
+getReplacementForIdentifier name ctx =
+   Dict.get name ctx.inlinedIds
 
 emptyContext : MappingContextInfo a
 emptyContext = Dict.empty
+
+isLocalFunctionName : FQName -> ValueMappingContext -> Bool
+isLocalFunctionName name ctx =
+   (FQName.getPackagePath name) == ctx.packagePath
 
 isRecordWithSimpleTypes : FQName -> MappingContextInfo a -> Bool
 isRecordWithSimpleTypes name ctx = 
    case Dict.get name ctx of
        Just (TypeClassified RecordWithSimpleTypes) -> True
        _ -> False
+
+isTypeRefToRecordWithSimpleTypes : Type a ->  MappingContextInfo a -> Bool
+isTypeRefToRecordWithSimpleTypes tpe ctx =
+   typeRefNamePredicate tpe isRecordWithSimpleTypes ctx
 
 isRecordWithComplexTypes : FQName -> MappingContextInfo a -> Bool
 isRecordWithComplexTypes name ctx = 
@@ -74,11 +97,19 @@ isUnionTypeWithoutParams name ctx =
        Just (TypeClassified UnionTypeWithoutParams) -> True
        _ -> False
 
+typeRefNamePredicate : Type a -> (FQName -> MappingContextInfo a -> Bool) -> MappingContextInfo a -> Bool
+typeRefNamePredicate tpe predicateToCheckOnName ctx =
+   case tpe of
+       Type.Reference _ name _ -> predicateToCheckOnName name ctx
+       _ -> False
+
 isUnionTypeRefWithoutParams : Type a -> MappingContextInfo a -> Bool
 isUnionTypeRefWithoutParams tpe ctx =
-   case tpe of
-       Type.Reference _ name _ -> isUnionTypeWithoutParams name ctx
-       _ -> False
+   typeRefNamePredicate tpe isUnionTypeWithoutParams ctx
+
+isUnionTypeRefWithParams : Type a -> MappingContextInfo a -> Bool
+isUnionTypeRefWithParams tpe ctx =
+   typeRefNamePredicate tpe isUnionTypeWithParams ctx
 
 isUnionTypeWithParams : FQName -> MappingContextInfo a -> Bool
 isUnionTypeWithParams name ctx = 
@@ -92,12 +123,17 @@ isTypeAlias name ctx =
        _ -> False
    
 isCandidateForDataFrame : (Type ()) -> MappingContextInfo () -> Bool
-isCandidateForDataFrame typeRef ctx=
+isCandidateForDataFrame typeRef ctx =
    case typeRef of
       Type.Reference _ 
                      ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) 
                      [ Type.Reference _  itemTypeName [] ] ->
          isRecordWithSimpleTypes itemTypeName ctx
+      Type.Reference _ 
+                     ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) 
+                     [ Type.Record _ fields ] ->
+         fields
+            |> List.all (\{tpe} -> isDataFrameFriendlyType tpe ctx )
       _ -> False
 
 isAnonymousRecordWithSimpleTypes : Type.Type () -> MappingContextInfo () -> Bool

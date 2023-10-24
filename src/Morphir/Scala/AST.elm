@@ -286,6 +286,7 @@ type Lit
     | IntegerLit Int
     | FloatLit Float
     | DecimalLit Decimal
+    | NullLit
 
 
 {-| -}

@@ -7,11 +7,17 @@ import Morphir.IR.Type exposing (Type)
 import Morphir.Snowpark.MappingContext exposing (ValueMappingContext, isCandidateForDataFrame)
 import Morphir.IR.Value exposing (valueAttribute)
 import Morphir.IR.Type as TypeIR
-import Morphir.Snowpark.MappingContext exposing (isAnonymousRecordWithSimpleTypes)
+import Morphir.Snowpark.MappingContext exposing (isAnonymousRecordWithSimpleTypes
+            , isLocalFunctionName)
 import Morphir.IR.Name as Name
 import Morphir.Snowpark.Constants exposing (applySnowparkFunc)
 import Morphir.Snowpark.MappingContext exposing (isBasicType)
 import Morphir.Snowpark.Operatorsmaps exposing (mapOperator)
+import Morphir.Snowpark.ReferenceUtils exposing (scalaPathToModule)
+import Morphir.Visual.BoolOperatorTree exposing (functionName)
+import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FQName as FQName
+import Morphir.Snowpark.MappingContext exposing (isTypeRefToRecordWithSimpleTypes)
 
 type alias MapValueType ta = ValueIR.Value ta (TypeIR.Type ()) -> ValueMappingContext -> Scala.Value
 
@@ -33,6 +39,8 @@ mapFunctionsMapping value mapValue ctx =
             generateForListFilterMap predicateAction sourceRelation ctx mapValue
         ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "sum" ] )) collection ->
             generateForListSum collection ctx mapValue
+        ValueIR.Apply _ (ValueIR.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) justValue ->
+            mapValue justValue ctx 
         ValueIR.Apply 
             (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]], _) [])
             (ValueIR.Apply 
@@ -114,12 +122,23 @@ generateForListSum collection ctx mapValue =
 
 generateForListFilter : Value ta (Type ()) -> (Value ta (Type ())) -> ValueMappingContext -> MapValueType ta -> Scala.Value
 generateForListFilter predicate sourceRelation ctx mapValue =
+    let
+        generateFilterCall functionExpr =
+             Scala.Apply 
+                    (Scala.Select (mapValue sourceRelation ctx) "filter") 
+                    [Scala.ArgValue Nothing functionExpr]
+    in
     if isCandidateForDataFrame (valueAttribute sourceRelation) ctx.typesContextInfo then
         case predicate of
            ValueIR.Lambda _ _ binExpr ->
-              Scala.Apply (Scala.Select (mapValue sourceRelation ctx) "filter") [Scala.ArgValue Nothing <| mapValue binExpr ctx]
+              generateFilterCall <| mapValue binExpr ctx
+           ValueIR.Reference _ functionName ->
+                if isLocalFunctionName functionName ctx then
+                    generateFilterCall <| Scala.Ref (scalaPathToModule functionName) (functionName |> FQName.getLocalName |> Name.toCamelCase)
+                else
+                    Scala.Literal (Scala.StringLit ("Unsupported filter function scenario2" ))
            _ ->
-              Scala.Literal (Scala.StringLit "To Do")
+              Scala.Literal (Scala.StringLit ("Unsupported filter function scenario" ))
      else 
         Scala.Literal (Scala.StringLit "Unsupported filter scenario")
 
@@ -148,15 +167,16 @@ generateForListMap projection sourceRelation ctx mapValue =
            Just arguments -> 
               Scala.Apply (Scala.Select (mapValue sourceRelation ctx) "select") arguments
            Nothing ->
-              Scala.Literal (Scala.StringLit "Unsupported map scenario")
+              Scala.Literal (Scala.StringLit "Unsupported map scenario 1")
      else 
-        Scala.Literal (Scala.StringLit "Unsupported map scenario")
+        Scala.Literal (Scala.StringLit "Unsupported map scenario 2")
 
 processLambdaWithRecordBody : Value ta (Type ()) -> ValueMappingContext -> MapValueType ta -> Maybe (List Scala.ArgValue)
 processLambdaWithRecordBody functionExpr ctx mapValue =
     case functionExpr of
         ValueIR.Lambda (TypeIR.Function _ _  returnType) (ValueIR.AsPattern _ _ _) (ValueIR.Record _ fields) ->
-             if isAnonymousRecordWithSimpleTypes returnType ctx.typesContextInfo then
+             if isAnonymousRecordWithSimpleTypes returnType ctx.typesContextInfo
+                || isTypeRefToRecordWithSimpleTypes returnType ctx.typesContextInfo  then
                Just (fields  
                         |> Dict.toList
                         |> List.map (\(fieldName, value) -> (Name.toCamelCase fieldName, (mapValue value ctx)))

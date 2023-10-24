@@ -654,6 +654,9 @@ mapLit lit =
         DecimalLit decimal ->
             Decimal.toString decimal
 
+        NullLit ->
+            "null"
+
 
 statementBlock : Options -> List String -> Doc
 statementBlock opt statements =

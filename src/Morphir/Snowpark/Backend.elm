@@ -15,7 +15,7 @@ import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Morphir.TypeSpec.Backend exposing (mapModuleDefinition)
 import Morphir.Scala.Common exposing (mapValueName)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
-import Morphir.Snowpark.MappingContext as MappingContext
+import Morphir.Snowpark.MappingContext as MappingContext exposing (emptyValueMappingContext)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.Snowpark.Constants as Constants
 import Morphir.Snowpark.RecordWrapperGenerator as RecordWrapperGenerator
@@ -97,7 +97,7 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
                 |> Dict.toList
                 |> List.concatMap
                     (\( valueName, accessControlledValueDef ) ->
-                        [ mapFunctionDefinition valueName accessControlledValueDef mappingCtx
+                        [ mapFunctionDefinition valueName accessControlledValueDef currentPackagePath mappingCtx
                         ]
                     )
                 |> List.map Scala.withoutAnnotation
@@ -133,12 +133,12 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
     [ moduleUnit ]
 
 
-mapFunctionDefinition : Name.Name -> AccessControlled (Documented (Value.Definition () (Type ()))) -> MappingContextInfo () -> Scala.MemberDecl
-mapFunctionDefinition functionName body mappingCtx =
+mapFunctionDefinition : Name.Name -> AccessControlled (Documented (Value.Definition () (Type ()))) ->  Path ->  MappingContextInfo () -> Scala.MemberDecl
+mapFunctionDefinition functionName body currentPackagePath mappingCtx =
     let
        (parameters, localVariables) = processParameters body.value.value.inputTypes mappingCtx
        parameterNames = body.value.value.inputTypes |> List.map (\(name, _, _) -> name)
-       valueMappingContext = { typesContextInfo = mappingCtx, parameters = parameterNames } 
+       valueMappingContext = { emptyValueMappingContext | typesContextInfo = mappingCtx, parameters = parameterNames, packagePath = currentPackagePath} 
        bodyCandidate = mapFunctionBody body.value.value valueMappingContext 
        
        resultingBody = case (localVariables, bodyCandidate) of
@@ -220,9 +220,16 @@ mapValue value ctx =
             MapFunctionsMapping.mapFunctionsMapping value mapValue ctx
         PatternMatch tpe expr cases ->
             mapPatternMatch (tpe, expr, cases) mapValue ctx
+        IfThenElse _ condition thenExpr elseExpr ->
+            mapIfThenElse condition thenExpr elseExpr ctx
         _ ->
-            Scala.Literal (Scala.StringLit "To Do")
+            Scala.Literal (Scala.StringLit ("Unsupported element"))
 
 
-
-
+mapIfThenElse : Value ta (Type ()) -> Value ta (Type ()) -> Value ta (Type ()) -> ValueMappingContext -> Scala.Value
+mapIfThenElse condition thenExpr elseExpr ctx =
+   let
+       whenCall = 
+            Constants.applySnowparkFunc "when" [ mapValue condition ctx,  mapValue thenExpr ctx ]
+   in
+   Scala.Apply (Scala.Select whenCall "otherwise") [Scala.ArgValue Nothing (mapValue elseExpr ctx)]

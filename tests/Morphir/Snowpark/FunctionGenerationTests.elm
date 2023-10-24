@@ -18,6 +18,7 @@ import Morphir.Snowpark.CommonTestUtils exposing (stringTypeInstance
                                                  , testDistributionName
                                                  , testDistributionPackage)
 import Morphir.Snowpark.Constants exposing (typeRefForSnowparkType)
+import Morphir.IR.Path as Path
 
 functionGenTests: Test
 functionGenTests =
@@ -32,7 +33,7 @@ functionGenTests =
                                     , body = Value.Variable stringTypeInstance (Name.fromString "x")
                                     }}
         mappedFunctionDefinition =
-                mapFunctionDefinition (Name.fromString "foo") functionDefinition calculatedContext
+                mapFunctionDefinition (Name.fromString "foo") functionDefinition (Path.fromString "UTest") calculatedContext
 
         expectedRef = Scala.Ref ["uTest", "MyMod"] "Emp" 
         expectedTypeRef = Scala.TypeRef ["uTest", "MyMod"] "Emp" 
