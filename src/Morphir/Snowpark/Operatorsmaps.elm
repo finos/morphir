@@ -27,5 +27,9 @@ mapOperator name =
             "<="
         ["greater", "than", "or", "equal"] ->
             ">="
+        ["and"] ->
+            "&&"
+        ["or"] ->
+            "||"
         _ ->
-            "Unsupported"
+            "UnsupportedOperator"

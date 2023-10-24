@@ -17,7 +17,6 @@ import Morphir.Scala.Common exposing (mapValueName)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
 import Morphir.Snowpark.MappingContext as MappingContext exposing (emptyValueMappingContext)
 import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.Snowpark.Constants as Constants
 import Morphir.Snowpark.RecordWrapperGenerator as RecordWrapperGenerator
 import Morphir.Snowpark.MappingContext exposing (MappingContextInfo)
 import Morphir.Snowpark.AccessElementMapping exposing (
@@ -34,6 +33,7 @@ import Morphir.Snowpark.TypeRefMapping exposing (mapTypeReference)
 import Morphir.Snowpark.MappingContext exposing (ValueMappingContext)
 import Morphir.Snowpark.MapFunctionsMapping as MapFunctionsMapping
 import Morphir.Snowpark.PatternMatchMapping exposing (mapPatternMatch)
+import Morphir.Snowpark.Constants as Constants
 
 type alias Options =
     {}
