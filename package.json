@@ -30,6 +30,7 @@
     "morphir-dapr": "cli/morphir-dapr.js",
     "morphir": "cli2/lib/morphir.js"
   },
+  "engines": {"node": "^8 || ^10"},
   "files": [
     "cli/cli.js",
     "cli/morphir-elm.js",
