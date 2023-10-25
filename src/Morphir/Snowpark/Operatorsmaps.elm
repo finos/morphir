@@ -31,5 +31,7 @@ mapOperator name =
             "&&"
         ["or"] ->
             "||"
+        ["mod", "by"] ->
+            "%"
         _ ->
             "UnsupportedOperator"

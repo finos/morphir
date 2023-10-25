@@ -10,7 +10,7 @@ import Morphir.IR.Type as TypeIR
 import Morphir.Snowpark.MappingContext exposing (isAnonymousRecordWithSimpleTypes
             , isLocalFunctionName)
 import Morphir.IR.Name as Name
-import Morphir.Snowpark.Constants exposing (applySnowparkFunc)
+import Morphir.Snowpark.Constants as Constants
 import Morphir.Snowpark.MappingContext exposing (isBasicType)
 import Morphir.Snowpark.Operatorsmaps exposing (mapOperator)
 import Morphir.Snowpark.ReferenceUtils exposing (scalaPathToModule)
@@ -113,6 +113,17 @@ mapFunctionsMapping value mapValue ctx =
                   assign = mapValue variable ctx
                 in
                 Scala.UnOp "!" assign
+        ValueIR.Apply
+            _
+            (ValueIR.Reference
+                _
+                ([["morphir"],["s","d","k"]],[["basics"]],["floor"])
+            )
+            variable ->
+            let
+                number = mapValue variable ctx
+            in
+            Constants.applySnowparkFunc  "floor" [number]            
         _ ->
             Scala.Literal (Scala.StringLit "To Do")
 
@@ -128,7 +139,7 @@ generateForListSum collection ctx mapValue =
                             resultName = Scala.Literal (Scala.StringLit "result")
                             asCall =  Scala.Apply (Scala.Select projectedExpr "as") [Scala.ArgValue Nothing resultName]
                             newSelect = Scala.Apply col [Scala.ArgValue argName asCall]
-                            sumCall = applySnowparkFunc "sum" [applySnowparkFunc "col" [resultName]]
+                            sumCall = Constants.applySnowparkFunc "sum" [Constants.applySnowparkFunc "col" [resultName]]
                         in
                             Scala.Apply (Scala.Select newSelect "select") [Scala.ArgValue Nothing sumCall]
                     _ ->
@@ -170,7 +181,7 @@ generateForListFilterMap predicate sourceRelation ctx mapValue =
                   selectCall = Scala.Apply (Scala.Select (mapValue sourceRelation ctx) "select") [Scala.ArgValue Nothing <| mapValue binExpr ctx]
                   resultId = Scala.Literal <| Scala.StringLit "result"
                   selectColumnAlias = Scala.Apply (Scala.Select selectCall "as ") [ Scala.ArgValue Nothing resultId ]
-                  isNotNullCall = Scala.Select (applySnowparkFunc "col" [ resultId ]) "is_not_null"
+                  isNotNullCall = Scala.Select (Constants.applySnowparkFunc "col" [ resultId ]) "is_not_null"
               in
               Scala.Apply (Scala.Select selectColumnAlias "filter") [Scala.ArgValue Nothing isNotNullCall]
            _ ->
