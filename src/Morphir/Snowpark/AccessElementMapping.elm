@@ -68,9 +68,9 @@ mapConstructorAccess tpe name ctx =
         _ -> 
             Scala.Literal (Scala.StringLit "Constructor access not converted")
 
-mapReferenceAccess : (IrType.Type a) -> FQName.FQName -> Scala.Value
-mapReferenceAccess tpe name =
-   if MappingContext.isBasicType tpe then
+mapReferenceAccess : (IrType.Type ()) -> FQName.FQName -> ValueMappingContext -> Scala.Value
+mapReferenceAccess tpe name ctx =
+   if MappingContext.isDataFrameFriendlyType tpe ctx.typesContextInfo then
         let
             nsName = scalaPathToModule name
             containerObjectFieldName = FQName.getLocalName name |> Name.toCamelCase

@@ -17,7 +17,8 @@ module Morphir.Snowpark.MappingContext exposing
       , getReplacementForIdentifier
       , isDataFrameFriendlyType
       , isLocalFunctionName
-      , isTypeRefToRecordWithSimpleTypes )
+      , isTypeRefToRecordWithSimpleTypes
+      , isAliasedBasicType )
 
 {-| This module contains functions to collect information about type definitions in a distribution.
 It classifies type definitions in the following kinds:
@@ -173,17 +174,34 @@ isBasicType tpe =
        Reference _ ([["morphir"],["s","d","k"]],[["basics"]],_) _ -> True
        Reference _ ([["morphir"],["s","d","k"]],[["string"]],_) _ -> True
        _ -> False
+       
+-- TODO: we need to improve this mechanism and remove this function
+isAliasedBasicType : Type a -> MappingContextInfo a -> Bool
+isAliasedBasicType tpe ctx =
+   case tpe of
+       Type.Reference _ fqname [] -> 
+         Maybe.withDefault False (Dict.get fqname ctx |> Maybe.map isAliasedBasicTypeWithPendingClassification)
+       _ -> False
 
 isAliasedBasicTypeWithPendingClassification : TypeClassificationState a -> Bool
 isAliasedBasicTypeWithPendingClassification transitoryTypeClassification =
-    case transitoryTypeClassification of
-        TypeClassified (TypeAlias tpe) -> isBasicType tpe
-        _ -> False
+    transitoryTypeClassification
+      |> aliasedBasicTypeWithPendingClassification 
+      |> Maybe.map isBasicType
+      |> Maybe.withDefault False
+   --  case transitoryTypeClassification of
+   --      TypeClassified (TypeAlias tpe) -> isBasicType tpe
+   --      _ -> False
 
+aliasedBasicTypeWithPendingClassification : TypeClassificationState a -> Maybe (Type a)
+aliasedBasicTypeWithPendingClassification transitoryTypeClassification =
+    case transitoryTypeClassification of
+        TypeClassified (TypeAlias tpe) -> Just tpe
+        _ -> Nothing
 
 isUnionType : Type a -> MappingContextInfo a -> Bool
 isUnionType tpe ctx =
-  let 
+  (let 
      isUnionTypePred = (\t -> case t of
                               TypeClassified UnionTypeWithoutParams -> True
                               TypeClassified UnionTypeWithParams -> True
@@ -194,7 +212,7 @@ isUnionType tpe ctx =
             Dict.get name ctx
             |> Maybe.map isUnionTypePred 
             |> Maybe.withDefault False
-         _ -> False
+         _ -> False)
 
 isAliasOfBasicType : Type a -> MappingContextInfo a -> Bool
 isAliasOfBasicType tpe ctx =
@@ -203,6 +221,17 @@ isAliasOfBasicType tpe ctx =
            Dict.get name ctx
            |> Maybe.map isAliasedBasicTypeWithPendingClassification 
            |> Maybe.withDefault False
+      _ -> False
+
+isAliasOfDataFrameFriendlyType : Type a -> MappingContextInfo a -> Bool
+isAliasOfDataFrameFriendlyType tpe ctx =
+   case tpe of
+      Reference  _ name _ -> 
+           (Dict.get name ctx
+           |> Maybe.map aliasedBasicTypeWithPendingClassification
+           |> Maybe.withDefault Nothing
+           |> Maybe.map (\x -> isDataFrameFriendlyType x ctx)
+           |> Maybe.withDefault False)
       _ -> False
 
 isMaybeOfDataFrameFriendlyType : Type a -> MappingContextInfo a -> Bool
@@ -217,7 +246,7 @@ isDataFrameFriendlyType : Type a -> MappingContextInfo a -> Bool
 isDataFrameFriendlyType tpe ctx =
       isBasicType tpe
       || (isUnionType tpe ctx)
-      || (isAliasOfBasicType tpe ctx)
+      || (isAliasOfDataFrameFriendlyType tpe ctx)
       || (isMaybeOfDataFrameFriendlyType tpe ctx)
 
 classifyActualType : Type a -> MappingContextInfo a -> TypeClassificationState a
@@ -229,7 +258,7 @@ classifyActualType  tpe ctx =
             else 
                TypeWithPendingClassification (Just tpe)
        Reference _ _  _ ->
-            if isBasicType tpe then
+            if isBasicType tpe || isUnionType tpe ctx then
                TypeClassified (TypeAlias tpe)
             else
                TypeWithPendingClassification (Just tpe)

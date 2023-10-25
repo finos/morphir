@@ -25,7 +25,6 @@ import Morphir.Snowpark.AccessElementMapping exposing (
     , mapVariableAccess
     , mapConstructorAccess)
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.Visual.BoolOperatorTree exposing (functionName)
 import Morphir.IR.Type as Type
 import Morphir.Snowpark.MappingContext exposing (isRecordWithSimpleTypes)
 import Morphir.Snowpark.ReferenceUtils exposing (isTypeReferenceToSimpleTypesRecord, mapLiteral)
@@ -215,15 +214,32 @@ mapValue value ctx =
                 (Scala.Variable "Seq")
                 (values |> List.map (\v -> Scala.ArgValue Nothing (mapValue v ctx)))
         Reference tpe name ->
-            mapReferenceAccess tpe name
+            mapReferenceAccess tpe name ctx
         Apply _ _ _ ->
             MapFunctionsMapping.mapFunctionsMapping value mapValue ctx
         PatternMatch tpe expr cases ->
             mapPatternMatch (tpe, expr, cases) mapValue ctx
         IfThenElse _ condition thenExpr elseExpr ->
             mapIfThenElse condition thenExpr elseExpr ctx
+        LetDefinition _ name definition body ->
+            mapLetDefinition name definition body ctx
         _ ->
             Scala.Literal (Scala.StringLit ("Unsupported element"))
+
+
+mapLetDefinition : Name.Name -> Value.Definition ta (Type ()) -> Value ta (Type ()) -> ValueMappingContext -> Scala.Value
+mapLetDefinition name definition body ctx =
+    case (definition.inputTypes) of
+        [] -> 
+            let decl = Scala.ValueDecl  { modifiers = []
+                                        , pattern = Scala.NamedMatch (name |> Name.toCamelCase)
+                                        , valueType = Nothing
+                                        , value = mapValue definition.body ctx
+                                        }
+            in
+            Scala.Block [decl] (mapValue body ctx)
+        _ -> 
+            Scala.Literal (Scala.StringLit ("Unsupported function let expression"))
 
 
 mapIfThenElse : Value ta (Type ()) -> Value ta (Type ()) -> Value ta (Type ()) -> ValueMappingContext -> Scala.Value

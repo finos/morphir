@@ -15,7 +15,6 @@ import Morphir.Snowpark.MappingContext exposing (isBasicType)
 import Morphir.Snowpark.Operatorsmaps exposing (mapOperator)
 import Morphir.Snowpark.ReferenceUtils exposing (scalaPathToModule)
 import Morphir.Visual.BoolOperatorTree exposing (functionName)
-import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.FQName as FQName
 import Morphir.Snowpark.MappingContext exposing (isTypeRefToRecordWithSimpleTypes)
 
@@ -41,60 +40,22 @@ mapFunctionsMapping value mapValue ctx =
             generateForListSum collection ctx mapValue
         ValueIR.Apply _ (ValueIR.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) justValue ->
             mapValue justValue ctx 
+        ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "with", "default" ] )) default) maybeValue ->
+            mapWithDefaultCall default maybeValue mapValue ctx
+        ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "map" ] )) action) maybeValue ->
+            mapMaybeMapCall action maybeValue mapValue ctx
         ValueIR.Apply 
             (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]], _) [])
             (ValueIR.Apply 
-                (TypeIR.Function 
-                    () 
-                    (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]], _ ) [])
-                    (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]], _ ) [])
-                )
+                _
                 (ValueIR.Reference
-                    (TypeIR.Function
-                        () 
-                        (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]], _ ) [])
-                        (TypeIR.Function 
-                            () 
-                            (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]], _ ) []) 
-                            (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]], _ ) []))
-                    )
+                    _
                     ([["morphir"],["s","d","k"]],[["basics"]], optname)
                 )
                 left )
             right ->
-            let
-                leftValue = mapValue left ctx
-                rightValue = mapValue right ctx
-                operatorname = mapOperator optname
-            in
-            Scala.BinOp leftValue operatorname rightValue
-        ValueIR.Apply 
-            (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]],["bool"]) [])
-            (ValueIR.Apply (TypeIR.Function 
-                        ()
-                        (TypeIR.Variable () ["t","0"])
-                        (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]],["bool"]) [])
-                    )
-                    (ValueIR.Reference (TypeIR.Function 
-                                            ()
-                                            (TypeIR.Variable () ["t","0"])
-                                            (TypeIR.Function 
-                                                ()
-                                                (TypeIR.Variable () ["t","0"])
-                                                (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]],["bool"]) [])
-                                            )
-                                        )
-                                ([["morphir"],["s","d","k"]],[["basics"]], optname)
-                    )
-                    left
-            )
-            right ->
-            let
-                leftValue = mapValue left ctx
-                rightValue = mapValue right ctx
-                operatorname = mapOperator optname
-            in
-            Scala.BinOp leftValue operatorname rightValue
+            mapForOperatorCall optname left right mapValue ctx
+
         ValueIR.Apply 
             (TypeIR.Reference 
                 () 
@@ -124,8 +85,79 @@ mapFunctionsMapping value mapValue ctx =
                 number = mapValue variable ctx
             in
             Constants.applySnowparkFunc  "floor" [number]            
+        ValueIR.Apply _ func arg -> 
+            tryToConvertUserFunctionCall (ValueIR.uncurryApply func arg) mapValue ctx
         _ ->
             Scala.Literal (Scala.StringLit "To Do")
+
+
+mapForOperatorCall : Name.Name -> Value ta (Type ()) -> Value ta (Type ()) -> MapValueType ta -> ValueMappingContext -> Scala.Value
+mapForOperatorCall optname left right mapValue ctx =
+    case (optname, left, right) of
+        (["equal"], _ , ValueIR.Constructor _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ])) -> 
+            Scala.Select (mapValue left ctx) "is_null"
+        ([ "not", "equal" ], _ , ValueIR.Constructor _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ])) -> 
+            Scala.Select (mapValue left ctx) "is_not_null"
+        _ ->
+            let
+                leftValue = mapValue left ctx
+                rightValue = mapValue right ctx
+                operatorname = mapOperator optname
+            in
+            Scala.BinOp leftValue operatorname rightValue
+
+
+tryToConvertUserFunctionCall : ((Value a (Type ())), List (Value a (Type ()))) -> MapValueType a -> ValueMappingContext -> Scala.Value
+tryToConvertUserFunctionCall (func, args) mapValue ctx =
+   case func of
+       ValueIR.Reference _ functionName -> 
+            if isLocalFunctionName functionName ctx then
+                let 
+                    funcReference = 
+                        Scala.Ref (scalaPathToModule functionName) 
+                                  (functionName |> FQName.getLocalName |> Name.toCamelCase)
+                    -- this controversial code removes dataframe arguments
+                    argFilteringCriteria = 
+                        (\arg -> not (isTypeRefToRecordWithSimpleTypes (ValueIR.valueAttribute arg) ctx.typesContextInfo))
+                    argsToUse =
+                        args 
+                            |> List.filter argFilteringCriteria
+                            |> List.map (\arg -> mapValue arg ctx)
+                            |> List.map (Scala.ArgValue Nothing)
+                in
+                case argsToUse of
+                    [] -> 
+                        funcReference
+                    _ -> 
+                        Scala.Apply funcReference argsToUse
+            else
+                Scala.Literal (Scala.StringLit "Call not converted")
+       _ -> 
+            Scala.Literal (Scala.StringLit "Call not converted")
+
+whenConditionElseValueCall : Scala.Value -> Scala.Value -> Scala.Value -> Scala.Value
+whenConditionElseValueCall condition thenExpr elseExpr =
+   Scala.Apply (Scala.Select (Constants.applySnowparkFunc "when" [condition, thenExpr]) "otherwise") 
+               [Scala.ArgValue Nothing elseExpr]
+
+
+mapWithDefaultCall : Value ta (Type ()) -> Value ta (Type ()) -> (MapValueType ta) -> ValueMappingContext -> Scala.Value
+mapWithDefaultCall default maybeValue mapValue ctx =
+    Constants.applySnowparkFunc "coalesce" [mapValue maybeValue ctx, mapValue default ctx]
+
+mapMaybeMapCall : Value ta (Type ()) -> Value ta (Type ()) -> (MapValueType ta) -> ValueMappingContext -> Scala.Value
+mapMaybeMapCall action maybeValue mapValue ctx =
+    case action of
+        ValueIR.Lambda _ (AsPattern _ (WildcardPattern _) lambdaParam) body ->
+            let
+                convertedValue = mapValue maybeValue ctx
+                newReplacements = Dict.fromList [(lambdaParam, convertedValue)]
+                lambdaBody = mapValue body { ctx | inlinedIds  = Dict.union ctx.inlinedIds newReplacements }
+                elseLiteral = Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.NullLit))]
+            in
+            whenConditionElseValueCall (Scala.Select convertedValue "is_not_null") lambdaBody elseLiteral
+        _ -> 
+            Scala.Literal (Scala.StringLit "Unsupported withDefault call")
 
 
 generateForListSum : Value ta (Type ()) -> ValueMappingContext -> MapValueType ta -> Scala.Value
