@@ -189,8 +189,14 @@ update msg model =
             let
                 resultIR : Result Decode.Error Distribution
                 resultIR =
-                    distributionJson
-                        |> Decode.decodeValue DistributionCodec.decodeVersionedDistribution
+                    case distributionJson |> Decode.decodeValue DistributionCodec.decodeVersionedDistribution of
+                        Ok packageDist ->
+                            case packageDist of
+                                Library packageName dependencies packageDef ->
+                                    Ok (Library packageName (Dict.union Frontend.defaultDependencies dependencies) packageDef)
+
+                        Err err ->
+                            Err err
             in
             case resultIR of
                 Ok ir ->
