@@ -57,7 +57,7 @@ import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
 import Morphir.IR.Decoration exposing (AllDecorationConfigAndData, DecorationData, DecorationID)
 import Morphir.IR.Decoration.Codec exposing (decodeAllDecorationConfigAndData, decodeDecorationData, encodeDecorationData)
-import Morphir.IR.Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
@@ -70,6 +70,7 @@ import Morphir.IR.SDK as SDK exposing (packageName)
 import Morphir.IR.Type as Type exposing (Type(..))
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
 import Morphir.SDK.Dict as SDKDict
+import Morphir.TestCoverage.Backend exposing (getBranchCoverage, getValueBranchCoverage)
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Error exposing (Error)
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
@@ -2228,6 +2229,38 @@ viewDefinitionDetails model =
                 Err error ->
                     el [ centerX, centerY ] (text (Infer.typeErrorToMessage error))
 
+        testCoverageMetrics : Distribution -> FQName -> Element Msg
+        testCoverageMetrics distro fqName =
+            let
+                testCases =
+                    model.testSuite
+                        |> Dict.get fqName
+                        |> Maybe.map Array.toList
+                        |> Maybe.withDefault []
+
+                maybeValueDef =
+                    Distribution.lookupValueDefinition fqName distro
+            in
+            maybeValueDef
+                |> Maybe.map (\valueDef -> getValueBranchCoverage valueDef testCases distro)
+                |> Maybe.map
+                    (\{ numberOfBranches, numberOfCoveredBranches } ->
+                        row
+                            [ Border.width 1
+                            , Border.color model.theme.colors.darkest
+                            , Border.roundEach { topLeft = 5, bottomLeft = 5, topRight = 5, bottomRight = 5 }
+                            , padding (model.theme |> Theme.scaled 3)
+                            ]
+                            [ column []
+                                [ row [ Font.bold, Font.size 22, paddingXY 0 10 ] [ text "Test Coverage Percentage - ", text <| String.fromInt (Basics.floor ((toFloat numberOfCoveredBranches / toFloat numberOfBranches) * 100)) ++ "%" ]
+                                , row [ Font.bold, Font.size 15, paddingXY 0 10 ] [ text "Break down" ]
+                                , row [ Font.bold, Font.size 15, paddingXY 0 10 ] [ text "Number of branches - ", text <| String.fromInt numberOfBranches ]
+                                , row [ Font.bold, Font.size 15, paddingXY 0 10 ] [ text "Number of covered branches - ", text <| String.fromInt numberOfCoveredBranches ]
+                                ]
+                            ]
+                    )
+                |> Maybe.withDefault (text "")
+
         scenarios : FQName -> Distribution -> List ( Name, a, Type () ) -> Element Msg
         scenarios fQName ir inputTypes =
             let
@@ -2423,7 +2456,11 @@ viewDefinitionDetails model =
                                                                                 { title = "Test Cases"
                                                                                 , onToggle = UI (ToggleSection 3)
                                                                                 , isOpen = Set.member 3 model.openSections
-                                                                                , content = scenarios fullyQualifiedName distribution valueDef.inputTypes
+                                                                                , content =
+                                                                                    column [ spacing (model.theme |> Theme.scaled 4) ]
+                                                                                        [ testCoverageMetrics distribution fullyQualifiedName
+                                                                                        , scenarios fullyQualifiedName distribution valueDef.inputTypes
+                                                                                        ]
                                                                                 }
                                                                             ]
                                                                   }
