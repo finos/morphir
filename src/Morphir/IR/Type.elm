@@ -23,7 +23,7 @@ module Morphir.IR.Type exposing
     , Definition(..), typeAliasDefinition, customTypeDefinition, definitionToSpecification, definitionToSpecificationWithPrivate
     , Constructors, Constructor, ConstructorArgs
     , mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, typeAttributes
-    , eraseAttributes, collectVariables, collectReferences, collectReferencesFromDefintion, substituteTypeVariables, toString
+    , eraseAttributes, collectVariables, collectReferences, collectReferencesFromDefintion, substituteTypeVariables, toString, DerivedTypeSpecificationDetails
     )
 
 {-| Like any other programming languages Morphir has a type system as well. This module defines the building blocks of
@@ -109,7 +109,7 @@ Here is the full definition for reference:
 
 # Specification
 
-@docs Specification, typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification
+@docs Specification, typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification, DerivedTypeSpecificationDetails
 
 
 # Definition
@@ -240,7 +240,8 @@ type Specification a
     | CustomTypeSpecification (List Name) (Constructors a)
     | DerivedTypeSpecification (List Name) (DerivedTypeSpecificationDetails a)
 
-
+{-| Details of the base type of a Derived Type
+-}
 type alias DerivedTypeSpecificationDetails a =
     { baseType : Type a
     , fromBaseType : FQName
