@@ -247,8 +247,10 @@ processLambdaWithRecordBody functionExpr ctx mapValue =
                 Nothing
         ValueIR.Lambda (TypeIR.Function _ _  returnType) (ValueIR.AsPattern _ _ _) expr ->
              if isBasicType returnType then
-               Just [ Scala.ArgValue Nothing <| mapValue expr ctx ]
+                Just [ Scala.ArgValue Nothing <| mapValue expr ctx ]
              else  
                 Nothing
+        ValueIR.FieldFunction _ _ ->
+            Just [Scala.ArgValue Nothing (mapValue functionExpr ctx)]
         _ ->
             Nothing

@@ -223,6 +223,8 @@ mapValue value ctx =
             mapIfThenElse condition thenExpr elseExpr ctx
         LetDefinition _ name definition body ->
             mapLetDefinition name definition body ctx
+        FieldFunction _ [name] ->
+            Constants.applySnowparkFunc "col" [(Scala.Literal (Scala.StringLit name))]
         _ ->
             Scala.Literal (Scala.StringLit ("Unsupported element"))
 
