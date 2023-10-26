@@ -427,7 +427,7 @@ viewValue valueState ir fullyQualifiedName irView valueDef =
                                     (ValueEditor.initEditorState ir argType Nothing)
                                 )
                             )
-                        |> FieldList.view
+                        |> FieldList.view theme
             in
             column []
                 [ editors

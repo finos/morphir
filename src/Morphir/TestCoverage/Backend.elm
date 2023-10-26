@@ -1,4 +1,4 @@
-module Morphir.TestCoverage.Backend exposing (TestCoverageResult, getBranchCoverage)
+module Morphir.TestCoverage.Backend exposing (TestCoverageResult, getBranchCoverage, getValueBranchCoverage)
 
 import AssocList as AssocDict
 import Dict exposing (Dict)
@@ -9,6 +9,7 @@ import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.NodeId exposing (..)
 import Morphir.IR.Package exposing (PackageName)
+import Morphir.IR.Value as Value
 
 
 type alias Coverage =
@@ -56,13 +57,18 @@ getBranchCoverage ( packageName, moduleName ) ir testSuite moduleDef =
                         accesscontrolledValueDef.value.value
                 in
                 ( ValueID currentFQN []
-                , valueTestCases
-                    |> BranchCoverage.assignTestCasesToBranches ir valueDef
-                    |> (\lstOfBranchAndCoveredTestCases ->
-                            { numberOfBranches = lstOfBranchAndCoveredTestCases |> List.length
-                            , numberOfCoveredBranches = calculateNumberOfCoveredBranches lstOfBranchAndCoveredTestCases
-                            }
-                       )
+                , getValueBranchCoverage valueDef valueTestCases ir
                 )
             )
         |> AssocDict.fromList
+
+
+getValueBranchCoverage : Value.Definition ta va -> List TestCase -> Distribution -> Coverage
+getValueBranchCoverage valueDef valueTestCases ir =
+    valueTestCases
+        |> BranchCoverage.assignTestCasesToBranches ir valueDef
+        |> (\lstOfBranchAndCoveredTestCases ->
+                { numberOfBranches = lstOfBranchAndCoveredTestCases |> List.length
+                , numberOfCoveredBranches = calculateNumberOfCoveredBranches lstOfBranchAndCoveredTestCases
+                }
+           )

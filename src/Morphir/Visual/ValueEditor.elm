@@ -60,6 +60,10 @@ import Element
         , table
         , text
         , width
+        , centerX
+        , shrink
+        , minimum
+        , maximum
         )
 import Element.Background as Background
 import Element.Border as Border
@@ -71,7 +75,7 @@ import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.Path as Path
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.SDK.Char as Basics
 import Morphir.IR.SDK.Decimal as Decimal
@@ -88,9 +92,10 @@ import Morphir.Visual.Components.DatePickerComponent as DatePicker
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.InputComponent as InputComponent
 import Morphir.Visual.Components.Picklist as Picklist
-import Morphir.Visual.Theme exposing (Theme)
+import Morphir.Visual.Theme as Theme exposing (Theme, scaled)
 import Svg
 import Svg.Attributes
+import Morphir.Visual.Theme as Theme
 
 
 {-| Type that represents the state of the value editor. It's made up of the following pieces of information:
@@ -580,7 +585,7 @@ view theme ir valueType updateEditorState editorState =
     let
         baseStyle : List (Element.Attribute msg)
         baseStyle =
-            [ width <| Element.fillPortion 3
+            [ width (fill |> minimum (scaled 12 theme) |> maximum (scaled 20 theme))
             , height fill
             , Events.onLoseFocus
                 (updateEditorState (initEditorState ir valueType editorState.lastValidValue))
@@ -588,7 +593,12 @@ view theme ir valueType updateEditorState editorState =
 
         labelStyle : List (Element.Attr () msg)
         labelStyle =
-            [ Background.color (rgb 0.2 0.3 0.4), centerY, Font.color (rgb 0.7 0.7 0.7), paddingEach { top = 5, bottom = 5, right = 10, left = 0 } ]
+            [ centerY
+            , centerX
+            , paddingEach { top = 5, bottom = 5, right = 10, left = 0 }
+            , width (shrink |> minimum (Theme.scaled 10 theme) |> maximum (Theme.scaled 15 theme))
+            , Font.italic
+            ]
     in
     case editorState.componentState of
         TextEditor currentText ->
@@ -693,7 +703,7 @@ view theme ir valueType updateEditorState editorState =
                     editorState.errorState
                 , if editorState.defaultValueCheckbox.show then
                     InputComponent.checkBox theme
-                        [ center ]
+                        [ center, width shrink ]
                         { label = Input.labelRight (labelStyle ++ [ Background.color <| rgba 0 0 0 0 ]) (text "empty (\"\")")
                         , checked = editorState.defaultValueCheckbox.checked
                         , onChange =
@@ -730,21 +740,20 @@ view theme ir valueType updateEditorState editorState =
 
         RecordEditor fieldEditorStates ->
             row [] <|
-                [ el [ Background.color (rgb 0.2 0.3 0.4), centerY, Font.color (rgb 0.7 0.7 0.7), paddingXY 10 5 ] (text "record")
+                [ el [ Font.italic, paddingXY 10 5 ] (text "record")
                 , el
-                    [ padding 7
-                    , Background.color (rgb 0.7 0.8 0.9)
-                    , Border.rounded 7
+                    [ padding <| Theme.largePadding theme
+                    , Background.color theme.colors.brandPrimaryLight
+                    , Theme.borderRounded theme
                     ]
-                    (FieldList.view
+                    (FieldList.view theme
                         (fieldEditorStates
                             |> Dict.toList
                             |> List.map
                                 (\( fieldName, ( fieldType, fieldEditorState ) ) ->
                                     ( fieldName
                                     , el
-                                        [ width fill
-                                        , height fill
+                                        [ height fill
                                         , centerY
                                         ]
                                         (view theme
@@ -866,7 +875,7 @@ view theme ir valueType updateEditorState editorState =
                         itemEditorState
             in
             row [] <|
-                [ el [ Background.color (rgb 0.2 0.3 0.4), centerY, Font.color (rgb 0.7 0.7 0.7), paddingXY 0 5 ] (text "optional ")
+                [ el [ centerY, paddingXY 0 5, Font.italic ] (text "optional ")
                 , itemEditor
                     (maybeItemEditorState
                         |> Maybe.withDefault (initEditorState ir itemType Nothing)
@@ -1050,7 +1059,7 @@ view theme ir valueType updateEditorState editorState =
                                     { header =
                                         el [ width fill, height fill, paddingXY 10 5, Font.bold, Background.color (rgb 1 1 1) ]
                                             (el [ width fill, center ] (text (columnName |> Name.toHumanWords |> String.join " ")))
-                                    , width = fill
+                                    , width = shrink
                                     , view =
                                         \( rowIndex, rowEditorStates ) ->
                                             let
@@ -1080,6 +1089,7 @@ view theme ir valueType updateEditorState editorState =
                                             el
                                                 [ width fill
                                                 , height fill
+                                                , padding 1
                                                 , Background.color (rgb 1 1 1)
                                                 , inFront (addButton (emptyRowEditors :: cellEditorStates))
                                                 , if rowIndex == List.length cellEditorStates - 1 then
@@ -1327,7 +1337,7 @@ viewCustomTypeEditor theme labelStyle ir updateEditorState editorState (( packag
                 { state = customTypeEditorState.constructorPicklistState
                 , onStateChange =
                     \constructorPicklistState ->
-                        case constructorPicklistState |> Picklist.getSelectedTag of
+                        case constructorPicklistState |> Picklist.getSelectedValue of
                             Nothing ->
                                 updateEditorState
                                     { componentState =
@@ -1366,10 +1376,14 @@ viewCustomTypeEditor theme labelStyle ir updateEditorState editorState (( packag
                 (constructors
                     |> Dict.toList
                     |> List.map
-                        (\( ctorName, ctorArgs ) ->
-                            ( ( ctorName, ctorArgs ), text (ctorName |> Name.toHumanWordsTitle |> String.join " ") )
+                        (\(( ctorName, ctorArgs ) as ctor) ->
+                            ( {tag  = ctorName |> Name.toTitleCase
+                            , value = ctor
+                            , displayElement = el [padding <| Theme.smallPadding theme, width fill] (Theme.ellipseText (ctorName |> Name.toHumanWordsTitle |> String.join " "))
+                            } )
                         )
                 )
+                []
 
         viewArguments : List (Element msg)
         viewArguments =
@@ -1395,7 +1409,7 @@ viewCustomTypeEditor theme labelStyle ir updateEditorState editorState (( packag
                                         selectedConstructorResult : Result Error (Value () ())
                                         selectedConstructorResult =
                                             customTypeEditorState.constructorPicklistState
-                                                |> Picklist.getSelectedTag
+                                                |> Picklist.getSelectedValue
                                                 |> Maybe.map
                                                     (\( ctorName, _ ) ->
                                                         Value.Constructor () ( packageName, moduleName, ctorName )

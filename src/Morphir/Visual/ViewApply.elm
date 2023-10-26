@@ -81,7 +81,7 @@ view config viewDefinitionBody viewValue functionValue argValues applyValue =
         ( (Value.Constructor _ fQName) as constr, _ ) ->
             case config.ir |> Distribution.lookupTypeSpecification (config.ir |> Distribution.resolveAliases fQName) of
                 Just (Type.TypeAliasSpecification _ (Type.Record _ fields)) ->
-                    FieldList.view
+                    FieldList.view config.state.theme
                         (List.map2
                             (\field arg ->
                                 ( field.name
@@ -324,56 +324,57 @@ functionOutput config fqName functionValue argValues viewValue =
                 _ ->
                     Element.none
 
+
 pipeVisualisation : Config msg -> EnrichedValue -> (EnrichedValue -> Element msg) -> Element msg
-pipeVisualisation config applyValue viewValue=
+pipeVisualisation config applyValue viewValue =
     let
-                getMapsRec : EnrichedValue -> List (Element msg)
-                getMapsRec v =
-                    let
-                        recursiveCall : FQName -> EnrichedValue -> EnrichedValue -> EnrichedValue -> String -> List (Element msg)
-                        recursiveCall currentFQName currentFunctionValue currentFunction src label =
-                            getMapsRec src
-                                        ++ [ el
-                                                [ Border.width 2
-                                                , Border.color config.state.theme.colors.brandSecondaryLight
-                                                , Theme.borderRounded config.state.theme
-                                                , Element.above <| el [ Font.color config.state.theme.colors.mediumGray, padding 4, Element.centerX, Element.centerY ] (text label)
-                                                ]
-                                             <|
-                                                viewValue currentFunction
-                                           , arrow currentFQName currentFunctionValue [ currentFunction, src ]
-                                        ]
-                    in
-                    case v of
-                        Value.Apply _ applyFunction applyArgs ->
-                            case Value.uncurryApply applyFunction applyArgs of
-                                ( (Value.Reference _ (( [ [ "morphir" ], [ "s", "d", "k" ] ], _, [ "map" ] ) as fqName)) as mapFunctionValue, [ mapfunc, source ] ) ->
-                                    recursiveCall fqName mapFunctionValue mapfunc source "map"
+        getMapsRec : EnrichedValue -> List (Element msg)
+        getMapsRec v =
+            let
+                recursiveCall : FQName -> EnrichedValue -> EnrichedValue -> EnrichedValue -> String -> List (Element msg)
+                recursiveCall currentFQName currentFunctionValue currentFunction src label =
+                    getMapsRec src
+                        ++ [ Element.column
+                                [ Border.width 2
+                                , Border.color config.state.theme.colors.brandSecondaryLight
+                                , Theme.borderRounded config.state.theme
+                                ]
+                                [ el [ Font.color config.state.theme.colors.mediumGray, padding 3, Element.centerX, Element.centerY ] (text label)
+                                , viewValue currentFunction
+                                ]
+                           , arrow currentFQName currentFunctionValue [ currentFunction, src ]
+                           ]
+            in
+            case v of
+                Value.Apply _ applyFunction applyArgs ->
+                    case Value.uncurryApply applyFunction applyArgs of
+                        ( (Value.Reference _ (( [ [ "morphir" ], [ "s", "d", "k" ] ], _, [ "map" ] ) as fqName)) as mapFunctionValue, [ mapfunc, source ] ) ->
+                            recursiveCall fqName mapFunctionValue mapfunc source "map"
 
-                                ( (Value.Reference _ (( [ [ "morphir" ], [ "s", "d", "k" ] ], _, [ "filter" ] ) as fqName)) as mapFunctionValue, [ mapfunc, source ] ) ->
-                                    recursiveCall fqName mapFunctionValue mapfunc source "filter"
+                        ( (Value.Reference _ (( [ [ "morphir" ], [ "s", "d", "k" ] ], _, [ "filter" ] ) as fqName)) as mapFunctionValue, [ mapfunc, source ] ) ->
+                            recursiveCall fqName mapFunctionValue mapfunc source "filter"
 
-                                ( (Value.Reference _ (( [ [ "morphir" ], [ "s", "d", "k" ] ], _, [ "filter", "map" ] ) as fqName)) as mapFunctionValue, [ mapfunc, source ] ) ->
-                                    recursiveCall fqName mapFunctionValue mapfunc source "filter & map"
-
-                                _ ->
-                                    [ viewValue v ]
+                        ( (Value.Reference _ (( [ [ "morphir" ], [ "s", "d", "k" ] ], _, [ "filter", "map" ] ) as fqName)) as mapFunctionValue, [ mapfunc, source ] ) ->
+                            recursiveCall fqName mapFunctionValue mapfunc source "filter & map"
 
                         _ ->
-                            [ viewValue v
-                            , arrow ( [], [], [] ) v []
-                            ]
+                            [ viewValue v ]
 
-                arrow : FQName -> EnrichedValue -> List EnrichedValue -> Element msg
-                arrow fqName mapFunctionValue args =
-                    el
-                        [ Element.centerX
-                        , Element.centerY
-                        , tooltip Element.below (functionOutput config fqName mapFunctionValue args viewValue)
-                        , htmlAttribute (style "z-index" "10000")
-                        , width (Element.shrink |> Element.minimum (config.state.theme.fontSize * 3) |> Element.maximum (config.state.theme.fontSize * 5))
-                        ]
-                    <|
-                        DecisionTree.rightArrow config False
-            in
-            row [ spacing <| Theme.smallSpacing config.state.theme ] <|( getMapsRec applyValue) ++ [el [Font.italic] <| text " output "]
+                _ ->
+                    [ viewValue v
+                    , arrow ( [], [], [] ) v []
+                    ]
+
+        arrow : FQName -> EnrichedValue -> List EnrichedValue -> Element msg
+        arrow fqName mapFunctionValue args =
+            el
+                [ Element.centerX
+                , Element.centerY
+                , tooltip Element.below (functionOutput config fqName mapFunctionValue args viewValue)
+                , htmlAttribute (style "z-index" "10000")
+                , width (Element.shrink |> Element.minimum (config.state.theme.fontSize * 3) |> Element.maximum (config.state.theme.fontSize * 5))
+                ]
+            <|
+                DecisionTree.rightArrow config False
+    in
+    row [ spacing <| Theme.smallSpacing config.state.theme ] <| getMapsRec applyValue ++ [ el [ Font.italic ] <| text " output " ]
