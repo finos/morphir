@@ -77,3 +77,17 @@ ofMaxLength maxLength ctor value =
 
     else
         Nothing
+
+{-| Checks to see if two strings are equal ignore case
+
+    isEqual =
+        String.equalIgnoreCase "HeLlO" "Hello"
+
+    isEqual == True
+-}
+equalIgnoreCase : String -> String -> Bool
+equalIgnoreCase str1 str2 =
+   if not ((String.length str1) == (String.length str2)) then
+        False
+   else
+        (String.toLower str1)  == (String.toLower str2)
