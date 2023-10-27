@@ -71,7 +71,7 @@ mapPatternMatch (tpe, expr, cases) mapValue ctx =
                 referenceExpr = mapValue expr ctx
                 compareWithExpr : Name.Name -> Scala.Value
                 compareWithExpr = \name -> 
-                                   equalExpr (Scala.Apply referenceExpr [Scala.ArgValue Nothing (applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit "__tag")])])
+                                   equalExpr (Scala.Apply referenceExpr [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "__tag"))])
                                              (applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit (Name.toTitleCase name))])
                 changeCtxt = addBindingReplacementsToContext ctx 
                 restPairs = rest |> List.map (\(constr, bindings, val) -> ((compareWithExpr constr), (mapValue val (changeCtxt bindings referenceExpr))))
@@ -81,7 +81,7 @@ mapPatternMatch (tpe, expr, cases) mapValue ctx =
             let
                 referenceExpr = mapValue expr ctx
                 compareWithExpr = \name -> 
-                                   equalExpr (Scala.Apply (mapValue expr ctx) [Scala.ArgValue Nothing (applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit "__tag")])])
+                                   equalExpr (Scala.Apply (mapValue expr ctx) [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "__tag"))])
                                              (applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit ( Name.toTitleCase name))])
                 changeCtxt = addBindingReplacementsToContext ctx 
                 restPairs = rest |> List.map (\(constr, bindings, val) -> ((compareWithExpr constr), (mapValue val (changeCtxt bindings referenceExpr))))
@@ -98,16 +98,16 @@ mapPatternMatch (tpe, expr, cases) mapValue ctx =
         _ ->
             Scala.Variable "NOT_CONVERTED"
 
-generateBindingVariableExpr : Name.Name -> Scala.Value -> Scala.Value
+generateBindingVariableExpr : String -> Scala.Value -> Scala.Value
 generateBindingVariableExpr name expr =
-    Scala.Apply expr [Scala.ArgValue Nothing (applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit (name |> Name.toCamelCase))])]
+    Scala.Apply expr [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit name))]
 
 addBindingReplacementsToContext : ValueMappingContext -> List Name.Name -> Scala.Value -> ValueMappingContext
 addBindingReplacementsToContext ctxt bindingVariables referenceExpr =
     let 
         newReplacements = 
             bindingVariables
-                |> List.map (\name -> (name, generateBindingVariableExpr name referenceExpr))
+                |> List.indexedMap (\i name -> (name, generateBindingVariableExpr ("field" ++ (String.fromInt i)) referenceExpr))
                 |> Dict.fromList
     in
     { ctxt | inlinedIds  = Dict.union ctxt.inlinedIds newReplacements }

@@ -128,10 +128,22 @@ tryToConvertUserFunctionCall (func, args) mapValue ctx =
                 case argsToUse of
                     [] -> 
                         funcReference
-                    _ -> 
-                        Scala.Apply funcReference argsToUse
+                    (first::rest) -> 
+                        List.foldr (\a c -> Scala.Apply c [a]) (Scala.Apply funcReference [first]) rest
             else
                 Scala.Literal (Scala.StringLit "Call not converted")
+       ValueIR.Constructor _ constructorName ->
+            if isLocalFunctionName constructorName ctx && List.length args > 0 then
+                let
+                    argsToUse =
+                         args 
+                              |> List.indexedMap (\i arg -> ("field" ++ (String.fromInt i), mapValue arg ctx))
+                              |> List.concatMap (\(field, value) -> [Constants.applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit field), value]])
+                    tag = [ Constants.applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit "__tag")],
+                            Constants.applySnowparkFunc "lit" [ Scala.Literal (Scala.StringLit <| ( constructorName |> FQName.getLocalName |> Name.toTitleCase))]]
+                in Constants.applySnowparkFunc "object_construct" (tag ++ argsToUse)
+            else
+                Scala.Literal (Scala.StringLit "Constructor call not converted")
        _ -> 
             Scala.Literal (Scala.StringLit "Call not converted")
 

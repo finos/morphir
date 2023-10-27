@@ -2,6 +2,7 @@ module Morphir.Snowpark.Backend exposing (..)
 
 import Dict
 import List
+import Set as Set
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (..)
@@ -33,6 +34,8 @@ import Morphir.Snowpark.MappingContext exposing (ValueMappingContext)
 import Morphir.Snowpark.MapFunctionsMapping as MapFunctionsMapping
 import Morphir.Snowpark.PatternMatchMapping exposing (mapPatternMatch)
 import Morphir.Snowpark.Constants as Constants
+import Morphir.Scala.Common exposing (scalaKeywords)
+import Morphir.Scala.Common exposing (javaObjectMethods)
 
 type alias Options =
     {}
@@ -178,7 +181,18 @@ generateLocalVariableForRowRecord ctx (name, _, tpe) =
     
 generateArgumentDeclarationForFunction : MappingContextInfo () -> ( Name.Name, Type (), Type () ) -> List Scala.ArgDecl
 generateArgumentDeclarationForFunction ctx (name, _, tpe) =
-    [Scala.ArgDecl [] (mapTypeReference tpe ctx) (name |> Name.toCamelCase) Nothing]
+    [Scala.ArgDecl [] (mapTypeReference tpe ctx) (name |> generateParameterName) Nothing]
+
+generateParameterName : Name.Name -> String
+generateParameterName name =
+    let
+       scalaName = name |> Name.toCamelCase
+    in
+    if Set.member scalaName scalaKeywords || Set.member scalaName javaObjectMethods then
+        "_" ++ scalaName
+    else
+        scalaName
+
 
 processParameters : List ( Name.Name, Type (), Type () ) -> MappingContextInfo () -> (List (List Scala.ArgDecl), List (Scala.MemberDecl) )
 processParameters inputTypes ctx =

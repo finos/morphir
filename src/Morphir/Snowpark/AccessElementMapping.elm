@@ -26,6 +26,7 @@ import Morphir.Snowpark.ReferenceUtils exposing (isValueReferenceToSimpleTypesRe
 import Morphir.IR.Value as Value
 import Morphir.Snowpark.MappingContext exposing (isAnonymousRecordWithSimpleTypes)
 import Morphir.Snowpark.Constants exposing (applySnowparkFunc)
+import Morphir.Snowpark.MappingContext exposing (isUnionTypeWithParams)
 
 mapFieldAccess : va -> (Value ta (IrType.Type ())) -> Name.Name -> ValueMappingContext -> Scala.Value
 mapFieldAccess _ value name ctx =
@@ -63,7 +64,11 @@ mapConstructorAccess tpe name ctx =
         (IrType.Reference _ typeName _, _) ->
             if isUnionTypeWithoutParams typeName ctx.typesContextInfo then
                 scalaReferenceToUnionTypeCase typeName name
-            else 
+            else if isUnionTypeWithParams typeName ctx.typesContextInfo then
+                applySnowparkFunc "object_construct" [
+                        applySnowparkFunc "lit" [Scala.Literal <| Scala.StringLit "__tag"], 
+                        applySnowparkFunc "lit" [Scala.Literal <| Scala.StringLit (name |> FQName.getLocalName |> Name.toTitleCase)] ]
+            else
                 Scala.Literal (Scala.StringLit "Constructor access not converted")
         _ -> 
             Scala.Literal (Scala.StringLit "Constructor access not converted")
