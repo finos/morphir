@@ -1,9 +1,8 @@
 module TestModel.AdvancedTypes exposing (..)
 
 import Morphir.SDK.Decimal exposing (..)
-import Morphir.SDK.LocalDate exposing (LocalDate)
+import Morphir.SDK.LocalDate exposing (LocalDate, Month)
 import Morphir.SDK.LocalTime exposing (LocalTime)
-import Morphir.SDK.Month exposing (Month)
 
 import TestModel.BasicTypes exposing (..)
 
