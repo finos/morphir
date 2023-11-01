@@ -19,7 +19,8 @@ module Morphir.Snowpark.MappingContext exposing
       , isLocalFunctionName
       , isTypeRefToRecordWithSimpleTypes
       , isAliasedBasicType
-      , getLocalVariableIfDataFrameReference )
+      , getLocalVariableIfDataFrameReference
+      , getFieldsNamesIfRecordType )
 
 {-| This module contains functions to collect information about type definitions in a distribution.
 It classifies type definitions in the following kinds:
@@ -43,9 +44,9 @@ import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Path as Path
 
 type TypeDefinitionClassification a =
-   RecordWithSimpleTypes
+   RecordWithSimpleTypes (List Name)
    | RecordWithComplexTypes
-   | UnionTypeWithoutParams
+   | UnionTypeWithoutParams 
    | UnionTypeWithParams
    | TypeAlias (Type a)
 
@@ -82,7 +83,7 @@ isLocalFunctionName name ctx =
 isRecordWithSimpleTypes : FQName -> MappingContextInfo a -> Bool
 isRecordWithSimpleTypes name ctx = 
    case Dict.get name ctx of
-       Just (TypeClassified RecordWithSimpleTypes) -> True
+       Just (TypeClassified (RecordWithSimpleTypes _)) -> True
        _ -> False
 
 isTypeRefToRecordWithSimpleTypes : Type a ->  MappingContextInfo a -> Bool
@@ -260,12 +261,26 @@ isDataFrameFriendlyType tpe ctx =
       || (isAliasOfDataFrameFriendlyType tpe ctx)
       || (isMaybeOfDataFrameFriendlyType tpe ctx)
 
+
+getFieldsNamesIfRecordType : Type a -> MappingContextInfo a -> Maybe (List Name)
+getFieldsNamesIfRecordType tpe ctx =
+   case tpe of
+      Reference _ typeName _ ->
+         case Dict.get typeName ctx of
+             Just (TypeClassified (RecordWithSimpleTypes fieldNames)) -> 
+               Just fieldNames
+             _ ->
+               Nothing
+      _ -> 
+         Nothing
+
+
 classifyActualType : Type a -> MappingContextInfo a -> TypeClassificationState a
 classifyActualType  tpe ctx = 
    case tpe of
        Record _ members ->
             if List.all (\t -> isDataFrameFriendlyType t.tpe ctx) members then
-               TypeClassified RecordWithSimpleTypes 
+               TypeClassified (RecordWithSimpleTypes (members |> List.map .name))
             else 
                TypeWithPendingClassification (Just tpe)
        Reference _ _  _ ->

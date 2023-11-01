@@ -13,11 +13,12 @@ import Morphir.IR.Name as Name
 import Morphir.Snowpark.Constants as Constants
 import Morphir.Snowpark.MappingContext exposing (isBasicType)
 import Morphir.Snowpark.Operatorsmaps exposing (mapOperator)
-import Morphir.Snowpark.ReferenceUtils exposing (scalaPathToModule)
+import Morphir.Snowpark.ReferenceUtils exposing (scalaPathToModule, getCustomTypeParameterFieldAccess)
 import Morphir.Visual.BoolOperatorTree exposing (functionName)
 import Morphir.IR.FQName as FQName
 import Morphir.Snowpark.MappingContext exposing (isTypeRefToRecordWithSimpleTypes)
 import Morphir.Snowpark.TypeRefMapping exposing (generateRecordTypeWrapperExpression)
+import Morphir.Snowpark.MappingContext exposing (getFieldsNamesIfRecordType)
 
 type alias MapValueType ta = ValueIR.Value ta (TypeIR.Type ()) -> ValueMappingContext -> Scala.Value
 
@@ -134,7 +135,7 @@ tryToConvertUserFunctionCall (func, args) mapValue ctx =
                 let
                     argsToUse =
                          args 
-                              |> List.indexedMap (\i arg -> ("field" ++ (String.fromInt i), mapValue arg ctx))
+                              |> List.indexedMap (\i arg -> (getCustomTypeParameterFieldAccess i, mapValue arg ctx))
                               |> List.concatMap (\(field, value) -> [Constants.applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit field)], value])
                     tag = [ Constants.applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit "__tag")],
                             Constants.applySnowparkFunc "lit" [ Scala.Literal (Scala.StringLit <| ( constructorName |> FQName.getLocalName |> Name.toTitleCase))]]
@@ -220,18 +221,50 @@ generateForListFilterMap : Value ta (Type ()) -> (Value ta (Type ())) -> ValueMa
 generateForListFilterMap predicate sourceRelation ctx mapValue =
     if isCandidateForDataFrame (valueAttribute sourceRelation) ctx.typesContextInfo then
         case predicate of
-           ValueIR.Lambda _ _ binExpr ->
+           ValueIR.Lambda tpe _ binExpr ->
               let 
-                  selectCall = Scala.Apply (Scala.Select (mapValue sourceRelation ctx) "select") [Scala.ArgValue Nothing <| mapValue binExpr ctx]
-                  resultId = Scala.Literal <| Scala.StringLit "result"
-                  selectColumnAlias = Scala.Apply (Scala.Select selectCall "as ") [ Scala.ArgValue Nothing resultId ]
-                  isNotNullCall = Scala.Select (Constants.applySnowparkFunc "col" [ resultId ]) "is_not_null"
+                  selectColumnAlias = 
+                       Scala.Apply (Scala.Select (mapValue binExpr ctx) "as ") [ Scala.ArgValue Nothing resultId ]
+                  selectCall = 
+                       Scala.Apply (Scala.Select (mapValue sourceRelation ctx) "select") [Scala.ArgValue Nothing <| selectColumnAlias]
+                  resultId = 
+                       Scala.Literal <| Scala.StringLit "result"
+                  isNotNullCall = 
+                       Scala.Select (Constants.applySnowparkFunc "col" [ resultId ]) "is_not_null"
+                  filterCall = 
+                       Scala.Apply (Scala.Select selectCall "filter") [Scala.ArgValue Nothing isNotNullCall]
               in
-              Scala.Apply (Scala.Select selectColumnAlias "filter") [Scala.ArgValue Nothing isNotNullCall]
+              Maybe.withDefault filterCall (generateProjectionForJsonColumnIfRequired  tpe ctx filterCall)
            _ ->
               Scala.Literal (Scala.StringLit "Unsupported filterMap scenario")
      else 
         Scala.Literal (Scala.StringLit "Unsupported filterMap scenario")
+
+generateProjectionForJsonColumnIfRequired : Type () -> ValueMappingContext -> Scala.Value -> Maybe Scala.Value 
+generateProjectionForJsonColumnIfRequired tpe ctx selectExpr =
+    let
+       resultColumn = 
+            Constants.applySnowparkFunc "col" [Scala.Literal (Scala.StringLit "result")]
+       generateFieldAccess : Int -> Scala.Value
+       generateFieldAccess idx = 
+            Scala.Literal (Scala.StringLit (getCustomTypeParameterFieldAccess idx))
+       generateAsCall expr name =
+            Scala.Apply (Scala.Select expr "as") 
+                        [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit (Name.toCamelCase name )))]
+       resultFieldAccess idx = 
+            Scala.Apply resultColumn [Scala.ArgValue Nothing <| generateFieldAccess idx] 
+       generateJsonUpackingProjection : List Name.Name -> Scala.Value
+       generateJsonUpackingProjection names =
+            Scala.Apply 
+                    (Scala.Select selectExpr "select") 
+                    (names 
+                       |> List.indexedMap (\i name -> Scala.ArgValue Nothing <| generateAsCall (resultFieldAccess i) name))
+    in
+    case tpe of
+        TypeIR.Function _ _ (TypeIR.Reference _ _ [itemsType]) -> 
+            (getFieldsNamesIfRecordType itemsType ctx.typesContextInfo) 
+                |> Maybe.map generateJsonUpackingProjection
+        _ -> Nothing        
 
 generateForListMap : Value ta (Type ()) -> (Value ta (Type ())) -> ValueMappingContext -> MapValueType ta -> Scala.Value
 generateForListMap projection sourceRelation ctx mapValue =

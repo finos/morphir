@@ -20,6 +20,8 @@ import Morphir.IR.Type as Type
 import Morphir.IR.Name as Name
 import Morphir.IR.FQName as FQName
 import Morphir.Snowpark.MappingContext exposing (isUnionTypeWithParams)
+import Morphir.Snowpark.Utils exposing (tryAlternatives)
+import Morphir.Snowpark.ReferenceUtils exposing (getCustomTypeParameterFieldAccess)
 
 type alias PatternMatchValues ta = (Type (), Value ta (Type ()), List ( Pattern (Type ()), Value ta (Type ()) ))
 
@@ -107,7 +109,7 @@ addBindingReplacementsToContext ctxt bindingVariables referenceExpr =
     let 
         newReplacements = 
             bindingVariables
-                |> List.indexedMap (\i name -> (name, generateBindingVariableExpr ("field" ++ (String.fromInt i)) referenceExpr))
+                |> List.indexedMap (\i name -> (name, generateBindingVariableExpr (getCustomTypeParameterFieldAccess i) referenceExpr))
                 |> Dict.fromList
     in
     { ctxt | inlinedIds  = Dict.union ctxt.inlinedIds newReplacements }
@@ -237,18 +239,6 @@ tryAlternative nextAction currentResult  =
             nextAction ()
         _ -> 
             currentResult
-
-tryAlternatives : List (() -> Maybe a) -> Maybe a
-tryAlternatives cases =
-   case cases of
-       first::rest ->
-            case first() of
-                Just _ as result -> 
-                    result
-                _ ->
-                    tryAlternatives rest
-       [] -> 
-            Nothing
 
 classifyScenario : (Value ta (Type ())) -> List (Pattern (Type ()), Value ta (Type ())) -> ValueMappingContext -> PatternMatchScenario ta
 classifyScenario value cases ctx =

@@ -3,7 +3,8 @@ module Morphir.Snowpark.ReferenceUtils exposing (
     , isTypeReferenceToSimpleTypesRecord
     , isValueReferenceToSimpleTypesRecord
     , mapLiteral
-    , scalaReferenceToUnionTypeCase)
+    , scalaReferenceToUnionTypeCase
+    , getCustomTypeParameterFieldAccess)
 
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as IrType
@@ -71,3 +72,7 @@ scalaReferenceToUnionTypeCase typeName constructorName =
         containerObjectFieldName = FQName.getLocalName constructorName |> Name.toTitleCase
     in 
     Scala.Ref (nsName ++ [containerObjectName]) containerObjectFieldName
+
+getCustomTypeParameterFieldAccess : Int -> String
+getCustomTypeParameterFieldAccess paramIndex =
+    "field" ++ (String.fromInt paramIndex)
