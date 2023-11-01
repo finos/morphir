@@ -53,7 +53,7 @@ typeClassificationTests =
                           |> Maybe.withDefault []
                        
                    in
-                   Expect.equal ["Trait:Emp1:2", "Object:Emp1:2"] generationResult
+                   Expect.equal ["Trait:Emp1:2", "Object:Emp1:2", "Class:Emp1Wrapper:2"] generationResult
         
     in
     describe "resolveTNam"
@@ -66,4 +66,4 @@ stringFromScalaTypeDefinition scalaElement =
    case scalaElement.value.value of
        Scala.Object { name, members } -> "Object:" ++ name ++ ":" ++ (members |> List.length |> String.fromInt)
        Scala.Trait { name, members } -> "Trait:" ++ name ++ ":" ++ (members |> List.length |> String.fromInt)
-       _ -> ""
+       Scala.Class { name, members } -> "Class:" ++ name ++ ":" ++ (members |> List.length |> String.fromInt)

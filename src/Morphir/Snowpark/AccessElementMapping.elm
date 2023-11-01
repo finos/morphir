@@ -7,7 +7,7 @@ module Morphir.Snowpark.AccessElementMapping exposing (
 {-| This module contains functions to generate code like `a.b` or `a`.
 |-}
 
-
+import Dict exposing (Dict)
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as IrType
 import Morphir.Scala.AST as Scala
@@ -27,20 +27,44 @@ import Morphir.IR.Value as Value
 import Morphir.Snowpark.MappingContext exposing (isAnonymousRecordWithSimpleTypes)
 import Morphir.Snowpark.Constants exposing (applySnowparkFunc)
 import Morphir.Snowpark.MappingContext exposing (isUnionTypeWithParams)
+import Morphir.IR.Value as Value
+import String exposing (replace)
+
+
+checkForDataFrameVariableReference : Value ta (IrType.Type ()) -> ValueMappingContext -> Maybe String
+checkForDataFrameVariableReference value ctx =
+    case Value.valueAttribute value of
+        IrType.Reference _ typeName _ -> 
+            Dict.get typeName ctx.dataFrameColumnsObjects
+        _ -> 
+            Nothing
 
 mapFieldAccess : va -> (Value ta (IrType.Type ())) -> Name.Name -> ValueMappingContext -> Scala.Value
 mapFieldAccess _ value name ctx =
    (let
        simpleFieldName = name |> Name.toCamelCase
-       valueIsFunctionParameter = 
+       valueIsFunctionParameter =
             case value of
-                Value.Variable _ varName -> (varName, List.member varName ctx.parameters)
-                _ -> (Name.fromString "a",False)
+                Value.Variable _ varName -> 
+                    if List.member varName ctx.parameters then
+                        Just <| Name.toCamelCase varName
+                    else
+                        Nothing
+                _ -> 
+                    Nothing
+       valueIsDataFrameColumnAccess = 
+            case (value, checkForDataFrameVariableReference value ctx) of
+                (Value.Variable  _ _, Just replacement) -> 
+                    Just replacement
+                _ -> 
+                    Nothing
      in
-     case (isValueReferenceToSimpleTypesRecord value ctx.typesContextInfo, valueIsFunctionParameter, value) of
-       (_, (paramName, True), _) -> 
-            Scala.Ref [paramName |> Name.toCamelCase] simpleFieldName
-       (Just (path, refererName), (_, False), _) -> 
+     case (isValueReferenceToSimpleTypesRecord value ctx.typesContextInfo, valueIsFunctionParameter, valueIsDataFrameColumnAccess) of
+       (_,Just replacement, _ ) -> 
+            Scala.Ref [replacement] simpleFieldName
+       (_,_, Just replacement) -> 
+            Scala.Ref [replacement] simpleFieldName
+       (Just (path, refererName), Nothing, Nothing) -> 
             Scala.Ref (path ++ [refererName |> Name.toTitleCase]) simpleFieldName
        _ ->
             (if isAnonymousRecordWithSimpleTypes (value |> Value.valueAttribute) ctx.typesContextInfo then
@@ -48,11 +72,13 @@ mapFieldAccess _ value name ctx =
              else 
                 Scala.Literal (Scala.StringLit "Field access to not converted")))
 
-mapVariableAccess : (IrType.Type a) -> Name.Name -> ValueMappingContext -> Scala.Value
-mapVariableAccess _ name ctx =
-    case getReplacementForIdentifier name ctx of
-        Just replacement ->
+mapVariableAccess : Name.Name ->  (Value ta (IrType.Type ()))  -> ValueMappingContext -> Scala.Value
+mapVariableAccess name nameAccess ctx =
+    case (getReplacementForIdentifier name ctx, checkForDataFrameVariableReference nameAccess ctx) of
+        (Just replacement, _) ->
             replacement
+        (_, Just replacementStr) ->
+            Scala.Variable replacementStr
         _ ->
             Scala.Variable (name |> Name.toCamelCase)
 

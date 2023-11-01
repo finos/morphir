@@ -37,22 +37,20 @@ functionGenTests =
 
         expectedRef = Scala.Ref ["uTest", "MyMod"] "Emp" 
         expectedTypeRef = Scala.TypeRef ["uTest", "MyMod"] "Emp" 
-        expectedDecl = { modifiers = []
-                       , pattern = (Scala.NamedMatch "a")
-                       , valueType = (Just expectedTypeRef) 
-                       , value = expectedRef }
         expectedFunctionBody = 
-                Scala.Block [Scala.ValueDecl expectedDecl] (Scala.Variable "x") 
+                Scala.Variable "x"
         expectedFunctionDeclaration = 
                 Scala.FunctionDecl { modifiers = []
                                     , name = "foo"
                                     , typeArgs = []
-                                    , args = [[Scala.ArgDecl [] (typeRefForSnowparkType "Column") "b" Nothing]]
+                                    , args = [[Scala.ArgDecl [] (Scala.TypeRef ["uTest", "MyMod"] "Emp") "a" Nothing]
+                                             , [Scala.ArgDecl [] (typeRefForSnowparkType "Column") "b" Nothing]
+                                             ]
                                     , returnType = Just <| typeRefForSnowparkType "Column"
                                     , body = Just expectedFunctionBody
                                    }
         assertGenerationOfBasicFunction =
-            test ("Convert record field reference") <|
+            test ("Convert function definition") <|
             \_ ->
                 Expect.equal expectedFunctionDeclaration mappedFunctionDefinition
 

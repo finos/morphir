@@ -18,7 +18,8 @@ module Morphir.Snowpark.MappingContext exposing
       , isDataFrameFriendlyType
       , isLocalFunctionName
       , isTypeRefToRecordWithSimpleTypes
-      , isAliasedBasicType )
+      , isAliasedBasicType
+      , getLocalVariableIfDataFrameReference )
 
 {-| This module contains functions to collect information about type definitions in a distribution.
 It classifies type definitions in the following kinds:
@@ -56,6 +57,7 @@ type alias ValueMappingContext =
    , typesContextInfo : MappingContextInfo ()
    , inlinedIds: Dict Name Scala.Value
    , packagePath: Path.Path
+   , dataFrameColumnsObjects: Dict FQName String
    }
 
 emptyValueMappingContext : ValueMappingContext
@@ -63,6 +65,7 @@ emptyValueMappingContext = { parameters = []
                            , inlinedIds = Dict.empty
                            , typesContextInfo = emptyContext
                            , packagePath = Path.fromString "default" 
+                           , dataFrameColumnsObjects = Dict.empty
                            }
 
 getReplacementForIdentifier : Name -> ValueMappingContext -> Maybe Scala.Value
@@ -122,7 +125,7 @@ isTypeAlias name ctx =
    case Dict.get name ctx of
        Just (TypeClassified (TypeAlias _)) -> True
        _ -> False
-   
+     
 isCandidateForDataFrame : (Type ()) -> MappingContextInfo () -> Bool
 isCandidateForDataFrame typeRef ctx =
    case typeRef of
@@ -136,6 +139,14 @@ isCandidateForDataFrame typeRef ctx =
          fields
             |> List.all (\{tpe} -> isDataFrameFriendlyType tpe ctx )
       _ -> False
+
+getLocalVariableIfDataFrameReference : Type.Type () -> ValueMappingContext -> Maybe String
+getLocalVariableIfDataFrameReference tpe ctx =
+   case tpe of
+       Type.Reference _ typeName _ ->
+          Dict.get typeName ctx.dataFrameColumnsObjects
+       _ ->
+          Nothing
 
 isAnonymousRecordWithSimpleTypes : Type.Type () -> MappingContextInfo () -> Bool
 isAnonymousRecordWithSimpleTypes tpe ctx = 

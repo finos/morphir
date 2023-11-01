@@ -256,6 +256,7 @@ type Value
     | CommentedValue Value String
     | ForComp (List Generator) Value
     | TypeAscripted Value Type
+    | New Path Name (List ArgValue)
 
 
 {-| -}

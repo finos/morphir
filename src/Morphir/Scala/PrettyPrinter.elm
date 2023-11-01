@@ -437,6 +437,9 @@ mapValue opt value =
 
         Apply funValue argValues ->
             mapValue opt funValue ++ argValueBlock opt argValues
+        
+        New path name argValues ->
+            "new" ++ " " ++ (dotSep <| prefixKeywords (path ++ [ name ])) ++ argValueBlock opt argValues
 
         UnOp op right ->
             op ++ mapValue opt right

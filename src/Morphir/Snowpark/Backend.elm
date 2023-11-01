@@ -36,6 +36,8 @@ import Morphir.Snowpark.PatternMatchMapping exposing (mapPatternMatch)
 import Morphir.Snowpark.Constants as Constants
 import Morphir.Scala.Common exposing (scalaKeywords)
 import Morphir.Scala.Common exposing (javaObjectMethods)
+import Morphir.Snowpark.MappingContext exposing (isCandidateForDataFrame)
+import Morphir.IR.FQName as FQName
 
 type alias Options =
     {}
@@ -138,16 +140,13 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
 mapFunctionDefinition : Name.Name -> AccessControlled (Documented (Value.Definition () (Type ()))) ->  Path ->  MappingContextInfo () -> Scala.MemberDecl
 mapFunctionDefinition functionName body currentPackagePath mappingCtx =
     let
-       (parameters, localVariables) = processParameters body.value.value.inputTypes mappingCtx
+       parameters = processParameters body.value.value.inputTypes mappingCtx
        parameterNames = body.value.value.inputTypes |> List.map (\(name, _, _) -> name)
        valueMappingContext = { emptyValueMappingContext | typesContextInfo = mappingCtx, parameters = parameterNames, packagePath = currentPackagePath} 
-       bodyCandidate = mapFunctionBody body.value.value valueMappingContext 
-       
-       resultingBody = case (localVariables, bodyCandidate) of
-                            ([], _) -> bodyCandidate
-                            (declarations, Just bodyToUse) -> Just (Scala.Block declarations bodyToUse)
-                            (_, _) -> Nothing
-       
+       localDeclarations = 
+            body.value.value.inputTypes                
+                |> List.filterMap (checkForDataFrameColumndsDeclaration mappingCtx)
+       bodyCandidate = mapFunctionBody body.value.value (includeDataFrameInfo localDeclarations valueMappingContext)
        returnTypeToGenerate = mapTypeReference body.value.value.outputType mappingCtx
     in
     Scala.FunctionDecl
@@ -158,27 +157,52 @@ mapFunctionDefinition functionName body currentPackagePath mappingCtx =
             , returnType = 
                 Just returnTypeToGenerate
             , body =
-                resultingBody
+                case (localDeclarations |> List.map Tuple.first, bodyCandidate) of
+                    ([], Just _) -> bodyCandidate
+                    (declarations, Just bodyToUse) -> Just (Scala.Block declarations bodyToUse)
+                    (_, _) -> Nothing
             }
 
-generateLocalVariableForRowRecord : MappingContextInfo () -> ( Name.Name, Type (), Type a ) -> Scala.MemberDecl
-generateLocalVariableForRowRecord ctx (name, _, tpe) =
+includeDataFrameInfo : List (Scala.MemberDecl, (String, FQName.FQName)) -> ValueMappingContext -> ValueMappingContext
+includeDataFrameInfo declInfos ctx =
+    let
+        newDataFrameInfo = declInfos 
+                            |> List.map (\(_, (varName, typeFullName) ) -> (typeFullName, varName))
+                            |> Dict.fromList
+    in
+    { ctx | dataFrameColumnsObjects = Dict.union ctx.dataFrameColumnsObjects newDataFrameInfo }
+
+checkForDataFrameColumndsDeclaration :  MappingContextInfo () -> ( Name.Name, va, Type a ) -> Maybe (Scala.MemberDecl, (String, FQName.FQName))
+checkForDataFrameColumndsDeclaration ctx (name, _,  tpe) =
+    let
+        varNewName = ((name |> Name.toCamelCase) ++ "Columns")
+    in
+    case tpe of
+        Type.Reference _ _ [(Type.Reference _ typeName _) as argType] -> 
+            Just  (generateLocalVariableForDataFrameColumns ctx (varNewName, name, argType), (varNewName, typeName))
+        _ -> 
+            Nothing
+
+generateLocalVariableForDataFrameColumns : MappingContextInfo () -> ( String, Name.Name, Type a ) -> Scala.MemberDecl
+generateLocalVariableForDataFrameColumns ctx (name, originalName, tpe) =
    let
-      nameInfo =  isTypeReferenceToSimpleTypesRecord tpe ctx
+      nameInfo =  
+        isTypeReferenceToSimpleTypesRecord tpe ctx
       typeNameInfo = Maybe.map 
                            (\(typePath, simpleTypeName) -> Just (Scala.TypeRef typePath (simpleTypeName |> Name.toTitleCase) ))
                            nameInfo
       objectReference = Maybe.map 
-                           (\(typePath, simpleTypeName) -> Scala.Ref typePath (simpleTypeName |> Name.toTitleCase))
+                           (\(typePath, simpleTypeName) -> 
+                                Scala.New typePath ((simpleTypeName |> Name.toTitleCase) ++ "Wrapper") [Scala.ArgValue Nothing (Scala.Variable (Name.toCamelCase originalName ))] )
                            nameInfo
    in
    Scala.ValueDecl {
     modifiers = []
-    , pattern = (Scala.NamedMatch (name |> Name.toCamelCase))
+    , pattern = (Scala.NamedMatch name)
     , valueType = Maybe.withDefault Nothing typeNameInfo
     , value = Maybe.withDefault Scala.Unit objectReference
     }
-    
+
 generateArgumentDeclarationForFunction : MappingContextInfo () -> ( Name.Name, Type (), Type () ) -> List Scala.ArgDecl
 generateArgumentDeclarationForFunction ctx (name, _, tpe) =
     [Scala.ArgDecl [] (mapTypeReference tpe ctx) (name |> generateParameterName) Nothing]
@@ -194,18 +218,9 @@ generateParameterName name =
         scalaName
 
 
-processParameters : List ( Name.Name, Type (), Type () ) -> MappingContextInfo () -> (List (List Scala.ArgDecl), List (Scala.MemberDecl) )
+processParameters : List ( Name.Name, Type (), Type () ) -> MappingContextInfo () -> List (List Scala.ArgDecl)
 processParameters inputTypes ctx =
-    let
-        recWithSimpleTypesPred : ( Name.Name, Type (), Type a ) -> Bool
-        recWithSimpleTypesPred tpe = 
-            case tpe of
-                (_, _, Type.Reference _ fqName []) -> not(isRecordWithSimpleTypes fqName ctx)
-                _ -> True
-        (typesToProcess, typesWithRecords) = inputTypes |> List.partition recWithSimpleTypesPred
-    in
-    (typesToProcess |> List.map (generateArgumentDeclarationForFunction ctx),
-     typesWithRecords |> List.map (generateLocalVariableForRowRecord ctx))
+    inputTypes |> List.map (generateArgumentDeclarationForFunction ctx)
 
 
 mapFunctionBody : Value.Definition ta (Type ()) -> ValueMappingContext -> Maybe Scala.Value
@@ -219,8 +234,8 @@ mapValue value ctx =
             mapLiteral tpe literal
         Field tpe val name ->
             mapFieldAccess tpe val name ctx
-        Variable tpe name ->
-            mapVariableAccess tpe name ctx
+        Variable _ name as varAccess ->
+            mapVariableAccess name varAccess ctx
         Constructor tpe name ->
             mapConstructorAccess tpe name ctx
         List _ values ->

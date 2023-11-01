@@ -17,6 +17,7 @@ import Morphir.Snowpark.ReferenceUtils exposing (scalaPathToModule)
 import Morphir.Visual.BoolOperatorTree exposing (functionName)
 import Morphir.IR.FQName as FQName
 import Morphir.Snowpark.MappingContext exposing (isTypeRefToRecordWithSimpleTypes)
+import Morphir.Snowpark.TypeRefMapping exposing (generateRecordTypeWrapperExpression)
 
 type alias MapValueType ta = ValueIR.Value ta (TypeIR.Type ()) -> ValueMappingContext -> Scala.Value
 
@@ -116,12 +117,8 @@ tryToConvertUserFunctionCall (func, args) mapValue ctx =
                     funcReference = 
                         Scala.Ref (scalaPathToModule functionName) 
                                   (functionName |> FQName.getLocalName |> Name.toCamelCase)
-                    -- this controversial code removes dataframe arguments
-                    argFilteringCriteria = 
-                        (\arg -> not (isTypeRefToRecordWithSimpleTypes (ValueIR.valueAttribute arg) ctx.typesContextInfo))
                     argsToUse =
                         args 
-                            |> List.filter argFilteringCriteria
                             |> List.map (\arg -> mapValue arg ctx)
                             |> List.map (Scala.ArgValue Nothing)
                 in
@@ -138,7 +135,7 @@ tryToConvertUserFunctionCall (func, args) mapValue ctx =
                     argsToUse =
                          args 
                               |> List.indexedMap (\i arg -> ("field" ++ (String.fromInt i), mapValue arg ctx))
-                              |> List.concatMap (\(field, value) -> [Constants.applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit field), value]])
+                              |> List.concatMap (\(field, value) -> [Constants.applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit field)], value])
                     tag = [ Constants.applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit "__tag")],
                             Constants.applySnowparkFunc "lit" [ Scala.Literal (Scala.StringLit <| ( constructorName |> FQName.getLocalName |> Name.toTitleCase))]]
                 in Constants.applySnowparkFunc "object_construct" (tag ++ argsToUse)
@@ -203,13 +200,16 @@ generateForListFilter predicate sourceRelation ctx mapValue =
     in
     if isCandidateForDataFrame (valueAttribute sourceRelation) ctx.typesContextInfo then
         case predicate of
-           ValueIR.Lambda _ _ binExpr ->
-              generateFilterCall <| mapValue binExpr ctx
-           ValueIR.Reference _ functionName ->
-                if isLocalFunctionName functionName ctx then
-                    generateFilterCall <| Scala.Ref (scalaPathToModule functionName) (functionName |> FQName.getLocalName |> Name.toCamelCase)
-                else
-                    Scala.Literal (Scala.StringLit ("Unsupported filter function scenario2" ))
+           ValueIR.Lambda _ _ bodyExpr ->
+              generateFilterCall <| mapValue bodyExpr ctx
+           ValueIR.Reference (TypeIR.Function _ fromType _) functionName ->
+                case (isLocalFunctionName functionName ctx, generateRecordTypeWrapperExpression fromType ctx) of
+                    (True, Just typeRefExpr) ->                        
+                        (generateFilterCall <| 
+                            Scala.Apply (Scala.Ref (scalaPathToModule functionName) (functionName |> FQName.getLocalName |> Name.toCamelCase)) 
+                                        [Scala.ArgValue Nothing typeRefExpr])
+                    _ -> 
+                        Scala.Literal (Scala.StringLit ("Unsupported filter function scenario2" ))
            _ ->
               Scala.Literal (Scala.StringLit ("Unsupported filter function scenario" ))
      else 

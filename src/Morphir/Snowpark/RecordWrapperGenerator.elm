@@ -62,10 +62,9 @@ processUnionTypeDeclaration name constructors noParams =
 processRecordDeclaration : Name -> String -> (List (Field a)) ->  Bool -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
 processRecordDeclaration name doc fields recordWithSimpleTypes =
    if recordWithSimpleTypes then
-    [
-        traitForRecordWrapper name doc fields,
-        objectForRecordWrapper name fields
-    ] 
+    [ traitForRecordWrapper name doc fields
+    , objectForRecordWrapper name fields
+    , classForRecordWrapper name fields] 
    else
     []
 
@@ -106,6 +105,40 @@ generateTraitMember field =
                 }))
 
 
+classForRecordWrapper : Name -> (List (Field a)) -> (Scala.Documented (Scala.Annotated Scala.TypeDecl))
+classForRecordWrapper name fields = 
+  let 
+     traitName = (name |> toTitleCase)
+     nameToUse = (name |> toTitleCase) ++ "Wrapper"
+     members = fields |> List.map generateWrapperClassMember
+     dataFrameArgDecl = 
+        { modifiers = []
+        , tpe = typeRefForSnowparkType "DataFrame"
+        , name = "df"
+        , defaultValue = Nothing
+        }
+  in 
+  ( Scala.Documented Nothing
+        (Scala.Annotated []
+            (Scala.Class
+                { modifiers = 
+                    []
+                , name =
+                    nameToUse
+                , typeArgs = 
+                    []
+                , ctorArgs = 
+                    [ [dataFrameArgDecl] ]
+                , members = 
+                    members
+                , extends =
+                    [ Scala.TypeRef [] traitName ]
+                , body = 
+                    []
+                }
+            )
+        )) 
+
 objectForRecordWrapper : Name -> (List (Field a)) -> (Scala.Documented (Scala.Annotated Scala.TypeDecl))
 objectForRecordWrapper name  fields = 
   let 
@@ -144,6 +177,19 @@ generateObjectMember field =
             }))
 
 
+generateWrapperClassMember : (Field a) -> (Scala.Annotated Scala.MemberDecl)
+generateWrapperClassMember field =
+  (Scala.Annotated
+            []
+            (Scala.FunctionDecl
+            {
+             modifiers = []
+            , name = (field.name |> Name.toCamelCase)
+            , typeArgs = []
+            , args = []
+            , returnType = Just (typeRefForSnowparkType "Column") 
+            , body = Just (Scala.Apply (Scala.Variable "df") [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit (field.name |> Name.toCamelCase)))])
+            }))
 
 generateUnionTypeNameMember : String -> (Scala.Annotated Scala.MemberDecl)
 generateUnionTypeNameMember optionName =
