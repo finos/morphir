@@ -10,7 +10,6 @@
         "Morphir.SDK.String",
         "Morphir.SDK.List",
         "Morphir.SDK.LocalDate",
-        "Morphir.SDK.Month",
         "Morphir.SDK.Number",
         "Morphir.SDK.Rule",
         "Morphir.SDK.Key",

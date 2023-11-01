@@ -1,7 +1,7 @@
 module TestModel.CustomTypes exposing (..)
 
 import TestModel.AdvancedTypes exposing (Score)
-import Morphir.SDK.Month exposing (Month)
+import Morphir.SDK.LocalDate exposing (Month)
 
 
 type PersonalData

@@ -28,10 +28,9 @@ import Morphir.IR.SDK.Common exposing (toFQName, vSpec)
 import Morphir.IR.SDK.Maybe exposing (maybeType)
 import Morphir.IR.SDK.String exposing (stringType)
 import Morphir.IR.Type exposing (Specification(..), Type(..))
+import Morphir.IR.Value as Value exposing (Value)
 import Morphir.SDK.LocalDate as LocalDate
 import Morphir.Value.Native as Native
-import Morphir.IR.Value as Value
-import Morphir.IR.Value exposing (Value)
 
 
 moduleName : ModuleName
@@ -50,7 +49,29 @@ moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( Name.fromString "LocalDate", DerivedTypeSpecification [] config |> Documented "Type that represents a date concept." )
+            [ ( Name.fromString "LocalDate"
+              , DerivedTypeSpecification [] config
+                    |> Documented "Type that represents a date concept."
+              )
+            , ( Name.fromString "Month"
+              , CustomTypeSpecification []
+                    (Dict.fromList
+                        [ ( Name.fromString "January", [] )
+                        , ( Name.fromString "February", [] )
+                        , ( Name.fromString "March", [] )
+                        , ( Name.fromString "April", [] )
+                        , ( Name.fromString "May", [] )
+                        , ( Name.fromString "June", [] )
+                        , ( Name.fromString "July", [] )
+                        , ( Name.fromString "August", [] )
+                        , ( Name.fromString "September", [] )
+                        , ( Name.fromString "October", [] )
+                        , ( Name.fromString "November", [] )
+                        , ( Name.fromString "December", [] )
+                        ]
+                    )
+                    |> Documented "Type that represents months of the year."
+              )
             ]
     , values =
         Dict.fromList
@@ -84,6 +105,7 @@ nativeFunctions =
       , Native.eval1 LocalDate.toISOString Native.decodeLocalDate (Native.encodeLiteral Literal.StringLiteral)
       )
     ]
+
 
 fromISO : a -> Value a a -> Value a a
 fromISO a value =
