@@ -31,8 +31,8 @@
     "morphir": "cli2/lib/morphir.js"
   },
   "engines": {
-    "npm": "8.5.5",
-    "node": "v16.14.0"
+    "npm": "*",
+    "node": "*"
   },
   "files": [
     "cli/cli.js",
