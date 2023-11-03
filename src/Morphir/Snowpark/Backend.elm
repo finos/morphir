@@ -254,6 +254,8 @@ mapValue value ctx =
             mapLetDefinition name definition body ctx
         FieldFunction _ [name] ->
             Constants.applySnowparkFunc "col" [(Scala.Literal (Scala.StringLit name))]
+        Value.Tuple _ tupleElements ->
+            Constants.applySnowparkFunc "array_construct" <| List.map (\e -> mapValue e ctx) tupleElements
         _ ->
             Scala.Literal (Scala.StringLit ("Unsupported element"))
 

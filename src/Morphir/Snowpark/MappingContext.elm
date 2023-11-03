@@ -20,7 +20,9 @@ module Morphir.Snowpark.MappingContext exposing
       , isTypeRefToRecordWithSimpleTypes
       , isAliasedBasicType
       , getLocalVariableIfDataFrameReference
-      , getFieldsNamesIfRecordType )
+      , getFieldsNamesIfRecordType
+      , addReplacementforIdentifier
+      , isListOfDataFrameFriendlyType )
 
 {-| This module contains functions to collect information about type definitions in a distribution.
 It classifies type definitions in the following kinds:
@@ -72,6 +74,13 @@ emptyValueMappingContext = { parameters = []
 getReplacementForIdentifier : Name -> ValueMappingContext -> Maybe Scala.Value
 getReplacementForIdentifier name ctx =
    Dict.get name ctx.inlinedIds
+
+addReplacementforIdentifier : Name -> Scala.Value -> ValueMappingContext -> ValueMappingContext
+addReplacementforIdentifier name value ctx =
+   let
+      newReplacedIds = Dict.insert name value ctx.inlinedIds
+   in
+   { ctx | inlinedIds = newReplacedIds }
 
 emptyContext : MappingContextInfo a
 emptyContext = Dict.empty
@@ -140,6 +149,16 @@ isCandidateForDataFrame typeRef ctx =
          fields
             |> List.all (\{tpe} -> isDataFrameFriendlyType tpe ctx )
       _ -> False
+
+isListOfDataFrameFriendlyType : (Type ()) -> MappingContextInfo () -> Bool
+isListOfDataFrameFriendlyType typeRef ctx =
+   case typeRef of
+      Type.Reference _ 
+                     ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) 
+                     [ tpe ] ->
+         isDataFrameFriendlyType tpe ctx
+      _ ->
+         False
 
 getLocalVariableIfDataFrameReference : Type.Type () -> ValueMappingContext -> Maybe String
 getLocalVariableIfDataFrameReference tpe ctx =

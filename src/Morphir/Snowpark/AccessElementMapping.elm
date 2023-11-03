@@ -101,7 +101,8 @@ mapConstructorAccess tpe name ctx =
 
 mapReferenceAccess : (IrType.Type ()) -> FQName.FQName -> ValueMappingContext -> Scala.Value
 mapReferenceAccess tpe name ctx =
-   if MappingContext.isDataFrameFriendlyType tpe ctx.typesContextInfo then
+   if MappingContext.isDataFrameFriendlyType tpe ctx.typesContextInfo ||
+      MappingContext.isListOfDataFrameFriendlyType tpe ctx.typesContextInfo then
         let
             nsName = scalaPathToModule name
             containerObjectFieldName = FQName.getLocalName name |> Name.toCamelCase

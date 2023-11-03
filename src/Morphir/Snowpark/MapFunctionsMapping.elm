@@ -127,7 +127,7 @@ tryToConvertUserFunctionCall (func, args) mapValue ctx =
                     [] -> 
                         funcReference
                     (first::rest) -> 
-                        List.foldr (\a c -> Scala.Apply c [a]) (Scala.Apply funcReference [first]) rest
+                        List.foldl (\a c -> Scala.Apply c [a]) (Scala.Apply funcReference [first]) rest
             else
                 Scala.Literal (Scala.StringLit "Call not converted")
        ValueIR.Constructor _ constructorName ->
