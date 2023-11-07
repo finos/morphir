@@ -19,10 +19,9 @@ import Morphir.IR.FQName as FQName
 import Morphir.Snowpark.MappingContext exposing (isTypeRefToRecordWithSimpleTypes)
 import Morphir.Snowpark.TypeRefMapping exposing (generateRecordTypeWrapperExpression)
 import Morphir.Snowpark.MappingContext exposing (getFieldsNamesIfRecordType)
+import Morphir.Snowpark.AggregateMapping as AggregateMapping
 
-type alias MapValueType ta = ValueIR.Value ta (TypeIR.Type ()) -> ValueMappingContext -> Scala.Value
-
-mapFunctionsMapping : ValueIR.Value ta (TypeIR.Type ()) -> MapValueType ta -> ValueMappingContext -> Scala.Value
+mapFunctionsMapping : ValueIR.Value ta (TypeIR.Type ()) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
 mapFunctionsMapping value mapValue ctx =
     
     case value of
@@ -46,6 +45,31 @@ mapFunctionsMapping value mapValue ctx =
             mapWithDefaultCall default maybeValue mapValue ctx
         ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "map" ] )) action) maybeValue ->
             mapMaybeMapCall action maybeValue mapValue ctx
+        ValueIR.Apply _
+            (ValueIR.Apply _
+                (ValueIR.Reference _
+                    ([["morphir"],["s","d","k"]],[["aggregate"]],["aggregate"])
+                )
+                (ValueIR.Lambda _ _
+                    ( ValueIR.Lambda _ _ lambdaBody )
+                )
+            )
+            (ValueIR.Apply _
+                (ValueIR.Apply _
+                    (ValueIR.Reference _ ([["morphir"],["s","d","k"]],[["aggregate"]], ["group","by"]))
+                    (ValueIR.FieldFunction _  groupByCategory )
+                )
+                dfName
+            ) ->
+            let
+                variables = AggregateMapping.processAggregateLambdaBody lambdaBody mapValue ctx
+                collection = Scala.Select (mapValue dfName ctx) "groupBy"
+                dfGroupBy = Scala.Apply collection [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit (Name.toCamelCase groupByCategory)))]
+                aggFunction = Scala.Select dfGroupBy "agg"
+                groupBySum = Scala.Apply aggFunction variables
+            in
+            groupBySum
+
         ValueIR.Apply 
             (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]], _) [])
             (ValueIR.Apply 
@@ -92,8 +116,7 @@ mapFunctionsMapping value mapValue ctx =
         _ ->
             Scala.Literal (Scala.StringLit "To Do")
 
-
-mapForOperatorCall : Name.Name -> Value ta (Type ()) -> Value ta (Type ()) -> MapValueType ta -> ValueMappingContext -> Scala.Value
+mapForOperatorCall : Name.Name -> Value ta (Type ()) -> Value ta (Type ()) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
 mapForOperatorCall optname left right mapValue ctx =
     case (optname, left, right) of
         (["equal"], _ , ValueIR.Constructor _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ])) -> 
@@ -109,7 +132,7 @@ mapForOperatorCall optname left right mapValue ctx =
             Scala.BinOp leftValue operatorname rightValue
 
 
-tryToConvertUserFunctionCall : ((Value a (Type ())), List (Value a (Type ()))) -> MapValueType a -> ValueMappingContext -> Scala.Value
+tryToConvertUserFunctionCall : ((Value a (Type ())), List (Value a (Type ()))) -> Constants.MapValueType a -> ValueMappingContext -> Scala.Value
 tryToConvertUserFunctionCall (func, args) mapValue ctx =
    case func of
        ValueIR.Reference _ functionName -> 
@@ -151,11 +174,11 @@ whenConditionElseValueCall condition thenExpr elseExpr =
                [Scala.ArgValue Nothing elseExpr]
 
 
-mapWithDefaultCall : Value ta (Type ()) -> Value ta (Type ()) -> (MapValueType ta) -> ValueMappingContext -> Scala.Value
+mapWithDefaultCall : Value ta (Type ()) -> Value ta (Type ()) -> (Constants.MapValueType ta) -> ValueMappingContext -> Scala.Value
 mapWithDefaultCall default maybeValue mapValue ctx =
     Constants.applySnowparkFunc "coalesce" [mapValue maybeValue ctx, mapValue default ctx]
 
-mapMaybeMapCall : Value ta (Type ()) -> Value ta (Type ()) -> (MapValueType ta) -> ValueMappingContext -> Scala.Value
+mapMaybeMapCall : Value ta (Type ()) -> Value ta (Type ()) -> (Constants.MapValueType ta) -> ValueMappingContext -> Scala.Value
 mapMaybeMapCall action maybeValue mapValue ctx =
     case action of
         ValueIR.Lambda _ (AsPattern _ (WildcardPattern _) lambdaParam) body ->
@@ -170,7 +193,7 @@ mapMaybeMapCall action maybeValue mapValue ctx =
             Scala.Literal (Scala.StringLit "Unsupported withDefault call")
 
 
-generateForListSum : Value ta (Type ()) -> ValueMappingContext -> MapValueType ta -> Scala.Value
+generateForListSum : Value ta (Type ()) -> ValueMappingContext -> Constants.MapValueType ta -> Scala.Value
 generateForListSum collection ctx mapValue =
     case collection of
         ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "map" ] )) _) sourceRelation ->
@@ -191,7 +214,7 @@ generateForListSum collection ctx mapValue =
         _ -> 
             Scala.Literal (Scala.StringLit "Unsupported sum scenario")
 
-generateForListFilter : Value ta (Type ()) -> (Value ta (Type ())) -> ValueMappingContext -> MapValueType ta -> Scala.Value
+generateForListFilter : Value ta (Type ()) -> (Value ta (Type ())) -> ValueMappingContext -> Constants.MapValueType ta -> Scala.Value
 generateForListFilter predicate sourceRelation ctx mapValue =
     let
         generateFilterCall functionExpr =
@@ -217,7 +240,7 @@ generateForListFilter predicate sourceRelation ctx mapValue =
         Scala.Literal (Scala.StringLit "Unsupported filter scenario")
 
 
-generateForListFilterMap : Value ta (Type ()) -> (Value ta (Type ())) -> ValueMappingContext -> MapValueType ta -> Scala.Value
+generateForListFilterMap : Value ta (Type ()) -> (Value ta (Type ())) -> ValueMappingContext -> Constants.MapValueType ta -> Scala.Value
 generateForListFilterMap predicate sourceRelation ctx mapValue =
     if isCandidateForDataFrame (valueAttribute sourceRelation) ctx.typesContextInfo then
         case predicate of
@@ -266,7 +289,7 @@ generateProjectionForJsonColumnIfRequired tpe ctx selectExpr =
                 |> Maybe.map generateJsonUpackingProjection
         _ -> Nothing        
 
-generateForListMap : Value ta (Type ()) -> (Value ta (Type ())) -> ValueMappingContext -> MapValueType ta -> Scala.Value
+generateForListMap : Value ta (Type ()) -> (Value ta (Type ())) -> ValueMappingContext -> Constants.MapValueType ta -> Scala.Value
 generateForListMap projection sourceRelation ctx mapValue =
     if isCandidateForDataFrame (valueAttribute sourceRelation) ctx.typesContextInfo then
         case processLambdaWithRecordBody projection ctx mapValue of
@@ -277,7 +300,7 @@ generateForListMap projection sourceRelation ctx mapValue =
      else 
         Scala.Literal (Scala.StringLit "Unsupported map scenario 2")
 
-processLambdaWithRecordBody : Value ta (Type ()) -> ValueMappingContext -> MapValueType ta -> Maybe (List Scala.ArgValue)
+processLambdaWithRecordBody : Value ta (Type ()) -> ValueMappingContext -> Constants.MapValueType ta -> Maybe (List Scala.ArgValue)
 processLambdaWithRecordBody functionExpr ctx mapValue =
     case functionExpr of
         ValueIR.Lambda (TypeIR.Function _ _  returnType) (ValueIR.AsPattern _ _ _) (ValueIR.Record _ fields) ->

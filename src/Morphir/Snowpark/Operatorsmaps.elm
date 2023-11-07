@@ -33,5 +33,13 @@ mapOperator name =
             "||"
         ["mod", "by"] ->
             "%"
+        ["sum", "of"] ->
+            "sum"
+        ["average", "of"] ->
+            "avg"
+        ["maximum", "of"] ->
+            "max"
+        ["minimum", "of"] ->
+            "min"
         _ ->
             "UnsupportedOperator"
