@@ -10,34 +10,35 @@ import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package
 import Morphir.IR.Module as Module 
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.Type exposing (Type)
+import Morphir.IR.Type as Type exposing (Type)
 import Morphir.Scala.AST as Scala
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
-import Morphir.TypeSpec.Backend exposing (mapModuleDefinition)
-import Morphir.Scala.Common exposing (mapValueName)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
-import Morphir.Snowpark.MappingContext as MappingContext exposing (emptyValueMappingContext)
 import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.Snowpark.RecordWrapperGenerator as RecordWrapperGenerator
-import Morphir.Snowpark.MappingContext exposing (MappingContextInfo)
+import Morphir.IR.Documented exposing (Documented)
+import Morphir.IR.FQName as FQName
+import Morphir.Scala.Common exposing (scalaKeywords, mapValueName, javaObjectMethods)
+import Morphir.Snowpark.Constants as Constants exposing (applySnowparkFunc)
 import Morphir.Snowpark.AccessElementMapping exposing (
     mapFieldAccess
     , mapReferenceAccess
     , mapVariableAccess
     , mapConstructorAccess)
-import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.Type as Type
-import Morphir.Snowpark.MappingContext exposing (isRecordWithSimpleTypes)
+import Morphir.Snowpark.RecordWrapperGenerator as RecordWrapperGenerator
 import Morphir.Snowpark.ReferenceUtils exposing (isTypeReferenceToSimpleTypesRecord, mapLiteral)
-import Morphir.Snowpark.TypeRefMapping exposing (mapTypeReference)
-import Morphir.Snowpark.MappingContext exposing (ValueMappingContext)
+import Morphir.Snowpark.TypeRefMapping exposing (mapTypeReference, mapFunctionReturnType)
 import Morphir.Snowpark.MapFunctionsMapping as MapFunctionsMapping
 import Morphir.Snowpark.PatternMatchMapping exposing (mapPatternMatch)
-import Morphir.Snowpark.Constants as Constants
-import Morphir.Scala.Common exposing (scalaKeywords)
-import Morphir.Scala.Common exposing (javaObjectMethods)
-import Morphir.Snowpark.MappingContext exposing (isCandidateForDataFrame)
-import Morphir.IR.FQName as FQName
+import Morphir.Snowpark.MappingContext as MappingContext exposing (
+            MappingContextInfo
+            , GlobalDefinitionInformation
+            , emptyValueMappingContext
+            , getFunctionClassification
+            , typeRefIsListOf
+            , ValueMappingContext
+            , FunctionClassification
+            , isCandidateForDataFrame
+            , isTypeRefToRecordWithSimpleTypes )
 
 type alias Options =
     {}
@@ -47,7 +48,6 @@ mapDistribution _ distro =
     case distro of
         Distribution.Library packageName _ packageDef ->
             mapPackageDefinition distro packageName packageDef
-
 
 mapPackageDefinition : Distribution -> Package.PackageName -> Package.Definition () (Type ()) -> FileMap
 mapPackageDefinition _ packagePath packageDef =
@@ -74,8 +74,8 @@ mapPackageDefinition _ packagePath packageDef =
         |> Dict.fromList
 
 
-mapModuleDefinition : Package.PackageName -> Path -> AccessControlled (Module.Definition () (Type ())) -> MappingContextInfo () -> List Scala.CompilationUnit
-mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleDef mappingCtx =
+mapModuleDefinition : Package.PackageName -> Path -> AccessControlled (Module.Definition () (Type ())) -> GlobalDefinitionInformation () -> List Scala.CompilationUnit
+mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleDef ctxInfo =
     let
         ( scalaPackagePath, moduleName ) =
             case currentModulePath |> List.reverse of
@@ -92,7 +92,7 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
         moduleTypeDefinitions : List (Scala.Annotated Scala.MemberDecl)
         moduleTypeDefinitions = 
             accessControlledModuleDef.value.types
-                |> RecordWrapperGenerator.generateRecordWrappers currentPackagePath currentModulePath mappingCtx
+                |> RecordWrapperGenerator.generateRecordWrappers currentPackagePath currentModulePath ctxInfo
                 |> List.map (\doc -> { annotations = doc.value.annotations, value = Scala.MemberTypeDecl (doc.value.value) } )
 
         functionMembers : List (Scala.Annotated Scala.MemberDecl)
@@ -101,7 +101,7 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
                 |> Dict.toList
                 |> List.concatMap
                     (\( valueName, accessControlledValueDef ) ->
-                        [ mapFunctionDefinition valueName accessControlledValueDef currentPackagePath mappingCtx
+                        [ mapFunctionDefinition valueName accessControlledValueDef currentPackagePath currentModulePath ctxInfo
                         ]
                     )
                 |> List.map Scala.withoutAnnotation
@@ -137,17 +137,22 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
     [ moduleUnit ]
 
 
-mapFunctionDefinition : Name.Name -> AccessControlled (Documented (Value.Definition () (Type ()))) ->  Path ->  MappingContextInfo () -> Scala.MemberDecl
-mapFunctionDefinition functionName body currentPackagePath mappingCtx =
+mapFunctionDefinition : Name.Name -> AccessControlled (Documented (Value.Definition () (Type ()))) ->  Path -> Path ->  GlobalDefinitionInformation () -> Scala.MemberDecl
+mapFunctionDefinition functionName body currentPackagePath modulePath (typeContextInfo, functionsInfo) =
     let
-       parameters = processParameters body.value.value.inputTypes mappingCtx
+       fullFunctionName = FQName.fQName currentPackagePath modulePath functionName
+       functionClassification =  getFunctionClassification fullFunctionName functionsInfo
+       parameters = processParameters body.value.value.inputTypes functionClassification typeContextInfo
        parameterNames = body.value.value.inputTypes |> List.map (\(name, _, _) -> name)
-       valueMappingContext = { emptyValueMappingContext | typesContextInfo = mappingCtx, parameters = parameterNames, packagePath = currentPackagePath} 
+       valueMappingContext = { emptyValueMappingContext | typesContextInfo = typeContextInfo
+                                                        , parameters = parameterNames
+                                                        , functionClassification = functionsInfo
+                                                        , packagePath = currentPackagePath} 
        localDeclarations = 
             body.value.value.inputTypes                
-                |> List.filterMap (checkForDataFrameColumndsDeclaration mappingCtx)
+                |> List.filterMap (checkForDataFrameColumndsDeclaration typeContextInfo)
        bodyCandidate = mapFunctionBody body.value.value (includeDataFrameInfo localDeclarations valueMappingContext)
-       returnTypeToGenerate = mapTypeReference body.value.value.outputType mappingCtx
+       returnTypeToGenerate = mapFunctionReturnType body.value.value.outputType (getFunctionClassification fullFunctionName functionsInfo) typeContextInfo
     in
     Scala.FunctionDecl
             { modifiers = []
@@ -172,14 +177,17 @@ includeDataFrameInfo declInfos ctx =
     in
     { ctx | dataFrameColumnsObjects = Dict.union ctx.dataFrameColumnsObjects newDataFrameInfo }
 
-checkForDataFrameColumndsDeclaration :  MappingContextInfo () -> ( Name.Name, va, Type a ) -> Maybe (Scala.MemberDecl, (String, FQName.FQName))
+checkForDataFrameColumndsDeclaration :  MappingContextInfo () -> ( Name.Name, va, Type () ) -> Maybe (Scala.MemberDecl, (String, FQName.FQName))
 checkForDataFrameColumndsDeclaration ctx (name, _,  tpe) =
     let
         varNewName = ((name |> Name.toCamelCase) ++ "Columns")
     in
     case tpe of
         Type.Reference _ _ [(Type.Reference _ typeName _) as argType] -> 
-            Just  (generateLocalVariableForDataFrameColumns ctx (varNewName, name, argType), (varNewName, typeName))
+            if isCandidateForDataFrame tpe ctx then
+                Just  (generateLocalVariableForDataFrameColumns ctx (varNewName, name, argType), (varNewName, typeName))
+            else
+                Nothing
         _ -> 
             Nothing
 
@@ -203,9 +211,9 @@ generateLocalVariableForDataFrameColumns ctx (name, originalName, tpe) =
     , value = Maybe.withDefault Scala.Unit objectReference
     }
 
-generateArgumentDeclarationForFunction : MappingContextInfo () -> ( Name.Name, Type (), Type () ) -> List Scala.ArgDecl
-generateArgumentDeclarationForFunction ctx (name, _, tpe) =
-    [Scala.ArgDecl [] (mapTypeReference tpe ctx) (name |> generateParameterName) Nothing]
+generateArgumentDeclarationForFunction : MappingContextInfo () -> FunctionClassification -> ( Name.Name, Type (), Type () ) -> List Scala.ArgDecl
+generateArgumentDeclarationForFunction ctx currentFunctionClassification (name, _, tpe) =
+    [Scala.ArgDecl [] (mapTypeReference tpe currentFunctionClassification ctx) (name |> generateParameterName) Nothing]
 
 generateParameterName : Name.Name -> String
 generateParameterName name =
@@ -218,9 +226,9 @@ generateParameterName name =
         scalaName
 
 
-processParameters : List ( Name.Name, Type (), Type () ) -> MappingContextInfo () -> List (List Scala.ArgDecl)
-processParameters inputTypes ctx =
-    inputTypes |> List.map (generateArgumentDeclarationForFunction ctx)
+processParameters : List ( Name.Name, Type (), Type () ) -> FunctionClassification -> MappingContextInfo () -> List (List Scala.ArgDecl)
+processParameters inputTypes currentFunctionClassification ctx =
+    inputTypes |> List.map (generateArgumentDeclarationForFunction ctx currentFunctionClassification)
 
 
 mapFunctionBody : Value.Definition ta (Type ()) -> ValueMappingContext -> Maybe Scala.Value
@@ -238,10 +246,8 @@ mapValue value ctx =
             mapVariableAccess name varAccess ctx
         Constructor tpe name ->
             mapConstructorAccess tpe name ctx
-        List _ values ->
-            Scala.Apply 
-                (Scala.Variable "Seq")
-                (values |> List.map (\v -> Scala.ArgValue Nothing (mapValue v ctx)))
+        List listType values ->
+            mapListCreation listType values ctx
         Reference tpe name ->
             mapReferenceAccess tpe name ctx
         Apply _ _ _ ->
@@ -258,6 +264,17 @@ mapValue value ctx =
             Constants.applySnowparkFunc "array_construct" <| List.map (\e -> mapValue e ctx) tupleElements
         _ ->
             Scala.Literal (Scala.StringLit ("Unsupported element"))
+
+
+mapListCreation : (Type ()) -> List (Value ta (Type ())) -> ValueMappingContext -> Scala.Value
+mapListCreation tpe values ctx =
+    if typeRefIsListOf tpe (\innerTpe -> isTypeRefToRecordWithSimpleTypes innerTpe ctx.typesContextInfo) then
+        applySnowparkFunc "array_construct"
+            (values |> List.map (\v -> mapValue v ctx))
+    else
+        Scala.Apply 
+            (Scala.Variable "Seq")
+            (values |> List.map (\v -> Scala.ArgValue Nothing (mapValue v ctx)))
 
 
 mapLetDefinition : Name.Name -> Value.Definition ta (Type ()) -> Value ta (Type ()) -> ValueMappingContext -> Scala.Value

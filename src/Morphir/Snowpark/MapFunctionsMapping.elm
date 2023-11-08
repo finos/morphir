@@ -1,25 +1,30 @@
 module Morphir.Snowpark.MapFunctionsMapping exposing (mapFunctionsMapping)
 
-import Dict as Dict
+import Dict as Dict exposing (Dict)
 import Morphir.Scala.AST as Scala
 import Morphir.IR.Value as ValueIR exposing (Pattern(..), Value(..))
 import Morphir.IR.Type exposing (Type)
-import Morphir.Snowpark.MappingContext exposing (ValueMappingContext, isCandidateForDataFrame)
 import Morphir.IR.Value exposing (valueAttribute)
 import Morphir.IR.Type as TypeIR
-import Morphir.Snowpark.MappingContext exposing (isAnonymousRecordWithSimpleTypes
-            , isLocalFunctionName)
 import Morphir.IR.Name as Name
-import Morphir.Snowpark.Constants as Constants
-import Morphir.Snowpark.MappingContext exposing (isBasicType)
-import Morphir.Snowpark.Operatorsmaps exposing (mapOperator)
-import Morphir.Snowpark.ReferenceUtils exposing (scalaPathToModule, getCustomTypeParameterFieldAccess)
-import Morphir.Visual.BoolOperatorTree exposing (functionName)
 import Morphir.IR.FQName as FQName
-import Morphir.Snowpark.MappingContext exposing (isTypeRefToRecordWithSimpleTypes)
-import Morphir.Snowpark.TypeRefMapping exposing (generateRecordTypeWrapperExpression)
-import Morphir.Snowpark.MappingContext exposing (getFieldsNamesIfRecordType)
+import Morphir.IR.Value as Value
 import Morphir.Snowpark.AggregateMapping as AggregateMapping
+import Morphir.Snowpark.Constants as Constants exposing (applySnowparkFunc)
+import Morphir.Snowpark.Operatorsmaps exposing (mapOperator)
+import Morphir.Snowpark.ReferenceUtils exposing (isTypeReferenceToSimpleTypesRecord, scalaPathToModule, getCustomTypeParameterFieldAccess)
+import Morphir.Snowpark.TypeRefMapping exposing (generateRecordTypeWrapperExpression,  generateCastIfPossible)
+import Morphir.Snowpark.MappingContext exposing (
+            ValueMappingContext
+            , isBasicType
+            , isTypeRefToRecordWithSimpleTypes
+            , isCandidateForDataFrame
+            , isAnonymousRecordWithSimpleTypes
+            , isLocalFunctionName
+            , getFieldInfoIfRecordType
+            , addReplacementForIdentifier
+            , isFunctionReturningDataFrameExpressions)
+import Morphir.Snowpark.Utils exposing (collectMaybeList)
 
 mapFunctionsMapping : ValueIR.Value ta (TypeIR.Type ()) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
 mapFunctionsMapping value mapValue ctx =
@@ -37,6 +42,10 @@ mapFunctionsMapping value mapValue ctx =
             generateForListFilter predicate sourceRelation ctx mapValue
         ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "filter", "map" ] )) predicateAction) sourceRelation ->
             generateForListFilterMap predicateAction sourceRelation ctx mapValue
+        ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "concat", "map" ] )) action) sourceRelation ->
+            generateForConcatMap action sourceRelation ctx mapValue
+        ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "concat" ] )) sourceRelation ->
+            generateForListConcat sourceRelation ctx mapValue
         ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "sum" ] )) collection ->
             generateForListSum collection ctx mapValue
         ValueIR.Apply _ (ValueIR.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) justValue ->
@@ -71,7 +80,7 @@ mapFunctionsMapping value mapValue ctx =
             groupBySum
 
         ValueIR.Apply 
-            (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]], _) [])
+            _
             (ValueIR.Apply 
                 _
                 (ValueIR.Reference
@@ -115,6 +124,78 @@ mapFunctionsMapping value mapValue ctx =
             tryToConvertUserFunctionCall (ValueIR.uncurryApply func arg) mapValue ctx
         _ ->
             Scala.Literal (Scala.StringLit "To Do")
+
+
+generateForConcatMap : Value ta (Type ()) -> Value ta (Type ()) -> ValueMappingContext -> (Constants.MapValueType ta) -> Scala.Value
+generateForConcatMap action sourceRelation ctx mapValue =
+    case (action, Value.valueAttribute sourceRelation) of
+        (Value.Lambda ((TypeIR.Function _ fromType toType) as lambdaFunctionType) (AsPattern _ _ lambdaParam) body, sourceRelationType) ->
+            if isCandidateForDataFrame sourceRelationType ctx.typesContextInfo && 
+               isCandidateForDataFrame toType ctx.typesContextInfo then
+               let 
+                    contextForBody = 
+                        isTypeReferenceToSimpleTypesRecord fromType ctx.typesContextInfo
+                            |> Maybe.map (\(path, name) -> addReplacementForIdentifier lambdaParam (Scala.Ref path (Name.toTitleCase name)) ctx)
+                            |> Maybe.withDefault ctx
+                    selectArg =
+                        (Scala.Apply 
+                               (Scala.Select (mapValue body contextForBody) "as") 
+                               [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "result")) ])
+                    flattenedDataFrame =
+                        (Scala.Apply
+                            (Scala.Select 
+                                (Scala.Apply 
+                                    (Scala.Select (mapValue sourceRelation ctx) "select") [Scala.ArgValue Nothing selectArg])
+                                "flatten")
+                            [Scala.ArgValue Nothing (applySnowparkFunc "col" [ Scala.Literal (Scala.StringLit "result") ])])
+                    finalProjection = generateProjectionForJsonColumnIfRequired lambdaFunctionType ctx flattenedDataFrame "value"
+                in
+                Maybe.withDefault flattenedDataFrame finalProjection
+            else
+                Scala.Literal (Scala.StringLit "List.concatMap scenario not supported")
+        _ ->
+            Scala.Literal (Scala.StringLit "List.concatMap scenario not supported")
+
+generateForListConcat : Value ta (Type ()) -> ValueMappingContext -> (Constants.MapValueType ta) -> Scala.Value
+generateForListConcat expr ctx mapValue =
+    case expr of
+        ValueIR.List (TypeIR.Reference _ _ [TypeIR.Reference _ _ [innerType]]) elements ->
+              if isTypeRefToRecordWithSimpleTypes innerType ctx.typesContextInfo &&
+                  hasFunctionToDfOpertions elements ctx then
+                let 
+                    convertedItems = elements |> List.map (\item -> mapValue item ctx)
+                in
+                applySnowparkFunc "callBuiltin" ((Scala.Literal (Scala.StringLit "array_flatten")) :: [ applySnowparkFunc "array_construct" convertedItems])
+               else 
+                 generateUnionAllWithMappedElements elements ctx mapValue
+        _ ->
+            Scala.Literal (Scala.StringLit "List.concat case not supported")
+
+
+generateUnionAllWithMappedElements : List (Value ta (Type ())) -> ValueMappingContext -> (Constants.MapValueType ta) -> Scala.Value
+generateUnionAllWithMappedElements elements ctx mapValue =
+    case elements of
+        first::rest -> 
+            let 
+                firstMapped = 
+                    mapValue first ctx
+                in
+                rest
+                    |> List.foldl (\current result -> Scala.Apply (Scala.Select result "unionAll") [Scala.ArgValue Nothing (mapValue current ctx)] ) firstMapped
+        _  ->
+            Scala.Literal (Scala.StringLit "List.concat case not supported")
+
+
+hasFunctionToDfOpertions : List (Value a (Type ())) -> ValueMappingContext -> Bool
+hasFunctionToDfOpertions listElements ctx =
+    case listElements of
+        (((ValueIR.Apply _ f a ))::_) -> 
+            case Value.uncurryApply f a of
+                (ValueIR.Reference _ fullName , _) -> isFunctionReturningDataFrameExpressions fullName ctx
+                _ -> 
+                    False
+        _ -> 
+            False
 
 mapForOperatorCall : Name.Name -> Value ta (Type ()) -> Value ta (Type ()) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
 mapForOperatorCall optname left right mapValue ctx =
@@ -205,8 +286,9 @@ generateForListSum collection ctx mapValue =
                             asCall =  Scala.Apply (Scala.Select projectedExpr "as") [Scala.ArgValue Nothing resultName]
                             newSelect = Scala.Apply col [Scala.ArgValue argName asCall]
                             sumCall = Constants.applySnowparkFunc "sum" [Constants.applySnowparkFunc "col" [resultName]]
+                            selectResult = Scala.Apply (Scala.Select newSelect "select") [Scala.ArgValue Nothing sumCall]
                         in
-                            Scala.Apply (Scala.Select newSelect "select") [Scala.ArgValue Nothing sumCall]
+                            (Scala.Apply (Scala.Select (Scala.Select (Scala.Select selectResult "first") "get") "getDouble") [Scala.ArgValue Nothing (Scala.Literal (Scala.IntegerLit 0))])
                     _ ->
                         Scala.Literal (Scala.StringLit "Unsupported sum scenario")
             else 
@@ -257,17 +339,17 @@ generateForListFilterMap predicate sourceRelation ctx mapValue =
                   filterCall = 
                        Scala.Apply (Scala.Select selectCall "filter") [Scala.ArgValue Nothing isNotNullCall]
               in
-              Maybe.withDefault filterCall (generateProjectionForJsonColumnIfRequired  tpe ctx filterCall)
+              Maybe.withDefault filterCall (generateProjectionForJsonColumnIfRequired  tpe ctx filterCall "result")
            _ ->
               Scala.Literal (Scala.StringLit "Unsupported filterMap scenario")
      else 
         Scala.Literal (Scala.StringLit "Unsupported filterMap scenario")
 
-generateProjectionForJsonColumnIfRequired : Type () -> ValueMappingContext -> Scala.Value -> Maybe Scala.Value 
-generateProjectionForJsonColumnIfRequired tpe ctx selectExpr =
+generateProjectionForJsonColumnIfRequired : Type () -> ValueMappingContext -> Scala.Value -> String -> Maybe Scala.Value 
+generateProjectionForJsonColumnIfRequired tpe ctx selectExpr resultColumnName =
     let
        resultColumn = 
-            Constants.applySnowparkFunc "col" [Scala.Literal (Scala.StringLit "result")]
+            Constants.applySnowparkFunc "col" [Scala.Literal (Scala.StringLit resultColumnName)]
        generateFieldAccess : Int -> Scala.Value
        generateFieldAccess idx = 
             Scala.Literal (Scala.StringLit (getCustomTypeParameterFieldAccess idx))
@@ -276,16 +358,16 @@ generateProjectionForJsonColumnIfRequired tpe ctx selectExpr =
                         [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit (Name.toCamelCase name )))]
        resultFieldAccess idx = 
             Scala.Apply resultColumn [Scala.ArgValue Nothing <| generateFieldAccess idx] 
-       generateJsonUpackingProjection : List Name.Name -> Scala.Value
+       generateJsonUpackingProjection : List (Name.Name, Type ()) -> Scala.Value
        generateJsonUpackingProjection names =
             Scala.Apply 
                     (Scala.Select selectExpr "select") 
                     (names 
-                       |> List.indexedMap (\i name -> Scala.ArgValue Nothing <| generateAsCall (resultFieldAccess i) name))
+                       |> List.indexedMap (\i (name, fType) -> Scala.ArgValue Nothing <| (generateAsCall (generateCastIfPossible ctx fType (resultFieldAccess i)) name)))
     in
     case tpe of
         TypeIR.Function _ _ (TypeIR.Reference _ _ [itemsType]) -> 
-            (getFieldsNamesIfRecordType itemsType ctx.typesContextInfo) 
+            (getFieldInfoIfRecordType itemsType ctx.typesContextInfo) 
                 |> Maybe.map generateJsonUpackingProjection
         _ -> Nothing        
 
@@ -307,7 +389,7 @@ processLambdaWithRecordBody functionExpr ctx mapValue =
              if isAnonymousRecordWithSimpleTypes returnType ctx.typesContextInfo
                 || isTypeRefToRecordWithSimpleTypes returnType ctx.typesContextInfo  then
                Just (fields  
-                        |> Dict.toList
+                        |> getFieldsInCorrectOrder returnType ctx
                         |> List.map (\(fieldName, value) -> (Name.toCamelCase fieldName, (mapValue value ctx)))
                         |> List.map (\(fieldName, value) ->  Scala.Apply (Scala.Select value  "as") [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit fieldName))])
                         |> List.map (Scala.ArgValue Nothing))
@@ -322,3 +404,14 @@ processLambdaWithRecordBody functionExpr ctx mapValue =
             Just [Scala.ArgValue Nothing (mapValue functionExpr ctx)]
         _ ->
             Nothing
+
+getFieldsInCorrectOrder : Type () -> ValueMappingContext -> Dict Name.Name (Value ta (Type ())) ->  List (Name.Name, (Value ta (Type ())))
+getFieldsInCorrectOrder originalType ctx fields =
+    case originalType of
+        TypeIR.Reference _ _ [] ->
+            (getFieldInfoIfRecordType originalType ctx.typesContextInfo)
+                |> Maybe.map (\lst -> collectMaybeList (\(name, _) -> Dict.get name fields |> Maybe.map (\fieldvalue -> (name, fieldvalue))) lst)
+                |> Maybe.withDefault Nothing
+                |> Maybe.withDefault (Dict.toList fields)
+        _ ->
+            Dict.toList fields

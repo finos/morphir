@@ -5,7 +5,7 @@ import Morphir.IR.Type as TypeIR
 import Morphir.IR.Value as ValueIR
 import Morphir.Scala.AST as Scala
 import Morphir.Snowpark.Constants as Constants
-import Morphir.Snowpark.MappingContext exposing (ValueMappingContext, getFieldsNamesIfRecordType)
+import Morphir.Snowpark.MappingContext exposing (ValueMappingContext, getFieldInfoIfRecordType)
 import Morphir.Snowpark.Operatorsmaps as Operatorsmaps
 
 
@@ -59,11 +59,12 @@ getFieldsFromType tpe ctx =
         TypeIR.Function _ _ ftpe ->
             getFieldsFromType ftpe ctx
         _ ->
-            getFieldsNamesIfRecordType tpe ctx.typesContextInfo
+            (getFieldInfoIfRecordType tpe ctx.typesContextInfo 
+                |> Maybe.map (List.map Tuple.first))
 
 aliasMap : Maybe (List (Name.Name)) -> List Scala.Value
 aliasMap fields =
-    case fields of
+    case fields of    
         Just list ->
             list |>
                 List.map convertNameToApply

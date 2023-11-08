@@ -9,13 +9,16 @@ import Morphir.IR.Type as Type
 import Morphir.IR.Package as Package
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.FQName as FQName
-import Morphir.Snowpark.MappingContext exposing (MappingContextInfo, isRecordWithSimpleTypes)
 import Morphir.IR.Type exposing (Field)
 import Morphir.IR.Name as Name
-import Morphir.Snowpark.Constants exposing (applySnowparkFunc)
-import Morphir.Snowpark.Constants exposing (typeRefForSnowparkType)
-import Morphir.Snowpark.MappingContext exposing (isUnionTypeWithoutParams)
-
+import Morphir.Snowpark.Constants exposing (applySnowparkFunc, typeRefForSnowparkType)
+import Morphir.Snowpark.MappingContext as MappingContext exposing (
+         GlobalDefinitionInformation
+         , MappingContextInfo
+         , isUnionTypeWithoutParams
+         , isRecordWithSimpleTypes
+         , isRecordWithComplexTypes )
+import Morphir.Snowpark.TypeRefMapping exposing (mapTypeReference)
 
 {-| This module contains to create wrappers for record declarations that represent tables.
 
@@ -24,23 +27,28 @@ For each record a Trait and an Object is generated with `Column` fields for each
 For union types without parameters we are going to generate an object definition with accessors for each option.
 |-}
 
-generateRecordWrappers : Package.PackageName -> ModuleName -> MappingContextInfo () -> Dict Name (AccessControlled (Documented (Type.Definition ta))) -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
-generateRecordWrappers packageName moduleName ctx typesInModule = 
+generateRecordWrappers : Package.PackageName -> ModuleName -> GlobalDefinitionInformation () -> Dict Name (AccessControlled (Documented (Type.Definition ()))) -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
+generateRecordWrappers packageName moduleName (ctx, _) typesInModule = 
     typesInModule
        |> Dict.toList
        |> List.concatMap (processTypeDeclaration packageName moduleName ctx)
        
 
-processTypeDeclaration : Package.PackageName -> ModuleName -> MappingContextInfo () -> (Name, (AccessControlled (Documented (Type.Definition ta)))) -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
+processTypeDeclaration : Package.PackageName -> ModuleName -> MappingContextInfo () -> (Name, (AccessControlled (Documented (Type.Definition ())))) -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
 processTypeDeclaration packageName moduleName ctx (name, typeDeclAc) =
     -- For the moment we are going generating wrappers for record types
     case typeDeclAc.value.value of
         Type.TypeAliasDefinition _ (Type.Record _ members) -> 
+            let 
+                fullTypeName = FQName.fQName packageName moduleName name
+            in
             processRecordDeclaration 
                      name 
                      typeDeclAc.value.doc
                      members
-                     (isRecordWithSimpleTypes (FQName.fQName packageName moduleName name) ctx)
+                     (isRecordWithSimpleTypes fullTypeName ctx)
+                     (isRecordWithComplexTypes fullTypeName ctx)
+                     ctx
         Type.CustomTypeDefinition _ constructorsAccess ->
             processUnionTypeDeclaration 
                      name 
@@ -59,14 +67,16 @@ processUnionTypeDeclaration name constructors noParams =
         []
 
 
-processRecordDeclaration : Name -> String -> (List (Field a)) ->  Bool -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
-processRecordDeclaration name doc fields recordWithSimpleTypes =
+processRecordDeclaration : Name -> String -> (List (Field ())) ->  Bool -> Bool -> MappingContextInfo () -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
+processRecordDeclaration name doc fields recordWithSimpleTypes recordWithComplexTypes ctx =
    if recordWithSimpleTypes then
     [ traitForRecordWrapper name doc fields
     , objectForRecordWrapper name fields
     , classForRecordWrapper name fields] 
-   else
-    []
+   else if recordWithComplexTypes then
+            [ caseClassForComplexRecord name doc fields ctx ]
+        else
+            []
 
 traitForRecordWrapper : Name -> String -> (List (Field a)) -> (Scala.Documented (Scala.Annotated Scala.TypeDecl))
 traitForRecordWrapper name doc fields = 
@@ -103,6 +113,42 @@ generateTraitMember field =
                 , returnType = Just (typeRefForSnowparkType "Column") 
                 , body = Nothing
                 }))
+processComplexRecordField : MappingContextInfo () -> Field () -> Scala.ArgDecl
+processComplexRecordField ctx field =
+        { modifiers = []
+        , tpe = mapTypeReference field.tpe MappingContext.Unknown ctx
+        , name = Name.toCamelCase field.name 
+        , defaultValue = Nothing
+        }
+
+caseClassForComplexRecord : Name -> String -> (List (Field ())) ->  MappingContextInfo () -> (Scala.Documented (Scala.Annotated Scala.TypeDecl))
+caseClassForComplexRecord name doc fields ctx =
+  let 
+     nameToUse = (name |> toTitleCase)
+     
+     ctorArgs =
+        fields |> List.map (processComplexRecordField ctx)
+  in 
+  ( Scala.Documented Nothing
+        (Scala.Annotated []
+            (Scala.Class
+                { modifiers = 
+                    [ Scala.Case ]
+                , name =
+                    nameToUse
+                , typeArgs = 
+                    []
+                , ctorArgs = 
+                    [ ctorArgs ]
+                , members = 
+                    []
+                , extends =
+                    []
+                , body = 
+                    []
+                }
+            )
+        ))    
 
 
 classForRecordWrapper : Name -> (List (Field a)) -> (Scala.Documented (Scala.Annotated Scala.TypeDecl))

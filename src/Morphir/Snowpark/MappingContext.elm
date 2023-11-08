@@ -9,6 +9,8 @@ module Morphir.Snowpark.MappingContext exposing
       , isUnionTypeRefWithoutParams
       , isBasicType
       , MappingContextInfo
+      , GlobalDefinitionInformation
+      , FunctionClassification(..)
       , emptyContext
       , isCandidateForDataFrame
       , ValueMappingContext
@@ -18,11 +20,16 @@ module Morphir.Snowpark.MappingContext exposing
       , isDataFrameFriendlyType
       , isLocalFunctionName
       , isTypeRefToRecordWithSimpleTypes
+      , isTypeRefToRecordWithComplexTypes
       , isAliasedBasicType
       , getLocalVariableIfDataFrameReference
-      , getFieldsNamesIfRecordType
-      , addReplacementforIdentifier
-      , isListOfDataFrameFriendlyType )
+      , getFieldInfoIfRecordType
+      , addReplacementForIdentifier
+      , isFunctionReturningDataFrameExpressions
+      , isListOfDataFrameFriendlyType
+      , getFunctionClassification
+      , typeRefIsListOf
+      , resolveTypeAlias )
 
 {-| This module contains functions to collect information about type definitions in a distribution.
 It classifies type definitions in the following kinds:
@@ -44,16 +51,32 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Path as Path
+import Morphir.IR.Value as Value
+import Morphir.Snowpark.Utils exposing (tryAlternatives)
 
 type TypeDefinitionClassification a =
-   RecordWithSimpleTypes (List Name)
+   RecordWithSimpleTypes (List (Name, Type a))
    | RecordWithComplexTypes
    | UnionTypeWithoutParams 
    | UnionTypeWithParams
    | TypeAlias (Type a)
 
+type FunctionClassification =
+    FromDataFramesToValues
+    | FromDataFramesToDataFrames
+    | FromDfValuesToDfValues
+    | FromComplexValuesToDataFrames
+    | FromComplexToValues
+    | Unknown
+
+type alias FunctionClassificationInformation =
+    Dict FQName FunctionClassification
+
 type alias MappingContextInfo a = 
     Dict FQName (TypeClassificationState a)
+
+type alias GlobalDefinitionInformation a =
+    (MappingContextInfo a, FunctionClassificationInformation)
 
 type alias ValueMappingContext = 
    { parameters: List Name
@@ -61,6 +84,7 @@ type alias ValueMappingContext =
    , inlinedIds: Dict Name Scala.Value
    , packagePath: Path.Path
    , dataFrameColumnsObjects: Dict FQName String
+   , functionClassification: FunctionClassificationInformation
    }
 
 emptyValueMappingContext : ValueMappingContext
@@ -69,14 +93,23 @@ emptyValueMappingContext = { parameters = []
                            , typesContextInfo = emptyContext
                            , packagePath = Path.fromString "default" 
                            , dataFrameColumnsObjects = Dict.empty
+                           , functionClassification = Dict.empty
                            }
+
+isFunctionReturningDataFrameExpressions : FQName -> ValueMappingContext -> Bool
+isFunctionReturningDataFrameExpressions name ctx =
+   Dict.get name ctx.functionClassification
+      |> Maybe.map (\value ->  case value of
+                                  FromDfValuesToDfValues -> True
+                                  _ -> False)
+      |> Maybe.withDefault False
 
 getReplacementForIdentifier : Name -> ValueMappingContext -> Maybe Scala.Value
 getReplacementForIdentifier name ctx =
    Dict.get name ctx.inlinedIds
 
-addReplacementforIdentifier : Name -> Scala.Value -> ValueMappingContext -> ValueMappingContext
-addReplacementforIdentifier name value ctx =
+addReplacementForIdentifier : Name -> Scala.Value -> ValueMappingContext -> ValueMappingContext
+addReplacementForIdentifier name value ctx =
    let
       newReplacedIds = Dict.insert name value ctx.inlinedIds
    in
@@ -98,6 +131,11 @@ isRecordWithSimpleTypes name ctx =
 isTypeRefToRecordWithSimpleTypes : Type a ->  MappingContextInfo a -> Bool
 isTypeRefToRecordWithSimpleTypes tpe ctx =
    typeRefNamePredicate tpe isRecordWithSimpleTypes ctx
+
+isTypeRefToRecordWithComplexTypes : Type a ->  MappingContextInfo a -> Bool
+isTypeRefToRecordWithComplexTypes tpe ctx =
+   typeRefNamePredicate tpe isRecordWithComplexTypes ctx
+
 
 isRecordWithComplexTypes : FQName -> MappingContextInfo a -> Bool
 isRecordWithComplexTypes name ctx = 
@@ -136,6 +174,14 @@ isTypeAlias name ctx =
        Just (TypeClassified (TypeAlias _)) -> True
        _ -> False
      
+resolveTypeAlias : FQName -> MappingContextInfo a -> Maybe (Type a)
+resolveTypeAlias name ctx = 
+   case Dict.get name ctx of
+       Just (TypeClassified (TypeAlias t)) -> 
+         Just t
+       _ -> 
+         Nothing
+
 isCandidateForDataFrame : (Type ()) -> MappingContextInfo () -> Bool
 isCandidateForDataFrame typeRef ctx =
    case typeRef of
@@ -265,13 +311,25 @@ isAliasOfDataFrameFriendlyType tpe ctx =
            |> Maybe.withDefault False)
       _ -> False
 
-isMaybeOfDataFrameFriendlyType : Type a -> MappingContextInfo a -> Bool
-isMaybeOfDataFrameFriendlyType tpe ctx =
+typeRefIsMaybeOf : Type a  -> (Type a  -> Bool) -> Bool
+typeRefIsMaybeOf tpe predicate =
    case tpe of
       Type.Reference _ ([["morphir"],["s","d","k"]],[["maybe"]],["maybe"]) [typeArg] ->
-         isDataFrameFriendlyType typeArg ctx
+         predicate typeArg
       _ -> 
          False
+
+typeRefIsListOf : Type a  -> (Type a  -> Bool) -> Bool
+typeRefIsListOf tpe predicate =
+   case tpe of
+      Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] )  [typeArg] ->
+         predicate typeArg
+      _ -> 
+         False
+
+isMaybeOfDataFrameFriendlyType : Type a -> MappingContextInfo a -> Bool
+isMaybeOfDataFrameFriendlyType tpe ctx =
+   typeRefIsMaybeOf tpe (\innerTpe -> isDataFrameFriendlyType innerTpe ctx)
 
 isDataFrameFriendlyType : Type a -> MappingContextInfo a -> Bool
 isDataFrameFriendlyType tpe ctx =
@@ -281,17 +339,22 @@ isDataFrameFriendlyType tpe ctx =
       || (isMaybeOfDataFrameFriendlyType tpe ctx)
 
 
-getFieldsNamesIfRecordType : Type a -> MappingContextInfo a -> Maybe (List Name)
-getFieldsNamesIfRecordType tpe ctx =
+getFieldInfoIfRecordType : Type a -> MappingContextInfo a -> Maybe (List (Name, Type a))
+getFieldInfoIfRecordType tpe ctx =
    case tpe of
       Reference _ typeName _ ->
          case Dict.get typeName ctx of
-             Just (TypeClassified (RecordWithSimpleTypes fieldNames)) -> 
-               Just fieldNames
+             Just (TypeClassified (RecordWithSimpleTypes fieldInfo)) -> 
+               Just fieldInfo
              _ ->
                Nothing
       _ -> 
          Nothing
+
+getFunctionClassification : FQName -> FunctionClassificationInformation -> FunctionClassification
+getFunctionClassification fullName functionsInfo =
+   Dict.get fullName functionsInfo
+      |> Maybe.withDefault Unknown
 
 
 classifyActualType : Type a -> MappingContextInfo a -> TypeClassificationState a
@@ -299,7 +362,7 @@ classifyActualType  tpe ctx =
    case tpe of
        Record _ members ->
             if List.all (\t -> isDataFrameFriendlyType t.tpe ctx) members then
-               TypeClassified (RecordWithSimpleTypes (members |> List.map .name))
+               TypeClassified (RecordWithSimpleTypes (members |> List.map (\field -> (field.name, field.tpe))))
             else 
                TypeWithPendingClassification (Just tpe)
        Reference _ _  _ ->
@@ -311,6 +374,57 @@ classifyActualType  tpe ctx =
 
 simpleName packagePath modName name = 
   FQName.fQName packagePath modName name
+
+processFunctionDefinition : (Value.Definition () (Type ())) -> MappingContextInfo () -> FunctionClassification
+processFunctionDefinition definition ctx  = 
+   let 
+      inputTypes =  definition.inputTypes |> List.map (\(_, _, third) -> third)
+   in
+   tryAlternatives
+      [ (\_ -> 
+            if List.all (\tpe -> isDataFrameFriendlyType tpe ctx) inputTypes && 
+                isDataFrameFriendlyType definition.outputType ctx  then
+               Just FromDfValuesToDfValues
+            else Nothing)
+      , (\_ -> 
+            if List.all (\tpe -> (isDataFrameFriendlyType tpe ctx) ||
+                                 (isTypeRefToRecordWithSimpleTypes tpe ctx) ||
+                                 (typeRefIsMaybeOf tpe (\t -> isTypeRefToRecordWithSimpleTypes t ctx)))
+                        inputTypes && 
+               ((isDataFrameFriendlyType definition.outputType ctx) ||
+                  (typeRefIsMaybeOf definition.outputType (\t -> isTypeRefToRecordWithSimpleTypes t ctx)))
+                 then
+               Just FromDfValuesToDfValues
+            else Nothing)
+      , (\_ -> 
+            if List.all (\tpe -> (isDataFrameFriendlyType tpe ctx) || (isTypeRefToRecordWithSimpleTypes tpe ctx))
+                        inputTypes && 
+               ((typeRefIsListOf definition.outputType (\t -> isTypeRefToRecordWithSimpleTypes t ctx))) then
+               Just FromDfValuesToDfValues
+            else Nothing)
+      , (\_ -> 
+            if List.any (\tpe -> isCandidateForDataFrame tpe ctx) inputTypes && 
+               (not (List.any (\tpe -> isTypeRefToRecordWithComplexTypes tpe ctx) inputTypes)) &&
+                isDataFrameFriendlyType definition.outputType ctx  then
+               Just FromDataFramesToValues
+            else Nothing)
+      , (\_ -> 
+            if List.any (\tpe -> isCandidateForDataFrame tpe ctx) inputTypes && 
+               (not (List.any (\tpe -> isTypeRefToRecordWithComplexTypes tpe ctx) inputTypes)) &&
+                isCandidateForDataFrame definition.outputType ctx  then
+               Just FromDataFramesToDataFrames
+            else Nothing)
+      , (\_ -> 
+            if List.any (\tpe -> isTypeRefToRecordWithComplexTypes tpe ctx) inputTypes && 
+                isCandidateForDataFrame definition.outputType ctx  then
+               Just FromComplexValuesToDataFrames
+            else Nothing)
+      , (\_ -> 
+            if List.any (\tpe -> isTypeRefToRecordWithComplexTypes tpe ctx) inputTypes then
+               Just FromComplexToValues
+            else Nothing)
+      ]
+      |> Maybe.withDefault Unknown
 
 processModuleDefinition : Package.PackageName -> ModuleName -> MappingContextInfo () -> AccessControlled (Module.Definition () (Type ())) -> MappingContextInfo ()
 processModuleDefinition packagePath modulePath currentResult moduleDefinition =
@@ -336,14 +450,32 @@ processSecondPassOnType name typeClassification ctx =
                _ -> ctx
        _ -> ctx
 
-processDistributionModules : Package.PackageName -> Package.Definition () (Type ()) -> MappingContextInfo ()
+processDistributionModules : Package.PackageName -> Package.Definition () (Type ()) -> GlobalDefinitionInformation ()
 processDistributionModules packagePath package =
    let 
-      firstPass = package.modules 
-                  |> Dict.toList
-                  |> (List.foldr 
-                        (\(modName, modDef) curretnResult -> processModuleDefinition packagePath modName curretnResult modDef)
-                        Dict.empty)
-      secondPass = firstPass
-                   |> Dict.foldr (\key value result -> processSecondPassOnType key value result) firstPass
-      in secondPass
+      moduleList = 
+            package.modules 
+               |> Dict.toList
+      firstPass = 
+               moduleList
+               |> (List.foldr 
+                     (\(modName, modDef) curretnResult -> processModuleDefinition packagePath modName curretnResult modDef)
+                     Dict.empty)
+      secondPass = 
+            firstPass
+               |> Dict.foldr (\key value result -> processSecondPassOnType key value result) firstPass
+      functionsClassifed =
+            moduleList
+               |> List.concatMap (\(modName, modDef) -> 
+                                       modDef.value.values 
+                                       |> Dict.toList
+                                       |> List.map (\(valueName, value) -> (modName, valueName, value.value.value)))
+               |> List.filter (\(modName, valueName, value) -> 0 < List.length value.inputTypes)
+               |> List.foldl (\(modName, valueName, value) current ->
+                                   let 
+                                       fullFunctionName =  (FQName.fQName packagePath modName valueName)
+                                       classfication = processFunctionDefinition value secondPass
+                                    in
+                                    Dict.insert fullFunctionName classfication current)
+                             Dict.empty
+      in (secondPass, functionsClassifed)

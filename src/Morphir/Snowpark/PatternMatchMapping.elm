@@ -5,23 +5,24 @@ module Morphir.Snowpark.PatternMatchMapping exposing (..)
 -}
 
 import Dict exposing (Dict)
-import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value exposing (Value, Pattern(..))
-import Morphir.Snowpark.MappingContext exposing (ValueMappingContext, addReplacementforIdentifier)
 import Morphir.Scala.AST as Scala
 import Morphir.IR.Literal exposing (Literal)
-import Morphir.Snowpark.Constants exposing (applySnowparkFunc)
-import Morphir.Snowpark.ReferenceUtils exposing (mapLiteral
-           , scalaReferenceToUnionTypeCase)
 import Morphir.IR.Value as Value
-import Morphir.Snowpark.MappingContext exposing (isUnionTypeRefWithoutParams
-          , isUnionTypeRefWithParams )
-import Morphir.IR.Type as Type
+import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Name as Name
 import Morphir.IR.FQName as FQName
-import Morphir.Snowpark.MappingContext exposing (isUnionTypeWithParams)
-import Morphir.Snowpark.Utils exposing (tryAlternatives)
-import Morphir.Snowpark.ReferenceUtils exposing (getCustomTypeParameterFieldAccess)
+import Morphir.Snowpark.Constants exposing (applySnowparkFunc)
+import Morphir.Snowpark.MappingContext exposing (
+          ValueMappingContext
+          , addReplacementForIdentifier
+          , isUnionTypeRefWithoutParams
+          , isUnionTypeRefWithParams )
+import Morphir.Snowpark.Utils exposing (tryAlternatives, collectMaybeList)
+import Morphir.Snowpark.ReferenceUtils exposing (mapLiteral
+           , scalaReferenceToUnionTypeCase
+           , getCustomTypeParameterFieldAccess)
+
 
 type alias PatternMatchValues ta = (Type (), Value ta (Type ()), List ( Pattern (Type ()), Value ta (Type ()) ))
 
@@ -164,21 +165,6 @@ type PatternMatchScenario ta
     | TupleCases (List (List TuplePatternResult, Value ta (Type ()))) (Maybe (Value ta (Type ())))
     | Unsupported
 
-collectMaybeList : (a -> Maybe b) -> List a -> Maybe (List b)
-collectMaybeList action aList =
-    collectMaybeListAux action aList []
-
-collectMaybeListAux : (a -> Maybe b) -> List a -> List b -> Maybe (List b)
-collectMaybeListAux action aList current =
-    case aList of
-        first::rest ->
-            (action first)
-                 |> Maybe.map (\newFirst -> collectMaybeListAux action rest (newFirst::current)) 
-                 |> Maybe.withDefault Nothing
-        [] ->
-            Just (List.reverse current)
-
-
 checkForLiteralCase : ( Pattern (Type ()), Value ta (Type ()) ) -> Maybe (Literal, Value ta (Type ()))
 checkForLiteralCase (pattern, caseValue) = 
    case pattern of
@@ -293,10 +279,10 @@ checkTuplePatternItemPattern  pattern =
     case pattern of 
         AsPattern _ (WildcardPattern _) name ->
             Just <| TuplePatternResult { conditionGenerator = (\_ -> Scala.Literal (Scala.BooleanLit True))
-                                       , contextManipulation = addReplacementforIdentifier name, tmp = name }
+                                       , contextManipulation = addReplacementForIdentifier name, tmp = name }
         Value.ConstructorPattern _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] ) [ AsPattern _ (WildcardPattern _) justName ] ->
             Just <|  TuplePatternResult { conditionGenerator = \refr -> Scala.Select refr "is_not_null"
-                                        , contextManipulation =  addReplacementforIdentifier justName, tmp = justName }
+                                        , contextManipulation =  addReplacementForIdentifier justName, tmp = justName }
         _ -> 
            Nothing
 
