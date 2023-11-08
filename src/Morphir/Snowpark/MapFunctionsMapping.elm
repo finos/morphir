@@ -25,6 +25,7 @@ import Morphir.Snowpark.MappingContext exposing (
             , addReplacementForIdentifier
             , isFunctionReturningDataFrameExpressions)
 import Morphir.Snowpark.Utils exposing (collectMaybeList)
+import Morphir.Snowpark.MappingContext exposing (isRecordWithSimpleTypes)
 
 mapFunctionsMapping : ValueIR.Value ta (TypeIR.Type ()) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
 mapFunctionsMapping value mapValue ctx =
@@ -148,7 +149,7 @@ generateForConcatMap action sourceRelation ctx mapValue =
                                     (Scala.Select (mapValue sourceRelation ctx) "select") [Scala.ArgValue Nothing selectArg])
                                 "flatten")
                             [Scala.ArgValue Nothing (applySnowparkFunc "col" [ Scala.Literal (Scala.StringLit "result") ])])
-                    finalProjection = generateProjectionForJsonColumnIfRequired lambdaFunctionType ctx flattenedDataFrame "value"
+                    finalProjection = generateProjectionForArrayColumnIfRequired lambdaFunctionType ctx flattenedDataFrame "value"
                 in
                 Maybe.withDefault flattenedDataFrame finalProjection
             else
@@ -235,19 +236,27 @@ tryToConvertUserFunctionCall (func, args) mapValue ctx =
             else
                 Scala.Literal (Scala.StringLit "Call not converted")
        ValueIR.Constructor _ constructorName ->
-            if isLocalFunctionName constructorName ctx && List.length args > 0 then
-                let
-                    argsToUse =
-                         args 
-                              |> List.indexedMap (\i arg -> (getCustomTypeParameterFieldAccess i, mapValue arg ctx))
-                              |> List.concatMap (\(field, value) -> [Constants.applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit field)], value])
-                    tag = [ Constants.applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit "__tag")],
-                            Constants.applySnowparkFunc "lit" [ Scala.Literal (Scala.StringLit <| ( constructorName |> FQName.getLocalName |> Name.toTitleCase))]]
-                in Constants.applySnowparkFunc "object_construct" (tag ++ argsToUse)
-            else
-                Scala.Literal (Scala.StringLit "Constructor call not converted")
+            if isRecordWithSimpleTypes constructorName ctx.typesContextInfo then
+                let 
+                    argsToUse = 
+                        args |> List.map (\ arg -> mapValue arg ctx)
+                in
+                Constants.applySnowparkFunc "array_construct" argsToUse
+            else 
+                if isLocalFunctionName constructorName ctx && List.length args > 0 then
+                    let
+                        argsToUse =
+                            args 
+                                |> List.indexedMap (\i arg -> (getCustomTypeParameterFieldAccess i, mapValue arg ctx))
+                                |> List.concatMap (\(field, value) -> [Constants.applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit field)], value])
+                        tag = [ Constants.applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit "__tag")],
+                                Constants.applySnowparkFunc "lit" [ Scala.Literal (Scala.StringLit <| ( constructorName |> FQName.getLocalName |> Name.toTitleCase))]]
+                    in Constants.applySnowparkFunc "object_construct" (tag ++ argsToUse)
+                else
+                    Scala.Literal (Scala.StringLit "Constructor call not converted")
        _ -> 
             Scala.Literal (Scala.StringLit "Call not converted")
+
 
 whenConditionElseValueCall : Scala.Value -> Scala.Value -> Scala.Value -> Scala.Value
 whenConditionElseValueCall condition thenExpr elseExpr =
@@ -339,11 +348,38 @@ generateForListFilterMap predicate sourceRelation ctx mapValue =
                   filterCall = 
                        Scala.Apply (Scala.Select selectCall "filter") [Scala.ArgValue Nothing isNotNullCall]
               in
-              Maybe.withDefault filterCall (generateProjectionForJsonColumnIfRequired  tpe ctx filterCall "result")
+              Maybe.withDefault filterCall (generateProjectionForArrayColumnIfRequired  tpe ctx filterCall "result")
            _ ->
               Scala.Literal (Scala.StringLit "Unsupported filterMap scenario")
      else 
         Scala.Literal (Scala.StringLit "Unsupported filterMap scenario")
+
+
+generateProjectionForArrayColumnIfRequired : Type () -> ValueMappingContext -> Scala.Value -> String -> Maybe Scala.Value 
+generateProjectionForArrayColumnIfRequired tpe ctx selectExpr resultColumnName =
+    let
+       resultColumn = 
+            Constants.applySnowparkFunc "col" [Scala.Literal (Scala.StringLit resultColumnName)]
+       generateFieldAccess : Int -> Scala.Value
+       generateFieldAccess idx = 
+            Scala.Literal (Scala.IntegerLit idx)
+       generateAsCall expr name =
+            Scala.Apply (Scala.Select expr "as") 
+                        [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit (Name.toCamelCase name )))]
+       resultFieldAccess idx = 
+            Scala.Apply resultColumn [Scala.ArgValue Nothing <| generateFieldAccess idx] 
+       generateArrayUnpackingProjection : List (Name.Name, Type ()) -> Scala.Value
+       generateArrayUnpackingProjection names =
+            Scala.Apply 
+                    (Scala.Select selectExpr "select") 
+                    (names 
+                       |> List.indexedMap (\i (name, fType) -> Scala.ArgValue Nothing <| (generateAsCall (generateCastIfPossible ctx fType (resultFieldAccess i)) name)))
+    in
+    case tpe of
+        TypeIR.Function _ _ (TypeIR.Reference _ _ [itemsType]) -> 
+            (getFieldInfoIfRecordType itemsType ctx.typesContextInfo) 
+                |> Maybe.map generateArrayUnpackingProjection
+        _ -> Nothing  
 
 generateProjectionForJsonColumnIfRequired : Type () -> ValueMappingContext -> Scala.Value -> String -> Maybe Scala.Value 
 generateProjectionForJsonColumnIfRequired tpe ctx selectExpr resultColumnName =
