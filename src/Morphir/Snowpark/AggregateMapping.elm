@@ -27,10 +27,10 @@ processAggregateLambdaBody body mapValue ctx =
             [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "To Do - Processing Other"))]
 
 concatFunctions : Constants.VariableInformation -> List Scala.ArgValue
-concatFunctions (aliasList, functions) = 
+concatFunctions (aliasList, functions) =
     functions 
         |> List.map processList
-            |> List.map2 joinWithAlias aliasList
+            |> List.map2 joinWithAlias (List.tail aliasList |> Maybe.withDefault [])
 
 processList : (String, Scala.Value) -> Scala.Value
 processList (funcName, columnName) =
