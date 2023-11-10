@@ -254,6 +254,21 @@ tryToConvertUserFunctionCall (func, args) mapValue ctx =
                     in Constants.applySnowparkFunc "object_construct" (tag ++ argsToUse)
                 else
                     Scala.Literal (Scala.StringLit "Constructor call not converted")
+       ValueIR.Variable _ funcName ->
+            if List.member funcName ctx.parameters then
+                let
+                    argsToUse =
+                        args 
+                            |> List.map (\arg -> mapValue arg ctx)
+                            |> List.map (Scala.ArgValue Nothing)
+                in
+                case argsToUse of
+                    [] -> 
+                        Scala.Variable (Name.toCamelCase funcName)
+                    (first::rest) -> 
+                        List.foldl (\a c -> Scala.Apply c [a]) (Scala.Apply (Scala.Variable (Name.toCamelCase funcName)) [first]) rest               
+            else
+                Scala.Literal (Scala.StringLit "Call not converted")
        _ -> 
             Scala.Literal (Scala.StringLit "Call not converted")
 

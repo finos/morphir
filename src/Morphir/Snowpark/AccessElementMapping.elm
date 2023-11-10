@@ -28,7 +28,8 @@ import Morphir.Snowpark.MappingContext exposing (isAnonymousRecordWithSimpleType
 import Morphir.Snowpark.Constants exposing (applySnowparkFunc)
 import Morphir.Snowpark.MappingContext exposing (isUnionTypeWithParams)
 import Morphir.IR.Value as Value
-import String exposing (replace)
+import Morphir.Snowpark.Constants exposing (MapValueType)
+import Morphir.IR.Type as Type
 
 
 checkForDataFrameVariableReference : Value ta (IrType.Type ()) -> ValueMappingContext -> Maybe String
@@ -39,9 +40,9 @@ checkForDataFrameVariableReference value ctx =
         _ -> 
             Nothing
 
-mapFieldAccess : va -> (Value ta (IrType.Type ())) -> Name.Name -> ValueMappingContext -> Scala.Value
-mapFieldAccess _ value name ctx =
-   (let
+mapFieldAccess : va -> (Value ta (IrType.Type ())) -> Name.Name -> ValueMappingContext -> MapValueType ta -> Scala.Value
+mapFieldAccess _ value name ctx mapValue =
+   let
        simpleFieldName = name |> Name.toCamelCase
        valueIsFunctionParameter =
             case value of
@@ -70,7 +71,7 @@ mapFieldAccess _ value name ctx =
             (if isAnonymousRecordWithSimpleTypes (value |> Value.valueAttribute) ctx.typesContextInfo then
                 applySnowparkFunc "col" [Scala.Literal (Scala.StringLit (Name.toCamelCase name)) ]
              else 
-                Scala.Literal (Scala.StringLit "Field access to not converted")))
+                Scala.Select (mapValue value ctx) (Name.toCamelCase name))
 
 mapVariableAccess : Name.Name ->  (Value ta (IrType.Type ()))  -> ValueMappingContext -> Scala.Value
 mapVariableAccess name nameAccess ctx =
@@ -109,4 +110,11 @@ mapReferenceAccess tpe name ctx =
         in 
         Scala.Ref (nsName ) containerObjectFieldName
    else
-        (Scala.Literal (Scala.StringLit "Reference access not converted"))
+        case tpe of
+            Type.Function _ _ _  ->
+                if MappingContext.isLocalFunctionName name ctx then
+                    Scala.Ref (scalaPathToModule name) (name |> FQName.getLocalName  |> Name.toCamelCase)
+                else 
+                    Scala.Literal (Scala.StringLit "Reference access to function not converted")
+            _ ->
+                Scala.Literal (Scala.StringLit "Reference access not converted")

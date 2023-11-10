@@ -24,6 +24,7 @@ import Morphir.Snowpark.ReferenceUtils exposing (scalaPathToModule)
 import Morphir.Snowpark.MappingContext exposing (isTypeAlias)
 import Morphir.Snowpark.MappingContext exposing (resolveTypeAlias)
 import Morphir.Snowpark.Constants exposing (applySnowparkFunc)
+import Morphir.Scala.Feature.Codec exposing (typeRef)
 
 
 checkDataFrameCase : Type () -> MappingContextInfo () -> Maybe Scala.Type
@@ -51,6 +52,18 @@ checkDataFrameCaseToArray typeReference ctx =
         Just <| typeRefForSnowparkType "Column"
     else
         Nothing
+
+checkForFunctionTypeCase : Type () -> MappingContextInfo () -> Maybe Scala.Type
+checkForFunctionTypeCase typeReference ctx =
+    case typeReference of
+        Type.Function _ fromType toType ->
+            let
+                convertedFrom = mapTypeReferenceForDataFrameOperations fromType ctx
+                convertedTo =  mapTypeReferenceForDataFrameOperations toType ctx
+            in
+            Just <| Scala.FunctionType convertedFrom convertedTo
+        _ ->
+            Nothing
 
 checkForColumnCase : Type () -> MappingContextInfo () -> Maybe Scala.Type
 checkForColumnCase typeReference ctx =
@@ -107,7 +120,8 @@ mapTypeReferenceForDataFrameOperations typeReference  ctx =
                    , (\_ -> checkForColumnCase typeReference ctx)
                    , (\_ -> checkDefaultCase typeReference ctx)
                    , (\_ -> checkForListOfSimpleTypes typeReference ctx)
-                   , (\_ -> checkComplexRecordCase typeReference ctx) ]
+                   , (\_ -> checkComplexRecordCase typeReference ctx)
+                   , (\_ -> checkForFunctionTypeCase typeReference ctx) ]
     |> Maybe.withDefault (Scala.TypeVar "TypeNotConverted")
 
 generateRecordTypeWrapperExpression : Type () -> ValueMappingContext -> Maybe Scala.Value

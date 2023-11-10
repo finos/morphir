@@ -38,7 +38,13 @@ import Morphir.Snowpark.MappingContext as MappingContext exposing (
             , ValueMappingContext
             , FunctionClassification
             , isCandidateForDataFrame
-            , isTypeRefToRecordWithSimpleTypes )
+            , isFunctionClassificationReturningDataFrameExpressions
+            , isFunctionReturningDataFrameExpressions
+            , isTypeRefToRecordWithSimpleTypes
+            , isTypeRefToRecordWithComplexTypes )
+import Morphir.Snowpark.MappingContext exposing (isRecordWithComplexTypes)
+import Morphir.Snowpark.ReferenceUtils exposing (scalaPathToModule)
+import Morphir.Snowpark.Utils exposing (collectMaybeList)
 
 type alias Options =
     {}
@@ -146,13 +152,14 @@ mapFunctionDefinition functionName body currentPackagePath modulePath (typeConte
        parameterNames = body.value.value.inputTypes |> List.map (\(name, _, _) -> name)
        valueMappingContext = { emptyValueMappingContext | typesContextInfo = typeContextInfo
                                                         , parameters = parameterNames
-                                                        , functionClassification = functionsInfo
+                                                        , functionClassificationInfo = functionsInfo
+                                                        , currentFunctionClassification = functionClassification
                                                         , packagePath = currentPackagePath} 
        localDeclarations = 
             body.value.value.inputTypes                
                 |> List.filterMap (checkForDataFrameColumndsDeclaration typeContextInfo)
        bodyCandidate = mapFunctionBody body.value.value (includeDataFrameInfo localDeclarations valueMappingContext)
-       returnTypeToGenerate = mapFunctionReturnType body.value.value.outputType (getFunctionClassification fullFunctionName functionsInfo) typeContextInfo
+       returnTypeToGenerate = mapFunctionReturnType body.value.value.outputType functionClassification typeContextInfo
     in
     Scala.FunctionDecl
             { modifiers = []
@@ -241,7 +248,7 @@ mapValue value ctx =
         Literal tpe literal ->
             mapLiteral tpe literal
         Field tpe val name ->
-            mapFieldAccess tpe val name ctx
+            mapFieldAccess tpe val name ctx mapValue
         Variable _ name as varAccess ->
             mapVariableAccess name varAccess ctx
         Constructor tpe name ->
@@ -262,13 +269,47 @@ mapValue value ctx =
             Constants.applySnowparkFunc "col" [(Scala.Literal (Scala.StringLit name))]
         Value.Tuple _ tupleElements ->
             Constants.applySnowparkFunc "array_construct" <| List.map (\e -> mapValue e ctx) tupleElements
+        Value.Record tpe fields ->
+            mapRecordCreation tpe fields ctx
         _ ->
             Scala.Literal (Scala.StringLit ("Unsupported element"))
 
 
+mapRecordCreation : Type () -> Dict.Dict (Name.Name) (Value ta (Type ())) -> ValueMappingContext -> Scala.Value
+mapRecordCreation tpe fields ctx =
+    if isTypeRefToRecordWithComplexTypes tpe ctx.typesContextInfo then
+        mapRecordCreationToCaseClassCreation tpe fields ctx
+    else
+        Scala.Literal (Scala.StringLit ("Record creation not converted"))
+
+
+mapRecordCreationToCaseClassCreation : Type () -> Dict.Dict (Name.Name) (Value ta (Type ())) -> ValueMappingContext -> Scala.Value
+mapRecordCreationToCaseClassCreation tpe fields ctx =
+    case tpe of
+        Type.Reference _ fullName [] ->
+            let
+                caseClassReference = 
+                    Scala.Ref (scalaPathToModule fullName) (fullName |> FQName.getLocalName |> Name.toTitleCase)
+                processArgs :  List (Name.Name, Type ()) -> Maybe (List Scala.ArgValue)
+                processArgs fieldsInfo =
+                    fieldsInfo
+                        |> collectMaybeList (\(fieldName, _) -> 
+                                                   Dict.get fieldName fields 
+                                                    |> Maybe.map (\argExpr -> Scala.ArgValue (Just (Name.toCamelCase fieldName)) (mapValue argExpr ctx)))
+            in
+            MappingContext.getFieldInfoIfRecordType tpe ctx.typesContextInfo            
+                |> Maybe.map processArgs
+                |> Maybe.withDefault Nothing
+                |> Maybe.map (\ctorArgs -> Scala.Apply caseClassReference ctorArgs)
+                |> Maybe.withDefault (Scala.Literal (Scala.StringLit ("Record creation not converted!")))
+        _ ->
+            Scala.Literal (Scala.StringLit ("Record creation not converted"))
+
+
 mapListCreation : (Type ()) -> List (Value ta (Type ())) -> ValueMappingContext -> Scala.Value
 mapListCreation tpe values ctx =
-    if typeRefIsListOf tpe (\innerTpe -> isTypeRefToRecordWithSimpleTypes innerTpe ctx.typesContextInfo) then
+    if typeRefIsListOf tpe (\innerTpe -> isTypeRefToRecordWithSimpleTypes innerTpe ctx.typesContextInfo) &&
+        isFunctionClassificationReturningDataFrameExpressions ctx.currentFunctionClassification then
         applySnowparkFunc "array_construct"
             (values |> List.map (\v -> mapValue v ctx))
     else
@@ -279,17 +320,31 @@ mapListCreation tpe values ctx =
 
 mapLetDefinition : Name.Name -> Value.Definition ta (Type ()) -> Value ta (Type ()) -> ValueMappingContext -> Scala.Value
 mapLetDefinition name definition body ctx =
-    case (definition.inputTypes) of
+    case definition.inputTypes of
         [] -> 
-            let decl = Scala.ValueDecl  { modifiers = []
-                                        , pattern = Scala.NamedMatch (name |> Name.toCamelCase)
-                                        , valueType = Nothing
-                                        , value = mapValue definition.body ctx
-                                        }
+            let 
+                (pairs, bodyToConvert) = collectNestedLetDeclarations body []
+                decls = ((name, definition) :: pairs)
+                            |> List.map (\(pName, pDefinition) ->
+                                            Scala.ValueDecl  { modifiers = []
+                                                            , pattern = Scala.NamedMatch (pName |> Name.toCamelCase)
+                                                            , valueType = Nothing
+                                                            , value = mapValue pDefinition.body ctx
+                                                            })
             in
-            Scala.Block [decl] (mapValue body ctx)
+            Scala.Block decls (mapValue bodyToConvert ctx)
         _ -> 
             Scala.Literal (Scala.StringLit ("Unsupported function let expression"))
+
+collectNestedLetDeclarations : Value ta (Type ()) -> 
+                                  List (Name.Name, Value.Definition ta (Type ())) ->
+                                  (List (Name.Name, Value.Definition ta (Type ())), Value ta (Type ())) 
+collectNestedLetDeclarations currentBody collectedPairs =
+    case currentBody of
+        Value.LetDefinition _ name definition body ->
+            collectNestedLetDeclarations body ((name, definition)::collectedPairs)
+        _ -> 
+            (List.reverse collectedPairs, currentBody)
 
 
 mapIfThenElse : Value ta (Type ()) -> Value ta (Type ()) -> Value ta (Type ()) -> ValueMappingContext -> Scala.Value

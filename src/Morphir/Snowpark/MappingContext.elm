@@ -26,6 +26,7 @@ module Morphir.Snowpark.MappingContext exposing
       , getFieldInfoIfRecordType
       , addReplacementForIdentifier
       , isFunctionReturningDataFrameExpressions
+      , isFunctionClassificationReturningDataFrameExpressions
       , isListOfDataFrameFriendlyType
       , getFunctionClassification
       , typeRefIsListOf
@@ -56,7 +57,7 @@ import Morphir.Snowpark.Utils exposing (tryAlternatives)
 
 type TypeDefinitionClassification a =
    RecordWithSimpleTypes (List (Name, Type a))
-   | RecordWithComplexTypes
+   | RecordWithComplexTypes (List (Name, Type a))
    | UnionTypeWithoutParams 
    | UnionTypeWithParams
    | TypeAlias (Type a)
@@ -84,7 +85,8 @@ type alias ValueMappingContext =
    , inlinedIds: Dict Name Scala.Value
    , packagePath: Path.Path
    , dataFrameColumnsObjects: Dict FQName String
-   , functionClassification: FunctionClassificationInformation
+   , functionClassificationInfo: FunctionClassificationInformation
+   , currentFunctionClassification : FunctionClassification
    }
 
 emptyValueMappingContext : ValueMappingContext
@@ -93,17 +95,24 @@ emptyValueMappingContext = { parameters = []
                            , typesContextInfo = emptyContext
                            , packagePath = Path.fromString "default" 
                            , dataFrameColumnsObjects = Dict.empty
-                           , functionClassification = Dict.empty
+                           , functionClassificationInfo = Dict.empty
+                           , currentFunctionClassification = Unknown
                            }
 
 isFunctionReturningDataFrameExpressions : FQName -> ValueMappingContext -> Bool
 isFunctionReturningDataFrameExpressions name ctx =
-   Dict.get name ctx.functionClassification
-      |> Maybe.map (\value ->  case value of
-                                  FromDfValuesToDfValues -> True
-                                  _ -> False)
+   Dict.get name ctx.functionClassificationInfo
+      |> Maybe.map isFunctionClassificationReturningDataFrameExpressions
       |> Maybe.withDefault False
 
+isFunctionClassificationReturningDataFrameExpressions : FunctionClassification -> Bool
+isFunctionClassificationReturningDataFrameExpressions classfication =
+     case classfication of
+         FromDfValuesToDfValues -> 
+            True
+         _ -> 
+            False
+      
 getReplacementForIdentifier : Name -> ValueMappingContext -> Maybe Scala.Value
 getReplacementForIdentifier name ctx =
    Dict.get name ctx.inlinedIds
@@ -140,7 +149,7 @@ isTypeRefToRecordWithComplexTypes tpe ctx =
 isRecordWithComplexTypes : FQName -> MappingContextInfo a -> Bool
 isRecordWithComplexTypes name ctx = 
    case Dict.get name ctx of
-       Just (TypeClassified RecordWithComplexTypes) -> True
+       Just (TypeClassified (RecordWithComplexTypes _)) -> True
        _ -> False
 
 isUnionTypeWithoutParams : FQName -> MappingContextInfo a -> Bool
@@ -346,6 +355,8 @@ getFieldInfoIfRecordType tpe ctx =
          case Dict.get typeName ctx of
              Just (TypeClassified (RecordWithSimpleTypes fieldInfo)) -> 
                Just fieldInfo
+             Just (TypeClassified (RecordWithComplexTypes fieldInfo)) -> 
+               Just fieldInfo
              _ ->
                Nothing
       _ -> 
@@ -445,8 +456,8 @@ processSecondPassOnType name typeClassification ctx =
                TypeClassified newType -> 
                      Dict.update name (\_ -> Just (TypeClassified newType)) ctx
                -- If we could not classify a record after the second pass classify it as 'complex'
-               TypeWithPendingClassification (Just (Record  _ _)) -> 
-                     Dict.update name (\_ -> Just (TypeClassified RecordWithComplexTypes)) ctx
+               TypeWithPendingClassification (Just (Record  _ members)) -> 
+                     Dict.update name (\_ -> Just (TypeClassified (RecordWithComplexTypes (members |> List.map (\field -> (field.name, field.tpe)))))) ctx
                _ -> ctx
        _ -> ctx
 

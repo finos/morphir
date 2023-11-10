@@ -12,9 +12,8 @@ import Morphir.Scala.AST as Scala
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.Snowpark.MappingContext exposing (MappingContextInfo, isRecordWithSimpleTypes)
-import Html.Attributes exposing (name)
 import Morphir.IR.FQName as FQName
-import Morphir.IR.Value exposing (Value(..))
+import Morphir.IR.Value as Value exposing (Value(..))
 import Morphir.Snowpark.Constants as Constants
 
 scalaPathToModule : FQName.FQName -> Scala.Path
@@ -29,12 +28,7 @@ scalaPathToModule name =
 
 isValueReferenceToSimpleTypesRecord : (Value ta (IrType.Type a)) -> MappingContextInfo () -> Maybe (Scala.Path, Name.Name)
 isValueReferenceToSimpleTypesRecord expression ctx =
-   case expression of
-       Variable typeReference _ -> 
-            isTypeReferenceToSimpleTypesRecord typeReference ctx
-       _ -> 
-            Nothing
-
+    isTypeReferenceToSimpleTypesRecord (Value.valueAttribute expression) ctx
 
 isTypeReferenceToSimpleTypesRecord : (IrType.Type a) -> MappingContextInfo () -> Maybe (Scala.Path, Name.Name)
 isTypeReferenceToSimpleTypesRecord typeReference ctx =
