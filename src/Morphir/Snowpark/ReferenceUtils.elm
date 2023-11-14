@@ -4,7 +4,8 @@ module Morphir.Snowpark.ReferenceUtils exposing (
     , isValueReferenceToSimpleTypesRecord
     , mapLiteral
     , scalaReferenceToUnionTypeCase
-    , getCustomTypeParameterFieldAccess)
+    , getCustomTypeParameterFieldAccess
+    , getListTypeParameter)
 
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as IrType
@@ -70,3 +71,11 @@ scalaReferenceToUnionTypeCase typeName constructorName =
 getCustomTypeParameterFieldAccess : Int -> String
 getCustomTypeParameterFieldAccess paramIndex =
     "field" ++ (String.fromInt paramIndex)
+
+getListTypeParameter : IrType.Type () -> Maybe (IrType.Type ())
+getListTypeParameter tpe =
+    case tpe of
+        IrType.Reference _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ]) [innertype] ->
+            Just innertype
+        _ ->
+            Nothing

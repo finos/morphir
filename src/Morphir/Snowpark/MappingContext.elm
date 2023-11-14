@@ -359,6 +359,8 @@ getFieldInfoIfRecordType tpe ctx =
                Just fieldInfo
              _ ->
                Nothing
+      Record _ fields ->
+         Just <| List.map (\field -> (field.name, field.tpe) ) fields 
       _ -> 
          Nothing
 
@@ -400,10 +402,11 @@ processFunctionDefinition definition ctx  =
       , (\_ -> 
             if List.all (\tpe -> (isDataFrameFriendlyType tpe ctx) ||
                                  (isTypeRefToRecordWithSimpleTypes tpe ctx) ||
-                                 (typeRefIsMaybeOf tpe (\t -> isTypeRefToRecordWithSimpleTypes t ctx)))
+                                 (isTypeRefToRecordWithSimpleTypes tpe ctx) ||
+                                 (typeRefIsMaybeOf tpe (\t -> (isTypeRefToRecordWithSimpleTypes t ctx) )))
                         inputTypes && 
                ((isDataFrameFriendlyType definition.outputType ctx) ||
-                  (typeRefIsMaybeOf definition.outputType (\t -> isTypeRefToRecordWithSimpleTypes t ctx)))
+                  (typeRefIsMaybeOf definition.outputType (\t -> (isTypeRefToRecordWithSimpleTypes t ctx) || (isAnonymousRecordWithSimpleTypes t ctx))))
                  then
                Just FromDfValuesToDfValues
             else Nothing)

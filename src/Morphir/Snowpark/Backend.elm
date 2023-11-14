@@ -45,6 +45,8 @@ import Morphir.Snowpark.MappingContext as MappingContext exposing (
 import Morphir.Snowpark.MappingContext exposing (isRecordWithComplexTypes)
 import Morphir.Snowpark.ReferenceUtils exposing (scalaPathToModule)
 import Morphir.Snowpark.Utils exposing (collectMaybeList)
+import Morphir.Snowpark.MappingContext exposing (isRecordWithSimpleTypes)
+import Morphir.Snowpark.MappingContext exposing (isAnonymousRecordWithSimpleTypes)
 
 type alias Options =
     {}
@@ -279,8 +281,21 @@ mapRecordCreation : Type () -> Dict.Dict (Name.Name) (Value ta (Type ())) -> Val
 mapRecordCreation tpe fields ctx =
     if isTypeRefToRecordWithComplexTypes tpe ctx.typesContextInfo then
         mapRecordCreationToCaseClassCreation tpe fields ctx
-    else
-        Scala.Literal (Scala.StringLit ("Record creation not converted"))
+    else 
+        if (isTypeRefToRecordWithSimpleTypes tpe ctx.typesContextInfo || 
+            isAnonymousRecordWithSimpleTypes tpe ctx.typesContextInfo) && 
+            isFunctionClassificationReturningDataFrameExpressions ctx.currentFunctionClassification  then
+            MappingContext.getFieldInfoIfRecordType tpe ctx.typesContextInfo 
+                |> Maybe.map (\fieldInfo -> collectMaybeList 
+                                                            ((\(fieldName, _) -> 
+                                                                (Dict.get fieldName fields) 
+                                                                    |> Maybe.map (\argExpr -> mapValue argExpr ctx)))
+                                                            fieldInfo  )
+                |> Maybe.withDefault Nothing
+                |> Maybe.map (applySnowparkFunc "array_construct")
+                |> Maybe.withDefault (Scala.Literal (Scala.StringLit ("Record creation not converted1")))
+        else
+            Scala.Literal (Scala.StringLit ("Record creation not converted2"))
 
 
 mapRecordCreationToCaseClassCreation : Type () -> Dict.Dict (Name.Name) (Value ta (Type ())) -> ValueMappingContext -> Scala.Value

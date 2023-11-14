@@ -12,7 +12,9 @@ import Morphir.IR.Value as Value
 import Morphir.Snowpark.AggregateMapping as AggregateMapping
 import Morphir.Snowpark.Constants as Constants exposing (applySnowparkFunc)
 import Morphir.Snowpark.Operatorsmaps exposing (mapOperator)
-import Morphir.Snowpark.ReferenceUtils exposing (isTypeReferenceToSimpleTypesRecord, scalaPathToModule, getCustomTypeParameterFieldAccess)
+import Morphir.Snowpark.ReferenceUtils exposing (isTypeReferenceToSimpleTypesRecord
+            , scalaPathToModule
+            , getCustomTypeParameterFieldAccess)
 import Morphir.Snowpark.TypeRefMapping exposing (generateRecordTypeWrapperExpression,  generateCastIfPossible)
 import Morphir.Snowpark.MappingContext exposing (
             ValueMappingContext
@@ -23,9 +25,11 @@ import Morphir.Snowpark.MappingContext exposing (
             , isLocalFunctionName
             , getFieldInfoIfRecordType
             , addReplacementForIdentifier
+            , getLocalVariableIfDataFrameReference
             , isFunctionReturningDataFrameExpressions)
 import Morphir.Snowpark.Utils exposing (collectMaybeList)
 import Morphir.Snowpark.MappingContext exposing (isRecordWithSimpleTypes)
+import Morphir.Snowpark.ReferenceUtils exposing (getListTypeParameter)
 
 mapFunctionsMapping : ValueIR.Value ta (TypeIR.Type ()) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
 mapFunctionsMapping value mapValue ctx =
@@ -365,7 +369,27 @@ generateForListFilterMap predicate sourceRelation ctx mapValue =
               in
               Maybe.withDefault filterCall (generateProjectionForArrayColumnIfRequired  tpe ctx filterCall "result")
            _ ->
-              Scala.Literal (Scala.StringLit "Unsupported filterMap scenario")
+              let 
+                  tpe = Value.valueAttribute predicate
+                  recordReference =   getListTypeParameter (valueAttribute sourceRelation)
+                                        |> Maybe.map (\t -> (getLocalVariableIfDataFrameReference t ctx))
+                                        |> Maybe.withDefault Nothing
+                                        |> Maybe.map Scala.Variable
+                                        |> Maybe.withDefault (Scala.Literal Scala.NullLit)
+                  predicateApplication = 
+                    Scala.Apply (mapValue predicate ctx) [Scala.ArgValue Nothing recordReference]
+                  selectColumnAlias = 
+                       Scala.Apply (Scala.Select predicateApplication "as ") [ Scala.ArgValue Nothing resultId ]
+                  selectCall = 
+                       Scala.Apply (Scala.Select (mapValue sourceRelation ctx) "select") [Scala.ArgValue Nothing <| selectColumnAlias]
+                  resultId = 
+                       Scala.Literal <| Scala.StringLit "result"
+                  isNotNullCall = 
+                       Scala.Select (Constants.applySnowparkFunc "col" [ resultId ]) "is_not_null"
+                  filterCall = 
+                       Scala.Apply (Scala.Select selectCall "filter") [Scala.ArgValue Nothing isNotNullCall]
+              in
+              Maybe.withDefault filterCall (generateProjectionForArrayColumnIfRequired  tpe ctx filterCall "result")
      else 
         Scala.Literal (Scala.StringLit "Unsupported filterMap scenario")
 
