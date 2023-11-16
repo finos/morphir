@@ -67,7 +67,7 @@ testDistributionPackage =
 typeClassificationTests : Test
 typeClassificationTests =
     let
-        calculatedContext = MappingContext.processDistributionModules testDistributionName testDistributionPackage
+        (calculatedContext, _) = MappingContext.processDistributionModules testDistributionName testDistributionPackage
         assertCount  =
             test ("Types in context") <|
                 \_ ->

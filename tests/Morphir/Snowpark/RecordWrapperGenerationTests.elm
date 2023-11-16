@@ -53,7 +53,7 @@ typeClassificationTests =
                           |> Maybe.withDefault []
                        
                    in
-                   Expect.equal ["Trait:Emp1:2", "Object:Emp1:2", "Class:Emp1Wrapper:2"] generationResult
+                   Expect.equal ["Trait:Emp1:2", "Object:Emp1:4", "Class:Emp1Wrapper:2"] generationResult
         
     in
     describe "resolveTNam"

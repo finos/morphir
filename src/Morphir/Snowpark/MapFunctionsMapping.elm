@@ -1,4 +1,5 @@
-module Morphir.Snowpark.MapFunctionsMapping exposing (mapFunctionsMapping)
+module Morphir.Snowpark.MapFunctionsMapping exposing (mapFunctionsMapping, dataFrameMappings, MappingFunctionType, FunctionMappingTable, IrValueType, listFunctionName, mapUncurriedFunctionCall,
+                      basicsFunctionName)
 
 import Dict as Dict exposing (Dict)
 import Morphir.Scala.AST as Scala
@@ -21,115 +22,123 @@ import Morphir.Snowpark.MappingContext exposing (
             , isBasicType
             , isTypeRefToRecordWithSimpleTypes
             , isCandidateForDataFrame
+            , isFunctionReturningDataFrameExpressions
             , isAnonymousRecordWithSimpleTypes
             , isLocalFunctionName
             , getFieldInfoIfRecordType
             , addReplacementForIdentifier
-            , getLocalVariableIfDataFrameReference
-            , isFunctionReturningDataFrameExpressions)
+            , getLocalVariableIfDataFrameReference)
 import Morphir.Snowpark.Utils exposing (collectMaybeList)
-import Morphir.Snowpark.MappingContext exposing (isRecordWithSimpleTypes)
 import Morphir.Snowpark.ReferenceUtils exposing (getListTypeParameter)
+import Morphir.Snowpark.UserDefinedFunctionMapping exposing (tryToConvertUserFunctionCall)
+
+
+type alias IrValueType ta = ValueIR.Value ta (TypeIR.Type ())
+
+type alias MappingFunctionType ta = (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+
+type alias FunctionMappingTable ta = Dict FQName.FQName (MappingFunctionType ta)
+
+listFunctionName : Name.Name -> FQName.FQName
+listFunctionName simpleName = 
+    ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], simpleName )
+
+maybeFunctionName : Name.Name -> FQName.FQName
+maybeFunctionName simpleName = 
+    ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], simpleName )
+
+basicsFunctionName : Name.Name -> FQName.FQName
+basicsFunctionName simpleName =
+   ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], simpleName )
+
+dataFrameMappings : FunctionMappingTable ta
+dataFrameMappings =
+    [ ( listFunctionName [ "member" ], mapListMemberFunction)
+    , ( listFunctionName [ "map" ], mapListMapFunction )
+    , ( listFunctionName [ "filter" ], mapListFilterFunction ) 
+    , ( listFunctionName [ "filter", "map"], mapListFilterMapFunction ) 
+    , ( listFunctionName [ "concat", "map"], mapListConcatMapFunction ) 
+    , ( listFunctionName [ "concat" ], mapListConcatFunction ) 
+    , ( listFunctionName [ "sum" ], mapListSumFunction ) 
+    , ( maybeFunctionName [ "just" ], mapJustFunction )
+    , ( maybeFunctionName [ "map" ], mapMaybeMapFunction )
+    , ( maybeFunctionName [ "with", "default" ], mapMaybeWithDefaultFunction )
+    , ( basicsFunctionName ["add"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["subtract"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["multiply"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["divide"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["integer", "divide"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["float", "divide"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["equal"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["not", "equal"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["greater", "than"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["less", "than"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["less", "than", "or", "equal"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["greater", "than", "or", "equal"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["and"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["or"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["mod", "by"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["sum", "of"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["average", "of"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["maximum", "of"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["minimum", "of"] , mapBasicsFunctionCall )
+    , ( basicsFunctionName ["not"] , mapNotFunctionCall )
+    , ( basicsFunctionName ["floor"] , mapFloorFunctionCall )
+    , ( ([["morphir"], ["s","d","k"]], [["aggregate"]], ["aggregate"]), mapAggregateFunction )
+    ]
+        |> Dict.fromList
 
 mapFunctionsMapping : ValueIR.Value ta (TypeIR.Type ()) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
 mapFunctionsMapping value mapValue ctx =
-    
     case value of
-        ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "member" ] )) predicate) sourceRelation ->
-            let
-                variable = mapValue predicate ctx
-                applySequence = mapValue sourceRelation ctx
-            in
-            Scala.Apply (Scala.Select variable "in") [ Scala.ArgValue Nothing applySequence ]
-        ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "map" ] )) projection) sourceRelation ->
-            generateForListMap projection sourceRelation ctx mapValue
-        ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "filter" ] )) predicate) sourceRelation ->
-            generateForListFilter predicate sourceRelation ctx mapValue
-        ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "filter", "map" ] )) predicateAction) sourceRelation ->
-            generateForListFilterMap predicateAction sourceRelation ctx mapValue
-        ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "concat", "map" ] )) action) sourceRelation ->
-            generateForConcatMap action sourceRelation ctx mapValue
-        ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "concat" ] )) sourceRelation ->
-            generateForListConcat sourceRelation ctx mapValue
-        ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "sum" ] )) collection ->
-            generateForListSum collection ctx mapValue
-        ValueIR.Apply _ (ValueIR.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) justValue ->
-            mapValue justValue ctx 
-        ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "with", "default" ] )) default) maybeValue ->
-            mapWithDefaultCall default maybeValue mapValue ctx
-        ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "map" ] )) action) maybeValue ->
-            mapMaybeMapCall action maybeValue mapValue ctx
-        ValueIR.Apply _
-            (ValueIR.Apply _
-                (ValueIR.Reference _
-                    ([["morphir"],["s","d","k"]],[["aggregate"]],["aggregate"])
-                )
-                (ValueIR.Lambda _ _
-                    ( ValueIR.Lambda _ _ lambdaBody )
-                )
-            )
-            (ValueIR.Apply _
-                (ValueIR.Apply _
-                    (ValueIR.Reference _ ([["morphir"],["s","d","k"]],[["aggregate"]], ["group","by"]))
-                    (ValueIR.FieldFunction _  groupByCategory )
-                )
-                dfName
-            ) ->
-            let
-                variables = AggregateMapping.processAggregateLambdaBody lambdaBody mapValue ctx
-                collection = Scala.Select (mapValue dfName ctx) "groupBy"
-                dfGroupBy = Scala.Apply collection [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit (Name.toCamelCase groupByCategory)))]
-                aggFunction = Scala.Select dfGroupBy "agg"
-                groupBySum = Scala.Apply aggFunction variables
-            in
-            groupBySum
-
-        ValueIR.Apply 
-            _
-            (ValueIR.Apply 
-                _
-                (ValueIR.Reference
-                    _
-                    ([["morphir"],["s","d","k"]],[["basics"]], optname)
-                )
-                left )
-            right ->
-            mapForOperatorCall optname left right mapValue ctx
-
-        ValueIR.Apply 
-            (TypeIR.Reference 
-                () 
-                ([["morphir"],["s","d","k"]],[["basics"]],["bool"])
-                []
-            )
-            (ValueIR.Reference
-                (TypeIR.Function 
-                    () 
-                    (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]],["bool"]) [])
-                    (TypeIR.Reference () ([["morphir"],["s","d","k"]],[["basics"]],["bool"]) []))
-                ([["morphir"],["s","d","k"]],[["basics"]],["not"])
-            )
-            variable ->
-                let
-                  assign = mapValue variable ctx
-                in
-                Scala.UnOp "!" assign
-        ValueIR.Apply
-            _
-            (ValueIR.Reference
-                _
-                ([["morphir"],["s","d","k"]],[["basics"]],["floor"])
-            )
-            variable ->
-            let
-                number = mapValue variable ctx
-            in
-            Constants.applySnowparkFunc  "floor" [number]            
-        ValueIR.Apply _ func arg -> 
-            tryToConvertUserFunctionCall (ValueIR.uncurryApply func arg) mapValue ctx
+        ValueIR.Apply _ function arg ->
+            mapUncurriedFunctionCall (Value.uncurryApply function arg) mapValue dataFrameMappings ctx
         _ ->
             Scala.Literal (Scala.StringLit "To Do")
 
+getFullNameIfReferencedElement : IrValueType ta -> Maybe FQName.FQName
+getFullNameIfReferencedElement value =
+    case value of
+        ValueIR.Reference _ fullName ->
+            Just fullName
+        ValueIR.Constructor _ fullName ->
+            Just fullName
+        _ ->
+            Nothing
+
+mapUncurriedFunctionCall : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> FunctionMappingTable ta -> ValueMappingContext -> Scala.Value
+mapUncurriedFunctionCall (func, args) mapValue mappings ctx =    
+    let
+        builtinMappingFunction =
+            getFullNameIfReferencedElement func
+                |> Maybe.map (\fullName -> Dict.get fullName mappings)
+                |> Maybe.withDefault Nothing
+    in
+    case builtinMappingFunction of
+        Just mappingFunc ->
+            mappingFunc (func, args) mapValue ctx
+        _ -> 
+            tryToConvertUserFunctionCall (func, args) mapValue ctx
+
+mapListMemberFunction : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapListMemberFunction ( _, args ) mapValue ctx =
+    case args of
+        [ value, sourceRelation ] ->
+            let
+                variable = mapValue value ctx
+                applySequence = mapValue sourceRelation ctx
+            in
+            Scala.Apply (Scala.Select variable "in") [ Scala.ArgValue Nothing applySequence ]
+        _ ->
+            Scala.Literal (Scala.StringLit "List.member scenario not converted")
+
+mapListConcatMapFunction : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapListConcatMapFunction ( _, args ) mapValue ctx =
+    case args of    
+        [ filterAction, sourceRelation ] ->
+            generateForConcatMap filterAction sourceRelation ctx mapValue
+        _ ->
+            Scala.Literal (Scala.StringLit "List concatMap scenario not supported")
 
 generateForConcatMap : Value ta (Type ()) -> Value ta (Type ()) -> ValueMappingContext -> (Constants.MapValueType ta) -> Scala.Value
 generateForConcatMap action sourceRelation ctx mapValue =
@@ -161,6 +170,14 @@ generateForConcatMap action sourceRelation ctx mapValue =
         _ ->
             Scala.Literal (Scala.StringLit "List.concatMap scenario not supported")
 
+mapListConcatFunction : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapListConcatFunction ( _, args ) mapValue ctx =
+    case args of    
+        [ elements ] ->
+            generateForListConcat elements ctx mapValue
+        _ ->
+            Scala.Literal (Scala.StringLit "List concat scenario not supported")
+
 generateForListConcat : Value ta (Type ()) -> ValueMappingContext -> (Constants.MapValueType ta) -> Scala.Value
 generateForListConcat expr ctx mapValue =
     case expr of
@@ -190,7 +207,6 @@ generateUnionAllWithMappedElements elements ctx mapValue =
         _  ->
             Scala.Literal (Scala.StringLit "List.concat case not supported")
 
-
 hasFunctionToDfOpertions : List (Value a (Type ())) -> ValueMappingContext -> Bool
 hasFunctionToDfOpertions listElements ctx =
     case listElements of
@@ -201,6 +217,16 @@ hasFunctionToDfOpertions listElements ctx =
                     False
         _ -> 
             False
+
+
+mapBasicsFunctionCall : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapBasicsFunctionCall ( name, args ) mapValue ctx =
+    case (name, args) of    
+        (ValueIR.Reference _ fullFuncName, [ left, right ]) ->
+            mapForOperatorCall (FQName.getLocalName fullFuncName) left right mapValue ctx
+        _ ->
+            Scala.Literal (Scala.StringLit "Basics function scenario not supported")
+
 
 mapForOperatorCall : Name.Name -> Value ta (Type ()) -> Value ta (Type ()) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
 mapForOperatorCall optname left right mapValue ctx =
@@ -218,64 +244,6 @@ mapForOperatorCall optname left right mapValue ctx =
             Scala.BinOp leftValue operatorname rightValue
 
 
-tryToConvertUserFunctionCall : ((Value a (Type ())), List (Value a (Type ()))) -> Constants.MapValueType a -> ValueMappingContext -> Scala.Value
-tryToConvertUserFunctionCall (func, args) mapValue ctx =
-   case func of
-       ValueIR.Reference _ functionName -> 
-            if isLocalFunctionName functionName ctx then
-                let 
-                    funcReference = 
-                        Scala.Ref (scalaPathToModule functionName) 
-                                  (functionName |> FQName.getLocalName |> Name.toCamelCase)
-                    argsToUse =
-                        args 
-                            |> List.map (\arg -> mapValue arg ctx)
-                            |> List.map (Scala.ArgValue Nothing)
-                in
-                case argsToUse of
-                    [] -> 
-                        funcReference
-                    (first::rest) -> 
-                        List.foldl (\a c -> Scala.Apply c [a]) (Scala.Apply funcReference [first]) rest
-            else
-                Scala.Literal (Scala.StringLit "Call not converted")
-       ValueIR.Constructor _ constructorName ->
-            if isRecordWithSimpleTypes constructorName ctx.typesContextInfo then
-                let 
-                    argsToUse = 
-                        args |> List.map (\ arg -> mapValue arg ctx)
-                in
-                Constants.applySnowparkFunc "array_construct" argsToUse
-            else 
-                if isLocalFunctionName constructorName ctx && List.length args > 0 then
-                    let
-                        argsToUse =
-                            args 
-                                |> List.indexedMap (\i arg -> (getCustomTypeParameterFieldAccess i, mapValue arg ctx))
-                                |> List.concatMap (\(field, value) -> [Constants.applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit field)], value])
-                        tag = [ Constants.applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit "__tag")],
-                                Constants.applySnowparkFunc "lit" [ Scala.Literal (Scala.StringLit <| ( constructorName |> FQName.getLocalName |> Name.toTitleCase))]]
-                    in Constants.applySnowparkFunc "object_construct" (tag ++ argsToUse)
-                else
-                    Scala.Literal (Scala.StringLit "Constructor call not converted")
-       ValueIR.Variable _ funcName ->
-            if List.member funcName ctx.parameters then
-                let
-                    argsToUse =
-                        args 
-                            |> List.map (\arg -> mapValue arg ctx)
-                            |> List.map (Scala.ArgValue Nothing)
-                in
-                case argsToUse of
-                    [] -> 
-                        Scala.Variable (Name.toCamelCase funcName)
-                    (first::rest) -> 
-                        List.foldl (\a c -> Scala.Apply c [a]) (Scala.Apply (Scala.Variable (Name.toCamelCase funcName)) [first]) rest               
-            else
-                Scala.Literal (Scala.StringLit "Call not converted")
-       _ -> 
-            Scala.Literal (Scala.StringLit "Call not converted")
-
 
 whenConditionElseValueCall : Scala.Value -> Scala.Value -> Scala.Value -> Scala.Value
 whenConditionElseValueCall condition thenExpr elseExpr =
@@ -283,24 +251,13 @@ whenConditionElseValueCall condition thenExpr elseExpr =
                [Scala.ArgValue Nothing elseExpr]
 
 
-mapWithDefaultCall : Value ta (Type ()) -> Value ta (Type ()) -> (Constants.MapValueType ta) -> ValueMappingContext -> Scala.Value
-mapWithDefaultCall default maybeValue mapValue ctx =
-    Constants.applySnowparkFunc "coalesce" [mapValue maybeValue ctx, mapValue default ctx]
-
-mapMaybeMapCall : Value ta (Type ()) -> Value ta (Type ()) -> (Constants.MapValueType ta) -> ValueMappingContext -> Scala.Value
-mapMaybeMapCall action maybeValue mapValue ctx =
-    case action of
-        ValueIR.Lambda _ (AsPattern _ (WildcardPattern _) lambdaParam) body ->
-            let
-                convertedValue = mapValue maybeValue ctx
-                newReplacements = Dict.fromList [(lambdaParam, convertedValue)]
-                lambdaBody = mapValue body { ctx | inlinedIds  = Dict.union ctx.inlinedIds newReplacements }
-                elseLiteral = Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.NullLit))]
-            in
-            whenConditionElseValueCall (Scala.Select convertedValue "is_not_null") lambdaBody elseLiteral
-        _ -> 
-            Scala.Literal (Scala.StringLit "Unsupported withDefault call")
-
+mapListSumFunction : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapListSumFunction ( _, args ) mapValue ctx =
+    case args of    
+        [ elements ] ->
+            generateForListSum elements ctx mapValue
+        _ ->
+            Scala.Literal (Scala.StringLit "List sum scenario not supported")
 
 generateForListSum : Value ta (Type ()) -> ValueMappingContext -> Constants.MapValueType ta -> Scala.Value
 generateForListSum collection ctx mapValue =
@@ -313,16 +270,29 @@ generateForListSum collection ctx mapValue =
                             resultName = Scala.Literal (Scala.StringLit "result")
                             asCall =  Scala.Apply (Scala.Select projectedExpr "as") [Scala.ArgValue Nothing resultName]
                             newSelect = Scala.Apply col [Scala.ArgValue argName asCall]
-                            sumCall = Constants.applySnowparkFunc "sum" [Constants.applySnowparkFunc "col" [resultName]]
+                            sumCall = Constants.applySnowparkFunc "coalesce" 
+                                                                  [ Constants.applySnowparkFunc "sum" [Constants.applySnowparkFunc "col" [resultName]]
+                                                                  , Constants.applySnowparkFunc "lit" [ Scala.Literal (Scala.IntegerLit 0)] ]
                             selectResult = Scala.Apply (Scala.Select newSelect "select") [Scala.ArgValue Nothing sumCall]
                         in
                             (Scala.Apply (Scala.Select (Scala.Select (Scala.Select selectResult "first") "get") "getDouble") [Scala.ArgValue Nothing (Scala.Literal (Scala.IntegerLit 0))])
+                            
                     _ ->
                         Scala.Literal (Scala.StringLit "Unsupported sum scenario")
             else 
                 Scala.Literal (Scala.StringLit "Unsupported sum scenario")
         _ -> 
             Scala.Literal (Scala.StringLit "Unsupported sum scenario")
+
+
+mapListFilterFunction : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapListFilterFunction ( _, args ) mapValue ctx =
+    case args of    
+        [ filter, sourceRelation ] ->
+            generateForListFilter filter sourceRelation ctx mapValue
+        _ ->
+            Scala.Literal (Scala.StringLit "List filter scenario not supported")
+
 
 generateForListFilter : Value ta (Type ()) -> (Value ta (Type ())) -> ValueMappingContext -> Constants.MapValueType ta -> Scala.Value
 generateForListFilter predicate sourceRelation ctx mapValue =
@@ -348,6 +318,15 @@ generateForListFilter predicate sourceRelation ctx mapValue =
               Scala.Literal (Scala.StringLit ("Unsupported filter function scenario" ))
      else 
         Scala.Literal (Scala.StringLit "Unsupported filter scenario")
+
+
+mapListFilterMapFunction : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapListFilterMapFunction ( _, args ) mapValue ctx =
+    case args of    
+        [ filter, sourceRelation ] ->
+            generateForListFilterMap filter sourceRelation ctx mapValue
+        _ ->
+            Scala.Literal (Scala.StringLit "List filterMap scenario not supported")
 
 
 generateForListFilterMap : Value ta (Type ()) -> (Value ta (Type ())) -> ValueMappingContext -> Constants.MapValueType ta -> Scala.Value
@@ -446,6 +425,15 @@ generateProjectionForJsonColumnIfRequired tpe ctx selectExpr resultColumnName =
                 |> Maybe.map generateJsonUpackingProjection
         _ -> Nothing        
 
+mapListMapFunction : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapListMapFunction ( _, args ) mapValue ctx =
+    case args of    
+        [ action, sourceRelation ] ->
+            generateForListMap action sourceRelation ctx mapValue
+        _ ->
+            Scala.Literal (Scala.StringLit "List map scenario not supported")
+
+
 generateForListMap : Value ta (Type ()) -> (Value ta (Type ())) -> ValueMappingContext -> Constants.MapValueType ta -> Scala.Value
 generateForListMap projection sourceRelation ctx mapValue =
     if isCandidateForDataFrame (valueAttribute sourceRelation) ctx.typesContextInfo then
@@ -490,3 +478,89 @@ getFieldsInCorrectOrder originalType ctx fields =
                 |> Maybe.withDefault (Dict.toList fields)
         _ ->
             Dict.toList fields
+
+
+mapJustFunction  : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapJustFunction  ( _, args ) mapValue ctx =
+    case args of    
+        [ justValue ] ->
+            mapValue justValue ctx 
+        _ ->
+            Scala.Literal (Scala.StringLit "Maybe Just scenario not supported")
+
+    
+mapMaybeMapFunction  : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapMaybeMapFunction  ( _, args ) mapValue ctx =
+    case args of    
+        [ action, source ] ->
+            mapMaybeMapCall action source mapValue ctx 
+        _ ->
+            Scala.Literal (Scala.StringLit "Maybe Just scenario not supported")
+
+mapMaybeMapCall : Value ta (Type ()) -> Value ta (Type ()) -> (Constants.MapValueType ta) -> ValueMappingContext -> Scala.Value
+mapMaybeMapCall action maybeValue mapValue ctx =
+    case action of
+        ValueIR.Lambda _ (AsPattern _ (WildcardPattern _) lambdaParam) body ->
+            let
+                convertedValue = mapValue maybeValue ctx
+                newReplacements = Dict.fromList [(lambdaParam, convertedValue)]
+                lambdaBody = mapValue body { ctx | inlinedIds  = Dict.union ctx.inlinedIds newReplacements }
+                elseLiteral = Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.NullLit))]
+            in
+            whenConditionElseValueCall (Scala.Select convertedValue "is_not_null") lambdaBody elseLiteral
+        _ -> 
+            Scala.Literal (Scala.StringLit "Unsupported withDefault call")    
+
+mapMaybeWithDefaultFunction  : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapMaybeWithDefaultFunction  ( _, args ) mapValue ctx =
+    case args of    
+        [ defaultValue, value ] ->
+            Constants.applySnowparkFunc "coalesce" [mapValue value ctx, mapValue defaultValue ctx]
+        _ ->
+            Scala.Literal (Scala.StringLit "Maybe.withDefault scenario not supported")
+
+
+mapAggregateFunction : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapAggregateFunction  ( _, args ) mapValue ctx =
+    case args of
+        [ (ValueIR.Lambda _ _ ( ValueIR.Lambda _ _ lambdaBody )),
+         (ValueIR.Apply 
+            _
+            (ValueIR.Apply _
+                    (ValueIR.Reference _ ([["morphir"],["s","d","k"]],[["aggregate"]], ["group","by"]))
+                    (ValueIR.FieldFunction _  groupByCategory ))
+            dfName) ] ->
+            let
+                variables = AggregateMapping.processAggregateLambdaBody lambdaBody mapValue ctx
+                collection = Scala.Select (mapValue dfName ctx) "groupBy"
+                dfGroupBy = Scala.Apply collection [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit (Name.toCamelCase groupByCategory)))]
+                aggFunction = Scala.Select dfGroupBy "agg"
+                groupBySum = Scala.Apply aggFunction variables
+            in
+            groupBySum
+        _ ->
+            Scala.Literal (Scala.StringLit "Aggregate scenario not supported")
+    
+
+mapNotFunctionCall  : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapNotFunctionCall  ( _, args ) mapValue ctx =
+    case args of    
+        [ value ] ->
+               let
+                  mappedValue = mapValue value ctx
+                in
+                Scala.UnOp "!" mappedValue
+        _ ->
+            Scala.Literal (Scala.StringLit "'Not' scenario not supported")
+
+
+mapFloorFunctionCall : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapFloorFunctionCall  ( _, args ) mapValue ctx =
+    case args of    
+        [ value ] ->
+               let
+                  mappedValue = mapValue value ctx
+                in
+                Constants.applySnowparkFunc  "floor" [ mappedValue ]     
+        _ ->
+            Scala.Literal (Scala.StringLit "'floor' scenario not supported")

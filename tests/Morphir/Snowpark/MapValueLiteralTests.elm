@@ -2,7 +2,7 @@ module Morphir.Snowpark.MapValueLiteralTests exposing (mapValueLiteralTests)
 import Expect
 import Test exposing (Test, describe, test)
 import Morphir.IR.Literal as Literal
-import Morphir.Snowpark.Backend exposing (mapValue)
+import Morphir.Snowpark.MapExpressionsToDataFrameOperations exposing (mapValue)
 import Morphir.Scala.AST as Scala
 import Morphir.IR.Value as Value
 import Morphir.IR.Type as Type

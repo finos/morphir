@@ -18,7 +18,9 @@ import Morphir.Snowpark.MappingContext as MappingContext exposing (
          , isUnionTypeWithoutParams
          , isRecordWithSimpleTypes
          , isRecordWithComplexTypes )
-import Morphir.Snowpark.TypeRefMapping exposing (mapTypeReference)
+import Morphir.Snowpark.TypeRefMapping exposing (mapTypeReference, generateSnowparkTypeExprFromElmType)
+import Morphir.Snowpark.Constants exposing (typeRefForSnowparkTypesType)
+import Morphir.Snowpark.Constants exposing (applyForSnowparkTypesType)
 
 {-| This module contains to create wrappers for record declarations that represent tables.
 
@@ -71,8 +73,8 @@ processRecordDeclaration : Name -> String -> (List (Field ())) ->  Bool -> Bool 
 processRecordDeclaration name doc fields recordWithSimpleTypes recordWithComplexTypes ctx =
    if recordWithSimpleTypes then
     [ traitForRecordWrapper name doc fields
-    , objectForRecordWrapper name fields
-    , classForRecordWrapper name fields] 
+    , objectForRecordWrapper name fields ctx
+    , classForRecordWrapper name fields ] 
    else if recordWithComplexTypes then
             [ caseClassForComplexRecord name doc fields ctx ]
         else
@@ -152,7 +154,7 @@ caseClassForComplexRecord name doc fields ctx =
 
 
 classForRecordWrapper : Name -> (List (Field a)) -> (Scala.Documented (Scala.Annotated Scala.TypeDecl))
-classForRecordWrapper name fields = 
+classForRecordWrapper name fields =
   let 
      traitName = (name |> toTitleCase)
      nameToUse = (name |> toTitleCase) ++ "Wrapper"
@@ -185,11 +187,36 @@ classForRecordWrapper name fields =
             )
         )) 
 
-objectForRecordWrapper : Name -> (List (Field a)) -> (Scala.Documented (Scala.Annotated Scala.TypeDecl))
-objectForRecordWrapper name  fields = 
+emptyDataFrameMethod : Scala.Annotated (Scala.MemberDecl)
+emptyDataFrameMethod =
+    let
+        createDataFrameMethod = Scala.Select (Scala.Variable "session") "createDataFrame"
+        emptySeq = Scala.Apply (Scala.Variable "Seq") []
+        createDataFrameArgs =  [ Scala.ArgValue Nothing emptySeq, Scala.ArgValue Nothing (Scala.Variable "schema") ]
+
+        arg = { modifiers = []
+              , tpe = typeRefForSnowparkType "Session"
+              , name = "session"
+              , defaultValue = Nothing
+              }
+    in
+    Scala.Annotated
+        []
+        (Scala.FunctionDecl
+                { modifiers = []
+                , name = "createEmptyDataFrame"
+                , typeArgs = []
+                , args = [ [ arg ] ]
+                , returnType = Just <| typeRefForSnowparkType "DataFrame"
+                , body = Just <| Scala.Apply createDataFrameMethod createDataFrameArgs
+                })
+
+objectForRecordWrapper : Name -> (List (Field ())) -> MappingContextInfo () -> (Scala.Documented (Scala.Annotated Scala.TypeDecl))
+objectForRecordWrapper name fields ctx = 
   let 
      nameToUse = name |> toTitleCase
      members = fields |> List.map generateObjectMember
+     schema = generateSchemaDefinition fields ctx
   in 
   ( Scala.Documented Nothing
         (Scala.Annotated []
@@ -199,14 +226,39 @@ objectForRecordWrapper name  fields =
                 , name =
                     nameToUse
                 , members = 
-                    members
+                    (members ++ [ schema, emptyDataFrameMethod ])
                 , extends =
                     [ Scala.TypeRef [] nameToUse ]
                 , body = 
                     Nothing
                 }
             )
-        )) 
+        ))
+
+generateSchemaDefinition : List (Field ()) -> MappingContextInfo () -> Scala.Annotated Scala.MemberDecl
+generateSchemaDefinition fields ctx =
+    let 
+        scalaStringOfName : Name -> Scala.Value
+        scalaStringOfName name = Scala.Literal (Scala.StringLit (Name.toTitleCase name))
+        structField = applyForSnowparkTypesType "StructField" 
+
+        fieldTypeArgs : Type.Type () -> List Scala.Value
+        fieldTypeArgs tpe =
+            let
+                (tpeExpr, isNullable) = generateSnowparkTypeExprFromElmType tpe ctx
+            in
+            [tpeExpr, Scala.Literal <| Scala.BooleanLit isNullable]
+        fieldDefinitions = fields 
+                              |> List.map (\field -> structField ((scalaStringOfName field.name)::(fieldTypeArgs field.tpe)))
+    in
+    Scala.Annotated
+        []
+        (Scala.ValueDecl
+            { modifiers = []
+            , pattern = Scala.NamedMatch "schema"
+            , valueType = Nothing
+            , value = applyForSnowparkTypesType "StructType" fieldDefinitions
+            })
 
 generateObjectMember : (Field a) -> (Scala.Annotated Scala.MemberDecl)
 generateObjectMember field =

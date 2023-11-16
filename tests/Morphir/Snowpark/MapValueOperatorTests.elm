@@ -8,7 +8,7 @@ import Morphir.IR.Type as TypeIR
 import Morphir.Scala.AST as Scala
 import Morphir.Snowpark.MappingContext exposing (emptyValueMappingContext)
 import Morphir.Snowpark.CommonTestUtils exposing (morphirNamespace)
-import Morphir.Snowpark.Backend exposing (mapValue)
+import Morphir.Snowpark.MapExpressionsToDataFrameOperations exposing (mapValue)
 
 createNumberLiteral : Int -> ValueIR.Value va (TypeIR.Type ())
 createNumberLiteral number = 

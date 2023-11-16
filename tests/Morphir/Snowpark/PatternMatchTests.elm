@@ -12,7 +12,7 @@ import Morphir.Snowpark.CommonTestUtils exposing (stringTypeInstance
                                                  , testDistributionName
                                                  , testDistributionPackage)
 import Morphir.IR.Literal as Literal
-import Morphir.Snowpark.Backend exposing (mapValue)
+import Morphir.Snowpark.MapExpressionsToDataFrameOperations exposing (mapValue)
 import Morphir.Snowpark.Constants exposing (applySnowparkFunc)
 
 str : Type.Type ()
@@ -27,7 +27,7 @@ a2Lit = (Literal.stringLiteral "a")
 caseOfGenTests: Test
 caseOfGenTests =
     let
-        calculatedContext = MappingContext.processDistributionModules testDistributionName testDistributionPackage
+        (calculatedContext, _) = MappingContext.processDistributionModules testDistributionName testDistributionPackage
         cases = [ (Value.LiteralPattern str aLit, Value.Literal str a2Lit)
                 , (Value.WildcardPattern str, Value.Literal str (Literal.stringLiteral "D"))]
         inputCase = Value.PatternMatch stringTypeInstance (Value.Literal str (Literal.stringLiteral "X")) cases

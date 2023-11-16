@@ -30,7 +30,10 @@ module Morphir.Snowpark.MappingContext exposing
       , isListOfDataFrameFriendlyType
       , getFunctionClassification
       , typeRefIsListOf
-      , resolveTypeAlias )
+      , resolveTypeAlias
+      , addLocalDefinitions
+      , isLocalVariableDefinition
+      , isFunctionReceivingDataFrameExpressions )
 
 {-| This module contains functions to collect information about type definitions in a distribution.
 It classifies type definitions in the following kinds:
@@ -42,6 +45,7 @@ It classifies type definitions in the following kinds:
 |-}
 
 import Dict exposing (Dict)
+import Set exposing (Set)
 import Morphir.Scala.AST as Scala
 import Morphir.IR.Type as Type exposing (Type, Type(..), Definition(..))
 import Morphir.IR.Module as Module
@@ -81,6 +85,7 @@ type alias GlobalDefinitionInformation a =
 
 type alias ValueMappingContext = 
    { parameters: List Name
+   , localDefinitions: Set Name
    , typesContextInfo : MappingContextInfo ()
    , inlinedIds: Dict Name Scala.Value
    , packagePath: Path.Path
@@ -91,6 +96,7 @@ type alias ValueMappingContext =
 
 emptyValueMappingContext : ValueMappingContext
 emptyValueMappingContext = { parameters = []
+                           , localDefinitions = Set.empty
                            , inlinedIds = Dict.empty
                            , typesContextInfo = emptyContext
                            , packagePath = Path.fromString "default" 
@@ -98,6 +104,14 @@ emptyValueMappingContext = { parameters = []
                            , functionClassificationInfo = Dict.empty
                            , currentFunctionClassification = Unknown
                            }
+
+isLocalVariableDefinition : Name -> ValueMappingContext -> Bool
+isLocalVariableDefinition name ctx =
+   Set.member name ctx.localDefinitions
+
+addLocalDefinitions : List Name -> ValueMappingContext -> ValueMappingContext
+addLocalDefinitions names ctx =
+   { ctx | localDefinitions = Set.union (Set.fromList names) ctx.localDefinitions }
 
 isFunctionReturningDataFrameExpressions : FQName -> ValueMappingContext -> Bool
 isFunctionReturningDataFrameExpressions name ctx =
@@ -113,6 +127,24 @@ isFunctionClassificationReturningDataFrameExpressions classfication =
          _ -> 
             False
       
+isFunctionReceivingDataFrameExpressions : FQName -> ValueMappingContext -> Bool
+isFunctionReceivingDataFrameExpressions name ctx =
+   Dict.get name ctx.functionClassificationInfo
+      |> Maybe.map isFunctionClassificationReceivingDataFrameExpressions
+      |> Maybe.withDefault False
+
+isFunctionClassificationReceivingDataFrameExpressions : FunctionClassification -> Bool
+isFunctionClassificationReceivingDataFrameExpressions classfication =
+     case classfication of
+         FromDfValuesToDfValues -> 
+            True
+         FromDataFramesToValues -> 
+            True
+         FromDataFramesToDataFrames -> 
+            True
+         _ -> 
+            False
+
 getReplacementForIdentifier : Name -> ValueMappingContext -> Maybe Scala.Value
 getReplacementForIdentifier name ctx =
    Dict.get name ctx.inlinedIds

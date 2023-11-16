@@ -33,7 +33,7 @@ functionGenTests =
                                     , body = Value.Variable stringTypeInstance (Name.fromString "x")
                                     }}
         mappedFunctionDefinition =
-                mapFunctionDefinition (Name.fromString "foo") functionDefinition (Path.fromString "UTest") calculatedContext
+                mapFunctionDefinition (Name.fromString "foo") functionDefinition (Path.fromString "UTest") (Path.fromString "MyMod") calculatedContext
 
         expectedRef = Scala.Ref ["uTest", "MyMod"] "Emp" 
         expectedTypeRef = Scala.TypeRef ["uTest", "MyMod"] "Emp" 

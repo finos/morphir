@@ -1,4 +1,8 @@
-module Morphir.Snowpark.TypeRefMapping exposing (generateRecordTypeWrapperExpression, mapTypeReference, mapFunctionReturnType, generateCastIfPossible)
+module Morphir.Snowpark.TypeRefMapping exposing (generateRecordTypeWrapperExpression
+                                                , mapTypeReference
+                                                , mapFunctionReturnType
+                                                , generateCastIfPossible
+                                                , generateSnowparkTypeExprFromElmType)
 
 import Morphir.IR.Name as Name
 import Morphir.IR.Type exposing (Type(..))
@@ -17,14 +21,13 @@ import Morphir.Snowpark.MappingContext exposing (ValueMappingContext)
 import Morphir.Snowpark.MappingContext exposing (getLocalVariableIfDataFrameReference)
 import Morphir.Snowpark.Utils exposing (tryAlternatives)
 import Morphir.IR.Type as Type
-import Morphir.Snowpark.MappingContext exposing (GlobalDefinitionInformation)
-import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.FQName as FQName
 import Morphir.Snowpark.ReferenceUtils exposing (scalaPathToModule)
 import Morphir.Snowpark.MappingContext exposing (isTypeAlias)
 import Morphir.Snowpark.MappingContext exposing (resolveTypeAlias)
-import Morphir.Snowpark.Constants exposing (applySnowparkFunc)
-import Morphir.Scala.Feature.Codec exposing (typeRef)
+import Morphir.Snowpark.Constants exposing (applySnowparkFunc, applyForSnowparkTypesTypeExpr, applyForSnowparkTypesType)
+import Morphir.Snowpark.MappingContext exposing (isUnionTypeWithParams)
+import Morphir.Snowpark.MappingContext exposing (isUnionTypeWithoutParams)
 
 
 checkDataFrameCase : Type () -> MappingContextInfo () -> Maybe Scala.Type
@@ -75,6 +78,27 @@ checkForColumnCase typeReference ctx =
     else
         Nothing
 
+
+checkForBasicTypeToScala : Type () -> MappingContextInfo () -> Maybe Scala.Type
+checkForBasicTypeToScala tpe ctx =
+   case tpe of
+       Reference _ ([ [ "morphir" ],  [ "s", "d", "k" ] ],[ [ "basics" ] ], [ "int" ]) _ ->
+            Just <| Scala.TypeVar "Int"
+       Reference _ ([ [ "morphir" ],  [ "s", "d", "k" ] ],[ [ "basics" ] ], [ "float" ]) _ ->
+            Just <| Scala.TypeVar "Float"
+       Reference _ ([ [ "morphir" ],  [ "s", "d", "k" ] ],[ [ "basics" ] ], [ "double" ]) _ ->
+            Just <| Scala.TypeVar "Double"
+       Reference _ ([ [ "morphir" ],  [ "s", "d", "k" ] ],[ [ "basics" ] ], [ "bool" ]) _ ->
+            Just <| Scala.TypeVar "Bool"
+       Reference _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "string" ] ], [ "string" ]) _ -> 
+            Just <| Scala.TypeVar "String"
+       Reference _ fullName [] -> 
+            resolveTypeAlias fullName ctx
+                |> Maybe.map (\resolved -> checkForBasicTypeToScala resolved ctx)
+                |> Maybe.withDefault Nothing
+       _ ->
+            Nothing
+
 checkDefaultCase : Type () -> MappingContextInfo () -> Maybe Scala.Type
 checkDefaultCase typeReference ctx =
     let
@@ -102,8 +126,17 @@ mapTypeReference : Type () -> FunctionClassification -> MappingContextInfo () ->
 mapTypeReference typeReference currentFunctionClassification ctx =
     case currentFunctionClassification of
         MappingContextMod.FromDfValuesToDfValues -> mapTypeReferenceForColumnOperations typeReference ctx
+        MappingContextMod.FromComplexToValues -> mapToScalaTypes typeReference ctx
+        MappingContextMod.FromComplexValuesToDataFrames -> mapToScalaTypes typeReference ctx
         _ -> mapTypeReferenceForDataFrameOperations typeReference ctx
     
+
+mapToScalaTypes : Type () -> MappingContextInfo () -> Scala.Type
+mapToScalaTypes typeReference  ctx =
+   tryAlternatives [ (\_ -> checkDataFrameCase typeReference ctx)
+                   , (\_ -> checkForBasicTypeToScala typeReference ctx)
+                   , (\_ -> checkComplexRecordCase typeReference ctx) ]
+    |> Maybe.withDefault (Scala.TypeVar "TypeNotConverted")
 
 mapTypeReferenceForColumnOperations : Type () -> MappingContextInfo () -> Scala.Type
 mapTypeReferenceForColumnOperations typeReference  ctx =
@@ -188,3 +221,36 @@ generateCastIfPossible ctx tpe value  =
                 value
         _ ->
             value
+
+generateSnowparkTypeExprFromElmType : Type () -> MappingContextInfo () -> (Scala.Value, Bool)
+generateSnowparkTypeExprFromElmType tpe ctx =
+    case tpe of
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] ->
+            (applyForSnowparkTypesTypeExpr "FloatType", False)
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "double" ] ) [] ->
+            (applyForSnowparkTypesTypeExpr "DoubleType", False)
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "int" ] ) [] ->
+            (applyForSnowparkTypesTypeExpr "IntegerType", False)
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) [] ->
+            (applyForSnowparkTypesTypeExpr "BooleanType", False)
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "string" ] ], [ "string" ] ) [] ->
+            (applyForSnowparkTypesTypeExpr "StringType", False)
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ],[ "maybe" ]) [ innerType ] ->
+            let 
+                ( generatedType, _ ) = generateSnowparkTypeExprFromElmType innerType ctx
+            in
+            ( generatedType, True )
+        Type.Reference _ fullTypeName [] ->
+            if isUnionTypeWithoutParams fullTypeName ctx then
+                (applyForSnowparkTypesTypeExpr "StringType", False)
+            else 
+                if isUnionTypeWithParams fullTypeName ctx  then
+                    ((applyForSnowparkTypesType "MapType" [ applyForSnowparkTypesTypeExpr "StringType"
+                                                            , applyForSnowparkTypesTypeExpr "StringType" ])
+                        , True)
+                else
+                    resolveTypeAlias fullTypeName ctx
+                        |> Maybe.map (\t -> generateSnowparkTypeExprFromElmType t ctx)
+                        |> Maybe.withDefault (applyForSnowparkTypesTypeExpr "VariantType", True)
+        _ ->
+            (applyForSnowparkTypesTypeExpr "VariantType", True)

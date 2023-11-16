@@ -5,7 +5,9 @@ module Morphir.Snowpark.ReferenceUtils exposing (
     , mapLiteral
     , scalaReferenceToUnionTypeCase
     , getCustomTypeParameterFieldAccess
-    , getListTypeParameter)
+    , getListTypeParameter
+    , getFunctionInputTypes
+    , mapLiteralToPlainLiteral)
 
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as IrType
@@ -42,21 +44,25 @@ isTypeReferenceToSimpleTypesRecord typeReference ctx =
         _ -> Nothing
 
 
-mapLiteral : ta -> Literal -> Scala.Value
-mapLiteral _ literal =
+mapLiteralToPlainLiteral : ta -> Literal -> Scala.Value
+mapLiteralToPlainLiteral _ literal =
     case literal of
-                CharLiteral val ->
-                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.CharacterLit val))]
-                StringLiteral val ->                    
-                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.StringLit val))]
-                BoolLiteral val ->
-                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.BooleanLit val))]
-                WholeNumberLiteral val ->
-                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.IntegerLit val))]
-                FloatLiteral val ->
-                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.FloatLit val))]
-                _ ->
-                    Debug.todo "The type '_' is not implemented"
+        CharLiteral val ->
+            Scala.Literal (Scala.CharacterLit val)
+        StringLiteral val ->                    
+            Scala.Literal (Scala.StringLit val)
+        BoolLiteral val ->
+            Scala.Literal (Scala.BooleanLit val)
+        WholeNumberLiteral val ->
+            Scala.Literal (Scala.IntegerLit val)
+        FloatLiteral val ->
+            Scala.Literal (Scala.FloatLit val)
+        _ ->
+            Debug.todo "The type '_' is not implemented"
+
+mapLiteral : ta -> Literal -> Scala.Value
+mapLiteral t literal =
+    Constants.applySnowparkFunc "lit" [mapLiteralToPlainLiteral t literal]
 
 
 scalaReferenceToUnionTypeCase : FQName.FQName -> FQName.FQName -> Scala.Value
@@ -79,3 +85,14 @@ getListTypeParameter tpe =
             Just innertype
         _ ->
             Nothing
+
+getFunctionInputTypes : IrType.Type () -> Maybe (List (IrType.Type ()))
+getFunctionInputTypes tpe =
+   case tpe of
+       IrType.Function _ fromType toType ->
+          let
+            toTypes = getFunctionInputTypes toType
+                        |> Maybe.withDefault []
+          in
+          Just (fromType::toTypes)
+       _ -> Nothing
