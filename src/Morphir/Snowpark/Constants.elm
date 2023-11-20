@@ -1,4 +1,5 @@
 module Morphir.Snowpark.Constants exposing (..)
+import Morphir.IR.Name as Name
 import Morphir.Scala.AST as Scala
 import Morphir.IR.Type as TypeIR
 import Morphir.IR.Value as ValueIR exposing (Pattern(..), Value(..))
@@ -16,6 +17,10 @@ typesNamespace = snowflakeNamespace ++  ["types"]
 applySnowparkFunc : String -> List Scala.Value -> Scala.Value
 applySnowparkFunc name args =
     applyFunctionName functionsNamespace name args
+
+transformToArgsValue : List Scala.Value -> List Scala.ArgValue
+transformToArgsValue valueList =
+    List.map (\x -> Scala.ArgValue Nothing x ) valueList
 
 typeRefForSnowparkType : String -> Scala.Type
 typeRefForSnowparkType typeName =
@@ -42,3 +47,22 @@ applyFunctionName namespace name args =
 type alias MapValueType ta = ValueIR.Value ta (TypeIR.Type ()) -> ValueMappingContext -> Scala.Value
 
 type alias VariableInformation = (List Scala.Value, List (String, Scala.Value))
+
+type alias MappingFunc ta = (MapValueType ta,  ValueMappingContext)
+
+type alias MappingFuntions ta = 
+    { mapValue : MapValueType ta
+    , ctx : ValueMappingContext
+    }
+
+type alias AliasVariableInfo = 
+    { aliasName: List Scala.Value
+    , variables: VariableInformation
+    }
+
+type alias LambdaInfo ta = 
+    { lambdaPattern: Pattern (TypeIR.Type())
+    , lambdaBody: Value ta (TypeIR.Type ())
+    , groupByName: Name.Name
+    , firstParameter: Name.Name
+    }

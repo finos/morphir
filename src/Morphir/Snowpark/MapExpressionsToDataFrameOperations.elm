@@ -55,8 +55,8 @@ mapValue value ctx =
             mapIfThenElse condition thenExpr elseExpr ctx
         LetDefinition _ name definition body ->
             mapLetDefinition name definition body mapValue ctx
-        FieldFunction _ [name] ->
-            Constants.applySnowparkFunc "col" [(Scala.Literal (Scala.StringLit name))]
+        FieldFunction _ name ->
+            Constants.applySnowparkFunc "col" [(Scala.Literal (Scala.StringLit (Name.toCamelCase name)))]
         Value.Tuple _ tupleElements ->
             Constants.applySnowparkFunc "array_construct" <| List.map (\e -> mapValue e ctx) tupleElements
         Value.Record tpe fields ->

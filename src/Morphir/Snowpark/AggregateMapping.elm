@@ -1,5 +1,6 @@
 module Morphir.Snowpark.AggregateMapping exposing (processAggregateLambdaBody)
 
+import Dict
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as TypeIR
 import Morphir.IR.Value as ValueIR
@@ -9,11 +10,22 @@ import Morphir.Snowpark.MappingContext exposing (ValueMappingContext, getFieldIn
 import Morphir.Snowpark.Operatorsmaps as Operatorsmaps
 
 
-processAggregateLambdaBody : ValueIR.Value ta (TypeIR.Type ()) -> Constants.MapValueType ta -> ValueMappingContext ->  List Scala.ArgValue
-processAggregateLambdaBody body mapValue ctx =
-    case body of
-        ValueIR.Record _ _ ->
-            [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "To Do - Processing Record"))]
+processAggregateLambdaBody : Constants.LambdaInfo ta -> Constants.MappingFunc ta ->  {columnNameList: List Scala.Value, variable : List Scala.ArgValue}
+processAggregateLambdaBody lambdaInfo (mapValue, ctx) =
+    case lambdaInfo.lambdaBody of
+        ValueIR.Record fieldListType _ ->
+            case lambdaInfo.lambdaPattern of
+                    ValueIR.AsPattern functionToApply _ functionName ->
+                        let
+                            recordFieldsName = getFieldInfoIfRecordType fieldListType ctx.typesContextInfo |> Maybe.map (List.map Tuple.first) |> aliasMap
+                        in
+                        { columnNameList = recordFieldsName
+                        , variable = processRecords lambdaInfo functionToApply functionName (mapValue, ctx) recordFieldsName 
+                        }
+                    _ ->
+                        { columnNameList = []
+                        , variable = [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "To Do - Processing Record"))]
+                        }
         ValueIR.Apply _ x
             ((ValueIR.Apply _ _
                 (ValueIR.Apply _
@@ -21,10 +33,71 @@ processAggregateLambdaBody body mapValue ctx =
                     ( ValueIR.FieldFunction _ _ )
                 )
             ) as y) ->
-            variablesFromAggregate (ValueIR.uncurryApply x y) mapValue ctx 
-                |>  concatFunctions
+            variablesFromAggregate (ValueIR.uncurryApply x y) (mapValue, ctx) 
+                |> (\variableInfo -> { columnNameList = variableInfo.aliasName, variable = (concatFunctions variableInfo.variables)})
         _ ->
-            [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "To Do - Processing Other"))]
+            { columnNameList = []
+            , variable = [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "To Do - Processing Other"))]
+            } 
+
+processRecords : Constants.LambdaInfo ta -> TypeIR.Type () -> Name.Name  -> Constants.MappingFunc ta -> List Scala.Value -> List Scala.ArgValue
+processRecords lambdaInfo functionToApply functionName mappingFunc columnNameList =
+    case lambdaInfo.lambdaBody of
+        ValueIR.Record _ dictVariables ->
+            let
+                variablesInfo = Dict.toList dictVariables 
+                                    |> List.map (processRecordsVariables lambdaInfo mappingFunc functionToApply functionName)
+                variables = List.map2 processColumnList variablesInfo columnNameList 
+            in
+            variables |> List.filterMap (\x -> x ) |> List.map generateFunctionFromColumnRecords
+        _ ->
+            [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "Unsupported Record"))]
+
+generateFunctionFromColumnRecords : (String, Scala.Value, Scala.Value) -> Scala.ArgValue
+generateFunctionFromColumnRecords (funcName, columnName, aliasValue) =
+    if String.contains "Unsupported" funcName then
+        Scala.ArgValue Nothing  <| Scala.Literal (Scala.StringLit "Unsupported column")
+    else 
+        Constants.applySnowparkFunc funcName [columnName] |> joinWithAlias aliasValue 
+
+
+processColumnList: Maybe (String, Scala.Value, Name.Name) -> Scala.Value -> Maybe (String, Scala.Value, Scala.Value)
+processColumnList variable aliasName =
+    case variable of
+        Just (funcName, value, _) ->
+            Just (funcName, value, aliasName)
+        _ ->
+            Nothing
+
+processRecordsVariables : Constants.LambdaInfo ta -> Constants.MappingFunc ta -> TypeIR.Type () -> Name.Name -> (Name.Name, (ValueIR.Value ta (TypeIR.Type ()))) -> Maybe (String, Scala.Value, Name.Name)
+processRecordsVariables lambdaInfo (mapValue, ctx) functionFromLambda functionFromLamnbdaName (key, value) =
+    case value of
+        ValueIR.Apply _ (ValueIR.Variable functionType functionName) variableToProcess ->
+            if functionType == functionFromLambda && functionFromLamnbdaName == functionName then
+                getFunctionVariable variableToProcess (mapValue, ctx) lambdaInfo
+            else
+                Just ("Unsupported case", (Scala.Literal (Scala.StringLit (Name.toCamelCase key))), [])
+        ValueIR.Variable _ name ->
+            if name == lambdaInfo.firstParameter then
+                if key /= lambdaInfo.groupByName then
+                    Just ( "col", Scala.Literal (Scala.StringLit (Name.toCamelCase lambdaInfo.groupByName)), key)
+                else
+                    Nothing
+            else
+                Just <| ( "Unsupported variable", Scala.Literal (Scala.StringLit ("UnSupported variable for " ++ (Name.toCamelCase name))), ["Unsupported"])
+        _ ->
+            Just <| ( "Unsupported field", Scala.Literal (Scala.StringLit "UnSupported field from Record"), ["Unsupported field"])
+
+getFunctionVariable : ValueIR.Value ta (TypeIR.Type()) -> Constants.MappingFunc ta -> Constants.LambdaInfo ta -> Maybe (String, Scala.Value, Name.Name)
+getFunctionVariable variableInfo mappingFunc lambdaInfo =
+    case variableInfo of
+        ValueIR.Apply _ _ _ ->
+            getVariable variableInfo mappingFunc
+        ValueIR.Reference _ ([["morphir"],["s","d","k"]],[["aggregate"]],["count"]) ->
+            Just ("count", Constants.applySnowparkFunc "col" [Scala.Literal (Scala.StringLit (Name.toCamelCase lambdaInfo.groupByName))], ["count"] )
+        _ ->
+            Just ("Unsupported", Scala.Literal (Scala.StringLit "Unsupported Reference"), [] )
+        
 
 concatFunctions : Constants.VariableInformation -> List Scala.ArgValue
 concatFunctions (aliasList, functions) =
@@ -36,18 +109,22 @@ processList : (String, Scala.Value) -> Scala.Value
 processList (funcName, columnName) =
     Constants.applySnowparkFunc funcName [columnName]
 
-variablesFromAggregate : (ValueIR.Value ta (TypeIR.Type ()),List (ValueIR.Value ta (TypeIR.Type ()))) -> Constants.MapValueType ta -> ValueMappingContext -> Constants.VariableInformation
-variablesFromAggregate body mapValue ctx =
+variablesFromAggregate : (ValueIR.Value ta (TypeIR.Type ()),List (ValueIR.Value ta (TypeIR.Type ()))) -> Constants.MappingFunc ta -> Constants.AliasVariableInfo
+variablesFromAggregate body (mapValue, ctx) =
     case body of
         (ValueIR.Constructor tpe _, array) ->
             let
                 aliasApplies = aliasMap <| getFieldsFromType tpe ctx
+                variablesFromApply = 
+                    array 
+                    |> List.map (getVariablesFromApply (mapValue, ctx))
+                    |> List.filterMap (\x -> x )
             in
-            joinAliasInfo aliasApplies <| (array 
-            |> List.map (getVariablesFromApply mapValue ctx)
-                |> List.filterMap (\x -> x ))
+            joinAliasInfo aliasApplies variablesFromApply |> (\x ->  {aliasName = aliasApplies, variables = x})
         _ ->
-            ( [], [("Error", Scala.Literal (Scala.StringLit "To Do - Not Support in variablesFromApply"))])
+            { aliasName = []
+            ,variables = ( [], [("Error", Scala.Literal (Scala.StringLit "To Do - Not Support in variablesFromApply"))])
+            }
 
 joinAliasInfo : a -> b -> ( a, b )
 joinAliasInfo aliasList variableList =
@@ -83,15 +160,38 @@ joinWithAlias aliasApply columnsApply =
     in
     Scala.ArgValue Nothing (Scala.Apply columnAlias [Scala.ArgValue Nothing aliasApply])
 
-getVariablesFromApply : Constants.MapValueType ta -> ValueMappingContext -> ValueIR.Value ta (TypeIR.Type ()) -> Maybe (String, Scala.Value)
-getVariablesFromApply mapValue ctx value =
+getVariablesFromApply : Constants.MappingFunc ta -> ValueIR.Value ta (TypeIR.Type ()) -> Maybe (String, Scala.Value)
+getVariablesFromApply mappingFunc value =
     case value of
-        ValueIR.Apply _ _ 
-            (ValueIR.Apply _ (ValueIR.Reference _ ( _, _, name )) property) ->
+        ValueIR.Apply _ _ property ->
+            let
+                info  = getVariable property mappingFunc
+            in
+            case info of
+                Just (funcName, scalaValue, _) ->
+                    Just (funcName, scalaValue)
+                _ ->
+                    Nothing
+        _ ->
+            Nothing
+
+getVariable : ValueIR.Value ta (TypeIR.Type ()) -> Constants.MappingFunc ta -> Maybe (String, Scala.Value, Name.Name)
+getVariable value (mapValue, ctx) =
+    case value of
+        (ValueIR.Apply _ (ValueIR.Reference _ ( _, _, name )) property) ->
             let
                 func = Operatorsmaps.mapOperator name
                 column = mapValue property ctx
+                columnName = getColumnName property
             in
-            Just (func, column)
+            Just (func, column, columnName)
         _ ->
-            Nothing
+            Just ("Unsupported", Scala.Literal (Scala.StringLit "Unsupported Reference"), [] )
+
+getColumnName : ValueIR.Value ta (TypeIR.Type ()) -> Name.Name
+getColumnName property =
+    case property of
+        ValueIR.FieldFunction  _ name ->
+             name
+        _ ->
+            []

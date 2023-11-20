@@ -523,7 +523,7 @@ mapMaybeWithDefaultFunction  ( _, args ) mapValue ctx =
 mapAggregateFunction : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
 mapAggregateFunction  ( _, args ) mapValue ctx =
     case args of
-        [ (ValueIR.Lambda _ _ ( ValueIR.Lambda _ _ lambdaBody )),
+        [ (ValueIR.Lambda _ (ValueIR.AsPattern _ _ firstParameterName ) ( ValueIR.Lambda _ lambdaPattern lambdaBody )),
          (ValueIR.Apply 
             _
             (ValueIR.Apply _
@@ -531,13 +531,21 @@ mapAggregateFunction  ( _, args ) mapValue ctx =
                     (ValueIR.FieldFunction _  groupByCategory ))
             dfName) ] ->
             let
-                variables = AggregateMapping.processAggregateLambdaBody lambdaBody mapValue ctx
+                lambdaInfo = 
+                    { lambdaPattern = lambdaPattern
+                    , lambdaBody = lambdaBody
+                    , groupByName = groupByCategory
+                    , firstParameter = firstParameterName
+                    }
+                variablesInfo = AggregateMapping.processAggregateLambdaBody lambdaInfo (mapValue, ctx)
                 collection = Scala.Select (mapValue dfName ctx) "groupBy"
                 dfGroupBy = Scala.Apply collection [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit (Name.toCamelCase groupByCategory)))]
                 aggFunction = Scala.Select dfGroupBy "agg"
-                groupBySum = Scala.Apply aggFunction variables
+                groupBySum = Scala.Apply aggFunction variablesInfo.variable
+                selectColumns = Constants.transformToArgsValue <| List.map (\x -> Constants.applySnowparkFunc "col" [x]) variablesInfo.columnNameList
+                select = Scala.Apply (Scala.Select groupBySum "select") selectColumns
             in
-            groupBySum
+            select
         _ ->
             Scala.Literal (Scala.StringLit "Aggregate scenario not supported")
     
