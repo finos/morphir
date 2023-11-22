@@ -18,7 +18,7 @@ import Morphir.Snowpark.MappingContext exposing (isLocalVariableDefinition)
 import Morphir.Snowpark.MappingContext exposing (isFunctionReceivingDataFrameExpressions)
 import Morphir.Snowpark.ReferenceUtils exposing (getFunctionInputTypes)
 
-tryToConvertUserFunctionCall : ((Value a (Type ())), List (Value a (Type ()))) -> Constants.MapValueType a -> ValueMappingContext -> Scala.Value
+tryToConvertUserFunctionCall : ((Value () (Type ())), List (Value () (Type ()))) -> Constants.MapValueType () -> ValueMappingContext -> Scala.Value
 tryToConvertUserFunctionCall (func, args) mapValue ctx =
    case func of
        ValueIR.Reference functionType functionName -> 

@@ -135,8 +135,20 @@ mapToScalaTypes : Type () -> MappingContextInfo () -> Scala.Type
 mapToScalaTypes typeReference  ctx =
    tryAlternatives [ (\_ -> checkDataFrameCase typeReference ctx)
                    , (\_ -> checkForBasicTypeToScala typeReference ctx)
-                   , (\_ -> checkComplexRecordCase typeReference ctx) ]
+                   , (\_ -> checkComplexRecordCase typeReference ctx)
+                   , (\_ -> checkUnionTypeForPlainScala typeReference ctx) ]
     |> Maybe.withDefault (Scala.TypeVar "TypeNotConverted")
+
+checkUnionTypeForPlainScala : Type () -> MappingContextInfo () -> Maybe Scala.Type
+checkUnionTypeForPlainScala tpe ctx =
+    case  tpe of
+        Type.Reference _ fullTypeName _ ->
+            if isUnionTypeWithoutParams fullTypeName ctx then
+                Just <| Scala.TypeVar "String"
+            else 
+                Nothing
+        _ ->
+            Nothing
 
 mapTypeReferenceForColumnOperations : Type () -> MappingContextInfo () -> Scala.Type
 mapTypeReferenceForColumnOperations typeReference  ctx =

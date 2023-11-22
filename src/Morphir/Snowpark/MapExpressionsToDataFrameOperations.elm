@@ -32,7 +32,7 @@ import Morphir.Snowpark.ReferenceUtils exposing (getListTypeParameter)
 import Morphir.Snowpark.MappingContext exposing (FunctionClassification(..))
 import Morphir.Snowpark.LetMapping exposing (mapLetDefinition)
 
-mapValue : Value ta (Type ()) -> ValueMappingContext -> Scala.Value
+mapValue : Value () (Type ()) -> ValueMappingContext -> Scala.Value
 mapValue value ctx =
     case value of
         Literal tpe literal ->
@@ -46,7 +46,7 @@ mapValue value ctx =
         List listType values ->
             mapListCreation listType values ctx
         Reference tpe name ->
-            mapReferenceAccess tpe name ctx
+            mapReferenceAccess tpe name mapValue ctx
         Apply _ _ _ ->
             MapFunctionsMapping.mapFunctionsMapping value mapValue ctx
         PatternMatch tpe expr cases ->
@@ -65,7 +65,7 @@ mapValue value ctx =
             Scala.Literal (Scala.StringLit ("Unsupported element"))
 
 
-mapRecordCreation : Type () -> Dict.Dict (Name.Name) (Value ta (Type ())) -> ValueMappingContext -> Scala.Value
+mapRecordCreation : Type () -> Dict.Dict (Name.Name) (Value () (Type ())) -> ValueMappingContext -> Scala.Value
 mapRecordCreation tpe fields ctx =
     if isTypeRefToRecordWithComplexTypes tpe ctx.typesContextInfo then
         mapRecordCreationToCaseClassCreation tpe fields ctx
@@ -86,7 +86,7 @@ mapRecordCreation tpe fields ctx =
             Scala.Literal (Scala.StringLit ("Record creation not converted2"))
 
 
-mapRecordCreationToCaseClassCreation : Type () -> Dict.Dict (Name.Name) (Value ta (Type ())) -> ValueMappingContext -> Scala.Value
+mapRecordCreationToCaseClassCreation : Type () -> Dict.Dict (Name.Name) (Value () (Type ())) -> ValueMappingContext -> Scala.Value
 mapRecordCreationToCaseClassCreation tpe fields ctx =
     case tpe of
         Type.Reference _ fullName [] ->
@@ -108,7 +108,7 @@ mapRecordCreationToCaseClassCreation tpe fields ctx =
         _ ->
             Scala.Literal (Scala.StringLit ("Record creation not converted"))
 
-mapListCreation : (Type ()) -> List (Value ta (Type ())) -> ValueMappingContext -> Scala.Value
+mapListCreation : (Type ()) -> List (Value () (Type ())) -> ValueMappingContext -> Scala.Value
 mapListCreation tpe values ctx =
     let
         listOfRecordWithSimpleTypes = typeRefIsListOf tpe (\innerTpe -> isTypeRefToRecordWithSimpleTypes innerTpe ctx.typesContextInfo)
@@ -120,13 +120,13 @@ mapListCreation tpe values ctx =
     else
         case (getListTypeParameter tpe |> Maybe.map (\t -> isTypeReferenceToSimpleTypesRecord t ctx.typesContextInfo) |> Maybe.withDefault Nothing, values) of
             (Just (path, name), []) ->
-                Scala.Apply (Scala.Select (Scala.Ref path (Name.toTitleCase name)) "createEmptyDataFrame") [ Scala.ArgValue Nothing (Scala.Literal (Scala.NullLit)) ]
+                Scala.Apply (Scala.Select (Scala.Ref path (Name.toTitleCase name)) "createEmptyDataFrame") [ Scala.ArgValue Nothing (Scala.Variable "sfSession") ]
             _ ->
                 Scala.Apply 
                     (Scala.Variable "Seq")
                     (values |> List.map (\v -> Scala.ArgValue Nothing (mapValue v ctx)))
 
-mapIfThenElse : Value ta (Type ()) -> Value ta (Type ()) -> Value ta (Type ()) -> ValueMappingContext -> Scala.Value
+mapIfThenElse : Value () (Type ()) -> Value () (Type ()) -> Value () (Type ()) -> ValueMappingContext -> Scala.Value
 mapIfThenElse condition thenExpr elseExpr ctx =
    let
        whenCall = 

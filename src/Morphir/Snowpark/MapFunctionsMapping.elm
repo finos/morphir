@@ -88,7 +88,7 @@ dataFrameMappings =
     ]
         |> Dict.fromList
 
-mapFunctionsMapping : ValueIR.Value ta (TypeIR.Type ()) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapFunctionsMapping : ValueIR.Value () (TypeIR.Type ()) -> Constants.MapValueType () -> ValueMappingContext -> Scala.Value
 mapFunctionsMapping value mapValue ctx =
     case value of
         ValueIR.Apply _ function arg ->
@@ -106,19 +106,44 @@ getFullNameIfReferencedElement value =
         _ ->
             Nothing
 
-mapUncurriedFunctionCall : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> FunctionMappingTable ta -> ValueMappingContext -> Scala.Value
+mapUncurriedFunctionCall : (IrValueType (), List (IrValueType ())) -> Constants.MapValueType () -> FunctionMappingTable () -> ValueMappingContext -> Scala.Value
 mapUncurriedFunctionCall (func, args) mapValue mappings ctx =    
     let
+        funcNameIfAvailable =
+            getFullNameIfReferencedElement func
+        inlineFunctionIfAvailable = 
+            funcNameIfAvailable
+                    |> Maybe.map (\fullName -> Dict.get fullName mappings)
+                    |> Maybe.withDefault Nothing
         builtinMappingFunction =
             getFullNameIfReferencedElement func
-                |> Maybe.map (\fullName -> Dict.get fullName mappings)
+                |> Maybe.map (getInliningFunctionIfRequired ctx)
                 |> Maybe.withDefault Nothing
     in
-    case builtinMappingFunction of
-        Just mappingFunc ->
+    case (inlineFunctionIfAvailable, builtinMappingFunction) of
+        (Just inliningFunction, _) ->
+            inliningFunction (func, args) mapValue ctx
+        (_, Just mappingFunc) ->
             mappingFunc (func, args) mapValue ctx
         _ -> 
             tryToConvertUserFunctionCall (func, args) mapValue ctx
+
+getInliningFunctionIfRequired : ValueMappingContext -> FQName.FQName -> Maybe (MappingFunctionType ())
+getInliningFunctionIfRequired ctx name =
+   Dict.get name ctx.globalValuesToInline
+      |> Maybe.map (\definition ->
+            \(_, args) mapValue innerCtx ->
+                let
+                    convertedArgs = 
+                        List.map2 (\arg (paramName, _, _) -> (paramName, mapValue arg ctx)) args definition.inputTypes
+                            
+                    newCtx = 
+                        convertedArgs
+                            |> List.foldr (\(paramName, value) currentCtx -> 
+                                                addReplacementForIdentifier paramName value currentCtx) innerCtx 
+                in
+                mapValue definition.body newCtx)
+
 
 mapListMemberFunction : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
 mapListMemberFunction ( _, args ) mapValue ctx =

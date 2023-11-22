@@ -19,11 +19,13 @@ import Morphir.Snowpark.CommonTestUtils exposing (stringTypeInstance
                                                  , testDistributionPackage)
 import Morphir.Snowpark.Constants exposing (typeRefForSnowparkType)
 import Morphir.IR.Path as Path
+import Set
 
 functionGenTests: Test
 functionGenTests =
     let
-        calculatedContext = MappingContext.processDistributionModules testDistributionName testDistributionPackage
+        customizationOptions = {functionsToInline = Set.empty, functionsToCache = Set.empty}
+        calculatedContext = MappingContext.processDistributionModules testDistributionName testDistributionPackage customizationOptions
         typeOfRecord = Type.Reference () (FQName.fromString "UTest:MyMod:Emp" ":") []
         functionDefinition = 
                 public { doc = ""
@@ -45,6 +47,7 @@ functionGenTests =
                                     , typeArgs = []
                                     , args = [[Scala.ArgDecl [] (Scala.TypeRef ["uTest", "MyMod"] "Emp") "a" Nothing]
                                              , [Scala.ArgDecl [] (typeRefForSnowparkType "Column") "b" Nothing]
+                                             , [Scala.ArgDecl [ Scala.Implicit ] (typeRefForSnowparkType "Session") "sfSession" Nothing]
                                              ]
                                     , returnType = Just <| typeRefForSnowparkType "Column"
                                     , body = Just expectedFunctionBody

@@ -30,7 +30,7 @@ For union types without parameters we are going to generate an object definition
 |-}
 
 generateRecordWrappers : Package.PackageName -> ModuleName -> GlobalDefinitionInformation () -> Dict Name (AccessControlled (Documented (Type.Definition ()))) -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
-generateRecordWrappers packageName moduleName (ctx, _) typesInModule = 
+generateRecordWrappers packageName moduleName (ctx, _, _) typesInModule = 
     typesInModule
        |> Dict.toList
        |> List.concatMap (processTypeDeclaration packageName moduleName ctx)
@@ -187,6 +187,20 @@ classForRecordWrapper name fields =
             )
         )) 
 
+emptyDataFrameField : Scala.Annotated (Scala.MemberDecl)
+emptyDataFrameField = 
+    Scala.Annotated
+        []
+        (Scala.ValueDecl
+                { modifiers = []
+                , pattern = Scala.NamedMatch ("emptyDataFrameCache")
+                , valueType = Just (Scala.TypeApply 
+                                        (Scala.TypeRef ["scala","collection","mutable"] "HashMap") 
+                                        [ Scala.TypeVar "Boolean" ,typeRefForSnowparkType "DataFrame"] )
+                , value = 
+                     Scala.New ["scala","collection","mutable"] "HashMap" []
+                })
+
 emptyDataFrameMethod : Scala.Annotated (Scala.MemberDecl)
 emptyDataFrameMethod =
     let
@@ -199,6 +213,11 @@ emptyDataFrameMethod =
               , name = "session"
               , defaultValue = Nothing
               }
+        getOrElseUpdateCall = 
+                    Scala.Apply (Scala.Ref ["emptyDataFrameCache"] "getOrElseUpdate") 
+                                [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit True))
+                                , Scala.ArgValue Nothing (Scala.Apply createDataFrameMethod createDataFrameArgs)
+                                ]
     in
     Scala.Annotated
         []
@@ -208,7 +227,7 @@ emptyDataFrameMethod =
                 , typeArgs = []
                 , args = [ [ arg ] ]
                 , returnType = Just <| typeRefForSnowparkType "DataFrame"
-                , body = Just <| Scala.Apply createDataFrameMethod createDataFrameArgs
+                , body = Just getOrElseUpdateCall -- <| Scala.Apply createDataFrameMethod createDataFrameArgs
                 })
 
 objectForRecordWrapper : Name -> (List (Field ())) -> MappingContextInfo () -> (Scala.Documented (Scala.Annotated Scala.TypeDecl))
@@ -226,7 +245,7 @@ objectForRecordWrapper name fields ctx =
                 , name =
                     nameToUse
                 , members = 
-                    (members ++ [ schema, emptyDataFrameMethod ])
+                    (members ++ [ schema, emptyDataFrameMethod, emptyDataFrameField ])
                 , extends =
                     [ Scala.TypeRef [] nameToUse ]
                 , body = 

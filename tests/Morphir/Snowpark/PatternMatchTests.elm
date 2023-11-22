@@ -3,6 +3,7 @@ module Morphir.Snowpark.PatternMatchTests exposing (caseOfGenTests)
 import Expect
 import Test exposing (Test, describe, test)
 import Dict exposing (Dict(..))
+import Set 
 import Morphir.Scala.AST as Scala
 import Morphir.IR.Value as Value
 import Morphir.IR.Type as Type
@@ -27,7 +28,8 @@ a2Lit = (Literal.stringLiteral "a")
 caseOfGenTests: Test
 caseOfGenTests =
     let
-        (calculatedContext, _) = MappingContext.processDistributionModules testDistributionName testDistributionPackage
+        customizationOptions = {functionsToInline = Set.empty, functionsToCache = Set.empty}
+        (calculatedContext, _ , _) = MappingContext.processDistributionModules testDistributionName testDistributionPackage customizationOptions
         cases = [ (Value.LiteralPattern str aLit, Value.Literal str a2Lit)
                 , (Value.WildcardPattern str, Value.Literal str (Literal.stringLiteral "D"))]
         inputCase = Value.PatternMatch stringTypeInstance (Value.Literal str (Literal.stringLiteral "X")) cases

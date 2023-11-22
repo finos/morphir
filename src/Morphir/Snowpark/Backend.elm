@@ -1,4 +1,4 @@
-module Morphir.Snowpark.Backend exposing (mapDistribution, Options, mapFunctionDefinition)
+module Morphir.Snowpark.Backend exposing (mapDistribution, Options, mapFunctionDefinition, decodeOptions)
 
 import Dict
 import List
@@ -32,26 +32,47 @@ import Morphir.Snowpark.MappingContext as MappingContext exposing (
 import Morphir.Snowpark.MappingContext exposing (FunctionClassification(..))
 import Morphir.Snowpark.FunctionMappingsForPlainScala as FunctionMappingsForPlainScala
 import Morphir.Snowpark.MapExpressionsToDataFrameOperations exposing (mapValue)
+import Json.Decode as Decode exposing (Decoder)
+import Morphir.IR.Decoration.Codec exposing (decodeNodeIDByValuePairs)
+import Morphir.SDK.Dict as SDKDict
+import Morphir.IR.NodeId exposing (NodeID)
+import Morphir.Snowpark.Customization exposing ( loadCustomizationOptions
+                                               , CustomizationOptions
+                                               , tryToApplyPostConversionCustomization
+                                               , emptyCustomizationOptions )
+import Morphir.Snowpark.Constants exposing (typeRefForSnowparkType)
 
 type alias Options =
-    {}
+    { decorations : Maybe (SDKDict.Dict NodeID Decode.Value) }
+
+decodeOptions : Decoder Options 
+decodeOptions =
+    Decode.map Options
+        (Decode.maybe
+            (Decode.field "decorationsObj" decodeNodeIDByValuePairs))
 
 mapDistribution : Options -> Distribution -> FileMap
-mapDistribution _ distro =
+mapDistribution opts distro =
+    let
+        loadedOpts : CustomizationOptions
+        loadedOpts = opts.decorations 
+                        |> Maybe.map loadCustomizationOptions
+                        |> Maybe.withDefault emptyCustomizationOptions
+    in
     case distro of
         Distribution.Library packageName _ packageDef ->
-            mapPackageDefinition distro packageName packageDef
+            mapPackageDefinition distro packageName packageDef loadedOpts
 
-mapPackageDefinition : Distribution -> Package.PackageName -> Package.Definition () (Type ()) -> FileMap
-mapPackageDefinition _ packagePath packageDef =
+mapPackageDefinition : Distribution -> Package.PackageName -> Package.Definition () (Type ()) -> CustomizationOptions -> FileMap
+mapPackageDefinition _ packagePath packageDef customizationOptions =
     let
-        contextInfo = MappingContext.processDistributionModules packagePath packageDef
+        contextInfo = MappingContext.processDistributionModules packagePath packageDef customizationOptions
         generatedScala =
             packageDef.modules
                 |> Dict.toList
                 |> List.concatMap
                     (\( modulePath, moduleImpl ) ->
-                        mapModuleDefinition packagePath modulePath moduleImpl contextInfo
+                        mapModuleDefinition packagePath modulePath moduleImpl contextInfo customizationOptions
                     )
     in
     generatedScala
@@ -67,8 +88,8 @@ mapPackageDefinition _ packagePath packageDef =
         |> Dict.fromList
 
 
-mapModuleDefinition : Package.PackageName -> Path -> AccessControlled (Module.Definition () (Type ())) -> GlobalDefinitionInformation () -> List Scala.CompilationUnit
-mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleDef ctxInfo =
+mapModuleDefinition : Package.PackageName -> Path -> AccessControlled (Module.Definition () (Type ())) -> GlobalDefinitionInformation () -> CustomizationOptions -> List Scala.CompilationUnit
+mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleDef ctxInfo customizationOptions =
     let
         ( scalaPackagePath, moduleName ) =
             case currentModulePath |> List.reverse of
@@ -88,22 +109,24 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
                 |> RecordWrapperGenerator.generateRecordWrappers currentPackagePath currentModulePath ctxInfo
                 |> List.map (\doc -> { annotations = doc.value.annotations, value = Scala.MemberTypeDecl (doc.value.value) } )
 
-        functionMembers : List (Scala.Annotated Scala.MemberDecl)
-        functionMembers =
+        (functionMembers, generatedImports) =
             accessControlledModuleDef.value.values
                 |> Dict.toList
-                |> List.concatMap
+                |> List.map
                     (\( valueName, accessControlledValueDef ) ->
-                        [ mapFunctionDefinition valueName accessControlledValueDef currentPackagePath currentModulePath ctxInfo
-                        ]
+                        (processFunctionMember valueName accessControlledValueDef currentPackagePath currentModulePath ctxInfo customizationOptions)
                     )
-                |> List.map Scala.withoutAnnotation
+                |> List.unzip
+                |> \(members, imports) -> 
+                        ((members |> List.concat |> List.map Scala.withoutAnnotation)
+                        , imports |> List.concat)
+
         moduleUnit : Scala.CompilationUnit
         moduleUnit =
             { dirPath = scalaPackagePath
             , fileName = (moduleName |> Name.toTitleCase) ++ ".scala"
             , packageDecl = scalaPackagePath
-            , imports = []
+            , imports = generatedImports
             , typeDecls = [( Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
                     (Scala.Annotated []
                         (Scala.Object
@@ -130,8 +153,18 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
     [ moduleUnit ]
 
 
+processFunctionMember : Name.Name -> AccessControlled (Documented (Value.Definition () (Type ()))) -> Package.PackageName -> Path -> GlobalDefinitionInformation () -> CustomizationOptions -> (List Scala.MemberDecl , List Scala.ImportDecl)
+processFunctionMember valueName accessControlledValueDef currentPackagePath currentModulePath ctxInfo customizationOptions =
+    let 
+        fullFunctionName = FQName.fQName currentPackagePath currentModulePath valueName
+        mappedFunction =  mapFunctionDefinition valueName accessControlledValueDef currentPackagePath currentModulePath ctxInfo
+    in
+    Maybe.withDefault
+            ([ mappedFunction ], [] )
+            (tryToApplyPostConversionCustomization fullFunctionName mappedFunction customizationOptions)
+
 mapFunctionDefinition : Name.Name -> AccessControlled (Documented (Value.Definition () (Type ()))) ->  Path -> Path ->  GlobalDefinitionInformation () -> Scala.MemberDecl
-mapFunctionDefinition functionName body currentPackagePath modulePath (typeContextInfo, functionsInfo) =
+mapFunctionDefinition functionName body currentPackagePath modulePath (typeContextInfo, functionsInfo, inlineInfo) =
     let
        fullFunctionName = FQName.fQName currentPackagePath modulePath functionName
        functionClassification =  getFunctionClassification fullFunctionName functionsInfo
@@ -141,7 +174,8 @@ mapFunctionDefinition functionName body currentPackagePath modulePath (typeConte
                                                         , parameters = parameterNames
                                                         , functionClassificationInfo = functionsInfo
                                                         , currentFunctionClassification = functionClassification
-                                                        , packagePath = currentPackagePath} 
+                                                        , packagePath = currentPackagePath
+                                                        , globalValuesToInline = inlineInfo } 
        localDeclarations = 
             body.value.value.inputTypes                
                 |> List.filterMap (checkForDataFrameColumndsDeclaration typeContextInfo)
@@ -152,7 +186,7 @@ mapFunctionDefinition functionName body currentPackagePath modulePath (typeConte
             { modifiers = []
             , name = mapValueName functionName
             , typeArgs = []                                
-            , args = parameters
+            , args = addImplicitSession parameters
             , returnType = 
                 Just returnTypeToGenerate
             , body =
@@ -161,6 +195,21 @@ mapFunctionDefinition functionName body currentPackagePath modulePath (typeConte
                     (declarations, Just bodyToUse) -> Just (Scala.Block declarations bodyToUse)
                     (_, _) -> Nothing
             }
+addImplicitSession : List (List Scala.ArgDecl) -> List (List Scala.ArgDecl) 
+addImplicitSession args =
+    case args of
+        [] ->
+            args
+        _ ->       
+            let
+                implicitArg =
+                    { modifiers = [ Scala.Implicit ]
+                    , tpe = typeRefForSnowparkType "Session"
+                    , name = "sfSession"
+                    , defaultValue = Nothing
+                    }
+            in
+            args ++ [ [ implicitArg ] ]
 
 includeDataFrameInfo : List (Scala.MemberDecl, (String, FQName.FQName)) -> ValueMappingContext -> ValueMappingContext
 includeDataFrameInfo declInfos ctx =
@@ -225,7 +274,7 @@ processParameters inputTypes currentFunctionClassification ctx =
     inputTypes |> List.map (generateArgumentDeclarationForFunction ctx currentFunctionClassification)
 
 
-mapFunctionBody : Value.Definition ta (Type ()) -> ValueMappingContext -> Maybe Scala.Value
+mapFunctionBody : Value.Definition () (Type ()) -> ValueMappingContext -> Maybe Scala.Value
 mapFunctionBody value ctx =
     let
         functionToMap =

@@ -58,6 +58,8 @@ import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Path as Path
 import Morphir.IR.Value as Value
 import Morphir.Snowpark.Utils exposing (tryAlternatives)
+import Morphir.Snowpark.Customization exposing ( CustomizationOptions )
+import Morphir.IR.FQName as FQName
 
 type TypeDefinitionClassification a =
    RecordWithSimpleTypes (List (Name, Type a))
@@ -80,8 +82,11 @@ type alias FunctionClassificationInformation =
 type alias MappingContextInfo a = 
     Dict FQName (TypeClassificationState a)
 
+type alias InlineValuesCollection =
+   Dict FQName (Value.Definition () (Type ()))
+
 type alias GlobalDefinitionInformation a =
-    (MappingContextInfo a, FunctionClassificationInformation)
+    (MappingContextInfo a, FunctionClassificationInformation, InlineValuesCollection)
 
 type alias ValueMappingContext = 
    { parameters: List Name
@@ -92,6 +97,7 @@ type alias ValueMappingContext =
    , dataFrameColumnsObjects: Dict FQName String
    , functionClassificationInfo: FunctionClassificationInformation
    , currentFunctionClassification : FunctionClassification
+   , globalValuesToInline : Dict FQName.FQName (Value.Definition () (Type.Type ()))
    }
 
 emptyValueMappingContext : ValueMappingContext
@@ -103,6 +109,7 @@ emptyValueMappingContext = { parameters = []
                            , dataFrameColumnsObjects = Dict.empty
                            , functionClassificationInfo = Dict.empty
                            , currentFunctionClassification = Unknown
+                           , globalValuesToInline = Dict.empty
                            }
 
 isLocalVariableDefinition : Name -> ValueMappingContext -> Bool
@@ -496,8 +503,8 @@ processSecondPassOnType name typeClassification ctx =
                _ -> ctx
        _ -> ctx
 
-processDistributionModules : Package.PackageName -> Package.Definition () (Type ()) -> GlobalDefinitionInformation ()
-processDistributionModules packagePath package =
+processDistributionModules : Package.PackageName -> Package.Definition () (Type ()) -> CustomizationOptions -> GlobalDefinitionInformation ()
+processDistributionModules packagePath package customizationOptions =
    let 
       moduleList = 
             package.modules 
@@ -524,4 +531,33 @@ processDistributionModules packagePath package =
                                     in
                                     Dict.insert fullFunctionName classfication current)
                              Dict.empty
-      in (secondPass, functionsClassifed)
+      valuesToInline =
+         collectValuesToInline customizationOptions.functionsToInline package.modules
+
+      in (secondPass, functionsClassifed, valuesToInline)
+
+
+collectValuesToInline : Set FQName -> Dict ModuleName (AccessControlled (Module.Definition () (Type ()))) -> Dict FQName (Value.Definition () (Type ()))
+collectValuesToInline namesToInline modules =
+    collectingValuesToInline (Set.toList namesToInline) modules Dict.empty
+
+collectingValuesToInline : List FQName -> Dict ModuleName (AccessControlled (Module.Definition () (Type ()))) -> Dict FQName (Value.Definition () (Type ())) -> Dict FQName (Value.Definition () (Type ()))
+collectingValuesToInline namesToInline modules current =
+   case namesToInline of
+      (first::rest) ->
+         let
+             newDict =
+               case Dict.get (FQName.getModulePath first) modules of
+                  Just mod ->
+                     case Dict.get (FQName.getLocalName first) mod.value.values of
+                        Just { value } -> 
+                           Dict.insert first value.value current
+                        _ -> 
+                           current
+                  _ ->
+                     current
+         in
+            collectingValuesToInline rest modules newDict
+      
+      _ ->
+         current

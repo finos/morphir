@@ -17,7 +17,6 @@ import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.Snowpark.MappingContext exposing (ValueMappingContext)
 import Morphir.Snowpark.MappingContext exposing (isUnionTypeWithoutParams
             , getReplacementForIdentifier)
-import Html.Attributes exposing (name)
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Value exposing (Value(..))
 import Morphir.Snowpark.ReferenceUtils exposing (isValueReferenceToSimpleTypesRecord
@@ -30,6 +29,7 @@ import Morphir.Snowpark.MappingContext exposing (isUnionTypeWithParams)
 import Morphir.IR.Value as Value
 import Morphir.Snowpark.Constants exposing (MapValueType)
 import Morphir.IR.Type as Type
+import Morphir.Snowpark.Utils exposing (tryAlternatives)
 
 
 checkForDataFrameVariableReference : Value ta (IrType.Type ()) -> ValueMappingContext -> Maybe String
@@ -100,9 +100,15 @@ mapConstructorAccess tpe name ctx =
         _ -> 
             Scala.Literal (Scala.StringLit "Constructor access not converted")
 
-mapReferenceAccess : (IrType.Type ()) -> FQName.FQName -> ValueMappingContext -> Scala.Value
-mapReferenceAccess tpe name ctx =
-   if MappingContext.isDataFrameFriendlyType tpe ctx.typesContextInfo ||
+
+mapReferenceAccess : (IrType.Type ()) -> FQName.FQName -> MapValueType () -> ValueMappingContext -> Scala.Value
+mapReferenceAccess tpe name mapValue ctx =
+   if Dict.member name ctx.globalValuesToInline then
+      ctx.globalValuesToInline
+        |> Dict.get name
+        |> Maybe.map (\definition -> mapValue definition.body ctx)
+        |> Maybe.withDefault Scala.Wildcard
+   else if MappingContext.isDataFrameFriendlyType tpe ctx.typesContextInfo ||
       MappingContext.isListOfDataFrameFriendlyType tpe ctx.typesContextInfo then
         let
             nsName = scalaPathToModule name

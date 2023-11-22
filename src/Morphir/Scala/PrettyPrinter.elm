@@ -72,11 +72,29 @@ mapCompilationUnit opt cu =
     concat
         [ concat [ "package ", dotSep (prefixKeywords cu.packageDecl), newLine ]
         , newLine
+        , mapImports cu.imports
         , cu.typeDecls
             |> List.map (mapDocumented (mapAnnotated (mapTypeDecl opt)))
             |> String.join (newLine ++ newLine)
         ]
 
+mapImports : List ImportDecl -> Doc
+mapImports imports =
+    case imports of
+        [] -> 
+            ""
+        importsList ->
+            (importsList |> List.map mapImport) ++ [ newLine ]
+                |> concat
+        
+
+mapImport : ImportDecl -> Doc
+mapImport importDecl =
+    concat
+        [ "import "
+        , String.join "." (importDecl.packagePrefix)
+        , newLine
+        ]
 
 mapTypeDecl : Options -> TypeDecl -> Doc
 mapTypeDecl opt typeDecl =

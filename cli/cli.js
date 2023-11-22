@@ -84,8 +84,14 @@ async function gen(input, outputPath, options) {
     opts.limitToModules = options.modulesToInclude ? options.modulesToInclude.split(",") : null
     opts.includeCodecs = options.includeCodecs ? true : false
     opts.filename = options.filename == '' ? '' : options.filename
-    const fileMap = await generate(opts, JSON.parse(morphirIrJson.toString()))
 
+    if (options.decorations) {
+        if (await fileExist(path.resolve(options.decorations))) {
+            options.decorationsObj = JSON.parse(await readFile(path.resolve(options.decorations)))
+        }
+    }
+
+    const fileMap = await generate(opts, JSON.parse(morphirIrJson.toString()))
     const writePromises =
         fileMap.map(async ([
             [dirPath, fileName], content

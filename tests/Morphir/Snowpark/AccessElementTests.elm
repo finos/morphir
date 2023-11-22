@@ -3,6 +3,7 @@ module Morphir.Snowpark.AccessElementTests exposing (mapFieldAccessTests)
 import Expect
 import Test exposing (Test, describe, test)
 import Dict exposing (Dict(..))
+import Set
 import Morphir.Snowpark.MapExpressionsToDataFrameOperations exposing (mapValue)
 import Morphir.Scala.AST as Scala
 import Morphir.IR.Value as Value
@@ -40,7 +41,8 @@ constructorReference =
 mapFieldAccessTests: Test
 mapFieldAccessTests =
     let
-        (calculatedContext, _) = MappingContext.processDistributionModules testDistributionName testDistributionPackage
+        customizationOptions = {functionsToInline = Set.empty, functionsToCache = Set.empty}
+        (calculatedContext, _, _) = MappingContext.processDistributionModules testDistributionName testDistributionPackage customizationOptions
         valueMapContext = { emptyValueMappingContext | typesContextInfo = calculatedContext }
         assertMapFieldAccess =
             test ("Convert record field reference") <|

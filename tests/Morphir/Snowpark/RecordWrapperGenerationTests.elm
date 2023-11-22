@@ -2,6 +2,7 @@ module Morphir.Snowpark.RecordWrapperGenerationTests exposing (..)
 
 
 import Dict
+import Set
 import Test exposing (Test, describe, test)
 import Expect
 import Morphir.IR.Path as Path
@@ -40,7 +41,8 @@ testDistributionPackage =
 typeClassificationTests : Test
 typeClassificationTests =
     let
-        calculatedContext = MappingContext.processDistributionModules testDistributionName testDistributionPackage
+        customizationOptions = {functionsToInline = Set.empty, functionsToCache = Set.empty}
+        calculatedContext = MappingContext.processDistributionModules testDistributionName testDistributionPackage customizationOptions
         firstModule = Dict.get [(Name.fromString "MyMod")] testDistributionPackage.modules |> Maybe.map (\access -> access.value)
         assertItCreatedWrapper  =
             test ("Wrapper creation") <|
@@ -53,7 +55,7 @@ typeClassificationTests =
                           |> Maybe.withDefault []
                        
                    in
-                   Expect.equal ["Trait:Emp1:2", "Object:Emp1:4", "Class:Emp1Wrapper:2"] generationResult
+                   Expect.equal ["Trait:Emp1:2", "Object:Emp1:5", "Class:Emp1Wrapper:2"] generationResult
         
     in
     describe "resolveTNam"

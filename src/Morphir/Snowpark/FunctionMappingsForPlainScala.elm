@@ -19,8 +19,11 @@ import Morphir.Snowpark.ReferenceUtils exposing (mapLiteralToPlainLiteral)
 import Morphir.Snowpark.LetMapping exposing (mapLetDefinition)
 import Morphir.Snowpark.MapExpressionsToDataFrameOperations as MapDfOperations
 import Morphir.Snowpark.PatternMatchMapping exposing (PatternMatchValues)
+import Morphir.Snowpark.AccessElementMapping exposing (mapReferenceAccess)
+import Morphir.Snowpark.MappingContext exposing (isUnionTypeWithoutParams)
+import Morphir.IR.FQName as FQName
 
-mapValueForPlainScala : IrValueType a -> ValueMappingContext -> Scala.Value
+mapValueForPlainScala : IrValueType () -> ValueMappingContext -> Scala.Value
 mapValueForPlainScala value ctx =
     case value of
         Apply _ _ _ ->
@@ -29,6 +32,8 @@ mapValueForPlainScala value ctx =
             mapLiteralToPlainLiteral tpe literal
         LetDefinition _ name definition body ->
             mapLetDefinition name definition body mapValueForPlainScala ctx
+        Reference tpe name ->
+            mapReferenceAccess tpe name mapValueForPlainScala ctx
         PatternMatch tpe expr cases ->
             mapPatternMatch (tpe, expr, cases) mapValueForPlainScala ctx
         _ ->
@@ -54,19 +59,23 @@ mapCaseOfCase mapValue ctx (sourcePattern, sourceExpr) =
             (Scala.UnapplyMatch [] "Some" [ (Scala.NamedMatch (Name.toCamelCase varName)) ], convertedExpr)
         (ConstructorPattern _ ([["morphir"],["s","d","k"]],[["maybe"]],["nothing"]) []) ->
             (Scala.UnapplyMatch [] "None" [], convertedExpr)
+        (ConstructorPattern (TypeIR.Reference _ fullTypeName _) fullName []) ->
+            if isUnionTypeWithoutParams fullTypeName ctx.typesContextInfo then
+                (Scala.LiteralMatch (Scala.StringLit (Name.toTitleCase (FQName.getLocalName fullName))), convertedExpr)
+            else
+                (Scala.NamedMatch "CONSTRUCTOR_PATTERN_NOT_CONVERTED", convertedExpr)
         _ -> 
             (Scala.NamedMatch "PATTERN_NOT_CONVERTED", convertedExpr)
                 
 
 
-mapFunctionCall : ValueIR.Value ta (TypeIR.Type ()) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapFunctionCall : ValueIR.Value () (TypeIR.Type ()) -> Constants.MapValueType () -> ValueMappingContext -> Scala.Value
 mapFunctionCall value mapValue ctx =
     case value of
         ValueIR.Apply _ func arg ->
                 mapUncurriedFunctionCall (ValueIR.uncurryApply func arg) mapValue actualMappingTable ctx
         _ ->
             Scala.Literal (Scala.StringLit "invalid function call")
-
 
 mergeMappingDictionaries : FunctionMappingTable ta ->  FunctionMappingTable ta -> FunctionMappingTable ta
 mergeMappingDictionaries first second =

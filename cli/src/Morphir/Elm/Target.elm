@@ -57,7 +57,7 @@ decodeOptions gen =
             Decode.map SparkOptions (Decode.succeed Morphir.Scala.Spark.Backend.Options)
         
         Ok "Snowpark" ->
-            Decode.map SnowparkOptions (Decode.succeed Morphir.Snowpark.Backend.Options)
+            Decode.map SnowparkOptions Morphir.Snowpark.Backend.decodeOptions
 
         Ok "JsonSchema" ->
             Decode.map JsonSchemaOptions Morphir.JsonSchema.Backend.Codec.decodeOptions

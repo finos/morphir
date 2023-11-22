@@ -1,6 +1,7 @@
 module Morphir.Snowpark.MappingContextTests exposing (typeClassificationTests)
 
 import Dict
+import Set
 import Test exposing (Test, describe, test)
 import Expect
 import Morphir.IR.Path as Path
@@ -67,7 +68,8 @@ testDistributionPackage =
 typeClassificationTests : Test
 typeClassificationTests =
     let
-        (calculatedContext, _) = MappingContext.processDistributionModules testDistributionName testDistributionPackage
+        customizationOptions = {functionsToInline = Set.empty, functionsToCache = Set.empty}
+        (calculatedContext, _, _) = MappingContext.processDistributionModules testDistributionName testDistributionPackage customizationOptions
         assertCount  =
             test ("Types in context") <|
                 \_ ->
