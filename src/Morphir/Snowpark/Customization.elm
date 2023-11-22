@@ -31,8 +31,10 @@ loadCustomizationOptions optionsDict =
             optsList
                 |> List.filterMap (\(id, value) ->
                         case id of
-                            ValueID fullName _ -> Just (fullName, value)
-                            _ -> Nothing)
+                            ValueID fullName _ ->
+                                Just (fullName, value)
+                            _ ->
+                                Nothing)
         (functionsToCache, valuesToInline) =
             functions 
                 |> List.foldr

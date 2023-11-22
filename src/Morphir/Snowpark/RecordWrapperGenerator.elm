@@ -227,7 +227,7 @@ emptyDataFrameMethod =
                 , typeArgs = []
                 , args = [ [ arg ] ]
                 , returnType = Just <| typeRefForSnowparkType "DataFrame"
-                , body = Just getOrElseUpdateCall -- <| Scala.Apply createDataFrameMethod createDataFrameArgs
+                , body = Just getOrElseUpdateCall
                 })
 
 objectForRecordWrapper : Name -> (List (Field ())) -> MappingContextInfo () -> (Scala.Documented (Scala.Annotated Scala.TypeDecl))
