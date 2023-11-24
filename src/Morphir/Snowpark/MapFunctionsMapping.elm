@@ -11,6 +11,7 @@ import Morphir.IR.Name as Name
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Value as Value
 import Morphir.Snowpark.AggregateMapping as AggregateMapping
+import Morphir.Snowpark.JoinMapping as JoinMapping
 import Morphir.Snowpark.Constants as Constants exposing (applySnowparkFunc)
 import Morphir.Snowpark.Operatorsmaps exposing (mapOperator)
 import Morphir.Snowpark.ReferenceUtils exposing (isTypeReferenceToSimpleTypesRecord
@@ -59,7 +60,7 @@ dataFrameMappings =
     , ( listFunctionName [ "filter", "map"], mapListFilterMapFunction ) 
     , ( listFunctionName [ "concat", "map"], mapListConcatMapFunction ) 
     , ( listFunctionName [ "concat" ], mapListConcatFunction ) 
-    , ( listFunctionName [ "sum" ], mapListSumFunction ) 
+    , ( listFunctionName [ "sum" ], mapListSumFunction )
     , ( maybeFunctionName [ "just" ], mapJustFunction )
     , ( maybeFunctionName [ "map" ], mapMaybeMapFunction )
     , ( maybeFunctionName [ "with", "default" ], mapMaybeWithDefaultFunction )
@@ -125,7 +126,7 @@ mapUncurriedFunctionCall (func, args) mapValue mappings ctx =
             inliningFunction (func, args) mapValue ctx
         (_, Just mappingFunc) ->
             mappingFunc (func, args) mapValue ctx
-        _ -> 
+        _ ->
             tryToConvertUserFunctionCall (func, args) mapValue ctx
 
 getInliningFunctionIfRequired : ValueMappingContext -> FQName.FQName -> Maybe (MappingFunctionType ())
@@ -467,8 +468,23 @@ generateForListMap projection sourceRelation ctx mapValue =
               Scala.Apply (Scala.Select (mapValue sourceRelation ctx) "select") arguments
            Nothing ->
               Scala.Literal (Scala.StringLit "Unsupported map scenario 1")
-     else 
-        Scala.Literal (Scala.StringLit "Unsupported map scenario 2")
+     else
+        if isJoinFunction sourceRelation then
+            mapJoinFunction projection sourceRelation mapValue ctx
+        else
+            Scala.Literal (Scala.StringLit "Unsupported map scenario 2")
+
+
+isJoinFunction : (Value ta (Type ())) -> Bool
+isJoinFunction value =
+    case value of
+            ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Apply _ ( ValueIR.Reference _  ([["morphir"],["s","d","k"]],[["list"]], name)) _) _ ) _ ->
+                if String.contains "Join" (Name.toCamelCase name) then
+                    True
+                else
+                    False
+            _ ->
+                False
 
 processLambdaWithRecordBody : Value ta (Type ()) -> ValueMappingContext -> Constants.MapValueType ta -> Maybe (List Scala.ArgValue)
 processLambdaWithRecordBody functionExpr ctx mapValue =
@@ -574,6 +590,18 @@ mapAggregateFunction  ( _, args ) mapValue ctx =
         _ ->
             Scala.Literal (Scala.StringLit "Aggregate scenario not supported")
     
+mapJoinFunction :  Value ta (Type ()) -> (Value ta (Type ())) -> Constants.MapValueType ta -> ValueMappingContext  -> Scala.Value
+mapJoinFunction projection joinValue mapValue ctx =
+    let
+        joinBody = JoinMapping.processJoinBody joinValue mapValue ctx
+        joinProjection = JoinMapping.processJoinProjection projection mapValue ctx
+        select = Scala.Select joinBody "select" 
+
+        argAlias = Constants.transformToArgsValue joinProjection
+    in
+    Scala.Apply select argAlias
+    
+
 
 mapNotFunctionCall  : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
 mapNotFunctionCall  ( _, args ) mapValue ctx =

@@ -233,7 +233,7 @@ resolveTypeAlias name ctx =
 isCandidateForDataFrame : (Type ()) -> MappingContextInfo () -> Bool
 isCandidateForDataFrame typeRef ctx =
    case typeRef of
-      Type.Reference _ 
+      Type.Reference _
                      ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) 
                      [ Type.Reference _  itemTypeName [] ] ->
          isRecordWithSimpleTypes itemTypeName ctx
@@ -242,7 +242,8 @@ isCandidateForDataFrame typeRef ctx =
                      [ Type.Record _ fields ] ->
          fields
             |> List.all (\{tpe} -> isDataFrameFriendlyType tpe ctx )
-      _ -> False
+      _ ->
+         False
 
 isListOfDataFrameFriendlyType : (Type ()) -> MappingContextInfo () -> Bool
 isListOfDataFrameFriendlyType typeRef ctx =
