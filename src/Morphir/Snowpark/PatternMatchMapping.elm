@@ -1,18 +1,18 @@
-module Morphir.Snowpark.PatternMatchMapping exposing (..)
+module Morphir.Snowpark.PatternMatchMapping exposing (mapPatternMatch, PatternMatchValues)
 
 {-| Generation for `PatternMatch` expressions
    
 -}
 
-import Dict exposing (Dict)
+import Dict
 import Morphir.IR.Value exposing (Value, Pattern(..))
 import Morphir.Scala.AST as Scala
 import Morphir.IR.Literal exposing (Literal)
-import Morphir.IR.Value as Value
+import Morphir.IR.Value as Value exposing (TypedValue)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Name as Name
 import Morphir.IR.FQName as FQName
-import Morphir.Snowpark.Constants exposing (applySnowparkFunc)
+import Morphir.Snowpark.Constants as Constants exposing (applySnowparkFunc, ValueGenerationResult)
 import Morphir.Snowpark.MappingContext exposing (
           ValueMappingContext
           , addReplacementForIdentifier
@@ -22,9 +22,10 @@ import Morphir.Snowpark.Utils exposing (tryAlternatives, collectMaybeList)
 import Morphir.Snowpark.ReferenceUtils exposing (mapLiteral
            , scalaReferenceToUnionTypeCase
            , getCustomTypeParameterFieldAccess)
+import Morphir.Snowpark.GenerationReport exposing (GenerationIssue)
 
 
-type alias PatternMatchValues ta = (Type (), Value ta (Type ()), List ( Pattern (Type ()), Value ta (Type ()) ))
+type alias PatternMatchValues = (Type (), TypedValue, List ( Pattern (Type ()), TypedValue ))
 
 equalExpr : Scala.Value -> Scala.Value -> Scala.Value
 equalExpr left right = Scala.BinOp left "===" right
@@ -45,70 +46,131 @@ createChainOfWhenWithOtherwise first restConditionActionPairs defaultValue =
    in 
    Scala.Apply (Scala.Select whenCalls "otherwise") [Scala.ArgValue Nothing defaultValue]
 
-mapPatternMatch :  PatternMatchValues ta -> (Value ta (Type ()) -> ValueMappingContext -> Scala.Value) -> ValueMappingContext -> Scala.Value
+mapPatternMatch :  PatternMatchValues  -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapPatternMatch (tpe, expr, cases) mapValue ctx =
+    let
+        (mappedTopExpr, topExprIssues) =
+            mapValue expr ctx
+    in
     case classifyScenario expr cases ctx of
         LiteralsWithDefault ((firstLit, firstExpr)::rest) defaultValue ->
             let
-                compareWithExpr =  equalExpr (mapValue expr ctx)
+                compareWithExpr =  equalExpr mappedTopExpr
                 litExpr = mapLiteral () firstLit
-                restPairs = rest |> List.map (\(lit, val) -> (compareWithExpr (mapLiteral () lit), (mapValue val ctx))) 
+                (restPairs, restIssues) = 
+                            rest
+                              |> List.map (\(lit, val) -> (lit, (mapValue val ctx)))
+                              |> List.map (\(lit, (mappedVal, issues)) -> ((compareWithExpr (mapLiteral () lit), mappedVal), issues))
+                              |> List.unzip
+                (mappedDefaultValue, defaultValueIssues) =
+                    mapValue defaultValue ctx
+                (mappedFirstExpr, firstExprIssues) =
+                    mapValue firstExpr ctx
             in
-            createChainOfWhenWithOtherwise ((compareWithExpr litExpr), mapValue firstExpr ctx) restPairs (mapValue defaultValue ctx)
+            (createChainOfWhenWithOtherwise ((compareWithExpr litExpr), mappedFirstExpr) restPairs mappedDefaultValue
+            , topExprIssues ++ (List.concat restIssues) ++ defaultValueIssues ++ firstExprIssues)
+
         UnionTypesWithoutParams ((firstConstr, firstExpr)::rest) (Just defaultValue) ->
             let
-                compareWithExpr =  equalExpr (mapValue expr ctx)
+                compareWithExpr =  equalExpr mappedTopExpr
                 
-                restPairs = rest |> List.map (\(constr, val) -> (compareWithExpr constr, (mapValue val ctx)))
+                (restPairs, restIssues) = 
+                        rest 
+                            |> List.map (\(lit, val) -> (lit, (mapValue val ctx)))
+                            |> List.map (\(constr, (val, issues)) -> ((compareWithExpr constr, val), issues))
+                            |> List.unzip
+                (mappedDefaultValue, defaultValueIssues) =
+                    mapValue defaultValue ctx
+                (mappedFirstExpr, firstExprIssues) =
+                    mapValue firstExpr ctx
             in
-            createChainOfWhenWithOtherwise (compareWithExpr firstConstr, mapValue firstExpr ctx) restPairs (mapValue defaultValue ctx)
+            ( createChainOfWhenWithOtherwise (compareWithExpr firstConstr, mappedFirstExpr) restPairs mappedDefaultValue
+            , topExprIssues ++ (List.concat restIssues) ++ defaultValueIssues ++ firstExprIssues)
         UnionTypesWithoutParams ((firstConstr, firstExpr)::rest) Nothing ->
             let
-                compareWithExpr =  equalExpr (mapValue expr ctx)
+                compareWithExpr =  equalExpr mappedTopExpr
                 
-                restPairs = rest |> List.map (\(constr, val) -> (compareWithExpr constr, (mapValue val ctx)))
+                (restPairs, restIssues) = 
+                        rest 
+                            |> List.map (\(lit, val) -> (lit, (mapValue val ctx)))
+                            |> List.map (\(constr, (val, issues)) -> ((compareWithExpr constr, val), issues))
+                            |> List.unzip
+                (mappedFirstExpr, firstExprIssues) =
+                    mapValue firstExpr ctx
             in
-            createChainOfWhenCalls (compareWithExpr firstConstr, mapValue firstExpr ctx) restPairs
+            ( createChainOfWhenCalls (compareWithExpr firstConstr, mappedFirstExpr) restPairs
+            , topExprIssues ++ (List.concat restIssues) ++ firstExprIssues)
         UnionTypesWithParams ((firstConstr, firstBindings, firstExpr)::rest) Nothing ->
             let
-                referenceExpr = mapValue expr ctx
                 compareWithExpr : Name.Name -> Scala.Value
                 compareWithExpr = \name -> 
-                                   equalExpr (Scala.Apply referenceExpr [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "__tag"))])
+                                   equalExpr (Scala.Apply mappedTopExpr [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "__tag"))])
                                              (applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit (Name.toTitleCase name))])
-                changeCtxt = addBindingReplacementsToContext ctx 
-                restPairs = rest |> List.map (\(constr, bindings, val) -> ((compareWithExpr constr), (mapValue val (changeCtxt bindings referenceExpr))))
+                changeCtxt = 
+                    addBindingReplacementsToContext ctx 
+                (restPairs, restIssues) = 
+                    rest 
+                        |> List.map (\(constr, bindings, val) -> (constr, (mapValue val (changeCtxt bindings mappedTopExpr))))
+                        |> List.map (\(constr, (val, issues)) -> (((compareWithExpr constr), val), issues))
+                        |> List.unzip
+                (mappedFirstExpr, firstExprIssues) =
+                    mapValue firstExpr ctx
             in
-            createChainOfWhenCalls (compareWithExpr firstConstr, mapValue firstExpr ctx) restPairs
+            ( createChainOfWhenCalls (compareWithExpr firstConstr, mappedFirstExpr) restPairs
+            , topExprIssues ++ (List.concat restIssues) ++ firstExprIssues)
         UnionTypesWithParams ((firstConstr, firstBindings, firstExpr)::rest) (Just defaultValue) ->
             let
-                referenceExpr = mapValue expr ctx
+               
                 compareWithExpr = \name -> 
-                                   equalExpr (Scala.Apply (mapValue expr ctx) [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "__tag"))])
+                                   equalExpr (Scala.Apply mappedTopExpr [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "__tag"))])
                                              (applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit ( Name.toTitleCase name))])
                 changeCtxt = addBindingReplacementsToContext ctx 
-                restPairs = rest |> List.map (\(constr, bindings, val) -> ((compareWithExpr constr), (mapValue val (changeCtxt bindings referenceExpr))))
+
+                (restPairs, restIssues) = 
+                    rest 
+                        |> List.map (\(constr, bindings, val) -> (constr, (mapValue val (changeCtxt bindings mappedTopExpr))))
+                        |> List.map (\(constr, (val, issues)) -> (((compareWithExpr constr), val), issues))
+                        |> List.unzip
+
+                (mappedDefaultValue, defaultValueIssues) =
+                    mapValue defaultValue ctx
+
+                (mappedFirstExpr, firstExprIssues) =
+                    mapValue firstExpr (changeCtxt firstBindings mappedTopExpr)
             in
-            createChainOfWhenWithOtherwise (compareWithExpr firstConstr, mapValue firstExpr (changeCtxt firstBindings referenceExpr)) restPairs (mapValue defaultValue ctx)
+            ( createChainOfWhenWithOtherwise (compareWithExpr firstConstr, mappedFirstExpr) restPairs mappedDefaultValue
+            , topExprIssues ++ (List.concat restIssues) ++ firstExprIssues ++ defaultValueIssues)
         MaybeCase (justVariable, justExpr) nothingExpr ->
             let
-                referenceExpr = mapValue expr ctx
-                generatedJustExpr = 
-                    mapValue justExpr (Maybe.withDefault ctx (Maybe.map (\varName ->  { ctx | inlinedIds = Dict.insert varName referenceExpr ctx.inlinedIds }) justVariable))
-                generatedNothingExpr = mapValue nothingExpr ctx
+                (generatedJustExpr, justIssues) = 
+                    mapValue justExpr (Maybe.withDefault ctx (Maybe.map (\varName ->  { ctx | inlinedIds = Dict.insert varName mappedTopExpr ctx.inlinedIds }) justVariable))
+                (generatedNothingExpr, nothingIssues) = mapValue nothingExpr ctx
             in
-            createChainOfWhenWithOtherwise ((Scala.Select referenceExpr "is_not_null"), generatedJustExpr) [] generatedNothingExpr 
+            ( createChainOfWhenWithOtherwise ((Scala.Select mappedTopExpr "is_not_null"), generatedJustExpr) [] generatedNothingExpr 
+            , justIssues ++ nothingIssues)
         TupleCases (first::tupleCases) (Just default) ->
             let 
-                tupleCasesValues = createTupleMatchingValues expr mapValue ctx
-                casesPairs = List.map (\tupleCase -> createCaseCodeForTuplePattern tupleCase tupleCasesValues mapValue ctx) tupleCases
-                mappedDefault = mapValue default ctx
+                (tupleCasesValues, valuesIssues) =
+                    createTupleMatchingValues expr mapValue ctx
+                (casesPairs, tupleissues) =
+                    List.map (\tupleCase -> createCaseCodeForTuplePattern tupleCase tupleCasesValues mapValue ctx) tupleCases
+                    |> List.unzip
+                    
+                (mappedDefault, defaultIssues) =
+                    mapValue default ctx
+                (t, tupleIssues2) =
+                        createCaseCodeForTuplePattern first tupleCasesValues mapValue ctx
             in
-            createChainOfWhenWithOtherwise (createCaseCodeForTuplePattern first tupleCasesValues mapValue ctx) casesPairs mappedDefault
+            ( createChainOfWhenWithOtherwise t casesPairs mappedDefault
+            , defaultIssues ++ (List.concat valuesIssues) ++ tupleIssues2 ++ (List.concat tupleissues))
         _ ->
-            Scala.Variable "NOT_CONVERTED"
+            (Scala.Variable "NOT_CONVERTED", ["Case/of expression not generated"])
 
-createCaseCodeForTuplePattern : (List TuplePatternResult, Value ta (Type ())) -> List Scala.Value -> (Value ta (Type ()) -> ValueMappingContext -> Scala.Value) -> ValueMappingContext -> (Scala.Value, Scala.Value)
+createCaseCodeForTuplePattern : (List TuplePatternResult, Value () (Type ())) -> 
+                                List Scala.Value -> 
+                                Constants.MapValueType -> 
+                                ValueMappingContext -> 
+                                ((Scala.Value, Scala.Value), List GenerationIssue)
 createCaseCodeForTuplePattern (tuplePats, value) positionValues mapValue ctx =
     let
         tuplesForConversion = List.map2 (\x y -> (x, y)) tuplePats positionValues
@@ -121,23 +183,25 @@ createCaseCodeForTuplePattern (tuplePats, value) positionValues mapValue ctx =
                                 Scala.BinOp (funcs.conditionGenerator val) "&&" currentCondition ) 
                             (Scala.Literal (Scala.BooleanLit True)) 
                        
-        mappedSuccessValue = mapValue value mappingsContextWithReplacements
+        (mappedSuccessValue, successValueIssues) = mapValue value mappingsContextWithReplacements
 
     in
-    (condition, mappedSuccessValue)
+    ((condition, mappedSuccessValue), successValueIssues)
 
-createTupleMatchingValues : Value ta (Type ()) -> (Value ta (Type ()) -> ValueMappingContext -> Scala.Value) -> ValueMappingContext -> List Scala.Value
+createTupleMatchingValues : Value () (Type ()) -> Constants.MapValueType -> ValueMappingContext -> (List Scala.Value, List (List GenerationIssue))
 createTupleMatchingValues expr mapValue ctx =
    case expr of
        Value.Tuple _ elements -> 
            elements 
                 |> List.map (\e -> mapValue e ctx)
+                |> List.unzip
        _ -> 
           let
-              convertedTuple = mapValue expr ctx
+              (convertedTuple, tupleIssues) = mapValue expr ctx
           in
           List.range 1 10
-              |> List.map (\i -> Scala.Apply convertedTuple [Scala.ArgValue Nothing (Scala.Literal (Scala.IntegerLit i))] ) 
+              |> List.map (\i -> (Scala.Apply convertedTuple [Scala.ArgValue Nothing (Scala.Literal (Scala.IntegerLit i))], tupleIssues)) 
+              |> List.unzip
 
 
 
@@ -157,15 +221,15 @@ addBindingReplacementsToContext ctxt bindingVariables referenceExpr =
     { ctxt | inlinedIds  = Dict.union ctxt.inlinedIds newReplacements }
 
 type PatternMatchScenario ta
-    = LiteralsWithDefault (List (Literal, Value ta (Type ()))) (Value ta (Type ()))
-    | UnionTypesWithoutParams (List (Scala.Value, Value ta (Type ()))) (Maybe (Value ta (Type ())))
-    | UnionTypesWithParams (List (Name.Name, List Name.Name, Value ta (Type ()))) (Maybe (Value ta (Type ())))    
+    = LiteralsWithDefault (List (Literal, TypedValue)) (TypedValue)
+    | UnionTypesWithoutParams (List (Scala.Value, TypedValue)) (Maybe (TypedValue))
+    | UnionTypesWithParams (List (Name.Name, List Name.Name, TypedValue)) (Maybe (TypedValue))    
     -- Right now we just support `Just` with variables
-    | MaybeCase (Maybe Name.Name, Value ta (Type ())) (Value ta (Type ()))
-    | TupleCases (List (List TuplePatternResult, Value ta (Type ()))) (Maybe (Value ta (Type ())))
+    | MaybeCase (Maybe Name.Name, TypedValue) (TypedValue)
+    | TupleCases (List (List TuplePatternResult, TypedValue)) (Maybe (TypedValue))
     | Unsupported
 
-checkForLiteralCase : ( Pattern (Type ()), Value ta (Type ()) ) -> Maybe (Literal, Value ta (Type ()))
+checkForLiteralCase : ( Pattern (Type ()), TypedValue ) -> Maybe (Literal, TypedValue)
 checkForLiteralCase (pattern, caseValue) = 
    case pattern of
         (LiteralPattern _ literal) -> 
@@ -173,7 +237,7 @@ checkForLiteralCase (pattern, caseValue) =
         _ -> 
             Nothing
 
-checkLiteralsWithDefault : List ( Pattern (Type ()), Value ta (Type ()) ) -> (Maybe ((List (Literal, Value ta (Type ()))), (Value ta (Type ()))))
+checkLiteralsWithDefault : List ( Pattern (Type ()), TypedValue ) -> (Maybe ((List (Literal, TypedValue)), (TypedValue)))
 checkLiteralsWithDefault cases =
    case List.reverse cases of
         ((WildcardPattern _, wildCardResult)::restReversed) -> 
@@ -181,7 +245,7 @@ checkLiteralsWithDefault cases =
         _ -> 
             Nothing
 
-checkForUnionOfWithNoParams : ( Pattern (Type ()), Value ta (Type ()) ) -> Maybe (Scala.Value, Value ta (Type ()))
+checkForUnionOfWithNoParams : ( Pattern (Type ()), TypedValue ) -> Maybe (Scala.Value, TypedValue)
 checkForUnionOfWithNoParams (pattern, caseValue) = 
    case pattern of
         (ConstructorPattern (Type.Reference _ typeName _) name []) -> 
@@ -189,7 +253,7 @@ checkForUnionOfWithNoParams (pattern, caseValue) =
         _ -> 
             Nothing
 
-checkConstructorForUnionOfWithParams : ( Pattern (Type ()), Value ta (Type ()) ) -> Maybe (Name.Name, List Name.Name, Value ta (Type ()))
+checkConstructorForUnionOfWithParams : ( Pattern (Type ()), TypedValue ) -> Maybe (Name.Name, List Name.Name, TypedValue)
 checkConstructorForUnionOfWithParams (pattern, caseValue) = 
    let 
        identifyNameOnlyPattern : Pattern (Type ()) -> Maybe Name.Name
@@ -208,7 +272,7 @@ checkConstructorForUnionOfWithParams (pattern, caseValue) =
         _ -> 
             Nothing
 
-checkUnionWithNoParamsWithDefault : Value ta (Type ()) -> List ( Pattern (Type ()), Value ta (Type ()) ) -> ValueMappingContext -> (Maybe (PatternMatchScenario ta))
+checkUnionWithNoParamsWithDefault : TypedValue -> List ( Pattern (Type ()), TypedValue ) -> ValueMappingContext -> (Maybe (PatternMatchScenario ta))
 checkUnionWithNoParamsWithDefault expr cases ctx =
     if isUnionTypeRefWithoutParams (Value.valueAttribute expr) ctx.typesContextInfo  then
         case List.reverse cases of
@@ -223,8 +287,7 @@ checkUnionWithNoParamsWithDefault expr cases ctx =
     else 
         Nothing
 
-
-checkUnionWithParams : Value ta (Type ()) -> List ( Pattern (Type ()), Value ta (Type ()) ) -> ValueMappingContext -> (Maybe (PatternMatchScenario ta))
+checkUnionWithParams : TypedValue -> List ( Pattern (Type ()), TypedValue ) -> ValueMappingContext -> (Maybe (PatternMatchScenario ta))
 checkUnionWithParams expr cases ctx =
     if isUnionTypeRefWithParams (Value.valueAttribute expr) ctx.typesContextInfo  then
         case List.reverse cases of
@@ -239,7 +302,7 @@ checkUnionWithParams expr cases ctx =
     else 
         Nothing
 
-checkMaybePattern : Value ta (Type ()) -> List ( Pattern (Type ()), Value ta (Type ()) ) -> ValueMappingContext -> (Maybe (PatternMatchScenario ta))
+checkMaybePattern : TypedValue -> List ( Pattern (Type ()), TypedValue ) -> ValueMappingContext -> (Maybe (PatternMatchScenario ta))
 checkMaybePattern expr cases ctx =
     case (Value.valueAttribute expr) of
         Type.Reference _ ([["morphir"],["s","d","k"]],[["maybe"]],["maybe"]) _ ->
@@ -260,7 +323,7 @@ checkMaybePattern expr cases ctx =
         _ -> Nothing
 
 
-checkForTuplePatternCase : ( Pattern (Type ()), Value ta (Type ()) ) -> Maybe (List TuplePatternResult, Value ta (Type ()))
+checkForTuplePatternCase : ( Pattern (Type ()), TypedValue ) -> Maybe (List TuplePatternResult, TypedValue)
 checkForTuplePatternCase (pattern, caseValue) = 
    case pattern of
         (TuplePattern _ options) -> 
@@ -286,7 +349,7 @@ checkTuplePatternItemPattern  pattern =
         _ -> 
            Nothing
 
-checkTuplePattern : Value ta (Type ()) -> List ( Pattern (Type ()), Value ta (Type ()) ) -> ValueMappingContext -> (Maybe (PatternMatchScenario ta))
+checkTuplePattern : TypedValue -> List ( Pattern (Type ()), TypedValue ) -> ValueMappingContext -> (Maybe (PatternMatchScenario ta))
 checkTuplePattern expr cases ctx =
     case List.reverse cases of
         ((WildcardPattern _, wildCardResult)::restReversed) -> 
@@ -298,7 +361,7 @@ checkTuplePattern expr cases ctx =
         _ -> 
             Nothing
 
-classifyScenario : (Value ta (Type ())) -> List (Pattern (Type ()), Value ta (Type ())) -> ValueMappingContext -> PatternMatchScenario ta
+classifyScenario : (TypedValue) -> List (Pattern (Type ()), TypedValue) -> ValueMappingContext -> PatternMatchScenario ta
 classifyScenario value cases ctx =
     Maybe.withDefault
         Unsupported        

@@ -4,39 +4,42 @@ import Dict
 import List
 import Morphir.IR.AccessControlled exposing (Access(..))
 import Morphir.IR.Name as Name
-import Morphir.IR.Type as Type exposing (Type)
 import Morphir.Scala.AST as Scala
-import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
+import Morphir.IR.Value as Value exposing (TypedValue, Pattern(..), Value(..))
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.FQName as FQName
-import Morphir.Snowpark.Constants as Constants exposing (applySnowparkFunc)
+import Morphir.IR.Type as Type exposing (Type)
 import Morphir.Snowpark.AccessElementMapping exposing (
     mapFieldAccess
     , mapReferenceAccess
     , mapVariableAccess
     , mapConstructorAccess)
-import Morphir.Snowpark.ReferenceUtils exposing (isTypeReferenceToSimpleTypesRecord, mapLiteral, isTypeReferenceToSimpleTypesRecord)
+import Morphir.Snowpark.Constants as Constants exposing (applySnowparkFunc, ValueGenerationResult)
+import Morphir.Snowpark.GenerationReport exposing (GenerationIssue)
 import Morphir.Snowpark.MapFunctionsMapping as MapFunctionsMapping
-import Morphir.Snowpark.PatternMatchMapping exposing (mapPatternMatch)
-import Morphir.Snowpark.MappingContext as MappingContext exposing (
-             typeRefIsListOf
-            , ValueMappingContext
-            , isFunctionClassificationReturningDataFrameExpressions
-            , isTypeRefToRecordWithSimpleTypes
-            , isTypeRefToRecordWithComplexTypes )
-import Morphir.Snowpark.ReferenceUtils exposing (scalaPathToModule)
-import Morphir.Snowpark.Utils exposing (collectMaybeList)
-import Morphir.Snowpark.MappingContext exposing (isAnonymousRecordWithSimpleTypes)
-import Morphir.IR.Name as Name
-import Morphir.Snowpark.ReferenceUtils exposing (getListTypeParameter)
-import Morphir.Snowpark.MappingContext exposing (FunctionClassification(..))
 import Morphir.Snowpark.LetMapping exposing (mapLetDefinition)
+import Morphir.Snowpark.MappingContext as MappingContext exposing (
+                                                typeRefIsListOf
+                                                , ValueMappingContext
+                                                , isAnonymousRecordWithSimpleTypes
+                                                , isFunctionClassificationReturningDataFrameExpressions
+                                                , isTypeRefToRecordWithSimpleTypes
+                                                , isTypeRefToRecordWithComplexTypes
+                                                , FunctionClassification(..) )
+import Morphir.Snowpark.Utils exposing (collectMaybeList)
+import Morphir.Snowpark.PatternMatchMapping exposing (mapPatternMatch)
+import Morphir.Snowpark.ReferenceUtils exposing ( getListTypeParameter
+                                                , scalaPathToModule
+                                                , errorValueAndIssue
+                                                , isTypeReferenceToSimpleTypesRecord
+                                                , mapLiteral
+                                                , isTypeReferenceToSimpleTypesRecord )
 
-mapValue : Value () (Type ()) -> ValueMappingContext -> Scala.Value
+mapValue : TypedValue -> ValueMappingContext -> (Scala.Value, List GenerationIssue)
 mapValue value ctx =
     case value of
         Literal tpe literal ->
-            mapLiteral tpe literal
+            (mapLiteral tpe literal, [])
         Field tpe val name ->
             mapFieldAccess tpe val name ctx mapValue
         Variable _ name as varAccess ->
@@ -56,16 +59,26 @@ mapValue value ctx =
         LetDefinition _ name definition body ->
             mapLetDefinition name definition body mapValue ctx
         FieldFunction _ name ->
-            Constants.applySnowparkFunc "col" [(Scala.Literal (Scala.StringLit (Name.toCamelCase name)))]
+            (Constants.applySnowparkFunc "col" [(Scala.Literal (Scala.StringLit (Name.toCamelCase name)))], [])
         Value.Tuple _ tupleElements ->
-            Constants.applySnowparkFunc "array_construct" <| List.map (\e -> mapValue e ctx) tupleElements
+            mapTuple tupleElements ctx
         Value.Record tpe fields ->
             mapRecordCreation tpe fields ctx
         _ ->
-            Scala.Literal (Scala.StringLit ("Unsupported element"))
+           errorValueAndIssue "Unsupported value element not converted"
+
+mapTuple : List TypedValue -> ValueMappingContext -> ValueGenerationResult
+mapTuple tupleElements ctx =
+    let
+        (args, issues) = 
+            tupleElements
+                |> List.map (\e -> mapValue e ctx) 
+                |> List.unzip
+    in
+    (Constants.applySnowparkFunc "array_construct" args, List.concat issues)
 
 
-mapRecordCreation : Type () -> Dict.Dict (Name.Name) (Value () (Type ())) -> ValueMappingContext -> Scala.Value
+mapRecordCreation : Type () -> Dict.Dict (Name.Name) TypedValue -> ValueMappingContext -> ValueGenerationResult
 mapRecordCreation tpe fields ctx =
     if isTypeRefToRecordWithComplexTypes tpe ctx.typesContextInfo then
         mapRecordCreationToCaseClassCreation tpe fields ctx
@@ -80,56 +93,91 @@ mapRecordCreation tpe fields ctx =
                                                                     |> Maybe.map (\argExpr -> mapValue argExpr ctx)))
                                                             fieldInfo  )
                 |> Maybe.withDefault Nothing
-                |> Maybe.map (applySnowparkFunc "array_construct")
-                |> Maybe.withDefault (Scala.Literal (Scala.StringLit ("Record creation not converted1")))
+                |> Maybe.map List.unzip
+                |> Maybe.map (\(args, issues) -> ((applySnowparkFunc "array_construct" args), List.concat issues))
+                |> Maybe.withDefault (errorValueAndIssue "Record creation not generated: could not get information about record.")
         else
-            Scala.Literal (Scala.StringLit ("Record creation not converted2"))
+            errorValueAndIssue "Record creation not converted"
 
 
-mapRecordCreationToCaseClassCreation : Type () -> Dict.Dict (Name.Name) (Value () (Type ())) -> ValueMappingContext -> Scala.Value
+mapRecordCreationToCaseClassCreation : Type () -> Dict.Dict (Name.Name) TypedValue -> ValueMappingContext -> ValueGenerationResult
 mapRecordCreationToCaseClassCreation tpe fields ctx =
     case tpe of
         Type.Reference _ fullName [] ->
             let
                 caseClassReference = 
                     Scala.Ref (scalaPathToModule fullName) (fullName |> FQName.getLocalName |> Name.toTitleCase)
-                processArgs :  List (Name.Name, Type ()) -> Maybe (List Scala.ArgValue)
+                processArg : Name.Name -> TypedValue -> (Scala.ArgValue, List GenerationIssue)
+                processArg fieldName argValue =
+                    let
+                        (mappedExpr, issues) =
+                            mapValue argValue ctx
+                    in
+                    ((Scala.ArgValue (Just (Name.toCamelCase fieldName)) mappedExpr), issues)
+
+                processArgs :  List (Name.Name, Type ()) -> Maybe (List (Scala.ArgValue, List GenerationIssue))
                 processArgs fieldsInfo =
                     fieldsInfo
                         |> collectMaybeList (\(fieldName, _) -> 
                                                    Dict.get fieldName fields 
-                                                    |> Maybe.map (\argExpr -> Scala.ArgValue (Just (Name.toCamelCase fieldName)) (mapValue argExpr ctx)))
+                                                    |> Maybe.map (processArg fieldName))
             in
             MappingContext.getFieldInfoIfRecordType tpe ctx.typesContextInfo            
                 |> Maybe.map processArgs
                 |> Maybe.withDefault Nothing
-                |> Maybe.map (\ctorArgs -> Scala.Apply caseClassReference ctorArgs)
-                |> Maybe.withDefault (Scala.Literal (Scala.StringLit ("Record creation not converted!")))
+                |> Maybe.map List.unzip
+                |> Maybe.map (\(ctorArgs, issues) -> ((Scala.Apply caseClassReference ctorArgs), List.concat issues))
+                |> Maybe.withDefault (errorValueAndIssue ("Record creation not converted: " ++ FQName.toString fullName))
         _ ->
-            Scala.Literal (Scala.StringLit ("Record creation not converted"))
+            errorValueAndIssue "Record creation not converted"
 
-mapListCreation : (Type ()) -> List (Value () (Type ())) -> ValueMappingContext -> Scala.Value
+mapListCreation : (Type ()) -> List TypedValue -> ValueMappingContext -> ValueGenerationResult
 mapListCreation tpe values ctx =
     let
         listOfRecordWithSimpleTypes = typeRefIsListOf tpe (\innerTpe -> isTypeRefToRecordWithSimpleTypes innerTpe ctx.typesContextInfo)
     in
     if listOfRecordWithSimpleTypes &&
        isFunctionClassificationReturningDataFrameExpressions ctx.currentFunctionClassification then
-       applySnowparkFunc "array_construct"
-            (values |> List.map (\v -> mapValue v ctx))
+       let
+          (mappedValues, valuesIssues) =
+             values
+                |> List.map (\v -> mapValue v ctx) 
+                |> List.unzip
+       in
+       (applySnowparkFunc "array_construct" mappedValues, List.concat valuesIssues)
     else
-        case (getListTypeParameter tpe |> Maybe.map (\t -> isTypeReferenceToSimpleTypesRecord t ctx.typesContextInfo) |> Maybe.withDefault Nothing, values) of
+        case (getListTypeParameter tpe 
+                    |> Maybe.map (\t -> isTypeReferenceToSimpleTypesRecord t ctx.typesContextInfo) 
+                    |> Maybe.withDefault Nothing, values) of
             (Just (path, name), []) ->
-                Scala.Apply (Scala.Select (Scala.Ref path (Name.toTitleCase name)) "createEmptyDataFrame") [ Scala.ArgValue Nothing (Scala.Variable "sfSession") ]
+                ( Scala.Apply 
+                        (Scala.Select 
+                            (Scala.Ref path (Name.toTitleCase name)) "createEmptyDataFrame") 
+                        [ Scala.ArgValue Nothing (Scala.Variable "sfSession") ]
+                , [])
             _ ->
-                Scala.Apply 
+                let
+                    (mappedValues, valuesIssues) =
+                        values
+                            |> List.map (\v -> mapValue v ctx) 
+                            |> List.unzip
+                in
+                ( Scala.Apply 
                     (Scala.Variable "Seq")
-                    (values |> List.map (\v -> Scala.ArgValue Nothing (mapValue v ctx)))
+                    (mappedValues |> List.map (Scala.ArgValue Nothing))
+                , List.concat valuesIssues)
 
-mapIfThenElse : Value () (Type ()) -> Value () (Type ()) -> Value () (Type ()) -> ValueMappingContext -> Scala.Value
+mapIfThenElse : TypedValue -> TypedValue -> TypedValue -> ValueMappingContext -> ValueGenerationResult
 mapIfThenElse condition thenExpr elseExpr ctx =
    let
+       (mappedCondition, conditionIssues) =
+            mapValue condition ctx
+       (mappedThen, thenIssues) =
+             mapValue thenExpr ctx
+       (mappedElse, elseIssues) =
+             mapValue elseExpr ctx 
        whenCall = 
-            Constants.applySnowparkFunc "when" [ mapValue condition ctx,  mapValue thenExpr ctx ]
+            Constants.applySnowparkFunc "when" [ mappedCondition,  mappedThen ]
    in
-   Scala.Apply (Scala.Select whenCall "otherwise") [Scala.ArgValue Nothing (mapValue elseExpr ctx)]
+   ( Scala.Apply (Scala.Select whenCall "otherwise") [Scala.ArgValue Nothing mappedElse]
+   , conditionIssues ++ thenIssues ++ elseIssues)

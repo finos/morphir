@@ -1,22 +1,21 @@
-module Morphir.Snowpark.MapFunctionsMapping exposing (mapFunctionsMapping, dataFrameMappings, MappingFunctionType, FunctionMappingTable, IrValueType, listFunctionName, mapUncurriedFunctionCall,
-                      basicsFunctionName)
+module Morphir.Snowpark.MapFunctionsMapping exposing (mapFunctionsMapping
+                                                     , dataFrameMappings
+                                                     , MappingFunctionType
+                                                     , FunctionMappingTable
+                                                     , listFunctionName
+                                                     , mapUncurriedFunctionCall
+                                                     , basicsFunctionName)
 
 import Dict as Dict exposing (Dict)
 import Morphir.Scala.AST as Scala
-import Morphir.IR.Value as ValueIR exposing (Pattern(..), Value(..))
-import Morphir.IR.Type exposing (Type)
-import Morphir.IR.Value exposing (valueAttribute)
-import Morphir.IR.Type as TypeIR
+import Morphir.IR.Type as TypeIR exposing (Type)
+import Morphir.IR.Value as ValueIR exposing (Pattern(..), Value(..), valueAttribute, TypedValue)
 import Morphir.IR.Name as Name
 import Morphir.IR.FQName as FQName
-import Morphir.IR.Value as Value
 import Morphir.Snowpark.AggregateMapping as AggregateMapping
 import Morphir.Snowpark.JoinMapping as JoinMapping
-import Morphir.Snowpark.Constants as Constants exposing (applySnowparkFunc)
-import Morphir.Snowpark.Operatorsmaps exposing (mapOperator)
-import Morphir.Snowpark.ReferenceUtils exposing (isTypeReferenceToSimpleTypesRecord
-            , scalaPathToModule
-            , getCustomTypeParameterFieldAccess)
+import Morphir.Snowpark.Constants as Constants exposing (applySnowparkFunc, ValueGenerationResult)
+import Morphir.Snowpark.GenerationReport exposing (GenerationIssue)
 import Morphir.Snowpark.TypeRefMapping exposing (generateRecordTypeWrapperExpression,  generateCastIfPossible)
 import Morphir.Snowpark.MappingContext exposing (
             ValueMappingContext
@@ -29,16 +28,17 @@ import Morphir.Snowpark.MappingContext exposing (
             , getFieldInfoIfRecordType
             , addReplacementForIdentifier
             , getLocalVariableIfDataFrameReference)
-import Morphir.Snowpark.Utils exposing (collectMaybeList)
-import Morphir.Snowpark.ReferenceUtils exposing (getListTypeParameter)
+import Morphir.Snowpark.ReferenceUtils exposing (errorValueAndIssue
+                                                , getListTypeParameter
+                                                , isTypeReferenceToSimpleTypesRecord
+                                                , scalaPathToModule )
 import Morphir.Snowpark.UserDefinedFunctionMapping exposing (tryToConvertUserFunctionCall)
+import Morphir.Snowpark.Utils exposing (collectMaybeList)
+import Morphir.Snowpark.Operatorsmaps exposing (mapOperator)
 
+type alias MappingFunctionType = (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 
-type alias IrValueType ta = ValueIR.Value ta (TypeIR.Type ())
-
-type alias MappingFunctionType ta = (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
-
-type alias FunctionMappingTable ta = Dict FQName.FQName (MappingFunctionType ta)
+type alias FunctionMappingTable = Dict FQName.FQName MappingFunctionType
 
 listFunctionName : Name.Name -> FQName.FQName
 listFunctionName simpleName = 
@@ -52,7 +52,7 @@ basicsFunctionName : Name.Name -> FQName.FQName
 basicsFunctionName simpleName =
    ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], simpleName )
 
-dataFrameMappings : FunctionMappingTable ta
+dataFrameMappings : FunctionMappingTable
 dataFrameMappings =
     [ ( listFunctionName [ "member" ], mapListMemberFunction)
     , ( listFunctionName [ "map" ], mapListMapFunction )
@@ -89,15 +89,15 @@ dataFrameMappings =
     ]
         |> Dict.fromList
 
-mapFunctionsMapping : ValueIR.Value () (TypeIR.Type ()) -> Constants.MapValueType () -> ValueMappingContext -> Scala.Value
+mapFunctionsMapping : TypedValue -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapFunctionsMapping value mapValue ctx =
     case value of
         ValueIR.Apply _ function arg ->
-            mapUncurriedFunctionCall (Value.uncurryApply function arg) mapValue dataFrameMappings ctx
+            mapUncurriedFunctionCall (ValueIR.uncurryApply function arg) mapValue dataFrameMappings ctx
         _ ->
-            Scala.Literal (Scala.StringLit "To Do")
+            errorValueAndIssue "Unsupported function mapping"
 
-getFullNameIfReferencedElement : IrValueType ta -> Maybe FQName.FQName
+getFullNameIfReferencedElement : TypedValue -> Maybe FQName.FQName
 getFullNameIfReferencedElement value =
     case value of
         ValueIR.Reference _ fullName ->
@@ -107,7 +107,7 @@ getFullNameIfReferencedElement value =
         _ ->
             Nothing
 
-mapUncurriedFunctionCall : (IrValueType (), List (IrValueType ())) -> Constants.MapValueType () -> FunctionMappingTable () -> ValueMappingContext -> Scala.Value
+mapUncurriedFunctionCall : (TypedValue, List TypedValue) -> Constants.MapValueType -> FunctionMappingTable -> ValueMappingContext -> ValueGenerationResult
 mapUncurriedFunctionCall (func, args) mapValue mappings ctx =    
     let
         funcNameIfAvailable =
@@ -129,47 +129,57 @@ mapUncurriedFunctionCall (func, args) mapValue mappings ctx =
         _ ->
             tryToConvertUserFunctionCall (func, args) mapValue ctx
 
-getInliningFunctionIfRequired : ValueMappingContext -> FQName.FQName -> Maybe (MappingFunctionType ())
+getInliningFunctionIfRequired : ValueMappingContext -> FQName.FQName -> Maybe MappingFunctionType
 getInliningFunctionIfRequired ctx name =
    Dict.get name ctx.globalValuesToInline
       |> Maybe.map (\definition ->
-            \(_, args) mapValue innerCtx ->
-                let
-                    convertedArgs = 
-                        List.map2 (\arg (paramName, _, _) -> (paramName, mapValue arg ctx)) args definition.inputTypes
-                            
-                    newCtx = 
-                        convertedArgs
-                            |> List.foldr (\(paramName, value) currentCtx -> 
-                                                addReplacementForIdentifier paramName value currentCtx) innerCtx 
-                in
-                mapValue definition.body newCtx)
+                        \(_, args) mapValue innerCtx ->
+                            let
+                                (mappedArgs, argsIssues) = 
+                                    args
+                                        |> List.map (\arg -> mapValue arg ctx)
+                                        |> List.unzip
+                                convertedArgs = 
+                                    List.map2 (\arg (paramName, _, _) -> (paramName, arg)) mappedArgs definition.inputTypes
+                                        
+                                newCtx = 
+                                    convertedArgs
+                                        |> List.foldr (\(paramName, value) currentCtx -> 
+                                                            addReplacementForIdentifier paramName value currentCtx) innerCtx 
+                                (mappedBody, mappedBodyIssues) =
+                                    mapValue definition.body newCtx
+                            in
+                            ( mappedBody, mappedBodyIssues ++ (List.concat argsIssues)))
 
 
-mapListMemberFunction : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapListMemberFunction : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapListMemberFunction ( _, args ) mapValue ctx =
     case args of
         [ value, sourceRelation ] ->
             let
-                variable = mapValue value ctx
-                applySequence = mapValue sourceRelation ctx
+                (variable, variableIssues) =
+                    mapValue value ctx
+                (applySequence, sourceRelationIssues) =
+                    mapValue sourceRelation ctx
+                issues =
+                    variableIssues ++ sourceRelationIssues
             in
-            Scala.Apply (Scala.Select variable "in") [ Scala.ArgValue Nothing applySequence ]
+            ( Scala.Apply (Scala.Select variable "in") [ Scala.ArgValue Nothing applySequence ], issues)
         _ ->
-            Scala.Literal (Scala.StringLit "List.member scenario not converted")
+            errorValueAndIssue "List.member scenario not converted" 
 
-mapListConcatMapFunction : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapListConcatMapFunction : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapListConcatMapFunction ( _, args ) mapValue ctx =
     case args of    
         [ filterAction, sourceRelation ] ->
             generateForConcatMap filterAction sourceRelation ctx mapValue
         _ ->
-            Scala.Literal (Scala.StringLit "List concatMap scenario not supported")
+            errorValueAndIssue "List concatMap scenario not supported" 
 
-generateForConcatMap : Value ta (Type ()) -> Value ta (Type ()) -> ValueMappingContext -> (Constants.MapValueType ta) -> Scala.Value
+generateForConcatMap : TypedValue -> TypedValue -> ValueMappingContext -> (Constants.MapValueType) -> ValueGenerationResult
 generateForConcatMap action sourceRelation ctx mapValue =
-    case (action, Value.valueAttribute sourceRelation) of
-        (Value.Lambda ((TypeIR.Function _ fromType toType) as lambdaFunctionType) (AsPattern _ _ lambdaParam) body, sourceRelationType) ->
+    case (action, ValueIR.valueAttribute sourceRelation) of
+        (ValueIR.Lambda ((TypeIR.Function _ fromType toType) as lambdaFunctionType) (AsPattern _ _ lambdaParam) body, sourceRelationType) ->
             if isCandidateForDataFrame sourceRelationType ctx.typesContextInfo && 
                isCandidateForDataFrame toType ctx.typesContextInfo then
                let 
@@ -177,67 +187,81 @@ generateForConcatMap action sourceRelation ctx mapValue =
                         isTypeReferenceToSimpleTypesRecord fromType ctx.typesContextInfo
                             |> Maybe.map (\(path, name) -> addReplacementForIdentifier lambdaParam (Scala.Ref path (Name.toTitleCase name)) ctx)
                             |> Maybe.withDefault ctx
+                    (mappedBody, bodyIssues) = 
+                        mapValue body contextForBody
                     selectArg =
                         (Scala.Apply 
-                               (Scala.Select (mapValue body contextForBody) "as") 
+                               (Scala.Select mappedBody "as") 
                                [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "result")) ])
+                    (mappedSourceRelation, sourceIssues) =
+                        mapValue sourceRelation ctx
                     flattenedDataFrame =
                         (Scala.Apply
                             (Scala.Select 
                                 (Scala.Apply 
-                                    (Scala.Select (mapValue sourceRelation ctx) "select") [Scala.ArgValue Nothing selectArg])
+                                    (Scala.Select mappedSourceRelation "select") [Scala.ArgValue Nothing selectArg])
                                 "flatten")
                             [Scala.ArgValue Nothing (applySnowparkFunc "col" [ Scala.Literal (Scala.StringLit "result") ])])
                     finalProjection = generateProjectionForArrayColumnIfRequired lambdaFunctionType ctx flattenedDataFrame "value"
                 in
-                Maybe.withDefault flattenedDataFrame finalProjection
+                (Maybe.withDefault flattenedDataFrame finalProjection, bodyIssues ++ sourceIssues)
             else
-                Scala.Literal (Scala.StringLit "List.concatMap scenario not supported")
+                errorValueAndIssue "List.concatMap scenario not supported"
         _ ->
-            Scala.Literal (Scala.StringLit "List.concatMap scenario not supported")
+            errorValueAndIssue "List.concatMap scenario not supported"
 
-mapListConcatFunction : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapListConcatFunction : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapListConcatFunction ( _, args ) mapValue ctx =
     case args of    
         [ elements ] ->
             generateForListConcat elements ctx mapValue
         _ ->
-            Scala.Literal (Scala.StringLit "List concat scenario not supported")
+            errorValueAndIssue "List concat scenario not supported"
 
-generateForListConcat : Value ta (Type ()) -> ValueMappingContext -> (Constants.MapValueType ta) -> Scala.Value
+generateForListConcat : TypedValue -> ValueMappingContext -> (Constants.MapValueType) -> ValueGenerationResult
 generateForListConcat expr ctx mapValue =
     case expr of
         ValueIR.List (TypeIR.Reference _ _ [TypeIR.Reference _ _ [innerType]]) elements ->
               if isTypeRefToRecordWithSimpleTypes innerType ctx.typesContextInfo &&
                   hasFunctionToDfOpertions elements ctx then
                 let 
-                    convertedItems = elements |> List.map (\item -> mapValue item ctx)
+                    (convertedItems, itemsIssues) = 
+                            elements 
+                                |> List.map (\item -> mapValue item ctx)
+                                |> List.unzip
                 in
-                applySnowparkFunc "callBuiltin" ((Scala.Literal (Scala.StringLit "array_flatten")) :: [ applySnowparkFunc "array_construct" convertedItems])
+                ( applySnowparkFunc "callBuiltin" [(Scala.Literal (Scala.StringLit "array_flatten")),  applySnowparkFunc "array_construct" convertedItems]
+                , List.concat itemsIssues)
                else 
                  generateUnionAllWithMappedElements elements ctx mapValue
         _ ->
-            Scala.Literal (Scala.StringLit "List.concat case not supported")
+            errorValueAndIssue "List.concat case not supported"
 
 
-generateUnionAllWithMappedElements : List (Value ta (Type ())) -> ValueMappingContext -> (Constants.MapValueType ta) -> Scala.Value
+generateUnionAllWithMappedElements : List TypedValue -> ValueMappingContext -> (Constants.MapValueType) -> ValueGenerationResult
 generateUnionAllWithMappedElements elements ctx mapValue =
     case elements of
         first::rest -> 
             let 
-                firstMapped = 
+                (firstMapped, firstIssues) = 
                     mapValue first ctx
                 in
                 rest
-                    |> List.foldl (\current result -> Scala.Apply (Scala.Select result "unionAll") [Scala.ArgValue Nothing (mapValue current ctx)] ) firstMapped
+                    |> (List.foldl (\current (result, issues) ->
+                                       let
+                                          (mappedValue, valueIssues) = 
+                                            mapValue current ctx
+                                       in 
+                                       ((Scala.Apply (Scala.Select result "unionAll") [ Scala.ArgValue Nothing mappedValue] ), issues ++ valueIssues))
+                                   (firstMapped, firstIssues))
         _  ->
-            Scala.Literal (Scala.StringLit "List.concat case not supported")
+            errorValueAndIssue "List.concat case not supported"
 
 hasFunctionToDfOpertions : List (Value a (Type ())) -> ValueMappingContext -> Bool
 hasFunctionToDfOpertions listElements ctx =
     case listElements of
         (((ValueIR.Apply _ f a ))::_) -> 
-            case Value.uncurryApply f a of
+            case ValueIR.uncurryApply f a of
                 (ValueIR.Reference _ fullName , _) -> isFunctionReturningDataFrameExpressions fullName ctx
                 _ -> 
                     False
@@ -245,29 +269,42 @@ hasFunctionToDfOpertions listElements ctx =
             False
 
 
-mapBasicsFunctionCall : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapBasicsFunctionCall : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapBasicsFunctionCall ( name, args ) mapValue ctx =
     case (name, args) of    
         (ValueIR.Reference _ fullFuncName, [ left, right ]) ->
             mapForOperatorCall (FQName.getLocalName fullFuncName) left right mapValue ctx
         _ ->
-            Scala.Literal (Scala.StringLit "Basics function scenario not supported")
+            errorValueAndIssue  "Basics function scenario not supported"
 
 
-mapForOperatorCall : Name.Name -> Value ta (Type ()) -> Value ta (Type ()) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapForOperatorCall : Name.Name -> TypedValue -> TypedValue -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapForOperatorCall optname left right mapValue ctx =
     case (optname, left, right) of
         (["equal"], _ , ValueIR.Constructor _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ])) -> 
-            Scala.Select (mapValue left ctx) "is_null"
+            let 
+                (mappedLeft, mappedLeftIssues) =
+                    mapValue left ctx
+            in
+            (Scala.Select mappedLeft "is_null", mappedLeftIssues)
         ([ "not", "equal" ], _ , ValueIR.Constructor _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ])) -> 
-            Scala.Select (mapValue left ctx) "is_not_null"
+            let 
+                (mappedLeft, mappedLeftIssues) =
+                    mapValue left ctx
+            in
+            (Scala.Select mappedLeft "is_not_null", mappedLeftIssues)
         _ ->
             let
-                leftValue = mapValue left ctx
-                rightValue = mapValue right ctx
-                operatorname = mapOperator optname
+                (leftValue, leftIssues) =
+                    mapValue left ctx
+                (rightValue, rightIssues) =
+                    mapValue right ctx
+                operatorname =
+                    mapOperator optname
+                issues =
+                    leftIssues ++ rightIssues
             in
-            Scala.BinOp leftValue operatorname rightValue
+            (Scala.BinOp leftValue operatorname rightValue, issues)
 
 
 
@@ -277,21 +314,21 @@ whenConditionElseValueCall condition thenExpr elseExpr =
                [Scala.ArgValue Nothing elseExpr]
 
 
-mapListSumFunction : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapListSumFunction : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapListSumFunction ( _, args ) mapValue ctx =
     case args of    
         [ elements ] ->
             generateForListSum elements ctx mapValue
         _ ->
-            Scala.Literal (Scala.StringLit "List sum scenario not supported")
+            errorValueAndIssue "List sum scenario not supported"
 
-generateForListSum : Value ta (Type ()) -> ValueMappingContext -> Constants.MapValueType ta -> Scala.Value
+generateForListSum : TypedValue -> ValueMappingContext -> Constants.MapValueType -> ValueGenerationResult
 generateForListSum collection ctx mapValue =
     case collection of
         ValueIR.Apply _ (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "map" ] )) _) sourceRelation ->
             if isCandidateForDataFrame (valueAttribute sourceRelation) ctx.typesContextInfo then
                 case mapValue collection ctx of
-                    Scala.Apply col [Scala.ArgValue argName projectedExpr] ->
+                    (Scala.Apply col [Scala.ArgValue argName projectedExpr], issues) ->
                         let
                             resultName = Scala.Literal (Scala.StringLit "result")
                             asCall =  Scala.Apply (Scala.Select projectedExpr "as") [Scala.ArgValue Nothing resultName]
@@ -301,32 +338,38 @@ generateForListSum collection ctx mapValue =
                                                                   , Constants.applySnowparkFunc "lit" [ Scala.Literal (Scala.IntegerLit 0)] ]
                             selectResult = Scala.Apply (Scala.Select newSelect "select") [Scala.ArgValue Nothing sumCall]
                         in
-                            (Scala.Apply (Scala.Select (Scala.Select (Scala.Select selectResult "first") "get") "getDouble") [Scala.ArgValue Nothing (Scala.Literal (Scala.IntegerLit 0))])
+                        ( Scala.Apply 
+                                (Scala.Select (Scala.Select (Scala.Select selectResult "first") "get") "getDouble") 
+                                [ Scala.ArgValue Nothing (Scala.Literal (Scala.IntegerLit 0)) ]
+                        , issues)
                             
                     _ ->
-                        Scala.Literal (Scala.StringLit "Unsupported sum scenario")
+                        errorValueAndIssue "Unsupported sum scenario"
             else 
-                Scala.Literal (Scala.StringLit "Unsupported sum scenario")
+                errorValueAndIssue "Unsupported sum scenario"
         _ -> 
-            Scala.Literal (Scala.StringLit "Unsupported sum scenario")
+            errorValueAndIssue "Unsupported sum scenario"
 
 
-mapListFilterFunction : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapListFilterFunction : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapListFilterFunction ( _, args ) mapValue ctx =
     case args of    
         [ filter, sourceRelation ] ->
             generateForListFilter filter sourceRelation ctx mapValue
         _ ->
-            Scala.Literal (Scala.StringLit "List filter scenario not supported")
+            errorValueAndIssue "List filter scenario not supported"
 
 
-generateForListFilter : Value ta (Type ()) -> (Value ta (Type ())) -> ValueMappingContext -> Constants.MapValueType ta -> Scala.Value
+generateForListFilter : TypedValue -> TypedValue -> ValueMappingContext -> Constants.MapValueType -> ValueGenerationResult
 generateForListFilter predicate sourceRelation ctx mapValue =
     let
-        generateFilterCall functionExpr =
-             Scala.Apply 
-                    (Scala.Select (mapValue sourceRelation ctx) "filter") 
+        (mappedSourceRelation, sourceRelationIssues) =
+            mapValue sourceRelation ctx
+        generateFilterCall (functionExpr, issues) =
+             ( Scala.Apply 
+                    (Scala.Select mappedSourceRelation "filter") 
                     [Scala.ArgValue Nothing functionExpr]
+              , issues ++ sourceRelationIssues )
     in
     if isCandidateForDataFrame (valueAttribute sourceRelation) ctx.typesContextInfo then
         case predicate of
@@ -336,35 +379,39 @@ generateForListFilter predicate sourceRelation ctx mapValue =
                 case (isLocalFunctionName functionName ctx, generateRecordTypeWrapperExpression fromType ctx) of
                     (True, Just typeRefExpr) ->                        
                         (generateFilterCall <| 
-                            Scala.Apply (Scala.Ref (scalaPathToModule functionName) (functionName |> FQName.getLocalName |> Name.toCamelCase)) 
-                                        [Scala.ArgValue Nothing typeRefExpr])
+                            (Scala.Apply (Scala.Ref (scalaPathToModule functionName) (functionName |> FQName.getLocalName |> Name.toCamelCase)) 
+                                        [Scala.ArgValue Nothing typeRefExpr], []))
                     _ -> 
-                        Scala.Literal (Scala.StringLit ("Unsupported filter function scenario2" ))
+                        errorValueAndIssue "Unsupported filter function scenario2" 
            _ ->
-              Scala.Literal (Scala.StringLit ("Unsupported filter function scenario" ))
+              errorValueAndIssue "Unsupported filter function scenario" 
      else 
-        Scala.Literal (Scala.StringLit "Unsupported filter scenario")
+        errorValueAndIssue  "Unsupported filter scenario"
 
 
-mapListFilterMapFunction : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapListFilterMapFunction : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapListFilterMapFunction ( _, args ) mapValue ctx =
     case args of    
         [ filter, sourceRelation ] ->
             generateForListFilterMap filter sourceRelation ctx mapValue
         _ ->
-            Scala.Literal (Scala.StringLit "List filterMap scenario not supported")
+            errorValueAndIssue "List filterMap scenario not supported"
 
 
-generateForListFilterMap : Value ta (Type ()) -> (Value ta (Type ())) -> ValueMappingContext -> Constants.MapValueType ta -> Scala.Value
+generateForListFilterMap : TypedValue -> TypedValue -> ValueMappingContext -> Constants.MapValueType -> ValueGenerationResult
 generateForListFilterMap predicate sourceRelation ctx mapValue =
     if isCandidateForDataFrame (valueAttribute sourceRelation) ctx.typesContextInfo then
         case predicate of
            ValueIR.Lambda tpe _ binExpr ->
               let 
+                  (mappedBinExpr, issuesExpr) = 
+                      mapValue binExpr ctx
                   selectColumnAlias = 
-                       Scala.Apply (Scala.Select (mapValue binExpr ctx) "as ") [ Scala.ArgValue Nothing resultId ]
+                       Scala.Apply (Scala.Select mappedBinExpr "as ") [ Scala.ArgValue Nothing resultId ]
+                  ( mappedSourceRelation, sourceRelationIssues ) =
+                       mapValue sourceRelation ctx
                   selectCall = 
-                       Scala.Apply (Scala.Select (mapValue sourceRelation ctx) "select") [Scala.ArgValue Nothing <| selectColumnAlias]
+                       Scala.Apply (Scala.Select mappedSourceRelation "select") [Scala.ArgValue Nothing <| selectColumnAlias]
                   resultId = 
                        Scala.Literal <| Scala.StringLit "result"
                   isNotNullCall = 
@@ -372,21 +419,26 @@ generateForListFilterMap predicate sourceRelation ctx mapValue =
                   filterCall = 
                        Scala.Apply (Scala.Select selectCall "filter") [Scala.ArgValue Nothing isNotNullCall]
               in
-              Maybe.withDefault filterCall (generateProjectionForArrayColumnIfRequired  tpe ctx filterCall "result")
+              ( Maybe.withDefault filterCall (generateProjectionForArrayColumnIfRequired  tpe ctx filterCall "result")
+              , issuesExpr ++ sourceRelationIssues)
            _ ->
               let 
-                  tpe = Value.valueAttribute predicate
+                  tpe = ValueIR.valueAttribute predicate
                   recordReference =   getListTypeParameter (valueAttribute sourceRelation)
                                         |> Maybe.map (\t -> (getLocalVariableIfDataFrameReference t ctx))
                                         |> Maybe.withDefault Nothing
                                         |> Maybe.map Scala.Variable
                                         |> Maybe.withDefault (Scala.Literal Scala.NullLit)
+                  (mappedPredicate, predicateIssues) = 
+                      mapValue predicate ctx
                   predicateApplication = 
-                    Scala.Apply (mapValue predicate ctx) [Scala.ArgValue Nothing recordReference]
+                    Scala.Apply mappedPredicate [Scala.ArgValue Nothing recordReference]
                   selectColumnAlias = 
                        Scala.Apply (Scala.Select predicateApplication "as ") [ Scala.ArgValue Nothing resultId ]
+                  ( mappedSourceRelation, sourceRelationIssues ) =
+                       mapValue sourceRelation ctx
                   selectCall = 
-                       Scala.Apply (Scala.Select (mapValue sourceRelation ctx) "select") [Scala.ArgValue Nothing <| selectColumnAlias]
+                       Scala.Apply (Scala.Select mappedSourceRelation "select") [Scala.ArgValue Nothing <| selectColumnAlias]
                   resultId = 
                        Scala.Literal <| Scala.StringLit "result"
                   isNotNullCall = 
@@ -394,10 +446,10 @@ generateForListFilterMap predicate sourceRelation ctx mapValue =
                   filterCall = 
                        Scala.Apply (Scala.Select selectCall "filter") [Scala.ArgValue Nothing isNotNullCall]
               in
-              Maybe.withDefault filterCall (generateProjectionForArrayColumnIfRequired  tpe ctx filterCall "result")
+              (Maybe.withDefault filterCall (generateProjectionForArrayColumnIfRequired  tpe ctx filterCall "result")
+              , predicateIssues ++ sourceRelationIssues)
      else 
-        Scala.Literal (Scala.StringLit "Unsupported filterMap scenario")
-
+        errorValueAndIssue "Unsupported filterMap scenario"
 
 generateProjectionForArrayColumnIfRequired : Type () -> ValueMappingContext -> Scala.Value -> String -> Maybe Scala.Value 
 generateProjectionForArrayColumnIfRequired tpe ctx selectExpr resultColumnName =
@@ -425,55 +477,29 @@ generateProjectionForArrayColumnIfRequired tpe ctx selectExpr resultColumnName =
                 |> Maybe.map generateArrayUnpackingProjection
         _ -> Nothing  
 
-generateProjectionForJsonColumnIfRequired : Type () -> ValueMappingContext -> Scala.Value -> String -> Maybe Scala.Value 
-generateProjectionForJsonColumnIfRequired tpe ctx selectExpr resultColumnName =
-    let
-       resultColumn = 
-            Constants.applySnowparkFunc "col" [Scala.Literal (Scala.StringLit resultColumnName)]
-       generateFieldAccess : Int -> Scala.Value
-       generateFieldAccess idx = 
-            Scala.Literal (Scala.StringLit (getCustomTypeParameterFieldAccess idx))
-       generateAsCall expr name =
-            Scala.Apply (Scala.Select expr "as") 
-                        [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit (Name.toCamelCase name )))]
-       resultFieldAccess idx = 
-            Scala.Apply resultColumn [Scala.ArgValue Nothing <| generateFieldAccess idx] 
-       generateJsonUpackingProjection : List (Name.Name, Type ()) -> Scala.Value
-       generateJsonUpackingProjection names =
-            Scala.Apply 
-                    (Scala.Select selectExpr "select") 
-                    (names 
-                       |> List.indexedMap (\i (name, fType) -> Scala.ArgValue Nothing <| (generateAsCall (generateCastIfPossible ctx fType (resultFieldAccess i)) name)))
-    in
-    case tpe of
-        TypeIR.Function _ _ (TypeIR.Reference _ _ [itemsType]) -> 
-            (getFieldInfoIfRecordType itemsType ctx.typesContextInfo) 
-                |> Maybe.map generateJsonUpackingProjection
-        _ -> Nothing        
-
-mapListMapFunction : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapListMapFunction : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapListMapFunction ( _, args ) mapValue ctx =
     case args of    
         [ action, sourceRelation ] ->
             generateForListMap action sourceRelation ctx mapValue
         _ ->
-            Scala.Literal (Scala.StringLit "List map scenario not supported")
+            errorValueAndIssue "List map scenario not supported"
 
 
-generateForListMap : Value ta (Type ()) -> (Value ta (Type ())) -> ValueMappingContext -> Constants.MapValueType ta -> Scala.Value
+generateForListMap : TypedValue -> TypedValue -> ValueMappingContext -> Constants.MapValueType -> ValueGenerationResult
 generateForListMap projection sourceRelation ctx mapValue =
     if isCandidateForDataFrame (valueAttribute sourceRelation) ctx.typesContextInfo then
         case processLambdaWithRecordBody projection ctx mapValue of
-           Just arguments -> 
-              Scala.Apply (Scala.Select (mapValue sourceRelation ctx) "select") arguments
+           Just (arguments, argsIssues) ->
+              let
+                (mappedSourceResult, issues) =
+                    mapValue sourceRelation ctx
+              in     
+              (Scala.Apply (Scala.Select mappedSourceResult "select") arguments, issues ++ (List.concat argsIssues))
            Nothing ->
-              Scala.Literal (Scala.StringLit "Unsupported map scenario 1")
-     else
-        if isJoinFunction sourceRelation then
-            mapJoinFunction projection sourceRelation mapValue ctx
-        else
-            Scala.Literal (Scala.StringLit "Unsupported map scenario 2")
-
+              errorValueAndIssue "Unsupported map scenario for data frame parameter"
+     else 
+        errorValueAndIssue "Unsupported map scenario"
 
 isJoinFunction : (Value ta (Type ())) -> Bool
 isJoinFunction value =
@@ -486,7 +512,7 @@ isJoinFunction value =
             _ ->
                 False
 
-processLambdaWithRecordBody : Value ta (Type ()) -> ValueMappingContext -> Constants.MapValueType ta -> Maybe (List Scala.ArgValue)
+processLambdaWithRecordBody : TypedValue -> ValueMappingContext -> Constants.MapValueType -> Maybe ((List Scala.ArgValue, List (List GenerationIssue)))
 processLambdaWithRecordBody functionExpr ctx mapValue =
     case functionExpr of
         ValueIR.Lambda (TypeIR.Function _ _  returnType) (ValueIR.AsPattern _ _ _) (ValueIR.Record _ fields) ->
@@ -494,74 +520,102 @@ processLambdaWithRecordBody functionExpr ctx mapValue =
                 || isTypeRefToRecordWithSimpleTypes returnType ctx.typesContextInfo  then
                Just (fields  
                         |> getFieldsInCorrectOrder returnType ctx
-                        |> List.map (\(fieldName, value) -> (Name.toCamelCase fieldName, (mapValue value ctx)))
-                        |> List.map (\(fieldName, value) ->  Scala.Apply (Scala.Select value  "as") [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit fieldName))])
-                        |> List.map (Scala.ArgValue Nothing))
-             else  
+                        |> List.map (\(fieldName, value) -> 
+                                            (Name.toCamelCase fieldName, (mapValue value ctx)))
+                        |> List.map (\(fieldName, (value, issues)) ->  
+                                            ((Scala.Apply 
+                                                (Scala.Select value  "as") 
+                                                [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit fieldName))])
+                                            , issues))
+                        |> List.map (\(value, issues) -> (Scala.ArgValue Nothing value, issues))
+                        |> List.unzip)
+                        
+             else
                 Nothing
         ValueIR.Lambda (TypeIR.Function _ _  returnType) (ValueIR.AsPattern _ _ _) expr ->
              if isBasicType returnType then
-                Just [ Scala.ArgValue Nothing <| mapValue expr ctx ]
+                let 
+                    (mappedBody, mappedBodyIssues) =
+                        mapValue expr ctx
+                in
+                Just  ([Scala.ArgValue Nothing mappedBody], [ mappedBodyIssues ]) 
              else  
                 Nothing
         ValueIR.FieldFunction _ _ ->
-            Just [Scala.ArgValue Nothing (mapValue functionExpr ctx)]
+            let
+                (mappedFunctionExpr, mappedFunctionExprIssues) =
+                    mapValue functionExpr ctx
+            in
+            Just  ([ Scala.ArgValue Nothing mappedFunctionExpr ], [ mappedFunctionExprIssues ])
         _ ->
             Nothing
 
-getFieldsInCorrectOrder : Type () -> ValueMappingContext -> Dict Name.Name (Value ta (Type ())) ->  List (Name.Name, (Value ta (Type ())))
+getFieldsInCorrectOrder : Type () -> ValueMappingContext -> Dict Name.Name TypedValue ->  List (Name.Name, TypedValue)
 getFieldsInCorrectOrder originalType ctx fields =
     case originalType of
         TypeIR.Reference _ _ [] ->
             (getFieldInfoIfRecordType originalType ctx.typesContextInfo)
-                |> Maybe.map (\lst -> collectMaybeList (\(name, _) -> Dict.get name fields |> Maybe.map (\fieldvalue -> (name, fieldvalue))) lst)
+                |> Maybe.map (\lst -> 
+                                collectMaybeList 
+                                    (\(name, _) -> Dict.get name fields 
+                                                        |> Maybe.map (\fieldvalue -> (name, fieldvalue))) 
+                                    lst)
                 |> Maybe.withDefault Nothing
                 |> Maybe.withDefault (Dict.toList fields)
         _ ->
             Dict.toList fields
 
 
-mapJustFunction  : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapJustFunction  : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapJustFunction  ( _, args ) mapValue ctx =
     case args of    
         [ justValue ] ->
             mapValue justValue ctx 
         _ ->
-            Scala.Literal (Scala.StringLit "Maybe Just scenario not supported")
+            errorValueAndIssue "Maybe Just scenario not supported"
 
     
-mapMaybeMapFunction  : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapMaybeMapFunction  : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapMaybeMapFunction  ( _, args ) mapValue ctx =
     case args of    
         [ action, source ] ->
             mapMaybeMapCall action source mapValue ctx 
         _ ->
-            Scala.Literal (Scala.StringLit "Maybe Just scenario not supported")
+            errorValueAndIssue "Maybe Just scenario not supported"
 
-mapMaybeMapCall : Value ta (Type ()) -> Value ta (Type ()) -> (Constants.MapValueType ta) -> ValueMappingContext -> Scala.Value
+mapMaybeMapCall : TypedValue -> TypedValue -> (Constants.MapValueType) -> ValueMappingContext -> ValueGenerationResult
 mapMaybeMapCall action maybeValue mapValue ctx =
     case action of
         ValueIR.Lambda _ (AsPattern _ (WildcardPattern _) lambdaParam) body ->
             let
-                convertedValue = mapValue maybeValue ctx
+                (convertedValue, maybeValueIssues) = mapValue maybeValue ctx
                 newReplacements = Dict.fromList [(lambdaParam, convertedValue)]
-                lambdaBody = mapValue body { ctx | inlinedIds  = Dict.union ctx.inlinedIds newReplacements }
+                (lambdaBody, lambdaIssues) = mapValue body { ctx | inlinedIds  = Dict.union ctx.inlinedIds newReplacements }
                 elseLiteral = Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.NullLit))]
+                issues = maybeValueIssues ++ lambdaIssues
             in
-            whenConditionElseValueCall (Scala.Select convertedValue "is_not_null") lambdaBody elseLiteral
+            (whenConditionElseValueCall (Scala.Select convertedValue "is_not_null") lambdaBody elseLiteral, issues)
         _ -> 
-            Scala.Literal (Scala.StringLit "Unsupported withDefault call")    
+            errorValueAndIssue  "Unsupported withDefault call"
 
-mapMaybeWithDefaultFunction  : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapMaybeWithDefaultFunction  : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapMaybeWithDefaultFunction  ( _, args ) mapValue ctx =
     case args of    
         [ defaultValue, value ] ->
-            Constants.applySnowparkFunc "coalesce" [mapValue value ctx, mapValue defaultValue ctx]
+            let
+                (mappedValue, valueIssues) = 
+                    mapValue value ctx
+                (mappedDefaultValue, defaultValueIssues) = 
+                    mapValue defaultValue ctx
+                issues =
+                    valueIssues ++ defaultValueIssues
+            in
+            ( Constants.applySnowparkFunc "coalesce" [ mappedValue, mappedDefaultValue ], issues )
         _ ->
-            Scala.Literal (Scala.StringLit "Maybe.withDefault scenario not supported")
+            errorValueAndIssue "Maybe.withDefault scenario not supported"
 
 
-mapAggregateFunction : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapAggregateFunction : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapAggregateFunction  ( _, args ) mapValue ctx =
     case args of
         [ (ValueIR.Lambda _ (ValueIR.AsPattern _ _ firstParameterName ) ( ValueIR.Lambda _ lambdaPattern lambdaBody )),
@@ -579,49 +633,52 @@ mapAggregateFunction  ( _, args ) mapValue ctx =
                     , firstParameter = firstParameterName
                     }
                 variablesInfo = AggregateMapping.processAggregateLambdaBody lambdaInfo (mapValue, ctx)
-                collection = Scala.Select (mapValue dfName ctx) "groupBy"
+                (mappedDfName, dfNameIssues) = mapValue dfName ctx
+                collection = Scala.Select mappedDfName "groupBy"
                 dfGroupBy = Scala.Apply collection [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit (Name.toCamelCase groupByCategory)))]
                 aggFunction = Scala.Select dfGroupBy "agg"
                 groupBySum = Scala.Apply aggFunction variablesInfo.variable
                 selectColumns = Constants.transformToArgsValue <| List.map (\x -> Constants.applySnowparkFunc "col" [x]) variablesInfo.columnNameList
                 select = Scala.Apply (Scala.Select groupBySum "select") selectColumns
             in
-            select
+            (select, dfNameIssues)
         _ ->
-            Scala.Literal (Scala.StringLit "Aggregate scenario not supported")
+            errorValueAndIssue "Aggregate scenario not supported"
     
-mapJoinFunction :  Value ta (Type ()) -> (Value ta (Type ())) -> Constants.MapValueType ta -> ValueMappingContext  -> Scala.Value
+mapJoinFunction :  TypedValue -> TypedValue -> Constants.MapValueType -> ValueMappingContext  -> ValueGenerationResult
 mapJoinFunction projection joinValue mapValue ctx =
     let
-        joinBody = JoinMapping.processJoinBody joinValue mapValue ctx
-        joinProjection = JoinMapping.processJoinProjection projection mapValue ctx
+        (joinBody, joinBodyIssues) = 
+            JoinMapping.processJoinBody joinValue mapValue ctx
+        (joinProjection, joinProjectionIssues) = 
+            JoinMapping.processJoinProjection projection mapValue ctx
         select = Scala.Select joinBody "select" 
 
         argAlias = Constants.transformToArgsValue joinProjection
     in
-    Scala.Apply select argAlias
+    (Scala.Apply select argAlias, joinProjectionIssues ++ joinBodyIssues)
     
 
 
-mapNotFunctionCall  : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapNotFunctionCall  : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> (Scala.Value, List GenerationIssue)
 mapNotFunctionCall  ( _, args ) mapValue ctx =
     case args of    
         [ value ] ->
                let
-                  mappedValue = mapValue value ctx
+                  (mappedValue, issues) = mapValue value ctx
                 in
-                Scala.UnOp "!" mappedValue
+                (Scala.UnOp "!" mappedValue, issues)
         _ ->
-            Scala.Literal (Scala.StringLit "'Not' scenario not supported")
+            (Scala.Literal (Scala.StringLit "'Not' scenario not supported"), ["'Not' scenario not supported"])
 
 
-mapFloorFunctionCall : (IrValueType ta, List (IrValueType ta)) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+mapFloorFunctionCall : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapFloorFunctionCall  ( _, args ) mapValue ctx =
     case args of    
         [ value ] ->
                let
-                  mappedValue = mapValue value ctx
+                  (mappedValue, valueIssues) = mapValue value ctx
                 in
-                Constants.applySnowparkFunc  "floor" [ mappedValue ]     
+                (Constants.applySnowparkFunc  "floor" [ mappedValue ], valueIssues)
         _ ->
-            Scala.Literal (Scala.StringLit "'floor' scenario not supported")
+            errorValueAndIssue "'floor' scenario not supported"

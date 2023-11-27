@@ -1,29 +1,36 @@
-module Morphir.Snowpark.JoinMapping exposing (..)
+module Morphir.Snowpark.JoinMapping exposing (processJoinProjection, processJoinBody)
 
 import Dict
 import Morphir.Scala.AST as Scala
-import Morphir.IR.Value as ValueIR
-import Morphir.Snowpark.Constants as Constants
-import Morphir.IR.Type as TypeIR
+import Morphir.IR.Value as ValueIR exposing (TypedValue)
+import Morphir.Snowpark.Constants as Constants exposing (ValueGenerationResult)
 import Morphir.IR.Name as Name
 import Morphir.Snowpark.MappingContext exposing (ValueMappingContext)
+import Morphir.Snowpark.GenerationReport exposing (GenerationIssue)
+import Morphir.Snowpark.ReferenceUtils exposing (errorValueAndIssue)
 
-processJoinProjection : ValueIR.Value ta (TypeIR.Type ()) -> Constants.MapValueType ta -> ValueMappingContext -> List Scala.Value
+processJoinProjection : TypedValue -> Constants.MapValueType -> ValueMappingContext -> (List Scala.Value, List GenerationIssue)
 processJoinProjection projection mapValue ctx =
     case projection of
         ValueIR.Lambda _ _ (ValueIR.Record _ record) ->
             let
                 listFields = Dict.toList record
-                variables =  listFields |> List.map (\(_, x) -> mapValue x ctx) |> List.map (\x -> Scala.Select x "alias")
+                (variablesExpr, varIssues) =  
+                        listFields 
+                            |> List.map (\(_, x) -> mapValue x ctx) 
+                            |> List.unzip
+                variables =
+                    variablesExpr
+                        |> List.map (\x -> Scala.Select x "alias")
                 alias = listFields |> List.map(\(x, _) ->  Scala.Literal (Scala.StringLit (Name.toCamelCase x)) )
 
                 selectColumns = List.map2 (\name variable -> Scala.Apply variable [Scala.ArgValue Nothing name]) alias variables
             in
-            selectColumns
+            (selectColumns, List.concat varIssues)
         _ ->
-            [Scala.Literal <| Scala.StringLit "Proyection"]
+            ([Scala.Literal <| Scala.StringLit "Projection"], [])
 
-processJoinBody :  (ValueIR.Value ta (TypeIR.Type ())) -> Constants.MapValueType ta -> ValueMappingContext -> Scala.Value
+processJoinBody :  (TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 processJoinBody joinValue mapValue ctx =
     case joinValue of
         ValueIR.Apply _ 
@@ -43,28 +50,30 @@ processJoinBody joinValue mapValue ctx =
             ) 
             (ValueIR.Variable _ arg1) ->
                 let
-                    lambdaBodyScala = processJoinFunctionBody lambdaBody mapValue ctx
+                    (lambdaBodyScala, bodyIssues) = 
+                        processJoinFunctionBody lambdaBody mapValue ctx
                     joinTypeName = getJoinType joinName
                 in
-                Scala.Apply 
+                (Scala.Apply 
                     (Scala.Select (Scala.Variable (Name.toCamelCase arg1)) "join")
                     [ Scala.ArgValue Nothing (Scala.Variable (Name.toCamelCase arg2))
                     , Scala.ArgValue Nothing lambdaBodyScala
                     , Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit joinTypeName))
                     ]
+                , bodyIssues)
         _ ->
-            Scala.Literal (Scala.StringLit "'Join' scenario not supported")
+            errorValueAndIssue "'Join' scenario not supported"
 
-processJoinFunctionBody : ValueIR.Value ta (TypeIR.Type ()) -> Constants.MapValueType ta -> ValueMappingContext  -> Scala.Value
+processJoinFunctionBody : TypedValue -> Constants.MapValueType -> ValueMappingContext  -> ValueGenerationResult
 processJoinFunctionBody value mapValue ctx =
     case value of
         ValueIR.Apply _ x y ->
             mapValue value ctx
         _ ->
-            Scala.Literal (Scala.StringLit "Join Body EXCEPTION")
+            errorValueAndIssue "Join Body EXCEPTION"
 
 
-getJoinVariable : ValueIR.Value ta (TypeIR.Type()) -> Scala.Value
+getJoinVariable : TypedValue -> Scala.Value
 getJoinVariable value =
     case value of
         ValueIR.Field tpe val name ->
@@ -77,11 +86,9 @@ getJoinType : Name.Name -> String
 getJoinType name =
     if List.member "inner" name then
         "inner"
-    else
-        if List.member "inner" name then
+    else if List.member "inner" name then
             "right"
-        else
-            if List.member "inner" name then
-                "left"
-            else
-                "Unsupported join Type"
+    else if List.member "inner" name then
+            "left"
+    else
+        "Unsupported join Type"

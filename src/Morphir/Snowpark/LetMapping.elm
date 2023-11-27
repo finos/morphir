@@ -3,49 +3,64 @@ module Morphir.Snowpark.LetMapping exposing (mapLetDefinition)
 import List
 import Morphir.IR.Name as Name
 import Morphir.Scala.AST as Scala
-import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
-import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.IR.Name as Name
+import Morphir.IR.Type exposing (Type)
+import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
+import Morphir.Snowpark.Constants exposing (MapValueType, ValueGenerationResult)
+import Morphir.Snowpark.GenerationReport exposing (GenerationIssue)
+import Morphir.Snowpark.MappingContext exposing ( ValueMappingContext
+                                                , FunctionClassification(..)
+                                                , addLocalDefinitions)
 import Morphir.Snowpark.TypeRefMapping exposing (mapTypeReference)
-import Morphir.Snowpark.MappingContext exposing ( ValueMappingContext )
-import Morphir.Snowpark.MappingContext exposing (FunctionClassification(..))
-import Morphir.Snowpark.MappingContext exposing (addLocalDefinitions)
-import Morphir.Snowpark.Constants exposing (MapValueType)
+import Morphir.IR.Value exposing (TypedValue)
 
-mapLetDefinition : Name.Name -> Value.Definition ta (Type ()) -> Value ta (Type ()) -> MapValueType ta -> ValueMappingContext-> Scala.Value
+mapLetDefinition : Name.Name -> Value.Definition () (Type ()) -> TypedValue -> MapValueType -> ValueMappingContext-> ValueGenerationResult
 mapLetDefinition name definition body mapValue ctx =
         let 
             (pairs, bodyToConvert) = collectNestedLetDeclarations body []
             declsToProcess = ((name, definition) :: pairs)
             contextForLetBody = addLocalDefinitions (declsToProcess |> List.map Tuple.first) ctx
-            decls = declsToProcess
-                        |> List.map (\p -> mapLetDeclaration p mapValue contextForLetBody)
+            (decls, issues) = declsToProcess
+                                    |> List.map (\p -> mapLetDeclaration p mapValue contextForLetBody)
+                                    |> List.unzip
+            (mappedBody, mappedBodyIssues) =
+                mapValue bodyToConvert contextForLetBody
         in
-        Scala.Block decls (mapValue bodyToConvert contextForLetBody)
+        ( Scala.Block decls mappedBody, (mappedBodyIssues ++ (List.concat issues)) )
 
-mapLetDeclaration : (Name.Name, Value.Definition ta (Type ())) -> MapValueType ta -> ValueMappingContext -> Scala.MemberDecl
+mapLetDeclaration : (Name.Name, Value.Definition () (Type ())) -> MapValueType -> ValueMappingContext -> (Scala.MemberDecl, List GenerationIssue)
 mapLetDeclaration (name, decl) mapValue ctx =
     case decl.body of
         Value.Lambda _ (Value.AsPattern t _ paramName) body ->
-            Scala.FunctionDecl { modifiers = []
+            let
+                (mappedBody, mappedBodyIssues) =
+                        mapValue body ctx
+                mappedArgType =
+                    mapTypeReference t ctx.currentFunctionClassification ctx.typesContextInfo
+            in
+            
+            (Scala.FunctionDecl { modifiers = []
                                , name = Name.toCamelCase name
                                , typeArgs = []
-                               , args = [ [ Scala.ArgDecl [] (mapTypeReference t ctx.currentFunctionClassification ctx.typesContextInfo) (Name.toCamelCase paramName) Nothing] ]
+                               , args = [ [ Scala.ArgDecl [] mappedArgType (Name.toCamelCase paramName) Nothing] ]
                                , returnType = Nothing
-                               , body = Just (mapValue body ctx)
-                               }
+                               , body = Just mappedBody
+                               }, mappedBodyIssues)
         _ ->
-            Scala.ValueDecl { modifiers = []
+            let
+                (mappedBody, mappedBodyIssues) =
+                        mapValue decl.body ctx
+            in
+            (Scala.ValueDecl { modifiers = []
                             , pattern = Scala.NamedMatch (name |> Name.toCamelCase)
                             , valueType = Nothing
-                            , value = mapValue decl.body ctx
-                            }
+                            , value = mappedBody
+                            }, mappedBodyIssues)
 
 
-collectNestedLetDeclarations : Value ta (Type ()) -> 
-                                  List (Name.Name, Value.Definition ta (Type ())) ->
-                                  (List (Name.Name, Value.Definition ta (Type ())), Value ta (Type ())) 
+collectNestedLetDeclarations : TypedValue -> 
+                                  List (Name.Name, Value.Definition () (Type ())) ->
+                                  (List (Name.Name, Value.Definition () (Type ())), TypedValue) 
 collectNestedLetDeclarations currentBody collectedPairs =
     case currentBody of
         Value.LetDefinition _ name definition body ->

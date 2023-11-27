@@ -1,24 +1,27 @@
 module Morphir.Snowpark.UserDefinedFunctionMapping exposing (tryToConvertUserFunctionCall)
 
 import Morphir.Scala.AST as Scala
-import Morphir.IR.Value as ValueIR exposing (Pattern(..), Value(..))
-import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Name as Name
 import Morphir.IR.FQName as FQName
-import Morphir.Snowpark.Constants as Constants exposing (applySnowparkFunc)
-import Morphir.Snowpark.ReferenceUtils exposing ( scalaPathToModule, getCustomTypeParameterFieldAccess)
+import Morphir.IR.Type exposing (Type)
+import Morphir.IR.Value as ValueIR exposing (Pattern(..), Value(..), TypedValue)
+import Morphir.Snowpark.Constants as Constants exposing (applySnowparkFunc, ValueGenerationResult)
 import Morphir.Snowpark.MappingContext exposing (
             ValueMappingContext
             , FunctionClassification(..)
             , isBasicType
             , isAliasedBasicType
             , isLocalFunctionName )
-import Morphir.Snowpark.MappingContext exposing (isRecordWithSimpleTypes)
-import Morphir.Snowpark.MappingContext exposing (isLocalVariableDefinition)
-import Morphir.Snowpark.MappingContext exposing (isFunctionReceivingDataFrameExpressions)
-import Morphir.Snowpark.ReferenceUtils exposing (getFunctionInputTypes)
+import Morphir.Snowpark.MappingContext exposing ( isRecordWithSimpleTypes
+                                                , isLocalVariableDefinition
+                                                , isFunctionReceivingDataFrameExpressions)
+import Morphir.Snowpark.ReferenceUtils exposing ( scalaPathToModule
+                                                , getFunctionInputTypes
+                                                , getFunctionInputTypes
+                                                , getCustomTypeParameterFieldAccess
+                                                , errorValueAndIssue )
 
-tryToConvertUserFunctionCall : ((Value () (Type ())), List (Value () (Type ()))) -> Constants.MapValueType () -> ValueMappingContext -> Scala.Value
+tryToConvertUserFunctionCall : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 tryToConvertUserFunctionCall (func, args) mapValue ctx =
    case func of
        ValueIR.Reference functionType functionName -> 
@@ -27,63 +30,81 @@ tryToConvertUserFunctionCall (func, args) mapValue ctx =
                     funcReference = 
                         Scala.Ref (scalaPathToModule functionName) 
                                   (functionName |> FQName.getLocalName |> Name.toCamelCase)
-                    argsConverted =
+                    (argsConverted, argsIssues) =
                         args 
                             |> List.map (\arg -> mapValue arg ctx)
+                            |> List.unzip
                     argsToUse =
                         checkIfArgumentsNeedsToBeAdapted functionName functionType argsConverted ctx
                             |> List.map (Scala.ArgValue Nothing)
+                    issues = List.concat argsIssues
                 in
                 case argsToUse of
                     [] -> 
-                        funcReference
+                        (funcReference, issues)
                     (first::rest) -> 
-                        List.foldl (\a c -> Scala.Apply c [a]) (Scala.Apply funcReference [first]) rest
+                        (List.foldl (\a c -> Scala.Apply c [a]) (Scala.Apply funcReference [first]) rest, issues)
             else
-                Scala.Literal (Scala.StringLit "Call not converted")
+                (Scala.Literal (Scala.StringLit "Call not converted"), [ "Call to function not converted: " ++ (FQName.toString functionName)] )
        ValueIR.Constructor _ constructorName ->
             if isRecordWithSimpleTypes constructorName ctx.typesContextInfo then
                 let 
-                    argsToUse = 
-                        args |> List.map (\ arg -> mapValue arg ctx)
+                    (argsToUse, issues) = 
+                        args 
+                            |> List.map (\ arg -> mapValue arg ctx)
+                            |> List.unzip
                 in
-                Constants.applySnowparkFunc "array_construct" argsToUse
+                (Constants.applySnowparkFunc "array_construct" argsToUse, List.concat issues)
             else 
                 if isLocalFunctionName constructorName ctx && List.length args > 0 then
                     let
+                        (mappedArgs, issuesPerArg) =
+                            args
+                                |> List.map (\arg ->  mapValue arg ctx) 
+                                |> List.unzip
                         argsToUse =
-                            args 
-                                |> List.indexedMap (\i arg -> (getCustomTypeParameterFieldAccess i, mapValue arg ctx))
+                            mappedArgs
+                                |> List.indexedMap (\i arg -> (getCustomTypeParameterFieldAccess i, arg))
                                 |> List.concatMap (\(field, value) -> [Constants.applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit field)], value])
-                        tag = [ Constants.applySnowparkFunc "lit" [Scala.Literal (Scala.StringLit "__tag")],
-                                Constants.applySnowparkFunc "lit" [ Scala.Literal (Scala.StringLit <| ( constructorName |> FQName.getLocalName |> Name.toTitleCase))]]
-                    in Constants.applySnowparkFunc "object_construct" (tag ++ argsToUse)
+                        tagName = 
+                            constructorName |> FQName.getLocalName |> Name.toTitleCase
+                        tag = [ Constants.applySnowparkFunc "lit" [ Scala.Literal (Scala.StringLit "__tag") ],
+                                Constants.applySnowparkFunc "lit" [ Scala.Literal (Scala.StringLit tagName)] ]
+                    in (Constants.applySnowparkFunc "object_construct" (tag ++ argsToUse), List.concat issuesPerArg)
                 else
-                    Scala.Literal (Scala.StringLit "Constructor call not converted")
+                    errorValueAndIssue ("Constructor call not converted: `" ++ (FQName.toString constructorName) ++ "`")
        ValueIR.Variable _ funcName ->
             if List.member funcName ctx.parameters ||
                isLocalVariableDefinition funcName ctx then
                 let
-                    argsToUse =
+                    (mappedArgs, issuesPerArg) = 
                         args 
                             |> List.map (\arg -> mapValue arg ctx)
+                            |> List.unzip
+                        
+                    argsToUse =
+                        mappedArgs
                             |> List.map (Scala.ArgValue Nothing)
                 in
                 case argsToUse of
                     [] -> 
-                        Scala.Variable (Name.toCamelCase funcName)
+                        (Scala.Variable (Name.toCamelCase funcName), [])
                     (first::rest) -> 
-                        List.foldl (\a c -> Scala.Apply c [a]) (Scala.Apply (Scala.Variable (Name.toCamelCase funcName)) [first]) rest               
+                        (List.foldl 
+                                (\a c -> Scala.Apply c [a]) 
+                                (Scala.Apply (Scala.Variable (Name.toCamelCase funcName)) [first]) 
+                                rest
+                        , List.concat issuesPerArg)
             else
-                Scala.Literal (Scala.StringLit "Call to variable function not converted")
+                errorValueAndIssue "Call to variable function not converted"
        _ -> 
-            Scala.Literal (Scala.StringLit "Call not converted")
+            errorValueAndIssue  "Call not converted"
 
 checkIfArgumentsNeedsToBeAdapted : FQName.FQName -> 
                                     Type () ->
                                     List Scala.Value ->
-                                   ValueMappingContext -> 
-                                   List Scala.Value
+                                    ValueMappingContext -> 
+                                    List Scala.Value
 checkIfArgumentsNeedsToBeAdapted invokedFunctionName functionType args ctx =
     let
         inPlainScalaFunction = 

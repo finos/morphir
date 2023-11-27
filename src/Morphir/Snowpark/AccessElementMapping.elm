@@ -7,29 +7,23 @@ module Morphir.Snowpark.AccessElementMapping exposing (
 {-| This module contains functions to generate code like `a.b` or `a`.
 |-}
 
-import Dict exposing (Dict)
+import Dict
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as IrType
-import Morphir.Scala.AST as Scala
-import Morphir.Snowpark.MappingContext as MappingContext
+import Morphir.IR.Value as Value exposing (TypedValue, Value(..))
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.Snowpark.MappingContext exposing (ValueMappingContext)
+import Morphir.Scala.AST as Scala
 import Morphir.Snowpark.MappingContext exposing (isUnionTypeWithoutParams
-            , getReplacementForIdentifier)
+                                                , getReplacementForIdentifier
+                                                , ValueMappingContext)
 import Morphir.IR.FQName as FQName
-import Morphir.IR.Value exposing (Value(..))
 import Morphir.Snowpark.ReferenceUtils exposing (isValueReferenceToSimpleTypesRecord
-           , scalaReferenceToUnionTypeCase
-           , scalaPathToModule)
-import Morphir.IR.Value as Value
-import Morphir.Snowpark.MappingContext exposing (isAnonymousRecordWithSimpleTypes)
-import Morphir.Snowpark.Constants exposing (applySnowparkFunc)
-import Morphir.Snowpark.MappingContext exposing (isUnionTypeWithParams)
-import Morphir.IR.Value as Value
-import Morphir.Snowpark.Constants exposing (MapValueType)
-import Morphir.IR.Type as Type
-import Morphir.Snowpark.Utils exposing (tryAlternatives)
+                                                , scalaReferenceToUnionTypeCase
+                                                , scalaPathToModule)
+import Morphir.Snowpark.Constants exposing (applySnowparkFunc, ValueGenerationResult, MapValueType)
+import Morphir.Snowpark.MappingContext as MappingContext exposing (isUnionTypeWithParams, isAnonymousRecordWithSimpleTypes)
+import Morphir.Snowpark.ReferenceUtils exposing (errorValueAndIssue)
 
 
 checkForDataFrameVariableReference : Value ta (IrType.Type ()) -> ValueMappingContext -> Maybe String
@@ -40,7 +34,7 @@ checkForDataFrameVariableReference value ctx =
         _ -> 
             Nothing
 
-mapFieldAccess : va -> (Value ta (IrType.Type ())) -> Name.Name -> ValueMappingContext -> MapValueType ta -> Scala.Value
+mapFieldAccess : va -> TypedValue -> Name.Name -> ValueMappingContext -> MapValueType -> ValueGenerationResult
 mapFieldAccess _ value name ctx mapValue =
    let
        simpleFieldName = name |> Name.toCamelCase
@@ -62,65 +56,75 @@ mapFieldAccess _ value name ctx mapValue =
      in
      case (isValueReferenceToSimpleTypesRecord value ctx.typesContextInfo, valueIsFunctionParameter, valueIsDataFrameColumnAccess) of
        (_,Just replacement, _ ) -> 
-            Scala.Ref [replacement] simpleFieldName
+            (Scala.Ref [replacement] simpleFieldName, [])
        (_,_, Just replacement) -> 
-            Scala.Ref [replacement] simpleFieldName
+            (Scala.Ref [replacement] simpleFieldName, [])
        (Just (path, refererName), Nothing, Nothing) -> 
-            Scala.Ref (path ++ [refererName |> Name.toTitleCase]) simpleFieldName
+            (Scala.Ref (path ++ [refererName |> Name.toTitleCase]) simpleFieldName, [])
        _ ->
             (if isAnonymousRecordWithSimpleTypes (value |> Value.valueAttribute) ctx.typesContextInfo then
-                applySnowparkFunc "col" [Scala.Literal (Scala.StringLit (Name.toCamelCase name)) ]
+                (applySnowparkFunc "col" [Scala.Literal (Scala.StringLit (Name.toCamelCase name)) ], [])
              else 
-                Scala.Select (mapValue value ctx) (Name.toCamelCase name))
+                let
+                    (mappedValue, issues) = 
+                        mapValue value ctx
+                in
+                (Scala.Select mappedValue (Name.toCamelCase name), issues))
 
-mapVariableAccess : Name.Name ->  (Value ta (IrType.Type ()))  -> ValueMappingContext -> Scala.Value
+mapVariableAccess : Name.Name ->  TypedValue  -> ValueMappingContext -> ValueGenerationResult
 mapVariableAccess name nameAccess ctx =
     case (getReplacementForIdentifier name ctx, checkForDataFrameVariableReference nameAccess ctx) of
         (Just replacement, _) ->
-            replacement
+            (replacement, [])
         (_, Just replacementStr) ->
-            Scala.Variable replacementStr
+            (Scala.Variable replacementStr, [])
         _ ->
-            Scala.Variable (name |> Name.toCamelCase)
+            (Scala.Variable (name |> Name.toCamelCase), [])
 
-mapConstructorAccess : (IrType.Type a) -> FQName.FQName -> ValueMappingContext -> Scala.Value
+mapConstructorAccess : (IrType.Type a) -> FQName.FQName -> ValueMappingContext -> ValueGenerationResult
 mapConstructorAccess tpe name ctx =
     case (tpe, name) of
         ((IrType.Reference _ _ _),  ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ]))  ->
-            applySnowparkFunc "lit" [Scala.Literal Scala.NullLit]
+            (applySnowparkFunc "lit" [Scala.Literal Scala.NullLit], [])
         (IrType.Reference _ typeName _, _) ->
             if isUnionTypeWithoutParams typeName ctx.typesContextInfo then
-                scalaReferenceToUnionTypeCase typeName name
+                (scalaReferenceToUnionTypeCase typeName name, [])
             else if isUnionTypeWithParams typeName ctx.typesContextInfo then
-                applySnowparkFunc "object_construct" [
+                ((applySnowparkFunc "object_construct" [
                         applySnowparkFunc "lit" [Scala.Literal <| Scala.StringLit "__tag"], 
-                        applySnowparkFunc "lit" [Scala.Literal <| Scala.StringLit (name |> FQName.getLocalName |> Name.toTitleCase)] ]
+                        applySnowparkFunc "lit" [Scala.Literal <| Scala.StringLit (name |> FQName.getLocalName |> Name.toTitleCase)] ]),
+                  [])
             else
-                Scala.Literal (Scala.StringLit "Constructor access not converted")
+                errorValueAndIssue <| "Constructor access not converted" ++ (FQName.toString name)
         _ -> 
-            Scala.Literal (Scala.StringLit "Constructor access not converted")
+            errorValueAndIssue  <| "Constructor access not converted" ++ (FQName.toString name)
 
 
-mapReferenceAccess : (IrType.Type ()) -> FQName.FQName -> MapValueType () -> ValueMappingContext -> Scala.Value
+mapReferenceAccess : (IrType.Type ()) -> FQName.FQName -> MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapReferenceAccess tpe name mapValue ctx =
    if Dict.member name ctx.globalValuesToInline then
-      ctx.globalValuesToInline
-        |> Dict.get name
-        |> Maybe.map (\definition -> mapValue definition.body ctx)
-        |> Maybe.withDefault Scala.Wildcard
+    let 
+        inlinedResult =
+            ctx.globalValuesToInline
+                |> Dict.get name
+                |> Maybe.map (\definition -> mapValue definition.body ctx)
+                |> Maybe.withDefault (Scala.Wildcard, [])
+        in
+        inlinedResult
    else if MappingContext.isDataFrameFriendlyType tpe ctx.typesContextInfo ||
-      MappingContext.isListOfDataFrameFriendlyType tpe ctx.typesContextInfo then
+           MappingContext.isListOfDataFrameFriendlyType tpe ctx.typesContextInfo then
         let
             nsName = scalaPathToModule name
             containerObjectFieldName = FQName.getLocalName name |> Name.toCamelCase
         in 
-        Scala.Ref (nsName ) containerObjectFieldName
+        (Scala.Ref (nsName ) containerObjectFieldName, [])
    else
         case tpe of
-            Type.Function _ _ _  ->
+            IrType.Function _ _ _  ->
                 if MappingContext.isLocalFunctionName name ctx then
-                    Scala.Ref (scalaPathToModule name) (name |> FQName.getLocalName  |> Name.toCamelCase)
+                    (Scala.Ref (scalaPathToModule name) (name |> FQName.getLocalName  |> Name.toCamelCase), [])
                 else 
-                    Scala.Literal (Scala.StringLit "Reference access to function not converted")
+                    errorValueAndIssue ("Reference access to function not converted" ++ (FQName.toString name))
             _ ->
-                Scala.Literal (Scala.StringLit "Reference access not converted")
+                errorValueAndIssue ("Reference access not converted: " ++ (FQName.toString name))
+

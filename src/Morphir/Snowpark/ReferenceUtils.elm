@@ -7,17 +7,18 @@ module Morphir.Snowpark.ReferenceUtils exposing (
     , getCustomTypeParameterFieldAccess
     , getListTypeParameter
     , getFunctionInputTypes
-    , mapLiteralToPlainLiteral)
+    , mapLiteralToPlainLiteral
+    , errorValueAndIssue)
 
 import Morphir.IR.Name as Name
-import Morphir.IR.Type as IrType
-import Morphir.Scala.AST as Scala
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.Snowpark.MappingContext exposing (MappingContextInfo, isRecordWithSimpleTypes)
-import Morphir.IR.FQName as FQName
+import Morphir.IR.Type as IrType
 import Morphir.IR.Value as Value exposing (Value(..))
+import Morphir.Scala.AST as Scala
 import Morphir.Snowpark.Constants as Constants
+import Morphir.Snowpark.MappingContext exposing (MappingContextInfo, isRecordWithSimpleTypes)
+import Morphir.Snowpark.GenerationReport exposing (GenerationIssue)
 
 scalaPathToModule : FQName.FQName -> Scala.Path
 scalaPathToModule name =
@@ -96,3 +97,8 @@ getFunctionInputTypes tpe =
           in
           Just (fromType::toTypes)
        _ -> Nothing
+
+
+errorValueAndIssue : GenerationIssue -> (Scala.Value, List GenerationIssue)
+errorValueAndIssue issue =
+    (Scala.Literal (Scala.StringLit issue), [ issue ])

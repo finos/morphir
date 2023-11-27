@@ -1,15 +1,16 @@
-module Morphir.Snowpark.Customization exposing (CustomizationOptions, loadCustomizationOptions, emptyCustomizationOptions, generateCacheCode, tryToApplyPostConversionCustomization)
+module Morphir.Snowpark.Customization exposing (CustomizationOptions
+                                               , loadCustomizationOptions
+                                               , emptyCustomizationOptions
+                                               , generateCacheCode
+                                               , tryToApplyPostConversionCustomization)
 
-import Morphir.IR.FQName exposing (FQName)
 import Set exposing (Set)
+import Json.Decode as Decode exposing (Decoder, decodeString)
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.Scala.AST as Scala exposing (ImportName(..))
-import Json.Decode as Decode exposing (Decoder)
 import Morphir.IR.Decoration.Codec exposing (decodeNodeIDByValuePairs)
 import Morphir.SDK.Dict as SDKDict
-import Morphir.IR.NodeId exposing (NodeID)
-import Morphir.IR.NodeId exposing (NodeID(..))
-import Json.Decode exposing (decodeString)
-
+import Morphir.IR.NodeId exposing (NodeID, NodeID(..))
 
 type alias CustomizationOptions = 
     { functionsToInline: Set FQName

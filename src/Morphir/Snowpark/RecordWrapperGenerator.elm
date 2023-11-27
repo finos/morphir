@@ -4,14 +4,12 @@ import Dict exposing (Dict)
 import Morphir.Scala.AST as Scala
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
-import Morphir.IR.Name exposing (Name, toTitleCase)
-import Morphir.IR.Type as Type 
-import Morphir.IR.Package as Package
+import Morphir.IR.Name as Name exposing (Name, toTitleCase)
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.FQName as FQName
-import Morphir.IR.Type exposing (Field)
-import Morphir.IR.Name as Name
-import Morphir.Snowpark.Constants exposing (applySnowparkFunc, typeRefForSnowparkType)
+import Morphir.IR.Type as Type  exposing (Field)
+import Morphir.IR.Package as Package
+import Morphir.Snowpark.Constants exposing (applySnowparkFunc, applyForSnowparkTypesType, typeRefForSnowparkType)
 import Morphir.Snowpark.MappingContext as MappingContext exposing (
          GlobalDefinitionInformation
          , MappingContextInfo
@@ -19,8 +17,6 @@ import Morphir.Snowpark.MappingContext as MappingContext exposing (
          , isRecordWithSimpleTypes
          , isRecordWithComplexTypes )
 import Morphir.Snowpark.TypeRefMapping exposing (mapTypeReference, generateSnowparkTypeExprFromElmType)
-import Morphir.Snowpark.Constants exposing (typeRefForSnowparkTypesType)
-import Morphir.Snowpark.Constants exposing (applyForSnowparkTypesType)
 
 {-| This module contains to create wrappers for record declarations that represent tables.
 
@@ -29,14 +25,21 @@ For each record a Trait and an Object is generated with `Column` fields for each
 For union types without parameters we are going to generate an object definition with accessors for each option.
 |-}
 
-generateRecordWrappers : Package.PackageName -> ModuleName -> GlobalDefinitionInformation () -> Dict Name (AccessControlled (Documented (Type.Definition ()))) -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
+generateRecordWrappers : Package.PackageName -> 
+                         ModuleName ->
+                         GlobalDefinitionInformation () ->
+                         Dict Name (AccessControlled (Documented (Type.Definition ()))) ->
+                         List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
 generateRecordWrappers packageName moduleName (ctx, _, _) typesInModule = 
     typesInModule
        |> Dict.toList
        |> List.concatMap (processTypeDeclaration packageName moduleName ctx)
        
 
-processTypeDeclaration : Package.PackageName -> ModuleName -> MappingContextInfo () -> (Name, (AccessControlled (Documented (Type.Definition ())))) -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
+processTypeDeclaration : Package.PackageName ->
+                         ModuleName -> MappingContextInfo () ->
+                         (Name, (AccessControlled (Documented (Type.Definition ())))) ->
+                         List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
 processTypeDeclaration packageName moduleName ctx (name, typeDeclAc) =
     -- For the moment we are going generating wrappers for record types
     case typeDeclAc.value.value of
@@ -59,7 +62,7 @@ processTypeDeclaration packageName moduleName ctx (name, typeDeclAc) =
         _ -> []
 
 
-processUnionTypeDeclaration : Name -> Morphir.IR.Type.Constructors ta -> Bool -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
+processUnionTypeDeclaration : Name -> Type.Constructors () -> Bool -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
 processUnionTypeDeclaration name constructors noParams =
     if noParams then
         [ 
@@ -69,7 +72,12 @@ processUnionTypeDeclaration name constructors noParams =
         []
 
 
-processRecordDeclaration : Name -> String -> (List (Field ())) ->  Bool -> Bool -> MappingContextInfo () -> List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
+processRecordDeclaration : Name ->
+                           String -> (List (Field ())) ->
+                           Bool ->
+                           Bool ->
+                           MappingContextInfo () ->
+                           List (Scala.Documented (Scala.Annotated Scala.TypeDecl))
 processRecordDeclaration name doc fields recordWithSimpleTypes recordWithComplexTypes ctx =
    if recordWithSimpleTypes then
     [ traitForRecordWrapper name doc fields
@@ -323,7 +331,7 @@ generateUnionTypeNameMember optionName =
             }))
 
 
-objectForUnionWithNoParamsValues : Name -> Morphir.IR.Type.Constructors ta -> (Scala.Documented (Scala.Annotated Scala.TypeDecl))
+objectForUnionWithNoParamsValues : Name -> Type.Constructors ta -> (Scala.Documented (Scala.Annotated Scala.TypeDecl))
 objectForUnionWithNoParamsValues name constructors = 
   let 
      nameToUse = name |> toTitleCase

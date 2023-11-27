@@ -34,7 +34,7 @@ caseOfGenTests =
                 , (Value.WildcardPattern str, Value.Literal str (Literal.stringLiteral "D"))]
         inputCase = Value.PatternMatch stringTypeInstance (Value.Literal str (Literal.stringLiteral "X")) cases
 
-        mappedCase = mapValue inputCase { emptyValueMappingContext | typesContextInfo = calculatedContext }
+        (mappedCase, _) = mapValue inputCase { emptyValueMappingContext | typesContextInfo = calculatedContext }
 
         mappedCaseParts = 
               case mappedCase of

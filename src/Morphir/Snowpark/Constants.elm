@@ -1,9 +1,22 @@
-module Morphir.Snowpark.Constants exposing (..)
+module Morphir.Snowpark.Constants exposing ( applySnowparkFunc
+                                           , typeRefForSnowparkType
+                                           , applyForSnowparkTypesTypeExpr
+                                           , applyForSnowparkTypesType
+                                           , typeRefForSnowparkTypesType
+                                           , transformToArgsValue
+                                           , ValueGenerationResult
+                                           , MapValueType
+                                           , MappingFunc
+                                           , LambdaInfo
+                                           , VariableInformation
+                                           , AliasVariableInfo )
 import Morphir.IR.Name as Name
 import Morphir.Scala.AST as Scala
 import Morphir.IR.Type as TypeIR
 import Morphir.IR.Value as ValueIR exposing (Pattern(..), Value(..))
 import Morphir.Snowpark.MappingContext exposing (ValueMappingContext)
+import Morphir.Snowpark.GenerationReport exposing (GenerationIssue)
+import Morphir.IR.Value exposing (TypedValue)
 
 snowflakeNamespace : List String
 snowflakeNamespace = ["com", "snowflake", "snowpark"]
@@ -44,16 +57,13 @@ applyFunctionName namespace name args =
         (Scala.Ref namespace name)
         (args |> List.map (\v -> Scala.ArgValue Nothing v))
 
-type alias MapValueType ta = ValueIR.Value ta (TypeIR.Type ()) -> ValueMappingContext -> Scala.Value
+type alias ValueGenerationResult = (Scala.Value, List GenerationIssue)
+
+type alias MapValueType  = TypedValue -> ValueMappingContext -> (Scala.Value, List GenerationIssue)
 
 type alias VariableInformation = (List Scala.Value, List (String, Scala.Value))
 
-type alias MappingFunc ta = (MapValueType ta,  ValueMappingContext)
-
-type alias MappingFuntions ta = 
-    { mapValue : MapValueType ta
-    , ctx : ValueMappingContext
-    }
+type alias MappingFunc = (MapValueType,  ValueMappingContext)
 
 type alias AliasVariableInfo = 
     { aliasName: List Scala.Value

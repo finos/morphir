@@ -5,9 +5,13 @@ module Morphir.Snowpark.TypeRefMapping exposing (generateRecordTypeWrapperExpres
                                                 , generateSnowparkTypeExprFromElmType)
 
 import Morphir.IR.Name as Name
-import Morphir.IR.Type exposing (Type(..))
+import Morphir.IR.Type as Type exposing (Type(..))
+import Morphir.IR.FQName as FQName
 import Morphir.Scala.AST as Scala
-import Morphir.Snowpark.Constants exposing (typeRefForSnowparkType)
+import Morphir.Snowpark.Constants exposing (applySnowparkFunc
+                                            , applyForSnowparkTypesTypeExpr
+                                            , applyForSnowparkTypesType
+                                            , typeRefForSnowparkType)
 import Morphir.Snowpark.MappingContext as MappingContextMod
                  exposing (MappingContextInfo
                           , FunctionClassification
@@ -15,19 +19,15 @@ import Morphir.Snowpark.MappingContext as MappingContextMod
                           , isBasicType
                           , isCandidateForDataFrame
                           , isDataFrameFriendlyType
-                          , isTypeRefToRecordWithComplexTypes )
-import Morphir.Snowpark.ReferenceUtils exposing (isTypeReferenceToSimpleTypesRecord)
-import Morphir.Snowpark.MappingContext exposing (ValueMappingContext)
-import Morphir.Snowpark.MappingContext exposing (getLocalVariableIfDataFrameReference)
+                          , isTypeRefToRecordWithComplexTypes
+                          , isTypeAlias
+                          , isUnionTypeWithParams
+                          , isUnionTypeWithoutParams
+                          , resolveTypeAlias
+                          , getLocalVariableIfDataFrameReference
+                          , ValueMappingContext )
 import Morphir.Snowpark.Utils exposing (tryAlternatives)
-import Morphir.IR.Type as Type
-import Morphir.IR.FQName as FQName
-import Morphir.Snowpark.ReferenceUtils exposing (scalaPathToModule)
-import Morphir.Snowpark.MappingContext exposing (isTypeAlias)
-import Morphir.Snowpark.MappingContext exposing (resolveTypeAlias)
-import Morphir.Snowpark.Constants exposing (applySnowparkFunc, applyForSnowparkTypesTypeExpr, applyForSnowparkTypesType)
-import Morphir.Snowpark.MappingContext exposing (isUnionTypeWithParams)
-import Morphir.Snowpark.MappingContext exposing (isUnionTypeWithoutParams)
+import Morphir.Snowpark.ReferenceUtils exposing (scalaPathToModule, isTypeReferenceToSimpleTypesRecord)
 
 
 checkDataFrameCase : Type () -> MappingContextInfo () -> Maybe Scala.Type

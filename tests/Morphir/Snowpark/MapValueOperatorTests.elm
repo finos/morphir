@@ -57,23 +57,43 @@ mapValueListTest =
         assertAddTest =
             test ("add") <|
                 \_ ->
-                    Expect.equal (mapValue (inputOperatorTest ["add"]) emptyContext) (outputOperatorTest "+")
+                    let
+                        (mapped, _) =
+                            mapValue (inputOperatorTest ["add"])  emptyContext
+                    in
+                    Expect.equal mapped (outputOperatorTest "+")
         assertSubstractTest =
             test ("Substract") <|
                 \_ ->
-                    Expect.equal (mapValue (inputOperatorTest ["subtract"]) emptyContext) (outputOperatorTest "-")
+                    let
+                        (mapped, _) =
+                            mapValue (inputOperatorTest ["subtract"]) emptyContext
+                    in
+                    Expect.equal mapped (outputOperatorTest "-")
         assertMultiplyTest =
             test ("multiply") <|
                 \_ ->
-                    Expect.equal (mapValue (inputOperatorTest ["multiply"]) emptyContext) (outputOperatorTest "*")
+                    let
+                        (mapped, _) =
+                            mapValue (inputOperatorTest ["multiply"]) emptyContext
+                    in
+                    Expect.equal mapped (outputOperatorTest "*")
         assertdivideTest =
             test ("divide") <|
                 \_ ->
-                    Expect.equal (mapValue (inputOperatorTest ["divide"]) emptyContext) (outputOperatorTest "/")
+                    let
+                        (mapped, _) =
+                            mapValue (inputOperatorTest ["divide"]) emptyContext
+                    in
+                    Expect.equal mapped (outputOperatorTest "/")
         assertintegerdivideTest =
             test ("integer divide") <|
                 \_ ->
-                    Expect.equal (mapValue (inputOperatorTest ["integer", "divide"]) emptyContext) (outputOperatorTest "/")
+                    let 
+                        (mapped, _) =
+                            mapValue (inputOperatorTest ["integer", "divide"]) emptyContext
+                    in
+                    Expect.equal mapped (outputOperatorTest "/")
     in
     describe "arithmetic operators"
         [

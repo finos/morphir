@@ -84,11 +84,19 @@ mapValueListTest =
         assertListTest =
             test ("list") <|
                 \_ ->
-                    Expect.equal (mapValue listTest emptyContext) listExpectedTest
+                    let
+                        (mapped, _) =
+                            mapValue listTest emptyContext
+                    in
+                    Expect.equal mapped listExpectedTest
         assertMemberTest =
             test ("member list") <|
                 \_ ->
-                    Expect.equal (mapValue memberTest emptyContext) memberExpectedTest 
+                    let
+                        (mapped, _) =
+                            mapValue memberTest emptyContext
+                    in
+                    Expect.equal mapped memberExpectedTest 
     in
     describe "List functions"
         [

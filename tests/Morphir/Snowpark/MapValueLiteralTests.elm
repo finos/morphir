@@ -60,23 +60,43 @@ mapValueLiteralTests =
         assertBooleanLiteral =
             test ("Convert boolean") <|
             \_ ->
-                Expect.equal booleanTest (mapValue (Value.Literal booleanReference (Literal.BoolLiteral True)) emptyContext)
+                let
+                    (mapped, _ ) =
+                        mapValue (Value.Literal booleanReference (Literal.BoolLiteral True)) emptyContext
+                in
+                Expect.equal booleanTest mapped
         assertStringLiteral =
             test ("Convert string") <|
             \_ ->
-                Expect.equal stringTest (mapValue (Value.Literal stringReference (Literal.StringLiteral "Hello world")) emptyContext)
+                let
+                    (mapped, _ ) =
+                        (mapValue (Value.Literal stringReference (Literal.StringLiteral "Hello world")) emptyContext)
+                in
+                Expect.equal stringTest mapped
         assertCharacterLiteral =
             test ("Convert character") <|
             \_ ->
-                Expect.equal characterTest (mapValue (Value.Literal characterReference (Literal.CharLiteral 'C')) emptyContext)
+                let
+                    (mapped, _ ) =
+                        mapValue (Value.Literal characterReference (Literal.CharLiteral 'C')) emptyContext
+                in
+                Expect.equal characterTest mapped
         assertFloatLiteral =
             test ("Convert float") <|
             \_ ->
-                Expect.equal floatTest (mapValue (Value.Literal floatReference (Literal.FloatLiteral 3.24)) emptyContext)
+                let
+                    (mapped, _ ) =
+                        mapValue (Value.Literal floatReference (Literal.FloatLiteral 3.24)) emptyContext
+                in
+                Expect.equal floatTest mapped
         assertIntegerLiteral =
             test ("Convert integer") <|
             \_ ->
-                Expect.equal integerTest (mapValue (Value.Literal integerReference (Literal.WholeNumberLiteral 5)) emptyContext)
+                let
+                    (mapped, _) =
+                        mapValue (Value.Literal integerReference (Literal.WholeNumberLiteral 5)) emptyContext
+                in
+                Expect.equal integerTest mapped
     in
     describe "literalMapTransform"
         [
