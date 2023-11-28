@@ -315,9 +315,6 @@ isAliasedBasicTypeWithPendingClassification transitoryTypeClassification =
       |> aliasedBasicTypeWithPendingClassification 
       |> Maybe.map isBasicType
       |> Maybe.withDefault False
-   --  case transitoryTypeClassification of
-   --      TypeClassified (TypeAlias tpe) -> isBasicType tpe
-   --      _ -> False
 
 aliasedBasicTypeWithPendingClassification : TypeClassificationState a -> Maybe (Type a)
 aliasedBasicTypeWithPendingClassification transitoryTypeClassification =
@@ -419,11 +416,14 @@ classifyActualType  tpe ctx =
             else 
                TypeWithPendingClassification (Just tpe)
        Reference _ _  _ ->
-            if isBasicType tpe || isUnionType tpe ctx then
+            if isBasicType tpe || 
+               isUnionType tpe ctx || 
+               isAliasOfDataFrameFriendlyType tpe ctx then
                TypeClassified (TypeAlias tpe)
             else
                TypeWithPendingClassification (Just tpe)
-       _ -> TypeNotClassified
+       _ -> 
+            TypeNotClassified
 
 simpleName packagePath modName name = 
   FQName.fQName packagePath modName name

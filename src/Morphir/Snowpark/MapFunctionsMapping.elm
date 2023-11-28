@@ -52,6 +52,10 @@ basicsFunctionName : Name.Name -> FQName.FQName
 basicsFunctionName simpleName =
    ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], simpleName )
 
+stringsFunctionName : Name.Name -> FQName.FQName
+stringsFunctionName simpleName =
+   ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "string" ] ], simpleName )
+
 dataFrameMappings : FunctionMappingTable
 dataFrameMappings =
     [ ( listFunctionName [ "member" ], mapListMemberFunction)
@@ -85,6 +89,13 @@ dataFrameMappings =
     , ( basicsFunctionName ["minimum", "of"] , mapBasicsFunctionCall )
     , ( basicsFunctionName ["not"] , mapNotFunctionCall )
     , ( basicsFunctionName ["floor"] , mapFloorFunctionCall )
+    , ( basicsFunctionName ["min"] , mapMinMaxFunctionCall ("min", "<"))
+    , ( basicsFunctionName ["max"] , mapMinMaxFunctionCall ("max", ">"))
+    , ( stringsFunctionName ["concat"] , mapStringConcatFunctionCall )
+    , ( stringsFunctionName ["to", "upper"] , mapStringCaseCall ("String.toUpper", "upper") )
+    , ( stringsFunctionName ["to", "lower"] , mapStringCaseCall ("String.toLower", "lower") )
+    , ( stringsFunctionName ["reverse"] , mapStringReverse )
+    , ( stringsFunctionName ["replace"] , mapStringReplace )    
     , ( ([["morphir"], ["s","d","k"]], [["aggregate"]], ["aggregate"]), mapAggregateFunction )
     ]
         |> Dict.fromList
@@ -581,22 +592,39 @@ mapMaybeMapFunction  ( _, args ) mapValue ctx =
         [ action, source ] ->
             mapMaybeMapCall action source mapValue ctx 
         _ ->
-            errorValueAndIssue "Maybe Just scenario not supported"
+            errorValueAndIssue "`Maybe.Just` scenario not supported"
 
 mapMaybeMapCall : TypedValue -> TypedValue -> (Constants.MapValueType) -> ValueMappingContext -> ValueGenerationResult
 mapMaybeMapCall action maybeValue mapValue ctx =
     case action of
         ValueIR.Lambda _ (AsPattern _ (WildcardPattern _) lambdaParam) body ->
             let
-                (convertedValue, maybeValueIssues) = mapValue maybeValue ctx
-                newReplacements = Dict.fromList [(lambdaParam, convertedValue)]
-                (lambdaBody, lambdaIssues) = mapValue body { ctx | inlinedIds  = Dict.union ctx.inlinedIds newReplacements }
-                elseLiteral = Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.NullLit))]
-                issues = maybeValueIssues ++ lambdaIssues
+                (convertedValue, maybeValueIssues) =
+                        mapValue maybeValue ctx
+                newReplacements =
+                        Dict.fromList [(lambdaParam, convertedValue)]
+                (lambdaBody, lambdaIssues) = 
+                        mapValue body { ctx | inlinedIds  = Dict.union ctx.inlinedIds newReplacements }
+                elseLiteral = 
+                        Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.NullLit))]
+                issues = 
+                        maybeValueIssues ++ lambdaIssues
             in
             (whenConditionElseValueCall (Scala.Select convertedValue "is_not_null") lambdaBody elseLiteral, issues)
+        ValueIR.Reference _ _ ->
+            let
+               (convertedValue, maybeValueIssues) = 
+                    mapValue maybeValue ctx
+               elseLiteral = 
+                    Constants.applySnowparkFunc "lit" [(Scala.Literal (Scala.NullLit))]
+               (convertedFunctionApplication, funcApplicationIssues) =  
+                    mapValue (ValueIR.Apply (ValueIR.valueAttribute maybeValue) action maybeValue) ctx
+               issues = 
+                        maybeValueIssues ++ funcApplicationIssues
+            in
+            (whenConditionElseValueCall (Scala.Select convertedValue "is_not_null") convertedFunctionApplication elseLiteral, issues)
         _ -> 
-            errorValueAndIssue  "Unsupported withDefault call"
+            errorValueAndIssue  "Unsupported `Maybe.map` call"
 
 mapMaybeWithDefaultFunction  : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapMaybeWithDefaultFunction  ( _, args ) mapValue ctx =
@@ -672,6 +700,42 @@ mapNotFunctionCall  ( _, args ) mapValue ctx =
             (Scala.Literal (Scala.StringLit "'Not' scenario not supported"), ["'Not' scenario not supported"])
 
 
+mapStringConcatFunctionCall : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
+mapStringConcatFunctionCall  ( _, args ) mapValue ctx =
+    case args of    
+        [ ValueIR.List _ values ] ->
+               let
+                  (mappedItems, itemsIssues) = 
+                                values
+                                    |> List.map (\arg -> mapValue arg ctx)
+                                    |> List.unzip
+                  issues = List.concat itemsIssues
+                in
+                (Constants.applySnowparkFunc  "concat" mappedItems, issues)
+        _ ->
+            errorValueAndIssue "'String.concat' scenario not supported"
+
+mapMinMaxFunctionCall : (String, String) -> (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
+mapMinMaxFunctionCall (morphirName, operator) ( _, args ) mapValue ctx =
+    case args of    
+        [ value1, value2 ] ->
+               let
+                  (mappedValue1, value1Issues) = 
+                        mapValue value1 ctx
+                  (mappedValue2, value2Issues) =
+                        mapValue value2 ctx
+                  issues = 
+                        value1Issues ++ value2Issues
+                in
+                ((Scala.Apply 
+                    ((Scala.Select
+                        (Constants.applySnowparkFunc "when" [ Scala.BinOp mappedValue1 operator mappedValue2, mappedValue1 ])
+                        "otherwise"))
+                      [ Scala.ArgValue Nothing mappedValue2 ])
+                 , issues)
+        _ ->
+            errorValueAndIssue ("`" ++ morphirName ++ " scenario not supported")
+
 mapFloorFunctionCall : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapFloorFunctionCall  ( _, args ) mapValue ctx =
     case args of    
@@ -682,3 +746,41 @@ mapFloorFunctionCall  ( _, args ) mapValue ctx =
                 (Constants.applySnowparkFunc  "floor" [ mappedValue ], valueIssues)
         _ ->
             errorValueAndIssue "'floor' scenario not supported"
+
+
+mapStringCaseCall : (String, String) -> (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
+mapStringCaseCall  (morphirName, spName) ( _, args ) mapValue ctx =
+    case args of    
+        [ value ] ->
+               let
+                  (mappedValue, valueIssues) = mapValue value ctx
+                in
+                (Constants.applySnowparkFunc  spName [ mappedValue ], valueIssues)
+        _ ->
+            errorValueAndIssue ("`" ++ morphirName ++ "` scenario not supported")
+
+
+mapStringReverse : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
+mapStringReverse ( _, args ) mapValue ctx =
+    case args of    
+        [ value ] ->
+               let
+                  (mappedValue, valueIssues) = mapValue value ctx
+                in
+                (Constants.applySnowparkFunc  "callBuiltin" [ (Scala.Literal (Scala.StringLit "reverse")), mappedValue ], valueIssues)
+        _ ->
+            errorValueAndIssue "`String.reverse` scenario not supported"
+
+mapStringReplace : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
+mapStringReplace ( _, args ) mapValue ctx =
+    case args of    
+        [ toReplace, replacement, value ] ->
+               let
+                  (mappedValue, valueIssues) = mapValue value ctx
+                  (mappedToReplace, toReplaceIssues) = mapValue toReplace ctx
+                  (mappedReplacement, replacementIssues) = mapValue replacement ctx
+                  issues = valueIssues ++ toReplaceIssues ++ replacementIssues
+                in
+                (Constants.applySnowparkFunc  "replace" [ mappedValue, mappedToReplace, mappedReplacement ], issues)
+        _ ->
+            errorValueAndIssue "`String.replace` scenario not supported"
