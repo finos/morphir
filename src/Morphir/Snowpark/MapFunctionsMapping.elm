@@ -35,6 +35,10 @@ import Morphir.Snowpark.ReferenceUtils exposing (errorValueAndIssue
 import Morphir.Snowpark.UserDefinedFunctionMapping exposing (tryToConvertUserFunctionCall)
 import Morphir.Snowpark.Utils exposing (collectMaybeList)
 import Morphir.Snowpark.Operatorsmaps exposing (mapOperator)
+import Morphir.Snowpark.LetMapping exposing (collectNestedLetDeclarations)
+import Morphir.Snowpark.MappingContext exposing (addLocalDefinitions)
+import Morphir.IR.Type as Type
+import Morphir.IR.Name as Name
 
 type alias MappingFunctionType = (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 
@@ -65,6 +69,7 @@ dataFrameMappings =
     , ( listFunctionName [ "concat", "map"], mapListConcatMapFunction ) 
     , ( listFunctionName [ "concat" ], mapListConcatFunction ) 
     , ( listFunctionName [ "sum" ], mapListSumFunction )
+    , ( listFunctionName [ "length" ], mapListLengthFunction )
     , ( maybeFunctionName [ "just" ], mapJustFunction )
     , ( maybeFunctionName [ "map" ], mapMaybeMapFunction )
     , ( maybeFunctionName [ "with", "default" ], mapMaybeWithDefaultFunction )
@@ -91,11 +96,14 @@ dataFrameMappings =
     , ( basicsFunctionName ["floor"] , mapFloorFunctionCall )
     , ( basicsFunctionName ["min"] , mapMinMaxFunctionCall ("min", "<"))
     , ( basicsFunctionName ["max"] , mapMinMaxFunctionCall ("max", ">"))
+    , ( basicsFunctionName ["to", "float"] , mapToFloatFunctionCall )
     , ( stringsFunctionName ["concat"] , mapStringConcatFunctionCall )
     , ( stringsFunctionName ["to", "upper"] , mapStringCaseCall ("String.toUpper", "upper") )
     , ( stringsFunctionName ["to", "lower"] , mapStringCaseCall ("String.toLower", "lower") )
     , ( stringsFunctionName ["reverse"] , mapStringReverse )
     , ( stringsFunctionName ["replace"] , mapStringReplace )    
+    , ( stringsFunctionName ["starts", "with"] , mapStartsEndsWith ("String.statsWith", "startswith") )
+    , ( stringsFunctionName ["ends", "with"] , mapStartsEndsWith ("String.endsWith", "endswith") )
     , ( ([["morphir"], ["s","d","k"]], [["aggregate"]], ["aggregate"]), mapAggregateFunction )
     ]
         |> Dict.fromList
@@ -177,7 +185,7 @@ mapListMemberFunction ( _, args ) mapValue ctx =
             in
             ( Scala.Apply (Scala.Select variable "in") [ Scala.ArgValue Nothing applySequence ], issues)
         _ ->
-            errorValueAndIssue "List.member scenario not converted" 
+            errorValueAndIssue "`List.member` scenario not converted" 
 
 mapListConcatMapFunction : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapListConcatMapFunction ( _, args ) mapValue ctx =
@@ -333,6 +341,21 @@ mapListSumFunction ( _, args ) mapValue ctx =
         _ ->
             errorValueAndIssue "List sum scenario not supported"
 
+mapListLengthFunction : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
+mapListLengthFunction ( _, args ) mapValue ctx =
+    case args of    
+        [ elements ] ->
+            if isCandidateForDataFrame (ValueIR.valueAttribute elements) ctx.typesContextInfo then
+                let
+                    (mappedCollection, collectionIssues) =
+                        mapValue elements ctx
+                in
+                (Scala.Select mappedCollection "count", collectionIssues)
+            else
+                errorValueAndIssue "`List.length` scenario not supported"
+        _ ->
+            errorValueAndIssue "`List.length` scenario not supported"
+
 generateForListSum : TypedValue -> ValueMappingContext -> Constants.MapValueType -> ValueGenerationResult
 generateForListSum collection ctx mapValue =
     case collection of
@@ -393,7 +416,16 @@ generateForListFilter predicate sourceRelation ctx mapValue =
                             (Scala.Apply (Scala.Ref (scalaPathToModule functionName) (functionName |> FQName.getLocalName |> Name.toCamelCase)) 
                                         [Scala.ArgValue Nothing typeRefExpr], []))
                     _ -> 
-                        errorValueAndIssue "Unsupported filter function scenario2" 
+                        errorValueAndIssue "Unsupported filter function with referenced function" 
+           (ValueIR.Apply ((Type.Function _ fromTpe toType) as tpe) _ _) as call ->
+                let
+                    newLambda = 
+                        (ValueIR.Lambda 
+                            tpe 
+                            (ValueIR.AsPattern fromTpe (ValueIR.WildcardPattern fromTpe) [ "_t" ])
+                            (ValueIR.Apply toType call (ValueIR.Variable fromTpe [ "_t" ])))
+                in
+                generateForListFilter newLambda sourceRelation ctx mapValue
            _ ->
               errorValueAndIssue "Unsupported filter function scenario" 
      else 
@@ -529,17 +561,7 @@ processLambdaWithRecordBody functionExpr ctx mapValue =
         ValueIR.Lambda (TypeIR.Function _ _  returnType) (ValueIR.AsPattern _ _ _) (ValueIR.Record _ fields) ->
              if isAnonymousRecordWithSimpleTypes returnType ctx.typesContextInfo
                 || isTypeRefToRecordWithSimpleTypes returnType ctx.typesContextInfo  then
-               Just (fields  
-                        |> getFieldsInCorrectOrder returnType ctx
-                        |> List.map (\(fieldName, value) -> 
-                                            (Name.toCamelCase fieldName, (mapValue value ctx)))
-                        |> List.map (\(fieldName, (value, issues)) ->  
-                                            ((Scala.Apply 
-                                                (Scala.Select value  "as") 
-                                                [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit fieldName))])
-                                            , issues))
-                        |> List.map (\(value, issues) -> (Scala.ArgValue Nothing value, issues))
-                        |> List.unzip)
+               processMapRecordFields fields returnType ctx mapValue
                         
              else
                 Nothing
@@ -550,6 +572,9 @@ processLambdaWithRecordBody functionExpr ctx mapValue =
                         mapValue expr ctx
                 in
                 Just  ([Scala.ArgValue Nothing mappedBody], [ mappedBodyIssues ]) 
+             else if isAnonymousRecordWithSimpleTypes returnType ctx.typesContextInfo
+                     || isTypeRefToRecordWithSimpleTypes returnType ctx.typesContextInfo then
+                processLambdaBodyOfNonRecordLambda expr  ctx mapValue
              else  
                 Nothing
         ValueIR.FieldFunction _ _ ->
@@ -558,6 +583,52 @@ processLambdaWithRecordBody functionExpr ctx mapValue =
                     mapValue functionExpr ctx
             in
             Just  ([ Scala.ArgValue Nothing mappedFunctionExpr ], [ mappedFunctionExprIssues ])
+        _ ->
+            Nothing
+
+
+processMapRecordFields : Dict (Name.Name) TypedValue -> Type () -> ValueMappingContext -> (Constants.MapValueType) -> Maybe ( List Scala.ArgValue, List (List GenerationIssue) )
+processMapRecordFields fields returnType ctx mapValue =
+    Just (fields  
+             |> getFieldsInCorrectOrder returnType ctx
+             |> List.map (\(fieldName, value) -> 
+                                 (Name.toCamelCase fieldName, (mapValue value ctx)))
+             |> List.map (\(fieldName, (value, issues)) ->  
+                                 ((Scala.Apply 
+                                     (Scala.Select value  "as") 
+                                     [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit fieldName))])
+                                 , issues))
+             |> List.map (\(value, issues) -> (Scala.ArgValue Nothing value, issues))
+             |> List.unzip)
+
+processLambdaBodyOfNonRecordLambda : TypedValue -> ValueMappingContext -> Constants.MapValueType -> Maybe ((List Scala.ArgValue, List (List GenerationIssue)))
+processLambdaBodyOfNonRecordLambda body ctx mapValue =
+    case body of
+        (ValueIR.LetDefinition _ _ _ _) as topDefinition ->
+            let 
+                (letDecls, letBodyExpr) = 
+                    collectNestedLetDeclarations topDefinition []
+                (newCtx, resultIssues) = 
+                    letDecls
+                        |> List.foldr 
+                                (\(name, def) (currentCtx, currentIssues) -> 
+                                        let
+                                            (mappedDecl, issues) =
+                                                mapValue def.body currentCtx
+                                            newIssues =
+                                                currentIssues ++ issues
+                                        in
+                                        ( addReplacementForIdentifier name mappedDecl currentCtx
+                                        , newIssues))
+                                (ctx ,[])
+            in
+            case letBodyExpr of
+                ValueIR.Record recordType fields ->
+                    processMapRecordFields fields recordType newCtx mapValue
+                        |> Maybe.map (\(args, issuesLst) -> (args, issuesLst ++ [resultIssues]))
+                _ ->
+                    Nothing
+
         _ ->
             Nothing
 
@@ -736,6 +807,17 @@ mapMinMaxFunctionCall (morphirName, operator) ( _, args ) mapValue ctx =
         _ ->
             errorValueAndIssue ("`" ++ morphirName ++ " scenario not supported")
 
+mapToFloatFunctionCall : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
+mapToFloatFunctionCall  ( _, args ) mapValue ctx =
+    case args of    
+        [ value ] ->
+               let
+                  (mappedValue, valueIssues) = mapValue value ctx
+                in 
+                (Constants.applySnowparkFunc  "as_double" [ mappedValue ], valueIssues)
+        _ ->
+            errorValueAndIssue "`toFloat` scenario not supported"
+
 mapFloorFunctionCall : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapFloorFunctionCall  ( _, args ) mapValue ctx =
     case args of    
@@ -759,6 +841,18 @@ mapStringCaseCall  (morphirName, spName) ( _, args ) mapValue ctx =
         _ ->
             errorValueAndIssue ("`" ++ morphirName ++ "` scenario not supported")
 
+mapStartsEndsWith : (String, String) -> (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
+mapStartsEndsWith  (morphirName, spName) ( _, args ) mapValue ctx =
+    case args of    
+        [ prefixOrSuffix, str ] ->
+               let
+                  (mappedStr, strIssues) = mapValue str ctx
+                  (mappedPrefixOrSuffix, prefixOrIssues) = mapValue prefixOrSuffix ctx
+                  issues = strIssues ++ prefixOrIssues
+                in
+                (Constants.applySnowparkFunc  spName [ mappedStr, mappedPrefixOrSuffix ], issues)
+        _ ->
+            errorValueAndIssue ("`" ++ morphirName ++ "` scenario not supported")
 
 mapStringReverse : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapStringReverse ( _, args ) mapValue ctx =

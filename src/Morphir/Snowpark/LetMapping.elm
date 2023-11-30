@@ -1,4 +1,4 @@
-module Morphir.Snowpark.LetMapping exposing (mapLetDefinition)
+module Morphir.Snowpark.LetMapping exposing (mapLetDefinition, collectNestedLetDeclarations)
 
 import List
 import Morphir.IR.Name as Name

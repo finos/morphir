@@ -294,9 +294,9 @@ checkUnionWithParams expr cases ctx =
             ((WildcardPattern _, wildCardResult)::restReversed) -> 
                 (collectMaybeList checkConstructorForUnionOfWithParams restReversed) 
                      |> Maybe.map (\parts -> (UnionTypesWithParams parts (Just wildCardResult)))
-            ((ConstructorPattern _ _ [], _)::_) as constructorCases ->
+            ((ConstructorPattern _ _ _, _)::_) as constructorCases ->
                 (collectMaybeList checkConstructorForUnionOfWithParams constructorCases) 
-                     |> Maybe.map (\parts -> (UnionTypesWithParams parts Nothing))
+                     |> Maybe.map (\parts -> (UnionTypesWithParams (List.reverse parts) Nothing))
             _ -> 
                 Nothing
     else 

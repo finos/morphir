@@ -8,13 +8,14 @@ module Morphir.Snowpark.ReferenceUtils exposing (
     , getListTypeParameter
     , getFunctionInputTypes
     , mapLiteralToPlainLiteral
-    , errorValueAndIssue)
+    , errorValueAndIssue
+    , curryCall)
 
 import Morphir.IR.Name as Name
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Type as IrType
-import Morphir.IR.Value as Value exposing (Value(..))
+import Morphir.IR.Value as Value exposing (Value(..), TypedValue)
 import Morphir.Scala.AST as Scala
 import Morphir.Snowpark.Constants as Constants
 import Morphir.Snowpark.MappingContext exposing (MappingContextInfo, isRecordWithSimpleTypes)
@@ -102,3 +103,8 @@ getFunctionInputTypes tpe =
 errorValueAndIssue : GenerationIssue -> (Scala.Value, List GenerationIssue)
 errorValueAndIssue issue =
     (Scala.Literal (Scala.StringLit issue), [ issue ])
+
+curryCall : (TypedValue, List (TypedValue)) -> TypedValue
+curryCall (func, args) =
+    args
+        |> List.foldl (\arg current  -> Value.Apply (Value.valueAttribute arg) current arg) func

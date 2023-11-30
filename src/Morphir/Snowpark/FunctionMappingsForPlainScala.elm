@@ -18,10 +18,12 @@ import Morphir.Snowpark.MapFunctionsMapping exposing (FunctionMappingTable
                                                      , mapUncurriedFunctionCall
                                                      , dataFrameMappings
                                                      , dataFrameMappings)
-import Morphir.Snowpark.MappingContext exposing (ValueMappingContext, isUnionTypeWithoutParams)
+import Morphir.Snowpark.MappingContext exposing (ValueMappingContext, isUnionTypeWithoutParams, isCandidateForDataFrame)
 import Morphir.Snowpark.Operatorsmaps exposing (mapOperator)
 import Morphir.Snowpark.PatternMatchMapping exposing (PatternMatchValues)
-import Morphir.Snowpark.ReferenceUtils exposing (errorValueAndIssue, mapLiteralToPlainLiteral)
+import Morphir.Snowpark.ReferenceUtils exposing (errorValueAndIssue, curryCall, mapLiteralToPlainLiteral)
+import Morphir.IR.Value as Value
+import Morphir.IR.Value as Value
 
 mapValueForPlainScala : TypedValue -> ValueMappingContext -> ValueGenerationResult
 mapValueForPlainScala value ctx =
@@ -95,6 +97,7 @@ specificMappings =
         , ( basicsFunctionName [ "negate" ], mapNegateFunction )
         , ( basicsFunctionName [ "max" ], mapMaxMinFunction "max" )
         , ( basicsFunctionName [ "min" ], mapMaxMinFunction "min" )
+        , ( basicsFunctionName [ "to", "float"], mapToFloatFunctionCall )
     ]
         |> Dict.fromList
 
@@ -118,27 +121,46 @@ mapListRangeFunction ( _, args ) mapValue ctx =
         _ ->
             errorValueAndIssue "List range scenario not supported"
 
+
 mapListMapFunction : (TypedValue, List (TypedValue)) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
-mapListMapFunction ( _, args ) mapValue ctx =
+mapListMapFunction (( _, args ) as call) mapValue ctx =
     case args of    
         [ action, collection ] ->
-            let
-                (mappedStart, startIssues) = mapMapPredicate action mapValue ctx
-                (mappedEnd, endIssues) = mapValue collection ctx
-            in
-            (Scala.Apply (Scala.Select mappedEnd "map") [ Scala.ArgValue Nothing mappedStart], startIssues ++ endIssues)
+            if isCandidateForDataFrame  (Value.valueAttribute collection) ctx.typesContextInfo then
+                MapDfOperations.mapValue (curryCall call) ctx
+            else 
+                let
+                    (mappedStart, startIssues) = mapMapPredicate action mapValue ctx
+                    (mappedEnd, endIssues) = mapValue collection ctx
+                in
+                (Scala.Apply (Scala.Select mappedEnd "map") [ Scala.ArgValue Nothing mappedStart], startIssues ++ endIssues)
         _ ->
             errorValueAndIssue "List map scenario not supported"
 
 mapListSumFunction : (TypedValue, List (TypedValue)) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
-mapListSumFunction ( _, args ) mapValue ctx =
+mapListSumFunction (( _, args ) as call) mapValue ctx =
+    let
+        collectionComesFromDataFrameProjection : TypedValue ->  Bool
+        collectionComesFromDataFrameProjection collection =
+            case collection of
+                ValueIR.Apply 
+                    _
+                    (ValueIR.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "map" ] )) _)
+                    innerCollection ->
+                    isCandidateForDataFrame (ValueIR.valueAttribute innerCollection) ctx.typesContextInfo
+                _ ->
+                    False
+    in
     case args of    
         [ collection ] ->
-             let
-                (mappedCollection, collectionIssues) = mapValue collection ctx
-            in
-            ( Scala.Apply (Scala.Select mappedCollection "reduce") [ Scala.ArgValue Nothing (Scala.BinOp (Scala.Wildcard) "+" (Scala.Wildcard)) ] 
-            , collectionIssues)
+             if collectionComesFromDataFrameProjection collection then
+                MapDfOperations.mapValue (curryCall call) ctx
+             else
+                let
+                    (mappedCollection, collectionIssues) = mapValue collection ctx
+                in
+                ( Scala.Apply (Scala.Select mappedCollection "reduce") [ Scala.ArgValue Nothing (Scala.BinOp (Scala.Wildcard) "+" (Scala.Wildcard)) ] 
+                , collectionIssues)
         _ ->
             errorValueAndIssue "List sum scenario not supported"
 
@@ -207,8 +229,6 @@ mapMapPredicate action mapValue ctx =
         _ ->
             mapValue action ctx
 
-
-
 mapForOperatorCall : Name.Name -> TypedValue -> TypedValue -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapForOperatorCall optname left right mapValue ctx =
     let
@@ -221,3 +241,14 @@ mapForOperatorCall optname left right mapValue ctx =
     (Scala.BinOp leftValue operatorname rightValue
     , leftValueIssues ++ rightValueIssues )
             
+
+mapToFloatFunctionCall : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
+mapToFloatFunctionCall  ( _, args ) mapValue ctx =
+    case args of    
+        [ value ] ->
+               let
+                  (mappedValue, valueIssues) = mapValue value ctx
+                in 
+                (Scala.Select mappedValue "toDouble", valueIssues)
+        _ ->
+            errorValueAndIssue "`toFloat` scenario not supported"

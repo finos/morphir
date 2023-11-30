@@ -89,7 +89,7 @@ checkForBasicTypeToScala tpe ctx =
        Reference _ ([ [ "morphir" ],  [ "s", "d", "k" ] ],[ [ "basics" ] ], [ "double" ]) _ ->
             Just <| Scala.TypeVar "Double"
        Reference _ ([ [ "morphir" ],  [ "s", "d", "k" ] ],[ [ "basics" ] ], [ "bool" ]) _ ->
-            Just <| Scala.TypeVar "Bool"
+            Just <| Scala.TypeVar "Boolean"
        Reference _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "string" ] ], [ "string" ]) _ -> 
             Just <| Scala.TypeVar "String"
        Reference _ fullName [] -> 
@@ -204,6 +204,8 @@ mapTypeReferenceToBuiltinTypes tpe ctx =
             Scala.TypeVar "Double"
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "int" ] ) [] ->
             Scala.TypeVar "Int"
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "string" ] ], [ "string" ] ) [] ->
+            Scala.TypeVar "String"
         Type.Reference _ fullTypeName [] ->
             if isTypeAlias fullTypeName ctx then
                 resolveTypeAlias fullTypeName ctx
