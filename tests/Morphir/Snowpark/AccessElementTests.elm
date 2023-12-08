@@ -51,7 +51,7 @@ mapFieldAccessTests =
                     (mapped, _) =
                         mapValue recordFieldAccess valueMapContext
                 in
-                Expect.equal (Scala.Ref ["uTest","MyMod","Emp"] "salary") mapped
+                Expect.equal (Scala.Ref ["utest","MyMod","Emp"] "salary") mapped
         assertMapExternalDefinitionReference =
             test ("Convert definition reference") <|
             \_ ->
@@ -59,7 +59,7 @@ mapFieldAccessTests =
                     (mapped, _) = 
                         mapValue referenceToDefinition valueMapContext
                 in
-                Expect.equal (Scala.Ref ["aTest","AMod"] "counter") mapped
+                Expect.equal (Scala.Ref ["atest","AMod"] "counter") mapped
 
         assertMapConstructorReference =
             test ("Convert constructor reference") <|
@@ -68,7 +68,7 @@ mapFieldAccessTests =
                     (mapped, _) = 
                         mapValue constructorReference valueMapContext
                 in
-                Expect.equal (Scala.Ref ["uTest","MyMod","DeptKind"] "Hr") mapped
+                Expect.equal (Scala.Ref ["utest","MyMod","DeptKind"] "Hr") mapped
     in
     describe "AccessElementsTests"
         [

@@ -384,7 +384,6 @@ isDataFrameFriendlyType tpe ctx =
       || (isAliasOfDataFrameFriendlyType tpe ctx)
       || (isMaybeOfDataFrameFriendlyType tpe ctx)
 
-
 getFieldInfoIfRecordType : Type a -> MappingContextInfo a -> Maybe (List (Name, Type a))
 getFieldInfoIfRecordType tpe ctx =
    case tpe of
@@ -446,12 +445,15 @@ processFunctionDefinition definition ctx  =
                                  (typeRefIsMaybeOf tpe (\t -> (isTypeRefToRecordWithSimpleTypes t ctx) )))
                         inputTypes && 
                ((isDataFrameFriendlyType definition.outputType ctx) ||
+                (isTypeRefToRecordWithSimpleTypes definition.outputType ctx) ||
                   (typeRefIsMaybeOf definition.outputType (\t -> (isTypeRefToRecordWithSimpleTypes t ctx) || (isAnonymousRecordWithSimpleTypes t ctx))))
                  then
                Just FromDfValuesToDfValues
             else Nothing)
       , (\_ -> 
-            if List.all (\tpe -> (isDataFrameFriendlyType tpe ctx) || (isTypeRefToRecordWithSimpleTypes tpe ctx))
+            if List.all (\tpe -> (isDataFrameFriendlyType tpe ctx) || 
+                                 (typeRefIsListOf tpe (\listElementType -> isDataFrameFriendlyType listElementType ctx)) ||
+                                 (isTypeRefToRecordWithSimpleTypes tpe ctx))
                         inputTypes && 
                ((typeRefIsListOf definition.outputType (\t -> isTypeRefToRecordWithSimpleTypes t ctx))) then
                Just FromDfValuesToDfValues

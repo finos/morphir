@@ -9,7 +9,11 @@ module Morphir.Snowpark.ReferenceUtils exposing (
     , getFunctionInputTypes
     , mapLiteralToPlainLiteral
     , errorValueAndIssue
-    , curryCall)
+    , curryCall
+    , getSourceTargetTypeIfFunctionType
+    , getExpressionForColumnsObject
+    , getInnerMaybeType
+    , simplifyBooleanExpression )
 
 import Morphir.IR.Name as Name
 import Morphir.IR.FQName as FQName
@@ -18,15 +22,22 @@ import Morphir.IR.Type as IrType
 import Morphir.IR.Value as Value exposing (Value(..), TypedValue)
 import Morphir.Scala.AST as Scala
 import Morphir.Snowpark.Constants as Constants
-import Morphir.Snowpark.MappingContext exposing (MappingContextInfo, isRecordWithSimpleTypes)
+import Morphir.Snowpark.MappingContext exposing (ValueMappingContext, MappingContextInfo, isRecordWithSimpleTypes, getLocalVariableIfDataFrameReference)
 import Morphir.Snowpark.GenerationReport exposing (GenerationIssue)
+import Maybe.Extra
+
+processScalaPackageName : Name.Name -> String
+processScalaPackageName name =
+    (Name.toCamelCase >> String.toLower) name
 
 scalaPathToModule : FQName.FQName -> Scala.Path
 scalaPathToModule name =
     let
-        packagePath =  FQName.getPackagePath name |> List.map Name.toCamelCase
+        packagePath = 
+            FQName.getPackagePath name 
+                |> List.map processScalaPackageName
         modulePath = case FQName.getModulePath name |> List.reverse of
-                        (last::restInverted) -> ((Name.toTitleCase last) :: (List.map Name.toCamelCase restInverted)) |> List.reverse
+                        (last::restInverted) -> ((Name.toTitleCase last) :: (List.map processScalaPackageName restInverted)) |> List.reverse
                         _ -> []
     in
         packagePath ++ modulePath
@@ -106,5 +117,86 @@ errorValueAndIssue issue =
 
 curryCall : (TypedValue, List (TypedValue)) -> TypedValue
 curryCall (func, args) =
+    let
+        resolveOneArgumentOfType tpe =
+            case tpe of
+                IrType.Function _ _ returnType ->
+                    returnType
+                _ -> tpe
+    in
     args
-        |> List.foldl (\arg current  -> Value.Apply (Value.valueAttribute arg) current arg) func
+        |> List.foldl (\arg current  -> Value.Apply (resolveOneArgumentOfType (Value.valueAttribute current)) current arg) func
+
+getSourceTargetTypeIfFunctionType : IrType.Type a -> Maybe (IrType.Type a, IrType.Type a) 
+getSourceTargetTypeIfFunctionType tpe =
+   case tpe of
+       IrType.Function _ fromType toType ->
+            Just (fromType, toType)
+       _ ->
+            Nothing
+
+
+getExpressionForColumnsObject : IrType.Type () -> ValueMappingContext -> Maybe Scala.Value
+getExpressionForColumnsObject tpe ctx =
+    let
+        fullNameExpr = 
+            isTypeReferenceToSimpleTypesRecord tpe ctx.typesContextInfo
+                |> Maybe.map (\(path, name) -> Scala.Ref path (Name.toTitleCase name))
+        localVariableExpr =
+            getLocalVariableIfDataFrameReference tpe ctx
+                |> Maybe.map (\name -> Scala.Variable name)
+    in
+    Maybe.Extra.orElse fullNameExpr localVariableExpr
+
+getInnerMaybeType : IrType.Type ()  -> Maybe (IrType.Type ())
+getInnerMaybeType tpe  =
+   case tpe of
+      IrType.Reference _ ([["morphir"],["s","d","k"]],[["maybe"]],["maybe"]) [typeArg] ->
+         Just typeArg
+      _ -> 
+         Nothing
+
+
+simplifyBooleanExpression : Scala.Value -> Scala.Value
+simplifyBooleanExpression exp =
+    case exp of
+        Scala.BinOp left "&&" right ->
+            let
+                simplLeft =
+                    simplifyBooleanExpression left
+                simplRight =
+                    simplifyBooleanExpression right
+            in
+            case (simplLeft, simplRight) of
+                (Scala.Literal (Scala.BooleanLit True), result) ->
+                    result
+                (result, Scala.Literal (Scala.BooleanLit True)) ->
+                    result
+                (Scala.Literal (Scala.BooleanLit False), _) ->
+                    simplLeft
+                (_, Scala.Literal (Scala.BooleanLit False)) ->
+                    simplRight
+                _ ->
+                    exp
+        Scala.BinOp left "||" right ->
+            let
+                simplLeft =
+                    simplifyBooleanExpression left
+                simplRight =
+                    simplifyBooleanExpression right
+            in
+            case (simplLeft, simplRight) of
+                (Scala.Literal (Scala.BooleanLit True), _) ->
+                    simplLeft
+                (_, Scala.Literal (Scala.BooleanLit True)) ->
+                    simplRight
+                (Scala.Literal (Scala.BooleanLit False), result) ->
+                    result
+                (result, Scala.Literal (Scala.BooleanLit False)) ->
+                    result
+                _ ->
+                    exp
+        Scala.UnOp "!" (Scala.Literal (Scala.BooleanLit v)) ->
+            Scala.UnOp "!" (Scala.Literal (Scala.BooleanLit (not v)))
+        _ ->
+            exp

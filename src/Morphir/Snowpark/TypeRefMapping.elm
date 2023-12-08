@@ -78,6 +78,10 @@ checkForColumnCase typeReference ctx =
     else
         Nothing
 
+checkForRecordToColumnCase : Type () -> MappingContextInfo () -> Maybe Scala.Type
+checkForRecordToColumnCase typeReference ctx =
+    isTypeReferenceToSimpleTypesRecord typeReference ctx
+        |> Maybe.map (\_ -> typeRefForSnowparkType "Column")
 
 checkForBasicTypeToScala : Type () -> MappingContextInfo () -> Maybe Scala.Type
 checkForBasicTypeToScala tpe ctx =
@@ -120,7 +124,8 @@ mapFunctionReturnType typeReference currentFunctionClassification ctx =
         MappingContextMod.FromComplexToValues -> 
             mapTypeReferenceToBuiltinTypes typeReference ctx
         _ ->
-             mapTypeReference typeReference currentFunctionClassification ctx
+            checkForRecordToColumnCase typeReference ctx
+                |> Maybe.withDefault (mapTypeReference typeReference currentFunctionClassification ctx)
 
 mapTypeReference : Type () -> FunctionClassification -> MappingContextInfo () -> Scala.Type
 mapTypeReference typeReference currentFunctionClassification ctx =

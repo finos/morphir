@@ -71,7 +71,7 @@ mapFieldAccess _ value name ctx mapValue =
                 in
                 (Scala.Select mappedValue (Name.toCamelCase name), issues))
 
-mapVariableAccess : Name.Name ->  TypedValue  -> ValueMappingContext -> ValueGenerationResult
+mapVariableAccess : Name.Name -> TypedValue -> ValueMappingContext -> ValueGenerationResult
 mapVariableAccess name nameAccess ctx =
     case (getReplacementForIdentifier name ctx, checkForDataFrameVariableReference nameAccess ctx) of
         (Just replacement, _) ->

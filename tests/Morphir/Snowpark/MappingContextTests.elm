@@ -1,4 +1,5 @@
-module Morphir.Snowpark.MappingContextTests exposing (typeClassificationTests)
+module Morphir.Snowpark.MappingContextTests exposing ( typeClassificationTests
+                                                     , functionClassificationTests )
 
 import Dict
 import Set
@@ -9,10 +10,11 @@ import Morphir.IR.Module exposing (emptyDefinition)
 import Morphir.IR.AccessControlled exposing (public)
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as Type
+import Morphir.IR.Value as Value
 import Morphir.IR.Type exposing (Type(..))
-import Morphir.Snowpark.MappingContext as MappingContext
-import Morphir.IR.FQName exposing (FQName)
+import Morphir.Snowpark.MappingContext as MappingContext exposing (FunctionClassification(..))
 import Morphir.IR.FQName as FQName
+import Morphir.Snowpark.CommonTestUtils exposing (mListTypeOf)
 
 
 floatTypeInstance : Type ()
@@ -21,6 +23,9 @@ floatTypeInstance = Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "ba
 stringTypeInstance : Type ()
 stringTypeInstance = Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "string" ] ], [ "string" ] ) []
 
+refToLocalType : String -> Type ()
+refToLocalType name =
+    Reference () (FQName.fromString ("UTest:MyMod:" ++ name) ":") []
 
 testDistributionName = (Path.fromString "UTest") 
 
@@ -61,19 +66,67 @@ testDistributionPackage =
                  public { doc =  "", value = Type.TypeAliasDefinition [] (Type.Record () [
                     { name = Name.fromString "name", tpe = stringTypeInstance },
                     { name = Name.fromString "head", tpe = (Reference () (FQName.fromString "UTest:MyMod:Emp1" ":") []) }
-                 ]) })
+                 ]) }),
+                -- A type alias of an alias
+                (Name.fromString "LocalPrice", 
+                 public { doc =  "", value = Type.TypeAliasDefinition [["t1"]] (refToLocalType "Price") })
+              ], values = Dict.fromList [
+                (Name.fromString "fromBasicTypesToSimpleRecords", 
+                    public { doc =  "", value = {
+                        inputTypes = [ (Name.fromString "a", floatTypeInstance, floatTypeInstance ) ]
+                        , outputType = Reference () (FQName.fromString "UTest:MyMod:Emp2" ":") []
+                        , body = Value.Variable (Type.Unit ()) ["_"] -- dummy body
+                    } })
+                , (Name.fromString "fromComplexTypesToValues", 
+                    public { doc =  "", value = {
+                        inputTypes = [ (Name.fromString "a", refToLocalType "Dept1", refToLocalType "Dept1" ) ]
+                        , outputType = stringTypeInstance
+                        , body = Value.Variable (Type.Unit ()) ["_"] -- dummy body
+                    } })
+                , (Name.fromString "fromComplexTypesToDataFrames", 
+                    public { doc =  "", value = {
+                        inputTypes = [ (Name.fromString "a", refToLocalType "Dept1", refToLocalType "Dept1" ) ]
+                        , outputType = mListTypeOf (refToLocalType "Emp2")
+                        , body = Value.Variable (Type.Unit ()) ["_"] -- dummy body
+                    } })
+                , (Name.fromString "fromCustomTypesToValues", 
+                    public { doc =  "", value = {
+                        inputTypes = [ (Name.fromString "a", refToLocalType "DeptKind", refToLocalType "DeptKind" ) ]
+                        , outputType = stringTypeInstance
+                        , body = Value.Variable (Type.Unit ()) ["_"] -- dummy body
+                    } })
+                , (Name.fromString "fromAliasedSimpleValuesToSimpleValues", 
+                    public { doc =  "", value = {
+                        inputTypes = [ (Name.fromString "a", refToLocalType "LocalPrice", refToLocalType "LocalPrice" ) ]
+                        , outputType = refToLocalType "Price"
+                        , body = Value.Variable (Type.Unit ()) ["_"] -- dummy body
+                    } })
+                , (Name.fromString "fromDataFramesToSimpleValues", 
+                    public { doc =  "", value = {
+                        inputTypes = [ (Name.fromString "a", mListTypeOf (refToLocalType "Emp2"), mListTypeOf (refToLocalType "Emp2") ) ]
+                        , outputType = floatTypeInstance
+                        , body = Value.Variable (Type.Unit ()) ["_"] -- dummy body
+                    } })
+                , (Name.fromString "fromDataFramesToDataFrames", 
+                    public { doc =  "", value = {
+                        inputTypes = [ (Name.fromString "a", mListTypeOf (refToLocalType "Emp2"), mListTypeOf (refToLocalType "Emp2") ) ]
+                        , outputType = mListTypeOf (refToLocalType "Emp2")
+                        , body = Value.Variable (Type.Unit ()) ["_"] -- dummy body
+                    } })
               ] } )
         ]}) 
 
 typeClassificationTests : Test
 typeClassificationTests =
     let
-        customizationOptions = {functionsToInline = Set.empty, functionsToCache = Set.empty}
-        (calculatedContext, _, _) = MappingContext.processDistributionModules testDistributionName testDistributionPackage customizationOptions
+        customizationOptions = 
+            { functionsToInline = Set.empty, functionsToCache = Set.empty }
+        (calculatedContext, _, _) = 
+            MappingContext.processDistributionModules testDistributionName testDistributionPackage customizationOptions
         assertCount  =
             test ("Types in context") <|
                 \_ ->
-                    Expect.equal 6 (Dict.size calculatedContext)
+                    Expect.equal 7 (Dict.size calculatedContext)
         assertTypeAliasLookup  =
             test ("Type alias lookup") <|
                 \_ ->
@@ -112,7 +165,7 @@ typeClassificationTests =
                 \_ ->
                     Expect.equal True (MappingContext.isUnionTypeWithParams (FQName.fromString "UTest:MyMod:FloatOptionType" ":") calculatedContext)
     in
-    describe "resolveTNam"
+    describe "type classification"
         [ assertCount
         , assertTypeAliasLookup
         , assertNegativeTypeAliasLookup
@@ -123,3 +176,84 @@ typeClassificationTests =
         , assertLookupForUnionTypeWithNames
         , assertLookupForUnionTypeWithParameters
         ]
+
+
+
+functionClassificationTests : Test
+functionClassificationTests =
+    let
+        customizationOptions = 
+            { functionsToInline = Set.empty, functionsToCache = Set.empty }
+        (_, functionClassificationInfo, _) = 
+            MappingContext.processDistributionModules testDistributionName testDistributionPackage customizationOptions
+        
+        assertFunctionClassificationForReturningRecords =
+            test ("Lookup function classficiation for simple to record types") <|
+                \_ ->
+                    let 
+                        funcName = 
+                            FQName.fromString "UTest:MyMod:fromBasicTypesToSimpleRecords" ":"
+                    in
+                    Expect.equal FromDfValuesToDfValues (MappingContext.getFunctionClassification funcName functionClassificationInfo)
+
+        assertFunctionClassificationForReceivingComplexTypes =
+            test ("Lookup function classification function receiving complex types and returning simple values") <|
+                \_ ->
+                    let 
+                        funcName = 
+                            FQName.fromString "UTest:MyMod:fromComplexTypesToValues" ":"
+                    in
+                    Expect.equal FromComplexToValues (MappingContext.getFunctionClassification funcName functionClassificationInfo)
+
+        assertFunctionWithReceivingCustomTypes =
+            test ("Lookup function classficiation function receiving custom types and returning simple values") <|
+                \_ ->
+                    let 
+                        funcName = 
+                            FQName.fromString "UTest:MyMod:fromCustomTypesToValues" ":"
+                    in
+                    Expect.equal FromDfValuesToDfValues (MappingContext.getFunctionClassification funcName functionClassificationInfo)
+        assertFunctionClassificationOfAliasedSimpleValuesToSimpleValues =
+            test ("Lookup function classification aliased simple values to simple values") <|
+                \_ ->
+                    let 
+                        funcName = 
+                            FQName.fromString "UTest:MyMod:fromAliasedSimpleValuesToSimpleValues" ":"
+                    in
+                    Expect.equal FromDfValuesToDfValues (MappingContext.getFunctionClassification funcName functionClassificationInfo)
+
+        assertFunctionClassificationOfComplexTypesToDataFrames =
+            test ("Lookup function classification complex types to dataframes") <|
+                \_ ->
+                    let 
+                        funcName = 
+                            FQName.fromString "UTest:MyMod:fromComplexTypesToDataFrames" ":"
+                    in
+                    Expect.equal FromComplexValuesToDataFrames (MappingContext.getFunctionClassification funcName functionClassificationInfo)
+        assertFunctionClassificationOfDataFramesToSimpleValues =
+            test ("Lookup function classification dataframes to simple values") <|
+                \_ ->
+                    let 
+                        funcName = 
+                            FQName.fromString "UTest:MyMod:fromDataFramesToSimpleValues" ":"
+                    in
+                    Expect.equal FromDataFramesToValues (MappingContext.getFunctionClassification funcName functionClassificationInfo)
+
+        assertFunctionClassificationOfDataFramesToDataFrames =
+            test ("Lookup function classification dataframes to dataframes") <|
+                \_ ->
+                    let 
+                        funcName = 
+                            FQName.fromString "UTest:MyMod:fromDataFramesToDataFrames" ":"
+                    in
+                    Expect.equal FromDataFramesToDataFrames (MappingContext.getFunctionClassification funcName functionClassificationInfo)
+
+    in
+    describe "function classification"
+        [ assertFunctionClassificationForReturningRecords
+        , assertFunctionClassificationForReceivingComplexTypes
+        , assertFunctionWithReceivingCustomTypes
+        , assertFunctionClassificationOfAliasedSimpleValuesToSimpleValues
+        , assertFunctionClassificationOfComplexTypesToDataFrames
+        , assertFunctionClassificationOfDataFramesToSimpleValues
+        , assertFunctionClassificationOfDataFramesToDataFrames ]

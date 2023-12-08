@@ -114,7 +114,7 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
                         parts =
                             List.append currentPackagePath (List.reverse reverseModulePath)
                     in
-                    ( parts |> (List.map Name.toCamelCase), lastName )
+                    ( parts |> (List.map (Name.toCamelCase >> String.toLower)), lastName )
 
         moduleTypeDefinitions : List (Scala.Annotated Scala.MemberDecl)
         moduleTypeDefinitions = 

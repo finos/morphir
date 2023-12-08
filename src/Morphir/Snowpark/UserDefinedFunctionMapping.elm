@@ -45,7 +45,7 @@ tryToConvertUserFunctionCall (func, args) mapValue ctx =
                     (first::rest) -> 
                         (List.foldl (\a c -> Scala.Apply c [a]) (Scala.Apply funcReference [first]) rest, issues)
             else
-                (Scala.Literal (Scala.StringLit "Call not converted"), [ "Call to function not converted: " ++ (FQName.toString functionName)] )
+                (Scala.Literal (Scala.StringLit "Call not generated"), [ "Call to function not generated: " ++ (FQName.toString functionName)] )
        ValueIR.Constructor _ constructorName ->
             if isRecordWithSimpleTypes constructorName ctx.typesContextInfo then
                 let 
@@ -96,9 +96,9 @@ tryToConvertUserFunctionCall (func, args) mapValue ctx =
                                 rest
                         , List.concat issuesPerArg)
             else
-                errorValueAndIssue "Call to variable function not converted"
+                errorValueAndIssue "Call to variable function not generated"
        _ -> 
-            errorValueAndIssue  "Call not converted"
+            errorValueAndIssue  "Call not generated"
 
 checkIfArgumentsNeedsToBeAdapted : FQName.FQName -> 
                                     Type () ->

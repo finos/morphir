@@ -21,6 +21,7 @@ import Morphir.Snowpark.LetMapping exposing (mapLetDefinition)
 import Morphir.Snowpark.MappingContext as MappingContext exposing (
                                                 typeRefIsListOf
                                                 , ValueMappingContext
+                                                , getFieldInfoIfRecordType
                                                 , isAnonymousRecordWithSimpleTypes
                                                 , isFunctionClassificationReturningDataFrameExpressions
                                                 , isTypeRefToRecordWithSimpleTypes
@@ -64,8 +65,33 @@ mapValue value ctx =
             mapTuple tupleElements ctx
         Value.Record tpe fields ->
             mapRecordCreation tpe fields ctx
+        Value.UpdateRecord tpe rec fieldUpdates ->
+            mapUpdateRecord tpe rec fieldUpdates ctx
         _ ->
-           errorValueAndIssue "Unsupported value element not converted"
+           errorValueAndIssue "Unsupported value element not generated"
+
+
+mapUpdateRecord : Type () -> TypedValue -> Dict.Dict (Name.Name) TypedValue -> ValueMappingContext -> ( Scala.Value, List GenerationIssue )
+mapUpdateRecord recordType recordExpr fieldUpdates ctx =
+    if isTypeRefToRecordWithSimpleTypes recordType ctx.typesContextInfo || 
+        isAnonymousRecordWithSimpleTypes recordType ctx.typesContextInfo then
+        getFieldInfoIfRecordType recordType ctx.typesContextInfo
+            |> Maybe.map (\(fields) -> 
+                let
+                    (mappedFields, fieldsIssues) =
+                        fields
+                            |> List.map (\(field, fieldType) ->  
+                                            Dict.get field fieldUpdates
+                                                |> Maybe.map (\updateExpr -> mapValue updateExpr ctx )
+                                                |> Maybe.withDefault (mapValue (Value.Field fieldType recordExpr field) ctx ) )
+                            |> List.unzip
+                in
+                (applySnowparkFunc 
+                    "array_construct"
+                    mappedFields, List.concat fieldsIssues))
+            |> Maybe.withDefault (errorValueAndIssue "Unsupported `update record` scenario")
+    else
+        errorValueAndIssue "Unsupported `update record` scenario"
 
 mapTuple : List TypedValue -> ValueMappingContext -> ValueGenerationResult
 mapTuple tupleElements ctx =
@@ -141,7 +167,7 @@ mapListCreation tpe values ctx =
        let
           (mappedValues, valuesIssues) =
              values
-                |> List.map (\v -> mapValue v ctx) 
+                |> List.map (\v -> mapLiteralListValue v ctx) 
                 |> List.unzip
        in
        (applySnowparkFunc "array_construct" mappedValues, List.concat valuesIssues)
@@ -166,6 +192,35 @@ mapListCreation tpe values ctx =
                     (Scala.Variable "Seq")
                     (mappedValues |> List.map (Scala.ArgValue Nothing))
                 , List.concat valuesIssues)
+
+mapLiteralListValue : TypedValue -> ValueMappingContext -> ValueGenerationResult
+mapLiteralListValue value ctx =
+    let
+        (mappedValue, issues) =
+            mapValue value ctx
+    in
+    case value of 
+        Value.Variable _ _ ->
+            generateReplacementForDataFrameItemVariable mappedValue value ctx
+                |> Maybe.map (\result -> (result, issues))
+                |> Maybe.withDefault (mappedValue, issues)
+        _ ->
+            (mappedValue, issues)
+
+
+generateReplacementForDataFrameItemVariable : Scala.Value -> TypedValue -> ValueMappingContext -> Maybe Scala.Value
+generateReplacementForDataFrameItemVariable replacement nameAccess ctx =
+    getFieldInfoIfRecordType (Value.valueAttribute nameAccess) ctx.typesContextInfo
+        |> Maybe.map (\fields ->         
+                            let
+                                args =
+                                    fields
+                                        |> List.map 
+                                                (\(name, _) -> 
+                                                    Scala.Select replacement (Name.toCamelCase name))
+                            in
+                            (applySnowparkFunc "array_construct" args))
+
 
 mapIfThenElse : TypedValue -> TypedValue -> TypedValue -> ValueMappingContext -> ValueGenerationResult
 mapIfThenElse condition thenExpr elseExpr ctx =
