@@ -127,10 +127,9 @@ addYears count date =
 {-| Create a date from a [calendar date][gregorian]: a year, month, and day of
 the month. Out-of-range day values will be clamped.
 
-    import Date exposing (fromCalendarDate)
-    import Time exposing (Month(..))
+    import Morphir.SDK.LocalDate exposing (fromCalendarDate, Month(..))
 
-    fromCalendarDate 2018 Sep 26
+    fromCalendarDate 2018 September 26
 
 [gregorian]: https://en.wikipedia.org/wiki/Proleptic_Gregorian_calendar
 
@@ -140,6 +139,16 @@ fromCalendarDate y m d =
     Date.fromCalendarDate y (monthToMonth m) d
 
 
+{-| Create a date from an [ordinal date][ordinaldate]: a year and day of the
+year. Out-of-range day values will be clamped.
+
+    import Morphir.SDK.LocalDate exposing (fromOrdinalDate)
+
+    fromOrdinalDate 2018 269
+
+[ordinaldate]: https://en.wikipedia.org/wiki/Ordinal_date
+
+-}
 fromOrdinalDate : Int -> Int -> LocalDate
 fromOrdinalDate y d =
     Date.fromOrdinalDate y d
