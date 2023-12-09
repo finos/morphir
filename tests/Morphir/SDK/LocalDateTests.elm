@@ -96,4 +96,29 @@ constructorTests =
             \_ ->
                 LocalDate.fromParts 2020 2 30
                     |> Expect.equal Nothing
+        , test "valid fromCalendarDate" <|
+            \_ ->
+                LocalDate.fromCalendarDate 2023 December 25
+                    |> Expect.equal (Date.fromCalendarDate 2023 Dec 25)
+        , test "invalid but pinned fromCalendarDate" <|
+            \_ ->
+                LocalDate.fromCalendarDate 2023 December 39
+                    |> Expect.equal (Date.fromCalendarDate 2023 Dec 31)
+        , test "valid fromRataDie" <|
+            \_ ->
+                LocalDate.fromRataDie 1
+                    |> Expect.equal (Date.fromCalendarDate 1 Jan 1)
+        , test "valid contemporary fromRataDie" <|
+            \_ ->
+                LocalDate.fromRataDie 738860
+                    |> Expect.equal (Date.fromCalendarDate 2023 Dec 6)
+        , test "valid toRataDie" <|
+            \_ ->
+                Date.fromCalendarDate 1 Jan 1
+                    |> LocalDate.toRataDie
+                    |> Expect.equal 1
+        , test "valid contemporary toRataDie" <|
+            \_ ->
+                LocalDate.toRataDie (Date.fromCalendarDate 2023 Dec 6)
+                    |> Expect.equal 738860
         ]
