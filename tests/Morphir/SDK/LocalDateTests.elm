@@ -104,6 +104,10 @@ constructorTests =
             \_ ->
                 LocalDate.fromCalendarDate 2023 December 39
                     |> Expect.equal (Date.fromCalendarDate 2023 Dec 31)
+        , test "valid fromOrdinalDate" <|
+            \_ ->
+                LocalDate.fromOrdinalDate 2023 15
+                    |> Expect.equal (Date.fromCalendarDate 2023 Jan 15)
         , test "valid fromRataDie" <|
             \_ ->
                 LocalDate.fromRataDie 1

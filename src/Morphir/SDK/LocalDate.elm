@@ -19,7 +19,8 @@ module Morphir.SDK.LocalDate exposing
     ( LocalDate
     , diffInDays, diffInWeeks, diffInMonths, diffInYears
     , addDays, addWeeks, addMonths, addYears
-    , toISOString, fromCalendarDate, fromISO, fromOrdinalDate, fromParts, fromRataDie, toRataDie
+    , fromCalendarDate, fromISO, fromOrdinalDate, fromParts, fromRataDie
+    , toISOString, toRataDie
     , DayOfWeek(..), dayOfWeek, isWeekend, isWeekday
     , Month(..)
     , year, month, day
@@ -43,8 +44,11 @@ module Morphir.SDK.LocalDate exposing
 
 @docs fromCalendarDate, fromISO, fromOrdinalDate, fromParts, fromRataDie
 
+
 # Convert
+
 @docs toISOString, toRataDie
+
 
 # Query
 
@@ -52,8 +56,6 @@ module Morphir.SDK.LocalDate exposing
 @docs Month
 @docs year, month, day
 
-
-@docs toISOString
 -}
 
 import Date exposing (Date, Unit(..))
@@ -121,6 +123,7 @@ addYears : Int -> LocalDate -> LocalDate
 addYears count date =
     Date.add Years count date
 
+
 {-| Create a date from a [calendar date][gregorian]: a year, month, and day of
 the month. Out-of-range day values will be clamped.
 
@@ -136,9 +139,11 @@ fromCalendarDate : Int -> Month -> Int -> LocalDate
 fromCalendarDate y m d =
     Date.fromCalendarDate y (monthToMonth m) d
 
+
 fromOrdinalDate : Int -> Int -> LocalDate
 fromOrdinalDate y d =
     Date.fromOrdinalDate y d
+
 
 {-| Construct a LocalDate based on ISO formatted string. Opportunity for error denoted by Maybe return type.
 -}
@@ -235,6 +240,7 @@ month localDate =
         Time.Dec ->
             December
 
+
 monthToMonth : Month -> Time.Month
 monthToMonth m =
     case m of
@@ -273,6 +279,7 @@ monthToMonth m =
 
         December ->
             Time.Dec
+
 
 {-| The day of the month (1–31).
 -}
@@ -358,6 +365,7 @@ type Month
     | November
     | December
 
+
 {-| Construct a LocalDate from Integer Rata Die, a system for system for assigning calendar days to
 numbers, with 1 representing 0001-01-01.
 -}
@@ -366,7 +374,7 @@ fromRataDie rataDieNumber =
     Date.fromRataDie rataDieNumber
 
 
-{-| Convert a LocalDate to its number representation in Rata Die.  Rata Die is a system for
+{-| Convert a LocalDate to its number representation in Rata Die. Rata Die is a system for
 assigning calendar days to numbers, with 1 representing 0001-01-01.
 -}
 toRataDie : LocalDate -> Int
