@@ -311,8 +311,18 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
             Ok (Value.Literal defaultValueAttribute (Literal.FloatLiteral value))
 
         Expression.Negation arg ->
-            mapExpression resolveReferenceName moduleName variables arg
-                |> Result.map (SDKBasics.negate defaultValueAttribute defaultValueAttribute)
+            case arg of
+                Node _ exp ->
+                    case exp of
+                        Integer value ->
+                            Ok (Value.Literal defaultValueAttribute (Literal.WholeNumberLiteral -value))
+
+                        Floatable value ->
+                            Ok (Value.Literal defaultValueAttribute (Literal.FloatLiteral -value))
+
+                        _ ->
+                            mapExpression resolveReferenceName moduleName variables arg
+                                |> Result.map (SDKBasics.negate defaultValueAttribute defaultValueAttribute)
 
         Expression.Literal value ->
             Ok (Value.Literal defaultValueAttribute (Literal.StringLiteral value))
