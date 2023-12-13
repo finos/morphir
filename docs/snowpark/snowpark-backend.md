@@ -4,26 +4,24 @@ id: snowpark-backend
 
 # Snowpark Backend
 
-**TODO**
-
-**Snowpark** backend uses Scala as its JVM language.
+The Morphir **Snowpark** backend generates Scala code that uses the [Snowpark](https://docs.snowflake.com/en/developer-guide/snowpark/scala/index) API .
 
 ## Generation conventions and strategies
 
-The **Snowpark** backend supports two basic code generation strategies:
+The **Snowpark** backend supports two main code generation strategies:
 
-- Generating code that manipulates DataFrame expressions
+- Generating code that manipulates [DataFrame](https://docs.snowflake.com/en/developer-guide/snowpark/scala/working-with-dataframes) expressions
 - Generating "plain" Scala code
 
-The backend uses a series of conventions for deciding which strategy is used to convert the code of a function. The conventions apply to types and function definitions. 
+The backend uses a series of conventions for deciding which strategy is used to convert the a function. These conventions apply to the way types and function are defined. 
 
 ### Type definition conventions
 
-Type definitions in the input **Morphir IR** are classified according to the following conventions:
+Type definitions in the input **Morphir IR** are classified using the following conventions:
 
 #### Records that represent tables
 
-Records are classified as "representing a table definition" according to the types of its members.  A DataFrame compatible type is one of the following:
+Records are classified as "representing a table definition" according to the types of its members.  A [DataFrame](https://docs.snowflake.com/en/developer-guide/snowpark/scala/working-with-dataframes) compatible type is one of the following:
 
 - A basic datatype
   - Int
@@ -173,7 +171,7 @@ In this case references to `List Employee` are converted to DataFrames:
 
 ### Custom types
 
-The **Snowpark** backend uses two conventions to deal with [custom types](https://guide.elm-lang.org/types/custom_types.html) used as a field of a *DataFrame record*. These conventions depend of the presence of parameters for type constructors.
+Two conventions are used to process [custom types](https://guide.elm-lang.org/types/custom_types.html) used as a field of a *DataFrame record*. These conventions depend of the presence of parameters for type constructors.
 
 #### 1. Convention for custom types without data
 
@@ -200,7 +198,7 @@ northDirections dirs =
         |> List.filter (\e -> e.direction == North)
 ```
 
-In this case the backend assumes that the code stored in a `Directions` table has a column of type `VARCHAR` or `CHAR` with text with the name of field. For example:
+In this case it is assumed that the code stored in the `Directions` table has a column of type `VARCHAR` or `CHAR` with text with the name of field. For example:
 
 |  ID |  DIRECTION |
 |-----|------------|
@@ -208,7 +206,7 @@ In this case the backend assumes that the code stored in a `Directions` table ha
 | 23  | 'East'     |
 | 43  | 'South'    |
 
-As a convenience the backend generates a Scala object with the definition of the possible values:
+As a convenience a Scala object is generated with the definition of the possible values:
 
 ```Scala
 object CardinalDirection{
@@ -229,7 +227,7 @@ def West: com.snowflake.snowpark.Column =
 ```
 Notice the use of [lit](https://docs.snowflake.com/developer-guide/snowpark/reference/scala/com/snowflake/snowpark/functions$.html#lit(literal:Any):com.snowflake.snowpark.Column) to indicate that we expect a literal string value for each constructor.
 
-This class is used where the value of the possible constructors is used. For example for the definition of `northDirections` above the comparison with `North` is generated as follows:
+This object is used where the value of the possible constructors is used. For example for the definition of `northDirections` above the comparison with `North` is generated as follows:
 
 ```Scala
   def northDirections(
@@ -245,12 +243,12 @@ This class is used where the value of the possible constructors is used. For exa
 
 #### 2. Convention for custom types with data
 
-In the case that a custom type has constructors with parameters this backend assumes that values of this type are stored in a [OBJECT column](https://docs.snowflake.com/en/sql-reference/data-types-semistructured#object) .
+In the case that a custom type has constructors with parameters this backend assumes that values of this type are stored in an [OBJECT column](https://docs.snowflake.com/en/sql-reference/data-types-semistructured#object) .
 
 The encoding of column is defined as follows:
 
 - Values are encoded as a `JSON` object
-- A special property of this object called `__tag` is used to determine which variant is used in the current value
+- A special property of this object called `"__tag"` is used to determine which variant is used in the current value
 - All the parameters in order are stored in properties called `field0`, `field1`, `field2` ... `fieldN`
 
 Given the following custom type definition:
@@ -268,7 +266,7 @@ type alias TasksEstimations =
     }
 ```
 
-The data for `TaskEstimations estimation` is expected to be stored in a table using an `OBJECT` column:
+The data for `TaskEstimations` is expected to be stored in a table using an `OBJECT` column:
 
 | TASKID | ESTIMATION                                                        |
 |--------|-------------------------------------------------------------------|
@@ -320,12 +318,21 @@ This code is generated as:
       ((tasksColumns.estimation("field0")) * (com.snowflake.snowpark.functions.lit(60))) + (tasksColumns.estimation("field1"))
     ).as("seconds"))
   }
-  
 ```
+
+#### 3. Convention for `Maybe` types
+
+The [Maybe a](https://package.elm-lang.org/packages/elm/core/latest/Maybe) type is assumed to be a nullable database value. This means that the data is expected to be stored as follows:
+
+|  Elm value   |  Value stored in the Database |
+|--------------|-------------------------------|
+| `Just 10`    |  `10`                         |
+| `Nothing`    |  `NULL`                       |
+
 
 ### Function definition conventions
 
-These conventions are based on the input and return types of a function. There are strategies: using DataFrame expressions or using Scala expressions. The following sections have more details.
+These conventions are based on the input and return types of a function. Two strategies are used: using DataFrame expressions or using Scala expressions. The following sections have more details.
 
 #### Code generation using DataFrame expressions manipulation
 
@@ -519,7 +526,33 @@ In this case code for `avgSalaries` is going to perform a Scala division operati
   }
 ```
 
-Code generation for this strategy is meant to be used for code that manipulates the result of performing DataFrame operations . At this moment its coverage is very limited.
+Code generation for this strategy is meant to be used for code that manipulates the result of performing DataFrame operations. At this moment its coverage is very limited.
 
+### Creation of empty DataFrames
 
+Creating an empty list of table-like records is interpreted as creating an empty DataFrame. For example:
 
+```elm
+createDataForTest :  List Employee -> DataFromCompany
+createDataForTest emps  =
+   { employees = emps , departments = [] }
+```
+
+In this case the code is generated as follows:
+
+```scala
+  def createDataForTest(
+    emps: com.snowflake.snowpark.DataFrame
+  )(
+    implicit sfSession: com.snowflake.snowpark.Session
+  ): mymodel.Basic.DataFromCompany = {
+    val empsColumns: mymodel.Basic.Employee = new mymodel.Basic.EmployeeWrapper(emps)
+    
+    mymodel.Basic.DataFromCompany(
+      employees = emps,
+      departments = mymodel.Basic.Department.createEmptyDataFrame(sfSession)
+    )
+  }
+```
+
+Notice that this is the main reason for having an `implicit` with the [Session object](https://docs.snowflake.com/en/developer-guide/snowpark/reference/scala/com/snowflake/snowpark/Session.html).

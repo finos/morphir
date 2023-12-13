@@ -296,7 +296,7 @@ functionMappingsTests =
             \_ ->
                 let
                     lambdaBody = 
-                        curryCall ( equalFunction stringTypeInstance stringTypeInstance
+                        curryCall ( equalFunction stringTypeInstance
                                   , [ mStringLiteralOf "Smith"
                                     , Value.Field stringTypeInstance (Value.Variable empType ["k"]) [ "lastname" ] ])
                     filterCall = 

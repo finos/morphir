@@ -158,7 +158,7 @@ mapMaybeValue maybeValue ctx mapValue =
     in
     (mappedDefaultMaybe, defaultMaybeIssues)
 
-createCaseCodeForTuplePattern : (List TuplePatternResult, Value () (Type ())) -> 
+createCaseCodeForTuplePattern : (List NestedPatternResult, Value () (Type ())) -> 
                                 List Scala.Value -> 
                                 Constants.MapValueType -> 
                                 ValueMappingContext -> 
@@ -168,12 +168,12 @@ createCaseCodeForTuplePattern (tuplePats, value) positionValues mapValue ctx =
         tuplesForConversion = List.map2 (\x y -> (x, y)) tuplePats positionValues
         mappingsContextWithReplacements = 
             tuplesForConversion
-                |> List.foldl (\((TuplePatternResult funcs), val) currCtx -> funcs.contextManipulation val currCtx) ctx 
+                |> List.foldl (\((NestedPatternResult funcs), val) currCtx -> funcs.contextManipulation val currCtx) ctx 
         condition = 
             tuplesForConversion 
-              |>  List.foldr (\((TuplePatternResult funcs), val) currentCondition -> 
+              |>  List.foldr (\((NestedPatternResult funcs), val) currentCondition -> 
                                 Scala.BinOp (funcs.conditionGenerator val) "&&" currentCondition ) 
-                            (Scala.Literal (Scala.BooleanLit True)) 
+                            (applySnowparkFunc "lit" [Scala.Literal (Scala.BooleanLit True)]) 
               |> simplifyBooleanExpression
         (mappedSuccessValue, successValueIssues) = mapValue value mappingsContextWithReplacements
     in
@@ -199,30 +199,30 @@ generateBindingVariableExpr name expr =
     Scala.Apply expr [Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit name))]
 
 
-addBindingReplacementsToContext : ValueMappingContext -> List TuplePatternResult -> Scala.Value -> ValueMappingContext
+addBindingReplacementsToContext : ValueMappingContext -> List NestedPatternResult -> Scala.Value -> ValueMappingContext
 addBindingReplacementsToContext ctxt nestedPatternsInfo referenceExpr =
     let 
         newContext = 
             nestedPatternsInfo
                 |> List.indexedMap (\i nestedPatternInfo -> (nestedPatternInfo, generateBindingVariableExpr (getCustomTypeParameterFieldAccess i) referenceExpr))
-                |> List.foldl (\(TuplePatternResult nestedPatternInfo, expr) newCtxt -> nestedPatternInfo.contextManipulation expr newCtxt) ctxt
+                |> List.foldl (\(NestedPatternResult nestedPatternInfo, expr) newCtxt -> nestedPatternInfo.contextManipulation expr newCtxt) ctxt
     in
     newContext
-generateNestedPatternsCondition : List TuplePatternResult -> Scala.Value -> Scala.Value -> Scala.Value
+generateNestedPatternsCondition : List NestedPatternResult -> Scala.Value -> Scala.Value -> Scala.Value
 generateNestedPatternsCondition nestedPatternsInfo referenceExpr tagCondition =
     nestedPatternsInfo
         |> List.indexedMap (\i nestedPatternInfo -> (nestedPatternInfo, generateBindingVariableExpr (getCustomTypeParameterFieldAccess i) referenceExpr))
-        |> List.foldl (\(TuplePatternResult nestedPatternInfo, expr) currentExpr -> 
+        |> List.foldl (\(NestedPatternResult nestedPatternInfo, expr) currentExpr -> 
                                 (Scala.BinOp currentExpr "&&" (nestedPatternInfo.conditionGenerator expr))) tagCondition
         |> simplifyBooleanExpression
 
 type PatternMatchScenario ta
     = LiteralsWithDefault (List (Literal, TypedValue)) (TypedValue)
     | UnionTypesWithoutParams (List (Scala.Value, TypedValue)) (Maybe (TypedValue))
-    | UnionTypesWithParams (List (Name.Name, List TuplePatternResult, TypedValue)) (Maybe (TypedValue))    
+    | UnionTypesWithParams (List (Name.Name, List NestedPatternResult, TypedValue)) (Maybe (TypedValue))    
     -- Right now we just support `Just` with variables
     | MaybeCase (Maybe Name.Name, TypedValue) (TypedValue)
-    | TupleCases (List (List TuplePatternResult, TypedValue)) (Maybe (TypedValue))
+    | TupleCases (List (List NestedPatternResult, TypedValue)) (Maybe (TypedValue))
     | Unsupported
 
 checkForLiteralCase : ( Pattern (Type ()), TypedValue ) -> Maybe (Literal, TypedValue)
@@ -249,11 +249,11 @@ checkForUnionOfWithNoParams (pattern, caseValue) =
         _ -> 
             Nothing
 
-checkConstructorForUnionOfWithParams : ( Pattern (Type ()), TypedValue ) -> Maybe (Name.Name, List TuplePatternResult, TypedValue)
-checkConstructorForUnionOfWithParams (pattern, caseValue) = 
+checkConstructorForUnionOfWithParams : ValueMappingContext -> ( Pattern (Type ()), TypedValue ) -> Maybe (Name.Name, List NestedPatternResult, TypedValue)
+checkConstructorForUnionOfWithParams ctx (pattern, caseValue) = 
    case pattern of
         (ConstructorPattern _  name patternArgs) -> 
-            collectMaybeList checkTuplePatternItemPattern patternArgs
+            collectMaybeList (checkNestedItemPattern ctx) patternArgs
                |> Maybe.map (\patInfo -> (FQName.getLocalName name, patInfo, caseValue))
         _ -> 
             Nothing
@@ -280,11 +280,11 @@ checkUnionWithParams expr cases ctx =
     if isUnionTypeRefWithParams (Value.valueAttribute expr) ctx.typesContextInfo  then
         case List.reverse cases of
             ((WildcardPattern _, wildCardResult)::restReversed) -> 
-                (collectMaybeList checkConstructorForUnionOfWithParams restReversed) 
+                (collectMaybeList (checkConstructorForUnionOfWithParams ctx) restReversed) 
                      |> Maybe.map List.reverse
                      |> Maybe.map (\parts -> (UnionTypesWithParams parts (Just wildCardResult)))
             ((ConstructorPattern _ _ _, _)::_) as constructorCases ->
-                (collectMaybeList checkConstructorForUnionOfWithParams constructorCases) 
+                (collectMaybeList (checkConstructorForUnionOfWithParams ctx) constructorCases) 
                      |> Maybe.map List.reverse
                      |> Maybe.map (\parts -> (UnionTypesWithParams parts Nothing))
             _ -> 
@@ -312,49 +312,58 @@ checkMaybePattern expr cases ctx =
                 _ -> Nothing
         _ -> Nothing
 
-checkForTuplePatternCase : ( Pattern (Type ()), TypedValue ) -> Maybe (List TuplePatternResult, TypedValue)
-checkForTuplePatternCase (pattern, caseValue) = 
+checkForTuplePatternCase : ValueMappingContext -> ( Pattern (Type ()), TypedValue ) -> Maybe (List NestedPatternResult, TypedValue)
+checkForTuplePatternCase ctx (pattern, caseValue) = 
    case pattern of
         (TuplePattern _ options) -> 
              (options 
-                  |> collectMaybeList checkTuplePatternItemPattern)
+                  |> collectMaybeList (checkNestedItemPattern ctx))
                 |> Maybe.map (\lst -> (lst, caseValue))
         _ -> 
             Nothing
 
-type TuplePatternResult =
-     TuplePatternResult { conditionGenerator: Scala.Value -> Scala.Value
+type NestedPatternResult =
+     NestedPatternResult { conditionGenerator: Scala.Value -> Scala.Value
                         , contextManipulation: Scala.Value -> ValueMappingContext -> ValueMappingContext } 
 
-checkTuplePatternItemPattern : Pattern (Type ()) -> Maybe TuplePatternResult
-checkTuplePatternItemPattern  pattern =
+checkNestedItemPattern : ValueMappingContext -> Pattern (Type ()) -> Maybe NestedPatternResult
+checkNestedItemPattern ctx pattern =
     case pattern of 
         WildcardPattern _  ->
-            Just <| TuplePatternResult { conditionGenerator = (\_ -> Scala.Literal (Scala.BooleanLit True))
-                                       , contextManipulation = (\_ ctx -> ctx) }
+            Just <| NestedPatternResult { conditionGenerator = (\_ -> applySnowparkFunc "lit" [ Scala.Literal (Scala.BooleanLit True) ])
+                                       , contextManipulation = (\_ innerCtx -> innerCtx) }
         AsPattern _ (WildcardPattern _) name ->
-            Just <| TuplePatternResult { conditionGenerator = (\_ -> Scala.Literal (Scala.BooleanLit True))
+            Just <| NestedPatternResult { conditionGenerator = (\_ -> applySnowparkFunc "lit" [Scala.Literal (Scala.BooleanLit True)])
                                        , contextManipulation = addReplacementForIdentifier name } 
         Value.ConstructorPattern _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] ) [ innerPattern ] ->
-            (checkTuplePatternItemPattern innerPattern)
-            |> Maybe.map (\(TuplePatternResult patObject) ->
-                                (TuplePatternResult { conditionGenerator = \refr -> Scala.BinOp (Scala.Select refr "is_not_null") "&&" (patObject.conditionGenerator refr)
+            (checkNestedItemPattern ctx innerPattern)
+            |> Maybe.map (\(NestedPatternResult patObject) ->
+                                (NestedPatternResult { conditionGenerator = \refr -> Scala.BinOp (Scala.Select refr "is_not_null") "&&" (patObject.conditionGenerator refr)
                                                     , contextManipulation =  patObject.contextManipulation }))
+        Value.ConstructorPattern ((Type.Reference _ typeName _) as tpe) fullConstructorName [ ] ->
+            if isUnionTypeRefWithoutParams tpe ctx.typesContextInfo then
+                let
+                    unionCaseReference = scalaReferenceToUnionTypeCase typeName fullConstructorName
+                in
+                Just <| NestedPatternResult { conditionGenerator = (\e -> Scala.BinOp e "===" unionCaseReference)
+                                            , contextManipulation = (\_ innerCtx -> innerCtx) }
+            else
+                Nothing
         Value.LiteralPattern _ literal ->
-            Just <| TuplePatternResult { conditionGenerator = (\e -> Scala.BinOp e "===" (mapLiteral () literal))
-                                       , contextManipulation = (\_ ctx -> ctx) }
+            Just <| NestedPatternResult { conditionGenerator = (\e -> Scala.BinOp e "===" (mapLiteral () literal))
+                                        , contextManipulation = (\_ innerCtx -> innerCtx) }
         _ -> 
            Nothing
 
-checkTuplePattern : List ( Pattern (Type ()), TypedValue ) -> (Maybe (PatternMatchScenario ta))
-checkTuplePattern cases =
+checkTuplePattern : ValueMappingContext -> List ( Pattern (Type ()), TypedValue ) -> (Maybe (PatternMatchScenario ta))
+checkTuplePattern ctx cases =
     case List.reverse cases of
         ((WildcardPattern _, wildCardResult)::restReversed) -> 
-            (collectMaybeList checkForTuplePatternCase restReversed) 
+            (collectMaybeList (checkForTuplePatternCase ctx) restReversed) 
                     |> Maybe.map List.reverse
                     |> Maybe.map (\casesToProcess -> (TupleCases casesToProcess (Just wildCardResult)))
         ((TuplePattern _ _, _)::_) as constructorCases ->
-            (collectMaybeList checkForTuplePatternCase constructorCases) 
+            (collectMaybeList (checkForTuplePatternCase ctx) constructorCases) 
                     |> Maybe.map List.reverse
                     |> Maybe.map (\casesToProcess -> (TupleCases casesToProcess Nothing))
         _ -> 
@@ -371,4 +380,4 @@ classifyScenario value cases ctx =
         , (\_ -> checkUnionWithNoParamsWithDefault value cases ctx)
         , (\_ -> checkUnionWithParams value cases ctx)
         , (\_ -> checkMaybePattern value cases ctx)
-        , (\_ -> checkTuplePattern cases) ])
+        , (\_ -> checkTuplePattern ctx cases) ])

@@ -73,6 +73,7 @@ checkForColumnCase typeReference ctx =
     if isBasicType typeReference || 
        isAliasedBasicType typeReference ctx ||
        isDataFrameFriendlyType typeReference ctx ||
+       isTypeVariable typeReference ||
        isMaybeWithGenericType typeReference then
         Just <| typeRefForSnowparkType "Column"
     else
@@ -183,6 +184,14 @@ isMaybeWithGenericType : Type () -> Bool
 isMaybeWithGenericType tpe =
     case tpe of
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "maybe" ] )  [_] ->
+            True
+        _ ->
+            False
+
+isTypeVariable : Type () -> Bool
+isTypeVariable tpe =
+    case tpe of
+        Type.Variable _ _ ->
             True
         _ ->
             False

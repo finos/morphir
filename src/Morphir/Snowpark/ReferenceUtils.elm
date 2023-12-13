@@ -168,13 +168,13 @@ simplifyBooleanExpression exp =
                     simplifyBooleanExpression right
             in
             case (simplLeft, simplRight) of
-                (Scala.Literal (Scala.BooleanLit True), result) ->
+                (Scala.Apply (Scala.Ref _ "lit") [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit True)) ], result) ->
                     result
-                (result, Scala.Literal (Scala.BooleanLit True)) ->
+                (result, Scala.Apply (Scala.Ref _ "lit") [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit True)) ]) ->
                     result
-                (Scala.Literal (Scala.BooleanLit False), _) ->
+                (Scala.Apply (Scala.Ref _ "lit") [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit False)) ], _) ->
                     simplLeft
-                (_, Scala.Literal (Scala.BooleanLit False)) ->
+                (_, Scala.Apply (Scala.Ref _ "lit") [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit False)) ]) ->
                     simplRight
                 _ ->
                     exp
@@ -186,13 +186,13 @@ simplifyBooleanExpression exp =
                     simplifyBooleanExpression right
             in
             case (simplLeft, simplRight) of
-                (Scala.Literal (Scala.BooleanLit True), _) ->
+                (Scala.Apply (Scala.Ref _ "lit") [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit True)) ], _) ->
                     simplLeft
-                (_, Scala.Literal (Scala.BooleanLit True)) ->
+                (_, Scala.Apply (Scala.Ref _ "lit") [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit True)) ]) ->
                     simplRight
-                (Scala.Literal (Scala.BooleanLit False), result) ->
+                (Scala.Apply (Scala.Ref _ "lit") [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit False)) ], result) ->
                     result
-                (result, Scala.Literal (Scala.BooleanLit False)) ->
+                (result, Scala.Apply (Scala.Ref _ "lit") [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit False)) ]) ->
                     result
                 _ ->
                     exp

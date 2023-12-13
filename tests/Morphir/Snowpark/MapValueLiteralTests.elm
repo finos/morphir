@@ -1,4 +1,6 @@
-module Morphir.Snowpark.MapValueLiteralTests exposing (mapValueLiteralTests)
+module Morphir.Snowpark.MapValueLiteralTests exposing ( mapValueLiteralTests
+                                                      , mapIfValueExpressionsTests
+                                                      , mapLetValueExpressionsTests )
 import Expect
 import Test exposing (Test, describe, test)
 import Morphir.IR.Literal as Literal
@@ -6,8 +8,13 @@ import Morphir.Snowpark.MapExpressionsToDataFrameOperations exposing (mapValue)
 import Morphir.Scala.AST as Scala
 import Morphir.IR.Value as Value
 import Morphir.IR.Type as Type
-import Morphir.Snowpark.MappingContext as MappingContext
 import Morphir.Snowpark.MappingContext exposing (emptyValueMappingContext)
+import Morphir.Snowpark.Constants exposing (applySnowparkFunc)
+import Morphir.Snowpark.CommonTestUtils exposing ( sIntLit, mIntLiteralOf, sCall, sExpCall
+                                                 , mIdOf, sVar, intTypeInstance, sBlock
+                                                 , mLetOf, mFuncTypeOf, addFunction)
+import Morphir.Snowpark.ReferenceUtils exposing (curryCall)
+import Morphir.Snowpark.Constants as Constants
 
 functionNamespace : List String
 functionNamespace = ["com", "snowflake", "snowpark", "functions"]
@@ -106,3 +113,104 @@ mapValueLiteralTests =
             assertFloatLiteral,
             assertIntegerLiteral
         ]
+
+
+mapIfValueExpressionsTests: Test
+mapIfValueExpressionsTests =
+    let
+        emptyContext = emptyValueMappingContext
+        assertIfExprGeneration =
+            test ("Generation for if expressions") <|
+            \_ ->
+                let
+                    ifExample =
+                        Value.IfThenElse intTypeInstance (mIdOf [ "flag" ] booleanReference) (mIntLiteralOf 10) (mIntLiteralOf 20)
+                    (mapped, _ ) =
+                        mapValue ifExample emptyContext
+                    expectedIf =
+                        sCall ( applySnowparkFunc "when" [ sVar "flag", applySnowparkFunc "lit" [ sIntLit 10 ] ]
+                              , "otherwise" )
+                              [ applySnowparkFunc "lit" [ sIntLit 20 ] ]
+
+                in
+                Expect.equal expectedIf mapped
+    in
+    describe "IF Value mappings"
+        [ assertIfExprGeneration
+        ]
+
+mapLetValueExpressionsTests: Test
+mapLetValueExpressionsTests =
+    let
+        emptyContext = emptyValueMappingContext
+        assertLetExprGenerationWithOneBinding =
+            test ("Generation for let expressions with one binding") <|
+            \_ ->
+                let
+                    
+                    letExample =
+                        mLetOf  ["tmp"] (mIntLiteralOf 10) (curryCall (addFunction intTypeInstance, [mIdOf [ "tmp" ] intTypeInstance, mIntLiteralOf 10]) )
+                    (mapped, _ ) =
+                        mapValue letExample emptyContext
+                    expectedVal =
+                        sBlock (Scala.BinOp (sVar "tmp") "+" (applySnowparkFunc "lit" [ sIntLit 10 ])) 
+                               [ ( "tmp", applySnowparkFunc "lit" [ sIntLit 10 ] ) ]
+                in
+                Expect.equal expectedVal mapped
+        assertLetExprGenerationWithSeveralBindings =
+            test ("Generation for let expressions with several bindings") <|
+            \_ ->
+                let
+                    letExample =
+                        mLetOf  ["tmp1"] (mIntLiteralOf 10) <|
+                        mLetOf  ["tmp2"] (mIntLiteralOf 20) <|
+                        mLetOf  ["tmp3"] (mIntLiteralOf 30) (curryCall (addFunction intTypeInstance, [mIdOf [ "tmp1" ] intTypeInstance, mIntLiteralOf 10]) )
+                    (mapped, _ ) =
+                        mapValue letExample emptyContext
+                    expectedVal =
+                        sBlock (Scala.BinOp (sVar "tmp1") "+" (applySnowparkFunc "lit" [ sIntLit 10 ])) 
+                               [ ( "tmp1", applySnowparkFunc "lit" [ sIntLit 10 ] )
+                               , ( "tmp2", applySnowparkFunc "lit" [ sIntLit 20 ] )
+                               , ( "tmp3", applySnowparkFunc "lit" [ sIntLit 30 ] ) ]
+                in
+                Expect.equal expectedVal mapped
+
+        assertLetExprGenerationWithFunctionDecl =
+            test ("Generation for let expressions with function decls") <|
+            \_ ->
+                let
+                    userDefinedFuncType =
+                        mFuncTypeOf intTypeInstance (mFuncTypeOf intTypeInstance intTypeInstance)
+                    letLambda =
+                        Value.Lambda userDefinedFuncType 
+                                     (Value.AsPattern intTypeInstance (Value.WildcardPattern intTypeInstance) ["x"])
+                                     (curryCall (addFunction intTypeInstance, [mIdOf ["x"] intTypeInstance, mIdOf ["x"] intTypeInstance]))
+
+                    letExample =
+                        Value.LetDefinition
+                            userDefinedFuncType
+                            ["double"]
+                            { inputTypes = [ ]
+                            , outputType = userDefinedFuncType
+                            , body = letLambda }
+                            (curryCall (mIdOf ["double"] userDefinedFuncType, [mIdOf [ "tmp1" ] intTypeInstance]) )
+                    (mapped, _ ) =
+                        mapValue letExample emptyContext
+                    lambdaArgDecl =
+                        { modifiers = [], tpe = Constants.typeRefForSnowparkType "Column", name = "x", defaultValue = Nothing }
+                    expectedVal =
+                        Scala.Block [ 
+                                Scala.FunctionDecl { modifiers = []
+                                                   , name = "double" 
+                                                   , typeArgs = []
+                                                   , args = [ [ lambdaArgDecl ] ]
+                                                   , returnType = Nothing
+                                                   , body =  Just <| Scala.BinOp (sVar "x") "+" (sVar "x") } ]
+                                (sExpCall (sVar "double") [ sVar "tmp1"])
+                in
+                Expect.equal expectedVal mapped
+    in
+    describe "Let Value mappings"
+        [ assertLetExprGenerationWithOneBinding
+        , assertLetExprGenerationWithSeveralBindings
+        , assertLetExprGenerationWithFunctionDecl ]

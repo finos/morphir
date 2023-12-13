@@ -55,8 +55,7 @@ tryToConvertUserFunctionCall (func, args) mapValue ctx =
                             |> List.unzip
                 in
                 (Constants.applySnowparkFunc "array_construct" argsToUse, List.concat issues)
-            else 
-                if isLocalFunctionName constructorName ctx && List.length args > 0 then
+            else if isLocalFunctionName constructorName ctx && List.length args > 0 then
                     let
                         (mappedArgs, issuesPerArg) =
                             args
@@ -71,7 +70,7 @@ tryToConvertUserFunctionCall (func, args) mapValue ctx =
                         tag = [ Constants.applySnowparkFunc "lit" [ Scala.Literal (Scala.StringLit "__tag") ],
                                 Constants.applySnowparkFunc "lit" [ Scala.Literal (Scala.StringLit tagName)] ]
                     in (Constants.applySnowparkFunc "object_construct" (tag ++ argsToUse), List.concat issuesPerArg)
-                else
+            else
                     errorValueAndIssue ("Constructor call not converted: `" ++ (FQName.toString constructorName) ++ "`")
        ValueIR.Variable _ funcName ->
             if List.member funcName ctx.parameters ||

@@ -66,7 +66,6 @@ mIntLiteralOf : Int -> Value.TypedValue
 mIntLiteralOf value =
     Value.Literal intTypeInstance (Literal.WholeNumberLiteral value)
 
-
 mListTypeOf : Type.Type () -> Type.Type ()
 mListTypeOf tpe =
     Type.Reference () (listFunctionName [ "list" ]) [ tpe ]
@@ -103,11 +102,18 @@ listFilterMapFunction collectionFrom collectionTo  =
             (mFuncTypeOf (mListTypeOf collectionFrom) (mListTypeOf collectionTo)))
         (listFunctionName [ "filter", "map" ])
 
-equalFunction : Type.Type () -> Type.Type () -> Value.TypedValue
-equalFunction left right  =
+equalFunction : Type.Type () -> Value.TypedValue
+equalFunction tpe  =
     Value.Reference
-        (mFuncTypeOf left right)
+        (mFuncTypeOf tpe (mFuncTypeOf tpe boolTypeInstance))
         (basicsFunctionName [ "equal" ])
+
+addFunction : Type.Type () -> Value.TypedValue
+addFunction tpe  =
+    Value.Reference
+        (mFuncTypeOf tpe (mFuncTypeOf tpe tpe))
+        (basicsFunctionName [ "add" ])
+
 
 listMapFunction : Type.Type () -> Type.Type () -> Value.TypedValue
 listMapFunction collectionFrom collectionTo  =
@@ -214,6 +220,7 @@ sDot expr memberName =
 sLit : String -> Scala.Value
 sLit stringLit =
     Scala.Literal (Scala.StringLit stringLit)    
+
 sIntLit : Int -> Scala.Value
 sIntLit intLiteral =
     Scala.Literal (Scala.IntegerLit intLiteral)
@@ -229,3 +236,16 @@ sFalse =
 sSpEqual : Scala.Value -> Scala.Value -> Scala.Value
 sSpEqual left right =
     Scala.BinOp left "===" right
+
+sBlock : Scala.Value -> List (Scala.Name, Scala.Value) -> Scala.Value
+sBlock body bindings =
+    let
+        valDecls =
+            bindings 
+                |> List.map (\(name, value) ->  
+                                Scala.ValueDecl { modifiers = []
+                                                , pattern = Scala.NamedMatch name
+                                                , valueType = Nothing
+                                                , value = value })
+    in
+    Scala.Block valDecls body
