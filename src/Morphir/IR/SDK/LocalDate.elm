@@ -86,7 +86,8 @@ moduleSpec =
             , vSpec "addDays" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())
             , vSpec "addWeeks" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())
             , vSpec "addMonths" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())
-            , vSpec "addYears" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())
+            , vSpec "addYears" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())            
+            , vSpec "month" [ ( "localDate", localDateType () ) ] (monthType ())
             , vSpec "year" [ ( "localDate", localDateType () ) ] (intType ())
             ]
     , doc = Just "Contains the LocalDate type (representing a date concept), and it's associated functions."
