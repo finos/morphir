@@ -97,6 +97,9 @@ localDateType : a -> Type a
 localDateType attributes =
     Reference attributes (toFQName moduleName "LocalDate") []
 
+monthType: a -> Type a
+monthType attributes =
+    Reference attributes (toFQName moduleName "Month") []
 
 nativeFunctions : List ( String, Native.Function )
 nativeFunctions =
