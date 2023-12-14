@@ -78,6 +78,7 @@ moduleSpec =
             [ vSpec "toISOString" [ ( "date", localDateType () ) ] (stringType ())
             , vSpec "fromISO" [ ( "iso", stringType () ) ] (maybeType () (localDateType ()))
             , vSpec "fromParts" [ ( "year", intType () ), ( "month", intType () ), ( "day", intType () ) ] (maybeType () (localDateType ()))
+            , vSpec "day" [ ( "localDate", localDateType () ) ] (intType ())
             , vSpec "diffInDays" [ ( "date1", localDateType () ), ( "date2", localDateType () ) ] (intType ())
             , vSpec "diffInWeeks" [ ( "date1", localDateType () ), ( "date2", localDateType () ) ] (intType ())
             , vSpec "diffInMonths" [ ( "date1", localDateType () ), ( "date2", localDateType () ) ] (intType ())
@@ -86,6 +87,7 @@ moduleSpec =
             , vSpec "addWeeks" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())
             , vSpec "addMonths" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())
             , vSpec "addYears" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())
+            , vSpec "year" [ ( "localDate", localDateType () ) ] (intType ())
             ]
     , doc = Just "Contains the LocalDate type (representing a date concept), and it's associated functions."
     }
