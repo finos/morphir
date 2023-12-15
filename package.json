@@ -19,7 +19,8 @@
     "ncc-morphir-server": "ncc build cli/morphir-elm-develop.js -o dist/morphir-server",
     "build": "gulp && npm run ncc-morphir && npm run ncc-morphir-server && npx jest && gulp test",
     "test-coverage": "elm-coverage src/ --open",
-    "build-value-editor": "elm make cli/src/Morphir/Web/Editor.elm --output=cli/web/valueEditor.js"
+    "build-value-editor": "elm make cli/src/Morphir/Web/Editor.elm --output=cli/web/valueEditor.js",
+    "postinstall": "elm-tooling install"
   },
   "repository": {
     "type": "git",
@@ -75,6 +76,7 @@
     "elm-doc-preview": "^5.0.5",
     "elm-format": "^0.8.5",
     "elm-test": "^0.19.1-revision6",
+    "elm-tooling": "^1.15.0",
     "execa": "^5.1.1",
     "gulp": "^4.0.2",
     "gulp-mocha": "^8.0.0",
