@@ -37,7 +37,7 @@ processJoinBody joinValue mapValue ctx =
             (ValueIR.Apply 
                 _ 
                 (ValueIR.Apply _ ( ValueIR.Reference _  ([["morphir"],["s","d","k"]],[["list"]], joinName)) (ValueIR.Variable _ arg2))
-                -- _
+               
                 (ValueIR.Lambda 
                     _ 
                     (ValueIR.AsPattern _ _ lambdaArg1Name)

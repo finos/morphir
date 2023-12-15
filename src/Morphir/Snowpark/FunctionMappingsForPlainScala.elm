@@ -22,8 +22,7 @@ import Morphir.Snowpark.MappingContext exposing (ValueMappingContext, isUnionTyp
 import Morphir.Snowpark.Operatorsmaps exposing (mapOperator)
 import Morphir.Snowpark.PatternMatchMapping exposing (PatternMatchValues)
 import Morphir.Snowpark.ReferenceUtils exposing (errorValueAndIssue, curryCall, mapLiteralToPlainLiteral)
-import Morphir.IR.Value as Value
-import Morphir.IR.Value as Value
+import Morphir.IR.Value as ValueIR
 
 mapValueForPlainScala : TypedValue -> ValueMappingContext -> ValueGenerationResult
 mapValueForPlainScala value ctx =
@@ -126,7 +125,7 @@ mapListMapFunction : (TypedValue, List (TypedValue)) -> Constants.MapValueType -
 mapListMapFunction (( _, args ) as call) mapValue ctx =
     case args of    
         [ action, collection ] ->
-            if isCandidateForDataFrame  (Value.valueAttribute collection) ctx.typesContextInfo then
+            if isCandidateForDataFrame  (ValueIR.valueAttribute collection) ctx.typesContextInfo then
                 MapDfOperations.mapValue (curryCall call) ctx
             else 
                 let
@@ -145,7 +144,7 @@ mapListSumFunction (( _, args ) as call) mapValue ctx =
             case collection of
                 ValueIR.Apply 
                     _
-                    (ValueIR.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "map" ] )) _)
+                    (ValueIR.Apply _ (ValueIR.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "map" ] )) _)
                     innerCollection ->
                     isCandidateForDataFrame (ValueIR.valueAttribute innerCollection) ctx.typesContextInfo
                 _ ->
