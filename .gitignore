@@ -20,3 +20,5 @@ Morphir.Elm.Generator.js
 docs.json
 /.coverage/
 tests-integration/reference-model/Dockerfile
+
+.scala-build/

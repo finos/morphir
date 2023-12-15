@@ -22,7 +22,7 @@ import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Literal as Literal
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name
-import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.Path as Path
 import Morphir.IR.SDK.Basics exposing (intType)
 import Morphir.IR.SDK.Common exposing (toFQName, vSpec)
 import Morphir.IR.SDK.Maybe exposing (maybeType)
@@ -86,7 +86,7 @@ moduleSpec =
             , vSpec "addDays" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())
             , vSpec "addWeeks" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())
             , vSpec "addMonths" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())
-            , vSpec "addYears" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())            
+            , vSpec "addYears" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())
             , vSpec "month" [ ( "localDate", localDateType () ) ] (monthType ())
             , vSpec "year" [ ( "localDate", localDateType () ) ] (intType ())
             ]
@@ -98,9 +98,11 @@ localDateType : a -> Type a
 localDateType attributes =
     Reference attributes (toFQName moduleName "LocalDate") []
 
-monthType: a -> Type a
+
+monthType : a -> Type a
 monthType attributes =
     Reference attributes (toFQName moduleName "Month") []
+
 
 nativeFunctions : List ( String, Native.Function )
 nativeFunctions =
