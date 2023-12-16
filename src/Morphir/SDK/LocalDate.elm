@@ -19,11 +19,11 @@ module Morphir.SDK.LocalDate exposing
     ( LocalDate
     , diffInDays, diffInWeeks, diffInMonths, diffInYears
     , addDays, addWeeks, addMonths, addYears
-    , fromCalendarDate, fromISO, fromOrdinalDate, fromParts, fromRataDie
-    , toISOString, toRataDie
+    , fromCalendarDate, fromISO, fromOrdinalDate, fromParts
+    , toISOString, monthToInt
     , DayOfWeek(..), dayOfWeek, isWeekend, isWeekday
     , Month(..)
-    , year, month, monthNumber, monthToInt, day
+    , year, month, monthNumber, day
     )
 
 {-| This module adds the definition of a date without time zones. Useful in business modeling.
@@ -42,19 +42,19 @@ module Morphir.SDK.LocalDate exposing
 
 # Constructors
 
-@docs fromCalendarDate, fromISO, fromOrdinalDate, fromParts, fromRataDie
+@docs fromCalendarDate, fromISO, fromOrdinalDate, fromParts
 
 
 # Convert
 
-@docs toISOString, toRataDie
+@docs toISOString, monthToInt
 
 
 # Query
 
 @docs DayOfWeek, dayOfWeek, isWeekend, isWeekday
 @docs Month
-@docs year, month, monthNumber, monthToInt, day
+@docs year, month, monthNumber, day
 
 -}
 
@@ -150,8 +150,8 @@ year. Out-of-range day values will be clamped.
 
 -}
 fromOrdinalDate : Int -> Int -> LocalDate
-fromOrdinalDate y d =
-    Date.fromOrdinalDate y d
+fromOrdinalDate y dayOfYear =
+    Date.fromOrdinalDate y dayOfYear
 
 
 {-| Construct a LocalDate based on ISO formatted string. Opportunity for error denoted by Maybe return type.
@@ -457,19 +457,3 @@ type Month
     | October
     | November
     | December
-
-
-{-| Construct a LocalDate from Integer Rata Die, a system for system for assigning calendar days to
-numbers, with 1 representing 0001-01-01.
--}
-fromRataDie : Int -> LocalDate
-fromRataDie rataDieNumber =
-    Date.fromRataDie rataDieNumber
-
-
-{-| Convert a LocalDate to its number representation in Rata Die. Rata Die is a system for
-assigning calendar days to numbers, with 1 representing 0001-01-01.
--}
-toRataDie : LocalDate -> Int
-toRataDie localDate =
-    Date.toRataDie localDate
