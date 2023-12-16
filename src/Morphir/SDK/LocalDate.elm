@@ -19,11 +19,11 @@ module Morphir.SDK.LocalDate exposing
     ( LocalDate
     , diffInDays, diffInWeeks, diffInMonths, diffInYears
     , addDays, addWeeks, addMonths, addYears
-    , fromCalendarDate, fromISO, fromOrdinalDate, fromParts, fromRataDie
-    , toISOString, toRataDie
+    , fromCalendarDate, fromISO, fromOrdinalDate, fromParts
+    , toISOString, monthToInt
     , DayOfWeek(..), dayOfWeek, isWeekend, isWeekday
     , Month(..)
-    , year, month, day
+    , year, month, monthNumber, day
     )
 
 {-| This module adds the definition of a date without time zones. Useful in business modeling.
@@ -42,19 +42,19 @@ module Morphir.SDK.LocalDate exposing
 
 # Constructors
 
-@docs fromCalendarDate, fromISO, fromOrdinalDate, fromParts, fromRataDie
+@docs fromCalendarDate, fromISO, fromOrdinalDate, fromParts
 
 
 # Convert
 
-@docs toISOString, toRataDie
+@docs toISOString, monthToInt
 
 
 # Query
 
 @docs DayOfWeek, dayOfWeek, isWeekend, isWeekday
 @docs Month
-@docs year, month, day
+@docs year, month, monthNumber, day
 
 -}
 
@@ -150,8 +150,8 @@ year. Out-of-range day values will be clamped.
 
 -}
 fromOrdinalDate : Int -> Int -> LocalDate
-fromOrdinalDate y d =
-    Date.fromOrdinalDate y d
+fromOrdinalDate y dayOfYear =
+    Date.fromOrdinalDate y dayOfYear
 
 
 {-| Construct a LocalDate based on ISO formatted string. Opportunity for error denoted by Maybe return type.
@@ -173,14 +173,14 @@ Errors can occur when any of the given values fall outside of their relevant con
 For example, the date given as 2000 2 30 (2000-Feb-30) would fail because the day of the 30th is impossible.
 -}
 fromParts : Int -> Int -> Int -> Maybe LocalDate
-fromParts yearNumber monthNumber dayOfMonthNumber =
+fromParts yearNumber monthNum dayOfMonthNumber =
     -- We do all of this processing because our Elm Date library accepts invalid values while most other languages don't.
     --  So we want to maintain consistency.
     -- Oddly, Date has fromCalendarParts, but it's not exposed.
     let
         maybeMonth =
-            if monthNumber > 0 && monthNumber < 13 then
-                Just (Date.numberToMonth monthNumber)
+            if monthNum > 0 && monthNum < 13 then
+                Just (Date.numberToMonth monthNum)
 
             else
                 Nothing
@@ -248,6 +248,90 @@ month localDate =
 
         Time.Dec ->
             December
+
+
+{-| Returns the month of the year as an Int, where January is month 1 and December is month 12.
+-}
+monthNumber : LocalDate -> Int
+monthNumber localDate =
+    case Date.month localDate of
+        Time.Jan ->
+            1
+
+        Time.Feb ->
+            2
+
+        Time.Mar ->
+            3
+
+        Time.Apr ->
+            4
+
+        Time.May ->
+            5
+
+        Time.Jun ->
+            6
+
+        Time.Jul ->
+            7
+
+        Time.Aug ->
+            8
+
+        Time.Sep ->
+            9
+
+        Time.Oct ->
+            10
+
+        Time.Nov ->
+            11
+
+        Time.Dec ->
+            12
+
+
+{-| Converts a Month to an Int, where January is month 1 and December is month 12.
+-}
+monthToInt : Month -> Int
+monthToInt m =
+    case m of
+        January ->
+            1
+
+        February ->
+            2
+
+        March ->
+            3
+
+        April ->
+            4
+
+        May ->
+            5
+
+        June ->
+            6
+
+        July ->
+            7
+
+        August ->
+            8
+
+        September ->
+            9
+
+        October ->
+            10
+
+        November ->
+            11
+
+        December ->
+            12
 
 
 monthToMonth : Month -> Time.Month
@@ -373,19 +457,3 @@ type Month
     | October
     | November
     | December
-
-
-{-| Construct a LocalDate from Integer Rata Die, a system for system for assigning calendar days to
-numbers, with 1 representing 0001-01-01.
--}
-fromRataDie : Int -> LocalDate
-fromRataDie rataDieNumber =
-    Date.fromRataDie rataDieNumber
-
-
-{-| Convert a LocalDate to its number representation in Rata Die. Rata Die is a system for
-assigning calendar days to numbers, with 1 representing 0001-01-01.
--}
-toRataDie : LocalDate -> Int
-toRataDie localDate =
-    Date.toRataDie localDate
