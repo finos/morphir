@@ -17,7 +17,7 @@
     "multiary-decision-tree-live": "cd cli && elm-live src/Morphir/Web/MultiaryDecisionTreeTest.elm --start-page=./web/treeIndex.html -- --output=treeStuff.js",
     "ncc-morphir": "ncc build cli/morphir.js -o dist/morphir",
     "ncc-morphir-server": "ncc build cli/morphir-elm-develop.js -o dist/morphir-server",
-    "build": "gulp && npm run ncc-morphir && npm run ncc-morphir-server && npx jest && gulp test",
+    "build": "gulp && npx jest && gulp test",
     "test-coverage": "elm-coverage src/ --open",
     "build-value-editor": "elm make cli/src/Morphir/Web/Editor.elm --output=cli/web/valueEditor.js",
     "postinstall": "elm-tooling install"
