@@ -3,6 +3,11 @@ module Morphir.Reference.Model.SDK.LocalDate exposing (..)
 import Morphir.SDK.LocalDate as Date exposing (..)
 
 
+day : LocalDate -> Int
+day date =
+    Date.day date
+
+
 diffInDays : LocalDate -> LocalDate -> Int
 diffInDays fromDate toDate =
     Date.diffInDays fromDate toDate
@@ -76,5 +81,25 @@ Errors can occur when any of the given values fall outside of their relevant con
 For example, the date given as 2000 2 30 (2000-Feb-30) would fail because the day of the 30th is impossible.
 -}
 fromParts : Int -> Int -> Int -> Maybe LocalDate
-fromParts year month day =
-    Date.fromParts year month day
+fromParts y m d =
+    Date.fromParts y m d
+
+
+month : LocalDate -> Month
+month date =
+    Date.month date
+
+
+monthNumber : LocalDate -> Int
+monthNumber date =
+    Date.monthNumber date
+
+
+monthToInt : Month -> Int
+monthToInt m =
+    Date.monthToInt m
+
+
+year : LocalDate -> Int
+year date =
+    Date.year date

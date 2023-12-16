@@ -23,7 +23,7 @@ module Morphir.SDK.LocalDate exposing
     , toISOString, toRataDie
     , DayOfWeek(..), dayOfWeek, isWeekend, isWeekday
     , Month(..)
-    , year, month, day
+    , year, month, monthNumber, monthToInt, day
     )
 
 {-| This module adds the definition of a date without time zones. Useful in business modeling.
@@ -54,7 +54,7 @@ module Morphir.SDK.LocalDate exposing
 
 @docs DayOfWeek, dayOfWeek, isWeekend, isWeekday
 @docs Month
-@docs year, month, day
+@docs year, month, monthNumber, monthToInt, day
 
 -}
 
@@ -173,14 +173,14 @@ Errors can occur when any of the given values fall outside of their relevant con
 For example, the date given as 2000 2 30 (2000-Feb-30) would fail because the day of the 30th is impossible.
 -}
 fromParts : Int -> Int -> Int -> Maybe LocalDate
-fromParts yearNumber monthNumber dayOfMonthNumber =
+fromParts yearNumber monthNum dayOfMonthNumber =
     -- We do all of this processing because our Elm Date library accepts invalid values while most other languages don't.
     --  So we want to maintain consistency.
     -- Oddly, Date has fromCalendarParts, but it's not exposed.
     let
         maybeMonth =
-            if monthNumber > 0 && monthNumber < 13 then
-                Just (Date.numberToMonth monthNumber)
+            if monthNum > 0 && monthNum < 13 then
+                Just (Date.numberToMonth monthNum)
 
             else
                 Nothing
@@ -248,6 +248,90 @@ month localDate =
 
         Time.Dec ->
             December
+
+
+{-| Returns the month of the year as an Int, where January is month 1 and December is month 12.
+-}
+monthNumber : LocalDate -> Int
+monthNumber localDate =
+    case Date.month localDate of
+        Time.Jan ->
+            1
+
+        Time.Feb ->
+            2
+
+        Time.Mar ->
+            3
+
+        Time.Apr ->
+            4
+
+        Time.May ->
+            5
+
+        Time.Jun ->
+            6
+
+        Time.Jul ->
+            7
+
+        Time.Aug ->
+            8
+
+        Time.Sep ->
+            9
+
+        Time.Oct ->
+            10
+
+        Time.Nov ->
+            11
+
+        Time.Dec ->
+            12
+
+
+{-| Converts a Month to an Int, where January is month 1 and December is month 12.
+-}
+monthToInt : Month -> Int
+monthToInt m =
+    case m of
+        January ->
+            1
+
+        February ->
+            2
+
+        March ->
+            3
+
+        April ->
+            4
+
+        May ->
+            5
+
+        June ->
+            6
+
+        July ->
+            7
+
+        August ->
+            8
+
+        September ->
+            9
+
+        October ->
+            10
+
+        November ->
+            11
+
+        December ->
+            12
 
 
 monthToMonth : Month -> Time.Month
