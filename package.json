@@ -20,7 +20,7 @@
     "build": "gulp && npm run ncc-morphir && npm run ncc-morphir-server && npx jest && gulp test",
     "test-coverage": "elm-coverage src/ --open",
     "build-value-editor": "elm make cli/src/Morphir/Web/Editor.elm --output=cli/web/valueEditor.js",
-    "postinstall": "elm-tooling install"
+    "setup-elm-tooling": "elm-tooling install"
   },
   "repository": {
     "type": "git",
