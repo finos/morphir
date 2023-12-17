@@ -70,7 +70,7 @@
     "@types/jest": "^27.4.0",
     "@types/mocha": "^9.0.0",
     "@typespec/compiler": "^0.42.0",
-    "@vercel/ncc": "^0.24.1",
+    "@vercel/ncc": "^0.38.1",
     "del-cli": "3.0.1",
     "elm": "^0.19.1-5",
     "elm-doc-preview": "^5.0.5",
