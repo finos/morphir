@@ -2,10 +2,9 @@
 id: snowpark-backend-using-and-customize
 ---
 
+# Using the Snowpark backend and customizing the output
 
-## Using the Snowpark backend and customizing the output
-
-### Using the backend
+## Using the backend
 
 The backend is selected by specifying `Snowpark` as the target. For example:
 
@@ -13,7 +12,7 @@ The backend is selected by specifying `Snowpark` as the target. For example:
 $ morphir-elm gen -t Snowpark -o outputDir
 ```
 
-### Identifying not supported cases
+## Identifying not supported cases
 
 The output directory where the Scala code was generated contains a file called `GenerationReport.md`. This is a markdown file which contains the following information:
 
@@ -147,7 +146,7 @@ Regenerating the code with these decorations shows that the definition was inlin
   }
 ```
 
-#### Cache result
+### Cache result
 
 Another customization allows the user to specify that caching code need to be generated for a specific function.  
 
@@ -202,7 +201,7 @@ def getEmployeesWithLastName(
 
 Notice that this code use the [cacheResult](https://docs.snowflake.com/en/developer-guide/snowpark/scala/working-with-dataframes#caching-a-dataframe)  mechanism.
 
-### Configuring the project for using Snowpark decorations
+## Configuring the project for using Snowpark decorations
 
 Some modifications to the  `morphir.json` are required to add these decorations. Here is an example of the configuration that needs to be added to this file:
 
@@ -223,7 +222,7 @@ Some modifications to the  `morphir.json` are required to add these decorations.
 
 Every time code is generated with this Snowpark backend a `decorations` directory is created in the output directory. This directory contains the `morphir-ir.json` file to use the customizations.
 
-### Using decoration when generating code
+## Using decoration when generating code
 
 The `-dec` command line parameter is used to specify the decorations generated with the Morphir UI . For example given that the `spdecorations.json` name is used in the `storageLocation` section we can write:
 

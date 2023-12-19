@@ -1,9 +1,11 @@
 ---
 id: snowpark-backend-value-mappings
+title: Snowpark backend value mappings
 ---
 
-
 # Value mappings for DataFrame operations
+
+This document contains a description of how different kinds of **Morphir-IR** elements are generated to Scala with the Snowpark API.
 
 ## Literals
 
@@ -110,7 +112,6 @@ def myFunc: com.snowflake.snowpark.Column = {
 ```
 
 Notice that the call to construct `North` was replaced by an access to the helper object `CardinalDirection` .
-
 
 ### Custom type with parameters
 
@@ -351,7 +352,28 @@ in
 
 ## Record values
 
-**TODO**
+Record creation is generated depending of the context where the mapping occurs. 
+
+For example, a sequence of arguments to `DataFrame.select` is created for a record is created as part of a `List.map` operation.
+
+```elm
+trades
+    |> List.map
+        (\t ->
+            { product = t.productID
+            , qty = t.quantity
+            }
+        )
+```
+
+This generates:
+
+```scala
+trades.select(
+  tradesColumns.productID.as("product"),
+  tradesColumns.quantity.as("qty")
+)
+```
 
 ## User defined function invocation values
 
@@ -395,4 +417,6 @@ Builtin functions are converted using different strategies depending on each cas
 
 # Value mappings for plain Scala operations
 
-**TODO**
+Although few operations are supported, there are support for converting functions classified as "complex" (functions that receive or return non-Dataframe compatible values).
+
+

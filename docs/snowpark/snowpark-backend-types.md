@@ -1,10 +1,9 @@
 ---
 id: snowpark-backend-types
+title: Type mappings
 ---
 
 # Type mappings
-
-**TODO**
 
  When generating code using DataFrame operations types are mapped using the following criteria:
 

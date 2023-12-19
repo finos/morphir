@@ -1,27 +1,24 @@
 ---
-id: snowpark-backend
+id: snowpark-backend-generation
+title: Snowpark backend generation
 ---
 
-# Snowpark Backend
-
-The Morphir **Snowpark** backend generates Scala code that uses the [Snowpark](https://docs.snowflake.com/en/developer-guide/snowpark/scala/index) API .
-
-## Generation conventions and strategies
+# Generation patterns and strategies
 
 The **Snowpark** backend supports two main code generation strategies:
 
 - Generating code that manipulates [DataFrame](https://docs.snowflake.com/en/developer-guide/snowpark/scala/working-with-dataframes) expressions
 - Generating "plain" Scala code
 
-The backend uses a series of conventions for deciding which strategy is used to convert the a function. These conventions apply to the way types and function are defined. 
+The backend identifies a series of patterns for deciding which strategy is used to convert a function. These patterns apply to the way types and function are defined. 
 
-### Type definition conventions
+## Type definition patterns
 
-Type definitions in the input **Morphir IR** are classified using the following conventions:
+Type definitions in the input **Morphir IR** are classified using the following patterns:
 
-#### Records that represent tables
+### Records that represent tables
 
-Records are classified as "representing a table definition" according to the types of its members.  A [DataFrame](https://docs.snowflake.com/en/developer-guide/snowpark/scala/working-with-dataframes) compatible type is one of the following:
+Records are classified as "representing a table definition" according to the types of its members. A type that is compatible with a [DataFrame](https://docs.snowflake.com/en/developer-guide/snowpark/scala/working-with-dataframes) is considered to fall in this category. These types are:
 
 - A basic datatype
   - Int
@@ -32,7 +29,7 @@ Records are classified as "representing a table definition" according to the typ
 - A [Maybe](https://package.elm-lang.org/packages/elm/core/latest/Maybe) type used with a DataFrame compatible type
 - An [alias](https://guide.elm-lang.org/types/type_aliases) of a DataFrame compatible type
 
-An example of these kinds of records is the following:
+An example of one of these records is the following:
 
 ```elm
 type alias Employee = 
@@ -41,8 +38,7 @@ type alias Employee =
    }
 ```
 
-
-The **Snowpark** backend generates the following code for each type definiton:
+The **Snowpark** backend generates the following code for each type definition:
 
 ```scala
   trait Employee {
@@ -112,7 +108,7 @@ This code includes:
 - A [singleton object](https://docs.scala-lang.org/tour/singleton-objects.html) implementing the trait with the column definitions and an utility method to create an empty DataFrame for the current record
 - A column wrapper class implementing the previous trait and giving access to the specific columns of a DataFrame 
 
-#### Records representing Scala classes
+### Records representing Scala classes
 
 Records that contain fields that are not compatible with table column definitions are classified as "complex" and are generated as [Scala case classes](https://docs.scala-lang.org/tour/case-classes.html).
 
@@ -132,7 +128,7 @@ type alias DataFromCompany
       }
 ```
 
-The backend generates the following class for this record definition:
+This backend generates the following class for this record definition:
 
 ```scala
   case class DataFromCompany(
@@ -141,9 +137,9 @@ The backend generates the following class for this record definition:
   ){}
 ```
 
-#### Types representing DataFrames
+### Types representing DataFrames
 
-This backend considers lists of "records representing tables" as a [**Snowpark** DataFrame](https://docs.snowflake.com/en/developer-guide/snowpark/scala/working-with-dataframes) . For example:
+This backend considers lists of "records representing tables" as a [**Snowpark** DataFrame](https://docs.snowflake.com/en/developer-guide/snowpark/scala/working-with-dataframes). For example:
 
 
 ```elm
@@ -169,11 +165,11 @@ In this case references to `List Employee` are converted to DataFrames:
   }
 ```
 
-### Custom types
+## Custom types
 
-Two conventions are used to process [custom types](https://guide.elm-lang.org/types/custom_types.html) used as a field of a *DataFrame record*. These conventions depend of the presence of parameters for type constructors.
+Two patterns are used to process [custom types](https://guide.elm-lang.org/types/custom_types.html). These patterns depend on the presence of parameters for type constructors.
 
-#### 1. Convention for custom types without data
+### 1. Custom types without data
 
 Custom types that define constructors without parameters are treated as a `String` (or `CHAR`, `VARCHAR`) column. 
 
@@ -241,11 +237,9 @@ This object is used where the value of the possible constructors is used. For ex
   }
 ```
 
-#### 2. Convention for custom types with data
+### 2. Custom types with data
 
-In the case that a custom type has constructors with parameters this backend assumes that values of this type are stored in an [OBJECT column](https://docs.snowflake.com/en/sql-reference/data-types-semistructured#object) .
-
-The encoding of column is defined as follows:
+This backend uses an [OBJECT column](https://docs.snowflake.com/en/sql-reference/data-types-semistructured#object) to represent custom types that have constructors with parameters. Using this kind of columns allows storing different options allowed by the custom type definition. The encoding of a column is defined as follows:
 
 - Values are encoded as a `JSON` object
 - A special property of this object called `"__tag"` is used to determine which variant is used in the current value
@@ -274,7 +268,7 @@ The data for `TaskEstimations` is expected to be stored in a table using an `OBJ
 |   20   | `{ "__tag": "MinutesAndSeconds", "field0": 10, "field1": 20 }`    |
 |   30   | `{ "__tag": "Seconds", "field0": 2 }`                             |
 
-Pattern matching operations that manipulate values of this type are generated as operations that process JSON expressions following this convention.
+Pattern matching operations that manipulate values of this type are generated as operations that process JSON expressions following this pattern.
 
 For example:
 
@@ -320,7 +314,7 @@ This code is generated as:
   }
 ```
 
-#### 3. Convention for `Maybe` types
+#### 3. Strategy for generating `Maybe` types
 
 The [Maybe a](https://package.elm-lang.org/packages/elm/core/latest/Maybe) type is assumed to be a nullable database value. This means that the data is expected to be stored as follows:
 
@@ -330,11 +324,11 @@ The [Maybe a](https://package.elm-lang.org/packages/elm/core/latest/Maybe) type 
 | `Nothing`    |  `NULL`                       |
 
 
-### Function definition conventions
+## Function definition patterns
 
-These conventions are based on the input and return types of a function. Two strategies are used: using DataFrame expressions or using Scala expressions. The following sections have more details.
+These patterns are based on the input and return types of a function. Two strategies are used: using DataFrame expressions or using Scala expressions. The following sections have more details.
 
-#### Code generation using DataFrame expressions manipulation
+### Code generation using DataFrame expressions manipulation
 
 For functions that receive or return DataFrames, simple types, or records the generation strategy is to generate DataFrame expressions for example:
 
@@ -384,9 +378,9 @@ In this case the backend generates the following code:
 
 Notice that language constructs are converted to DataFrame expression. For example in the way the `if` expression was converted to a combination of [`when`](https://docs.snowflake.com/ko/developer-guide/snowpark/reference/scala/com/snowflake/snowpark/functions$.html#when(condition:com.snowflake.snowpark.Column,value:com.snowflake.snowpark.Column):com.snowflake.snowpark.CaseExpr) and [`otherwise`](https://docs.snowflake.com/ko/developer-guide/snowpark/reference/scala/com/snowflake/snowpark/CaseExpr.html#otherwise(value:com.snowflake.snowpark.Column):com.snowflake.snowpark.Column) calls.
 
-#### Conventions for functions from values to lists of records
+### Pattern for functions from values to lists of records
 
-If the function doesn't receive a DataFrame but produces lists of records, the strategy for code generation changes . In this case the convention assumes that an array of semi-structured objects is being created instead of a DataFrame.
+If the function doesn't receive a DataFrame but produces lists of records, the strategy for code generation changes. In this case the pattern assumes that an array of semi-structured objects is being created instead of a DataFrame.
 
 For example:
 
@@ -475,7 +469,7 @@ Notice the function `classifyDepartment` which generates a list of records but d
   }
 ```
 
-#### Code generation using Scala expressions
+### Code generation using Scala expressions
 
 When a function receives *"complex"* types as parameters the strategy is changed to use a Scala expression approach.
 
@@ -528,7 +522,7 @@ In this case code for `avgSalaries` is going to perform a Scala division operati
 
 Code generation for this strategy is meant to be used for code that manipulates the result of performing DataFrame operations. At this moment its coverage is very limited.
 
-### Creation of empty DataFrames
+## Creation of empty DataFrames
 
 Creating an empty list of table-like records is interpreted as creating an empty DataFrame. For example:
 

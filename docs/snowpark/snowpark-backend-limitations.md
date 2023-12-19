@@ -1,5 +1,9 @@
-# Limitations of the Snowpark backend
+---
+id: snowpark-backend-limitations
+title: Snowpark backend limitations
+---
 
+# Limitations of the Snowpark backend
 
 The goal of the Snowpark backend is to generate expressions that can take advantage of the **Snowpark** infrastructure. Because of this, there are several language practices that are valid in `Mophir-IR/Elm` that are not supported by this backend. When possible a warning is generated in the code or in the `GenerationReport.md` file.
 
@@ -80,9 +84,9 @@ java.lang.StackOverflowError
 To take advantage of this backend, the code being processed has to manipulate lists of table-like records (ex. with fields of only basic). These structure are identified as [DataFrames](https://docs.snowflake.com/en/developer-guide/snowpark/scala/working-with-dataframes).  
 
 
-## Code that do not follow the backend conventions
+## Code that do not follow the supported patterns
 
-The backend assumes some conventions to determine how to interpret the code that is being processed. These conventions are described in [snowpark-backend.md](snowpark-backend.md).
+The backend assumes some conventions and patterns to determine how to interpret the code that is being processed. These patterns are described in [snowpark-backend-generation](snowpark-backend-generation.md).
 
 
 ## Unsupported elements
