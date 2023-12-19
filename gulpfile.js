@@ -99,6 +99,7 @@ const buildMorphirAPI2 = async ()=>{
         .pipe(dest('./lib/generated/morphir/sdk'))
        return await execa('npx tsc', ['--project',path.join('.','lib','tsconfig.json')])
     } catch (error) {
+        console.error("Error building morphir API 2", error);
         return error
     }
 
@@ -168,6 +169,7 @@ async function morphirJsonSchemaGen(inputPath, outputDir, target) {
     try {
         await execa('node', args, {stdio})
     } catch (err) {
+        console.log("Error running json-schema-gen command", err);
         throw(err)
     }
 }
@@ -295,7 +297,7 @@ async function testIntegrationBuildSpark(cb) {
         )
     } catch (err) {
         if (err.code == 'ENOENT') {
-            console.log("Skipping testIntegrationBuildSpark as `mill` build tool isn't available.");
+            console.error("Skipping testIntegrationBuildSpark as `mill` build tool isn't available.");
         } else {
             throw err;
         }
@@ -310,7 +312,7 @@ async function testIntegrationTestSpark(cb) {
         )
     } catch (err) {
         if (err.code == 'ENOENT') {
-            console.log("Skipping testIntegrationTestSpark as `mill` build tool isn't available.");
+            console.error("Skipping testIntegrationTestSpark as `mill` build tool isn't available.");
         } else {
             throw err;
         }
@@ -339,7 +341,7 @@ async function testCreateCSV(cb) {
     } else {
         code_no = shell.exec('bash ./create_csv_files.sh', { cwd: './tests-integration/spark/elm-tests/tests' }).code
         if (code_no != 0) {
-            console.log('ERROR: CSV files cannot be created')
+            console.error('ERROR: CSV files cannot be created')
             return false;
         }
     }
