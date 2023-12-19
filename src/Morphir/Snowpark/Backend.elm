@@ -43,6 +43,9 @@ import Morphir.Snowpark.Customization exposing ( loadCustomizationOptions
 import Morphir.Snowpark.Constants exposing (typeRefForSnowparkType)
 import Morphir.Snowpark.GenerationReport exposing (GenerationIssue, GenerationIssues, createGenerationReport)
 
+{-| Generate Scala files that use the Snowpark API to process DataFrame-like structures.
+-}
+
 type alias Options =
     { decorations : Maybe (SDKDict.Dict NodeID Decode.Value) }
 
@@ -142,13 +145,8 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
             , typeDecls = [( Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
                     (Scala.Annotated []
                         (Scala.Object
-                            { modifiers =
-                                case accessControlledModuleDef.access of
-                                    Public ->
-                                        []
-
-                                    Private ->
-                                        []
+                            { modifiers = 
+                                []
                             , name =
                                 moduleName |> Name.toTitleCase
                             , members = 
@@ -180,7 +178,7 @@ processFunctionMember valueName accessControlledValueDef currentPackagePath curr
             mapFunctionDefinition valueName accessControlledValueDef currentPackagePath currentModulePath ctxInfo
         issuesDict =
              if List.isEmpty issues then  
-                 Dict.empty
+                Dict.empty
             else 
                 Dict.insert fullFunctionName issues Dict.empty
     in
@@ -193,21 +191,28 @@ processFunctionMember valueName accessControlledValueDef currentPackagePath curr
 mapFunctionDefinition : Name.Name -> AccessControlled (Documented (Value.Definition () (Type ()))) ->  Path -> Path ->  GlobalDefinitionInformation () -> (Scala.MemberDecl, List GenerationIssue)
 mapFunctionDefinition functionName body currentPackagePath modulePath (typeContextInfo, functionsInfo, inlineInfo) =
     let
-       fullFunctionName = FQName.fQName currentPackagePath modulePath functionName
-       functionClassification =  getFunctionClassification fullFunctionName functionsInfo
-       parameters = processParameters body.value.value.inputTypes functionClassification typeContextInfo
-       parameterNames = body.value.value.inputTypes |> List.map (\(name, _, _) -> name)
-       valueMappingContext = { emptyValueMappingContext | typesContextInfo = typeContextInfo
-                                                        , parameters = parameterNames
-                                                        , functionClassificationInfo = functionsInfo
-                                                        , currentFunctionClassification = functionClassification
-                                                        , packagePath = currentPackagePath
-                                                        , globalValuesToInline = inlineInfo } 
+       fullFunctionName =
+            FQName.fQName currentPackagePath modulePath functionName
+       functionClassification =
+            getFunctionClassification fullFunctionName functionsInfo
+       parameters =
+            processParameters body.value.value.inputTypes functionClassification typeContextInfo
+       parameterNames =
+            body.value.value.inputTypes |> List.map (\(name, _, _) -> name)
+       valueMappingContext = 
+            { emptyValueMappingContext | typesContextInfo = typeContextInfo
+                                       , parameters = parameterNames
+                                       , functionClassificationInfo = functionsInfo
+                                       , currentFunctionClassification = functionClassification
+                                       , packagePath = currentPackagePath
+                                       , globalValuesToInline = inlineInfo } 
        localDeclarations = 
             body.value.value.inputTypes                
                 |> List.filterMap (checkForDataFrameColumndsDeclaration typeContextInfo)
-       (bodyCandidate, issues) = mapFunctionBody body.value.value (includeDataFrameInfo localDeclarations valueMappingContext)
-       returnTypeToGenerate = mapFunctionReturnType body.value.value.outputType functionClassification typeContextInfo
+       (bodyCandidate, issues) =
+            mapFunctionBody body.value.value (includeDataFrameInfo localDeclarations valueMappingContext)
+       returnTypeToGenerate =
+            mapFunctionReturnType body.value.value.outputType functionClassification typeContextInfo
        resultingFunction = 
             Scala.FunctionDecl
                 { modifiers = []

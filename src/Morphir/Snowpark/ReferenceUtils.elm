@@ -12,8 +12,7 @@ module Morphir.Snowpark.ReferenceUtils exposing (
     , curryCall
     , getSourceTargetTypeIfFunctionType
     , getExpressionForColumnsObject
-    , getInnerMaybeType
-    , simplifyBooleanExpression )
+    , getInnerMaybeType )
 
 import Morphir.IR.Name as Name
 import Morphir.IR.FQName as FQName
@@ -155,48 +154,3 @@ getInnerMaybeType tpe  =
          Just typeArg
       _ -> 
          Nothing
-
-
-simplifyBooleanExpression : Scala.Value -> Scala.Value
-simplifyBooleanExpression exp =
-    case exp of
-        Scala.BinOp left "&&" right ->
-            let
-                simplLeft =
-                    simplifyBooleanExpression left
-                simplRight =
-                    simplifyBooleanExpression right
-            in
-            case (simplLeft, simplRight) of
-                (Scala.Apply (Scala.Ref _ "lit") [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit True)) ], result) ->
-                    result
-                (result, Scala.Apply (Scala.Ref _ "lit") [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit True)) ]) ->
-                    result
-                (Scala.Apply (Scala.Ref _ "lit") [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit False)) ], _) ->
-                    simplLeft
-                (_, Scala.Apply (Scala.Ref _ "lit") [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit False)) ]) ->
-                    simplRight
-                _ ->
-                    exp
-        Scala.BinOp left "||" right ->
-            let
-                simplLeft =
-                    simplifyBooleanExpression left
-                simplRight =
-                    simplifyBooleanExpression right
-            in
-            case (simplLeft, simplRight) of
-                (Scala.Apply (Scala.Ref _ "lit") [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit True)) ], _) ->
-                    simplLeft
-                (_, Scala.Apply (Scala.Ref _ "lit") [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit True)) ]) ->
-                    simplRight
-                (Scala.Apply (Scala.Ref _ "lit") [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit False)) ], result) ->
-                    result
-                (result, Scala.Apply (Scala.Ref _ "lit") [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit False)) ]) ->
-                    result
-                _ ->
-                    exp
-        Scala.UnOp "!" (Scala.Literal (Scala.BooleanLit v)) ->
-            Scala.UnOp "!" (Scala.Literal (Scala.BooleanLit (not v)))
-        _ ->
-            exp

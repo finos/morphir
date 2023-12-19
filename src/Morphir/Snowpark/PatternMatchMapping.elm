@@ -23,8 +23,6 @@ import Morphir.Snowpark.ReferenceUtils exposing (mapLiteral
            , scalaReferenceToUnionTypeCase
            , getCustomTypeParameterFieldAccess)
 import Morphir.Snowpark.GenerationReport exposing (GenerationIssue)
-import Morphir.Snowpark.ReferenceUtils exposing (simplifyBooleanExpression)
-
 
 type alias PatternMatchValues = (Type (), TypedValue, List ( Pattern (Type ()), TypedValue ))
 
@@ -165,16 +163,16 @@ createCaseCodeForTuplePattern : (List NestedPatternResult, Value () (Type ())) -
                                 ((Scala.Value, Scala.Value), List GenerationIssue)
 createCaseCodeForTuplePattern (tuplePats, value) positionValues mapValue ctx =
     let
-        tuplesForConversion = List.map2 (\x y -> (x, y)) tuplePats positionValues
+        tuplesForConversion =
+            List.map2 (\x y -> (x, y)) tuplePats positionValues
         mappingsContextWithReplacements = 
             tuplesForConversion
                 |> List.foldl (\((NestedPatternResult funcs), val) currCtx -> funcs.contextManipulation val currCtx) ctx 
         condition = 
             tuplesForConversion 
               |>  List.foldr (\((NestedPatternResult funcs), val) currentCondition -> 
-                                Scala.BinOp (funcs.conditionGenerator val) "&&" currentCondition ) 
+                                connectWithAnd (funcs.conditionGenerator val) currentCondition ) 
                             (applySnowparkFunc "lit" [Scala.Literal (Scala.BooleanLit True)]) 
-              |> simplifyBooleanExpression
         (mappedSuccessValue, successValueIssues) = mapValue value mappingsContextWithReplacements
     in
     ((condition, mappedSuccessValue), successValueIssues)
@@ -213,14 +211,12 @@ generateNestedPatternsCondition nestedPatternsInfo referenceExpr tagCondition =
     nestedPatternsInfo
         |> List.indexedMap (\i nestedPatternInfo -> (nestedPatternInfo, generateBindingVariableExpr (getCustomTypeParameterFieldAccess i) referenceExpr))
         |> List.foldl (\(NestedPatternResult nestedPatternInfo, expr) currentExpr -> 
-                                (Scala.BinOp currentExpr "&&" (nestedPatternInfo.conditionGenerator expr))) tagCondition
-        |> simplifyBooleanExpression
+                                (connectWithAnd currentExpr (nestedPatternInfo.conditionGenerator expr))) tagCondition
 
 type PatternMatchScenario ta
     = LiteralsWithDefault (List (Literal, TypedValue)) (TypedValue)
     | UnionTypesWithoutParams (List (Scala.Value, TypedValue)) (Maybe (TypedValue))
     | UnionTypesWithParams (List (Name.Name, List NestedPatternResult, TypedValue)) (Maybe (TypedValue))    
-    -- Right now we just support `Just` with variables
     | MaybeCase (Maybe Name.Name, TypedValue) (TypedValue)
     | TupleCases (List (List NestedPatternResult, TypedValue)) (Maybe (TypedValue))
     | Unsupported
@@ -338,7 +334,7 @@ checkNestedItemPattern ctx pattern =
         Value.ConstructorPattern _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] ) [ innerPattern ] ->
             (checkNestedItemPattern ctx innerPattern)
             |> Maybe.map (\(NestedPatternResult patObject) ->
-                                (NestedPatternResult { conditionGenerator = \refr -> Scala.BinOp (Scala.Select refr "is_not_null") "&&" (patObject.conditionGenerator refr)
+                                (NestedPatternResult { conditionGenerator = \refr -> connectWithAnd (Scala.Select refr "is_not_null") (patObject.conditionGenerator refr)
                                                     , contextManipulation =  patObject.contextManipulation }))
         Value.ConstructorPattern ((Type.Reference _ typeName _) as tpe) fullConstructorName [ ] ->
             if isUnionTypeRefWithoutParams tpe ctx.typesContextInfo then
@@ -381,3 +377,13 @@ classifyScenario value cases ctx =
         , (\_ -> checkUnionWithParams value cases ctx)
         , (\_ -> checkMaybePattern value cases ctx)
         , (\_ -> checkTuplePattern ctx cases) ])
+
+connectWithAnd : Scala.Value -> Scala.Value -> Scala.Value
+connectWithAnd left right =
+   case (left, right) of
+        (Scala.Apply (Scala.Ref _ "lit") [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit True)) ], _) ->
+            right
+        (_, Scala.Apply (Scala.Ref _ "lit") [ Scala.ArgValue Nothing (Scala.Literal (Scala.BooleanLit True)) ]) ->
+            left
+        _ -> 
+            Scala.BinOp left "&&" right
