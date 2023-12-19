@@ -31,26 +31,37 @@ testDistributionName : Path.Path
 testDistributionName = (Path.fromString "UTest") 
 
 typesDict = 
-    Dict.fromList [
-        -- A record with simple types
-        (Name.fromString "Emp", 
-        public { doc =  "", value = Type.TypeAliasDefinition [] (Type.Record () [
+    Dict.fromList 
+        [(Name.fromString "Emp"
+         , public { doc =  "", value = Type.TypeAliasDefinition [] (Type.Record () [
             { name = Name.fromString "firstname", tpe = stringTypeInstance },
             { name = Name.fromString "lastname", tpe = stringTypeInstance }
-        ]) })
-        , (Name.fromString "DeptKind", 
-                 public { doc =  "", value = Type.CustomTypeDefinition [] (public (Dict.fromList [
-                    (Name.fromString "Hr", [] ),
-                    (Name.fromString "It", [] ),
-                    (Name.fromString "Logic", [] )
-                 ])) })
-        , (Name.fromString "TimeRange", 
-                 public { doc =  "", value = Type.CustomTypeDefinition [] (public (Dict.fromList [
-                    (Name.fromString "Zero", [] ),
-                    (Name.fromString "Seconds", [ (["a1"], intTypeInstance) ]),
-                    (Name.fromString "MinutesAndSeconds", [ (["a1"], intTypeInstance), (["a2"], intTypeInstance) ])
-                 ])) })
-    ]
+        ])})
+        , (Name.fromString "TypeA" 
+          , public { doc =  "", value = Type.TypeAliasDefinition [] (Type.Record () [
+            { name = Name.fromString "id", tpe = intTypeInstance }
+        ])})
+        , (Name.fromString "TypeB"
+          , public { doc =  "", value = Type.TypeAliasDefinition [] (Type.Record () [
+            { name = Name.fromString "id", tpe = intTypeInstance }
+        ])})
+        , (Name.fromString "TypeC"
+          , public { doc =  "", value = Type.TypeAliasDefinition [] (Type.Record () [
+            { name = Name.fromString "id", tpe = intTypeInstance }
+        ])})
+        , (Name.fromString "DeptKind"
+          , public { doc =  "", value = Type.CustomTypeDefinition [] (public (Dict.fromList [
+                (Name.fromString "Hr", [] ),
+                (Name.fromString "It", [] ),
+                (Name.fromString "Logic", [] )
+        ]))})
+        , (Name.fromString "TimeRange"
+          , public { doc =  "", value = Type.CustomTypeDefinition [] (public (Dict.fromList [
+            (Name.fromString "Zero", [] ),
+            (Name.fromString "Seconds", [ (["a1"], intTypeInstance) ]),
+            (Name.fromString "MinutesAndSeconds", [ (["a1"], intTypeInstance), (["a2"], intTypeInstance) ])
+        ]))})
+        ]
 
 testDistributionPackage = 
         ({ modules = Dict.fromList [
@@ -198,6 +209,12 @@ mMaybeTypeOf tpe =
 
 empType = Type.Reference () (FQName.fromString "UTest:MyMod:Emp" ":") []
 
+typeA = Type.Reference () (FQName.fromString "UTest:MyMod:TypeA" ":") []
+
+typeB = Type.Reference () (FQName.fromString "UTest:MyMod:TypeB" ":") []
+
+typeC = Type.Reference () (FQName.fromString "UTest:MyMod:TypeC" ":") []
+
 mIdOf : Name.Name -> Type.Type () -> Value.TypedValue
 mIdOf name tpe =
     Value.Variable tpe name
@@ -249,3 +266,37 @@ sBlock body bindings =
                                                 , value = value })
     in
     Scala.Block valDecls body
+
+innerJoinFunction :  Type.Type () -> Type.Type () -> Value.TypedValue
+innerJoinFunction collectionA collectionB  =
+    Value.Reference
+        (mFuncTypeOf  
+            (mListTypeOf collectionB)
+            (mFuncTypeOf 
+                (mFuncTypeOf collectionA 
+                    (mFuncTypeOf collectionB boolTypeInstance))
+                (mFuncTypeOf 
+                    (mListTypeOf collectionA)
+                    (mListTypeOf (mTuple2TypeOf collectionA collectionB) ))))
+        (listFunctionName ["inner", "join"])
+
+leftJoinFunction : Type.Type () -> Type.Type () -> Value.TypedValue
+leftJoinFunction collectionA collectionB  =
+    Value.Reference
+        (mFuncTypeOf  
+            (mListTypeOf collectionB)
+            (mFuncTypeOf 
+                (mFuncTypeOf collectionA 
+                    (mFuncTypeOf collectionB boolTypeInstance))
+                (mFuncTypeOf 
+                    (mListTypeOf collectionA)
+                    (mListTypeOf (mTuple2TypeOf collectionA (mMaybeTypeOf collectionB)) ))))
+        (listFunctionName ["left", "join"])
+
+mTuple2TypeOf : Type.Type () -> Type.Type () -> Type.Type ()
+mTuple2TypeOf tpe1 tpe2 =
+    Type.Tuple () [tpe1, tpe2]
+
+mField : Type.Type () -> Value.TypedValue -> String -> Value.TypedValue
+mField tpe value name =
+    Value.Field tpe value [name]

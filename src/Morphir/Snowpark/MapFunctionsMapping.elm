@@ -593,8 +593,11 @@ generateForListMap projection sourceRelation ctx mapValue =
                     (result, issues ++ (List.concat iss))
                 _ -> 
                     errorValueAndIssue "Unsupported map scenario for data frame parameter"
-     else 
-        errorValueAndIssue "Unsupported map scenario"
+     else
+        if isJoinFunction sourceRelation then
+            mapJoinFunction projection sourceRelation mapValue ctx
+        else
+            errorValueAndIssue "Unsupported map scenario"
 
 isJoinFunction : (Value ta (Type ())) -> Bool
 isJoinFunction value =
@@ -871,7 +874,7 @@ mapJoinFunction projection joinValue mapValue ctx =
 
         argAlias = Constants.transformToArgsValue joinProjection
     in
-    (Scala.Apply select argAlias, joinProjectionIssues ++ joinBodyIssues)
+        (Scala.Apply select argAlias, joinProjectionIssues ++ joinBodyIssues)
     
 
 

@@ -2,6 +2,7 @@ module Morphir.Snowpark.JoinMapping exposing (processJoinProjection, processJoin
 
 import Dict
 import Morphir.Scala.AST as Scala
+import Morphir.IR.Type as TypeIR
 import Morphir.IR.Value as ValueIR exposing (TypedValue)
 import Morphir.Snowpark.Constants as Constants exposing (ValueGenerationResult)
 import Morphir.IR.Name as Name
@@ -17,6 +18,7 @@ processJoinProjection projection mapValue ctx =
                 listFields = Dict.toList record
                 (variablesExpr, varIssues) =  
                         listFields 
+                            |> List.map transformMaybeValueToField
                             |> List.map (\(_, x) -> mapValue x ctx) 
                             |> List.unzip
                 variables =
@@ -30,28 +32,78 @@ processJoinProjection projection mapValue ctx =
         _ ->
             ([Scala.Literal <| Scala.StringLit "Projection"], [])
 
+transformMaybeValueToField : ( Name.Name, ValueIR.Value () (TypeIR.Type ()) ) -> ( Name.Name, ValueIR.Value () (TypeIR.Type ()) )
+transformMaybeValueToField (name, value) =
+    case value of
+        ValueIR.Apply 
+            (TypeIR.Reference _ ([["morphir"],["s","d","k"]],[["maybe"]],["maybe"]) [returnType])
+            (ValueIR.Apply _ _ (ValueIR.Lambda _ _ (ValueIR.Field _ _ accessField)))
+            (ValueIR.Variable (TypeIR.Reference _ _ [variableRef]) variableField) ->
+                let
+                    variable = ValueIR.Variable variableRef variableField
+                    field = ValueIR.Field returnType variable accessField
+                in
+                (name, field)
+        _ ->
+            (name, value)
+
+processJoinsLambda : (TypedValue) ->  Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
+processJoinsLambda lambdaValue mapValue ctx =
+    case lambdaValue of
+        ValueIR.Lambda
+            _ 
+            ( ValueIR.AsPattern _ _ lambdaArg1Name )
+            ( ValueIR.Lambda
+                _
+                (ValueIR.AsPattern _ _ lambdaArg2Name)
+                lambdaBody
+            ) ->
+                processJoinFunctionBody lambdaBody mapValue ctx
+        ValueIR.Lambda
+            _
+            _
+            (ValueIR.Lambda
+                _
+                _
+                lambdaBody
+            ) ->
+                processJoinFunctionBody lambdaBody mapValue ctx
+        _ ->
+            errorValueAndIssue "`Join` scenario not supported"
+
+processInternalJoin : (TypedValue) ->  Constants.MapValueType -> ValueMappingContext -> (List Scala.ArgValue, List GenerationIssue)
+processInternalJoin value mapValue ctx =
+    case value of
+        ValueIR.Apply
+                _
+                (ValueIR.Apply _ ( ValueIR.Reference _  ([["morphir"],["s","d","k"]],[["list"]], joinName)) (ValueIR.Variable _ arg2))
+                ((ValueIR.Lambda _ _ _) as lambdaSection) ->
+            let
+                (lambdaBodyScala, bodyIssues) = 
+                    processJoinsLambda lambdaSection mapValue ctx
+                joinTypeName = getJoinType joinName
+            in
+            ([ Scala.ArgValue Nothing (Scala.Variable (Name.toCamelCase arg2))
+             , Scala.ArgValue Nothing lambdaBodyScala
+             , Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit joinTypeName))
+             ], bodyIssues)
+        _ ->
+           ([Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "Unsupported Join"))],[])
+
+
 processJoinBody :  (TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 processJoinBody joinValue mapValue ctx =
-    case joinValue of
+    case joinValue of 
         ValueIR.Apply _ 
-            (ValueIR.Apply 
-                _ 
+            (ValueIR.Apply
+                _
                 (ValueIR.Apply _ ( ValueIR.Reference _  ([["morphir"],["s","d","k"]],[["list"]], joinName)) (ValueIR.Variable _ arg2))
-               
-                (ValueIR.Lambda 
-                    _ 
-                    (ValueIR.AsPattern _ _ lambdaArg1Name)
-                    (ValueIR.Lambda
-                        _
-                        (ValueIR.AsPattern _ _ lambdaArg2Name)
-                        lambdaBody
-                    )
-                )
+                ((ValueIR.Lambda _ _ _) as lambdaSection)
             ) 
             (ValueIR.Variable _ arg1) ->
                 let
                     (lambdaBodyScala, bodyIssues) = 
-                        processJoinFunctionBody lambdaBody mapValue ctx
+                        processJoinsLambda lambdaSection mapValue ctx
                     joinTypeName = getJoinType joinName
                 in
                 (Scala.Apply 
@@ -61,6 +113,37 @@ processJoinBody joinValue mapValue ctx =
                     , Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit joinTypeName))
                     ]
                 , bodyIssues)
+        
+        ValueIR.Apply 
+            _
+            ((ValueIR.Apply
+                _ _ _
+            ) as internalJoin)
+            (( ValueIR.Apply 
+                _ 
+                (ValueIR.Apply 
+                    _
+                    (ValueIR.Apply
+                        _
+                        ( ValueIR.Reference _  ([["morphir"],["s","d","k"]],[["list"]], joinName))
+                        (ValueIR.Variable _ arg2)
+                    )
+                    _ 
+                )
+                _ 
+            ) as firstJoin) ->
+            if List.member "join" joinName then
+                let
+                    (firstJoinResult, firstErrors) = processJoinBody firstJoin mapValue ctx
+                    (secondJoinResult, secondErrors) = processInternalJoin internalJoin mapValue ctx
+
+                    preresult = Scala.Select firstJoinResult "join"
+                    result = Scala.Apply preresult secondJoinResult
+                in
+                ( result
+                , List.append firstErrors secondErrors)
+            else
+                errorValueAndIssue "'Join' scenario not supported"
         _ ->
             errorValueAndIssue "'Join' scenario not supported"
 
@@ -73,22 +156,13 @@ processJoinFunctionBody value mapValue ctx =
             errorValueAndIssue "Join Body EXCEPTION"
 
 
-getJoinVariable : TypedValue -> Scala.Value
-getJoinVariable value =
-    case value of
-        ValueIR.Field tpe val name ->
-            Scala.Literal (Scala.StringLit (Name.toCamelCase name))
-        _ ->
-            Scala.Literal (Scala.StringLit "")
-
-
 getJoinType : Name.Name -> String
 getJoinType name =
     if List.member "inner" name then
         "inner"
-    else if List.member "inner" name then
+    else if List.member "right" name then
             "right"
-    else if List.member "inner" name then
+    else if List.member "left" name then
             "left"
     else
         "Unsupported join Type"
