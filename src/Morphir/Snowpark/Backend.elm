@@ -3,6 +3,7 @@ module Morphir.Snowpark.Backend exposing (mapDistribution, Options, mapFunctionD
 import Dict
 import List
 import Set as Set
+import List.Extra
 import Json.Decode as Decode exposing (Decoder)
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
@@ -141,7 +142,7 @@ mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleD
             { dirPath = scalaPackagePath
             , fileName = (moduleName |> Name.toTitleCase) ++ ".scala"
             , packageDecl = scalaPackagePath
-            , imports = generatedImports
+            , imports = generatedImports |> List.Extra.uniqueBy .packagePrefix
             , typeDecls = [( Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
                     (Scala.Annotated []
                         (Scala.Object
