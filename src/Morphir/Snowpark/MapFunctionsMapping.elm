@@ -6,7 +6,8 @@ module Morphir.Snowpark.MapFunctionsMapping exposing (mapFunctionsMapping
                                                      , maybeFunctionName
                                                      , mapUncurriedFunctionCall
                                                      , basicsFunctionName
-                                                     , stringsFunctionName)
+                                                     , stringsFunctionName
+                                                     , dictFunctionName)
 
 import Dict as Dict exposing (Dict)
 import Morphir.Scala.AST as Scala
@@ -50,6 +51,10 @@ type alias FunctionMappingTable = Dict FQName.FQName MappingFunctionType
 listFunctionName : Name.Name -> FQName.FQName
 listFunctionName simpleName = 
     ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], simpleName )
+
+dictFunctionName : Name.Name -> FQName.FQName
+dictFunctionName simpleName = 
+    ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], simpleName )
 
 maybeFunctionName : Name.Name -> FQName.FQName
 maybeFunctionName simpleName = 

@@ -6,7 +6,8 @@ import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
 import Morphir.IR.Literal as Literal
 import Morphir.IR.Value as Value
-import Morphir.Snowpark.MapFunctionsMapping exposing (basicsFunctionName, listFunctionName, maybeFunctionName)
+import Morphir.Snowpark.MapFunctionsMapping exposing (basicsFunctionName, listFunctionName, maybeFunctionName
+                                                     , dictFunctionName)
 import Morphir.IR.AccessControlled exposing (public)
 import Morphir.IR.Module exposing (emptyDefinition)
 import Morphir.IR.Name as Name
@@ -27,6 +28,9 @@ intTypeInstance = Type.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ 
 floatTypeInstance : Type.Type ()
 floatTypeInstance = Type.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) []
 
+aggregateTypeInstance : Name.Name -> List (Type.Type ()) -> Type.Type ()
+aggregateTypeInstance name args = Type.Reference () ([["morphir"],["s","d","k"]],[["aggregate"]], name ) args
+
 testDistributionName : Path.Path
 testDistributionName = (Path.fromString "UTest") 
 
@@ -36,6 +40,11 @@ typesDict =
          , public { doc =  "", value = Type.TypeAliasDefinition [] (Type.Record () [
             { name = Name.fromString "firstname", tpe = stringTypeInstance },
             { name = Name.fromString "lastname", tpe = stringTypeInstance }
+        ])})
+        , (Name.fromString "EmployeeInfo" 
+          , public { doc =  "", value = Type.TypeAliasDefinition [] (Type.Record () [
+            { name = Name.fromString "employee", tpe = stringTypeInstance },
+            { name = Name.fromString "minSalary", tpe = floatTypeInstance }
         ])})
         , (Name.fromString "TypeA" 
           , public { doc =  "", value = Type.TypeAliasDefinition [] (Type.Record () [
@@ -77,9 +86,17 @@ mIntLiteralOf : Int -> Value.TypedValue
 mIntLiteralOf value =
     Value.Literal intTypeInstance (Literal.WholeNumberLiteral value)
 
+mFloatLiteralOf : Float -> Value.TypedValue
+mFloatLiteralOf value =
+    Value.Literal floatTypeInstance (Literal.FloatLiteral value)
+
 mListTypeOf : Type.Type () -> Type.Type ()
 mListTypeOf tpe =
     Type.Reference () (listFunctionName [ "list" ]) [ tpe ]
+
+mDictTypeOf : Type.Type () -> Type.Type () -> Type.Type ()
+mDictTypeOf key value =
+    Type.Reference () (dictFunctionName [ "dict" ]) [ key, value ]
 
 mFuncTypeOf : Type.Type () -> Type.Type () -> Type.Type ()
 mFuncTypeOf from to =
@@ -133,6 +150,30 @@ listMapFunction collectionFrom collectionTo  =
             (mFuncTypeOf collectionFrom collectionTo)
             (mFuncTypeOf (mListTypeOf collectionFrom) (mListTypeOf collectionTo)))
         (listFunctionName [ "map" ])
+
+groupByFunction : Type.Type () -> Type.Type () -> Value.TypedValue
+groupByFunction key a =
+    Value.Reference
+        (mFuncTypeOf  
+            (mFuncTypeOf a key)
+            (mFuncTypeOf (mListTypeOf a) (mDictTypeOf key (mListTypeOf a))))
+        ([["morphir"],["s","d","k"]],[["aggregate"]],["group","by"])
+
+aggregateFunction : Type.Type () -> Type.Type () -> Type.Type () -> Value.TypedValue
+aggregateFunction key a b =
+    Value.Reference
+        (mFuncTypeOf  
+            (mFuncTypeOf key (mFuncTypeOf(aggregatorType a key0Type) b))
+            (mFuncTypeOf (mDictTypeOf key (mListTypeOf a)) (mListTypeOf b)))
+        ([["morphir"],["s","d","k"]],[["aggregate"]],["aggregate"])
+
+aggregatorType : Type.Type () -> Type.Type () -> Type.Type ()
+aggregatorType a key =
+    aggregateTypeInstance ["aggregator"] [a, key]
+
+key0Type : Type.Type ()
+key0Type =
+    Type.Reference () ( [ [ "morphir" ],[ "s","d","k" ] ],[ ["key"] ], [ "key", "0" ] ) []
 
 listFilterFunction : Type.Type () -> Type.Type () -> Value.TypedValue
 listFilterFunction collectionFrom collectionTo  =
@@ -193,6 +234,10 @@ mListOf values =
     in
     Value.List (mListTypeOf tpe) values
 
+mReferenceType: FQName.FQName -> List (Type.Type ()) ->  Type.Type ()
+mReferenceType name list =
+    Type.Reference () name list
+
 mLetOf : Name.Name -> Value.TypedValue -> Value.TypedValue -> Value.TypedValue
 mLetOf name localValue body =
     Value.LetDefinition
@@ -208,6 +253,8 @@ mMaybeTypeOf tpe =
     Type.Reference () (maybeFunctionName [ "maybe" ]) [ tpe ]
 
 empType = Type.Reference () (FQName.fromString "UTest:MyMod:Emp" ":") []
+
+employeeInfo = Type.Reference () (FQName.fromString "UTest:MyMod:EmployeeInfo" ":") []
 
 typeA = Type.Reference () (FQName.fromString "UTest:MyMod:TypeA" ":") []
 
@@ -234,6 +281,10 @@ sDot : Scala.Value -> String -> Scala.Value
 sDot expr memberName =
     Scala.Select expr memberName
 
+sSnowparkRefFuncion: String -> Scala.Value
+sSnowparkRefFuncion name =
+    Scala.Ref ["com","snowflake","snowpark","functions"] name
+
 sLit : String -> Scala.Value
 sLit stringLit =
     Scala.Literal (Scala.StringLit stringLit)    
@@ -241,6 +292,10 @@ sLit stringLit =
 sIntLit : Int -> Scala.Value
 sIntLit intLiteral =
     Scala.Literal (Scala.IntegerLit intLiteral)
+
+sFloatLit : Float -> Scala.Value
+sFloatLit floatLiteral =
+    Scala.Literal (Scala.FloatLit floatLiteral)
 
 sTrue : Scala.Value
 sTrue = 
@@ -300,3 +355,7 @@ mTuple2TypeOf tpe1 tpe2 =
 mField : Type.Type () -> Value.TypedValue -> String -> Value.TypedValue
 mField tpe value name =
     Value.Field tpe value [name]
+
+mFieldFunction : Type.Type () -> Name.Name -> Value.TypedValue
+mFieldFunction a name =
+    Value.FieldFunction a name

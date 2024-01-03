@@ -7,8 +7,11 @@ import Morphir.IR.Literal as Literal
 import Morphir.IR.Type as TypeIR
 import Morphir.Scala.AST as Scala
 import Morphir.Snowpark.MappingContext exposing (emptyValueMappingContext)
-import Morphir.Snowpark.CommonTestUtils exposing (morphirNamespace)
+import Morphir.Snowpark.CommonTestUtils exposing (morphirNamespace, mFloatLiteralOf, mIntLiteralOf, mFuncTypeOf
+                                                , intTypeInstance, sExpCall, sSnowparkRefFuncion, sFloatLit)
 import Morphir.Snowpark.MapExpressionsToDataFrameOperations exposing (mapValue)
+import Morphir.Snowpark.CommonTestUtils exposing (floatTypeInstance)
+import Morphir.Snowpark.CommonTestUtils exposing (sExpCall)
 
 createNumberLiteral : Int -> ValueIR.Value va (TypeIR.Type ())
 createNumberLiteral number = 
@@ -19,6 +22,38 @@ createNumberLiteral number =
                         []
         )
         (Literal.WholeNumberLiteral number)
+
+floorInput: ValueIR.TypedValue
+floorInput =
+    ValueIR.Apply intTypeInstance floorRef <| mFloatLiteralOf 2.5
+
+floorRef : ValueIR.TypedValue
+floorRef =
+    ValueIR.Reference
+        (mFuncTypeOf floatTypeInstance intTypeInstance)
+        ([["morphir"],["s","d","k"]],[["basics"]],["floor"])
+
+floorExpected : Scala.Value
+floorExpected =
+    sExpCall (sSnowparkRefFuncion "floor")  <| floorParams
+
+floorParams : List Scala.Value
+floorParams =
+    [sExpCall (sSnowparkRefFuncion "lit")  <| [ sFloatLit 2.5 ]]
+
+modbyInput: ValueIR.TypedValue
+modbyInput =
+    ValueIR.Apply intTypeInstance modbyFunction <| mIntLiteralOf 6
+
+modbyFunction : ValueIR.TypedValue
+modbyFunction =
+    ValueIR.Apply (mFuncTypeOf intTypeInstance intTypeInstance) modbyRef <| mIntLiteralOf 5
+
+modbyRef : ValueIR.TypedValue
+modbyRef =
+    ValueIR.Reference
+        (mFuncTypeOf intTypeInstance (mFuncTypeOf intTypeInstance intTypeInstance))  
+        ([["morphir"],["s","d","k"]],[["basics"]],["mod","by"])
 
 inputOperatorTest : List String -> ValueIR.Value ta (TypeIR.Type ())
 inputOperatorTest operatorName = 
@@ -94,6 +129,22 @@ mapValueListTest =
                             mapValue (inputOperatorTest ["integer", "divide"]) emptyContext
                     in
                     Expect.equal mapped (outputOperatorTest "/")
+        assertModbyTest =
+            test ("modby test") <|
+                \_ ->
+                    let 
+                        (mapped, _) =
+                            mapValue modbyInput emptyContext
+                    in
+                    Expect.equal mapped (outputOperatorTest "%")
+        assertFloorTest =
+            test ("floor test") <|
+                \_ ->
+                    let 
+                        (mapped, _) =
+                            mapValue floorInput emptyContext
+                    in
+                    Expect.equal mapped floorExpected
     in
     describe "arithmetic operators"
         [
@@ -102,5 +153,7 @@ mapValueListTest =
             , assertMultiplyTest
             , assertdivideTest
             , assertintegerdivideTest
+            , assertModbyTest
+            , assertFloorTest
         ]
     
