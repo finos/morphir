@@ -7,7 +7,8 @@ module Morphir.Snowpark.MapFunctionsMapping exposing (mapFunctionsMapping
                                                      , mapUncurriedFunctionCall
                                                      , basicsFunctionName
                                                      , stringsFunctionName
-                                                     , dictFunctionName)
+                                                     , dictFunctionName
+                                                     , checkForArgsToInline)
 
 import Dict as Dict exposing (Dict)
 import Morphir.Scala.AST as Scala
@@ -43,6 +44,8 @@ import Morphir.Snowpark.Operatorsmaps exposing (mapOperator)
 import Morphir.Snowpark.LetMapping exposing (collectNestedLetDeclarations)
 import Morphir.Snowpark.MappingContext as MappingContext
 import Morphir.Snowpark.Utils exposing (collectMaybeList)
+import Morphir.Value.Refactor exposing (inlineVariables)
+import Maybe.Extra as Extra
 
 type alias MappingFunctionType = (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 
@@ -141,45 +144,82 @@ mapUncurriedFunctionCall (func, args) mapValue mappings ctx =
     let
         funcNameIfAvailable =
             getFullNameIfReferencedElement func
-        inlineFunctionIfAvailable = 
-            funcNameIfAvailable
-                    |> Maybe.map (\fullName -> Dict.get fullName mappings)
-                    |> Maybe.withDefault Nothing
-        builtinMappingFunction =
-            getFullNameIfReferencedElement func
-                |> Maybe.map (getInliningFunctionIfRequired ctx)
-                |> Maybe.withDefault Nothing
+        mappingFunctionMaybe = 
+            Extra.orElse
+                (funcNameIfAvailable
+                    |> Maybe.andThen (\fullName -> Dict.get fullName mappings))
+                (funcNameIfAvailable
+                    |> Maybe.andThen (getInliningFunctionIfRequired ctx))
     in
-    case (inlineFunctionIfAvailable, builtinMappingFunction) of
-        (Just inliningFunction, _) ->
-            inliningFunction (func, args) mapValue ctx
-        (_, Just mappingFunc) ->
-            mappingFunc (func, args) mapValue ctx
+    case (mappingFunctionMaybe) of
+        Just mappingFunction ->
+            mappingFunction (func, checkForArgsToInline ctx args) mapValue ctx
         _ ->
             tryToConvertUserFunctionCall (func, args) mapValue ctx
 
+
+checkForArgsToInline :  ValueMappingContext -> List TypedValue -> List TypedValue
+checkForArgsToInline ctx args =
+    args
+        |> List.map (\arg -> 
+                case arg of
+                    ValueIR.Lambda tpe pattern (((ValueIR.Apply _ ((ValueIR.Reference _ innerFuncName) as funcName) innerArg ) ) as b) ->
+                        Dict.get innerFuncName ctx.globalValuesToInline
+                            |> Maybe.andThen (\definition ->
+                                                let
+                                                    (_, innerArgs) =
+                                                        ValueIR.uncurryApply funcName innerArg
+                                                in
+                                                    Just <| inlineFunctionCall innerArgs definition)
+                            |> Maybe.map (ValueIR.Lambda tpe pattern)
+                            |> Maybe.withDefault arg
+                    ValueIR.Apply tpe ((ValueIR.Reference (TypeIR.Function _ _ _) funcName) as funcReference) lastArg ->
+                        Dict.get funcName ctx.globalValuesToInline
+                            |> Maybe.map (\definition -> 
+                                                let
+                                                    (_, innerArgs) =
+                                                        ValueIR.uncurryApply funcReference lastArg
+                                                in
+                                                inlineFunctionCall innerArgs definition)
+                            |> Maybe.withDefault arg
+                    ValueIR.Reference (TypeIR.Function _ _ _) funcName -> 
+                        Dict.get funcName ctx.globalValuesToInline
+                            |> Maybe.map createLambdaFromType
+                            |> Maybe.withDefault arg
+                    _ ->
+                        arg)
+
+createLambdaFromType : (ValueIR.Definition () (TypeIR.Type ())) -> TypedValue
+createLambdaFromType definition =
+    List.foldr (\(name, _, aTpe) current -> 
+                    ValueIR.Lambda  
+                            (TypeIR.Function () aTpe (ValueIR.valueAttribute current))
+                            (ValueIR.AsPattern  aTpe (ValueIR.WildcardPattern aTpe) name)
+                            current)
+                definition.body definition.inputTypes
+
+inlineFunctionCall : List TypedValue -> (ValueIR.Definition () (TypeIR.Type ())) -> TypedValue
+inlineFunctionCall args definition  =
+    let
+        replacements = 
+            List.map2 (\(paramName, _, _) arg -> (paramName, arg)) definition.inputTypes args
+            |> Dict.fromList
+    in
+    inlineVariables replacements definition.body
+    
 getInliningFunctionIfRequired : ValueMappingContext -> FQName.FQName -> Maybe MappingFunctionType
 getInliningFunctionIfRequired ctx name =
    Dict.get name ctx.globalValuesToInline
       |> Maybe.map (\definition ->
                         \(_, args) mapValue innerCtx ->
                             let
-                                (mappedArgs, argsIssues) = 
-                                    args
-                                        |> List.map (\arg -> mapValue arg ctx)
-                                        |> List.unzip
-                                convertedArgs = 
-                                    List.map2 (\arg (paramName, _, _) -> (paramName, arg)) mappedArgs definition.inputTypes
-                                        
-                                newCtx = 
-                                    convertedArgs
-                                        |> List.foldr (\(paramName, value) currentCtx -> 
-                                                            addReplacementForIdentifier paramName value currentCtx) innerCtx 
-                                (mappedBody, mappedBodyIssues) =
-                                    mapValue definition.body newCtx
+                                replacements = 
+                                    List.map2 (\(paramName, _, _) arg -> (paramName, arg)) definition.inputTypes args
+                                    |> Dict.fromList
+                                modifiedValue =
+                                    inlineVariables replacements definition.body
                             in
-                            ( mappedBody, mappedBodyIssues ++ (List.concat argsIssues)))
-
+                            mapValue modifiedValue innerCtx)
 
 mapListMemberFunction : (TypedValue, List TypedValue) -> Constants.MapValueType -> ValueMappingContext -> ValueGenerationResult
 mapListMemberFunction ( _, args ) mapValue ctx =

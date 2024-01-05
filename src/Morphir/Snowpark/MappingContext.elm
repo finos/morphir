@@ -170,13 +170,13 @@ isLocalFunctionName : FQName -> ValueMappingContext -> Bool
 isLocalFunctionName name ctx =
    (FQName.getPackagePath name) == ctx.packagePath
 
-isRecordWithSimpleTypes : FQName -> MappingContextInfo a -> Bool
+isRecordWithSimpleTypes : FQName -> MappingContextInfo () -> Bool
 isRecordWithSimpleTypes name ctx = 
    case Dict.get name ctx of
        Just (TypeClassified (RecordWithSimpleTypes _)) -> True
        _ -> False
 
-isTypeRefToRecordWithSimpleTypes : Type a ->  MappingContextInfo a -> Bool
+isTypeRefToRecordWithSimpleTypes : Type () ->  MappingContextInfo () -> Bool
 isTypeRefToRecordWithSimpleTypes tpe ctx =
    typeRefNamePredicate tpe isRecordWithSimpleTypes ctx
 
@@ -242,6 +242,10 @@ isCandidateForDataFrame typeRef ctx =
                      [ Type.Record _ fields ] ->
          fields
             |> List.all (\{tpe} -> isDataFrameFriendlyType tpe ctx )
+      Type.Reference _ name [] ->
+         resolveTypeAlias name ctx 
+            |> Maybe.map (\resolvedType -> isCandidateForDataFrame resolvedType ctx)
+            |> Maybe.withDefault False
       _ ->
          False
 
@@ -300,8 +304,13 @@ isBasicType tpe =
        Reference _ ([["morphir"],["s","d","k"]],[["basics"]],_) _ -> True
        Reference _ ([["morphir"],["s","d","k"]],[["string"]],_) _ -> True
        _ -> False
-       
--- TODO: we need to improve this mechanism and remove this function
+
+isSdkType : Type a -> Bool
+isSdkType tpe =
+   case tpe of
+       Reference _ ([[ "morphir" ],[ "s", "d", "k" ] ], _, _) _ -> True
+       _ -> False
+
 isAliasedBasicType : Type a -> MappingContextInfo a -> Bool
 isAliasedBasicType tpe ctx =
    case tpe of
@@ -417,7 +426,8 @@ classifyActualType  tpe ctx =
        Reference _ _  _ ->
             if isBasicType tpe || 
                isUnionType tpe ctx || 
-               isAliasOfDataFrameFriendlyType tpe ctx then
+               isAliasOfDataFrameFriendlyType tpe ctx ||
+               isSdkType tpe then
                TypeClassified (TypeAlias tpe)
             else
                TypeWithPendingClassification (Just tpe)

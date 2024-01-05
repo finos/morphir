@@ -19,7 +19,8 @@ import Morphir.Snowpark.CommonTestUtils exposing ( stringTypeInstance , boolType
                                                  , mListOf, mListTypeOf, mFuncTypeOf, mMaybeTypeOf, maybeMapFunction, maybeWithDefaultFunction
                                                  , mIdOf, mLambdaOf, mRecordOf, mLetOf, mStringLiteralOf
                                                  , listConcatMapFunction, listFilterFunction, listFilterMapFunction, listMapFunction, equalFunction, listConcatFunction, listSumFunction
-                                                 , sLit, sVar, sDot, sCall, sExpCall, sIntLit, sSpEqual )
+                                                 , sLit, sVar, sDot, sCall, sExpCall, sIntLit, sSpEqual, addFunction, mRecordTypeOf )
+import Morphir.Snowpark.MapFunctionsMapping exposing (checkForArgsToInline)
 
 functionMappingsTests: Test
 functionMappingsTests =
@@ -490,6 +491,101 @@ functionMappingsTests =
                             
                 in
                 Expect.equal mapped expectedResult
+        argInliningFunctionByName =
+            test ("argument inlining from named referece") <|
+            \_ ->
+                let
+                    functionToInlineName = 
+                        FQName.fqn "UTest" "MyMod" "Foo"
+                    definitionToInline =
+                        { inputTypes = [ ([ "x" ], intTypeInstance, intTypeInstance )
+                                       , ([ "y" ], floatTypeInstance, floatTypeInstance )
+                                       , ([ "z" ], stringTypeInstance, stringTypeInstance ) ]
+                        , outputType = stringTypeInstance
+                        , body = mIdOf [ "x" ] intTypeInstance
+                        }
+
+                    newCtx = 
+                        { ctx | globalValuesToInline = Dict.insert functionToInlineName definitionToInline ctx.globalValuesToInline }
+                    inlined = 
+                        checkForArgsToInline 
+                            newCtx 
+                            [ Value.Reference 
+                                    (mFuncTypeOf intTypeInstance 
+                                        (mFuncTypeOf floatTypeInstance 
+                                            (mFuncTypeOf stringTypeInstance stringTypeInstance))) 
+                                    functionToInlineName ]
+                    expectedResult =
+                        [ mLambdaOf (["x"], intTypeInstance)                        
+                                   (mLambdaOf (["y"], floatTypeInstance) 
+                                     (mLambdaOf (["z"], stringTypeInstance) 
+                                        (mIdOf [ "x" ] intTypeInstance))) ]
+                            
+                in
+                Expect.equal inlined expectedResult
+
+        argInliningFunctionByCall =
+            test ("argument inlining from call") <|
+            \_ ->
+                let
+                    functionToInlineName = 
+                        FQName.fqn "UTest" "MyMod" "Foo"
+                    definitionToInline =
+                        { inputTypes = [ ([ "x" ], intTypeInstance, intTypeInstance ) ]
+                        , outputType = intTypeInstance
+                        
+                        , body =  curryCall (addFunction intTypeInstance, [mIdOf ["x"] intTypeInstance, mIdOf ["x"] intTypeInstance])
+                        }
+                    newCtx = 
+                        { ctx | globalValuesToInline = Dict.insert functionToInlineName definitionToInline ctx.globalValuesToInline }
+                    inlined = 
+                        checkForArgsToInline 
+                            newCtx 
+                            [ curryCall
+                                (Value.Reference 
+                                    (mFuncTypeOf intTypeInstance intTypeInstance) 
+                                    functionToInlineName,
+                                [mIntLiteralOf 100]) ]
+                    expectedResult =
+                        [ curryCall (addFunction intTypeInstance, [mIntLiteralOf 100, mIntLiteralOf 100]) ]
+                            
+                in
+                Expect.equal inlined expectedResult
+
+        listMapWithInlining =
+            test ("Convert List.map with lambda function inlining") <|
+            \_ ->
+                let
+
+                    functionToInlineName = 
+                        FQName.fqn "UTest" "MyMod" "Foo"
+                    resultRecordType =
+                        mRecordTypeOf [( "t", stringTypeInstance )]
+                    definitionToInline =
+                        { inputTypes = [ ([ "k" ], empType, empType ) ]
+                        , outputType = resultRecordType
+                        , body = (mRecordOf [ ("t", (Value.Field stringTypeInstance (Value.Variable empType ["k"]) [ "lastname" ])) ])
+                        }
+
+                    newCtx = 
+                        { ctx | globalValuesToInline = Dict.insert functionToInlineName definitionToInline ctx.globalValuesToInline }
+                    
+                    mapCall = 
+                        curryCall (listMapFunction empType empType, 
+                                        [ (mLambdaOf (["k"], empType) (curryCall (Value.Reference (mFuncTypeOf empType resultRecordType) functionToInlineName, [mIdOf ["k"] empType])))
+                                        , mIdOf ["alist"] (mListTypeOf empType) ])
+                    (mapped, _) = 
+                        mapValue mapCall newCtx
+                    expectedSelectResult =
+                        sCall (sVar "alist", "select")
+                              [ sCall 
+                                    ( Scala.Ref ["empColumns"] "lastname"
+                                    , "as" )
+                                    [ sLit "t" ] ]
+                    
+                in
+                Expect.equal mapped expectedSelectResult
+
     in
     describe "Function mappings tests"
         [ listConcatMapWithLambda
@@ -510,4 +606,7 @@ functionMappingsTests =
         , listSumWithMap
         , maybeMapWithFunction
         , maybeMapWithLambda
-        , maybeWithDefault ]
+        , maybeWithDefault
+        , argInliningFunctionByName
+        , argInliningFunctionByCall
+        , listMapWithInlining ]

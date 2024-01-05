@@ -220,7 +220,12 @@ Some modifications to the  `morphir.json` are required to add these decorations.
 }
 ```
 
-Every time code is generated with this Snowpark backend a `decorations` directory is created in the output directory. This directory contains the `morphir-ir.json` file to use the customizations.
+Every time code is generated with this Snowpark backend a `decorations` directory is created in the output directory. To generate `morphir-ir.json` file for the decorations model you need to run the `make` command in this directory:
+
+```bash
+$ cd decorations
+$ morphir-elm  make
+```
 
 ## Using decoration when generating code
 
