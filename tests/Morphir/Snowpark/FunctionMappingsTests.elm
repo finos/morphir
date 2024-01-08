@@ -269,6 +269,43 @@ functionMappingsTests =
                     in
                     Expect.equal mapped expectedSelectResult
 
+        listMapWithLambdaAndRecordAndBinOpInProjection =
+            test "Convert List.map with lambda and record and binary operation in projection" <|
+                \_ ->
+                    let
+                        resultRecord =
+                            mRecordOf
+                                [ ( "a", Value.Field stringTypeInstance (Value.Variable empType [ "x" ]) [ "firstname" ] )
+                                , ( "b", curryCall ( addFunction intTypeInstance, [ mIntLiteralOf 1, mIntLiteralOf 2 ] ) )
+                                ]
+
+                        mapCall =
+                            curryCall
+                                ( listMapFunction empType empType
+                                , [ mLambdaOf ( [ "x" ], empType ) resultRecord
+                                  , mIdOf [ "alist" ] (mListTypeOf empType)
+                                  ]
+                                )
+
+                        ( mapped, _ ) =
+                            mapValue mapCall ctx
+
+                        expectedSelectResult =
+                            sCall ( sVar "alist", "select" )
+                                [ sCall
+                                    ( Scala.Ref [ "empColumns" ] "firstname"
+                                    , "as"
+                                    )
+                                    [ sLit "a" ]
+                                , sCall
+                                    ( Scala.Tuple [ Scala.BinOp (applySnowparkFunc "lit" [ sIntLit 1 ]) "+" (applySnowparkFunc "lit" [ sIntLit 2 ]) ]
+                                    , "as"
+                                    )
+                                    [ sLit "b" ]
+                                ]
+                    in
+                    Expect.equal mapped expectedSelectResult
+
         listMapWithLambdaAndLetRecord =
             test "Convert List.map with lambda and let with record" <|
                 \_ ->
@@ -482,6 +519,31 @@ functionMappingsTests =
                             sCall
                                 ( sVar "alist", "filter" )
                                 [ sExpCall (Scala.Ref [ "utest", "MyMod" ] "myPredicate") [ Scala.Variable "empColumns" ] ]
+                    in
+                    Expect.equal mapped expectedResult
+
+        listFilterWithArgPredicateFunction =
+            test "Convert List.filter with predicate function as argument" <|
+                \_ ->
+                    let
+                        referenceToFunc =
+                            Value.Variable (mFuncTypeOf empType boolTypeInstance) [ "my", "predicate" ]
+
+                        filterCall =
+                            curryCall
+                                ( listFilterFunction empType empType
+                                , [ referenceToFunc
+                                  , mIdOf [ "alist" ] (mListTypeOf empType)
+                                  ]
+                                )
+
+                        ( mapped, _ ) =
+                            mapValue filterCall ctx
+
+                        expectedResult =
+                            sCall
+                                ( sVar "alist", "filter" )
+                                [ sExpCall (Scala.Variable "myPredicate") [ Scala.Variable "empColumns" ] ]
                     in
                     Expect.equal mapped expectedResult
 
@@ -842,6 +904,7 @@ functionMappingsTests =
         , listFilterMapWithLambda
         , listFilterMapWithFunctionExpr
         , listMapWithLambdaAndRecord
+        , listMapWithLambdaAndRecordAndBinOpInProjection
         , listMapWithLambdaAndLetRecord
         , listMapWithLambdaAndBasicType
         , listMapWithLambdaAndFieldFunction
@@ -849,6 +912,7 @@ functionMappingsTests =
         , listMapWithLambdaAndRecordUpdate
         , listFilterWithLambdaAndBasicCondition
         , listFilterWithPredicateFunction
+        , listFilterWithArgPredicateFunction
         , listFilterWithPartiallyAppliedFunction
         , listConcatToArray
         , listConcatToDataFrameUnion

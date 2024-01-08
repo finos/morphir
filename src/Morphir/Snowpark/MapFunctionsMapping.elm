@@ -12,7 +12,7 @@ module Morphir.Snowpark.MapFunctionsMapping exposing
     , stringsFunctionName
     )
 
-import Dict as Dict exposing (Dict)
+import Dict exposing (Dict)
 import Maybe.Extra as Extra
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Name as Name
@@ -629,6 +629,18 @@ generateForListFilter predicate sourceRelation ctx mapValue =
                     _ ->
                         errorValueAndIssue "Unsupported filter function with referenced function"
 
+            ValueIR.Variable (TypeIR.Function _ fromType _) functionName ->
+                case generateRecordTypeWrapperExpression fromType ctx of
+                    Just typeRefExpr ->
+                        generateFilterCall <|
+                            ( Scala.Apply (Scala.Variable (functionName |> Name.toCamelCase))
+                                [ Scala.ArgValue Nothing typeRefExpr ]
+                            , []
+                            )
+
+                    _ ->
+                        errorValueAndIssue "Unsupported filter function with referenced function"
+
             (ValueIR.Apply ((TypeIR.Function _ fromTpe toType) as tpe) _ _) as call ->
                 let
                     newLambda =
@@ -958,7 +970,7 @@ processMapRecordFields fields returnType ctx mapValue =
             |> List.map
                 (\( fieldName, ( value, issues ) ) ->
                     ( Scala.Apply
-                        (Scala.Select value "as")
+                        (Scala.Select (wrapBinaryOperationIfRequired value) "as")
                         [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit fieldName)) ]
                     , issues
                     )
@@ -966,6 +978,14 @@ processMapRecordFields fields returnType ctx mapValue =
             |> List.map (\( value, issues ) -> ( Scala.ArgValue Nothing value, issues ))
             |> List.unzip
         )
+
+
+wrapBinaryOperationIfRequired : Scala.Value -> Scala.Value
+wrapBinaryOperationIfRequired value =
+    case value of
+        Scala.BinOp _ _ _ -> Scala.Tuple [ value ]
+        _ ->
+            value
 
 
 processMapWithLambdaBodyOfNonRecordLambda : TypedValue -> ValueMappingContext -> Constants.MapValueType -> Maybe ( List Scala.ArgValue, List (List GenerationIssue) )
