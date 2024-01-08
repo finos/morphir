@@ -1,45 +1,65 @@
 module Morphir.Snowpark.Operatorsmaps exposing (mapOperator)
 
+
 mapOperator : List String -> String
 mapOperator name =
     case name of
-        ["add"] ->
+        [ "add" ] ->
             "+"
-        ["subtract"] ->
+
+        [ "subtract" ] ->
             "-"
-        ["multiply"] ->
+
+        [ "multiply" ] ->
             "*"
-        ["divide"] ->
+
+        [ "divide" ] ->
             "/"
-        ["integer", "divide"] ->
+
+        [ "integer", "divide" ] ->
             "/"
-        ["float", "divide"] ->
+
+        [ "float", "divide" ] ->
             "/"
-        ["equal"] ->
+
+        [ "equal" ] ->
             "==="
-        ["not", "equal"] ->
+
+        [ "not", "equal" ] ->
             "=!="
-        ["greater", "than"] ->
+
+        [ "greater", "than" ] ->
             ">"
-        ["less", "than"] ->
+
+        [ "less", "than" ] ->
             "<"
-        ["less", "than", "or", "equal"] ->
+
+        [ "less", "than", "or", "equal" ] ->
             "<="
-        ["greater", "than", "or", "equal"] ->
+
+        [ "greater", "than", "or", "equal" ] ->
             ">="
-        ["and"] ->
+
+        [ "and" ] ->
             "&&"
-        ["or"] ->
+
+        [ "or" ] ->
             "||"
-        ["mod", "by"] ->
+
+        [ "mod", "by" ] ->
             "%"
-        ["sum", "of"] ->
+
+        [ "sum", "of" ] ->
             "sum"
-        ["average", "of"] ->
+
+        [ "average", "of" ] ->
             "avg"
-        ["maximum", "of"] ->
+
+        [ "maximum", "of" ] ->
             "max"
-        ["minimum", "of"] ->
+
+        [ "minimum", "of" ] ->
             "min"
+
         _ ->
             "UnsupportedOperator"
