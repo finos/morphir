@@ -143,7 +143,7 @@ getFunctionInputTypes tpe =
 
 errorValueAndIssue : GenerationIssue -> ( Scala.Value, List GenerationIssue )
 errorValueAndIssue issue =
-    ( Scala.Literal (Scala.StringLit issue), [ issue ] )
+    ( Scala.Throw (Scala.New [] "Exception" [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit issue)) ]), [ issue ] )
 
 
 curryCall : ( TypedValue, List TypedValue ) -> TypedValue

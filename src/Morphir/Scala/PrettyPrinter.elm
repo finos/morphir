@@ -598,6 +598,8 @@ mapValue opt value =
                 , mapType opt tpe
                 , ")"
                 ]
+        Throw exceptionExpr ->
+            "throw " ++ (mapValue opt exceptionExpr)
 
 
 mapPattern : Pattern -> Doc

@@ -257,6 +257,7 @@ type Value
     | ForComp (List Generator) Value
     | TypeAscripted Value Type
     | New Path Name (List ArgValue)
+    | Throw Value
 
 
 {-| -}

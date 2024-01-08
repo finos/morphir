@@ -54,13 +54,13 @@ processRecords lambdaInfo functionToApply functionName mappingFunc columnNameLis
             variables |> List.filterMap (\x -> x) |> List.map generateFunctionFromColumnRecords
 
         _ ->
-            [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "Unsupported Record")) ]
+            [ Scala.ArgValue Nothing (defaultValueForUnsupportedElement "Unsupported Record") ]
 
 
 generateFunctionFromColumnRecords : ( String, Scala.Value, Scala.Value ) -> Scala.ArgValue
 generateFunctionFromColumnRecords ( funcName, columnName, aliasValue ) =
     if String.contains "Unsupported" funcName then
-        Scala.ArgValue Nothing <| Scala.Literal (Scala.StringLit "Unsupported column")
+        Scala.ArgValue Nothing <| defaultValueForUnsupportedElement "Unsupported column"
 
     else
         Constants.applySnowparkFunc funcName [ columnName ] |> joinWithAlias aliasValue
@@ -98,7 +98,7 @@ processRecordsVariables lambdaInfo ( mapValue, ctx ) functionFromLambda function
                 Just <| ( "Unsupported variable", Scala.Literal (Scala.StringLit ("UnSupported variable for " ++ Name.toCamelCase name)), [ "Unsupported" ] )
 
         _ ->
-            Just <| ( "Unsupported field", Scala.Literal (Scala.StringLit "UnSupported field from Record"), [ "Unsupported field" ] )
+            Just <| ( "Unsupported field", defaultValueForUnsupportedElement "Unsupported field from Record", [ "Unsupported field" ] )
 
 
 getFunctionVariable : TypedValue -> Constants.MappingFunc -> Constants.LambdaInfo ta -> Maybe ( String, Scala.Value, Name.Name )
@@ -111,7 +111,7 @@ getFunctionVariable variableInfo mappingFunc lambdaInfo =
             Just ( "count", Constants.applySnowparkFunc "col" [ Scala.Literal (Scala.StringLit (Name.toCamelCase lambdaInfo.groupByName)) ], [ "count" ] )
 
         _ ->
-            Just ( "Unsupported", Scala.Literal (Scala.StringLit "Unsupported Reference"), [] )
+            Just ( "Unsupported", defaultValueForUnsupportedElement "Unsupported Reference", [] )
 
 
 concatFunctions : Constants.VariableInformation -> List Scala.ArgValue
@@ -224,7 +224,12 @@ getVariable value ( mapValue, ctx ) =
             Just ( func, column, columnName )
 
         _ ->
-            Just ( "Unsupported", Scala.Literal (Scala.StringLit "Unsupported Reference"), [] )
+            Just ( "Unsupported", defaultValueForUnsupportedElement "Unsupported Reference", [] )
+
+
+defaultValueForUnsupportedElement : String -> Scala.Value
+defaultValueForUnsupportedElement description =
+    Scala.Throw (Scala.New [] "Exception" [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit description)) ])
 
 
 getColumnName : TypedValue -> Name.Name

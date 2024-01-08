@@ -56,7 +56,9 @@ tryToConvertUserFunctionCall ( func, args ) mapValue ctx =
                         ( List.foldl (\a c -> Scala.Apply c [ a ]) (Scala.Apply funcReference [ first ]) rest, issues )
 
             else
-                ( Scala.Literal (Scala.StringLit "Call not generated"), [ "Call to function not generated: " ++ FQName.toString functionName ] )
+                ( Scala.Throw (Scala.New [] "Exception" [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit "Call not generated")) ])
+                , [ "Call to function not generated: " ++ FQName.toString functionName ]
+                )
 
         ValueIR.Constructor _ constructorName ->
             if isRecordWithSimpleTypes constructorName ctx.typesContextInfo then
