@@ -72,11 +72,29 @@ mapCompilationUnit opt cu =
     concat
         [ concat [ "package ", dotSep (prefixKeywords cu.packageDecl), newLine ]
         , newLine
+        , mapImports cu.imports
         , cu.typeDecls
             |> List.map (mapDocumented (mapAnnotated (mapTypeDecl opt)))
             |> String.join (newLine ++ newLine)
         ]
 
+mapImports : List ImportDecl -> Doc
+mapImports imports =
+    case imports of
+        [] -> 
+            ""
+        importsList ->
+            (importsList |> List.map mapImport) ++ [ newLine ]
+                |> concat
+        
+
+mapImport : ImportDecl -> Doc
+mapImport importDecl =
+    concat
+        [ "import "
+        , String.join "." (importDecl.packagePrefix)
+        , newLine
+        ]
 
 mapTypeDecl : Options -> TypeDecl -> Doc
 mapTypeDecl opt typeDecl =
@@ -437,6 +455,9 @@ mapValue opt value =
 
         Apply funValue argValues ->
             mapValue opt funValue ++ argValueBlock opt argValues
+        
+        New path name argValues ->
+            "new" ++ " " ++ (dotSep <| prefixKeywords (path ++ [ name ])) ++ argValueBlock opt argValues
 
         UnOp op right ->
             op ++ mapValue opt right
@@ -577,6 +598,8 @@ mapValue opt value =
                 , mapType opt tpe
                 , ")"
                 ]
+        Throw exceptionExpr ->
+            "throw " ++ (mapValue opt exceptionExpr)
 
 
 mapPattern : Pattern -> Doc
@@ -653,6 +676,9 @@ mapLit lit =
 
         DecimalLit decimal ->
             Decimal.toString decimal
+
+        NullLit ->
+            "null"
 
 
 statementBlock : Options -> List String -> Doc
