@@ -138,6 +138,12 @@ update msg model =
 
 process : Msg -> Cmd Msg
 process msg =
+    let
+        withDefaultDeps packageDist =
+            case packageDist of
+                Library packageName dependencies packageDef ->
+                    Library packageName (Dict.union Frontend.defaultDependencies dependencies) packageDef
+    in
     case msg of
         BuildFromScratch jsonInput ->
             let
@@ -274,7 +280,7 @@ process msg =
                         |> Result.andThen
                             (\packageDist ->
                                 Decode.decodeValue
-                                    (TestCodec.decodeTestSuite packageDist)
+                                    (TestCodec.decodeTestSuite (packageDist |> withDefaultDeps))
                                     testSuiteJson
                             )
             in
@@ -282,14 +288,10 @@ process msg =
                 Result.map3
                     (\options packageDist maybeTestSuite ->
                         let
-                            enrichedDistro =
-                                case packageDist of
-                                    Library packageName dependencies packageDef ->
-                                        Library packageName (Dict.union Frontend.defaultDependencies dependencies) packageDef
 
                             fileMap : Result Encode.Value FileMap
                             fileMap =
-                                mapDistribution options maybeTestSuite enrichedDistro
+                                mapDistribution options maybeTestSuite (packageDist |> withDefaultDeps)
                         in
                         fileMap
                     )
@@ -313,14 +315,10 @@ process msg =
             case packageDistroResult of
                 Ok packageDist ->
                     let
-                        enrichedDistro =
-                            case packageDist of
-                                Library packageName dependencies packageDef ->
-                                    Library packageName (Dict.union Frontend.defaultDependencies dependencies) packageDef
 
                         fileMap : FileMap
                         fileMap =
-                            Stats.collectFeaturesFromDistribution enrichedDistro
+                            Stats.collectFeaturesFromDistribution (packageDist |> withDefaultDeps)
                     in
                     fileMap |> Ok |> encodeResult Encode.string encodeFileMap |> statsResult
 
@@ -354,11 +352,11 @@ process msg =
                                         case testSuiteResult of
                                             Ok testSuite ->
                                                 accesscontrolledModDef.value
-                                                    |> getBranchCoverage ( packageName, modName ) packageDistro testSuite
+                                                    |> getBranchCoverage ( packageName, modName ) (packageDistro |> withDefaultDeps) testSuite
 
                                             Err err ->
                                                 accesscontrolledModDef.value
-                                                    |> getBranchCoverage ( packageName, modName ) packageDistro Dict.empty
+                                                    |> getBranchCoverage ( packageName, modName ) (packageDistro |> withDefaultDeps) Dict.empty
                                     )
                                 |> List.map encodeTestCoverageResult
                                 |> (\lstValues ->
