@@ -12,11 +12,13 @@ format that all Morphir tools integrate with.
 
 Now let's see how you can set them up. This can be done in a few easy steps:
 
-- [Create or find the Morphir IR that describes the decoration](#create-or-find-the-morphir-ir-that-describes-the-decoration)
+- [Create or find a Decoration Schema](#create-or-find-a-decoration-schema)
 - [Set up the decoration for your model](#set-up-the-decoration-for-your-model)
 - [Start adding decorations](#start-adding-decorations) 
+- [Using the morphir decoration-setup Command](#using-the-morphir-decoration-setup-command)
 
-## Create or find the Morphir IR that describes the decoration
+
+## Create or find a Decoration Schema
 
 The first thing you will need is a Morphir IR that describes the shape of the decoration. If you want to use an existing 
 decoration you just need to make sure you have access to the `morphir-ir.json` for it. If you want to create your own
@@ -54,6 +56,10 @@ Each decoration section should include:
     - there is a type in that module that matches the third part of the entry point
 - a storage location that specifies where the decoration data will be saved    
 
+## Using the morphir decoration-setup Command
+The above step can be automated using the `morphir decoration-setup` command from the location containing the decoration IR.
+You can also provide the path to the decoration IR using the `-i` flag
+
 ## Start adding decorations
 
 Once this is all set up you can use Morphir Web to start adding decorations on your model. First you need to run 
@@ -73,3 +79,8 @@ If you open the file you should see something like this:
 
 It's an object with a node id that identifies the part of the model that you put the decoration on, and a value that
 you specified in the UI.
+
+## Consuming Existing Decoration Schemas
+You may also want to use existing decoration schema available in the NPM repository.
+Once you've found and installed the decoration schema, you can run the `morphir decoration-setup` command to set up the decorations.
+Then you can [start adding decorations](#start-adding-decorations)

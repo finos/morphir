@@ -109,7 +109,10 @@ const FeatureList: FeatureItem[] = [
 					the integration of new languages.
 				</p>
 				<p>
-					Check out <a href='https://github.com/stephengoldbaum/morphir-examples/tree/master/tutorial'>Stephen Goldbaum's Morphir Examples on GitHub</a>
+					Check out{' '}
+					<a href='https://github.com/stephengoldbaum/morphir-examples/tree/master/tutorial'>
+						Stephen Goldbaum's Morphir Examples on GitHub
+					</a>
 				</p>
 			</>
 		),
@@ -155,7 +158,11 @@ const FeatureList: FeatureItem[] = [
 					<div className='col col--4'>
 						<h4>Applicability</h4>
 						<div className={styles.furtherReading}>
-							<Link to={'https://github.com/finos/morphir/blob/dcf8dc59b1430170790da3fd6df9d74a0cef7282/docs/presentations/Morphir%20-%20Sharing%20Business%20Logic.pdf'}>
+							<Link
+								to={
+									'https://github.com/finos/morphir/blob/dcf8dc59b1430170790da3fd6df9d74a0cef7282/docs/presentations/Morphir%20-%20Sharing%20Business%20Logic.pdf'
+								}
+							>
 								Sharing Business Logic Across Application Boundaries
 							</Link>
 							<Link to={'http://morphir.finos.org/docs/automating-regtech'}>Regulatory Technology</Link>
