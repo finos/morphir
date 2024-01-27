@@ -1,13 +1,7 @@
-.companyLogos {
-	padding: 15px;
-        float: none;
-        display: flex;
-        justify-content: center;
-        text-align: center;
-}
-
 .companyLogos img {
         width: 386.667px;
-        /* height: 386.667px */
+        height: 193.333px; 
+        object-fit: cover;
+        object-position: center center;
 
 }
