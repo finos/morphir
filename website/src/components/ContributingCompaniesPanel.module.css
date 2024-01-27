@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 .companyLogos {
 	padding: 15px;
@@ -20,6 +21,13 @@
 <<<<<<< HEAD
 >>>>>>> a4267b9 (add styling to the images in the contributingCompaniesPanel)
 =======
+=======
+.companyLogos img {
+        width: 386.667px;
+        height: 193.333px; 
+        object-fit: cover;
+        object-position: center center;
+>>>>>>> 1fdf55c (resize the height of companylogos)
 
 >>>>>>> 5b14a07 (change company logo image style)
 }
