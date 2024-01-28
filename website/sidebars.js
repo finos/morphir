@@ -136,6 +136,28 @@ const sidebars = {
     },
     {
       type: 'category',
+      label: 'Ecosystem',
+      items: [
+        {type: 'category', label: 'Morphir Scala', items: [
+          'scala/morphir-scala',
+          { type: 'category',
+            label: 'Morphir Data Model',
+            items:[
+              'scala/datamodel/datamodel',
+              'scala/datamodel/schema',
+              'scala/datamodel/primitives',
+              'scala/datamodel/lists',
+              'scala/datamodel/maps',
+              'scala/datamodel/records',
+              'scala/datamodel/enums',
+            ]
+          }
+        ]
+      },
+      ]
+    },
+    {
+      type: 'category',
       label: 'Contribution Guide',
       items: [
           'code-of-conduct',

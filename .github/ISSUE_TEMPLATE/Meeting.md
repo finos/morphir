@@ -45,13 +45,15 @@ Thursday DD MMM yyyy - 11am ET / 3pm UK
 
 ### Zoom info
 
-- https://zoom.us/j/95452540437?pwd=TEk0bitJcVFsK3lrWVZCYmxyTm5LZz09
-- **Meeting ID:** 954 5254 0437
-- **Passcode:** 778814
+Join Zoom Meeting
+- https://zoom.us/j/99313804465
+- Meeting ID: 993 1380 4465
+- Passcode: 038632
+
 
 ### Dial-in
 
-- **Find your local number:** https://zoom.us/u/aFGSSGV9x
+- **Find your local number:** https://zoom.us/u/avGA76WoI
 
 **Github Repo:** https://github.com/finos/morphir/
 
