@@ -35,6 +35,8 @@
         "Morphir.IR.Package.Codec",
         "Morphir.IR.Distribution",
         "Morphir.IR.Distribution.Codec",
+        "Morphir.IR.FormatVersion",
+        "Morphir.IR.FormatVersion.Codec",
         "Morphir.Elm.Frontend",
         "Morphir.Elm.Frontend.Codec",
         "Morphir.Elm.IncrementalResolve",
