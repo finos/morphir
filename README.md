@@ -86,6 +86,13 @@ List the roadmap steps; alternatively link the Confluence Wiki page where the pr
 3. Support for Microsoft's Bosque language for defining models.
 4. Modeling queries and aggregations across databases and event processing.
 
+## Getting Involved
+
+### Project Meetings
+
+A great way to interact with the Morphir community is to attend the bi-weekly Thursday Morphir meetings.
+Email help@finos.org to be added to the meeting invite directly, or find the meeting in the [FINOS Community Calendar](https://calendar.finos.org/).
+
 ## Contributing
 
 1. Fork it (<https://github.com/finos/morphir/fork>)
