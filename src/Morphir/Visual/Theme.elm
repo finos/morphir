@@ -7,6 +7,7 @@ import Element.Font as Font exposing (center)
 import Element.Input as Input
 import Html exposing (div, text)
 import Html.Attributes exposing (style)
+import Element exposing (shrink)
 
 
 type alias Theme =
@@ -89,9 +90,9 @@ fromConfig maybeConfig =
             , mediumGray = rgb 0.5 0.5 0.5
             , lightGray = rgba 0.9 0.9 0.9 0.5
             , brandPrimary = rgb 0 0.639 0.882
-            , brandPrimaryLight = rgba 0 0.639 0.882 0.3
+            , brandPrimaryLight = rgba 0 0.639 0.882 0.2
             , brandSecondary = rgb 1 0.411 0
-            , brandSecondaryLight = rgba 1 0.411 0 0.3
+            , brandSecondaryLight = rgba 1 0.411 0 0.2
             , warning = rgba255 238 210 2 0.9
             , highlighted = rgb255 0 163 255
             , notHighlighted = rgb255 120 120 120
@@ -224,11 +225,11 @@ twoColumnTableView tableData leftView rightView =
         ]
         { columns =
             [ { header = none
-              , width = fill
+              , width = shrink
               , view = leftView
               }
             , { header = none
-              , width = fill
+              , width = shrink
               , view = rightView
               }
             ]

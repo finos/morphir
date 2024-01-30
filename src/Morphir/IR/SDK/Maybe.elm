@@ -20,12 +20,15 @@ module Morphir.IR.SDK.Maybe exposing (just, maybeType, moduleName, moduleSpec, n
 import Dict
 import Maybe
 import Morphir.IR.Documented exposing (Documented)
+import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.SDK.Basics exposing (boolType)
 import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Pattern, RawValue, Value)
+import Morphir.SDK.Bool exposing (false, true)
 import Morphir.Value.Error exposing (Error(..))
 import Morphir.Value.Native as Native exposing (decodeFun1, decodeMaybe, decodeRaw, encodeMaybeResult, encodeRaw, eval2, eval3)
 
@@ -96,6 +99,10 @@ moduleSpec =
                 , ( "maybe", maybeType () (tVar "a") )
                 ]
                 (tVar "a")
+            , vSpec "hasValue"
+                [ ( "maybe", maybeType () (tVar "a") )
+                ]
+                (boolType ())
             ]
         , doc = Just "Contains the Maybe type (representing optional values), and related functions."
     }
@@ -277,6 +284,24 @@ nativeFunctions =
                                         )
                             )
 
+                _ ->
+                    Err (UnexpectedArguments args)
+      ),
+      ( "hasValue"
+        ,\eval args ->
+            case args of
+                [ arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) _ ->
+                                        Ok ( (Value.Literal () (BoolLiteral true) )  )
+                                    (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] )) ->
+                                        Ok ( (Value.Literal () (BoolLiteral false) )  )
+                                    _ ->
+                                        Err (UnexpectedArguments args)
+                            )
                 _ ->
                     Err (UnexpectedArguments args)
       )

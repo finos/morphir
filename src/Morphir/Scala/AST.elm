@@ -17,7 +17,7 @@
 
 module Morphir.Scala.AST exposing
     ( Name, Path, Documented, Annotated, withAnnotation, withoutAnnotation, CompilationUnit, PackageDecl
-    , ImportDecl, ImportName, Mod(..), TypeDecl(..), ArgDecl, ArgValue(..), MemberDecl(..)
+    , ImportDecl, ImportName(..), Mod(..), TypeDecl(..), ArgDecl, ArgValue(..), MemberDecl(..)
     , Type(..), Value(..), Pattern(..), Lit(..), Generator(..)
     , nameOfTypeDecl
     )
@@ -256,6 +256,8 @@ type Value
     | CommentedValue Value String
     | ForComp (List Generator) Value
     | TypeAscripted Value Type
+    | New Path Name (List ArgValue)
+    | Throw Value
 
 
 {-| -}
@@ -286,6 +288,7 @@ type Lit
     | IntegerLit Int
     | FloatLit Float
     | DecimalLit Decimal
+    | NullLit
 
 
 {-| -}

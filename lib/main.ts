@@ -1,5 +1,3 @@
-import * as fs from "fs";
-import * as util from "util";
 import { Morphir_IR_Distribution as Distribution } from "./generated/morphir/ir/Distribution";
 import { Morphir_IR_Module } from "./generated/morphir/ir/Module";
 import { Morphir_IR_Package } from "./generated/morphir/ir/Package";
@@ -7,28 +5,6 @@ import { Morphir_IR_Path } from "./generated/morphir/ir/Path";
 import { Morphir_IR_Type } from "./generated/morphir/ir/Type";
 import { Morphir } from "./generated/Morphir";
 
-const fsReadFile = util.promisify(fs.readFile);
-
-fsReadFile("./morphir-ir.json")
-  .then((content) => {
-    const ir: Distribution.Distribution = toDistribution(content.toString());
-    switch (ir.kind) {
-      case "Library":
-        ir.arg3.modules.forEach((accessControlledModuleDef, moduleName) => {
-          console.log(
-            moduleName.map((n) => n.map(capitalize).join("")).join(".")
-          );
-          accessControlledModuleDef.value.types.forEach(
-            (documentedAccessControlledTypeDef, typeName) => {
-              console.log(`  - ${typeName}`);
-            }
-          );
-        });
-    }
-  })
-  .catch((error) => {
-    console.error(error);
-  });
 
 function toDistribution(text: string): Distribution.Distribution {
   let data = JSON.parse(text);

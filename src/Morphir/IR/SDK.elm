@@ -33,7 +33,6 @@ import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.LocalDate as LocalDate
 import Morphir.IR.SDK.LocalTime as LocalTime
 import Morphir.IR.SDK.Maybe as Maybe
-import Morphir.IR.SDK.Month as Month
 import Morphir.IR.SDK.Number as Number
 import Morphir.IR.SDK.Regex as Regex
 import Morphir.IR.SDK.Result as Result
@@ -64,7 +63,6 @@ packageSpec =
             , ( [ [ "local", "date" ] ], LocalDate.moduleSpec )
             , ( [ [ "local", "time" ] ], LocalTime.moduleSpec )
             , ( [ [ "maybe" ] ], Maybe.moduleSpec )
-            , ( [ [ "month" ] ], Month.moduleSpec )
             , ( [ [ "result" ] ], Result.moduleSpec )
             , ( [ [ "list" ] ], List.moduleSpec )
             , ( [ [ "result", "list" ] ], ResultList.moduleSpec )

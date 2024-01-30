@@ -46,7 +46,7 @@ moduleSpec =
             , vSpec "negate" [ ( "value", decimalType () ) ] (decimalType ())
             , vSpec "mul" [ ( "a", decimalType () ), ( "b", decimalType () ) ] (decimalType ())
             , vSpec "div" [ ( "a", decimalType () ), ( "b", decimalType () ) ] (maybeType () (decimalType ()))
-            , vSpec "divWithDefault" [ ( "default", decimalType () ), ( "a", decimalType () ), ( "b", decimalType () ) ] (maybeType () (decimalType ()))
+            , vSpec "divWithDefault" [ ( "default", decimalType () ), ( "a", decimalType () ), ( "b", decimalType () ) ] (decimalType ())
             , vSpec "truncate" [ ( "d", decimalType () ) ] (decimalType ())
             , vSpec "round" [ ( "d", decimalType () ) ] (decimalType ())
             , vSpec "gt" [ ( "a", decimalType () ), ( "b", decimalType () ) ] (boolType ())
