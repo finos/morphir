@@ -1,0 +1,26 @@
+[package]
+name = "morphir_cli"
+version = "0.0.1"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "morphir"
+path = "src/main.rs"
+
+[lib]
+name = "morphir_cli"
+path = "src/lib.rs"
+
+[dependencies]
+clap = { workspace = true, features = [
+    "color",
+    "derive",
+    "env",
+    "help",
+    "suggestions",
+    "usage",
+    "wrap_help",
+] }
+clap_complete = { workspace = true }
+morphir_codemodel = { path = "../codemodel" }

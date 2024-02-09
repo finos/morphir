@@ -3,6 +3,10 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{D7E60D30-8B12-46CD-A6A8-473B92671F89}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Morphir", "src\Morphir\Morphir.fsproj", "{45DC6067-82F7-43C0-BBFC-02BB4253239B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -10,5 +14,14 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{45DC6067-82F7-43C0-BBFC-02BB4253239B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{45DC6067-82F7-43C0-BBFC-02BB4253239B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{45DC6067-82F7-43C0-BBFC-02BB4253239B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{45DC6067-82F7-43C0-BBFC-02BB4253239B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{45DC6067-82F7-43C0-BBFC-02BB4253239B} = {D7E60D30-8B12-46CD-A6A8-473B92671F89}
 	EndGlobalSection
 EndGlobal
