@@ -3,6 +3,25 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".solution", ".solution", "{2DA14A94-D2C8-4474-A87D-FC384C0C40A7}"
+	ProjectSection(SolutionItems) = preProject
+		Directory.Packages.props = Directory.Packages.props
+		Directory.Build.props = Directory.Build.props
+		moon.yml = moon.yml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{279EB2E8-1462-453A-A86A-C33B2CE3CE9D}"
+	ProjectSection(SolutionItems) = preProject
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{DD3E9FA3-B118-4EBD-9FCA-9EC21E3124E4}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "hosts", "hosts", "{7BBF3D43-A24F-460B-8311-3A03D9E0DFC8}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Morphir.CodeModel", "src\Morphir.CodeModel\Morphir.CodeModel.fsproj", "{746DAF25-6F6F-4A99-AE56-435ADF5D0B14}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Morphir.SDK", "src\Morphir.SDK\Morphir.SDK.fsproj", "{3A59DF41-EDBE-4B75-A21E-0D9BF87A7E6D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -10,5 +29,20 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{7BBF3D43-A24F-460B-8311-3A03D9E0DFC8} = {279EB2E8-1462-453A-A86A-C33B2CE3CE9D}
+		{746DAF25-6F6F-4A99-AE56-435ADF5D0B14} = {279EB2E8-1462-453A-A86A-C33B2CE3CE9D}
+		{3A59DF41-EDBE-4B75-A21E-0D9BF87A7E6D} = {279EB2E8-1462-453A-A86A-C33B2CE3CE9D}
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{746DAF25-6F6F-4A99-AE56-435ADF5D0B14}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{746DAF25-6F6F-4A99-AE56-435ADF5D0B14}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{746DAF25-6F6F-4A99-AE56-435ADF5D0B14}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{746DAF25-6F6F-4A99-AE56-435ADF5D0B14}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3A59DF41-EDBE-4B75-A21E-0D9BF87A7E6D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3A59DF41-EDBE-4B75-A21E-0D9BF87A7E6D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3A59DF41-EDBE-4B75-A21E-0D9BF87A7E6D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3A59DF41-EDBE-4B75-A21E-0D9BF87A7E6D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

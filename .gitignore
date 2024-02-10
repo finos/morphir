@@ -1,12 +1,14 @@
 ./.idea
 .fake
 .ionide
+.idea/
 
 .vscode/
 
 target/
 bin/
 obj/
+out/
 
 # moon
 .moon/cache

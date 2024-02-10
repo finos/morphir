@@ -1,0 +1,24 @@
+language: fsharp
+
+tasks:
+  fable:
+    deps: [fable-python, fable-rust]
+
+  fable-python:
+    command: "dotnet fable --lang python -o out/gen/python/"
+    inputs:
+      - "src/**/*.fs"
+      - "src/**/*.fsproj"
+    outputs:
+      - "out/gen/python"
+
+  fable-rust:
+    command: "dotnet fable --lang rust -o out/gen/rust/"
+    inputs:
+      - "src/**/*.fs"
+      - "src/**/*.fsproj"
+    outputs:
+      - "out/gen/rust"
+tags:
+  - "dotnet"
+  - "fable"

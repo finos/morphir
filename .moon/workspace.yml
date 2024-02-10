@@ -12,9 +12,12 @@ $schema: "https://moonrepo.dev/schemas/workspace.json"
 # path to the project folder as the map value. File paths are relative from the workspace root,
 # and cannot reference projects located outside the workspace boundary.
 projects:
+  root: "."
   "morphir-dotnet": "morphir-dotnet"
   "morphir.plugins/samples/csharp": "morphir-dotnet/src/plugins/samples/Morphir.CSharp.WasmPlugin"
   "morphir.plugins/samples/fsharp": "morphir-dotnet/src/plugins/samples/Morphir.FSharp.WasmPlugin"
+  "Morphir.CodeModel": "morphir-dotnet/src/Morphir.CodeModel"
+  "Morphir.SDK": "morphir-dotnet/src/Morphir.SDK"
 
 # Configures the version control system to utilize within the workspace. A VCS
 # is required for determining touched (added, modified, etc) files, calculating file hashes,

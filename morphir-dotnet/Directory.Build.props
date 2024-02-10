@@ -1,0 +1,11 @@
+<Project>
+    <PropertyGroup>
+        <Authors>Damian Reeves</Authors>
+        <Description>
+        This project provides tools and libraries for working with the MorphirIR and tool chain.
+        </Description>
+        <Copyright>Copyright © $([System.DateTime]::UtcNow.Year)</Copyright>
+        <PackageTags>F# fsharp morphir finos</PackageTags>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    </PropertyGroup>
+</Project>
