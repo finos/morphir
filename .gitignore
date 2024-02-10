@@ -5,6 +5,8 @@
 .vscode/
 
 target/
+bin/
+obj/
 
 # moon
 .moon/cache
