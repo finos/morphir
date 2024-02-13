@@ -66,7 +66,7 @@ import Morphir.IR.NodeId exposing (NodeID(..))
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Repo as Repo exposing (Repo)
-import Morphir.IR.SDK as SDK exposing (packageName)
+import Morphir.IR.SDK as SDK
 import Morphir.IR.Type as Type exposing (Type(..))
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
 import Morphir.SDK.Dict as SDKDict
@@ -1513,7 +1513,7 @@ viewHome model packageName packageDef =
             ]
             [ column [ width fill, height fill, scrollbars, spacing (Theme.smallSpacing model.theme) ]
                 [ ifThenElse model.showModules moduleTree none
-                , ifThenElse model.showDefinitions (definitionList packageDef model entryPoints) none
+                , ifThenElse model.showDefinitions (definitionList packageName packageDef model entryPoints) none
                 ]
             ]
         , column
@@ -1535,8 +1535,8 @@ viewHome model packageName packageDef =
         ]
 
 
-definitionList : Package.Definition () (Type ()) -> Model -> List FQName -> Element Msg
-definitionList packageDef model entrypoints =
+definitionList : PackageName -> Package.Definition () (Type ()) -> Model -> List FQName -> Element Msg
+definitionList packageName packageDef model entrypoints =
     let
         -- Given a module name and a module definition, returns a list of tuples with the module's definitions, and their human readable form
         moduleDefinitionsAsUiElements : ModuleName -> Module.Definition () (Type ()) -> List ( Definition, Element Msg )
