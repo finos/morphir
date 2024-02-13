@@ -265,8 +265,15 @@ viewValueByLanguageFeature config value =
                             Value.uncurryApply fun arg
                     in
 
+                    case (function, args) of
+                        ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "decimal" ] ], [ "from", "float" ] ), [ argValue ] ) ->
+                            viewValue config argValue
+                        
+                        ( Value.Reference _ (  [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "from", "i", "s", "o" ]  ), [ argValue ] ) ->
+                            viewValue config argValue
 
-                    ViewApply.view config definitionBody (viewValue config) function args applyValue
+                        _ ->
+                            ViewApply.view config definitionBody (viewValue config) function args applyValue
 
                 Value.LetDefinition _ _ _ _ ->
                     let
