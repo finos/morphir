@@ -1,4 +1,4 @@
-﻿namespace Morphir.CodeModel
+﻿namespace Morphir.CodeModel.Python
 
 module Say =
     let hello name =
