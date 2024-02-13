@@ -1,21 +1,18 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
-
   <ItemGroup>
-    <Compile Include="Type.fs" />
-    <Compile Include="Value.fs" />
+    <Compile Include="naming.fs" />
+    <Compile Include="codeModel.fs" />
     <Compile Include="IR.fs" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Fable.Core" />
     <PackageReference Include="Fable.Python" />
   </ItemGroup>
-    <ItemGroup>
-        <Content Include="*.fsproj; **\*.fs" PackagePath="fable" />
-    </ItemGroup>
+  <ItemGroup>
+    <Content Include="*.fsproj; **\*.fs" PackagePath="fable" />
+  </ItemGroup>
 </Project>
