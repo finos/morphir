@@ -2,6 +2,7 @@
 .fake
 .ionide
 .idea/
+.codefiles/
 
 .vscode/
 
