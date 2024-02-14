@@ -28,6 +28,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Morphir.CodeModel.JavaScrip
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Morphir.Host", "src\host\Morphir.Host\Morphir.Host.fsproj", "{8463D417-5DC3-411C-ABB7-8B5D1460AD25}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Morphir.CodeModel.Tests", "tests\Morphir.CodeModel.Tests\Morphir.CodeModel.Tests.fsproj", "{707B3E40-C559-4749-867B-ED590D6CB0F1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -43,6 +45,7 @@ Global
 		{372B5BCE-AFC2-4402-B609-95247C4B8D05} = {279EB2E8-1462-453A-A86A-C33B2CE3CE9D}
 		{845E37E2-BEF3-41E2-9077-4631B65AD321} = {279EB2E8-1462-453A-A86A-C33B2CE3CE9D}
 		{8463D417-5DC3-411C-ABB7-8B5D1460AD25} = {7BBF3D43-A24F-460B-8311-3A03D9E0DFC8}
+		{707B3E40-C559-4749-867B-ED590D6CB0F1} = {DD3E9FA3-B118-4EBD-9FCA-9EC21E3124E4}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{746DAF25-6F6F-4A99-AE56-435ADF5D0B14}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -65,5 +68,9 @@ Global
 		{8463D417-5DC3-411C-ABB7-8B5D1460AD25}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8463D417-5DC3-411C-ABB7-8B5D1460AD25}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8463D417-5DC3-411C-ABB7-8B5D1460AD25}.Release|Any CPU.Build.0 = Release|Any CPU
+		{707B3E40-C559-4749-867B-ED590D6CB0F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{707B3E40-C559-4749-867B-ED590D6CB0F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{707B3E40-C559-4749-867B-ED590D6CB0F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{707B3E40-C559-4749-867B-ED590D6CB0F1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

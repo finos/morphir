@@ -4,13 +4,15 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="IR\IR.Naming.fs" />
+    <Compile Include="IR\IR.fs" />
     <Compile Include="naming.fs" />
     <Compile Include="codeModel.fs" />
-    <Compile Include="IR.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Fable.Core" />
     <PackageReference Include="Fable.Python" />
+    <PackageReference Include="FSharp.Core" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="*.fsproj; **\*.fs" PackagePath="fable" />
