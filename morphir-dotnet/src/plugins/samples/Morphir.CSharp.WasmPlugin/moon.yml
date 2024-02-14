@@ -1,0 +1,11 @@
+language: csharp
+tags:
+  - "morphir-plugin"
+
+tasks:
+  wasmBuild:
+    command: "dotnet publish -c Release -p:OptimizationPreference=Size -p:StackTraceSupport=false -p:InvariantGlobalization=true -p:UseSystemResourceKeys=true"
+
+  pluginBuild:
+    deps:
+      - wasmBuild

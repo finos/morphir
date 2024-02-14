@@ -1,0 +1,38 @@
+tasks:
+  fable:
+    deps: [fable-python, fable-ts, fable-rust]
+
+  fable-python-clean:
+    command: "rm -rf out/gen/python"
+
+  fable-python:
+    command: "dotnet fable --lang python -o out/gen/python/"
+    inputs:
+      - "src/**/*.fs"
+      - "src/**/*.fsproj"
+    outputs:
+      - "out/gen/python"
+    deps: [fable-python-clean]
+
+  fable-rust-clean:
+    command: "rm -rf out/gen/rust"
+      
+  fable-rust:
+    command: "dotnet fable --lang rust -o out/gen/rust/"
+    inputs:
+      - "src/**/*.fs"
+      - "src/**/*.fsproj"
+    outputs:
+      - "out/gen/rust"
+    deps: [fable-rust-clean]
+    
+  fable-ts-clean:
+    command: "rm -rf out/gen/ts"
+  fable-ts:
+    command: "dotnet fable --lang Typescript -o out/gen/ts/"
+    inputs:
+      - "src/**/*.fs"
+      - "src/**/*.fsproj"
+    outputs:
+      - "out/gen/ts"
+    deps: [fable-ts-clean]

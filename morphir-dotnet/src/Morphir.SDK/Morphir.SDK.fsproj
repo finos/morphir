@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PackageTags>fable;fable-library;fable-javascript;fable-python;fable-rust;fable-typescript</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Basics.fs" />
+    <Compile Include="Char.fs" />
+    <Compile Include="Maybe.fs" />
+    <Compile Include="Tuple.fs" />
+  </ItemGroup>
+  <ItemGroup>
+      <Content Include="*.fsproj; **\*.fs" PackagePath="fable" />
+  </ItemGroup>
+</Project>

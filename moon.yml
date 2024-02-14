@@ -1,0 +1,18 @@
+language: "rust"
+type: "application"
+
+env:
+  CARGO_TERM_COLOR: "always"
+
+fileGroups:
+  sources:
+    - "crates/*/src/**/*"
+    - "crates/*/Cargo.toml"
+    - "Cargo.toml"
+  tests:
+    - "crates/*/benches/**/*"
+    - "crates/*/tests/**/*"
+
+#_taskOptions: &options
+#  options:
+#    runInCI: false
