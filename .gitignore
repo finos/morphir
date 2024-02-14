@@ -1,5 +1,16 @@
 ./.idea
 .fake
 .ionide
+.idea/
+.codefiles/
 
 .vscode/
+
+target/
+bin/
+obj/
+out/
+
+# moon
+.moon/cache
+.moon/docker

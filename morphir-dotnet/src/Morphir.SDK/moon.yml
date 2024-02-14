@@ -1,0 +1,7 @@
+language: fsharp
+
+tasks:
+
+tags:
+  - "dotnet"
+  - "fable"

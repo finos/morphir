@@ -1,0 +1,3 @@
+tasks:
+  tool-restore:
+    command: "dotnet tool restore"
