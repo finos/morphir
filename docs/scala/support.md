@@ -324,3 +324,18 @@ This section lists the SDK types and functions currently supported in this versi
 | key10    | v0.7.0                         | &#x2715;   |
 | key11    | v0.7.0                         | &#x2715;   |
 | key12    | v0.7.0                         | &#x2715;   |
+| key13    | v0.7.0                         | &#x2715;   |
+| key14    | v0.7.0                         | &#x2715;   |
+| key15    | v0.7.0                         | &#x2715;   |
+| key16    | v0.7.0                         | &#x2715;   |
+
+### Morphir.SDK.List
+| Function    | Morphir-Elm Version Introduced | Supported |
+|-------------|--------------------------------|-----------|
+| singleton   | v2.0.0                         | &#x2713;  |
+| repeat      | v2.0.0                         | &#x2713;  |
+| range       | v2.0.0                         | &#x2713;  |
+| cons        | v2.0.0                         | &#x2715;  |
+| map         | v2.0.0                         | &#x2713;  |
+| indexedMap  | v2.0.0                         | &#x2713;  |
+| foldl       | v2.0.0                         | &#x2713;  |
