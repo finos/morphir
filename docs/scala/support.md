@@ -392,3 +392,17 @@ This section lists the SDK types and functions currently supported in this versi
 | addDays          | v1.5.0                         | &#x2715;  |
 | addWeeks         | v1.5.0                         | &#x2713;  |
 | addMonths        | v1.5.0                         | &#x2715;  |
+| addYears         | v1.5.0                         | &#x2715;  |
+| fromCalendarDate | v2.87.0                        | &#x2713;  |
+| fromISO          | v2.4.0                         | &#x2713;  |
+| fromOrdinalDate  | v2.87.0                        | &#x2713;  |
+| fromParts        | v2.4.0                         | &#x2713;  |
+| toISOString      | v2.66.0                        | &#x2715;  |
+| monthToInt       | v2.87.0                        | &#x2715;  |
+| dayOfWeek        | v2.84.2                        | &#x2713;  |
+| isWeekend        | v2.84.2                        | &#x2715;  |
+| isWeekday        | v2.84.2                        | &#x2715;  |
+| year             | v2.84.2                        | &#x2713;  |
+| month            | v2.84.2                        | &#x2713;  |
+| monthNumber      | v2.87.0                        | &#x2713;  |
+| day              | v2.84.2                        | &#x2713;  |
