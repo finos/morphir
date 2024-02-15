@@ -141,3 +141,14 @@ This section lists the SDK types and functions currently supported in this versi
 | max                | v2.0.0                         | &#x2715;  |
 | min                | v2.0.0                         | &#x2715;  |
 | compare            | v2.0.0                         | &#x2713;  |
+
+
+### Morphir.SDK.Bool
+| Function | Morphir-Elm Version Introduced | Supported |
+|----------|--------------------------------|-----------|
+| true     | v0.4.0                         | &#x2713;  |
+| false    | v0.4.0                         | &#x2713;  |
+| not      | v0.4.0                         | &#x2713;  |
+| and      | v0.4.0                         | &#x2713;  |
+| or       | v0.4.0                         | &#x2713;  |
+| xor      | v0.4.0                         | &#x2713;  |
