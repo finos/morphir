@@ -105,3 +105,15 @@ This section lists the SDK types and functions currently supported in this versi
 | greaterThanOrEqual | v2.0.0                         | &#x2715;  |
 | max                | v2.0.0                         | &#x2715;  |
 | min                | v2.0.0                         | &#x2715;  |
+| compare            | v2.0.0                         | &#x2713;  |
+
+#### Number
+| Function   | Morphir-Elm Version Introduced | Supported |
+|------------|--------------------------------|-----------|
+| add        | v2.10.0                        | &#x2715;  |
+| subtract   | v2.11.0                        | &#x2715;  |
+| multiply   | v2.11.0                        | &#x2715;  |
+| divide     | v2.10.0                        | &#x2715;  |
+| power      | v2.0.0                         | &#x2715;  |
+| negate     | v2.11.0                        | &#x2715;  |
+| abs        | v2.11.0                        | &#x2715;  |
