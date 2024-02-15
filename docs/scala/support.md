@@ -26,3 +26,18 @@ This section lists the SDK types and functions currently supported in this versi
 | byKey                    | v2.19.0                        | &#x2715;  |
 | withFilter               | v2.19.0                        | &#x2715;  |
 | constructAggregationCall | v2.66.0                        | &#x2715;  |
+
+### Morphir.SDK.Basics
+
+#### Bool
+| Function | Morphir-Elm Version Introduced | Supported |
+|----------|--------------------------------|-----------|
+| not      | v0.4.0                         | &#x2713;  |
+| and      | v0.4.0                         | &#x2713;  |
+| or       | v0.4.0                         | &#x2713;  |
+| xor      | v0.4.0                         | &#x2713;  |
+
+#### Char
+| Function           | Morphir-Elm Version Introduced | Supported |
+|--------------------|--------------------------------|-----------|
+| lessThan           | v2.0.0                         | &#x2713;  |
