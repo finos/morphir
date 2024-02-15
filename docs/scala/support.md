@@ -207,3 +207,25 @@ This section lists the SDK types and functions currently supported in this versi
 | zero              | v2.8.0                         | &#x2713;  |
 | one               | v2.8.0                         | &#x2713;  |
 | minusOne          | v2.8.0                         | &#x2713;  |
+
+
+### Morphir.SDK.Dict
+#### Types
+
+| Type | Morphir-Elm Version Introduced | Supported |
+|------|--------------------------------|-----------|
+| Dict | v1.0.0                         | &#x2713;  |
+
+#### Functions
+
+| Function  | Morphir-Elm Version Introduced | Supported |
+|-----------|--------------------------------|-----------|
+| empty     | v2.41.0                        | &#x2713;  |
+| singleton | v2.41.0                        | &#x2713;  |
+| insert    | v2.41.0                        | &#x2713;  |
+| update    | v2.41.0                        | &#x2713;  |
+| remove    | v2.41.0                        | &#x2713;  |
+| isEmpty   | v2.41.0                        | &#x2713;  |
+| member    | v2.41.0                        | &#x2713;  |
+| get       | v2.41.0                        | &#x2713;  |
+| size      | v2.41.0                        | &#x2713;  |
