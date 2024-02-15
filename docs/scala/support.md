@@ -170,3 +170,17 @@ This section lists the SDK types and functions currently supported in this versi
 | toLocaleLower | v2.31.3                        | &#x2715;  | 
 | toCode        | v2.31.3                        | &#x2715;  | 
 | fromCode      | v2.31.3                        | &#x2715;  | 
+
+### Morphir.SDK.Decimal
+| Function          | Morphir-Elm Version Introduced | Supported |
+|-------------------|--------------------------------|-----------|
+| fromInt           | v2.8.0                         | &#x2713;  |
+| fromFloat         | v2.8.0                         | &#x2715;  |
+| fromString        | v2.8.0                         | &#x2713;  |
+| hundred           | v2.8.0                         | &#x2715;  |
+| thousand          | v2.8.0                         | &#x2713;  |
+| million           | v2.8.0                         | &#x2715;  |
+| tenth             | v2.8.0                         | &#x2715;  |
+| hundredth         | v2.8.0                         | &#x2715;  |
+| thousandth        | v2.8.0                         | &#x2715;  |
+| millionth         | v2.8.0                         | &#x2715;  |
