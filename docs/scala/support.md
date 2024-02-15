@@ -532,3 +532,14 @@ This section lists the SDK types and functions currently supported in this versi
 | remove    | v2.2.0                         | &#x2713;  |
 | isEmpty   | v2.2.0                         | &#x2713;  |
 | member    | v2.2.0                         | &#x2713;  |
+| size      | v2.2.0                         | &#x2713;  |
+| toList    | v2.2.0                         | &#x2713;  |
+| fromList  | v2.2.0                         | &#x2713;  |
+| map       | v2.2.0                         | &#x2713;  |
+| foldl     | v2.2.0                         | &#x2713;  |
+| foldr     | v2.2.0                         | &#x2713;  |
+| filter    | v2.2.0                         | &#x2713;  |
+| partition | v2.2.0                         | &#x2713;  |
+| union     | v2.2.0                         | &#x2713;  |
+| intersect | v2.2.0                         | &#x2713;  |
+| diff      | v2.2.0                         | &#x2715;  |
