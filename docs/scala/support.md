@@ -117,3 +117,16 @@ This section lists the SDK types and functions currently supported in this versi
 | power      | v2.0.0                         | &#x2715;  |
 | negate     | v2.11.0                        | &#x2715;  |
 | abs        | v2.11.0                        | &#x2715;  |
+| clamp      | v2.0.0                         | &#x2715;  |
+
+#### String
+| Function           | Morphir-Elm Version Introduced | Supported |
+|--------------------|--------------------------------|-----------|
+| append             | v2.0.0                         | &#x2715;  |
+| lessThan           | v2.0.0                         | &#x2713;  |
+| greaterThan        | v2.0.0                         | &#x2715;  |
+| lessThanOrEqual    | v2.0.0                         | &#x2715;  |
+| greaterThanOrEqual | v2.0.0                         | &#x2715;  |
+| max                | v2.0.0                         | &#x2715;  |
+| min                | v2.0.0                         | &#x2715;  |
+| compare            | v2.0.0                         | &#x2713;  |
