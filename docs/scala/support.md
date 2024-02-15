@@ -242,3 +242,23 @@ This section lists the SDK types and functions currently supported in this versi
 | intersect | v2.41.0                        | &#x2715;  |
 | diff      | v2.41.0                        | &#x2713;  |
 | merge     | v2.41.0                        | &#x2713;  |
+
+### Morphir.SDK.Float
+#### Types
+
+| Type    | Morphir-Elm Version Introduced | Supported |
+|---------|--------------------------------|-----------|
+| Float   | v0.4.0                         | &#x2713;  |
+| Float32 | v0.4.0                         | &#x2713;  |
+| Float64 | v0.4.0                         | &#x2713;  |
+
+#### Functions
+
+| Function   | Morphir-Elm Version Introduced | Supported |
+|------------|--------------------------------|-----------|
+| divide     | v0.4.0                         | &#x2713;  |
+| fromInt    | v0.4.0                         | &#x2715;  |
+| round      | v0.4.0                         | &#x2715;  |
+| floor      | v0.4.0                         | &#x2715;  |
+| ceiling    | v0.4.0                         | &#x2715;  |
+| truncate   | v0.4.0                         | &#x2715;  |
