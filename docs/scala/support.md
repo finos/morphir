@@ -371,3 +371,24 @@ This section lists the SDK types and functions currently supported in this versi
 | unzip       | v2.0.0                         | &#x2715;  |
 | innerJoin   | v2.0.0                         | &#x2715;  |
 | leftJoin    | v2.0.0                         | &#x2715;  |
+
+### Morphir.SDK.LocalDate
+#### Types
+
+| Function  | Morphir-Elm Version Introduced | Supported |
+|-----------|--------------------------------|-----------|
+| LocalDate | v1.5.0                         | &#x2713;  |
+| DayOfWeek | v2.84.2                        | &#x2713;  |
+| Month     | v2.84.2                        | &#x2713;  |
+
+#### Functions
+
+| Function         | Morphir-Elm Version Introduced | Supported |
+|------------------|--------------------------------|-----------|
+| diffInDays       | v1.5.0                         | &#x2713;  |
+| diffInWeeks      | v1.5.0                         | &#x2715;  |
+| diffInMonths     | v1.5.0                         | &#x2715;  |
+| diffInYears      | v1.5.0                         | &#x2715;  |
+| addDays          | v1.5.0                         | &#x2715;  |
+| addWeeks         | v1.5.0                         | &#x2713;  |
+| addMonths        | v1.5.0                         | &#x2715;  |
