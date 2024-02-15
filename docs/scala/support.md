@@ -601,3 +601,10 @@ This section lists the SDK types and functions currently supported in this versi
 | foldr              | v2.0.0                         | &#x2715;  |
 | any                | v2.0.0                         | &#x2715;  |
 | all                | v2.0.0                         | &#x2715;  |
+
+
+### Morphir.SDK.Validate
+| Function        | Morphir-Elm Version Introduced | Supported |
+|-----------------|--------------------------------|-----------|
+| required        | v2.41.1                        | &#x2715;  |
+| parse           | v2.41.1                        | &#x2715;  |
