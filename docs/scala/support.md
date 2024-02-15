@@ -152,3 +152,21 @@ This section lists the SDK types and functions currently supported in this versi
 | and      | v0.4.0                         | &#x2713;  |
 | or       | v0.4.0                         | &#x2713;  |
 | xor      | v0.4.0                         | &#x2713;  |
+
+
+### Char
+| Function      | Morphir-Elm Version Introduced | Supported |
+|---------------|--------------------------------|-----------|
+| isUpper       | v2.31.3                        | &#x2715;  |
+| isLower       | v2.31.3                        | &#x2715;  | 
+| isAlpha       | v2.31.3                        | &#x2715;  | 
+| isAlphaNum    | v2.31.3                        | &#x2715;  | 
+| isDigit       | v2.31.3                        | &#x2715;  |
+| isOctDigit    | v2.31.3                        | &#x2715;  | 
+| isHexDigit    | v2.31.3                        | &#x2715;  | 
+| toUpper       | v2.31.3                        | &#x2715;  | 
+| toLower       | v2.31.3                        | &#x2715;  | 
+| toLocaleUpper | v2.31.3                        | &#x2715;  | 
+| toLocaleLower | v2.31.3                        | &#x2715;  | 
+| toCode        | v2.31.3                        | &#x2715;  | 
+| fromCode      | v2.31.3                        | &#x2715;  | 
