@@ -470,17 +470,17 @@ This section lists the SDK types and functions currently supported in this versi
 
 ### Regex
 | Function       | Morphir-Elm Version Introduced | Supported |
-|----------------|---------------------------|-----------|
-| fromString     | v2.81.0                   | &#x2715;  |
-| fromStringWith | v2.81.0                   | &#x2715;  |
-| never          | v2.81.0                   | &#x2715;  |
-| contains       | v2.81.0                   | &#x2715;  |
-| split          | v2.81.0                   | &#x2715;  |
-| find           | v2.81.0                   | &#x2715;  |
-| replace        | v2.81.0                   | &#x2715;  |
-| splitAtMost    | v2.81.0                   | &#x2715;  |
-| findAtMost     | v2.81.0                   | &#x2715;  |
-| replaceAtMost  | v2.81.0                   | &#x2715;  |
+|----------------|--------------------------------|-----------|
+| fromString     | v2.81.0                        | &#x2715;  |
+| fromStringWith | v2.81.0                        | &#x2715;  |
+| never          | v2.81.0                        | &#x2715;  |
+| contains       | v2.81.0                        | &#x2715;  |
+| split          | v2.81.0                        | &#x2715;  |
+| find           | v2.81.0                        | &#x2715;  |
+| replace        | v2.81.0                        | &#x2715;  |
+| splitAtMost    | v2.81.0                        | &#x2715;  |
+| findAtMost     | v2.81.0               -        | &#x2715;  |
+| replaceAtMost  | v2.81.0                        | &#x2715;  |
 
 ### Result
 | Function    | Morphir-Elm Version Introduced | Supported |
