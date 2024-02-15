@@ -92,3 +92,16 @@ This section lists the SDK types and functions currently supported in this versi
 | lessThanOrEqual    | v2.0.0                         | &#x2713;  |
 | greaterThanOrEqual | v2.0.0                         | &#x2713;  |
 | max                | v2.0.0                         | &#x2715;  |
+| min                | v2.0.0                         | &#x2715;  |
+| compare            | v2.0.0                         | &#x2713;  |
+
+#### List
+| Function           | Morphir-Elm Version Introduced | Supported |
+|--------------------|--------------------------------|-----------|
+| append             | v2.0.0                         | &#x2713;  |
+| lessThan           | v2.0.0                         | &#x2713;  |
+| greaterThan        | v2.0.0                         | &#x2715;  |
+| lessThanOrEqual    | v2.0.0                         | &#x2715;  |
+| greaterThanOrEqual | v2.0.0                         | &#x2715;  |
+| max                | v2.0.0                         | &#x2715;  |
+| min                | v2.0.0                         | &#x2715;  |
