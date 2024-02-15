@@ -276,3 +276,20 @@ This section lists the SDK types and functions currently supported in this versi
 | isNan      | v0.4.0                         | &#x2715;  |
 | isInfinite | v0.4.0                         | &#x2715;  |
 | degrees    | v2.0.0                         | &#x2715;  | 
+| radians    | v2.0.0                         | &#x2715;  | 
+| turns      | v2.0.0                         | &#x2715;  | 
+| toPolar    | v2.0.0                         | &#x2715;  | 
+| fromPolar  | v2.0.0                         | &#x2715;  | 
+
+
+
+### Morphir.SDK.Int
+#### Types
+
+| Type   | Morphir-Elm Version Introduced | Supported |
+|--------|--------------------------------|-----------|
+| Int    | v0.4.0                         | &#x2713;  |
+| Int8   | v0.4.0                         | &#x2713;  |
+| Int16  | v0.4.0                         | &#x2713;  |
+| Int32  | v0.4.0                         | &#x2713;  |
+| Int64  | v0.4.0                         | &#x2713;  |
