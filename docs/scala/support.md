@@ -83,3 +83,12 @@ This section lists the SDK types and functions currently supported in this versi
 #### Int
 | Function           | Morphir-Elm Version Introduced | Supported |
 |--------------------|--------------------------------|-----------|
+| integerDivide      | v0.4.0                         | &#x2713;  |
+| toFloat            | v2.0.0                         | &#x2713;  |
+| modBy              | v0.4.0                         | &#x2713;  |
+| remainderBy        | v0.4.0                         | &#x2713;  |
+| lessThan           | v2.0.0                         | &#x2713;  |
+| greaterThan        | v2.0.0                         | &#x2713;  |
+| lessThanOrEqual    | v2.0.0                         | &#x2713;  |
+| greaterThanOrEqual | v2.0.0                         | &#x2713;  |
+| max                | v2.0.0                         | &#x2715;  |
