@@ -184,3 +184,16 @@ This section lists the SDK types and functions currently supported in this versi
 | hundredth         | v2.8.0                         | &#x2715;  |
 | thousandth        | v2.8.0                         | &#x2715;  |
 | millionth         | v2.8.0                         | &#x2715;  |
+| bps               | v2.8.0                         | &#x2713;  |
+| toString          | v2.8.0                         | &#x2715;  |
+| add               | v2.8.0                         | &#x2713;  |
+| sub               | v2.8.0                         | &#x2713;  |
+| negate            | v2.8.0                         | &#x2713;  |
+| mul               | v2.8.0                         | &#x2713;  |
+| div               | v2.12.0                        | &#x2713;  |
+| divWithDefault    | v2.12.0                        | &#x2713;  |
+| truncate          | v2.8.0                         | &#x2713;  |
+| round             | v2.8.0                         | &#x2713;  |
+| gt                | v2.8.0                         | &#x2713;  |
+| gte               | v2.8.0                         | &#x2713;  |
+| eq                | v2.8.0                         | &#x2713;  |
