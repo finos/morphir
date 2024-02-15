@@ -293,3 +293,16 @@ This section lists the SDK types and functions currently supported in this versi
 | Int16  | v0.4.0                         | &#x2713;  |
 | Int32  | v0.4.0                         | &#x2713;  |
 | Int64  | v0.4.0                         | &#x2713;  |
+
+#### Functions
+
+| Function    | Morphir-Elm Version Introduced | Supported |
+|-------------|--------------------------------|-----------|
+| fromInt8    | v2.9.0                         | &#x2715;  | 
+| toInt8      | v2.9.0                         | &#x2715;  | 
+| fromInt16   | v2.9.0                         | &#x2715;  |
+| toInt16     | v2.9.0                         | &#x2715;  | 
+| fromInt32   | v2.9.0                         | &#x2715;  |
+| toInt32     | v2.9.0                         | &#x2715;  | 
+| fromInt64   | v2.9.0                         | &#x2715;  | 
+| toInt64     | v2.9.0                         | &#x2715;  | 
