@@ -262,3 +262,17 @@ This section lists the SDK types and functions currently supported in this versi
 | floor      | v0.4.0                         | &#x2715;  |
 | ceiling    | v0.4.0                         | &#x2715;  |
 | truncate   | v0.4.0                         | &#x2715;  |
+| sqrt       | v0.4.0                         | &#x2715;  |
+| logBase    | v0.4.0                         | &#x2713;  |
+| e          | v0.4.0                         | &#x2713;  |
+| pi         | v0.4.0                         | &#x2713;  |
+| cos        | v0.4.0                         | &#x2715;  |
+| sin        | v0.4.0                         | &#x2715;  |
+| tan        | v0.4.0                         | &#x2715;  |
+| acos       | v0.4.0                         | &#x2715;  |
+| asin       | v0.4.0                         | &#x2715;  |
+| atan       | v0.4.0                         | &#x2715;  |
+| atan2      | v0.4.0                         | &#x2715;  |
+| isNan      | v0.4.0                         | &#x2715;  |
+| isInfinite | v0.4.0                         | &#x2715;  |
+| degrees    | v2.0.0                         | &#x2715;  | 
