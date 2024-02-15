@@ -52,3 +52,14 @@ This section lists the SDK types and functions currently supported in this versi
 | Function           | Morphir-Elm Version Introduced | Supported |
 |--------------------|--------------------------------|-----------|
 | divide             | v0.4.0                         | &#x2713;  |
+| round              | v0.4.0                         | &#x2715;  |
+| floor              | v0.4.0                         | &#x2715;  |
+| ceiling            | v0.4.0                         | &#x2715;  |
+| truncate           | v0.4.0                         | &#x2715;  |
+| isNan              | v0.4.0                         | &#x2715;  |
+| isInfinite         | v0.4.0                         | &#x2715;  |
+| e                  | v0.4.0                         | &#x2713;  |
+| pi                 | v0.4.0                         | &#x2713;  |
+| cos                | v0.4.0                         | &#x2715;  |
+| sin                | v0.4.0                         | &#x2715;  |
+| tan                | v0.4.0                         | &#x2715;  |
