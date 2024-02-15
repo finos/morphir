@@ -58,7 +58,7 @@ import Morphir.Correctness.Test exposing (TestCase, TestSuite)
 import Morphir.IR.Decoration exposing (AllDecorationConfigAndData, DecorationData, DecorationID)
 import Morphir.IR.Decoration.Codec exposing (decodeAllDecorationConfigAndData, decodeDecorationData, encodeDecorationData)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
-import Morphir.IR.FQName as FQName exposing (FQName)
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.FormatVersion.Codec as DistributionCodec
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
@@ -70,7 +70,7 @@ import Morphir.IR.SDK as SDK
 import Morphir.IR.Type as Type exposing (Type(..))
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
 import Morphir.SDK.Dict as SDKDict
-import Morphir.TestCoverage.Backend exposing (getBranchCoverage, getValueBranchCoverage)
+import Morphir.TestCoverage.Backend exposing (getValueBranchCoverage)
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Error exposing (Error)
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
@@ -367,7 +367,21 @@ update msg model =
                         ( k
                         , Array.toList v
                             -- the interpreter and insightViewState needs Unit in places where no input is given, but we can't encode a value that does not match the parameter type
-                            |> List.map (\testCase -> { testCase | inputs = List.map (\i -> ifThenElse (i == Just (Value.Unit ())) Nothing i) testCase.inputs })
+                            |> List.map
+                                (\testCase ->
+                                    { testCase
+                                        | inputs =
+                                            List.map
+                                                (\i ->
+                                                    if i == Just (Value.Unit ()) then
+                                                        Nothing
+
+                                                    else
+                                                        i
+                                                )
+                                                testCase.inputs
+                                    }
+                                )
                         )
                     )
                     (Dict.toList testSuite)
@@ -439,7 +453,12 @@ update msg model =
                 ToggleModulesMenu ->
                     ( { model
                         | showModules = not model.showModules
-                        , showDefinitions = ifThenElse (not model.showModules) True model.showDefinitions
+                        , showDefinitions =
+                            if not model.showModules then
+                                True
+
+                            else
+                                model.showDefinitions
                       }
                     , Cmd.none
                     )
@@ -447,7 +466,12 @@ update msg model =
                 ToggleDefinitionsMenu ->
                     ( { model
                         | showDefinitions = not model.showDefinitions
-                        , showModules = ifThenElse (not model.showDefinitions) model.showDefinitions False
+                        , showModules =
+                            if not model.showDefinitions then
+                                model.showDefinitions
+
+                            else
+                                False
                       }
                     , Cmd.none
                     )
@@ -623,7 +647,15 @@ update msg model =
                                 (Array.Extra.removeAt index (Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty))
                                 model.testSuite
                     in
-                    ( { model | testSuite = newTestSuite, selectedTestcaseIndex = ifThenElse (model.selectedTestcaseIndex == index) -1 model.selectedTestcaseIndex }
+                    ( { model
+                        | testSuite = newTestSuite
+                        , selectedTestcaseIndex =
+                            if model.selectedTestcaseIndex == index then
+                                -1
+
+                            else
+                                model.selectedTestcaseIndex
+                      }
                     , httpSaveTestSuite getDistribution (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
 
@@ -840,10 +872,11 @@ updateHomeState pack mod def filterState =
             if filterState.moduleClicked == pack then
                 ( urlFragmentToNodePath "", [] )
 
+            else if filterState.moduleClicked == "" then
+                ( urlFragmentToNodePath mod, Path.fromString mod )
+
             else
-                ifThenElse (filterState.moduleClicked == "")
-                    ( urlFragmentToNodePath mod, Path.fromString mod )
-                    ( urlFragmentToNodePath filterState.moduleClicked, Path.fromString filterState.moduleClicked )
+                ( urlFragmentToNodePath filterState.moduleClicked, Path.fromString filterState.moduleClicked )
     in
     -- initial state, nothing is selected
     if pack == "" then
@@ -1017,18 +1050,34 @@ filterStateToQueryParams filterState =
     let
         search : String
         search =
-            ifThenElse (filterState.searchText == "") "" ("&search=" ++ filterState.searchText)
+            if filterState.searchText == "" then
+                ""
+
+            else
+                "&search=" ++ filterState.searchText
 
         filterValues : String
         filterValues =
-            ifThenElse filterState.showValues "" "&showValues=false"
+            if filterState.showValues then
+                ""
+
+            else
+                "&showValues=false"
 
         filterTypes : String
         filterTypes =
-            ifThenElse filterState.showTypes "" "&showTypes=false"
+            if filterState.showTypes then
+                ""
+
+            else
+                "&showTypes=false"
 
         moduleClicked =
-            ifThenElse (filterState.moduleClicked == "") "" ("&moduleClicked=" ++ filterState.moduleClicked)
+            if filterState.moduleClicked == "" then
+                ""
+
+            else
+                "&moduleClicked=" ++ filterState.moduleClicked
     in
     "?" ++ search ++ filterValues ++ filterTypes ++ moduleClicked
 
@@ -1115,7 +1164,11 @@ viewHeader model =
                 , Font.size (Theme.scaled 5 model.theme)
                 ]
               <|
-                ifThenElse model.unsavedChanges (text " You have unsaved changes! ") Element.none
+                if model.unsavedChanges then
+                    text " You have unsaved changes! "
+
+                else
+                    Element.none
             , el
                 [ alignRight
                 , pointer
@@ -1217,8 +1270,21 @@ serverErrorModal theme error errorSummary isWarning =
         , Background.color theme.colors.lightest
         ]
         [ row [ width fill, Font.size (Theme.scaled 5 theme) ]
-            [ el [ ifThenElse isWarning (Font.color theme.colors.warning) (Font.color theme.colors.negativeLight), Font.bold ]
-                (text <| ifThenElse isWarning "Warning" "Error")
+            [ el
+                [ if isWarning then
+                    Font.color theme.colors.warning
+
+                  else
+                    Font.color theme.colors.negativeLight
+                , Font.bold
+                ]
+                (text <|
+                    if isWarning then
+                        "Warning"
+
+                    else
+                        "Error"
+                )
             , el
                 [ alignRight
                 , alignTop
@@ -1475,27 +1541,28 @@ viewHome model packageName packageDef =
                 , tabs =
                     Array.fromList
                         ([ { name = "Summary"
-                           , content = col [ summary ]
+                           , content = \_ -> col [ summary ]
                            }
                          , { name = "Dependency Graph"
-                           , content = col [ dependencyGraph model.homeState.selectedModule model.repo ]
+                           , content = \_ -> col [ dependencyGraph model.homeState.selectedModule model.repo ]
                            }
                          ]
                             ++ (case maybeModuleName of
                                     Just moduleName ->
                                         [ { name = "Decorations"
                                           , content =
-                                                col [ viewDecorationValues model (ModuleID ( packageName, moduleName )) ]
+                                                \_ -> col [ viewDecorationValues model (ModuleID ( packageName, moduleName )) ]
                                           }
                                         , { name = "Add new term"
                                           , content =
-                                                col <|
-                                                    [ TypeBuilder.view model.theme
-                                                        { state = model.typeBuilderState, onStateChange = UI << TypeBuilderChanged, onTypeAdd = UI << TypeAdded, onIRSave = UI SaveIR }
-                                                        packageName
-                                                        packageDef
-                                                        moduleName
-                                                    ]
+                                                \_ ->
+                                                    col <|
+                                                        [ TypeBuilder.view model.theme
+                                                            { state = model.typeBuilderState, onStateChange = UI << TypeBuilderChanged, onTypeAdd = UI << TypeAdded, onIRSave = UI SaveIR }
+                                                            packageName
+                                                            packageDef
+                                                            moduleName
+                                                        ]
                                           }
                                         ]
 
@@ -1512,8 +1579,16 @@ viewHome model packageName packageDef =
             , scrollbars
             ]
             [ column [ width fill, height fill, scrollbars, spacing (Theme.smallSpacing model.theme) ]
-                [ ifThenElse model.showModules moduleTree none
-                , ifThenElse model.showDefinitions (definitionList packageName packageDef model entryPoints) none
+                [ if model.showModules then
+                    moduleTree
+
+                  else
+                    none
+                , if model.showDefinitions then
+                    definitionList packageName packageDef model entryPoints
+
+                  else
+                    none
                 ]
             ]
         , column
@@ -1522,15 +1597,16 @@ viewHome model packageName packageDef =
             , Background.color model.theme.colors.lightest
             , scrollbars
             ]
-            [ ifThenElse (model.homeState.selectedDefinition == Nothing)
+            [ if model.homeState.selectedDefinition == Nothing then
                 homeTabs
-                (column
+
+              else
+                column
                     [ scrollbars, height (fillPortion 2), paddingEach { bottom = 3, top = model.theme |> Theme.scaled 1, left = model.theme |> Theme.scaled 1, right = 0 }, width fill, spacing (model.theme |> Theme.scaled 1) ]
                     [ viewDefinition packageDef model.theme model.homeState.selectedDefinition
                     , el [ height fill, width fill, scrollbars ]
                         (viewDefinitionDetails model)
                     ]
-                )
             ]
         ]
 
@@ -1603,7 +1679,16 @@ definitionList packageName packageDef model entrypoints =
                     let
                         entryPointIndicator : Name -> Element msg
                         entryPointIndicator valueName =
-                            row [ width fill ] [ el [ Font.bold ] <| text <| ifThenElse (entrypoints |> List.any (\( _, _, v ) -> v == valueName)) "ⓔ " "", text "ⓥ" ]
+                            row [ width fill ]
+                                [ el [ Font.bold ] <|
+                                    text <|
+                                        if entrypoints |> List.any (\( _, _, v ) -> v == valueName) then
+                                            "ⓔ "
+
+                                        else
+                                            ""
+                                , text "ⓥ"
+                                ]
                     in
                     moduleDef.values
                         |> Dict.toList
@@ -1620,7 +1705,18 @@ definitionList packageName packageDef model entrypoints =
                                 )
                             )
             in
-            ifThenElse model.homeState.filterState.showValues values [] ++ ifThenElse model.homeState.filterState.showTypes types []
+            (if model.homeState.filterState.showValues then
+                values
+
+             else
+                []
+            )
+                ++ (if model.homeState.filterState.showTypes then
+                        types
+
+                    else
+                        []
+                   )
 
         -- Returns the alphabetically ordered, optionally filtered list of definitions in the currently selected module
         viewDefinitionLabels : Maybe ModuleName -> Element Msg
@@ -1737,7 +1833,13 @@ definitionList packageName packageDef model entrypoints =
     column
         [ Background.color model.theme.colors.gray
         , height fill
-        , width (ifThenElse model.showModules (fillPortion 3) fill)
+        , width
+            (if model.showModules then
+                fillPortion 3
+
+             else
+                fill
+            )
         , spacing (model.theme |> Theme.scaled -2)
         , clipX
         ]
@@ -1872,7 +1974,12 @@ viewValue theme moduleName valueName valueDef docs =
          else
             "calculation"
         )
-        (ifThenElse (docs == "") "[ This definition has no associated documentation. ]" docs)
+        (if docs == "" then
+            "[ This definition has no associated documentation. ]"
+
+         else
+            docs
+        )
         none
 
 
@@ -2186,9 +2293,11 @@ viewDefinitionDetails model =
 
         viewActualOutput : Theme -> Distribution -> TestCase -> FQName -> Element Msg
         viewActualOutput theme ir testCase fQName =
-            ifThenElse (List.isEmpty testCase.inputs)
+            if List.isEmpty testCase.inputs then
                 none
-                (column [ spacing (theme |> Theme.scaled 1), padding (theme |> Theme.scaled -2) ]
+
+            else
+                column [ spacing (theme |> Theme.scaled 1), padding (theme |> Theme.scaled -2) ]
                     (case evaluateOutput ir testCase.inputs fQName of
                         Ok rawValue ->
                             case rawValue of
@@ -2200,8 +2309,16 @@ viewDefinitionDetails model =
                                     , column [ width fill, spacing (theme |> Theme.scaled 1) ]
                                         [ descriptionInput
                                         , saveTestCaseButton fQName (Just { testCase | expectedOutput = expectedOutput })
-                                        , ifThenElse (Dict.isEmpty model.argStates && model.showSaveTestError) (el [ Font.color model.theme.colors.negative ] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set.") none
-                                        , ifThenElse (model.selectedTestcaseIndex < 0) none (updateTestCaseButton fQName { testCase | expectedOutput = expectedOutput })
+                                        , if Dict.isEmpty model.argStates && model.showSaveTestError then
+                                            el [ Font.color model.theme.colors.negative ] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set."
+
+                                          else
+                                            none
+                                        , if model.selectedTestcaseIndex < 0 then
+                                            none
+
+                                          else
+                                            updateTestCaseButton fQName { testCase | expectedOutput = expectedOutput }
                                         ]
                                     ]
 
@@ -2210,11 +2327,14 @@ viewDefinitionDetails model =
                             , column [ width fill, spacing (theme |> Theme.scaled 1) ]
                                 [ descriptionInput
                                 , saveTestCaseButton fQName Nothing
-                                , ifThenElse model.showSaveTestError (el [ Font.color model.theme.colors.negative ] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set.") none
+                                , if model.showSaveTestError then
+                                    el [ Font.color model.theme.colors.negative ] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set."
+
+                                  else
+                                    none
                                 ]
                             ]
                     )
-                )
 
         evaluateOutput : Distribution -> List (Maybe RawValue) -> FQName -> Result Error RawValue
         evaluateOutput ir inputs fQName =
@@ -2377,7 +2497,12 @@ viewDefinitionDetails model =
                             in
                             List.map
                                 (\( columnIndex, columnName ) ->
-                                    { header = ifThenElse (columnIndex == maxIndex) (el (Font.bold :: styles) <| Theme.ellipseText columnName) (el styles <| Theme.ellipseText columnName)
+                                    { header =
+                                        if columnIndex == maxIndex then
+                                            el (Font.bold :: styles) <| Theme.ellipseText columnName
+
+                                        else
+                                            el styles <| Theme.ellipseText columnName
                                     , width = Element.shrink
                                     , view =
                                         \index test ->
@@ -2426,59 +2551,63 @@ viewDefinitionDetails model =
                                                             Array.fromList
                                                                 [ { name = "Insight View"
                                                                   , content =
-                                                                        column [ spacing (model.theme |> Theme.scaled 5), paddingXY (model.theme |> Theme.scaled 1) 0 ]
-                                                                            [ SectionComponent.view model.theme
-                                                                                { title = "Insight view"
-                                                                                , onToggle = UI (ToggleSection 1)
-                                                                                , isOpen = Set.member 1 model.openSections
-                                                                                , content = el [ Theme.borderRounded model.theme, Border.width 1, Border.color model.theme.colors.gray ] <| ViewValue.viewDefinition (insightViewConfig distribution) fullyQualifiedName valueDef
-                                                                                }
-                                                                            , SectionComponent.view model.theme
-                                                                                { title = "Inputs & Output"
-                                                                                , onToggle = UI (ToggleSection 2)
-                                                                                , isOpen = Set.member 2 model.openSections
-                                                                                , content =
-                                                                                    column
-                                                                                        [ spacing
-                                                                                            (model.theme
-                                                                                                |> Theme.scaled 4
-                                                                                            )
-                                                                                        ]
-                                                                                        [ el [ borderBottom 2, paddingXY 0 5, Border.color model.theme.colors.gray ] (viewArgumentEditors distribution model.argStates valueDef.inputTypes)
-                                                                                        , viewActualOutput
-                                                                                            model.theme
-                                                                                            distribution
-                                                                                            { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
-                                                                                            fullyQualifiedName
-                                                                                        ]
-                                                                                }
-                                                                            , SectionComponent.view model.theme
-                                                                                { title = "Test Cases"
-                                                                                , onToggle = UI (ToggleSection 3)
-                                                                                , isOpen = Set.member 3 model.openSections
-                                                                                , content =
-                                                                                    column [ spacing (model.theme |> Theme.scaled 4) ]
-                                                                                        [ testCoverageMetrics distribution fullyQualifiedName
-                                                                                        , scenarios fullyQualifiedName distribution valueDef.inputTypes
-                                                                                        ]
-                                                                                }
-                                                                            ]
+                                                                        \_ ->
+                                                                            column [ spacing (model.theme |> Theme.scaled 5), paddingXY (model.theme |> Theme.scaled 1) 0 ]
+                                                                                [ SectionComponent.view model.theme
+                                                                                    { title = "Insight view"
+                                                                                    , onToggle = UI (ToggleSection 1)
+                                                                                    , isOpen = Set.member 1 model.openSections
+                                                                                    , content = \_ -> el [ Theme.borderRounded model.theme, Border.width 1, Border.color model.theme.colors.gray ] <| ViewValue.viewDefinition (insightViewConfig distribution) fullyQualifiedName valueDef
+                                                                                    }
+                                                                                , SectionComponent.view model.theme
+                                                                                    { title = "Inputs & Output"
+                                                                                    , onToggle = UI (ToggleSection 2)
+                                                                                    , isOpen = Set.member 2 model.openSections
+                                                                                    , content =
+                                                                                        \_ ->
+                                                                                            column
+                                                                                                [ spacing
+                                                                                                    (model.theme
+                                                                                                        |> Theme.scaled 4
+                                                                                                    )
+                                                                                                ]
+                                                                                                [ el [ borderBottom 2, paddingXY 0 5, Border.color model.theme.colors.gray ] (viewArgumentEditors distribution model.argStates valueDef.inputTypes)
+                                                                                                , viewActualOutput
+                                                                                                    model.theme
+                                                                                                    distribution
+                                                                                                    { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
+                                                                                                    fullyQualifiedName
+                                                                                                ]
+                                                                                    }
+                                                                                , SectionComponent.view model.theme
+                                                                                    { title = "Test Cases"
+                                                                                    , onToggle = UI (ToggleSection 3)
+                                                                                    , isOpen = Set.member 3 model.openSections
+                                                                                    , content =
+                                                                                        \_ ->
+                                                                                            column [ spacing (model.theme |> Theme.scaled 4) ]
+                                                                                                [ testCoverageMetrics distribution fullyQualifiedName
+                                                                                                , scenarios fullyQualifiedName distribution valueDef.inputTypes
+                                                                                                ]
+                                                                                    }
+                                                                                ]
                                                                   }
                                                                 , { name = "XRay View"
-                                                                  , content = XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef
+                                                                  , content = \_ -> XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef
                                                                   }
                                                                 , { name = "Decorations"
                                                                   , content =
-                                                                        column
-                                                                            [ width fill
-                                                                            , height fill
-                                                                            , spacing
-                                                                                (model.theme
-                                                                                    |> Theme.scaled 8
-                                                                                )
-                                                                            , paddingXY 10 10
-                                                                            ]
-                                                                            [ viewDecorationValues model (ValueID fullyQualifiedName []) ]
+                                                                        \_ ->
+                                                                            column
+                                                                                [ width fill
+                                                                                , height fill
+                                                                                , spacing
+                                                                                    (model.theme
+                                                                                        |> Theme.scaled 8
+                                                                                    )
+                                                                                , paddingXY 10 10
+                                                                                ]
+                                                                                [ viewDecorationValues model (ValueID fullyQualifiedName []) ]
                                                                   }
                                                                 ]
                                                         }
@@ -2514,20 +2643,21 @@ viewDefinitionDetails model =
                                     Array.fromList
                                         [ { name = "Type Details"
                                           , content =
-                                                typeDetails
+                                                \_ -> typeDetails
                                           }
                                         , { name = "Decorations"
                                           , content =
-                                                column
-                                                    [ width fill
-                                                    , height fill
-                                                    , spacing
-                                                        (model.theme
-                                                            |> Theme.scaled 8
-                                                        )
-                                                    , paddingXY 10 10
-                                                    ]
-                                                    [ viewDecorationValues model (TypeID fullyQualifiedName []) ]
+                                                \_ ->
+                                                    column
+                                                        [ width fill
+                                                        , height fill
+                                                        , spacing
+                                                            (model.theme
+                                                                |> Theme.scaled 8
+                                                            )
+                                                        , paddingXY 10 10
+                                                        ]
+                                                        [ viewDecorationValues model (TypeID fullyQualifiedName []) ]
                                           }
                                         ]
                                 }
@@ -2588,15 +2718,6 @@ initInsightViewState argState =
             argState
                 |> Dict.map (\_ arg -> arg.lastValidValue |> Maybe.withDefault (Value.Unit ()))
     }
-
-
-ifThenElse : Bool -> a -> a -> a
-ifThenElse boolValue ifTrue ifFalse =
-    if boolValue then
-        ifTrue
-
-    else
-        ifFalse
 
 
 urlFragmentToNodePath : String -> List Path
