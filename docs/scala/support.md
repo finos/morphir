@@ -306,3 +306,21 @@ This section lists the SDK types and functions currently supported in this versi
 | toInt32     | v2.9.0                         | &#x2715;  | 
 | fromInt64   | v2.9.0                         | &#x2715;  | 
 | toInt64     | v2.9.0                         | &#x2715;  | 
+
+
+### Morphir.SDK.Key
+| Function | Morphir-Elm Version Introduced | Supported  |
+|----------|--------------------------------|------------|
+| noKey    | v0.7.0                         | &#x2715;   |
+| key0     | v0.7.0                         | &#x2715;   |
+| key2     | v0.7.0                         | &#x2715;   |
+| key3     | v0.7.0                         | &#x2715;   |
+| key4     | v0.7.0                         | &#x2715;   |
+| key5     | v0.7.0                         | &#x2715;   |
+| key6     | v0.7.0                         | &#x2715;   |
+| key7     | v0.7.0                         | &#x2715;   |
+| key8     | v0.7.0                         | &#x2715;   |
+| key9     | v0.7.0                         | &#x2715;   |
+| key10    | v0.7.0                         | &#x2715;   |
+| key11    | v0.7.0                         | &#x2715;   |
+| key12    | v0.7.0                         | &#x2715;   |
