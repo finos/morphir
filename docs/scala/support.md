@@ -481,3 +481,17 @@ This section lists the SDK types and functions currently supported in this versi
 | splitAtMost    | v2.81.0                   | &#x2715;  |
 | findAtMost     | v2.81.0                   | &#x2715;  |
 | replaceAtMost  | v2.81.0                   | &#x2715;  |
+
+### Result
+| Function    | Morphir-Elm Version Introduced | Supported |
+|-------------|--------------------------------|-----------|
+| andThen     | v2.0.0                         | &#x2713;  |
+| map         | v2.0.0                         | &#x2713;  |
+| map2        | v2.0.0                         | &#x2715;  |
+| map3        | v2.0.0                         | &#x2715;  |
+| map4        | v2.0.0                         | &#x2715;  |
+| map5        | v2.0.0                         | &#x2715;  |
+| withDefault | v2.0.0                         | &#x2713;  |
+| toMaybe     | v2.0.0                         | &#x2713;  |
+| fromMaybe   | v2.0.0                         | &#x2713;  |
+| mapError    | v2.0.0                         | &#x2713;  |
