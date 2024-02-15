@@ -406,3 +406,24 @@ This section lists the SDK types and functions currently supported in this versi
 | month            | v2.84.2                        | &#x2713;  |
 | monthNumber      | v2.87.0                        | &#x2713;  |
 | day              | v2.84.2                        | &#x2713;  |
+
+
+### Morphir.SDK.LocalTime
+#### Types
+
+| Function  | Morphir-Elm Version Introduced | Supported |
+|-----------|--------------------------------|-----------|
+| LocalTime | v2.44.0                        | &#x2713;  |
+
+#### Functions
+
+| Function           | Morphir-Elm Version Introduced | Supported |
+|--------------------|--------------------------------|-----------|
+| fromMilliseconds   | v2.44.0                        | &#x2713;  |
+| addHours           | v2.44.0                        | &#x2713;  |
+| addMinutes         | v2.44.0                        | &#x2713;  |
+| addSeconds         | v2.44.0                        | &#x2713;  |
+| diffInHours        | v2.44.0                        | &#x2715;  |
+| diffInMinutes      | v2.44.0                        | &#x2715;  | 
+| diffInSeconds      | v2.44.0                        | &#x2713;  |
+| fromISO            | v2.44.0                        | &#x2713;  |
