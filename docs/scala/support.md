@@ -510,3 +510,25 @@ This section lists the SDK types and functions currently supported in this versi
 | partition      | v2.41.0                        | &#x2715;  |
 | keepAllErrors  | v2.41.1                        | &#x2715;  |
 | keepFirstError | v2.41.1                        | &#x2715;  |
+
+
+### Morphir.SDK.Rule
+| Function | Morphir-Elm Version Introduced | Supported |
+|----------|--------------------------------|-----------|
+| fromList | v0.7.0                         | &#x2715;  |
+| chain    | v0.7.0                         | &#x2715;  |
+| any      | v0.7.0                         | &#x2715;  |
+| is       | v0.7.0                         | &#x2715;  |
+| anyOf    | v0.7.0                         | &#x2715;  |
+| noneOf   | v0.7.0                         | &#x2715;  |
+
+
+### Set
+| Function  | Morphir-Elm Version Introduced | Supported |
+|-----------|--------------------------------|-----------|
+| empty     | v2.2.0                         | &#x2713;  |
+| singleton | v2.2.0                         | &#x2713;  |
+| insert    | v2.2.0                         | &#x2713;  |
+| remove    | v2.2.0                         | &#x2713;  |
+| isEmpty   | v2.2.0                         | &#x2713;  |
+| member    | v2.2.0                         | &#x2713;  |
