@@ -575,3 +575,17 @@ This section lists the SDK types and functions currently supported in this versi
 | dropRight          | v2.0.0                         | &#x2713;  |
 | contains           | v2.0.0                         | &#x2713;  |
 | startsWith         | v2.0.0                         | &#x2713;  |
+| endsWith           | v2.0.0                         | &#x2713;  |
+| indexes            | v2.0.0                         | &#x2713;  |
+| indices            | v2.0.0                         | &#x2713;  |
+| toInt              | v2.0.0                         | &#x2713;  |
+| fromInt            | v2.0.0                         | &#x2713;  |
+| toFloat            | v2.0.0                         | &#x2713;  |
+| fromFloat          | v2.0.0                         | &#x2713;  |
+| fromChar           | v2.0.0                         | &#x2715;  |
+| cons               | v2.0.0                         | &#x2715;  |
+| uncons             | v2.0.0                         | &#x2715;  |
+| toList             | v2.0.0                         | &#x2715;  |
+| fromList           | v2.0.0                         | &#x2715;  |
+| toUpper            | v2.0.0                         | &#x2713;  |
+| toLower            | v2.0.0                         | &#x2713;  |
