@@ -229,3 +229,16 @@ This section lists the SDK types and functions currently supported in this versi
 | member    | v2.41.0                        | &#x2713;  |
 | get       | v2.41.0                        | &#x2713;  |
 | size      | v2.41.0                        | &#x2713;  |
+| keys      | v2.41.0                        | &#x2713;  |
+| values    | v2.41.0                        | &#x2713;  |
+| toList    | v2.41.0                        | &#x2713;  |
+| fromList  | v2.41.0                        | &#x2713;  |
+| map       | v2.41.0                        | &#x2715;  |
+| foldl     | v2.41.0                        | &#x2715;  |
+| foldr     | v2.41.0                        | &#x2715;  |
+| filter    | v2.41.0                        | &#x2713;  |
+| partition | v2.41.0                        | &#x2713;  |
+| union     | v2.41.0                        | &#x2715;  |
+| intersect | v2.41.0                        | &#x2715;  |
+| diff      | v2.41.0                        | &#x2713;  |
+| merge     | v2.41.0                        | &#x2713;  |
