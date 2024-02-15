@@ -562,3 +562,16 @@ This section lists the SDK types and functions currently supported in this versi
 | reverse            | v2.0.0                         | &#x2713;  |
 | repeat             | v2.0.0                         | &#x2713;  |
 | replace            | v2.0.0                         | &#x2713;  |
+| append             | v2.0.0                         | &#x2713;  |
+| concat             | v2.0.0                         | &#x2713;  |
+| split              | v2.0.0                         | &#x2713;  |
+| join               | v2.0.0                         | &#x2713;  |
+| words              | v2.0.0                         | &#x2713;  |
+| lines              | v2.0.0                         | &#x2713;  |
+| slice              | v2.0.0                         | &#x2713;  |
+| left               | v2.0.0                         | &#x2713;  |
+| right              | v2.0.0                         | &#x2713;  |
+| dropLeft           | v2.0.0                         | &#x2713;  |
+| dropRight          | v2.0.0                         | &#x2713;  |
+| contains           | v2.0.0                         | &#x2713;  |
+| startsWith         | v2.0.0                         | &#x2713;  |
