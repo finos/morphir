@@ -427,3 +427,24 @@ This section lists the SDK types and functions currently supported in this versi
 | diffInMinutes      | v2.44.0                        | &#x2715;  | 
 | diffInSeconds      | v2.44.0                        | &#x2713;  |
 | fromISO            | v2.44.0                        | &#x2713;  |
+
+
+### Morphir.SDK.Maybe
+| Function    | Morphir-Elm Version Introduced | Supported |
+|-------------|--------------------------------|-----------|
+| withDefault | v2.84.2                        | &#x2713;  |
+| map         | v2.84.2                        | &#x2713;  |
+| map2        | v2.84.2                        | &#x2715;  |
+| map3        | v2.84.2                        | &#x2715;  |
+| map4        | v2.84.2                        | &#x2715;  |
+| map4        | v2.84.2                        | &#x2715;  | 
+| andThen     | v2.84.2                        | &#x2713;  |
+| hasValue    | v2.84.2                        | &#x2715;  |
+
+
+### Morphir.SDK.Number
+| Function           | Morphir-Elm Version Introduced | Supported |
+|--------------------|--------------------------------|-----------|
+| fromInt            | v2.10.0                        | &#x2715;  |
+| equal              | v2.10.0                        | &#x2715;  |
+| notEqual           | v2.10.0                        | &#x2715;  |
