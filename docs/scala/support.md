@@ -197,3 +197,13 @@ This section lists the SDK types and functions currently supported in this versi
 | gt                | v2.8.0                         | &#x2713;  |
 | gte               | v2.8.0                         | &#x2713;  |
 | eq                | v2.8.0                         | &#x2713;  |
+| neq               | v2.8.0                         | &#x2713;  |
+| lt                | v2.8.0                         | &#x2713;  |
+| lte               | v2.8.0                         | &#x2713;  |
+| compare           | v2.8.0                         | &#x2713;  |
+| abs               | v2.8.0                         | &#x2713;  |
+| shiftDecimalLeft  | v2.12.0                        | &#x2715;  |
+| shiftDecimalRight | v2.12.0                        | &#x2715;  |
+| zero              | v2.8.0                         | &#x2713;  |
+| one               | v2.8.0                         | &#x2713;  |
+| minusOne          | v2.8.0                         | &#x2713;  |
