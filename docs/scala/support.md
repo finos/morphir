@@ -448,3 +448,17 @@ This section lists the SDK types and functions currently supported in this versi
 | fromInt            | v2.10.0                        | &#x2715;  |
 | equal              | v2.10.0                        | &#x2715;  |
 | notEqual           | v2.10.0                        | &#x2715;  |
+| lessThan           | v2.11.0                        | &#x2715;  |
+| lessThanOrEqual    | v2.11.0                        | &#x2715;  |
+| greaterThan        | v2.11.0                        | &#x2715;  |
+| greaterThanOrEqual | v2.11.0                        | &#x2715;  |
+| add                | v2.10.0                        | &#x2715;  |
+| subtract           | v2.11.0                        | &#x2715;  |
+| multiply           | v2.11.0                        | &#x2715;  |
+| divide             | v2.10.0                        | &#x2715;  |
+| abs                | v2.11.0                        | &#x2715;  |
+| negate             | v2.11.0                        | &#x2715;  |
+| reciprocal         | v2.11.0                        | &#x2715;  |
+| toFractionalString | v2.11.0                        | &#x2715;  |
+| toDecimal          | v2.11.0                        | &#x2715;  |
+| coerceToDecimal    | v2.12.0                        | &#x2715;  |
