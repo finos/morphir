@@ -495,3 +495,18 @@ This section lists the SDK types and functions currently supported in this versi
 | toMaybe     | v2.0.0                         | &#x2713;  |
 | fromMaybe   | v2.0.0                         | &#x2713;  |
 | mapError    | v2.0.0                         | &#x2713;  |
+
+
+### Morphir.SDK.ResultList
+| Function       | Morphir-Elm Version Introduced | Supported |
+|----------------|--------------------------------|-----------|
+| fromList       | v2.41.0                        | &#x2715;  |
+| filter         | v2.41.0                        | &#x2715;  |
+| filterOrFail   | v2.41.0                        | &#x2715;  |
+| map            | v2.41.0                        | &#x2715;  |
+| mapOrFail      | v2.41.0                        | &#x2715;  |
+| errors         | v2.41.0                        | &#x2715;  |
+| successes      | v2.41.0                        | &#x2715;  |
+| partition      | v2.41.0                        | &#x2715;  |
+| keepAllErrors  | v2.41.1                        | &#x2715;  |
+| keepFirstError | v2.41.1                        | &#x2715;  |
