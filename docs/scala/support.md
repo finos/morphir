@@ -543,3 +543,22 @@ This section lists the SDK types and functions currently supported in this versi
 | union     | v2.2.0                         | &#x2713;  |
 | intersect | v2.2.0                         | &#x2713;  |
 | diff      | v2.2.0                         | &#x2715;  |
+
+
+### Morphir.SDK.StatefulApp
+| Type        | Morphir-Elm Version Introduced | Supported |
+|-------------|--------------------------------|-----------|
+| StatefulApp | v1.1.0                         | &#x2715;  |
+
+
+### Morphir.SDK.String
+| Function           | Morphir-Elm Version Introduced | Supported |
+|--------------------|--------------------------------|-----------|
+| ofLength           | v1.4.0                         | &#x2713;  |
+| ofMaxLength        | v1.4.0                         | &#x2713;  |
+| equalIgnoreCase    | v1.4.0                         | &#x2713;  |
+| isEmpty            | v2.0.0                         | &#x2713;  |
+| length             | v2.0.0                         | &#x2713;  |
+| reverse            | v2.0.0                         | &#x2713;  |
+| repeat             | v2.0.0                         | &#x2713;  |
+| replace            | v2.0.0                         | &#x2713;  |
