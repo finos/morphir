@@ -140,6 +140,7 @@ const sidebars = {
       items: [
         {type: 'category', label: 'Morphir Scala', items: [
           'scala/morphir-scala',
+          'scala/morphir-scala-support',
           { type: 'category',
             label: 'Morphir Data Model',
             items:[
