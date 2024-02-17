@@ -12,7 +12,7 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum Commands {
     Make(MakeArgs),
-    Restore {},
+    Restore,
 }
 
 #[derive(Debug, Args)]
@@ -32,7 +32,7 @@ fn main() {
             println!("NOT IMPLEMENTED YET!");
             println!("Done!");
         }
-        Commands::Restore {} => {
+        Commands::Restore => {
             println!("Restoring...");
             println!("NOT IMPLEMENTED YET!");
             println!("Done!");
