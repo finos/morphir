@@ -1,7 +1,6 @@
 namespace Morphir.CodeModel
 
 open System
-open Morphir.IR
 
 [<RequireQualifiedAccess>]
 module LabelTag =
