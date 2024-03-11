@@ -2,6 +2,13 @@
 module Morphir.IR.Predef
 
 open Morphir.IR
+open Morphir.IR.Name
+open Morphir.IR.Path
+
+let (|NameParts|) (Name parts) = parts
+
+let (|PathSegments|) (Path path) = path |> List.map Name.toList
+
 let name = NameBuilder()
 let path = PathBuilder()
 
