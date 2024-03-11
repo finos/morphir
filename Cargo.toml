@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
-members = ["crates/codemodel", "crates/cli"]
-default-members = ["crates/cli"]
+members = ["morphir-rust/codemodel", "morphir-rust/cli"]
+default-members = ["morphir-rust/cli"]
 
 [workspace.dependencies]
 clap = { version = "4.4.18", default-features = false, features = [
