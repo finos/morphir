@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<RootNamespace>Morphir.Live.Client</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Compile Include="Pages/Counter.fs" />
+		<Compile Include="Startup.fs" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <PackageReference Include="Fun.Blazor" />
+	  <PackageReference Include="Fun.Blazor.Microsoft.Authorization" />
+	  <PackageReference Include="Fun.Blazor.Microsoft.Web" />
+	  <PackageReference Include="Fun.Blazor.MudBlazor" />
+	  <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+	  <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all"  />
+	</ItemGroup>
+	
+	<!-- In dotnet 7 there is a bug for Fun.Blazor.Cli to do hot reload.
+    Below is the workaround. https://github.com/dotnet/fsharp/issues/14250
+	But this may cause VisualStudio not working, so currently hot reload can only be used with VSCode -->
+	<Target Name="ShimReferencePathsWhenCommonTargetsDoesNotUnderstandReferenceAssemblies" BeforeTargets="CoreCompile" Condition="'$(Configuration)' == 'DEBUG'">
+		<ItemGroup>
+			<ReferencePathWithRefAssemblies Include="@(ReferencePath)" />
+		</ItemGroup>
+	</Target>
+</Project>

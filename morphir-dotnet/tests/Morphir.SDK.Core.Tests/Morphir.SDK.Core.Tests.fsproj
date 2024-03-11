@@ -1,0 +1,46 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+        <GenerateProgramFile>false</GenerateProgramFile>
+        <TargetFramework>net6.0</TargetFramework>
+        <RootNamespace>Morphir.SDK</RootNamespace>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="FSharp.Core" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="Expecto" />
+        <PackageReference Include="YoloDev.Expecto.TestSdk" />
+        <PackageReference Include="altcover" />
+         <PackageReference Include="FsCheck"/>
+        <PackageReference Include="FsCheck.Xunit"/>
+        <PackageReference Include="FsUnit"/>
+        <PackageReference Include="FsUnit.xUnit"/>
+        <PackageReference Include="xunit"/>
+        <PackageReference Include="xunit.runner.visualstudio">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="coverlet.collector">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+    </ItemGroup>
+    <ItemGroup>
+        <Compile Include="ComparisonTests.fs" />
+        <Compile Include="BasicsTests.fs" />
+        <Compile Include="MaybeTests.fs" />
+        <Compile Include="RegexTests.fs" />
+        <Compile Include="ResultTests.fs" />
+        <Compile Include="StringTests.fs" />
+        <Compile Include="ListTests.fs" />
+        <Compile Include="TupleTests.fs" />
+        <Compile Include="Main.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\Morphir.SDK.Core\Morphir.SDK.Core.fsproj" />
+      <ProjectReference Include="..\..\src\Morphir.SDK.Testing\Morphir.SDK.Testing.fsproj" />
+    </ItemGroup>
+
+</Project>

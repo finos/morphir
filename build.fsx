@@ -13,6 +13,7 @@ open Fun.Build
 open CliWrap
 open CliWrap.Buffered
 open FSharp.Data
+    
 
 let (</>) a b = Path.Combine(a, b)
 
@@ -74,6 +75,59 @@ let updateFileRaw (file: FileInfo) =
                 line)
     File.WriteAllLines(file.FullName, updatedLines)
     
+type SourceCodeDownloader(?sslVerify) = 
+
+    static member DownloadGitFile(commitHash, relativePath) = 
+        async {
+            let file = FileInfo(codeFilesDir </> "morphir-elm" </> commitHash </> relativePath)
+            if file.Exists && file.Length <> 0 then
+                return ()
+            else
+                file.Directory.Create()
+                use fs = file.Create()
+                let fileName = Path.GetFileName(relativePath)
+                let url =
+                    $"https://raw.githubusercontent.com/finos/morphir-elm/{commitHash}/{relativePath}"
+                let! response =
+                    Http.AsyncRequestStream(
+                        url,
+                        headers = [| "Content-Disposition", $"attachment; filename=\"{fileName}\"" |]
+                    )
+                if response.StatusCode <> 200 then
+                    printfn $"Could not download %s{relativePath}"
+                do! Async.AwaitTask(response.ResponseStream.CopyToAsync(fs))
+                fs.Close()
+                //updateFileRaw file
+        }
+    static member DownloadGitArchive(owner, projectName, hash, ?extract) = 
+        let extractArchive = defaultArg extract true 
+        async {
+            let downloadDir = codeFilesDir </> "downloads" </> owner </> projectName  </> hash
+            let targetDir = codeFilesDir </> owner </> projectName
+            let fileName = $"{projectName}.zip"
+            let file = FileInfo(downloadDir </> fileName)
+            if file.Exists && file.Length <> 0 then
+                return ()
+            else
+                file.Directory.Create()
+                let fs = file.Create()
+                
+                
+                let url = $"https://github.com/{owner}/{projectName}/archive/{hash}.zip"
+                let! response = Http.AsyncRequestStream(
+                        url,
+                        headers = [| "Content-Disposition", $"attachment; filename=\"{fileName}\"" |]
+                    )
+                if response.StatusCode <> 200 then
+                    printfn $"Could not download %s{url}"
+                do! Async.AwaitTask(response.ResponseStream.CopyToAsync(fs))
+                fs.Close()
+                if extract then    
+                    use zip = ZipFile.OpenRead(file.FullName)
+                    zip.ExtractToDirectory(FileInfo(targetDir).FullName)
+                else
+                    ()            
+        } 
 let downloadArchiveFromGitRepo owner projectName shaOrBranch extract =
     async {
         let downloadDir = codeFilesDir </> "downloads" </> owner </> projectName  </> shaOrBranch
@@ -130,8 +184,9 @@ let downloadMorphirElmFile commitHash relativePath =
 
 pipeline "Init" {
     workingDir __SOURCE_DIRECTORY__
-    stage "Download morphir-elm files" {
-        run (fun _ ->
+    stage "Download morphir-elm files (No SSL)" {
+        whenCmdArg "ssl-verify" "false"
+        run (
             downloadArchiveFromGitRepo "finos" "morphir-elm" morphirElmHash true
             |> Async.Ignore)
     }

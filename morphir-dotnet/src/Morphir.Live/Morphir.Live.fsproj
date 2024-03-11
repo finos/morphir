@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+	</PropertyGroup>
+	
+	<ItemGroup>
+		<Compile Include="Components/Layout/NavMenu.fs" />
+		<Compile Include="Components/Layout/MainLayout.fs" />
+		<Compile Include="Components/Pages/Home.fs" />
+		<Compile Include="Components\Pages\Form.fs" />
+		<Compile Include="Components/Routes.fs" />
+		<Compile Include="Components/App.fs" />
+		<Compile Include="Stores.fs" />
+		<Compile Include="Hooks.fs" />
+		<Compile Include="Startup.fs" />
+	</ItemGroup>
+	
+	<ItemGroup>
+		<PackageReference Include="Fun.Blazor" />
+		<PackageReference Include="Fun.Blazor.Server" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
+	</ItemGroup>
+	
+	<ItemGroup>
+	  <ProjectReference Include="..\host\Morphir.Hosting\Morphir.Hosting.fsproj" />
+	  <ProjectReference Include="..\Morphir.CodeModel\Morphir.CodeModel.fsproj" />
+	  <ProjectReference Include="..\Morphir.Live.Client\Morphir.Live.Client.fsproj" />
+	</ItemGroup>
+
+</Project>

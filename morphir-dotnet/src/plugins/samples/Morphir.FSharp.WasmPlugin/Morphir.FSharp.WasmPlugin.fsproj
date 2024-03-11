@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Extism.Pdk" Version="1.0.0" />
+    <PackageReference Include="Extism.Pdk"/>
   </ItemGroup>
 
 </Project>
