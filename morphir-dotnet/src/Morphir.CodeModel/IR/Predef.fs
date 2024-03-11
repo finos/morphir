@@ -17,3 +17,5 @@ let mkPathCanonical (parts: string list list) : Path.Path =
         segments |> List.map Name.partsFromString |> List.concat |> Name.fromList
 
     mkPathWith toName parts
+
+let toUnit (_: 'a) : unit = ()

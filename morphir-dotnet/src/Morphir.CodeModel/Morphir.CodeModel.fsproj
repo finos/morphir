@@ -5,11 +5,20 @@
     <RootNamespace>Morphir</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <Folder Include="Extensions\" />
+    <Compile Include="Pattern.fs" />
+    <Compile Include="Extensions\Strings.fs" />
+    <Compile Include="Extensions\StringBuffer.fs" />
+    <Compile Include="IR\AccessControlled.fs" />
+    <Compile Include="IR\Documented.fs" />
+    <Compile Include="IR\KindOfName.fs" />
+    <Compile Include="IR\IR.Types.fs" />
     <Compile Include="IR\Name.fs" />
     <Compile Include="IR\Path.fs" />
     <Compile Include="IR\QName.fs" />
     <Compile Include="IR\FQName.fs" />
+    <Compile Include="IR\Source.fs" />
+    <Compile Include="IR\Literal.fs" />
+    <Compile Include="IR\Type.fs" />
     <Compile Include="IR\IR.Naming.fs" />
     <Compile Include="IR\IR.fs" />
     <Compile Include="IR\Predef.fs" />
