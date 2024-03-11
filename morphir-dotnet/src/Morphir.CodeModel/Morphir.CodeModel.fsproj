@@ -8,6 +8,7 @@
     <Folder Include="Extensions\" />
     <Compile Include="IR\Name.fs" />
     <Compile Include="IR\Path.fs" />
+    <Compile Include="IR\QName.fs" />
     <Compile Include="IR\IR.Naming.fs" />
     <Compile Include="IR\IR.fs" />
     <Compile Include="IR\Predef.fs" />

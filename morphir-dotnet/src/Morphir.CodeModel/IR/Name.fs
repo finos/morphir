@@ -30,6 +30,8 @@ module Name =
 
     let inline fromList (words: string list) : Name = Name words
 
+    let inline partsFromString input = Name.PartsFromString input
+
     let fromString (input: string) : Name =
         input |> Name.PartsFromString |> fromList
 
