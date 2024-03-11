@@ -5,20 +5,38 @@
     <RootNamespace>Morphir</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <Folder Include="Extensions\" />
-    <Compile Include="IR\Name.fs" />
-    <Compile Include="IR\Path.fs" />
-    <Compile Include="IR\IR.Naming.fs" />
-    <Compile Include="IR\IR.fs" />
-    <Compile Include="IR\Predef.fs" />
-    <Compile Include="CodeModel\versioning.fs" />
-    <Compile Include="CodeModel\naming.fs" />
-    <Compile Include="CodeModel\codeModel.fs" />
+    <ProjectReference Include="..\Morphir.SDK.Core\Morphir.SDK.Core.fsproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FSharp.Core" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Morphir.SDK.Core\Morphir.SDK.Core.fsproj" />
+    <Compile Include="Pattern.fs" />
+    <Compile Include="Extensions\Strings.fs" />
+    <Compile Include="Extensions\StringBuffer.fs" />
+    <Compile Include="IR\AccessControlled.fs" />
+    <Compile Include="IR\Documented.fs" />
+    <Compile Include="IR\KindOfName.fs" />
+    <Compile Include="IR\IR.Types.fs" />
+    <Compile Include="IR\Name.fs" />
+    <Compile Include="IR\Path.fs" />
+    <Compile Include="IR\QName.fs" />
+    <Compile Include="IR\FQName.fs" />
+    <Compile Include="IR\Source.fs" />
+    <Compile Include="IR\Literal.fs" />
+    <Compile Include="IR\Type.fs" />
+    <Compile Include="IR\Value.fs" />
+    <Compile Include="IR\Module.fs" />
+    <Compile Include="IR\PackageName.fs" />
+    <Compile Include="IR\Package.fs" />
+    <Compile Include="IR\Distribution.fs" />
+    <Compile Include="IR\IR.fs" />
+    <Compile Include="IR\Predef.fs" />
+    <Compile Include="IR\SDK\Common.fs" />
+    <Compile Include="IR\SDK\Basics.fs" />
+    <Compile Include="IR\SDK\String.fs" />
+    <Compile Include="CodeModel\versioning.fs" />
+    <Compile Include="CodeModel\naming.fs" />
+    <Compile Include="CodeModel\codeModel.fs" />
   </ItemGroup>
 </Project>

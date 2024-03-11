@@ -6,15 +6,22 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Morphir.CodeModel\Morphir.CodeModel.fsproj" />
+    <ProjectReference Include="..\..\src\Morphir.SDK.Testing\Morphir.SDK.Testing.fsproj" />
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="IR\NameTests.fs" />
     <Compile Include="IR\NameBuilderTests.fs" />
     <Compile Include="IR\PathTests.fs" />
     <Compile Include="IR\PathBuilderTests.fs" />
+    <Compile Include="IR\QNameTests.fs" />
+    <Compile Include="IR\TypeTests.fs" />
     <Compile Include="CodeModelTests.fs" />
     <Compile Include="Utils\StringTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Bogus" />
     <PackageReference Include="Expecto" />
     <PackageReference Include="Expecto.FsCheck" />
     <PackageReference Include="FsCheck" />
@@ -32,9 +39,5 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="YoloDev.Expecto.TestSdk" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Morphir.CodeModel\Morphir.CodeModel.fsproj" />
-    <ProjectReference Include="..\..\src\Morphir.SDK.Testing\Morphir.SDK.Testing.fsproj" />
   </ItemGroup>
 </Project>
