@@ -1,5 +1,7 @@
 ﻿namespace Morphir.IR
 
+open Morphir.IR.Name
+
 type IRNode<'T> =
     abstract member Attributes: 'T
 

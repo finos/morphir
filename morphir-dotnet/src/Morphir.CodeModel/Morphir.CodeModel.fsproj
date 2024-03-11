@@ -1,20 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <RootNamespace>Morphir</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Folder Include="Extensions\" />
+    <Compile Include="IR\Name.fs" />
+    <Compile Include="IR\Path.fs" />
     <Compile Include="IR\IR.Naming.fs" />
     <Compile Include="IR\IR.fs" />
-    <Compile Include="naming.fs" />
-    <Compile Include="codeModel.fs" />
+    <Compile Include="IR\Predef.fs" />
+    <Compile Include="CodeModel\versioning.fs" />
+    <Compile Include="CodeModel\naming.fs" />
+    <Compile Include="CodeModel\codeModel.fs" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Fable.Core" />
-    <PackageReference Include="Fable.Python" />
     <PackageReference Include="FSharp.Core" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="*.fsproj; **\*.fs" PackagePath="fable" />
+    <ProjectReference Include="..\Morphir.SDK.Core\Morphir.SDK.Core.fsproj" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup Condition="'$(Configuration)'=='Release'">
+        <Optimize>true</Optimize>
+        <Tailcalls>true</Tailcalls>
+    </PropertyGroup>
+    <PropertyGroup>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <RootNamespace>Morphir</RootNamespace>
+        <TargetFramework>netstandard2.1</TargetFramework>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="FSharp.Core"/>
+    </ItemGroup>
+    <ItemGroup>
+        <Compile Include="Extensions\Strings.fs"/>
+        <Compile Include="Extensions\StringBuffer.fs"/>
+        <Compile Include="SDK\Predef.fs"/>
+        <Compile Include="SDK\Comparison.fs"/>
+        <Compile Include="SDK\Basics.fs"/>
+        <Compile Include="SDK\Maybe.fs"/>
+        <Compile Include="SDK\List.fs"/>
+        <Compile Include="SDK\Array.fs"/>
+        <Compile Include="SDK\Char.fs"/>
+        <Compile Include="SDK\String.fs"/>
+        <Compile Include="SDK\Bool.fs"/>
+        <Compile Include="SDK\Result.fs"/>
+        <Compile Include="SDK\Decimal.fs"/>
+        <Compile Include="SDK\Regex.fs"/>
+        <Compile Include="SDK\Extensions.fs"/>
+        <Compile Include="SDK\Dict.fs"/>
+        <Compile Include="SDK\Tuple.fs"/>
+    </ItemGroup>
+</Project>
