@@ -7,8 +7,8 @@ import Element.Font as Font
 import Html exposing (Html)
 import Json.Decode as Decode exposing (Decoder, string)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
-import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FormatVersion.Codec as DistributionCodec
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.QName as QName exposing (QName(..))

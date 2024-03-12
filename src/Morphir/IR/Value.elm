@@ -374,7 +374,7 @@ typeAndValueToDefinition valueType value =
             case ( body, bodyType ) of
                 ( Lambda va (AsPattern _ (WildcardPattern _) argName) lambdaBody, Type.Function _ argType returnType ) ->
                     liftLambdaArguments
-                        (args ++ [ ( argName, va, argType ) ])
+                        (List.append args [ ( argName, va, argType ) ])
                         returnType
                         lambdaBody
 

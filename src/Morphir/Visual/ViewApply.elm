@@ -1,10 +1,11 @@
 module Morphir.Visual.ViewApply exposing (view)
 
 import Dict exposing (Dict)
-import Element exposing (Element, above, centerX, centerY, el, fill, moveUp, padding, row, spacing, text, width)
+import Element exposing (Element, above, centerX, centerY, el, fill, htmlAttribute, moveUp, padding, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Html.Attributes exposing (style)
 import Morphir.IR.Distribution as Distribution
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name
@@ -15,6 +16,7 @@ import Morphir.Type.Infer as Infer
 import Morphir.Value.Error exposing (Error(..))
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue, evaluateValue)
 import Morphir.Visual.Common exposing (nameToText, tooltip)
+import Morphir.Visual.Components.DecisionTree as DecisionTree
 import Morphir.Visual.Components.DrillDownPanel as DrillDownPanel exposing (Depth)
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Config exposing (Config, DrillDownFunctions(..), drillDownContains, evalIfPathTaken)
@@ -23,8 +25,8 @@ import Morphir.Visual.Theme as Theme exposing (borderRounded, smallPadding, smal
 import Morphir.Visual.ViewList as ViewList
 
 
-view : Config msg -> (Config msg -> Value.Definition () (Type ()) -> Element msg) -> (EnrichedValue -> Element msg) -> EnrichedValue -> List EnrichedValue -> Element msg
-view config viewDefinitionBody viewValue functionValue argValues =
+view : Config msg -> (Config msg -> Value.Definition () (Type ()) -> Element msg) -> (EnrichedValue -> Element msg) -> EnrichedValue -> List EnrichedValue -> EnrichedValue -> Element msg
+view config viewDefinitionBody viewValue functionValue argValues applyValue =
     let
         styles : List (Element.Attribute msg)
         styles =
@@ -52,7 +54,7 @@ view config viewDefinitionBody viewValue functionValue argValues =
 
         viewFunctionValue : FQName -> Element msg
         viewFunctionValue fqName =
-            el [ tooltip above (functionOutput fqName) ] <| viewValue functionValue
+            el [ tooltip above (functionOutput config fqName functionValue argValues viewValue) ] <| viewValue functionValue
 
         viewArgumentList : List (Element msg)
         viewArgumentList =
@@ -74,60 +76,12 @@ view config viewDefinitionBody viewValue functionValue argValues =
                                     ]
                                     (viewValue v)
                     )
-
-        functionOutput : FQName -> Element msg
-        functionOutput fqName =
-            let
-                variables : List (Maybe RawValue)
-                variables =
-                    case config.ir |> Distribution.lookupValueDefinition fqName of
-                        Just valueDef ->
-                            Dict.fromList (List.map2 (\( name, _, _ ) argValue -> ( name, argValue |> evalIfPathTaken config )) valueDef.inputTypes argValues) |> Dict.values
-
-                        Nothing ->
-                            []
-
-                viewRawValue : RawValue -> Element msg
-                viewRawValue rawValue =
-                    case fromRawValue config.ir rawValue of
-                        Ok typedValue ->
-                            el [ centerY ] (viewValue typedValue)
-
-                        Err error ->
-                            el [ centerX, centerY ] (text (Infer.typeErrorToMessage error))
-
-                popupstyles : List (Element.Attribute msg)
-                popupstyles =
-                    [ Background.color config.state.theme.colors.lightest
-                    , Font.bold
-                    , Font.center
-                    , config.state.theme |> borderRounded
-                    , Border.width 1
-                    , smallPadding config.state.theme |> padding
-                    ]
-            in
-            case evaluateFunctionValue config.nativeFunctions config.ir fqName variables of
-                Ok value ->
-                    el popupstyles (viewRawValue value)
-
-                Err firstError ->
-                    case firstError of
-                        ReferenceNotFound _ ->
-                            case evaluateValue config.nativeFunctions config.ir config.state.variables (List.map toRawValue argValues) (toRawValue functionValue) of
-                                Ok value ->
-                                    el popupstyles (viewRawValue value)
-
-                                Err err ->
-                                    Element.none
-
-                        _ ->
-                            Element.none
     in
     case ( functionValue, argValues ) of
         ( (Value.Constructor _ fQName) as constr, _ ) ->
             case config.ir |> Distribution.lookupTypeSpecification (config.ir |> Distribution.resolveAliases fQName) of
                 Just (Type.TypeAliasSpecification _ (Type.Record _ fields)) ->
-                    FieldList.view
+                    FieldList.view config.state.theme
                         (List.map2
                             (\field arg ->
                                 ( field.name
@@ -161,6 +115,15 @@ view config viewDefinitionBody viewValue functionValue argValues =
                 , viewValue argValue
                 , text ")"
                 ]
+
+        ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, [ "map" ] ), [ _, _ ] ) ->
+            pipeVisualisation config applyValue viewValue
+
+        ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, [ "filter" ] ), [ _, _ ] ) ->
+            pipeVisualisation config applyValue viewValue
+
+        ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, [ "filter", "map" ] ), [ _, _ ] ) ->
+            pipeVisualisation config applyValue viewValue
 
         -- possibly binary operator
         ( Value.Reference _ (( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ) as fqName), [ argValues1, argValues2 ] ) ->
@@ -289,7 +252,7 @@ view config viewDefinitionBody viewValue functionValue argValues =
 
         _ ->
             row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding, config.state.theme |> borderRounded ] ++ styles)
-                [ viewFunctionValue ( [], [], [] )
+                [ viewValue functionValue
                 , row [ width fill, centerX, smallSpacing config.state.theme |> spacing ]
                     viewArgumentList
                 ]
@@ -311,3 +274,107 @@ inlineBinaryOperators =
         , ( "Basics.notEqual", "≠" )
         , ( "Basics.power", "^" )
         ]
+
+
+functionOutput : Config msg -> FQName -> EnrichedValue -> List EnrichedValue -> (EnrichedValue -> Element msg) -> Element msg
+functionOutput config fqName functionValue argValues viewValue =
+    let
+        variables : List (Maybe RawValue)
+        variables =
+            case config.ir |> Distribution.lookupValueDefinition fqName of
+                Just valueDef ->
+                    Dict.fromList (List.map2 (\( name, _, _ ) argValue -> ( name, argValue |> evalIfPathTaken config )) valueDef.inputTypes argValues) |> Dict.values
+
+                Nothing ->
+                    []
+
+        viewRawValue : RawValue -> Element msg
+        viewRawValue rawValue =
+            case fromRawValue config.ir rawValue of
+                Ok typedValue ->
+                    el [ centerY ] (viewValue typedValue)
+
+                Err error ->
+                    el [ centerX, centerY ] (text (Infer.typeErrorToMessage error))
+
+        popupstyles : List (Element.Attribute msg)
+        popupstyles =
+            [ Background.color config.state.theme.colors.lightest
+            , Font.bold
+            , Font.center
+            , config.state.theme |> borderRounded
+            , Border.width 1
+            , smallPadding config.state.theme |> padding
+            ]
+    in
+    case evaluateFunctionValue config.nativeFunctions config.ir fqName variables of
+        Ok value ->
+            el popupstyles (viewRawValue value)
+
+        Err firstError ->
+            case firstError of
+                ReferenceNotFound _ ->
+                    case evaluateValue config.nativeFunctions config.ir config.state.variables (List.map toRawValue argValues) (toRawValue functionValue) of
+                        Ok value ->
+                            el popupstyles (viewRawValue value)
+
+                        Err err ->
+                            Element.none
+
+                _ ->
+                    Element.none
+
+
+pipeVisualisation : Config msg -> EnrichedValue -> (EnrichedValue -> Element msg) -> Element msg
+pipeVisualisation config applyValue viewValue =
+    let
+        getMapsRec : EnrichedValue -> List (Element msg)
+        getMapsRec v =
+            let
+                recursiveCall : FQName -> EnrichedValue -> EnrichedValue -> EnrichedValue -> String -> List (Element msg)
+                recursiveCall currentFQName currentFunctionValue currentFunction src label =
+                    getMapsRec src
+                        ++ [ Element.column
+                                [ Border.width 2
+                                , Border.color config.state.theme.colors.brandSecondaryLight
+                                , Theme.borderRounded config.state.theme
+                                ]
+                                [ el [ Font.color config.state.theme.colors.mediumGray, padding 3, Element.centerX, Element.centerY ] (text label)
+                                , viewValue currentFunction
+                                ]
+                           , arrow currentFQName currentFunctionValue [ currentFunction, src ]
+                           ]
+            in
+            case v of
+                Value.Apply _ applyFunction applyArgs ->
+                    case Value.uncurryApply applyFunction applyArgs of
+                        ( (Value.Reference _ (( [ [ "morphir" ], [ "s", "d", "k" ] ], _, [ "map" ] ) as fqName)) as mapFunctionValue, [ mapfunc, source ] ) ->
+                            recursiveCall fqName mapFunctionValue mapfunc source "map"
+
+                        ( (Value.Reference _ (( [ [ "morphir" ], [ "s", "d", "k" ] ], _, [ "filter" ] ) as fqName)) as mapFunctionValue, [ mapfunc, source ] ) ->
+                            recursiveCall fqName mapFunctionValue mapfunc source "filter"
+
+                        ( (Value.Reference _ (( [ [ "morphir" ], [ "s", "d", "k" ] ], _, [ "filter", "map" ] ) as fqName)) as mapFunctionValue, [ mapfunc, source ] ) ->
+                            recursiveCall fqName mapFunctionValue mapfunc source "filter & map"
+
+                        _ ->
+                            [ viewValue v ]
+
+                _ ->
+                    [ viewValue v
+                    , arrow ( [], [], [] ) v []
+                    ]
+
+        arrow : FQName -> EnrichedValue -> List EnrichedValue -> Element msg
+        arrow fqName mapFunctionValue args =
+            el
+                [ Element.centerX
+                , Element.centerY
+                , tooltip Element.below (functionOutput config fqName mapFunctionValue args viewValue)
+                , htmlAttribute (style "z-index" "10000")
+                , width (Element.shrink |> Element.minimum (config.state.theme.fontSize * 3) |> Element.maximum (config.state.theme.fontSize * 5))
+                ]
+            <|
+                DecisionTree.rightArrow config False
+    in
+    row [ spacing <| Theme.smallSpacing config.state.theme ] <| getMapsRec applyValue ++ [ el [ Font.italic ] <| text " output " ]

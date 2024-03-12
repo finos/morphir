@@ -51,7 +51,7 @@ import Morphir.Visual.Theme as Theme exposing (Theme)
 -}
 type alias Tab msg =
     { name : String
-    , content : Element msg
+    , content : () -> Element msg
     }
 
 
@@ -127,7 +127,7 @@ view theme config =
         activeTab =
             case Array.get config.activeTab config.tabs of
                 Just tab ->
-                    tab.content
+                    tab.content ()
 
                 Nothing ->
                     none

@@ -19,6 +19,7 @@ import Morphir.SpringBoot.Backend.Codec
 import Morphir.TypeScript.Backend
 import Morphir.TypeSpec.Backend
 import Morphir.TypeSpec.Backend.Codec
+import Morphir.Snowpark.Backend
 
 
 
@@ -34,6 +35,7 @@ type BackendOptions
     | SparkOptions Morphir.Scala.Spark.Backend.Options
     | JsonSchemaOptions Morphir.JsonSchema.Backend.Options
     | TypeSpecOptions Morphir.TypeSpec.Backend.Options
+    | SnowparkOptions Morphir.Snowpark.Backend.Options
 
 
 decodeOptions : Result Error String -> Decode.Decoder BackendOptions
@@ -53,6 +55,9 @@ decodeOptions gen =
 
         Ok "Spark" ->
             Decode.map SparkOptions (Decode.succeed Morphir.Scala.Spark.Backend.Options)
+        
+        Ok "Snowpark" ->
+            Decode.map SnowparkOptions Morphir.Snowpark.Backend.decodeOptions
 
         Ok "JsonSchema" ->
             Decode.map JsonSchemaOptions Morphir.JsonSchema.Backend.Codec.decodeOptions
@@ -85,6 +90,9 @@ mapDistribution back dist =
 
         SparkOptions options ->
             Ok <| Morphir.Spark.Backend.mapDistribution options dist
+        
+        SnowparkOptions options ->
+            Ok <| Morphir.Snowpark.Backend.mapDistribution options dist
 
         JsonSchemaOptions options ->
             Morphir.JsonSchema.Backend.mapDistribution options dist

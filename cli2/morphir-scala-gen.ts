@@ -116,7 +116,7 @@ program
     .option('-e, --target-version <version>', 'Language version to Generate.', '2.11')
     .option('-c, --copy-deps', 'Copy the dependencies used by the generated code to the output path.', false)
     .option('-m, --limitToModules <comma.separated,list.of,module.names>', 'Limit the set of modules that will be included.', '')
-    .option('-s, --include-codecs <boolean>', 'Generate the scala codecs as well', false)
+    .option('-s, --include-codecs <type>', 'Generate the scala codecs as well', false)
     .option('--generate-test-generic', 'Generate generic test cases from morphir tests that can be used for testing', false)
     .option('--generate-test-scalatest', 'Generate runnable scalatest test cases', false)
     .parse(process.argv)

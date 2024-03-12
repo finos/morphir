@@ -211,7 +211,7 @@ mapType qName typ =
                 ( "Morphir.SDK:LocalTime:localTime", [] ) ->
                     Ok (String (StringConstraints (Just "time")))
 
-                ( "Morphir.SDK:Month:month", [] ) ->
+                ( "Morphir.SDK:LocalDate:month", [] ) ->
                     Ok
                         (OneOf
                             [ Const "January"

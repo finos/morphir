@@ -27,14 +27,11 @@ namespace Decimal {
 
 namespace LocalDate {
   scalar LocalDate extends plainDate;
+  scalar Month extends string;
 }
 
 namespace LocalTime {
   scalar LocalTime extends plainTime;
-}
-
-namespace Month {
-  scalar Month extends string;
 }
 
 

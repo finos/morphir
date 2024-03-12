@@ -13,9 +13,13 @@ redistributable/Scala
 cli/web/insightapp.js
 cli/treeStuff.js
 cli/index.html
+cli2/lib/
 lib/geneated
 cadl-Frontend/cadl-output
 Morphir.Elm.CLI.js
+Morphir.Elm.Generator.js
 docs.json
 /.coverage/
 tests-integration/reference-model/Dockerfile
+
+.scala-build/

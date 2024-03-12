@@ -19,10 +19,11 @@ import Morphir.Type.Infer as Infer exposing (TypeError)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
+import Morphir.Visual.Components.DecisionTree as DecisionTree
 import Morphir.Visual.Components.DrillDownPanel as DrillDownPanel
 import Morphir.Visual.Config as Config exposing (Config, DrillDownFunctions(..), drillDownContains)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, fromTypedValue, getId)
-import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallPadding, smallSpacing)
+import Morphir.Visual.Theme as Theme exposing (mediumPadding, mediumSpacing, smallPadding, smallSpacing)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
@@ -258,27 +259,36 @@ viewValueByLanguageFeature config value =
                         _ ->
                             defaultFieldDisplay fieldName
 
-                Value.Apply _ fun arg ->
+                (Value.Apply _ fun arg) as applyValue ->
                     let
                         ( function, args ) =
                             Value.uncurryApply fun arg
                     in
-                    ViewApply.view config definitionBody (viewValue config) function args
+
+                    case (function, args) of
+                        ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "decimal" ] ], [ "from", "float" ] ), [ argValue ] ) ->
+                            viewValue config argValue
+                        
+                        ( Value.Reference _ (  [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "from", "i", "s", "o" ]  ), [ argValue ] ) ->
+                            viewValue config argValue
+
+                        _ ->
+                            ViewApply.view config definitionBody (viewValue config) function args applyValue
 
                 Value.LetDefinition _ _ _ _ ->
                     let
                         unnest : Config msg -> EnrichedValue -> ( List ( Name, Element msg ), Element msg )
-                        unnest conf v =
+                        unnest configWithLetDefsSoFar v =
                             case v of
                                 Value.LetDefinition _ defName def inVal ->
                                     let
                                         currentState =
-                                            conf.state
+                                            configWithLetDefsSoFar.state
 
                                         newState =
                                             { currentState
                                                 | variables =
-                                                    conf
+                                                    configWithLetDefsSoFar
                                                         |> Config.evaluate
                                                             (def
                                                                 |> Value.mapDefinitionAttributes (always ()) (always ())
@@ -310,12 +320,12 @@ viewValueByLanguageFeature config value =
                                             }
 
                                         ( defs, bottomIn ) =
-                                            unnest { conf | state = newState } inVal
+                                            unnest { configWithLetDefsSoFar | state = newState } inVal
                                     in
                                     ( ( defName, viewValue config def.body ) :: defs, bottomIn )
 
-                                notLet ->
-                                    ( [], viewValue config notLet )
+                                notALetNode ->
+                                    ( [], viewValue configWithLetDefsSoFar notALetNode )
 
                         ( _, inValueElem ) =
                             unnest config value
@@ -338,8 +348,8 @@ viewValueByLanguageFeature config value =
                     el [ Element.centerX, Element.centerY, smallPadding config.state.theme |> padding ] (text "not set")
 
                 Value.UpdateRecord _ record newFields ->
-                    Element.column [ Element.height fill ]
-                        [ Element.row [ smallPadding config.state.theme |> padding ] [ text "updating ", viewValue config record, text " with" ]
+                    Element.column [ Background.color config.state.theme.colors.lightest, Theme.borderRounded config.state.theme ]
+                        [ Element.row [ smallPadding config.state.theme |> padding ] [ text "updating the following fields of ", viewValue config record]
                         , ViewRecord.view config (viewValue config) newFields
                         ]
 
@@ -355,7 +365,7 @@ viewValueByLanguageFeature config value =
                             Element.column
                                 [ Background.color (rgb 1 0.6 0.6)
                                 , smallPadding config.state.theme |> padding
-                                , Border.rounded 6
+                                , Theme.borderRounded config.state.theme
                                 ]
                                 [ Element.el
                                     [ smallPadding config.state.theme |> padding
@@ -365,7 +375,7 @@ viewValueByLanguageFeature config value =
                                 , Element.el
                                     [ Background.color (rgb 1 1 1)
                                     , smallPadding config.state.theme |> padding
-                                    , Border.rounded 6
+                                    , Theme.borderRounded config.state.theme
                                     , width fill
                                     ]
                                     (XRayView.viewValue (XRayView.viewType moduleNameToPathString) ((other |> Debug.log "unable to visualize: ") |> Value.mapValueAttributes identity (\( _, tpe ) -> tpe)))

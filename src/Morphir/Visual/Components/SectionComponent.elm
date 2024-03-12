@@ -10,7 +10,7 @@ import Morphir.Visual.Theme exposing (Theme, mediumSpacing, smallSpacing)
 
 type alias Config msg =
     { title : String
-    , content : Element msg
+    , content : () -> Element msg
     , onToggle : msg
     , isOpen : Bool
     }
@@ -47,7 +47,7 @@ view theme config =
     column [ width fill, height fill, Background.color theme.colors.lightest, mediumSpacing theme |> spacing ]
         [ header
         , if config.isOpen then
-            config.content
+            config.content ()
 
           else
             none

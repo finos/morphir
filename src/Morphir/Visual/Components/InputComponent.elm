@@ -1,12 +1,11 @@
-module Morphir.Visual.Components.InputComponent exposing (textInput, searchInput, checkBox, multiLine)
+module Morphir.Visual.Components.InputComponent exposing (checkBox, multiLine, searchInput, textInput)
 
-import Element exposing (Element, below, el, moveDown, padding, paddingXY, rgb, text)
+import Element exposing (Element, below, el, moveDown, padding, paddingXY, rgb, rgba, text)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input
 import Morphir.Visual.Theme as Theme exposing (Theme)
-import Element exposing (rgba)
 
 
 type alias TextInputConfig msg =
@@ -15,6 +14,7 @@ type alias TextInputConfig msg =
     , placeholder : Maybe (Element.Input.Placeholder msg)
     , label : Element.Input.Label msg
     }
+
 
 type alias MultilineTextInputConfig msg =
     { onChange : String -> msg
@@ -34,10 +34,18 @@ type alias CheckboxConfig msg =
 
 defaultStyles : Theme -> List (Element.Attribute msg)
 defaultStyles theme =
-    [ Element.focused [ Border.color theme.colors.primaryHighlight ]
-    , paddingXY (Theme.smallPadding theme) 3
+    [ Element.focused
+        [ Border.color theme.colors.primaryHighlight
+        , Border.shadow
+            { offset = ( 0, 0 )
+            , size = 0
+            , blur = 3
+            , color = theme.colors.primaryHighlight
+            }
+        ]
+    , paddingXY (theme |> Theme.mediumPadding) (theme |> Theme.smallPadding)
     , Font.size theme.fontSize
-    , Border.width 2
+    , Theme.borderRounded theme
     ]
 
 
@@ -60,7 +68,7 @@ errorStyles theme error =
             ]
 
         Nothing ->
-            [ ]
+            []
 
 
 textInput : Theme -> List (Element.Attribute msg) -> TextInputConfig msg -> Maybe String -> Element msg
@@ -75,7 +83,8 @@ searchInput theme attributes config =
 
 checkBox : Theme -> List (Element.Attribute msg) -> CheckboxConfig msg -> Element msg
 checkBox theme attributes config =
-    Element.Input.checkbox ( (Border.color (rgba 0 0 0 0)) :: attributes) { onChange = config.onChange, checked = config.checked, label = config.label, icon = Element.Input.defaultCheckbox }
+    Element.Input.checkbox (Border.color (rgba 0 0 0 0) :: attributes) { onChange = config.onChange, checked = config.checked, label = config.label, icon = Element.Input.defaultCheckbox }
+
 
 multiLine : Theme -> List (Element.Attribute msg) -> MultilineTextInputConfig msg -> Maybe String -> Element msg
 multiLine theme attributes config error =

@@ -131,4 +131,16 @@ constructorTests =
             \_ ->
                 LocalDate.fromParts 2020 2 30
                     |> Expect.equal Nothing
+        , test "valid fromCalendarDate" <|
+            \_ ->
+                LocalDate.fromCalendarDate 2023 December 25
+                    |> Expect.equal (Date.fromCalendarDate 2023 Dec 25)
+        , test "invalid but pinned fromCalendarDate" <|
+            \_ ->
+                LocalDate.fromCalendarDate 2023 December 39
+                    |> Expect.equal (Date.fromCalendarDate 2023 Dec 31)
+        , test "valid fromOrdinalDate" <|
+            \_ ->
+                LocalDate.fromOrdinalDate 2023 15
+                    |> Expect.equal (Date.fromCalendarDate 2023 Jan 15)
         ]

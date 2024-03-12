@@ -22,16 +22,15 @@ import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Literal as Literal
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name
-import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.SDK.Basics exposing (intType)
+import Morphir.IR.Path as Path
+import Morphir.IR.SDK.Basics exposing (boolType, intType)
 import Morphir.IR.SDK.Common exposing (toFQName, vSpec)
 import Morphir.IR.SDK.Maybe exposing (maybeType)
 import Morphir.IR.SDK.String exposing (stringType)
 import Morphir.IR.Type exposing (Specification(..), Type(..))
+import Morphir.IR.Value as Value exposing (Value)
 import Morphir.SDK.LocalDate as LocalDate
 import Morphir.Value.Native as Native
-import Morphir.IR.Value as Value
-import Morphir.IR.Value exposing (Value)
 
 
 moduleName : ModuleName
@@ -50,13 +49,53 @@ moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( Name.fromString "LocalDate", DerivedTypeSpecification [] config |> Documented "Type that represents a date concept." )
+            [ ( Name.fromString "LocalDate"
+              , DerivedTypeSpecification [] config
+                    |> Documented "Type that represents a date concept."
+              )
+            , ( Name.fromString "DayOfWeek"
+              , CustomTypeSpecification []
+                    (Dict.fromList
+                        [ ( Name.fromString "Monday", [] )
+                        , ( Name.fromString "Tuesday", [] )
+                        , ( Name.fromString "Wednesday", [] )
+                        , ( Name.fromString "Thursday", [] )
+                        , ( Name.fromString "Friday", [] )
+                        , ( Name.fromString "Saturday", [] )
+                        , ( Name.fromString "Sunday", [] )
+                        ]
+                    )
+                    |> Documented "Type that represents days of the week."
+              )
+            , ( Name.fromString "Month"
+              , CustomTypeSpecification []
+                    (Dict.fromList
+                        [ ( Name.fromString "January", [] )
+                        , ( Name.fromString "February", [] )
+                        , ( Name.fromString "March", [] )
+                        , ( Name.fromString "April", [] )
+                        , ( Name.fromString "May", [] )
+                        , ( Name.fromString "June", [] )
+                        , ( Name.fromString "July", [] )
+                        , ( Name.fromString "August", [] )
+                        , ( Name.fromString "September", [] )
+                        , ( Name.fromString "October", [] )
+                        , ( Name.fromString "November", [] )
+                        , ( Name.fromString "December", [] )
+                        ]
+                    )
+                    |> Documented "Type that represents months of the year."
+              )
             ]
     , values =
         Dict.fromList
-            [ vSpec "toISOString" [ ( "date", localDateType () ) ] (stringType ())
+            [ vSpec "fromCalendarDate" [ ( "y", intType () ), ( "m", monthType () ), ( "d", intType () ) ] (localDateType ())
+            , vSpec "toISOString" [ ( "date", localDateType () ) ] (stringType ())
             , vSpec "fromISO" [ ( "iso", stringType () ) ] (maybeType () (localDateType ()))
+            , vSpec "fromOrdinalDate" [ ( "y", intType () ), ( "dayOfyear", intType () ) ] (localDateType ())
             , vSpec "fromParts" [ ( "year", intType () ), ( "month", intType () ), ( "day", intType () ) ] (maybeType () (localDateType ()))
+            , vSpec "day" [ ( "localDate", localDateType () ) ] (intType ())
+            , vSpec "dayOfWeek" [ ( "localDate", localDateType () ) ] (dayOfWeekType ())
             , vSpec "diffInDays" [ ( "date1", localDateType () ), ( "date2", localDateType () ) ] (intType ())
             , vSpec "diffInWeeks" [ ( "date1", localDateType () ), ( "date2", localDateType () ) ] (intType ())
             , vSpec "diffInMonths" [ ( "date1", localDateType () ), ( "date2", localDateType () ) ] (intType ())
@@ -65,14 +104,30 @@ moduleSpec =
             , vSpec "addWeeks" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())
             , vSpec "addMonths" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())
             , vSpec "addYears" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())
+            , vSpec "isWeekend" [ ( "localDate", localDateType () ) ] (boolType ())
+            , vSpec "isWeekday" [ ( "localDate", localDateType () ) ] (boolType ())
+            , vSpec "month" [ ( "localDate", localDateType () ) ] (monthType ())
+            , vSpec "monthNumber" [ ( "localDate", localDateType () ) ] (intType ())
+            , vSpec "monthToInt" [ ( "m", monthType () ) ] (intType ())
+            , vSpec "year" [ ( "localDate", localDateType () ) ] (intType ())
             ]
     , doc = Just "Contains the LocalDate type (representing a date concept), and it's associated functions."
     }
 
 
+dayOfWeekType : a -> Type a
+dayOfWeekType attributes =
+    Reference attributes (toFQName moduleName "DayOfWeek") []
+
+
 localDateType : a -> Type a
 localDateType attributes =
     Reference attributes (toFQName moduleName "LocalDate") []
+
+
+monthType : a -> Type a
+monthType attributes =
+    Reference attributes (toFQName moduleName "Month") []
 
 
 nativeFunctions : List ( String, Native.Function )
@@ -115,6 +170,7 @@ nativeFunctions =
       , Native.eval2 LocalDate.addYears (Native.decodeLiteral Native.intLiteral) Native.decodeLocalDate Native.encodeLocalDate
       )
     ]
+
 
 fromISO : a -> Value a a -> Value a a
 fromISO a value =

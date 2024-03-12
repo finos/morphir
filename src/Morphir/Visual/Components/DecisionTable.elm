@@ -22,6 +22,7 @@ import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Config exposing (Config, HighlightState(..), VisualState)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (mediumPadding)
+import Morphir.IR.Name exposing (toHumanWordsTitle)
 
 
 
@@ -179,11 +180,11 @@ getCaseFromIndex config head viewValue highlightState rule =
                     let
                         parsedMatches : List (Element msg)
                         parsedMatches =
-                            List.map (getCaseFromIndex config head viewValue highlightState << Just << toTypedPattern) (matches |> Debug.log "matches")
+                            List.map (getCaseFromIndex config head viewValue highlightState << Just << toTypedPattern) matches
 
                         --enclose in parentheses for nested constructors
                     in
-                    row [ width fill, Background.color result, mediumPadding config.state.theme |> padding ] (List.concat [ [ text "(", text (nameToText (getLocalName fQName)) ], List.intersperse (text ",") parsedMatches, [ text ")" ] ])
+                    row [ width fill, Background.color result, mediumPadding config.state.theme |> padding ] (List.concat [ [ text "(", text ((toHumanWordsTitle >> String.join " ") (getLocalName fQName)) ], List.intersperse (text ",") parsedMatches, [ text ")" ] ])
 
                 Value.AsPattern _ (Value.WildcardPattern _) name ->
                     el [ Background.color result, mediumPadding config.state.theme |> padding ] (text (nameToText name))

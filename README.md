@@ -191,7 +191,7 @@ structure follows the structure of the IR. Here's a list of concepts in a top-do
 
 ## Contributing
 
-[Contribution Guide](docs/contribution-guide.md)
+[Contribution Guide](CONTRIBUTING.md)
 
 1. Fork it (<https://github.com/finos/morphir-elm/fork>)
 2. Create your feature branch (`git checkout -b feature/fooBar`)
@@ -206,7 +206,7 @@ _NOTE:_ Commits and pull requests to FINOS repositories will only be accepted fr
 
 ### Publishing new releases
 
-[Steps for publishing a new release](docs/publishing.md)
+[Steps for publishing a new release](publishing.md)
 
 ## License
 

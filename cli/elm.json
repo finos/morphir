@@ -20,6 +20,7 @@
             "elm/regex": "1.0.0",
             "elm/svg": "1.0.1",
             "elm/url": "1.0.0",
+            "elm/time": "1.0.0",
             "elm-community/array-extra": "2.6.0",
             "elm-community/graph": "6.0.0",
             "elm-community/list-extra": "8.7.0",
@@ -30,6 +31,7 @@
             "lattyware/elm-fontawesome": "6.0.0",
             "matthewsj/elm-ordering": "2.0.0",
             "mdgriffith/elm-ui": "1.1.8",
+            "perzanko/elm-loading": "2.0.5",
             "pzp1997/assoc-list": "1.0.0",
             "rundis/elm-bootstrap": "5.2.0",
             "stil4m/elm-syntax": "7.2.9"
@@ -39,11 +41,12 @@
             "avh4/elm-fifo": "1.0.4",
             "elm/bytes": "1.0.8",
             "elm/file": "1.0.5",
-            "elm/time": "1.0.0",
             "elm/virtual-dom": "1.0.3",
             "elm-community/intdict": "3.0.0",
             "miniBill/elm-unicode": "1.0.3",
             "myrho/elm-round": "1.0.5",
+            "robinheghan/murmur3": "1.0.0",
+            "rtfeldman/elm-css": "17.1.1",
             "rtfeldman/elm-hex": "1.0.0",
             "stil4m/structured-writer": "1.0.3"
         }
