@@ -462,18 +462,38 @@ encodeLocalDate localDate =
 
 {-| -}
 decodeLocalDate : Decoder LocalDate
-decodeLocalDate _ value =
-    case value of
-        Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "from", "i", "s", "o" ] )) (Value.Literal () (StringLiteral str)) ->
-            case LocalDate.fromISO str of
-                Just localDate ->
-                    Ok localDate
+decodeLocalDate e value =
+    e value
+        |> Result.andThen
+            (\v ->
+                case v of
+                    Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) (Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "from", "i", "s", "o" ] )) (Value.Literal () (StringLiteral str))) ->
+                        case LocalDate.fromISO str of
+                            Just localDate ->
+                                Ok localDate
 
-                Nothing ->
-                    Err <| ErrorWhileEvaluatingDerivedType ("Invalid ISO format: " ++ str)
+                            Nothing ->
+                                Err <| ErrorWhileEvaluatingDerivedType ("Invalid ISO format: " ++ str)
 
-        _ ->
-            Err (ExpectedDerivedType ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "local", "date" ] ) value)
+                    Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "from", "i", "s", "o" ] )) (Value.Literal () (StringLiteral str)) ->
+                        case LocalDate.fromISO str of
+                            Just localDate ->
+                                Ok localDate
+
+                            Nothing ->
+                                Err <| ErrorWhileEvaluatingDerivedType ("Invalid ISO format: " ++ str)
+
+                    Value.Literal () (StringLiteral str) ->
+                        case LocalDate.fromISO str of
+                            Just localDate ->
+                                Ok localDate
+
+                            Nothing ->
+                                Err <| ErrorWhileEvaluatingDerivedType ("Invalid ISO format: " ++ str)
+
+                    _ ->
+                        Err (ExpectedDerivedType ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "local", "date" ] ) v)
+            )
 
 
 {-| -}

@@ -138,6 +138,37 @@ nativeFunctions =
     , ( "toISOString"
       , Native.eval1 LocalDate.toISOString Native.decodeLocalDate (Native.encodeLiteral Literal.StringLiteral)
       )
+    , ( "fromParts"
+      , Native.eval3 LocalDate.fromParts
+            (Native.decodeLiteral Native.intLiteral)
+            (Native.decodeLiteral Native.intLiteral)
+            (Native.decodeLiteral Native.intLiteral)
+            (Native.encodeMaybe Native.encodeLocalDate)
+      )
+    , ( "diffInDays"
+      , Native.eval2 LocalDate.diffInDays Native.decodeLocalDate Native.decodeLocalDate (Native.encodeLiteral Literal.intLiteral)
+      )
+    , ( "diffInWeeks"
+      , Native.eval2 LocalDate.diffInWeeks Native.decodeLocalDate Native.decodeLocalDate (Native.encodeLiteral Literal.intLiteral)
+      )
+    , ( "diffInMonths"
+      , Native.eval2 LocalDate.diffInMonths Native.decodeLocalDate Native.decodeLocalDate (Native.encodeLiteral Literal.intLiteral)
+      )
+    , ( "diffInYears"
+      , Native.eval2 LocalDate.diffInYears Native.decodeLocalDate Native.decodeLocalDate (Native.encodeLiteral Literal.intLiteral)
+      )
+    , ( "addDays"
+      , Native.eval2 LocalDate.addDays (Native.decodeLiteral Native.intLiteral) Native.decodeLocalDate Native.encodeLocalDate
+      )
+    , ( "addWeeks"
+      , Native.eval2 LocalDate.addWeeks (Native.decodeLiteral Native.intLiteral) Native.decodeLocalDate Native.encodeLocalDate
+      )
+    , ( "addMonths"
+      , Native.eval2 LocalDate.addMonths (Native.decodeLiteral Native.intLiteral) Native.decodeLocalDate Native.encodeLocalDate
+      )
+    , ( "addYears"
+      , Native.eval2 LocalDate.addYears (Native.decodeLiteral Native.intLiteral) Native.decodeLocalDate Native.encodeLocalDate
+      )
     ]
 
 
