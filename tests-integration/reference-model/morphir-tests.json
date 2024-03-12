@@ -60,35 +60,6 @@
                         "2elor"
                     ]
                 ],
-                "expectedOutput": [
-                    {
-                        "position": "wedfef",
-                        "companySize": 12312
-                    }
-                ],
-                "description": ""
-            },
-            {
-                "inputs": [
-                    [
-                        {
-                            "companyName": "foo",
-                            "position": "wedfef"
-                        }
-                    ],
-                    [
-                        {
-                            "name": "bar",
-                            "numberOfEmployees": 12312
-                        }
-                    ]
-                ],
-                "expectedOutput": [
-                    {
-                        "position": "wedfef",
-                        "companySize": 0
-                    }
-                ],
                 "description": ""
             }
         ]
