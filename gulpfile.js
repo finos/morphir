@@ -1,4 +1,5 @@
 const { series, parallel, src, dest } = require('gulp');
+const concat = require('gulp-concat');
 const os = require('os')
 const path = require('path')
 const util = require('util')
@@ -85,6 +86,10 @@ function makeTryMorphir() {
     return make('cli', 'src/Morphir/Web/TryMorphir.elm', 'web/try-morphir.html')
 }
 
+async function makeComponents() {
+    return src(['./cli/web/insight.js', './cli/web/morphir-insight-element.js']).pipe(concat('insight.js')).pipe(dest('./cli/web/'))
+}
+
 const buildCLI2 =
     parallel(
         compileCli2Ts,
@@ -115,6 +120,7 @@ const build =
         makeDevServer,
         makeDevServerAPI,
         makeInsightAPI,
+        makeComponents,
         makeTryMorphir
     )
 
