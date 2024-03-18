@@ -6,7 +6,7 @@
     <script src="insight.js"></script>
 </head>
 <body>
-    <div id="app"></div>
+    <morphir-insight id="i" arguments="[1, 2, 3, 4]" fqn="TestModel.Testing:add4"></morphir-insight>
 </body>
 <script>
 
@@ -16,26 +16,15 @@
         var xmlHttp = new XMLHttpRequest();
         xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
         xmlHttp.send(null);
-        return JSON.parse(xmlHttp.responseText);
+        return xmlHttp.responseText;
     }
 
     //HTTP GET request to fetch distribution JSON from server
     var distribution = httpGet("http://localhost:8000/server/morphir-ir.json");
 
-    //ELM integration in JavaScript for interoperability
-    var app = Elm.Morphir.Web.Insight.init({
-    node : document.getElementById('app'),
-    flags : {   distribution : distribution
-            ,   config : {  fontSize : 12 , decimalDigit : 2 }
-            }
-    });
-
-    //Sending Function Name threw port
-    app.ports.receiveFunctionName.send("TestModel.Testing:add4");
-
-    //Sending Arguments List threw port
-    var argsList = [1,2,3,4];
-    app.ports.receiveFunctionArguments.send(argsList);
+    setTimeout(() => {
+        document.getElementById('i').init(distribution);
+    }, 5000);
 
 </script>
 </html>
