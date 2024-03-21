@@ -54,6 +54,11 @@ const config = {
             label: 'GitHub',
             position: 'right',
           },
+          {
+            href: "https://lcr-interactive.finos.org/",
+            label: "LCR Interactive",
+            position: "right",
+          }
         ],
       },
       footer: {
