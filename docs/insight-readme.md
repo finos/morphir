@@ -66,10 +66,13 @@ A morphir-ir.json file should be generated with the IR content
 ```
     <script src="node_modules/morphir-elm/cli/web/insight.js"></script>
 ```
-3. Now you just need to communicate with elm architecture using javascript.
+After including the above script file in your code, you can decide between the two below ways of including Insight in your project.
+
+### Initilazing the Elm App directly
+You just need to communicate with elm architecture using javascript.
 For more details on interoperability [JavaScript Interoperability ](https://guide.elm-lang.org/interop).
 **Note** - Every code below this must be either in javascript file or inside script tags.
-### Initialise it with Flags
+#### Initialise it with Flags
 ```
    var app = Elm.Morphir.Web.Insight.init({
    node: document.getElementById('app'),
@@ -83,7 +86,7 @@ For more details on interoperability [JavaScript Interoperability ](https://guid
    
 For more details on flags [Flags](https://guide.elm-lang.org/interop/flags.html)
 
-### Send Function Name threw ports
+#### Send Function Name through ports
 - Function name should be pass as combination of exposed module name + local name.
 - If your exposed module is `Insight.UseCase1` and it contains a local function with name `limitTracking`. Pass both separated by a colon `:`
 ```
@@ -92,7 +95,7 @@ For more details on flags [Flags](https://guide.elm-lang.org/interop/flags.html)
         
 For more details on ports [Ports](https://guide.elm-lang.org/interop/ports.html)
 
-### Send Function Arguments for a path highlighting
+#### Send Function Arguments for a path highlighting
 - Sending arguments is a bit complex because you need to encode it first. But we are working parallelly to reduce the complexity of encoding. 
 - You need to send type information of arguments along with its values otherwise it won't be accepted.
 - If function signature is :
@@ -110,6 +113,16 @@ For more details on ports [Ports](https://guide.elm-lang.org/interop/ports.html)
   
 - For better understanding of json mapping from elm to json refer the below file. 
 [Json Mapping](https://github.com/finos/morphir-elm/blob/master/docs/json-mapping.md)
+
+
+### Web component
+You can also achieve the above functionality using the included ```<morphir-insight>...<\morphir-insight>``` custom web component, which has two input attributes, `fqn` and `arguments`, for the fully qualified name of the function you wish to dispaly, and the the list of inputs (just like in the above method).
+#### Initializing the web component
+After including the above tag, it's the developers responsibility to call the provided `.init` function on the web component, which expects a valid Morphir IR distribution in a JSON string format. This init function can be called any time after the HTML has been rendered, and will initialize the web component.
+
+### Limitations
+
+Due to inherent limitations stemming from Elm's architecture and design philosphy (total encapsulation of the elm runtime to be able to guarantee no runtime errors), you can't pass values by reference through the port functions. In our case this means that each time an Insight instance is initialized, a new copy of the Morphir IR is added to the Javascript heap. Developers should be mindful of this, as creating multiple Insights with larger IRs has the possibility to be prohibitively memory intensive.
 
 ### Example File
 - If you are still confused like how to write code for all that steps, you can have a look at example file.
