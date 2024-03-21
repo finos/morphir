@@ -2,6 +2,10 @@
 id: intro
 ---
 
+:::tip
+**Data and rules reign supreme. The rest is implementation detail.**
+:::
+
 # Introduction to Morphir
 
 Morphir is a multi-language system built on a data format that captures an application's domain model and business logic
