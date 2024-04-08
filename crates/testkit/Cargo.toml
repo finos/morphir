@@ -11,6 +11,7 @@ path = "src/lib.rs"
 [dev-dependencies]
 cucumber = { workspace = true }
 futures = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 
 [[test]]
 name = "example" # this should be the same as the filename of your test target
