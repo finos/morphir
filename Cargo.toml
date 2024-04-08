@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+members = ["crates/testkit"]
+default-members = ["crates/testkit"]
+
+[workspace.dependencies]
+cucumber = "0.20"
+futures = "0.3"
