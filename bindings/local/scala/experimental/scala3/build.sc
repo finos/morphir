@@ -6,15 +6,25 @@ import io.eleven19.mill.crossbuild._
 
 
 object morphir extends CrossPlatform {
+    trait Shared extends ScalaProject with PlatformScalaModule
+    object jvm extends Shared 
+    object js extends Shared with ScalaJSProject    
     object core extends CrossPlatform {
         trait Shared extends  ScalaProject with PlatformScalaModule
         object jvm extends Shared 
         object js extends Shared with ScalaJSProject        
     }    
 
-    trait Shared extends ScalaProject with PlatformScalaModule
-    object jvm extends Shared 
-    object js extends Shared with ScalaJSProject    
+    object hosting extends CrossPlatform {
+        trait Shared extends ScalaProject with PlatformScalaModule
+        object jvm extends Shared {
+            def ivyDeps = Ag(
+                ivy"net.java.dev.jna:jna-platform:5.14.0",
+                ivy"com.github.alexarchambault::case-app:2.1.0-M26"
+            )
+        }
+    
+    }
 }
 
 trait ScalaProject extends ScalaModule {
