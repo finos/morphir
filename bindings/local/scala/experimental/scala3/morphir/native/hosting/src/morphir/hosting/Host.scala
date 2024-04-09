@@ -5,7 +5,7 @@ import com.sun.jna.Native
 
 object hosting {
     def main(args: Array[String]): Unit = {
-        val lib = Native.load(Platform.ifWindows( "msvcrt","c"), classOf[CMath]).asInstanceOf[CMath]
+        val lib = CMath.Instance
         println(lib.cosh(0))
     }
 }
@@ -13,6 +13,10 @@ object hosting {
 
 trait CMath extends Library {
     def cosh(value:Double):Double
+}
+
+object CMath {
+    val Instance = Native.load(Platform.ifWindows( "msvcrt","c"), classOf[CMath]).asInstanceOf[CMath]  
 }
 
 object Platform {
