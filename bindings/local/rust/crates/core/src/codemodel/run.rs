@@ -9,32 +9,43 @@ flags! {
         IsVerified,
         IsCanonical,
         IsIdentifier,
+        ContainsSymbol,
         //VerifiedIdentifier = (RunModifier::IsVerified | RunModifier::IsIdentifier).bits(),
     }
 }
 
 pub struct RunModifiers(FlagSet<RunModifier>);
 impl RunModifiers {
-    fn new(modifiers: impl Into<FlagSet<RunModifier>>) -> RunModifiers {
+    
+    pub fn new(modifiers: impl Into<FlagSet<RunModifier>>) -> RunModifiers {
         RunModifiers(modifiers.into())
     }
 
-    fn none() -> RunModifiers {
+    pub fn none() -> RunModifiers {
         RunModifiers::new(None)
     }
 }
 
 pub struct Run {
-    pub text: String,
+    text: String,
     modifiers: RunModifiers,
 }
 
+
 impl Run {
-    pub fn new(text: String) -> Self {
+    pub fn new(text: &str) -> Self {
         Self {
-            text,
+            text: text.to_string(),
             modifiers: RunModifiers::none(),
         }
+    }
+
+    pub fn unverified(text: &str) -> Self {
+        Self { text: text.to_string(), modifiers: RunModifiers::none() }
+    }
+
+    pub fn text(&self) -> &str {
+        &self.text
     }
 
     pub fn is_verified(&self) -> bool {
@@ -53,10 +64,11 @@ impl Run {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
 
     #[test]
     fn test_run_modifiers() {
-        let mut run = Run::new("test".to_string());
+        let mut run = Run::new("test");
         assert!(!run.is_verified());
         assert!(!run.is_canonical());
         assert!(!run.is_identifier());
@@ -75,5 +87,17 @@ mod tests {
         assert!(!run.is_verified());
         assert!(!run.is_canonical());
         assert!(run.is_identifier());
+    }
+
+    proptest! {
+        #[test]
+        fn identifiers_should_have_approptiate_flags(text in "[:alpha:_][:alpha:0-9_]{0,255}") {
+            let run = Run::new(text.as_str());
+            if run.text.starts_with('_') {
+                assert!(run.is_identifier());
+            } else {
+                assert!(!run.is_identifier());
+            }
+        }
     }
 }
