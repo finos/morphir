@@ -5,7 +5,7 @@ import com.sun.jna.Native
 
 object hosting {
     def main(args: Array[String]): Unit = {
-        val lib = Native.load("c", classOf[CMath]).asInstanceOf[CMath]
+        val lib = Native.load(Platform.ifWindows( "msvcrt","c"), classOf[CMath]).asInstanceOf[CMath]
         println(lib.cosh(0))
     }
 }
