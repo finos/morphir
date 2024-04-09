@@ -7,3 +7,6 @@ target/
 # moon
 .moon/cache
 .moon/docker
+
+# Scala related
+.metals/
