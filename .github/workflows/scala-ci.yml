@@ -1,0 +1,39 @@
+name: "Scala CI"
+
+env:
+  JDK_JAVA_OPTIONS: -XX:+PrintCommandLineFlags -Xss10M # JDK_JAVA_OPTIONS is _the_ env. variable to use for modern Java
+  JVM_OPTS: -XX:+PrintCommandLineFlags -Xss10M # for Java 8 only (sadly, it is not modern enough for JDK_JAVA_OPTIONS)
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+# cancel older runs of a pull request;
+# this will not cancel anything for normal git pushes
+concurrency:
+  group: cancel-old-pr-runs-${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+    lint:
+        runs-on: ubuntu-latest
+        timeout-minutes: 25
+        
+        steps:
+            - name: Checkout current branch
+              uses: actions/checkout@v4
+              with:
+                fetch-depth: 0
+            - uses: coursier/cache-action@v6
+            - name: Setup Scala and Java
+              uses: VirtusLab/scala-cli-setup@main
+              with:
+                jvm: corretto:21.0.2.13.1
+                apps: mill scalafmt scalafix    
+
+    
