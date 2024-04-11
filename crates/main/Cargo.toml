@@ -1,0 +1,24 @@
+[package]
+name = "morphir"
+version = "0.0.1"
+description = "Tools for working with the Morphir IR"
+homepage = "https://morphir.finos.org"
+repository = "https://github.com/finos/morphir"
+readme = "README.md"
+keywords = ["morphir", "finos"]
+authors = ["Damian Reeves"]
+license = "Apache-2.0"
+edition = "2021"
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+[features]
+
+[dependencies]
+anyhow.workspace = true
+config.workspace = true
+dirs.workspace = true
+serde.workspace = true
+serde_derive.workspace = true
+thiserror.workspace = true

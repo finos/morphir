@@ -1,13 +1,18 @@
 [workspace]
 resolver = "2"
-members = ["bindings/local/rust/crates/core", "crates/testkit"]
-default-members = ["crates/testkit"]
+members = ["bindings/local/rust/crates/core", "crates/main", "crates/testkit"]
+default-members = ["crates/main", "crates/testkit"]
 
 [workspace.dependencies]
+anyhow = "^1.0"
+config = "0.14.0"
+dirs = "5.0.1"
 cucumber = "0.20"
 flagset = "0.4.5"
 futures = "0.3"
 proptest = "1.4.0"
 serde = "^1.0"
+serde_derive = "1.0"
 serde_repr = "^0.1"
+thiserror = "1.0.58"
 tokio = { version = "1.10", features = ["macros", "rt-multi-thread", "time"] }
