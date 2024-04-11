@@ -42,9 +42,9 @@ impl Settings {
         let run_mode = env::var("RUN_MODE").unwrap_or_else(|_| "development".into());      
         println!("run_mode: {}", run_mode);  
         let mut bldr = Config::builder()        
-            .add_source(File::from_str(include_str!("../config/default.toml"), config::FileFormat::Toml))
-            .add_source(File::with_name(&format!(".morphir/config/morphir-{}", run_mode)).required(false))  
-            .add_source(File::with_name(".morphir/config/morphir").required(false));
+            .add_source(File::from_str(include_str!("../config/morphir.default.toml"), config::FileFormat::Toml))
+            .add_source(File::with_name(".morphir/config/morphir").required(false))
+            .add_source(File::with_name(&format!(".morphir/config/morphir-{}", run_mode)).required(false));
 
         if let Some(home_dir) = dirs::home_dir() {
             bldr = bldr.add_source(File::with_name(home_dir.join(".morphir/config/morphir").to_str().unwrap()).required(false));
