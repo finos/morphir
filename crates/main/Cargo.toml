@@ -19,6 +19,10 @@ maintenance = { status = "actively-developed" }
 anyhow.workspace = true
 config.workspace = true
 dirs.workspace = true
+miette = { workspace = true, features = ["fancy"] }
 serde.workspace = true
 serde_derive.workspace = true
+starbase.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true

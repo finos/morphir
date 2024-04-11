@@ -1,18 +1,20 @@
-use anyhow::Error as AnyError;
 use config::{Config, ConfigError, File};
 use dirs;
+use starbase::diagnostics::Diagnostic;
 use std::collections::HashMap;
 use std::env;
 use serde_derive::Deserialize;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Diagnostic)]
 pub enum SettingsError {
-    #[error("Configuration error: {0}")]
+    #[error(transparent)]
+    #[diagnostic(code(app::config_error))]
     ConfigError(#[from] ConfigError),
-    #[error("Deserialization error: {0}")]
-    DeserializeError(#[from] AnyError),
-    #[error("IO error: {0}")]
+    #[error("Deserialization error")]
+    DeserializeError,
+    #[error(transparent)]
+    #[diagnostic(code(app::io_error))]
     IOError(#[from] std::io::Error),
 }
 
