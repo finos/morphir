@@ -1,22 +1,35 @@
 [workspace]
 resolver = "2"
-members = ["bindings/local/rust/crates/core", "crates/main", "crates/testkit"]
+members = [
+    "bindings/local/rust/crates/core",
+    "crates/main",
+    "crates/testkit",
+    "devkit/rust/cdk",
+    "devkit/rust/rdk",
+    "devkit/rust/tdk",
+    "devkit/rust/xdk",
+]
 default-members = ["crates/main", "crates/testkit"]
 
 [workspace.dependencies]
 anyhow = "^1.0"
 config = "0.14.0"
-dirs = "5.0.1"
 cucumber = "0.20"
+dirs = "5.0.1"
+extism = "1.2.0"
+extism-pdk = "1.1.0"
 flagset = "0.4.5"
 futures = "0.3"
+lasso = "0.7.2"
 miette = "7.2.0"
 proptest = "1.4.0"
+refined_type = "0.4.16"
 schematic = "0.15.0"
 serde = "^1.0"
 serde_derive = "1.0"
 serde_repr = "^0.1"
 starbase = "0.5.1"
+state = "0.6.0"
 thiserror = "1.0.58"
 tokio = { version = "1.10", features = ["macros", "rt-multi-thread", "time"] }
 tracing = "0.1.40"
