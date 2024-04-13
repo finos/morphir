@@ -1,5 +1,7 @@
 # Morphir DevKit
 
+> Note: Development of the DevKit is a work in progress. More mature offerings are available at language specific repos like: finos/morphir-elm and finos/morphir-scala.
+
 The Morphir DevKit is a collection of tools and libraries that help you work with Morphir models. The DevKit includes:
 
 - [CDKs](cdk/ReadMe.md) - **Morphir Code Model Development Kits** In the context of Morphir, CDKs are libraries which provide a programming language specific representation of the Morphir code model. This allows you to work with Morphir models in your favorite programming language.
