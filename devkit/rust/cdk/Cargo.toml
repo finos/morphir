@@ -18,7 +18,9 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 flagset.workspace = true
 lasso.workspace = true
+lasso.features = ["multi-threaded"]
 serde_repr = { workspace = true, optional = true }
+state.workspace = true
 
 [dev-dependencies]
 proptest = { workspace = true }
