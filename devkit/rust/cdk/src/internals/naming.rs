@@ -1,4 +1,4 @@
-use lasso::{RodeoResolver, Spur, ThreadedRodeo};
+use lasso::{Spur, ThreadedRodeo};
 use state::InitCell;
 use std::sync::Arc;
 
@@ -7,16 +7,12 @@ type Text = Spur;
 
 pub struct NamingContext {
     rodeo: Arc<ThreadedRodeo>,
-    resolver: Arc<RodeoResolver>,
 }
 
 impl NamingContext {
     pub fn new() -> Self {
-        let rodeo = ThreadedRodeo::new();
-        let resolver = Arc::new(rodeo.into_resolver());
         Self {
             rodeo: Arc::new(ThreadedRodeo::new()),
-            resolver: resolver,
         }
     }
 
@@ -29,15 +25,15 @@ impl NamingContext {
     }
 
     pub fn resolve(&self, text: Text) -> &str {
-        self.resolver.resolve(&text)
+        self.rodeo.resolve(&text)
     }
 
     pub fn get_run(&self, text: &str) -> Run {
         let sym = self.rodeo.get_or_intern(text);
-        let resolver = self.resolver.clone();
+        let rodeo = self.rodeo.clone();
         Run {
             text: sym,
-            rodeo: resolver,
+            rodeo: rodeo,
         }
     }
 
@@ -61,7 +57,7 @@ impl Name {
 #[derive(Debug)]
 pub struct Run {
     text: Text,
-    rodeo: Arc<RodeoResolver>,
+    rodeo: Arc<ThreadedRodeo>,
 }
 
 impl Run {
