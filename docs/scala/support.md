@@ -157,19 +157,19 @@ This section lists the SDK types and functions currently supported in this versi
 ### Char
 | Function      | Morphir-Elm Version Introduced | Supported |
 |---------------|--------------------------------|-----------|
-| isUpper       | v2.31.3                        | &#x2715;  |
-| isLower       | v2.31.3                        | &#x2715;  | 
-| isAlpha       | v2.31.3                        | &#x2715;  | 
-| isAlphaNum    | v2.31.3                        | &#x2715;  | 
-| isDigit       | v2.31.3                        | &#x2715;  |
-| isOctDigit    | v2.31.3                        | &#x2715;  | 
-| isHexDigit    | v2.31.3                        | &#x2715;  | 
-| toUpper       | v2.31.3                        | &#x2715;  | 
-| toLower       | v2.31.3                        | &#x2715;  | 
-| toLocaleUpper | v2.31.3                        | &#x2715;  | 
-| toLocaleLower | v2.31.3                        | &#x2715;  | 
-| toCode        | v2.31.3                        | &#x2715;  | 
-| fromCode      | v2.31.3                        | &#x2715;  | 
+| isUpper       | v2.31.3                        | &#x2713;  |
+| isLower       | v2.31.3                        | &#x2713;  | 
+| isAlpha       | v2.31.3                        | &#x2713;  | 
+| isAlphaNum    | v2.31.3                        | &#x2713;  | 
+| isDigit       | v2.31.3                        | &#x2713;  |
+| isOctDigit    | v2.31.3                        | &#x2713;  | 
+| isHexDigit    | v2.31.3                        | &#x2713;  | 
+| toUpper       | v2.31.3                        | &#x2713;  | 
+| toLower       | v2.31.3                        | &#x2713;  | 
+| toLocaleUpper | v2.31.3                        | &#x2713;  | 
+| toLocaleLower | v2.31.3                        | &#x2713;  | 
+| toCode        | v2.31.3                        | &#x2713;  | 
+| fromCode      | v2.31.3                        | &#x2713;  | 
 
 ### Morphir.SDK.Decimal
 | Function          | Morphir-Elm Version Introduced | Supported |
@@ -202,8 +202,8 @@ This section lists the SDK types and functions currently supported in this versi
 | lte               | v2.8.0                         | &#x2713;  |
 | compare           | v2.8.0                         | &#x2713;  |
 | abs               | v2.8.0                         | &#x2713;  |
-| shiftDecimalLeft  | v2.12.0                        | &#x2715;  |
-| shiftDecimalRight | v2.12.0                        | &#x2715;  |
+| shiftDecimalLeft  | v2.12.0                        | &#x2713;  |
+| shiftDecimalRight | v2.12.0                        | &#x2713;  |
 | zero              | v2.8.0                         | &#x2713;  |
 | one               | v2.8.0                         | &#x2713;  |
 | minusOne          | v2.8.0                         | &#x2713;  |
@@ -233,13 +233,13 @@ This section lists the SDK types and functions currently supported in this versi
 | values    | v2.41.0                        | &#x2713;  |
 | toList    | v2.41.0                        | &#x2713;  |
 | fromList  | v2.41.0                        | &#x2713;  |
-| map       | v2.41.0                        | &#x2715;  |
-| foldl     | v2.41.0                        | &#x2715;  |
-| foldr     | v2.41.0                        | &#x2715;  |
+| map       | v2.41.0                        | &#x2713;  |
+| foldl     | v2.41.0                        | &#x2713;  |
+| foldr     | v2.41.0                        | &#x2713;  |
 | filter    | v2.41.0                        | &#x2713;  |
 | partition | v2.41.0                        | &#x2713;  |
-| union     | v2.41.0                        | &#x2715;  |
-| intersect | v2.41.0                        | &#x2715;  |
+| union     | v2.41.0                        | &#x2713;  |
+| intersect | v2.41.0                        | &#x2713;  |
 | diff      | v2.41.0                        | &#x2713;  |
 | merge     | v2.41.0                        | &#x2713;  |
 
@@ -386,22 +386,22 @@ This section lists the SDK types and functions currently supported in this versi
 | Function         | Morphir-Elm Version Introduced | Supported |
 |------------------|--------------------------------|-----------|
 | diffInDays       | v1.5.0                         | &#x2713;  |
-| diffInWeeks      | v1.5.0                         | &#x2715;  |
-| diffInMonths     | v1.5.0                         | &#x2715;  |
-| diffInYears      | v1.5.0                         | &#x2715;  |
-| addDays          | v1.5.0                         | &#x2715;  |
+| diffInWeeks      | v1.5.0                         | &#x2713;  |
+| diffInMonths     | v1.5.0                         | &#x2713;  |
+| diffInYears      | v1.5.0                         | &#x2713;  |
+| addDays          | v1.5.0                         | &#x2713;  |
 | addWeeks         | v1.5.0                         | &#x2713;  |
-| addMonths        | v1.5.0                         | &#x2715;  |
-| addYears         | v1.5.0                         | &#x2715;  |
+| addMonths        | v1.5.0                         | &#x2713;  |
+| addYears         | v1.5.0                         | &#x2713;  |
 | fromCalendarDate | v2.87.0                        | &#x2713;  |
 | fromISO          | v2.4.0                         | &#x2713;  |
 | fromOrdinalDate  | v2.87.0                        | &#x2713;  |
 | fromParts        | v2.4.0                         | &#x2713;  |
-| toISOString      | v2.66.0                        | &#x2715;  |
-| monthToInt       | v2.87.0                        | &#x2715;  |
+| toISOString      | v2.66.0                        | &#x2713;  |
+| monthToInt       | v2.87.0                        | &#x2713;  |
 | dayOfWeek        | v2.84.2                        | &#x2713;  |
-| isWeekend        | v2.84.2                        | &#x2715;  |
-| isWeekday        | v2.84.2                        | &#x2715;  |
+| isWeekend        | v2.84.2                        | &#x2713;  |
+| isWeekday        | v2.84.2                        | &#x2713;  |
 | year             | v2.84.2                        | &#x2713;  |
 | month            | v2.84.2                        | &#x2713;  |
 | monthNumber      | v2.87.0                        | &#x2713;  |
@@ -423,8 +423,8 @@ This section lists the SDK types and functions currently supported in this versi
 | addHours           | v2.44.0                        | &#x2713;  |
 | addMinutes         | v2.44.0                        | &#x2713;  |
 | addSeconds         | v2.44.0                        | &#x2713;  |
-| diffInHours        | v2.44.0                        | &#x2715;  |
-| diffInMinutes      | v2.44.0                        | &#x2715;  | 
+| diffInHours        | v2.44.0                        | &#x2713;  |
+| diffInMinutes      | v2.44.0                        | &#x2713;  | 
 | diffInSeconds      | v2.44.0                        | &#x2713;  |
 | fromISO            | v2.44.0                        | &#x2713;  |
 
@@ -434,12 +434,11 @@ This section lists the SDK types and functions currently supported in this versi
 |-------------|--------------------------------|-----------|
 | withDefault | v2.84.2                        | &#x2713;  |
 | map         | v2.84.2                        | &#x2713;  |
-| map2        | v2.84.2                        | &#x2715;  |
-| map3        | v2.84.2                        | &#x2715;  |
-| map4        | v2.84.2                        | &#x2715;  |
-| map4        | v2.84.2                        | &#x2715;  | 
+| map2        | v2.84.2                        | &#x2713;  |
+| map3        | v2.84.2                        | &#x2713;  |
+| map4        | v2.84.2                        | &#x2713;  |
 | andThen     | v2.84.2                        | &#x2713;  |
-| hasValue    | v2.84.2                        | &#x2715;  |
+| hasValue    | v2.84.2                        | &#x2713;  |
 
 
 ### Morphir.SDK.Number
