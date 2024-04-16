@@ -6,7 +6,8 @@ const util = require('util')
 const fs = require('fs')
 const tmp = require('tmp')
 const git = require('isomorphic-git')
-const http = require('isomorphic-git/http/node')
+const { request: delegate } = require('isomorphic-git/http/node')
+const { HttpProxyAgent, HttpsProxyAgent } = require('hpagent')
 const del = require('del')
 const elmMake = require('node-elm-compiler').compile
 const execa = require('execa');
@@ -17,6 +18,16 @@ const { isExpressionWithTypeArguments } = require('typescript');
 const mainTsProject = ts.createProject('./tsconfig.json')
 const cliTsProject = ts.createProject('./cli2/tsconfig.json')
 const readFile = util.promisify(fs.readFile)
+
+async function request ({ url, method, headers, body }) {
+    const proxy = url.startsWith('https:')
+      ? { Agent: HttpsProxyAgent, url: process.env.https_proxy }
+      : { Agent: HttpProxyAgent, url: process.env.http_proxy }
+    const agent = proxy.url ? new proxy.Agent({ proxy: proxy.url }) : undefined
+    return delegate({ url, method, agent, headers, body })
+  }
+
+const http = { request };
 
 const config = {
     morphirJvmVersion: '0.18.2',
