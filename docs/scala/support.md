@@ -174,39 +174,39 @@ This section lists the SDK types and functions currently supported in this versi
 ### Morphir.SDK.Decimal
 | Function          | Morphir-Elm Version Introduced | Supported |
 |-------------------|--------------------------------|-----------|
-| abs               | v2.8.0                         | &#x2713;  |
-| add               | v2.8.0                         | &#x2713;  |
+| fromInt           | v2.8.0                         | &#x2713;  |
+| fromFloat         | v2.8.0                         | &#x2715;  |
+| fromString        | v2.8.0                         | &#x2713;  |
+| hundred           | v2.8.0                         | &#x2715;  |
+| thousand          | v2.8.0                         | &#x2713;  |
+| million           | v2.8.0                         | &#x2715;  |
+| tenth             | v2.8.0                         | &#x2715;  |
+| hundredth         | v2.8.0                         | &#x2715;  |
+| thousandth        | v2.8.0                         | &#x2715;  |
+| millionth         | v2.8.0                         | &#x2715;  |
 | bps               | v2.8.0                         | &#x2713;  |
-| compare           | v2.8.0                         | &#x2713;  |
+| toString          | v2.8.0                         | &#x2715;  |
+| add               | v2.8.0                         | &#x2713;  |
+| sub               | v2.8.0                         | &#x2713;  |
+| negate            | v2.8.0                         | &#x2713;  |
+| mul               | v2.8.0                         | &#x2713;  |
 | div               | v2.12.0                        | &#x2713;  |
 | divWithDefault    | v2.12.0                        | &#x2713;  |
-| eq                | v2.8.0                         | &#x2713;  |
-| fromFloat         | v2.8.0                         | &#x2715;  |
-| fromInt           | v2.8.0                         | &#x2713;  |
-| fromString        | v2.8.0                         | &#x2713;  |
+| truncate          | v2.8.0                         | &#x2713;  |
+| round             | v2.8.0                         | &#x2713;  |
 | gt                | v2.8.0                         | &#x2713;  |
 | gte               | v2.8.0                         | &#x2713;  |
-| hundred           | v2.8.0                         | &#x2715;  |
-| hundredth         | v2.8.0                         | &#x2715;  |
+| eq                | v2.8.0                         | &#x2713;  |
+| neq               | v2.8.0                         | &#x2713;  |
 | lt                | v2.8.0                         | &#x2713;  |
 | lte               | v2.8.0                         | &#x2713;  |
-| million           | v2.8.0                         | &#x2715;  |
-| millionth         | v2.8.0                         | &#x2715;  |
-| minusOne          | v2.8.0                         | &#x2713;  |
-| mul               | v2.8.0                         | &#x2713;  |
-| negate            | v2.8.0                         | &#x2713;  |
-| neq               | v2.8.0                         | &#x2713;  |
-| one               | v2.8.0                         | &#x2713;  |
-| round             | v2.8.0                         | &#x2713;  |
+| compare           | v2.8.0                         | &#x2713;  |
+| abs               | v2.8.0                         | &#x2713;  |
 | shiftDecimalLeft  | v2.12.0                        | &#x2713;  |
 | shiftDecimalRight | v2.12.0                        | &#x2713;  |
-| sub               | v2.8.0                         | &#x2713;  |
-| tenth             | v2.8.0                         | &#x2715;  |
-| thousand          | v2.8.0                         | &#x2713;  |
-| thousandth        | v2.8.0                         | &#x2715;  |
-| toString          | v2.8.0                         | &#x2715;  |
-| truncate          | v2.8.0                         | &#x2713;  |
 | zero              | v2.8.0                         | &#x2713;  |
+| one               | v2.8.0                         | &#x2713;  |
+| minusOne          | v2.8.0                         | &#x2713;  |
 
 
 ### Morphir.SDK.Dict
