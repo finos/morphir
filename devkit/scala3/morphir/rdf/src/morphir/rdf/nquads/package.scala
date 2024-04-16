@@ -1,5 +1,7 @@
 package morphir.rdf.nquads
+
 import neotype.*
+import morphir.rdf.ValidationResult
 
 type LangTag = LangTag.Type
 object LangTag extends Newtype[String]:
@@ -20,4 +22,5 @@ object Hex extends Newtype[Char]:
     then true
     else s"Invalid hex character: $value"
 
-class NQuadsParser()
+enum NQuadsDocument:
+  case NQuadsDoc()

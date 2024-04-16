@@ -18,6 +18,7 @@
 // BufferedReader and PushbackReader that are faster (2x) because they do not
 // synchronise on a lock, and do not require up-front decisions about buffer
 // sizes.
+package morphir.rdf.internal
 
 import java.util.Arrays
 import scala.annotation._
@@ -66,18 +67,17 @@ private[morphir] final class UnexpectedEnd
     )
     with NoStackTrace
 
-private[zio] final class RewindTwice
+private[morphir] final class RewindTwice
     extends Exception(
       "RecordingReader's rewind was called twice"
     )
 
-/**
- * A Reader that can retract and replay the last char that it read.
- *
- * This is essential when parsing contents that do not have a terminator
- * character, e.g. numbers, whilst preserving the non-significant character for
- * further processing.
- */
+/** A Reader that can retract and replay the last char that it read.
+  *
+  * This is essential when parsing contents that do not have a terminator
+  * character, e.g. numbers, whilst preserving the non-significant character for
+  * further processing.
+  */
 sealed trait RetractReader extends OneCharReader {
 
   /** Behaviour is undefined if called more than once without a read() */
@@ -85,7 +85,7 @@ sealed trait RetractReader extends OneCharReader {
 }
 
 final class FastCharSequence(s: Array[Char]) extends CharSequence {
-  def length: Int          = s.length
+  def length: Int = s.length
   def charAt(i: Int): Char = s(i)
   def subSequence(start: Int, end: Int): CharSequence =
     new FastCharSequence(Arrays.copyOfRange(s, start, end))
@@ -93,11 +93,13 @@ final class FastCharSequence(s: Array[Char]) extends CharSequence {
 
 // java.io.StringReader uses a lock, which reduces perf by x2, this also allows
 // fast retraction and access to raw char arrays (which are faster than Strings)
-private[morphir] final class FastStringReader(s: CharSequence) extends RetractReader with PlaybackReader {
+private[morphir] final class FastStringReader(s: CharSequence)
+    extends RetractReader
+    with PlaybackReader {
   private[this] var i: Int = 0
-  def offset(): Int        = i
-  private val len: Int     = s.length
-  def close(): Unit        = ()
+  def offset(): Int = i
+  private val len: Int = s.length
+  def close(): Unit = ()
   override def read(): Int = {
     i += 1
     if (i > len) -1
@@ -125,8 +127,10 @@ private[morphir] final class FastStringReader(s: CharSequence) extends RetractRe
 
 // this tends to be a bit slower than creating an implementation that implements
 // all Reader interfaces that are required.
-final class WithRetractReader(in: java.io.Reader) extends RetractReader with AutoCloseable {
-  private[this] var last   = -2
+final class WithRetractReader(in: java.io.Reader)
+    extends RetractReader
+    with AutoCloseable {
+  private[this] var last = -2
   private[this] var replay = false
 
   def close(): Unit = in.close()
@@ -148,15 +152,14 @@ final class WithRetractReader(in: java.io.Reader) extends RetractReader with Aut
   def retract(): Unit = replay = true
 }
 
-/**
- * Records the contents of an underlying Reader and allows rewinding back to
- * the beginning once. If rewound and reading continues past the
- * recording, the recording no longer continues.
- *
- * To avoid feature interaction edge cases, `retract` is not allowed as the
- * first action nor is `retract` allowed to happen immediately before or after
- * a `rewind`.
- */
+/** Records the contents of an underlying Reader and allows rewinding back to
+  * the beginning once. If rewound and reading continues past the recording, the
+  * recording no longer continues.
+  *
+  * To avoid feature interaction edge cases, `retract` is not allowed as the
+  * first action nor is `retract` allowed to happen immediately before or after
+  * a `rewind`.
+  */
 private[morphir] sealed trait RecordingReader extends RetractReader {
   def rewind(): Unit
 }
@@ -178,13 +181,15 @@ private[morphir] sealed trait PlaybackReader extends OneCharReader {
  * `initial` is the initial size of the buffer used for Reader copy.
  * It must be >= 1 and if not, it will be set to 1.
  */
-private[morphir] final class WithRecordingReader(in: OneCharReader, initial: Int)
-    extends RecordingReader
+private[morphir] final class WithRecordingReader(
+    in: OneCharReader,
+    initial: Int
+) extends RecordingReader
     with PlaybackReader {
   private[this] var tape: Array[Char] = Array.ofDim(Math.max(initial, 1))
-  private[this] var eob: Int          = -1
-  private[this] var writing: Int      = 0
-  private[this] var reading: Int      = -1
+  private[this] var eob: Int = -1
+  private[this] var writing: Int = 0
+  private[this] var reading: Int = -1
 
   def close(): Unit = in.close()
 

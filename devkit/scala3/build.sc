@@ -27,7 +27,10 @@ object morphir extends CrossPlatform {
   }
 
   object rdf extends CrossPlatform {
-    trait Shared extends ScalaProject with PlatformScalaModule
+    trait Shared extends ScalaProject with PlatformScalaModule {
+      def ivyDeps =
+        Agg(Deps.com.github.`j-mie6`.parsley, Deps.io.github.kitlangton.neotype)
+    }
     object jvm extends Shared {
       object test extends ScalaTests with TestModule.ZioTest {
         def ivyDeps = Agg(
@@ -47,7 +50,7 @@ object morphir extends CrossPlatform {
   }
 
   object rdk extends CrossPlatform {
-    trait Shared extends ScalaProject with PlatformScalaModule
+    trait Shared extends ScalaProject with PlatformScalaModule {}
     object jvm extends Shared {
       def moduleDeps = Seq(morphir.cdk.jvm)
       object test extends ScalaTests with TestModule.ZioTest {
@@ -80,6 +83,13 @@ trait ScalaJSProject extends ScalaJSModule {
 // Dependencies and Versions
 //---------------------------------------------------------------------
 object Deps {
+  case object com {
+    case object github {
+      case object `j-mie6` {
+        val parsley = ivy"com.github.j-mie6::parsley::${Versions.parsley}"
+      }
+    }
+  }
   case object dev {
     case object zio {
       val `izumi-reflect` =
@@ -152,6 +162,7 @@ object Versions {
   val airframe = "24.4.0"
   val neotype = "0.2.5"
   val `izumi-reflect` = "2.3.8"
+  val parsley = "4.5.1"
   val scala = "3.3.3"
   val scalaJS = "1.16.0"
   val zio = "2.0.21"

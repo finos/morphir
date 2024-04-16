@@ -1,4 +1,4 @@
-package morphir.rdf.nquads
+package morphir.rdf
 
 import neotype.*
 
