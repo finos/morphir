@@ -19,6 +19,15 @@ object lexer:
 
   lazy val EOL = endOfLine
 
+  lazy val IRIREF =
+    val lessThan = 0x003C
+    val greaterThan = 0x003E
+    val doubleQuote = 0x0022
+    val leftBracket = 0x007B
+    val rightBracket = 0x007D
+    val iriRefText = noneOfUnicode(0x00-0x20, lessThan, greaterThan | doubleQuote | leftBracket | rightBracket).span 
+    '<' ~> iriRefText  <~ '>'
+
   lazy val UCHAR = 
     val uchar4 =
       ('\\' ~> 'u' ~> hexDigit <~> hexDigit <~> hexDigit <~> hexDigit).span
@@ -46,6 +55,9 @@ object lexer:
 
   object unicode:
     import parsley.unicode.oneOf
+    val doubleQuote = uchar(0x0022)
+    val lessThan = uchar(0x003C)
+    val greaterThan = uchar(0x003E)
     val lower = oneOf(0x0061 to 0x007A)
     val upper = oneOf(0x0041 to 0x005A)
     val letter = lower | upper
