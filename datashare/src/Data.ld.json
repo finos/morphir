@@ -1,0 +1,36 @@
+{
+    "@context": {
+        "id": "@id",
+        "name": "http://schema.org/name",
+        "type": {
+            "@id": "http://schema.org/additionalType",
+            "@type": "@vocab"
+        },
+        "maximum": "http://schema.org/maxValue",
+        "minimum": "http://schema.org/minValue",
+        "precision": "http://schema.org/valuePattern",
+        "Element": "http://schema.org/Thing",
+        "ElementConstraint": {
+            "@id": "http://schema.org/PropertyValueSpecification"
+        },
+        "ElementID": {
+            "@id": "http://schema.org/identifier"
+        },
+        "ElementType": {
+            "@id": "http://schema.org/additionalType",
+            "@type": "@vocab"
+        },
+        "Elements": {
+            "@id": "http://schema.org/ItemList",
+            "@container": "@list"
+        },
+        "ElementConstraints": {
+            "@id": "http://schema.org/ItemList",
+            "@container": "@list"
+        },
+        "Dataset": "http://example.com/vocab/Dataset",
+        "DatasetID": "http://example.com/vocab/DatasetID",
+        "DatasetName": "http://example.com/vocab/DatasetName"
+
+    }
+}

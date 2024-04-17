@@ -1,0 +1,58 @@
+{
+    "id": "urn:person:users",
+    "name": "users",
+    "fields": [
+        {
+            "name": "id",
+            "element": "urn:person:id",
+            "description": "ID of the person",
+            "key": true,
+            "optional": false
+        },
+        {
+            "name": "firstName",
+            "element": "urn:person:first_name",
+            "description": "First name of the person",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "lastName",
+            "element": "urn:person:last_name",
+            "description": "Last name of the person",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "isActive",
+            "element": "urn:person:active",
+            "description": "Whether currently active",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "lastSession",
+            "element": "urn:person:last_session",
+            "description": "Timestamp of last session start",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "foo",
+            "element": {
+                "id": "urn:person:users#foo",
+                "name": "Foo",
+                "description": "Foo",
+                "element_type": { "Text": {} },
+                "info": {
+                    "description": "What is a Foo?",
+                    "display_name": "Fooooo",
+                    "short_display_name": "Foo"
+                }
+            },
+            "description": "Foo",
+            "key": false,
+            "optional": false
+        }
+   ]
+}

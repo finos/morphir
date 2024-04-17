@@ -1,0 +1,7 @@
+{
+    "id": "urn:person:savings_amount",
+    "name": "Savings Amount",
+    "element_type": {
+        "Number": {}
+    }
+}

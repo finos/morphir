@@ -1,0 +1,48 @@
+{
+    "id": "urn:person:people",
+    "name": "People",
+    "fields": [
+        {
+            "name": "id",
+            "element": "urn:person:id",
+            "description": "ID of the person",
+            "key": true,
+            "optional": false
+        },
+        {
+            "name": "firstName",
+            "element": "urn:person:first_name",
+            "description": "First name of the person",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "lastName",
+            "element": "urn:person:last_name",
+            "description": "Last name of the person",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "age",
+            "element": "urn:person:age",
+            "description": "Age of the person",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "dateOfBirth",
+            "element": "urn:person:date_of_birth",
+            "description": "Date of birth of the person",
+            "key": false,
+            "optional": true
+        },
+        {
+            "name": "savingsAmount",
+            "element": "urn:person:savings_amount",
+            "description": "Savings amount of the person",
+            "key": false,
+            "optional": true
+        }
+    ]
+}
