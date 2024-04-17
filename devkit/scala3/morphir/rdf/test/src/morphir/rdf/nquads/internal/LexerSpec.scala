@@ -2,8 +2,10 @@ package morphir.rdf.nquads.internal
 
 import zio.test.*
 import parsley.Success
+import parsley.Failure
+import scala.util.matching.Regex
 
-object LexerSpec extends ZIOSpecDefault {
+object LexerSpec extends ZIOSpecDefault:
   def spec = suite("LexerSpec")(
     suite("UCHAR")(
       test("Should parse a simple UCHAR (4)") {
@@ -44,7 +46,21 @@ object LexerSpec extends ZIOSpecDefault {
         val actual = lexer.IRIREF.parse(iriRef)
         val expected = Success("http://example.org/ontology#Person")
         assertTrue(actual == expected)
+      },
+      test("Should fail to parse an IRIREF containing invalid characters") {
+        val iriRef = "<http://example.org/ontology#Person|Place>"
+        val actual = lexer.IRIREF.parse(iriRef) : @unchecked
+        assertTrue(actual.isFailure) && assertTrue(checks.FailureAt.unapply(actual).contains((1,36)))
       }
     )
   )
-}
+
+  object checks:
+    object FailureAt:
+      // A regular expression that extracts the line and column from a string that looks like (line 1, column 20):
+      val positionPattern:Regex = """^\(line (\d+), column (\d+)\):""".r.unanchored
+
+      def unapply[A](result: parsley.Result[String, A]): Option[(Int,Int)] = 
+        result match 
+          case parsley.Failure[String](positionPattern(line,column)) => Some((line.toInt,column.toInt))
+          case _ => None
