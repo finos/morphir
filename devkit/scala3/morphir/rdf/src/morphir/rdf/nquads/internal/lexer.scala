@@ -29,8 +29,9 @@ object lexer:
     val hat = 0x005E 
     val grave = 0x0060
     val backslash = 0x005C
-    val notAllowed = noneOfUnicode(0x00-0x20, lessThan, greaterThan | doubleQuote | leftBracket | rightBracket | pipe | hat | grave|backslash).span 
-    '<' ~> (notAllowed | UCHAR).span  <~ '>'
+    val notAllowedSet = Set.from(0x00 to 0x20) ++ Set(lessThan, greaterThan , doubleQuote , leftBracket , rightBracket , pipe , hat , grave, backslash)
+    val notAllowed = noneOfUnicode(notAllowedSet).span 
+    '<' ~> many((notAllowed | UCHAR)).span  <~ '>'
 
   lazy val UCHAR = 
     val uchar4 =
