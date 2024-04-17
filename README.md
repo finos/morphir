@@ -1,3 +1,5 @@
+
+[![FINOS Hosted Platform - LCR Interactive](https://img.shields.io/badge/FINOS%20Hosted%20Platform-LCR%20Interactive-blue)](https://lcr-interactive.finos.org/)
 [![FINOS - Active](https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-active.svg)](https://community.finos.org/docs/governance/Software-Projects/stages/active)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/6526/badge)](https://bestpractices.coreinfrastructure.org/projects/6526)
 [<img src="https://img.shields.io/badge/slack-@finos/morphir-green.svg?logo=slack">](https://finos-lf.slack.com/messages/morphir/)
@@ -85,6 +87,13 @@ List the roadmap steps; alternatively link the Confluence Wiki page where the pr
 2. Further enhancements for Application modeling with Dapr and Spring Boot.
 3. Support for Microsoft's Bosque language for defining models.
 4. Modeling queries and aggregations across databases and event processing.
+
+## Getting Involved
+
+### Project Meetings
+
+A great way to interact with the Morphir community is to attend the bi-weekly Thursday Morphir meetings.
+Email help@finos.org to be added to the meeting invite directly, or find the meeting in the [FINOS Community Calendar](https://calendar.finos.org/).
 
 ## Contributing
 
