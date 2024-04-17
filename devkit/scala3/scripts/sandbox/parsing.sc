@@ -8,22 +8,23 @@ import parsley.character
 import parsley.expr.chain
 
 // LANGTAG	::=	'@' [a-zA-Z]+ ('-' [a-zA-Z0-9]+)*
-val asciiLowerChar = oneOf('a' to 'z')
-val asciiUpperChar = oneOf('A' to 'Z')
-val asciiChar = asciiLowerChar | asciiUpperChar
-val digit = oneOf('0' to '9')
-val alphaNumeric = asciiChar | digit
-val start = atomic('@' ~> some(asciiChar)).span
-lazy val tail = {
-  val identifier = stringOfSome(alphaNumeric)
-  val rest = chain.left1(identifier, '-' as (_ + '-' + _))
-  rest
+val LANGTAG = {
+  val asciiLowerChar = oneOf('a' to 'z')
+  val asciiUpperChar = oneOf('A' to 'Z')
+  val asciiChar = asciiLowerChar | asciiUpperChar
+  val digit = oneOf('0' to '9')
+  val alphaNumeric = asciiChar | digit
+  val start = atomic('@' ~> some(asciiChar)).span
+  val tail =
+    atomic(many('-' ~> some(alphaNumeric))).span
+  val langtag = atomic((start <~> tail)).span
+  langtag
 }
-val langtag = (start <~> ('-' *> tail)).map(_ + '-' + _) | start
 
-pprint.pprintln(start.parse("@en"))
-pprint.pprintln(tail.parse("GB-01-oxendict-1997"))
-pprint.pprintln(langtag.parse("@en-GB01-oxendict-1997"))
+pprint.pprintln("---------------------------------------------")
+pprint.pprintln(LANGTAG.parse("@en"))
+pprint.pprintln(LANGTAG.parse("@en-GB01-oxendict-1997"))
+pprint.pprintln(LANGTAG.parse("xyz"))
 
 //pprint.pprintln(langtag.parse("@en"))
 // pprint.pprintln(langtag.parse("@en-GB"))
