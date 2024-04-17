@@ -25,8 +25,12 @@ object lexer:
     val doubleQuote = 0x0022
     val leftBracket = 0x007B
     val rightBracket = 0x007D
-    val iriRefText = noneOfUnicode(0x00-0x20, lessThan, greaterThan | doubleQuote | leftBracket | rightBracket).span 
-    '<' ~> iriRefText  <~ '>'
+    val pipe = 0x007C
+    val hat = 0x005E 
+    val grave = 0x0060
+    val backslash = 0x005C
+    val notAllowed = noneOfUnicode(0x00-0x20, lessThan, greaterThan | doubleQuote | leftBracket | rightBracket | pipe | hat | grave|backslash).span 
+    '<' ~> (notAllowed | UCHAR).span  <~ '>'
 
   lazy val UCHAR = 
     val uchar4 =
