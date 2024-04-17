@@ -29,7 +29,14 @@ object morphir extends CrossPlatform {
   object rdf extends CrossPlatform {
     trait Shared extends ScalaProject with PlatformScalaModule {
       def ivyDeps =
-        Agg(Deps.com.github.`j-mie6`.parsley, Deps.io.github.kitlangton.neotype)
+        Agg(
+          Deps.com.github.`j-mie6`.parsley,
+          Deps.io.github.kitlangton.neotype,
+          Deps.io.getkyo.`kyo-core`,
+          Deps.io.getkyo.`kyo-direct`,
+          Deps.io.getkyo.`kyo-sttp`,
+          Deps.org.wvlet.airframe.`airframe-surface`
+        )
     }
     object jvm extends Shared {
       object test extends ScalaTests with TestModule.ZioTest {
@@ -50,7 +57,12 @@ object morphir extends CrossPlatform {
   }
 
   object rdk extends CrossPlatform {
-    trait Shared extends ScalaProject with PlatformScalaModule {}
+    trait Shared extends ScalaProject with PlatformScalaModule {
+      override def ivyDeps: T[Agg[Dep]] = Agg(
+        Deps.dev.zio.`izumi-reflect`,
+        Deps.io.github.kitlangton.neotype
+      )
+    }
     object jvm extends Shared {
       def moduleDeps = Seq(morphir.cdk.jvm)
       object test extends ScalaTests with TestModule.ZioTest {
@@ -140,6 +152,12 @@ object Deps {
   }
 
   case object io {
+    case object getkyo {
+      val `kyo-core` = ivy"io.getkyo::kyo-core::${Versions.kyo}"
+      val `kyo-direct` = ivy"io.getkyo::kyo-direct::${Versions.kyo}"
+      val `kyo-sttp` = ivy"io.getkyo::kyo-sttp::${Versions.kyo}"
+
+    }
     case object github {
       case object kitlangton {
         val `neotype` = ivy"io.github.kitlangton::neotype::${Versions.neotype}"
@@ -162,6 +180,7 @@ object Versions {
   val airframe = "24.4.0"
   val neotype = "0.2.5"
   val `izumi-reflect` = "2.3.8"
+  val kyo = "0.9.2"
   val parsley = "4.5.1"
   val scala = "3.3.3"
   val scalaJS = "1.16.0"

@@ -1,5 +1,4 @@
 package morphir.rdk
-import morphir.cdk.*
 import morphir.runtime.internal.*
 import izumi.reflect.*
 
