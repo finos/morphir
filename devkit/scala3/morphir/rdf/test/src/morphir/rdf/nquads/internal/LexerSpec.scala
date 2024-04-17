@@ -31,6 +31,20 @@ object LexerSpec extends ZIOSpecDefault {
         val expected = Success("en-GB01-oxendict-1997")
         assertTrue(actual == expected)
       }
+    ),
+    suite("IRIREF")(
+      test("Should parse a simple IRIREF") {
+        val iriRef = "<http://example.org>"
+        val actual = lexer.IRIREF.parse(iriRef)
+        val expected = Success("http://example.org")
+        assertTrue(actual == expected)
+      },
+      test("Should parse a complex IRIREF") {
+        val iriRef = "<http://example.org/ontology#Person>"
+        val actual = lexer.IRIREF.parse(iriRef)
+        val expected = Success("http://example.org/ontology#Person")
+        assertTrue(actual == expected)
+      }
     )
   )
 }
