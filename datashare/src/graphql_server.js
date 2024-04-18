@@ -6,11 +6,11 @@ const fs = require('fs');
 const path = require('path');
 const { log } = require("console");
 
-const baseDir = './data/';
+const baseDir = '../data/';
 
 
 // Define the GraphQL schema
-const schemaFile = fs.readFileSync(path.join(__dirname, 'src/Data.schema.graphql'), 'utf8');
+const schemaFile = fs.readFileSync(path.join(__dirname, 'Data.schema.graphql'), 'utf8');
 const schema = buildSchema(schemaFile);
 
 //Implement the resolvers
