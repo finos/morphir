@@ -1,5 +1,5 @@
 {
-    "id": "urn:person:currency",
+    "id": "element:person:currency",
     "name": "currency",
     "element_type": {
         "Enum":{

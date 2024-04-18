@@ -1,5 +1,5 @@
 {
-    "id":"urn:core:integer",
+    "id":"element:core:integer",
     "name":"Integer",
     "element_type": {
         "Number" : {

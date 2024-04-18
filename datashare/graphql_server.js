@@ -37,8 +37,17 @@ function recursiveSearch(dir, pattern) {
   return results;
 }
 
+function urnToFile(urn) {
+  return urnToFile(urn, undefined);
+}
+
 function urnToFile(urn, typ) {
   const items = urn.split(':');
+
+  if(typ === undefined || typ == null) {
+    typ = items[0];
+  }
+
   const file = path.join(__dirname, `${baseDir}/${items[1]}`, `${items[2]}.${typ}.json`)
   return file;
 }
@@ -121,6 +130,10 @@ function inflateElement(element) {
   }
 
   return element;
+}
+
+function getJSONData(id) {
+  return getJSONData(id);
 }
 
 function getJSONData(id, typ) {

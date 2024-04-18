@@ -1,5 +1,5 @@
 {
-    "id": "urn:person:active",
+    "id": "element:person:active",
     "name": "active",
     "element_type": {"Boolean":{}}
 }

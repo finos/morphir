@@ -1,5 +1,5 @@
 {
-    "id": "urn:person:age",
+    "id": "element:person:age",
     "name": "age",
     "description": "The age of a person",
     "element_type": {

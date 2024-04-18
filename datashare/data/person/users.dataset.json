@@ -1,41 +1,41 @@
 {
-    "id": "urn:person:users",
+    "id": "dataset:person:users",
     "name": "users",
     "fields": [
         {
             "name": "id",
-            "element": "urn:person:id",
+            "element": "element:person:id",
             "key": true,
             "optional": false
         },
         {
             "name": "firstName",
-            "element": "urn:person:first_name",
+            "element": "element:person:first_name",
             "key": false,
             "optional": false
         },
         {
             "name": "lastName",
-            "element": "urn:person:last_name",
+            "element": "element:person:last_name",
             "key": false,
             "optional": false
         },
         {
             "name": "isActive",
-            "element": "urn:person:active",
+            "element": "element:person:active",
             "key": false,
             "optional": false
         },
         {
             "name": "lastSession",
-            "element": "urn:person:last_session",
+            "element": "element:person:last_session",
             "key": false,
             "optional": false
         },
         {
             "name": "foo",
             "element": {
-                "id": "urn:person:users#foo",
+                "id": "element:person:users#foo",
                 "name": "Foo",
                 "description": "Foo",
                 "element_type": { "Text": {} },
@@ -51,13 +51,13 @@
         },
         {
             "name": "savingsAmount",
-            "element": "urn:person:savings_amount",
+            "element": "element:person:savings_amount",
             "key": false,
             "optional": false
         },
         {
             "name": "savingsAmountCurrency",
-            "element": "urn:person:savings_amount_currency",
+            "element": "element:person:savings_amount_currency",
             "key": false,
             "optional": false
         }

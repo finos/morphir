@@ -1,5 +1,5 @@
 {
-    "id": "urn:person:last_session",
+    "id": "element:person:last_session",
     "name": "Last Session",
     "element_type": {
         "DateTime": {

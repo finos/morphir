@@ -1,5 +1,5 @@
 {
-    "id": "urn:person:date_of_birth",
+    "id": "element:person:date_of_birth",
     "name": "Date of Birth",
     "element_type": {"Date":{}}
 }
