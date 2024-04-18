@@ -62,6 +62,11 @@ object lexer:
     val string = many( UCHAR | ECHAR | notAllowed).span
     '"' ~> string <~ '"'
 
+  lazy val BLANK_NODE_LABEL =
+    val initialChar = PN_CHARS_U | unicode.digit
+    val label = (initialChar ~> (many('.' | PN_CHARS) ~> some(PN_CHARS))).span
+    ("_:" ~> label)
+
   lazy val UCHAR =
     val uchar4 =
       ('\\' ~> 'u' ~> hexDigit <~> hexDigit <~> hexDigit <~> hexDigit).span

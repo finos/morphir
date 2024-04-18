@@ -78,7 +78,15 @@ object LexerSpec extends ZIOSpecDefault:
         assertTrue(actual.isFailure) && assertTrue(
           checks.FailureAt.unapply(actual).contains((1, 12))
         )
-      } //@@ ignore @@ tag("Need to create proper test case")
+      }
+    ),
+    suite("BLANK_NODE_LABEL")(
+      test("Should parse a simple BLANK_NODE_LABEL") {
+        val input = "_:example"
+        val actual = lexer.BLANK_NODE_LABEL.parse(input)
+        val expected = Success("example")
+        assertTrue(actual == expected)
+      }
     )
   )
 
