@@ -38,6 +38,7 @@ An example can be found in the [data folder](data). Some things to look for are:
 * Open a browser to the written link.
 * Execute any of the [sample queries](example_graphql_queries.json).
 
+
 ## TODO
 * Define the standard for packaging and publishing.
 * Define the standard for importing and depending on other packages.
@@ -45,7 +46,3 @@ An example can be found in the [data folder](data). Some things to look for are:
 * Define the API to affect changes to the metadata.
 * Implement the implementation of the API for the file-based layout.
 * Documenation and diagrams
-* Enums
-* Reference type example
-
-

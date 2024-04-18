@@ -5,35 +5,30 @@
         {
             "name": "id",
             "element": "urn:person:id",
-            "description": "ID of the person",
             "key": true,
             "optional": false
         },
         {
             "name": "firstName",
             "element": "urn:person:first_name",
-            "description": "First name of the person",
             "key": false,
             "optional": false
         },
         {
             "name": "lastName",
             "element": "urn:person:last_name",
-            "description": "Last name of the person",
             "key": false,
             "optional": false
         },
         {
             "name": "isActive",
             "element": "urn:person:active",
-            "description": "Whether currently active",
             "key": false,
             "optional": false
         },
         {
             "name": "lastSession",
             "element": "urn:person:last_session",
-            "description": "Timestamp of last session start",
             "key": false,
             "optional": false
         },
@@ -51,6 +46,18 @@
                 }
             },
             "description": "Foo",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "savingsAmount",
+            "element": "urn:person:savings_amount",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "savingsAmountCurrency",
+            "element": "urn:person:savings_amount_currency",
             "key": false,
             "optional": false
         }

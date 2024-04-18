@@ -88,6 +88,9 @@ function inflateElement(element) {
     }
     else if(elementType.hasOwnProperty('Reference')) {
       elementType.__typename = 'ReferenceType';
+      var refId = elementType.Reference.ref;
+      var ref = inflateElement(getJSONData(refId, "element"));
+      elementType.Reference.ref = ref;
     }
     else if (elementType.hasOwnProperty('Text')) {
       elementType.__typename = 'TextType';
@@ -104,6 +107,9 @@ function inflateElement(element) {
     else if (elementType.hasOwnProperty('Boolean')) {
       elementType.__typename = 'BooleanType';
       elementType.Bool = {};
+    }
+    else if (elementType.hasOwnProperty('Enum')) {
+      elementType.__typename = 'EnumType';
     }
 
     const infoProperty = element.info;

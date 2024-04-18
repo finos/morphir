@@ -36,13 +36,6 @@
             "description": "Date of birth of the person",
             "key": false,
             "optional": true
-        },
-        {
-            "name": "savingsAmount",
-            "element": "urn:person:savings_amount",
-            "description": "Savings amount of the person",
-            "key": false,
-            "optional": true
         }
     ]
 }

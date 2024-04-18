@@ -68,8 +68,7 @@
   }
 }
 
-  ## Datasets
-  {
+  ## Datasets{
     datasets {
       id
       fields {
@@ -83,40 +82,63 @@
             description
             display_name
             short_display_name
-        }
+          }
           element_type {
             ... on TextType {
               Text {
                 min_length
                 max_length
+              }
             }
-          }
             ... on NumberType {
               Number {
                 minimum
                 maximum
                 precision
+              }
             }
-          }
+            ... on EnumType {
+              Enum {
+                values
+              }
+            }
             ... on ReferenceType {
               Reference {
-                ref
+                ref {
+                  id
+                  name
+                  element_type {
+                    ... on NumberType {
+                      Number {
+                        minimum
+                        maximum
+                        precision
+                      }
+                    }
+                    ... on EnumType {
+                      Enum {
+                        values
+                      }
+                    }
+                  }
+                }
+              }
             }
-          }
             ... on DateType {
               Date
-          }
+            }
             ... on DateTimeType {
               DateTime
-          }
+            }
             ... on TimeType {
               Time
-          }
+            }
             ... on BooleanType {
               Boolean
+            }
           }
         }
       }
     }
   }
-}
+  
