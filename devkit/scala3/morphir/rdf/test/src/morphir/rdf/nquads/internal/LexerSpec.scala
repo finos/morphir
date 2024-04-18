@@ -72,13 +72,13 @@ object LexerSpec extends ZIOSpecDefault:
       test(
         "Should fail to parse a STRING_LITERAL_QUOTE containing invalid characters"
       ) {
-        val stringLiteralQuote = "\"Hello, \\u0041!\\u0041!\""
+        val stringLiteralQuote = "\"'Hello',  \\ \\u0041!\\u0041!\""
         val actual =
           lexer.STRING_LITERAL_QUOTE.parse(stringLiteralQuote): @unchecked
         assertTrue(actual.isFailure) && assertTrue(
-          checks.FailureAt.unapply(actual).contains((1, 18))
+          checks.FailureAt.unapply(actual).contains((1, 12))
         )
-      } @@ ignore @@ tag("Need to create proper test case")
+      } //@@ ignore @@ tag("Need to create proper test case")
     )
   )
 
