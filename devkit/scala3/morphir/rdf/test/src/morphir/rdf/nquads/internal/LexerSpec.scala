@@ -64,9 +64,9 @@ object LexerSpec extends ZIOSpecDefault:
         assertTrue(actual == expected)
       },
       test("Should parse a complex STRING_LITERAL_QUOTE") {
-        val stringLiteralQuote = "\"Hello, \\u0041!\""
+        val stringLiteralQuote = """"Hello, \u0041!""""
         val actual = lexer.STRING_LITERAL_QUOTE.parse(stringLiteralQuote)
-        val expected = Success("Hello, \\u0041!")
+        val expected = Success("""Hello, \u0041!""")
         assertTrue(actual == expected)
       },
       test(
