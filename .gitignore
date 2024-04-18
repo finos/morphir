@@ -10,3 +10,4 @@ target/
 
 # Scala related
 .metals/
+.scala-build/
