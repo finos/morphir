@@ -45,3 +45,7 @@ An example can be found in the [data folder](data). Some things to look for are:
 * Define the API to affect changes to the metadata.
 * Implement the implementation of the API for the file-based layout.
 * Documenation and diagrams
+* Enums
+* Reference type example
+
+
