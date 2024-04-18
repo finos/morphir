@@ -1,0 +1,26 @@
+[package]
+name = "morphir_cdk"
+version = "0.0.1"
+description = "Morphir CodeModel"
+homepage = "https://morphir.finos.org"
+repository = "https://github.com/finos/morphir"
+readme = "README.md"
+keywords = ["morphir", "finos"]
+authors = ["Damian Reeves"]
+license = "Apache-2.0"
+edition = "2021"
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+[features]
+
+[dependencies]
+flagset.workspace = true
+lasso.workspace = true
+lasso.features = ["multi-threaded"]
+serde_repr = { workspace = true, optional = true }
+state.workspace = true
+
+[dev-dependencies]
+proptest = { workspace = true }

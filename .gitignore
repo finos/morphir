@@ -3,3 +3,11 @@
 .ionide
 
 .vscode/
+target/
+# moon
+.moon/cache
+.moon/docker
+
+# Scala related
+.metals/
+.scala-build/

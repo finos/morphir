@@ -1,0 +1,20 @@
+[package]
+name = "morphir_core"
+version = "0.0.1"
+edition = "2021"
+publish = false
+
+[lib]
+name = "morphir_core"
+path = "src/lib.rs"
+
+[dependencies]
+flagset = { workspace = true }
+serde_repr = { workspace = true, optional = true }
+
+
+[dev-dependencies]
+proptest = { workspace = true }
+
+[features]
+serde = ["dep:serde_repr"]

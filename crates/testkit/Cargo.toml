@@ -1,0 +1,18 @@
+[package]
+name = "morphir_testkit"
+version = "0.0.1"
+edition = "2021"
+publish = false
+
+[lib]
+name = "morphir_testkit"
+path = "src/lib.rs"
+
+[dev-dependencies]
+cucumber = { workspace = true }
+futures = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+
+[[test]]
+name = "example" # this should be the same as the filename of your test target
+harness = false  # allows Cucumber to print output instead of libtest
