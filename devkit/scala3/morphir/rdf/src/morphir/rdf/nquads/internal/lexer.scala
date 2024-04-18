@@ -1,9 +1,14 @@
 package morphir.rdf.nquads.internal
 import parsley.Parsley.{atomic, many, some}
 import parsley.character.{endOfLine, letter, hexDigit, oneOf, stringOfSome}
-import parsley.unicode.{char as uchar, oneOf as oneOfUnicode, noneOf as noneOfUnicode}
+import parsley.unicode.{
+  char as uchar,
+  oneOf as oneOfUnicode,
+  noneOf as noneOfUnicode
+}
 import parsley.syntax.character.{charLift, stringLift}
 import parsley.expr.chain
+import morphir.rdf.nquads.internal.lexer.unicode.doubleQuote
 
 object lexer:
   /// Represents a LANGTAG in NQuads' EBNF grammar
@@ -19,36 +24,75 @@ object lexer:
 
   lazy val EOL = endOfLine
 
+  /// Represents an IRIREF in NQuads' EBNF grammar
+  /// `IRIREF	::=	'<' ([^#x00-#x20<>"{}|^`\] | UCHAR)* '>'`
   lazy val IRIREF =
-    val lessThan = 0x003C
-    val greaterThan = 0x003E
+    val lessThan = 0x003c
+    val greaterThan = 0x003e
     val doubleQuote = 0x0022
-    val leftBracket = 0x007B
-    val rightBracket = 0x007D
-    val pipe = 0x007C
-    val hat = 0x005E 
+    val leftBracket = 0x007b
+    val rightBracket = 0x007d
+    val pipe = 0x007c
+    val hat = 0x005e
     val grave = 0x0060
-    val backslash = 0x005C
-    val notAllowedSet = Set.from(0x00 to 0x20) ++ Set(lessThan, greaterThan , doubleQuote , leftBracket , rightBracket , pipe , hat , grave, backslash)
-    val notAllowed = noneOfUnicode(notAllowedSet).span 
-    '<' ~> many((notAllowed | UCHAR)).span  <~ '>'
+    val backslash = 0x005c
+    val notAllowedSet = Set.from(0x00 to 0x20) ++ Set(
+      lessThan,
+      greaterThan,
+      doubleQuote,
+      leftBracket,
+      rightBracket,
+      pipe,
+      hat,
+      grave,
+      backslash
+    )
+    val notAllowed = noneOfUnicode(notAllowedSet).span
+    '<' ~> many((notAllowed | UCHAR)).span <~ '>'
+  end IRIREF
 
-  lazy val UCHAR = 
+  /// STRING_LITERAL_QUOTE	::=	'"' ([^#x22#x5C#xA#xD] | ECHAR | UCHAR)* '"'
+  lazy val STRING_LITERAL_QUOTE =
+    val doubleQuote = 0x0022
+    val backslash = 0x005c
+    val lf = 0x000a
+    val cr = 0x000d
+
+    val notAllowed = noneOfUnicode(doubleQuote, backslash, lf, cr)
+    val string = many(notAllowed | ECHAR | UCHAR).span
+    '"' ~> string <~ '"'
+
+  lazy val UCHAR =
     val uchar4 =
       ('\\' ~> 'u' ~> hexDigit <~> hexDigit <~> hexDigit <~> hexDigit).span
     val uchar8 =
       ('\\' ~> 'U' ~> hexDigit <~> hexDigit <~> hexDigit <~> hexDigit <~> hexDigit <~> hexDigit <~> hexDigit <~> hexDigit).span
     uchar4 | uchar8
-  end UCHAR 
+  end UCHAR
 
-  lazy val ECHAR = '\\' 
+  lazy val ECHAR = '\\'
 
   lazy val PN_CHARS_BASE =
-    unicode.upper | unicode.letter | oneOfUnicode(0x00C0 to 0x00D6) | oneOfUnicode(0x00D8 to 0x00F6) | oneOfUnicode(0x00F8 to 0x02FF) | oneOfUnicode(0x0370 to 0x037D) | oneOfUnicode(0x037F to 0x1FFF) | oneOfUnicode(0x200C to 0x200D) | oneOfUnicode(0x2070 to 0x218F) | oneOfUnicode(0x2C00 to 0x2FEF) | oneOfUnicode(0x3001 to 0xD7FF) | oneOfUnicode(0xF900 to 0xFDCF) | oneOfUnicode(0xFDF0 to 0xFFFD) | oneOfUnicode(0x10000 to 0xEFFFF)
+    unicode.upper | unicode.letter | oneOfUnicode(
+      0x00c0 to 0x00d6
+    ) | oneOfUnicode(0x00d8 to 0x00f6) | oneOfUnicode(
+      0x00f8 to 0x02ff
+    ) | oneOfUnicode(0x0370 to 0x037d) | oneOfUnicode(
+      0x037f to 0x1fff
+    ) | oneOfUnicode(0x200c to 0x200d) | oneOfUnicode(
+      0x2070 to 0x218f
+    ) | oneOfUnicode(0x2c00 to 0x2fef) | oneOfUnicode(
+      0x3001 to 0xd7ff
+    ) | oneOfUnicode(0xf900 to 0xfdcf) | oneOfUnicode(
+      0xfdf0 to 0xfffd
+    ) | oneOfUnicode(0x10000 to 0xeffff)
 
   lazy val PN_CHARS_U = PN_CHARS_BASE | unicode.underscore | unicode.colon
 
-  lazy val PN_CHARS = PN_CHARS_U | unicode.minus | unicode.digit | unicode.middot | oneOfUnicode(0x0300 to 0x036F) | oneOfUnicode(0x203F to 0x2040)
+  lazy val PN_CHARS =
+    PN_CHARS_U | unicode.minus | unicode.digit | unicode.middot | oneOfUnicode(
+      0x0300 to 0x036f
+    ) | oneOfUnicode(0x203f to 0x2040)
 
   object ascii:
     val lowercaseLetter = oneOf('a' to 'z')
@@ -61,16 +105,16 @@ object lexer:
   object unicode:
     import parsley.unicode.oneOf
     val doubleQuote = uchar(0x0022)
-    val lessThan = uchar(0x003C)
-    val greaterThan = uchar(0x003E)
-    val lower = oneOf(0x0061 to 0x007A)
-    val upper = oneOf(0x0041 to 0x005A)
+    val lessThan = uchar(0x003c)
+    val greaterThan = uchar(0x003e)
+    val lower = oneOf(0x0061 to 0x007a)
+    val upper = oneOf(0x0041 to 0x005a)
     val letter = lower | upper
     val digit = oneOf(0x0030 to 0x0039)
     val alphaNumeric = lower | upper | digit
-    val underscore = uchar(0x005F)
-    val colon = uchar(0x003A)
-    val minus = uchar(0x002D)
-    val middot = uchar(0x00B7)
+    val underscore = uchar(0x005f)
+    val colon = uchar(0x003a)
+    val minus = uchar(0x002d)
+    val middot = uchar(0x00b7)
   end unicode
 end lexer

@@ -3,6 +3,8 @@ package morphir.rdf.nquads
 import neotype.*
 import morphir.rdf.ValidationResult
 import morphir.rdf.nquads.internal.lexer
+import parsley.Success
+import parsley.Failure
 
 type LangTag = LangTag.Type
 object LangTag extends Newtype[String]:
@@ -13,12 +15,6 @@ object LangTag extends Newtype[String]:
   def parse(value: String): Either[String, LangTag] =
     lexer.LANGTAG.parse(value).map(unsafeMake(_)).toEither
 
-type IriRef = IriRef.Type
-object IriRef extends Newtype[String]:
-  override inline def validate(value: String): ValidationResult =
-    if value.matches("<[^<>'\"{}|^`\\x00-\\x20]*>") then true
-    else s"Invalid IRI reference: $value"
-
 type Hex = Hex.Type
 object Hex extends Newtype[Char]:
   override inline def validate(value: Char): ValidationResult =
@@ -26,5 +22,3 @@ object Hex extends Newtype[Char]:
     then true
     else s"Invalid hex character: $value"
 
-enum NQuadsDocument:
-  case NQuadsDoc()

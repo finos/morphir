@@ -6,7 +6,15 @@ import java.io.IOException
 class NQuadsParser(options: NQuadsParserSettings) {
   import NQuadsParser.*
   def parse(input: String): ParseResult = {
-    ParseResult.succeed(NQuadsDocument.NQuadsDoc())
+    val statement = NQuadsStatement(
+      subject = "subject",
+      predicate = Predicate(
+        IriRef.WellKnown.MorphirSpecific.MorphirOntology.withFragment("hasName")
+      ),
+      obj = "object",
+      graph = None
+    )
+    ParseResult.succeed(NQuadsDocument(statement))
   }
 }
 
