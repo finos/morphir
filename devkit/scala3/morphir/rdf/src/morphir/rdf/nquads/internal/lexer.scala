@@ -59,7 +59,7 @@ object lexer:
     val cr = 0x000d
 
     val notAllowed = noneOfUnicode(doubleQuote, backslash, lf, cr)
-    val string = many(notAllowed | ECHAR | UCHAR).span
+    val string = many( UCHAR | ECHAR | notAllowed).span
     '"' ~> string <~ '"'
 
   lazy val UCHAR =
@@ -67,10 +67,12 @@ object lexer:
       ('\\' ~> 'u' ~> hexDigit <~> hexDigit <~> hexDigit <~> hexDigit).span
     val uchar8 =
       ('\\' ~> 'U' ~> hexDigit <~> hexDigit <~> hexDigit <~> hexDigit <~> hexDigit <~> hexDigit <~> hexDigit <~> hexDigit).span
-    uchar4 | uchar8
+    atomic(uchar4 | uchar8)
   end UCHAR
 
-  lazy val ECHAR = '\\'
+  lazy val ECHAR = 
+    val backslash = 0x005c
+    atomic(uchar(backslash) ~> oneOf('t','b','n','r','f','"','\'','\\'))
 
   lazy val PN_CHARS_BASE =
     unicode.upper | unicode.letter | oneOfUnicode(
