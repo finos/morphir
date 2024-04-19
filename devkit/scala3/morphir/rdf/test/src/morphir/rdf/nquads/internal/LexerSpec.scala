@@ -81,12 +81,46 @@ object LexerSpec extends ZIOSpecDefault:
       }
     ),
     suite("BLANK_NODE_LABEL")(
-      test("Should parse a simple BLANK_NODE_LABEL") {
-        val input = "_:example"
+      test(
+        "Should parse a simple BLANK_NODE_LABEL consisting of a single character"
+      ) {
+        val input = "_:s"
         val actual = lexer.BLANK_NODE_LABEL.parse(input)
-        val expected = Success("example")
+        val expected = Success("s")
         assertTrue(actual == expected)
-      }
+      },
+      test(
+        "Should parse a simple BLANK_NODE_LABEL consisting of a character followed by a number"
+      ) {
+        val input = "_:a2"
+        val actual = lexer.BLANK_NODE_LABEL.parse(input)
+        val expected = Success("a2")
+        assertTrue(actual == expected)
+      },
+      test(
+        "Should parse a simple BLANK_NODE_LABEL consisting of a single identifier"
+      ) {
+        val input = "_:alphaNumeric001234"
+        val actual = lexer.BLANK_NODE_LABEL.parse(input)
+        val expected = Success("alphaNumeric001234")
+        assertTrue(actual == expected)
+      },
+      test(
+        "Should parse a complex BLANK_NODE_LABEL having multiple periods"
+      ) {
+        val input = "_:John.Doe.123"
+        val actual = lexer.BLANK_NODE_LABEL.parse(input)
+        val expected = Success("John.Doe.123")
+        assertTrue(actual == expected)
+      },
+      test(
+        "Should parse a complex BLANK_NODE_LABEL having multiple periods and some consecutive"
+      ) {
+        val input = "_:Thinking...Done"
+        val actual = lexer.BLANK_NODE_LABEL.parse(input)
+        val expected = Success("Thinking...Done")
+        assertTrue(actual == expected)
+      } // @@ ignore @@ tag("Test fails due to a bug in the lexer")
     )
   )
 
