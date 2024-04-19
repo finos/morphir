@@ -3,37 +3,53 @@ const fs = require('fs');
 const app = express();
 const bodyParser = require('body-parser');
 
+const basedir = process.argv[process.argv.indexOf('--dir') + 1];
+
+if(!fs.existsSync(basedir)) {
+  fs.mkdirSync(basedir);
+}
+
 app.use(bodyParser.json());
 
 app.post('/element', (req, res) => {
   const body = req.body;
+  processRequest(body, 'element', req, res);
+});
+
+app.post('/dataset', (req, res) => {
+  const body = req.body;
+  processRequest(body, 'dataset', req, res);
+});
+
+function processRequest(body, artifactType, req, res) {
   // Validate the element against the Data.schema.json schema
   // You can use a JSON schema validator library like Ajv for this
 
   saveToFile(body, (err) => {
     if (err) {
       console.error(err);
-      res.status(500).send('Error saving element');
+
+      const event = {
+        "not_created": {
+          "type" : artifactType,
+          "element" : body
+        }
+      };
+
+      res.status(500).send(JSON.stringify(event));
     } else {
-      res.status(201).send('Element saved successfully');
+
+      const event = {
+        "created": {
+          "type" : artifactType,
+          "element" : body
+        }
+      };
+
+      res.status(201).send(JSON.stringify(event));
     }
   });
-});
-
-app.post('/dataset', (req, res) => {
-  const body = req.body;
-  // Validate the dataset against the Data.schema.json schema
-  // You can use a JSON schema validator library like Ajv for this
-
-  saveToFile(body, (err) => {
-    if (err) {
-      console.error(err);
-      res.status(500).send('Error saving dataset');
-    } else {
-      res.status(201).send('Dataset saved successfully');
-    }
-  });
-});
+}
 
 function saveToFile(artifact, callback) {
   // Save as a JSON file in the data folder
@@ -41,7 +57,7 @@ function saveToFile(artifact, callback) {
   const typ = items[0];
   const domain = items[1];
   const name = items[2];
-  const folder = `data/${domain}`;
+  const folder = `${basedir}/${domain}`;
   const fileName = folder + `/${name}.${typ}.json`;
   const json = JSON.stringify(artifact);
 
