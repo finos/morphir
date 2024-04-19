@@ -1,6 +1,7 @@
 {
     "id": "urn:person:users",
     "name": "users",
+    "version": 1,
     "fields": [
         {
             "name": "id",

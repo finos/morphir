@@ -86,6 +86,7 @@
   type Dataset {
     id: ID!
     name: String!
+    version: Int!
     fields: [Field!]!
   }
 

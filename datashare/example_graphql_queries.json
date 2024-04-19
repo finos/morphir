@@ -72,6 +72,8 @@
   {
     datasets {
       id
+      name
+      version
       fields {
         name
         optional

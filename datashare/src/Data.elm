@@ -66,5 +66,6 @@ type alias Field =
 type alias Dataset = 
     { id : DatasetID
     , name : String
+    , version: Int
     , fields : List Field
     }
