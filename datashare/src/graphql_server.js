@@ -73,23 +73,45 @@ function datasets() {
 
 function inflateDataset(dataset) {
   dataset.fields.forEach(field => {
-    const elementProperty = field.element;
-
-    if (typeof elementProperty === 'string') {
-      const elmt = element(field.element);
+    if(field.element === undefined) 
+    {
+      const fieldUrn = `${dataset.id}#${field.name}`;
+      const elementUrn = fieldUrn.replace("dataset:", "element:");
+      const elmt = element(elementUrn);
       field.element = elmt;
-    } else {
-      const elmt = inflateElement(elementProperty);
+    } 
+    else if (typeof field.element === 'string') 
+    {
+      const elementUrn = field.element;
+      const elmt = element(elementUrn);
+      field.element = elmt;
+    } 
+    else 
+    {
+      const elmt = inflateElement(field.element);
       field.element = elmt;
     }
+    
+    if(field.element === undefined || field.element == null) {
+      log("Setting " + field.name + " to nil in " + dataset.id);
+      const elementUrn = "element:core:nil";
+      const elmt = element(elementUrn);
+      field.element = elmt;
+    }
+
   });
 
   return dataset;
 }
 
 function element(id) {
-  const element = getJSONData(id, "element");
-  return inflateElement(element);
+  var element = getJSONData(id, "element");
+
+  if(!(element === undefined) && element !== null) {
+    element = inflateElement(element);
+  }
+
+  return element;
 }
 
 function inflateElement(element) {

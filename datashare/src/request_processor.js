@@ -1,13 +1,20 @@
 const express = require('express');
 const fs = require('fs');
+const path = require('path');
 const app = express();
 const bodyParser = require('body-parser');
 
-const basedir = process.argv[process.argv.indexOf('--dir') + 1];
+const baseDirArg = process.argv.includes('--baseDir') 
+  ? process.argv[process.argv.indexOf('--baseDir') + 1] 
+  : '../data/';
 
-if(!fs.existsSync(basedir)) {
-  fs.mkdirSync(basedir);
+const baseDir = path.resolve(__dirname, baseDirArg);
+
+if(!fs.existsSync(baseDir)) {
+  fs.mkdirSync(baseDir);
 }
+
+console.log("Using base folder: " + baseDir);
 
 app.use(bodyParser.json());
 

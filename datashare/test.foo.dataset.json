@@ -1,6 +1,7 @@
 {
     "id": "dataset:Foo:foos",
     "name": "Foos",
+    "version": 1,
     "fields": [
         {
             "name": "id",

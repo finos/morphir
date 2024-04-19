@@ -21,22 +21,27 @@ With the combinations of these technologies, we can define strongly typed schema
 ## Example
 An example can be found in the [data folder](data). Some things to look for are:
 
-* Uses URNs to identify Elements and Datasets.
-* Metadata sets are defined in their own files with the naming convention of `[name].[metadata set].json`. They sit in a folder structured with path matching the domain. So for the core, we have:
+* *URNs*: Uses URNs to identify Elements and Datasets.
+* *File and folder standards*: Metadata sets are defined in their own files with the naming convention of `[name].[metadata set].json`. They sit in a folder structured with path matching the domain. So for the core, we have:
    * Element as `[element name].element.json`
    * Dataset as `[dataset name].dataset.json`
    * ElementInfo - Augments Element as `[element name].element_info.json`. It sits in the folder alongside the Element.
-* The GraphQL server uses special resolvers to inflate the graph using these standards.
-* The resolvers can handle either embeded objects or references that follow the naming convention. So, for example, the Element property of a Dataset field can either refer to one of the existing elements or define an entirely new Element and ElementInfo embedded in the Field. In this case, it sets the URN to `[dataset urn]#[name]`. You can see an example of this in the [`foo` field of the `users` dataset](data/person/users.dataset.json).
-* 
+* *GraphQL Resolvers*: The GraphQL server uses special resolvers to inflate the graph using these standards.
+  * The resolvers can handle either embeded objects or references that follow the naming convention. So, for example, the Element property of a Dataset field can either refer to one of the existing elements or define an entirely new Element and ElementInfo embedded in the Field. In this case, it sets the URN to `[dataset urn]#[name]`. You can see an example of this in the [`foo` field of the `users` dataset](data/person/users.dataset.json).
+* *Flexible autogen vs manual with resolvers*: Sometimes all of the info is not available at generation and needs to be updated manually. Special resolvers allow these to be managed in separate files using the URNs.  A good example is the [`unknownElementField` in the `users` dataset](data/person/users\#unknownElementField.element.json), which demonstrates specifying the `element_type` property in a separate file from the dataset definition.  
 
-### Running the example
+### Running the examples
 * Clone the project
 * Ensure `node` and `npm` are installed.
 * Run `npm install`
-* Run `node graphql_server.js`
-* Open a browser to the written link.
-* Execute any of the [sample queries](example_graphql_queries.json).
+* Run the Request Process
+  * `node src/request_processor.js` --baseDir data
+  * `curl -X POST -H "Content-Type: application/json" -d @test.foo.element.json http://localhost:3000/element`
+  * `curl -X POST -H "Content-Type: application/json" -d @test.foo.dataset.json http://localhost:3000/element`
+* Run Query Processor
+  * `node src/graphql_server.js` --baseDir data
+  * Open a browser to the written link.
+  * Execute any of the [sample queries](example_graphql_queries.json).
 
 
 ## TODO
@@ -46,3 +51,5 @@ An example can be found in the [data folder](data). Some things to look for are:
 * Define the API to affect changes to the metadata.
 * Implement the implementation of the API for the file-based layout.
 * Documenation and diagrams
+* GraphQL Federation demo
+* JSON-LD/RDF demo

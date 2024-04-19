@@ -1,0 +1,10 @@
+{
+    "id": "element:person:people#unknownElementField",
+    "name": "Unknown Element Field",
+    "description": "Shows how to add element information if unknown at dataset creation time.",
+    "element_type": {
+        "Number": {
+            "minimum": 0
+        }
+    }
+}
