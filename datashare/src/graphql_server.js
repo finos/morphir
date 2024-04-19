@@ -6,8 +6,12 @@ const fs = require('fs');
 const path = require('path');
 const { log } = require("console");
 
-const baseDir = '../data/';
+const baseDirArg = process.argv.includes('--baseDir') 
+  ? process.argv[process.argv.indexOf('--baseDir') + 1] 
+  : '../data/';
 
+const baseDir = path.resolve(__dirname, baseDirArg);
+log("Using base folder: " + baseDir);
 
 // Define the GraphQL schema
 const schemaFile = fs.readFileSync(path.join(__dirname, 'Data.schema.graphql'), 'utf8');
@@ -48,7 +52,7 @@ function urnToFile(urn, typ) {
     typ = items[0];
   }
 
-  const file = path.join(__dirname, `${baseDir}/${items[1]}`, `${items[2]}.${typ}.json`)
+  const file = path.join(baseDir, `/${items[1]}`, `${items[2]}.${typ}.json`)
   return file;
 }
 
