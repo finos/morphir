@@ -73,7 +73,9 @@
                     "description": "The short display name of the element"
                 }
             },
-            "required": ["id"]
+            "required": [
+                "id"
+            ]
         },
         "ElementType": {
             "oneOf": [
@@ -89,11 +91,27 @@
                 {
                     "type": "object",
                     "properties": {
+                        "Enum": {
+                            "type": "array",
+                            "values": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "required": [
+                        "Enum"
+                    ]
+                },
+                {
+                    "type": "object",
+                    "properties": {
                         "Number": {
                             "$ref": "#/definitions/NumberConstraints"
                         }
                     },
-                    "required": ["Number"]
+                    "required": [
+                        "Number"
+                    ]
                 },
                 {
                     "type": "object",
@@ -107,7 +125,9 @@
                             }
                         }
                     },
-                    "required": ["type"]
+                    "required": [
+                        "type"
+                    ]
                 },
                 {
                     "type": "object",
@@ -116,7 +136,9 @@
                             "$ref": "#/definitions/TextConstraints"
                         }
                     },
-                    "required": ["type"]
+                    "required": [
+                        "type"
+                    ]
                 },
                 {
                     "const": "Time"
@@ -134,9 +156,13 @@
             "properties": {
                 "element": {
                     "oneOf": [
-                        { "$ref": "#/$defs/ElementID" },
-                        { "$ref": "#/$defs/Element" }
-                      ]
+                        {
+                            "$ref": "#/$defs/ElementID"
+                        },
+                        {
+                            "$ref": "#/$defs/Element"
+                        }
+                    ]
                 },
                 "key": {
                     "type": "boolean"

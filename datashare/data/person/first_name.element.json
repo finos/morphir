@@ -1,5 +1,5 @@
 {
-    "id": "urn:person:first_name",
+    "id": "element:person:first_name",
     "name": "First Name",
     "element_type": {
         "Text": {

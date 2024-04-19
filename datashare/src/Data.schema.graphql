@@ -23,7 +23,7 @@
     info: ElementInfo
   }
 
-  union ElementType = TextType | NumberType | ReferenceType | DateType | TimeType | DateTimeType | BooleanType 
+  union ElementType = TextType | NumberType | ReferenceType | DateType | TimeType | DateTimeType | BooleanType | EnumType
 
   scalar Date
 
@@ -73,7 +73,15 @@
   }
 
   type Reference {
-    ref: String
+    ref: Element!
+  }
+
+  type EnumType {
+    Enum : Enum!
+  }
+
+  type Enum {
+    values: [String]!
   }
 
   type ElementInfo {

@@ -1,5 +1,5 @@
 {
-    "id": "urn:person:id",
+    "id": "element:person:id",
     "name": "ID",
     "description": "The identifier of a person",
     "element_type": {

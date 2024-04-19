@@ -14,6 +14,7 @@ type ElementType
     | Time
     | DateTime
     | Boolean
+    | Enum (List String)
     | Reference ElementID
 
 type alias TextConstraints =

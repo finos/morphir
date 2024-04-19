@@ -1,47 +1,40 @@
 {
-    "id": "urn:person:people",
+    "id": "dataset:person:people",
     "name": "People",
     "version": 1,
     "fields": [
         {
             "name": "id",
-            "element": "urn:person:id",
+            "element": "element:person:id",
             "description": "ID of the person",
             "key": true,
             "optional": false
         },
         {
             "name": "firstName",
-            "element": "urn:person:first_name",
+            "element": "element:person:first_name",
             "description": "First name of the person",
             "key": false,
             "optional": false
         },
         {
             "name": "lastName",
-            "element": "urn:person:last_name",
+            "element": "element:person:last_name",
             "description": "Last name of the person",
             "key": false,
             "optional": false
         },
         {
             "name": "age",
-            "element": "urn:person:age",
+            "element": "element:person:age",
             "description": "Age of the person",
             "key": false,
             "optional": false
         },
         {
             "name": "dateOfBirth",
-            "element": "urn:person:date_of_birth",
+            "element": "element:person:date_of_birth",
             "description": "Date of birth of the person",
-            "key": false,
-            "optional": true
-        },
-        {
-            "name": "savingsAmount",
-            "element": "urn:person:savings_amount",
-            "description": "Savings amount of the person",
             "key": false,
             "optional": true
         }

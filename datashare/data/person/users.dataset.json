@@ -1,47 +1,42 @@
 {
-    "id": "urn:person:users",
+    "id": "dataset:person:users",
     "name": "users",
     "version": 1,
     "fields": [
         {
             "name": "id",
-            "element": "urn:person:id",
-            "description": "ID of the person",
+            "element": "element:person:id",
             "key": true,
             "optional": false
         },
         {
             "name": "firstName",
-            "element": "urn:person:first_name",
-            "description": "First name of the person",
+            "element": "element:person:first_name",
             "key": false,
             "optional": false
         },
         {
             "name": "lastName",
-            "element": "urn:person:last_name",
-            "description": "Last name of the person",
+            "element": "element:person:last_name",
             "key": false,
             "optional": false
         },
         {
             "name": "isActive",
-            "element": "urn:person:active",
-            "description": "Whether currently active",
+            "element": "element:person:active",
             "key": false,
             "optional": false
         },
         {
             "name": "lastSession",
-            "element": "urn:person:last_session",
-            "description": "Timestamp of last session start",
+            "element": "element:person:last_session",
             "key": false,
             "optional": false
         },
         {
             "name": "foo",
             "element": {
-                "id": "urn:person:users#foo",
+                "id": "element:person:users#foo",
                 "name": "Foo",
                 "description": "Foo",
                 "element_type": { "Text": {} },
@@ -52,6 +47,18 @@
                 }
             },
             "description": "Foo",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "savingsAmount",
+            "element": "element:person:savings_amount",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "savingsAmountCurrency",
+            "element": "element:person:savings_amount_currency",
             "key": false,
             "optional": false
         }

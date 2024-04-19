@@ -1,6 +1,6 @@
 
 # {
-#   element(id: "urn:person:age") {
+#   element(id: "element:person:age") {
 #     id
 #     name
 #     description
@@ -16,7 +16,7 @@
 }
 
 # {
-#    element_info(id: "urn:person:savings_amount") {
+#    element_info(id: "element:person:savings_amount") {
 #       description
 #       display_name
 #       short_display_name
@@ -72,8 +72,6 @@
   {
     datasets {
       id
-      name
-      version
       fields {
         name
         optional
@@ -86,36 +84,58 @@
             display_name
             short_display_name
         }
-          element_type {
-            ... on TextType {
-              Text {
-                min_length
-                max_length
+        element_type {
+          ... on TextType {
+            Text {
+              min_length
+              max_length
             }
           }
-            ... on NumberType {
-              Number {
-                minimum
-                maximum
-                precision
+          ... on NumberType {
+            Number {
+              minimum
+              maximum
+              precision
             }
           }
-            ... on ReferenceType {
-              Reference {
-                ref
+          ... on EnumType {
+            Enum {
+              values
             }
           }
-            ... on DateType {
-              Date
+          ... on ReferenceType {
+            Reference {
+              ref {
+                id
+                name
+                element_type {
+                  ... on NumberType {
+                    Number {
+                      minimum
+                      maximum
+                      precision
+                    }
+                  }
+                  ... on EnumType {
+                    Enum {
+                      values
+                    }
+                  }
+                }
+              }
+            }
           }
-            ... on DateTimeType {
-              DateTime
+          ... on DateType {
+            Date
           }
-            ... on TimeType {
-              Time
+          ... on DateTimeType {
+            DateTime
           }
-            ... on BooleanType {
-              Boolean
+          ... on TimeType {
+            Time
+          }
+          ... on BooleanType {
+            Boolean
           }
         }
       }

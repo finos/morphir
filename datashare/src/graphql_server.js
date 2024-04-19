@@ -6,11 +6,11 @@ const fs = require('fs');
 const path = require('path');
 const { log } = require("console");
 
-const baseDir = './data/';
+const baseDir = '../data/';
 
 
 // Define the GraphQL schema
-const schemaFile = fs.readFileSync(path.join(__dirname, 'src/Data.schema.graphql'), 'utf8');
+const schemaFile = fs.readFileSync(path.join(__dirname, 'Data.schema.graphql'), 'utf8');
 const schema = buildSchema(schemaFile);
 
 //Implement the resolvers
@@ -37,8 +37,17 @@ function recursiveSearch(dir, pattern) {
   return results;
 }
 
+function urnToFile(urn) {
+  return urnToFile(urn, undefined);
+}
+
 function urnToFile(urn, typ) {
   const items = urn.split(':');
+
+  if(typ === undefined || typ == null) {
+    typ = items[0];
+  }
+
   const file = path.join(__dirname, `${baseDir}/${items[1]}`, `${items[2]}.${typ}.json`)
   return file;
 }
@@ -88,6 +97,9 @@ function inflateElement(element) {
     }
     else if(elementType.hasOwnProperty('Reference')) {
       elementType.__typename = 'ReferenceType';
+      var refId = elementType.Reference.ref;
+      var ref = inflateElement(getJSONData(refId, "element"));
+      elementType.Reference.ref = ref;
     }
     else if (elementType.hasOwnProperty('Text')) {
       elementType.__typename = 'TextType';
@@ -105,6 +117,9 @@ function inflateElement(element) {
       elementType.__typename = 'BooleanType';
       elementType.Bool = {};
     }
+    else if (elementType.hasOwnProperty('Enum')) {
+      elementType.__typename = 'EnumType';
+    }
 
     const infoProperty = element.info;
 
@@ -115,6 +130,10 @@ function inflateElement(element) {
   }
 
   return element;
+}
+
+function getJSONData(id) {
+  return getJSONData(id);
 }
 
 function getJSONData(id, typ) {
