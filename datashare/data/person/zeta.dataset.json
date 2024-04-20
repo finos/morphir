@@ -1,0 +1,21 @@
+{
+    "id": "dataset:person:zeta",
+    "name": "zeta",
+    "description": "Handling incomplete fields",
+    "version": 1,
+    "fields": [
+        {
+            "name": "id"
+        },
+        {
+            "name": "unknownElementField",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "unresolvedElementField",
+            "key": false,
+            "optional": false
+        }
+   ]
+}

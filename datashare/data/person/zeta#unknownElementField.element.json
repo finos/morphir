@@ -1,5 +1,5 @@
 {
-    "id": "element:person:people#unknownElementField",
+    "id": "element:person:zeta#unknownElementField",
     "name": "Unknown Element Field",
     "description": "Shows how to add element information if unknown at dataset creation time.",
     "element_type": {

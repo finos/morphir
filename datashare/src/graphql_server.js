@@ -8,9 +8,9 @@ const { log } = require("console");
 
 const baseDirArg = process.argv.includes('--baseDir') 
   ? process.argv[process.argv.indexOf('--baseDir') + 1] 
-  : '../data/';
+  : 'data/';
 
-const baseDir = path.resolve(__dirname, baseDirArg);
+const baseDir = path.resolve(process.cwd(), baseDirArg);
 log("Using base folder: " + baseDir);
 
 // Define the GraphQL schema
@@ -72,11 +72,19 @@ function datasets() {
 }
 
 function inflateDataset(dataset) {
-  dataset.fields.forEach(field => {
+  const fields = dataset.fields.map(field => {
+    const fieldUrn = `${dataset.id}#${field.name}`.replace("dataset:", ":");
+    const fieldOverride = getJSONData("field" + fieldUrn, "field");
+
+    if(fieldOverride !== undefined && fieldOverride !== null) {
+      log("Found field override: " + fieldOverride);
+      log(fieldOverride.name);
+      field = fieldOverride;
+    }
+
     if(field.element === undefined) 
     {
-      const fieldUrn = `${dataset.id}#${field.name}`;
-      const elementUrn = fieldUrn.replace("dataset:", "element:");
+      const elementUrn = "element" + fieldUrn;
       const elmt = element(elementUrn);
       field.element = elmt;
     } 
@@ -99,7 +107,10 @@ function inflateDataset(dataset) {
       field.element = elmt;
     }
 
+    return field;
   });
+
+  dataset.fields = fields;
 
   return dataset;
 }

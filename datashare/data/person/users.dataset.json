@@ -61,16 +61,6 @@
             "element": "element:person:savings_amount_currency",
             "key": false,
             "optional": false
-        },
-        {
-            "name": "unknownElementField",
-            "key": false,
-            "optional": false
-        },
-        {
-            "name": "unresolvedElementField",
-            "key": false,
-            "optional": false
         }
    ]
 }

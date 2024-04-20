@@ -3,12 +3,14 @@ const fs = require('fs');
 const path = require('path');
 const app = express();
 const bodyParser = require('body-parser');
+const { log } = require('console');
 
 const baseDirArg = process.argv.includes('--baseDir') 
   ? process.argv[process.argv.indexOf('--baseDir') + 1] 
-  : '../data/';
+  : 'data/';
 
-const baseDir = path.resolve(__dirname, baseDirArg);
+const baseDir = path.resolve(process.cwd(), baseDirArg);
+log("Using base folder: " + baseDir);
 
 if(!fs.existsSync(baseDir)) {
   fs.mkdirSync(baseDir);
