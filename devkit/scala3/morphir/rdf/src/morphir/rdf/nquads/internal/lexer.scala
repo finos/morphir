@@ -191,6 +191,7 @@ end lexer
 object parser:
   import parsley.Parsley
   import parsley.combinator.option
+  lazy val nquadsDoc = sepBy(statement, endOfLine)
   lazy val statement =
     subject <~> predicate <~> object$ <~> option(graphLabel) <~> lexer.PERIOD
   lazy val subject = lexer.IRIREF | lexer.BLANK_NODE_LABEL
