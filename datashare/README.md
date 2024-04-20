@@ -29,8 +29,8 @@ An example can be found in the [data folder](data). Some things to look for are:
 * *GraphQL Resolvers*: The GraphQL server uses special resolvers to inflate the graph using these standards.
   * The resolvers can handle either embeded objects or references that follow the naming convention. So, for example, the Element property of a Dataset field can either refer to one of the existing elements or define an entirely new Element and ElementInfo embedded in the Field. In this case, it sets the URN to `[dataset urn]#[name]`. You can see an example of this in the [`foo` field of the `users` dataset](data/person/users.dataset.json).
 * *Flexible autogen vs manual with resolvers*: Sometimes all of the info is not available at generation and needs to be updated manually. Special resolvers allow these to be managed in separate files using the URNs. 
-    * *Incomplete Field*: A good example is the [`unknownElementField` in the `zeta` dataset](data/person/zeta\#unknownElementField.element.json), which demonstrates specifying the `element_type` property in a separate file from the dataset definition.
-    * *Field Override*: The settings for [`id` in the `zeta` dataset](data/person/zeta.dataset.json) are completely overwritten by an override file [`zeta#id.field.json`](data/person/zeta\#id.field.json).
+    * *Incomplete Field*: A good example is the [`unknownElementField` in the `zeta` dataset](data/person/zeta%23unknownElementField.element.json), which demonstrates specifying the `element_type` property in a separate file from the dataset definition.
+    * *Field Override*: The settings for [`id` in the `zeta` dataset](data/person/zeta.dataset.json) are completely overwritten by an override file [`zeta#id.field.json`](data/person/zeta%23id.field.json).
     * *Unknown Element*: As a fallback, Fields are set to element Nil if they are empty. This allows the GraphQL query to work while giving feedback about which Fields are invalid.
 
 ### Running the examples
