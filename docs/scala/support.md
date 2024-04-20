@@ -581,25 +581,25 @@ This section lists the SDK types and functions currently supported in this versi
 | fromInt            | v2.0.0                         | &#x2713;  |
 | toFloat            | v2.0.0                         | &#x2713;  |
 | fromFloat          | v2.0.0                         | &#x2713;  |
-| fromChar           | v2.0.0                         | &#x2715;  |
-| cons               | v2.0.0                         | &#x2715;  |
-| uncons             | v2.0.0                         | &#x2715;  |
-| toList             | v2.0.0                         | &#x2715;  |
-| fromList           | v2.0.0                         | &#x2715;  |
+| fromChar           | v2.0.0                         | &#x2713;  |
+| cons               | v2.0.0                         | &#x2713;  |
+| uncons             | v2.0.0                         | &#x2713;  |
+| toList             | v2.0.0                         | &#x2713;  |
+| fromList           | v2.0.0                         | &#x2713;  |
 | toUpper            | v2.0.0                         | &#x2713;  |
 | toLower            | v2.0.0                         | &#x2713;  |
-| pad                | v2.0.0                         | &#x2715;  |
+| pad                | v2.0.0                         | &#x2713;  |
 | padLeft            | v2.0.0                         | &#x2713;  |
 | padRight           | v2.0.0                         | &#x2713;  |
 | trim               | v2.0.0                         | &#x2713;  |
 | trimLeft           | v2.0.0                         | &#x2713;  |
 | trimRight          | v2.0.0                         | &#x2713;  |
-| map                | v2.0.0                         | &#x2715;  |
-| filter             | v2.0.0                         | &#x2715;  |
-| foldl              | v2.0.0                         | &#x2715;  |
-| foldr              | v2.0.0                         | &#x2715;  |
-| any                | v2.0.0                         | &#x2715;  |
-| all                | v2.0.0                         | &#x2715;  |
+| map                | v2.0.0                         | &#x2713;  |
+| filter             | v2.0.0                         | &#x2713;  |
+| foldl              | v2.0.0                         | &#x2713;  |
+| foldr              | v2.0.0                         | &#x2713;  |
+| any                | v2.0.0                         | &#x2713;  |
+| all                | v2.0.0                         | &#x2713;  |
 
 
 ### Morphir.SDK.Validate
