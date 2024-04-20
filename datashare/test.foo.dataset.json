@@ -1,0 +1,19 @@
+{
+    "id": "dataset:Foo:foos",
+    "name": "Foos",
+    "version": 1,
+    "fields": [
+        {
+            "name": "id",
+            "element": "element:person:id",
+            "key": true,
+            "optional": false
+        },
+        {
+            "name": "foo",
+            "element": "element:Foo:foo",
+            "key": false,
+            "optional": false
+       }
+   ]
+}

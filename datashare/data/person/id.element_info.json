@@ -1,0 +1,5 @@
+{
+    "id": "element:person:id",
+    "description": "ID of the person",
+    "display_name": "ID"
+}

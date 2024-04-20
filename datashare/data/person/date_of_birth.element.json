@@ -1,0 +1,5 @@
+{
+    "id": "element:person:date_of_birth",
+    "name": "Date of Birth",
+    "element_type": {"Date":{}}
+}

@@ -1,0 +1,6 @@
+{
+    "id": "element:person:date_of_birth",
+    "description": "Date of birth of the person",
+    "display_name": "Date of Birth",
+    "short_display_name": "DOB"
+}

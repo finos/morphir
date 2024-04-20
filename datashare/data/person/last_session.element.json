@@ -1,0 +1,13 @@
+{
+    "id": "element:person:last_session",
+    "name": "Last Session",
+    "element_type": {
+        "DateTime": {
+        }
+    },
+    "info": {
+        "description": "The last time the person logged in",
+        "display_name": "Last Session",
+        "short_display_name": "Seen"
+    }
+}

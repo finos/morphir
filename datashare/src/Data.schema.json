@@ -1,0 +1,217 @@
+{
+    "$id": "https://morphir.finos.org/data.schema.json",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$defs": {
+        "Dataset": {
+            "type": "object",
+            "properties": {
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/Field"
+                    }
+                },
+                "id": {
+                    "$ref": "#/$defs/DatasetID"
+                },
+                "version": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "version",
+                "fields"
+            ]
+        },
+        "DatasetID": {
+            "$ref": "#/$defs/ID"
+        },
+        "Element": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "$ref": "#/$defs/ElementID"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "element_type": {
+                    "$ref": "#/$defs/ElementType"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "type"
+            ]
+        },
+        "ElementID": {
+            "$ref": "#/$defs/ID"
+        },
+        "ElementInfo": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "The ID of the element"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "The description of the element"
+                },
+                "display_name": {
+                    "type": "string",
+                    "description": "The display name of the element"
+                },
+                "short_display_name": {
+                    "type": "string",
+                    "description": "The short display name of the element"
+                }
+            },
+            "required": [
+                "id"
+            ]
+        },
+        "ElementType": {
+            "oneOf": [
+                {
+                    "const": "Boolean"
+                },
+                {
+                    "const": "Date"
+                },
+                {
+                    "const": "DateTime"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "Enum": {
+                            "type": "array",
+                            "values": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "required": [
+                        "Enum"
+                    ]
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "Number": {
+                            "$ref": "#/definitions/NumberConstraints"
+                        }
+                    },
+                    "required": [
+                        "Number"
+                    ]
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "Reference": {
+                            "type": "object",
+                            "properties": {
+                                "elementId": {
+                                    "$ref": "#/$defs/ElementID"
+                                }
+                            }
+                        }
+                    },
+                    "required": [
+                        "type"
+                    ]
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "Text": {
+                            "$ref": "#/definitions/TextConstraints"
+                        }
+                    },
+                    "required": [
+                        "type"
+                    ]
+                },
+                {
+                    "const": "Time"
+                }
+            ]
+        },
+        "Elements": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/Element"
+            }
+        },
+        "Field": {
+            "type": "object",
+            "properties": {
+                "element": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/ElementID"
+                        },
+                        {
+                            "$ref": "#/$defs/Element"
+                        }
+                    ]
+                },
+                "key": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "$ref": "#/$defs/FieldName"
+                },
+                "optional": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "name",
+                "element"
+            ]
+        },
+        "FieldName": {
+            "type": "string"
+        },
+        "ID": {
+            "$ref": "#/$defs/URI"
+        },
+        "NumberConstraints": {
+            "type": "object",
+            "properties": {
+                "maximum": {
+                    "type": "integer"
+                },
+                "minimum": {
+                    "type": "integer"
+                },
+                "precision": {
+                    "type": "integer"
+                }
+            }
+        },
+        "TextConstraints": {
+            "type": "object",
+            "properties": {
+                "max_length": {
+                    "type": "integer"
+                },
+                "min_length": {
+                    "type": "integer"
+                }
+            }
+        },
+        "URI": {
+            "type": "string"
+        }
+    }
+}

@@ -1,0 +1,42 @@
+{
+    "id": "dataset:person:people",
+    "name": "People",
+    "version": 1,
+    "fields": [
+        {
+            "name": "id",
+            "element": "element:person:id",
+            "description": "ID of the person",
+            "key": true,
+            "optional": false
+        },
+        {
+            "name": "firstName",
+            "element": "element:person:first_name",
+            "description": "First name of the person",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "lastName",
+            "element": "element:person:last_name",
+            "description": "Last name of the person",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "age",
+            "element": "element:person:age",
+            "description": "Age of the person",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "dateOfBirth",
+            "element": "element:person:date_of_birth",
+            "description": "Date of birth of the person",
+            "key": false,
+            "optional": true
+        }
+    ]
+}

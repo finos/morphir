@@ -1,0 +1,10 @@
+{
+    "id": "element:person:first_name",
+    "name": "First Name",
+    "element_type": {
+        "Text": {
+            "min_length": 1,
+            "max_length": 100
+        }
+    }
+}

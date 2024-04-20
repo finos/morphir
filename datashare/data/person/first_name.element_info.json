@@ -1,0 +1,6 @@
+{
+    "id": "element:person:first_name",
+    "description": "First name of the person",
+    "display_name": "First Name",
+    "short_display_name": "FName"
+}

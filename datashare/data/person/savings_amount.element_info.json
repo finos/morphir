@@ -1,0 +1,6 @@
+{
+    "id": "element:person:savings_amount",
+    "description": "Savings amount of the person",
+    "display_name": "Savings Amount",
+    "short_display_name": "Savings"
+}

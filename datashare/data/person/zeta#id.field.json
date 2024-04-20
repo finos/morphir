@@ -1,0 +1,7 @@
+{
+    "id": "dataset:person:zeta#id",
+    "name": "id",
+    "element": "element:person:id",
+    "optional": false,
+    "key": true
+}

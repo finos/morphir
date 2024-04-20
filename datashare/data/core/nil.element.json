@@ -1,0 +1,7 @@
+{
+    "id":"element:core:nil",
+    "name":"Nil",
+    "element_type": {
+        "Text" : {}
+    }
+}

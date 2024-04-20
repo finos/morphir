@@ -1,0 +1,11 @@
+{
+    "id": "element:person:id",
+    "name": "ID",
+    "description": "The identifier of a person",
+    "element_type": {
+        "Text": {
+            "min_length": 1,
+            "max_length": 128
+        }
+    }
+}

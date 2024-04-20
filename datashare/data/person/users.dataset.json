@@ -1,0 +1,66 @@
+{
+    "id": "dataset:person:users",
+    "name": "users",
+    "version": 1,
+    "fields": [
+        {
+            "name": "id",
+            "element": "element:person:id",
+            "key": true,
+            "optional": false
+        },
+        {
+            "name": "firstName",
+            "element": "element:person:first_name",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "lastName",
+            "element": "element:person:last_name",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "isActive",
+            "element": "element:person:active",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "lastSession",
+            "element": "element:person:last_session",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "foo",
+            "element": {
+                "id": "element:person:users#foo",
+                "name": "Foo",
+                "description": "Foo",
+                "element_type": { "Text": {} },
+                "info": {
+                    "description": "What is a Foo?",
+                    "display_name": "Fooooo",
+                    "short_display_name": "Foo"
+                }
+            },
+            "description": "Foo",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "savingsAmount",
+            "element": "element:person:savings_amount",
+            "key": false,
+            "optional": false
+        },
+        {
+            "name": "savingsAmountCurrency",
+            "element": "element:person:savings_amount_currency",
+            "key": false,
+            "optional": false
+        }
+   ]
+}

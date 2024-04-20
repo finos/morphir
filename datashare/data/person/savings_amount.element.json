@@ -1,0 +1,9 @@
+{
+    "id": "element:person:savings_amount",
+    "name": "Savings Amount",
+    "element_type": {
+        "Reference": {
+            "ref": "element:core:integer"
+        }
+    }
+}

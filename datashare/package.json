@@ -1,0 +1,40 @@
+{
+    "name": "finos/open-reg-tech-us-lcr",
+    "version": "0.0.1",
+    "keywords": [
+        "finos",
+        "morphir",
+        "lcr"
+    ],
+    "engines": {
+        "node": ">=18.12.0 <20.1.0",
+        "npm": ">=8.19.2 <9.6.5"
+    },
+    "scripts": {
+        "build": "npm run morphir-elm-make-clean && npm run morphir-gen-spark-with-config",
+        "morphir-elm-make": "npx morphir-elm make",
+        "morphir-elm-make-clean": "npx morphir-elm make -f",
+        "morphir-gen-scala": "npx morphir-elm gen -t Scala -c -o ./target/generated-sources/main/scala --target-version 2.13 && echo 'Generated Scala into generated-sources/scala/main'",
+        "morphir-gen-spark": "npx morphir-elm gen -t Spark -o ./spark/open_reg_tech_us_lcr/src && echo 'SPARK GENERATED INTO spark/open_reg_tech_us_lcr/src'",
+        "morphir-gen-spark-with-config": "npx morphir-elm gen -t Spark -o ./spark/open_reg_tech_us_lcr/src --custom-config spark.config.json && echo SPARK GENERATED INTO spark/open_reg_tech_us_lcr/src",
+        "test-spark": "cd spark && mill open_reg_tech_us_lcr.test",
+        "test": "lobo  --framework=elm-test",
+        "morphir-test": "morphir-elm test"
+    },
+    "devDependencies": {
+        "lobo": "^1.0.0"
+    },
+    "dependencies": {
+        "@apollo/client": "^3.9.11",
+        "apollo-server": "^3.13.0",
+        "express": "^4.19.2",
+        "graphql": "^16.8.1",
+        "graphql-http": "^1.22.1",
+        "morphir-elm": "^2.89.0",
+        "react": "^18.2.0",
+        "ruru": "^2.0.0-beta.11"
+    },
+    "files": [
+        "morphir-ir.json"
+    ]
+}

@@ -1,0 +1,5 @@
+{
+    "id": "element:person:age",
+    "description": "Age of the person",
+    "display_name": "Age"
+}
