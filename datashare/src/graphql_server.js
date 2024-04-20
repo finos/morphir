@@ -77,8 +77,7 @@ function inflateDataset(dataset) {
     const fieldOverride = getJSONData("field" + fieldUrn, "field");
 
     if(fieldOverride !== undefined && fieldOverride !== null) {
-      log("Found field override: " + fieldOverride);
-      log(fieldOverride.name);
+      log("Found field override: " + field.id + " in " + dataset.id);
       field = fieldOverride;
     }
 
