@@ -17,6 +17,7 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 anyhow.workspace = true
+clap.workspace = true
 config.workspace = true
 dirs.workspace = true
 miette = { workspace = true, features = ["fancy"] }

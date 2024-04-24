@@ -13,8 +13,9 @@ default-members = ["crates/main", "crates/testkit"]
 
 [workspace.dependencies]
 anyhow = "^1.0"
+clap = "4.5.4"
 config = "0.14.0"
-cucumber = "0.20"
+cucumber = "0.21.0"
 dirs = "5.0.1"
 extism = "1.2.0"
 extism-pdk = "1.1.0"

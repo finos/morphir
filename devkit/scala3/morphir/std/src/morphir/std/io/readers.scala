@@ -18,7 +18,7 @@
 // BufferedReader and PushbackReader that are faster (2x) because they do not
 // synchronise on a lock, and do not require up-front decisions about buffer
 // sizes.
-package morphir.rdf.internal
+package morphir.std.io
 
 import java.util.Arrays
 import scala.annotation._

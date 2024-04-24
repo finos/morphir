@@ -39,6 +39,7 @@ object morphir extends CrossPlatform {
         )
     }
     object jvm extends Shared {
+      def moduleDeps = Seq(morphir.std.jvm)
       object test extends ScalaTests with TestModule.ZioTest {
         def ivyDeps = Agg(
           Deps.dev.zio.`zio-test`,
@@ -47,6 +48,7 @@ object morphir extends CrossPlatform {
       }
     }
     object js extends Shared with ScalaJSProject {
+      def moduleDeps = Seq(morphir.std.js)
       object test extends ScalaJSTests with TestModule.ZioTest {
         def ivyDeps = Agg(
           Deps.dev.zio.`zio-test`,
@@ -74,8 +76,31 @@ object morphir extends CrossPlatform {
     }
     object js extends Shared with ScalaJSProject {
 
-      def moduleDpes = Seq(morphir.cdk.js)
+      def moduleDeps = Seq(morphir.cdk.js)
     }
+  }
+
+  object std extends CrossPlatform {
+    trait Shared extends ScalaProject with PlatformScalaModule {
+      def ivyDeps = Agg(Deps.io.github.kitlangton.neotype)
+    }
+    object jvm extends Shared {
+      object test extends ScalaTests with TestModule.ZioTest {
+        def ivyDeps = Agg(
+          Deps.dev.zio.`zio-test`,
+          Deps.dev.zio.`zio-test-sbt`
+        )
+      }
+    }
+    object js extends Shared with ScalaJSProject {
+      object test extends ScalaJSTests with TestModule.ZioTest {
+        def ivyDeps = Agg(
+          Deps.dev.zio.`zio-test`,
+          Deps.dev.zio.`zio-test-sbt`
+        )
+      }
+    }
+
   }
 
   trait Shared extends ScalaProject with PlatformScalaModule
@@ -159,6 +184,9 @@ object Deps {
 
     }
     case object github {
+      case object iltotore {
+        val iron = ivy"io.github.iltotore::iron::${Versions.iron}"
+      }
       case object kitlangton {
         val `neotype` = ivy"io.github.kitlangton::neotype::${Versions.neotype}"
 
@@ -178,12 +206,14 @@ object Deps {
 
 object Versions {
   val airframe = "24.4.0"
-  val neotype = "0.2.5"
+  val iron = "2.5.0"
   val `izumi-reflect` = "2.3.8"
   val kyo = "0.9.2"
+  val neotype = "0.2.5"
   val parsley = "4.5.1"
   val scala = "3.3.3"
   val scalaJS = "1.16.0"
+  val scalaNative = "0.5.1"
   val zio = "2.0.21"
   val `zio-cli` = "0.5.0"
   val `zio-config` = "4.0.1"
