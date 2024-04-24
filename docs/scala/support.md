@@ -41,11 +41,11 @@ This section lists the SDK types and functions currently supported in this versi
 | Function           | Morphir-Elm Version Introduced | Supported |
 |--------------------|--------------------------------|-----------|
 | lessThan           | v2.0.0                         | &#x2713;  |
-| greaterThan        | v2.0.0                         | &#x2715;  |
-| lessThanOrEqual    | v2.0.0                         | &#x2715;  |
-| greaterThanOrEqual | v2.0.0                         | &#x2715;  |
-| max                | v2.0.0                         | &#x2715;  |
-| min                | v2.0.0                         | &#x2715;  |
+| greaterThan        | v2.0.0                         | &#x2713;  |
+| lessThanOrEqual    | v2.0.0                         | &#x2713;  |
+| greaterThanOrEqual | v2.0.0                         | &#x2713;  |
+| max                | v2.0.0                         | &#x2713;  |
+| min                | v2.0.0                         | &#x2713;  |
 | compare            | v2.0.0                         | &#x2713;  |
 
 #### Float
@@ -73,11 +73,11 @@ This section lists the SDK types and functions currently supported in this versi
 | toPolar            | v2.0.0                         | &#x2715;  | 
 | fromPolar          | v2.0.0                         | &#x2715;  | 
 | lessThan           | v2.0.0                         | &#x2713;  |
-| greaterThan        | v2.0.0                         | &#x2715;  |
-| lessThanOrEqual    | v2.0.0                         | &#x2715;  |
-| greaterThanOrEqual | v2.0.0                         | &#x2715;  |
-| max                | v2.0.0                         | &#x2715;  |
-| min                | v2.0.0                         | &#x2715;  |
+| greaterThan        | v2.0.0                         | &#x2713;  |
+| lessThanOrEqual    | v2.0.0                         | &#x2713;  |
+| greaterThanOrEqual | v2.0.0                         | &#x2713;  |
+| max                | v2.0.0                         | &#x2713;  |
+| min                | v2.0.0                         | &#x2713;  |
 | compare            | v2.0.0                         | &#x2713;  |
 
 #### Int
@@ -91,8 +91,8 @@ This section lists the SDK types and functions currently supported in this versi
 | greaterThan        | v2.0.0                         | &#x2713;  |
 | lessThanOrEqual    | v2.0.0                         | &#x2713;  |
 | greaterThanOrEqual | v2.0.0                         | &#x2713;  |
-| max                | v2.0.0                         | &#x2715;  |
-| min                | v2.0.0                         | &#x2715;  |
+| max                | v2.0.0                         | &#x2713;  |
+| min                | v2.0.0                         | &#x2713;  |
 | compare            | v2.0.0                         | &#x2713;  |
 
 #### List
@@ -100,11 +100,11 @@ This section lists the SDK types and functions currently supported in this versi
 |--------------------|--------------------------------|-----------|
 | append             | v2.0.0                         | &#x2713;  |
 | lessThan           | v2.0.0                         | &#x2713;  |
-| greaterThan        | v2.0.0                         | &#x2715;  |
-| lessThanOrEqual    | v2.0.0                         | &#x2715;  |
-| greaterThanOrEqual | v2.0.0                         | &#x2715;  |
-| max                | v2.0.0                         | &#x2715;  |
-| min                | v2.0.0                         | &#x2715;  |
+| greaterThan        | v2.0.0                         | &#x2713;  |
+| lessThanOrEqual    | v2.0.0                         | &#x2713;  |
+| greaterThanOrEqual | v2.0.0                         | &#x2713;  |
+| max                | v2.0.0                         | &#x2713;  |
+| min                | v2.0.0                         | &#x2713;  |
 | compare            | v2.0.0                         | &#x2713;  |
 
 #### Number
@@ -124,22 +124,22 @@ This section lists the SDK types and functions currently supported in this versi
 |--------------------|--------------------------------|-----------|
 | append             | v2.0.0                         | &#x2715;  |
 | lessThan           | v2.0.0                         | &#x2713;  |
-| greaterThan        | v2.0.0                         | &#x2715;  |
-| lessThanOrEqual    | v2.0.0                         | &#x2715;  |
-| greaterThanOrEqual | v2.0.0                         | &#x2715;  |
-| max                | v2.0.0                         | &#x2715;  |
-| min                | v2.0.0                         | &#x2715;  |
+| greaterThan        | v2.0.0                         | &#x2713;  |
+| lessThanOrEqual    | v2.0.0                         | &#x2713;  |
+| greaterThanOrEqual | v2.0.0                         | &#x2713;  |
+| max                | v2.0.0                         | &#x2713;  |
+| min                | v2.0.0                         | &#x2713;  |
 | compare            | v2.0.0                         | &#x2713;  |
 
 #### Tuple
 | Function           | Morphir-Elm Version Introduced | Supported |
 |--------------------|--------------------------------|-----------|
 | lessThan           | v2.0.0                         | &#x2713;  |
-| greaterThan        | v2.0.0                         | &#x2715;  |
-| lessThanOrEqual    | v2.0.0                         | &#x2715;  |
-| greaterThanOrEqual | v2.0.0                         | &#x2715;  |
-| max                | v2.0.0                         | &#x2715;  |
-| min                | v2.0.0                         | &#x2715;  |
+| greaterThan        | v2.0.0                         | &#x2713;  |
+| lessThanOrEqual    | v2.0.0                         | &#x2713;  |
+| greaterThanOrEqual | v2.0.0                         | &#x2713;  |
+| max                | v2.0.0                         | &#x2713;  |
+| min                | v2.0.0                         | &#x2713;  |
 | compare            | v2.0.0                         | &#x2713;  |
 
 
