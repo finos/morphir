@@ -76,7 +76,7 @@ object morphir extends CrossPlatform {
     }
     object js extends Shared with ScalaJSProject {
 
-      def moduleDpes = Seq(morphir.cdk.js)
+      def moduleDeps = Seq(morphir.cdk.js)
     }
   }
 
@@ -184,6 +184,9 @@ object Deps {
 
     }
     case object github {
+      case object iltotore {
+        val iron = ivy"io.github.iltotore::iron::${Versions.iron}"
+      }
       case object kitlangton {
         val `neotype` = ivy"io.github.kitlangton::neotype::${Versions.neotype}"
 
@@ -203,9 +206,10 @@ object Deps {
 
 object Versions {
   val airframe = "24.4.0"
-  val neotype = "0.2.5"
+  val iron = "2.5.0"
   val `izumi-reflect` = "2.3.8"
   val kyo = "0.9.2"
+  val neotype = "0.2.5"
   val parsley = "4.5.1"
   val scala = "3.3.3"
   val scalaJS = "1.16.0"
