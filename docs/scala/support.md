@@ -60,7 +60,7 @@ This section lists the SDK types and functions currently supported in this versi
 | isInfinite         | v0.4.0                         | &#x2713;  |
 | e                  | v0.4.0                         | &#x2713;  |
 | pi                 | v0.4.0                         | &#x2713;  |
-| cos                | v0.4.0                         | &#x2715;  |
+| cos                | v0.4.0                         | &#x2713;  |
 | sin                | v0.4.0                         | &#x2713;  |
 | tan                | v0.4.0                         | &#x2713;  |
 | acos               | v0.4.0                         | &#x2713;  |
