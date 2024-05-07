@@ -56,19 +56,19 @@ This section lists the SDK types and functions currently supported in this versi
 | floor              | v0.4.0                         | &#x2715;  |
 | ceiling            | v0.4.0                         | &#x2715;  |
 | truncate           | v0.4.0                         | &#x2715;  |
-| isNan              | v0.4.0                         | &#x2715;  |
-| isInfinite         | v0.4.0                         | &#x2715;  |
+| isNan              | v0.4.0                         | &#x2713;  |
+| isInfinite         | v0.4.0                         | &#x2713;  |
 | e                  | v0.4.0                         | &#x2713;  |
 | pi                 | v0.4.0                         | &#x2713;  |
 | cos                | v0.4.0                         | &#x2715;  |
-| sin                | v0.4.0                         | &#x2715;  |
-| tan                | v0.4.0                         | &#x2715;  |
-| acos               | v0.4.0                         | &#x2715;  |
-| asin               | v0.4.0                         | &#x2715;  |
-| atan               | v0.4.0                         | &#x2715;  |
-| atan2              | v0.4.0                         | &#x2715;  |
-| degrees            | v2.0.0                         | &#x2715;  | 
-| radians            | v2.0.0                         | &#x2715;  | 
+| sin                | v0.4.0                         | &#x2713;  |
+| tan                | v0.4.0                         | &#x2713;  |
+| acos               | v0.4.0                         | &#x2713;  |
+| asin               | v0.4.0                         | &#x2713;  |
+| atan               | v0.4.0                         | &#x2713;  |
+| atan2              | v0.4.0                         | &#x2713;  |
+| degrees            | v2.0.0                         | &#x2713;  | 
+| radians            | v2.0.0                         | &#x2713;  | 
 | turns              | v2.0.0                         | &#x2715;  | 
 | toPolar            | v2.0.0                         | &#x2715;  | 
 | fromPolar          | v2.0.0                         | &#x2715;  | 
@@ -266,18 +266,18 @@ This section lists the SDK types and functions currently supported in this versi
 | logBase    | v0.4.0                         | &#x2713;  |
 | e          | v0.4.0                         | &#x2713;  |
 | pi         | v0.4.0                         | &#x2713;  |
-| cos        | v0.4.0                         | &#x2715;  |
-| sin        | v0.4.0                         | &#x2715;  |
-| tan        | v0.4.0                         | &#x2715;  |
-| acos       | v0.4.0                         | &#x2715;  |
-| asin       | v0.4.0                         | &#x2715;  |
-| atan       | v0.4.0                         | &#x2715;  |
-| atan2      | v0.4.0                         | &#x2715;  |
-| isNan      | v0.4.0                         | &#x2715;  |
-| isInfinite | v0.4.0                         | &#x2715;  |
-| degrees    | v2.0.0                         | &#x2715;  | 
-| radians    | v2.0.0                         | &#x2715;  | 
-| turns      | v2.0.0                         | &#x2715;  | 
+| cos        | v0.4.0                         | &#x2713;  |
+| sin        | v0.4.0                         | &#x2713;  |
+| tan        | v0.4.0                         | &#x2713;  |
+| acos       | v0.4.0                         | &#x2713;  |
+| asin       | v0.4.0                         | &#x2713;  |
+| atan       | v0.4.0                         | &#x2713;  |
+| atan2      | v0.4.0                         | &#x2713;  |
+| isNan      | v0.4.0                         | &#x2713;  |
+| isInfinite | v0.4.0                         | &#x2713;  |
+| degrees    | v2.0.0                         | &#x2713;  | 
+| radians    | v2.0.0                         | &#x2713;  | 
+| turns      | v2.0.0                         | &#x2713;  | 
 | toPolar    | v2.0.0                         | &#x2715;  | 
 | fromPolar  | v2.0.0                         | &#x2715;  | 
 
@@ -541,7 +541,7 @@ This section lists the SDK types and functions currently supported in this versi
 | partition | v2.2.0                         | &#x2713;  |
 | union     | v2.2.0                         | &#x2713;  |
 | intersect | v2.2.0                         | &#x2713;  |
-| diff      | v2.2.0                         | &#x2715;  |
+| diff      | v2.2.0                         | &#x2713;  |
 
 
 ### Morphir.SDK.StatefulApp
