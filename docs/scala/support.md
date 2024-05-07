@@ -69,7 +69,7 @@ This section lists the SDK types and functions currently supported in this versi
 | atan2              | v0.4.0                         | &#x2713;  |
 | degrees            | v2.0.0                         | &#x2713;  | 
 | radians            | v2.0.0                         | &#x2713;  | 
-| turns              | v2.0.0                         | &#x2715;  | 
+| turns              | v2.0.0                         | &#x2713;  | 
 | toPolar            | v2.0.0                         | &#x2715;  | 
 | fromPolar          | v2.0.0                         | &#x2715;  | 
 | lessThan           | v2.0.0                         | &#x2713;  |
