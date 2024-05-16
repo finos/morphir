@@ -3,6 +3,7 @@ module Morphir.Value.Native.Comparable exposing (..)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Value as Value exposing (RawValue)
 import Morphir.Value.Error exposing (Error(..))
+import Morphir.SDK.UUID as UUID exposing (UUID)
 
 
 lessThan : RawValue -> RawValue -> Result Error Bool

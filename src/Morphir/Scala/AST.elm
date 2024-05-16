@@ -40,6 +40,7 @@ generator uses. It's a relatively large portion of the language but it's not aim
 -}
 
 import Decimal exposing (Decimal)
+import UUID exposing (UUID)
 
 
 {-| -}
@@ -288,6 +289,7 @@ type Lit
     | IntegerLit Int
     | FloatLit Float
     | DecimalLit Decimal
+    | UUIDLit UUID
     | NullLit
 
 

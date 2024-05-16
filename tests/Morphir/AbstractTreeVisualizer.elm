@@ -11,6 +11,7 @@ import Morphir.Visual.Components.AritmeticExpressions exposing (ArithmeticOperat
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Morphir.SDK.Decimal exposing (Decimal)
+import UUID
 import Decimal
 
 

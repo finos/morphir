@@ -21,6 +21,7 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.SDK.Decimal as Decimal
+import Morphir.SDK.UUID as UUID
 
 
 encodeLiteral : Literal -> Encode.Value

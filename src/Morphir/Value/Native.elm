@@ -3,7 +3,7 @@ module Morphir.Value.Native exposing
     , Eval
     , unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval0, eval1, eval2, eval3
     , floatLiteral, intLiteral, oneOf, stringLiteral, decimalLiteral
-    , decodeFun1, decodeList, decodeLiteral, decodeMaybe, decodeLocalDate, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeLocalDate, encodeMaybeResult, encodeRaw, encodeResultList, encodeTuple2, decodeDict, decodeFun2, encodeDict
+    , decodeFun1, decodeList, decodeLiteral, decodeMaybe, decodeLocalDate, decodeRaw, decodeTuple2, decodeUUID, encodeList, encodeLiteral, encodeMaybe, encodeLocalDate, encodeMaybeResult, encodeRaw, encodeResultList, encodeTuple2, decodeDict, decodeFun2, encodeDict, encodeUUID, encodeUUID2
     , trinaryLazy, trinaryStrict
     )
 
@@ -49,8 +49,12 @@ import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.SDK.Decimal exposing (Decimal)
 import Morphir.SDK.Dict as Dict exposing (Dict)
 import Morphir.SDK.LocalDate as LocalDate exposing (LocalDate)
+import Morphir.SDK.UUID exposing (UUID)
 import Morphir.SDK.ResultList as ListOfResults
 import Morphir.Value.Error exposing (Error(..))
+import Morphir.SDK.UUID as UUID
+import UUID as U
+import Json.Encode exposing (encode)
 
 
 {-| Type that represents a native function. It's a function that takes two arguments:
@@ -449,6 +453,56 @@ decodeMaybe decodeItem eval value =
         Err error ->
             Err error
 
+
+{-| -}
+encodeUUID : UUID -> Result Error RawValue
+encodeUUID uuid =
+    UUID.toString uuid
+        |> StringLiteral
+        |> Value.Literal ()
+        |> Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "uuid" ] ], [ "from", "string" ] ))
+        |> Ok
+
+
+{-| -}
+encodeUUID2 : (Result Error UUID) -> Result Error RawValue 
+encodeUUID2 result =
+    case result of
+        Ok uuid -> 
+            UUID.toString uuid 
+                |> StringLiteral 
+                |> Value.Literal () 
+                |> Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "uuid" ] ], [ "from", "string" ] )) 
+                |> Ok
+        Err error ->
+            Err error
+    
+{-| -}
+decodeUUID : Decoder UUID
+decodeUUID e value =
+    e value
+        |> Result.andThen
+            (\v ->
+                case v of
+                    Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "uuid" ] ], [ "from", "string" ] )) (Value.Literal () (StringLiteral str)) ->
+                        case UUID.fromString str of
+                            Just uuid ->
+                                Ok uuid
+
+                            Nothing ->
+                                Err <| ErrorWhileEvaluatingDerivedType ("Invalid UUID format: " ++ str)
+
+                    Value.Literal () (StringLiteral str) ->
+                        case UUID.fromString str of
+                            Just uuid ->
+                                Ok uuid
+
+                            Nothing ->
+                                Err <| ErrorWhileEvaluatingDerivedType ("Invalid UUID format: " ++ str)
+
+                    _ ->
+                        Err (ExpectedDerivedType ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "uuid" ] ], [ "uuid" ] ) v)
+            )
 
 {-| -}
 encodeLocalDate : LocalDate -> Result Error RawValue

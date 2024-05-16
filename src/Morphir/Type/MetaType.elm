@@ -1,4 +1,4 @@
-module Morphir.Type.MetaType exposing (MetaType(..), Variable, boolType, charType, contains, floatType, intType, listType, metaAlias, metaClosedRecord, metaFun, metaOpenRecord, metaRecord, metaRef, metaTuple, metaUnit, metaVar, removeAliases, stringType, substituteVariable, substituteVariables, toString, variableByIndex, variableGreaterThan, variables, wrapInAliases)
+module Morphir.Type.MetaType exposing (MetaType(..), Variable, boolType, charType, uuidType, contains, floatType, intType, listType, metaAlias, metaClosedRecord, metaFun, metaOpenRecord, metaRecord, metaRef, metaTuple, metaUnit, metaVar, removeAliases, stringType, substituteVariable, substituteVariables, toString, variableByIndex, variableGreaterThan, variables, wrapInAliases)
 
 import Dict exposing (Dict)
 import Morphir.IR.FQName as FQName exposing (FQName, fqn)
@@ -362,6 +362,10 @@ intType =
 floatType : MetaType
 floatType =
     metaRef (fqn "Morphir.SDK" "Basics" "Float") []
+
+uuidType : MetaType
+uuidType =
+    metaRef (fqn "Morphir.SDK" "UUID" "UUID") []
 
 
 listType : MetaType -> MetaType

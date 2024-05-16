@@ -44,6 +44,7 @@ import Morphir.IR.SDK.StatefulApp as StatefulApp
 import Morphir.IR.SDK.String as String
 import Morphir.IR.SDK.Tuple as Tuple
 import Morphir.Value.Native as Native
+import Morphir.IR.SDK.UUID as UUID
 
 
 packageName : PackageName
@@ -75,6 +76,7 @@ packageSpec =
             , ( [ [ "number" ] ], Number.moduleSpec )
             , ( [ [ "key" ] ], Key.moduleSpec )
             , ( [ [ "aggregate" ] ], Aggregate.moduleSpec )
+            , ( [ [ "uuid" ] ], UUID.moduleSpec)
             ]
     }
 

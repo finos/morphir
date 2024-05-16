@@ -474,6 +474,7 @@ mapValue inScopeVars value =
                 DecimalLiteral _ ->
                     Debug.todo "branch 'DecimalLiteral _' not implemented"
 
+
         Constructor constructorType fQName ->
             Scala.TypeAscripted
                 (curryConstructorArgs inScopeVars constructorType fQName [])
@@ -784,6 +785,7 @@ mapPattern pattern =
 
                         DecimalLiteral v ->
                             Scala.DecimalLit v
+                        
             in
             Scala.LiteralMatch (map literal)
 
