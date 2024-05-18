@@ -57,10 +57,10 @@ parseTests =
                 Expect.equal (U.parse "6ba7b810-9dad-11d1-80b4-00c04fd430c8") ( Ok UUID.dnsNamespace )
         , test "parse invalid uuid" <|
             \_ ->
-                Expect.equal (U.parse "c72c207b-0847-386d-bdbc-2e5def81cg81") (Err WrongFormat)
+                Expect.equal (U.parse "c72c207b-0847-386d-bdbc-2e5def81cg81") (Err U.WrongFormat)
         , test "parse incorrect length" <|
             \_ ->
-                Expect.equal (U.parse "6ba7b811-9dad-11d1-80b4-00c04fd430d80") (Err WrongLength)
+                Expect.equal (U.parse "6ba7b811-9dad-11d1-80b4-00c04fd430d80") (Err U.WrongLength)
         , test "parse uuid version mapping" <|
             \_ ->
                 Expect.equal (U.parse "c72c207b-0847-386d-bdbc-2e5def81cf81" |> Result.map U.version) (Ok 3)

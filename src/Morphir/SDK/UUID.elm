@@ -1,6 +1,6 @@
 module Morphir.SDK.UUID exposing (
     UUID
-    , Error
+    , Error(..)
     , parse
     , fromString
     , forName
@@ -18,6 +18,7 @@ module Morphir.SDK.UUID exposing (
     # The datatype
 
     @docs UUID
+    @docs Error
 
 
     # Convert from a known UUID String
@@ -71,16 +72,20 @@ import UUID as U
 type alias UUID = 
     U.UUID
 
--- Make this a type with one option that is UUID, we can hold off on this for now
 {-| The error type for UUIDs -}
-type alias Error =
-    U.Error
+type  Error
+    = WrongFormat
+    | WrongLength
+    | UnsupportedVariant
+    | IsNil
+    | NoVersion
 
 
 {-| You can attempt to create a UUID from a string. This function can interpret a fairly broad range of formatted (and mis-formatted) UUIDs, including ones with too much whitespace, too many (or not enough) hyphens, or uppercase characters.-}
 parse : String -> Result Error UUID
 parse s = 
     U.fromString s
+    |> Result.mapError fromUUIDError
 
 {-| Includes all the functionality as `parse`, however only returns a `Maybe` on failures instead of an `Error`.-}
 fromString : String -> Maybe UUID
@@ -141,3 +146,12 @@ oidNamespace =
 x500Namespace : UUID
 x500Namespace = 
     U.x500Namespace
+
+fromUUIDError : U.Error -> Error
+fromUUIDError e =
+    case e of
+        U.WrongFormat -> WrongFormat
+        U.WrongLength -> WrongLength
+        U.UnsupportedVariant -> UnsupportedVariant
+        U.IsNil -> IsNil
+        U.NoVersion -> NoVersion

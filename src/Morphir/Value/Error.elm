@@ -24,6 +24,7 @@ type Error
     | ExpectedMaybe RawValue
     | ExpectedResult RawValue
     | ExpectedDerivedType FQName RawValue
+    | ExpectedUUID RawValue
     | IfThenElseConditionShouldEvaluateToBool RawValue RawValue
     | FieldNotFound RawValue Name
     | RecordExpected RawValue RawValue
@@ -102,6 +103,9 @@ toString error =
 
         ExpectedDerivedType _ val ->
             differentValueExpected "Derived Type" val
+
+        ExpectedUUID val ->
+            differentValueExpected "UUID" val
 
         IfThenElseConditionShouldEvaluateToBool a b ->
             "The if-then-else condition " ++ Value.toString a ++ " should evaluate to True/False instead of " ++ Value.toString b

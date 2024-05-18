@@ -7,6 +7,7 @@
     "elm-version": "0.19.1",
     "dependencies": {
         "direct": {
+            "TSFoster/elm-uuid": "4.2.0",
             "chain-partners/elm-bignum": "1.0.1",
             "cuducos/elm-format-number": "9.0.1",
             "dillonkearns/elm-markdown": "7.0.1",
@@ -37,10 +38,15 @@
             "stil4m/elm-syntax": "7.2.9"
         },
         "indirect": {
+            "TSFoster/elm-bytes-extra": "1.3.0",
+            "TSFoster/elm-md5": "2.0.1",
+            "TSFoster/elm-sha1": "2.1.1",
             "avh4/elm-color": "1.0.0",
             "avh4/elm-fifo": "1.0.4",
+            "danfishgold/base64-bytes": "1.1.0",
             "elm/bytes": "1.0.8",
             "elm/file": "1.0.5",
+            "elm/random": "1.0.0",
             "elm/virtual-dom": "1.0.3",
             "elm-community/intdict": "3.0.0",
             "miniBill/elm-unicode": "1.0.3",

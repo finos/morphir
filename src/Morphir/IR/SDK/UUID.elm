@@ -17,9 +17,10 @@ import Morphir.IR.SDK.Basics exposing (intType, orderType, boolType)
 import Morphir.Value.Native as Native
 import Morphir.Value.Native exposing (eval1, eval2)
 import Morphir.SDK.UUID as UUID
+import Morphir.Value.Error as ValueError
 import Morphir.Value.Native exposing (decodeLiteral, encodeLiteral, stringLiteral, intLiteral, encodeMaybe)
 import Morphir.Value.Native exposing (eval0)
-import Morphir.Value.Native exposing (encodeUUID, encodeUUID2)
+import Morphir.Value.Native exposing (encodeUUID)
 import Morphir.IR.SDK.Maybe exposing (maybeType)
 import Morphir.Value.Native exposing (decodeUUID)
 import Morphir.Value.Native.Comparable exposing (compareValue)
@@ -33,6 +34,17 @@ moduleSpec =
     { types = 
         Dict.fromList
             [ (Name.fromString "UUID", OpaqueTypeSpecification [] |> Documented "Type that represents a UUID v5")
+            , (Name.fromString "Error"
+                , CustomTypeSpecification []
+                    (Dict.fromList
+                        [ (Name.fromString "WrongFormat", [])
+                        , (Name.fromString "WrongLength", [])
+                        , (Name.fromString "UnsupportedVariant", [])
+                        , (Name.fromString "IsNil", [])
+                        , (Name.fromString "NoVersion", [])
+                        ]
+                    )
+                    |> Documented "Type that represents an UUID parsing error")
             ]
     , values =
         Dict.fromList
@@ -60,12 +72,33 @@ errorType: a -> Type a
 errorType attributes =
     Reference attributes (toFQName moduleName "Error") []
 
+wrongFormat: va -> Value ta va
+wrongFormat attributes =
+    Value.Constructor attributes (toFQName moduleName "WrongFormat")
+
+wrongLength: va -> Value ta va
+wrongLength attributes =
+    Value.Constructor attributes (toFQName moduleName "WrongLength")
+
+unsupportedVariant: va -> Value ta va
+unsupportedVariant attributes =
+    Value.Constructor attributes (toFQName moduleName "UnsupportedVariant")
+
+isNil: va -> Value ta va
+isNil attributes =
+    Value.Constructor attributes (toFQName moduleName "IsNil")
+
+noVersion: va -> Value ta va
+noVersion attributes =
+    Value.Constructor attributes (toFQName moduleName "NoVersion")
+
+
 nativeFunctions : List ( String, Native.Function )
 nativeFunctions = 
     [ ( "forName" 
         , eval2 UUID.forName (decodeLiteral stringLiteral) decodeUUID (encodeUUID))
     , ( "parse" 
-        , eval1 UUID.parse (decodeLiteral stringLiteral) (encodeUUID2))
+        , eval1 UUID.parse (decodeLiteral stringLiteral) (encodeUUIDParseResult))
     , ( "fromString" 
         , eval1 UUID.fromString (decodeLiteral stringLiteral) (encodeMaybe encodeUUID))
     , ( "toString"
@@ -109,3 +142,21 @@ encodeOrder =
                         "EQ"
         in
         Value.Constructor () (toFQName moduleName val)
+
+{-| -}
+encodeUUIDParseResult : (Result UUID.Error UUID.UUID) -> Result ValueError.Error Value.RawValue
+encodeUUIDParseResult result =
+    case result of
+        Ok uuid ->
+            UUID.toString uuid
+                |> StringLiteral
+                |> Value.Literal ()
+                |> Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "uuid" ] ], [ "from", "string" ] ))
+                |> Ok
+        Err UUID.WrongFormat -> wrongFormat () |> Ok
+        Err UUID.WrongLength -> wrongLength () |> Ok
+        Err UUID.UnsupportedVariant -> unsupportedVariant () |> Ok
+        Err UUID.IsNil -> isNil () |> Ok
+        Err UUID.NoVersion -> noVersion () |> Ok
+
+

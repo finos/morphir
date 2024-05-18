@@ -24,7 +24,6 @@ module Morphir.Scala.PrettyPrinter exposing (Options, mapCompilationUnit, mapMem
 -}
 
 import Decimal
-import UUID
 import Morphir.File.SourceCode exposing (Doc, concat, dot, dotSep, empty, indent, indentLines, newLine, parens, space)
 import Morphir.IR.Name as Name
 import Morphir.Scala.AST exposing (..)
@@ -677,9 +676,6 @@ mapLit lit =
 
         DecimalLit decimal ->
             Decimal.toString decimal
-
-        UUIDLit uuid ->
-            UUID.toString uuid
 
         NullLit ->
             "null"
