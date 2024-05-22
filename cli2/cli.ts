@@ -5,6 +5,8 @@ import * as util from "util";
 import * as path from "path";
 import * as FileChanges from "./FileChanges";
 import * as Dependencies from "./dependencies";
+import { DependencyConfig } from "./dependencies";
+import { z } from "zod";
 
 const fsExists = util.promisify(fs.exists);
 const fsWriteFile = util.promisify(fs.writeFile);
@@ -14,9 +16,13 @@ const readdir = util.promisify(fs.readdir);
 
 const worker = require("./../Morphir.Elm.CLI").Elm.Morphir.Elm.CLI.init();
 
+const Includes = z.array(z.string()).optional();
+type Includes = z.infer<typeof Includes>;
+
 interface MorphirJson {
   name: string;
   sourceDirectory: string;
+  dependencies?: string[];
   localDependencies?: string[];
   exposedModules: string[];
 }
@@ -30,15 +36,21 @@ async function make(
   const hashFilePath: string = path.join(projectDir, "morphir-hashes.json");
   const morphirIrPath: string = path.join(projectDir, "morphir-ir.json");
 
+
   // Load the `morphir.json` file that describes the project
   const morphirJson: MorphirJson = JSON.parse(
     (await fsReadFile(morphirJsonPath)).toString()
   );
 
+  const includes = Includes.parse(options.include);
+  const dependencyConfig = DependencyConfig.parse({
+    dependencies: morphirJson.dependencies,
+    localDependencies: morphirJson.localDependencies,
+    includes: includes
+  })
+
   //load List Of Dependency IR
-  const dependencies = await Dependencies.getDependecies(
-    morphirJson.localDependencies ?? []
-  );
+  const dependencies = await Dependencies.loadAllDependencies(dependencyConfig);
 
   // check the status of the build incremental flag
   if (options.buildIncrementally == false) {

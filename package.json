@@ -66,9 +66,11 @@
   "homepage": "https://github.com/Morgan-Stanley/morphir-elm#readme",
   "devDependencies": {
     "@morphir/typespec-sdk": "file:redistributable/TypeSpec/sdk",
+    "@types/data-urls": "^3.0.4",
     "@types/inquirer": "^9.0.3",
     "@types/jest": "^27.4.0",
     "@types/mocha": "^9.0.0",
+    "@types/whatwg-encoding": "^2.0.3",
     "@typespec/compiler": "^0.42.0",
     "@vercel/ncc": "^0.38.1",
     "del-cli": "3.0.1",
@@ -100,12 +102,18 @@
     "chalk": "^4.1.1",
     "commander": "^9.0.0",
     "cookie-parser": "^1.4.6",
+    "data-urls": "^5.0.0",
     "express": "^4.19.2",
     "fs-extra": "^9.1.0",
     "get-stdin": "^8.0.0",
+    "get-uri": "^6.0.3",
     "inquirer": "^8.0.0",
     "log-timestamp": "^0.3.0",
+    "neverthrow": "^6.2.1",
+    "packageurl-js": "^1.2.1",
     "prettier": "^2.4.1",
-    "vis-network": "^9.1.2"
+    "vis-network": "^9.1.2",
+    "whatwg-encoding": "^3.1.1",
+    "zod": "^3.23.8"
   }
 }
