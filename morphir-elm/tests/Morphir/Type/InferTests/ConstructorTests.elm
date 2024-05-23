@@ -1,0 +1,30 @@
+module Morphir.Type.InferTests.ConstructorTests exposing (..)
+
+import Morphir.IR.FQName exposing (fqn)
+import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.SDK.Basics exposing (floatType)
+import Morphir.IR.SDK.String exposing (stringType)
+import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Value as Value exposing (Value)
+
+
+positiveOutcomes : List (Value () (Type ()))
+positiveOutcomes =
+    [ Value.Constructor (Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "0" ] ])
+        (fqn "Morphir.SDK" "Maybe" "Nothing")
+    , Value.Apply (Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ floatType () ])
+        (Value.Constructor (Type.Function () (floatType ()) (Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ floatType () ]))
+            (fqn "Morphir.SDK" "Maybe" "Just")
+        )
+        (Value.Literal (floatType ()) (FloatLiteral 2))
+    , Value.Apply (Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ Type.Variable () [ "t", "0" ], floatType () ])
+        (Value.Constructor (Type.Function () (floatType ()) (Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ Type.Variable () [ "t", "0" ], floatType () ]))
+            (fqn "Morphir.SDK" "Result" "Ok")
+        )
+        (Value.Literal (floatType ()) (FloatLiteral 2))
+    , Value.Apply (Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ stringType (), Type.Variable () [ "t", "1" ] ])
+        (Value.Constructor (Type.Function () (stringType ()) (Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ stringType (), Type.Variable () [ "t", "1" ] ]))
+            (fqn "Morphir.SDK" "Result" "Err")
+        )
+        (Value.Literal (stringType ()) (StringLiteral "err"))
+    ]

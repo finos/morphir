@@ -1,0 +1,8 @@
+{
+    "ignore": [
+        { "id": "sonatype-2012-0022", "reason": "ExpressJs has no intentions of fixing this `HTTP Splitting Attack`" },
+        { "id": "CVE-2022-2596", "reason": "Typespec Compiler using node-fetch < 3.2.10" },
+        { "id": "sonatype-2022-3677", "reason": "Node-fetch - Exposure of Sensitive Information to an Unauthorized Actor" },
+        { "id": "sonatype-2021-0078", "reason": "After scanning the code we found that we are not using the impacted Express.js functions" }
+    ]
+}

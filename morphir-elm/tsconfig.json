@@ -1,0 +1,7 @@
+{
+    "compilerOptions": {
+        "types": ["node", "mocha", "jest"],
+        "lib": ["ES2019"],
+        "target": "es2019"
+    }
+}

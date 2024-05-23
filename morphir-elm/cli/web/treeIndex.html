@@ -1,0 +1,212 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Morphir.Web.MultiaryDecisionTreeTest</title>
+  <script src="treeStuff.js"></script>
+  <!--  TODOS: Line up arrows, change font-->
+  <style>
+    table.tree-view {
+    background-color: white;
+    width: 25%;
+    overflow:hidden; /* we can use a clearfix or overflow:hidden, I prefer overflow:hidden for most cases*/
+    min-width: 512px;
+    display: block;
+    overflow-Y: scroll;
+    height: 700px;
+    border-right: solid 2em;
+    border-top: solid 3em;
+    border-bottom: solid 3em;
+    border-color :  #1c5d94;
+    padding-left: 2%;
+    padding-top: 2%;
+    }
+
+    td {
+      min-width:24px;
+    }
+
+    tr.tree-view {
+    }
+
+    td.tree-view {
+      padding: 4px;
+      font-size: .7em;
+    }
+
+    .highlighted-node {
+      color: #005093;
+      font-weight : bold;
+    }
+
+    td.tree-view-selected-node {
+      font-weight : bold;
+    }
+
+    td.tree-view-indentation {
+      width: 10px;
+    }
+
+    td.tree-view-bullet-expanded {
+      background: url(https://img.icons8.com/material-outlined/24/000000/minus-sign.png);
+      background-repeat: no-repeat;
+      background-size: contain;
+      width: 20px;
+    }
+
+    label.tree-view-bullet-expanded {
+      opacity: 0;
+      padding-left: 3px;
+      cursor: pointer;
+    }
+
+    td.tree-view-bullet-collapsed {
+      background: url(https://img.icons8.com/material-outlined/24/000000/plus--v1.png);
+      background-repeat: no-repeat;
+      background-size: contain;
+      width: 20px;
+    }
+
+    .l-d {
+        padding-top : 16px;
+    }
+
+    label.tree-view-bullet-collapsed {
+      opacity: 0;
+      padding-left: 3px;
+      cursor: pointer;
+    }
+
+    td.tree-view-bullet-leaf {
+      background: url(https://img.icons8.com/material/24/000000/sort-right--v1.png);
+      background-repeat: no-repeat;
+      background-size: contain;
+      width: 20px;
+    }
+
+    #navigableTreeContent {
+      width: 100vw;
+      height: 500px;
+      overflow: auto;
+    }
+
+    .hidden-on-start {
+      display: none;
+    }
+
+    .wrapper {
+      margin-right: auto; /* 1 */
+      margin-left:  auto; /* 1 */
+      max-width: 960px; /* 2 */
+      padding-right: 10px; /* 3 */
+      padding-left:  10px; /* 3 */
+    }
+
+    #all-dropdowns {
+      flex: 1;
+      z-index: 0;
+      height:700px;
+      padding: 35px;
+      background-color: #1c5d94;
+      width: 365px;
+
+    }
+
+    .dropdown {
+      display: block;
+      font-size: 18px;
+      width: 260px;
+    }
+    .title-arboretum {
+      font-size: 40px;
+      display: block;
+    }
+
+    #code-select-2 {
+      display: none;
+    }
+
+    #code-select-2-label {
+      display: none;
+    }
+
+
+
+
+    .center-screen {
+      display : flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      /*background-color: #005093;*/
+      background-color: #141738;
+    }
+    #negative-no-child-2 {
+      display: none;
+    }
+
+    #negative-no-child-2-label {
+      display: none;
+    }
+
+    #negative-select-2 {
+      display: none;
+    }
+
+    #negative-select-2-label {
+      display: none;
+    }
+
+
+
+  </style>
+  <!-- Required meta tags -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
+</head>
+
+<body>
+
+<div id="elm"></div>
+
+<script>
+    //ELM integration in JavaScript for interoperability
+    var app = Elm.Morphir.Web.MultiaryDecisionTreeTest.init({
+    node : document.getElementById('elm'),
+    flags : {}
+    });
+
+    document.getElementById('seg-cash-select').addEventListener('change', function () {
+      var style = this.value == 'Classify By Counter Party ID/True' ? 'block' : 'none';
+      var oppStyle = this.value == 'Classify By Counter Party ID/False' ? 'block' : 'none';
+      document.getElementById('code-select-1').style.display = style;
+      document.getElementById('code-select-1-label').style.display = style;
+      document.getElementById('code-select-1').selectedIndex = 0;
+      document.getElementById('code-select-2').style.display = oppStyle;
+      document.getElementById('code-select-2-label').style.display = oppStyle;
+      document.getElementById('code-select-2').selectedIndex = 0;
+    });
+
+    document.getElementById('on-shore-select').addEventListener('change', function () {
+      var style = this.value == 'Is NetUsd Amount Negative/True' ? 'block' : 'none';
+      var oppStyle = this.value == 'Is NetUsd Amount Negative/False' ? 'block' : 'none';
+      document.getElementById('negative-select').style.display = style;
+      document.getElementById('negative-select-label').style.display = style;
+      document.getElementById('negative-no-child-select').style.display = style;
+      document.getElementById('negative-no-child-select-label').style.display = style;
+      document.getElementById('negative-no-child-2').style.display = oppStyle;
+      document.getElementById('negative-select-2').style.display = oppStyle;
+      document.getElementById('negative-select-2-label').style.display = oppStyle;
+      document.getElementById('negative-no-child-select-2').style.display = oppStyle;
+      document.getElementById('negative-no-child-select-2-label').style.display = oppStyle;
+    });
+
+
+
+</script>
+
+</body>
+</html>

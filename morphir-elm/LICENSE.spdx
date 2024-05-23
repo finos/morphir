@@ -1,0 +1,7 @@
+SPDXVersion: SPDX-2.0
+DataLicense: CC0-1.0
+Creator: Morgan Stanley
+PackageName: Morphir
+PackageOriginator: Morgan Stanley
+PackageHomePage: https://github.com/finos/morphir
+PackageLicenseDeclared: Apache-2.0

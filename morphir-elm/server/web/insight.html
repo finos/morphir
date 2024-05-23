@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Morphir UI</title>
+    <script src="insight.js"></script>
+</head>
+<body>
+    <div id="app"></div>
+</body>
+<script>
+
+    //Function to get JSON response from server
+    function httpGet(theUrl)
+    {
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
+        xmlHttp.send(null);
+        return JSON.parse(xmlHttp.responseText);
+    }
+
+    //HTTP GET request to fetch distribution JSON from server
+    var distribution = httpGet("/server/morphir-ir.json");
+
+    //ELM integration in JavaScript for interoperability
+    var app = Elm.Morphir.Web.Insight.init({
+    node : document.getElementById('app'),
+    flags : {   distribution : distribution
+            ,   config : {  fontSize : 12 , decimalDigit : 2 }
+            }
+    });
+
+    //Sending Function Name threw port
+    app.ports.receiveFunctionName.send("Insight.UseCase1:limitTracking");
+
+    //Sending Arguments List threw port
+    var argsList = [10 ,13 ,-16 ,15 ,-10];
+    app.ports.receiveFunctionArguments.send(argsList);
+
+</script>
+</html>

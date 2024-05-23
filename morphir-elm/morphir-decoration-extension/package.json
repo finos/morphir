@@ -1,0 +1,103 @@
+{
+  "name": "morphirdecorations",
+  "displayName": "MorphirDecorations",
+  "description": "",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.76.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:morphir-deco-sidebar"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "morphir-deco-sidebar-view",
+          "title": "Morphir Decorations",
+          "icon": "media/logo.svg"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "decorations",
+        "contents": "In order to use this extension, you need to have generated a Morphir IR and also configured Decorations on the Morphir Project. \nTo learn more about how to configure the morphir decorations [read our docs](https://morphir.finos.org/docs/decorations-users-guide).",
+        "when": "decorations.isConfigured == true"
+      }
+    ],
+    "views": {
+      "morphir-deco-sidebar-view": [
+        {
+          "id": "decorations",
+          "name": "Morphir Decorations",
+          "icon": "media/logo.svg"
+        }
+      ],
+      "explorer": []
+    },
+    "commands": [
+      {
+        "command": "decorations.refreshEntry",
+        "title": "Refresh",
+        "icon": {
+          "light": "media/light-refresh.svg",
+          "dark": "media/dark-refresh.svg"
+        }
+      },
+      {
+        "command": "decorations.editor",
+        "title": "Editor"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "decorations.refreshEntry",
+          "when": "view == Decorations",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": []
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack  --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "16.x",
+    "@types/vscode": "^1.76.0",
+    "@typescript-eslint/eslint-plugin": "^5.53.0",
+    "@typescript-eslint/parser": "^5.53.0",
+    "@vscode/test-electron": "^2.2.3",
+    "concurrently": "^7.6.0",
+    "eslint": "^8.34.0",
+    "glob": "^8.1.0",
+    "mocha": "^10.2.0",
+    "svelte-check": "^3.1.4",
+    "svelte-preprocess": "^5.0.3",
+    "ts-loader": "^9.4.2",
+    "typescript": "^4.9.5",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1"
+  },
+  "dependencies": {
+    "comment-json": "^4.2.3",
+    "jsonc-parser": "^3.2.0",
+    "morphir-elm": "^2.86.0"
+  }
+}
