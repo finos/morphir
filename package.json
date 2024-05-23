@@ -1,0 +1,13 @@
+{
+  "name": "morphir-home",
+  "private": true,
+  "workspaces": [
+    "apps/js-cli"
+  ],
+  "scripts": {
+    "build:elm-package":"elm make"
+  },
+  "devDependencies": {
+    "elm-tooling": "^1.15.1"
+  }
+}
