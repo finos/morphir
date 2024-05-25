@@ -1,6 +1,6 @@
 import Bun from "bun";
 import ElmPlugin from "bun-elm-plugin";
-import { type ElmPluginConfig } from "bun-elm-plugin";
+import { type ElmPluginConfig, DefaultConfig } from "bun-elm-plugin";
 import { log, LogLevel, tag } from "firan-logging";
 import chalk from "chalk";
 
@@ -31,7 +31,7 @@ log.init(
   }
 );
 
-const elmPluginConfig: ElmPluginConfig = {};
+const elmPluginConfig: ElmPluginConfig = { ...DefaultConfig };
 
 await Bun.build({
   entrypoints: ["src/morphir.ts", "src/lib.ts"],
