@@ -5,7 +5,9 @@
     "apps/js-cli"
   ],
   "scripts": {
-    "build:elm-package":"elm make"
+    "build:verify-elm-package": "zig build verify-elm-package --summary all",
+    "build:check-elm-docs": "zig build check-elm-docs --summary all",
+    "postinstall": "elm-tooling install"
   },
   "devDependencies": {
     "elm-tooling": "^1.15.1"
