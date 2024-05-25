@@ -5,8 +5,10 @@ import * as util from "util";
 import * as path from "path";
 import * as FileChanges from "./FileChanges";
 import * as Dependencies from "./dependencies";
+
 import { DependencyConfig } from "./dependencies";
 import { z } from "zod";
+import CLI from './elm/Morphir/Elm/CLI.elm';
 
 const fsExists = util.promisify(fs.exists);
 const fsWriteFile = util.promisify(fs.writeFile);
@@ -14,7 +16,7 @@ const fsMakeDir = util.promisify(fs.mkdir);
 const fsReadFile = util.promisify(fs.readFile);
 const readdir = util.promisify(fs.readdir);
 
-const worker = require("./../Morphir.Elm.CLI").Elm.Morphir.Elm.CLI.init();
+const worker = CLI.init();
 
 const Includes = z.array(z.string()).optional();
 type Includes = z.infer<typeof Includes>;

@@ -1,16 +1,19 @@
 #!/usr/bin/env node
 // NPM imports
-import path from 'path'
-import {Command} from 'commander'
+import { Command } from 'commander';
+import { readPackageUpSync } from 'read-package-up';
+import * as morphirMake from './morphir-make';
 
 // Read the package.json of this package
-const packageJson = require(path.join(__dirname, '../../package.json'))
+const packageJson = readPackageUpSync()?.packageJson;
+
+let version = packageJson?.version || '0.0.0';
 
 // Set up Commander
 const program = new Command()
 program
-    .version(packageJson.version, '-v, --version')
-    .command('make', 'Translate Elm sources to Morphir IR')
+    .version(version, '-v, --version')
+    .addCommand(morphirMake.createCommand())
     .command('scala-gen', 'Generate scala code from Morphir IR')
     .command('json-schema-gen', 'Generate Json Schema from the Morphir IR')
     .command('snowpark-gen','Generate Scala with Snowpark code from Morphir IR')
