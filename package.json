@@ -3,7 +3,7 @@
   "private": true,
   "workspaces": [
     "apps/js-cli",
-    "packages/morphir-elm-compiler"
+    "packages/*"
   ],
   "scripts": {
     "build:verify-elm-package": "zig build verify-elm-package --summary all",
