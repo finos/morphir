@@ -18,4 +18,4 @@ zig-out/
 
 # Build Artifacts
 out/
-
+dist/

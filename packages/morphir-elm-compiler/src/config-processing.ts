@@ -4,7 +4,6 @@ This file serves as the entrypoint for Json Schema Backend configuration process
 import * as fs from "fs";
 import * as path from 'path';
 import * as util from 'util'
-import cli from "./cli";
 
 const fsReadFile = util.promisify(fs.readFile);
 const configFilePath: string = "JsonSchema.config.json";

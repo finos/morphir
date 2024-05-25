@@ -25,7 +25,7 @@ program
     .parse(process.argv)
 
 configProcessing.inferBackendConfig(program.opts()).then((options) => {
-    cli.gen(program.opts().input, path.resolve(program.opts().output), options)
+    cli.gen(program.opts()['input'], path.resolve(program.opts()['output']), options)
     .then(() => {
         console.log("Done")
     })

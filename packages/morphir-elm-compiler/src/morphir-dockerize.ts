@@ -16,4 +16,4 @@ program
     .parse(process.argv)
 
 // run 
-dockerize( program.opts().projectDir, program.opts() )
+dockerize( program.opts()['projectDir'], program.opts() )

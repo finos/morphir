@@ -1,5 +1,5 @@
-import * as util from "util";
-import * as fs from "fs";
+// import * as util from "util";
+// import * as fs from "fs";
 import { z } from "zod";
 import { getUri } from "get-uri";
 import { decode, labelToName } from "whatwg-encoding";
@@ -7,7 +7,7 @@ import { Readable } from "stream";
 import { ResultAsync } from "neverthrow";
 
 const parseDataUrl = require("data-urls");
-const fsReadFile = util.promisify(fs.readFile);
+//const fsReadFile = util.promisify(fs.readFile);
 
 const DataUrl = z.string().trim().transform((val, ctx) => {
   const parsed = parseDataUrl(val)
@@ -34,15 +34,15 @@ const FileUrl = z.string().trim().url().transform((val, ctx) => {
 
 const Url = z.string().url().transform((url) => new URL(url));
 
-const PathOrUrl = z.union([FileUrl, z.string().trim().min(1)]);
+//const PathOrUrl = z.union([FileUrl, z.string().trim().min(1)]);
 
-const GithubData = z.object({
-  owner: z.string(),
-  repo: z.string(),
-  baseUrl: z.string().optional()
-});
+// const GithubData = z.object({
+//   owner: z.string(),
+//   repo: z.string(),
+//   baseUrl: z.string().optional()
+// });
 
-const GithubConfig = z.union([GithubData, z.string()]);
+//const GithubConfig = z.union([GithubData, z.string()]);
 
 const DependencySettings = z.union([DataUrl, FileUrl, z.string().trim()])
 const Dependencies = z.array(DependencySettings).default([]);
@@ -88,22 +88,22 @@ const DependencyConfigToDependencyEvents = DependencyConfig.transform((config) =
 });
 
 
-const MorphirDistribution = z.tuple([z.string()]).rest(z.unknown());
-const MorphirIRFile = z.object({
-  formatVersion: z.number().int(),
-  distribution: MorphirDistribution
-}).passthrough();
+//const MorphirDistribution = z.tuple([z.string()]).rest(z.unknown());
+// const MorphirIRFile = z.object({
+//   formatVersion: z.number().int(),
+//   distribution: MorphirDistribution
+// }).passthrough();
 
 type DataUrl = z.infer<typeof DataUrl>;
 type FileUrl = z.infer<typeof FileUrl>;
 type Url = z.infer<typeof Url>;
 type DependencyConfigToDependencyEvents = z.infer<typeof DependencyConfigToDependencyEvents>
-type PathOrUrl = z.infer<typeof PathOrUrl>;
-type GithubData = z.infer<typeof GithubData>;
-type GithubConfig = z.infer<typeof GithubConfig>;
+//type PathOrUrl = z.infer<typeof PathOrUrl>;
+//type GithubData = z.infer<typeof GithubData>;
+//type GithubConfig = z.infer<typeof GithubConfig>;
 type DependencyEvent = z.infer<typeof DependencyEvent>;
-type MorphirDistribution = z.infer<typeof MorphirDistribution>;
-type MorphirIRFile = z.infer<typeof MorphirIRFile>;
+//type MorphirDistribution = z.infer<typeof MorphirDistribution>;
+//type MorphirIRFile = z.infer<typeof MorphirIRFile>;
 export type DependencyConfig = z.infer<typeof DependencyConfig>;
 
 export async function loadAllDependencies(config: DependencyConfig) {
@@ -218,23 +218,23 @@ class DependencyError extends Error {
   source?: string;
 }
 
-class LocalDependencyNotFound extends Error {
-  constructor(message: string, source?: string, pathOrUrl?: PathOrUrl, cause?: Error | unknown) {
-    super(message);
-    this.name = "LocalDependencyNotFound";
-    if (cause) {
-      this.cause = cause;
-    }
-    if (pathOrUrl) {
-      this.pathOrUrl = pathOrUrl;
-    }
-    if (source) {
-      this.source = source;
-    }
-  }
+// class LocalDependencyNotFound extends Error {
+//   constructor(message: string, source?: string, pathOrUrl?: PathOrUrl, cause?: Error | unknown) {
+//     super(message);
+//     this.name = "LocalDependencyNotFound";
+//     if (cause) {
+//       this.cause = cause;
+//     }
+//     if (pathOrUrl) {
+//       this.pathOrUrl = pathOrUrl;
+//     }
+//     if (source) {
+//       this.source = source;
+//     }
+//   }
 
-  cause?: Error | unknown;
-  pathOrUrl?: PathOrUrl;
-  source?: string;
+//   cause?: Error | unknown;
+//   pathOrUrl?: PathOrUrl;
+//   source?: string;
 
-}
+// }

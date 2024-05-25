@@ -4,9 +4,9 @@
 import * as fs from "fs";
 import path from 'path';
 import {Command} from 'commander'
-import cli = require('./cli')
 import * as util from 'util'
 
+const cli = require('./cli')
 
 const fsWriteFile = util.promisify(fs.writeFile);
 const fsMakeDir = util.promisify(fs.mkdir);
@@ -121,7 +121,7 @@ program
     .option('--generate-test-scalatest', 'Generate runnable scalatest test cases', false)
     .parse(process.argv)
 
-gen(program.opts().input, path.resolve(program.opts().output), program.opts())
+gen(program.opts()['input'], path.resolve(program.opts()['output']), program.opts())
     .then(() =>{
         console.log("Done")
     })

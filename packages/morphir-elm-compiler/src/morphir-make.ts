@@ -22,4 +22,4 @@ program
 const dirAndOutput = program.opts()
 
 // run make
-make(dirAndOutput.projectDir, dirAndOutput)
+make(dirAndOutput['projectDir'], dirAndOutput)

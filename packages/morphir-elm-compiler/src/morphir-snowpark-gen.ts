@@ -3,9 +3,9 @@
 // NPM imports
 import * as fs from "fs";
 import path from 'path';
-import { Command } from 'commander'
-import cli = require('./cli')
-import * as util from 'util'
+import { Command } from 'commander';
+import * as util from 'util';
+const cli = require('./cli');
 
 const fsWriteFile = util.promisify(fs.writeFile);
 const fsMakeDir = util.promisify(fs.mkdir);
@@ -29,7 +29,7 @@ interface CommandOptions {
 }
 
 function copyRedistributables(outputPath: string) {
-  const copyFiles = (src: string, dest: string) => {
+  const copyFiles = (src: string, _dest: string) => {
     const sourceDirectory: string = path.join(
       path.dirname(__dirname),
       "redistributable",
@@ -136,7 +136,7 @@ program
 
   .parse(process.argv)
 
-gen(program.opts().input, path.resolve(program.opts().output), program.opts())
+gen(program.opts()['input'], path.resolve(program.opts()['output']), program.opts())
   .then(() => {
     console.log('Done')
   })

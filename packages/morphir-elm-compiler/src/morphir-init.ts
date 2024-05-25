@@ -3,11 +3,11 @@ import chalk from 'chalk'
 import path from 'path'
 import { promisify } from 'util'
 import { Command } from 'commander'
-import inquirer, { Answers, Question } from 'inquirer'
+import inquirer, { Answers} from 'inquirer'
 
 const exists = promisify(FileSystemModule.exists)
 const writeFile = promisify(FileSystemModule.writeFile)
-const readFile = promisify(FileSystemModule.readFile)
+//const readFile = promisify(FileSystemModule.readFile)
 const mkdir = promisify(FileSystemModule.mkdir)
 
 interface InitAnswers extends Answers {

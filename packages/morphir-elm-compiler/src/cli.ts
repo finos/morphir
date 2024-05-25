@@ -281,7 +281,7 @@ interface CommandOptions {
 const stats = async (
   input: string,
   outputPath: string,
-  options: CommandOptions
+  _options: CommandOptions
 ) => {
   await fsMakeDir(outputPath, {
     recursive: true,
@@ -338,7 +338,7 @@ const stats = async (
 };
 
 const fileExist = async (filePath: string) => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, _reject) => {
     fs.access(filePath, fs.constants.F_OK, (err) => {
       if (err) {
         resolve(false);
@@ -375,7 +375,7 @@ const findFilesToDelete = async (outputPath: string, fileMap: string[]) => {
       }, Promise.resolve([]));
     return filesToDelete.concat(await subDirFilesToDelete);
   };
-  const files = fileMap.map(([[dirPath, fileName], content]: any) => {
+  const files = fileMap.map(([[dirPath, fileName], _content]: any) => {
     const fileDir = dirPath.reduce(
       (accum: string, next: string) => path.join(accum, next),
       outputPath
@@ -386,7 +386,7 @@ const findFilesToDelete = async (outputPath: string, fileMap: string[]) => {
 };
 
 function copyRedistributables(options: CommandOptions, outputPath: string) {
-  const copyFiles = (src: string, dest: string) => {
+  const copyFiles = (src: string, _dest: string) => {
     const sourceDirectory: string = path.join(
       path.dirname(__dirname),
       "redistributable",
@@ -518,8 +518,8 @@ async function writeDockerfile(
 async function testCoverage(
   irPath: string,
   testsPath: string,
-  outputPath: string,
-  options: CommandOptions
+  _outputPath: string,
+  _options: CommandOptions
 ) {
   // Morphir IR
   const morphirIR: Buffer = await fsReadFile(path.resolve(irPath))
@@ -530,7 +530,7 @@ async function testCoverage(
   const morphirTestJson: JSON = JSON.parse(morphirTest.toString())
 
   // output path 
-  const output = path.join(path.resolve(outputPath), "morphir-test-coverage.json")
+  //const _output = path.join(path.resolve(outputPath), "morphir-test-coverage.json")
 
   return new Promise((resolve, reject) => {
     worker.ports.testCoverageResult.subscribe(([err, data]: any) => {
@@ -547,7 +547,7 @@ async function testCoverage(
   });
 }
 
-export = {
+export default {
   gen,
   make,
   writeFile,

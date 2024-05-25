@@ -1,7 +1,7 @@
-import * as util from 'util'
-import * as fs from 'fs'
-import * as path from 'path'
-import crypto from 'crypto'
+import * as util from 'util';
+import * as fs from 'fs';
+import * as path from 'path';
+import crypto from 'crypto';
 
 const fsExists = util.promisify(fs.exists)
 const fsReadDir = util.promisify(fs.readdir)
