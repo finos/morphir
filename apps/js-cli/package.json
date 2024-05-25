@@ -1,3 +1,4 @@
 {
-    "name": "@finos/morphir-cli"    
+  "name": "@finos/morphir-cli",
+  "version": "0.0.0"
 }
