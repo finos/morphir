@@ -4,6 +4,6 @@ import { ElmPlugin } from "bun-elm-plugin";
 console.log("Preload is running...");
 
 console.log("Registering Elm plugin...");
-plugin(ElmPlugin());
+//plugin(ElmPlugin());
 
 console.log("Preload is done.");
