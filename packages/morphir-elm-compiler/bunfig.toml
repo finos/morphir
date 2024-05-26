@@ -1,1 +1,1 @@
-#preload = ["./preload.ts"]
+preload = ["./preload.ts"]
