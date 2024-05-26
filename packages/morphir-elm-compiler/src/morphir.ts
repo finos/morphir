@@ -3,6 +3,7 @@
 import { Command } from "commander";
 import { readPackageUpSync } from "read-package-up";
 import * as morphirMake from "./morphir-make";
+import * as morphirStats from "./morphir-stats";
 import * as morphirInit from "./morphir-init";
 
 // Read the package.json of this package
@@ -18,7 +19,7 @@ program
   .command("scala-gen", "Generate scala code from Morphir IR")
   .command("json-schema-gen", "Generate Json Schema from the Morphir IR")
   .command("snowpark-gen", "Generate Scala with Snowpark code from Morphir IR")
-  .command("stats", "Collect morphir features used in a model into a document")
+  .addCommand(morphirStats.command)
   .command(
     "dockerize",
     "Creates a docker image of a Morphir IR and Morphir Develop"
