@@ -38,7 +38,7 @@ function run() {
   console.log(
     "I'll create a new morphir project for you, you just need to provide some details.\n"
   );
-  inquirer
+  return inquirer
     .prompt<InitAnswers>([
       {
         type: "list",

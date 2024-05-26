@@ -8,7 +8,7 @@ import * as Dependencies from "./dependencies";
 
 import { DependencyConfig } from "./dependencies";
 import { z } from "zod";
-import CLI from './elm/Morphir/Elm/CLI.elm';
+import CLI from "./elm/Morphir/Elm/CLI.elm";
 
 const fsExists = util.promisify(fs.exists);
 const fsWriteFile = util.promisify(fs.writeFile);
@@ -38,7 +38,6 @@ async function make(
   const hashFilePath: string = path.join(projectDir, "morphir-hashes.json");
   const morphirIrPath: string = path.join(projectDir, "morphir-ir.json");
 
-
   // Load the `morphir.json` file that describes the project
   const morphirJson: MorphirJson = JSON.parse(
     (await fsReadFile(morphirJsonPath)).toString()
@@ -48,8 +47,8 @@ async function make(
   const dependencyConfig = DependencyConfig.parse({
     dependencies: morphirJson.dependencies,
     localDependencies: morphirJson.localDependencies,
-    includes: includes
-  })
+    includes: includes,
+  });
 
   //load List Of Dependency IR
   const dependencies = await Dependencies.loadAllDependencies(dependencyConfig);
@@ -521,31 +520,30 @@ async function testCoverage(
   irPath: string,
   testsPath: string,
   _outputPath: string,
-  _options: CommandOptions
+  _options: { ir: string; tests: string; output: string }
 ) {
   // Morphir IR
-  const morphirIR: Buffer = await fsReadFile(path.resolve(irPath))
-  const morphirIRJson: JSON = JSON.parse(morphirIR.toString())
+  const morphirIR: Buffer = await fsReadFile(path.resolve(irPath));
+  const morphirIRJson: JSON = JSON.parse(morphirIR.toString());
 
   // read Morphir Test
-  const morphirTest: Buffer = await fsReadFile(path.resolve(testsPath))
-  const morphirTestJson: JSON = JSON.parse(morphirTest.toString())
+  const morphirTest: Buffer = await fsReadFile(path.resolve(testsPath));
+  const morphirTestJson: JSON = JSON.parse(morphirTest.toString());
 
-  // output path 
+  // output path
   //const _output = path.join(path.resolve(outputPath), "morphir-test-coverage.json")
 
   return new Promise((resolve, reject) => {
     worker.ports.testCoverageResult.subscribe(([err, data]: any) => {
       if (err) {
-        reject(err)
+        reject(err);
+      } else {
+        resolve(data);
       }
-      else {
-        resolve(data)
-      }
-    })
+    });
 
     // send files through port
-    worker.ports.testCoverage.send([morphirIRJson, morphirTestJson])
+    worker.ports.testCoverage.send([morphirIRJson, morphirTestJson]);
   });
 }
 

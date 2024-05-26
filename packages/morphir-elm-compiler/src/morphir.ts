@@ -2,9 +2,11 @@
 // NPM imports
 import { Command } from "commander";
 import { readPackageUpSync } from "read-package-up";
+import * as morphirDockerize from "./morphir-dockerize";
+import * as morphirInit from "./morphir-init";
 import * as morphirMake from "./morphir-make";
 import * as morphirStats from "./morphir-stats";
-import * as morphirInit from "./morphir-init";
+import * as testCoverage from "./morphir-test-coverage";
 
 // Read the package.json of this package
 const packageJson = readPackageUpSync()?.packageJson;
@@ -20,14 +22,8 @@ program
   .command("json-schema-gen", "Generate Json Schema from the Morphir IR")
   .command("snowpark-gen", "Generate Scala with Snowpark code from Morphir IR")
   .addCommand(morphirStats.command)
-  .command(
-    "dockerize",
-    "Creates a docker image of a Morphir IR and Morphir Develop"
-  )
-  .command(
-    "test-coverage",
-    "Generates report on number of branches in a Morphir value and TestCases covered"
-  )
+  .addCommand(morphirDockerize.command)
+  .addCommand(testCoverage.command)
   .command(
     "generate-test-data",
     "Creates a docker image of a Morphir IR and Morphir Develop"
