@@ -5,6 +5,7 @@ import { readPackageUpSync } from "read-package-up";
 import * as morphirDockerize from "./morphir-dockerize";
 import * as morphirInit from "./morphir-init";
 import * as morphirMake from "./morphir-make";
+import * as morphirScalaGen from "./morphir-scala-gen";
 import * as morphirStats from "./morphir-stats";
 import * as testCoverage from "./morphir-test-coverage";
 
@@ -18,7 +19,7 @@ const program = new Command();
 program
   .version(version, "-v, --version")
   .addCommand(morphirMake.createCommand())
-  .command("scala-gen", "Generate scala code from Morphir IR")
+  .addCommand(morphirScalaGen.command)
   .command("json-schema-gen", "Generate Json Schema from the Morphir IR")
   .command("snowpark-gen", "Generate Scala with Snowpark code from Morphir IR")
   .addCommand(morphirStats.command)
