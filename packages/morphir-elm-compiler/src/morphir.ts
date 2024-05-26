@@ -8,6 +8,7 @@ import * as morphirInit from "./morphir-init";
 import * as morphirJsonSchemaGen from "./morphir-json-schema-gen";
 import * as morphirMake from "./morphir-make";
 import * as morphirScalaGen from "./morphir-scala-gen";
+import * as morphirSnowparkGen from "./morphir-snowpark-gen";
 import * as morphirStats from "./morphir-stats";
 import * as testCoverage from "./morphir-test-coverage";
 
@@ -23,7 +24,7 @@ program
   .addCommand(morphirMake.createCommand())
   .addCommand(morphirScalaGen.command)
   .addCommand(morphirJsonSchemaGen.command)
-  .command("snowpark-gen", "Generate Scala with Snowpark code from Morphir IR")
+  .addCommand(morphirSnowparkGen.command)
   .addCommand(morphirStats.command)
   .addCommand(morphirDockerize.command)
   .addCommand(testCoverage.command)

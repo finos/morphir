@@ -2,16 +2,17 @@
 
 // NPM imports
 import * as fs from "fs";
-import path from 'path';
-import { Command } from 'commander';
-import * as util from 'util';
-const cli = require('./cli');
+import path from "path";
+import { Command } from "commander";
+import * as util from "util";
+import cli from "./cli";
+import CLI from "./elm/Morphir/Elm/CLI.elm";
 
 const fsWriteFile = util.promisify(fs.writeFile);
 const fsMakeDir = util.promisify(fs.mkdir);
 const fsReadFile = util.promisify(fs.readFile);
 
-const worker = require("./../Morphir.Elm.CLI").Elm.Morphir.Elm.CLI.init();
+const worker = CLI.init();
 
 interface CommandOptions {
   /**
@@ -36,7 +37,10 @@ function copyRedistributables(outputPath: string) {
       src
     );
     if (fs.existsSync(sourceDirectory)) {
-      fs.cpSync(sourceDirectory, outputPath, { recursive: true, errorOnExist: false });
+      fs.cpSync(sourceDirectory, outputPath, {
+        recursive: true,
+        errorOnExist: false,
+      });
     } else {
       console.warn(`WARNING: Cannot find directory ${sourceDirectory}`);
     }
@@ -74,16 +78,18 @@ const gen = async (
   });
 
   // Add default values for these options
-  options.limitToModules = '';
+  options.limitToModules = "";
   options.includeCodecs = false;
-  options.target = 'Snowpark'
+  options.target = "Snowpark";
 
   if (options.decorations) {
     if (fs.existsSync(path.resolve(options.decorations))) {
       let fileContents = await fsReadFile(path.resolve(options.decorations));
       options.decorationsObj = JSON.parse(fileContents.toString());
     } else {
-      console.warn(`WARNING: The specified decorations file do not exist: ${options.decorations}`)
+      console.warn(
+        `WARNING: The specified decorations file do not exist: ${options.decorations}`
+      );
     }
   }
 
@@ -126,21 +132,30 @@ const gen = async (
   return Promise.all(writePromises.concat(deletePromises));
 };
 
-const program = new Command()
-program
-  .name('morphir snowpark-gen')
-  .description('Generate Scala with Snowpark code from Morphir IR')
-  .option('-i, --input <path>', 'Source location where the Morphir IR will be loaded from.', 'morphir-ir.json')
-  .option('-o, --output <path>', 'Target location where the generated code will be saved.', './dist')
-  .option('-dec, --decorations <filename>', 'JSON file with decorations')
+export const command = new Command();
+command
+  .name("snowpark-gen")
+  .description("Generate Scala with Snowpark code from Morphir IR")
+  .option(
+    "-i, --input <path>",
+    "Source location where the Morphir IR will be loaded from.",
+    "morphir-ir.json"
+  )
+  .option(
+    "-o, --output <path>",
+    "Target location where the generated code will be saved.",
+    "./dist"
+  )
+  .option("-dec, --decorations <filename>", "JSON file with decorations")
+  .action(run);
 
-  .parse(process.argv)
-
-gen(program.opts()['input'], path.resolve(program.opts()['output']), program.opts())
-  .then(() => {
-    console.log('Done')
-  })
-  .catch((err) => {
-    console.log(err)
-    process.exit(1)
-  })
+async function run(options: { input: string; output: string }) {
+  return await gen(options.input, path.resolve(options.output), command.opts())
+    .then(() => {
+      console.log("Done");
+    })
+    .catch((err) => {
+      console.log(err);
+      process.exit(1);
+    });
+}

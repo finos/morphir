@@ -48,7 +48,7 @@ command
     "--config <path-to-config>",
     "specify a json file where configuration can be read from. Overrides other command options."
   )
-  .parse(process.argv);
+  .action(generateData);
 
 interface GenerationOptions {
   morphirIrJson: any;
@@ -58,12 +58,18 @@ interface GenerationOptions {
 }
 
 // run data generation
-async function generateData(options) {
+async function generateData(options: {
+  projectDir: string;
+  output: string;
+  seed: string;
+  size: string;
+  targets: [string];
+}) {
   const programOptions = options;
 
   // CREATE CONFIG OPTIONS
   const morphirJsonPath: string = path.join(
-    programOptions["projectDir"],
+    programOptions.projectDir,
     "morphir-ir.json"
   );
   if (!(await fsExists(morphirJsonPath)))
@@ -71,14 +77,14 @@ async function generateData(options) {
   const distroData = (await fsReadFile(morphirJsonPath)).toString();
   const distroJson = JSON.parse(distroData);
 
-  if (!programOptions["targets"] || programOptions["targets"].length <= 0)
+  if (!programOptions.targets || programOptions.targets.length <= 0)
     throw "targets not provided";
 
   const opts: GenerationOptions = {
     morphirIrJson: distroJson,
-    targets: programOptions["targets"],
-    seed: parseInt(programOptions["seed"]),
-    size: parseInt(programOptions["size"]),
+    targets: programOptions.targets,
+    seed: parseInt(programOptions.seed),
+    size: parseInt(programOptions.size),
   };
 
   // SEND OFF TO ELM
