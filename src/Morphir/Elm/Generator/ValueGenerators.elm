@@ -3,7 +3,7 @@ module Morphir.Elm.Generator.ValueGenerators exposing (boolValueGenerator, charV
 import Date
 import Dict exposing (Dict)
 import Morphir.Elm.Generator.API as Generator exposing (Generator)
-import Morphir.IR as IR exposing (IR)
+import Morphir.IR.Distribution exposing (Distribution, lookupTypeSpecification)
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Literal as Literal
 import Morphir.IR.Name exposing (Name)
@@ -55,7 +55,7 @@ fromType ir tpe =
         Type.Reference _ (( typePackageName, typeModuleName, _ ) as fQName) typeArgs ->
             -- Handle references that are not part of the SDK
             ir
-                |> IR.lookupTypeSpecification fQName
+                |> lookupTypeSpecification fQName
                 |> Result.fromMaybe (String.concat [ "Cannot find reference: ", FQName.toString fQName ])
                 |> Result.andThen
                     (\typeSpec ->

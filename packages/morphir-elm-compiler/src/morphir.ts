@@ -3,6 +3,7 @@
 import { Command } from "commander";
 import { readPackageUpSync } from "read-package-up";
 import * as morphirDockerize from "./morphir-dockerize";
+import * as morphirGenerateTestData from "./morphir-generate-test-data";
 import * as morphirInit from "./morphir-init";
 import * as morphirJsonSchemaGen from "./morphir-json-schema-gen";
 import * as morphirMake from "./morphir-make";
@@ -26,9 +27,6 @@ program
   .addCommand(morphirStats.command)
   .addCommand(morphirDockerize.command)
   .addCommand(testCoverage.command)
-  .command(
-    "generate-test-data",
-    "Creates a docker image of a Morphir IR and Morphir Develop"
-  )
+  .addCommand(morphirGenerateTestData.command)
   .addCommand(morphirInit.command)
   .parse(process.argv);

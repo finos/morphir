@@ -1,8 +1,8 @@
-export default CLI = {
-  init: (flags?: CLI.Args) => CLI.ElmApp,
+export default Generator = {
+  init: (flags?: Generator.Args) => Generator.ElmApp,
 };
 
-export namespace CLI {
+export namespace Generator {
   interface ElmApp extends Object {
     ports: Ports;
   }
@@ -24,12 +24,14 @@ export namespace CLI {
   function init(args: Args): ElmApp;
 
   interface Ports {
-    buildFromScratch: Send<any>;
-    reportProgress: Subscribe<string>;
+    generate: Send<any>;
+    generated: Subscribe<string>;
+    generationFailed: Subscribe<string>;
+    decodeFailed: Subscribe<string>;
   }
 }
 
-function init(args: CLI.Args): CLI.ElmApp;
+function init(args: Generator.Args): Generator.ElmApp;
 
 // export declare class Main {
 //     init(flags?: any): ElmApp;
