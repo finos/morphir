@@ -1,0 +1,27 @@
+[package]
+name = "morphir-runtime"
+version.workspace = true
+description = "Morphir runtime"
+homepage.workspace = true
+keywords = ["morphir", "finos"]
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[badges]
+maintnance = { status = "actively-developer" }
+
+[[bin]]
+name = "morphirx"
+path = "src/main"
+
+[features]
+
+[dependencies]
+deno_core.workspace = true
+deno_ast = { workspace = true, features = ["transpiling"] }
+reqwest.workspace = true
+tokio.workspace = true
+
+[build-dependencies]
+deno_core.workspace = true

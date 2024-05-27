@@ -19,6 +19,7 @@ zig-out/
 # Build Artifacts
 out/
 dist/
+target/
 
 # Scala 
 .scala-build/

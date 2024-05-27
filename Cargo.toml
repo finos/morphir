@@ -1,0 +1,24 @@
+[workspace]
+resolver = "2"
+members = ["crates/morphir-runtime",
+"crates/morphir-runtime-sandbox",
+]
+default-members = ["crates/morphir-runtime-sandbox"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+homepage = "https://morphir.finos.org"
+repository = "https://github.com/finos/morphir"
+authors = ["Damian Reeves"]
+license = "Apache-2.0"
+
+[workspace.dependencies]
+deno_core = "0.283.0"
+deno_ast = "0.38.2"
+extism-pdk = "1.2.0"
+reqwest = "0.12.4"
+serde = "1.0.203"
+serde_json = "1.0.117"
+serde_v8 = "0.192.0"
+tokio = "1.10.0"
