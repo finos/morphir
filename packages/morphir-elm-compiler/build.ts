@@ -1,8 +1,7 @@
 import Bun from "bun";
-import ElmPlugin from "bun-elm-plugin";
-import { type ElmPluginConfig, DefaultConfig } from "bun-elm-plugin";
 import { log, LogLevel, tag } from "firan-logging";
 import chalk from "chalk";
+import { componentize } from "@bytecodealliance/componentize-js";
 
 // handler which does the logging to the console or anything
 const logger = {
@@ -31,13 +30,24 @@ log.init(
   }
 );
 
-const elmPluginConfig: ElmPluginConfig = { ...DefaultConfig };
+const { component } = await componentize(
+  `
+  export function hello (name) {
+    return \`Hello \${name}\`;
+  }
+`,
+  `
+  package local:hello;
+  world hello {
+    export hello: func(name: string) -> string;
+  }
+`,
+  {
+    // recommended to get error debugging
+    // disable to get a "pure component" without WASI imports
+    enableStdout: true,
+  }
+);
 
-await Bun.build({
-  entrypoints: ["src/morphir.ts", "src/lib.ts"],
-  outdir: "dist",
-  target: "node",
-  plugins: [ElmPlugin()],
-});
-
-log.warn("build", "Build done.");
+const wasmFile = Bun.file("dist/test.component.wasm");
+await Bun.write(wasmFile, component);

@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "apps/js-cli",
-    "packages/*"
+    "packages/*",
+    "tools/*"
   ],
   "scripts": {
     "build:verify-elm-package": "zig build verify-elm-package --summary all",

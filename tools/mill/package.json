@@ -1,0 +1,10 @@
+{
+  "name": "mill",
+  "private": true,
+  "bin": {
+    "mill": "index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.3"
+  }
+}

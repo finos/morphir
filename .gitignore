@@ -19,3 +19,9 @@ zig-out/
 # Build Artifacts
 out/
 dist/
+
+# Scala 
+.scala-build/
+.metals/
+.bloop/
+.bsp/
