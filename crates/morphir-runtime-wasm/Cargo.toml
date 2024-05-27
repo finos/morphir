@@ -1,5 +1,5 @@
 [package]
-name = "morphir-runtime-sandbox"
+name = "morphir-runtime-wasm"
 version.workspace = true
 description = "Morphir runtime"
 homepage.workspace = true
@@ -11,24 +11,16 @@ edition.workspace = true
 [badges]
 maintnance = { status = "actively-developer" }
 
-[[bin]]
-name = "morphirx"
-path = "src/main.rs"
-
 [lib]
 crate_type = ["cdylib"]
+name = "morphir_runtime"
+path = "src/lib.rs"
 
 [features]
 
 [dependencies]
-deno_core.workspace = true
-deno_ast = { workspace = true, features = ["transpiling"] }
-reqwest.workspace = true
-tokio.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-serde_v8.workspace = true
+boa_engine.workspace = true
 extism-pdk.workspace = true
+serde_json.workspace = true
 
 [build-dependencies]
-deno_core.workspace = true

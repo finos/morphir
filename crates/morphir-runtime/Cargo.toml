@@ -13,15 +13,16 @@ maintnance = { status = "actively-developer" }
 
 [[bin]]
 name = "morphirx"
-path = "src/main"
+path = "src/main.rs"
+
+[lib]
+name = "morphir_runtime"
+path = "src/lib.rs"
 
 [features]
 
 [dependencies]
-deno_core.workspace = true
-deno_ast = { workspace = true, features = ["transpiling"] }
-reqwest.workspace = true
-tokio.workspace = true
+boa_engine.workspace = true
 
 [build-dependencies]
 deno_core.workspace = true

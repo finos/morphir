@@ -1,9 +1,7 @@
 [workspace]
 resolver = "2"
-members = ["crates/morphir-runtime",
-"crates/morphir-runtime-sandbox",
-]
-default-members = ["crates/morphir-runtime-sandbox"]
+members = ["crates/morphir-runtime", "crates/morphir-runtime-wasm"]
+default-members = ["crates/morphir-runtime"]
 
 [workspace.package]
 version = "0.1.0"
@@ -14,6 +12,7 @@ authors = ["Damian Reeves"]
 license = "Apache-2.0"
 
 [workspace.dependencies]
+boa_engine = "0.18.0"
 deno_core = "0.283.0"
 deno_ast = "0.38.2"
 extism-pdk = "1.2.0"
