@@ -5,34 +5,15 @@ import { getUri } from "get-uri";
 import { decode, labelToName } from "whatwg-encoding";
 import { Readable } from "stream";
 import { ResultAsync } from "neverthrow";
+import { DataUrl, FileUrl } from "./compiler/types";
 
 const parseDataUrl = require("data-urls");
 //const fsReadFile = util.promisify(fs.readFile);
 
-const DataUrl = z.string().trim().transform((val, ctx) => {
-  const parsed = parseDataUrl(val)
-  if (parsed == null) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Not a valid data url"
-    })
-    return z.NEVER;
-  }
-  return parsed;
-});
-
-const FileUrl = z.string().trim().url().transform((val, ctx) => {
-  if (!val.startsWith("file:")) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Not a valid file url"
-    })
-    return z.NEVER;
-  }
-  return new URL(val);
-});
-
-const Url = z.string().url().transform((url) => new URL(url));
+const Url = z
+  .string()
+  .url()
+  .transform((url) => new URL(url));
 
 //const PathOrUrl = z.union([FileUrl, z.string().trim().min(1)]);
 
@@ -44,7 +25,7 @@ const Url = z.string().url().transform((url) => new URL(url));
 
 //const GithubConfig = z.union([GithubData, z.string()]);
 
-const DependencySettings = z.union([DataUrl, FileUrl, z.string().trim()])
+const DependencySettings = z.union([DataUrl, FileUrl, z.string().trim()]);
 const Dependencies = z.array(DependencySettings).default([]);
 
 export const DependencyConfig = z.object({
@@ -54,39 +35,52 @@ export const DependencyConfig = z.object({
 });
 
 const IncludeProvided = z.object({
-  eventKind: z.literal('IncludeProvided'),
-  payload: z.string()
+  eventKind: z.literal("IncludeProvided"),
+  payload: z.string(),
 });
 
 const LocalDependencyProvided = z.object({
-  eventKind: z.literal('LocalDependencyProvided'),
-  payload: z.string()
-})
+  eventKind: z.literal("LocalDependencyProvided"),
+  payload: z.string(),
+});
 
 const DependencyProvided = z.object({
-  eventKind: z.literal('DependencyProvided'),
-  payload: DependencySettings
+  eventKind: z.literal("DependencyProvided"),
+  payload: DependencySettings,
 });
 
 const DependencyEvent = z.discriminatedUnion("eventKind", [
   IncludeProvided,
   LocalDependencyProvided,
-  DependencyProvided
+  DependencyProvided,
 ]);
 
 const DependencyEvents = z.array(DependencyEvent);
 
-const DependencyConfigToDependencyEvents = DependencyConfig.transform((config) => {
-  let events = DependencyEvents.parse([]);
-  const includes = config.includes.map((include) => IncludeProvided.parse({ eventKind: "IncludeProvided", payload: include }));
-  events.push(...includes);
-  const localDeps = config.localDependencies.map((localDependency) => LocalDependencyProvided.parse({ eventKind: "LocalDependencyProvided", payload: localDependency }));
-  events.push(...localDeps);
-  const deps = config.dependencies.map((dep) => DependencyProvided.parse({ eventKind: "DependencyProvided", payload: dep }));
-  events.push(...deps);
-  return events;
-});
-
+const DependencyConfigToDependencyEvents = DependencyConfig.transform(
+  (config) => {
+    let events = DependencyEvents.parse([]);
+    const includes = config.includes.map((include) =>
+      IncludeProvided.parse({ eventKind: "IncludeProvided", payload: include })
+    );
+    events.push(...includes);
+    const localDeps = config.localDependencies.map((localDependency) =>
+      LocalDependencyProvided.parse({
+        eventKind: "LocalDependencyProvided",
+        payload: localDependency,
+      })
+    );
+    events.push(...localDeps);
+    const deps = config.dependencies.map((dep) =>
+      DependencyProvided.parse({
+        eventKind: "DependencyProvided",
+        payload: dep,
+      })
+    );
+    events.push(...deps);
+    return events;
+  }
+);
 
 //const MorphirDistribution = z.tuple([z.string()]).rest(z.unknown());
 // const MorphirIRFile = z.object({
@@ -94,10 +88,10 @@ const DependencyConfigToDependencyEvents = DependencyConfig.transform((config) =
 //   distribution: MorphirDistribution
 // }).passthrough();
 
-type DataUrl = z.infer<typeof DataUrl>;
-type FileUrl = z.infer<typeof FileUrl>;
 type Url = z.infer<typeof Url>;
-type DependencyConfigToDependencyEvents = z.infer<typeof DependencyConfigToDependencyEvents>
+type DependencyConfigToDependencyEvents = z.infer<
+  typeof DependencyConfigToDependencyEvents
+>;
 //type PathOrUrl = z.infer<typeof PathOrUrl>;
 //type GithubData = z.infer<typeof GithubData>;
 //type GithubConfig = z.infer<typeof GithubConfig>;
@@ -112,7 +106,7 @@ export async function loadAllDependencies(config: DependencyConfig) {
   const finalResults = await Promise.all(results);
   return finalResults.flatMap((result) => {
     if (result.isOk()) {
-      console.error("Successfully loaded dependency", result.value.dependency)
+      console.error("Successfully loaded dependency", result.value.dependency);
       return result.value.dependency;
     } else {
       console.error("Error loading dependency", result.error);
@@ -126,22 +120,40 @@ function load(event: DependencyEvent) {
   let source: "dependencies" | "localDependencies" | "includes";
   let payload = event.payload;
   switch (event.eventKind) {
-    case 'IncludeProvided':
+    case "IncludeProvided":
       source = "includes";
-      return loadDependenciesFromString(event.payload, source)
-        .map((dependency) => ({ dependency: dependency, source: source, payload: payload }));
-    case 'LocalDependencyProvided':
+      return loadDependenciesFromString(event.payload, source).map(
+        (dependency) => ({
+          dependency: dependency,
+          source: source,
+          payload: payload,
+        })
+      );
+    case "LocalDependencyProvided":
       source = "localDependencies";
-      return loadDependenciesFromString(event.payload, source)
-        .map((dependency) => ({ dependency: dependency, source: source, payload: payload }));
-    case 'DependencyProvided':
+      return loadDependenciesFromString(event.payload, source).map(
+        (dependency) => ({
+          dependency: dependency,
+          source: source,
+          payload: payload,
+        })
+      );
+    case "DependencyProvided":
       source = "dependencies";
       if (typeof payload === "string") {
-        return loadDependenciesFromString(payload, source)
-          .map((dependency) => ({ dependency: dependency, source: source, payload: payload }));
+        return loadDependenciesFromString(payload, source).map(
+          (dependency) => ({
+            dependency: dependency,
+            source: source,
+            payload: payload,
+          })
+        );
       } else {
-        return loadDependenciesFromURL(payload, source)
-          .map((dependency) => ({ dependency: dependency, source: source, payload: payload }));
+        return loadDependenciesFromURL(payload, source).map((dependency) => ({
+          dependency: dependency,
+          source: source,
+          payload: payload,
+        }));
       }
   }
 }
@@ -152,7 +164,9 @@ function loadDependenciesFromString(input: string, source: string) {
     let { success, data } = DataUrl.safeParse(sanitized);
     if (success) {
       console.error("Loading Data url", data);
-      const encodingName = labelToName(data.mimeType.parameters.get("charset") || "utf-8") || "UTF-8";
+      const encodingName =
+        labelToName(data.mimeType.parameters.get("charset") || "utf-8") ||
+        "UTF-8";
       const bodyDecoded = decode(data.body, encodingName);
       console.error("Data from data url", bodyDecoded);
       return JSON.parse(bodyDecoded);
@@ -168,7 +182,10 @@ function loadDependenciesFromString(input: string, source: string) {
     let { success: urlSuccess, data: urlData } = Url.safeParse(sanitized);
     if (urlSuccess && urlData !== undefined) {
       console.error("Loading url", urlData);
-      if (urlData.protocol.startsWith("http") || urlData.protocol.startsWith("ftp")) {
+      if (
+        urlData.protocol.startsWith("http") ||
+        urlData.protocol.startsWith("ftp")
+      ) {
         console.error("Loading http or ftp url", urlData);
         const data = await getUri(urlData);
         const buffer = await toBuffer(data);
@@ -177,8 +194,11 @@ function loadDependenciesFromString(input: string, source: string) {
       }
     }
     throw new DependencyError("Invalid dependency string", input);
-  }
-  return ResultAsync.fromPromise(doWork(), (err) => new DependencyError("Error loading dependency", source, input, err));
+  };
+  return ResultAsync.fromPromise(
+    doWork(),
+    (err) => new DependencyError("Error loading dependency", source, input, err)
+  );
 }
 
 function loadDependenciesFromURL(url: URL | Url, source: string) {
@@ -187,8 +207,11 @@ function loadDependenciesFromURL(url: URL | Url, source: string) {
     const buffer = await toBuffer(data);
     const jsonString = buffer.toString();
     return JSON.parse(jsonString);
-  }
-  return ResultAsync.fromPromise(doWork(), (err) => new DependencyError("Error loading dependency", source, url, err));
+  };
+  return ResultAsync.fromPromise(
+    doWork(),
+    (err) => new DependencyError("Error loading dependency", source, url, err)
+  );
 }
 
 async function toBuffer(stream: Readable): Promise<Buffer> {
@@ -200,7 +223,12 @@ async function toBuffer(stream: Readable): Promise<Buffer> {
 }
 
 class DependencyError extends Error {
-  constructor(message: string, source?: string, dependency?: string | FileUrl | DataUrl | URL, cause?: Error | unknown) {
+  constructor(
+    message: string,
+    source?: string,
+    dependency?: string | FileUrl | DataUrl | URL,
+    cause?: Error | unknown
+  ) {
     super(message);
     this.name = "DependencyError";
     if (cause) {

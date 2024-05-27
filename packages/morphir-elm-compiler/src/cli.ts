@@ -7,6 +7,7 @@ import * as FileChanges from "./FileChanges";
 import * as Dependencies from "./dependencies";
 
 import { DependencyConfig } from "./dependencies";
+import { parseIncludes } from "./compiler/types";
 import { z } from "zod";
 import CLI from "./elm/Morphir/Elm/CLI.elm";
 
@@ -17,9 +18,6 @@ const fsReadFile = util.promisify(fs.readFile);
 const readdir = util.promisify(fs.readdir);
 
 const worker = CLI.init();
-
-const Includes = z.array(z.string()).optional();
-type Includes = z.infer<typeof Includes>;
 
 interface MorphirJson {
   name: string;
@@ -43,7 +41,7 @@ async function make(
     (await fsReadFile(morphirJsonPath)).toString()
   );
 
-  const includes = Includes.parse(options.include);
+  const includes = parseIncludes(options.include);
   const dependencyConfig = DependencyConfig.parse({
     dependencies: morphirJson.dependencies,
     localDependencies: morphirJson.localDependencies,
