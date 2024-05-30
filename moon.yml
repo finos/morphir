@@ -22,26 +22,15 @@ tasks:
   build:
     command: 'cargo build'
     inputs:
-      - '@globs(sources)'
+      - '@globs(sources)'      
+    deps:
+      - target: "~:check-elm-docs"
   check:
     command: 'cargo check --workspace'
     inputs:
       - '@globs(sources)'
-  format:
-    command: 'cargo fmt --all --check'
-    inputs:
-      - '@globs(sources)'
-      - '@globs(tests)'
-  lint:
-    command: 'cargo clippy --workspace'
-    inputs:
-      - '@globs(sources)'
-      - '@globs(tests)'
-  test:
-    command: 'cargo test --workspace'
-    inputs:
-      - '@globs(sources)'
-      - '@globs(tests)'
+    deps:
+      - target: "~:check-elm-docs"
   ensure-elm-docs-dir:
     command: 'mkdir -p @out(0)'
     outputs: 

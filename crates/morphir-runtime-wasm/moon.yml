@@ -1,0 +1,9 @@
+language: rust
+tasks:
+  cargo-build:
+    args:     
+      - '--target'
+      - 'wasm32-wasip1'
+    options:
+      mergeArgs: 'append'
+    

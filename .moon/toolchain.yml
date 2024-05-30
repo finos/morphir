@@ -10,3 +10,5 @@ rust:
   bins:
     - 'cargo-make@0.37.12'
     - 'cargo-nextest'
+
+typescript: {}

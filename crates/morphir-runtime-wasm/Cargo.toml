@@ -12,7 +12,7 @@ edition.workspace = true
 maintnance = { status = "actively-developer" }
 
 [lib]
-crate_type = ["cdylib"]
+crate-type = ["cdylib"]
 name = "morphir_runtime"
 path = "src/lib.rs"
 
