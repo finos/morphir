@@ -1,0 +1,9 @@
+$schema: "https://moonrepo.dev/schemas/toolchain.json"
+
+bun:
+  syncProjectWorkspaceDependencies: true
+
+node:
+   packageManager: bun
+
+rust: {}

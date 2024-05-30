@@ -7,11 +7,14 @@
     "tools/*"
   ],
   "scripts": {
+    "build": "moon run :build",
     "build:verify-elm-package": "zig build verify-elm-package --summary all",
     "build:check-elm-docs": "zig build check-elm-docs --summary all",
-    "postinstall": "elm-tooling install"
+    "postinstall": "elm-tooling install",
+    "list-projects": "moon project-graph --json | bunx --bun node-jq '.projects| keys[]'"
   },
   "devDependencies": {
-    "elm-tooling": "^1.15.1"
+    "elm-tooling": "^1.15.1",
+    "node-jq": "4.4.0"
   }
 }

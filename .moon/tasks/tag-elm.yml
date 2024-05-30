@@ -1,0 +1,15 @@
+fileGroups:
+  elmSources:
+    - "src"
+tasks:
+  elm-lint:
+    command: |
+      yarn exec elm-format @dirs(elmSources) @files(elmSources) --validate --yes
+    inputs:
+      - "@files(elmSources)"
+
+  elm-format:
+    command: |
+      yarn exec elm-format @dirs(elmSources) @files(elmSources) --yes
+    inputs:
+      - "@files(elmSources)"

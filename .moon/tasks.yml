@@ -1,0 +1,34 @@
+$schema: "https://moonrepo.dev/schemas/tasks.json"
+tasks:
+  build:
+    inputs: []
+    deps:
+      - target: "~:morphir-elm-build"
+        optional: true
+      - target: "~:elm-library-build"
+        optional: true
+      - target: "~:cargo-build"
+        optional: true
+  fmt:
+    inputs: []
+    deps:
+      - target: "~:elm-format"
+        optional: true
+      - target: "~:scala-format"
+        optional: true
+
+  lint:
+    inputs: []
+    deps:
+      - target: "~:elm-lint"
+        optional: true
+      - target: "~:scala-lint"
+        optional: true
+  test:
+    inputs: []
+    deps:
+      - target: "~:scala-jvm"
+        optional: true
+      - target: "~:elm-test"
+        optional: true
+

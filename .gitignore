@@ -26,3 +26,6 @@ target/
 .metals/
 .bloop/
 .bsp/
+# moon
+.moon/cache
+.moon/docker
