@@ -6,4 +6,7 @@ bun:
 node:
    packageManager: bun
 
-rust: {}
+rust: 
+  bins:
+    - 'cargo-make@0.37.12'
+    - 'cargo-nextest'

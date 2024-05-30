@@ -1,7 +1,7 @@
 [package]
-name = "morphir-runtime"
+name = "morphir"
 version.workspace = true
-description = "Morphir runtime"
+description = "Morphir CLI"
 homepage.workspace = true
 keywords = ["morphir", "finos"]
 authors.workspace = true
@@ -12,18 +12,19 @@ edition.workspace = true
 maintnance = { status = "actively-developer" }
 
 [[bin]]
-name = "morphirx"
+name = "morphir"
 path = "src/main.rs"
 
 [lib]
-name = "morphir_runtime"
+name = "morphir"
 path = "src/lib.rs"
 
 [features]
 
 [dependencies]
-boa_engine.workspace = true
+#boa_engine.workspace = true
 tokio.workspace = true
 
 [build-dependencies]
-deno_core.workspace = true
+#git-download = "0.1.1"
+download_git = "0.0.2"

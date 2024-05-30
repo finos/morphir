@@ -17,6 +17,7 @@ zig-cache/
 zig-out/
 
 # Build Artifacts
+.out/
 out/
 dist/
 target/

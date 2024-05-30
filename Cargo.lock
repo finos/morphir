@@ -964,6 +964,7 @@ version = "0.1.0"
 dependencies = [
  "boa_engine",
  "deno_core",
+ "tokio",
 ]
 
 [[package]]
