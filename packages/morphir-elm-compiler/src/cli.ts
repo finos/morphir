@@ -8,7 +8,6 @@ import * as Dependencies from "./dependencies";
 
 import { DependencyConfig } from "./dependencies";
 import { parseIncludes } from "./compiler/types";
-import { z } from "zod";
 import CLI from "./elm/Morphir/Elm/CLI.elm";
 
 const fsExists = util.promisify(fs.exists);

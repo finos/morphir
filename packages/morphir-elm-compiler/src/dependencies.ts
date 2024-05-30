@@ -7,7 +7,6 @@ import { Readable } from "stream";
 import { ResultAsync } from "neverthrow";
 import { DataUrl, FileUrl } from "./compiler/types";
 
-const parseDataUrl = require("data-urls");
 //const fsReadFile = util.promisify(fs.readFile);
 
 const Url = z

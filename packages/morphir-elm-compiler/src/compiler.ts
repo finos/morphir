@@ -4,6 +4,7 @@ import {
   VirtualFile,
 } from "./compiler/types";
 import * as Dependencies from "./dependencies";
+
 import {
   type FileChanges,
   type FileChange,
@@ -15,8 +16,16 @@ export function compileVirtualFiles(
   projectManifest: MorphirProjectManifest,
   options: ElmCompilerOptions
 ) {
-  const changes = virtualFilesToFileChanges(...files);
+  const _changes = virtualFilesToFileChanges(...files);
+  console.log("changes: ", _changes);
   //TODO: Load dependencies and such
+  const loadOptions = {
+    ...projectManifest,
+    localDependencies: projectManifest.localDependencies || [],
+    dependencies: projectManifest.dependencies || [],
+    includes: options.include || [],
+  };
+  Dependencies.loadAllDependencies(loadOptions);
   return {};
 }
 
