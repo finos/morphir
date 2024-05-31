@@ -24,12 +24,17 @@ tasks:
     inputs:
       - '@globs(sources)'      
     deps:
-      - target: "~:check-elm-docs"
+      - target: "~:elm-build"
   check:
     command: 'cargo check --workspace'
     inputs:
       - '@globs(sources)'
     deps:
+      - target: "~:check-elm-docs"
+  elm-build:
+    inputs: []
+    deps:
+      - target: "~:elm-library-make"
       - target: "~:check-elm-docs"
   ensure-elm-docs-dir:
     command: 'mkdir -p @out(0)'

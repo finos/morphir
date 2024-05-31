@@ -9,6 +9,7 @@
   "scripts": {
     "build": "moon run :build",
     "clean": "moon run clean",
+    "elm-build": "moon run elm-build",
     "pruge": "moon run pruge",
     "build:verify-elm-package": "zig build verify-elm-package --summary all",
     "check-elm-docs": "moon run check-elm-docs",
