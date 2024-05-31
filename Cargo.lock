@@ -2053,6 +2053,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "morphir-elm-compiler-rs"
+version = "0.1.0"
+dependencies = [
+ "deno_core",
+ "pest",
+ "pest_derive",
+ "tokio",
+]
+
+[[package]]
 name = "morphir-runtime"
 version = "0.1.0"
 dependencies = [

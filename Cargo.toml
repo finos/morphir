@@ -1,6 +1,11 @@
 [workspace]
 resolver = "2"
-members = ["apps/cli", "crates/morphir-runtime", "crates/morphir-runtime-wasm"]
+members = [
+    "apps/cli",
+    "crates/morphir-elm-compiler-rs",
+    "crates/morphir-runtime",
+    "crates/morphir-runtime-wasm",
+]
 default-members = ["crates/morphir-runtime"]
 
 [workspace.package]
@@ -36,6 +41,8 @@ linked-data = "0.1.2"
 miette = "7.2.0"
 once_cell = "1.19.0"
 proptest = "1.4.0"
+pest = "2.6"
+pest_derive = "2.6"
 quickjs-wasm-rs = "3.0.0"
 ractor = "0.10.3"
 rdf-types = "0.22.4"
