@@ -1,0 +1,12 @@
+//! Parsing rules for the Elm programming language.
+
+exposing_clause = { "exposing" ~ WHITE_SPACE ~ "(..)" }
+// TODO: Relax the casing in parsing and produce an error about improper casing in a later stage
+module_path_part = { (ASCII_ALPHA_UPPER ~ (ASCII_ALPHA | ASCII_DIGIT)*) }
+module_statement = { "module" ~ WHITE_SPACE ~ module_path ~ WHITE_SPACE ~ (exposing_clause) }
+module_path      = { module_path_part ~ ("." ~ module_path)* }
+statement        = { module_statement ~ trivia* }
+file             = { SOI ~ statement ~ EOI }
+INLINE_COMMENT   = { "--" ~ (!NEWLINE ~ ANY)* ~ NEWLINE }
+COMMENT          = { INLINE_COMMENT }
+trivia           = { WHITE_SPACE | COMMENT }

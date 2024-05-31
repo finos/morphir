@@ -1,0 +1,38 @@
+fileGroups:
+  sources:
+    - 'apps/cli/src/**/*'
+    - 'crates/*/src/**/*'
+    - 'crates/*/Cargo.toml'
+    - 'Cargo.toml'
+  tests:
+    - 'crates/*/benches/**/*'
+    - 'crates/*/tests/**/*'
+    
+tasks:
+  cargo-build-base:
+    command: 'cargo'
+    args:
+      - "build"
+    inputs:
+      - '@globs(sources)'      
+  cargo-build:
+    extends: 'cargo-build-base'
+  cargo-check:
+    command: 'cargo check --workspace'
+    inputs:
+      - '@globs(sources)'
+  cargo-format:
+    command: 'cargo fmt --all --check'
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+  cargo-lint:
+    command: 'cargo clippy --workspace'
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+  cargo-test:
+    command: 'cargo test --workspace'
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Morphir.Web.DevelopApp</title>
+    <style>
+      body {
+        padding: 0;
+        margin: 0;
+      }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/standalone/umd/vis-network.min.js" integrity="sha512-OwMVEyxgfpnZtZDE4ZH1/SB3Xgvx5CwX+/xJJx7men0Vh6VjWp4uEytx34AHQKbh+Ve4KogeyYqZbujEmAQXLA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  </head>
+
+  <body>
+    <pre id="elm"></pre>
+    <!--Reference to graph.js which is where the graph custom element is created. The index.js
+reference points to the file that holds the output for elm-make-->
+    <script src="/graph.js"></script>
+    <script src="/index.js"></script>
+    <script>
+      try {
+        var app = Elm.Morphir.Web.DevelopApp.init({
+          node: document.getElementById("elm"),
+          flags: {version : "__VERSION_NUMBER__"}
+        });
+        var unsaved = false;
+
+        app.ports.unsavedChangesPort.subscribe(message => {
+          unsaved = message;
+        });
+
+        window.addEventListener("beforeunload", event => {
+          if (unsaved) {
+            event.returnValue = "unsaved changes";
+            return event.returnValue;
+          }
+        });
+      } catch (e) {
+        // display initialization errors (e.g. bad flags, infinite recursion)
+        var header = document.createElement("h1");
+        header.style.fontFamily = "monospace";
+        header.innerText = "Initialization Error";
+        var pre = document.getElementById("elm");
+        document.body.insertBefore(header, pre);
+        pre.innerText = e;
+        throw e;
+      }
+    </script>
+  </body>
+</html>

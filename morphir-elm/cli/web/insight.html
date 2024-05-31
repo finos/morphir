@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Morphir UI</title>
+    <script src="insight.js"></script>
+</head>
+<body>
+    <morphir-insight id="i" arguments="[1, 2, 3, 4]" fqn="TestModel.Testing:add4"></morphir-insight>
+</body>
+<script>
+
+    //Function to get JSON response from server
+    function httpGet(theUrl)
+    {
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
+        xmlHttp.send(null);
+        return xmlHttp.responseText;
+    }
+
+    //HTTP GET request to fetch distribution JSON from server
+    var distribution = httpGet("http://localhost:8000/server/morphir-ir.json");
+
+    setTimeout(() => {
+        document.getElementById('i').init(distribution);
+    }, 5000);
+
+</script>
+</html>

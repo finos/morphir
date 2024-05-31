@@ -1,0 +1,64 @@
+[workspace]
+resolver = "2"
+members = [
+    "apps/cli",
+    "crates/morphir-elm-compiler-rs",
+    "crates/morphir-runtime",
+    "crates/morphir-runtime-wasm",
+]
+default-members = ["crates/morphir-runtime"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+homepage = "https://morphir.finos.org"
+repository = "https://github.com/finos/morphir"
+authors = ["Damian Reeves"]
+license = "Apache-2.0"
+
+[workspace.dependencies]
+arcstr = "1.1.5"
+anyhow = "^1.0"
+boa_engine = "0.18.0"
+boa_runtime = "0.18.0"
+clap = "4.5.4"
+clap_complete = "4.5.2"
+config = "0.14.0"
+cucumber = "0.21.0"
+deno_core = "0.283.0"
+derivative = "2.2.0"
+dirs = "5.0.1"
+extism = "1.2.0"
+extism-pdk = "1.1.0"
+flagset = "0.4.5"
+futures = "0.3"
+heck = "0.5.0"
+javy = "2.2.0"
+javy-apis = "3.0.0"
+lasso = "0.7.2"
+lazy-regex = "3.1.0"
+linked-data = "0.1.2"
+miette = "7.2.0"
+once_cell = "1.19.0"
+proptest = "1.4.0"
+pest = "2.6"
+pest_derive = "2.6"
+quickjs-wasm-rs = "3.0.0"
+ractor = "0.10.3"
+rdf-types = "0.22.4"
+refined_type = "0.5.4"
+regex = "1.10.4"
+reqwest = "0.12.4"
+schematic = "0.16.4"
+serde = { version = "^1.0", features = ["derive"] }
+serde_derive = "1.0"
+serde_json = "^1.0"
+serde_repr = "^0.1"
+starbase = "0.6.0"
+state = "0.6.0"
+thiserror = "1.0.58"
+tokio = { version = "1.10", features = ["macros", "rt-multi-thread", "time"] }
+tracing = "0.1.40"
+url = "2.2.2"
+warpgate = "0.14.2"
+wizer = "6.0.0"

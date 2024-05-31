@@ -1,0 +1,27 @@
+fileGroups:
+  elm-sources:
+    - 'src/**/*.elm'
+    - 'elm.json'
+  elmSources:
+    - "src"
+tasks:
+  elm-lint:
+    platform: bun
+    command: |
+      elm-format @dirs(elmSources) @files(elmSources) --validate --yes
+    inputs:
+      - "@files(elmSources)"
+
+  elm-format:
+    platform: bun
+    command: |
+      elm-format @dirs(elmSources) @files(elmSources) --yes
+    inputs:
+      - "@files(elmSources)"      
+  elm-library-make:
+    description: "Compile an Elm library. Note: This amounts mostly to type-checking, since libraries don't compile to anything."
+    platform: bun
+    command: |
+      elm make --output=/dev/null
+    inputs:
+      - "@files(elm-sources)"    

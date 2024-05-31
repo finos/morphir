@@ -1,0 +1,55 @@
+[package]
+name = "morphir"
+version.workspace = true
+description = "Morphir CLI"
+homepage.workspace = true
+keywords = ["morphir", "finos"]
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[badges]
+maintnance = { status = "actively-developer" }
+
+[[bin]]
+name = "morphir"
+path = "src/main.rs"
+
+[lib]
+name = "morphir"
+path = "src/lib.rs"
+
+[features]
+
+[dependencies]
+anyhow.workspace = true
+boa_engine.workspace = true
+boa_runtime.workspace = true
+clap = { workspace = true, features = [
+    "color",
+    "derive",
+    "env",
+    "help",
+    "suggestions",
+    "usage",
+    "wrap_help",
+] }
+clap_complete = { workspace = true }
+config.workspace = true
+dirs.workspace = true
+miette = { workspace = true, features = ["fancy"] }
+ractor.workspace = true
+refined_type.workspace = true
+schematic.workspace = true
+serde.workspace = true
+serde_derive.workspace = true
+starbase.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+wizer.workspace = true
+
+
+[build-dependencies]
+#git-download = "0.1.1"
+download_git = "0.0.2"

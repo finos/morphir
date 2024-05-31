@@ -1,0 +1,222 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Value Editor</title>
+    <script type="application/json" src="./../../cli/web/valueEditor.js" ></script>
+    <script type="application/json" src="./../../cli/web/editor-custom-element.js" ></script>
+</head>
+<body>
+<h1>Hello Deco</h1>
+<value-editor id="app" onclick="this.updated()"></value-editor>
+<script>
+      var ir =
+      {
+    "formatVersion": 3,
+    "distribution": [
+        "Library",
+        [
+            [
+                "morphir"
+            ],
+            [
+                "attribute"
+            ],
+            [
+                "model"
+            ]
+        ],
+        [],
+        {
+            "modules": [
+                [
+                    [
+                        [
+                            "json",
+                            "schema"
+                        ]
+                    ],
+                    {
+                        "access": "Public",
+                        "value": {
+                            "types": [
+                                [
+                                    [
+                                        "schema",
+                                        "enabled"
+                                    ],
+                                    {
+                                        "access": "Public",
+                                        "value": {
+                                            "doc": "",
+                                            "value": [
+                                                "TypeAliasDefinition",
+                                                [],
+                                                [
+                                                    "Reference",
+                                                    {},
+                                                    [
+                                                        [
+                                                            [
+                                                                "morphir"
+                                                            ],
+                                                            [
+                                                                "s",
+                                                                "d",
+                                                                "k"
+                                                            ]
+                                                        ],
+                                                        [
+                                                            [
+                                                                "basics"
+                                                            ]
+                                                        ],
+                                                        [
+                                                            "bool"
+                                                        ]
+                                                    ],
+                                                    []
+                                                ]
+                                            ]
+                                        }
+                                    }
+                                ]
+                            ],
+                            "values": [],
+                            "doc": null
+                        }
+                    }
+                ],
+                [
+                    [
+                        [
+                            "sensitivity"
+                        ]
+                    ],
+                    {
+                        "access": "Public",
+                        "value": {
+                            "types": [
+                                [
+                                    [
+                                        "sensitivity"
+                                    ],
+                                    {
+                                        "access": "Public",
+                                        "value": {
+                                            "doc": "",
+                                            "value": [
+                                                "CustomTypeDefinition",
+                                                [],
+                                                {
+                                                    "access": "Public",
+                                                    "value": [
+                                                        [
+                                                            [
+                                                                "m",
+                                                                "n",
+                                                                "p",
+                                                                "i"
+                                                            ],
+                                                            []
+                                                        ],
+                                                        [
+                                                            [
+                                                                "n",
+                                                                "p",
+                                                                "i"
+                                                            ],
+                                                            []
+                                                        ],
+                                                        [
+                                                            [
+                                                                "p",
+                                                                "h",
+                                                                "i"
+                                                            ],
+                                                            []
+                                                        ],
+                                                        [
+                                                            [
+                                                                "p",
+                                                                "i"
+                                                            ],
+                                                            []
+                                                        ],
+                                                        [
+                                                            [
+                                                                "p",
+                                                                "i",
+                                                                "i"
+                                                            ],
+                                                            []
+                                                        ],
+                                                        [
+                                                            [
+                                                                "private",
+                                                                "information"
+                                                            ],
+                                                            []
+                                                        ],
+                                                        [
+                                                            [
+                                                                "r",
+                                                                "b",
+                                                                "c",
+                                                                "high",
+                                                                "risk",
+                                                                "data"
+                                                            ],
+                                                            []
+                                                        ],
+                                                        [
+                                                            [
+                                                                "s",
+                                                                "p",
+                                                                "i"
+                                                            ],
+                                                            []
+                                                        ]
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ]
+                            ],
+                            "values": [],
+                            "doc": null
+                        }
+                    }
+                ]
+            ]
+        }
+    ]
+}
+
+      var app = Elm.Morphir.Web.Editor.init({
+        node: document.getElementById("app"),
+        flags: {
+          distribution: ir,
+          entryPoint: "Morphir.Attribute.Model:Sensitivity:Sensitivity",
+          initialValue: JSON.parse(JSON.stringify(['mNPI'])),
+        },
+      });
+      app.ports.valueUpdated.subscribe((value) => {
+        let val  = value
+          console.log('value: ',val)
+          return value;
+        });
+      function updated() {
+        document.addEventListener("click",(event)=>{
+          console.log("clicked",event)
+        })
+        // app.ports.valueUpdated.subscribe((value) => {
+        //   console.log(value)
+        //   return value;
+        // });
+      }
+    </script>
+</body>
+</html>

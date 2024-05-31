@@ -1,0 +1,13 @@
+{
+  "name": "@finos/morphir-js-cli",
+  "version": "0.0.0",
+  "scripts": {
+    "fetch-quickjs": "bun scripts/fetch-quickjs.ts"
+  },
+  "devDependencies": {
+    "@terascope/fetch-github-release": "0.8.10",
+    "@tsconfig/node18": "^18.2.4",
+    "typescript": "5.4.5"
+  },
+  "dependencies": {}
+}

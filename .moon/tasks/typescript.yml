@@ -1,0 +1,28 @@
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'tsconfig.json'
+    - 'tsconfig.cjs.json'
+    - 'types/**/*'
+tasks:
+  type-check-esm:
+    command: tsc
+    args:
+    - '--project'
+    - 'tsconfig.json'
+    inputs:
+    - '@globs(sources)'    
+  
+  type-check-cjs:
+   command: tsc
+   args:
+    - '--project'
+    - 'tsconfig.cjs.json'
+   inputs:
+    - '@globs(sources)'
+    
+  type-check:
+    inputs: []
+    deps:
+      - target: '~:type-check-esm'
+      - target: '~:type-check-cjs'

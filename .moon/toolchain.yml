@@ -1,0 +1,14 @@
+$schema: "https://moonrepo.dev/schemas/toolchain.json"
+
+bun:
+  syncProjectWorkspaceDependencies: true
+
+node:
+   packageManager: bun
+
+rust: 
+  bins:
+    - 'cargo-make@0.37.12'
+    - 'cargo-nextest'
+
+typescript: {}

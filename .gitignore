@@ -1,7 +1,32 @@
+# Node, Bun, and Deno Related
+package-lock.json
+node_modules/
+
+# IDE Related 
 .idea/
 .fake
 .ionide
-
 .vscode/
-package-lock.json
-node_modules/
+
+
+# Elm related 
+elm-stuff/
+
+# Zig related
+zig-cache/
+zig-out/
+
+# Build Artifacts
+.out/
+out/
+dist/
+target/
+
+# Scala 
+.scala-build/
+.metals/
+.bloop/
+.bsp/
+# moon
+.moon/cache
+.moon/docker

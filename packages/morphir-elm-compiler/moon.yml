@@ -1,0 +1,27 @@
+language: typescript
+type: application
+platform: bun
+
+fileGroups:
+  vite:
+    - "vite.config.ts"
+    - "**/*.ts"
+    - "**/*.tsx"
+    - "src/**/*.js"
+    - "src/**/*.jsx"
+    - "src/**/*.elm"
+  elmSources:
+    - "src"
+tags:
+  - "elm"
+
+tasks:
+  bundle:
+   command:  "bunx --bun vite build --ssr"
+   inputs: 
+    - '@globs(vite)'
+   outputs: 
+    - "dist"
+  build:
+    deps:
+      - target: "~:bundle"

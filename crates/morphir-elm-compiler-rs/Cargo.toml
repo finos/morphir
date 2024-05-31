@@ -1,0 +1,30 @@
+[package]
+name = "morphir-elm-compiler-rs"
+version.workspace = true
+description = "Morphir runtime"
+homepage.workspace = true
+keywords = ["morphir", "finos"]
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[badges]
+maintnance = { status = "actively-developer" }
+
+[[bin]]
+name = "morphir-elmc"
+path = "src/main.rs"
+
+[lib]
+name = "morphir_elm_compiler_rs"
+path = "src/lib.rs"
+
+[features]
+
+[dependencies]
+tokio.workspace = true
+pest.workspace = true
+pest_derive.workspace = true
+
+[build-dependencies]
+deno_core.workspace = true

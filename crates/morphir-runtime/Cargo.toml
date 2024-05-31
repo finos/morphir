@@ -1,0 +1,29 @@
+[package]
+name = "morphir-runtime"
+version.workspace = true
+description = "Morphir runtime"
+homepage.workspace = true
+keywords = ["morphir", "finos"]
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[badges]
+maintnance = { status = "actively-developer" }
+
+[[bin]]
+name = "morphirx"
+path = "src/main.rs"
+
+[lib]
+name = "morphir_runtime"
+path = "src/lib.rs"
+
+[features]
+
+[dependencies]
+boa_engine.workspace = true
+tokio.workspace = true
+
+[build-dependencies]
+deno_core.workspace = true

@@ -1,0 +1,79 @@
+language: 'rust'
+type: 'application'
+tags:
+  - 'elm'
+
+env:
+  CARGO_TERM_COLOR: 'always'
+
+fileGroups:
+  elm-sources:
+    - 'src/**/*.elm'
+  sources:
+    - 'apps/cli/src/**/*'
+    - 'crates/*/src/**/*'
+    - 'crates/*/Cargo.toml'
+    - 'Cargo.toml'
+  tests:
+    - 'crates/*/benches/**/*'
+    - 'crates/*/tests/**/*'
+
+tasks:
+  build:
+    command: 'cargo build'
+    inputs:
+      - '@globs(sources)'      
+    deps:
+      - target: "~:elm-build"
+  check:
+    command: 'cargo check --workspace'
+    inputs:
+      - '@globs(sources)'
+    deps:
+      - target: "~:check-elm-docs"
+  elm-build:
+    inputs: []
+    deps:
+      - target: "~:elm-library-make"
+      - target: "~:check-elm-docs"
+  ensure-elm-docs-dir:
+    command: 'mkdir -p @out(0)'
+    outputs: 
+      - '.out/elm-out/finos/morphir'
+  check-elm-docs:
+    platform: 'bun'
+    command: 'elm make --docs=./.out/elm-out/finos/morphir/docs.json'
+    inputs:
+      - '@globs(elm-sources)'   
+    outputs: 
+      - '.out/elm-out/finos/morphir/docs.json'
+    deps:
+      - target: "~:ensure-elm-docs-dir"
+  cargo-clean:
+    inputs: []
+    command: 'cargo clean'
+  elm-clean-outputs:
+    inputs: 
+      - '.out/elm-out'
+    command: 'rm -rf @in(0)'
+  clean:
+    inputs: []
+    deps:
+      - "~:cargo-clean"
+      - "~:elm-clean-outputs"
+  purge:
+    inputs: []
+    deps:
+      - "~:clean"
+      - "~:purge-targets"
+      - "~:purge-elm-dependencies"
+      - "~:purge-node-dependencies"
+  purge-targets:
+    inputs: []
+    command: 'rm -rf target'
+  purge-elm-dependencies:
+    inputs: []
+    command: 'rm -rf elm-stuff'
+  purge-node-dependencies:
+    inputs: []
+    command: 'rm -rf node_modules'

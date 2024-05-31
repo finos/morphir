@@ -1,0 +1,23 @@
+{
+  "name": "morphir-home",
+  "private": true,
+  "workspaces": [
+    "apps/js-cli",
+    "packages/*",
+    "tools/*"
+  ],
+  "scripts": {
+    "build": "moon run :build",
+    "clean": "moon run clean",
+    "elm-build": "moon run elm-build",
+    "pruge": "moon run pruge",
+    "build:verify-elm-package": "zig build verify-elm-package --summary all",
+    "check-elm-docs": "moon run check-elm-docs",
+    "postinstall": "elm-tooling install",
+    "list-projects": "moon project-graph --json | bunx --bun node-jq '.projects| keys[]'"
+  },
+  "devDependencies": {
+    "elm-tooling": "^1.15.1",
+    "node-jq": "4.4.0"
+  }
+}

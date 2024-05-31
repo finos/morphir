@@ -1,0 +1,14 @@
+language: typescript
+platform: bun 
+
+tasks:
+  type-check-cjs:
+    #TODO: Remove no-op when typescript config is added
+    command: no-op
+  type-check-esm:
+    #TODO: Remove no-op when typescript config is added
+    command: no-op
+  fetch-quickjs:
+    command: 'bun run fetch-quickjs'
+    local: true
+    platform: system
