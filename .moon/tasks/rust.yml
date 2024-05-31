@@ -1,6 +1,4 @@
 fileGroups:
-  elm-sources:
-    - 'src/**/*.elm'
   sources:
     - 'apps/cli/src/**/*'
     - 'crates/*/src/**/*'
@@ -11,12 +9,14 @@ fileGroups:
     - 'crates/*/tests/**/*'
     
 tasks:
-  cargo-build:
+  cargo-build-base:
     command: 'cargo'
     args:
       - "build"
     inputs:
       - '@globs(sources)'      
+  cargo-build:
+    extends: 'cargo-build-base'
   cargo-check:
     command: 'cargo check --workspace'
     inputs:

@@ -13,6 +13,7 @@ export default defineConfig(
           input: {
             morphir: resolve(__dirname, "src/morphir.ts"),
             lib: resolve(__dirname, "src/lib.ts"),
+            "compiler-api": resolve(__dirname, "src/compiler-api.ts"),
           },
         },
       },

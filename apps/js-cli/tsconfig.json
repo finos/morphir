@@ -1,7 +1,5 @@
 {
-  "extends": "../../tsconfig.options.json",
-  "include": [
-    "**/*"
-  ],
+  "extends": "@tsconfig/node18/tsconfig.json",
+  "include": ["src/**/*"],
   "references": []
 }
