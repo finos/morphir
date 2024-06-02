@@ -3,8 +3,10 @@ resolver = "2"
 members = [
     "apps/cli",
     "crates/morphir-elm-compiler-rs",
+    "crates/morphir-platform",
     "crates/morphir-runtime",
     "crates/morphir-runtime-wasm",
+    "crates/morphir-platform",
 ]
 default-members = ["crates/morphir-runtime"]
 
@@ -62,3 +64,10 @@ tracing = "0.1.40"
 url = "2.2.2"
 warpgate = "0.14.2"
 wizer = "6.0.0"
+
+[profile.release]
+codegen-units = 1
+opt-level = "s"
+debug = false
+strip = true
+lto = true

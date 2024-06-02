@@ -1,0 +1,21 @@
+[package]
+name = "morphir-platform"
+version.workspace = true
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+wit-bindgen-rt = { version = "0.26.0", features = ["bitflags"] }
+
+[lib]
+crate-type = ["cdylib"]
+
+
+
+[package.metadata.component]
+package = "morphir:platform"
+
+[package.metadata.component.dependencies]

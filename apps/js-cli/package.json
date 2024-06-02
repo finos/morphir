@@ -9,5 +9,5 @@
     "@tsconfig/node18": "^18.2.4",
     "typescript": "5.4.5"
   },
-  "dependencies": {}
+  "dependencies": { "@extism/extism": "^1.0.3" }
 }

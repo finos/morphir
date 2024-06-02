@@ -1,0 +1,11 @@
+language: rust
+tasks:
+  cargo-build:
+    command: 'cargo'
+    args:     
+      - 'component'
+      - 'build'
+      - '--release'
+    options:
+      mergeArgs: 'replace'
+    

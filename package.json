@@ -14,7 +14,8 @@
     "build:verify-elm-package": "zig build verify-elm-package --summary all",
     "check-elm-docs": "moon run check-elm-docs",
     "postinstall": "elm-tooling install",
-    "list-projects": "moon project-graph --json | bunx --bun node-jq '.projects| keys[]'"
+    "list-projects": "moon project-graph --json | bunx --bun node-jq '.projects| keys[]'",
+    "morphirjs": "moon run js-cli:run"
   },
   "devDependencies": {
     "elm-tooling": "^1.15.1",

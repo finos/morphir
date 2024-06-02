@@ -1,7 +1,14 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
 language: typescript
 platform: bun 
 
 tasks:
+  run:
+    platform: system
+    command: 'bun'
+    args: ['run', 'src/index.ts']
+    options:
+      interactive: true
   type-check-cjs:
     #TODO: Remove no-op when typescript config is added
     command: no-op
