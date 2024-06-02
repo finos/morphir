@@ -9,6 +9,8 @@ tasks:
         optional: true
       - target: "~:cargo-build"
         optional: true
+      - target: '~:build-artifacts'
+        optional: true
   fmt:
     inputs: []
     deps:

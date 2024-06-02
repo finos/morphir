@@ -1,0 +1,24 @@
+language: typescript
+platform: bun 
+
+fileGroups:
+  transpiler-sources:
+    - $MOON_WORKSPACE_ROOT/crates/morphir-platform/dist/morphir_platform.wasm
+    
+tasks:
+  transpile-wasm:
+   command: 'jco'
+   args:
+    - 'transpile'
+    - '$MOON_WORKSPACE_ROOT/crates/morphir-platform/dist/morphir_platform.wasm'
+    - '-o'
+    - '@out(0)'
+   inputs:
+     - '@envs(transpiler-sources)'
+   outputs: 
+     - 'dist'
+   deps:
+     - target: 'morphir-platform:build-artifacts'    
+  build:
+   deps:
+    - target: '~:transpile-wasm'

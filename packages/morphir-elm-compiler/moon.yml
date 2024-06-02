@@ -21,7 +21,7 @@ tasks:
    inputs: 
     - '@globs(vite)'
    outputs: 
-    - "dist"
+    - "dist"  
   build:
     deps:
       - target: "~:bundle"

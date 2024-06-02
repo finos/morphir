@@ -5,7 +5,25 @@ tasks:
     args:     
       - 'component'
       - 'build'
-      - '--release'
+      - '--release'    
     options:
       mergeArgs: 'replace'
+  make-dist-folder:
+    command: 'mkdir -p dist' 
+    inputs: []
+
+  wasm-wasi-build-artifacts:
+    command: 'cp'
+    args:
+      - '$workspaceRoot/target/wasm32-wasi/release/morphir_platform.wasm'
+      - 'dist/'
+    outputs:
+      - 'dist/morphir_platform.wasm'
+    deps:
+      - target: '~:make-dist-folder'
+      - target: '~:cargo-build'
+  build-artifacts:
+    inputs: []
+    deps:
+      - target: '~:wasm-wasi-build-artifacts'
     
