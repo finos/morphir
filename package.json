@@ -2,7 +2,7 @@
   "name": "morphir-home",
   "private": true,
   "workspaces": [
-    "apps/js-cli",
+    "apps/morphir-cli",
     "packages/*",
     "tools/*"
   ],

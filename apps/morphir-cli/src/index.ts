@@ -1,7 +1,11 @@
-import argv from 'node:process';
+#! /usr/bin/env node
+import process from "node:process";
+import { commandRunner } from "./generated/components/morphir_platform.js";
 
 function run(args: string[]) {
-  console.log(args)
+  console.log("[Node]Args:", args);
+  commandRunner.run(args);
 }
 
-run(argv.argv);
+console.log("Process: ", process.argv, process.argv0);
+run(process.argv);
