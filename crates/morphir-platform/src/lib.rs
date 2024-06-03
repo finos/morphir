@@ -1,16 +1,28 @@
 #[allow(warnings)]
 mod bindings;
+mod cli_args;
 
 use bindings::exports::morphir::platform::command_runner;
 use bindings::exports::morphir::platform::project;
 use bindings::exports::morphir::platform::project::ProjectInfo;
 
+use crate::cli_args::Cli;
+use clap::Parser;
+
 struct Component;
 
 impl command_runner::Guest for Component {
-    fn run(args: Vec<String>) -> Result<String, ()> {
-        println!("Args are: {:?}", args);
-        Ok("Hello".to_string())
+    fn run(args: Vec<String>) -> Result<String, String> {
+        let args_str = format!("Arguments are: {:?}", args);
+        let result_cli = Cli::try_parse_from(args.iter());
+        let cli = match result_cli {
+            Ok(cli) => cli,
+            Err(err) => {
+                return Err(err.to_string());
+            }
+        };
+        let output = format!("Parsed CLI: {:?}\r\nArgs: {:?}", cli, args_str);
+        Ok(output.to_string())
     }
 }
 

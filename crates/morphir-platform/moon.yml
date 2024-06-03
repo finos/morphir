@@ -8,9 +8,14 @@ tasks:
       - '--release'    
     options:
       mergeArgs: 'replace'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+      - 'wit/**/*'
   make-dist-folder:
     command: 'mkdir -p dist' 
     inputs: []
+    outputs: ['./dist/']
 
   wasm-wasi-build-artifacts:
     command: 'cp'
@@ -22,6 +27,8 @@ tasks:
     deps:
       - target: '~:make-dist-folder'
       - target: '~:cargo-build'
+    options:
+      runDepsInParallel: false
   build-artifacts:
     inputs: []
     deps:

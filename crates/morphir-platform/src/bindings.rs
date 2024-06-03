@@ -7,6 +7,24 @@ pub mod exports {
         #[allow(dead_code)]
         pub mod platform {
             #[allow(dead_code, clippy::all)]
+            pub mod workspace {
+                #[used]
+                #[doc(hidden)]
+                #[cfg(target_arch = "wasm32")]
+                static __FORCE_SECTION_REF: fn() =
+                    super::super::super::super::__link_custom_section_describing_imports;
+                #[doc(hidden)]
+
+                macro_rules! __export_morphir_platform_workspace_0_1_0_cabi {
+                    ($ty:ident with_types_in $($path_to_types:tt)*) => {
+                        const _: () = {};
+                    };
+                }
+                #[doc(hidden)]
+                pub(crate) use __export_morphir_platform_workspace_0_1_0_cabi;
+            }
+
+            #[allow(dead_code, clippy::all)]
             pub mod project {
                 #[used]
                 #[doc(hidden)]
@@ -214,7 +232,7 @@ pub mod exports {
                     }
                 }
                 pub trait Guest {
-                    fn get_project_info(path: _rt::String) -> Result<ProjectInfo, ()>;
+                    fn get_project_info(project_dir: _rt::String) -> Result<ProjectInfo, ()>;
                 }
                 #[doc(hidden)]
 
@@ -279,8 +297,14 @@ pub mod exports {
                             *ptr5.add(8).cast::<usize>() = len6;
                             *ptr5.add(4).cast::<*mut u8>() = ptr6.cast_mut();
                         }
-                        Err(_) => {
+                        Err(e) => {
                             *ptr5.add(0).cast::<u8>() = (1i32) as u8;
+                            let vec7 = (e.into_bytes()).into_boxed_slice();
+                            let ptr7 = vec7.as_ptr().cast::<u8>();
+                            let len7 = vec7.len();
+                            ::core::mem::forget(vec7);
+                            *ptr5.add(8).cast::<usize>() = len7;
+                            *ptr5.add(4).cast::<*mut u8>() = ptr7.cast_mut();
                         }
                     };
                     ptr5
@@ -295,11 +319,15 @@ pub mod exports {
                             let l2 = *arg0.add(8).cast::<usize>();
                             _rt::cabi_dealloc(l1, l2, 1);
                         }
-                        _ => (),
+                        _ => {
+                            let l3 = *arg0.add(4).cast::<*mut u8>();
+                            let l4 = *arg0.add(8).cast::<usize>();
+                            _rt::cabi_dealloc(l3, l4, 1);
+                        }
                     }
                 }
                 pub trait Guest {
-                    fn run(args: _rt::Vec<_rt::String>) -> Result<_rt::String, ()>;
+                    fn run(args: _rt::Vec<_rt::String>) -> Result<_rt::String, _rt::String>;
                 }
                 #[doc(hidden)]
 
@@ -373,6 +401,7 @@ mod _rt {
 macro_rules! __export_main_impl {
   ($ty:ident) => (self::export!($ty with_types_in self););
   ($ty:ident with_types_in $($path_to_types_root:tt)*) => (
+  $($path_to_types_root)*::exports::morphir::platform::workspace::__export_morphir_platform_workspace_0_1_0_cabi!($ty with_types_in $($path_to_types_root)*::exports::morphir::platform::workspace);
   $($path_to_types_root)*::exports::morphir::platform::project::__export_morphir_platform_project_0_1_0_cabi!($ty with_types_in $($path_to_types_root)*::exports::morphir::platform::project);
   $($path_to_types_root)*::exports::morphir::platform::command_runner::__export_morphir_platform_command_runner_0_1_0_cabi!($ty with_types_in $($path_to_types_root)*::exports::morphir::platform::command_runner);
   )
@@ -383,16 +412,16 @@ pub(crate) use __export_main_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:wit-bindgen:0.25.0:main:encoded world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 400] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x95\x02\x01A\x02\x01\
-A\x04\x01B\x06\x01ps\x01r\x05\x04names\x10source-directorys\x08includes\0\x0cdep\
-endencies\0\x12local-dependencies\0\x04\0\x0cproject-info\x03\0\x01\x01j\x01\x02\
-\0\x01@\x01\x04paths\0\x03\x04\0\x10get-project-info\x01\x04\x04\x01\x1emorphir:\
-platform/project@0.1.0\x05\0\x01B\x04\x01ps\x01j\x01s\0\x01@\x01\x04args\0\0\x01\
-\x04\0\x03run\x01\x02\x04\x01%morphir:platform/command-runner@0.1.0\x05\x01\x04\x01\
-\x1bmorphir:platform/main@0.1.0\x04\0\x0b\x0a\x01\0\x04main\x03\0\0\0G\x09produc\
-ers\x01\x0cprocessed-by\x02\x0dwit-component\x070.208.1\x10wit-bindgen-rust\x060\
-.25.0";
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 448] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xc5\x02\x01A\x02\x01\
+A\x06\x01B\0\x04\x01\x20morphir:platform/workspace@0.1.0\x05\0\x01B\x06\x01ps\x01\
+r\x05\x04names\x10source-directorys\x08includes\0\x0cdependencies\0\x12local-dep\
+endencies\0\x04\0\x0cproject-info\x03\0\x01\x01j\x01\x02\0\x01@\x01\x0bproject-d\
+irs\0\x03\x04\0\x10get-project-info\x01\x04\x04\x01\x1emorphir:platform/project@\
+0.1.0\x05\x01\x01B\x04\x01ps\x01j\x01s\x01s\x01@\x01\x04args\0\0\x01\x04\0\x03ru\
+n\x01\x02\x04\x01%morphir:platform/command-runner@0.1.0\x05\x02\x04\x01\x1bmorph\
+ir:platform/main@0.1.0\x04\0\x0b\x0a\x01\0\x04main\x03\0\0\0G\x09producers\x01\x0c\
+processed-by\x02\x0dwit-component\x070.208.1\x10wit-bindgen-rust\x060.25.0";
 
 #[inline(never)]
 #[doc(hidden)]

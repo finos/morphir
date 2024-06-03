@@ -62,7 +62,8 @@ thiserror = "1.0.58"
 tokio = { version = "1.10", features = ["macros", "rt-multi-thread", "time"] }
 tracing = "0.1.40"
 url = "2.2.2"
-warpgate = "0.14.2"
+warpgate = "0.15.0"
+wit-bindgen-rt = "0.26.0"
 wizer = "6.0.0"
 
 [profile.release]

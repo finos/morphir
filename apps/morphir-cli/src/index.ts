@@ -3,8 +3,14 @@ import process from "node:process";
 import { commandRunner } from "./generated/components/morphir_platform.js";
 
 function run(args: string[]) {
-  console.log("[Node]Args:", args);
-  commandRunner.run(args);
+  try {
+    const commandLineArgs = args.slice(2);
+    console.log("Command line args:", commandLineArgs);
+    const result = commandRunner.run(commandLineArgs);
+    console.log("Result", result);
+  } catch (error) {
+    console.error("[Error]:", error);
+  }
 }
 
 console.log("Process: ", process.argv, process.argv0);

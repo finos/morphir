@@ -9,16 +9,19 @@ interface project {
      local-dependencies: list<string>,
   }
 
-  get-project-info: func(path:string) -> result<project-info>;
+  get-project-info: func(project-dir:string) -> result<project-info>;
 
 }
 
+interface workspace {}
+
 interface command-runner {  
-  run: func(args:list<string>) -> result<string>; 
+  run: func(args:list<string>) -> result<string, string>; 
 }
 
 /// An example world for the component to target.
 world main {
+    export workspace;
     export project;
     export command-runner;
 }

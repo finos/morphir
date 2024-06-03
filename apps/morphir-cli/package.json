@@ -16,6 +16,7 @@
     "typescript": "5.4.5"
   },
   "dependencies": {
-    "@extism/extism": "^1.0.3"
+    "@extism/extism": "^1.0.3",
+    "@bytecodealliance/preview2-shim": "0.16.2"
   }
 }

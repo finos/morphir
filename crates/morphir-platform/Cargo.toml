@@ -8,11 +8,21 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
-wit-bindgen-rt = { version = "0.26.0", features = ["bitflags"] }
+anyhow.workspace = true
+clap = { workspace = true, features = [
+    "color",
+    "derive",
+    "env",
+    "help",
+    "suggestions",
+    "usage",
+    "wrap_help",
+] }
+clap_complete = { workspace = true }
+wit-bindgen-rt = { workspace = true, features = ["bitflags"] }
 
 [lib]
 crate-type = ["cdylib"]
-
 
 
 [package.metadata.component]

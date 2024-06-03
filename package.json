@@ -7,7 +7,7 @@
     "tools/*"
   ],
   "scripts": {
-    "build": "moon run :build",
+    "build": "moon run :build -u",
     "clean": "moon run clean",
     "elm-build": "moon run elm-build",
     "pruge": "moon run pruge",
