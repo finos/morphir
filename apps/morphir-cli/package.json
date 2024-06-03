@@ -1,5 +1,5 @@
 {
-  "name": "@finos/morphir-js-cli",
+  "name": "@finos/morphir-cli",
   "version": "0.0.0",
   "scripts": {
     "fetch-quickjs": "bun scripts/fetch-quickjs.ts"
@@ -9,5 +9,7 @@
     "@tsconfig/node18": "^18.2.4",
     "typescript": "5.4.5"
   },
-  "dependencies": { "@extism/extism": "^1.0.3" }
+  "dependencies": {
+    "@extism/extism": "^1.0.3"
+  }
 }

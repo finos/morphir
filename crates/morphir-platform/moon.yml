@@ -25,5 +25,15 @@ tasks:
   build-artifacts:
     inputs: []
     deps:
+      - target: '~:clean-build-artifacts'
       - target: '~:wasm-wasi-build-artifacts'
-    
+    options:
+      runDepsInParallel: false
+  clean-build-artifacts:
+    command: 'rm'
+    args: 
+      - '-rf'
+      - 'dist/'
+    inputs: []
+    options:
+     cache: false
