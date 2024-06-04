@@ -1,5 +1,5 @@
 use clap::{Args, Parser, Subcommand};
-use std::ffi::OsString;
+use std::{ffi::OsString, sync::Arc};
 
 #[derive(Debug, Parser)]
 #[command(name = "morphir")]
@@ -82,5 +82,5 @@ pub struct RestoreArgs {
 #[command(flatten_help = true)]
 #[command(about = "Run a script.")]
 pub struct RunArgs {
-    pub file: OsString,
+    pub file: Arc<OsString>,
 }

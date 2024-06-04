@@ -1,16 +1,25 @@
+use tokio::runtime;
+
 use crate::cli_args::RunArgs;
 use crate::js_extensions::morphir_js;
 
-pub(crate) async fn run_js(args: &RunArgs) {
-    println!("Running...");
-    println!("Args: {:?}", args);
-    // let runtime = tokio::runtime::Builder::new_multi_thread()
-    //     .enable_all()
-    //     .build()
-    //     .unwrap();
-    let file_path = args.file.as_os_str().to_str().unwrap();
+pub(crate) fn run_js(args: &RunArgs) {
+    let file = args.file.to_owned();
+    std::thread::spawn(move || {
+        let file_path = file.to_str();
+        file_path.map(|path| {
+            println!("Running JavaScript file: {}", path);
 
-    if let Err(error) = morphir_js(file_path).await {
-        eprintln!("error: {error}");
-    }
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+
+            if let Err(error) = runtime.block_on(morphir_js(path)) {
+                eprintln!("error: {error}");
+            }
+        });
+    })
+    .join()
+    .unwrap();
 }

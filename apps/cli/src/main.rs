@@ -96,7 +96,7 @@ async fn run(cli_ref: StateRef<CliArgs>, workspace_ref: StateRef<WorkspaceRoot>)
             println!("Args: {:?}", args);
         }
         Commands::Run(args) => {
-            cli::run_js(args).await;
+            cli::run_js(args);
         }
     }
 }
