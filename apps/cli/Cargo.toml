@@ -36,16 +36,21 @@ clap = { workspace = true, features = [
 ] }
 clap_complete = { workspace = true }
 config.workspace = true
+deno_ast.workspace = true
+deno_ast.features = ["transpiling"]
+deno_core.workspace = true
 dirs.workspace = true
 miette = { workspace = true, features = ["fancy"] }
 ractor.workspace = true
 refined_type.workspace = true
+reqwest.workspace = true
 schematic.workspace = true
 serde.workspace = true
 serde_derive.workspace = true
 starbase.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
+tokio.features = ["full"]
 tracing.workspace = true
 wizer.workspace = true
 
@@ -53,3 +58,4 @@ wizer.workspace = true
 [build-dependencies]
 #git-download = "0.1.1"
 download_git = "0.0.2"
+deno_core.workspace = true

@@ -4,7 +4,9 @@ use starbase::{system, App, MainResult, State};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+mod cli;
 mod cli_args;
+mod js_extensions;
 mod settings;
 use crate::cli_args::{Cli, Commands};
 use settings::Settings;
@@ -92,6 +94,9 @@ async fn run(cli_ref: StateRef<CliArgs>, workspace_ref: StateRef<WorkspaceRoot>)
         Commands::Restore(args) => {
             println!("Restoring - Not Implemented Yet");
             println!("Args: {:?}", args);
+        }
+        Commands::Run(args) => {
+            cli::run_js(args).await;
         }
     }
 }

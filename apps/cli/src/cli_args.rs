@@ -16,6 +16,7 @@ pub enum Commands {
     Gen(GenArgs),
     Develop(DevelopArgs),
     Restore(RestoreArgs),
+    Run(RunArgs),
 }
 
 #[derive(Debug, Args)]
@@ -74,4 +75,12 @@ pub struct DevelopArgs {
 pub struct RestoreArgs {
     #[arg(short, long)]
     project: Option<OsString>,
+}
+
+#[derive(Debug, Args)]
+#[command(args_conflicts_with_subcommands = true)]
+#[command(flatten_help = true)]
+#[command(about = "Run a script.")]
+pub struct RunArgs {
+    pub file: OsString,
 }
