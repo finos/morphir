@@ -19,5 +19,8 @@
   "devDependencies": {
     "elm-tooling": "^1.15.1",
     "node-jq": "4.4.0"
+  },
+  "dependencies": {
+    "@moonrepo/cli": "^1.25.2"
   }
 }

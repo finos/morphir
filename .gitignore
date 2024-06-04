@@ -1,5 +1,5 @@
 # Node, Bun, and Deno Related
-package-lock.json
+#package-lock.json
 node_modules/
 
 # IDE Related 
