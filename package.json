@@ -10,11 +10,10 @@
     "build": "moon run :build -u",
     "clean": "moon run clean",
     "elm-build": "moon run elm-build",
-    "pruge": "moon run pruge",
-    "build:verify-elm-package": "zig build verify-elm-package --summary all",
+    "purge": "moon run purge",
     "check-elm-docs": "moon run check-elm-docs",
     "postinstall": "elm-tooling install",
-    "list-projects": "moon project-graph --json | bunx --bun node-jq '.projects| keys[]'",
+    "list-projects": "moon project-graph --json | npx node-jq '.projects| keys[]'",
     "morphirjs": "moon run js-cli:run"
   },
   "devDependencies": {

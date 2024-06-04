@@ -4,8 +4,8 @@
   "type": "module",
   "main": "./dist/index.js",
   "scripts": {
-    "fetch-quickjs": "bun scripts/fetch-quickjs.ts",
-    "run": "bun run ./dist/index.js",
+    "fetch-quickjs": "node scripts/fetch-quickjs.ts",
+    "run": "node  ./dist/index.js",
     "build-js": "moon run morphir-cli:build-js",
     "build": "moon run morphir-cli:build"
   },

@@ -1,6 +1,6 @@
 language: typescript
 type: application
-platform: bun
+platform: node
 
 fileGroups:
   vite:
@@ -17,7 +17,7 @@ tags:
 
 tasks:
   bundle:
-   command:  "bunx --bun vite build --ssr"
+   command:  "vite build --ssr"
    inputs: 
     - '@globs(vite)'
    outputs: 

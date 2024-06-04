@@ -41,7 +41,7 @@ tasks:
     outputs: 
       - '.out/elm-out/finos/morphir'
   check-elm-docs:
-    platform: 'bun'
+    platform: 'node'
     command: 'elm make --docs=./.out/elm-out/finos/morphir/docs.json'
     inputs:
       - '@globs(elm-sources)'   
