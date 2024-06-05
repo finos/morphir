@@ -4,12 +4,8 @@ use starbase::{system, App, MainResult, State};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-mod cli;
-mod cli_args;
-mod js_extensions;
-mod settings;
-use crate::cli_args::{Cli, Commands};
-use settings::Settings;
+use morphir::cli_args::{Cli, Commands};
+use morphir::settings::Settings;
 
 #[derive(Debug, State)]
 pub struct Config(Settings);
@@ -96,7 +92,7 @@ async fn run(cli_ref: StateRef<CliArgs>, workspace_ref: StateRef<WorkspaceRoot>)
             println!("Args: {:?}", args);
         }
         Commands::Run(args) => {
-            cli::run_js(args);
+            morphir::cli::run_js(args);
         }
     }
 }

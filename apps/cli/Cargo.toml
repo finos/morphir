@@ -13,7 +13,7 @@ maintnance = { status = "actively-developer" }
 
 [[bin]]
 name = "morphir"
-path = "src/main.rs"
+path = "src/bin/morphir.rs"
 
 [lib]
 name = "morphir"

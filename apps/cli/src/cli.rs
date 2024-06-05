@@ -1,9 +1,8 @@
-use tokio::runtime;
 
 use crate::cli_args::RunArgs;
 use crate::js_extensions::morphir_js;
 
-pub(crate) fn run_js(args: &RunArgs) {
+pub fn run_js(args: &RunArgs) {
     let file = args.file.to_owned();
     std::thread::spawn(move || {
         let file_path = file.to_str();
