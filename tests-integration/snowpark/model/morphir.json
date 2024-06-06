@@ -1,0 +1,12 @@
+{
+   "name": "CompanyAssets",
+   "sourceDirectory": "src",
+   "decorations": {
+      "snowparkgendecorations": {
+          "displayName" : "Snowpark generation customization",
+          "entryPoint": "SnowparkGenCustomization:Decorations:GenerationCustomization",
+          "ir": "outsp/src/main/scala/decorations/morphir-ir.json",
+          "storageLocation": "spdecorations.json"
+       }
+    }
+}
