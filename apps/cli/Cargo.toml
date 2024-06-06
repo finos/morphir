@@ -35,6 +35,7 @@ clap = { workspace = true, features = [
     "wrap_help",
 ] }
 clap_complete = { workspace = true }
+coerce.workspace = true
 config.workspace = true
 deno_ast.workspace = true
 deno_ast.features = ["transpiling"]
@@ -48,11 +49,13 @@ schematic.workspace = true
 serde.workspace = true
 serde_derive.workspace = true
 starbase.workspace = true
+stakker.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tokio.features = ["full"]
 tracing.workspace = true
 wizer.workspace = true
+async-trait.workspace = true
 
 
 [build-dependencies]

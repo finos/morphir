@@ -209,3 +209,17 @@ extension! {
         op_set_timeout,
     ]
 }
+pub(crate) async fn morphir_js(file_path: &str) -> std::result::Result<(), AnyError> {
+    let main_module = deno_core::resolve_path(file_path, env::current_dir()?.as_path())?;
+    let mut js_runtime = deno_core::JsRuntime::new(deno_core::RuntimeOptions {
+        module_loader: Some(Rc::new(TsModuleLoader)),
+        startup_snapshot: Some(RUNTIME_SNAPSHOT),
+        extensions: vec![crate::js_extensions::morphirjs::init_ops()],
+        ..Default::default()
+    });
+
+    let mod_id = js_runtime.load_main_es_module(&main_module).await?;
+    let result = js_runtime.mod_evaluate(mod_id);
+    js_runtime.run_event_loop(Default::default()).await?;
+    result.await
+}

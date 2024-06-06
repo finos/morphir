@@ -19,7 +19,7 @@ pub struct ArgMatches(clap::ArgMatches);
 #[derive(Debug, State)]
 pub struct CliArgs(Arc<Cli>);
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> MainResult {
     App::setup_diagnostics();
     App::setup_tracing();
@@ -92,7 +92,7 @@ async fn run(cli_ref: StateRef<CliArgs>, workspace_ref: StateRef<WorkspaceRoot>)
             println!("Args: {:?}", args);
         }
         Commands::Run(args) => {
-            morphir::cli::run_js(args);
+            morphir::cli::run_js_file(args);
         }
     }
 }
