@@ -16,11 +16,26 @@ pub mod project {
 pub mod workspace {
     use crate::models::project::Project;
     use crate::models::tools::ToolId;
-    use std::ffi::OsString;
+    use starbase_utils::fs::find_upwards;
+    use std::ffi::OsStr;
+    use std::fmt::Debug;
     use std::path::{Path, PathBuf};
-
-    #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
+    use tracing::{instrument, trace};
+    #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
     pub struct WorkspaceRoot(PathBuf);
+    impl WorkspaceRoot {
+        #[inline]
+        pub fn as_path(&self) -> &Path {
+            self.0.as_path()
+        }
+    }
+
+    impl AsRef<Path> for WorkspaceRoot {
+        #[inline]
+        fn as_ref(&self) -> &Path {
+            self.as_path()
+        }
+    }
 
     #[derive(Debug, Eq, PartialEq)]
     pub struct Workspace {
@@ -29,29 +44,35 @@ pub mod workspace {
     }
 
     impl Workspace {
-        fn find_root(
-            config_dirname: &str,
-            dir: &Path,
-        ) -> Option<WorkspaceRoot> {
-            let findable = dir.join(config_dirname);
-
-            if findable.exists() {
-                let root = findable.to_path_buf();
-                return Some(WorkspaceRoot(root));
+        pub fn new(root: WorkspaceRoot) -> Self {
+            Workspace {
+                root,
+                projects: Vec::new(),
             }
-
-            match dir.parent() {
-                Some(parent_dir) => Self::find_root(config_dirname, parent_dir),
-                None => None,
-            }
+        }
+        #[inline]
+        #[instrument]
+        pub fn find_root<F, S>(name: F, start_dir: S) -> Option<WorkspaceRoot>
+        where
+            F: AsRef<OsStr> + Debug,
+            S: AsRef<Path> + Debug,
+        {
+            let found = find_upwards(name, start_dir);
+            found.map(|p| WorkspaceRoot(p))
         }
     }
 }
 
 pub mod tools {
 
-    #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
+    #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
     pub struct ToolId(String);
+
+    impl ToolId {
+        pub fn as_str(&self) -> &str {
+            self.0.as_str()
+        }
+    }
 
     impl Default for ToolId {
         fn default() -> Self {
