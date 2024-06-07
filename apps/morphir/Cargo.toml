@@ -50,6 +50,7 @@ serde.workspace = true
 serde_derive.workspace = true
 starbase.workspace = true
 starbase_utils.workspace = true
+starbase_utils.features = ["glob"]
 thiserror.workspace = true
 tokio.workspace = true
 tokio.features = ["full"]

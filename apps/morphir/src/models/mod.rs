@@ -30,6 +30,13 @@ pub mod workspace {
         }
     }
 
+    impl From<PathBuf> for WorkspaceRoot {
+        #[inline]
+        fn from(path: PathBuf) -> Self {
+            WorkspaceRoot(path)
+        }
+    }
+
     impl AsRef<Path> for WorkspaceRoot {
         #[inline]
         fn as_ref(&self) -> &Path {

@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "apps/cli",
+    "apps/morphir",
     "crates/morphir-utils",
     "crates/morphir-elm-compiler-rs",
     "crates/morphir-platform",
