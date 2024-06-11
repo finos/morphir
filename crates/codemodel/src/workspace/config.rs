@@ -1,18 +1,13 @@
+use derive_more::{From, FromStr};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct WorkspaceConfig {
+pub struct WorkspaceManifest {
     pub members: Vec<WorkspaceMember>,
 }
 
-#[derive(Debug, Deserialize, Eq, PartialEq, Ord, PartialOrd, Serialize)]
+#[derive(Debug, Deserialize, Eq, PartialEq, Ord, PartialOrd, Serialize, From, FromStr)]
 pub struct WorkspaceMember(String);
-
-impl From<String> for WorkspaceMember {
-    fn from(s: String) -> Self {
-        WorkspaceMember(s)
-    }
-}
 
 impl From<&str> for WorkspaceMember {
     fn from(s: &str) -> Self {

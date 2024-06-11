@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
-use super::config::WorkspaceConfig;
+use super::config::WorkspaceManifest;
 use super::error::Result;
 use super::{
     CurrentDir, TargetDir, TraversalInstruction, WorkspaceConfigFilePath, WorkspaceLocator,
@@ -101,12 +101,12 @@ pub struct LocatedWorkspace {
 pub struct Workspace {
     root: WorkspaceRoot,
     config_file_path: PathBuf,
-    config: WorkspaceConfig,
+    config: WorkspaceManifest,
 }
 
 impl Workspace {
     #[inline]
-    fn get_config(&self) -> &WorkspaceConfig {
+    fn get_config(&self) -> &WorkspaceManifest {
         &self.config
     }
 }
