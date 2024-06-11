@@ -2,6 +2,8 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use tracing::instrument;
 
+pub mod path_spec;
+
 pub trait Specification<T>: Sized
 where
     T: Debug,
@@ -43,7 +45,7 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct AndSpecification<T, L, R>
 where
     L: Specification<T>,
@@ -66,7 +68,7 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct OrSpecification<T, L, R>
 where
     L: Specification<T>,
@@ -90,7 +92,7 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct NotSpecification<T, S>
 where
     S: Specification<T>,
@@ -111,8 +113,9 @@ where
     }
 }
 
+#[inline]
 #[instrument(level = "trace")]
-pub fn is_satisfied_by<T, S>(candidate: &T, spec: S) -> bool
+pub fn is_satisfied_by<T, S>(candidate: &T, spec: &S) -> bool
 where
     S: Specification<T>,
     T: Debug,
@@ -120,37 +123,27 @@ where
     spec.is_satisfied_by(candidate)
 }
 
+pub fn collect_all<I, T, S>(candidates: I, spec: &S) -> Vec<T>
+where
+    S: Specification<T>,
+    I: IntoIterator<Item = T>,
+    T: Debug,
+{
+    candidates
+        .into_iter()
+        .filter(|candidate| is_satisfied_by(candidate, spec))
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use tracing_test::traced_test;
 
     use super::*;
+    use path_spec::{ContainsAnyOfTheseFiles, IsDir, IsFile};
     use std::path::Path;
 
     static MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
-    #[derive(Debug)]
-    struct IsDir;
-
-    impl<T> Specification<T> for IsDir
-    where
-        T: AsRef<Path> + Debug,
-    {
-        fn is_satisfied_by(&self, candidate: &T) -> bool {
-            candidate.as_ref().is_dir()
-        }
-    }
-
-    #[derive(Debug)]
-    struct IsFile;
-
-    impl<T> Specification<T> for IsFile
-    where
-        T: AsRef<Path> + Debug,
-    {
-        fn is_satisfied_by(&self, candidate: &T) -> bool {
-            candidate.as_ref().is_file()
-        }
-    }
 
     #[traced_test]
     #[test]
@@ -158,8 +151,22 @@ mod tests {
         let path = Path::new(MANIFEST_DIR);
         let is_dir = IsDir;
         let is_file = IsFile;
-        assert!(is_satisfied_by(&path, is_dir));
-        assert!(!is_satisfied_by(&path, is_file));
+        assert!(is_satisfied_by(&path, &is_dir));
+        assert!(!is_satisfied_by(&path, &is_file));
+    }
+
+    #[traced_test]
+    #[test]
+    fn test_and_spec() {
+        let path = Path::new(MANIFEST_DIR);
+        let is_dir = IsDir;
+        let is_file = IsFile;
+        let contains_any_of_these_files = ContainsAnyOfTheseFiles::new(["Cargo.toml"]);
+        let contains_any_of_these_files2 = contains_any_of_these_files.clone();
+        let spec = is_dir.and(contains_any_of_these_files);
+        assert!(is_satisfied_by(&path, &spec));
+        let spec = is_file.and(contains_any_of_these_files2);
+        assert!(!is_satisfied_by(&path, &spec));
     }
 }
 
