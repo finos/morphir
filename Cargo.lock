@@ -710,7 +710,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7328b20597b53c2454f0b1919720c25c7339051c02b72b7e05409e00b14132be"
 dependencies = [
  "async-trait",
- "convert_case",
+ "convert_case 0.6.0",
  "json5",
  "lazy_static",
  "nom",
@@ -774,6 +774,12 @@ dependencies = [
  "quote",
  "unicode-xid",
 ]
+
+[[package]]
+name = "convert_case"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e"
 
 [[package]]
 name = "convert_case"
@@ -1183,6 +1189,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b42b6fa04a440b495c8b04d0e71b707c585f83cb9cb28cf8cd0d976c315e31b4"
 dependencies = [
  "powerfmt",
+]
+
+[[package]]
+name = "derive_more"
+version = "0.99.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fb810d30a7c1953f91334de7244731fc3f3c10d7fe163338a35b9f640960321"
+dependencies = [
+ "convert_case 0.4.0",
+ "proc-macro2",
+ "quote",
+ "rustc_version 0.4.0",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -2383,6 +2402,18 @@ dependencies = [
 
 [[package]]
 name = "miette"
+version = "5.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59bb584eaeeab6bd0226ccf3509a69d7936d148cf3d036ad350abe35e8c6856e"
+dependencies = [
+ "miette-derive 5.10.0",
+ "once_cell",
+ "thiserror",
+ "unicode-width",
+]
+
+[[package]]
+name = "miette"
 version = "7.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4edc8853320c2a0dab800fbda86253c8938f6ea88510dc92c5f1ed20e794afc1"
@@ -2390,7 +2421,7 @@ dependencies = [
  "backtrace",
  "backtrace-ext",
  "cfg-if",
- "miette-derive",
+ "miette-derive 7.2.0",
  "owo-colors",
  "supports-color",
  "supports-hyperlinks",
@@ -2399,6 +2430,17 @@ dependencies = [
  "textwrap",
  "thiserror",
  "unicode-width",
+]
+
+[[package]]
+name = "miette-derive"
+version = "5.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "49e7bc1560b95a3c4a25d03de42fe76ca718ab92d1a22a55b9b4cf67b3ae635c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.66",
 ]
 
 [[package]]
@@ -2460,7 +2502,8 @@ dependencies = [
  "deno_core",
  "dirs 5.0.1",
  "download_git",
- "miette",
+ "miette 7.2.0",
+ "morphir-codemodel",
  "morphir-utils",
  "ractor",
  "refined_type",
@@ -2475,6 +2518,22 @@ dependencies = [
  "tokio",
  "tracing",
  "wizer",
+]
+
+[[package]]
+name = "morphir-codemodel"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "config",
+ "derive_more",
+ "schematic",
+ "serde",
+ "serde_derive",
+ "smoothy",
+ "starbase_sandbox",
+ "thiserror",
+ "tracing",
 ]
 
 [[package]]
@@ -2519,8 +2578,14 @@ dependencies = [
 name = "morphir-utils"
 version = "0.1.0"
 dependencies = [
- "anyhow",
+ "derive_more",
+ "miette 7.2.0",
+ "path-absolutize",
+ "smoothy",
+ "thiserror",
  "tracing",
+ "tracing-test",
+ "wax",
 ]
 
 [[package]]
@@ -2772,6 +2837,24 @@ name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+
+[[package]]
+name = "path-absolutize"
+version = "3.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4af381fe79fa195b4909485d99f73a80792331df0625188e707854f0b3383f5"
+dependencies = [
+ "path-dedot",
+]
+
+[[package]]
+name = "path-dedot"
+version = "3.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07ba0ad7e047712414213ff67533e6dd477af0a4e1d14fb52343e53d30ea9397"
+dependencies = [
+ "once_cell",
+]
 
 [[package]]
 name = "pathdiff"
@@ -3360,6 +3443,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_version"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bfa0f585226d2e68097d4f95d113b15b83a82e819ab25717ec0590d9584ef366"
+dependencies = [
+ "semver 1.0.23",
+]
+
+[[package]]
 name = "rustix"
 version = "0.38.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3433,7 +3525,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2a97356d9a387d6963940ab05de6ac9dbee0c3c97090247954c3d4c2ddc5b8d"
 dependencies = [
  "garde",
- "miette",
+ "miette 7.2.0",
  "reqwest",
  "schematic_macros",
  "schematic_types",
@@ -3450,7 +3542,7 @@ version = "0.16.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "906eff11b3963e20f5d33fb6dfc67d84351769917970c0d7ebf86e1782d869b5"
 dependencies = [
- "convert_case",
+ "convert_case 0.6.0",
  "darling",
  "proc-macro2",
  "quote",
@@ -3707,6 +3799,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b7c388c1b5e93756d0c740965c41e8822f866621d41acbdf6336a6a168f8840c"
 
 [[package]]
+name = "smoothy"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "528d086546bb9affe3976cc089013dff306f1f15cd2178178ece8f8cacb76aaa"
+dependencies = [
+ "pretty_assertions",
+ "regex",
+]
+
+[[package]]
 name = "socket2"
 version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3728,7 +3830,7 @@ dependencies = [
  "debugid",
  "if_chain",
  "rustc-hash",
- "rustc_version",
+ "rustc_version 0.2.3",
  "serde",
  "serde_json",
  "unicode-id-start",
@@ -3769,7 +3871,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "futures",
- "miette",
+ "miette 7.2.0",
  "starbase_styles",
  "tracing",
  "tracing-chrome",
@@ -3800,7 +3902,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e483937f25c81ee4a5b70b608436025d23bffa656d62793ea5bbe6e9b94206d"
 dependencies = [
  "dirs 5.0.1",
- "miette",
+ "miette 7.2.0",
  "owo-colors",
  "supports-color",
 ]
@@ -4342,6 +4444,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
+name = "tardar"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "900c942f83b6a8b9998cc8f74ad3ffa24b7ff3c4279ea1c1c52d95dced9f3516"
+dependencies = [
+ "miette 5.10.0",
+ "vec1",
+]
+
+[[package]]
 name = "target-lexicon"
 version = "0.12.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4712,6 +4824,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "tracing-test"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "557b891436fe0d5e0e363427fc7f217abf9ccd510d5136549847bdcbcd011d68"
+dependencies = [
+ "tracing-core",
+ "tracing-subscriber",
+ "tracing-test-macro",
+]
+
+[[package]]
+name = "tracing-test-macro"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04659ddb06c87d233c566112c1c9c5b9e98256d9af50ec3bc9c8327f873a7568"
+dependencies = [
+ "quote",
+ "syn 2.0.66",
+]
+
+[[package]]
 name = "triomphe"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4882,6 +5015,12 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
+
+[[package]]
+name = "vec1"
+version = "1.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eab68b56840f69efb0fefbe3ab6661499217ffdc58e2eef7c3f6f69835386322"
 
 [[package]]
 name = "version_check"
@@ -5409,9 +5548,11 @@ checksum = "8d12a78aa0bab22d2f26ed1a96df7ab58e8a93506a3e20adb47c51a93b4e1357"
 dependencies = [
  "const_format",
  "itertools 0.11.0",
+ "miette 5.10.0",
  "nom",
  "pori",
  "regex",
+ "tardar",
  "thiserror",
  "walkdir",
 ]

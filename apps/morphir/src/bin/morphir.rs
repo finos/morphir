@@ -1,6 +1,7 @@
 use starbase::{App, MainResult};
 use starbase::tracing::TracingOptions;
 use starbase_utils::glob;
+use tracing::info;
 use morphir::session::Session;
 
 #[tokio::main]
@@ -16,8 +17,9 @@ async fn main() -> MainResult {
 
     let mut session = Session::default();
 
-    app.run(&mut session, |session| async{
+    app.run(&mut session, |session| async move {
         // Run CLI
+        info!("Session is running: {:?}", session);
         Ok(())
     }).await?;
 

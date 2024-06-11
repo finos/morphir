@@ -14,12 +14,15 @@ maintnance = { status = "actively-developer" }
 [[bin]]
 name = "morphir"
 path = "src/bin/morphir.rs"
+required-features = ["fancy"]
 
 [lib]
 name = "morphir"
 path = "src/lib.rs"
 
 [features]
+default = []
+fancy = ["miette/fancy"]
 
 [dependencies]
 anyhow.workspace = true
@@ -57,7 +60,8 @@ tokio.features = ["full"]
 tracing.workspace = true
 wizer.workspace = true
 async-trait.workspace = true
-morphir-utils= { path = "../../crates/morphir-utils" }
+morphir-codemodel = { path = "../../crates/codemodel" }
+morphir-utils = { path = "../../crates/morphir-utils" }
 
 [dev-dependencies]
 starbase_sandbox.workspace = true

@@ -1,5 +1,5 @@
 [package]
-name = "morphir-utils"
+name = "morphir-codemodel"
 version.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -8,17 +8,15 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
+anyhow.workspace = true
+config.workspace = true
 derive_more.workspace = true
-miette.workspace = true
+schematic.workspace = true
+serde.workspace = true
+serde_derive.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
-wax.workspace = true
 
 [dev-dependencies]
 smoothy.workspace = true
-tracing-test.workspace = true
-path-absolutize.workspace = true
-miette.workspace = true
-miette.features = ["fancy"]
-wax.workspace = true
-wax.features = ["miette"]
+starbase_sandbox.workspace = true
