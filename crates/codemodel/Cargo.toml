@@ -8,6 +8,7 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
+path-absolutize.workspace = true
 anyhow.workspace = true
 config.workspace = true
 derive_more.workspace = true
@@ -16,7 +17,10 @@ serde.workspace = true
 serde_derive.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+toml.workspace = true
 
 [dev-dependencies]
+miette.workspace = true
 smoothy.workspace = true
 starbase_sandbox.workspace = true
+tracing-test.workspace = true

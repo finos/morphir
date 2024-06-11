@@ -70,6 +70,7 @@ starbase_sandbox = "0.6.2"
 state = "0.6.0"
 thiserror = "1.0.58"
 tokio = { version = "1.10", features = ["macros", "rt-multi-thread", "time"] }
+toml = "0.8.14"
 tracing = "0.1.40"
 tracing-test = "0.2.5"
 url = "2.2.2"
