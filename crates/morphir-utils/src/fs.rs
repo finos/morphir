@@ -1,12 +1,11 @@
 use crate::fs_error::FsError;
-use crate::fs_error::FsError::{AmbiguousMatches, GlobPatternNotFound, NotFound};
-use miette::{Context, IntoDiagnostic, Result};
+use crate::fs_error::FsError::{AmbiguousMatches, NotFound};
+use miette::Result;
 use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
-use tracing::{instrument, trace};
-use wax::{Glob, Pattern};
+use tracing::instrument;
 
 /// Return the name of a file or directory, or "unknown" if invalid UTF-8,
 /// or unknown path component.
@@ -91,141 +90,140 @@ where
     }
 }
 
-pub fn find_upwards_until_pattern<S, E>(
-    pattern: Glob,
-    start_dir: S,
-    end_dir: E,
-) -> Result<ManifestLocation>
-where
-    S: AsRef<Path> + Debug,
-    E: AsRef<Path> + Debug,
-{
-    trace!(
-        "Looking in {:?} for pattern {} up to {:?}",
-        start_dir,
-        pattern,
-        end_dir
-    );
-    let start_dir = start_dir.as_ref();
+// pub fn find_upwards_until_pattern<S, E>(
+//     pattern: Glob,
+//     start_dir: S,
+//     end_dir: E,
+// ) -> Result<ManifestLocation>
+// where
+//     S: AsRef<Path> + Debug,
+//     E: AsRef<Path> + Debug,
+// {
+//     trace!(
+//         "Looking in {:?} for pattern {} up to {:?}",
+//         start_dir,
+//         pattern,
+//         end_dir
+//     );
+//     let start_dir = start_dir.as_ref();
 
-    // let start_dir = start_dir
-    //     .canonicalize()
-    //     .into_diagnostic()
-    //     .wrap_err_with(|| format!("Failed to canonicalize path: {}", start_dir.display()))?;
+//     // let start_dir = start_dir
+//     //     .canonicalize()
+//     //     .into_diagnostic()
+//     //     .wrap_err_with(|| format!("Failed to canonicalize path: {}", start_dir.display()))?;
 
-    if !start_dir.is_dir() {
-        if let Some(parent) = start_dir.parent() {
-            trace!("The provided start_dir is not a directory {:?} attempting to call with parent: {:?}", &start_dir, parent);
-            return find_upwards_until_pattern(pattern, parent, end_dir);
-        } else {
-            return Err(FsError::InvalidPath(start_dir.to_path_buf()))
-                .into_diagnostic()
-                .wrap_err_with(|| {
-                    format!("Failed to access parent for: {}", start_dir.display())
-                })?;
-        }
-    }
+//     if !start_dir.is_dir() {
+//         if let Some(parent) = start_dir.parent() {
+//             trace!("The provided start_dir is not a directory {:?} attempting to call with parent: {:?}", &start_dir, parent);
+//             return find_upwards_until_pattern(pattern, parent, end_dir);
+//         } else {
+//             return Err(FsError::InvalidPath(start_dir.to_path_buf()))
+//                 .into_diagnostic()
+//                 .wrap_err_with(|| {
+//                     format!("Failed to access parent for: {}", start_dir.display())
+//                 })?;
+//         }
+//     }
 
-    let dir = start_dir;
-    let mut found: HashSet<PathBuf> = HashSet::new();
-    let walk = pattern.walk(dir);
+//     let dir = start_dir;
+//     let mut found: HashSet<PathBuf> = HashSet::new();
+//     let walk = pattern.walk(dir);
 
-    for entry in walk {
-        match entry {
-            Ok(entry) => {
-                let path = entry.path();
-                trace!("Found path: {:?}", path);
-                if path.is_file() {
-                    found.insert(path.to_path_buf());
-                } else {
-                    trace!("Skipping directory: {:?}", path);
-                }
-            }
-            Err(e) => {
-                return Err(e).into_diagnostic().wrap_err_with(|| {
-                    format!("Failed to walk directory: {}", start_dir.display())
-                })?;
-            }
-        }
-    }
+//     for entry in walk {
+//         match entry {
+//             Ok(entry) => {
+//                 let path = entry.path();
+//                 trace!("Found path: {:?}", path);
+//                 if path.is_file() {
+//                     found.insert(path.to_path_buf());
+//                 } else {
+//                     trace!("Skipping directory: {:?}", path);
+//                 }
+//             }
+//             Err(e) => {
+//                 return Err(e).into_diagnostic().wrap_err_with(|| {
+//                     format!("Failed to walk directory: {}", start_dir.display())
+//                 })?;
+//             }
+//         }
+//     }
 
-    match found.len() {
-        0 => {
-            if dir == end_dir.as_ref() {
-                return Err(GlobPatternNotFound).into_diagnostic()?;
-            }
+//     match found.len() {
+//         0 => {
+//             if dir == end_dir.as_ref() {
+//                 return Err(GlobPatternNotFound).into_diagnostic()?;
+//             }
 
-            if let Some(parent) = dir.parent() {
-                find_upwards_until(names, parent, end_dir)
-            } else {
-                return Err(NotFound(unique_candidate_names));
-            }
-        }
-        1 => {
-            if let Some(item) = found.iter().next() {
-                Ok(item.to_path_buf())
-            } else {
-                Err(NotFound(unique_candidate_names))
-            }
-        }
-        _ => Err(AmbiguousMatches(found)),
-    }
-}
+//             if let Some(parent) = dir.parent() {
+//                 find_upwards_until(names, parent, end_dir)
+//             } else {
+//                 return Err(NotFound(unique_candidate_names));
+//             }
+//         }
+//         1 => {
+//             if let Some(item) = found.iter().next() {
+//                 Ok(item.to_path_buf())
+//             } else {
+//                 Err(NotFound(unique_candidate_names))
+//             }
+//         }
+//         _ => Err(AmbiguousMatches(found)),
+//     }
+// }
 
-pub struct ManifestLocation {
-    root: PathBuf,
-    manifest_path: PathBuf,
-}
+// pub struct ManifestLocation {
+//     root: PathBuf,
+//     manifest_path: PathBuf,
+// }
 
-impl ManifestLocation {
-    #[inline]
-    pub fn root(&self) -> &Path {
-        &self.root
-    }
+// impl ManifestLocation {
+//     #[inline]
+//     pub fn root(&self) -> &Path {
+//         &self.root
+//     }
 
-    #[inline]
-    pub fn manifest_path(&self) -> &Path {
-        &self.manifest_path
-    }
-}
+//     #[inline]
+//     pub fn manifest_path(&self) -> &Path {
+//         &self.manifest_path
+//     }
+// }
 
-pub trait FindStrategy {
-    type Location;
+// pub trait FindStrategy {
+//     type Location;
 
-    fn is_dir(path: &Path) -> bool {
-        path.is_dir()
-    }
-    fn satisfied(&self, dir: &Path) -> Result<Self::Location>;
-}
+//     fn is_dir(path: &Path) -> bool {
+//         path.is_dir()
+//     }
+//     fn satisfied(&self, dir: &Path) -> Result<Self::Location>;
+// }
 
-pub struct MorphirManifestFinder;
-impl FindStrategy for MorphirManifestFinder {
-    type Location = ManifestLocation;
+// pub struct MorphirManifestFinder;
+// impl FindStrategy for MorphirManifestFinder {
+//     type Location = ManifestLocation;
 
-    fn satisfied(&self, dir: &Path) -> Result<Self::Location> {
-        let manifest_path = find_upwards_until(
-            vec!["morphir.toml"],
-            dir,
-            Path::new("/"),
-        )?;
-        Ok(ManifestLocation {
-            root: dir.to_path_buf(),
-            manifest_path,
-        })
-    }
-}
+//     fn satisfied(&self, dir: &Path) -> Result<Self::Location> {
+//         let manifest_path = find_upwards_until(
+//             vec!["morphir.toml"],
+//             dir,
+//             Path::new("/"),
+//         )?;
+//         Ok(ManifestLocation {
+//             root: dir.to_path_buf(),
+//             manifest_path,
+//         })
+//     }
+// }
 
 #[cfg(test)]
 pub mod test {
-    use miette::{IntoDiagnostic, Result};
-    use path_absolutize::*;
+    //use path_absolutize::*;
     use std::path::{Path, PathBuf};
-    use tracing_test::traced_test;
-    use wax::Glob;
+    //use tracing_test::traced_test;
+    //use wax::Glob;
     //use smoothy::assert_that;
 
     static THIS_FILE: &str = file!();
-    static MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
+    //static MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
     #[test]
     pub fn test_find_upwards_until() {
         let this_dir: PathBuf = PathBuf::from(THIS_FILE).parent().unwrap().to_path_buf();
@@ -249,19 +247,19 @@ pub mod test {
         assert_eq!(path.parent().unwrap().file_name().unwrap(), "morphir-utils");
     }
 
-    #[traced_test]
-    #[test]
-    pub fn test_find_upwards_until_pattern() -> Result<()> {
-        let start_dir = PathBuf::from(MANIFEST_DIR)
-            .join("../../tests-integration/workspace-layouts/multi/proj-a");
-        let start_dir = start_dir.absolutize().into_diagnostic()?;
-        let pattern = Glob::new(".morphir/workspace.toml").into_diagnostic()?;
-        let location = super::find_upwards_until_pattern(pattern, &start_dir, Path::new("/"))?;
+    // #[traced_test]
+    // #[test]
+    // pub fn test_find_upwards_until_pattern() -> Result<()> {
+    //     let start_dir = PathBuf::from(MANIFEST_DIR)
+    //         .join("../../tests-integration/workspace-layouts/multi/proj-a");
+    //     let start_dir = start_dir.absolutize().into_diagnostic()?;
+    //     let pattern = Glob::new(".morphir/workspace.toml").into_diagnostic()?;
+    //     let location = super::find_upwards_until_pattern(pattern, &start_dir, Path::new("/"))?;
 
-        assert_eq!(
-            location.manifest_path.file_name().unwrap(),
-            "workspace.toml"
-        );
-        Ok(())
-    }
+    //     assert_eq!(
+    //         location.manifest_path.file_name().unwrap(),
+    //         "workspace.toml"
+    //     );
+    //     Ok(())
+    // }
 }
