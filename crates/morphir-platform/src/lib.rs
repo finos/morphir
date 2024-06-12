@@ -21,7 +21,11 @@ impl command_runner::Guest for Component {
                 return Err(err.to_string());
             }
         };
-        let output = format!("Parsed CLI: {:?}\r\nArgs: {:?}", cli, args_str);
+        let cwd = std::env::current_dir().unwrap();
+        let output = format!(
+            "[WASM]Parsed CLI: {:?}\r\nArgs: {:?}\r\n{:?}",
+            cli, args_str, cwd
+        );
         Ok(output.to_string())
     }
 }

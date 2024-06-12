@@ -1,21 +1,21 @@
-$schema: 'https://moonrepo.dev/schemas/project.json'
+$schema: "https://moonrepo.dev/schemas/project.json"
 language: typescript
-platform: node 
+platform: node
 
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'tsconfig.json'
-    - 'tsconfig.cjs.json'
-    - 'types/**/*'
+    - "src/**/*"
+    - "tsconfig.json"
+    - "tsconfig.cjs.json"
+    - "types/**/*"
   transpiler-sources:
     - $MOON_WORKSPACE_ROOT/crates/morphir-platform/dist/morphir_platform.wasm
-  
+
 tasks:
   run:
     platform: system
-    command: 'node'
-    args: ['src/index.ts']
+    command: "node"
+    args: ["src/index.ts"]
     options:
       interactive: true
   type-check-cjs:
@@ -25,42 +25,43 @@ tasks:
     #TODO: Remove no-op when typescript config is added
     command: no-op
   fetch-quickjs:
-    command: 'node run fetch-quickjs'
+    command: "node run fetch-quickjs"
     local: true
-    platform: system   
+    platform: system
   transpile-wasm:
-   command: 'jco'
-   args:
-    - 'transpile'
-    - '$MOON_WORKSPACE_ROOT/crates/morphir-platform/dist/morphir_platform.wasm'
-    - '-o'
-    - '@out(0)'
-   inputs:
-     - '@envs(transpiler-sources)'
-   outputs: 
-     - 'src/generated/components/'
-   deps:
-     - target: 'morphir-platform:build-artifacts'    
-  build-js:
-    command: 'bun build'
+    command: "jco"
     args:
-      - 'src/index.ts'  
-      - '--outdir'
-      - './dist'
-      - '--target'
-      - 'node'
-    inputs: 
-      - '@globs(sources)'
-    outputs: 
-      - './dist/**/*'  
+      - "transpile"
+      - "$MOON_WORKSPACE_ROOT/crates/morphir-platform/dist/morphir_platform.wasm"
+      - "-o"
+      - "@out(0)"
+      - "--tracing"
+    inputs:
+      - "@envs(transpiler-sources)"
+    outputs:
+      - "src/generated/components/"
+    deps:
+      - target: "morphir-platform:build-artifacts"
+  build-js:
+    command: "bun build"
+    args:
+      - "src/index.ts"
+      - "--outdir"
+      - "./dist"
+      - "--target"
+      - "node"
+    inputs:
+      - "@globs(sources)"
+    outputs:
+      - "./dist/**/*"
   copy-wasm-files:
-    command: 'cp src/generated/components/*.wasm dist/'
-    inputs: ['src/generated/components/*.wasm']
-    outputs: ['dist/*.wasm']
+    command: "cp src/generated/components/*.wasm dist/"
+    inputs: ["src/generated/components/*.wasm"]
+    outputs: ["dist/*.wasm"]
   build:
-   deps:
-    - target: '~:transpile-wasm'
-    - target: '~:build-js'
-    - target: "~:copy-wasm-files"
-   options:
-    runDepsInParallel: false # Run the dependencies here in sequence so the build can depend on the transpiled wasm
+    deps:
+      - target: "~:transpile-wasm"
+      - target: "~:build-js"
+      - target: "~:copy-wasm-files"
+    options:
+      runDepsInParallel: false # Run the dependencies here in sequence so the build can depend on the transpiled wasm

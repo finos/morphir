@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "type": "module",
   "main": "./dist/index.js",
+  "bin": {
+    "morphir-cli": "./dist/index.js"
+  },
   "scripts": {
     "fetch-quickjs": "node scripts/fetch-quickjs.ts",
     "run": "node  ./dist/index.js",
