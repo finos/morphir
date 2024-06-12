@@ -1,7 +1,7 @@
 pub use crate::workspace::error::*;
+pub use crate::workspace::locater::*;
 pub use crate::workspace::states::*;
-use derive_more::From;
-use error::Result;
+use derive_more::{Deref, From};
 use path_absolutize::*;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -12,6 +12,7 @@ use tracing::{debug, instrument};
 
 pub mod config;
 mod error;
+mod locater;
 mod states;
 
 #[instrument(level = "debug")]
@@ -54,7 +55,7 @@ where
     }
 }
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize, Deref)]
 pub struct WorkspaceRoot(PathBuf);
 impl WorkspaceRoot {
     pub fn new(path: PathBuf) -> Self {
@@ -81,14 +82,19 @@ impl AsRef<Path> for WorkspaceRoot {
     }
 }
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize, Deref)]
 pub struct WorkspaceConfigFilePath(PathBuf);
 
-pub type WorkspaceLocator = fn(&PathBuf) -> Option<(WorkspaceRoot, WorkspaceConfigFilePath)>;
+impl AsRef<Path> for WorkspaceConfigFilePath {
+    #[inline]
+    fn as_ref(&self) -> &Path {
+        self.0.as_path()
+    }
+}
 
 pub type WorkspaceTraversalAction = fn((CurrentDir, TargetDir)) -> TraversalInstruction;
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize, From)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize, From, Deref)]
 pub struct CurrentDir(PathBuf);
 
 impl From<&Path> for CurrentDir {
