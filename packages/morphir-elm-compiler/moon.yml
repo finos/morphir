@@ -32,6 +32,7 @@ tasks:
       - "vite.config.ts"
     outputs:
       - "dist"
+  #TODO: Remove component bundling if we don't concretely go with ComponetizeJS and embedding the morphir-elm compiler via Wasm
   build:
     deps:
       - target: "~:bundle"

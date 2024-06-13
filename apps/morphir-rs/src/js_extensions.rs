@@ -6,6 +6,7 @@ use deno_core::extension;
 use deno_core::op2;
 use deno_core::ModuleLoadResponse;
 use deno_core::ModuleSourceCode;
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::rc::Rc;
 
@@ -40,6 +41,13 @@ async fn op_set_timeout(delay: f64) -> Result<(), AnyError> {
 fn op_remove_file(#[string] path: String) -> Result<(), AnyError> {
     std::fs::remove_file(path)?;
     Ok(())
+}
+
+#[op2(async)]
+#[string]
+async fn op_morphir_commandline_run(#[serde] args: Vec<String>) -> Result<String, AnyError> {
+    let args_str = args.join(" ");
+    Ok(args_str.to_string())
 }
 
 struct TsModuleLoader;
@@ -124,6 +132,7 @@ extension! {
         op_remove_file,
         op_fetch,
         op_set_timeout,
+        op_morphir_commandline_run
     ]
 }
 
