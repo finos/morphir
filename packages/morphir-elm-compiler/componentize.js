@@ -1,7 +1,7 @@
-import Bun from "bun";
 import { log, LogLevel, tag } from "firan-logging";
 import chalk from "chalk";
 import { componentize } from "@bytecodealliance/componentize-js";
+import {writeFile} from "node:fs/promises";
 
 // handler which does the logging to the console or anything
 const logger = {
@@ -15,7 +15,7 @@ const logger = {
     console.log(`[${chalk.cyan(tag)}]`, msg, ...params),
   [LogLevel.DEBUG]: (tag, msg, params) =>
     console.log(`[${chalk.magenta(tag)}]`, msg, ...params),
-} as Record<LogLevel, (tag: string, msg: unknown, params: unknown[]) => void>;
+};
 
 /**
  * initialize fran-logging
@@ -26,7 +26,7 @@ const logger = {
 log.init(
   { transporter: "INFO", security: "ERROR", system: "OFF" },
   (level, tag, msg, params) => {
-    logger[level as keyof typeof logger](tag, msg, params);
+    logger[level](tag, msg, params);
   }
 );
 
@@ -49,5 +49,5 @@ const { component } = await componentize(
   }
 );
 
-const wasmFile = Bun.file("dist/test.component.wasm");
-await Bun.write(wasmFile, component);
+const wasmFile = "dist/test.component.wasm";
+await writeFile(wasmFile, component);

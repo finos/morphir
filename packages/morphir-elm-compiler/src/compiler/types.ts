@@ -63,7 +63,7 @@ export type DependencyConfig = z.infer<typeof DependencyConfig>;
 
 const VirtualFile = z.object({
   path: z.string(),
-  content: z.string(),
+  contents: z.string(),
 });
 
 export type VirtualFile = z.infer<typeof VirtualFile>;

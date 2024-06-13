@@ -9,7 +9,7 @@ tasks:
         optional: true
       - target: "~:cargo-build"
         optional: true
-      - target: '~:build-artifacts'
+      - target: "~:build-artifacts"
         optional: true
   fmt:
     inputs: []
@@ -50,4 +50,12 @@ tasks:
         optional: true
       - target: "~:lint"
         optional: true
-
+  clean:
+    inputs: []
+  rebuild:
+    inputs: []
+    deps:
+      - target: "~:clean"
+      - target: "~:build"
+    options:
+      runDepsInParallel: false
