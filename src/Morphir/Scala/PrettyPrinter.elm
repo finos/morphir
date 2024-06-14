@@ -78,23 +78,27 @@ mapCompilationUnit opt cu =
             |> String.join (newLine ++ newLine)
         ]
 
+
 mapImports : List ImportDecl -> Doc
 mapImports imports =
     case imports of
-        [] -> 
+        [] ->
             ""
+
         importsList ->
-            (importsList |> List.map mapImport) ++ [ newLine ]
+            (importsList |> List.map mapImport)
+                ++ [ newLine ]
                 |> concat
-        
+
 
 mapImport : ImportDecl -> Doc
 mapImport importDecl =
     concat
         [ "import "
-        , String.join "." (importDecl.packagePrefix)
+        , String.join "." importDecl.packagePrefix
         , newLine
         ]
+
 
 mapTypeDecl : Options -> TypeDecl -> Doc
 mapTypeDecl opt typeDecl =
@@ -455,7 +459,7 @@ mapValue opt value =
 
         Apply funValue argValues ->
             mapValue opt funValue ++ argValueBlock opt argValues
-        
+
         New path name argValues ->
             "new" ++ " " ++ (dotSep <| prefixKeywords (path ++ [ name ])) ++ argValueBlock opt argValues
 
@@ -598,8 +602,9 @@ mapValue opt value =
                 , mapType opt tpe
                 , ")"
                 ]
+
         Throw exceptionExpr ->
-            "throw " ++ (mapValue opt exceptionExpr)
+            "throw " ++ mapValue opt exceptionExpr
 
 
 mapPattern : Pattern -> Doc

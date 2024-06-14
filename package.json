@@ -1,22 +1,20 @@
 {
   "name": "morphir-home",
   "private": true,
-  "workspaces": [
-    "apps/morphir-cli",
-    "packages/*",
-    "tools/*"
-  ],
+  "workspaces": ["apps/morphir-cli", "packages/*", "tools/*"],
   "scripts": {
     "build": "moon run :build -u",
     "clean": "moon run clean",
-    "elm-build": "moon run elm-build",
+    "elm-build": "moon run :elm-build",
     "purge": "moon run purge",
     "check-elm-docs": "moon run check-elm-docs",
-    "postinstall": "elm-tooling install",
     "list-projects": "moon project-graph --json | npx node-jq '.projects| keys[]'",
     "morphirjs": "moon run js-cli:run"
   },
   "devDependencies": {
-    "elm-tooling": "^1.15.1"
+    "elm": "^0.19.1-6",
+    "elm-format": "^0.8.7",
+    "elm-json": "^0.2.13",
+    "elm-test-rs": "^3.0.0-5"
   }
 }

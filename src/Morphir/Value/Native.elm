@@ -49,9 +49,10 @@ import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.SDK.Decimal exposing (Decimal)
 import Morphir.SDK.Dict as Dict exposing (Dict)
 import Morphir.SDK.LocalDate as LocalDate exposing (LocalDate)
-import Morphir.SDK.UUID as UUID
 import Morphir.SDK.ResultList as ListOfResults
+import Morphir.SDK.UUID as UUID
 import Morphir.Value.Error exposing (Error(..))
+
 
 {-| Type that represents a native function. It's a function that takes two arguments:
 
@@ -459,7 +460,7 @@ encodeUUID uuid =
         |> Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "uuid" ] ], [ "from", "string" ] ))
         |> Ok
 
-    
+
 {-| -}
 decodeUUID : Decoder UUID.UUID
 decodeUUID e value =
@@ -486,6 +487,7 @@ decodeUUID e value =
                     _ ->
                         Err (ExpectedDerivedType ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "uuid" ] ], [ "uuid" ] ) v)
             )
+
 
 {-| -}
 encodeLocalDate : LocalDate -> Result Error RawValue

@@ -24,12 +24,17 @@ attachModal theme config =
     inFront <|
         if config.isOpen then
             el [ width fill, height fill, Background.color (rgba255 0 0 0 0.5), onClick config.onClose ] <|
-                el [ centerX, centerY, Border.shadow
-            { offset = ( 0, 3 )
-            , size = 3
-            , blur = 9
-            , color = rgba255 0 0 0 0.4
-            } ] config.content
+                el
+                    [ centerX
+                    , centerY
+                    , Border.shadow
+                        { offset = ( 0, 3 )
+                        , size = 3
+                        , blur = 9
+                        , color = rgba255 0 0 0 0.4
+                        }
+                    ]
+                    config.content
 
         else
             Element.none

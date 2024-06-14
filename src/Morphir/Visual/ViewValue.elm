@@ -264,12 +264,11 @@ viewValueByLanguageFeature config value =
                         ( function, args ) =
                             Value.uncurryApply fun arg
                     in
-
-                    case (function, args) of
+                    case ( function, args ) of
                         ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "decimal" ] ], [ "from", "float" ] ), [ argValue ] ) ->
                             viewValue config argValue
-                        
-                        ( Value.Reference _ (  [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "from", "i", "s", "o" ]  ), [ argValue ] ) ->
+
+                        ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "from", "i", "s", "o" ] ), [ argValue ] ) ->
                             viewValue config argValue
 
                         _ ->
@@ -349,7 +348,7 @@ viewValueByLanguageFeature config value =
 
                 Value.UpdateRecord _ record newFields ->
                     Element.column [ Background.color config.state.theme.colors.lightest, Theme.borderRounded config.state.theme ]
-                        [ Element.row [ smallPadding config.state.theme |> padding ] [ text "updating the following fields of ", viewValue config record]
+                        [ Element.row [ smallPadding config.state.theme |> padding ] [ text "updating the following fields of ", viewValue config record ]
                         , ViewRecord.view config (viewValue config) newFields
                         ]
 

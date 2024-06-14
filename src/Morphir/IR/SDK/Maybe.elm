@@ -104,7 +104,7 @@ moduleSpec =
                 ]
                 (boolType ())
             ]
-        , doc = Just "Contains the Maybe type (representing optional values), and related functions."
+    , doc = Just "Contains the Maybe type (representing optional values), and related functions."
     }
 
 
@@ -286,9 +286,9 @@ nativeFunctions =
 
                 _ ->
                     Err (UnexpectedArguments args)
-      ),
-      ( "hasValue"
-        ,\eval args ->
+      )
+    , ( "hasValue"
+      , \eval args ->
             case args of
                 [ arg1 ] ->
                     eval arg1
@@ -296,12 +296,15 @@ nativeFunctions =
                             (\evaluatedArg1 ->
                                 case evaluatedArg1 of
                                     Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) _ ->
-                                        Ok ( (Value.Literal () (BoolLiteral true) )  )
-                                    (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] )) ->
-                                        Ok ( (Value.Literal () (BoolLiteral false) )  )
+                                        Ok (Value.Literal () (BoolLiteral true))
+
+                                    Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) ->
+                                        Ok (Value.Literal () (BoolLiteral false))
+
                                     _ ->
                                         Err (UnexpectedArguments args)
                             )
+
                 _ ->
                     Err (UnexpectedArguments args)
       )

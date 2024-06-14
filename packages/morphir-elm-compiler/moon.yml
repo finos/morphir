@@ -38,6 +38,11 @@ tasks:
       - target: "~:bundle"
       - target: "~:bundle-components"
 
+  elm-build:
+    deps:
+      - target: "~:bundle"
+      - target: "~:bundle-components"
+
   clean-out:
     command: "rm"
     args:

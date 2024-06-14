@@ -56,8 +56,9 @@ encodeSpecification encodeTypeAttributes spec =
                             ]
                     )
           )
-        , ("doc", 
-            spec.doc |> Maybe.map Encode.string |> Maybe.withDefault Encode.null)
+        , ( "doc"
+          , spec.doc |> Maybe.map Encode.string |> Maybe.withDefault Encode.null
+          )
         ]
 
 
@@ -84,7 +85,7 @@ decodeSpecification decodeTypeAttributes =
                 )
             )
         )
-        (Decode.oneOf [(Decode.field "doc" (Decode.maybe Decode.string)), Decode.succeed Nothing ])
+        (Decode.oneOf [ Decode.field "doc" (Decode.maybe Decode.string), Decode.succeed Nothing ])
 
 
 encodeDefinition : (ta -> Encode.Value) -> (va -> Encode.Value) -> Definition ta va -> Encode.Value
@@ -112,8 +113,9 @@ encodeDefinition encodeTypeAttributes encodeValueAttributes def =
                             ]
                     )
           )
-         , ("doc", 
-            def.doc |> Maybe.map Encode.string |> Maybe.withDefault Encode.null)
+        , ( "doc"
+          , def.doc |> Maybe.map Encode.string |> Maybe.withDefault Encode.null
+          )
         ]
 
 
@@ -140,4 +142,4 @@ decodeDefinition decodeTypeAttributes decodeValueAttributes =
                 )
             )
         )
-    (Decode.oneOf [(Decode.field "doc" (Decode.maybe Decode.string)), Decode.succeed Nothing ])
+        (Decode.oneOf [ Decode.field "doc" (Decode.maybe Decode.string), Decode.succeed Nothing ])

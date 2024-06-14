@@ -19,11 +19,11 @@ module Morphir.IR.Type exposing
     ( Type(..)
     , variable, reference, tuple, record, extensibleRecord, function, unit
     , Field, mapFieldName, mapFieldType
-    , Specification(..), typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification
+    , Specification(..), typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification, DerivedTypeSpecificationDetails
     , Definition(..), typeAliasDefinition, customTypeDefinition, definitionToSpecification, definitionToSpecificationWithPrivate
     , Constructors, Constructor, ConstructorArgs
     , mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, typeAttributes
-    , eraseAttributes, collectVariables, collectReferences, collectReferencesFromDefintion, substituteTypeVariables, toString, DerivedTypeSpecificationDetails
+    , eraseAttributes, collectVariables, collectReferences, collectReferencesFromDefintion, substituteTypeVariables, toString
     )
 
 {-| Like any other programming languages Morphir has a type system as well. This module defines the building blocks of
@@ -239,6 +239,7 @@ type Specification a
     | OpaqueTypeSpecification (List Name)
     | CustomTypeSpecification (List Name) (Constructors a)
     | DerivedTypeSpecification (List Name) (DerivedTypeSpecificationDetails a)
+
 
 {-| Details of the base type of a Derived Type
 -}

@@ -983,7 +983,9 @@ processMapRecordFields fields returnType ctx mapValue =
 wrapBinaryOperationIfRequired : Scala.Value -> Scala.Value
 wrapBinaryOperationIfRequired value =
     case value of
-        Scala.BinOp _ _ _ -> Scala.Tuple [ value ]
+        Scala.BinOp _ _ _ ->
+            Scala.Tuple [ value ]
+
         _ ->
             value
 

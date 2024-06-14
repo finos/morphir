@@ -42,30 +42,30 @@ viewAsCard theme header class docs content =
             , height fill
             ]
             (column [ height fill, width fill ]
-                    [ el
-                        [ padding (theme |> Theme.scaled -2)
-                        , height fill
-                        , width fill
-                        ]
-                        (let
-                            deadEndsToString deadEnds =
-                                deadEnds
-                                    |> List.map Markdown.deadEndToString
-                                    |> String.join "\n"
-                         in
-                         case
-                            docs
-                                |> Markdown.parse
-                                |> Result.mapError deadEndsToString
-                                |> Result.andThen (\ast -> Markdown.Renderer.render Markdown.Renderer.defaultHtmlRenderer ast)
-                         of
-                            Ok rendered ->
-                                rendered |> List.map html |> paragraph []
-
-                            Err errors ->
-                                text errors
-                        )
-                    , cont
+                [ el
+                    [ padding (theme |> Theme.scaled -2)
+                    , height fill
+                    , width fill
                     ]
+                    (let
+                        deadEndsToString deadEnds =
+                            deadEnds
+                                |> List.map Markdown.deadEndToString
+                                |> String.join "\n"
+                     in
+                     case
+                        docs
+                            |> Markdown.parse
+                            |> Result.mapError deadEndsToString
+                            |> Result.andThen (\ast -> Markdown.Renderer.render Markdown.Renderer.defaultHtmlRenderer ast)
+                     of
+                        Ok rendered ->
+                            rendered |> List.map html |> paragraph []
+
+                        Err errors ->
+                            text errors
+                    )
+                , cont
+                ]
             )
         ]

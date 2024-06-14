@@ -46,7 +46,7 @@ import Morphir.Snowpark.MappingContext as MappingContext
 import Morphir.Snowpark.RecordWrapperGenerator as RecordWrapperGenerator
 import Morphir.Snowpark.ReferenceUtils exposing (isTypeReferenceToSimpleTypesRecord)
 import Morphir.Snowpark.TypeRefMapping exposing (mapFunctionReturnType, mapTypeReference)
-import Set as Set
+import Set
 
 
 {-| Generate Scala files that use the Snowpark API to process DataFrame-like structures.

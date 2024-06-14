@@ -5,11 +5,10 @@
   "scripts": {
     "bundle": "moon run morphir-elm-compiler:bundle",
     "bundle-components": "moon run morphir-elm-compiler:bundle-components",
-    "dev": "bunx --bun vite",
-    "typecheck:esm": "tsc --project tsconfig.json",
-    "typecheck:cjs": "tsc --project tsconfig.cjs.json",
-    "typecheck": "bun run typecheck:esm && bun run typecheck:cjs",
-    "postinstall": "bunx --bun elm-tooling install"
+    "dev": "vite",
+    "typecheck:esm": "moon run morphir-elm-compiler:typecheck-esm",
+    "typecheck:cjs": "moon run morphir-elm-compiler:typecheck-cjs",
+    "typecheck": "moon run morphir-elm-compiler:typecheck"
   },
   "devDependencies": {
     "@bytecodealliance/componentize-js": "^0.8.3",
@@ -20,7 +19,10 @@
     "@types/data-urls": "^3.0.4",
     "@types/inquirer": "^9.0.7",
     "@types/whatwg-encoding": "^2.0.3",
-    "elm-tooling": "^1.15.1",
+    "elm": "^0.19.1-6",
+    "elm-format": "^0.8.7",
+    "elm-json": "^0.2.13",
+    "elm-test-rs": "^3.0.0-5",
     "prettier": "3.2.5",
     "typescript": "^5.4.5",
     "vite": "^5.2.0",

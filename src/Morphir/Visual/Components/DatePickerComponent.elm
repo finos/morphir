@@ -36,7 +36,7 @@ view theme config =
         state =
             config.state
     in
-    Html.label [style "display" "flex"]
+    Html.label [ style "display" "flex" ]
         [ Html.div
             [ style "background-color" "rgb(51, 76, 102 )"
             , style "padding" "5px"

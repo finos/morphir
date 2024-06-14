@@ -1,13 +1,12 @@
 module Morphir.Visual.Theme exposing (..)
 
-import Element exposing (Attribute, Color, Element, fill, height,  none, paddingXY, rgb, rgb255, rgba, rgba255, row, spacing, table, toRgb, width)
+import Element exposing (Attribute, Color, Element, fill, height, none, paddingXY, rgb, rgb255, rgba, rgba255, row, shrink, spacing, table, toRgb, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font exposing (center)
 import Element.Input as Input
 import Html exposing (div, text)
 import Html.Attributes exposing (style)
-import Element exposing (shrink)
 
 
 type alias Theme =

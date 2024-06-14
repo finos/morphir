@@ -13,10 +13,10 @@ import Morphir.JsonSchema.Backend.Codec
 import Morphir.Scala.Backend
 import Morphir.Scala.Backend.Codec
 import Morphir.Scala.Spark.Backend
+import Morphir.Snowpark.Backend
 import Morphir.SpringBoot.Backend as SpringBoot
 import Morphir.SpringBoot.Backend.Codec
 import Morphir.TypeScript.Backend
-import Morphir.Snowpark.Backend
 
 
 
@@ -32,6 +32,7 @@ type BackendOptions
     | SparkOptions Morphir.Scala.Spark.Backend.Options
     | JsonSchemaOptions JsonSchemaBackend.Options
     | SnowparkOptions Morphir.Snowpark.Backend.Options
+
 
 type alias Errors =
     List String

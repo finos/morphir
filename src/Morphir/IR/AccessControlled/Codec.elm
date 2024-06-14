@@ -38,8 +38,8 @@ encodeAccess access =
 encodeAccessControlled : (a -> Encode.Value) -> AccessControlled a -> Encode.Value
 encodeAccessControlled encodeValue ac =
     Encode.object
-        [ ( "access" , encodeAccess ac.access )
-        , ( "value" , encodeValue ac.value )
+        [ ( "access", encodeAccess ac.access )
+        , ( "value", encodeValue ac.value )
         ]
 
 

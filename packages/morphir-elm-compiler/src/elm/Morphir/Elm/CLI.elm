@@ -288,7 +288,6 @@ process msg =
                 Result.map3
                     (\options packageDist maybeTestSuite ->
                         let
-
                             fileMap : Result Encode.Value FileMap
                             fileMap =
                                 mapDistribution options maybeTestSuite (packageDist |> withDefaultDeps)
@@ -315,7 +314,6 @@ process msg =
             case packageDistroResult of
                 Ok packageDist ->
                     let
-
                         fileMap : FileMap
                         fileMap =
                             Stats.collectFeaturesFromDistribution (packageDist |> withDefaultDeps)

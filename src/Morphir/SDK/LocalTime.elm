@@ -16,7 +16,7 @@
 
 
 module Morphir.SDK.LocalTime exposing
-    ( fromMilliseconds
+    ( LocalTime
     , addHours
     , addMinutes
     , addSeconds
@@ -24,7 +24,7 @@ module Morphir.SDK.LocalTime exposing
     , diffInMinutes
     , diffInSeconds
     , fromISO
-    , LocalTime
+    , fromMilliseconds
     )
 
 {-| This module adds the definition of basic time without time zones.
@@ -45,11 +45,11 @@ module Morphir.SDK.LocalTime exposing
 @docs diffInSeconds
 
 
-
 # Constructors
 
 @docs fromISO
 @docs fromMilliseconds
+
 -}
 
 import Iso8601 exposing (toTime)

@@ -38,6 +38,7 @@ import Element
         , alignBottom
         , alignTop
         , below
+        , centerX
         , centerY
         , column
         , el
@@ -45,6 +46,8 @@ import Element
         , height
         , html
         , inFront
+        , maximum
+        , minimum
         , moveDown
         , moveLeft
         , moveUp
@@ -56,14 +59,11 @@ import Element
         , rgb
         , rgba
         , row
+        , shrink
         , spacing
         , table
         , text
         , width
-        , centerX
-        , shrink
-        , minimum
-        , maximum
         )
 import Element.Background as Background
 import Element.Border as Border
@@ -95,7 +95,6 @@ import Morphir.Visual.Components.Picklist as Picklist
 import Morphir.Visual.Theme as Theme exposing (Theme, scaled)
 import Svg
 import Svg.Attributes
-import Morphir.Visual.Theme as Theme
 
 
 {-| Type that represents the state of the value editor. It's made up of the following pieces of information:
@@ -1377,10 +1376,10 @@ viewCustomTypeEditor theme labelStyle ir updateEditorState editorState (( packag
                     |> Dict.toList
                     |> List.map
                         (\(( ctorName, ctorArgs ) as ctor) ->
-                            ( {tag  = ctorName |> Name.toTitleCase
+                            { tag = ctorName |> Name.toTitleCase
                             , value = ctor
-                            , displayElement = el [padding <| Theme.smallPadding theme, width fill] (Theme.ellipseText (ctorName |> Name.toHumanWordsTitle |> String.join " "))
-                            } )
+                            , displayElement = el [ padding <| Theme.smallPadding theme, width fill ] (Theme.ellipseText (ctorName |> Name.toHumanWordsTitle |> String.join " "))
+                            }
                         )
                 )
                 []
