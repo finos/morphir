@@ -80,7 +80,7 @@
     "elm-test": "^0.19.1-revision6",
     "elm-tooling": "^1.15.0",
     "execa": "^5.1.1",
-    "gulp": "^4.0.2",
+    "gulp": "^5.0.0",
     "gulp-concat": "^2.6.1",
     "gulp-mocha": "^8.0.0",
     "gulp-typescript": "^6.0.0-alpha.1",
