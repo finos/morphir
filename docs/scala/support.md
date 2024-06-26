@@ -52,10 +52,10 @@ This section lists the SDK types and functions currently supported in this versi
 | Function           | Morphir-Elm Version Introduced | Supported |
 |--------------------|--------------------------------|-----------|
 | divide             | v0.4.0                         | &#x2713;  |
-| round              | v0.4.0                         | &#x2715;  |
-| floor              | v0.4.0                         | &#x2715;  |
-| ceiling            | v0.4.0                         | &#x2715;  |
-| truncate           | v0.4.0                         | &#x2715;  |
+| round              | v0.4.0                         | &#x2713;  |
+| floor              | v0.4.0                         | &#x2713;  |
+| ceiling            | v0.4.0                         | &#x2713;  |
+| truncate           | v0.4.0                         | &#x2713;  |
 | isNan              | v0.4.0                         | &#x2713;  |
 | isInfinite         | v0.4.0                         | &#x2713;  |
 | e                  | v0.4.0                         | &#x2713;  |
@@ -70,8 +70,8 @@ This section lists the SDK types and functions currently supported in this versi
 | degrees            | v2.0.0                         | &#x2713;  | 
 | radians            | v2.0.0                         | &#x2713;  | 
 | turns              | v2.0.0                         | &#x2713;  | 
-| toPolar            | v2.0.0                         | &#x2715;  | 
-| fromPolar          | v2.0.0                         | &#x2715;  | 
+| toPolar            | v2.0.0                         | &#x2713;  | 
+| fromPolar          | v2.0.0                         | &#x2713;  | 
 | lessThan           | v2.0.0                         | &#x2713;  |
 | greaterThan        | v2.0.0                         | &#x2713;  |
 | lessThanOrEqual    | v2.0.0                         | &#x2713;  |
@@ -175,17 +175,17 @@ This section lists the SDK types and functions currently supported in this versi
 | Function          | Morphir-Elm Version Introduced | Supported |
 |-------------------|--------------------------------|-----------|
 | fromInt           | v2.8.0                         | &#x2713;  |
-| fromFloat         | v2.8.0                         | &#x2715;  |
+| fromFloat         | v2.8.0                         | &#x2713;  |
 | fromString        | v2.8.0                         | &#x2713;  |
-| hundred           | v2.8.0                         | &#x2715;  |
+| hundred           | v2.8.0                         | &#x2713;  |
 | thousand          | v2.8.0                         | &#x2713;  |
-| million           | v2.8.0                         | &#x2715;  |
-| tenth             | v2.8.0                         | &#x2715;  |
-| hundredth         | v2.8.0                         | &#x2715;  |
-| thousandth        | v2.8.0                         | &#x2715;  |
-| millionth         | v2.8.0                         | &#x2715;  |
+| million           | v2.8.0                         | &#x2713;  |
+| tenth             | v2.8.0                         | &#x2713;  |
+| hundredth         | v2.8.0                         | &#x2713;  |
+| thousandth        | v2.8.0                         | &#x2713;  |
+| millionth         | v2.8.0                         | &#x2713;  |
 | bps               | v2.8.0                         | &#x2713;  |
-| toString          | v2.8.0                         | &#x2715;  |
+| toString          | v2.8.0                         | &#x2713;  |
 | add               | v2.8.0                         | &#x2713;  |
 | sub               | v2.8.0                         | &#x2713;  |
 | negate            | v2.8.0                         | &#x2713;  |
@@ -242,45 +242,6 @@ This section lists the SDK types and functions currently supported in this versi
 | intersect | v2.41.0                        | &#x2713;  |
 | diff      | v2.41.0                        | &#x2713;  |
 | merge     | v2.41.0                        | &#x2713;  |
-
-### Morphir.SDK.Float
-#### Types
-
-| Type    | Morphir-Elm Version Introduced | Supported |
-|---------|--------------------------------|-----------|
-| Float   | v0.4.0                         | &#x2713;  |
-| Float32 | v0.4.0                         | &#x2713;  |
-| Float64 | v0.4.0                         | &#x2713;  |
-
-#### Functions
-
-| Function   | Morphir-Elm Version Introduced | Supported |
-|------------|--------------------------------|-----------|
-| divide     | v0.4.0                         | &#x2713;  |
-| fromInt    | v0.4.0                         | &#x2715;  |
-| round      | v0.4.0                         | &#x2715;  |
-| floor      | v0.4.0                         | &#x2715;  |
-| ceiling    | v0.4.0                         | &#x2715;  |
-| truncate   | v0.4.0                         | &#x2715;  |
-| sqrt       | v0.4.0                         | &#x2715;  |
-| logBase    | v0.4.0                         | &#x2713;  |
-| e          | v0.4.0                         | &#x2713;  |
-| pi         | v0.4.0                         | &#x2713;  |
-| cos        | v0.4.0                         | &#x2713;  |
-| sin        | v0.4.0                         | &#x2713;  |
-| tan        | v0.4.0                         | &#x2713;  |
-| acos       | v0.4.0                         | &#x2713;  |
-| asin       | v0.4.0                         | &#x2713;  |
-| atan       | v0.4.0                         | &#x2713;  |
-| atan2      | v0.4.0                         | &#x2713;  |
-| isNan      | v0.4.0                         | &#x2713;  |
-| isInfinite | v0.4.0                         | &#x2713;  |
-| degrees    | v2.0.0                         | &#x2713;  | 
-| radians    | v2.0.0                         | &#x2713;  | 
-| turns      | v2.0.0                         | &#x2713;  | 
-| toPolar    | v2.0.0                         | &#x2715;  | 
-| fromPolar  | v2.0.0                         | &#x2715;  | 
-
 
 
 ### Morphir.SDK.Int
