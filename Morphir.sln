@@ -11,8 +11,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{06B0AA4A-E81
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{273B1A92-9B49-4A10-921F-7E340B82B4DB}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Morphir.Cli", "modules\src\Morphir.Cli\Morphir.Cli.fsproj", "{FEEB25C8-73F6-425B-9A0B-B37827892F33}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".solution", ".solution", "{1DA138AF-9ACA-4B96-8CDF-7FF5643B404A}"
 	ProjectSection(SolutionItems) = preProject
 		Directory.Packages.props = Directory.Packages.props
@@ -21,6 +19,17 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".solution", ".solution", "{
 		moon.yml = moon.yml
 		Makefile.toml = Makefile.toml
 		Cargo.toml = Cargo.toml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "apps", "apps", "{A477BCB5-F469-4894-A7C8-9483F9ED2DD4}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dotnet", "dotnet", "{B6586A89-7247-4673-B040-D9E0E4A7F0E6}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Morphir.Cli", "apps\dotnet\Morphir.Cli\Morphir.Cli.fsproj", "{E28CDE6E-EF5B-4729-AE82-40A4C1CBEBAE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".config", ".config", "{A0B3FA4F-E612-4C9A-B9BF-8F20694581D8}"
+	ProjectSection(SolutionItems) = preProject
+		.config\dotnet-tools.json = .config\dotnet-tools.json
 	EndProjectSection
 EndProject
 Global
@@ -36,14 +45,15 @@ Global
 		{A023303A-DEAF-4BAA-97B9-B83F6D06CC3D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A023303A-DEAF-4BAA-97B9-B83F6D06CC3D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A023303A-DEAF-4BAA-97B9-B83F6D06CC3D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FEEB25C8-73F6-425B-9A0B-B37827892F33}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FEEB25C8-73F6-425B-9A0B-B37827892F33}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FEEB25C8-73F6-425B-9A0B-B37827892F33}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FEEB25C8-73F6-425B-9A0B-B37827892F33}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E28CDE6E-EF5B-4729-AE82-40A4C1CBEBAE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E28CDE6E-EF5B-4729-AE82-40A4C1CBEBAE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E28CDE6E-EF5B-4729-AE82-40A4C1CBEBAE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E28CDE6E-EF5B-4729-AE82-40A4C1CBEBAE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{06B0AA4A-E815-4045-830F-83F770E7AD22} = {29607944-5EE0-4755-81D8-FB5D8AA89CF1}
 		{273B1A92-9B49-4A10-921F-7E340B82B4DB} = {29607944-5EE0-4755-81D8-FB5D8AA89CF1}
-		{FEEB25C8-73F6-425B-9A0B-B37827892F33} = {06B0AA4A-E815-4045-830F-83F770E7AD22}
+		{B6586A89-7247-4673-B040-D9E0E4A7F0E6} = {A477BCB5-F469-4894-A7C8-9483F9ED2DD4}
+		{E28CDE6E-EF5B-4729-AE82-40A4C1CBEBAE} = {B6586A89-7247-4673-B040-D9E0E4A7F0E6}
 	EndGlobalSection
 EndGlobal

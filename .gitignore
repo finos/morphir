@@ -33,5 +33,5 @@ target/
 
 build/bin/
 build/obj/
-modules/**/bin/ 
-modules/**/obj/
+*/dotnet/**/bin/ 
+*/dotnet/**/obj/
