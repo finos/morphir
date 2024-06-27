@@ -7,10 +7,6 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "build", "build\build.fsproj
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "modules", "modules", "{29607944-5EE0-4755-81D8-FB5D8AA89CF1}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{06B0AA4A-E815-4045-830F-83F770E7AD22}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{273B1A92-9B49-4A10-921F-7E340B82B4DB}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".solution", ".solution", "{1DA138AF-9ACA-4B96-8CDF-7FF5643B404A}"
 	ProjectSection(SolutionItems) = preProject
 		Directory.Packages.props = Directory.Packages.props
@@ -32,6 +28,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".config", ".config", "{A0B3
 		.config\dotnet-tools.json = .config\dotnet-tools.json
 	EndProjectSection
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "dotnet-morphir", "apps\dotnet\dotnet-morphir\dotnet-morphir.fsproj", "{541CFF1F-2FF5-47ED-8DB1-DAA4CF3898A9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dotnet", "dotnet", "{79841847-1158-49D2-9435-3B83849D504E}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Morphir.Host", "modules\dotnet\Morphir.Host\Morphir.Host.fsproj", "{58BBEF2E-457C-44C6-AA39-30FDBC647A32}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -49,11 +51,20 @@ Global
 		{E28CDE6E-EF5B-4729-AE82-40A4C1CBEBAE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E28CDE6E-EF5B-4729-AE82-40A4C1CBEBAE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E28CDE6E-EF5B-4729-AE82-40A4C1CBEBAE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{541CFF1F-2FF5-47ED-8DB1-DAA4CF3898A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{541CFF1F-2FF5-47ED-8DB1-DAA4CF3898A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{541CFF1F-2FF5-47ED-8DB1-DAA4CF3898A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{541CFF1F-2FF5-47ED-8DB1-DAA4CF3898A9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{58BBEF2E-457C-44C6-AA39-30FDBC647A32}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{58BBEF2E-457C-44C6-AA39-30FDBC647A32}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{58BBEF2E-457C-44C6-AA39-30FDBC647A32}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{58BBEF2E-457C-44C6-AA39-30FDBC647A32}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{06B0AA4A-E815-4045-830F-83F770E7AD22} = {29607944-5EE0-4755-81D8-FB5D8AA89CF1}
-		{273B1A92-9B49-4A10-921F-7E340B82B4DB} = {29607944-5EE0-4755-81D8-FB5D8AA89CF1}
 		{B6586A89-7247-4673-B040-D9E0E4A7F0E6} = {A477BCB5-F469-4894-A7C8-9483F9ED2DD4}
 		{E28CDE6E-EF5B-4729-AE82-40A4C1CBEBAE} = {B6586A89-7247-4673-B040-D9E0E4A7F0E6}
+		{541CFF1F-2FF5-47ED-8DB1-DAA4CF3898A9} = {B6586A89-7247-4673-B040-D9E0E4A7F0E6}
+		{79841847-1158-49D2-9435-3B83849D504E} = {29607944-5EE0-4755-81D8-FB5D8AA89CF1}
+		{58BBEF2E-457C-44C6-AA39-30FDBC647A32} = {79841847-1158-49D2-9435-3B83849D504E}
 	EndGlobalSection
 EndGlobal

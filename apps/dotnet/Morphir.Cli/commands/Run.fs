@@ -4,7 +4,7 @@ open Spectre.Console
 open Spectre.Console.Cli
 open Dumpify
 
-type RunSettings() as self = 
+type RunSettings() = 
     inherit CommandSettings()
 
     [<CommandOption("-i|--include")>]

@@ -6,9 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="commands/Dependency.fs" />
-    <Compile Include="commands/Build.fs" />
-    <Compile Include="commands/Run.fs" />
+    <Compile Include="commands\Dependency.fs" />
+    <Compile Include="commands\Build.fs" />
+    <Compile Include="commands\Run.fs" />
+    <Compile Include="CommandLineHost.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
@@ -17,5 +18,9 @@
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="Spectre.Console.Cli" />
     <PackageReference Include="EluciusFTW.SpectreCoff" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\modules\dotnet\Morphir.Host\Morphir.Host.fsproj" />
   </ItemGroup>
 </Project>

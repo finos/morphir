@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <RootNamespace>Morphir.Tool</RootNamespace>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <Title>morphir</Title>
+        <ToolCommandName>dotnet-morphir</ToolCommandName>
+        <Description>A set of tools for integrating technologies. Morphir is composed of a library of tools that facilitate the digitisation of business logic into multiple different languages &amp; platforms.</Description>
+        <PackAsTool>true</PackAsTool>
+        <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+        <PackageOutputPath>./dist</PackageOutputPath>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)'=='Release'">
+        <Optimize>true</Optimize>
+        <Tailcalls>true</Tailcalls>
+    </PropertyGroup>
+    <ItemGroup>
+        <Compile Include="Program.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Morphir.Cli\Morphir.Cli.fsproj" />
+    </ItemGroup>
+
+</Project>

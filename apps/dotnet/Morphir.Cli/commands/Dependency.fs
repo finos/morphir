@@ -3,14 +3,14 @@ namespace Morphir.Cli.Commands.Dependency
 open Spectre.Console
 open Spectre.Console.Cli
 
-type DependencySettings() as self = 
+type DependencySettings() = 
     inherit CommandSettings()
     
-type RefreshSettings() as self = 
+type RefreshSettings() = 
     inherit DependencySettings()
 
     [<CommandArgument(0, "[workspace-or-project-path]")>]
-    member val Path:string option = None with get, setpw
+    member val Path:string option = None with get, set
     
 type Refresh() =
     inherit Command<RefreshSettings>()

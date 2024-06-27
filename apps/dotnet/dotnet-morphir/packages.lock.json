@@ -1,0 +1,87 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net8.0": {
+      "FSharp.Core": {
+        "type": "Transitive",
+        "resolved": "6.0.0",
+        "contentHash": "fbv1UwJ2LXVcFCt+GGDPu0sIYA5C6gdDvAupDj3iLQF3clRkua/6J33f+FiGQa8P1tEa+zmz3wrjoTnXZ1UiYg=="
+      },
+      "SixLabors.ImageSharp": {
+        "type": "Transitive",
+        "resolved": "3.1.4",
+        "contentHash": "lFIdxgGDA5iYkUMRFOze7BGLcdpoLFbR+a20kc1W7NepvzU7ejtxtWOg9RvgG7kb9tBoJ3ONYOK6kLil/dgF1w=="
+      },
+      "Spectre.Console.ImageSharp": {
+        "type": "Transitive",
+        "resolved": "0.49.1",
+        "contentHash": "GCqe0F6G/zGuhesbizzufOR2ZG9L4Fy9GPCrcRi2gT6HbbJMeVlzD+OjOp1PhZOrUwzhqaOAqkhSIAtRtincwQ==",
+        "dependencies": {
+          "SixLabors.ImageSharp": "3.1.4",
+          "Spectre.Console": "0.49.1"
+        }
+      },
+      "Spectre.Console.Json": {
+        "type": "Transitive",
+        "resolved": "0.49.1",
+        "contentHash": "2/Eq8kS8mraATz6onP8nAaoydeqYqFY+RpcdL73VHlgKTtAX1daHoeeshSdKHDKkdSNXstC6MrW/hdgrQlk3uQ==",
+        "dependencies": {
+          "Spectre.Console": "0.49.1"
+        }
+      },
+      "morphir.cli": {
+        "type": "Project",
+        "dependencies": {
+          "Dumpify": "[0.6.6, )",
+          "EluciusFTW.SpectreCoff": "[0.49.2, )",
+          "Morphir.Host": "[1.0.0, )",
+          "Spectre.Console": "[0.49.1, )",
+          "Spectre.Console.Cli": "[0.49.1, )"
+        }
+      },
+      "morphir.host": {
+        "type": "Project",
+        "dependencies": {
+          "Dumpify": "[0.6.6, )"
+        }
+      },
+      "Dumpify": {
+        "type": "CentralTransitive",
+        "requested": "[0.6.6, )",
+        "resolved": "0.6.6",
+        "contentHash": "KDPmd681ltvJKRWRfbc7WLzOztYV8BXBSwoDaZVLlaq9Y45X3sZeh8FDF2MyfTErcKVp4fPEWyDiKyizInCptg==",
+        "dependencies": {
+          "Spectre.Console": "0.48.0"
+        }
+      },
+      "EluciusFTW.SpectreCoff": {
+        "type": "CentralTransitive",
+        "requested": "[0.49.2, )",
+        "resolved": "0.49.2",
+        "contentHash": "twlEwvku/o2EO32X0VM8Lvd0S44b6/hLiPvO3GtMzdD0qJz/EIZ31orfiaHzOFjq5dHOJQtLGaWyxhmtWn+dcw==",
+        "dependencies": {
+          "Dumpify": "0.6.5",
+          "FSharp.Core": "6.0.0",
+          "Spectre.Console": "0.49.1",
+          "Spectre.Console.ImageSharp": "0.49.1",
+          "Spectre.Console.Json": "0.49.1"
+        }
+      },
+      "Spectre.Console": {
+        "type": "CentralTransitive",
+        "requested": "[0.49.1, )",
+        "resolved": "0.49.1",
+        "contentHash": "USV+pdu49OJ3nCjxNuw1K9Zw/c1HCBbwbjXZp0EOn6wM99tFdAtN34KEBZUMyRuJuXlUMDqhd8Yq9obW2MslYA=="
+      },
+      "Spectre.Console.Cli": {
+        "type": "CentralTransitive",
+        "requested": "[0.49.1, )",
+        "resolved": "0.49.1",
+        "contentHash": "wBZzyEbKqfPFFUPhV5E7/k4Kwy4UDO42IVzvzk0C4Pkjjw+NSd0EOBkIutYET4vJY4X81pD9ooQO9gfBGXj4+g==",
+        "dependencies": {
+          "Spectre.Console": "0.49.1"
+        }
+      }
+    }
+  }
+}
