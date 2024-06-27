@@ -1,0 +1,11 @@
+<Project>
+    <PropertyGroup>
+        <PackageTags>f#, fsharp, finos</PackageTags>
+        <PackageProjectUrl>https://github.com/finos/morphir</PackageProjectUrl>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+        <RepositoryType>git</RepositoryType>
+        <Authors>finos;Damian Reeves</Authors>
+        <RepositoryUrl>https://github.com/finos/morphir</RepositoryUrl>
+    </PropertyGroup>
+</Project>

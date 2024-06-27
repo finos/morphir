@@ -30,3 +30,8 @@ target/
 # moon
 .moon/cache
 .moon/docker
+
+build/bin/
+build/obj/
+modules/**/bin/ 
+modules/**/obj/

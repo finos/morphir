@@ -3,6 +3,7 @@
   "private": true,
   "workspaces": ["apps/morphir-cli", "packages/*", "tools/*"],
   "scripts": {
+    "bld": "dotnet run --project build/build.fsproj",
     "build": "moon run :build -u",
     "clean": "moon run clean",
     "elm-build": "moon run :elm-build",
