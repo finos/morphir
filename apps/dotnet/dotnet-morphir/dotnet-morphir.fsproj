@@ -8,8 +8,9 @@
 
     <PropertyGroup>
         <Title>morphir</Title>
-        <ToolCommandName>dotnet-morphir</ToolCommandName>
+        <ToolCommandName>morphir</ToolCommandName>
         <Description>A set of tools for integrating technologies. Morphir is composed of a library of tools that facilitate the digitisation of business logic into multiple different languages &amp; platforms.</Description>
+        <IsPackable>true</IsPackable>
         <PackAsTool>true</PackAsTool>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
         <PackageOutputPath>./dist</PackageOutputPath>
@@ -21,9 +22,9 @@
     <ItemGroup>
         <Compile Include="Program.fs" />
     </ItemGroup>
-
     <ItemGroup>
-      <ProjectReference Include="..\Morphir.Cli\Morphir.Cli.fsproj" />
+      <ProjectReference Include="..\..\..\modules\dotnet\Morphir.Host\Morphir.Host.fsproj" />
+      <ProjectReference Include="..\Morphir.Cli\Morphir.Cli.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,9 +1,12 @@
 ﻿module Morphir.Tool.DotnetMorphir
 
+open System.Diagnostics.CodeAnalysis
 open Morphir.Cli
-open Morphir.Cli.CommandLineHost
+open Morphir.Cli.Commands
+open Morphir.Host
+
 
 [<EntryPoint>]
-let main (args: string[]) = 
-    {ApplicationName = "dotnet-morphir"}       
-    |> CommandLineHost.runHost args
+let main (args: string[]) =
+    let config = {ApplicationName = "dotnet-morphir"}       
+    CommandLineHost.Run(config, args)

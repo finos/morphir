@@ -1,4 +1,4 @@
-module Morphir.Host.MorphirHost
+namespace Morphir.Host
 
 type HostConfig = {
     ApplicationName: string

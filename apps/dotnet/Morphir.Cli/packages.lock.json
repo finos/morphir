@@ -11,18 +11,23 @@
           "Spectre.Console": "0.48.0"
         }
       },
-      "EluciusFTW.SpectreCoff": {
+      "FSharp.Core": {
         "type": "Direct",
-        "requested": "[0.49.2, )",
-        "resolved": "0.49.2",
-        "contentHash": "twlEwvku/o2EO32X0VM8Lvd0S44b6/hLiPvO3GtMzdD0qJz/EIZ31orfiaHzOFjq5dHOJQtLGaWyxhmtWn+dcw==",
-        "dependencies": {
-          "Dumpify": "0.6.5",
-          "FSharp.Core": "6.0.0",
-          "Spectre.Console": "0.49.1",
-          "Spectre.Console.ImageSharp": "0.49.1",
-          "Spectre.Console.Json": "0.49.1"
-        }
+        "requested": "[8.0.300, )",
+        "resolved": "8.0.300",
+        "contentHash": "Jv44fV7TNglyMku89lQcA4Q6mFKLyHb2bs1Yb72nvSVc+cHplEnoZ4XQUaaTLJGUTx/iMqcrkYGtaLzkkIhpaA=="
+      },
+      "Microsoft.DotNet.ILCompiler": {
+        "type": "Direct",
+        "requested": "[8.0.4, )",
+        "resolved": "8.0.4",
+        "contentHash": "bVK6XD5E/BpkPmdrx99ZkloZZX3nOvTAcW+W6jW4cs8elWlLFAc9BXHk2esxSVHMiaCLiLdIJAyhUfhV50TW+Q=="
+      },
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Direct",
+        "requested": "[8.0.4, )",
+        "resolved": "8.0.4",
+        "contentHash": "PZb5nfQ+U19nhnmnR9T1jw+LTmozhuG2eeuzuW5A7DqxD/UXW2ucjmNJqnqOuh8rdPzM3MQXoF8AfFCedJdCUw=="
       },
       "Spectre.Console": {
         "type": "Direct",
@@ -39,37 +44,88 @@
           "Spectre.Console": "0.49.1"
         }
       },
-      "FSharp.Core": {
+      "Extism.runtime.linux-arm64": {
+        "type": "Transitive",
+        "resolved": "1.2.0",
+        "contentHash": "oCh1Qx3/pp0mrS0Sa1uLFIqwlYlDNzn9AVrwIKZGpapluCq1MgBQm92IkhjQFLWdlv2BQzGfvbv3pmBspOtMkA=="
+      },
+      "Extism.runtime.linux-musl-arm64": {
+        "type": "Transitive",
+        "resolved": "1.2.0",
+        "contentHash": "BqWiR4A45Esi6ufLiTKI5LWiZA7ZaWRm2xrl7t/ajlTCrQ3wHmiQ/oLe+u7MMZkRPsroNL9VnZ0Vk7nYphTc8A=="
+      },
+      "Extism.runtime.linux-x64": {
+        "type": "Transitive",
+        "resolved": "1.2.0",
+        "contentHash": "+452STns9MdrJ+296qCvegyshRkbFm/CnQf9cP9/n1A1kgMi2SppraxCfe53X8iaatRsWs0zDCrJxroTW/v/xg=="
+      },
+      "Extism.runtime.osx-arm64": {
+        "type": "Transitive",
+        "resolved": "1.2.0",
+        "contentHash": "IFBGM3lVSdv3ld7dpo2zwALBDJA9UmzXEXnlKJl4GqaH7vWYYbbqAlhBlL+7ht4eC6tT6z/f19g/UnIjfrzdag=="
+      },
+      "Extism.runtime.osx-x64": {
+        "type": "Transitive",
+        "resolved": "1.2.0",
+        "contentHash": "/IkyuI4Vysw9oNIFKFbUBS3qfzJNPCtNKgEwaaWGAqUFLBR5PmH7oB6FouxzBx0x+DOmvIaSoel2rITSeSL7ew=="
+      },
+      "Extism.runtime.win-x64": {
+        "type": "Transitive",
+        "resolved": "1.2.0",
+        "contentHash": "encth+TyD5DCBPISnXogbbaXDyx8mWjaDmJl8U5P7fabg2sKa23Y6PV1BJxz2RnUtk50zv7wjIfJuOOYOnjJUw=="
+      },
+      "System.Runtime.CompilerServices.Unsafe": {
         "type": "Transitive",
         "resolved": "6.0.0",
-        "contentHash": "fbv1UwJ2LXVcFCt+GGDPu0sIYA5C6gdDvAupDj3iLQF3clRkua/6J33f+FiGQa8P1tEa+zmz3wrjoTnXZ1UiYg=="
+        "contentHash": "/iUeP3tq1S0XdNNoMz5C9twLSrM/TH+qElHkXWaPvuNOt+99G75NrV0OS2EqHx5wMN7popYjpc8oTjC1y16DLg=="
       },
-      "SixLabors.ImageSharp": {
+      "System.Text.Encodings.Web": {
         "type": "Transitive",
-        "resolved": "3.1.4",
-        "contentHash": "lFIdxgGDA5iYkUMRFOze7BGLcdpoLFbR+a20kc1W7NepvzU7ejtxtWOg9RvgG7kb9tBoJ3ONYOK6kLil/dgF1w=="
+        "resolved": "8.0.0",
+        "contentHash": "yev/k9GHAEGx2Rg3/tU6MQh4HGBXJs70y7j1LaM1i/ER9po+6nnQ6RRqTJn1E7Xu0fbIFK80Nh5EoODxrbxwBQ=="
       },
-      "Spectre.Console.ImageSharp": {
+      "System.Text.Json": {
         "type": "Transitive",
-        "resolved": "0.49.1",
-        "contentHash": "GCqe0F6G/zGuhesbizzufOR2ZG9L4Fy9GPCrcRi2gT6HbbJMeVlzD+OjOp1PhZOrUwzhqaOAqkhSIAtRtincwQ==",
+        "resolved": "8.0.2",
+        "contentHash": "29KA2StjWDYp32FvREifawRtNpTziLE1xyuDV9pVQ+MsaE9bIcIieP0io/eZZeLMxR+Nx9zI55RtUtpVpEIdeg==",
         "dependencies": {
-          "SixLabors.ImageSharp": "3.1.4",
-          "Spectre.Console": "0.49.1"
+          "System.Text.Encodings.Web": "8.0.0"
         }
       },
-      "Spectre.Console.Json": {
-        "type": "Transitive",
-        "resolved": "0.49.1",
-        "contentHash": "2/Eq8kS8mraATz6onP8nAaoydeqYqFY+RpcdL73VHlgKTtAX1daHoeeshSdKHDKkdSNXstC6MrW/hdgrQlk3uQ==",
-        "dependencies": {
-          "Spectre.Console": "0.49.1"
-        }
+      "morphir.codemodel": {
+        "type": "Project"
       },
       "morphir.host": {
         "type": "Project",
         "dependencies": {
-          "Dumpify": "[0.6.6, )"
+          "Dumpify": "[0.6.6, )",
+          "Extism.Sdk": "[1.2.0, )",
+          "Extism.runtime.all": "[1.2.0, )",
+          "Morphir.CodeModel": "[1.0.0, )"
+        }
+      },
+      "Extism.runtime.all": {
+        "type": "CentralTransitive",
+        "requested": "[1.2.0, )",
+        "resolved": "1.2.0",
+        "contentHash": "/Ok+Hb669kR/9Y3VzM7T1KraigbYANDNE8JfV29W1aJszWzA1kCl3s6lobQw1HcIj8wLD9y6hSvIdGKwoUYU1w==",
+        "dependencies": {
+          "Extism.runtime.linux-arm64": "1.2.0",
+          "Extism.runtime.linux-musl-arm64": "1.2.0",
+          "Extism.runtime.linux-x64": "1.2.0",
+          "Extism.runtime.osx-arm64": "1.2.0",
+          "Extism.runtime.osx-x64": "1.2.0",
+          "Extism.runtime.win-x64": "1.2.0"
+        }
+      },
+      "Extism.Sdk": {
+        "type": "CentralTransitive",
+        "requested": "[1.2.0, )",
+        "resolved": "1.2.0",
+        "contentHash": "GcZXlBoqDDcXhjoWhRGXzumNbmT5dnJpCqB8SjPMkUXMZtZlvo6NQjAnA19bqWPZej44rEcQNKCmc8zuMf1ksQ==",
+        "dependencies": {
+          "System.Runtime.CompilerServices.Unsafe": "6.0.0",
+          "System.Text.Json": "8.0.2"
         }
       }
     }

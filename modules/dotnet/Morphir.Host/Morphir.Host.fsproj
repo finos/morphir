@@ -6,10 +6,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Host.fs" />
+    <Compile Include="HostConfig.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Dumpify" />
+    <PackageReference Include="Extism.runtime.all" />
+    <PackageReference Include="Extism.Sdk" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Morphir.CodeModel\Morphir.CodeModel.fsproj" />
   </ItemGroup>
 </Project>
