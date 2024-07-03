@@ -19,6 +19,10 @@
   <ItemGroup>
   </ItemGroup>
   <ItemGroup>
+    <PackageVersion Include="ConsoleAppFramework" Version="5.2.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageVersion>
     <PackageVersion Include="Dumpify" Version="0.6.6" />
     <PackageVersion Include="EluciusFTW.SpectreCoff" Version="0.49.2" />
     <PackageVersion Include="Extism.runtime.all" Version="1.2.0" />

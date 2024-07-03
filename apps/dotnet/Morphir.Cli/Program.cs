@@ -1,12 +1,15 @@
-using Morphir.Host;
+using ConsoleAppFramework;
+using Morphir.Cli.Commands;
 
 namespace Morphir.Cli;
 
 public class Program
 {
-    public static int Main(string[] args)
+    public static void Main(string[] args)
     {
-        var hostConfig = new HostConfig("morphir");
-        return CommandLineHost.Run(hostConfig, args);
+        var app = ConsoleApp.Create();
+        app.Add<DependencyCommands>("dependency");
+        app.Add<ProjectsCommands>("projects");
+        app.Run(args);
     }
 }

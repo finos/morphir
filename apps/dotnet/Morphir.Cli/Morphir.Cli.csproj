@@ -4,11 +4,27 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>morphir</AssemblyName>
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
     <PublishTrimmed>true</PublishTrimmed>
     <PublishAot>true</PublishAot>
   </PropertyGroup>
-  
+  <PropertyGroup>
+<!--    <Title>morphir</Title>-->
+<!--    <ToolCommandName>morphir</ToolCommandName>-->
+<!--    <Description>A set of tools for integrating technologies. Morphir is composed of a library of tools that facilitate the digitisation of business logic into multiple different languages &amp; platforms.</Description>-->
+    <IsPackable>true</IsPackable>
+<!--    <PackAsTool>true</PackAsTool>-->
+<!--    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>-->
+<!--    <PackageOutputPath>./dist</PackageOutputPath>-->
+  </PropertyGroup>
   <ItemGroup>
+    <None Include="docs/ReadMe.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="ConsoleAppFramework">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Dumpify" />
     <PackageReference Include="FSharp.Core" />
     <PackageReference Include="Spectre.Console" />
@@ -19,7 +35,4 @@
     <ProjectReference Include="..\..\..\modules\dotnet\Morphir.Host\Morphir.Host.fsproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <TrimmerRootDescriptor Include="Morphir.TrimmerDescriptor.xml" />
-  </ItemGroup>
 </Project>

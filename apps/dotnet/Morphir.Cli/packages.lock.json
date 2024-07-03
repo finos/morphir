@@ -2,6 +2,12 @@
   "version": 2,
   "dependencies": {
     "net8.0": {
+      "ConsoleAppFramework": {
+        "type": "Direct",
+        "requested": "[5.2.1, )",
+        "resolved": "5.2.1",
+        "contentHash": "j2bWWa5YnnSy+KkIkzdvKwkjjs74ux8rdP491Vk4UcGeWs5X3ZeBZqXqTYnqhwFdrNM/9uhTH4SfLSSSMwPsaQ=="
+      },
       "Dumpify": {
         "type": "Direct",
         "requested": "[0.6.6, )",
