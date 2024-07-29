@@ -1,27 +1,27 @@
 using System;
+using System.ComponentModel;
 using System.Threading.Tasks;
-using ConsoleAppFramework;
-using Dumpify;
+using Ookii.CommandLine;
+using Ookii.CommandLine.Commands;
+using Ookii.CommandLine.Validation;
 
 namespace Morphir.Cli.Commands;
 
-internal class ProjectsCommands
-{
-    /// <summary>
-    /// List all projects in the current workspace
-    /// </summary>
-    /// <param name="projects">Restricts the listing to only the matching projects.</param>
-    [Command("")]
-    public Task List([Argument]params string[] projects)
-    {
-        Console.WriteLine("Listing projects...");
-        if (projects.Length > 0)
-        {
-            projects.Dump("Project Filters");
-        }
+[Command("project")]
+[Description("Manage projects")]
+internal class ProjectCommand:ParentCommand{}
 
-        // Console.WriteLine($"Command Line Args: {context}");
-        //TODO: Implement listing projects
-        return Task.CompletedTask;
+[GeneratedParser]
+[Command("list")]
+[ParentCommand(typeof(ProjectCommand))]
+[Description("Gets a list of projects")]
+internal partial class ListProjectsCommand : AsyncCommandBase
+{
+    public override async Task<int> RunAsync()
+    {
+        Console.WriteLine("");
+        Console.WriteLine("Listing projects...");
+        await Task.CompletedTask;
+        return (int)ExitCode.Success;
     }
 }

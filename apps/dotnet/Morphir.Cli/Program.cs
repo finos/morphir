@@ -1,15 +1,20 @@
-using ConsoleAppFramework;
+using System.Reflection;
+using Morphir.Cli;
 using Morphir.Cli.Commands;
+using Ookii.CommandLine;
+using Ookii.CommandLine.Commands;
 
-namespace Morphir.Cli;
+[assembly: ApplicationFriendlyName("Morphir CLI")]
 
-public class Program
+
+var options = new CommandOptions()
 {
-    public static void Main(string[] args)
+    CommandNameTransform = NameTransform.DashCase,
+    UsageWriter = new UsageWriter()
     {
-        var app = ConsoleApp.Create();
-        app.Add<DependencyCommands>("dependency");
-        app.Add<ProjectsCommands>("projects");
-        app.Run(args);
+        IncludeApplicationDescriptionBeforeCommandList = true,
     }
-}
+};
+
+var manager = new GeneratedManager(options);
+return await manager.RunCommandAsync() ?? (int)ExitCode.GeneralFailure;

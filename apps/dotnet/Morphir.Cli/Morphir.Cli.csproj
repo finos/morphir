@@ -21,18 +21,7 @@
     <None Include="docs/ReadMe.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="ConsoleAppFramework">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="Dumpify" />
-    <PackageReference Include="FSharp.Core" />
-    <PackageReference Include="Spectre.Console" />
-    <PackageReference Include="Spectre.Console.Cli" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\modules\dotnet\Morphir.Host\Morphir.Host.fsproj" />
+    <PackageReference Include="Ookii.CommandLine" />
   </ItemGroup>
 
 </Project>

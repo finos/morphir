@@ -29,6 +29,7 @@
     <PackageVersion Include="Extism.Sdk" Version="1.2.0" />
     <PackageVersion Include="FSharp.Core" Version="8.0.300" />
     <PackageVersion Include="Microsoft.ClearScript.Complete" Version="7.4.5" />
+    <PackageVersion Include="Ookii.CommandLine" Version="4.1.0" />
     <PackageVersion Include="Spectre.Console" Version="$(SpectreConsoleVersion)" />
     <PackageVersion Include="Spectre.Console.Cli" Version="$(SpectreConsoleVersion)" />
   </ItemGroup>
