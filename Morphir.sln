@@ -28,9 +28,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".config", ".config", "{A0B3
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dotnet", "dotnet", "{79841847-1158-49D2-9435-3B83849D504E}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Morphir.Host", "modules\dotnet\Morphir.Host\Morphir.Host.fsproj", "{58BBEF2E-457C-44C6-AA39-30FDBC647A32}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Morphir.Host.FSharp", "modules\dotnet\Morphir.Host.FSharp\Morphir.Host.FSharp.fsproj", "{58BBEF2E-457C-44C6-AA39-30FDBC647A32}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Morphir.CodeModel", "modules\dotnet\Morphir.CodeModel\Morphir.CodeModel.fsproj", "{1C44FC53-627D-4EA6-BD2D-A296A2447E5A}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Morphir.CodeModel.FSharp", "modules\dotnet\Morphir.CodeModel.FSharp\Morphir.CodeModel.FSharp.fsproj", "{1C44FC53-627D-4EA6-BD2D-A296A2447E5A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Morphir.Cli", "apps\dotnet\Morphir.Cli\Morphir.Cli.csproj", "{E85EF016-B614-4774-A135-E1DD21F87C1C}"
 EndProject

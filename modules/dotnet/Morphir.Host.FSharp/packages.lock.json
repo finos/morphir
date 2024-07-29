@@ -83,7 +83,7 @@
           "System.Text.Encodings.Web": "8.0.0"
         }
       },
-      "morphir.codemodel": {
+      "morphir.codemodel.fsharp": {
         "type": "Project"
       },
       "Spectre.Console": {

@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RootNamespace>Morphir.Host</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,6 +17,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Morphir.CodeModel\Morphir.CodeModel.fsproj" />
+    <ProjectReference Include="..\Morphir.CodeModel.FSharp\Morphir.CodeModel.FSharp.fsproj" />
   </ItemGroup>
 </Project>
