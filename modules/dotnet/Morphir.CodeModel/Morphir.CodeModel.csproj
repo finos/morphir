@@ -12,8 +12,4 @@
         <PackageReference Include="Vogen"/>
     </ItemGroup>
 
-    <ItemGroup>
-        <Folder Include="IR\"/>
-    </ItemGroup>
-
 </Project>

@@ -35,3 +35,28 @@ build/bin/
 build/obj/
 */dotnet/**/bin/ 
 */dotnet/**/obj/
+
+# .NET
+# User-specific files
+*.suo
+*.user
+*.sln.docstates
+**.idea
+*.iml
+
+# Roslyn cache directories
+*.ide/
+
+# ReSharper is a .NET coding add-in
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# SQL Server files
+*.mdf
+*.ldf
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+**/Properties/launchSettings.json

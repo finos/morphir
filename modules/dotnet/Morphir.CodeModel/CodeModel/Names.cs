@@ -8,9 +8,6 @@ public partial struct CanonicalName
 {
     internal static string NormalizeInput(string input)
     {
-        var parts = Common.CanonicalName
-            .WordPattern()
-            .Matches(input).Select(m => m.Value.ToLowerInvariant());
-        return string.Join("-", parts);
+        return string.Join("-", input.ToCanonicalizedSegments());
     }
 }

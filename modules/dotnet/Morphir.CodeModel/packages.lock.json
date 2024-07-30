@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net8.0": {
+      "Dunet": {
+        "type": "Direct",
+        "requested": "[1.11.2, )",
+        "resolved": "1.11.2",
+        "contentHash": "T6dfqSJ9+gSqnopeuBv6gtnpHlC0lru6XK3NtQQ9fTeDQQa1ynuI8AmDfEcpQu/rWFYJTbu8ZYR5ED8IScVK7A=="
+      },
+      "Vogen": {
+        "type": "Direct",
+        "requested": "[4.0.15, )",
+        "resolved": "4.0.15",
+        "contentHash": "t7UjoVeUlky3lhfy1Xag29yiLOKWCRLDMOOieNQt6Y6BBpAhHEUtw6JN86Q/tT4avePMCmX8UTQc2qCAneTIuQ=="
+      }
+    }
+  }
+}
