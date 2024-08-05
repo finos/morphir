@@ -20,7 +20,7 @@ module Morphir.SDK.LocalDate exposing
     , diffInDays, diffInWeeks, diffInMonths, diffInYears
     , addDays, addWeeks, addMonths, addYears
     , fromCalendarDate, fromISO, fromOrdinalDate, fromParts
-    , toISOString, monthToInt
+    , toISOString, monthToInt, intToMonth
     , DayOfWeek(..), dayOfWeek, isWeekend, isWeekday
     , Month(..)
     , year, month, monthNumber, day
@@ -47,7 +47,7 @@ module Morphir.SDK.LocalDate exposing
 
 # Convert
 
-@docs toISOString, monthToInt
+@docs toISOString, monthToInt, intToMonth
 
 
 # Query
@@ -332,6 +332,51 @@ monthToInt m =
 
         December ->
             12
+
+
+{-| Convert an `Int` to a `Month`, with January being 1.
+-}
+intToMonth : Int -> Maybe Month
+intToMonth i =
+    case i of
+        1 ->
+            Just January
+
+        2 ->
+            Just February
+
+        3 ->
+            Just March
+
+        4 ->
+            Just April
+
+        5 ->
+            Just May
+
+        6 ->
+            Just June
+
+        7 ->
+            Just July
+
+        8 ->
+            Just August
+
+        9 ->
+            Just September
+
+        10 ->
+            Just October
+
+        11 ->
+            Just November
+
+        12 ->
+            Just December
+
+        _ ->
+            Nothing
 
 
 monthToMonth : Month -> Time.Month

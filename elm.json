@@ -19,6 +19,8 @@
         "Morphir.SDK.ResultList",
         "Morphir.SDK.LocalTime",
         "Morphir.SDK.UUID",
+        "Morphir.SDK.Json.Encode",
+        "Morphir.SDK.Json.Decode",
         "Morphir.IR.Name",
         "Morphir.IR.NodeId",
         "Morphir.IR.Decoration",
@@ -86,7 +88,8 @@
         "pzp1997/assoc-list": "1.0.0 <= v < 2.0.0",
         "rtfeldman/elm-iso8601-date-strings": "1.1.4 <= v < 2.0.0",
         "rundis/elm-bootstrap": "5.2.0 <= v < 6.0.0",
-        "stil4m/elm-syntax": "7.2.1 <= v < 8.0.0"
+        "stil4m/elm-syntax": "7.2.1 <= v < 8.0.0",
+        "waratuman/json-extra": "1.0.0 <= v < 1.0.3"
     },
     "test-dependencies": {}
 }
