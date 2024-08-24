@@ -60,3 +60,6 @@ _ReSharper*/
 project.lock.json
 project.fragment.lock.json
 **/Properties/launchSettings.json
+
+# Morphir
+morphir.user.*
