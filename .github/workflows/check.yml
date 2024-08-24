@@ -1,4 +1,4 @@
-name: Morphir DevKit CI
+name: CI - Check
 on:
     push:
       branches: [main]
@@ -14,11 +14,13 @@ jobs:
             uses: actions/checkout@v4
             with:
               fetch-depth: 0
-          - name: Setup Scala and Java
-            uses: actions/setup-java@v4
+          - name: Setup Java
+            uses: graalvm/setup-graalvm@v1
             with:
-              distribution: "temurin"
-              java-version: "17"
+                java-version: ${{ matrix.jvm }}
+                version: "latest"
+                github-token: ${{ secrets.GITHUB_TOKEN }}
+                components: "native-image"
           - name: Cache scala dependencies
             uses: coursier/cache-action@v6
 
