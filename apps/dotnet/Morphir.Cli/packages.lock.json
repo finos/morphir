@@ -4,15 +4,15 @@
     "net8.0": {
       "Microsoft.DotNet.ILCompiler": {
         "type": "Direct",
-        "requested": "[8.0.7, )",
-        "resolved": "8.0.7",
-        "contentHash": "5Vkl5384rfKZmK7rVm8pjuMk2Cweaqd+rPwL86bddhInHdBg3ClO9H0cqwd7kXf+F8/aXuZxKAnl6izzaWkfUw=="
+        "requested": "[8.0.4, )",
+        "resolved": "8.0.4",
+        "contentHash": "bVK6XD5E/BpkPmdrx99ZkloZZX3nOvTAcW+W6jW4cs8elWlLFAc9BXHk2esxSVHMiaCLiLdIJAyhUfhV50TW+Q=="
       },
       "Microsoft.NET.ILLink.Tasks": {
         "type": "Direct",
-        "requested": "[8.0.7, )",
-        "resolved": "8.0.7",
-        "contentHash": "iI52ptEKby2ymQ6B7h4TWbFmm85T4VvLgc/HvS45Yr3lgi4IIFbQtjON3bQbX/Vc94jXNSLvrDOp5Kh7SJyFYQ=="
+        "requested": "[8.0.4, )",
+        "resolved": "8.0.4",
+        "contentHash": "PZb5nfQ+U19nhnmnR9T1jw+LTmozhuG2eeuzuW5A7DqxD/UXW2ucjmNJqnqOuh8rdPzM3MQXoF8AfFCedJdCUw=="
       },
       "Ookii.CommandLine": {
         "type": "Direct",
