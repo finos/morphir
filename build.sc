@@ -1,8 +1,9 @@
 import $meta._
-import mill._, mill.scalalib._, mill.scalajslib._
+import mill._, mill.scalalib._, mill.scalajslib._, scalafmt._
+import com.carlosedp.aliases._
 import io.eleven19.mill.crossbuild._
-
 import org.finos.morphir.build._
+
 
 object Settings {}
 
@@ -28,11 +29,15 @@ object V {
   }
 }
 
-trait ScalaExecutableModule extends ScalaModule {
+trait CommonScalaModule extends ScalaModule with ScalafmtModule {
+  def scalaVersion = V.Scala.libraryScalaVersion
+}
+
+trait ScalaExecutableModule extends CommonScalaModule {
   def scalaVersion = V.Scala.executableScalaVersion
 }
 
-trait ScalaLibraryModule extends ScalaModule {
+trait ScalaLibraryModule extends CommonScalaModule {
   def scalaVersion = V.Scala.libraryScalaVersion
 }
 
@@ -42,6 +47,11 @@ trait MorphirPublishModule extends PubMod {
 
 object root extends RootModule {
 
+  object MorphirAliases extends Aliases {
+    @inline def lint = checkfmt
+    def fmt           = alias("mill.scalalib.scalafmt.ScalafmtModule/reformatAll __.sources")
+    def checkfmt      = alias("mill.scalalib.scalafmt.ScalafmtModule/checkFormatAll __.sources")
+  }
   object apps extends Module {
     object cli extends ScalaExecutableModule with NativeImageDefaults with MorphirPublishModule {
       override def artifactNameParts: T[Seq[String]] = Seq("morphir", "cli")

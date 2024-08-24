@@ -9,7 +9,8 @@ object build extends MillBuildRootModule {
     ivy"com.lihaoyi::mill-contrib-buildinfo:${mill.api.BuildInfo.millVersion}",
     ivy"com.goyeau::mill-scalafix::0.4.0",
     ivy"io.github.alexarchambault.mill::mill-native-image::0.1.26",
-    ivy"io.eleven19.mill::mill-crossbuild::0.3.0"
+    ivy"io.eleven19.mill::mill-crossbuild::0.3.0",
+    ivy"com.carlosedp::mill-aliases::0.4.1",
   )
 
 }
