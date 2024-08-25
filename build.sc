@@ -40,6 +40,13 @@ object root extends RootModule {
       )
       def nativeImageName      = "morphir-cli" // TODO: Rename to morphir
       def nativeImageMainClass = T("org.finos.morphir.cli.Main")
+
+
+      object test extends ScalaTests with TestModule.ScalaTest {
+        def ivyDeps = Agg(
+          ivy"org.scalatest::scalatest:${V.scalatest}"
+        )
+      }
     }
   }
 
@@ -49,15 +56,17 @@ object root extends RootModule {
         trait Shared extends ScalaLibraryModule with PlatformAwareScalaProject with MorphirPublishModule {
           def artifactNameParts = Seq("morphir", "codemodel")
         }
-        object jvm extends ScalaJvmProject with Shared {}
+        object jvm extends ScalaJvmProject with Shared {
+          object test extends ScalaTests with TestModule.ScalaTest {
+            def ivyDeps = Agg(
+              ivy"org.scalatest::scalatest::3.2.19"
+            )
+          }
+        }
       }
     }
   }
 }
-
-
-
-object Deps {}
 
 object V {
 
@@ -68,6 +77,7 @@ object V {
   val neotype          = "0.3.0"
   val `scala-uri`      = "4.0.3"
   val `graal-polyglot` = "24.0.2"
+  val scalatest = "3.2.19"
 
   object Scala {
     val libraryScalaVersion    = "3.3.3"

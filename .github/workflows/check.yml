@@ -66,7 +66,7 @@ jobs:
           uses: coursier/cache-action@v6 
 
         - name: Test Modules & Libraries
-          run: ./mill -i Alias/run tesModules
+          run: ./mill -i Alias/run testModules
 
         - name: Test Apps
           if: ${{matrix.is-graal}}
