@@ -26,4 +26,4 @@ jobs:
             uses: coursier/cache-action@v6
 
           - name: Lint code
-            run: ./mill -i Alias/lint 
+            run: ./mill -i Alias/run lint
