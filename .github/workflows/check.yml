@@ -17,7 +17,8 @@ jobs:
           - name: Setup Java
             uses: graalvm/setup-graalvm@v1
             with:
-                java-version: ${{ matrix.jvm }}
+                distribution: 'grallvm'
+                java-version: 22
                 version: "latest"
                 github-token: ${{ secrets.GITHUB_TOKEN }}
                 components: "native-image"
