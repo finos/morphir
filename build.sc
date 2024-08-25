@@ -14,6 +14,8 @@ object root extends RootModule {
     @inline def lint = checkfmt
     def fmt           = alias("mill.scalalib.scalafmt.ScalafmtModule/reformatAll __.sources")
     def checkfmt      = alias("mill.scalalib.scalafmt.ScalafmtModule/checkFormatAll __.sources")
+    def testApps      = alias("apps.__.test")
+    def testModules   = alias("apps.__.test")
   }
 
   //-----------------------------------------------------------------------------------------------
