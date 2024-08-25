@@ -17,7 +17,7 @@ jobs:
           - name: Setup Java
             uses: graalvm/setup-graalvm@v1
             with:
-                distribution: 'grallvm'
+                distribution: 'graalvm'
                 java-version: 22
                 version: "latest"
                 github-token: ${{ secrets.GITHUB_TOKEN }}
