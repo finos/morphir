@@ -29,6 +29,8 @@ jobs:
             run: ./mill -i Alias/run lint
     
     test:
+      runs-on: ubuntu-latest
+      timeout-minutes: 30
       strategy:
         matrix:
           java-distribution: ["temurin"] 
@@ -37,9 +39,6 @@ jobs:
             - java-distribution: "graalvm"
               java-version: "22"
               is-graal: true
-
-        runs-on: ubuntu-latest
-
       steps:
         - name: Checkout
           uses: actions/checkout@v4
