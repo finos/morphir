@@ -1,9 +1,9 @@
-name: CI - Check
+name: Release
 on:
-    push:
-      branches: [main]
-    pull_request:
-      branches: [main]
+    release:
+      types:
+        - published
+    workflow_dispatch:
 
 jobs:
     lint:
@@ -40,7 +40,7 @@ jobs:
               java-version: "22"
               is-graal: true
               release-libraries: false
-              release-apps: true
+              release-apps: true              
             - java-distribution: "temurin"
               java-version: "11"
               release-libraries: true
@@ -78,17 +78,24 @@ jobs:
           if: ${{matrix.is-graal}}
           run: ./mill -i Alias/run testApps
 
-        - name: Ensure Can Publish - Libraries
-          run: ./mill -i __.publishLibraryArtifacts
-          if: ${{matrix.release-libraries}}
+        - name: Release Libraries
+          run: ci/release-maven-libraries.sh
+          if: matrix.release-libraries && (github.repository == 'finos/morphir' && ( (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/**' ) || (github.ref != 'refs/heads/main' && github.ref != 'refs/heads/release/**' && startsWith( github.ref, 'refs/tags/') ) ))
           env:
             MORPHIR_RELEASE_LIBRARIES: ${{matrix.release-libraries}}
             MORPHIR_RELEASE_APPS: ${{matrix.release-apps}} 
-        
-        - name: Ensure Can Publish - Apps
-          run: ./mill -i __.publishApplicationArtifacts
-          if: ${{matrix.release-apps}}
-          env:
-            MORPHIR_RELEASE_LIBRARIES: ${{matrix.release-libraries}}
-            MORPHIR_RELEASE_APPS: ${{matrix.release-apps}} 
+            SONATYPE_PGP_PASSWORD: ${{ secrets.PGP_PASSPHRASE }}
+            SONATYPE_PGP_SECRET: ${{ secrets.PGP_SECRET_BASE64 }}
+            SONATYPE_PASSWORD: ${{ secrets.ORG_MORPHIR_MAVEN_DEPLOY_PASSWORD }}
+            SONATYPE_USERNAME: ${{ secrets.ORG_MORPHIR_MAVEN_DEPLOY_USERNAME }}
             
+        - name: Release Applications
+          run: ci/release-applications.sh
+          if: matrix.release-apps && (github.repository == 'finos/morphir' && ( (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/**' ) || (github.ref != 'refs/heads/main' && github.ref != 'refs/heads/release/**' && startsWith( github.ref, 'refs/tags/') ) ))
+          env:
+            MORPHIR_RELEASE_LIBRARIES: ${{matrix.release-libraries}}
+            MORPHIR_RELEASE_APPS: ${{matrix.release-apps}} 
+            SONATYPE_PGP_PASSWORD: ${{ secrets.PGP_PASSPHRASE }}
+            SONATYPE_PGP_SECRET: ${{ secrets.PGP_SECRET_BASE64 }}
+            SONATYPE_PASSWORD: ${{ secrets.ORG_MORPHIR_MAVEN_DEPLOY_PASSWORD }}
+            SONATYPE_USERNAME: ${{ secrets.ORG_MORPHIR_MAVEN_DEPLOY_USERNAME }}

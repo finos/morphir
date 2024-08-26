@@ -22,7 +22,7 @@ object root extends RootModule {
   // Modules and Tasks
   //-----------------------------------------------------------------------------------------------
   object apps extends Module {
-    object cli extends ScalaExecutableModule with NativeImageDefaults with MorphirPublishModule {
+    object cli extends ScalaExecutableModule with NativeImageDefaults with MorphirApplicationPublishModule {
       override def artifactNameParts: T[Seq[String]] = Seq("morphir", "cli")
       def mainClass = T {
         val className = nativeImageMainClass()
@@ -53,7 +53,7 @@ object root extends RootModule {
   object modules extends Module {
     object scala extends Module {
       object codemodel extends CrossPlatform {
-        trait Shared extends ScalaLibraryModule with PlatformAwareScalaProject with MorphirPublishModule {
+        trait Shared extends ScalaLibraryModule with PlatformAwareScalaProject with MorphirLibraryPublishModule {
           def artifactNameParts = Seq("morphir", "codemodel")
         }
         object jvm extends ScalaJvmProject with Shared {
@@ -103,4 +103,12 @@ trait ScalaLibraryModule extends CommonScalaModule {
 
 trait MorphirPublishModule extends PubMod {
   override def customVersionTag: T[Option[String]] = T(Some("0.0.0"))
+}
+
+trait MorphirLibraryPublishModule extends MorphirPublishModule {
+  def publishLibraryArtifacts = T { publishArtifacts() }
+}
+
+trait MorphirApplicationPublishModule extends MorphirPublishModule {
+  def publishApplicationArtifacts = T { publishArtifacts()}
 }
