@@ -21,7 +21,7 @@ jobs:
                 java-version: 22
                 version: "latest"
                 github-token: ${{ secrets.GITHUB_TOKEN }}
-                components: "native-image"
+                
           - name: Cache scala dependencies
             uses: coursier/cache-action@v6
 
