@@ -15,6 +15,8 @@ rm gpg_key
 ./mill -i \
     mill.scalalib.PublishModule/publishAll \
     --sonatypeCreds $SONATYPE_USERNAME:$SONATYPE_PASSWORD \
+    --sonatypeUri "https://s01.oss.sonatype.org/service/local"
+    --sonatypeSnapshotUri "https://s01.oss.sonatype.org/content/repositories/snapshots",
     --gpgArgs --passphrase=$SONATYPE_PGP_PASSWORD,--no-tty,--pinentry-mode,loopback,--batch,--yes,-a,-b \
     --publishArtifacts __.publishArtifacts \
     --readTimeout  3600000 \
