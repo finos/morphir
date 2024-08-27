@@ -27,17 +27,36 @@ type UppercaseName = UppercaseName.Type
 object UppercaseName extends Newtype[String]:
     override inline def validate(input:String):Boolean = input.nonEmpty && input.forall(_.isUpper)    
 
-sealed trait PathLike extends Product with Serializable:
-    def parts:Chunk[Name]
-    def kind:Path.Kind
+type Path = Path.Type    
+object Path extends Newtype[PackagePath | ModulePath | GenericPath]
 
-enum Path extends PathLike:
-    case PackagePath(parts:Chunk[Name]) extends Path(parts)
-    case ModulePath(parts:Chunk[Name]) extends Path(parts)
-    case LocalPath(name:Name) extends Path(Chunk(name))
+type GenericPath = LocalPath.Type
+object GenericPath extends Newtype[Path.Repr]
+
+type ModulePath = ModulePath.Type
+object ModulePath extends Newtype[Path.Repr]
+
+type PackagePath = PackagePath.Type
+object PackagePath extends Newtype[Path.Repr]
 
 object Path:
+    case class Repr(parts:Chunk[Name], kind:Path.Kind)
     enum Kind:
-        case Package, Module, Local     
+        case Package, Module, Generic     
 
+sealed trait QualifiedName extends Product with Serializable:    
+    self =>
+    
+    def getPackage:Option[PackagePath] = self match
+        case FQName(packagePath, _, _) => Some(packagePath)
+        case _ => None
+    end getPackage
 
+    def module:ModulePath
+    def localName:Name
+
+final case class FQName($package:PackagePath, module:ModulePath, localName:Name) extends QualifiedName:
+    inline def packagePath:PackagePath = $package
+    inline def modulePath:ModulePath = module
+
+final case class QName(module:ModulePath, localName:Name) extends QualifiedName
