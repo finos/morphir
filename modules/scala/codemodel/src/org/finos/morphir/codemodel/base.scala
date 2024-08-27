@@ -1,5 +1,5 @@
 package org.finos.morphir.codemodel
 
-abstract class Element {
+abstract class Concept {
   type Self
 }

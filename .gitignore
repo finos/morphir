@@ -35,6 +35,7 @@ build/bin/
 build/obj/
 */dotnet/**/bin/ 
 */dotnet/**/obj/
+*.semanticdb
 
 # .NET
 # User-specific files
