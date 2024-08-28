@@ -9,4 +9,9 @@ object ToCommandLine {
     def instance[A](f: A => CommandLine): ToCommandLine[A] = new ToCommandLine[A] {
         def toCommandLine(self: A): CommandLine = f(self)
     }
+
+    implicit class Ops[A](val self: A) extends AnyVal {
+        def toCommandLine(implicit instance:ToCommandLine[A]): CommandLine = 
+            instance.toCommandLine(self)
+    }
 }

@@ -7,7 +7,7 @@ import org.finos.morphir.build.elm._
 
 object Settings {}
 
-object root extends RootModule with ElmModule {
+object root extends RootModule with ElmModule with ElmFormatModule {
 
   //-----------------------------------------------------------------------------------------------
   /// Aliases that can be used to simplify and perform common commands
