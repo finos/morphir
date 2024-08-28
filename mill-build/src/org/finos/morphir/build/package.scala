@@ -39,6 +39,9 @@ package object build {
     object SubcommandArgs {
         val empty = SubcommandArgs(Seq.empty)
         implicit val rw:RW[SubcommandArgs] = macroRW
+        def apply(first:String, args:String*):SubcommandArgs = SubcommandArgs(first +: args)
+
+        
     }
 
     implicit object PathRead extends mainargs.TokensReader.Simple[os.Path]{

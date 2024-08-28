@@ -6,6 +6,7 @@ import mill.scalalib._
 import mill.api.PathRef
 import os.RelPath
 import org.finos.morphir.build.elm
+import org.finos.morphir.build.elm.api._
 
 trait ElmModule extends Module {
     def compile = T {
@@ -123,8 +124,25 @@ trait ElmModule extends Module {
         }        
     }
 
-    def elmMake() = T.command {
-        elmMakeTask(false)()
+    def elmMake(
+        debug:mainargs.Flag, 
+        optimize:mainargs.Flag,   
+        @mainargs.arg(doc = "Specify the name of the resulting JS file.")                     
+        output:Option[String],
+        @mainargs.arg(doc="You can say --report=json to get error messages as JSON.")
+        report:Option[String],
+        @mainargs.arg(doc = "Generate a JSON file of documentation for a package.")
+        docs:Option[String],      
+        elmFiles:mainargs.Leftover[String]  
+    ) = T.command {
+        T.log.info("Running elm make command:")
+        T.log.info(s"Debug: $debug")
+        T.log.info(s"Optimize: $optimize")
+        T.log.info(s"Output: $output")
+        T.log.info(s"Report: $report")
+        T.log.info(s"Docs: $docs")
+        T.log.info(s"Elm Files: ${elmFiles.value.mkString(",")}")
+        //elmMakeTask(false)()
     }
     
     def exposedModules = T {

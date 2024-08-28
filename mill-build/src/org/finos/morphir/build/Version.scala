@@ -3,7 +3,7 @@ import just.semver.SemVer
 
 import upickle.default.{ReadWriter => RW, macroRW}
 import upickle.implicits.key 
-import org.finos.morphir.build.elm.ElmPickler
+import org.finos.morphir.build.elm.api.ElmPickler
 
 final case class Version(underlying:SemVer) {
     override def toString:String = SemVer.render(underlying)

@@ -1,4 +1,4 @@
-package org.finos.morphir.build.elm
+package org.finos.morphir.build.elm.api
 import upickle.default.{ReadWriter => RW, macroRW}
 import upickle.implicits.key
 import org.finos.morphir.build.Version
