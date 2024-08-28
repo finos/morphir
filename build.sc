@@ -3,10 +3,11 @@ import mill._, mill.scalalib._, mill.scalajslib._, scalafmt._
 import com.carlosedp.aliases._
 import io.eleven19.mill.crossbuild._
 import org.finos.morphir.build._
+import org.finos.morphir.build.elm._
 
 object Settings {}
 
-object root extends RootModule {
+object root extends RootModule with ElmModule {
 
   //-----------------------------------------------------------------------------------------------
   /// Aliases that can be used to simplify and perform common commands
