@@ -9,6 +9,3 @@ object Main extends CommandsEntryPoint:
   )
 
   override def progName: String = "morphir"
-
-  
-
