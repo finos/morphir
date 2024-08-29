@@ -23,14 +23,14 @@ object MorphirAliases extends Aliases {
 // Modules and Tasks
 //-----------------------------------------------------------------------------------------------
 object morphir extends Module {
-  object cli extends ScalaNativeImageExecutableModule with MorphirApplicationPublishModule {
-    override def projectNameParts: T[Seq[String]] = Seq("morphir", "cli")
-    def mainClass = T {
-      val className = nativeImageMainClass()
-      Option(className)
-    }
 
-    def ivyDeps = Agg(
+  //---------------------------------------------------------------------------------------------
+  // CLI projects
+  //---------------------------------------------------------------------------------------------
+  trait MorphirScalaCliProject extends ScalaNativeImageExecutableModule with MorphirApplicationPublishModule {  
+    def sources = super.sources() ++ Seq(T.workspace / "morphir" / "cli" / "shared" / "src").map(PathRef(_))
+
+    def ivyDeps: T[Agg[Dep]] = super.ivyDeps() ++ Agg(
       ivy"com.lihaoyi::os-lib:${V.oslib}",
       ivy"com.lihaoyi::pprint:${V.pprint}",
       ivy"com.github.alexarchambault::case-app:${V.`case-app`}",
@@ -40,7 +40,18 @@ object morphir extends Module {
       ivy"io.github.kitlangton::neotype::${V.neotype}",
       ivy"org.graalvm.polyglot:js:${V.`graal-polyglot`}"
     )
-    override def moduleDeps = Seq()
+  }
+
+  /// Build for the morphir/morphir-cli project
+  object cli extends MorphirScalaCliProject {    
+    def mainClass = T {
+      val className = nativeImageMainClass()
+      Option(className)
+    }
+
+    def ivyDeps = super.ivyDeps() ++ Agg() 
+
+    override def moduleDeps = Seq(scalalib.jvm)
     def nativeImageName      = "morphir-cli" // TODO: Rename to morphir
     def nativeImageMainClass = T("org.finos.morphir.cli.Main")
 
@@ -50,12 +61,31 @@ object morphir extends Module {
         ivy"org.scalatest::scalatest:${V.scalatest}"
       )
     }
-  }  
+  } 
 
-  object codemodel extends CrossPlatform {
+  /// Build for the morphir-elm/morphir-elm-cli project
+  object elm extends MorphirScalaCliProject {
+    def mainClass = T {
+      val className = nativeImageMainClass()
+      Option(className)
+    }
+
+    def ivyDeps = super.ivyDeps() ++ Agg()
+
+    def moduleDeps = Seq(scalalib.jvm)
+
+    def nativeImageName = "morphir-elm-cli" //TODO: Rename to morphir-elm
+    def nativeImageMainClass = T("org.finos.morphir.elm.cli.Main")
+  }
+
+  //---------------------------------------------------------------------------------------------
+  // Libraries and Language Bindings
+  //---------------------------------------------------------------------------------------------
+  object scalalib extends CrossPlatform {
     trait Shared extends ScalaLibraryModule with PlatformAwareScalaProject with MorphirLibraryPublishModule {          
       def artifactNameParts = Seq("morphir", "codemodel")
       def ivyDeps = Agg(
+        ivy"io.getkyo::kyo-core:${V.kyo}",
         ivy"io.github.kitlangton::neotype::${V.neotype}",
       )
     }
@@ -69,6 +99,9 @@ object morphir extends Module {
   }
 }
 
+//---------------------------------------------------------------------------------------------
+// Elm Ecosystem Projects
+//---------------------------------------------------------------------------------------------
 object finos extends Module {
 
   /// This is the build for the finos/morphir Elm project, which previously was finos/morphir-elm 

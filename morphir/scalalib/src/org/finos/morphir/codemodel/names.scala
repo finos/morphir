@@ -28,9 +28,12 @@ object UppercaseName extends Newtype[String]:
   inline override def validate(input: String): Boolean = input.nonEmpty && input.forall(_.isUpper)
 
 type Path = Path.Type
-object Path extends Newtype[PackagePath | ModulePath | GenericPath]
+object Path extends Newtype[PackagePath | ModulePath | GenericPath]:
+  case class Repr(parts: Chunk[Name], kind: Path.Kind)
+  enum Kind:
+    case Package, Module, Generic
 
-type GenericPath = LocalPath.Type
+type GenericPath = GenericPath.Type
 object GenericPath extends Newtype[Path.Repr]
 
 type ModulePath = ModulePath.Type
@@ -38,11 +41,6 @@ object ModulePath extends Newtype[Path.Repr]
 
 type PackagePath = PackagePath.Type
 object PackagePath extends Newtype[Path.Repr]
-
-object Path:
-  case class Repr(parts: Chunk[Name], kind: Path.Kind)
-  enum Kind:
-    case Package, Module, Generic
 
 sealed trait QualifiedName extends Product with Serializable:
   self =>

@@ -1,11 +1,9 @@
-package org.finos.morphir
-
+package org.finos.morphir.cli
 import caseapp.*
 import caseapp.core.argparser.{ArgParser, SimpleArgParser}
 import caseapp.core.Error
 
-package object cli:
-  given ArgParser[os.Path] = SimpleArgParser.from("path"): input =>
+given ArgParser[os.Path] = SimpleArgParser.from("path"): input =>
     try
       Right(os.Path(input))
     catch

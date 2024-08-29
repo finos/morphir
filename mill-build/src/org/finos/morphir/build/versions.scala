@@ -12,7 +12,7 @@ object V {
   val scalatest = "3.2.19"
 
   object Scala {
-    val libraryScalaVersion    = "3.3.3"
+    val libraryScalaVersion    = "3.4.3"
     val executableScalaVersion = "3.5.0"
   }
 
