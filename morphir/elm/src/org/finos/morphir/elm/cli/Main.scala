@@ -9,4 +9,5 @@ object Main extends CommandsEntryPoint:
     Make
   )
 
-  override def progName: String = "morphir"
+  // TODO: Use the BuildInfo plugin to get the progName
+  override def progName: String = "morphir-elm"
