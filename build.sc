@@ -53,7 +53,7 @@ object root extends RootModule with ElmModule with ElmFormatModule {
   }
 
   object modules extends Module {
-    object Scala extends Module {
+    object scalalang extends Module {
       object codemodel extends CrossPlatform {
         trait Shared extends ScalaLibraryModule with PlatformAwareScalaProject with MorphirLibraryPublishModule {
           def artifactNameParts = Seq("morphir", "codemodel")
