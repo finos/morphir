@@ -1,3 +1,4 @@
+import os.Path
 import $meta._
 import mill._, mill.scalalib._, mill.scalajslib._, scalafmt._
 import com.carlosedp.aliases._
@@ -6,18 +7,18 @@ import org.finos.morphir.build._
 import org.finos.morphir.build.elm._
 
 object Settings {}
+  
+//-----------------------------------------------------------------------------------------------
+/// Aliases that can be used to simplify and perform common commands
+object MorphirAliases extends Aliases {
+  @inline def lint = checkfmt
+  def fmt           = alias("mill.scalalib.scalafmt.ScalafmtModule/reformatAll __.sources", "finos.morphir.elmFormat")
+  def checkfmt      = alias("mill.scalalib.scalafmt.ScalafmtModule/checkFormatAll __.sources")
+  def testApps      = alias("apps.__.test")
+  def testModules   = alias("apps.__.test")
+}
 
-object root extends RootModule with ElmModule with ElmFormatModule {
-
-  //-----------------------------------------------------------------------------------------------
-  /// Aliases that can be used to simplify and perform common commands
-  object MorphirAliases extends Aliases {
-    @inline def lint = checkfmt
-    def fmt           = alias("mill.scalalib.scalafmt.ScalafmtModule/reformatAll __.sources")
-    def checkfmt      = alias("mill.scalalib.scalafmt.ScalafmtModule/checkFormatAll __.sources")
-    def testApps      = alias("apps.__.test")
-    def testModules   = alias("apps.__.test")
-  }
+object morphir extends Module {
 
   //-----------------------------------------------------------------------------------------------
   // Modules and Tasks
@@ -70,4 +71,13 @@ object root extends RootModule with ElmModule with ElmFormatModule {
   }
 }
 
+object finos extends Module {
 
+  /// This is the build for the finos/morphir Elm project, which previously was finos/morphir-elm 
+  /// in the Elm package manager.
+  /// Elm's publishing requirements for packages require the source code to be a subdirectory
+  /// of the src folder at the root of the project.
+  object morphir extends ElmModule with ElmFormatModule {
+    override def millSourcePath: Path = super.millSourcePath / os.up / os.up
+  }
+}
