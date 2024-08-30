@@ -1,6 +1,7 @@
 package org.finos.morphir.modeling
 import org.finos.morphir.testing.* 
 import zio.test.* 
+import zio.test.Assertion.*
 import org.finos.morphir.fs.Path.Root.name
 
 object NamesSpec extends MorphirSpecDefault {
@@ -12,8 +13,10 @@ object NamesSpec extends MorphirSpecDefault {
             assertTrue(name.str == "hello")
         } 
         + test("Should not be able to create a lowercase name with an uppercase character") {
-            val name = LowercaseName("Hello") 
-            assertTrue(name.str == "hello")
+
+            assertZIO(typeCheck(
+                """val name = LowercaseName("Hello")"""
+            ))(isLeft)
         }
     )
 }
