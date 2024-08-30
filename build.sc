@@ -59,7 +59,7 @@ object morphir extends Module {
 
     def ivyDeps = super.ivyDeps() ++ Agg() 
 
-    override def moduleDeps = Seq(scalalib.jvm)
+    override def moduleDeps = Seq(modeling.jvm)
     def nativeImageName      = "morphir-cli" // TODO: Rename to morphir
     def nativeImageMainClass = T("org.finos.morphir.cli.Main")
 
@@ -80,7 +80,7 @@ object morphir extends Module {
 
     def ivyDeps = super.ivyDeps() ++ Agg()
 
-    def moduleDeps = Seq(scalalib.jvm)
+    def moduleDeps = Seq(modeling.jvm)
 
     def nativeImageName = "morphir-elm-cli" //TODO: Rename to morphir-elm
     def nativeImageMainClass = T("org.finos.morphir.elm.cli.Main")
@@ -89,31 +89,32 @@ object morphir extends Module {
   //---------------------------------------------------------------------------------------------
   // Libraries and Language Bindings
   //---------------------------------------------------------------------------------------------
-  object scalalib extends CrossPlatform {
+  object modeling extends CrossPlatform {
     trait Shared extends ScalaLibraryModule with PlatformAwareScalaProject with MorphirLibraryPublishModule {   
       def scalaVersion = V.Scala.scala3_5_version       
       def ivyDeps = Agg(
         ivy"io.getkyo::kyo-core::${V.kyo}",
         ivy"io.github.kitlangton::neotype::${V.neotype}",
+        ivy"io.github.iltotore::iron:${V.iron}",
       )
 
-      override def platformModuleDeps: Seq[CrossPlatform] = Seq(vfs)
-    }
+      override def platformModuleDeps: Seq[CrossPlatform] = Seq(fs)
+    }    
     object jvm extends ScalaJvmProject with Shared {
       object test extends ScalaTests with MorphirTests { }
     }
 
-    object vfs extends CrossPlatform {
-      trait Shared extends ScalaLibraryModule with PlatformAwareScalaProject with MorphirLibraryPublishModule {        
-        def scalaVersion = V.Scala.scala3LTSVersion
-        def ivyDeps = Agg(
-          ivy"org.typelevel::cats-core::${V.cats}"
-        )
-      }
+  }
+  object fs extends CrossPlatform {
+    trait Shared extends ScalaLibraryModule with PlatformAwareScalaProject with MorphirLibraryPublishModule {        
+      def scalaVersion = V.Scala.scala3LTSVersion
+      def ivyDeps = Agg(
+        ivy"org.typelevel::cats-core::${V.cats}"
+      )
+    }
 
-      object jvm extends ScalaJvmProject with Shared {
-        object test extends ScalaTests with MorphirTests {}
-      }
+    object jvm extends ScalaJvmProject with Shared {
+      object test extends ScalaTests with MorphirTests {}
     }
   }
 }

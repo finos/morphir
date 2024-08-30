@@ -22,7 +22,7 @@
   * See this project's NOTICE file for license details.
  */
 
-package org.finos.morphir.vfs 
+package org.finos.morphir.fs 
 
 import cats.data.{ Chain, NonEmptyChain }
 import cats.syntax.all.*

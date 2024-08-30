@@ -1,8 +1,11 @@
 package org.finos.morphir.scalalib
 import neotype.*
+import io.github.iltotore.iron.*
+import io.github.iltotore.iron.constraint.string.* 
 import kyo.*
 import scala.annotation.switch
 import org.finos.morphir.scalalib.Path.Kind
+
 
 type Name = Name.Type
 object Name extends Newtype[SnakecaseName | TitlecaseName | LowercaseName | UppercaseName]
@@ -21,7 +24,9 @@ object TitlecaseName extends Newtype[String]:
 
 type LowercaseName = LowercaseName.Type
 object LowercaseName extends Newtype[String]:
-  inline override def validate(input: String): Boolean = input.nonEmpty && input.forall(_.isLower)
+  inline override def validate(input: String): Boolean = input.forall(_.isLower)
+  extension (name: LowercaseName)
+    def str: String = unwrap(name)
 
 type UppercaseName = UppercaseName.Type
 object UppercaseName extends Newtype[String]:

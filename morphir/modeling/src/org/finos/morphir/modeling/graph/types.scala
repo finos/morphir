@@ -93,3 +93,27 @@ object Quad:
         def withGraphLabel(graphLabel: Option[GraphLabel]): Self = copy(graphLabel = graphLabel)
 end Quad
 
+
+trait AttributeModel:
+    self =>
+    type Attribute
+    type Value
+    type Entry <: AttributeEntry {
+        type Attribute = self.Attribute
+        type Value = self.Value
+    }
+
+    def attributes:Iterable[Entry]
+    def hasAttribute(attribute:Attribute):Boolean
+    def valueOf(attribute:Attribute):Option[Value]
+    def valuesOf(attribute:Attribute):List[Value]
+
+    def toGraph[S](subject:S):Graph
+    def toDataset[S](subject:S):Dataset
+
+trait AttributeEntry:
+    type Attribute
+    type Value
+
+    def attribute:Attribute
+    def value:Value    
