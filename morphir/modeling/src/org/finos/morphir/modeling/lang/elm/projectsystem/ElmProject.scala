@@ -1,4 +1,4 @@
-package org.finos.morphir.scalalib.lang.elm.projectsystem
+package org.finos.morphir.modeling.lang.elm.projectsystem
 
 enum ElmProject:
   self =>

@@ -1,4 +1,4 @@
-package org.finos.morphir.scalalib
+package org.finos.morphir.modeling
 import org.finos.morphir.testing.* 
 import zio.test.* 
 import org.finos.morphir.fs.Path.Root.name

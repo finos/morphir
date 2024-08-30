@@ -4,6 +4,7 @@ object V {
 
   val cats             = "2.12.0"
   val `case-app`       = "2.1.0-M29"
+  val `just-semver`    = "1.0.0"
   val kyo              = "0.11.1"
   val iron             = "2.6.0"  
   val oslib            = "0.10.4"

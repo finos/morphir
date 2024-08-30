@@ -1,10 +1,10 @@
-package org.finos.morphir.scalalib
+package org.finos.morphir.modeling
 import neotype.*
 import io.github.iltotore.iron.*
 import io.github.iltotore.iron.constraint.string.* 
 import kyo.*
 import scala.annotation.switch
-import org.finos.morphir.scalalib.Path.Kind
+import org.finos.morphir.modeling.Path.Kind
 
 
 type Name = Name.Type

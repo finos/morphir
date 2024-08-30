@@ -1,4 +1,4 @@
-package org.finos.morphir.scalalib.graph
+package org.finos.morphir.modeling.graph
 
 trait Graph:
     type Subject 

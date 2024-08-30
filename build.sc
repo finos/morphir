@@ -96,6 +96,7 @@ object morphir extends Module {
         ivy"io.getkyo::kyo-core::${V.kyo}",
         ivy"io.github.kitlangton::neotype::${V.neotype}",
         ivy"io.github.iltotore::iron:${V.iron}",
+        ivy"io.kevinlee::just-semver::${V.`just-semver`}"
       )
 
       override def platformModuleDeps: Seq[CrossPlatform] = Seq(fs)
