@@ -39,6 +39,7 @@ trait MorphirApplicationPublishModule extends MorphirPublishModule { self:Common
 
 trait MorphirTestModule extends TestModule.ZioTest {
   def ivyDeps = super.ivyDeps() ++ Agg(
+    ivy"io.getkyo::kyo-test:${V.kyo}",
     ivy"dev.zio::zio-test:${V.zio}",
     ivy"dev.zio::zio-test-sbt:${V.zio}"
   )

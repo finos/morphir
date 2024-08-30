@@ -26,8 +26,8 @@ package org.finos.morphir.fs
 
 import cats.data.{ Chain, NonEmptyChain }
 import cats.syntax.all.*
-import org.finos.morphir.vfs.Path.Root
-import org.finos.morphir.vfs.RelativePath.{ CurrentDocument, CurrentTree, Parent }
+import org.finos.morphir.fs.Path.Root
+import org.finos.morphir.fs.RelativePath.{ CurrentDocument, CurrentTree, Parent }
 
 import scala.annotation.tailrec
 

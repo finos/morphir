@@ -1,9 +1,9 @@
 package org.finos.morphir.scalalib
 import org.finos.morphir.testing.* 
 import zio.test.* 
-import org.finos.morphir.vfs.Path.Root.name
+import org.finos.morphir.fs.Path.Root.name
 
-object NamesSpec extends MorphirBaseSpec {
+object NamesSpec extends MorphirSpecDefault {
     def spec = suite("NamesSpec")(lowerCaseNameSuite)
 
     def lowerCaseNameSuite = suite("LowercaseName")(
