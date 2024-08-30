@@ -1,8 +1,8 @@
-package org.finos.morphir.codemodel
+package org.finos.morphir.scalalib
 import neotype.*
 import kyo.*
 import scala.annotation.switch
-import org.finos.morphir.codemodel.Path.Kind
+import org.finos.morphir.scalalib.Path.Kind
 
 type Name = Name.Type
 object Name extends Newtype[SnakecaseName | TitlecaseName | LowercaseName | UppercaseName]

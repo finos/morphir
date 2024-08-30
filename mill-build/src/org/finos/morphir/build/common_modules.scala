@@ -36,3 +36,10 @@ trait MorphirApplicationPublishModule extends MorphirPublishModule { self:Common
   override def artifactNameParts: T[Seq[String]] = projectNameParts() 
   def publishApplicationArtifacts = T { publishArtifacts()}
 }
+
+trait MorphirTestModule extends TestModule.ZioTest {
+  def ivyDeps = super.ivyDeps() ++ Agg(
+    ivy"dev.zio::zio-test:${V.zio}",
+    ivy"dev.zio::zio-test-sbt:${V.zio}"
+  )
+}

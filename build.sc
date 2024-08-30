@@ -23,24 +23,32 @@ object MorphirAliases extends Aliases {
 // Modules and Tasks
 //-----------------------------------------------------------------------------------------------
 object morphir extends Module {
-
   //---------------------------------------------------------------------------------------------
-  // CLI projects
+  // Shared
   //---------------------------------------------------------------------------------------------
   trait MorphirScalaCliProject extends ScalaNativeImageExecutableModule with MorphirApplicationPublishModule {  
-    def sources = super.sources() ++ Seq(T.workspace / "morphir" / "cli" / "shared" / "src").map(PathRef(_))
+    def sources = super.sources() ++ Seq(T.workspace / "morphir" / "shared" / "cli" / "src").map(PathRef(_))
 
     def ivyDeps: T[Agg[Dep]] = super.ivyDeps() ++ Agg(
-      ivy"com.lihaoyi::os-lib:${V.oslib}",
-      ivy"com.lihaoyi::pprint:${V.pprint}",
+      ivy"com.lihaoyi::os-lib::${V.oslib}",
+      ivy"com.lihaoyi::pprint::${V.pprint}",
       ivy"com.github.alexarchambault::case-app:${V.`case-app`}",
-      ivy"io.getkyo::kyo-core:${V.kyo}",
-      ivy"io.getkyo::kyo-direct:${V.kyo}",
-      ivy"io.getkyo::kyo-sttp:${V.kyo}",
+      ivy"io.getkyo::kyo-core::${V.kyo}",
+      ivy"io.getkyo::kyo-direct::${V.kyo}",
+      ivy"io.getkyo::kyo-sttp::${V.kyo}",
       ivy"io.github.kitlangton::neotype::${V.neotype}",
       ivy"org.graalvm.polyglot:js:${V.`graal-polyglot`}"
     )
   }
+
+  trait MorphirTests extends JavaModule with MorphirTestModule { 
+    def sources = super.sources() ++ Seq(T.workspace / "morphir" / "shared" / "testing" / "src").map(PathRef(_))
+  }
+
+  //---------------------------------------------------------------------------------------------
+  // CLI projects
+  //---------------------------------------------------------------------------------------------
+
 
   /// Build for the morphir/morphir-cli project
   object cli extends MorphirScalaCliProject {    
@@ -82,18 +90,29 @@ object morphir extends Module {
   // Libraries and Language Bindings
   //---------------------------------------------------------------------------------------------
   object scalalib extends CrossPlatform {
-    trait Shared extends ScalaLibraryModule with PlatformAwareScalaProject with MorphirLibraryPublishModule {          
-      def artifactNameParts = Seq("morphir", "codemodel")
+    trait Shared extends ScalaLibraryModule with PlatformAwareScalaProject with MorphirLibraryPublishModule {   
+      def scalaVersion = V.Scala.scala3_5_version       
       def ivyDeps = Agg(
-        ivy"io.getkyo::kyo-core:${V.kyo}",
+        ivy"io.getkyo::kyo-core::${V.kyo}",
         ivy"io.github.kitlangton::neotype::${V.neotype}",
       )
+
+      override def platformModuleDeps: Seq[CrossPlatform] = Seq(vfs)
     }
     object jvm extends ScalaJvmProject with Shared {
-      object test extends ScalaTests with TestModule.ScalaTest {
+      object test extends ScalaTests with MorphirTests { }
+    }
+
+    object vfs extends CrossPlatform {
+      trait Shared extends ScalaLibraryModule with PlatformAwareScalaProject with MorphirLibraryPublishModule {        
+        def scalaVersion = V.Scala.scala3LTSVersion
         def ivyDeps = Agg(
-          ivy"org.scalatest::scalatest::3.2.19"
+          ivy"org.typelevel::cats-core::${V.cats}"
         )
+      }
+
+      object jvm extends ScalaJvmProject with Shared {
+        object test extends ScalaTests with MorphirTests {}
       }
     }
   }

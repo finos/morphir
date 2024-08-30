@@ -1,4 +1,4 @@
-package org.finos.morphir.codemodel
+package org.finos.morphir.scalalib
 
 abstract class Concept {
   type Self
