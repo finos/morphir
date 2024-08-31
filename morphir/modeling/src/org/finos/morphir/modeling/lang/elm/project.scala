@@ -3,7 +3,7 @@ package org.finos.morphir.modeling.lang.elm
 import io.github.iltotore.iron.*
 import io.github.iltotore.iron.constraint.numeric.*
 import io.github.iltotore.iron.constraint.string.*
-import org.finos.morphir.constraint.string.ValidElmPackageName
+import org.finos.morphir.constraint.string.*
 import org.finos.morphir.api.SemVerString
 
 enum ElmProject:
@@ -18,7 +18,8 @@ enum ElmProject:
     name:ElmPackageName,
     summary:Option[String],    
     version: ElmPackageVersion,
-    exposedModules:List[String],
+    elmVersion:String,
+    exposedModules:List[ElmModuleName],
     dependencies:Map[String,String],
     testDependencies:Map[String,String]
   )
@@ -58,3 +59,14 @@ final case class ElmApplicationDependencies(
 
 type ElmPackage = ElmProject.ElmPackage
 object ElmPackage  
+
+opaque type ElmModuleName <: String :| ValidElmModuleName = String :| ValidElmModuleName
+object ElmModuleName extends RefinedTypeOps[String, ValidElmModuleName, ElmModuleName]:
+  extension (name: ElmModuleName)
+    def namespace:Option[ElmModuleName] = 
+      val idx = name.lastIndexOf('.')
+      if idx < 0 then 
+        None 
+      else 
+        Some(ElmModuleName.assume(name.substring(0, idx)))
+         

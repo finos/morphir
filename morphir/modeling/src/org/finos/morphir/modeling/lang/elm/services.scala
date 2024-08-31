@@ -20,6 +20,11 @@ import java.net.{URI, URL}
 trait ElmProjectLoader:
     def loadProject(path: Path): ElmProject < IO & Abort[String | Exception]
     def loadProject(uri: URI): ElmProject < IO & Abort[String | Exception]
+
+object ElmProjectLoader:
+    final case class Live() extends ElmProjectLoader:
+        override def loadProject(path: Path): ElmProject < IO & Abort[String | Exception] = ???
+        override def loadProject(uri: URI): ElmProject < IO & Abort[String | Exception] = ???
     
 trait ElmPackageResolver:
     import ElmPackageResolver.*

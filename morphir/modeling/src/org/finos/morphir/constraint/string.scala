@@ -33,3 +33,8 @@ object string:
         Match["^[a-z][a-z0-9-]*$"],
         "Should be a valid kebab-cased identifier."
     ]
+
+    type ValidElmModuleName = DescribedAs[
+        Match["""^([A-Z][a-zA-Z0-9]*)(\.[A-Z][a-zA-Z0-9]*)*$"""],
+        "Should be a valid Elm module name."
+    ]
