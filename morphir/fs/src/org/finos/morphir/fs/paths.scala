@@ -14,30 +14,29 @@
  * limitations under the License.
  * *************************************************************************
  * Please note this file is based on code from Laika, which is released under the following license:
-  *   - Apache License 2.0
-  * 
-  * The original code can be found at: 
-  * - https://github.com/typelevel/Laika/blob/f282e9fa54cfe81329c9934310c5ab848bde0bae/core/shared/src/main/scala/laika/ast/paths.scala
-  * 
-  * See this project's NOTICE file for license details.
+ *   - Apache License 2.0
+ *
+ * The original code can be found at:
+ * - https://github.com/typelevel/Laika/blob/f282e9fa54cfe81329c9934310c5ab848bde0bae/core/shared/src/main/scala/laika/ast/paths.scala
+ *
+ * See this project's NOTICE file for license details.
  */
 
-package org.finos.morphir.fs 
+package org.finos.morphir.fs
 
-import cats.data.{ Chain, NonEmptyChain }
+import cats.data.{Chain, NonEmptyChain}
 import cats.syntax.all.*
 import org.finos.morphir.fs.Path.Root
-import org.finos.morphir.fs.RelativePath.{ CurrentDocument, CurrentTree, Parent }
+import org.finos.morphir.fs.RelativePath.{CurrentDocument, CurrentTree, Parent}
 
 import scala.annotation.tailrec
 
 /** Generic base trait for all path abstractions in Morphir.
   *
-  * The most commonly used sub-type is `VirtualPath` which is used to assign paths to trees and documents
-  * within a Morphir transformation.
+  * The most commonly used sub-type is `VirtualPath` which is used to assign paths to trees and documents within a
+  * Morphir transformation.
   *
-  * This trait is the only one within the Path API that is not sealed,
-  * to allow for implementations in other modules.
+  * This trait is the only one within the Path API that is not sealed, to allow for implementations in other modules.
   */
 trait GenericPath {
 
@@ -51,28 +50,27 @@ trait GenericPath {
     */
   def basename: String = name
 
-  /** The suffix of `None` if this path name does not have a file suffix
-    * separated by a `.`.
+  /** The suffix of `None` if this path name does not have a file suffix separated by a `.`.
     */
   def suffix: Option[String]
 
-  /** The fragment part of the path (after a `#` in the last segment),
-    * or `None` if this path does not have a fragment component.
+  /** The fragment part of the path (after a `#` in the last segment), or `None` if this path does not have a fragment
+    * component.
     */
   def fragment: Option[String]
 
-  /** Returns a new path that replaces the base name with the specified
-    * new name while keeping both, suffix and fragment, in case they are present.
+  /** Returns a new path that replaces the base name with the specified new name while keeping both, suffix and
+    * fragment, in case they are present.
     */
   def withBasename(name: String): Self = copyWith(basename = name)
 
-  /** Returns a new path that either replaces the existing suffix
-    * with the specified one or appends it if this path does not have a suffix yet.
+  /** Returns a new path that either replaces the existing suffix with the specified one or appends it if this path does
+    * not have a suffix yet.
     */
   def withSuffix(suffix: String): Self = copyWith(suffix = Some(suffix))
 
-  /** Returns a new path that either replaces the existing fragment component
-    * with the specified one or appends it if this path does not have a component yet.
+  /** Returns a new path that either replaces the existing fragment component with the specified one or appends it if
+    * this path does not have a component yet.
     */
   def withFragment(fragment: String): Self = copyWith(fragment = Some(fragment))
 
@@ -85,24 +83,22 @@ trait GenericPath {
   def withoutFragment: Self = copyWith(fragment = None)
 
   protected def copyWith(
-      basename: String = basename,
-      suffix: Option[String] = suffix,
-      fragment: Option[String] = fragment
+    basename: String = basename,
+    suffix: Option[String] = suffix,
+    fragment: Option[String] = fragment
   ): Self
 
-  /** Creates a new path with the specified name
-    *  as an immediate child of this path.
+  /** Creates a new path with the specified name as an immediate child of this path.
     */
-  def / (name: String): Self = this / RelativePath.parse(name)
+  def /(name: String): Self = this / RelativePath.parse(name)
 
   /** Combines this path with the specified relative path.
     */
-  def / (path: RelativePath): Self
+  def /(path: RelativePath): Self
 
 }
 
 /** The abstract base for absolute and relative paths within Morphir's virtual path abstraction.
-  *  
   */
 sealed trait VirtualPath extends GenericPath with Product with Serializable {
 
@@ -133,8 +129,7 @@ object VirtualPath {
 
   /** Creates path from interpreting the specified string representation.
     *
-    * A path with a slash prefix will be interpreted as absolute, all other input is
-    * interpreted as a relative path.
+    * A path with a slash prefix will be interpreted as absolute, all other input is interpreted as a relative path.
     *
     * Empty path segments are allowed, but should usually be avoided for usability reasons.
     */
@@ -142,7 +137,7 @@ object VirtualPath {
     if (path.startsWith("/")) Path.parse(path) else RelativePath.parse(path)
 
   private[morphir] def parseLastSegment(
-      segments: List[String]
+    segments: List[String]
   ): (Option[NonEmptyChain[String]], Option[String], Option[String]) =
     segments.lastOption.fold[(Option[NonEmptyChain[String]], Option[String], Option[String])](
       (None, None, None)
@@ -168,15 +163,14 @@ object VirtualPath {
 
 /** Represents an absolute path inside a virtual tree of documents.
   *
-  * Since this is the most commonly used path abstraction in Morphir it received a conveniently short type name.
-  * The full, accurate name of this type would be `AbsoluteVirtualPath`.
+  * Since this is the most commonly used path abstraction in Morphir it received a conveniently short type name. The
+  * full, accurate name of this type would be `AbsoluteVirtualPath`.
   */
 sealed trait Path extends VirtualPath {
 
   type Self = Path
 
-  /** The parent of this path.
-    *  Will return this if this path represents a root node.
+  /** The parent of this path. Will return this if this path represents a root node.
     */
   def parent: Path
 
@@ -184,15 +178,14 @@ sealed trait Path extends VirtualPath {
     */
   def depth: Int
 
-  /** Interprets this path as a relative path - a shortcut
-    * for `relativeTo(Root)`.
+  /** Interprets this path as a relative path - a shortcut for `relativeTo(Root)`.
     */
   def relative: RelativePath = relativeTo(Root)
 
   /** Interprets this path relative to some other path.
     *
-    * The reference path is interpreted as a document path,
-    * as relative paths are most commonly used from the perspective of a document, not a tree node.
+    * The reference path is interpreted as a document path, as relative paths are most commonly used from the
+    * perspective of a document, not a tree node.
     */
   def relativeTo(refPath: Path): RelativePath
 
@@ -216,12 +209,12 @@ object Path {
     val fragment: Option[String] = None
 
     protected def copyWith(
-        basename: String = basename,
-        suffix: Option[String] = suffix,
-        fragment: Option[String] = fragment
+      basename: String = basename,
+      suffix: Option[String] = suffix,
+      fragment: Option[String] = fragment
     ): Path = this
 
-    def / (path: RelativePath): Path = path match {
+    def /(path: RelativePath): Path = path match {
       case RelativePath.Segments(segments, suf, frag, _) => Path.Segments(segments, suf, frag)
       case _                                             => this
     }
@@ -236,9 +229,9 @@ object Path {
   }
 
   case class Segments(
-      segments: NonEmptyChain[String],
-      suffix: Option[String] = None,
-      fragment: Option[String] = None
+    segments: NonEmptyChain[String],
+    suffix: Option[String] = None,
+    fragment: Option[String] = None
   ) extends Path with VirtualPath.Segments {
 
     val depth: Int = segments.length.toInt
@@ -246,13 +239,13 @@ object Path {
     lazy val parent: Path =
       NonEmptyChain.fromChain(segments.init).fold[Path](Root)(Segments(_))
 
-    def / (path: RelativePath): Path = {
+    def /(path: RelativePath): Path = {
       val (otherSegments, otherSuffix, otherFragment, thisSuffix) = path match {
         case RelativePath.Segments(s, suf, frag, _) => (s.toList, suf, frag, suffix)
         case CurrentDocument(frag)                  => (Nil, suffix, frag, None)
         case _                                      => (Nil, None, None, None)
       }
-      val thisSegments                                            =
+      val thisSegments =
         segments.toList.dropRight(1) :+ (segments.last + thisSuffix.fold("")("." + _))
       val combinedSegments = thisSegments.dropRight(path.parentLevels) ++ otherSegments
       NonEmptyChain.fromSeq(combinedSegments).fold[Path](Root)(
@@ -271,8 +264,8 @@ object Path {
           case _                                      => (a, b)
         }
 
-      val (a, b)      = refPath match {
-        case Root            => (Nil, segments.init.toList :+ name)
+      val (a, b) = refPath match {
+        case Root => (Nil, segments.init.toList :+ name)
         case other: Segments =>
           removeCommonParts(other.segments.init.toList :+ other.name, segments.init.toList :+ name)
       }
@@ -287,7 +280,7 @@ object Path {
     }
 
     def isSubPath(other: Path): Boolean = other match {
-      case Root                                                => true
+      case Root => true
       case Segments(otherSegments, otherSuffix, otherFragment) =>
         if (segments.length == otherSegments.length)
           segments == otherSegments &&
@@ -300,16 +293,15 @@ object Path {
     }
 
     protected def copyWith(
-        basename: String = basename,
-        suffix: Option[String] = suffix,
-        fragment: Option[String] = fragment
-    ): Path = {
+      basename: String = basename,
+      suffix: Option[String] = suffix,
+      fragment: Option[String] = fragment
+    ): Path =
       copy(
         segments = NonEmptyChain.fromChainAppend(segments.init, basename),
         suffix = suffix,
         fragment = fragment
       )
-    }
 
     protected val pathPrefix: String = "/"
   }
@@ -318,8 +310,8 @@ object Path {
     *
     * A slash prefix, even if not present, will be assumed.
     *
-    * If you need to parse a string that can potentially represent both, an absolute or a relative
-    * path, use the `PathBase.parse` method instead.
+    * If you need to parse a string that can potentially represent both, an absolute or a relative path, use the
+    * `PathBase.parse` method instead.
     *
     * Empty path segments are allowed, but should usually be avoided for usability reasons.
     */
@@ -327,7 +319,7 @@ object Path {
     if (str == "/") Root
     else {
       val segments = str.stripPrefix("/").stripSuffix("/").split("/").toList
-      val parts    =
+      val parts =
         if (str.endsWith("/")) (NonEmptyChain.fromSeq(segments), None, None)
         else VirtualPath.parseLastSegment(segments)
       parts match {
@@ -356,9 +348,9 @@ sealed trait RelativePath extends VirtualPath {
   def parentLevels: Int
 
   protected def copyWith(
-      basename: String = basename,
-      suffix: Option[String] = suffix,
-      fragment: Option[String] = fragment
+    basename: String = basename,
+    suffix: Option[String] = suffix,
+    fragment: Option[String] = fragment
   ): RelativePath = this
 
 }
@@ -368,13 +360,13 @@ object RelativePath {
   /** Represent the current tree node.
     */
   case object CurrentTree extends RelativePath {
-    val name                                 = "."
-    val parent: RelativePath                 = Parent(1)
-    val parentLevels: Int                    = 0
-    val suffix: Option[String]               = None
-    val fragment: Option[String]             = None
-    def / (path: RelativePath): RelativePath = path
-    override val toString: String            = name
+    val name                                = "."
+    val parent: RelativePath                = Parent(1)
+    val parentLevels: Int                   = 0
+    val suffix: Option[String]              = None
+    val fragment: Option[String]            = None
+    def /(path: RelativePath): RelativePath = path
+    override val toString: String           = name
   }
 
   /** Represent the current document.
@@ -384,7 +376,7 @@ object RelativePath {
     val parent: RelativePath                                  = CurrentTree
     val parentLevels: Int                                     = 0
     val suffix: Option[String]                                = None
-    def / (path: RelativePath): RelativePath                  = this
+    def /(path: RelativePath): RelativePath                   = this
     override def withFragment(fragment: String): RelativePath = copy(Some(fragment))
     override val toString: String                             = s"#${fragment.getOrElse("")}"
   }
@@ -401,21 +393,21 @@ object RelativePath {
     val fragment: Option[String]  = None
     lazy val parent: RelativePath = Parent(parentLevels + 1)
 
-    def / (path: RelativePath): RelativePath = path match {
+    def /(path: RelativePath): RelativePath = path match {
       case Parent(otherLevels) => Parent(parentLevels + otherLevels)
-      case p: Segments         =>
+      case p: Segments =>
         Segments(p.segments, p.suffix, p.fragment, parentLevels + p.parentLevels)
-      case _                   => this
+      case _ => this
     }
 
     override val toString: String = name
   }
 
   case class Segments(
-      segments: NonEmptyChain[String],
-      suffix: Option[String] = None,
-      fragment: Option[String] = None,
-      parentLevels: Int = 0
+    segments: NonEmptyChain[String],
+    suffix: Option[String] = None,
+    fragment: Option[String] = None,
+    parentLevels: Int = 0
   ) extends RelativePath with VirtualPath.Segments {
 
     lazy val parent: RelativePath = {
@@ -425,13 +417,13 @@ object RelativePath {
         .fold[RelativePath](noSegments)(seg => copy(segments = seg, suffix = None, fragment = None))
     }
 
-    def / (path: RelativePath): RelativePath = {
+    def /(path: RelativePath): RelativePath = {
 
       def construct(
-          otherSegments: List[String],
-          otherSuffix: Option[String],
-          otherFragment: Option[String],
-          otherLevels: Int
+        otherSegments: List[String],
+        otherSuffix: Option[String],
+        otherFragment: Option[String],
+        otherLevels: Int
       ): RelativePath = {
 
         val newParentLevels = parentLevels + Math.max(0, otherLevels - segments.size.toInt)
@@ -450,15 +442,15 @@ object RelativePath {
         case CurrentTree | CurrentDocument(None) => this
         case CurrentDocument(Some(fr))           => withFragment(fr)
         case Parent(otherLevels)                 => construct(Nil, None, None, otherLevels)
-        case p: Segments                         =>
+        case p: Segments =>
           construct(p.segments.toList, p.suffix, p.fragment, p.parentLevels)
       }
     }
 
     override protected def copyWith(
-        basename: String = basename,
-        suffix: Option[String] = suffix,
-        fragment: Option[String] = fragment
+      basename: String = basename,
+      suffix: Option[String] = suffix,
+      fragment: Option[String] = fragment
     ): RelativePath = copy(
       segments = NonEmptyChain.fromChainAppend(segments.init, basename),
       suffix = suffix,
@@ -470,37 +462,35 @@ object RelativePath {
 
   /** Creates a relative path from interpreting the specified string representation.
     *
-    * A slash prefix, if present, will be discarded. Paths starting with one or more `../`
-    * path prefixes will be interpreted as expected, pointing to parent trees.
+    * A slash prefix, if present, will be discarded. Paths starting with one or more `../` path prefixes will be
+    * interpreted as expected, pointing to parent trees.
     *
-    * If you need to parse a string that can potentially represent both, an absolute or a relative
-    * path, use the `PathBase.parse` method instead.
+    * If you need to parse a string that can potentially represent both, an absolute or a relative path, use the
+    * `PathBase.parse` method instead.
     *
     * Empty path segments are allowed, but should usually be avoided for usability reasons.
     */
-  def parse(str: String): RelativePath = {
+  def parse(str: String): RelativePath =
     str.stripPrefix("/").stripSuffix("/") match {
       case "" | "#"                       => CurrentDocument()
       case "."                            => CurrentTree
       case other if other.startsWith("#") => CurrentDocument(other.drop(1))
-      case other                          =>
+      case other =>
         @tailrec def countParents(current: Int, path: String): (Int, String) =
           if (path.startsWith("..")) countParents(current + 1, path.drop(2).stripPrefix("/"))
           else (current, path)
         val (levels, rest) = countParents(0, other)
 
         val segments = rest.split("/").toList
-        val parts    = {
+        val parts =
           if (rest.isEmpty) (None, None, None)
           else if (str.endsWith("/")) (NonEmptyChain.fromSeq(segments), None, None)
           else VirtualPath.parseLastSegment(segments)
-        }
         parts match {
           case (Some(seg), suf, frag) => RelativePath.Segments(seg, suf, frag, levels)
           case _                      => Parent(levels)
         }
     }
-  }
 
 }
 

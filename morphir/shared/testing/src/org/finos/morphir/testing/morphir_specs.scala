@@ -17,5 +17,5 @@ abstract class MorphirSpecDefault extends ZIOSpecDefault with MorphirSpec {
 }
 
 trait MorphirSpec { self: ZIOSpecAbstract =>
-  inline def compileError(code:String) = assertZIO(typeCheck(code))
+  inline def compileError(code: String) = assertZIO(typeCheck(code))
 }
