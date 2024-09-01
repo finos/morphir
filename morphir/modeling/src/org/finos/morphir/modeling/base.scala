@@ -1,11 +1,15 @@
 package org.finos.morphir.modeling
 
-abstract class Concept extends Product with Serializable {
-  type Self
-}
 
-abstract class Element extends Concept {
+// abstract class Concept extends Product with Serializable {
+//   type Self
+  
+// }
+
+abstract class Element extends Product with Serializable {
   type Self <: Element
+  type Attribs <: Attributes
+  def attributes:Attribs
 }
 
 trait Member extends Element {
