@@ -29,25 +29,40 @@ trait IndexedTypeContainer[T <: Type] extends TypeContainerBase[T, IndexedSeq] {
 }
 
 object Type:   
-    final case class Function(attributes:FunctionTypeAttributes, parameters:IndexedSeq[Type], returnType:Type) extends Type:
+    trait Attribues extends org.finos.morphir.modeling.Attributes:
+        type Self <: Attribues
+    object Attributes:
+        val default:Attribues = new Attribues {}
+
+    final case class Function(attributes:Function.Attributes, parameters:IndexedSeq[Type], returnType:Type) extends Type:
         type Self = Function
-        type Attribs = FunctionTypeAttributes
+        type Attribs = Function.Attributes
     
     object Function:
+        trait Attributes extends Type.Attribues:
+            type Self <: Function.Attributes
+            def isCurried:Boolean
+        object Attributes:
+            val default = Repr(false)
+            private[ir] final case class Repr(isCurried:Boolean) extends Attributes:
+                type Self = Repr
+
         def apply(parameters:IndexedSeq[Type], returnType:Type): Function = Function(???, parameters, returnType)
 
-    final case class Tuple(attributes:TypeAttributes, content:IndexedSeq[Type]) extends Type with IndexedTypeContainer[Type]:
+    final case class Tuple(attributes:Attributes, content:IndexedSeq[Type]) extends Type with IndexedTypeContainer[Type]:
         type Self = Tuple
-        type Attribs = TypeAttributes
+        type Attribs = Attributes
         inline def elements:IndexedSeq[Type] = content
         
-    final case class Unit(attributes:TypeAttributes) extends Type:
+    final case class Unit(attributes:Attributes) extends Type:
         type Self = Unit
-        type Attribs = TypeAttributes
+        type Attribs = Attributes
+    object Unit:
+        def apply(): Unit = Unit(attributes = Attributes.default)
     
-    final case class Variable(attributes:TypeAttributes, name: Name, constraint:Constraint) extends Type:
+    final case class Variable(attributes:Attributes, name: Name, constraint:Constraint) extends Type:
         type Self = Variable
-        type Attribs = TypeAttributes
+        type Attribs = Attributes
     object Variable:
         def apply(name: Name): Variable = Variable(???, name, Constraint.Any)
 
@@ -69,17 +84,17 @@ sealed trait TypeSpecification extends ParameterizedTypeDescriptor {
 }
 
 object TypeSpecification:
-    final case class TypeAliasSpecification(attributes:TypeAttributes, typeParams: List[Name], typeExpr:Type) extends TypeSpecification:
+    final case class TypeAliasSpecification(attributes:Attributes, typeParams: List[Name], typeExpr:Type) extends TypeSpecification:
         type Self = TypeAliasSpecification
-        type Attribs = TypeAttributes
+        type Attribs = Attributes
 
-    final case class OpaqueTypeSpecification(attributes:TypeAttributes, typeParams:List[Name]) extends TypeSpecification:
+    final case class OpaqueTypeSpecification(attributes:Attributes, typeParams:List[Name]) extends TypeSpecification:
         type Self = OpaqueTypeSpecification
-        type Attribs = TypeAttributes
+        type Attribs = Attributes
     
-    final case class CustomTypeSpecification(attributes:TypeAttributes, typeParams:List[Name]) extends TypeSpecification:
+    final case class CustomTypeSpecification(attributes:Attributes, typeParams:List[Name]) extends TypeSpecification:
         type Self = CustomTypeSpecification
-        type Attribs = TypeAttributes
+        type Attribs = Attributes
     object CustomTypeSpecification
 
     type EnumTypeSpecification = CustomTypeSpecification
