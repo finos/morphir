@@ -19,6 +19,7 @@ object V {
     val scala3LTSVersion       = "3.3.3"
     val scala3_4_version       = "3.4.3"
     val scala3_5_version       = "3.5.0"
+    val scala3LatestVersion   = scala3_5_version
     val scala2Version          = "2.13.14"     
     val libraryScalaVersion    = scala3LTSVersion
     val executableScalaVersion = scala3_5_version

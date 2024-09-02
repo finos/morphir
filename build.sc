@@ -1,5 +1,5 @@
-import os.Path
 import $meta._
+import os.Path
 import mill._, mill.scalalib._, mill.scalajslib._, scalafmt._
 import com.carlosedp.aliases._
 import io.eleven19.mill.crossbuild._
@@ -115,7 +115,9 @@ object morphir extends Module {
     }
 
     object jvm extends ScalaJvmProject with Shared {
-      object test extends ScalaTests with MorphirTests {}
+      object test extends ScalaTests with MorphirTests {
+        def scalaVersion = V.Scala.scala3LatestVersion
+      }
     }
   }
 }
