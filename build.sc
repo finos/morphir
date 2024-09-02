@@ -93,6 +93,8 @@ object morphir extends Module {
     trait Shared extends ScalaLibraryModule with PlatformAwareScalaProject with MorphirLibraryPublishModule {   
       def scalaVersion = V.Scala.scala3_5_version       
       def ivyDeps = Agg(
+        ivy"io.bullet::borer-core:${V.borer}",
+        ivy"io.bullet::borer-derivation:${V.borer}",
         ivy"io.getkyo::kyo-core::${V.kyo}",
         ivy"io.github.kitlangton::neotype::${V.neotype}",
         ivy"io.github.iltotore::iron:${V.iron}",

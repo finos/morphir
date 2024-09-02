@@ -1,4 +1,5 @@
-package org.finos.morphir.modeling.lang.elm
+package org.finos.morphir.lang.elm
+
 import kyo.{Path as _, _}
 import org.finos.morphir.fs.*
 import java.net.{URI, URL}

@@ -1,6 +1,7 @@
-package org.finos.morphir.modeling.lang.elm
+package org.finos.morphir.lang.elm
 
 import io.github.iltotore.iron.*
+import org.finos.morphir.lang.elm.{ElmModuleName, ElmPackageName}
 import org.finos.morphir.testing.MorphirSpecDefault
 import zio.test.*
 import zio.test.Assertion.*

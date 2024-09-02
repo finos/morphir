@@ -2,6 +2,7 @@ package org.finos.morphir.build
 
 object V {
 
+  val borer            = "1.14.1"
   val cats             = "2.12.0"
   val `case-app`       = "2.1.0-M29"
   val `just-semver`    = "1.0.0"

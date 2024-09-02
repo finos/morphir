@@ -1,4 +1,4 @@
-package org.finos.morphir.modeling.lang.elm
+package org.finos.morphir.lang.elm
 
 import io.github.iltotore.iron.*
 import io.github.iltotore.iron.constraint.numeric.*
