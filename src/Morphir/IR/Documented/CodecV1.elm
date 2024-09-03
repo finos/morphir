@@ -33,9 +33,9 @@ encodeDocumented encodeValue d =
 decodeDocumented : Decode.Decoder a -> Decode.Decoder (Documented a)
 decodeDocumented decodeValue =
     Decode.oneOf
-    [( Decode.map2 Documented
-        (Decode.index 0 Decode.string)
-        (Decode.index 1 decodeValue))
-    , ( Decode.map (Documented "")
-        (decodeValue))
-    ]
+        [ Decode.map2 Documented
+            (Decode.index 0 Decode.string)
+            (Decode.index 1 decodeValue)
+        , Decode.map (Documented "")
+            decodeValue
+        ]

@@ -1,0 +1,8 @@
+{
+    "Morphir.Reference.Model:BooksAndRecords:dealCmd/type": [
+        "pII"
+    ],
+    "Morphir.Reference.Model:BooksAndRecords:deal/type#product": [
+        "nPI"
+    ]
+}

@@ -9,7 +9,7 @@ import Morphir.IR.Value as Value exposing (Pattern(..), Value)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Config exposing (Config, HighlightState(..))
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
-import Morphir.Visual.Theme exposing (mediumPadding, smallPadding, borderRounded)
+import Morphir.Visual.Theme exposing (borderRounded, mediumPadding, smallPadding)
 import Morphir.Visual.ViewLiteral as ViewLiteral
 
 

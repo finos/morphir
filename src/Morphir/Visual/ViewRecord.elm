@@ -7,7 +7,7 @@ import Morphir.IR.Name exposing (Name)
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
-import Morphir.Visual.Theme exposing (smallPadding, borderRounded)
+import Morphir.Visual.Theme exposing (borderRounded, smallPadding)
 
 
 view : Config msg -> (EnrichedValue -> Element msg) -> Dict Name EnrichedValue -> Element msg

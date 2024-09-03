@@ -46,7 +46,7 @@ If you need irrational numbers please use a `Float`.
 
 -}
 
-import BigInt as BigInt exposing (BigInt)
+import BigInt exposing (BigInt)
 import Morphir.SDK.Decimal as Decimal exposing (Decimal)
 
 

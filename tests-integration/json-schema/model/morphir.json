@@ -1,0 +1,12 @@
+{
+    "name": "TestModel",
+    "sourceDirectory": "src",
+    "decorations": {
+        "json-schema-enabled":  {
+            "displayName" : "JSON Schema Enabled",
+            "ir" : "attributemodel/morphir-ir.json",
+            "entryPoint" : "Morphir.Attribute.Model:JsonSchema:SchemaEnabled",
+            "storageLocation": "schema-enabled.json"
+        }
+    }
+}

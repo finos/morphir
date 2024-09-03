@@ -4,9 +4,9 @@ import Element exposing (Element, alignLeft, centerX, centerY, el, padding, row,
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (Decimals(..), usLocale)
 import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.SDK.Decimal as Decimal
 import Morphir.Visual.Common as Common
 import Morphir.Visual.Config exposing (Config)
-import Morphir.SDK.Decimal as Decimal
 
 
 view : Config msg -> Literal -> Element msg
@@ -45,7 +45,6 @@ view config literal =
         DecimalLiteral decimal ->
             viewLiteralText "decimal-literal"
                 (Decimal.toString decimal)
-
 
 
 viewLiteralText : String -> String -> Element msg

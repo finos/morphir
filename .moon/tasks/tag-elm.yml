@@ -1,27 +1,28 @@
+$schema: "https://moonrepo.dev/schemas/tasks.json"
 fileGroups:
   elm-sources:
-    - 'src/**/*.elm'
-    - 'elm.json'
+    - "src/**/*.elm"
+    - "elm.json"
   elmSources:
     - "src"
 tasks:
   elm-lint:
-    platform: bun
+    platform: node
     command: |
       elm-format @dirs(elmSources) @files(elmSources) --validate --yes
     inputs:
       - "@files(elmSources)"
 
   elm-format:
-    platform: bun
+    platform: node
     command: |
       elm-format @dirs(elmSources) @files(elmSources) --yes
     inputs:
-      - "@files(elmSources)"      
+      - "@files(elmSources)"
   elm-library-make:
     description: "Compile an Elm library. Note: This amounts mostly to type-checking, since libraries don't compile to anything."
-    platform: bun
+    platform: node
     command: |
       elm make --output=/dev/null
     inputs:
-      - "@files(elm-sources)"    
+      - "@files(elm-sources)"

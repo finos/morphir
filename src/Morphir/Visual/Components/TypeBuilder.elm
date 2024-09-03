@@ -16,6 +16,7 @@ import Morphir.IR.FQName as FQName
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
+import Morphir.IR.Path as Path
 import Morphir.IR.SDK.Basics exposing (boolType, floatType, intType)
 import Morphir.IR.SDK.Decimal exposing (decimalType)
 import Morphir.IR.SDK.String exposing (stringType)
@@ -25,7 +26,6 @@ import Morphir.Visual.Components.InputComponent as InputComponent
 import Morphir.Visual.Components.Picklist as Picklist
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Ordering
-import Morphir.IR.Path as Path
 
 
 type alias State =
@@ -403,9 +403,10 @@ view theme config packageName packageDef moduleName =
                 }
 
         getModuleName : ModuleName
-        getModuleName = 
+        getModuleName =
             if config.state.createNewModule then
                 Path.fromString config.state.newModuleName
+
             else
                 config.state.modulePickerState.selectedValue |> Maybe.withDefault []
 

@@ -1,5 +1,5 @@
 # Node, Bun, and Deno Related
-package-lock.json
+#package-lock.json
 node_modules/
 
 # IDE Related 
@@ -30,3 +30,37 @@ target/
 # moon
 .moon/cache
 .moon/docker
+
+build/bin/
+build/obj/
+*/dotnet/**/bin/ 
+*/dotnet/**/obj/
+*.semanticdb
+
+# .NET
+# User-specific files
+*.suo
+*.user
+*.sln.docstates
+**.idea
+*.iml
+
+# Roslyn cache directories
+*.ide/
+
+# ReSharper is a .NET coding add-in
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# SQL Server files
+*.mdf
+*.ldf
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+**/Properties/launchSettings.json
+
+# Morphir
+morphir.user.*

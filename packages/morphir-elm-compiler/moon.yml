@@ -1,10 +1,9 @@
 language: typescript
 type: application
-platform: bun
+platform: node
 
 fileGroups:
   vite:
-    - "vite.config.ts"
     - "**/*.ts"
     - "**/*.tsx"
     - "src/**/*.js"
@@ -16,12 +15,53 @@ tags:
   - "elm"
 
 tasks:
+  bundle-components:
+    command: "vite build --ssr"
+    args:
+      - "--config"
+      - "vite.config.component.ts"
+    inputs:
+      - "@globs(vite)"
+      - "vite.config.component.ts"
+    outputs:
+      - "out/components/"
   bundle:
-   command:  "bunx --bun vite build --ssr"
-   inputs: 
-    - '@globs(vite)'
-   outputs: 
-    - "dist"
+    command: "vite build --ssr"
+    inputs:
+      - "@globs(vite)"
+      - "vite.config.ts"
+    outputs:
+      - "dist"
+  #TODO: Remove component bundling if we don't concretely go with ComponetizeJS and embedding the morphir-elm compiler via Wasm
   build:
     deps:
       - target: "~:bundle"
+      - target: "~:bundle-components"
+
+  elm-build:
+    deps:
+      - target: "~:bundle"
+      - target: "~:bundle-components"
+
+  clean-out:
+    command: "rm"
+    args:
+      - "-rf"
+      - "out"
+    inputs: ["out"]
+    options:
+      cache: false
+
+  clean-dist:
+    command: "rm"
+    args:
+      - "-rf"
+      - "dist"
+    inputs: ["dist"]
+    options:
+      cache: false
+
+  clean:
+    deps:
+      - target: "~:clean-out"
+      - target: "~:clean-dist"

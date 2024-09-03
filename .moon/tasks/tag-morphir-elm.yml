@@ -34,3 +34,7 @@ tasks:
     outputs:
       - "morphir-hashes.json"
       - "morphir-ir.json"
+
+  clean:
+    deps:
+      - target: "~:morphir-elm-clean"

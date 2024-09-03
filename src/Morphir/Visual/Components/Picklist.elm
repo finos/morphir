@@ -53,11 +53,12 @@ module Morphir.Visual.Components.Picklist exposing
                 , selectedvalue = model.selectedOption
                 , onSelectionChange = OptionSelected
                 }
-                -- this is where you specify the selectable values
-                -- each entry is a (DropdownElement msg value ) type record
-                -- with .displayElement field for displaying the value to the user
-                -- a .value field to store the actual used value
-                -- and a .tag field for search purposes
+
+            -- this is where you specify the selectable values
+            -- each entry is a (DropdownElement msg value ) type record
+            -- with .displayElement field for displaying the value to the user
+            -- a .value field to store the actual used value
+            -- and a .tag field for search purposes
             ]
 
 @docs State, init, getSelectedvalue, view
@@ -80,8 +81,8 @@ import Element
         , minimum
         , moveDown
         , none
-        , paddingEach
         , padding
+        , paddingEach
         , paddingXY
         , pointer
         , px

@@ -442,5 +442,6 @@ branchHighlightToConfigHighLight : Bool -> Morphir.Visual.Config.HighlightState
 branchHighlightToConfigHighLight branchHL =
     if branchHL then
         Matched Dict.empty
+
     else
         Unmatched

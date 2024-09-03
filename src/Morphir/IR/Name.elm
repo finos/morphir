@@ -200,11 +200,13 @@ toHumanWords name =
                                 process (List.append prefix [ join abbrev, first ]) [] rest
     in
     case name of
-        [word] ->
+        [ word ] ->
             if String.length word == 1 then
                 name
+
             else
                 process [] [] words
+
         _ ->
             process [] [] words
 

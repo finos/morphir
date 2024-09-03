@@ -1,0 +1,101 @@
+name: Release
+on:
+    release:
+      types:
+        - published
+    workflow_dispatch:
+
+jobs:
+    lint:
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        steps:
+          - name: Checkout current branch
+            uses: actions/checkout@v4
+            with:
+              fetch-depth: 0
+          - name: Setup Java
+            uses: graalvm/setup-graalvm@v1
+            with:
+                distribution: 'graalvm'
+                java-version: 22
+                version: "latest"
+                github-token: ${{ secrets.GITHUB_TOKEN }}
+                
+          - name: Cache scala dependencies
+            uses: coursier/cache-action@v6
+
+          - name: Lint code
+            run: ./mill -i Alias/run lint
+    
+    test:
+      runs-on: ubuntu-latest
+      timeout-minutes: 30
+      strategy:
+        matrix:
+          java-distribution: ["temurin"] 
+          java-version: ["22", "11"]
+          include:
+            - java-distribution: "graalvm"
+              java-version: "22"
+              is-graal: true
+              release-libraries: false
+              release-apps: true              
+            - java-distribution: "temurin"
+              java-version: "11"
+              release-libraries: true
+              release-apps: false
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+      
+        - name: Setup GraalVM
+          if: ${{matrix.is-graal}}
+          uses: graalvm/setup-graalvm@v1
+          with:
+            java-version: ${{ matrix.java-version }}
+            distribution: ${{ matrix.java-distribution}}
+            version: "latest"
+            github-token: ${{ secrets.GITHUB_TOKEN }}
+            components: "native-image"
+      
+        - name: Setup Java
+          if: ${{matrix.is-graal != true}}
+          uses: actions/setup-java@v4
+          with:
+              distribution: ${{ matrix.java-distribution }}
+              java-version: ${{ matrix.java-version}}
+
+        - name: Cache scala dependencies
+          uses: coursier/cache-action@v6 
+
+        - name: Test Libraries
+          run: ./mill -i Alias/run testModules
+
+        - name: Test Apps
+          if: ${{matrix.is-graal}}
+          run: ./mill -i Alias/run testApps
+
+        - name: Release Libraries
+          run: ci/release-maven-libraries.sh
+          if: matrix.release-libraries && (github.repository == 'finos/morphir' && ( (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/**' ) || (github.ref != 'refs/heads/main' && github.ref != 'refs/heads/release/**' && startsWith( github.ref, 'refs/tags/') ) ))
+          env:
+            MORPHIR_RELEASE_LIBRARIES: ${{matrix.release-libraries}}
+            MORPHIR_RELEASE_APPS: ${{matrix.release-apps}} 
+            SONATYPE_PGP_PASSWORD: ${{ secrets.PGP_PASSPHRASE }}
+            SONATYPE_PGP_SECRET: ${{ secrets.PGP_SECRET_BASE64 }}
+            SONATYPE_PASSWORD: ${{ secrets.ORG_MORPHIR_MAVEN_DEPLOY_PASSWORD }}
+            SONATYPE_USERNAME: ${{ secrets.ORG_MORPHIR_MAVEN_DEPLOY_USERNAME }}
+            
+        - name: Release Applications
+          run: ci/release-applications.sh
+          if: matrix.release-apps && (github.repository == 'finos/morphir' && ( (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/**' ) || (github.ref != 'refs/heads/main' && github.ref != 'refs/heads/release/**' && startsWith( github.ref, 'refs/tags/') ) ))
+          env:
+            MORPHIR_RELEASE_LIBRARIES: ${{matrix.release-libraries}}
+            MORPHIR_RELEASE_APPS: ${{matrix.release-apps}} 
+            SONATYPE_PGP_PASSWORD: ${{ secrets.PGP_PASSPHRASE }}
+            SONATYPE_PGP_SECRET: ${{ secrets.PGP_SECRET_BASE64 }}
+            SONATYPE_PASSWORD: ${{ secrets.ORG_MORPHIR_MAVEN_DEPLOY_PASSWORD }}
+            SONATYPE_USERNAME: ${{ secrets.ORG_MORPHIR_MAVEN_DEPLOY_USERNAME }}

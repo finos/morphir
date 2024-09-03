@@ -1,0 +1,6 @@
+members = [
+    "projects/classic-a",
+    "projects/classic-b",
+    "projects/proj-a",
+    "projects/proj-b",
+]

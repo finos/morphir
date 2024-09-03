@@ -15,6 +15,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Morphir.IR.FQName exposing (getLocalName)
+import Morphir.IR.Name exposing (toHumanWordsTitle)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value, indexedMapValue)
 import Morphir.Value.Interpreter exposing (Variables)
@@ -22,7 +23,6 @@ import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Config exposing (Config, HighlightState(..), VisualState)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (mediumPadding)
-import Morphir.IR.Name exposing (toHumanWordsTitle)
 
 
 
@@ -162,7 +162,7 @@ getCaseFromIndex config head viewValue highlightState rule =
 
                 result : Color
                 result =
-                    highlightStateToColor config highlightState 
+                    highlightStateToColor config highlightState
             in
             case match of
                 Value.WildcardPattern _ ->
@@ -220,6 +220,3 @@ highlightStateToColor config highlightState =
 
         Nothing ->
             config.state.theme.colors.lightest
-
-
-

@@ -1,0 +1,45 @@
+{
+  "name": "@finos/morphir-elm-compiler",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "bundle": "moon run morphir-elm-compiler:bundle",
+    "bundle-components": "moon run morphir-elm-compiler:bundle-components",
+    "dev": "vite",
+    "typecheck:esm": "moon run morphir-elm-compiler:typecheck-esm",
+    "typecheck:cjs": "moon run morphir-elm-compiler:typecheck-cjs",
+    "typecheck": "moon run morphir-elm-compiler:typecheck"
+  },
+  "devDependencies": {
+    "@bytecodealliance/componentize-js": "^0.8.3",
+    "@bytecodealliance/jco": "^1.2.4",
+    "@bytecodealliance/preview2-shim": "^0.16.2",
+    "@tsconfig/node18": "^18.2.4",
+    "@types/bun": "^1.1.3",
+    "@types/data-urls": "^3.0.4",
+    "@types/inquirer": "^9.0.7",
+    "@types/whatwg-encoding": "^2.0.3",
+    "elm": "^0.19.1-6",
+    "elm-format": "^0.8.7",
+    "elm-json": "^0.2.13",
+    "elm-test-rs": "^3.0.0-5",
+    "prettier": "3.2.5",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.0",
+    "vite-plugin-elm": "^3.0.1",
+    "vite-plugin-elm-watch": "^1.3.4"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "data-urls": "^5.0.0",
+    "firan-logging": "^1.0.0",
+    "get-uri": "^6.0.3",
+    "inquirer": "^9.2.22",
+    "log-timestamp": "^0.3.0",
+    "neverthrow": "^6.2.1",
+    "read-package-up": "^11.0.0",
+    "whatwg-encoding": "^3.1.1",
+    "zod": "^3.23.8"
+  }
+}

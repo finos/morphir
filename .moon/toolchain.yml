@@ -4,11 +4,14 @@ bun:
   syncProjectWorkspaceDependencies: true
 
 node:
-   packageManager: bun
+   packageManager: npm
+   syncProjectWorkspaceDependencies: true
 
 rust: 
   bins:
-    - 'cargo-make@0.37.12'
-    - 'cargo-nextest'
+    - 'cargo-component@0.13.2'
+    #- 'cargo-make@0.37.12'
+    #- 'cargo-nextest'
+    #- 'wasm-pack'
 
 typescript: {}

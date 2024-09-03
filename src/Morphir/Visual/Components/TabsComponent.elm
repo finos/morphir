@@ -99,9 +99,10 @@ view theme config =
                         []
 
                 focusedStyles : List (Element.Attr Never Never)
-                focusedStyles = 
+                focusedStyles =
                     if not isActive then
                         [ Background.color theme.colors.gray, Border.color theme.colors.primaryHighlight ]
+
                     else
                         [ Background.color theme.colors.lightest, Border.color theme.colors.primaryHighlight ]
             in

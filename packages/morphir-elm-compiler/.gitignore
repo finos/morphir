@@ -1,6 +1,4 @@
 node_modules
 morphir-elm.ts
-package-lock.json
-package.json
 out/
 .scala-build/

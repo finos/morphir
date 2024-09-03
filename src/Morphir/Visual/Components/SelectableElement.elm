@@ -1,5 +1,6 @@
 module Morphir.Visual.Components.SelectableElement exposing (..)
 
+import Bootstrap.ListGroup exposing (active)
 import Element exposing (Element, el, fill, htmlAttribute, mouseOver, pointer, width)
 import Element.Background as Background
 import Element.Border as Border
@@ -8,7 +9,6 @@ import Element.Font as Font
 import Element.Input
 import Html.Attributes exposing (tabindex)
 import Morphir.Visual.Theme exposing (Theme)
-import Bootstrap.ListGroup exposing (active)
 
 
 type alias Config msg =
@@ -30,12 +30,14 @@ view theme config =
             , mouseOver focusedStyles
             , Element.focused focusedStyles
             ]
+
         focusedStyles : List (Element.Attr Never Never)
-        focusedStyles = 
+        focusedStyles =
             if not config.isSelected then
-                [ Background.color theme.colors.gray]
+                [ Background.color theme.colors.gray ]
+
             else
-                [ Background.color theme.colors.brandPrimaryLight]
+                [ Background.color theme.colors.brandPrimaryLight ]
 
         activeStyles : List (Element.Attribute msg)
         activeStyles =

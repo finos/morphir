@@ -1,0 +1,25 @@
+package morphir:elm-compiler;
+
+interface vfile {
+    record vfile {
+        path: string,
+        contents:string
+    }
+}
+
+interface manifests {
+    record morphir-project-manifest {
+        name: string,
+        source-directory: string
+    }
+}
+
+interface morphir-elm-compiler {
+    use vfile.{vfile};
+    build: func(files: list<vfile>) -> string;
+}
+world compiler {
+    import vfile;
+    import manifests;
+    import morphir-elm-compiler;
+}

@@ -6,7 +6,7 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.QName exposing (QName)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
-import Morphir.Visual.Config exposing (PopupScreenRecord, DrillDownFunctions)
+import Morphir.Visual.Config exposing (DrillDownFunctions, PopupScreenRecord)
 
 
 type alias VisualizationState =

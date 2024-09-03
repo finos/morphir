@@ -14,7 +14,7 @@ import {
 export function compileVirtualFiles(
   files: VirtualFile[],
   projectManifest: MorphirProjectManifest,
-  options: ElmCompilerOptions
+  options: ElmCompilerOptions,
 ) {
   const _changes = virtualFilesToFileChanges(...files);
   console.log("changes: ", _changes);
@@ -25,6 +25,7 @@ export function compileVirtualFiles(
     dependencies: projectManifest.dependencies || [],
     includes: options.include || [],
   };
+  console.log("loadOptions: ", loadOptions);
   Dependencies.loadAllDependencies(loadOptions);
   return {};
 }
@@ -32,8 +33,12 @@ export function compileVirtualFiles(
 function virtualFilesToFileChanges(...files: VirtualFile[]): FileChanges {
   const fileChanges = new Map<string, FileChange>();
   files.forEach((file) => {
-    const hash = calculateContentHash(file.content);
-    fileChanges.set(file.path, { kind: "Insert", content: file.content, hash });
+    const hash = calculateContentHash(file.contents);
+    fileChanges.set(file.path, {
+      kind: "Insert",
+      content: file.contents,
+      hash,
+    });
   });
   return fileChanges;
 }
