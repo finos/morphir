@@ -22,12 +22,12 @@
  * See this project's NOTICE file for license details.
  */
 
-package org.finos.morphir.fs
+package org.finos.morphir
 
 import cats.data.{Chain, NonEmptyChain}
 import cats.syntax.all.*
-import org.finos.morphir.fs.Path.Root
-import org.finos.morphir.fs.RelativePath.{CurrentDocument, CurrentTree, Parent}
+import org.finos.morphir.Path.Root
+import org.finos.morphir.RelativePath.{CurrentDocument, CurrentTree, Parent}
 
 import scala.annotation.tailrec
 

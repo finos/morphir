@@ -1,8 +1,8 @@
 package org.finos.morphir.lang.elm
 
 import kyo.{Path as _, _}
-import org.finos.morphir.fs.*
 import java.net.{URI, URL}
+import org.finos.morphir.Path
 
 // trait ElmProjectInfoService:
 //     self =>

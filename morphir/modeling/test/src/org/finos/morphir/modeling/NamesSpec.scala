@@ -2,7 +2,6 @@ package org.finos.morphir.modeling
 import org.finos.morphir.testing.*
 import zio.test.*
 import zio.test.Assertion.*
-import org.finos.morphir.fs.Path.Root.name
 
 object NamesSpec extends MorphirSpecDefault {
   def spec = suite("NamesSpec")(lowerCaseNameSuite)

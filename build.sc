@@ -14,8 +14,8 @@ object MorphirAliases extends Aliases {
   @inline def lint = checkfmt
   def fmt           = alias("mill.scalalib.scalafmt.ScalafmtModule/reformatAll __.sources", "finos.morphir.elmFormat")
   def checkfmt      = alias("mill.scalalib.scalafmt.ScalafmtModule/checkFormatAll __.sources")
-  def testApps      = alias("apps.__.test")
-  def testModules   = alias("apps.__.test")
+  def testApps      = alias("morphir.cli.test", "morphir.elm.test")
+  def testModules   = alias("morphir.core.__.test", "morphir.modeling.__.test")
 }
 
 
@@ -36,6 +36,7 @@ object morphir extends Module {
       ivy"io.getkyo::kyo-core::${V.kyo}",
       ivy"io.getkyo::kyo-direct::${V.kyo}",
       ivy"io.getkyo::kyo-sttp::${V.kyo}",
+      ivy"org.scalameta::metaconfig-sconfig:${V.metaconfig}",
       ivy"io.github.kitlangton::neotype::${V.neotype}",
       ivy"org.graalvm.polyglot:js:${V.`graal-polyglot`}"
     )
@@ -59,7 +60,7 @@ object morphir extends Module {
 
     def ivyDeps = super.ivyDeps() ++ Agg() 
 
-    override def moduleDeps = Seq(modeling.jvm)
+    override def moduleDeps = Seq(modeling.jvm, core.jvm)
     def nativeImageName      = "morphir-cli" // TODO: Rename to morphir
     def nativeImageMainClass = T("org.finos.morphir.cli.Main")
 
@@ -80,7 +81,7 @@ object morphir extends Module {
 
     def ivyDeps = super.ivyDeps() ++ Agg()
 
-    def moduleDeps = Seq(modeling.jvm)
+    def moduleDeps = Seq(modeling.jvm, core.jvm)
 
     def nativeImageName = "morphir-elm-cli" //TODO: Rename to morphir-elm
     def nativeImageMainClass = T("org.finos.morphir.elm.cli.Main")
@@ -101,14 +102,14 @@ object morphir extends Module {
         ivy"io.kevinlee::just-semver::${V.`just-semver`}"
       )
 
-      override def platformModuleDeps: Seq[CrossPlatform] = Seq(fs)
+      override def platformModuleDeps: Seq[CrossPlatform] = Seq(core)
     }    
     object jvm extends ScalaJvmProject with Shared {
       object test extends ScalaTests with MorphirTests { }
     }
 
   }
-  object fs extends CrossPlatform {
+  object core extends CrossPlatform {
     trait Shared extends ScalaLibraryModule with PlatformAwareScalaProject with MorphirLibraryPublishModule {        
       def scalaVersion = V.Scala.scala3LTSVersion
       def ivyDeps = Agg(
