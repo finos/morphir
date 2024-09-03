@@ -35,6 +35,7 @@ object morphir extends CrossPlatform {
       ivy"com.lihaoyi::pprint::${V.pprint}",
       ivy"com.github.alexarchambault::case-app:${V.`case-app`}",
       ivy"io.getkyo::kyo-core::${V.kyo}",
+      ivy"io.getkyo::kyo-combinators::${V.kyo}",
       ivy"io.getkyo::kyo-direct::${V.kyo}",
       ivy"io.getkyo::kyo-sttp::${V.kyo}",
       ivy"org.scalameta::metaconfig-sconfig:${V.metaconfig}",
@@ -96,6 +97,8 @@ object morphir extends CrossPlatform {
       ivy"io.bullet::borer-core:${V.borer}",
       ivy"io.bullet::borer-derivation:${V.borer}",
       ivy"io.getkyo::kyo-core::${V.kyo}",
+      ivy"io.getkyo::kyo-combinators::${V.kyo}",
+      ivy"io.getkyo::kyo-direct::${V.kyo}",
       ivy"io.github.kitlangton::neotype::${V.neotype}",
       ivy"io.github.iltotore::iron:${V.iron}",
       ivy"io.kevinlee::just-semver::${V.`just-semver`}"
