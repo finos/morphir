@@ -99,8 +99,8 @@ trait AttributeModel:
   type Attribute
   type AttributeValue
   type Binding <: AttributeBinding {
-    type Attribute = self.Attribute
-    type AttributeValue     = self.AttributeValue
+    type Attribute      = self.Attribute
+    type AttributeValue = self.AttributeValue
   }
 
   def attributes: AttributeSet
@@ -121,27 +121,27 @@ trait AttributeBinding:
 
 trait AttributeSet:
   type Attribute
-  def contains(attribute:Attribute):Boolean
-  def iter:Iterable[Attribute]
-  final def foreach(f:Attribute => Unit):Unit = iter.foreach(f)
+  def contains(attribute: Attribute): Boolean
+  def iter: Iterable[Attribute]
+  final def foreach(f: Attribute => Unit): Unit = iter.foreach(f)
 
 trait AttributeBindings[+Attr, +AttrValue] extends AttributeSet:
   type Attribute <: Attr
   type AttributeValue <: AttrValue
 
 // TTODO: Link this into the AttributeModel
-trait Term 
+trait Term
 trait Resource extends Term:
-  type IRI 
-  def iri:Option[IRI]
+  type IRI
+  def iri: Option[IRI]
 
 trait BlankNode extends Resource
-trait Property extends Resource 
-trait Literal extends Term
+trait Property  extends Resource
+trait Literal   extends Term
 
 //Perhaps try below
 private object scratch:
   // You could then let `SourceCode` or a top level Morphir object contain the AttributeModel
   // Or perhaps instead of the AttributeModel it has a Context that knows how to get the AttributeModel
   trait Element:
-    def attributes(using AttributeModel):AttributeSet
+    def attributes(using AttributeModel): AttributeSet

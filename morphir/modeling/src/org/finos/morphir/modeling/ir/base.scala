@@ -7,4 +7,4 @@ import org.finos.morphir.modeling.ConceptId
 
 trait TypeSpecOrDefAttributes extends Attributes
 object TypeSpecOrDefAttributes:
-    export Attributes.*
+  export Attributes.*

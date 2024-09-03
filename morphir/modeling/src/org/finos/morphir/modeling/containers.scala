@@ -5,7 +5,7 @@ trait Container[+T] extends Element {
 }
 
 trait ElementContainerBase[+E <: Element, +Col[+_]] extends Container[Col[E]] with ElementTraversal
-trait ElementContainer[+E <: Element] extends ElementContainerBase[E, Seq]
+trait ElementContainer[+E <: Element]               extends ElementContainerBase[E, Seq]
 
 trait IndexedElementContainer[+E <: Element] extends ElementContainerBase[E, IndexedSeq] {
   inline def apply(index: Int): E = content(index)
