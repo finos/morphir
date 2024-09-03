@@ -28,7 +28,7 @@ trait PubMod extends PublishModule with JavaModule with Mima {
     s"Morphir provides a set of tools and languages for building and working with domain-specific languages (DSLs). "
   def pomSettings = PomSettings(
     description = packageDescription,
-    organization = "org.finos.morphir",
+    organization = "org.finos.morphir2",
     url = "https://github.com/finos/morphir",
     licenses = Seq(License.`Apache-2.0`),
     versionControl = VersionControl.github("finos", "morphir"),
