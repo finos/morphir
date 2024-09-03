@@ -65,11 +65,7 @@ object morphir extends Module {
     def nativeImageMainClass = T("org.finos.morphir.cli.Main")
 
 
-    object test extends ScalaTests with TestModule.ScalaTest {
-      def ivyDeps = Agg(
-        ivy"org.scalatest::scalatest:${V.scalatest}"
-      )
-    }
+    object test extends ScalaTests with MorphirTests { }    
   } 
 
   /// Build for the morphir-elm/morphir-elm-cli project
@@ -85,6 +81,7 @@ object morphir extends Module {
 
     def nativeImageName = "morphir-elm-cli" //TODO: Rename to morphir-elm
     def nativeImageMainClass = T("org.finos.morphir.elm.cli.Main")
+    object test extends ScalaTests with MorphirTests { }    
   }
 
   //---------------------------------------------------------------------------------------------
