@@ -29,7 +29,7 @@ object ElmProjectLoader:
 trait ElmPackageResolver:
   import ElmPackageResolver.*
   /// Resolve a package by name and version
-  def resolve(packageName: ElmPackageName, version: ElmPackageVersion): ResolveResult < IO & Abort[String | Exception]
+  def resolve(packageName: ElmPackageName, version: ElmPackageVersion): ResolveResult < IO & Abort[String | Exception] 
   def resolveAll(packages: Map[ElmPackageName, ElmPackageVersion])
     : Map[ElmPackageName, ResolveResult] < IO & Abort[String | Exception]
 
@@ -50,3 +50,5 @@ enum PackageSource:
   case Git(Url: URL, ref: Option[String], path: Option[String])
   case GitHub(owner: String, repo: String, ref: Option[String], path: Option[String])
   case GitHubEnterprise(owner: String, repo: String, baseUrl: URL, ref: Option[String], path: Option[String])
+
+//TODO: Add service for actually downloading the package
