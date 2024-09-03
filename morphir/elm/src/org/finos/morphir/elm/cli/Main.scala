@@ -1,6 +1,7 @@
 package org.finos.morphir.elm.cli
-import org.finos.morphir.elm.cli.command.*
 import caseapp.*
+import make.Make
+import fetch.Fetch
 
 object Main extends CommandsEntryPoint:
 

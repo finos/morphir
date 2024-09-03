@@ -1,4 +1,4 @@
-package org.finos.morphir.elm.cli.command
+package org.finos.morphir.elm.cli.make
 import caseapp.*
 import org.finos.morphir.cli.given
 import neotype.eval.Eval.Value
