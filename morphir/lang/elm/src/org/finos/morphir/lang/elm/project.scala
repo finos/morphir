@@ -4,11 +4,12 @@ import io.github.iltotore.iron.*
 import io.github.iltotore.iron.constraint.numeric.*
 import io.github.iltotore.iron.constraint.string.*
 import org.finos.morphir.constraint.string.*
+import org.finos.morphir.lang.elm.constraint.string.*
 import org.finos.morphir.api.SemVerString
 
-//TODO: Add Encoders and Decoders for this using scalameta/metaconfig 
+//TODO: Add Encoders and Decoders for this using scalameta/metaconfig
 //: See: https://scalameta.org/metaconfig/docs/reference.html#genericderivedecoder
-//  
+//
 enum ElmProject:
   self =>
   case ElmApplication(

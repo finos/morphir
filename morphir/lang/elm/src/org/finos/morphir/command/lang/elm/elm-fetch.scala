@@ -1,13 +1,14 @@
-
 package org.finos.morphir.lang.elm.command
 
-import org.finos.morphir.command.* 
-import kyo.* 
+import org.finos.morphir.command.*
+import scala.Console as _
+import kyo.*
 
-final case class FetchParams()
+final case class FetchParams(projectDir: kyo.Path)
 
-final case class Fetch(params:FetchParams) extends Command[FetchParams]:
-    def run(params:FetchParams): Unit < (IO & Abort[Throwable]) = 
-        kyo.Console.println("Running fetch")
-        
-
+final case class Fetch() extends Command[FetchParams]:
+  def run(params: FetchParams): Unit < (IO & Abort[Throwable]) =
+    defer {
+      await(Console.println("Running fetch"))
+      await(Console.println("Fetch Params", pprint(params)))
+    }
