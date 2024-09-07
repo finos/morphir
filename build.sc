@@ -37,7 +37,8 @@ object morphir extends CrossPlatform { root =>
       ivy"io.getkyo::kyo-combinators::${V.kyo}",
       ivy"io.getkyo::kyo-direct::${V.kyo}",
       ivy"io.getkyo::kyo-sttp::${V.kyo}",
-      ivy"org.scalameta::metaconfig-sconfig:${V.metaconfig}",
+      ivy"org.scalameta::metaconfig-core::${V.metaconfig}",
+      ivy"org.scalameta::metaconfig-sconfig::${V.metaconfig}",
       ivy"io.github.kitlangton::neotype::${V.neotype}",
       ivy"org.graalvm.polyglot:js:${V.`graal-polyglot`}"
     )
@@ -99,7 +100,9 @@ object morphir extends CrossPlatform { root =>
       ivy"io.getkyo::kyo-direct::${V.kyo}",
       ivy"io.github.kitlangton::neotype::${V.neotype}",
       ivy"io.github.iltotore::iron:${V.iron}",
-      ivy"io.kevinlee::just-semver::${V.`just-semver`}"
+      ivy"io.kevinlee::just-semver::${V.`just-semver`}",
+      ivy"org.scalameta::metaconfig-core::${V.metaconfig}",
+      ivy"org.scalameta::metaconfig-sconfig::${V.metaconfig}",
     )
 
     override def platformModuleDeps: Seq[CrossPlatform] = Seq(core)

@@ -4,6 +4,11 @@ import io.github.iltotore.iron.constraint.string.*
 
 object string:
 
+  type ValidProjectName = DescribedAs[
+    Match["""^[a-zA-Z_][a-zA-Z0-9_\-\.]*$"""],
+    "Should be a valid project name."
+  ]
+
   type Identifier = DescribedAs[
     Match["^[a-zA-Z_][a-zA-Z0-9_]*$"],
     "Should be a valid identifier."
