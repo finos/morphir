@@ -1,4 +1,4 @@
-package org.finos.morphir.modeling
+package org.finos.morphir.trees
 
 // abstract class Concept extends Product with Serializable {
 //   type Self

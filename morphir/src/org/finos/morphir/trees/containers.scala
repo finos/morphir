@@ -1,4 +1,4 @@
-package org.finos.morphir.modeling
+package org.finos.morphir.trees
 
 trait Container[+T] extends Element {
   def content: T

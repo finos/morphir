@@ -1,10 +1,10 @@
-package org.finos.morphir.modeling
+package org.finos.morphir.trees
 import neotype.*
 import io.github.iltotore.iron.*
 import io.github.iltotore.iron.constraint.string.*
 import kyo.*
 import scala.annotation.switch
-import org.finos.morphir.modeling.Path.Kind
+import org.finos.morphir.trees.Path.Kind
 
 type Name = Name.Type
 object Name extends Newtype[SnakecaseName | TitlecaseName | LowercaseName | UppercaseName]

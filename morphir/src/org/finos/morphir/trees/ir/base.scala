@@ -1,6 +1,6 @@
-package org.finos.morphir.modeling.ir
-import org.finos.morphir.modeling.Attributes
-import org.finos.morphir.modeling.ConceptId
+package org.finos.morphir.trees.ir
+import org.finos.morphir.trees.Attributes
+import org.finos.morphir.trees.ConceptId
 
 // trait IRAttributes extends Attributes:
 //     def conceptId: ConceptId

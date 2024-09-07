@@ -1,4 +1,4 @@
-package org.finos.morphir.modeling
+package org.finos.morphir.trees
 import org.finos.morphir.testing.*
 import zio.test.*
 import zio.test.Assertion.*

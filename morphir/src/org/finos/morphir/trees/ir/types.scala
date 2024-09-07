@@ -1,5 +1,5 @@
-package org.finos.morphir.modeling.ir
-import org.finos.morphir.modeling.*
+package org.finos.morphir.trees.ir
+import org.finos.morphir.trees.*
 import scala.collection.immutable.VectorMap
 
 sealed trait TypeDescriptor extends Element {
@@ -29,7 +29,7 @@ trait IndexedTypeContainer[T <: Type] extends TypeContainerBase[T, IndexedSeq] {
 }
 
 object Type:
-  trait Attribues extends org.finos.morphir.modeling.Attributes:
+  trait Attribues extends org.finos.morphir.trees.Attributes:
     type Self <: Attribues
   object Attributes:
     val default: Attribues = new Attribues {}

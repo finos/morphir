@@ -1,4 +1,4 @@
-package org.finos.morphir.modeling.ir
+package org.finos.morphir.trees.ir
 
 import scala.collection.BitSet
 

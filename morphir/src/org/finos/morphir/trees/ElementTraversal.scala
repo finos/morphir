@@ -23,7 +23,7 @@
  * See this project's NOTICE file for license details.
  */
 
-package org.finos.morphir.modeling
+package org.finos.morphir.trees
 
 import scala.collection.mutable.ListBuffer
 
