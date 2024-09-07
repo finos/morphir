@@ -1,4 +1,4 @@
-package org.finos.morphir.command.lang.elm
+package org.finos.morphir.lang.elm.command
 
 import org.finos.morphir.testing.MorphirKyoSpecDefault
 import zio.test.*
