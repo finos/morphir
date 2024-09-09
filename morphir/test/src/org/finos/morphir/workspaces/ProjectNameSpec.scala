@@ -1,5 +1,5 @@
 package org.finos.morphir.workspaces
-import org.finos.morphir.testing.* 
+import org.finos.morphir.testing.*
 import zio.test.*
 
 object ProjectNameSpec extends MorphirSpecDefault {

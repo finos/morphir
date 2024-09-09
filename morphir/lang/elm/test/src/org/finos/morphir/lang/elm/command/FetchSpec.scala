@@ -1,6 +1,6 @@
 package org.finos.morphir.lang.elm.command
 
-import org.finos.morphir.testing.MorphirKyoSpecDefault 
+import org.finos.morphir.testing.MorphirKyoSpecDefault
 import zio.test.*
 import zio.test.Assertion.*
 
@@ -12,4 +12,3 @@ object FetchSpec extends MorphirKyoSpecDefault {
     }
   )
 }
-

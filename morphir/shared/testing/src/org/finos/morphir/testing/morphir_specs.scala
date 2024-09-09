@@ -18,22 +18,22 @@ abstract class MorphirSpecDefault extends ZIOSpecDefault with MorphirSpec {
 
 trait MorphirSpec { self: ZIOSpecAbstract =>
   import MorphirSpec.TestContext
-  def testContext(using testFile:sourcecode.File):TestContext = TestContext(testFile.value)
-  inline def compileError(code: String) = assertZIO(typeCheck(code))
+  def testContext(using testFile: sourcecode.File): TestContext = TestContext(testFile.value)
+  inline def compileError(code: String)                         = assertZIO(typeCheck(code))
 }
 
 object MorphirSpec:
   final case class TestContext(testFilePath: os.Path):
-    lazy val testDir:os.Path =
-      def isTestDir(path:os.Path):Boolean = path.lastOpt match
+    lazy val testDir: os.Path =
+      def isTestDir(path: os.Path): Boolean = path.lastOpt match
         case Some(last) => last == "test" && os.isDir(path)
-        case None => false
+        case None       => false
       var curr = testFilePath
-      while( curr != os.root && !isTestDir(curr))
+      while (curr != os.root && !isTestDir(curr))
         curr = curr / os.up
       if curr == os.root then throw new Exception("Could not find test directory")
       else curr
-    lazy val testResourcesDir:os.Path = testDir / "resources"
+    lazy val testResourcesDir: os.Path = testDir / "resources"
   end TestContext
   object TestContext:
-    def apply(path:String) = new TestContext(os.Path(path))
+    def apply(path: String) = new TestContext(os.Path(path))

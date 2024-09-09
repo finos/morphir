@@ -10,7 +10,7 @@ final case class FetchOptions(projectDir: Option[kyo.Path] = None):
     FetchParams(projectDir.getOrElse(kyo.Path(os.pwd.toString)))
 
 object Fetch extends MorphirCliCommand[FetchOptions]:
-  def runEffect(options: FetchOptions, remainingArgs:RemainingArgs) =
+  def runEffect(options: FetchOptions, remainingArgs: RemainingArgs) =
     defer {
       // TODO: Perform fetch similar to https://github.com/robx/shelm/blob/master/shelm
       scribe.info("Running fetch")
