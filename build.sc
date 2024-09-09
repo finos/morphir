@@ -93,6 +93,7 @@ object morphir extends CrossPlatform { root =>
     def scalaVersion = V.Scala.scala3_5_version
     def ivyDeps = Agg(
       ivy"com.outr::scribe::${V.scribe}",
+      ivy"com.lihaoyi::os-lib::${V.oslib}",
       ivy"io.bullet::borer-core:${V.borer}",
       ivy"io.bullet::borer-derivation:${V.borer}",
       ivy"io.getkyo::kyo-core::${V.kyo}",

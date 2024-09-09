@@ -9,7 +9,7 @@ object V {
   val kyo              = "0.11.1"
   val iron             = "2.6.0"
   val metaconfig       = "0.13.0"
-  val oslib            = "0.10.4"
+  val oslib            = "0.10.6"
   val pprint           = "0.9.0"
   val neotype          = "0.3.0"
   val `scala-uri`      = "4.0.3"
