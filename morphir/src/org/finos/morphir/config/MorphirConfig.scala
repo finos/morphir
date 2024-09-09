@@ -4,15 +4,17 @@ import metaconfig.*
 import metaconfig.generic.* 
 import metaconfig.sconfig.* 
 
-final case class MorphirConfig(workspace: Option[Workspace]):
+final case class MorphirConfig(workspace: Option[Workspace] = None, elm: Option[ElmConfigSection] = None, dependencies:Dependencies = Dependencies.empty, testDependencies:Dependencies = Dependencies.empty):
     def containsWorkspace: Boolean = workspace.isDefined
-    def workspaceMembers:IndexedSeq[String] = workspace match
-        case Some(ws) => ws.members
+    def workspaceProjects:IndexedSeq[String] = workspace match
+        case Some(ws) => ws.projects
         case None => IndexedSeq.empty
 
 object MorphirConfig extends ConfigCompanion[MorphirConfig]:
+    val default: MorphirConfig = MorphirConfig()
+    
     given Surface[MorphirConfig] = generic.deriveSurface
-    given confDecoder:ConfDecoder[MorphirConfig] = generic.deriveDecoder[MorphirConfig](MorphirConfig(None))
+    given confDecoder:ConfDecoder[MorphirConfig] = generic.deriveDecoder[MorphirConfig](MorphirConfig.default)
 
 
 trait ConfigCompanion[Cfg](using decoder:ConfDecoder[Cfg]): 
@@ -29,3 +31,4 @@ trait ConfigCompanion[Cfg](using decoder:ConfDecoder[Cfg]):
     def parseString(input:String): Result[ConfError, Cfg] = 
         val conf = Conf.parseString(input)
         decoder.read(conf).fold(error => Result.fail(error))(config => Result.success(config))
+
