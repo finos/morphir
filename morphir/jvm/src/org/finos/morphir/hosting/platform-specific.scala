@@ -4,6 +4,6 @@ import kyo.*
 
 trait HostingConfigServiceCompanionPlatformSpecific:
   final case class Live() extends HostingConfigService:
-    def applicationConfigDir: Path < IO =
+    def applicationConfigDir: kyo.Path < IO =
       val projDirs = ProjectDirectories.from("Org", "FINOS", "Morphir")
-      Path(projDirs.configDir)
+      kyo.Path(projDirs.configDir)

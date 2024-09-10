@@ -8,9 +8,12 @@ object HostingConfigServiceSpec extends MorphirKyoSpecDefault:
     def spec = suite("HostingConfigServiceSpec")(
         test("applicationConfigDir should return a path") {
             val service = HostingConfigService.Live()
-            service.applicationConfigDir.map { path => 
-                pprint.log(path)                
-                assertTrue(path != null)
-            }            
+            for {
+                path <- service.applicationConfigDir
+                lastPart = path.path.lastOption.map(_.toLowerCase)
+                
+                //_ <- Console.println(pprint(path))                
+            } yield assertTrue(path != null, lastPart.get.endsWith("morphir"))
+                     
         }        
     )
