@@ -29,6 +29,7 @@ final case class MakeOptions(
 )
 
 object Make extends Command[MakeOptions]:
+  override def group = "Main"
   def run(options: MakeOptions, remainingArgs: RemainingArgs): Unit =
     pprint.log("MakeOptions:")
     pprint.log(options)
