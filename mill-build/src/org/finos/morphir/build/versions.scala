@@ -4,8 +4,7 @@ object V {
 
   val borer            = "1.14.1"
   val cats             = "2.12.0"
-  /// The version of the coursier specific fork of directories-jvm
-  val `directories-jvm` = "0.1.1"
+  val `directories-jvm` = "26"
   val `case-app`       = "2.1.0-M29"
   val `just-semver`    = "1.0.0"
   val kyo              = "0.11.1"

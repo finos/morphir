@@ -33,7 +33,7 @@ object morphir extends CrossPlatform { root =>
       ivy"com.lihaoyi::os-lib::${V.oslib}",
       ivy"com.lihaoyi::pprint::${V.pprint}",
       ivy"com.github.alexarchambault::case-app:${V.`case-app`}",
-      ivy"io.get-coursier.util::directories-jvm:${V.`directories-jvm`}",
+      ivy"dev.dirs:directories:${V.`directories-jvm`}",
       ivy"io.getkyo::kyo-core::${V.kyo}",
       ivy"io.getkyo::kyo-combinators::${V.kyo}",
       ivy"io.getkyo::kyo-direct::${V.kyo}",
@@ -113,7 +113,7 @@ object morphir extends CrossPlatform { root =>
 
   object jvm extends ScalaJvmProject with Shared {
     override def ivyDeps = super.ivyDeps() ++ Agg(
-      ivy"io.get-coursier.util:directories-jvm:${V.`directories-jvm`}"
+      ivy"dev.dirs:directories:${V.`directories-jvm`}"
     )
     object test extends ScalaTests with MorphirTests {}
   }
@@ -128,7 +128,7 @@ object morphir extends CrossPlatform { root =>
 
     object jvm extends ScalaJvmProject with Shared {
       override def ivyDeps: Target[Agg[Dep]] = super.ivyDeps() ++ Agg(
-        ivy"io.get-coursier.util:directories-jvm:${V.`directories-jvm`}"
+        ivy"dev.dirs:directories:${V.`directories-jvm`}"
       )
       object test extends ScalaTests with MorphirTests {
         def scalaVersion = V.Scala.scala3_5_version
