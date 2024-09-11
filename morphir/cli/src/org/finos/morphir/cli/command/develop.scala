@@ -13,7 +13,7 @@ final case class DevelopOptions(
     host:String = "localhost",
     @Name("i")
     @HelpMessage("Root directory of the project where morphir.json is located. (default: .)")
-    projectDir:GenericPath = Path.parse(os.pwd.toString)
+    projectDir:FilePath = FilePath.parse(os.pwd.toString)
 )
 
 object Develop extends Command[DevelopOptions]:  
