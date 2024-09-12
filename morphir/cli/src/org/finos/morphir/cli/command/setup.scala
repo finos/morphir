@@ -11,4 +11,4 @@ object Setup extends Command[SetupOptions]:
     pprint.log("SetupOptions:")
     pprint.log(options)
     pprint.log("Remaining Args:")
-    pprint.log(remainingArgs)    
+    pprint.log(remainingArgs)

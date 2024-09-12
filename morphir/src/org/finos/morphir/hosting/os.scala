@@ -7,12 +7,11 @@ enum OsType:
   case Other(name: String)
 
   def isWindows: Boolean = this == OsType.Windows
-  def isLinux: Boolean = this == OsType.Linux
-  def isMacOS: Boolean = this == OsType.MacOS
-    def isOther: Boolean = this match
-        case OsType.Other(_) => true
-        case _               => false
-
+  def isLinux: Boolean   = this == OsType.Linux
+  def isMacOS: Boolean   = this == OsType.MacOS
+  def isOther: Boolean = this match
+    case OsType.Other(_) => true
+    case _               => false
 
 sealed trait OsName extends Product with Serializable:
   import OsName.Repr
@@ -21,7 +20,7 @@ sealed trait OsName extends Product with Serializable:
   def isWindows: Boolean = this match
     case _: Repr.Windows => true
     case _               => false
- 
+
   def isLinux: Boolean = this match
     case _: Repr.Linux => true
     case _             => false
@@ -29,7 +28,7 @@ sealed trait OsName extends Product with Serializable:
   def isMacOS: Boolean = this match
     case _: Repr.MacOS => true
     case _             => false
-  
+
   def isOther: Boolean = this match
     case Repr.Other(_) => true
     case _             => false
@@ -38,7 +37,7 @@ sealed trait OsName extends Product with Serializable:
     case _: Repr.Windows => OsType.Windows
     case _: Repr.Linux   => OsType.Linux
     case _: Repr.MacOS   => OsType.MacOS
-    case Repr.Other(_)   => OsType.Other(name)    
+    case Repr.Other(_)   => OsType.Other(name)
 
   override def toString: String = name
 

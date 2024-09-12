@@ -16,26 +16,25 @@ trait HostInfoService:
 
   def userHomeDir: GenericPath < IO
 
-  final def whenWindows[A](action : => A): Unit < IO = 
+  final def whenWindows[A](action: => A): Unit < IO =
     defer {
       if (await(isWindows)) action else ()
     }
 
-  final def whenLinux[A](action : => A): Unit < IO =
+  final def whenLinux[A](action: => A): Unit < IO =
     defer {
       if (await(isLinux)) action else ()
     }
 
-  final def whenMacOS[A](action : => A): Unit < IO =
+  final def whenMacOS[A](action: => A): Unit < IO =
     defer {
       if (await(isMacOS)) action else ()
     }
 
-  def whenOtherOS[A](action : String => A): Unit < IO = 
+  def whenOtherOS[A](action: String => A): Unit < IO =
     defer {
       if (await(isOtherOS)) action(await(osName).name) else ()
     }
-
 
   def osName: OsName < IO
 

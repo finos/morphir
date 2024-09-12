@@ -70,6 +70,5 @@ object ConfigSpec extends MorphirSpecDefault:
       val result: Result[String, Int] = Result.fail("An error occurred")
       val configured: Configured[Int] = result.toConfigured()
       assertTrue(configured == Configured.error("An error occurred"))
-    },   
-
+    }
   )

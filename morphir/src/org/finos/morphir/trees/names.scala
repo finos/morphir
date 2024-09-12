@@ -15,12 +15,12 @@ object KebabcaseName extends Newtype[String]:
 
 type SnakecaseName = SnakecaseName.Type
 object SnakecaseName extends Newtype[String]:
-  val nameRegex = "^[a-z][a-z0-9_]*$".r
+  val nameRegex                                        = "^[a-z][a-z0-9_]*$".r
   inline override def validate(input: String): Boolean = nameRegex.matches(input)
 
 type TitlecaseName = TitlecaseName.Type
 object TitlecaseName extends Newtype[String]:
-  val nameRegex = "^[A-Z][a-zA-Z0-9]*$".r
+  val nameRegex                                        = "^[A-Z][a-zA-Z0-9]*$".r
   inline override def validate(input: String): Boolean = nameRegex.matches(input)
 
 type LowercaseName = LowercaseName.Type

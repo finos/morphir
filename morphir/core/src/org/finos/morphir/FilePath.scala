@@ -31,30 +31,30 @@ import org.finos.morphir.RelativePath.{CurrentDocument, CurrentTree, Parent}
 import java.nio.file.Paths
 import scala.annotation.tailrec
 
-/** Represents an absolute path on the file system, pointing to a file or directory that may or may not exist.
-  * Relative paths are interpreted as relative to the current working directory.
+/** Represents an absolute path on the file system, pointing to a file or directory that may or may not exist. Relative
+  * paths are interpreted as relative to the current working directory.
   *
-  * This type has a lot of shared API with the `VirtualPath` abstraction in `laika-core` via their
-  * common super-trait `GenericPath`.
-  * Like the virtual path API it comes with convenience methods for querying and modifying
-  * suffix and fragment components, a common requirement in processing internal links for example.
+  * This type has a lot of shared API with the `VirtualPath` abstraction in `laika-core` via their common super-trait
+  * `GenericPath`. Like the virtual path API it comes with convenience methods for querying and modifying suffix and
+  * fragment components, a common requirement in processing internal links for example.
   *
-  * However, it differs in three ways from the virtual path abstraction: first, semantically,
-  * as the latter is never intended to represent an actual file
-  * and instead just describes a tree structure of inputs (and AST documents after parsing).
+  * However, it differs in three ways from the virtual path abstraction: first, semantically, as the latter is never
+  * intended to represent an actual file and instead just describes a tree structure of inputs (and AST documents after
+  * parsing).
   *
-  * Secondly, this type comes with additional APIs to convert to and from other path representations,
-  * namely `java.io.File`, `java.nio.file.Path` and `fs2.io.file.Path`.
+  * Secondly, this type comes with additional APIs to convert to and from other path representations, namely
+  * `java.io.File`, `java.nio.file.Path` and `fs2.io.file.Path`.
   *
-  * And finally, the `toString` method for this type returns a platform-dependent string representation
-  * by using the file separator of the underlying file system.
-  * Laika's virtual path abstractions on the other hand always uses a forward slash `/` as the separator.
+  * And finally, the `toString` method for this type returns a platform-dependent string representation by using the
+  * file separator of the underlying file system. Laika's virtual path abstractions on the other hand always uses a
+  * forward slash `/` as the separator.
   *
-  * Having a dedicated file path abstraction also helps with type signatures for methods in Laika's APIs
-  * that accept two path arguments: a file path and a virtual path indicating the mount point
-  * (at which the specified file is supposed to be inserted into the virtual tree).
+  * Having a dedicated file path abstraction also helps with type signatures for methods in Laika's APIs that accept two
+  * path arguments: a file path and a virtual path indicating the mount point (at which the specified file is supposed
+  * to be inserted into the virtual tree).
   *
-  * @author Jens Halm
+  * @author
+  *   Jens Halm
   */
 class FilePath private (private val root: Option[String], private[FilePath] val underlying: Path)
     extends GenericPath {
@@ -70,12 +70,12 @@ class FilePath private (private val root: Option[String], private[FilePath] val 
   def fragment: Option[String] = underlying.fragment
 
   protected def copyWith(
-      basename: String,
-      suffix: Option[String],
-      fragment: Option[String]
+    basename: String,
+    suffix: Option[String],
+    fragment: Option[String]
   ): FilePath =
     underlying match {
-      case Root              => this
+      case Root => this
       case sp: Path.Segments =>
         new FilePath(
           root,
@@ -87,12 +87,11 @@ class FilePath private (private val root: Option[String], private[FilePath] val 
         )
     }
 
-  override def / (name: String): FilePath = this / FilePath.parse(name).underlying.relative
+  override def /(name: String): FilePath = this / FilePath.parse(name).underlying.relative
 
-  def / (path: RelativePath): FilePath = new FilePath(root, underlying / path)
+  def /(path: RelativePath): FilePath = new FilePath(root, underlying / path)
 
-  /** Indicates whether this path is absolute.
-    * Relative paths are interpreted relative to the current working directory
+  /** Indicates whether this path is absolute. Relative paths are interpreted relative to the current working directory
     * during a transformation.
     */
   val isAbsolute: Boolean = root.nonEmpty
@@ -100,11 +99,11 @@ class FilePath private (private val root: Option[String], private[FilePath] val 
   /** Converts this `FilePath` to a `java.nio.file.Path`.
     */
   def toNioPath: java.nio.file.Path = underlying match
-    case Root              => Paths.get(root.getOrElse(""))
+    case Root => Paths.get(root.getOrElse(""))
     case sp: Path.Segments =>
       val last     = sp.name + fragment.fold("")("#" + _)
       val segments = root.toList ++: sp.segments.init.append(last).toList
-      Paths.get(segments.head, segments.tail: _*)  
+      Paths.get(segments.head, segments.tail: _*)
 
   /** Converts this `FilePath` to an `java.io.File` instance.
     */
@@ -120,13 +119,12 @@ class FilePath private (private val root: Option[String], private[FilePath] val 
 
 }
 
-/** Companion for parsing path strings or creating `FilePath` instances from other
-  * path representations.
+/** Companion for parsing path strings or creating `FilePath` instances from other path representations.
   */
 object FilePath:
   /** Creates a new `FilePath` from the specified NIO path after normalizing it.
     */
-  def fromNioPath(path: java.nio.file.Path): FilePath = 
+  def fromNioPath(path: java.nio.file.Path): FilePath =
     val root     = Option(path.getRoot).map(_.toString)
     val segments = JIteratorWrapper(path.normalize().iterator()).toList.map(_.toString)
     new FilePath(root, Path.apply(segments))

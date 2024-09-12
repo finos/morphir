@@ -8,10 +8,10 @@ object Main extends CommandsEntryPoint:
     Make,
     Develop,
     Setup,
-    Config    
+    Config
   )
 
-  override def helpFormat:HelpFormat = 
+  override def helpFormat: HelpFormat =
     super.helpFormat.copy(sortedCommandGroups = Some(Seq("Main", "Setup & Configuration")))
 
   // TODO: Use the BuildInfo plugin to get the progName
