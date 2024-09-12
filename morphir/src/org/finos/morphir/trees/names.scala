@@ -15,15 +15,17 @@ object KebabcaseName extends Newtype[String]:
 
 type SnakecaseName = SnakecaseName.Type
 object SnakecaseName extends Newtype[String]:
-  inline override def validate(input: String): Boolean = input.nonEmpty && input.forall(_.isLower)
+  val nameRegex                                        = "^[a-z][a-z0-9_]*$".r
+  inline override def validate(input: String): Boolean = nameRegex.matches(input)
 
 type TitlecaseName = TitlecaseName.Type
 object TitlecaseName extends Newtype[String]:
-  inline override def validate(input: String): Boolean = input.nonEmpty && input.head.isUpper
+  val nameRegex                                        = "^[A-Z][a-zA-Z0-9]*$".r
+  inline override def validate(input: String): Boolean = nameRegex.matches(input)
 
 type LowercaseName = LowercaseName.Type
 object LowercaseName extends Newtype[String]:
-  inline override def validate(input: String): Boolean = input.forall(_.isLower)
+  inline override def validate(input: String): Boolean = input.nonEmpty && input.forall(_.isLower)
   extension (name: LowercaseName)
     def str: String = unwrap(name)
 
@@ -32,13 +34,13 @@ object UppercaseName extends Newtype[String]:
   inline override def validate(input: String): Boolean = input.nonEmpty && input.forall(_.isUpper)
 
 type Path = Path.Type
-object Path extends Newtype[PackagePath | ModulePath | GenericPath]:
+object Path extends Newtype[PackagePath | ModulePath | AnyPath]:
   case class Repr(parts: Chunk[Name], kind: Path.Kind)
   enum Kind:
-    case Package, Module, Generic
+    case Package, Module, Any
 
-type GenericPath = GenericPath.Type
-object GenericPath extends Newtype[Path.Repr]
+type AnyPath = AnyPath.Type
+object AnyPath extends Newtype[Path.Repr]
 
 type ModulePath = ModulePath.Type
 object ModulePath extends Newtype[Path.Repr]

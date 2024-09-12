@@ -26,8 +26,11 @@ package org.finos.morphir
 
 import cats.data.{Chain, NonEmptyChain}
 import cats.syntax.all.*
+import org.finos.morphir.internal.JIteratorWrapper
 import org.finos.morphir.Path.Root
 import org.finos.morphir.RelativePath.{CurrentDocument, CurrentTree, Parent}
+
+import java.nio.file.Paths
 
 import scala.annotation.tailrec
 

@@ -10,7 +10,7 @@ import org.finos.morphir.api.SemVerString
 import metaconfig.*
 import metaconfig.generic.*
 import metaconfig.sconfig.*
-import org.finos.morphir.PositiveInt
+import org.finos.morphir.NonNegativeInt
 import org.finos.morphir.config.{ConfigCompanion, MorphirConfig}
 
 inline given [T](using mirror: RefinedTypeOps.Mirror[T], ev: ConfDecoder[mirror.IronType]): ConfDecoder[T] =
@@ -55,22 +55,12 @@ object ElmProject:
   enum Kind:
     case Package, Application
 
-opaque type ElmPackageName <: String :| ValidElmPackageName = String :| ValidElmPackageName
-object ElmPackageName extends RefinedTypeOps[String, ValidElmPackageName, ElmPackageName]:
-  given confEncoder: ConfEncoder[ElmPackageName] = ConfEncoder.StringEncoder.contramap(_.value)
-
-  given confDecoder: ConfDecoder[ElmPackageName] = ConfDecoder.stringConfDecoder.flatMap {
-    str =>
-      parse(str).fold((err: Result.Error[String]) => Configured.error(err.show))(Configured.ok)
-  }
-
-  def parse(input: String): Result[String, ElmPackageName] = Result.fromEither(input.refineEither[ValidElmPackageName])
-
-final case class ElmPackageVersion(major: PositiveInt, minor: PositiveInt, patch: PositiveInt):
+final case class ElmPackageVersion(major: NonNegativeInt, minor: NonNegativeInt, patch: NonNegativeInt):
   override def toString(): String = s"$major.$minor.$patch"
 
 object ElmPackageVersion:
-  inline def default: ElmPackageVersion = ElmPackageVersion(PositiveInt.zero, PositiveInt.zero, PositiveInt.one)
+  inline def default: ElmPackageVersion =
+    ElmPackageVersion(NonNegativeInt.zero, NonNegativeInt.zero, NonNegativeInt.one)
 
   given Surface[ElmPackageVersion] = generic.deriveSurface
   given confDecoder: ConfDecoder[ElmPackageVersion] =

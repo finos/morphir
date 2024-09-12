@@ -33,6 +33,7 @@ object morphir extends CrossPlatform { root =>
       ivy"com.lihaoyi::os-lib::${V.oslib}",
       ivy"com.lihaoyi::pprint::${V.pprint}",
       ivy"com.github.alexarchambault::case-app:${V.`case-app`}",
+      ivy"dev.dirs:directories:${V.`directories-jvm`}",
       ivy"io.getkyo::kyo-core::${V.kyo}",
       ivy"io.getkyo::kyo-combinators::${V.kyo}",
       ivy"io.getkyo::kyo-direct::${V.kyo}",
@@ -91,9 +92,10 @@ object morphir extends CrossPlatform { root =>
   /// Shared module for the morphir project
   trait Shared extends ScalaLibraryModule with PlatformAwareScalaProject with MorphirLibraryPublishModule {
     def scalaVersion = V.Scala.scala3_5_version
-    def ivyDeps = Agg(
-      ivy"com.outr::scribe::${V.scribe}",
+    def ivyDeps = Agg(      
       ivy"com.lihaoyi::os-lib::${V.oslib}",
+      ivy"com.github.j-mie6::parsley:${V.parsley}",
+      ivy"com.outr::scribe::${V.scribe}",
       ivy"io.bullet::borer-core:${V.borer}",
       ivy"io.bullet::borer-derivation:${V.borer}",
       ivy"io.getkyo::kyo-core::${V.kyo}",
@@ -110,6 +112,9 @@ object morphir extends CrossPlatform { root =>
   }
 
   object jvm extends ScalaJvmProject with Shared {
+    override def ivyDeps = super.ivyDeps() ++ Agg(
+      ivy"dev.dirs:directories:${V.`directories-jvm`}"
+    )
     object test extends ScalaTests with MorphirTests {}
   }
 
@@ -122,7 +127,13 @@ object morphir extends CrossPlatform { root =>
     }
 
     object jvm extends ScalaJvmProject with Shared {
+      override def ivyDeps: Target[Agg[Dep]] = super.ivyDeps() ++ Agg(
+        ivy"dev.dirs:directories:${V.`directories-jvm`}"
+      )
       object test extends ScalaTests with MorphirTests {
+        def ivyDeps = super.ivyDeps() ++ Agg(
+          ivy"com.lihaoyi::os-lib::${V.oslib}",
+        )
         def scalaVersion = V.Scala.scala3_5_version
       }
     }
@@ -141,6 +152,9 @@ object morphir extends CrossPlatform { root =>
       }
 
       object jvm extends ScalaJvmProject with Shared {
+        def ivyDeps = Agg(
+          ivy"org.typelevel::cats-core::${V.cats}"
+        )
         def moduleDeps = Seq(morphir.jvm)
         object test extends ScalaTests with MorphirTests {}
       }
