@@ -55,17 +55,6 @@ object ElmProject:
   enum Kind:
     case Package, Application
 
-opaque type ElmPackageName <: String :| ValidElmPackageName = String :| ValidElmPackageName
-object ElmPackageName extends RefinedTypeOps[String, ValidElmPackageName, ElmPackageName]:
-  given confEncoder: ConfEncoder[ElmPackageName] = ConfEncoder.StringEncoder.contramap(_.value)
-
-  given confDecoder: ConfDecoder[ElmPackageName] = ConfDecoder.stringConfDecoder.flatMap {
-    str =>
-      parse(str).fold((err: Result.Error[String]) => Configured.error(err.show))(Configured.ok)
-  }
-
-  def parse(input: String): Result[String, ElmPackageName] = Result.fromEither(input.refineEither[ValidElmPackageName])
-
 final case class ElmPackageVersion(major: PositiveInt, minor: PositiveInt, patch: PositiveInt):
   override def toString(): String = s"$major.$minor.$patch"
 
