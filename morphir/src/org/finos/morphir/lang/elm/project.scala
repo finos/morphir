@@ -10,7 +10,7 @@ import org.finos.morphir.api.SemVerString
 import metaconfig.*
 import metaconfig.generic.*
 import metaconfig.sconfig.*
-import org.finos.morphir.PositiveInt
+import org.finos.morphir.NonNegativeInt
 import org.finos.morphir.config.{ConfigCompanion, MorphirConfig}
 
 inline given [T](using mirror: RefinedTypeOps.Mirror[T], ev: ConfDecoder[mirror.IronType]): ConfDecoder[T] =
@@ -55,11 +55,12 @@ object ElmProject:
   enum Kind:
     case Package, Application
 
-final case class ElmPackageVersion(major: PositiveInt, minor: PositiveInt, patch: PositiveInt):
+final case class ElmPackageVersion(major: NonNegativeInt, minor: NonNegativeInt, patch: NonNegativeInt):
   override def toString(): String = s"$major.$minor.$patch"
 
 object ElmPackageVersion:
-  inline def default: ElmPackageVersion = ElmPackageVersion(PositiveInt.zero, PositiveInt.zero, PositiveInt.one)
+  inline def default: ElmPackageVersion =
+    ElmPackageVersion(NonNegativeInt.zero, NonNegativeInt.zero, NonNegativeInt.one)
 
   given Surface[ElmPackageVersion] = generic.deriveSurface
   given confDecoder: ConfDecoder[ElmPackageVersion] =

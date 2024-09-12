@@ -131,6 +131,9 @@ object morphir extends CrossPlatform { root =>
         ivy"dev.dirs:directories:${V.`directories-jvm`}"
       )
       object test extends ScalaTests with MorphirTests {
+        def ivyDeps = super.ivyDeps() ++ Agg(
+          ivy"com.lihaoyi::os-lib::${V.oslib}",
+        )
         def scalaVersion = V.Scala.scala3_5_version
       }
     }

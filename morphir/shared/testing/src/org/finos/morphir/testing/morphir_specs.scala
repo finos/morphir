@@ -19,7 +19,7 @@ abstract class MorphirSpecDefault extends ZIOSpecDefault with MorphirSpec {
 trait MorphirSpec { self: ZIOSpecAbstract =>
   import MorphirSpec.TestContext
   def testContext(using testFile: sourcecode.File): TestContext = TestContext(testFile.value)
-  inline def compileError(code: String)                         = assertZIO(typeCheck(code))(Assertion.isLeft)
+  inline def compileError(code: String)                         = assertZIO(typeCheck(code))
 }
 
 object MorphirSpec:

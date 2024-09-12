@@ -4,19 +4,20 @@ import neotype.*
 import metaconfig.*
 import metaconfig.generic.*
 import metaconfig.sconfig.*
+import org.finos.morphir.config.*
 
-type PositiveInt = PositiveInt.Type
+type NonNegativeInt = NonNegativeInt.Type
 
-object PositiveInt extends Subtype[Int]:
-  inline def zero: PositiveInt = PositiveInt(0)
-  inline def one: PositiveInt  = PositiveInt(1)
+object NonNegativeInt extends Subtype[Int]:
+  inline def zero: NonNegativeInt = NonNegativeInt(0)
+  inline def one: NonNegativeInt  = NonNegativeInt(1)
 
   inline override def validate(input: Int): Boolean | String =
     input >= 0
 
-  given ConfDecoder[PositiveInt] =
-    ConfDecoder.intConfDecoder.flatMap(n =>
-      PositiveInt.make(n) match
-        case Left(value)  => Configured.error(value)
-        case Right(value) => Configured.ok(value)
-    )
+  given confDecoder: ConfDecoder[NonNegativeInt] =
+    ConfDecoder.intConfDecoder.flatMap(n => NonNegativeInt.make(n).toConfigured())
+  given confEncoder: ConfEncoder[NonNegativeInt] = ConfEncoder.IntEncoder.contramap(identity)
+
+  extension (self: NonNegativeInt)
+    def value: Int = self

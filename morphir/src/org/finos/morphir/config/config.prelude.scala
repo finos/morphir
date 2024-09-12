@@ -35,3 +35,16 @@ object ToConfigured:
 
 extension [E, A, R[+_, +_]](result: R[E, A])(using instance: ToConfigured[E, A, R])
   def toConfigured(stackSize: Int = 10): Configured[A] = instance.toConfigured(result)(stackSize = stackSize)
+
+extension [A](self: ConfDecoder[Map[String, A]])
+  def transformKeys[K](f: String => Configured[K]): ConfDecoder[Map[K, A]] =
+    self.flatMap: (bindings: Map[String, A]) =>
+      var confErrors: List[ConfError] = Nil
+      var transformed: Map[K, A]      = Map.empty
+      for (k, v) <- bindings do
+        f(k) match
+          case Configured.Ok(key) =>
+            transformed = transformed.updated(key, v)
+          case Configured.NotOk(error) =>
+            confErrors = error :: confErrors
+      Configured(transformed, confErrors*)

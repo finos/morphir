@@ -20,8 +20,8 @@ object ElmProjectSpec extends MorphirKyoSpecDefault {
 object ElmPackageNameSpec extends MorphirKyoSpecDefault:
   def spec = suite("ElmPackageNameSpec")(
     test("should be able to parse a valid Elm package name") {
-      val packageName = ElmPackageName("morphir")
-      assertTrue(packageName == "morphir")
+      val packageName = ElmPackageName("finos/morphir")
+      assertTrue(packageName == "finos/morphir")
     },
     test("should not be able to parse an invalid Elm package name") {
       val result = ElmPackageName.parse("morphir%sdk")
