@@ -37,6 +37,7 @@ extension [E, A, R[+_, +_]](result: R[E, A])(using instance: ToConfigured[E, A, 
   def toConfigured(stackSize: Int = 10): Configured[A] = instance.toConfigured(result)(stackSize = stackSize)
 
 extension [A](self: ConfDecoder[Map[String, A]])
+  /// Provide a `ConfDecoder` for `Map[K, A]` by transforming the keys of the map using the provided function `f`.
   def transformKeys[K](f: String => Configured[K]): ConfDecoder[Map[K, A]] =
     self.flatMap: (bindings: Map[String, A]) =>
       var confErrors: List[ConfError] = Nil

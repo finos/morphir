@@ -6,6 +6,7 @@ object V {
   val cats             = "2.12.0"
   val `directories-jvm` = "26"
   val `case-app`       = "2.1.0-M29"
+  val `graal-polyglot` = "24.0.2"
   val `just-semver`    = "1.0.0"
   val kyo              = "0.11.1"
   val iron             = "2.6.0"
@@ -16,8 +17,8 @@ object V {
   val neotype          = "0.3.0"
   val `scala-uri`      = "4.0.3"
   val scribe           = "3.15.0"
-  val `graal-polyglot` = "24.0.2"
   val scalatest        = "3.2.19"
+  val t2               = "2.0.0"
   val zio              = "2.1.9"
 
   object Scala {

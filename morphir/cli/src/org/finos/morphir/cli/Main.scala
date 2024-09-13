@@ -5,6 +5,7 @@ import caseapp.core.help.*
 object Main extends CommandsEntryPoint:
 
   override def commands: Seq[Command[?]] = Seq(
+    About,
     Make,
     Develop,
     Setup,

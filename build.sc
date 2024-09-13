@@ -41,7 +41,8 @@ object morphir extends CrossPlatform { root =>
       ivy"org.scalameta::metaconfig-core::${V.metaconfig}",
       ivy"org.scalameta::metaconfig-sconfig::${V.metaconfig}",
       ivy"io.github.kitlangton::neotype::${V.neotype}",
-      ivy"org.graalvm.polyglot:js:${V.`graal-polyglot`}"
+      ivy"org.graalvm.polyglot:js:${V.`graal-polyglot`}",
+      ivy"com.github.losizm::t2:${V.t2}",
     )
   }
 
