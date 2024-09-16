@@ -9,22 +9,22 @@ final case class AboutOptions()
 
 object About extends MorphirCliCommand[AboutOptions]:
   override def group = "Information"
-  def runEffect(options: AboutOptions, remainingArgs: RemainingArgs) = 
+  def runEffect(options: AboutOptions, remainingArgs: RemainingArgs) =
     defer {
-      println("_____________________________________________________________")    
+      println("_____________________________________________________________")
       println("Morphir CLI - A command line interface for Morphir.")
-      println("_____________________________________________________________")        
+      println("_____________________________________________________________")
 
       val table = t2.TableBuilder()
         .add("#", "Property", "Value")
         .add("1", "Version", BuildInfo.version)
         .add("2", "Scala Version", BuildInfo.scalaVersion)
         .add("3", "Build Time", BuildInfo.buildTime)
-        .add("4", "Java Version", System.getProperty("java.version"))
-        .add("5", "Java Home", System.getProperty("java.home"))
-        .add("6", "OS", s"${System.getProperty("os.name")} ${System.getProperty("os.version")}")
-        .add("7", "User", System.getProperty("user.name"))
-        //TODO: Add info about Morphir Home and Setup state
+        .add("4", "Java Version", await(System.property[String]("java.version", "N/A")))
+        .add("5", "Java Home", await(System.property[String]("java.home", "N/A")))
+        .add("6", "OS", s"${await(System.property[String]("os.name"))} ${await(System.property[String]("os.version"))}")
+        .add("7", "User", await(System.property[String]("user.name", "N/A")))
+        // TODO: Add info about Morphir Home and Setup state
         .build()
 
       // Create table writer with supplied configuration
@@ -35,9 +35,9 @@ object About extends MorphirCliCommand[AboutOptions]:
         "bodyRuleColor"    -> "yellow",
         "rowHeaderEnabled" -> "true",
         "rowHeaderColor"   -> "bold,cyan",
-        "maxValueSize" -> "60",
-        "truncateEnabled" -> "false"
+        "maxValueSize"     -> "60",
+        "truncateEnabled"  -> "false"
       )
-      
-      writer.write(System.out, table)
+
+      writer.write(java.lang.System.out, table)
     }
