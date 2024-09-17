@@ -1,12 +1,13 @@
 package org.finos.morphir.lang.elm
 
-import org.finos.morphir.testing.MorphirKyoSpecDefault
+import org.finos.morphir.testing.{MorphirKyoSpecDefault, MorphirSpecDefault}
 import kyo.*
 import metaconfig.{Conf, ConfDecoder, ConfEncoder, Configured, Input}
 import org.finos.morphir.NonNegativeInt
 import zio.test.*
 import zio.test.Assertion.*
 import org.finos.morphir.config.*
+import org.finos.morphir.lang.elm.ElmProjectSpec.{compileError, test}
 
 object ElmProjectSpec extends MorphirKyoSpecDefault {
   def spec = suite("ElmProjectSpec")(
@@ -19,10 +20,19 @@ object ElmProjectSpec extends MorphirKyoSpecDefault {
   )
 }
 
-object ElmPackageNameSpec extends MorphirKyoSpecDefault:
+object ElmPackageNameSpec extends MorphirSpecDefault:
   import ElmPackageName.given
 
   def spec = suite("ElmPackageNameSpec")(
+    test("should be able to create a package with a valid name") {
+      val packageName = ElmPackageName("author/package")
+      assertTrue(packageName == "author/package")
+    },
+    test("should not be able to create a package with an invalid name") {
+      compileError(
+        """val packageName = ElmPackageName("author-only")"""
+      )(isLeft)
+    },
     test("should be able to parse a valid Elm package name") {
       val packageName = ElmPackageName("finos/morphir")
       assertTrue(packageName == "finos/morphir")
@@ -48,10 +58,32 @@ object ElmPackageNameSpec extends MorphirKyoSpecDefault:
     }
   )
 
-object ElmModuleNameSpec extends MorphirKyoSpecDefault:
+object ElmModuleNameSpec extends MorphirSpecDefault:
   import ElmModuleName.given
 
   def spec = suite("ElmModuleNameSpec")(
+    test("should be able to create a module with a valid name") {
+      val moduleName = ElmModuleName("Author.Module")
+      assertTrue(moduleName == "Author.Module")
+    },
+    test("should not be able to create a module with an invalid name") {
+      compileError(
+        """val moduleName = ElmModuleName("author.module")"""
+      )(isLeft)
+    },
+    test("should not be able to create a module whose name ends in a .") {
+      compileError(
+        """val moduleName = ElmModuleName("Morphir.Sdk.")"""
+      )(isLeft)
+    },
+    test("Can get the namespace from a module name with one") {
+      val moduleName = ElmModuleName("Morphir.Sdk")
+      assertTrue(moduleName.namespace == Some("Morphir"))
+    },
+    test("Can get the namespace from a module name with a longer namespace") {
+      val moduleName = ElmModuleName("Morphir.IR.SDK.String")
+      assertTrue(moduleName.namespace == Some("Morphir.IR.SDK"))
+    },
     test("should parse a valid Elm module name") {
       val result = ElmModuleName.parse("Morphir.Core")
       assertTrue(result.isSuccess)

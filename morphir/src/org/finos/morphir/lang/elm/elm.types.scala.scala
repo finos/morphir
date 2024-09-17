@@ -10,8 +10,8 @@ import org.finos.morphir.NonNegativeInt
 type ElmModuleName = ElmModuleName.Type
 
 object ElmModuleName extends Subtype[String]:
-  inline def pattern                          = "^([A-Z][a-zA-Z0-9]*)(\\.[A-Z][a-zA-Z0-9]*)*$".r
-  inline override def validate(input: String) = pattern.matches(input)
+  inline def pattern                                   = "^([A-Z][a-zA-Z0-9]*)(\\.[A-Z][a-zA-Z0-9]*)*$".r
+  inline override def validate(input: String): Boolean = pattern.matches(input)
 
   given confEncoder: ConfEncoder[ElmModuleName] = ConfEncoder.StringEncoder.contramap(_.value)
 
@@ -24,6 +24,10 @@ object ElmModuleName extends Subtype[String]:
 
   extension (self: ElmModuleName)
     def value: String = self
+    def namespace: Option[String] =
+      if (!validate(value)) None
+      else
+        Some(value.split("\\.").dropRight(1).mkString("."))
 
 type ElmPackageName = ElmPackageName.Type
 object ElmPackageName extends Subtype[String]:
