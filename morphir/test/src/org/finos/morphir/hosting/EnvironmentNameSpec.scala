@@ -11,16 +11,16 @@ object EnvironmentNameSpec extends MorphirSpecDefault:
     suite("Custom naming")(
       test("apply should return a custom environment name when given a custom name") {
         val name = EnvironmentName("custom")
-        assertTrue(name == EnvironmentName.Custom("custom".assume))
+        assertTrue(name == EnvironmentName.Custom(CustomEnvironmentName("custom")))
       },
       test("apply should return a custom environment name when given a custom name with spaces") {
         val name = EnvironmentName("User Acceptance Test")
-        assertTrue(name == EnvironmentName.Custom("User Acceptance Test".assume))
+        assertTrue(name == EnvironmentName.Custom(CustomEnvironmentName("User Acceptance Test")))
       }
     ),
     test("customUnsafe should return a custom environment name") {
       val name = EnvironmentName.customUnsafe("custom", EnvironmentType.Development)
-      assertTrue(name == EnvironmentName.Custom("custom".assume, EnvironmentType.Development))
+      assertTrue(name == EnvironmentName.Custom(CustomEnvironmentName("custom"), EnvironmentType.Development))
     },
     test("customUnsafe should throw an IllegalArgumentException when given a reserved name") {
       for {
@@ -33,7 +33,7 @@ object EnvironmentNameSpec extends MorphirSpecDefault:
     },
     test("custom should return a custom environment name") {
       val name = EnvironmentName.custom("custom", EnvironmentType.Development)
-      assertTrue(name == Right(EnvironmentName.Custom("custom".assume, EnvironmentType.Development)))
+      assertTrue(name == Right(EnvironmentName.Custom(CustomEnvironmentName("custom"), EnvironmentType.Development)))
     },
     test("custom should provide an Error when given a reserved name") {
       val actual = EnvironmentName.custom("development", EnvironmentType.Development)

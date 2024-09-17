@@ -1,8 +1,5 @@
 package org.finos.morphir.hosting
 import neotype.*
-import io.github.iltotore.iron.*
-import io.github.iltotore.iron.constraint.all.*
-import org.finos.morphir.hosting.EnvironmentName.ValidCustomEnvironmentName
 type ApplicationName = ApplicationName.Type
 object ApplicationName extends Subtype[String]
 
@@ -11,10 +8,7 @@ enum EnvironmentName:
   case Development
   case Test
   case Production
-  case Custom(
-    name: String :| ValidCustomEnvironmentName,
-    override val environmentType: EnvironmentType = EnvironmentType.Development
-  )
+  case Custom(name: CustomEnvironmentName, override val environmentType: EnvironmentType = EnvironmentType.Development)
 
   def environmentType: EnvironmentType = this match
     case Development                => EnvironmentType.Development
@@ -28,31 +22,31 @@ enum EnvironmentName:
     case other           => other
 
 object EnvironmentName:
-  type KnownEnvironmentName = Match["(?i)development|dev|test|production|prod"]
-  type ValidCustomEnvironmentName = DescribedAs[
-    Not[KnownEnvironmentName],
-    "Custom environment name cannot be one of the reserved names: 'development', 'dev', 'test', 'production', 'prod'"
-  ]
   def apply(name: String): EnvironmentName = name.toLowerCase() match
     case "development" | "dev" => Development
     case "test"                => Test
     case "production" | "prod" => Production
-    case _                     => Custom(name.assume)
+    case _ =>
+      val customName = CustomEnvironmentName.unsafeMake(name)
+      Custom(customName)
 
   def custom(
     name: String,
     environmentType: EnvironmentType = EnvironmentType.Development
-  ): Either[String, EnvironmentName] =
-    for
-      n <- name.refineEither[ValidCustomEnvironmentName]
-    yield Custom(n, environmentType)
+  ): Either[String, EnvironmentName] = CustomEnvironmentName.make(name).right.map(Custom(_, environmentType))
 
   def customUnsafe(name: String, environmentType: EnvironmentType): EnvironmentName =
-    if (name.matches("(?i)development|dev|test|production|prod")) throw new IllegalArgumentException(
-      s"Custom environment name cannot be one of the reserved names: 'development', 'dev', 'test', 'production', 'prod'"
+    CustomEnvironmentName.make(name).fold(
+      error => throw new IllegalArgumentException(error),
+      Custom(_, environmentType)
     )
-    else
-      Custom(name.assume, environmentType)
 
 enum EnvironmentType:
   case Development, Testing, Staging, Production
+
+type CustomEnvironmentName = CustomEnvironmentName.Type
+object CustomEnvironmentName extends Subtype[String]:
+  inline override def validate(input: String): Boolean | String =
+    if (input.matches("(?i)development|dev|test|production|prod"))
+      s"Custom environment name cannot be one of the reserved names: 'development', 'dev', 'test', 'production', 'prod'"
+    else true
