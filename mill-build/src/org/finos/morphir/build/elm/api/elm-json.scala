@@ -73,7 +73,8 @@ object ElmProjectType {
     }
 }
 
-final case class ElmPackageName(value:String) extends AnyVal {
+final case class 
+ElmPackageName(value:String) extends AnyVal {
     def toPath(root:os.Path):os.Path = root / os.RelPath(value.replace(".", FileSystems.getDefault().getSeparator()) + ".elm")
 }
 object ElmPackageName {
