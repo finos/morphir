@@ -92,7 +92,7 @@ object morphir extends CrossPlatform { root =>
   /// Shared module for the morphir project
   trait Shared extends ScalaLibraryModule with PlatformAwareScalaProject with MorphirLibraryPublishModule {
     def scalaVersion = V.Scala.scala3_5_version
-    def ivyDeps = Agg(      
+    def ivyDeps = Agg(
       ivy"com.lihaoyi::os-lib::${V.oslib}",
       ivy"com.github.j-mie6::parsley:${V.parsley}",
       ivy"com.outr::scribe::${V.scribe}",
@@ -105,7 +105,7 @@ object morphir extends CrossPlatform { root =>
       ivy"io.github.iltotore::iron:${V.iron}",
       ivy"io.kevinlee::just-semver::${V.`just-semver`}",
       ivy"org.scalameta::metaconfig-core::${V.metaconfig}",
-      ivy"org.scalameta::metaconfig-sconfig::${V.metaconfig}",
+      ivy"org.scalameta::metaconfig-sconfig::${V.metaconfig}"
     )
 
     override def platformModuleDeps: Seq[CrossPlatform] = Seq(core)
@@ -132,7 +132,7 @@ object morphir extends CrossPlatform { root =>
       )
       object test extends ScalaTests with MorphirTests {
         def ivyDeps = super.ivyDeps() ++ Agg(
-          ivy"com.lihaoyi::os-lib::${V.oslib}",
+          ivy"com.lihaoyi::os-lib::${V.oslib}"
         )
         def scalaVersion = V.Scala.scala3_5_version
       }

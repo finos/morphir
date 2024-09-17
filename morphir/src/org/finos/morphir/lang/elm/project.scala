@@ -1,20 +1,11 @@
 package org.finos.morphir.lang.elm
 
-import io.github.iltotore.iron.*
-import io.github.iltotore.iron.constraint.numeric.*
-import io.github.iltotore.iron.constraint.string.*
 import kyo.Result
-import org.finos.morphir.constraint.string.*
-import org.finos.morphir.lang.elm.constraint.string.*
-import org.finos.morphir.api.SemVerString
 import metaconfig.*
 import metaconfig.generic.*
 import metaconfig.sconfig.*
-import org.finos.morphir.NonNegativeInt
+import org.finos.morphir.api.SemVerString
 import org.finos.morphir.config.{ConfigCompanion, MorphirConfig}
-
-inline given [T](using mirror: RefinedTypeOps.Mirror[T], ev: ConfDecoder[mirror.IronType]): ConfDecoder[T] =
-  ev.asInstanceOf[ConfDecoder[T]]
 
 //TODO: Add Encoders and Decoders for this using scalameta/metaconfig
 //: See: https://scalameta.org/metaconfig/docs/reference.html#genericderivedecoder
@@ -55,28 +46,38 @@ object ElmProject:
   enum Kind:
     case Package, Application
 
-final case class ElmPackageVersion(major: NonNegativeInt, minor: NonNegativeInt, patch: NonNegativeInt):
-  override def toString(): String = s"$major.$minor.$patch"
-
-object ElmPackageVersion:
-  inline def default: ElmPackageVersion =
-    ElmPackageVersion(NonNegativeInt.zero, NonNegativeInt.zero, NonNegativeInt.one)
-
-  given Surface[ElmPackageVersion] = generic.deriveSurface
-  given confDecoder: ConfDecoder[ElmPackageVersion] =
-    generic.deriveDecoder[ElmPackageVersion](ElmPackageVersion.default)
-
 // type ElmApplication = ElmProject.ElmApplication
 // object ElmApplication:
 //   final case class PackageDependency(packageName:ElmPackageName, version:ElmPackageVersion)
 
 final case class ElmApplicationDependencies(
-  direct: Map[String, ElmPackageVersion],
-  indirect: Map[String, ElmPackageVersion]
-) // TODO: change this to ElmPackageName
+  direct: Map[ElmPackageName, ElmPackageVersion],
+  indirect: Map[ElmPackageName, ElmPackageVersion]
+)
 
 object ElmApplicationDependencies:
+  import org.finos.morphir.config.transformKeys
+  import org.finos.morphir.config.ToConfigured.given
+  import ElmPackageName.given
+  import ElmPackageVersion.given
+
   val default: ElmApplicationDependencies = ElmApplicationDependencies(Map.empty, Map.empty)
+
+  given ConfEncoder[Map[ElmPackageName, ElmPackageVersion]] = {
+    val base: ConfEncoder[Map[String, ElmPackageVersion]] = implicitly
+    base.contramap[Map[ElmPackageName, ElmPackageVersion]]((x: Map[ElmPackageName, ElmPackageVersion]) =>
+      x.map { case (k, v) => k.toString -> v }
+    )
+  }
+
+  given confEncoder: ConfEncoder[ElmApplicationDependencies] =
+    generic.deriveEncoder[ElmApplicationDependencies]
+
+  given ConfDecoder[Map[ElmPackageName, ElmPackageVersion]] =
+    val base: ConfDecoder[Map[String, ElmPackageVersion]] = implicitly
+    ConfDecoder.from(conf =>
+      base.read(conf)
+    ).transformKeys((key: String) => ElmPackageName.parse(key).toConfigured())
 
   given Surface[ElmApplicationDependencies] = generic.deriveSurface
   given confDecoder: ConfDecoder[ElmApplicationDependencies] =
@@ -84,21 +85,3 @@ object ElmApplicationDependencies:
 
 type ElmPackage = ElmProject.ElmPackage
 object ElmPackage
-
-opaque type ElmModuleName <: String :| ValidElmModuleName = String :| ValidElmModuleName
-object ElmModuleName extends RefinedTypeOps[String, ValidElmModuleName, ElmModuleName]:
-  given confEncoder: ConfEncoder[ElmModuleName] = ConfEncoder.StringEncoder.contramap(_.value)
-  given confDecoder: ConfDecoder[ElmModuleName] = ConfDecoder.stringConfDecoder.flatMap {
-    str =>
-      parse(str).fold((err: Result.Error[String]) => Configured.error(err.show))(Configured.ok)
-  }
-
-  def parse(input: String): Result[String, ElmModuleName] = Result.fromEither(input.refineEither[ValidElmModuleName])
-
-  extension (name: ElmModuleName)
-    def namespace: Option[ElmModuleName] =
-      val idx = name.lastIndexOf('.')
-      if idx < 0 then
-        None
-      else
-        Some(ElmModuleName.assume(name.substring(0, idx)))
