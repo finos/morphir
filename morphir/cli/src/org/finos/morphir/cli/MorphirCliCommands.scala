@@ -3,6 +3,10 @@ import caseapp.CommandsEntryPoint
 import caseapp.core.app.Command
 import caseapp.core.help.*
 import commands.{About, Config, Develop, Make, Setup}
+import org.finos.morphir.cli.options.*
+import org.finos.morphir.cli.commands.ConfigSet
+import org.finos.morphir.cli.commands.ConfigSet.ConfigGet
+import org.finos.morphir.cli.MorphirCliCommand
 
 class MorphirCliCommands(
   val progName: String,
@@ -15,14 +19,16 @@ class MorphirCliCommands(
     Make,
     Develop,
     Setup,
-    Config
+    ConfigGet,
+    Config,
+    ConfigSet
   )
 
   def commands: Seq[Command[?]] = allCommands
 
   override def helpFormat: HelpFormat =
     super.helpFormat.copy(
-      sortedGroups = Some(MorphirCliCommand.sortedGroups),
+      sortedGroups = Some(OptionGroup.order),
       sortedCommandGroups = Some(Seq("Main", "Setup & Configuration"))
     )
 

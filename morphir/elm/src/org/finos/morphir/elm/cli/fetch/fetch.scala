@@ -2,14 +2,11 @@ package org.finos.morphir.elm.cli.fetch
 import org.finos.morphir.lang.elm.command
 import org.finos.morphir.lang.elm.command.*
 import org.finos.morphir.cli.{given, *}
+import org.finos.morphir.elm.cli.{given, *}
 import caseapp.*
 import kyo.*
 
-final case class FetchOptions(projectDir: Option[kyo.Path] = None):
-  def toParams: FetchParams =
-    FetchParams(projectDir.getOrElse(kyo.Path(os.pwd.toString)))
-
-object Fetch extends MorphirCliCommand[FetchOptions]:
+object Fetch extends MorphirElmCliCommand[FetchOptions]:
   def runEffect(options: FetchOptions, remainingArgs: RemainingArgs) =
     defer {
       // TODO: Perform fetch similar to https://github.com/robx/shelm/blob/master/shelm
