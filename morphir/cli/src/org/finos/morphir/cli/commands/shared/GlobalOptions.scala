@@ -5,6 +5,6 @@ final case class GlobalOptions(
   @Recurse
   environmentOptions: HostEnvironmentOptions = HostEnvironmentOptions()
 )
- 
+
 object GlobalOptions:
   val default = GlobalOptions()

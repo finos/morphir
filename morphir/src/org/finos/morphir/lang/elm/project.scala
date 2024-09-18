@@ -84,21 +84,3 @@ object ElmApplicationDependencies:
 
 type ElmPackage = ElmProject.ElmPackage
 object ElmPackage
-
-opaque type ElmModuleName <: String :| ValidElmModuleName = String :| ValidElmModuleName
-object ElmModuleName extends RefinedTypeOps[String, ValidElmModuleName, ElmModuleName]:
-  given confEncoder: ConfEncoder[ElmModuleName] = ConfEncoder.StringEncoder.contramap(_.value)
-  given confDecoder: ConfDecoder[ElmModuleName] = ConfDecoder.stringConfDecoder.flatMap {
-    str =>
-      parse(str).fold((err: Result.Error[String]) => Configured.error(err.show))(Configured.ok)
-  }
-
-  def parse(input: String): Result[String, ElmModuleName] = Result.fromEither(input.refineEither[ValidElmModuleName])
-
-  extension (name: ElmModuleName)
-    def namespace: Option[ElmModuleName] =
-      val idx = name.lastIndexOf('.')
-      if idx < 0 then
-        None
-      else
-        Some(ElmModuleName.assume(name.substring(0, idx)))

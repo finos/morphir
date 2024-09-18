@@ -18,4 +18,3 @@ final case class ExitCode(code: Int)
 object ExitCode:
   val success: ExitCode = ExitCode(0)
   val failure: ExitCode = ExitCode(1)
-
