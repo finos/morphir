@@ -58,7 +58,6 @@ final case class ElmApplicationDependencies(
 object ElmApplicationDependencies:
   import org.finos.morphir.config.transformKeys
   import org.finos.morphir.config.ToConfigured.given
-  import ElmPackageName.given
   import ElmPackageVersion.given
 
   val default: ElmApplicationDependencies = ElmApplicationDependencies(Map.empty, Map.empty)
