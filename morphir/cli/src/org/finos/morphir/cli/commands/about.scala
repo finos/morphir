@@ -1,10 +1,11 @@
-package org.finos.morphir.cli.command
+package org.finos.morphir.cli.commands
 
 import caseapp.*
 import kyo.*
 import org.finos.morphir.build.BuildInfo
 import org.finos.morphir.cli.{given, *}
 
+@HelpMessage("Display information about the Morphir CLI")
 final case class AboutOptions()
 
 object About extends MorphirCliCommand[AboutOptions]:
