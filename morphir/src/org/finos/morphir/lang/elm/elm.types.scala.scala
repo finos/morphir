@@ -53,3 +53,4 @@ object ElmModuleName extends Subtype[String]:
         None
       else
         Some(ElmNamespace.unsafeMake(name.substring(0, idx)))
+

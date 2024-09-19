@@ -6,5 +6,5 @@ import kyo.*
 final case class MakeParams()
 
 final case class Make(params: MakeParams) extends Command[MakeParams]:
-  def run(params: MakeParams): Unit < (IO & Abort[Throwable]) =
+  def run(params: MakeParams): Unit < Command.Effects =
     kyo.Console.println("Running make")

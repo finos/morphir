@@ -1,20 +1,12 @@
 package org.finos.morphir.lang.elm
 
-import io.github.iltotore.iron.*
-import io.github.iltotore.iron.constraint.numeric.*
-import io.github.iltotore.iron.constraint.string.*
 import kyo.Result
-import org.finos.morphir.constraint.string.*
-import org.finos.morphir.lang.elm.constraint.string.*
 import org.finos.morphir.api.SemVerString
 import metaconfig.*
 import metaconfig.generic.*
 import metaconfig.sconfig.*
 import org.finos.morphir.NonNegativeInt
 import org.finos.morphir.config.{ConfigCompanion, MorphirConfig}
-
-inline given [T](using mirror: RefinedTypeOps.Mirror[T], ev: ConfDecoder[mirror.IronType]): ConfDecoder[T] =
-  ev.asInstanceOf[ConfDecoder[T]]
 
 //TODO: Add Encoders and Decoders for this using scalameta/metaconfig
 //: See: https://scalameta.org/metaconfig/docs/reference.html#genericderivedecoder
