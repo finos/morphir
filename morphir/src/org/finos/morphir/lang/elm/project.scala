@@ -46,9 +46,30 @@ object ElmProject:
   enum Kind:
     case Package, Application
 
-// type ElmApplication = ElmProject.ElmApplication
-// object ElmApplication:
-//   final case class PackageDependency(packageName:ElmPackageName, version:ElmPackageVersion)
+  private def defaultApp: ElmApplication = ElmApplication(
+    List.empty,
+    SemVerString("v0.0.1"),
+    ElmApplicationDependencies.default,
+    ElmApplicationDependencies.default
+  )
+
+  private def defaultPackage: ElmPackage = ElmPackage(
+    ElmPackageName("author/name"),
+    None,
+    ElmPackageVersion.default,
+    "",
+    List.empty,
+    Map.empty,
+    Map.empty
+  )
+
+  given Surface[ElmApplication]                 = generic.deriveSurface
+  given ConfEncoder[ElmApplication]             = generic.deriveEncoder
+  given appDecoder: ConfDecoder[ElmApplication] = generic.deriveDecoder(defaultApp)
+
+  given Surface[ElmPackage]                     = generic.deriveSurface
+  given ConfEncoder[ElmPackage]                 = generic.deriveEncoder
+  given packageDecoder: ConfDecoder[ElmPackage] = generic.deriveDecoder(defaultPackage)
 
 final case class ElmApplicationDependencies(
   direct: Map[ElmPackageName, ElmPackageVersion],
