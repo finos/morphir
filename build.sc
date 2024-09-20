@@ -97,6 +97,7 @@ object morphir extends CrossPlatform { root =>
     def ivyDeps = Agg(
       ivy"com.lihaoyi::os-lib::${V.oslib}",
       ivy"com.github.j-mie6::parsley:${V.parsley}",
+      ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${V.`jsoniter-scala`}",
       ivy"com.outr::scribe::${V.scribe}",
       ivy"io.bullet::borer-core:${V.borer}",
       ivy"io.bullet::borer-derivation:${V.borer}",
@@ -104,10 +105,15 @@ object morphir extends CrossPlatform { root =>
       ivy"io.getkyo::kyo-combinators::${V.kyo}",
       ivy"io.getkyo::kyo-direct::${V.kyo}",
       ivy"io.github.kitlangton::neotype::${V.neotype}",
+      ivy"io.github.kitlangton::neotype-jsoniter:0.3.5",
       ivy"io.github.iltotore::iron:${V.iron}",
       ivy"io.kevinlee::just-semver::${V.`just-semver`}",
       ivy"org.scalameta::metaconfig-core::${V.metaconfig}",
       ivy"org.scalameta::metaconfig-sconfig::${V.metaconfig}"
+    )
+
+    def compileIvyDeps = Agg(
+      ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${V.`jsoniter-scala`}"
     )
 
     override def platformModuleDeps: Seq[CrossPlatform] = Seq(core)
@@ -117,14 +123,24 @@ object morphir extends CrossPlatform { root =>
     override def ivyDeps = super.ivyDeps() ++ Agg(
       ivy"dev.dirs:directories:${V.`directories-jvm`}"
     )
-    object test extends ScalaTests with MorphirTests {}
+    object test extends ScalaTests with MorphirTests {
+      def ivyDeps = super.ivyDeps() ++ Agg(
+        ivy"io.github.kitlangton::neotype-jsoniter:0.3.5",
+        ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${V.`jsoniter-scala`}"
+      )
+    }
   }
 
   object core extends CrossPlatform {
     trait Shared extends ScalaLibraryModule with PlatformAwareScalaProject with MorphirLibraryPublishModule {
       def scalaVersion = V.Scala.scala3LTSVersion
       def ivyDeps = Agg(
-        ivy"org.typelevel::cats-core::${V.cats}"
+        ivy"org.typelevel::cats-core::${V.cats}",
+        ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${V.`jsoniter-scala`}"
+      )
+
+      def compileIvyDeps = Agg(
+        ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${V.`jsoniter-scala`}"
       )
     }
 

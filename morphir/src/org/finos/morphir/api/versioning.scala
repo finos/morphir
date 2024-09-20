@@ -1,10 +1,16 @@
 package org.finos.morphir.api
 
+import com.github.plokhotnyuk.jsoniter_scala.macros.*
+import com.github.plokhotnyuk.jsoniter_scala.core.*
 import just.semver.*
 import metaconfig.*
 import metaconfig.generic.*
 import metaconfig.sconfig.*
 import neotype.*
+import neotype.interop.jsoniter.given
+import com.github.plokhotnyuk.jsoniter_scala.macros.*
+import com.github.plokhotnyuk.jsoniter_scala.core.*
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker.*
 import org.finos.morphir.config.*
 
 type SemVerString = SemVerString.Type

@@ -3,10 +3,12 @@ package org.finos.morphir.build
 object V {
 
   val borer             = "1.14.1"
+  val caliban           = "2.8.1"
   val cats              = "2.12.0"
   val `directories-jvm` = "26"
   val `case-app`        = "2.1.0-M29"
   val `graal-polyglot`  = "24.0.2"
+  val `jsoniter-scala`  = "2.30.11"
   val `just-semver`     = "1.0.0"
   val kyo               = "0.12.0"
   val iron              = "2.6.0"
@@ -14,7 +16,7 @@ object V {
   val oslib             = "0.10.6"
   val parsley           = "4.5.2"
   val pprint            = "0.9.0"
-  val neotype           = "0.3.0"
+  val neotype           = "0.3.5"
   val `scala-uri`       = "4.0.3"
   val scribe            = "3.15.0"
   val scalatest         = "3.2.19"
