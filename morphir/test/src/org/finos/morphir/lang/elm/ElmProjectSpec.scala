@@ -19,6 +19,8 @@ object ElmProjectSpec extends MorphirSpecDefault {
   )
 
   private def elmProjectSuite =
+//    import ElmApplication.given
+
     suite("ElmProjectSpec")(
       test("should be able to read an application elm.json file") {
         val workspaceFilePath = os.resource / "org" / "finos" / "morphir" / "lang" / "elm" / "application" / "elm.json"
