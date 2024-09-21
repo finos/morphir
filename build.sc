@@ -107,6 +107,7 @@ object morphir extends CrossPlatform { root =>
       ivy"io.github.kitlangton::neotype::${V.neotype}",
       ivy"io.github.kitlangton::neotype-jsoniter:0.3.5",
       ivy"io.github.iltotore::iron:${V.iron}",
+      ivy"org.typelevel::literally::${V.literally}",
       ivy"io.kevinlee::just-semver::${V.`just-semver`}",
       ivy"org.scalameta::metaconfig-core::${V.metaconfig}",
       ivy"org.scalameta::metaconfig-sconfig::${V.metaconfig}"

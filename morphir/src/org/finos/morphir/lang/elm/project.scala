@@ -47,16 +47,22 @@ object ElmProject:
   enum Kind:
     case Package, Application
 
-final case class ElmPackageVersion(major: NonNegativeInt, minor: NonNegativeInt, patch: NonNegativeInt):
-  override def toString(): String = s"$major.$minor.$patch"
+  private def defaultApp: ElmApplication = ElmApplication(
+    List.empty,
+    SemVerString("v0.0.1"),
+    ElmApplicationDependencies.default,
+    ElmApplicationDependencies.default
+  )
 
-object ElmPackageVersion:
-  inline def default: ElmPackageVersion =
-    ElmPackageVersion(NonNegativeInt.zero, NonNegativeInt.zero, NonNegativeInt.one)
-
-  given Surface[ElmPackageVersion] = generic.deriveSurface
-  given confDecoder: ConfDecoder[ElmPackageVersion] =
-    generic.deriveDecoder[ElmPackageVersion](ElmPackageVersion.default)
+  private def defaultPackage: ElmPackage = ElmPackage(
+    ElmPackageName("author/name"),
+    None,
+    ElmPackageVersion.default,
+    "",
+    List.empty,
+    Map.empty,
+    Map.empty
+  )
 
 // type ElmApplication = ElmProject.ElmApplication
 // object ElmApplication:
@@ -72,7 +78,8 @@ object ElmApplicationDependencies:
 
   given Surface[ElmApplicationDependencies] = generic.deriveSurface
   given confDecoder: ConfDecoder[ElmApplicationDependencies] =
-    generic.deriveDecoder[ElmApplicationDependencies](ElmApplicationDependencies.default)
+    generic.deriveDecoder[ElmApplicationDependencies](ElmApplicationDependencies.default).noTypos
 
+  given confEncoder: ConfEncoder[ElmApplicationDependencies] = generic.deriveEncoder
 type ElmPackage = ElmProject.ElmPackage
 object ElmPackage
