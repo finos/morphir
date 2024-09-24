@@ -38,6 +38,7 @@ object MajorVersionNumber extends Subtype[Int]:
   val zero: MajorVersionNumber = MajorVersionNumber(0)
   inline override def validate(input: Int): Boolean | String =
     input >= 0
+  given jsonValueCodec: JsonValueCodec[MajorVersionNumber] = subtypeCodec[Int, MajorVersionNumber]
   given confDecoder: ConfDecoder[MajorVersionNumber] =
     ConfDecoder.intConfDecoder.flatMap(n => MajorVersionNumber.make(n).toConfigured())
   given confEncoder: ConfEncoder[MajorVersionNumber] = ConfEncoder.IntEncoder.contramap(identity)
@@ -49,6 +50,7 @@ object MinorVersionNumber extends Subtype[Int]:
   val zero: MinorVersionNumber = MinorVersionNumber(0)
   inline override def validate(input: Int): Boolean | String =
     input >= 0
+  given jsonValueCodec: JsonValueCodec[MinorVersionNumber] = subtypeCodec[Int, MinorVersionNumber]
   given confDecoder: ConfDecoder[MinorVersionNumber] =
     ConfDecoder.intConfDecoder.flatMap(n => MinorVersionNumber.make(n).toConfigured())
   given confEncoder: ConfEncoder[MinorVersionNumber] = ConfEncoder.IntEncoder.contramap(identity)
@@ -60,6 +62,7 @@ object PatchVersionNumber extends Subtype[Int]:
   val zero: PatchVersionNumber = PatchVersionNumber(0)
   inline override def validate(input: Int): Boolean | String =
     input >= 0
+  given jsonValueCodec: JsonValueCodec[PatchVersionNumber] = subtypeCodec[Int, PatchVersionNumber]
   given confDecoder: ConfDecoder[PatchVersionNumber] =
     ConfDecoder.intConfDecoder.flatMap(n => PatchVersionNumber.make(n).toConfigured())
   given confEncoder: ConfEncoder[PatchVersionNumber] = ConfEncoder.IntEncoder.contramap(identity)
@@ -95,3 +98,7 @@ object PatchLiteral extends Literally[PatchVersionNumber]:
       case Some(n) if n >= 0 => Right('{ PatchVersionNumber.unsafeMake(${ Expr(n) }) })
       case _ => Left(s"invalid patch version number: $input, a patch version number must be a non-negative integer")
 end PatchLiteral
+
+inline def major(inline n: Int): MajorVersionNumber = MajorVersionNumber(n)
+inline def minor(inline n: Int): MinorVersionNumber = MinorVersionNumber(n)
+inline def patch(inline n: Int): PatchVersionNumber = PatchVersionNumber(n)

@@ -2,7 +2,7 @@ package org.finos.morphir.lang.elm
 
 import kyo.*
 import kyo.Result
-import metaconfig.*
+import metaconfig.{pprint as _, *}
 import metaconfig.generic.*
 import neotype.*
 import org.finos.morphir.*
@@ -12,6 +12,11 @@ import org.finos.morphir.api.MinorVersionNumber
 import org.finos.morphir.api.PatchVersionNumber
 import metaconfig.Configured.Ok
 import metaconfig.Configured.NotOk
+import neotype.*
+import neotype.interop.jsoniter.{given, *}
+import com.github.plokhotnyuk.jsoniter_scala.macros.*
+import com.github.plokhotnyuk.jsoniter_scala.core.*
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker.*
 
 type ElmModuleName = ElmModuleName.Type
 
@@ -45,6 +50,8 @@ object ElmPackageName extends Subtype[String]:
   given confDecoder: ConfDecoder[ElmPackageName] = ConfDecoder.stringConfDecoder.flatMap: str =>
     parse(str).fold((err: Result.Error[String]) => Configured.error(err.show))(Configured.ok)
 
+  given jsonValueCodec: JsonValueCodec[ElmPackageName] = subtypeCodec[String, ElmPackageName]
+
   def parse(input: String): Result[String, ElmPackageName] = Result.fromEither(make(input))
   def parseAsConfigured(input: String): Configured[ElmPackageName] =
     parse(input).fold((err: Result[String, ElmPackageName]) => Configured.error(err.show))(Configured.ok)
@@ -59,6 +66,7 @@ object ElmPackageVersion:
   val pattern = "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$".r
   inline def default: ElmPackageVersion =
     ElmPackageVersion(MajorVersionNumber.zero, MinorVersionNumber.zero, PatchVersionNumber.one)
+  private val defaultJsonValueCodec = JsonCodecMaker.make[ElmPackageVersion]
 
   given confEncoder: ConfEncoder[ElmPackageVersion] = ConfEncoder.StringEncoder.contramap(vers => vers.toString())
   given confDecoder: ConfDecoder[ElmPackageVersion] = new ConfDecoder[ElmPackageVersion] {
@@ -80,6 +88,39 @@ object ElmPackageVersion:
         Configured.error(s"Invalid ElmPackageVersion: $other")
   }
 
+  given jsonValueCodec: JsonValueCodec[ElmPackageVersion] = new JsonValueCodec[ElmPackageVersion] {
+
+    def decodeValue(in: JsonReader, default: ElmPackageVersion): ElmPackageVersion =
+      val b = in.nextToken()
+      if b == '"' then
+        in.rollbackToken()
+        val str = in.readString(null)
+        ElmPackageVersion.parse(str) match
+          case Result.Success(value) => value
+          case Result.Fail(err)      => in.decodeError(err)
+          case Result.Panic(err)     => in.decodeError(err.getMessage())
+      else if b == '{' then
+        in.rollbackToken()
+        defaultJsonValueCodec.decodeValue(in, default)
+      else
+        in.decodeError(
+          "Expected a version string in the format of 'major.minor.patch', or an object with 'major', 'minor', and 'patch' fields."
+        )
+
+    def encodeValue(x: ElmPackageVersion, out: JsonWriter): Unit =
+      out.writeVal(x.toString())
+    def nullValue: ElmPackageVersion = default
+  }
+
+  def parse(input: String): Result[String, ElmPackageVersion] =
+    input match
+      case pattern(major, minor, patch) => Result.success(ElmPackageVersion(
+          MajorVersionNumber.unsafeMake(major.toInt),
+          MinorVersionNumber.unsafeMake(minor.toInt),
+          PatchVersionNumber.unsafeMake(patch.toInt)
+        ))
+      case _ => Result.fail(s"Invalid ElmPackageVersion: $input")
+
 end ElmPackageVersion
 
 type ElmDependencyMap = ElmDependencyMap.Type
@@ -88,4 +129,7 @@ object ElmDependencyMap extends Subtype[Map[ElmPackageName, ElmPackageVersion]]:
     ConfDecoder[Map[String, ElmPackageVersion]]
       .transformKeys[ElmPackageName](key => ElmPackageName.parseAsConfigured(key))
       .map(unsafeMake(_))
+
+  // given jsonValueCodec: JsonValueCodec[ElmDependencyMap] =
+  //   subtypeCodec[Map[ElmPackageName, ElmPackageVersion], ElmDependencyMap]
 end ElmDependencyMap

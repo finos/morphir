@@ -9,6 +9,9 @@ import zio.test.*
 import zio.test.Assertion.*
 import org.finos.morphir.config.*
 import org.finos.morphir.lang.elm.ElmProjectSpec.{compileError, test}
+import com.github.plokhotnyuk.jsoniter_scala.macros.*
+import com.github.plokhotnyuk.jsoniter_scala.core.*
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker.*
 
 object ElmTypesSpec extends MorphirSpecDefault:
   def spec = suite("ElmTypesSpec")(
@@ -47,15 +50,27 @@ object ElmTypesSpec extends MorphirSpecDefault:
         PatchVersionNumber(8)
       )))
     }
-    // +
-    // suite("JSON Serialization")(
-    //   test("Should be able to serialize and deserialize a ElmPackageVersion") {
-    //     val elmPackageVersion = ElmPackageVersion(NonNegativeInt(1), NonNegativeInt(2), NonNegativeInt(3))
-    //     val json              = writeToString(elmPackageVersion)
-    //     val expected          = """"1.2.3""""
-    //     assertTrue(json == expected)
-    //     val deserialized = readFromString[ElmPackageVersion](json)
-    //     assertTrue(deserialized == elmPackageVersion)
-    //   }
-    // )
+      +
+        suite("JSON Serialization")(
+          test("Should be able to serialize and deserialize a ElmPackageVersion") {
+            val elmPackageVersion = ElmPackageVersion(major(1), minor(2), patch(3))
+            val json              = writeToString(elmPackageVersion)
+            val expected          = """"1.2.3""""
+            assertTrue(json == expected)
+            val deserialized = readFromString[ElmPackageVersion](json)
+            assertTrue(deserialized == elmPackageVersion)
+          },
+          test("Should be able to parse a ElmPackageVersion from a JSON string") {
+            val json         = """"1.2.3""""
+            val expected     = ElmPackageVersion(major(1), minor(2), patch(3))
+            val deserialized = readFromString[ElmPackageVersion](json)
+            assertTrue(deserialized == expected)
+          },
+          test("Should be able to parse a ElmPackageVersion from a JSON object") {
+            val json         = """{"major":1,"minor":2,"patch":3}"""
+            val expected     = ElmPackageVersion(major(1), minor(2), patch(3))
+            val deserialized = readFromString[ElmPackageVersion](json)
+            assertTrue(deserialized == expected)
+          }
+        )
   )
