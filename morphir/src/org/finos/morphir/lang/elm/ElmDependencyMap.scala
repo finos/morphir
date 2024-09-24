@@ -22,6 +22,8 @@ import io.bullet.borer.Json
 type ElmDependencyMap = ElmDependencyMap.Type
 
 object ElmDependencyMap extends Subtype[Map[ElmPackageName, ElmPackageVersion]]:
+  val empty: ElmDependencyMap = unsafeMake(Map.empty)
+
   given confDecoder: ConfDecoder[ElmDependencyMap] =
     ConfDecoder[Map[String, ElmPackageVersion]]
       .transformKeys[ElmPackageName](key => ElmPackageName.parseAsConfigured(key))
@@ -33,4 +35,6 @@ object ElmDependencyMap extends Subtype[Map[ElmPackageName, ElmPackageVersion]]:
 
   given jsonValueCodec: JsonValueCodec[ElmDependencyMap] =
     subtypeCodec[Map[ElmPackageName, ElmPackageVersion], ElmDependencyMap]
+
+  def fromMap(map: Map[ElmPackageName, ElmPackageVersion]): ElmDependencyMap = unsafeMake(map)
 end ElmDependencyMap

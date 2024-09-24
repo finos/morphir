@@ -52,4 +52,3 @@ object ElmPackageName extends Subtype[String]:
 
   extension (self: ElmPackageName)
     def value: String = self
-

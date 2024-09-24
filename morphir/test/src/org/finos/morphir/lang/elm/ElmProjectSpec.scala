@@ -29,7 +29,8 @@ object ElmProjectSpec extends MorphirSpecDefault {
         val workspaceFilePath = os.resource / "org" / "finos" / "morphir" / "lang" / "elm" / "application" / "elm.json"
         val contents: String  = os.read(workspaceFilePath)
         val input: metaconfig.Input = Input.String(contents)
-        assertTrue(true)
+        val actual                  = ElmProject.parseInput(input)
+        assertTrue(actual.isInstanceOf[kyo.Result.Success[ElmProject]])
       }
     )
 
@@ -140,11 +141,7 @@ object ElmProjectSpec extends MorphirSpecDefault {
       test("should be able to parse into json") {
         val packageVersion = ElmPackageVersion(MajorVersionNumber(5), MinorVersionNumber(0), PatchVersionNumber(2))
         val result         = confEncoder.write(packageVersion)
-        assertTrue(result == Conf.Obj(
-          "major" -> Conf.Num(5),
-          "minor" -> Conf.Num(0),
-          "patch" -> Conf.Num(2)
-        ))
+        assertTrue(result == Conf.Str("5.0.2"))
       },
       test("does not decode invalid json") {
         val result = confDecoder.read(Conf.Obj(
@@ -158,8 +155,6 @@ object ElmProjectSpec extends MorphirSpecDefault {
   }
 
   private def elmApplicationDependenciesSuite = {
-    import ElmApplicationDependencies.given
-
     suite("ElmApplicationDependenciesSpec")(
       // test("should be able to parse Map[ElmPackageName, ElmPackageVersion] into json") {
       //   val direct = Map.apply(
