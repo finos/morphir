@@ -3,6 +3,7 @@ package org.finos.morphir.hosting
 import kyo.*
 import org.finos.morphir.testing.*
 import zio.test.*
+import zio.Cause
 
 object HostInfoServiceSpec extends MorphirKyoSpecDefault:
   def spec = suite("HostInfoServiceSpec")(

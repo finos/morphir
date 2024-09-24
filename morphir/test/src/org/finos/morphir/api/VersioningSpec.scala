@@ -3,7 +3,9 @@ package org.finos.morphir.api
 import kyo.*
 import org.finos.morphir.testing.*
 import zio.test.{Result as _, *}
-
+import com.github.plokhotnyuk.jsoniter_scala.macros.*
+import com.github.plokhotnyuk.jsoniter_scala.core.*
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker.*
 import metaconfig.*
 
 object VersioningSpec extends MorphirSpecDefault {
@@ -29,6 +31,16 @@ object VersioningSpec extends MorphirSpecDefault {
       val conf   = Conf.Str("10.9.8-alpha-123")
       val result = SemVerString.confDecoder.read(conf)
       assertTrue(result == Configured.Ok(SemVerString("10.9.8-alpha-123")))
-    }
+    } +
+      suite("JSON Serialization")(
+        test("Should be able to serialize and deserialize a SemVerString") {
+          val semVerString = SemVerString("1.2.3")
+          val json         = writeToString(semVerString)
+          val expected     = """"1.2.3""""
+          assertTrue(json == expected)
+          val deserialized = readFromString[SemVerString](json)
+          assertTrue(deserialized == semVerString)
+        }
+      )
   )
 }

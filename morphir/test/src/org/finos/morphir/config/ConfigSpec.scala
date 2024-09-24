@@ -106,3 +106,4 @@ object ConfigSpec extends MorphirSpecDefault:
       }
     )
   )
+end ConfigSpec

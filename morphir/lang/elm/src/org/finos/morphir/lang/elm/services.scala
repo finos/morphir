@@ -3,6 +3,7 @@ package org.finos.morphir.lang.elm
 import kyo.{Path as _, _}
 import java.net.{URI, URL}
 import org.finos.morphir.Path
+import org.finos.morphir.GenericPath
 
 // trait ElmProjectInfoService:
 //     self =>
@@ -18,13 +19,13 @@ import org.finos.morphir.Path
 //     }
 
 trait ElmProjectLoader:
-  def loadProject(path: Path): ElmProject < IO & Abort[String | Exception]
+  def loadProject(path: GenericPath): ElmProject < IO & Abort[String | Exception]
   def loadProject(uri: URI): ElmProject < IO & Abort[String | Exception]
 
 object ElmProjectLoader:
   final case class Live() extends ElmProjectLoader:
-    override def loadProject(path: Path): ElmProject < IO & Abort[String | Exception] = ???
-    override def loadProject(uri: URI): ElmProject < IO & Abort[String | Exception]   = ???
+    override def loadProject(path: GenericPath): ElmProject < IO & Abort[String | Exception] = ???
+    override def loadProject(uri: URI): ElmProject < IO & Abort[String | Exception]          = ???
 
 trait ElmPackageResolver:
   import ElmPackageResolver.*
@@ -45,7 +46,7 @@ object ElmPackageResolver:
   //      - The resolver should take into account the project configuration and Morphir's own manifest and configuration
 
 enum PackageSource:
-  case Local(path: Path)
+  case Local(path: GenericPath)
   case Remote(uri: URI)
   case Git(Url: URL, ref: Option[String], path: Option[String])
   case GitHub(owner: String, repo: String, ref: Option[String], path: Option[String])

@@ -4,6 +4,7 @@ import caseapp.core.argparser.{ArgParser, SimpleArgParser}
 import caseapp.core.Error
 import kyo.*
 import org.finos.morphir.FilePath
+import org.finos.morphir.hosting.EnvironmentName
 
 given oslibPathArgParser: ArgParser[os.Path] = SimpleArgParser.from("path"): input =>
   try
@@ -22,3 +23,5 @@ given filePathArgParser: ArgParser[FilePath] = SimpleArgParser.from("path"): inp
     Right(FilePath.parse(input))
   catch
     case e: Throwable => Left(Error.MalformedValue(input, "Failed to parse input value as a path"))
+
+given ArgParser[EnvironmentName] = SimpleArgParser.string.xmap(_.toString, EnvironmentName.apply)

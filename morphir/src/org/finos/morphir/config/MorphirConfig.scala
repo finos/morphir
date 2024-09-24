@@ -23,6 +23,9 @@ object MorphirConfig extends ConfigCompanion[MorphirConfig]:
 
 trait ConfigCompanion[Cfg](using decoder: ConfDecoder[Cfg]):
 
+  def fromConf(conf: Conf): Result[ConfError, Cfg] =
+    decoder.read(conf).fold(error => Result.fail(error))(config => Result.success(config))
+
   def parseFile(file: os.Path): Result[ConfError, Cfg] =
     val input: Input = Input.File(file.toNIO.toFile)
     parseInput(input)

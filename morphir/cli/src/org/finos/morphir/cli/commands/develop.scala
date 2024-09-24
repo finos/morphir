@@ -1,7 +1,8 @@
-package org.finos.morphir.cli.command
+package org.finos.morphir.cli.commands
 import org.finos.morphir.*
 import caseapp.*
-import org.finos.morphir.cli.given
+import kyo.*
+import org.finos.morphir.cli.{given, *}
 
 @HelpMessage("Start up a web server and expose developer tools through a web UI.")
 final case class DevelopOptions(
@@ -16,9 +17,11 @@ final case class DevelopOptions(
   projectDir: FilePath = FilePath.parse(os.pwd.toString)
 )
 
-object Develop extends Command[DevelopOptions]:
-  def run(options: DevelopOptions, remainingArgs: RemainingArgs): Unit =
-    pprint.log("DevelopOptions:")
-    pprint.log(options)
-    pprint.log("Remaining Args:")
-    pprint.log(remainingArgs)
+object Develop extends MorphirCliCommand[DevelopOptions]:
+  def runEffect(options: DevelopOptions, remainingArgs: RemainingArgs) =
+    defer {
+      pprint.log("DevelopOptions:")
+      pprint.log(options)
+      pprint.log("Remaining Args:")
+      pprint.log(remainingArgs)
+    }

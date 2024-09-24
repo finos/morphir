@@ -5,7 +5,7 @@ import scala.concurrent.*
 /// A command is a unit of work that can be run by a KyoApp
 trait Command[Params]:
 
-  def run(params: Params): Unit < (IO & Abort[Throwable])
+  def run(params: Params): Unit < Command.Effects
 
   final def runFuture(params: Params): Future[Unit] =
     val effect   = run(params)
@@ -21,3 +21,6 @@ trait Command[Params]:
     val effect = run(params)
     val result = Abort.run(effect)
     KyoApp.run(result)
+
+object Command:
+  type Effects = KyoApp.Effects
