@@ -27,6 +27,10 @@ object ElmDependencyMap extends Subtype[Map[ElmPackageName, ElmPackageVersion]]:
       .transformKeys[ElmPackageName](key => ElmPackageName.parseAsConfigured(key))
       .map(unsafeMake(_))
 
+  given confEncoder: ConfEncoder[ElmDependencyMap] =
+    ConfEncoder[Map[String, ElmPackageVersion]]
+      .contramap(_.map { case (k, v) => k.value -> v })
+
   given jsonValueCodec: JsonValueCodec[ElmDependencyMap] =
     subtypeCodec[Map[ElmPackageName, ElmPackageVersion], ElmDependencyMap]
 end ElmDependencyMap
