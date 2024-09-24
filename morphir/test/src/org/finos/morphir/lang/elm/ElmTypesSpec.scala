@@ -15,8 +15,7 @@ import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker.*
 
 object ElmTypesSpec extends MorphirSpecDefault:
   def spec = suite("ElmTypesSpec")(
-    elmPackageVersionSuite,
-    elmDependencyMapSuite
+    elmPackageVersionSuite
   )
 
   def elmPackageVersionSuite = suite("ElmPackageVersion")(
@@ -74,21 +73,4 @@ object ElmTypesSpec extends MorphirSpecDefault:
             assertTrue(deserialized == expected)
           }
         )
-  )
-
-  def elmDependencyMapSuite = suite("ElmDependencyMap")(
-    suite("JSON codec")(
-      test("Should be able to serialize and deserialize an ElmDependencyMap") {
-        val elmDependencyMap =
-          ElmDependencyMap(Map(
-            ElmPackageName("finos/morphir")        -> ElmPackageVersion.parseUnsafe("1.0.0"),
-            ElmPackageName("morphir/test_project") -> ElmPackageVersion.parseUnsafe("2.0.0")
-          ))
-        val json     = writeToString(elmDependencyMap)
-        val expected = """{"finos/morphir":"1.0.0","morphir/test_project":"2.0.0"}"""
-        assertTrue(json == expected)
-        val deserialized = readFromString[ElmDependencyMap](json)
-        assertTrue(deserialized == elmDependencyMap)
-      }
-    )
   )

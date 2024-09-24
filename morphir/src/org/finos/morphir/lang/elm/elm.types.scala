@@ -53,13 +53,3 @@ object ElmPackageName extends Subtype[String]:
   extension (self: ElmPackageName)
     def value: String = self
 
-type ElmDependencyMap = ElmDependencyMap.Type
-object ElmDependencyMap extends Subtype[Map[ElmPackageName, ElmPackageVersion]]:
-  given confDecoder: ConfDecoder[ElmDependencyMap] =
-    ConfDecoder[Map[String, ElmPackageVersion]]
-      .transformKeys[ElmPackageName](key => ElmPackageName.parseAsConfigured(key))
-      .map(unsafeMake(_))
-
-  given jsonValueCodec: JsonValueCodec[ElmDependencyMap] =
-    subtypeCodec[Map[ElmPackageName, ElmPackageVersion], ElmDependencyMap]
-end ElmDependencyMap
