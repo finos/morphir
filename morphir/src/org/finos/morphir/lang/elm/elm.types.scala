@@ -17,6 +17,7 @@ import neotype.interop.jsoniter.{given, *}
 import com.github.plokhotnyuk.jsoniter_scala.macros.*
 import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker.*
+import io.bullet.borer.Json
 
 type ElmModuleName = ElmModuleName.Type
 
@@ -49,6 +50,21 @@ object ElmPackageName extends Subtype[String]:
 
   given confDecoder: ConfDecoder[ElmPackageName] = ConfDecoder.stringConfDecoder.flatMap: str =>
     parse(str).fold((err: Result.Error[String]) => Configured.error(err.show))(Configured.ok)
+
+  given jsonKeyCodec: JsonKeyCodec[ElmPackageName] = new JsonKeyCodec[ElmPackageName] {
+    def encodeKey(x: ElmPackageName, out: JsonWriter): Unit = out.writeKey(x.value)
+    def decodeKey(in: JsonReader): ElmPackageName =
+      val b = in.nextToken()
+      if b == '"' then
+        in.rollbackToken()
+        val str = in.readKeyAsString()
+        ElmPackageName.parse(str) match
+          case Result.Success(value) => value
+          case Result.Fail(err)      => in.decodeError(err)
+          case Result.Panic(err)     => in.decodeError(err.getMessage())
+      else
+        in.decodeError("Expected a string")
+  }
 
   given jsonValueCodec: JsonValueCodec[ElmPackageName] = subtypeCodec[String, ElmPackageName]
 
@@ -121,6 +137,11 @@ object ElmPackageVersion:
         ))
       case _ => Result.fail(s"Invalid ElmPackageVersion: $input")
 
+  def parseUnsafe(version: String): ElmPackageVersion = ElmPackageVersion.parse(version) match
+    case Result.Success(value) => value
+    case Result.Fail(err)      => throw new IllegalArgumentException(err)
+    case Result.Panic(err)     => throw new IllegalArgumentException(err.getMessage())
+
 end ElmPackageVersion
 
 type ElmDependencyMap = ElmDependencyMap.Type
@@ -130,6 +151,6 @@ object ElmDependencyMap extends Subtype[Map[ElmPackageName, ElmPackageVersion]]:
       .transformKeys[ElmPackageName](key => ElmPackageName.parseAsConfigured(key))
       .map(unsafeMake(_))
 
-  // given jsonValueCodec: JsonValueCodec[ElmDependencyMap] =
-  //   subtypeCodec[Map[ElmPackageName, ElmPackageVersion], ElmDependencyMap]
+  given jsonValueCodec: JsonValueCodec[ElmDependencyMap] =
+    subtypeCodec[Map[ElmPackageName, ElmPackageVersion], ElmDependencyMap]
 end ElmDependencyMap
