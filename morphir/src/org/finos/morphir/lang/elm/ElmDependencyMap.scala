@@ -37,4 +37,8 @@ object ElmDependencyMap extends Subtype[Map[ElmPackageName, ElmPackageVersion]]:
     subtypeCodec[Map[ElmPackageName, ElmPackageVersion], ElmDependencyMap]
 
   def fromMap(map: Map[ElmPackageName, ElmPackageVersion]): ElmDependencyMap = unsafeMake(map)
+
+  def apply(elems: (ElmPackageName, ElmPackageVersion)*): ElmDependencyMap =
+    fromMap(Map.from(elems))
+
 end ElmDependencyMap
