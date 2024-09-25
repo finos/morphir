@@ -66,13 +66,13 @@ object ElmProject extends ConfigCompanion[ElmProject]:
   end ElmApplication
 
   final case class ElmPackage(
-    name: ElmPackageName,
+    @ExtraName("name") name: ElmPackageName,
     summary: Option[String],
     version: ElmPackageVersion,
-    elmVersion: String,
-    exposedModules: List[ElmModuleName],
+    @ExtraName("elm-version") elmVersion: String,
+    @ExtraName("exposed-modules") exposedModules: List[ElmModuleName],
     dependencies: Map[String, String],
-    testDependencies: Map[String, String]
+    @ExtraName("test-dependencies") testDependencies: Map[String, String]
   ) extends ElmProject
 
   object ElmPackage:
