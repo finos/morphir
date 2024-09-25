@@ -38,6 +38,13 @@ object ElmProject extends ConfigCompanion[ElmProject]:
       case _ => Configured.error("Expected an object")
   }
 
+  given confEncoder: ConfEncoder[ElmProject] = new ConfEncoder[ElmProject] {
+    def write(project: ElmProject): Conf = project match
+      case app: ElmApplication =>
+        ElmApplication.confEncoder.write(app)
+      case pack: ElmPackage => ElmPackage.confEncoder.write(pack)
+  }
+
   final case class ElmApplication(
     @ExtraName("source-directories") override val sourceDirectories: List[String],
     @ExtraName("elm-version") elmVersion: SemVerString,
@@ -59,13 +66,13 @@ object ElmProject extends ConfigCompanion[ElmProject]:
   end ElmApplication
 
   final case class ElmPackage(
-    name: ElmPackageName,
+    @ExtraName("name") name: ElmPackageName,
     summary: Option[String],
     version: ElmPackageVersion,
-    elmVersion: String,
-    exposedModules: List[ElmModuleName],
+    @ExtraName("elm-version") elmVersion: String,
+    @ExtraName("exposed-modules") exposedModules: List[ElmModuleName],
     dependencies: Map[String, String],
-    testDependencies: Map[String, String]
+    @ExtraName("test-dependencies") testDependencies: Map[String, String]
   ) extends ElmProject
 
   object ElmPackage:
