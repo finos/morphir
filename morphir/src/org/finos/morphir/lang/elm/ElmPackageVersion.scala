@@ -74,6 +74,8 @@ object ElmPackageVersion:
     def nullValue: ElmPackageVersion = default
   }
 
+  inline def fromString(version: String): Result[String, ElmPackageVersion] = parse(version)
+
   /** Parse a ElmPackageVersion from a string.
     *
     * @param input
@@ -102,4 +104,12 @@ object ElmPackageVersion:
     case Result.Success(value) => value
     case Result.Fail(err)      => throw new IllegalArgumentException(err)
     case Result.Panic(err)     => throw new IllegalArgumentException(err.getMessage())
+
+  enum Interval:
+    case Closed(version: ElmPackageVersion)
+    case Open(version: ElmPackageVersion)
+    case unbounded
+
+  
+  final case class Range(lower:Interval, upper:Interval)
 end ElmPackageVersion

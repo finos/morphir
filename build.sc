@@ -117,7 +117,7 @@ object morphir extends CrossPlatform { root =>
       ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${V.`jsoniter-scala`}"
     )
 
-    override def platformModuleDeps: Seq[CrossPlatform] = Seq(core)
+    override def platformModuleDeps: Seq[CrossPlatform] = Seq(core, std)
   }
 
   object jvm extends ScalaJvmProject with Shared {
@@ -176,6 +176,18 @@ object morphir extends CrossPlatform { root =>
         )
         def moduleDeps = Seq(morphir.jvm)
         object test extends ScalaTests with MorphirTests {}
+      }
+    }
+  }
+
+  object std extends CrossPlatform {
+    trait Shared extends ScalaLibraryModule with PlatformAwareScalaProject with MorphirLibraryPublishModule {
+      def scalaVersion = V.Scala.scala3LTSVersion
+    }
+
+    object jvm extends ScalaJvmProject with Shared {
+      object test extends ScalaTests with MorphirTests {
+        def scalaVersion = V.Scala.scala3_5_version
       }
     }
   }
