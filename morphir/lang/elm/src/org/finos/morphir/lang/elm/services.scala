@@ -23,9 +23,10 @@ trait ElmProjectLoader:
   def loadProject(uri: URI): ElmProject < IO & Abort[String | Exception]
 
 object ElmProjectLoader:
-  final case class Live() extends ElmProjectLoader:
-    override def loadProject(path: GenericPath): ElmProject < IO & Abort[String | Exception] = ???
-    override def loadProject(uri: URI): ElmProject < IO & Abort[String | Exception]          = ???
+  final case class Live() extends ElmProjectLoader with ElmProjectLoaderPlatformSpecific:
+    override def loadProject(path: GenericPath): ElmProject < IO & Abort[String | Exception] =
+      loadProjectPlatformSpecific(path)
+    override def loadProject(uri: URI): ElmProject < IO & Abort[String | Exception] = ???
 
 trait ElmPackageResolver:
   import ElmPackageResolver.*
