@@ -22,6 +22,7 @@ object V {
   val scribe            = "3.15.0"
   val scalatest         = "3.2.19"
   val t2                = "2.0.0"
+  val utest             = "0.8.4"
   val zio               = "2.1.9"
 
   object Scala {

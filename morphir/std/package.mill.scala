@@ -17,10 +17,11 @@ object `package` extends RootModule with CrossPlatform {
             ivy"dev.dirs:directories:${V.`directories-jvm`}"
         )
     
-        object test extends ScalaTests with MorphirTests {
+        object test extends ScalaTests with TestModule.Utest {
             def ivyDeps = super.ivyDeps() ++ Agg(
-            ivy"io.github.kitlangton::neotype-jsoniter:0.3.5",
-            ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${V.`jsoniter-scala`}"
+                ivy"com.lihaoyi::utest:${V.utest}",
+                ivy"io.github.kitlangton::neotype-jsoniter:0.3.5",
+                ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${V.`jsoniter-scala`}"
             )
         }
     }
