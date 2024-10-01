@@ -17,20 +17,22 @@ object V {
   val oslib             = "0.10.6"
   val parsley           = "4.5.2"
   val pprint            = "0.9.0"
+  val mainargs          = "0.7.5"  
   val neotype           = "0.3.5"
   val `scala-uri`       = "4.0.3"
   val scribe            = "3.15.0"
   val scalatest         = "3.2.19"
   val t2                = "2.0.0"
+  val `tree-sitter-ng`  = "0.23.0"
   val utest             = "0.8.4"
   val zio               = "2.1.9"
 
   object Scala {
-    val scala3LTSVersion       = "3.3.3"
+    val scala3LTSVersion       = "3.3.4"
     val scala3_4_version       = "3.4.3"
-    val scala3_5_version       = "3.5.0"
+    val scala3_5_version       = "3.5.1"
     val scala3LatestVersion    = scala3_5_version
-    val scala2Version          = "2.13.14"
+    val scala2Version          = "2.13.15"
     val libraryScalaVersion    = scala3LTSVersion
     val executableScalaVersion = scala3_5_version
   }
