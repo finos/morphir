@@ -1,8 +1,9 @@
+package build
 import mill._
 import mill.runner.MillBuildRootModule
 import mill.scalalib._
 
-object build extends MillBuildRootModule {
+object `package` extends MillBuildRootModule {
   override def ivyDeps = Agg(
     ivy"de.tototec::de.tobiasroeser.mill.vcs.version::0.4.0",
     ivy"com.github.lolgab::mill-mima::0.1.1",
