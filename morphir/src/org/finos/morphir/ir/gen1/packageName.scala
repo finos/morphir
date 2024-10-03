@@ -2,10 +2,9 @@ package org.finos.morphir.ir.gen1
 
 trait PackageNameModule { self: Names =>
 
-  /**
-   * A package name is a globally unique identifier for a package. It is represented by a `Path` which is a list of
-   * names.
-   */
+  /** A package name is a globally unique identifier for a package. It is represented by a `Path` which is a list of
+    * names.
+    */
   sealed case class PackageName(path: Path) { self =>
     def ++(that: PackageName): PackageName = PackageName(path ++ that.path)
     def ++(that: Path): PackageName        = PackageName(path ++ that)

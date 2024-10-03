@@ -6,42 +6,41 @@ trait NodeIDModule {
     with QualifiedModuleNameModule =>
   import NodePath.*
 
-  /**
-   * Represents a path in the IR.
-   * ==Overview==
-   * A NodeID can have two slightly different structures depending on if we are refering to modules or definitions
-   * (types/values).
-   *
-   *   - When refefering to modules: `"module:<Package>:<Module>"`
-   *   - When refering to definitions: `"type\value:<Package>:<Module><localName>#<nodePath>"`, where nodePath is
-   *     optional
-   *
-   * Examples of valid NodeIDs:
-   *   - "module:Morphir.Reference.Model:BooksAndRecords"
-   *   - "type:Morphir.Reference.Model:BooksAndRecords:deal"
-   *   - "value:Morphir.Reference.Model:BooksAndRecords:deal#1"
-   *
-   * ==Referring to modules==
-   * We can refer to modules by their Qualified Name, with the module: prefix
-   *
-   * For example: `"module:Morphir.Reference.Model:BooksAndRecords"` refers to the `Books and Records` module inside the
-   * `Morphir.Reference.Model` package.
-   */
+  /** Represents a path in the IR.
+    * ==Overview==
+    * A NodeID can have two slightly different structures depending on if we are refering to modules or definitions
+    * (types/values).
+    *
+    *   - When refefering to modules: `"module:<Package>:<Module>"`
+    *   - When refering to definitions: `"type\value:<Package>:<Module><localName>#<nodePath>"`, where nodePath is
+    *     optional
+    *
+    * Examples of valid NodeIDs:
+    *   - "module:Morphir.Reference.Model:BooksAndRecords"
+    *   - "type:Morphir.Reference.Model:BooksAndRecords:deal"
+    *   - "value:Morphir.Reference.Model:BooksAndRecords:deal#1"
+    *
+    * ==Referring to modules==
+    * We can refer to modules by their Qualified Name, with the module: prefix
+    *
+    * For example: `"module:Morphir.Reference.Model:BooksAndRecords"` refers to the `Books and Records` module inside
+    * the `Morphir.Reference.Model` package.
+    */
   sealed trait NodeID extends Product with Serializable { self =>
     import NodeID.*
     override def toString(): String = {
       implicit val renderer: PathRenderer = PathRenderer.TitleCase
       def mapToTypeOrValue(
-          packageName: Path,
-          moduleName: Path,
-          localName: Name,
-          suffix: String,
-          nodePath: NodePath
+        packageName: Path,
+        moduleName: Path,
+        localName: Name,
+        suffix: String,
+        nodePath: NodePath
       ): String = {
         val nodeIdString = s"${packageName.render}:${moduleName.render}:${localName.toCamelCase}$suffix"
         nodePath match {
           case NodePath(Vector()) => nodeIdString
-          case _                  => s"$nodeIdString${nodePath}"
+          case _                  => s"$nodeIdString$nodePath"
         }
       }
 
@@ -64,25 +63,23 @@ trait NodeIDModule {
     def fromString(input: String): Either[Error, NodeID] = {
       def mapToTypeOrValue(packageName: String, moduleName: String, defNameWithSuffix: String, nodePath: String) = {
         def defName(suffix: String) = defNameWithSuffix.dropRight(suffix.length())
-        if (defNameWithSuffix.endsWith(".value")) {
+        if (defNameWithSuffix.endsWith(".value"))
           Right(ValueID(FQName.fqn(packageName, moduleName, defName(".value")), NodePath.fromString(nodePath)))
-        } else {
+        else
           Right(TypeID(FQName.fqn(packageName, moduleName, defName(".type")), NodePath.fromString(nodePath)))
-        }
       }
 
       input.split(":") match {
         case Array(packageName, moduleName) =>
           Right(ModuleID(Path(packageName), Path(moduleName)))
         case Array(packageName, moduleName, localName) =>
-          if (localName.contains("#")) {
+          if (localName.contains("#"))
             localName.split("#") match {
               case Array(defName, path) => mapToTypeOrValue(packageName, moduleName, defName, path)
               case _                    => Left(Error.InvalidNodeId(input))
             }
-          } else {
+          else
             mapToTypeOrValue(packageName, moduleName, localName, "")
-          }
         case _ =>
           Left(Error.InvalidNodeId(input))
       }
@@ -122,12 +119,11 @@ trait NodeIDModule {
 
     override def toString(): String =
       if (self.isEmpty) ""
-      else {
+      else
         steps.map {
           case ChildByName(name)   => name.toCamelCase
           case ChildByIndex(index) => index.toString()
         }.mkString("#", ":", "")
-      }
   }
 
   object NodePath {
@@ -138,14 +134,13 @@ trait NodeIDModule {
 
     def fromString(input: String): NodePath =
       if (input.isEmpty()) empty
-      else {
+      else
         fromIterable(input.split(":").map { stepString =>
           stepString.toIntOption match {
             case Some(index) => NodePathStep.childByIndex(index)
             case None        => NodePathStep.childByName(stepString)
           }
         })
-      }
   }
 
   sealed trait NodePathStep
