@@ -4,11 +4,10 @@ import scala.annotation.tailrec
 
 trait NameModule {
 
-  /**
-   * `Name` is an abstraction of human-readable identifiers made up of words. This abstraction allows us to use the same
-   * identifiers across various naming conventions used by the different frontend and backend languages Morphir
-   * integrates with.
-   */
+  /** `Name` is an abstraction of human-readable identifiers made up of words. This abstraction allows us to use the
+    * same identifiers across various naming conventions used by the different frontend and backend languages Morphir
+    * integrates with.
+    */
   sealed case class Name private (toList: List[String]) {
     self =>
     // def :+(that: String): Name = Name(self.toList :+ that)
@@ -27,9 +26,9 @@ trait NameModule {
 
       @tailrec
       def loop(
-          prefix: List[String],
-          abbrev: List[String],
-          suffix: List[String]
+        prefix: List[String],
+        abbrev: List[String],
+        suffix: List[String]
       ): List[String] =
         suffix match {
           case Nil =>
@@ -51,9 +50,8 @@ trait NameModule {
       loop(List.empty, List.empty, words.toList)
     }
 
-    /**
-     * Maps segments of the `Name`.
-     */
+    /** Maps segments of the `Name`.
+      */
     def mapParts(f: String => String): Name = Name(self.toList.map(f))
 
     def mkString(f: String => String)(sep: String): String =
@@ -105,18 +103,16 @@ trait NameModule {
 
     private val pattern = """([a-zA-Z][a-z]*|[0-9]+)""".r
 
-    /**
-     * Converts a list of strings into a name. NOTE: When this function is used, the strings are used as is to construct
-     * the name, and don't go through any processing. This behavior is desired here as it is consistent with Morphir's
-     * semantics for this function as defined in the `morphir-elm` project.
-     */
+    /** Converts a list of strings into a name. NOTE: When this function is used, the strings are used as is to
+      * construct the name, and don't go through any processing. This behavior is desired here as it is consistent with
+      * Morphir's semantics for this function as defined in the `morphir-elm` project.
+      */
     def fromList(list: List[String]): Name = Name(list)
 
-    /**
-     * Converts a list of strings into a name. NOTE: When this function is used, the strings are used as is to construct
-     * the name, and don't go through any processing. This behavior is desired here as it is consistent with Morphir's
-     * semantics for this function as defined in the `morphir-elm` project.
-     */
+    /** Converts a list of strings into a name. NOTE: When this function is used, the strings are used as is to
+      * construct the name, and don't go through any processing. This behavior is desired here as it is consistent with
+      * Morphir's semantics for this function as defined in the `morphir-elm` project.
+      */
     def fromList(list: String*): Name = fromList(list.toList)
 
     def fromIterable(iterable: Iterable[String]): Name =
