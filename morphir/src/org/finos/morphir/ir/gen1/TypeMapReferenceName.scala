@@ -1,6 +1,6 @@
 package org.finos.morphir.ir.gen1
 
-import org.finos.morphir.ir.gen1.naming.*
+import org.finos.morphir.ir.gen1.FQName
 import org.finos.morphir.ir.gen1.Type.{Unit as UnitType, *}
 
 final case class TypeMapReferenceName[Attrib](f: FQName => FQName) extends TypeRewritingFolder[Any, Attrib] {
