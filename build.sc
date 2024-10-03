@@ -110,7 +110,9 @@ object morphir extends CrossPlatform { root =>
       ivy"org.typelevel::literally::${V.literally}",
       ivy"io.kevinlee::just-semver::${V.`just-semver`}",
       ivy"org.scalameta::metaconfig-core::${V.metaconfig}",
-      ivy"org.scalameta::metaconfig-sconfig::${V.metaconfig}"
+      ivy"org.scalameta::metaconfig-sconfig::${V.metaconfig}",
+      ivy"dev.zio::zio:${V.zio}",
+      ivy"dev.zio::zio-prelude:${V.`zio-prelude`}"
     )
 
     def compileIvyDeps = Agg(

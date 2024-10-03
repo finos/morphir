@@ -23,6 +23,7 @@ object V {
   val scalatest         = "3.2.19"
   val t2                = "2.0.0"
   val zio               = "2.1.9"
+  val `zio-prelude`     = "1.0.0-RC31"
 
   object Scala {
     val scala3LTSVersion       = "3.3.3"
