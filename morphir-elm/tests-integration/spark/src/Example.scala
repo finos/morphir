@@ -20,20 +20,20 @@ object Example extends App {
   val schoolWithStudents =
     SchoolWithStudents(school, Seq(student1, student2, student3, student4))
 
-  //creating dataframe
+  // creating dataframe
   val schoolWithStudentsSeq = Seq(schoolWithStudents)
 
   val df1 = schoolWithStudentsSeq.toDF()
   df1.show()
 
-  //flatten employee class into columns
+  // flatten employee class into columns
   val explodeDF = df1.select(explode($"students"))
   explodeDF.show()
 
   val flattenDF = explodeDF.select($"col.*")
   flattenDF.show()
 
-  //filter rows
+  // filter rows
   val filterDF =
     flattenDF.filter($"firstName" === "Lewis").sort($"lastName".asc)
   filterDF.show()

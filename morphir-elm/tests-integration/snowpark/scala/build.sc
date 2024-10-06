@@ -2,8 +2,7 @@
 import mill._
 import scalalib._
 
-
-object snowparkExample extends ScalaModule{
+object snowparkExample extends ScalaModule {
   def scalaVersion = "2.12.9"
 
   val paths = Seq(
