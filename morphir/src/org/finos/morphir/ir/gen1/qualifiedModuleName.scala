@@ -3,7 +3,7 @@ package org.finos.morphir.ir.gen1
 /// A qualified module name is a globally unique identifier for a module. It is represented by the combination of a package name and the module name.
 sealed case class QualifiedModuleName(packageName: PackageName, modulePath: ModuleName) { self =>
   def /(moduleName: ModuleName): QualifiedModuleName =
-    QualifiedModuleName(self.packageName, self.modulePath ++ moduleName)
+    QualifiedModuleName(self.packageName, modulePath) // ++ moduleName)
   def /(namespaceAddition: String): QualifiedModuleName =
     QualifiedModuleName(self.packageName, modulePath.addPart(namespaceAddition))
 

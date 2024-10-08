@@ -7,10 +7,10 @@ import neotype.*
   * identifiers across various naming conventions used by the different frontend and backend languages Morphir
   * integrates with.
   */
-type Name = Name.type
+type Name = Name.Type
 object Name extends Newtype[List[String]] {
 
-  val empty: Name = Name(Nil)
+  val empty: Name = Name.unsafeMake(Nil)
 
   private[morphir] def wrap(value: List[String]): Name = Name(value)
 
@@ -47,19 +47,20 @@ object Name extends Newtype[List[String]] {
   }
 
   extension (self: Name)
-    def value: List[String] = self
+    def value: List[String] = self.unwrap
+
     // def :+(that: String): Name = Name(self.toList :+ that)
 
     // def +:(that: String): Name = Name(that +: self.toList)
 
-    def ++(that: Name): Name = Name(value ++ that)
+    def ++(that: Name): Name = Name(value ++ that.value)
 
-    def +(that: String): Name = value ++ Name.fromString(that)
+    def +(that: String): Name = self ++ Name.fromString(that)
 
     // def /(that: Name): Path = Path(IndexedSeq(self, that))
 
     def humanize: List[String] = {
-      val words                        = toList
+      val words                        = value
       val join: List[String] => String = abbrev => abbrev.map(_.toUpperCase()).mkString("")
 
       @tailrec
@@ -85,7 +86,7 @@ object Name extends Newtype[List[String]] {
               }
         }
 
-      loop(List.empty, List.empty, words.toList)
+      loop(List.empty, List.empty, words)
     }
 
     /** Maps segments of the `Name`.
@@ -125,7 +126,7 @@ object Name extends Newtype[List[String]] {
         .map(_.capitalize)
         .mkString("")
 
-    override def toString: String = value.mkString("[", ",", "]")
+    def renderToString: String = value.mkString("[", ",", "]")
 }
 
 trait NameRenderer extends (Name => String) {

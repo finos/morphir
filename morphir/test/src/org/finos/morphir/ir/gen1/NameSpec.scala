@@ -42,7 +42,7 @@ object NameSpec extends MorphirSpecDefault {
         // "fooBar","blahBlah" => ["foo","bar","blah","blah"]
         // "fooBar","blahBlah" => ["fooBar","blahBlah"]
         assertTrue(
-          Name.fromString("fooBar").toList == List("foo", "bar")
+          Name.fromString("fooBar").value == List("foo", "bar")
         )
       }
     ),
@@ -104,8 +104,11 @@ object NameSpec extends MorphirSpecDefault {
       }
     ),
     suite("Misc")(
-      test("Name.toString") {
-        assertTrue(Name.fromString("fooBar").toString == "[foo,bar]", Name.fromString("a").toString == "[a]")
+      test("Name.render") {
+        assertTrue(
+          Name.fromString("fooBar").renderToString == "[foo,bar]",
+          Name.fromString("a").renderToString == "[a]"
+        )
       }
     ),
     suite("VariableName")(

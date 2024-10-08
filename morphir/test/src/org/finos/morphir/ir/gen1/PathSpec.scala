@@ -107,7 +107,7 @@ object PathSpec extends MorphirSpecDefault {
     suite("ToString")(
       test("The standard to String should return a String representation of the path using the default PathRenderer")(
         assertTrue(
-          Path.fromString("foo/bar/baz").toString == "Foo.Bar.Baz"
+          Path.fromString("foo/bar/baz").render == "Foo.Bar.Baz"
         )
       )
     )

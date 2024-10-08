@@ -14,8 +14,6 @@ sealed case class QName(moduleName: ModuleName, localName: Name) {
 
 object QName {
   val empty: QName = QName(ModuleName.empty, Name.empty)
-  def apply(modulePath: Path, localName: Name): QName =
-    QName(ModuleName(modulePath), localName)
 
   def apply(moduleName: String, localName: String): QName =
     QName(ModuleName.fromString(moduleName), Name.fromString(localName))
@@ -24,14 +22,14 @@ object QName {
   def toTuple(qName: QName): (Path, Name) = qName.toTuple
 
   /// Turn a tuple of a module path and a local name into a qualified name (`QName`).
-  def fromTuple(tuple: (Path, Name)): QName = QName(tuple._1, tuple._2)
+  def fromTuple(tuple: (Path, Name)): QName = QName(ModuleName(tuple._1), tuple._2)
 
   /// Creates a qualified name from a module path and a local name.
-  def fromName(modulePath: Path, localName: Name): QName = QName(modulePath, localName)
+  def fromName(modulePath: Path, localName: Name): QName = QName(ModuleName(modulePath), localName)
 
   /// Creates a qualified name from strings representing a module path and a local name.
   def fromName(modulePath: String, localName: String): QName =
-    QName(Path.fromString(modulePath), Name.fromString(localName))
+    QName(ModuleName(Path.fromString(modulePath)), Name.fromString(localName))
 
   /// Get the local name part of a qualified name.
   def getLocalName(qname: QName): Name = qname.localName
@@ -46,7 +44,7 @@ object QName {
   def fromString(str: String): Option[QName] =
     str.split(":") match {
       case Array(packageNameString, localNameString) =>
-        Some(QName(Path.fromString(packageNameString), Name.fromString(localNameString)))
+        Some(QName(ModuleName(Path.fromString(packageNameString)), Name.fromString(localNameString)))
       case _ => None
     }
 }
