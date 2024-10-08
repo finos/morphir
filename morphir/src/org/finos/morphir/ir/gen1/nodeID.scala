@@ -67,7 +67,7 @@ object NodeID {
 
     input.split(":") match {
       case Array(packageName, moduleName) =>
-        Right(ModuleID(Path(packageName), Path(moduleName)))
+        Right(ModuleID(PackageName(Path(packageName)), ModuleName(Path(moduleName))))
       case Array(packageName, moduleName, localName) =>
         if (localName.contains("#"))
           localName.split("#") match {
@@ -85,9 +85,6 @@ object NodeID {
   sealed case class ValueID(name: FQName, memberPath: NodePath)                extends NodeID
   sealed case class ModuleID(packageName: PackageName, moduleName: ModuleName) extends NodeID
   object ModuleID {
-    def apply(packagePath: Path, modulePath: Path): ModuleID =
-      ModuleID(PackageName(packagePath), ModuleName(modulePath))
-
     def fromQualifiedName(qualifiedModuleName: QualifiedModuleName): ModuleID =
       ModuleID(qualifiedModuleName.packageName, qualifiedModuleName.modulePath)
   }

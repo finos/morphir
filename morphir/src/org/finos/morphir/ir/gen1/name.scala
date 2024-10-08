@@ -47,20 +47,20 @@ object Name extends Newtype[List[String]] {
   }
 
   extension (self: Name)
-    def value: List[String] = self.unwrap
+    def toList: List[String] = self.unwrap
 
     // def :+(that: String): Name = Name(self.toList :+ that)
 
     // def +:(that: String): Name = Name(that +: self.toList)
 
-    def ++(that: Name): Name = Name(value ++ that.value)
+    def ++(that: Name): Name = Name(toList ++ that.toList)
 
     def +(that: String): Name = self ++ Name.fromString(that)
 
     // def /(that: Name): Path = Path(IndexedSeq(self, that))
 
     def humanize: List[String] = {
-      val words                        = value
+      val words                        = toList
       val join: List[String] => String = abbrev => abbrev.map(_.toUpperCase()).mkString("")
 
       @tailrec
@@ -91,10 +91,10 @@ object Name extends Newtype[List[String]] {
 
     /** Maps segments of the `Name`.
       */
-    def mapParts(f: String => String): Name = Name(value.map(f))
+    def mapParts(f: String => String): Name = Name(toList.map(f))
 
     def mkString(f: String => String)(sep: String): String =
-      value.map(f).mkString(sep)
+      toList.map(f).mkString(sep)
 
     def render(implicit renderer: NameRenderer): String = renderer.render(self)
 
@@ -109,7 +109,7 @@ object Name extends Newtype[List[String]] {
       mkString(part => part.toLowerCase)("")
 
     def toCamelCase: String =
-      value match {
+      toList match {
         case Nil => ""
         case head :: tail =>
           (head :: tail.map(_.capitalize)).mkString("")
@@ -122,11 +122,11 @@ object Name extends Newtype[List[String]] {
       humanize.mkString("_")
 
     def toTitleCase: String =
-      value
+      toList
         .map(_.capitalize)
         .mkString("")
 
-    def renderToString: String = value.mkString("[", ",", "]")
+    def renderToString: String = toList.mkString("[", ",", "]")
 }
 
 trait NameRenderer extends (Name => String) {

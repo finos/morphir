@@ -18,9 +18,6 @@ sealed case class QualifiedModuleName(packageName: PackageName, modulePath: Modu
 object QualifiedModuleName {
   val empty: QualifiedModuleName = QualifiedModuleName(PackageName.empty, ModuleName.empty)
 
-  def apply(packageName: Path, modulePath: Path): QualifiedModuleName =
-    QualifiedModuleName(PackageName.fromPath(packageName), ModuleName(modulePath))
-
   def apply(modulePath: String)(implicit packageName: PackageName): QualifiedModuleName =
     QualifiedModuleName(packageName, ModuleName.fromString(modulePath))
 

@@ -42,7 +42,7 @@ object NameSpec extends MorphirSpecDefault {
         // "fooBar","blahBlah" => ["foo","bar","blah","blah"]
         // "fooBar","blahBlah" => ["fooBar","blahBlah"]
         assertTrue(
-          Name.fromString("fooBar").value == List("foo", "bar")
+          Name.fromString("fooBar").toList == List("foo", "bar")
         )
       }
     ),

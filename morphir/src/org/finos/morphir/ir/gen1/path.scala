@@ -18,7 +18,7 @@ object Path extends Newtype[Vector[Name]] {
     if (rest.isEmpty) Path(Vector(first))
     else Path(first +: rest.toVector)
 
-  def unapply(value: Path): Option[Vector[Name]] = Some(value.value)
+  def unapply(value: Path): Option[Vector[Name]] = Some(value.segments)
 
   /** Translates a string into a path by splitting it into names along special characters. The algorithm will treat any
     * non-word characters that are not spaces as a path separator.
@@ -61,21 +61,21 @@ object Path extends Newtype[Vector[Name]] {
   private[morphir] def unsafeMake(parts: Name*): Path = Path(parts.toVector)
 
   extension (self: Path)
-    def value: Vector[Name] = self.unwrap
+    def segments: Vector[Name] = self.unwrap
 
-    def ++(that: Path): Path = Path(value ++ that.value)
+    def ++(that: Path): Path = Path(segments ++ that.segments)
     //  def ::(name: Name): QName = QName(self.toPath, name)
 
     /** Indicates whether this path is empty. */
     def isEmpty: Boolean = toList.isEmpty
 
-    def toList: List[Name] = value.toList
+    def toList: List[Name] = segments.toList
 
     /** Constructs a new path by combining this path with the given name. */
-    def /(name: Name): Path = Path(value ++ List(name))
+    def /(name: Name): Path = Path(segments ++ List(name))
 
     /** Constructs a new path by combining this path with the given path. */
-    def /(that: Path): Path = Path(value ++ that.toList)
+    def /(that: Path): Path = Path(segments ++ that.toList)
     // def %(other: Path): PackageAndModulePath =
     //   PackageAndModulePath(PackageName(self), ModulePath(other))
 
@@ -84,7 +84,7 @@ object Path extends Newtype[Vector[Name]] {
     def toString(f: Name => String, separator: String): String =
       toList.map(f).mkString(separator)
 
-    def parts(implicit renderer: PathRenderer): IndexedSeq[String] = value.map(_.render(renderer.nameRenderer))
+    def parts(implicit renderer: PathRenderer): IndexedSeq[String] = segments.map(_.render(renderer.nameRenderer))
 
     def render(implicit renderer: PathRenderer): String = renderer(self)
     def render(separator: String)(implicit nameRenderer: NameRenderer): String =
