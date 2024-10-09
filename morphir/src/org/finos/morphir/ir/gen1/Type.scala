@@ -1,6 +1,6 @@
 package org.finos.morphir.ir.gen1
 
-import org.finos.morphir.ir.gen1.naming.*
+import org.finos.morphir.ir.gen1.*
 import org.finos.morphir.ir.gen1.Type.{Unit as UnitType, *}
 
 import scala.annotation.{tailrec, unused}

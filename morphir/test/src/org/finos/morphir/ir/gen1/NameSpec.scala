@@ -104,8 +104,11 @@ object NameSpec extends MorphirSpecDefault {
       }
     ),
     suite("Misc")(
-      test("Name.toString") {
-        assertTrue(Name.fromString("fooBar").toString == "[foo,bar]", Name.fromString("a").toString == "[a]")
+      test("Name.render") {
+        assertTrue(
+          Name.fromString("fooBar").renderToString == "[foo,bar]",
+          Name.fromString("a").renderToString == "[a]"
+        )
       }
     ),
     suite("VariableName")(
