@@ -11,19 +11,19 @@ object QNameSpec extends MorphirSpecDefault {
         val path     = Path.fromString("ice.cream")
         val name     = Name.fromString("float")
         val expected = (path, name)
-        assertTrue(QName(path, name).toTuple == expected)
+        assertTrue(QName(ModuleName(path), name).toTuple == expected)
       }
     ),
     suite("Creating a QName")(
       test("Creating a QName with a tuple") {
         val path = Path.fromString("friday")
         val name = Name.fromString("night")
-        assertTrue(QName.fromTuple((path, name)) == QName(path, name))
+        assertTrue(QName.fromTuple((path, name)) == QName(ModuleName(path), name))
       },
       test("Creating a QName from a name") {
         val path = Path.fromString("blog.Author")
         val name = Name.fromString("book")
-        assertTrue(QName.fromName(path, name) == QName(path, name))
+        assertTrue(QName.fromName(path, name) == QName(ModuleName(path), name))
       }
     ),
     suite("Fetching values from QName")(
@@ -31,8 +31,8 @@ object QNameSpec extends MorphirSpecDefault {
         val path = Path.fromString("path")
         val name = Name.fromString("name")
         assertTrue(
-          QName.getLocalName(QName(path, name)) == name,
-          QName.getModulePath(QName(path, name)) == path
+          QName.getLocalName(QName(ModuleName(path), name)) == name,
+          QName.getModulePath(QName(ModuleName(path), name)) == path
         )
       }
     ),
@@ -40,11 +40,11 @@ object QNameSpec extends MorphirSpecDefault {
       test("Create String from QName") {
         val path = Path.fromString("front.page")
         val name = Name.fromString("dictionary words")
-        assertTrue(QName(path, name).toString == "Front.Page:dictionaryWords")
+        assertTrue(QName(ModuleName(path), name).toString == "Front.Page:dictionaryWords")
       },
       test("Create QName from String") {
         val str = "Proper.Path:name"
-        assertTrue(QName.fromString(str) == Some(QName(Path.fromString("Proper.Path"), Name.fromString("name"))))
+        assertTrue(QName.fromString(str) == Some(QName(ModuleName.fromString("Proper.Path"), Name.fromString("name"))))
       },
       test("Provide an invalid String") {
         val str2 = "invalidpathname"

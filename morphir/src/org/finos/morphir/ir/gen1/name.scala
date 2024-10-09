@@ -1,20 +1,59 @@
 package org.finos.morphir.ir.gen1
 
 import scala.annotation.tailrec
+import neotype.*
 
-trait NameModule {
+/** `Name` is an abstraction of human-readable identifiers made up of words. This abstraction allows us to use the same
+  * identifiers across various naming conventions used by the different frontend and backend languages Morphir
+  * integrates with.
+  */
+type Name = Name.Type
+object Name extends Newtype[List[String]] {
 
-  /** `Name` is an abstraction of human-readable identifiers made up of words. This abstraction allows us to use the
-    * same identifiers across various naming conventions used by the different frontend and backend languages Morphir
-    * integrates with.
+  val empty: Name = Name.unsafeMake(Nil)
+
+  private[morphir] def wrap(value: List[String]): Name = Name(value)
+
+  private[morphir] def wrap(value: Array[String]): Name = Name(value.toList)
+
+  def apply(first: String, rest: String*): Name =
+    fromIterable(first +: rest)
+
+  private val pattern = """([a-zA-Z][a-z]*|[0-9]+)""".r
+
+  /** Converts a list of strings into a name. NOTE: When this function is used, the strings are used as is to construct
+    * the name, and don't go through any processing. This behavior is desired here as it is consistent with Morphir's
+    * semantics for this function as defined in the `morphir-elm` project.
     */
-  sealed case class Name private (toList: List[String]) {
-    self =>
+  def fromList(list: List[String]): Name = Name(list)
+
+  /** Converts a list of strings into a name. NOTE: When this function is used, the strings are used as is to construct
+    * the name, and don't go through any processing. This behavior is desired here as it is consistent with Morphir's
+    * semantics for this function as defined in the `morphir-elm` project.
+    */
+  def fromList(list: String*): Name = fromList(list.toList)
+
+  def fromIterable(iterable: Iterable[String]): Name =
+    wrap(iterable.flatMap(str => pattern.findAllIn(str)).map(_.toLowerCase).toList)
+
+  def fromString(str: String): Name =
+    Name(pattern.findAllIn(str).toList.map(_.toLowerCase()))
+
+  @inline def toHumanWords(name: Name): List[String] = name.humanize
+
+  object VariableName {
+    def unapply(name: Name): Option[String] =
+      Some(name.toCamelCase)
+  }
+
+  extension (self: Name)
+    def toList: List[String] = self.unwrap
+
     // def :+(that: String): Name = Name(self.toList :+ that)
 
     // def +:(that: String): Name = Name(that +: self.toList)
 
-    def ++(that: Name): Name = Name(self.toList ++ that.toList)
+    def ++(that: Name): Name = Name(toList ++ that.toList)
 
     def +(that: String): Name = self ++ Name.fromString(that)
 
@@ -47,12 +86,12 @@ trait NameModule {
               }
         }
 
-      loop(List.empty, List.empty, words.toList)
+      loop(List.empty, List.empty, words)
     }
 
     /** Maps segments of the `Name`.
       */
-    def mapParts(f: String => String): Name = Name(self.toList.map(f))
+    def mapParts(f: String => String): Name = Name(toList.map(f))
 
     def mkString(f: String => String)(sep: String): String =
       toList.map(f).mkString(sep)
@@ -87,80 +126,29 @@ trait NameModule {
         .map(_.capitalize)
         .mkString("")
 
-    override def toString: String = toList.mkString("[", ",", "]")
+    def renderToString: String = toList.mkString("[", ",", "]")
+}
+
+trait NameRenderer extends (Name => String) {
+  final def render(name: Name): String = apply(name)
+}
+
+object NameRenderer {
+  object CamelCase extends NameRenderer {
+    def apply(name: Name): String = name.toCamelCase
   }
 
-  object Name {
-
-    val empty: Name = Name(Nil)
-
-    private[morphir] def wrap(value: List[String]): Name = Name(value)
-
-    private[morphir] def wrap(value: Array[String]): Name = Name(value.toList)
-
-    def apply(first: String, rest: String*): Name =
-      fromIterable(first +: rest)
-
-    private val pattern = """([a-zA-Z][a-z]*|[0-9]+)""".r
-
-    /** Converts a list of strings into a name. NOTE: When this function is used, the strings are used as is to
-      * construct the name, and don't go through any processing. This behavior is desired here as it is consistent with
-      * Morphir's semantics for this function as defined in the `morphir-elm` project.
-      */
-    def fromList(list: List[String]): Name = Name(list)
-
-    /** Converts a list of strings into a name. NOTE: When this function is used, the strings are used as is to
-      * construct the name, and don't go through any processing. This behavior is desired here as it is consistent with
-      * Morphir's semantics for this function as defined in the `morphir-elm` project.
-      */
-    def fromList(list: String*): Name = fromList(list.toList)
-
-    def fromIterable(iterable: Iterable[String]): Name =
-      wrap(iterable.flatMap(str => pattern.findAllIn(str)).map(_.toLowerCase).toList)
-
-    def fromString(str: String): Name =
-      Name(pattern.findAllIn(str).toList.map(_.toLowerCase()))
-
-    def toList(name: Name): List[String] = name.toList
-
-    @inline def toTitleCase(name: Name): String = name.toTitleCase
-
-    @inline def toCamelCase(name: Name): String = name.toCamelCase
-
-    @inline def toSnakeCase(name: Name): String = name.toSnakeCase
-
-    @inline def toKebabCase(name: Name): String = name.toKebabCase
-
-    @inline def toHumanWords(name: Name): List[String] = name.humanize
-
-    object VariableName {
-      def unapply(name: Name): Option[String] =
-        Some(name.toCamelCase)
-    }
-
+  object KebabCase extends NameRenderer {
+    def apply(name: Name): String = name.toKebabCase
   }
 
-  trait NameRenderer extends (Name => String) {
-    final def render(name: Name): String = apply(name)
+  object SnakeCase extends NameRenderer {
+    def apply(name: Name): String = name.toSnakeCase
   }
 
-  object NameRenderer {
-    object CamelCase extends NameRenderer {
-      def apply(name: Name): String = name.toCamelCase
-    }
-
-    object KebabCase extends NameRenderer {
-      def apply(name: Name): String = name.toKebabCase
-    }
-
-    object SnakeCase extends NameRenderer {
-      def apply(name: Name): String = name.toSnakeCase
-    }
-
-    object TitleCase extends NameRenderer {
-      def apply(name: Name): String = name.toTitleCase
-    }
-
-    implicit val default: NameRenderer = TitleCase
+  object TitleCase extends NameRenderer {
+    def apply(name: Name): String = name.toTitleCase
   }
+
+  implicit val default: NameRenderer = TitleCase
 }

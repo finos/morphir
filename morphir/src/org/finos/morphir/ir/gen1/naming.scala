@@ -1,6 +1,6 @@
 package org.finos.morphir.ir.gen1
 
-object naming extends Names {
+object naming {
 
   final implicit class PackageNameSyntax(val self: PackageName) extends AnyVal {
     def /(moduleName: ModuleName): QualifiedModuleName = QualifiedModuleName(self, moduleName)
