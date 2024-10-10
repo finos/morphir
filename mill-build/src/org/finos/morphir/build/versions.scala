@@ -9,7 +9,7 @@ object V {
   val `case-app`                 = "2.1.0-M29"
   val `graal-polyglot`           = "24.0.2"
   val iron                       = "2.6.0"
-  val `jsoniter-scala`           = "2.30.11"
+  val `jsoniter-scala`           = "2.30.15"
   val `just-semver`              = "1.0.0"
   val kyo                        = "0.12.0"
   val literally                  = "1.2.0"

@@ -3,14 +3,17 @@ import mill._
 import mill.scalalib._
 import mill.scalalib.scalafmt._
 import mill.contrib.buildinfo.BuildInfo
-
+import io.github.davidgregory084.TpolecatModule
 trait CommonModule extends Module {
   final def projectName: T[String]     = T(projectNameParts().mkString("-"))
   def projectNameParts: T[Seq[String]] = T(millModuleSegments.parts)
 }
 
-trait CommonScalaModule extends CommonModule with ScalaModule with ScalafmtModule {
+trait CommonScalaModule extends TpolecatModule with CommonModule with ScalaModule with ScalafmtModule {
   def scalaVersion = V.Scala.libraryScalaVersion
+  override def scalacOptions = T {
+    super.scalacOptions().filterNot(Set("-Xlint:nullary-override"))
+  }
 }
 
 trait ScalaExecutableModule extends CommonScalaModule {
