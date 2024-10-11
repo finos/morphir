@@ -11,8 +11,8 @@ type Globals struct {
 type CLI struct {
 	Globals
 
-	Fetch FetchCmd `cmd:"" help:"Fetch data."`
-
+	Restore RestoreCmd `cmd:"" help:"Restore tools, dependencies, extensions, and plugins."`
+    
 	Version struct{} `cmd:"" help:"Show version."`
 }
 

@@ -1,10 +1,28 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"os"
 
-type FetchCmd struct{}
+	"github.com/finos/morphir/morphir-go/internal/host"
+)
 
-func (cmd *FetchCmd) Run(globals *Globals) error {
-	fmt.Println("fetching..")
+type RestoreCmd struct{}
+
+func (cmd *RestoreCmd) Run(globals *Globals) error {
+	host := host.New()
+
+	host.Run()
+
+	fmt.Println("restoring..")
+	// Get the current working directory
+	cwd, err := os.Getwd()
+	// Handle any errors while getting cwd
+	if err != nil {
+		fmt.Println("Error getting current working directory:", err)
+		return err
+	}
+	// Print the current working directory
+	fmt.Println("Current working directory:", cwd)
 	return nil
 }

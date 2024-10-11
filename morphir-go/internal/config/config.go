@@ -11,14 +11,28 @@ import (
 
 var k = koanf.New(".")
 
-func Init() *koanf.Koanf {
-	if err := k.Load(file.Provider("morphir.json"), json.Parser()); err != nil {
-		log.Fatalf("error loading config: %v", err)
-	}
-
-	k.Load(file.Provider("morphir.yaml"), yaml.Parser())
-
-	return k
+type Db interface {
+	All() map[string]interface{}
 }
 
-// Write some comments on 
+type db struct {
+	// add config fields here
+	underlying *koanf.Koanf
+}
+
+func NewDb() Db {
+	if err := k.Load(file.Provider("morphir.json"), json.Parser()); err != nil {
+		log.Printf("Loading of morphir.json failed: %v", err)
+	}
+
+	if err := k.Load(file.Provider("morphir.yaml"), yaml.Parser()); err != nil {
+		log.Printf("Loading of morphir.yaml failed: %v", err)
+	}
+	return db{underlying: k}
+}
+
+func (d db) All() map[string]interface{} {
+	return d.underlying.All()
+}
+
+// Write some comments on
