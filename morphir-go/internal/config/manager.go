@@ -1,8 +1,7 @@
 package config
 
 import (
-	"github.com/finos/morphir/morphir-go/pkg/morphir"
-	gap "github.com/muesli/go-app-paths"
+	"github.com/finos/morphir/morphir-go/pkg/morphir/configmode"
 )
 
 var (
@@ -11,24 +10,35 @@ var (
 	MorphirToolingFileNames = []string{"morphir-tooling.yml"}
 )
 
+type ToolingConfigMgr interface {
+	ToolingConfigPaths(scope ConfigScope, mode configmode.ConfigMode) []string
+}
+
 type ConfigMgr interface {
-	AppConfigPaths() []string
+	ToolingConfigMgr
+	//AppConfigPaths() []string
 }
 
 type DefaultConfigMgr struct {
-	appConfigPaths []string
+	//appConfigPaths []string
 }
 
 func NewDefaultConfigMgr() *DefaultConfigMgr {
-	scope := gap.NewVendorScope(gap.User, morphir.VendorName, morphir.AppName)
-	return &DefaultConfigMgr{appConfigPaths: appConfigPaths}
+	//scope := DefaultConfigScope()
+	//return &DefaultConfigMgr{appConfigPaths: appConfigPaths}
+	return &DefaultConfigMgr{}
 }
 
-func (mgr *DefaultConfigMgr) AppConfigPaths() []string {
-	return mgr.appConfigPaths
+func (mgr *DefaultConfigMgr) ToolingConfigPaths(mode configmode.ConfigMode) []string {
+	//scope := DefaultConfigScope()
+	return nil
 }
 
-func defaultAppConfigPaths(scope gap.Scope) []string {
-
-	return paths
-}
+//func (mgr *DefaultConfigMgr) AppConfigPaths() []string {
+//	return mgr.appConfigPaths
+//}
+//
+//func defaultAppConfigPaths(scope gap.Scope) []string {
+//
+//	return paths
+//}
