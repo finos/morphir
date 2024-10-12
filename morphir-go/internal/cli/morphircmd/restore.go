@@ -10,9 +10,9 @@ import (
 type RestoreCmd struct{}
 
 func (cmd *RestoreCmd) Run(globals *Globals) error {
-	host := host.New()
+	h := host.New()
 
-	host.Run()
+	h.Run()
 
 	fmt.Println("restoring..")
 	// Get the current working directory
