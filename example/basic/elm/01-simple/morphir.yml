@@ -1,0 +1,4 @@
+name: 'Morphir.Example.Basic.Elm1'
+aliases: ["basic-elm-example"]
+
+toolchains: ["elm"]

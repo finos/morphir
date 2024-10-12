@@ -1,4 +1,4 @@
-package workspaces
+package workspace
 
 type ClassicMorphirManifest struct {
 	Name              MorphirProjectName `json:"name"`

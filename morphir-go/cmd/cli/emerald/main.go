@@ -24,7 +24,7 @@ func main() {
 	}
 	ctx := kong.Parse(&cli,
 		kong.Name("emerald"),
-		kong.Description("A command line tool dealing with Elm projects and workspaces."),
+		kong.Description("A command line tool dealing with Elm projects and workspace."),
 		kong.UsageOnError())
 
 	err := ctx.Run(&cli.Globals)

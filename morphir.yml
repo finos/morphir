@@ -1,0 +1,3 @@
+workspace:
+  projects:
+   - "example/basic/elm/01-simple"

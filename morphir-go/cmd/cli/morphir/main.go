@@ -2,17 +2,17 @@ package main
 
 import (
 	"github.com/alecthomas/kong"
+	"github.com/finos/morphir/morphir-go/internal/cli/morphircmd"
 )
 
-type Globals struct {
-	WorkingDir string `short:"C" default:"." help:"Change to directory before doing anything else." type:"path"`
-}
+type Globals = morphircmd.Globals
 
 type CLI struct {
 	Globals
 
-	Restore RestoreCmd `cmd:"" help:"Restore tools, dependencies, extensions, and plugins."`
-    
+	Restore morphircmd.RestoreCmd `cmd:"" help:"Restore tools, dependencies, extensions, and plugins."`
+	Verify  morphircmd.VerifyCmd  `cmd:"" help:"Verify the MorphirIR."`
+
 	Version struct{} `cmd:"" help:"Show version."`
 }
 
@@ -24,7 +24,7 @@ func main() {
 	}
 	ctx := kong.Parse(&cli,
 		kong.Name("morphir"),
-		kong.Description("A command line tool dealing with Elm projects and workspaces."),
+		kong.Description("Tooling for working with Morphir models, workspaces, and the Morphir IR."),
 		kong.UsageOnError())
 
 	err := ctx.Run(&cli.Globals)
