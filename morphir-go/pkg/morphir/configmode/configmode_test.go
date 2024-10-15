@@ -2,37 +2,76 @@ package configmode
 
 import "testing"
 
-func TestConfigMode_IsGlobal(t *testing.T) {
-	mode := Global
-	if !mode.IsGlobal() {
-		t.Errorf("Expected ConfigMode to be Global")
+func TestConfigMode_IsEmptyOrUnspecified(t *testing.T) {
+	testCases := []struct {
+		name   string
+		input  ConfigMode
+		expect bool
+	}{
+		{"Global", Global, false},
+		{"Local", Local, false},
+		{"Upwards", Upwards, false},
+		{"Unspecified", Unspecified, true},
+		{"UpwardsGlobal", UpwardsGlobal, false},
+		{"Default", Default, false},
+		{"Empty", 0, true},
+		{"Global | Unspecified", Global | Unspecified, false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := tc.input.IsEmptyOrUnspecified()
+			if actual != tc.expect {
+				t.Errorf("Expected %v to be empty or unspecified, but got %v", tc.input, actual)
+			}
+		})
 	}
 }
 
-func TestConfigMode_IsLocal(t *testing.T) {
+func TestConfigMode_HasGlobal(t *testing.T) {
+	testCases := []struct {
+		name   string
+		input  ConfigMode
+		expect bool
+	}{
+		{"Global", Global, true},
+		{"UpwardsGlobal", UpwardsGlobal, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := tc.input.HasGlobal()
+			if actual != tc.expect {
+				t.Errorf("Expected %v to have Global, but got %v", tc.input, actual)
+			}
+		})
+	}
+}
+
+func TestConfigMode_HasLocal(t *testing.T) {
 	mode := Local
-	if !mode.IsLocal() {
+	if !mode.HasLocal() {
 		t.Errorf("Expected ConfigMode to be Local")
 	}
 }
 
-func TestConfigMode_IsUpwards(t *testing.T) {
+func TestConfigMode_HasUpwards(t *testing.T) {
 	mode := Upwards
-	if !mode.IsUpwards() {
+	if !mode.HasUpwards() {
 		t.Errorf("Expected ConfigMode to be Upwards")
 	}
 }
 
-func TestConfigMode_IsUpwardsGlobal(t *testing.T) {
+func TestConfigMode_HasUpwardsGlobal(t *testing.T) {
 	mode := UpwardsGlobal
-	if !mode.IsUpwardsGlobal() {
+	if !mode.HasUpwardsGlobal() {
 		t.Errorf("Expected ConfigMode to be UpwardsGlobal")
 	}
 }
 
-func TestConfigMode_IsDefault(t *testing.T) {
+func TestConfigMode_HasDefault(t *testing.T) {
 	mode := Default
-	if !mode.IsDefault() {
+	if !mode.HasDefault() {
 		t.Errorf("Expected ConfigMode to be Default")
 	}
 }
