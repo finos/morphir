@@ -1,4 +1,4 @@
-package tools
+package info
 
 const (
 	// EmeraldToolName is the name of the emerald tool for helping to manage elm dependencies, projects, and workspaces

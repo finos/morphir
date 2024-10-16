@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/finos/morphir/morphir-go/pkg/morphir/config/configmode"
+	"github.com/finos/morphir/morphir-go/pkg/morphir/config"
 	"github.com/hack-pad/hackpadfs"
 )
 
@@ -17,7 +17,7 @@ type ToolingConfigFS interface {
 
 type ToolingConfigMgr interface {
 	// ToolingConfigPaths returns the list of paths to search for Morphir tooling configuration files
-	ToolingConfigPaths(fs hackpadfs.StatFS, path string, scope ConfigScope, mode configmode.ConfigMode) []string
+	ToolingConfigPaths(fs hackpadfs.StatFS, path string, scope ConfigScope, mode config.Mode) []string
 }
 
 type ConfigMgr interface {
@@ -38,7 +38,7 @@ type DefaultConfigMgr struct {
 // 	return &DefaultConfigMgr{FS: fs}
 // }
 
-// func (mgr *DefaultConfigMgr) ToolingConfigPaths(path string, mode configmode.ConfigMode) []string {
+// func (mgr *DefaultConfigMgr) ToolingConfigPaths(path string, mode configmode.Mode) []string {
 // 	scope := DefaultConfigScope()
 // 	var paths []string
 // 	mode = mode.Canonicalize()

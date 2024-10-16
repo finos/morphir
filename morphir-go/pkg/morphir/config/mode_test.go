@@ -1,11 +1,13 @@
-package configmode
+package config
 
-import "testing"
+import (
+	"testing"
+)
 
-func TestConfigMode_IsEmptyOrUnspecified(t *testing.T) {
+func TestMode_IsEmptyOrUnspecified(t *testing.T) {
 	testCases := []struct {
 		name   string
-		input  ConfigMode
+		input  Mode
 		expect bool
 	}{
 		{"Global", Global, false},
@@ -28,10 +30,10 @@ func TestConfigMode_IsEmptyOrUnspecified(t *testing.T) {
 	}
 }
 
-func TestConfigMode_HasGlobal(t *testing.T) {
+func TestMode_HasGlobal(t *testing.T) {
 	testCases := []struct {
 		name   string
-		input  ConfigMode
+		input  Mode
 		expect bool
 	}{
 		{"Global", Global, true},
@@ -48,40 +50,40 @@ func TestConfigMode_HasGlobal(t *testing.T) {
 	}
 }
 
-func TestConfigMode_HasLocal(t *testing.T) {
+func TestMode_HasLocal(t *testing.T) {
 	mode := Local
 	if !mode.HasLocal() {
-		t.Errorf("Expected ConfigMode to be Local")
+		t.Errorf("Expected Mode to be Local")
 	}
 }
 
-func TestConfigMode_HasUpwards(t *testing.T) {
+func TestMode_HasUpwards(t *testing.T) {
 	mode := Upwards
 	if !mode.HasUpwards() {
-		t.Errorf("Expected ConfigMode to be Upwards")
+		t.Errorf("Expected Mode to be Upwards")
 	}
 }
 
-func TestConfigMode_HasUpwardsGlobal(t *testing.T) {
+func TestMode_HasUpwardsGlobal(t *testing.T) {
 	mode := UpwardsGlobal
 	if !mode.HasUpwardsGlobal() {
-		t.Errorf("Expected ConfigMode to be UpwardsGlobal")
+		t.Errorf("Expected Mode to be UpwardsGlobal")
 	}
 }
 
-func TestConfigMode_HasDefault(t *testing.T) {
+func TestMode_HasDefault(t *testing.T) {
 	mode := Default
 	if !mode.HasDefault() {
-		t.Errorf("Expected ConfigMode to be Default")
+		t.Errorf("Expected Mode to be Default")
 	}
 }
 
-func TestConfigMode_Including(t *testing.T) {
+func TestMode_Including(t *testing.T) {
 	testCases := []struct {
 		name      string
-		original  ConfigMode
-		including ConfigMode
-		expected  ConfigMode
+		original  Mode
+		including Mode
+		expected  Mode
 	}{
 		{"Global including Local", Global, Local, Global | Local},
 		{"Local including Upwards", Local, Upwards, Local | Upwards},
@@ -94,6 +96,32 @@ func TestConfigMode_Including(t *testing.T) {
 			actual := tc.original.Including(tc.including)
 			if actual != tc.expected {
 				t.Errorf("Original mode was %v and we are including %v, expected %v but got %v", tc.original, tc.including, tc.expected, actual)
+			}
+		})
+	}
+}
+
+func TestMode_ShouldApplyDefaults(t *testing.T) {
+	testCases := []struct {
+		name     string
+		original Mode
+		expected bool
+	}{
+		{"Global", Global, false},
+		{"Local", Local, false},
+		{"Upwards", Upwards, false},
+		{"UpwardsGlobal", UpwardsGlobal, false},
+		{"Default", Default, false},
+		{"Empty", 0, true},
+		{"Unspecified", Unspecified, true},
+		{"Global | Unspecified", Global | Unspecified, false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := tc.original.ShouldApplyDefaults()
+			if actual != tc.expected {
+				t.Errorf("Expected %v to return %v, but got %v", tc.original, tc.expected, actual)
 			}
 		})
 	}

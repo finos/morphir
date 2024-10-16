@@ -1,51 +1,53 @@
 package host
 
 import (
-	"github.com/finos/morphir/morphir-go/pkg/morphir/dirs"
-	"github.com/finos/morphir/morphir-go/pkg/morphir/host/hostdirs"
-
-	goOS "os"
+	"github.com/finos/morphir/morphir-go/pkg/morphir/config"
+	"github.com/finos/morphir/morphir-go/pkg/morphir/paths"
 
 	"github.com/hack-pad/hackpadfs"
 	"github.com/hack-pad/hackpadfs/os"
 )
 
 type Host struct {
-	fs   hackpadfs.FS
-	dirs hostdirs.HostDirs
+	configMode config.Mode
+	fs         hackpadfs.FS
+	paths      *paths.Paths
 }
 
 func New(options ...func(*Host)) *Host {
-	host := &Host{dirs: dirs.Dirs{}}
+	host := &Host{
+		configMode: config.NewMode(),
+		paths:      paths.New(),
+	}
 	for _, option := range options {
 		option(host)
 	}
 
 	// If the user hasn't provided a filesystem, use the default OS filesystem
 	if host.fs == nil {
-		host.fs = os.NewFS()
+		WithOsFS()(host)
 	}
 	return host
 }
 
-func (host *Host) WithFS(fs hackpadfs.FS) func(*Host) {
-	return func(appHost *Host) {
-		appHost.fs = fs
-	}
-}
-
-func WithWorkingDir(workingDir string) func(*Host) {
+func WithConfigMode(mode config.Mode) func(*Host) {
 	return func(host *Host) {
-		host.dirs.workingDir = hostdirs.WorkingDir(workingDir)
+		host.configMode = mode
 	}
 }
 
-func WithOsWorkingDir() func(*Host) {
-	return func(appHost *Host) {
-		workingDirectory, err := goOS.Getwd()
-		if err != nil {
-			panic(err)
-		}
-		appHost.workingDir = workingDirectory
+func WithFS(fs hackpadfs.FS) func(*Host) {
+	return func(host *Host) {
+		host.fs = fs
+	}
+}
+
+func WithOsFS() func(*Host) {
+	return WithFS(os.NewFS())
+}
+
+func WithPaths(paths paths.Paths) func(*Host) {
+	return func(host *Host) {
+		host.paths = &paths
 	}
 }

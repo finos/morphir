@@ -1,12 +1,12 @@
 package config
 
 import (
-	"github.com/finos/morphir/morphir-go/pkg/morphir/tools"
+	"github.com/finos/morphir/morphir-go/pkg/morphir/info"
 	gap "github.com/muesli/go-app-paths"
 )
 
 var (
-	defaultConfigScope = gap.NewVendorScope(gap.User, tools.VendorName, tools.MorphirToolName)
+	defaultConfigScope = gap.NewVendorScope(gap.User, info.VendorName, info.MorphirToolName)
 )
 
 func DefaultConfigScope() ConfigScope {
