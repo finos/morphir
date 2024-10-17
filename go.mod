@@ -5,6 +5,7 @@ go 1.23.1
 require (
 	github.com/alecthomas/kong v1.2.1 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.7.1 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/hack-pad/hackpadfs v0.2.4 // indirect
@@ -18,7 +19,9 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/muesli/go-app-paths v0.2.2 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sanity-io/litter v1.5.5 // indirect
+	github.com/stretchr/testify v1.9.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect
