@@ -15,27 +15,27 @@ type WorkspaceDir string
 type ProjectDir string
 
 type WorkingDirProvider interface {
-	WorkingDir() (dir WorkingDir, err error)
+	WorkingDir() (dir WorkingDir, ok bool)
 }
 
 type ConfigDirProvider interface {
-	ConfigDir() (dir ConfigDir, err error)
+	ConfigDir() (dir ConfigDir, ok bool)
 }
 
 type CacheDirProvider interface {
-	CacheDir() (dir CacheDir, err error)
+	CacheDir() (dir CacheDir, ok bool)
 }
 
 type DataDirProvider interface {
-	DataDir() (dir DataDir, err error)
+	DataDir() (dir DataDir, ok bool)
 }
 
 type HomeDirProvider interface {
-	HomeDir() (dir HomeDir, err error)
+	HomeDir() (dir HomeDir, ok bool)
 }
 
 type WorkspaceDirProvider interface {
-	WorkspaceDir() (dir WorkspaceDir, err error)
+	WorkspaceDir() (dir WorkspaceDir, ok bool)
 }
 
 type BaseDirs interface {

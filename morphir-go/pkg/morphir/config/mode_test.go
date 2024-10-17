@@ -71,9 +71,9 @@ func TestMode_HasUpwardsGlobal(t *testing.T) {
 	}
 }
 
-func TestMode_HasDefault(t *testing.T) {
+func TestMode_IsDefault(t *testing.T) {
 	mode := Default
-	if !mode.HasDefault() {
+	if !mode.IsDefault() {
 		t.Errorf("Expected Mode to be Default")
 	}
 }

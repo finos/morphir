@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"github.com/finos/morphir/morphir-go/pkg/morphir/info"
 	gap "github.com/muesli/go-app-paths"
 )
@@ -57,4 +58,21 @@ func (s *Scope) IsCustomHome() bool {
 	default:
 		return false
 	}
+}
+
+// ConfigDirs returns a priority-sorted slice of all the application's config dirs.
+func (s *Scope) ConfigDirs() ([]string, error) {
+	return s.scope.ConfigDirs()
+}
+
+func (s *Scope) ConfigDir() (string, error) {
+	dirs, err := s.ConfigDirs()
+	if err != nil {
+		return "", err
+	}
+	if len(dirs) < 1 {
+		return "", errors.New("no config directory found")
+	}
+	return dirs[0], nil
+
 }

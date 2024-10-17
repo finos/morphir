@@ -36,7 +36,7 @@ func (m *Mode) HasUpwardsGlobal() bool {
 	return *m&UpwardsGlobal == UpwardsGlobal
 }
 
-func (m *Mode) HasDefault() bool {
+func (m *Mode) IsDefault() bool {
 	return *m == Default
 }
 
