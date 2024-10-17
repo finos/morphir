@@ -1,9 +1,12 @@
 package org.finos.morphir.lang.elm
 
-import kyo.{Path as _, _}
+import kyo.Result.Fail
+import kyo.{Path as _, *}
+import metaconfig.{ConfError, Input}
+
 import java.net.{URI, URL}
-import org.finos.morphir.Path
-import org.finos.morphir.GenericPath
+import org.finos.morphir.{FilePath, GenericPath, Path, VirtualPath}
+import os.*
 
 // trait ElmProjectInfoService:
 //     self =>
@@ -24,8 +27,15 @@ trait ElmProjectLoader:
 
 object ElmProjectLoader:
   final case class Live() extends ElmProjectLoader:
-    override def loadProject(path: GenericPath): ElmProject < IO & Abort[String | Exception] = ???
-    override def loadProject(uri: URI): ElmProject < IO & Abort[String | Exception]          = ???
+    override def loadProject(path: GenericPath): ElmProject < IO & Abort[String | Exception] = path match
+      case path: FilePath    => ???
+      case path: VirtualPath => ???
+      case _                 => ???
+
+    override def loadProject(uri: URI): ElmProject < IO & Abort[String | Exception] =
+      IO(ElmProject.parseFile(os.Path(uri))) match
+        case Result.Success(value): Result.Success[ElmProject] => kyo.Path
+        case Result.Fail(error): Result.Fail[ConfError]        => Abort.fail(error.msg)
 
 trait ElmPackageResolver:
   import ElmPackageResolver.*

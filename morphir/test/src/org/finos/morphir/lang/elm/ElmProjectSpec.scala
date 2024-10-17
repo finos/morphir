@@ -166,11 +166,11 @@ object ElmProjectSpec extends MorphirSpecDefault {
       },
       test("Can get the namespace from a module name with one") {
         val moduleName = ElmModuleName("Morphir.Sdk")
-        assertTrue(moduleName.namespace == Some("Morphir"))
+        assertTrue(moduleName.namespace.contains("Morphir"))
       },
       test("Can get the namespace from a module name with a longer namespace") {
         val moduleName = ElmModuleName("Morphir.IR.SDK.String")
-        assertTrue(moduleName.namespace == Some("Morphir.IR.SDK"))
+        assertTrue(moduleName.namespace.contains("Morphir.IR.SDK"))
       },
       test("should parse a valid Elm module name") {
         val result = ElmModuleName.parse("Morphir.Core")

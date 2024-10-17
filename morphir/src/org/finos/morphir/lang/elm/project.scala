@@ -53,7 +53,7 @@ object ElmProject extends ConfigCompanion[ElmProject]:
   ) extends ElmProject
 
   object ElmApplication:
-    private val default: ElmApplication = ElmApplication(
+    val default: ElmApplication = ElmApplication(
       List("src"),
       SemVerString("0.0.1"),
       ElmApplicationDependencies.default,
