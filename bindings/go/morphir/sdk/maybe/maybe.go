@@ -12,3 +12,12 @@ func (m Maybe[T]) IsEmpty() bool { return m.empty }
 func (m Maybe[T]) Get() (value T, isPresent bool) {
 	return m.value, !m.empty
 }
+
+func WithDefault[T any](defaultValue T) func(Maybe[T]) T {
+	return func(maybe Maybe[T]) T {
+		if maybe.IsEmpty() {
+			return defaultValue
+		}
+		return maybe.value
+	}
+}
