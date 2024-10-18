@@ -21,3 +21,7 @@ func Repeat[T any](count basics.Int) func(value T) List[T] {
 		return ls
 	}
 }
+
+func FromSlice[T any](slice []T) List[T] {
+	return slice
+}
