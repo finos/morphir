@@ -64,3 +64,6 @@ project.fragment.lock.json
 
 # Morphir
 morphir.user.*
+
+## Don't include the Morphir generated binaries
+morphir.exe
