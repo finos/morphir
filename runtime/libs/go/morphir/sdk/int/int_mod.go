@@ -1,8 +1,8 @@
 package int
 
 import (
-	"github.com/finos/morphir/bindings/go/morphir/sdk/basics"
-	"github.com/finos/morphir/bindings/go/morphir/sdk/maybe"
+	"github.com/finos/morphir/runtime/libs/go/morphir/sdk/basics"
+	maybe2 "github.com/finos/morphir/runtime/libs/go/morphir/sdk/maybe"
 )
 
 type Int8 int8
@@ -29,30 +29,30 @@ func FromInt64[I64 ~int64](i I64) basics.Int {
 	return basics.Int(i)
 }
 
-func ToInt8(i basics.Int) maybe.Maybe[Int8] {
+func ToInt8(i basics.Int) maybe2.Maybe[Int8] {
 	if i < -128 || i > 127 {
-		return maybe.Nothing[Int8]()
+		return maybe2.Nothing[Int8]()
 	}
-	return maybe.Just(Int8(i))
+	return maybe2.Just(Int8(i))
 }
 
-func ToInt16(i basics.Int) maybe.Maybe[Int16] {
+func ToInt16(i basics.Int) maybe2.Maybe[Int16] {
 	if i < -32768 || i > 32767 {
-		return maybe.Nothing[Int16]()
+		return maybe2.Nothing[Int16]()
 	}
-	return maybe.Just(Int16(i))
+	return maybe2.Just(Int16(i))
 }
 
-func ToInt32(i basics.Int) maybe.Maybe[Int32] {
+func ToInt32(i basics.Int) maybe2.Maybe[Int32] {
 	if i < -2147483648 || i > 2147483647 {
-		return maybe.Nothing[Int32]()
+		return maybe2.Nothing[Int32]()
 	}
-	return maybe.Just(Int32(i))
+	return maybe2.Just(Int32(i))
 }
 
-func ToInt64(i basics.Int) maybe.Maybe[Int64] {
+func ToInt64(i basics.Int) maybe2.Maybe[Int64] {
 	if i < -9223372036854775808 || i > 9223372036854775807 {
-		return maybe.Nothing[Int64]()
+		return maybe2.Nothing[Int64]()
 	}
-	return maybe.Just(Int64(i))
+	return maybe2.Just(Int64(i))
 }

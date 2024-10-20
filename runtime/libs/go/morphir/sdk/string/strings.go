@@ -1,7 +1,7 @@
 package string
 
 import (
-	"github.com/finos/morphir/bindings/go/morphir/sdk/basics"
+	"github.com/finos/morphir/runtime/libs/go/morphir/sdk/basics"
 	"strings"
 )
 

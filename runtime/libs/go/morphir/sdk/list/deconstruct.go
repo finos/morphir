@@ -1,9 +1,9 @@
 package list
 
 import (
-	"github.com/finos/morphir/bindings/go/morphir/ir/tuple"
-	"github.com/finos/morphir/bindings/go/morphir/sdk/basics"
-	"github.com/finos/morphir/bindings/go/morphir/sdk/maybe"
+	"github.com/finos/morphir/runtime/libs/go/morphir/ir/tuple"
+	"github.com/finos/morphir/runtime/libs/go/morphir/sdk/basics"
+	maybe2 "github.com/finos/morphir/runtime/libs/go/morphir/sdk/maybe"
 )
 
 // Drop the first `n` members of a list.
@@ -16,11 +16,11 @@ func Drop[T any](n basics.Int) func(ls List[T]) List[T] {
 	}
 }
 
-func Head[T any](ls List[T]) maybe.Maybe[T] {
+func Head[T any](ls List[T]) maybe2.Maybe[T] {
 	if len(ls) == 0 {
-		return maybe.Nothing[T]()
+		return maybe2.Nothing[T]()
 	}
-	return maybe.Just(ls[0])
+	return maybe2.Just(ls[0])
 }
 
 func HeadAndTail[T any](ls List[T]) (head T, tail List[T], ok bool) {
@@ -51,11 +51,11 @@ func Partition[T any](f func(T) basics.Bool) func(List[T]) (List[T], List[T]) {
 }
 
 // Tail extract the tail of a list, which is the list without the first element.
-func Tail[T any](ls List[T]) maybe.Maybe[List[T]] {
+func Tail[T any](ls List[T]) maybe2.Maybe[List[T]] {
 	if len(ls) == 0 {
-		return maybe.Nothing[List[T]]()
+		return maybe2.Nothing[List[T]]()
 	}
-	return maybe.Just(ls[1:])
+	return maybe2.Just(ls[1:])
 }
 
 // Take the first `n` members of a list.

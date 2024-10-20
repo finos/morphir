@@ -2,8 +2,7 @@ package json
 
 import (
 	"encoding/json"
-
-	"github.com/finos/morphir/bindings/go/morphir/encoding"
+	"github.com/finos/morphir/runtime/libs/go/morphir/encoding"
 )
 
 type MarshalSettings struct {

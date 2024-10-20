@@ -1,6 +1,8 @@
 package nodeid
 
-import "github.com/finos/morphir/bindings/go/morphir/ir/name"
+import (
+	"github.com/finos/morphir/runtime/libs/go/morphir/ir/name"
+)
 
 type Tag int8
 type NodePathStepTag int8

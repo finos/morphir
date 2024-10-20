@@ -1,7 +1,7 @@
 package name
 
 import (
-	"github.com/finos/morphir/bindings/go/morphir/sdk/list"
+	list2 "github.com/finos/morphir/runtime/libs/go/morphir/sdk/list"
 	"regexp"
 	"strings"
 
@@ -38,12 +38,12 @@ func ToTitleCase(n Name) string {
 	return strings.Join(slices.Map(n, toTitleCase), "")
 }
 
-func ToList(n Name) list.List[string] {
-	return list.FromSlice(n)
+func ToList(n Name) list2.List[string] {
+	return list2.FromSlice(n)
 }
 
-func (n Name) ToList() list.List[string] {
-	return list.FromSlice(n)
+func (n Name) ToList() list2.List[string] {
+	return list2.FromSlice(n)
 }
 
 func (n Name) ToCamelCase() string {
