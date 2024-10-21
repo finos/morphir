@@ -16,9 +16,9 @@ limitations under the License.
 package main
 
 import (
-	"github.com/finos/morphir/internal/morphircmd"
+	"github.com/finos/morphir/tooling/morphir"
 )
 
 func main() {
-	morphircmd.Execute()
+	morphir.Execute()
 }
