@@ -16,11 +16,13 @@ limitations under the License.
 package morphir
 
 import (
-	"github.com/knadh/koanf/v2"
-	"go.uber.org/zap"
-	"log"
+	"context"
+	"fmt"
+	"github.com/finos/morphir/devkit/go/morphircli/session"
 	"os"
 
+	"github.com/knadh/koanf/v2"
+	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
 )
 
@@ -44,14 +46,6 @@ Morphir provides a set of tools for integrating technologies. Morphir is compose
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	logger := zap.L()
-	defer func(logger *zap.Logger) {
-		err := logger.Sync()
-		if err != nil {
-			log.Printf("WARNING: can't sync logger: %v", err)
-		}
-	}(logger)
-
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
@@ -60,7 +54,7 @@ func Execute() {
 
 func init() {
 
-	cobra.OnInitialize(initLogger, initConfig)
+	cobra.OnInitialize(initConfig)
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
@@ -70,24 +64,38 @@ func init() {
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		noServer, err := cmd.Flags().GetBool("no-server")
 		if err != nil {
-			zap.L().Sugar().Errorf("can't get no-server flag: %v", err)
+			log.Warn().Err(err).Msg(`error encountered while attempting to read the "--no-server" flag`)
 		}
 
-		if noServer {
-			zap.L().Info("Running without server")
-		} else {
-			// TODO: Check if server is started if not start it
-			zap.L().Info("Running with server")
+		_, err = initSession(cmd, noServer)
+		if err != nil {
+			err = fmt.Errorf("error initializing/starting session: %w", err)
+			log.Error().Err(err)
+			panic(err)
 		}
 	}
 }
 
-func initLogger() {
-	logger, err := zap.NewProduction()
-	if err != nil {
-		log.Fatalf("can't initialize zap logger: %v", err)
+func initSession(cmd *cobra.Command, noServer bool) (*session.Session, error) {
+	log.Info().Msg("Initializing session...")
+	var s *session.Session
+	if noServer {
+		s = session.New(session.UsingInProcessServer())
+	} else {
+		s = session.New(session.UsingOutOfProcessServer())
 	}
-	zap.ReplaceGlobals(logger)
+
+	// Add the session to the context
+	ctx := cmd.Context()
+	ctx = context.WithValue(ctx, "session", s)
+	cmd.SetContext(ctx)
+
+	// Start the session
+	err := s.Start(ctx)
+	if err != nil {
+		return s, fmt.Errorf("error starting session: %w", err)
+	}
+	return s, nil
 }
 
 func initConfig() {
