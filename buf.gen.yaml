@@ -6,4 +6,4 @@ plugins:
     out: gen
     opt: paths=source_relative
 inputs:
-  -directory: proto
+  -directory: "devkit/shared/services"

@@ -1,6 +1,6 @@
 package task
 
-type TaskId string
+type Id string
 
 type Task interface {
 	Name() string

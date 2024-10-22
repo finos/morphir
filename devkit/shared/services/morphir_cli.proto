@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package morphir.devkit.shared.tasks;
+option go_package = "github.com/finos/morphir/devkit/go/morphircli/shared/services";
+
+service Tasks {
+  rpc MorphirMake(MorphirMakeRequest) returns (MorphirMakeResponse);
+}
+
+message MorphirMakeRequest {
+  string srcDirectory = 1;
+  string outputPath = 2;
+  bool typesOnly = 3;
+  bool indentJson = 4;
+  optional ModuleNames exposedModules = 5;
+  optional LocalDependencies localDependencies = 6;
+  optional Dependencies dependencies = 7;
+}
+
+message MorphirMakeResponse {
+  string outputPath = 1;
+}
+
+message ModuleNames {
+  repeated string items = 1;
+}
+
+message LocalDependencies {
+  repeated string items = 1;
+}
+
+message Dependencies {
+  repeated string items = 1;
+}

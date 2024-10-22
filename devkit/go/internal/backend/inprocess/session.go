@@ -2,18 +2,29 @@ package inprocess
 
 import (
 	"github.com/asynkron/protoactor-go/actor"
+	"github.com/finos/morphir/devkit/go/internal/backend/grains/makeactor"
 	"github.com/phuslu/log"
 )
 
 type Session struct {
-	system *actor.ActorSystem
+	system  *actor.ActorSystem
+	makePid *actor.PID
 }
 
 func New() *Session {
 	sys := actor.NewActorSystem()
+
+	props := makeactor.Props()
+	makePid := sys.Root.Spawn(props)
+
 	return &Session{
-		system: sys,
+		system:  sys,
+		makePid: makePid,
 	}
+}
+
+func (s *Session) System() *actor.ActorSystem {
+	return s.system
 }
 
 func (s *Session) Start() {

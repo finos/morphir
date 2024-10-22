@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/finos/morphir/devkit/go/internal/backend/inprocess"
 	"github.com/finos/morphir/devkit/go/morphircli"
+	"github.com/finos/morphir/devkit/go/morphircli/task"
 	"github.com/hack-pad/hackpadfs"
 	"github.com/hack-pad/hackpadfs/os"
 	"github.com/phuslu/log"
@@ -13,6 +14,7 @@ import (
 type Session struct {
 	inProcess        bool
 	fs               *hackpadfs.FS
+	taskCoordinator  *task.Coordinator
 	inprocessSession *inprocess.Session
 }
 
