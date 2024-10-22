@@ -17,9 +17,15 @@ package morphir
 
 import (
 	"fmt"
+	"github.com/bmatcuk/doublestar/v4"
+	"github.com/finos/morphir/devkit/go/project"
+
+	"github.com/finos/morphir/tooling/morphir/internal/commands/makecmd"
+	"github.com/hack-pad/hackpadfs/os"
 	"github.com/knadh/koanf/providers/posflag"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"path/filepath"
 )
 
 // makeCmd represents the make command
@@ -33,21 +39,57 @@ var makeCmd = &cobra.Command{
 			zap.L().Error("Error loading config", zap.Error(err))
 			return
 		}
-		fmt.Println("make called")
+		fmt.Println("make called with commandline arguments:", args)
 		indent := k.Bool("indent-json")
 		fmt.Println("Indent: ", indent)
+
+		basePath, err := filepath.Abs(k.String("project-dir"))
+		fmt.Println("Project Dir: ", basePath)
+
+		fs := os.NewFS()
+		basePath, err = fs.FromOSPath(basePath)
+		if err != nil {
+			zap.L().Error("Error converting path to fs path", zap.Error(err))
+			return
+		}
+		rootedFS, err := fs.Sub(basePath)
+
+		paths, err := doublestar.Glob(rootedFS, "morphir.json")
+		if err != nil {
+			zap.L().Error("Error globbing files", zap.Error(err))
+			return
+		}
+		if len(paths) == 0 {
+			zap.L().Error("No project files found")
+			return
+		}
+
+		fmt.Println("Files: ", paths)
+		path := paths[0]
+		proj, err := project.LoadJsonFile(rootedFS, path)
+		if err != nil {
+			zap.L().Error("Error loading project", zap.Error(err))
+			return
+		}
+		fmt.Println("Project path: ", path)
+		fmt.Printf("Project: %+v\r\n", proj)
+		fmt.Println("Project Name: ", proj.Name)
+
+		err = makecmd.Make(cmd.Context())
+		if err != nil {
+			return
+		}
 	},
 }
-
-var projectDir string
-var output string
-var typesOnly bool
-var indentJson bool
-var includes []string
 
 func init() {
 	rootCmd.AddCommand(makeCmd)
 
+	var projectDir string
+	var output string
+	var typesOnly bool
+	var indentJson bool
+	var includes []string
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
