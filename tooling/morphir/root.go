@@ -90,6 +90,14 @@ func initSession(cmd *cobra.Command, noServer bool) (*session.Session, error) {
 	ctx = context.WithValue(ctx, "session", s)
 	cmd.SetContext(ctx)
 
+	cmd.PersistentPostRun = func(cmd *cobra.Command, args []string) {
+		s := cmd.Context().Value("session").(*session.Session)
+		err := s.Close()
+		if err != nil {
+			log.Error().Err(err).Msg("error closing session")
+		}
+	}
+
 	// Start the session
 	err := s.Start(ctx)
 	if err != nil {

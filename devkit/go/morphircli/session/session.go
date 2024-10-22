@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"errors"
+	"github.com/finos/morphir/devkit/go/internal/backend/inprocess"
 	"github.com/finos/morphir/devkit/go/morphircli"
 	"github.com/hack-pad/hackpadfs"
 	"github.com/hack-pad/hackpadfs/os"
@@ -10,8 +11,9 @@ import (
 )
 
 type Session struct {
-	inProcess bool
-	fs        *hackpadfs.FS
+	inProcess        bool
+	fs               *hackpadfs.FS
+	inprocessSession *inprocess.Session
 }
 
 type Option func(*Session)
@@ -72,6 +74,7 @@ func (s *Session) Start(ctx context.Context) error {
 
 func (s *Session) startInProcess(ctx context.Context) error {
 	log.Info().Msg("Starting in-process session")
+	s.inprocessSession = inprocess.New()
 	return nil
 }
 
@@ -82,11 +85,20 @@ func (s *Session) startIpc(ctx context.Context) error {
 }
 
 func (s *Session) Stop() error {
+	log.Info().Msg("Stopping session...")
+	log.Info().Msg("Session stopped")
 	return nil
 }
 
 func (s *Session) Close() error {
-	return s.Stop()
+	log.Info().Msg("Closing session...")
+	if s.inprocessSession != nil {
+		s.inprocessSession.Close()
+		s.inprocessSession = nil
+	}
+	err := s.Stop()
+	log.Info().Msg("Session closed")
+	return err
 }
 
 func initSession(session *Session) *Session {
