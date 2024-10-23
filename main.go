@@ -17,8 +17,38 @@ package main
 
 import (
 	"github.com/finos/morphir/tooling/morphir"
+	"github.com/phuslu/log"
+	"log/slog"
 )
 
 func main() {
+	log.Info().Msg("Starting Morphir CLI")
 	morphir.Execute()
+}
+
+func init() {
+	initLogger()
+}
+
+func initLogger() {
+	log.DefaultLogger = log.Logger{
+		Level:      log.InfoLevel,
+		Caller:     1,
+		TimeField:  "timestamp",
+		TimeFormat: "2006-01-02T15:04:05.000Z0700",
+		Writer: &log.ConsoleWriter{
+			ColorOutput:    true,
+			QuoteString:    true,
+			EndWithMessage: true,
+		},
+	}
+
+	logger := (&log.Logger{
+		Level:      log.InfoLevel,
+		TimeField:  "date",
+		TimeFormat: "2006-01-02T15:04:05.000Z0700",
+		Caller:     1,
+	}).Slog()
+
+	slog.SetDefault(logger)
 }

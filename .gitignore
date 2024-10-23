@@ -67,3 +67,9 @@ morphir.user.*
 
 ## Don't include the Morphir generated binaries
 morphir.exe
+
+# Don't check in go.work
+go.work
+
+# Don't include generated code
+gen/

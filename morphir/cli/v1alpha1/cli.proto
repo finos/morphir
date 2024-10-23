@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package morphir.cli.v1alpha1;
+
+option go_package = "github.com/finos/morphir/devkit/morphir/cli/v1alpha1";
+
+service MorphirCliService {
+  rpc MakeProject(MakeProjectRequest) returns (MakeProjectResponse) {}
+}
+
+message MakeProjectRequest {
+  string project_name = 1;
+}
+
+message MakeProjectResponse {
+  bool success = 1;
+}

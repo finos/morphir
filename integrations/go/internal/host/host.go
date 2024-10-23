@@ -2,7 +2,7 @@ package host
 
 import (
 	"fmt"
-	"github.com/finos/morphir/integrations/go/internal/config"
+	"github.com/finos/morphir/devkit/go/config"
 )
 
 type ConfigDb config.Db
