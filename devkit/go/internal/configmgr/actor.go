@@ -11,7 +11,7 @@ type configMgrActor struct {
 	cfg *koanf.Koanf
 }
 
-func NewConfigMgr() actor.Producer {
+func NewConfigMgr(config Config) actor.Producer {
 	return func() actor.Receiver {
 		return &configMgrActor{cfg: koanf.New(".")}
 	}
@@ -19,6 +19,8 @@ func NewConfigMgr() actor.Producer {
 
 func (c *configMgrActor) Receive(context *actor.Context) {
 	switch msg := context.Message().(type) {
+	case actor.Initialized:
+		log.Info().Msg("ConfigMgrActor initialized")
 	case configmgr.LoadHostConfig:
 		log.Info().Objects("command", msg).Msg("Loading host config")
 	}

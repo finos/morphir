@@ -11,8 +11,10 @@ type service struct {
 	pid    *actor.PID
 }
 
-func New(engine *actor.Engine) configmgr.ConfigMgr {
-	pid := engine.Spawn(NewConfigMgr(), "configMgrActor")
+type Config struct{}
+
+func New(engine *actor.Engine, config Config) configmgr.ConfigMgr {
+	pid := engine.Spawn(NewConfigMgr(config), "configMgrActor")
 	mgr := &service{
 		engine: engine,
 		pid:    pid,

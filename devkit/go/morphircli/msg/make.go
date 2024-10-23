@@ -1,5 +1,7 @@
 package msg
 
+import "github.com/finos/morphir/devkit/go/project"
+
 type MakeProject struct {
-	Project string
+	Project *project.Project
 }
