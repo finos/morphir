@@ -3,7 +3,7 @@ package project
 import (
 	"encoding/json"
 	"github.com/hack-pad/hackpadfs"
-	"go.uber.org/zap"
+	"github.com/phuslu/log"
 	"io"
 )
 
@@ -26,13 +26,13 @@ type DecorationInfo struct {
 func LoadJsonFile(fs hackpadfs.FS, path string) (*Project, error) {
 	file, err := fs.Open(path)
 	if err != nil {
-		zap.L().Error("Error opening file", zap.Error(err))
+		log.Error().Err(err).Msg("Error opening file")
 		return nil, err
 	}
 	defer func(file hackpadfs.File) {
 		err := file.Close()
 		if err != nil {
-			zap.L().Error("Error closing file", zap.Error(err))
+			log.Error().Err(err).Msg("Error closing file")
 		}
 	}(file)
 	p, err := Decode(file)

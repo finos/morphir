@@ -3,19 +3,21 @@ package session
 import (
 	"context"
 	"errors"
-	"github.com/finos/morphir/devkit/go/internal/backend/inprocess"
+	"github.com/anthdm/hollywood/actor"
+	"github.com/finos/morphir/devkit/go/internal/broker"
 	"github.com/finos/morphir/devkit/go/morphircli"
 	"github.com/finos/morphir/devkit/go/morphircli/task"
 	"github.com/hack-pad/hackpadfs"
 	"github.com/hack-pad/hackpadfs/os"
 	"github.com/phuslu/log"
+	"time"
 )
 
 type Session struct {
-	inProcess        bool
-	fs               *hackpadfs.FS
-	taskCoordinator  *task.Coordinator
-	inprocessSession *inprocess.Session
+	inProcess bool
+	fs        *hackpadfs.FS
+	brokerPID *actor.PID
+	engine    *actor.Engine
 }
 
 type Option func(*Session)
@@ -33,6 +35,14 @@ func New(opts ...Option) *Session {
 		option(session)
 	}
 	return initSession(session)
+}
+
+func (s *Session) GetMessageBroker() MessageBroker {
+	return s
+}
+
+func (s *Session) SubmitTask(task task.Task) error {
+	return s.Send(task)
 }
 
 func (s *Session) connect(connection morphircli.Connection) error {
@@ -67,22 +77,29 @@ func UsingFs(fs *hackpadfs.FS) Option {
 	}
 }
 
-func (s *Session) Start(ctx context.Context) error {
-	if s.inProcess {
-		return s.startInProcess(ctx)
+func (s *Session) Send(msg any) error {
+	if s.brokerPID == nil {
+		return errors.New("broker not initialized")
 	}
-	return s.startIpc(ctx)
-}
-
-func (s *Session) startInProcess(ctx context.Context) error {
-	log.Info().Msg("Starting in-process session")
-	s.inprocessSession = inprocess.New()
+	s.engine.Send(s.brokerPID, msg)
 	return nil
 }
 
-func (s *Session) startIpc(ctx context.Context) error {
-	// TODO: Connect and possibly start op the out-of-process server
-	log.Info().Msg("Starting IPC session")
+func (s *Session) Request(msg any, timeout time.Duration) any {
+	response := s.engine.Request(s.brokerPID, msg, timeout)
+	return response
+}
+
+func (s *Session) Start(ctx context.Context) error {
+	log.Info().Msg("Starting session...")
+	var brokerPID *actor.PID
+	if s.inProcess {
+		brokerPID = s.engine.Spawn(broker.NewBroker(true), "broker")
+	} else {
+		brokerPID = s.engine.Spawn(broker.NewBroker(false), "broker")
+	}
+	s.brokerPID = brokerPID
+	log.Info().Msg("Session started")
 	return nil
 }
 
@@ -94,10 +111,6 @@ func (s *Session) Stop() error {
 
 func (s *Session) Close() error {
 	log.Info().Msg("Closing session...")
-	if s.inprocessSession != nil {
-		s.inprocessSession.Close()
-		s.inprocessSession = nil
-	}
 	err := s.Stop()
 	log.Info().Msg("Session closed")
 	return err
@@ -107,6 +120,13 @@ func initSession(session *Session) *Session {
 	if session.fs == nil {
 		fs := hackpadfs.FS(os.NewFS())
 		session.fs = &fs
+	}
+	if session.engine == nil {
+		eng, err := actor.NewEngine(actor.NewEngineConfig())
+		if err != nil {
+			log.Error().Err(err).Msg("error initializing underlying actor engine")
+		}
+		session.engine = eng
 	}
 	return session
 }

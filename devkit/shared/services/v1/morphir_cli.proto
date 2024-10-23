@@ -3,8 +3,8 @@ syntax = "proto3";
 package morphir.devkit.shared.tasks;
 option go_package = "github.com/finos/morphir/devkit/go/morphircli/shared/services";
 
-service Tasks {
-  rpc MorphirMake(MorphirMakeRequest) returns (MorphirMakeResponse);
+service TasksService {
+  rpc MorphirMake(MorphirMakeRequest) returns (MorphirMakeResponse){}
 }
 
 message MorphirMakeRequest {

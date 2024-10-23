@@ -70,3 +70,6 @@ morphir.exe
 
 # Don't check in go.work
 go.work
+
+# Don't include generated code
+gen/

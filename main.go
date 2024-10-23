@@ -18,6 +18,7 @@ package main
 import (
 	"github.com/finos/morphir/tooling/morphir"
 	"github.com/phuslu/log"
+	"log/slog"
 )
 
 func main() {
@@ -41,4 +42,13 @@ func initLogger() {
 			EndWithMessage: true,
 		},
 	}
+
+	logger := (&log.Logger{
+		Level:      log.InfoLevel,
+		TimeField:  "date",
+		TimeFormat: "2006-01-02T15:04:05.000Z0700",
+		Caller:     1,
+	}).Slog()
+
+	slog.SetDefault(logger)
 }

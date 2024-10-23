@@ -19,12 +19,11 @@ import (
 	"fmt"
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/finos/morphir/devkit/go/project"
-
 	"github.com/finos/morphir/tooling/morphir/internal/commands/makecmd"
 	"github.com/hack-pad/hackpadfs/os"
 	"github.com/knadh/koanf/providers/posflag"
+	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 	"path/filepath"
 )
 
@@ -36,7 +35,7 @@ var makeCmd = &cobra.Command{
 
 		err := k.Load(posflag.Provider(cmd.Flags(), ".", k), nil)
 		if err != nil {
-			zap.L().Error("Error loading config", zap.Error(err))
+			log.Error().Err(err).Msg("Error loading config")
 			return
 		}
 		fmt.Println("make called with commandline arguments:", args)
@@ -49,18 +48,18 @@ var makeCmd = &cobra.Command{
 		fs := os.NewFS()
 		basePath, err = fs.FromOSPath(basePath)
 		if err != nil {
-			zap.L().Error("Error converting path to fs path", zap.Error(err))
+			log.Error().Err(err).Msg("Error converting path to fs path")
 			return
 		}
 		rootedFS, err := fs.Sub(basePath)
 
 		paths, err := doublestar.Glob(rootedFS, "morphir.json")
 		if err != nil {
-			zap.L().Error("Error globbing files", zap.Error(err))
+			log.Error().Err(err).Msg("Error globbing files")
 			return
 		}
 		if len(paths) == 0 {
-			zap.L().Error("No project files found")
+			log.Error().Msg("No project files found")
 			return
 		}
 
@@ -68,7 +67,7 @@ var makeCmd = &cobra.Command{
 		path := paths[0]
 		proj, err := project.LoadJsonFile(rootedFS, path)
 		if err != nil {
-			zap.L().Error("Error loading project", zap.Error(err))
+			log.Error().Err(err).Msg("Error loading project")
 			return
 		}
 		fmt.Println("Project path: ", path)
@@ -102,7 +101,7 @@ func init() {
 	makeCmd.Flags().StringVarP(&projectDir, "project-dir", "p", ".", "Root directory of the project where the Morphir project file is located")
 	err := makeCmd.MarkFlagDirname("project-dir")
 	if err != nil {
-		zap.L().Error("Error marking flag as directory", zap.Error(err))
+		log.Error().Err(err).Msg("Error marking flag as directory")
 		return
 	}
 
