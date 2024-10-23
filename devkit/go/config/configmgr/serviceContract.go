@@ -1,5 +1,10 @@
 package configmgr
 
+import (
+	"github.com/finos/morphir/devkit/go/tool"
+	"github.com/finos/morphir/devkit/go/tool/toolname"
+)
+
 type ConfigMgr interface {
-	LoadHostConfig(workingDir string, workspaceDir *string, hostConfigFilePath *string) error
+	LoadHostConfig(hostingTool toolname.ToolName, workingDir tool.WorkingDir, workspaceDir *string, hostConfigFilePath *string) error
 }

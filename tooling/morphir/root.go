@@ -18,7 +18,10 @@ package morphir
 import (
 	"context"
 	"fmt"
+	"github.com/finos/morphir/devkit/go/config/configmgr"
 	"github.com/finos/morphir/devkit/go/morphircli/session"
+	"github.com/finos/morphir/devkit/go/tool"
+	"github.com/finos/morphir/devkit/go/tool/toolname"
 	"os"
 
 	"github.com/knadh/koanf/v2"
@@ -54,7 +57,7 @@ func Execute() {
 
 func init() {
 
-	cobra.OnInitialize(initConfig)
+	//cobra.OnInitialize(initConfig)
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
@@ -67,12 +70,15 @@ func init() {
 			log.Warn().Err(err).Msg(`error encountered while attempting to read the "--no-server" flag`)
 		}
 
-		_, err = initSession(cmd, noServer)
+		currentSession, err := initSession(cmd, noServer)
 		if err != nil {
 			err = fmt.Errorf("error initializing/starting session: %w", err)
 			log.Error().Err(err)
 			panic(err)
 		}
+
+		// Initialize the configuration used for this command
+		initConfig(currentSession)
 	}
 }
 
@@ -106,6 +112,18 @@ func initSession(cmd *cobra.Command, noServer bool) (*session.Session, error) {
 	return s, nil
 }
 
-func initConfig() {
+func initConfig(currentSession *session.Session) {
 
+	workingDir, err := tool.GetWorkingDir(toolname.Morphir)
+	if err != nil {
+		log.Error().Err(err).Msg("Error getting working directory")
+		return
+	}
+
+	cmd := configmgr.LoadHostConfig{
+		ToolName:   toolname.Morphir,
+		WorkingDir: workingDir,
+	}
+
+	session.PostToConfigMgr(currentSession, cmd)
 }

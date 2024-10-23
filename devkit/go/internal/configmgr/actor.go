@@ -22,6 +22,41 @@ func (c *configMgrActor) Receive(context *actor.Context) {
 	case actor.Initialized:
 		log.Info().Msg("ConfigMgrActor initialized")
 	case configmgr.LoadHostConfig:
-		log.Info().Objects("command", msg).Msg("Loading host config")
+		//cmd, err := json.Marshal(msg)
+		//if err != nil {
+		//	workspaceDir := msg.WorkspaceDir
+		//	if workspaceDir == nil {
+		//		*workspaceDir = ""
+		//	}
+		//	hostConfigFilePath := msg.HostConfigFilePath
+		//	if hostConfigFilePath == nil {
+		//		*hostConfigFilePath = ""
+		//	}
+		//	log.Info().Msg("Uh oh")
+		//	log.Info().Fields(log.Fields{
+		//		"tool_name":             msg.ToolName,
+		//		"working_dir":           msg.WorkingDir,
+		//		"workspace_dir":         workspaceDir,
+		//		"host_config_file_path": hostConfigFilePath,
+		//	}).Msg("Loading host config")
+		//	return
+		//}
+		//
+		//log.Info().RawJSON("command", cmd).Msg("Loading host config")
+
+		fields := log.Fields{
+			"tool_name":   msg.ToolName,
+			"working_dir": msg.WorkingDir,
+		}
+		//workspaceDir := msg.WorkspaceDir
+		//if workspaceDir == nil {
+		//	*workspaceDir = ""
+		//}
+		//hostConfigFilePath := msg.HostConfigFilePath
+		//if hostConfigFilePath == nil {
+		//	*hostConfigFilePath = ""
+		//}
+		//log.Info().Msg("Uh oh")
+		log.Info().Fields(fields).Msg("Loading host config")
 	}
 }

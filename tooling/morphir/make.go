@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/finos/morphir/devkit/go/project"
-	"github.com/finos/morphir/tooling/morphir/internal/commands/makecmd"
 	"github.com/hack-pad/hackpadfs/os"
 	"github.com/knadh/koanf/providers/posflag"
 	"github.com/phuslu/log"
@@ -74,10 +73,12 @@ var makeCmd = &cobra.Command{
 		fmt.Printf("Project: %+v\r\n", proj)
 		fmt.Println("Project Name: ", proj.Name)
 
-		err = makecmd.Make(cmd.Context())
-		if err != nil {
-			return
-		}
+		//err = makecmd.Make(cmd.Context())
+		//
+		//if err != nil {
+		//	return
+		//}
+		return
 	},
 }
 
