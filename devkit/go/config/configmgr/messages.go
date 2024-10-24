@@ -16,6 +16,7 @@ type ValidMessages interface {
 	LoadHostConfig
 }
 
-type Mailbox[Msg ValidMessages] interface {
-	Post(msg Msg)
-}
+//type TopicalMailBox[Msg ValidMessages] interface {
+//	TopicName() messaging.Topic
+//	Post(msg Msg)
+//}

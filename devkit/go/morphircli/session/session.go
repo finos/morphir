@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/finos/morphir/devkit/go/io/morphirfs"
 	"github.com/finos/morphir/devkit/go/messaging/broker"
 	"time"
 
@@ -14,8 +15,6 @@ import (
 	brokerSvc "github.com/finos/morphir/devkit/go/internal/broker"
 	configmgrSvc "github.com/finos/morphir/devkit/go/internal/configmgr"
 
-	"github.com/hack-pad/hackpadfs"
-	"github.com/hack-pad/hackpadfs/os"
 	"github.com/phuslu/log"
 )
 
@@ -23,7 +22,7 @@ var CurrentSession *Session
 
 type Session struct {
 	inProcess     bool
-	fs            *hackpadfs.FS
+	fs            *morphirfs.FS
 	configMgr     *configmgrSvc.Service
 	brokerService *broker.Broker
 	engine        *actor.Engine
@@ -81,7 +80,7 @@ func UsingOutOfProcessServer() Option {
 	}
 }
 
-func UsingFs(fs *hackpadfs.FS) Option {
+func UsingFs(fs *morphirfs.FS) Option {
 	return func(session *Session) {
 		session.fs = fs
 	}
@@ -118,6 +117,7 @@ func (s *Session) Start(ctx context.Context) error {
 
 func (s *Session) Stop() error {
 	log.Info().Msg("Stopping session...")
+	s.configMgr.Stop() // Stop the config manager
 	log.Info().Msg("Session stopped")
 	return nil
 }
@@ -131,8 +131,7 @@ func (s *Session) Close() error {
 
 func initSession(session *Session) *Session {
 	if session.fs == nil {
-		fs := hackpadfs.FS(os.NewFS())
-		session.fs = &fs
+		session.fs = morphirfs.New()
 	}
 	if session.engine == nil {
 		eng, err := initActorSystem(session)

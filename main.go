@@ -18,6 +18,7 @@ package main
 import (
 	"github.com/finos/morphir/tooling/morphir"
 	"github.com/phuslu/log"
+	"io"
 	"log/slog"
 )
 
@@ -43,6 +44,13 @@ func initLogger() {
 		},
 	}
 
+	defer func(closer io.Closer) {
+		err := closer.Close()
+		if err != nil {
+			log.Error().Msgf("Failed to close logger: %v", err)
+		}
+	}(log.DefaultLogger.Writer.(io.Closer))
+
 	logger := (&log.Logger{
 		Level:      log.InfoLevel,
 		TimeField:  "date",
@@ -51,4 +59,5 @@ func initLogger() {
 	}).Slog()
 
 	slog.SetDefault(logger)
+
 }

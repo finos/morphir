@@ -23,6 +23,7 @@ import (
 	"github.com/finos/morphir/devkit/go/tool"
 	"github.com/finos/morphir/devkit/go/tool/toolname"
 	"os"
+	"time"
 
 	"github.com/knadh/koanf/v2"
 	"github.com/phuslu/log"
@@ -79,6 +80,8 @@ func init() {
 
 		// Initialize the configuration used for this command
 		initConfig(currentSession)
+		// TODO: Add coordination logic
+		time.Sleep(10 * time.Second)
 	}
 }
 

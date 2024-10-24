@@ -3,6 +3,7 @@ package configmgr
 import (
 	"github.com/anthdm/hollywood/actor"
 	"github.com/finos/morphir/devkit/go/config/configmgr"
+	"github.com/finos/morphir/devkit/go/io/morphirfs"
 	"github.com/finos/morphir/devkit/go/tool"
 	"github.com/finos/morphir/devkit/go/tool/toolname"
 	"time"
@@ -13,7 +14,9 @@ type Service struct {
 	pid    *actor.PID
 }
 
-type Config struct{}
+type Config struct {
+	FS morphirfs.FS
+}
 
 func New(engine *actor.Engine, config Config) configmgr.ConfigMgr {
 	return NewService(engine, config)
@@ -36,8 +39,8 @@ func (s *Service) AsConfigMgr() configmgr.ConfigMgr {
 	return s
 }
 
-func (c *Service) LoadHostConfig(hostingTool toolname.ToolName, workingDir tool.WorkingDir, workspaceDir *string, hostConfigFilePath *string) error {
-	c.send(configmgr.LoadHostConfig{
+func (s *Service) LoadHostConfig(hostingTool toolname.ToolName, workingDir tool.WorkingDir, workspaceDir *string, hostConfigFilePath *string) error {
+	s.send(configmgr.LoadHostConfig{
 		ToolName:           hostingTool,
 		WorkingDir:         workingDir,
 		WorkspaceDir:       workspaceDir,
@@ -46,10 +49,14 @@ func (c *Service) LoadHostConfig(hostingTool toolname.ToolName, workingDir tool.
 	return nil
 }
 
-func (c *Service) send(msg interface{}) {
-	c.engine.Send(c.pid, msg)
+func (s *Service) Stop() {
+	s.engine.Stop(s.pid)
 }
 
-func (c *Service) request(msg interface{}, timeout time.Duration) *actor.Response {
-	return c.engine.Request(c.pid, msg, timeout)
+func (s *Service) send(msg interface{}) {
+	s.engine.Send(s.pid, msg)
+}
+
+func (s *Service) request(msg interface{}, timeout time.Duration) *actor.Response {
+	return s.engine.Request(s.pid, msg, timeout)
 }
