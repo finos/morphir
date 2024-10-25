@@ -131,7 +131,12 @@ func (s *Session) Close() error {
 
 func initSession(session *Session) *Session {
 	if session.fs == nil {
-		session.fs = morphirfs.New()
+		fs, err := morphirfs.New()
+		if err != nil {
+			log.Error().Err(err).Msg("error initializing file system")
+			panic(err)
+		}
+		session.fs = fs
 	}
 	if session.engine == nil {
 		eng, err := initActorSystem(session)
@@ -153,7 +158,11 @@ func initActorSystem(session *Session) (*actor.Engine, error) {
 	}
 
 	// Create ConfigMgr
-	session.configMgr = createConfigMgr(engine)
+	mgr, err := createConfigMgr(engine)
+	if err != nil {
+		return nil, err
+	}
+	session.configMgr = mgr
 
 	// Create Broker Service
 	session.brokerService = createBroker(engine, session.inProcess)
@@ -161,10 +170,16 @@ func initActorSystem(session *Session) (*actor.Engine, error) {
 	return engine, nil
 }
 
-func createConfigMgr(engine *actor.Engine) *configmgrSvc.Service {
-	cfg := configmgrSvc.Config{}
+func createConfigMgr(engine *actor.Engine) (*configmgrSvc.Service, error) {
+	fs, err := morphirfs.New()
+	if err != nil {
+		return nil, err
+	}
+	cfg := configmgrSvc.Config{
+		FS: *fs,
+	}
 	mgr := configmgrSvc.NewService(engine, cfg)
-	return mgr
+	return mgr, nil
 }
 
 func createBroker(engine *actor.Engine, inProcess bool) *broker.Broker {

@@ -1,6 +1,7 @@
 package configmgr
 
 import (
+	"errors"
 	"github.com/anthdm/hollywood/actor"
 	"github.com/finos/morphir/devkit/go/config/configmgr"
 	"github.com/finos/morphir/devkit/go/io/morphirfs"
@@ -12,6 +13,7 @@ import (
 	"github.com/knadh/koanf/v2"
 	"github.com/life4/genesis/slices"
 	"github.com/phuslu/log"
+	goOS "os"
 	"path"
 )
 
@@ -55,14 +57,25 @@ func (c *configMgrActor) loadHostConfig(msg configmgr.LoadHostConfig) bool {
 		return true
 	}
 	cfgDirsLeastToMost := slices.Reverse(cfgDirs)
-	fs := c.fs.AsHackpadFS()
 	for _, cfgDir := range cfgDirsLeastToMost {
 		for _, candidate := range candidates {
 			p := path.Join(string(cfgDir), toolCfgFileBase+"."+candidate.name)
+			p, err := c.fs.FromOSPath(p)
+			if err != nil {
+				log.Warn().Err(err).Str("file", p).Msg("Failed to convert path")
+				continue
+			}
 			log.Info().Str("config_path", p).Msg("Checking config path")
 
-			if _, err := hackpadfs.Stat(fs, p); err != nil {
-				log.Warn().Err(err).Str("file", p).Msg("Config file does not exist")
+			if _, err := c.fs.Lstat(p); err != nil {
+				switch {
+				case errors.Is(err, goOS.ErrNotExist):
+					log.Warn().Err(err).Str("file", p).Msg("Config file does not exist")
+				case errors.Is(err, hackpadfs.ErrPermission):
+					log.Warn().Err(err).Str("file", p).Msg("Permission denied for config file")
+				default:
+					log.Warn().Err(err).Str("file", p).Msgf("Error while checking config file: %+v", err)
+				}
 			} else {
 				log.Info().Str("file", p).Msg("Config file exists")
 				if err := c.toolConfig.Load(candidate.provider, candidate.parser); err != nil {

@@ -1,7 +1,6 @@
 package morphirfs
 
 import (
-	"github.com/phuslu/log"
 	goOS "os"
 
 	"github.com/finos/morphir/devkit/go/tool"
@@ -9,11 +8,11 @@ import (
 	"github.com/hack-pad/hackpadfs/os"
 )
 
-type MorphirFS interface {
+var _ interface {
 	hackpadfs.FS
 	hackpadfs.LstatFS
 	hackpadfs.StatFS
-}
+} = &FS{}
 
 type WorkingDirFS interface {
 	FS
@@ -21,38 +20,21 @@ type WorkingDirFS interface {
 }
 
 type FS struct {
-	rootFS     MorphirFS
+	os.FS
 	workingDir tool.WorkingDir
 }
 
-func New(options ...func(*FS)) *FS {
-	fs := defaultFS()
+func New(options ...func(*FS)) (*FS, error) {
+	fs, err := defaultFS()
+	if err != nil {
+		return nil, err
+	}
 
 	for _, option := range options {
 		option(fs)
 	}
 
-	return fs
-}
-
-func (fs *FS) Open(name string) (hackpadfs.File, error) {
-	return fs.rootFS.Open(name)
-}
-
-func (fs *FS) Lstat(name string) (hackpadfs.FileInfo, error) {
-	log.Info().Msg("Lstat called for: " + name)
-	return fs.rootFS.Lstat(name)
-}
-
-func (fs *FS) Stat(name string) (hackpadfs.FileInfo, error) {
-	log.Info().Msg("Stat called for: " + name)
-	res, err := fs.rootFS.Stat(name)
-	if err != nil {
-		log.Error().Err(err).Msg("Error occurred during Stat")
-	} else {
-		log.Info().Msg("Stat successful for: " + name)
-	}
-	return res, err
+	return fs, nil
 }
 
 func (fs *FS) WorkingDir() (tool.WorkingDir, error) {
@@ -63,18 +45,15 @@ func (fs *FS) AsHackpadFS() hackpadfs.FS {
 	return fs
 }
 
-func DefaultMorphirFS() MorphirFS {
-	fs := os.NewFS()
-	return fs
-}
-
-func defaultFS() *FS {
+func defaultFS() (*FS, error) {
 	workingDir, err := goOS.Getwd()
 	if err != nil {
-		workingDir = "."
+		return nil, err
 	}
+
+	fs := os.NewFS()
 	return &FS{
-		rootFS:     DefaultMorphirFS(),
+		FS:         *fs,
 		workingDir: tool.WorkingDir(workingDir),
-	}
+	}, nil
 }
