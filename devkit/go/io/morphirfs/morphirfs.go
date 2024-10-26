@@ -2,25 +2,26 @@ package morphirfs
 
 import (
 	goOS "os"
+	"strings"
 
 	"github.com/finos/morphir/devkit/go/tool"
 	"github.com/hack-pad/hackpadfs"
 	"github.com/hack-pad/hackpadfs/os"
 )
 
-var _ interface {
+type baseFS interface {
 	hackpadfs.FS
 	hackpadfs.LstatFS
 	hackpadfs.StatFS
-} = &FS{}
+}
 
 type WorkingDirFS interface {
-	FS
+	hackpadfs.FS
 	WorkingDir() (tool.WorkingDir, error)
 }
 
 type FS struct {
-	os.FS
+	baseFS
 	workingDir tool.WorkingDir
 }
 
@@ -41,8 +42,11 @@ func (fs *FS) WorkingDir() (tool.WorkingDir, error) {
 	return fs.workingDir, nil
 }
 
-func (fs *FS) AsHackpadFS() hackpadfs.FS {
-	return fs
+func CanonicalizePath(path string) string {
+	if !hackpadfs.ValidPath(path) && strings.HasPrefix(path, "/") {
+		return path[1:]
+	}
+	return path
 }
 
 func defaultFS() (*FS, error) {
@@ -53,7 +57,7 @@ func defaultFS() (*FS, error) {
 
 	fs := os.NewFS()
 	return &FS{
-		FS:         *fs,
+		baseFS:     fs,
 		workingDir: tool.WorkingDir(workingDir),
 	}, nil
 }

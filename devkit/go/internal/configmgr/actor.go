@@ -60,11 +60,8 @@ func (c *configMgrActor) loadHostConfig(msg configmgr.LoadHostConfig) bool {
 	for _, cfgDir := range cfgDirsLeastToMost {
 		for _, candidate := range candidates {
 			p := path.Join(string(cfgDir), toolCfgFileBase+"."+candidate.name)
-			p, err := c.fs.FromOSPath(p)
-			if err != nil {
-				log.Warn().Err(err).Str("file", p).Msg("Failed to convert path")
-				continue
-			}
+			p = morphirfs.CanonicalizePath(p)
+
 			log.Info().Str("config_path", p).Msg("Checking config path")
 
 			if _, err := c.fs.Lstat(p); err != nil {
