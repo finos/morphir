@@ -1,9 +1,0 @@
-{
-    "id": "element:person:currency",
-    "name": "currency",
-    "element_type": {
-        "Enum":{
-            "values": ["AUD", "CAD", "CHF", "EUR", "GBP", "JPY", "USD"]
-        }
-    }
-}

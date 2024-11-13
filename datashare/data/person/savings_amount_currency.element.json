@@ -1,9 +1,0 @@
-{
-    "id": "element:person:savings_amount_currency",
-    "name": "Savings Amount Currency",
-    "element_type": {
-        "Reference": {
-            "ref": "element:person:currency"
-        }
-    }
-}
