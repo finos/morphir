@@ -56,7 +56,7 @@ Morphir consists of a few projects based on the features they provide.
   - The Elm compiler for authoring morphir applications in Elm
   - The morphir visualization components and developer tools
   - The Scala, JSON Schema, TypeScript, TypeSpec (Cadl), cypher, semantic, and more backend processors.
-- **[morphir-jvm](https://github.com/finos/morphir)** - Supporting SDK and packaging for running morphir on the JVM.
+- **[morphir-jvm](https://github.com/finos/morphir-jvm)** - Supporting SDK and packaging for running morphir on the JVM.
 - **[morphir-examples](https://github.com/finos/morphir-examples)** - A whole lot of examples.
 
 ### Incubator Morphir Projects
@@ -99,7 +99,7 @@ Email help@finos.org to be added to the meeting invite directly, or find the mee
 
 1. Fork it (<https://github.com/finos/morphir/fork>)
 2. Create your feature branch (`git checkout -b feature/fooBar`)
-3. Read our [contribution guidelines](.github/CONTRIBUTING.md) and [Community Code of Conduct](https://www.finos.org/code-of-conduct)
+3. Read our [contribution guidelines](docs/contributing.md) and [Community Code of Conduct](https://www.finos.org/code-of-conduct)
 4. Commit your changes (`git commit -am 'Add some fooBar'`)
 5. Push to the branch (`git push origin feature/fooBar`)
 6. Create a new Pull Request
