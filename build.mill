@@ -1,0 +1,11 @@
+package build 
+import mill._, kotlinlib._ 
+
+
+object `morphir-cli` extends KotlinModule {
+    def kotlinVersion = "2.1.20-RC2"
+    def mainClass = Some("org.finos.morphir.cli.Main")
+}
+
+object apps extends Module {
+}
