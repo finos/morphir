@@ -1,0 +1,1 @@
+gradlew --quiet ":morphir-cli:installJvmDist" && ".\morphir-cli\build\install\morphir-cli-jvm\bin\morphir-cli" %*
