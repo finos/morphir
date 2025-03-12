@@ -1,0 +1,16 @@
+package build 
+import mill._, kotlinlib._ 
+
+object V {
+    object Deps {
+        val clikt = "5.0.3" 
+    }
+
+    object Kotlin {
+        val kotlinVersion = "2.1.20-RC2"
+    }
+
+    object Scala {
+
+    }
+}

@@ -30,3 +30,7 @@ target/
 # moon
 .moon/cache
 .moon/docker
+
+# Gradle
+.gradle/
+build/
