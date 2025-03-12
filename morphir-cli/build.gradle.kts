@@ -10,10 +10,11 @@ kotlin {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         binaries {
             executable {
-                mainClass.set("org.finos.morphir.cli.Main")
+                mainClass.set("org.finos.morphir.cli.MainKt")
             }
         }
     }
+    macosX64()
     sourceSets {
         commonMain {
             dependencies {

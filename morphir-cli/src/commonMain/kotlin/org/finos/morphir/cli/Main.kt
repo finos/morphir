@@ -1,4 +1,3 @@
-@file:JvmName("Main")
 package org.finos.morphir.cli
 
 import com.github.ajalt.clikt.core.*
