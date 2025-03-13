@@ -13,3 +13,4 @@ dependencyResolutionManagement {
 rootProject.name = "morphir"
 
 include("morphir-cli")
+include("morphir-core")
