@@ -1,4 +1,4 @@
-package org.finos.morphir.msl.ast
+package org.finos.morphir.schema.ast
 
 import org.finos.morphir.api.ConstructId
 import org.finos.morphir.mdl.ast.MorphirValue
