@@ -4,11 +4,19 @@ kotlin-version = "2.1.20-RC2"
 kotlinx-coroutines-version = "1.10.1"
 kotlinx-datetime-version = "0.6.2"
 kotlinx-kover-version = "0.9.1"
+#kotest-version = "5.9.1"
+kotest-version = "6.0.0.M2"
 
 [libraries]
 clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt-version" }
 clikt-markdown = { module = "com.github.ajalt.clikt:clikt-markdown", version.ref = "clikt-version" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime-version" }
+kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest-version" }
+kotest-framework-engine = { module = "io.kotest:kotest-framework-engine", version.ref = "kotest-version" }
+kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest-version" }
+kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest-version" }
+kotest-extensions-htmlreporter = { module = "io.kotest:kotest-extensions-htmlreporter", version.ref = "kotest-version" }
+kotest-extensions-junitxml = { module = "io.kotest:kotest-extensions-junitxml", version.ref = "kotest-version" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }

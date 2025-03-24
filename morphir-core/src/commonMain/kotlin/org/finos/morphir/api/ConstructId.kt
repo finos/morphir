@@ -22,16 +22,24 @@ public data class UniversalConstructIdentifier(
 
 public object KnownConstructIds {
     public object Primitives {
-        public val boolean = ConstructIdentifier(
-            scheme = "type",
-            domain = Domains.Morphir,
-            name = "boolean"
-        )
-        public val string = ConstructIdentifier(
-            scheme = "type",
-            domain = Domains.Morphir,
-            name = "string"
-        )
+        public val boolean : ConstructId = primitiveConstructId("Boolean")
+
+        public val int32 : ConstructId = primitiveConstructId("Int32")
+
+        public val int64 : ConstructId = primitiveConstructId("Int64")
+
+        public val localDate : ConstructId = primitiveConstructId("LocalDate")
+
+        public val localDateTime: ConstructId = primitiveConstructId("LocalDateTime")
+
+        public val string: ConstructId = primitiveConstructId("String")
     }
 }
 
+public fun primitiveConstructId(name: String): ConstructId {
+    return ConstructIdentifier(
+        scheme = "type",
+        domain = Domains.Morphir,
+        name = name
+    )
+}
