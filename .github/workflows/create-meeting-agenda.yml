@@ -1,0 +1,103 @@
+name: Create Morphir Meeting Agenda
+
+on:
+  schedule:
+    # Run every 2 weeks on Thursday at 9:00 AM UTC
+    # This targets every second Thursday starting from the baseline
+    - cron: "0 9 * * 4"
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  create-meeting-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Calculate if this is a bi-weekly Thursday
+        id: check-date
+        run: |
+          # Calculate the number of weeks since a reference Thursday (2025-08-07)
+          REFERENCE_DATE="2025-08-07"
+          CURRENT_DATE=$(date +%Y-%m-%d)
+
+          # Convert dates to epoch seconds
+          REFERENCE_EPOCH=$(date -d "$REFERENCE_DATE" +%s)
+          CURRENT_EPOCH=$(date -d "$CURRENT_DATE" +%s)
+
+          # Calculate the difference in days
+          DAYS_DIFF=$(( (CURRENT_EPOCH - REFERENCE_EPOCH) / 86400 ))
+
+          # Calculate the number of weeks since reference
+          WEEKS_SINCE_REFERENCE=$(( DAYS_DIFF / 7 ))
+
+          # Check if this is an even number of weeks (bi-weekly schedule)
+          if [ $(( WEEKS_SINCE_REFERENCE % 2 )) -eq 0 ]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "Current date: $CURRENT_DATE"
+          echo "Reference date: $REFERENCE_DATE" 
+          echo "Weeks since reference: $WEEKS_SINCE_REFERENCE"
+          echo "Should run: $([ $(( WEEKS_SINCE_REFERENCE % 2 )) -eq 0 ] && echo true || echo false)"
+
+      - name: Get meeting date
+        if: steps.check-date.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
+        id: meeting-date
+        run: |
+          # Get the date for the upcoming Thursday (or today if today is Thursday)
+          CURRENT_DAY=$(date +%u)  # 1=Monday, 7=Sunday
+          DAYS_TO_THURSDAY=$(( (4 - CURRENT_DAY + 7) % 7 ))
+
+          if [ $DAYS_TO_THURSDAY -eq 0 ]; then
+            # Today is Thursday
+            MEETING_DATE=$(date +%Y-%m-%d)
+          else
+            # Calculate next Thursday
+            MEETING_DATE=$(date -d "+${DAYS_TO_THURSDAY} days" +%Y-%m-%d)
+          fi
+
+          # Format dates for the issue
+          FORMATTED_DATE=$(date -d "$MEETING_DATE" +"%d %b %Y")  # e.g., "07 Aug 2025"
+          SHORT_DATE=$(date -d "$MEETING_DATE" +"%Y-%m-%d")       # e.g., "2025-08-07"
+
+          echo "meeting_date=$MEETING_DATE" >> $GITHUB_OUTPUT
+          echo "formatted_date=$FORMATTED_DATE" >> $GITHUB_OUTPUT
+          echo "short_date=$SHORT_DATE" >> $GITHUB_OUTPUT
+
+          echo "Meeting date: $MEETING_DATE"
+          echo "Formatted: $FORMATTED_DATE"
+          echo "Short: $SHORT_DATE"
+
+      - name: Create issue from template
+        if: steps.check-date.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
+        uses: peter-evans/create-issue-from-file@v4
+        with:
+          title: "${{ steps.meeting-date.outputs.short_date }} (${{ steps.meeting-date.outputs.formatted_date }}) - Morphir Project Meeting"
+          content-filepath: .github/ISSUE_TEMPLATE/Meeting.md
+          labels: |
+            meeting
+            agenda
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update meeting date in issue
+        if: steps.check-date.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          # Get the issue number from the previous step
+          ISSUE_NUMBER=$(gh issue list --label "meeting" --state open --limit 1 --json number --jq '.[0].number')
+
+          # Update the issue body to replace the placeholder date
+          MEETING_DATE_FORMATTED=$(date -d "${{ steps.meeting-date.outputs.meeting_date }}" +"%A %d %b %Y")
+
+          # Get current issue body
+          CURRENT_BODY=$(gh issue view $ISSUE_NUMBER --json body --jq '.body')
+
+          # Replace the placeholder date
+          UPDATED_BODY=$(echo "$CURRENT_BODY" | sed "s/Thursday DD MMM yyyy/$MEETING_DATE_FORMATTED/g")
+
+          # Update the issue
+          gh issue edit $ISSUE_NUMBER --body "$UPDATED_BODY"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
