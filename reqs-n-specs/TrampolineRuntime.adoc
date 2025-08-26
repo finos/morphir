@@ -1,0 +1,227 @@
+= PRD: Cooperative Concurrency Runtime for Java 21
+:author: Gemini
+:revnumber: 1.0
+:revdate: 2025-08-26
+:toc: left
+:toclevels: 3
+:sectnums:
+
+== 1. Overview
+
+This document specifies the requirements for a high-performance, single-threaded, cooperative concurrency runtime for sandboxed Java 21 environments. The runtime will provide developers with tools for building responsive applications using functional programming paradigms, specifically The Elm Architecture (TEA) and the Actor Model, without relying on `java.util.concurrent` or native thread creation.
+
+The primary goal is to create a unified, elegant system that enables concurrent-like behavior through a cooperatively scheduled event loop, catering to a preference for immutability and functional-style code.
+
+== 2. Core Principles & Constraints
+
+The design and implementation of this runtime must adhere to the following principles:
+
+* **Single-Threaded Execution**: The entire runtime and all application code it manages must execute on a single thread. No new threads or `Future`s may be created.
+* **Cooperative Scheduling**: Concurrency is achieved by breaking work into small, non-blocking units. The runtime will execute one unit at a time, ensuring no single task starves the others.
+* **Immutability First**: All core data structures, particularly application state (`Model`) and messages (`Msg`), should be immutable by default, leveraging Java 21 `record`s.
+* **Functional & Declarative API**: The API should encourage a declarative, functional style. Side effects will be explicitly managed through data structures like `Cmd`.
+* **High Performance**: The core event loop must be optimized for low-latency, high-throughput message passing, minimizing GC pressure.
+
+== 3. System Architecture
+
+The system will be a **single, unified runtime** rather than two distinct capabilities. The actor system will be implemented as a layer on top of the foundational event loop, ensuring a cohesive and non-redundant architecture.
+
+
+
+---
+=== 3.1. The Trampoline Loop
+
+The heart of the runtime is a **trampoline**, an iterative event loop that drives all computation. It functions by repeatedly pulling a unit of work from a central queue and executing it.
+
+.Trampoline Loop Logic
+. Check if the work queue is empty.
+. If not empty, dequeue the next `Thunk` (unit of work).
+. Execute the `Thunk`.
+. The `Thunk` may perform a computation and optionally return a new `Thunk` to be enqueued.
+. Loop back to step 1.
+
+This model turns what might be deep recursive function calls into a simple `while` loop, preventing stack overflows and forming the basis of our cooperative scheduler.
+
+---
+=== 3.2. The Work Queue: RingBuffer
+
+To meet performance goals, the central work queue will be implemented as a **RingBuffer**.
+
+* **Rationale**: A `RingBuffer` is chosen over a standard `java.util.Queue` for its superior performance characteristics in a single-consumer scenario. It is a pre-allocated, array-backed circular buffer, which offers predictable low latency, avoids GC overhead from node allocation, and benefits from CPU cache locality.
+* **Implementation**: It will be a simple, lock-free, single-producer/single-consumer (SPSC) queue. The trampoline is the single consumer. Any part of the system can act as a producer to enqueue work.
+
+---
+=== 3.3. The `Thunk`: Unit of Work
+
+A `Thunk` represents a deferred, atomic unit of computation. It is the fundamental item stored in the RingBuffer.
+
+[source,java]
+----
+/**
+ * A Thunk represents a deferred computation. When executed, it performs a
+ * small, non-blocking unit of work.
+ */
+@FunctionalInterface
+public interface Thunk {
+    void execute();
+}
+----
+
+All operations—processing a UI event, handling an actor message, executing a side effect—are wrapped in a `Thunk` before being placed on the queue.
+
+== 4. Feature Set 1: The Elm Architecture (TEA)
+
+The runtime will provide first-class support for building applications following The Elm Architecture (MVU pattern).
+
+---
+=== 4.1. Core Data Types
+
+The following types, designed for immutability, will be central to the TEA implementation.
+
+* **`Model`**: An immutable record representing the entire state of the application.
++
+[source,java]
+----
+public record Model(int counter, String status) {}
+----
+
+* **`Msg`**: A sealed interface representing all possible events that can change the `Model`. These are simple data carriers.
++
+[source,java]
+----
+public sealed interface Msg {}
+public record IncrementClicked() implements Msg {}
+public record DataFetched(Result<String, Exception> result) implements Msg {}
+----
+
+* **`Cmd<Msg>`**: A command represents a side effect to be performed by the runtime (e.g., HTTP request, database write). It is a description of the effect, not the execution itself.
++
+[source,java]
+----
+@FunctionalInterface
+public interface Cmd<M> {
+    /**
+     * Executes the side effect, providing a dispatcher to send a
+     * message back into the event loop upon completion.
+     */
+    void execute(Consumer<M> dispatch);
+
+    static <M> Cmd<M> none() {
+        return dispatch -> {}; // No-op command
+    }
+}
+----
+
+* **`Sub<Msg>`**: A subscription listens to external event sources (e.g., timers, WebSockets) and translates them into `Msg`s. The runtime will manage the lifecycle of these subscriptions.
+
+---
+=== 4.2. The `update` Function
+
+The application logic is encapsulated in a pure `update` function provided by the developer. The runtime calls this function whenever a `Msg` is processed.
+
+* **Signature**: `(Model, Cmd<Msg>) update(Msg msg, Model currentModel)`
+* **Flow**:
+    1.  The runtime dequeues a `Thunk` containing a `Msg`.
+    2.  It invokes `update(msg, currentModel)`.
+    3.  The function returns a `Pair` containing the **new** `Model` and a `Cmd` to be executed.
+    4.  The runtime updates its internal state to point to the new `Model`.
+    5.  It then creates a new `Thunk` to execute the returned `Cmd` and enqueues it.
+
+== 5. Feature Set 2: Lightweight Actor System
+
+The actor system provides a way to manage concurrent state and logic, built directly on the TEA foundation. Actors are lightweight, stateful objects that communicate exclusively through asynchronous messages.
+
+---
+=== 5.1. Core Components
+
+* **Actor Behavior**: A function that defines how an actor reacts to messages. It is analogous to the TEA `update` function but is scoped to a single actor's state.
++
+[source,java]
+----
+@FunctionalInterface
+public interface Behavior<S, M> {
+    /**
+     * Processes a message and returns the actor's new state and a Cmd.
+     */
+    Pair<S, Cmd<M>> receive(M message, S currentState);
+}
+----
+
+* **`ActorRef<Msg>`**: An immutable, shareable reference to an actor. It is the only way to communicate with an actor.
++
+[source,java]
+----
+public final class ActorRef<M> {
+    // Private fields: actorId, reference to the runtime's queue
+
+    /**
+     * Asynchronously sends a message to the actor's mailbox by
+     * enqueueing it in the central runtime queue. This is a non-blocking,
+     * fire-and-forget operation.
+     */
+    public void tell(M message) {
+        // Implementation wraps the message in an ActorMessageThunk
+        // and adds it to the runtime's RingBuffer.
+    }
+}
+----
+
+---
+=== 5.2. Runtime Integration and Concurrency
+
+* **Message Processing**: When an `ActorRef.tell()` is called, a `Thunk` containing the target actor's ID and the message is placed on the central RingBuffer.
+* **State Management**: The runtime maintains a `Map<ActorId, ActorState>` to store the current state of every actor.
+* **Cooperative Time-Slicing**: Each actor message processed by the trampoline constitutes one "turn" for that actor. Since all actor messages share the same queue with TEA messages, all logical processes are interleaved, achieving cooperative concurrency.
+
+== 6. API Design and Configuration
+
+The runtime will be instantiated and configured using a fluent builder pattern.
+
+[source,java]
+----
+// Developer provides their TEA implementation
+Elmish.Component<Model, Msg> myApp = Elmish.component(
+    () -> new Model(0, "Ready"), // Initial state
+    (msg, model) -> { /* ... update logic ... */ }
+);
+
+// Configure and start the runtime
+CooperativeRuntime runtime = CooperativeRuntime.builder()
+    .withMainComponent(myApp)
+    .withSubscription(Time.every(Duration.ofSeconds(1), t -> new TickMsg(t)))
+    .build();
+
+// The run method starts the trampoline loop.
+// This call will block until the queue is empty and no work is pending.
+runtime.run();
+----
+
+Spawning an actor would look like this:
+
+[source,java]
+----
+// Inside a Cmd execution or an actor's behavior
+Behavior<Integer, String> counterBehavior = (msg, state) -> {
+    System.out.println("Counter actor received: " + msg);
+    return new Pair<>(state + 1, Cmd.none());
+};
+
+ActorRef<String> counterActor = runtime.spawn(0, counterBehavior);
+
+counterActor.tell("tick");
+counterActor.tell("tock");
+----
+
+== 7. Appendix
+
+=== Appendix A: Original User Prompt
+
+> I'm a Java Developer worker on Java 21. I prefer functional style code with a preference for immutability and algebraic data classes. I am working on a system that runs in a single threaded sandboxed context where we are not allowed to spawn new threads or futures and can't make use of java.util.Concurrency.
+>
+> In order to support concurrency I am thinking about cooperative scheduling and trampolining. I have a need for two services/capabilities (that I am not sure whether they make more sense as distinct capabilities, or as a single configurable runtime via fluent builder and configurator functions.
+>
+> The first capability is I want to have my own Elm style event loop (like those used in The Elm Architecture or Elmish) that supports Elm like Tasks, Cmds, and Subscriptions.
+>
+> The second capability is I want a runtime that is able to create lightweight actor like objects, that operate against one event loop and have concurrency through cooperative time slicing.
+>
+> Walk me through the best design for this? Should this involve a RingBuffer?
