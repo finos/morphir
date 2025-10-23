@@ -1,0 +1,5 @@
+{
+    "import":[
+      "Morphir/morphir/lib/ir/codec"
+    ]
+}

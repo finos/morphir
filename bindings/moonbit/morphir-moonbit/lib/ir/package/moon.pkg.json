@@ -1,0 +1,6 @@
+{
+    "import":[
+        "Morphir/morphir/lib/ir/name",
+        "Morphir/morphir/lib/ir/path"
+    ]
+}

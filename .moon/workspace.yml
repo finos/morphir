@@ -16,6 +16,7 @@ projects:
   - 'apps/*'
   - 'crates/*'
   - 'packages/*'
+  - 'bindings/moonbit/*'
 
 # Configures the version control system to utilize within the workspace. A VCS
 # is required for determining touched (added, modified, etc) files, calculating file hashes,

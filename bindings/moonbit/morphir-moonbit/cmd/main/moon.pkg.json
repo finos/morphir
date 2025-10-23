@@ -1,0 +1,11 @@
+{
+  "is-main": true,
+  "import": [
+    // {
+    //   "path": "Morphir/morphir/lib/classic/ir",
+    //   "alias": "classic_ir"
+    // },
+    "Morphir/morphir/lib/ir",
+    "Morphir/morphir/lib/ir/name"
+  ]
+}
