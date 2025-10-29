@@ -7,7 +7,8 @@ pub fn Path::from_list(parts : @list.List[@name.Name]) -> Path {
   Path(parts)
 }
 
-pub fn of(parts:Array[@name.Name]) -> Path {
+///|
+pub fn of(parts : Array[@name.Name]) -> Path {
   Path(@list.from_array(parts))
 }
 
@@ -46,11 +47,6 @@ pub fn from_string(input : String) -> Path {
 
 ///|
 pub fn to_list(self : Path) -> @list.List[@name.Name] {
-  self.0
-}
-
-///|
-pub fn Path::to_listqq(self : Path) -> @list.List[@name.Name] {
   self.0
 }
 

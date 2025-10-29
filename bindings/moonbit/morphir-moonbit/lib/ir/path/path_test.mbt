@@ -23,10 +23,7 @@ test "Path::to_string converts a Path to a string with custom renderer and separ
 test "from_string | fooBar.Baz" {
   let input = "fooBar.Baz"
   let path = @path.from_string(input)
-  let expected_names = @list.of([
-    @name.of(["foo", "bar"]),
-    @name.of(["baz"]),
-  ])
+  let expected_names = @list.of([@name.of(["foo", "bar"]), @name.of(["baz"])])
   assert_eq(path.0, expected_names)
 }
 
@@ -34,10 +31,7 @@ test "from_string | fooBar.Baz" {
 test "from_string | foo bar/baz" {
   let input = "foo bar/baz"
   let path = @path.from_string(input)
-  let expected_names = @list.of([
-    @name.of(["foo", "bar"]),
-    @name.of(["baz"]),
-  ])
+  let expected_names = @list.of([@name.of(["foo", "bar"]), @name.of(["baz"])])
   assert_eq(path.0, expected_names)
 }
 
@@ -69,9 +63,7 @@ test "Path::is_prefix_of | 2 ]" {
 
 ///|
 test "Path::is_prefix_of | 3" {
-  let prefix = @path.of(
-    [@name.of(["foo"]), @name.of(["bar"])],
-  )
+  let prefix = @path.of([@name.of(["foo"]), @name.of(["bar"])])
   let path = @path.Path::from_list(
     @list.of([@name.of(["foo"]), @name.of(["bar"])]),
   )

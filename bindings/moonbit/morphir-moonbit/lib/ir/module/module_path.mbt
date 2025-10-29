@@ -7,8 +7,22 @@ pub fn ModulePath::from_list(parts : @list.List[@name.Name]) -> ModulePath {
 }
 
 ///|
+pub fn ModulePath::from_string(name : String) -> ModulePath {
+  let path = @path.from_string(name)
+  ModulePath(path.to_list())
+}
+
+///|
 pub fn ModulePath::to_list(self : ModulePath) -> @list.List[@name.Name] {
   self.0
+}
+
+pub fn ModulePath::to_string(
+  self : ModulePath,
+  renderer : @name.NameRenderer,
+  separator : String,
+) -> String {
+  self.0.iter().map(renderer).join(separator)
 }
 
 ///|
