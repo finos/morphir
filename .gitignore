@@ -30,3 +30,6 @@ target/
 # moon
 .moon/cache
 .moon/docker
+
+# zig related
+.zig-cache/

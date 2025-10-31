@@ -1,0 +1,8 @@
+package build 
+import mill.*
+import mill.meta.MillBuildRootModule
+
+object `package` extends MillBuildRootModule {
+    def jvmId = "graalvm-java25:25"
+    def jvmIndexVersion = "latest.release"
+}
