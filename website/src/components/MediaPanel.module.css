@@ -10,3 +10,8 @@
 .videoContainer img {
 	border: 1px solid black;
 }
+
+.videoThumbnail {
+	border: 1px solid black;
+	display: block;
+}
