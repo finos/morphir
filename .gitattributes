@@ -1,1 +1,1 @@
-*.lockb binary diff=lockb
+*.mill linguist-language=Scala

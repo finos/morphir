@@ -1,0 +1,15 @@
+extends: [mill.kotlinlib.KotlinModule, mill.kotlinlib.NativeImageModule]
+kotlinVersion: 2.2.21
+jvmIndexVersion: "0.0.4-123-5ca5d5"
+jvmId: "graalvm-java25:25"
+mvnDeps:
+  - com.github.ajalt.clikt:clikt:5.0.3
+  - org.graalvm.polyglot:polyglot:25.0.0
+  - org.graalvm.polyglot:wasm:25.0.0
+
+# GraalVM Native Image configuration
+nativeImageOptions: ["--no-fallback"]
+
+# Configure JVM runtime options and env variables
+forkArgs:
+  - '-Denable-native-access=ALL-UNNAMED'

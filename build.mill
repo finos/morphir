@@ -1,30 +1,16 @@
-//| mill-version: 1.0.6-83-daa5d4
+//| mill-version: 1.1.0-RC1
+//| mill-jvm-index-version: 0.0.4-123-5ca5d5
+//| mill-jvm-version: graalvm-java25:25
 package build 
 import mill.* 
 import mill.api.BuildCtx
 import mill.scalalib.* 
+import buildlib.moonbit.MoonbitModule
+import mill.pythonlib.PythonModule
+import mill.api.Task.Simple
 
-object bindings extends Module:
-    object moonbit extends Module:
-        object `morphir-moonbit` extends MoonbitModule
-
-trait MorphirJavaModule extends JavaModule:
-    def jvmIndexVersion = "latest.release"
-
-trait MoonbitModule extends Module:
-    def targetDir = Task { PathRef(Task.dest) }
-
-    def build = Task {
-        val targetDirPath = targetDir().path
-        val cmd = Seq("moon", "build", "-C", moduleDir.toString(), "--target-dir", targetDirPath.toString)
-        os.proc(cmd).call()
-        PathRef(targetDirPath)
-    }
-    
-
-    def test = Task {
-        val targetDir = build().path
-        val cmd = Seq("moon", "test", "-C", moduleDir.toString(), "--target-dir", targetDir.toString)
-        os.proc(cmd).call()
-        PathRef(targetDir)
-    }
+object apps extends Module:
+    object `morphir-cli` extends PythonModule:
+        override def pythonDeps = Seq("typer==0.20.0","pex==2.67.3")
+        def mainScript = Task.Source("src/main.py")
+end apps

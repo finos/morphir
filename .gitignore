@@ -33,3 +33,6 @@ target/
 
 # zig related
 .zig-cache/
+
+# python related
+__pycache__/
