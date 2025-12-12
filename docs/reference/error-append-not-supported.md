@@ -1,5 +1,6 @@
 ---
 id: error-append-not-supported
+sidebar_position: 5
 ---
 
 # Error Append not Supported

@@ -1,6 +1,7 @@
 ---
 id: modeling-financial-concepts
 title: Modeling Financial Concepts
+sidebar_position: 5
 ---
 
 # Modeling Financial Concepts

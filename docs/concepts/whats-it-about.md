@@ -1,6 +1,7 @@
 ---
 id: what-is-it-about
 title: I Have an Application
+sidebar_position: 2
 ---
 
 # I Have an Application

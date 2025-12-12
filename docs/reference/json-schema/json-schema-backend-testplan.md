@@ -1,6 +1,7 @@
 ---
 id: json-schema-backend-test
 title: Backend Test Specification
+sidebar_position: 8
 ---
 
 # Json Schema Backend Test Specification

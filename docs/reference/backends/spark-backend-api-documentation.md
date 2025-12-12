@@ -1,6 +1,7 @@
 ---
 id: spark-backend-api
 title: Spark API Documentation
+sidebar_position: 6
 ---
 
 # Spark Backend/API Documentation

@@ -1,6 +1,7 @@
 ---
 id: morphir-spark
 title: Mapping Morphir to Spark
+sidebar_position: 5
 ---
 
 # Spark - Morphir to Spark mapping

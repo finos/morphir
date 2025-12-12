@@ -1,6 +1,7 @@
 ---
 id: morphir-quick-start
 title: Morphir Quick Start
+sidebar_position: 4
 ---
 
 # Morphir Quick Start

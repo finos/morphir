@@ -1,5 +1,6 @@
 ---
 id: installation-and-usage
+sidebar_position: 3
 ---
 
 #Morphir Tools 

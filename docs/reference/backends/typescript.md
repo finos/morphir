@@ -1,5 +1,6 @@
 ---
 id: typescript-api
+sidebar_position: 12
 ---
 
 # TypeScript API

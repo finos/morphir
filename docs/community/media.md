@@ -1,5 +1,6 @@
 ---
 id: media-about-morphir
+sidebar_position: 2
 ---
 
 # Media About Morphir

@@ -1,5 +1,6 @@
 ---
 id: generate-scala-test-case
+sidebar_position: 4
 ---
 
 # Scala Test Cases Generation

@@ -1,6 +1,7 @@
 ---
 id: introduction-to-morphir
 title: Introducing Morphir
+sidebar_position: 1
 ---
 
 [![FINOS - Incubating](https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-incubating.svg)](https://finosfoundation.atlassian.net/wiki/display/FINOS/Incubating)

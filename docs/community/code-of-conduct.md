@@ -1,6 +1,7 @@
 ---
 id: code-of-conduct
 title: Code of Conduct
+sidebar_position: 3
 ---
 
 # Contributor Covenant Code of Conduct

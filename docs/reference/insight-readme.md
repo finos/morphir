@@ -1,5 +1,6 @@
 ---
 id: insight-api-guide
+sidebar_position: 2
 ---
 
 # Insight API Guide

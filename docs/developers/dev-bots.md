@@ -1,6 +1,7 @@
 ---
 id: dev-bots
 title: Explaining Dev Bots
+sidebar_position: 5
 ---
 
 # Explaining Dev Bots

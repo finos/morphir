@@ -1,5 +1,5 @@
 ---
-sidebar_position: 8
+sidebar_position: 3
 id: functional-programming
 title: Why Functional Programming?
 ---

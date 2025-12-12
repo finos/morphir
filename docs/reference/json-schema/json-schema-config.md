@@ -1,5 +1,6 @@
 ---
 id: json-schema-config
+sidebar_position: 3
 ---
 
 # Json Schema Config Algorithm

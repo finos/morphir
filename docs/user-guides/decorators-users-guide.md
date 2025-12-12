@@ -1,5 +1,6 @@
 ---
 id: decorations-users-guide
+sidebar_position: 12
 ---
 
 # Decorations User Guide

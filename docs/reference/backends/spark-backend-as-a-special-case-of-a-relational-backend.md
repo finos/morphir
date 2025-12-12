@@ -1,6 +1,7 @@
 ---
 id: spark-backend-relational
 title: Spark Relational
+sidebar_position: 9
 ---
 
 # Spark backend as a Special Form of Relational backend

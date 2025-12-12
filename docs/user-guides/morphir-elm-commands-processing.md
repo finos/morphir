@@ -1,5 +1,6 @@
 ---
 id: morphir-elm-commands-processing
+sidebar_position: 10
 ---
 
 # Morphir-elm Commands Processing

@@ -1,5 +1,6 @@
 ---
 id: table-template
+sidebar_position: 6
 ---
 
 # Table Template

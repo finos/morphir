@@ -1,6 +1,6 @@
-
 ---
 id:  morphir-developers-guide
+sidebar_position: 4
 ---
 
 # Morphir Developers' Guide

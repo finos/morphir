@@ -1,3 +1,8 @@
+---
+sidebar_position: 2
+sidebar_label: Getting Started
+---
+
 # Getting Started with Morphir
 
 Welcome! This section will help you get started with Morphir quickly.

@@ -1,6 +1,7 @@
 ---
 id: morphir-typespec-mapping
 title: Morphir-TypeSpec Mapping
+sidebar_position: 14
 ---
 
 # Morphir-Typespec Mapping

@@ -1,6 +1,7 @@
 ---
 id: json-schema-enabled-decorator
 title: json-schema-enabled Decorator
+sidebar_position: 6
 ---
 
 # The json-schema-enabled Decorator Developer's Guide

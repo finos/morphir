@@ -1,6 +1,7 @@
 ---
 id: json-schema-backend-test2
 tile: Config. Test plan
+sidebar_position: 9
 ---
 
 # Json SChema Backend Config Test Plan

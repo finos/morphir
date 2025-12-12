@@ -1,5 +1,6 @@
 ---
 id: json-schema-mappings
+sidebar_position: 4
 ---
 
 # Json Schema Mappings

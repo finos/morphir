@@ -1,6 +1,7 @@
 ---
 id: morphir-testing-setup
 title: Morphir Testing Setup
+sidebar_position: 6
 ---
 
 # Testing Setup

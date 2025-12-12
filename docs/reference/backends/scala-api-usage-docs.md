@@ -1,6 +1,7 @@
 ---
 id: scala-api
 title: Scala API Guide
+sidebar_position: 2
 ---
 
 

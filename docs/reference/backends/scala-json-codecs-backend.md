@@ -1,6 +1,7 @@
 ---
 id: scala-codecs
 title: Scala Json Codecs Backend
+sidebar_position: 3
 ---
 
 # Scala JSON-Codecs Backend Documentation

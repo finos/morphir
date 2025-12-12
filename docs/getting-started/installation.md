@@ -1,6 +1,7 @@
 ---
 id: installation
 title: Installation
+sidebar_position: 2
 ---
 # Morphir Tools Installation and Setup
 Morphir provides command line tools for executing morphir tasks. 

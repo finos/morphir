@@ -1,5 +1,6 @@
 ---
 id: user-guide-readme
+sidebar_position: 3
 ---
 
 # Morphir Users' Guide

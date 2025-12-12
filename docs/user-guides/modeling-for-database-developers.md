@@ -1,6 +1,7 @@
 ---
 id: modeling-database-developers
 title: Databases Modeling
+sidebar_position: 4
 ---
 
 # Modeling for database developers

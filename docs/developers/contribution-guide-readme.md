@@ -1,6 +1,7 @@
 ---
 id: contribution-guide
 title: Contribution Guide
+sidebar_position: 3
 ---
 
 # Contribution Guide

@@ -1,6 +1,7 @@
 ---
 id: morphir-typescript
 title: TypeScript - Morphir API
+sidebar_position: 13
 ---
 
 # Morphir API for Typescript 

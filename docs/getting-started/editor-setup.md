@@ -1,6 +1,7 @@
 ---
 id: editor-setup
 title: Editor Setup
+sidebar_position: 5
 ---
 
 # Editor Setup for Writing Business Logic

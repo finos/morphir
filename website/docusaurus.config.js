@@ -49,7 +49,7 @@ const config = {
         items: [
           {
             type: 'doc',
-            docId: 'concepts/introduction-to-morphir',
+            docId: 'introduction',
             position: 'right',
             label: 'Docs',
           },

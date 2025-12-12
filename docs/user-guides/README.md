@@ -1,3 +1,8 @@
+---
+sidebar_position: 4
+sidebar_label: User Guides
+---
+
 # User Guides
 
 Learn how to use Morphir to model business logic and build applications.

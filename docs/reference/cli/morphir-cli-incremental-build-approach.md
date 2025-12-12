@@ -1,5 +1,6 @@
 ---
 id: adr-for-morphir-cli
+sidebar_position: 1
 ---
 
 # ADR for Morphir CLI incremental build approach

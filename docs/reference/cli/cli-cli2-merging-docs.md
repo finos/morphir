@@ -1,6 +1,7 @@
 ---
 id: cli-cli2-merging
 title: Migrating Old CLI To New CLI
+sidebar_position: 2
 ---
 
 # Migrating From Old CLI To New CLI

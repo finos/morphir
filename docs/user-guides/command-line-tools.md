@@ -1,6 +1,7 @@
 ---
 id: command-line-tools
 title: Morphir Command Line Tools
+sidebar_position: 8
 ---
 # Morphir Command Line Tools
 

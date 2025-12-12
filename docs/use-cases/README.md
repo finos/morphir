@@ -1,3 +1,8 @@
+---
+sidebar_position: 7
+sidebar_label: Use Cases
+---
+
 # Use Cases
 
 Real-world applications and domain-specific examples of Morphir.

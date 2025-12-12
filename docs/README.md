@@ -1,3 +1,9 @@
+---
+id: introduction
+title: Morphir Documentation
+sidebar_position: 1
+---
+
 # Morphir Documentation
 
 Welcome to the Morphir documentation! This guide will help you understand, install, and use Morphir effectively.

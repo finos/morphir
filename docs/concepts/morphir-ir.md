@@ -1,5 +1,6 @@
 ---
 id: morphir-ir
+sidebar_position: 4
 ---
 
 # The Morphir IR

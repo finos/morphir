@@ -1,5 +1,6 @@
 ---
 id: generating-json-schema
+sidebar_position: 2
 ---
 
 # Generating a JSON Schema

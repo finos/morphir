@@ -1,6 +1,7 @@
 ---
 id: spark-optional-values
 tile: Handling Optional Values
+sidebar_position: 8
 ---
 
 # Spark - Handling Optional Values

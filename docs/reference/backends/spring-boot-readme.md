@@ -1,5 +1,6 @@
 ---
 id: springboot-generator
+sidebar_position: 15
 ---
 
 # SpringBoot Generator

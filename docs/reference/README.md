@@ -1,3 +1,8 @@
+---
+sidebar_position: 5
+sidebar_label: Reference
+---
+
 # Reference Documentation
 
 Technical reference documentation for Morphir backends, APIs, and tools.

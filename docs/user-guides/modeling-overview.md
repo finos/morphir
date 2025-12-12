@@ -1,6 +1,7 @@
 ---
 id: morphir-entail
 title: What Does Using Morphir Entail?
+sidebar_position: 2
 ---
 
 # What Does Using Morphir Entail?

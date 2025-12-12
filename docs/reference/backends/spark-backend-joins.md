@@ -1,6 +1,7 @@
 ---
 id: spark-backend-joins
 title: Backend Joins
+sidebar_position: 7
 ---
 
 # Spark - Backend Joins

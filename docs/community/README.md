@@ -1,3 +1,8 @@
+---
+sidebar_position: 8
+sidebar_label: Community
+---
+
 # Community
 
 Join the Morphir community and access helpful resources.

@@ -1,5 +1,6 @@
 ---
 id: json-schema-sample
+sidebar_position: 5
 ---
 
 # Json Schema Sample

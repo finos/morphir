@@ -1,5 +1,6 @@
 ---
 id: json-codecs-doc
+sidebar_position: 1
 ---
 # Json Codec Backend
 The purpose of this documentation is to give an explanation of how the Json Codec Backend works and how to use it.

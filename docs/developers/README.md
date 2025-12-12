@@ -1,3 +1,8 @@
+---
+sidebar_position: 6
+sidebar_label: Developer Guides
+---
+
 # Developer Guides
 
 Documentation for contributing to Morphir and advanced development topics.

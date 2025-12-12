@@ -1,6 +1,7 @@
 ---
 id: results-in-elm
 title: Working With Results in Elm
+sidebar_position: 11
 ---
 
 # Working With Results in Elm - With Morphir Examples

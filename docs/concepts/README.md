@@ -1,3 +1,8 @@
+---
+sidebar_position: 3
+sidebar_label: Core Concepts
+---
+
 # Core Concepts
 
 This section explains the fundamental concepts behind Morphir and how it works.

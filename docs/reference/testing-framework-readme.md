@@ -1,5 +1,6 @@
 ---
 id: testing-framework
+sidebar_position: 1
 ---
 
 # Testing Framework Guide

@@ -1,5 +1,6 @@
 ---
 id: contribution-and-governance-policies
+sidebar_position: 1
 ---
 
 # Governance Policies

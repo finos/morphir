@@ -1,6 +1,7 @@
 ---
 id: modeling-entire-application
 title: Modeling Entire Application
+sidebar_position: 1
 ---
 
 # Modeling Entire Applications
