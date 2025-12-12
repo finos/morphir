@@ -1,3 +1,8 @@
+---
+sidebar_position: 6
+title: Morphir Web UI
+---
+
 # Morphir Web UI
 
 This document details the purpose of the various functions of the Morphir UI, and how to use them and navigate between them.

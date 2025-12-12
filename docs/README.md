@@ -12,11 +12,12 @@ Welcome to the Morphir documentation! This guide will help you understand, insta
 
 ### [Getting Started](getting-started/)
 Start here if you're new to Morphir!
+- [Introduction](getting-started/intro.md) - What is Morphir and why use it?
 - [Installation](getting-started/installation.md) - Install Morphir tools
 - [Installation and Usage](getting-started/installation-and-usage.md) - Detailed installation and basic usage
 - [Quick Start Tutorial](getting-started/tutorials.md) - Get up and running quickly
-- [Introduction](getting-started/intro.md) - What is Morphir and why use it?
 - [Editor Setup](getting-started/editor-setup.md) - Configure your development environment
+- [Morphir Web UI](getting-started/Morphir%20Web%20UI.md) - Browse and visualize Morphir models
 
 ### [Core Concepts](concepts/)
 Understand the fundamental concepts behind Morphir
@@ -28,44 +29,50 @@ Understand the fundamental concepts behind Morphir
 
 ### [User Guides](user-guides/)
 Learn how to model business logic and use Morphir tools
-- **Modeling Guides**
-  - [Application Modeling](user-guides/application-modeling.md)
-  - [Modeling Overview](user-guides/modeling-overview.md)
-  - [What Makes a Good Domain Model](user-guides/what-makes-a-good-domain-model.md)
-  - [Modeling for Database Developers](user-guides/modeling-for-database-developers.md)
-  - [Modeling in Finance](user-guides/modeling-finance.md)
-  - [Modeling and Testing](user-guides/modelling-testing.md)
-- **Command-Line Tools**
-  - [Command-Line Tools](user-guides/command-line-tools.md)
-  - [Morphir Commands Processing](user-guides/morphir-commands-processing.md)
-  - [Morphir-Elm Commands](user-guides/morphir-elm-commands-processing.md)
-- **Development Guides**
-  - [Working with Results in Elm](user-guides/working-with-results-in-elm.md)
-  - [Soul of Your Application](user-guides/soul-of-your-application.md)
-  - [Decorators User Guide](user-guides/decorators-users-guide.md)
+
+#### [Modeling Guides](user-guides/modeling-guides/)
+- [Application Modeling](user-guides/modeling-guides/application-modeling.md)
+- [Modeling Overview](user-guides/modeling-guides/modeling-overview.md)
+- [What Makes a Good Domain Model](user-guides/modeling-guides/what-makes-a-good-domain-model.md)
+- [Modeling for Database Developers](user-guides/modeling-guides/modeling-for-database-developers.md)
+- [Modeling in Finance](user-guides/modeling-guides/modeling-finance.md)
+- [Modeling and Testing](user-guides/modeling-guides/modelling-testing.md)
+- [Soul of Your Application](user-guides/modeling-guides/soul-of-your-application.md)
+
+#### [Command-Line Tools](user-guides/cli-tools/)
+- [Command-Line Tools](user-guides/cli-tools/command-line-tools.md)
+- [Morphir Commands Processing](user-guides/cli-tools/morphir-commands-processing.md)
+- [Morphir-Elm Commands](user-guides/cli-tools/morphir-elm-commands-processing.md)
+
+#### [Development Techniques](user-guides/development-guides/)
+- [Working with Results in Elm](user-guides/development-guides/working-with-results-in-elm.md)
+- [Decorators User Guide](user-guides/development-guides/decorators-users-guide.md)
 
 ### [Reference](reference/)
 Technical reference documentation for backends, APIs, and tools
 
 #### [Backends](reference/backends/)
-- **Scala**
-  - [Scala Backend](reference/backends/scala-backend.md)
-  - [Scala API Usage](reference/backends/scala-api-usage-docs.md)
-  - [Scala JSON Codecs Backend](reference/backends/scala-json-codecs-backend.md)
-  - [Morphir Scala Code Generation](reference/backends/morphir-scala-gen.md)
-- **Spark**
-  - [Spark Backend Design](reference/backends/spark-backend-design.md)
-  - [Spark Backend API](reference/backends/spark-backend-api-documentation.md)
-  - [Spark Backend Joins](reference/backends/spark-backend-joins.md)
-  - [Spark Backend Optional Values](reference/backends/spark-backend-optional-values.md)
-  - [Spark as Relational Backend](reference/backends/spark-backend-as-a-special-case-of-a-relational-backend.md)
-  - [Spark Testing Framework](reference/backends/spark-testing-framework.md)
-- **Other Backends**
-  - [Relational Backend](reference/backends/relational-backend.md)
-  - [TypeScript](reference/backends/typescript.md)
-  - [TypeScript API](reference/backends/morphir-typescript-api.md)
-  - [CADL/TypeSpec](reference/backends/cadl-doc.md)
-  - [Spring Boot](reference/backends/spring-boot-readme.md)
+
+##### [Scala](reference/backends/scala/)
+- [Scala Backend](reference/backends/scala/scala-backend.md)
+- [Scala API Usage](reference/backends/scala/scala-api-usage-docs.md)
+- [Scala JSON Codecs Backend](reference/backends/scala/scala-json-codecs-backend.md)
+- [Morphir Scala Code Generation](reference/backends/scala/morphir-scala-gen.md)
+
+##### [Spark](reference/backends/spark/)
+- [Spark Backend Design](reference/backends/spark/spark-backend-design.md)
+- [Spark Backend API](reference/backends/spark/spark-backend-api-documentation.md)
+- [Spark Backend Joins](reference/backends/spark/spark-backend-joins.md)
+- [Spark Backend Optional Values](reference/backends/spark/spark-backend-optional-values.md)
+- [Spark as Relational Backend](reference/backends/spark/spark-backend-as-a-special-case-of-a-relational-backend.md)
+- [Spark Testing Framework](reference/backends/spark/spark-testing-framework.md)
+
+##### [Other Platforms](reference/backends/other-platforms/)
+- [Relational Backend](reference/backends/other-platforms/relational-backend.md)
+- [TypeScript](reference/backends/other-platforms/typescript.md)
+- [TypeScript API](reference/backends/other-platforms/morphir-typescript-api.md)
+- [CADL/TypeSpec](reference/backends/other-platforms/cadl-doc.md)
+- [Spring Boot](reference/backends/other-platforms/spring-boot-readme.md)
 
 #### [JSON Schema](reference/json-schema/)
 - [JSON Codecs Documentation](reference/json-schema/json-codecs-doc.md)
@@ -109,13 +116,14 @@ Join the Morphir community
 
 ### [Use Cases](use-cases/)
 Real-world applications of Morphir
+- [The Morphir Background Story](use-cases/background.md)
 - [Regulatory Technology Modeling](use-cases/regtech-modeling.md)
 
 ## 🚀 Quick Links
 
 - **New to Morphir?** Start with [Introduction](getting-started/intro.md)
 - **Want to install?** See [Installation](getting-started/installation.md)
-- **Need to model business logic?** Check out [Application Modeling](user-guides/application-modeling.md)
+- **Need to model business logic?** Check out [Application Modeling](user-guides/modeling-guides/application-modeling.md)
 - **Looking for API docs?** Browse the [Reference](reference/) section
 - **Want to contribute?** Read the [Contributing Guide](developers/contributing.md)
 - **Have questions?** Check the [FAQs](community/faqs.md) or join the [Community](community/morphir-community.md)
@@ -124,7 +132,6 @@ Real-world applications of Morphir
 
 - **Examples**: See the [examples](examples/) folder for practical examples
 - **Presentations**: Check [presentations](presentations/) for talks and slides
-- **Morphir Overview**: See [Morphir Overview](Morphir%20Overview/) for background materials
 
 ## 🔗 External Links
 
