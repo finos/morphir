@@ -7,7 +7,7 @@ Documentation for contributing to Morphir and advanced development topics.
 - **[Contributing Guide](contributing.md)** - How to contribute to Morphir
 - **[Contribution Guide Index](contribution-guide-index.md)** - Index of contribution resources
 - **[Contribution Guide README](contribution-guide-readme.md)** - Overview of contribution process
-- **[Morphir Developers Guide](morpir-developers-guide.md)** - Comprehensive guide for Morphir developers
+- **[Morphir Developers Guide](morphir-developers-guide.md)** - Comprehensive guide for Morphir developers
 - **[Development Bots](dev-bots.md)** - Automated development tools and bots
 - **[Integrating Morphir with JVM Projects](integrating-morphir-and-jvm-projects.md)** - JVM integration guide
 - **[Publishing](publishing.md)** - How to publish Morphir packages
@@ -18,7 +18,7 @@ New to contributing? Follow these steps:
 
 1. **Read [Contributing Guide](contributing.md)** - Understand the contribution process
 2. **Review [Code of Conduct](../community/code-of-conduct.md)** - Know the community standards
-3. **Check [Morphir Developers Guide](morpir-developers-guide.md)** - Learn the development workflow
+3. **Check [Morphir Developers Guide](morphir-developers-guide.md)** - Learn the development workflow
 4. **Explore the codebase** - Familiarize yourself with the project structure
 
 ## 🛠️ Development Workflow
