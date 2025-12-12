@@ -35,7 +35,7 @@ We'll step through how we can define such a regulation using Morphir with the LC
 
 # Getting started
 
-If you've not already done so, install Morphir as per the [getting started](./getting_started) instructions. Create a project called "lcr":
+If you've not already done so, install Morphir as per the [getting started](../getting-started/) instructions. Create a project called "lcr":
 
 ```bash
 morphir init lcr

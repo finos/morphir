@@ -67,18 +67,18 @@ Morphir consists of a few projects based on the features they provide.
 
 
 ## Other Resources
-[List of media](./media.md)
+[List of media](../community/media.md)
 
 
 ### Further reading
 
 | Introduction & Background                                             | Using Morphir                                                                                              | Applicability                                                                      |
 |:----------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------|
-| [Resource Centre](https://resources.finos.org/morphir/)               | [What Makes a Good Model](./what-makes-a-good-domain-model.md)                                             | [Sharing Business Logic Across Application Boundaries](./shared_logic_modeling.md) |
-| [Background](./background.md)                                         | [Development Automation (Dev Bots)](./dev-bots.md)                                                         | [Regulatory Technology](./regtech-modeling.md)                                     |
-| [Community](./morphir-community.md)                                   | [Modeling an Application](./application-modeling.md)                                                       |                                                                                    |
+| [Resource Centre](https://resources.finos.org/morphir/)               | [What Makes a Good Model](../user-guides/what-makes-a-good-domain-model.md)                                             | [Sharing Business Logic Across Application Boundaries](../shared_logic_modeling.md) |
+| [Background](../Morphir%20Overview/background.md)                                         | [Development Automation (Dev Bots)](../developers/dev-bots.md)                                                         | [Regulatory Technology](../use-cases/regtech-modeling.md)                                     |
+| [Community](../community/morphir-community.md)                                   | [Modeling an Application](../user-guides/application-modeling.md)                                                       |                                                                                    |
 | [What's it all about?](./whats-it-about.md)                           | [Modeling Decision Tables](https://github.com/finos/morphir-examples/tree/master/src/Morphir/Sample/Rules) |                                                                                    |
-| [Why we use Functional Programming?](./why-functional-programming.md) | [Modeling for database developers](./modeling-for-database-developers.md)                                  |
+| [Why we use Functional Programming?](./why-functional-programming.md) | [Modeling for database developers](../user-guides/modeling-for-database-developers.md)                                  |
 
 ## Roadmap
 
@@ -93,7 +93,7 @@ List the roadmap steps; alternatively link the Confluence Wiki page where the pr
 
 1. Fork it (<https://github.com/finos/morphir/fork>)
 2. Create your feature branch (`git checkout -b feature/fooBar`)
-3. Read our [contribution guidelines](.github/CONTRIBUTING.md) and [Community Code of Conduct](https://www.finos.org/code-of-conduct)
+3. Read our [contribution guidelines](../developers/contributing.md) and [Community Code of Conduct](https://www.finos.org/code-of-conduct)
 4. Commit your changes (`git commit -am 'Add some fooBar'`)
 5. Push to the branch (`git push origin feature/fooBar`)
 6. Create a new Pull Request

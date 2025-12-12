@@ -163,7 +163,7 @@ c) Create a json object from FQName and Testcases
 ### Example
 - Output is not matching 
 
-![TestCase-1](./assets/TestCase1.PNG)
+![TestCase-1](../assets/TestCase1.PNG)
 - Output is matching
   
-![TestCase-2](./assets/TestCase2.PNG)
+![TestCase-2](../assets/TestCase2.PNG)

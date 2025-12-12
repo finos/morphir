@@ -73,18 +73,18 @@ Morphir consists of a few projects based on the features they provide.
 
 
 ## Other Resources
-[List of media](docs/media.md)
+[List of media](docs/community/media.md)
 
 
 ### Further reading
 
 | Introduction & Background                                                  | Using Morphir                                                                                              | Applicability                                                                           |
 | :------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------- |
-| [Resource Centre](https://resources.finos.org/morphir/)                    | [What Makes a Good Model](./docs/what-makes-a-good-domain-model.md)                                        | [Sharing Business Logic Across Application Boundaries](./docs/shared_logic_modeling.md) |
-| [Background](docs/Morphir%20Overview/background.md)                                         | [Development Automation (Dev Bots)](./docs/dev-bots.md)                                                    | [Regulatory Technology](./docs/regtech-modeling.md)                                     |
-| [Community](./docs/morphir-community.md)                                   | [Modeling an Application](./docs/application-modeling.md)                                                  |                                                                                         |
-| [What's it all about?](./docs/whats-it-about.md)                           | [Modeling Decision Tables](https://github.com/finos/morphir-examples/tree/master/src/Morphir/Sample/Rules) |                                                                                         |
-| [Why we use Functional Programming?](./docs/why-functional-programming.md) | [Modeling for database developers](docs/modeling-for-database-developers.md)                    |
+| [Resource Centre](https://resources.finos.org/morphir/)                    | [What Makes a Good Model](./docs/user-guides/what-makes-a-good-domain-model.md)                                        | [Sharing Business Logic Across Application Boundaries](./docs/shared_logic_modeling.md) |
+| [Background](docs/Morphir%20Overview/background.md)                                         | [Development Automation (Dev Bots)](./docs/developers/dev-bots.md)                                                    | [Regulatory Technology](./docs/use-cases/regtech-modeling.md)                                     |
+| [Community](./docs/community/morphir-community.md)                                   | [Modeling an Application](./docs/user-guides/application-modeling.md)                                                  |                                                                                         |
+| [What's it all about?](./docs/concepts/whats-it-about.md)                           | [Modeling Decision Tables](https://github.com/finos/morphir-examples/tree/master/src/Morphir/Sample/Rules) |                                                                                         |
+| [Why we use Functional Programming?](./docs/concepts/why-functional-programming.md) | [Modeling for database developers](docs/user-guides/modeling-for-database-developers.md)                    |
 
 ## Roadmap
 
@@ -106,7 +106,7 @@ Email help@finos.org to be added to the meeting invite directly, or find the mee
 
 1. Fork it (<https://github.com/finos/morphir/fork>)
 2. Create your feature branch (`git checkout -b feature/fooBar`)
-3. Read our [contribution guidelines](docs/contributing.md) and [Community Code of Conduct](https://www.finos.org/code-of-conduct)
+3. Read our [contribution guidelines](docs/developers/contributing.md) and [Community Code of Conduct](https://www.finos.org/code-of-conduct)
 4. Commit your changes (`git commit -am 'Add some fooBar'`)
 5. Push to the branch (`git push origin feature/fooBar`)
 6. Create a new Pull Request
