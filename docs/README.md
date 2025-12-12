@@ -1,0 +1,132 @@
+# Morphir Documentation
+
+Welcome to the Morphir documentation! This guide will help you understand, install, and use Morphir effectively.
+
+## 📚 Documentation Structure
+
+### [Getting Started](getting-started/)
+Start here if you're new to Morphir!
+- [Installation](getting-started/installation.md) - Install Morphir tools
+- [Installation and Usage](getting-started/installation-and-usage.md) - Detailed installation and basic usage
+- [Quick Start Tutorial](getting-started/tutorials.md) - Get up and running quickly
+- [Introduction](getting-started/intro.md) - What is Morphir and why use it?
+- [Editor Setup](getting-started/editor-setup.md) - Configure your development environment
+
+### [Core Concepts](concepts/)
+Understand the fundamental concepts behind Morphir
+- [Introduction to Morphir](concepts/introduction-to-morphir.md) - Overview of Morphir
+- [What's It About?](concepts/whats-it-about.md) - Business logic and application focus
+- [Why Functional Programming?](concepts/why-functional-programming.md) - The FP paradigm in Morphir
+- [Morphir IR](concepts/morphir-ir.md) - The Intermediate Representation structure
+- [Morphir SDK](concepts/morphir-sdk.md) - Standard library and SDK
+
+### [User Guides](user-guides/)
+Learn how to model business logic and use Morphir tools
+- **Modeling Guides**
+  - [Application Modeling](user-guides/application-modeling.md)
+  - [Modeling Overview](user-guides/modeling-overview.md)
+  - [What Makes a Good Domain Model](user-guides/what-makes-a-good-domain-model.md)
+  - [Modeling for Database Developers](user-guides/modeling-for-database-developers.md)
+  - [Modeling in Finance](user-guides/modeling-finance.md)
+  - [Modeling and Testing](user-guides/modelling-testing.md)
+- **Command-Line Tools**
+  - [Command-Line Tools](user-guides/command-line-tools.md)
+  - [Morphir Commands Processing](user-guides/morphir-commands-processing.md)
+  - [Morphir-Elm Commands](user-guides/morphir-elm-commands-processing.md)
+- **Development Guides**
+  - [Working with Results in Elm](user-guides/working-with-results-in-elm.md)
+  - [Soul of Your Application](user-guides/soul-of-your-application.md)
+  - [Decorators User Guide](user-guides/decorators-users-guide.md)
+
+### [Reference](reference/)
+Technical reference documentation for backends, APIs, and tools
+
+#### [Backends](reference/backends/)
+- **Scala**
+  - [Scala Backend](reference/backends/scala-backend.md)
+  - [Scala API Usage](reference/backends/scala-api-usage-docs.md)
+  - [Scala JSON Codecs Backend](reference/backends/scala-json-codecs-backend.md)
+  - [Morphir Scala Code Generation](reference/backends/morphir-scala-gen.md)
+- **Spark**
+  - [Spark Backend Design](reference/backends/spark-backend-design.md)
+  - [Spark Backend API](reference/backends/spark-backend-api-documentation.md)
+  - [Spark Backend Joins](reference/backends/spark-backend-joins.md)
+  - [Spark Backend Optional Values](reference/backends/spark-backend-optional-values.md)
+  - [Spark as Relational Backend](reference/backends/spark-backend-as-a-special-case-of-a-relational-backend.md)
+  - [Spark Testing Framework](reference/backends/spark-testing-framework.md)
+- **Other Backends**
+  - [Relational Backend](reference/backends/relational-backend.md)
+  - [TypeScript](reference/backends/typescript.md)
+  - [TypeScript API](reference/backends/morphir-typescript-api.md)
+  - [CADL/TypeSpec](reference/backends/cadl-doc.md)
+  - [Spring Boot](reference/backends/spring-boot-readme.md)
+
+#### [JSON Schema](reference/json-schema/)
+- [JSON Codecs Documentation](reference/json-schema/json-codecs-doc.md)
+- [Generating JSON Schema](reference/json-schema/generating-json-schema.md)
+- [JSON Schema Configuration](reference/json-schema/json-schema-config.md)
+- [JSON Schema Mappings](reference/json-schema/json-schema-mappings.md)
+- [JSON Schema Sample](reference/json-schema/json-schema-sample.md)
+- [JSON Schema Developers Guide](reference/json-schema/json-schema-enabled%20developers%20guide.md)
+- [JSON Schema Backend Test Plan](reference/json-schema/json-schema-backend-testplan.md)
+- [JSON Schema Backend Config Test Plan](reference/json-schema/json-schema-backend-config-test-plan.md)
+- [Codec Documentation](reference/json-schema/codec-docs.md)
+
+#### [CLI Reference](reference/cli/)
+- [CLI Incremental Build](reference/cli/morphir-cli-incremental-build-approach.md)
+- [CLI Merging Documentation](reference/cli/cli-cli2-merging-docs.md)
+
+#### Other Reference
+- [Testing Framework](reference/testing-framework-readme.md)
+- [Insight](reference/insight-readme.md)
+- [User Guide](reference/user-guide-readme.md)
+- [Error: Append Not Supported](reference/error-append-not-supported.md)
+- [Table Template](reference/table-template.md)
+- [Versioning](reference/versioning.md)
+
+### [Developer Guides](developers/)
+Contributing to Morphir and advanced development topics
+- [Contributing Guide](developers/contributing.md) - How to contribute to Morphir
+- [Contribution Guide Index](developers/contribution-guide-index.md)
+- [Contribution Guide README](developers/contribution-guide-readme.md)
+- [Morphir Developers Guide](developers/morpir-developers-guide.md)
+- [Development Bots](developers/dev-bots.md)
+- [Integrating Morphir with JVM Projects](developers/integrating-morphir-and-jvm-projects.md)
+- [Publishing](developers/publishing.md)
+
+### [Community](community/)
+Join the Morphir community
+- [Morphir Community](community/morphir-community.md) - Community resources and how to get involved
+- [Media](community/media.md) - Presentations, videos, and media resources
+- [Code of Conduct](community/code-of-conduct.md)
+- [FAQs](community/faqs.md) - Frequently Asked Questions
+
+### [Use Cases](use-cases/)
+Real-world applications of Morphir
+- [Regulatory Technology Modeling](use-cases/regtech-modeling.md)
+
+## 🚀 Quick Links
+
+- **New to Morphir?** Start with [Introduction](getting-started/intro.md)
+- **Want to install?** See [Installation](getting-started/installation.md)
+- **Need to model business logic?** Check out [Application Modeling](user-guides/application-modeling.md)
+- **Looking for API docs?** Browse the [Reference](reference/) section
+- **Want to contribute?** Read the [Contributing Guide](developers/contributing.md)
+- **Have questions?** Check the [FAQs](community/faqs.md) or join the [Community](community/morphir-community.md)
+
+## 📖 Additional Resources
+
+- **Examples**: See the [examples](examples/) folder for practical examples
+- **Presentations**: Check [presentations](presentations/) for talks and slides
+- **Morphir Overview**: See [Morphir Overview](Morphir%20Overview/) for background materials
+
+## 🔗 External Links
+
+- [Main Repository](https://github.com/finos/morphir)
+- [Morphir Website](https://morphir.finos.org)
+- [FINOS](https://finos.org)
+- [Slack Channel](https://finos-lf.slack.com/messages/morphir/)
+
+---
+
+**Note**: This documentation is organized to help newcomers navigate easily. If you're looking for something specific, use your browser's search function or check the [FAQs](community/faqs.md).
