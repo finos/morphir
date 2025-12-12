@@ -89,7 +89,7 @@ Contributing to Morphir and advanced development topics
 - [Contributing Guide](developers/contributing.md) - How to contribute to Morphir
 - [Contribution Guide Index](developers/contribution-guide-index.md)
 - [Contribution Guide README](developers/contribution-guide-readme.md)
-- [Morphir Developers Guide](developers/morpir-developers-guide.md)
+- [Morphir Developers Guide](developers/morphir-developers-guide.md)
 - [Development Bots](developers/dev-bots.md)
 - [Integrating Morphir with JVM Projects](developers/integrating-morphir-and-jvm-projects.md)
 - [Publishing](developers/publishing.md)
