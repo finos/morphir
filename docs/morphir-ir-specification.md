@@ -890,16 +890,20 @@ The JSON schemas can be used for:
 Example validation using a JSON schema validator:
 
 ```bash
-# Using ajv-cli (Node.js)
-npm install -g ajv-cli
-ajv validate -s schemas/morphir-ir-v3.yaml -d morphir-ir.json
-
-# Using Python jsonschema
+# Using Python jsonschema (recommended for YAML schemas)
 pip install jsonschema pyyaml
 python -c "import json, yaml, jsonschema; \
-  schema = yaml.safe_load(open('schemas/morphir-ir-v3.yaml')); \
+  schema = yaml.safe_load(open('docs/schemas/morphir-ir-v3.yaml')); \
   data = json.load(open('morphir-ir.json')); \
-  jsonschema.validate(data, schema)"
+  jsonschema.validate(data, schema); \
+  print('✓ Valid Morphir IR')"
+
+# Using ajv-cli (Node.js) - requires converting YAML to JSON first
+npm install -g ajv-cli
+python -c "import yaml, json; \
+  json.dump(yaml.safe_load(open('docs/schemas/morphir-ir-v3.yaml')), \
+  open('morphir-ir-v3.json', 'w'))"
+ajv validate -s morphir-ir-v3.json -d morphir-ir.json
 ```
 
 ### Schema Location
