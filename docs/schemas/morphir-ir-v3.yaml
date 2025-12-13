@@ -27,7 +27,7 @@ properties:
     maxItems: 4
     items:
       - type: string
-        enum: ["Library"]
+        const: "Library"
         description: "The type of distribution. Currently only Library is supported."
       - $ref: "#/definitions/PackageName"
       - $ref: "#/definitions/Dependencies"
