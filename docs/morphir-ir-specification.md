@@ -853,6 +853,62 @@ When transforming Morphir IR:
 4. **Handle both specifications and definitions**: Transform both forms consistently
 5. **Preserve attributes**: Carry forward attributes unless explicitly changing them
 
+## JSON Schema Specifications
+
+To support tooling, validation, and interoperability, formal JSON schemas are provided for all supported format versions of the Morphir IR. These schemas are defined in YAML format for readability and include comprehensive documentation.
+
+### Available Schemas
+
+- **[Format Version 3 (Current)](/docs/schemas/morphir-ir-v3.yaml)**: The latest format version, which uses capitalized constructor tags (e.g., `"Library"`, `"Public"`, `"Variable"`).
+  
+- **[Format Version 2](/docs/schemas/morphir-ir-v2.yaml)**: Uses capitalized distribution and type tags (e.g., `"Library"`, `"Public"`, `"Variable"`) but lowercase value and pattern tags (e.g., `"apply"`, `"lambda"`, `"as_pattern"`).
+  
+- **[Format Version 1](/docs/schemas/morphir-ir-v1.yaml)**: The original format version, which uses lowercase tags throughout (e.g., `"library"`, `"public"`) and a different module structure where modules have `name` and `def` fields.
+
+### Key Differences Between Versions
+
+#### Format Version 1 → 2
+- **Distribution tag**: Changed from `"library"` to `"Library"`
+- **Access control**: Changed from `"public"/"private"` to `"Public"/"Private"`
+- **Module structure**: Changed from `{"name": ..., "def": ...}` to array-based `[modulePath, accessControlled]`
+- **Type tags**: Changed to capitalized forms (e.g., `"variable"` → `"Variable"`)
+
+#### Format Version 2 → 3
+- **Value expression tags**: Changed from lowercase to capitalized (e.g., `"apply"` → `"Apply"`)
+- **Pattern tags**: Changed from lowercase with underscores to capitalized (e.g., `"as_pattern"` → `"AsPattern"`)
+- **Literal tags**: Changed from lowercase with underscores to capitalized (e.g., `"bool_literal"` → `"BoolLiteral"`)
+
+### Using the Schemas
+
+The JSON schemas can be used for:
+
+1. **Validation**: Validate Morphir IR JSON files against the appropriate version schema
+2. **Documentation**: Understand the structure and constraints of the IR format
+3. **Code Generation**: Generate parsers, serializers, and type definitions for various languages
+4. **Tooling**: Build editors, linters, and other tools that work with Morphir IR
+
+Example validation using a JSON schema validator:
+
+```bash
+# Using ajv-cli (Node.js)
+npm install -g ajv-cli
+ajv validate -s schemas/morphir-ir-v3.yaml -d morphir-ir.json
+
+# Using Python jsonschema
+pip install jsonschema pyyaml
+python -c "import json, yaml, jsonschema; \
+  schema = yaml.safe_load(open('schemas/morphir-ir-v3.yaml')); \
+  data = json.load(open('morphir-ir.json')); \
+  jsonschema.validate(data, schema)"
+```
+
+### Schema Location
+
+All schemas are located in the `docs/schemas/` directory of the Morphir repository:
+- `docs/schemas/morphir-ir-v1.yaml`
+- `docs/schemas/morphir-ir-v2.yaml`
+- `docs/schemas/morphir-ir-v3.yaml`
+
 ## Conclusion
 
 The Morphir IR provides a comprehensive, type-safe representation of functional business logic. Its design enables:
@@ -863,4 +919,4 @@ The Morphir IR provides a comprehensive, type-safe representation of functional 
 - **Tooling**: Rich development tools can be built on a standard format
 - **Interoperability**: Different languages can share logic via IR
 
-This specification defines the structure and semantics necessary for building a robust ecosystem of Morphir tools and ensuring consistent interpretation across implementations.
+This specification defines the structure and semantics necessary for building a robust ecosystem of Morphir tools and ensuring consistent interpretation across implementations. The accompanying JSON schemas provide formal, machine-readable definitions that can be used for validation, code generation, and tooling support.
