@@ -99,16 +99,10 @@ definitions:
         description: "The value being access controlled."
     description: "Wrapper that manages visibility of types and values."
   
-  Documented:
-    type: object
-    required: ["value"]
-    properties:
-      doc:
-        type: string
-        description: "Documentation text for the element."
-      value:
-        description: "The documented element."
-    description: "Associates documentation with IR elements."
+  # Note: Documented is not a separate schema definition because it's encoded conditionally.
+  # When documentation exists, the JSON has both "doc" and "value" fields.
+  # When documentation is absent, the JSON contains only the documented element directly (no wrapper).
+  # This is handled inline in the definitions that use Documented.
   
   # ===== Distribution Structure =====
   
@@ -177,11 +171,16 @@ definitions:
                 - $ref: "#/definitions/AccessControlled"
                 - properties:
                     value:
-                      allOf:
-                        - $ref: "#/definitions/Documented"
-                        - properties:
+                      # Documented wrapper: can have "doc" and "value", or just the type definition directly
+                      oneOf:
+                        - type: object
+                          required: ["doc", "value"]
+                          properties:
+                            doc:
+                              type: string
                             value:
                               $ref: "#/definitions/TypeDefinition"
+                        - $ref: "#/definitions/TypeDefinition"
         description: "All type definitions (public and private)."
       values:
         type: array
@@ -195,11 +194,16 @@ definitions:
                 - $ref: "#/definitions/AccessControlled"
                 - properties:
                     value:
-                      allOf:
-                        - $ref: "#/definitions/Documented"
-                        - properties:
+                      # Documented wrapper: can have "doc" and "value", or just the value definition directly
+                      oneOf:
+                        - type: object
+                          required: ["doc", "value"]
+                          properties:
+                            doc:
+                              type: string
                             value:
                               $ref: "#/definitions/ValueDefinition"
+                        - $ref: "#/definitions/ValueDefinition"
         description: "All value definitions (public and private)."
       doc:
         type: string
@@ -218,11 +222,15 @@ definitions:
           maxItems: 2
           items:
             - $ref: "#/definitions/Name"
-            - allOf:
-                - $ref: "#/definitions/Documented"
-                - properties:
+            - oneOf:
+                - type: object
+                  required: ["doc", "value"]
+                  properties:
+                    doc:
+                      type: string
                     value:
                       $ref: "#/definitions/TypeSpecification"
+                - $ref: "#/definitions/TypeSpecification"
         description: "Public type specifications only."
       values:
         type: array
@@ -232,11 +240,15 @@ definitions:
           maxItems: 2
           items:
             - $ref: "#/definitions/Name"
-            - allOf:
-                - $ref: "#/definitions/Documented"
-                - properties:
+            - oneOf:
+                - type: object
+                  required: ["doc", "value"]
+                  properties:
+                    doc:
+                      type: string
                     value:
                       $ref: "#/definitions/ValueSpecification"
+                - $ref: "#/definitions/ValueSpecification"
         description: "Public value specifications only."
       doc:
         type: string
