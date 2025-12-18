@@ -43,17 +43,10 @@ Thursday DD MMM yyyy - 11am ET / 3pm UK
 - [ ] Action 2
 - [ ] ...
 
-### Zoom info
+### Meeting info
 
-Join Zoom Meeting
-- https://zoom.us/j/99313804465
-- Meeting ID: 993 1380 4465
-- Passcode: 038632
-
-
-### Dial-in
-
-- **Find your local number:** https://zoom.us/u/avGA76WoI
+Join Meeting:
+- https://www.google.com/url?q=https://zoom-lfx.platform.linuxfoundation.org/meeting/96826203663?password%3D32129227-1c0f-47a4-b71a-26b87aa7c2a9&sa=D&source=calendar&ust=1766314556785370&usg=AOvVaw0Q7RBzHarIgZUcu_6k-YYm
 
 **Github Repo:** https://github.com/finos/morphir/
 
