@@ -1,0 +1,9 @@
+go 1.25.5
+
+use (
+	./cmd/morphir
+	./pkg/models
+	./pkg/pipeline
+	./pkg/sdk
+	./pkg/tooling
+)

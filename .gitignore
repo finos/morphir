@@ -14,3 +14,36 @@ docs/contributing.md
 
 # We use YARN
 website/package-lock.json
+
+# Go build artifacts
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go test files
+*.test
+*.out
+
+# Go workspace files (optional - some teams commit go.work, some don't)
+# Uncomment if you don't want to track go.work
+# go.work
+# go.work.sum
+
+# Go vendor directory
+vendor/
+
+# Go module cache (optional)
+# Uncomment if you want to ignore module cache
+# .go/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
