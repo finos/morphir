@@ -17,16 +17,30 @@ func TestFeatures(t *testing.T) {
 			// Create test context with embedded fixtures
 			tc := steps.NewTestContext(testdata.Fixtures)
 
+			// Create config test context
+			ctc := steps.NewConfigTestContext()
+
 			// Set up before/after hooks
 			sc.Before(func(ctx context.Context, sc *godog.Scenario) (context.Context, error) {
 				tc.Reset()
-				return steps.WithTestContext(ctx, tc), nil
+				ctc.Reset()
+				ctx = steps.WithTestContext(ctx, tc)
+				return ctx, nil
+			})
+
+			sc.After(func(ctx context.Context, sc *godog.Scenario, err error) (context.Context, error) {
+				// Cleanup config test context
+				if cleanupErr := ctc.Cleanup(); cleanupErr != nil && err == nil {
+					err = cleanupErr
+				}
+				return ctx, err
 			})
 
 			// Register all step definitions
 			steps.RegisterCommonSteps(sc)
 			steps.RegisterDistributionSteps(sc)
 			steps.RegisterTypeSteps(sc)
+			steps.RegisterConfigSteps(sc)
 		},
 		Options: &godog.Options{
 			Format:   "pretty",

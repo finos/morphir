@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/finos/morphir-go/cmd/morphir/internal/ui"
+	"github.com/finos/morphir-go/pkg/config"
 	"github.com/spf13/cobra"
 )
 
@@ -13,6 +15,14 @@ var (
 	Version   = "dev"
 	GitCommit = "unknown"
 	BuildDate = "unknown"
+)
+
+// Global configuration loaded at startup
+var (
+	cfg        config.Config
+	cfgResult  config.LoadResult
+	cfgLoaded  bool
+	cfgLoadErr error
 )
 
 var rootCmd = &cobra.Command{
@@ -57,12 +67,55 @@ func launchTUI() error {
 }
 
 func init() {
+	cobra.OnInitialize(initConfig)
+
 	rootCmd.AddCommand(workspaceCmd)
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(configCmd)
 	// Note: Cobra automatically provides a built-in 'help' command,
 	// so we don't need to register our custom helpCmd
 
 	// Add version flag
 	rootCmd.Flags().BoolP("version", "v", false, "version for morphir")
+}
+
+// initConfig loads the configuration from all sources.
+// This is called by cobra.OnInitialize before any command runs.
+func initConfig() {
+	// Get current working directory for project config discovery
+	workDir, err := os.Getwd()
+	if err != nil {
+		cfgLoadErr = fmt.Errorf("failed to get working directory: %w", err)
+		return
+	}
+
+	// Load configuration with working directory context
+	cfgResult, cfgLoadErr = config.LoadWithDetails(config.WithWorkDir(workDir))
+	if cfgLoadErr != nil {
+		return
+	}
+
+	cfg = cfgResult.Config()
+	cfgLoaded = true
+}
+
+// GetConfig returns the loaded configuration.
+// Returns an error if configuration failed to load.
+func GetConfig() (config.Config, error) {
+	if cfgLoadErr != nil {
+		return config.Config{}, cfgLoadErr
+	}
+	if !cfgLoaded {
+		return config.Default(), nil
+	}
+	return cfg, nil
+}
+
+// GetConfigResult returns the full load result including source information.
+func GetConfigResult() (config.LoadResult, error) {
+	if cfgLoadErr != nil {
+		return config.LoadResult{}, cfgLoadErr
+	}
+	return cfgResult, nil
 }

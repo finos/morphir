@@ -84,17 +84,78 @@ morphir help
 # Get help for a specific command
 morphir help workspace
 
-# Initialize a workspace (stubbed - coming soon)
+# Initialize a new workspace
 morphir workspace init [path]
+
+# View configuration
+morphir config show
+
+# Show configuration file locations
+morphir config path
 ```
+
+## Configuration
+
+Morphir uses a layered configuration system. Configuration is loaded from multiple sources in priority order, with higher-priority sources overriding lower ones.
+
+### Quick Start
+
+```sh
+# Initialize a workspace (creates morphir.toml)
+morphir workspace init
+
+# View the resolved configuration
+morphir config show
+
+# See which config files are loaded
+morphir config path
+```
+
+### Configuration Sources
+
+| Priority | Source | Description |
+|----------|--------|-------------|
+| 6 (highest) | Environment | `MORPHIR_*` variables |
+| 5 | User override | `.morphir/morphir.user.toml` (gitignored) |
+| 4 | Project | `morphir.toml` or `.morphir/morphir.toml` |
+| 3 | Global | `~/.config/morphir/morphir.toml` |
+| 2 | System | `/etc/morphir/morphir.toml` |
+| 1 (lowest) | Defaults | Built-in defaults |
+
+### Example Configuration
+
+```toml
+[morphir]
+version = "^3.0.0"
+
+[codegen]
+targets = ["go", "typescript"]
+
+[logging]
+level = "info"
+format = "text"
+```
+
+### Environment Variables
+
+Override any setting with `MORPHIR_` prefix:
+
+```sh
+export MORPHIR_LOGGING_LEVEL=debug
+export MORPHIR_CACHE_ENABLED=false
+```
+
+For complete documentation, see [docs/configuration.md](docs/configuration.md).
 
 ## Module Structure
 
 This is a Go monorepo with multiple modules:
 
 - **`cmd/morphir/`** - CLI application (Cobra + Bubbletea)
+- **`pkg/config/`** - Layered configuration system
 - **`pkg/models/`** - Morphir IR model types and data structures
 - **`pkg/tooling/`** - Utilities and tools for working with Morphir IR
+  - **`pkg/tooling/workspace/`** - Workspace discovery and initialization
 - **`pkg/sdk/`** - SDK for building applications that work with Morphir IR
 - **`pkg/pipeline/`** - Processing pipelines for Morphir IR transformations
 

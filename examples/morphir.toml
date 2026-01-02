@@ -1,0 +1,106 @@
+# Morphir Configuration File
+# This file configures the Morphir tooling for your project.
+#
+# Configuration is loaded from multiple sources in priority order:
+#   1. Built-in defaults (lowest priority)
+#   2. System config: /etc/morphir/morphir.toml
+#   3. Global user config: ~/.config/morphir/morphir.toml
+#   4. This project config: morphir.toml or .morphir/morphir.toml
+#   5. User override: .morphir/morphir.user.toml (gitignored)
+#   6. Environment variables: MORPHIR_* (highest priority)
+#
+# All values in this file can be overridden by environment variables:
+#   MORPHIR_LOGGING_LEVEL=debug
+#   MORPHIR_CACHE_ENABLED=false
+
+# =============================================================================
+# Morphir Core Settings
+# =============================================================================
+[morphir]
+# Morphir IR version constraint for this project.
+# Uses semver syntax: "3.0.0", "^3.0.0", ">=2.0.0, <4.0.0"
+# Leave empty to accept any version.
+version = "^3.0.0"
+
+# =============================================================================
+# Workspace Settings
+# =============================================================================
+[workspace]
+# Workspace root directory. Usually left empty to use the directory
+# containing this configuration file.
+root = ""
+
+# Output directory for generated artifacts, relative to workspace root.
+# Default: ".morphir"
+output_dir = ".morphir"
+
+# =============================================================================
+# IR (Intermediate Representation) Settings
+# =============================================================================
+[ir]
+# IR format version. Supported versions: 1-10.
+# Version 3 is the current stable format.
+format_version = 3
+
+# Enable strict mode for IR validation.
+# When true, the tooling will reject IR with any validation warnings.
+strict_mode = false
+
+# =============================================================================
+# Code Generation Settings
+# =============================================================================
+[codegen]
+# Target languages/platforms for code generation.
+# Common targets: "go", "typescript", "scala", "json-schema"
+targets = ["go"]
+
+# Directory containing custom code generation templates.
+# Leave empty to use built-in templates.
+template_dir = ""
+
+# Output format for generated code.
+# Options: "pretty" (readable), "compact" (minimal whitespace), "minified"
+output_format = "pretty"
+
+# =============================================================================
+# Cache Settings
+# =============================================================================
+[cache]
+# Enable caching for faster incremental builds.
+enabled = true
+
+# Cache directory path. Leave empty to use the default location
+# (.morphir/cache within the workspace).
+dir = ""
+
+# Maximum cache size in bytes. Set to 0 for unlimited.
+# Examples: 1073741824 (1 GB), 536870912 (512 MB)
+max_size = 0
+
+# =============================================================================
+# Logging Settings
+# =============================================================================
+[logging]
+# Log level: "debug", "info", "warn", "error"
+level = "info"
+
+# Log format: "text" (human-readable) or "json" (structured)
+format = "text"
+
+# Log file path. Leave empty to log to stderr.
+# Example: ".morphir/morphir.log"
+file = ""
+
+# =============================================================================
+# UI Settings
+# =============================================================================
+[ui]
+# Enable colored terminal output.
+color = true
+
+# Enable interactive mode (progress bars, prompts, etc.).
+# Automatically disabled when output is not a TTY.
+interactive = true
+
+# UI theme: "default", "light", "dark"
+theme = "default"

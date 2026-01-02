@@ -1,0 +1,8 @@
+# Minimal Morphir Configuration
+# All settings have sensible defaults. Only include what you need to change.
+
+[morphir]
+version = "^3.0.0"
+
+[codegen]
+targets = ["go"]
