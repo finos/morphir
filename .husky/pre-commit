@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# Prevent committing .beads as a symlink
+# This can happen when using git worktrees where .beads becomes a symlink
+# to the main worktree's .beads directory
+
+# Check if .beads is staged for commit
+if git diff --cached --name-only | grep -q "^\.beads$"; then
+    # Check if the staged .beads is a symlink (mode 120000)
+    BEADS_MODE=$(git diff --cached --diff-filter=A --raw -- .beads 2>/dev/null | awk '{print $2}')
+    if [ "$BEADS_MODE" = "120000" ]; then
+        echo "ERROR: Attempting to commit .beads as a symlink."
+        echo ""
+        echo "This typically happens in a git worktree where .beads points to"
+        echo "the main worktree's .beads directory."
+        echo ""
+        echo "To fix this:"
+        echo "  1. git reset HEAD .beads"
+        echo "  2. rm .beads"
+        echo "  3. mkdir -p .beads"
+        echo "  4. Copy or recreate the files you need in .beads/"
+        echo ""
+        exit 1
+    fi
+fi
+
+# Also check if .beads exists in working directory as symlink and is being modified
+if [ -L ".beads" ]; then
+    if git diff --cached --name-only | grep -q "^\.beads"; then
+        echo "ERROR: .beads is a symlink in your working directory."
+        echo ""
+        echo "Only actual file changes in .beads/ should be committed, not symlinks."
+        echo "This typically happens in a git worktree."
+        echo ""
+        echo "To fix: convert .beads from a symlink to a real directory."
+        echo ""
+        exit 1
+    fi
+fi
