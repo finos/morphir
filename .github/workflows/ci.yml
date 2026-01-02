@@ -23,13 +23,11 @@ jobs:
           go-version: '1.25.5'
           cache: true
 
+      - name: Install just
+        uses: extractions/setup-just@v2
+
       - name: Check formatting
-        run: |
-          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
-            echo "The following files are not formatted:"
-            gofmt -s -l .
-            exit 1
-          fi
+        run: just fmt-check
 
   lint:
     name: Lint
@@ -44,19 +42,17 @@ jobs:
           go-version: '1.25.5'
           cache: true
 
+      - name: Install just
+        uses: extractions/setup-just@v2
+
       - name: Install golangci-lint from source
         run: |
           # Build golangci-lint from source to support Go 1.25.5
           # Pre-built binaries don't support Go 1.25 yet
           go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
-      - name: golangci-lint
-        run: |
-          # Lint each workspace module separately
-          for dir in cmd/morphir pkg/models pkg/tooling pkg/sdk pkg/pipeline; do
-            echo "Linting $dir..."
-            (cd "$dir" && golangci-lint run --timeout=5m)
-          done
+      - name: Run linters
+        run: just lint
 
   test:
     name: Test
@@ -74,24 +70,11 @@ jobs:
           go-version: '1.25.5'
           cache: true
 
-      - name: Run tests (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          # Test each workspace module
-          for dir in cmd/morphir pkg/models pkg/tooling pkg/sdk pkg/pipeline; do
-            echo "Testing $dir..."
-            (cd "$dir" && go test -v -race ./... || true)
-          done
+      - name: Install just
+        uses: extractions/setup-just@v2
 
-      - name: Run tests (Windows)
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          # Test each workspace module
-          for dir in cmd/morphir pkg/models pkg/tooling pkg/sdk pkg/pipeline; do
-            echo "Testing $dir..."
-            (cd "$dir" && go test -v -race ./... || true)
-          done
+      - name: Run tests
+        run: just test
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'
@@ -122,12 +105,14 @@ jobs:
           go-version: '1.25.5'
           cache: true
 
-      - name: Build binary
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - name: Build binary (cross-platform)
         env:
           GOOS: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'macos-latest' && 'darwin' || 'windows' }}
           GOARCH: ${{ matrix.arch }}
-        run: |
-          go build -v -o bin/morphir${{ matrix.os == 'windows-latest' && '.exe' || '' }} ./cmd/morphir
+        run: just build
 
       - name: Test binary execution
         if: matrix.arch == 'amd64'
@@ -147,7 +132,8 @@ jobs:
           go-version: '1.25.5'
           cache: true
 
+      - name: Install just
+        uses: extractions/setup-just@v2
+
       - name: Verify modules build
-        run: |
-          chmod +x scripts/verify.sh
-          ./scripts/verify.sh
+        run: just verify

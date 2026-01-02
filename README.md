@@ -248,7 +248,6 @@ The `scripts/` directory contains reusable scripts used in build, CI, and develo
 - `scripts/mod-tidy.sh` / `scripts/mod-tidy.ps1` - Runs `go mod tidy` for all modules
 - `scripts/install-dev.sh` / `scripts/install-dev.ps1` - Installs `morphir-dev` to Go bin directory
 - `scripts/verify.sh` / `scripts/verify.ps1` - Verifies all modules build successfully
-- `scripts/ci-check.sh` / `scripts/ci-check.ps1` - Runs all CI checks (format, build, test, lint)
 
 **Cross-Platform Support:**
 - All scripts have both bash (`.sh`) and PowerShell (`.ps1`) versions

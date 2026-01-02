@@ -39,32 +39,53 @@ _powershell:
 
 # Build the CLI application
 build:
-    @echo "Building morphir CLI..."
-    @OS=`./scripts/detect-os.sh`; \
-    EXT=""; \
-    if [ "$$OS" = "windows" ]; then \
-        EXT=".exe"; \
-    fi; \
-    go build -o bin/morphir$$EXT ./cmd/morphir
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Building morphir CLI..."
+    # Determine binary extension based on GOOS (for cross-compilation) or current OS
+    EXT=""
+    if [ "${GOOS:-}" = "windows" ]; then
+        EXT=".exe"
+    elif [ "${GOOS:-}" = "" ]; then
+        # GOOS not set, detect current OS
+        OS=$(./scripts/detect-os.sh)
+        if [ "$OS" = "windows" ]; then
+            EXT=".exe"
+        fi
+    fi
+    # Create bin directory if it doesn't exist
+    mkdir -p bin
+    # Build the binary
+    go build -o "bin/morphir${EXT}" ./cmd/morphir
 
 # Build the development version of the CLI (morphir-dev)
 build-dev:
-    @echo "Building morphir-dev CLI..."
-    @OS=`./scripts/detect-os.sh`; \
-    EXT=""; \
-    if [ "$$OS" = "windows" ]; then \
-        EXT=".exe"; \
-    fi; \
-    go build -o bin/morphir-dev$$EXT ./cmd/morphir
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Building morphir-dev CLI..."
+    # Determine binary extension based on GOOS or current OS
+    EXT=""
+    if [ "${GOOS:-}" = "windows" ]; then
+        EXT=".exe"
+    elif [ "${GOOS:-}" = "" ]; then
+        OS=$(./scripts/detect-os.sh)
+        if [ "$OS" = "windows" ]; then
+            EXT=".exe"
+        fi
+    fi
+    mkdir -p bin
+    go build -o "bin/morphir-dev${EXT}" ./cmd/morphir
 
 # Run tests across all modules
 test:
-    @echo "Running tests..."
-    @for dir in cmd/morphir pkg/models pkg/tooling pkg/sdk pkg/pipeline; do \
-        if [ -d "$$dir" ]; then \
-            echo "Testing $$dir..."; \
-            (cd "$$dir" && go test ./...); \
-        fi \
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Running tests..."
+    for dir in cmd/morphir pkg/models pkg/tooling pkg/sdk pkg/pipeline; do
+        if [ -d "$dir" ]; then
+            echo "Testing $dir..."
+            (cd "$dir" && go test ./...)
+        fi
     done
 
 # Format all Go code
@@ -72,14 +93,35 @@ fmt:
     @echo "Formatting Go code..."
     go fmt ./...
 
+# Check code formatting without modifying files
+fmt-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Checking code formatting..."
+    UNFORMATTED=$(gofmt -s -l .)
+    if [ -n "$UNFORMATTED" ]; then
+        echo "The following files are not formatted:"
+        echo "$UNFORMATTED"
+        echo ""
+        echo "Run 'just fmt' to fix formatting issues."
+        exit 1
+    else
+        echo "✓ All files are properly formatted"
+    fi
+
 # Run linters (requires golangci-lint)
 lint:
-    @echo "Running linters..."
-    @if command -v golangci-lint > /dev/null; then \
-        golangci-lint run; \
-    else \
-        echo "golangci-lint not found. Install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"; \
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Running linters..."
+    if ! command -v golangci-lint > /dev/null; then
+        echo "golangci-lint not found. Install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
+        exit 1
     fi
+    for dir in cmd/morphir pkg/models pkg/tooling pkg/sdk pkg/pipeline; do
+        echo "Linting $dir..."
+        (cd "$dir" && golangci-lint run --timeout=5m)
+    done
 
 # Clean build artifacts
 clean:
@@ -95,16 +137,18 @@ deps:
 
 # Run go mod tidy for all modules
 mod-tidy:
-    @OS=`./scripts/detect-os.sh`; \
-    if [ "$$OS" = "windows" ]; then \
-        if command -v pwsh >/dev/null 2>&1; then \
-            PS="pwsh"; \
-        else \
-            PS="powershell"; \
-        fi; \
-        $$PS -ExecutionPolicy Bypass -File scripts/mod-tidy.ps1; \
-    else \
-        ./scripts/mod-tidy.sh; \
+    #!/usr/bin/env bash
+    set -euo pipefail
+    OS=$(./scripts/detect-os.sh)
+    if [ "$OS" = "windows" ]; then
+        if command -v pwsh >/dev/null 2>&1; then
+            PS="pwsh"
+        else
+            PS="powershell"
+        fi
+        "$PS" -ExecutionPolicy Bypass -File scripts/mod-tidy.ps1
+    else
+        ./scripts/mod-tidy.sh
     fi
 
 # Install the CLI using go install (installs to $GOPATH/bin or $GOBIN)
@@ -115,48 +159,56 @@ install:
 
 # Install the development version as morphir-dev
 install-dev: build-dev
-    @OS=`./scripts/detect-os.sh`; \
-    if [ "$$OS" = "windows" ]; then \
-        if command -v pwsh >/dev/null 2>&1; then \
-            PS="pwsh"; \
-        else \
-            PS="powershell"; \
-        fi; \
-        $$PS -ExecutionPolicy Bypass -File scripts/install-dev.ps1; \
-    else \
-        ./scripts/install-dev.sh; \
+    #!/usr/bin/env bash
+    set -euo pipefail
+    OS=$(./scripts/detect-os.sh)
+    if [ "$OS" = "windows" ]; then
+        if command -v pwsh >/dev/null 2>&1; then
+            PS="pwsh"
+        else
+            PS="powershell"
+        fi
+        "$PS" -ExecutionPolicy Bypass -File scripts/install-dev.ps1
+    else
+        ./scripts/install-dev.sh
     fi
 
 # Run the CLI application
 run: build
-    @OS=`./scripts/detect-os.sh`; \
-    EXT=""; \
-    if [ "$$OS" = "windows" ]; then \
-        EXT=".exe"; \
-    fi; \
-    ./bin/morphir$$EXT
+    #!/usr/bin/env bash
+    set -euo pipefail
+    EXT=""
+    OS=$(./scripts/detect-os.sh)
+    if [ "$OS" = "windows" ]; then
+        EXT=".exe"
+    fi
+    "./bin/morphir${EXT}"
 
 # Run the development version of the CLI
 run-dev: build-dev
-    @OS=`./scripts/detect-os.sh`; \
-    EXT=""; \
-    if [ "$$OS" = "windows" ]; then \
-        EXT=".exe"; \
-    fi; \
-    ./bin/morphir-dev$$EXT
+    #!/usr/bin/env bash
+    set -euo pipefail
+    EXT=""
+    OS=$(./scripts/detect-os.sh)
+    if [ "$OS" = "windows" ]; then
+        EXT=".exe"
+    fi
+    "./bin/morphir-dev${EXT}"
 
 # Verify all modules build successfully
 verify:
-    @OS=`./scripts/detect-os.sh`; \
-    if [ "$$OS" = "windows" ]; then \
-        if command -v pwsh >/dev/null 2>&1; then \
-            PS="pwsh"; \
-        else \
-            PS="powershell"; \
-        fi; \
-        $$PS -ExecutionPolicy Bypass -File scripts/verify.ps1; \
-    else \
-        ./scripts/verify.sh; \
+    #!/usr/bin/env bash
+    set -euo pipefail
+    OS=$(./scripts/detect-os.sh)
+    if [ "$OS" = "windows" ]; then
+        if command -v pwsh >/dev/null 2>&1; then
+            PS="pwsh"
+        else
+            PS="powershell"
+        fi
+        "$PS" -ExecutionPolicy Bypass -File scripts/verify.ps1
+    else
+        ./scripts/verify.sh
     fi
 
 # Set up development environment (install dependencies, git hooks, etc.)
@@ -182,18 +234,8 @@ setup:
     @echo "Run 'just build-dev' to build the development version."
 
 # Run CI checks (format, build, test, lint)
-ci-check:
-    @OS=`./scripts/detect-os.sh`; \
-    if [ "$$OS" = "windows" ]; then \
-        if command -v pwsh >/dev/null 2>&1; then \
-            PS="pwsh"; \
-        else \
-            PS="powershell"; \
-        fi; \
-        $$PS -ExecutionPolicy Bypass -File scripts/ci-check.ps1; \
-    else \
-        ./scripts/ci-check.sh; \
-    fi
+ci-check: fmt-check verify test lint
+    @echo "✓ All CI checks passed!"
 
 # Validate GoReleaser configuration
 goreleaser-check:
