@@ -1,0 +1,12 @@
+{
+  "name": "morphir-go",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Morphir Go - Git hooks for code quality",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}

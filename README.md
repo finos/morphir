@@ -110,6 +110,9 @@ We use [`just`](https://github.com/casey/just) for build orchestration. Common c
 # List all available commands
 just
 
+# Set up development environment (first time setup)
+just setup
+
 # Build the CLI application
 just build
 
@@ -183,16 +186,25 @@ morphir-dev help
    cd morphir-go
    ```
 
-2. **Install dependencies**
+2. **Set up the development environment**
    ```sh
-   just deps
+   just setup
    ```
+
+   This command will:
+   - Sync Go workspace modules
+   - Install npm dependencies (for git hooks)
+   - Set up pre-push hooks that run formatting, linting, and tests
+
+   **Prerequisites for `just setup`:**
+   - [Node.js](https://nodejs.org/) (v16+) - for git hooks via Husky
+   - [npm](https://www.npmjs.com/) - comes with Node.js
 
 3. **Build the project**
    ```sh
    # For development, use build-dev
    just build-dev
-   
+
    # Or for standard build
    just build
    ```
@@ -206,10 +218,24 @@ morphir-dev help
    ```sh
    # Build and run the development version
    just run-dev
-   
+
    # Or test specific commands
    ./bin/morphir-dev help
    ```
+
+### Git Hooks
+
+This project uses [Husky](https://typicode.github.io/husky/) for git hooks. After running `just setup`, the following hooks are installed:
+
+- **pre-push**: Runs before each push to verify:
+  - Go code formatting (`gofmt`)
+  - Linting (`golangci-lint` if installed)
+  - `go vet` checks
+  - All tests pass
+
+If any check fails, the push is aborted. This ensures code quality is maintained before changes reach the remote repository.
+
+**Note:** If you don't have Node.js installed, git hooks won't be enabled, but you can still contribute - CI will catch any issues.
 
 ### Go Workspace
 

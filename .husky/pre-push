@@ -1,0 +1,61 @@
+#!/bin/sh
+
+echo "Running pre-push checks..."
+
+# Check formatting
+echo "Checking Go formatting..."
+UNFORMATTED=$(gofmt -s -l .)
+if [ -n "$UNFORMATTED" ]; then
+    echo "The following files are not formatted:"
+    echo "$UNFORMATTED"
+    echo ""
+    echo "Run 'gofmt -s -w .' or 'just fmt' to fix."
+    exit 1
+fi
+echo "Formatting check passed."
+
+# Run linting for each module (if golangci-lint is available)
+if command -v golangci-lint > /dev/null 2>&1; then
+    echo "Running golangci-lint..."
+    for dir in cmd/morphir pkg/models pkg/tooling pkg/sdk pkg/pipeline; do
+        if [ -d "$dir" ]; then
+            echo "Linting $dir..."
+            (cd "$dir" && golangci-lint run --timeout=5m) || {
+                echo "Linting failed for $dir"
+                exit 1
+            }
+        fi
+    done
+    echo "Linting passed."
+else
+    echo "Warning: golangci-lint not installed, skipping lint check."
+    echo "Install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
+fi
+
+# Run go vet for each module
+echo "Running go vet..."
+for dir in cmd/morphir pkg/models pkg/tooling pkg/sdk pkg/pipeline tests/bdd; do
+    if [ -d "$dir" ]; then
+        echo "Vetting $dir..."
+        (cd "$dir" && go vet ./...) || {
+            echo "go vet failed for $dir"
+            exit 1
+        }
+    fi
+done
+echo "go vet passed."
+
+# Run tests
+echo "Running tests..."
+for dir in cmd/morphir pkg/models pkg/tooling pkg/sdk pkg/pipeline tests/bdd; do
+    if [ -d "$dir" ]; then
+        echo "Testing $dir..."
+        (cd "$dir" && go test ./...) || {
+            echo "Tests failed for $dir"
+            exit 1
+        }
+    fi
+done
+echo "Tests passed."
+
+echo "All pre-push checks passed!"

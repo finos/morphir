@@ -47,3 +47,13 @@ vendor/
 *.swo
 *~
 .DS_Store
+
+# Local planning prompt files
+*.prompt.md
+
+# bv (beads viewer) local config and caches
+.bv/
+
+# Node.js (husky)
+node_modules/
+package-lock.json

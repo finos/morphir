@@ -6,4 +6,5 @@ use (
 	./pkg/pipeline
 	./pkg/sdk
 	./pkg/tooling
+	./tests/bdd
 )
