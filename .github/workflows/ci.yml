@@ -24,7 +24,7 @@ jobs:
           cache: true
 
       - name: Install just
-        uses: extractions/setup-just@v2
+        uses: extractions/setup-just@v3
 
       - name: Check formatting
         run: just fmt-check
@@ -43,7 +43,7 @@ jobs:
           cache: true
 
       - name: Install just
-        uses: extractions/setup-just@v2
+        uses: extractions/setup-just@v3
 
       - name: Install golangci-lint from source
         run: |
@@ -71,7 +71,7 @@ jobs:
           cache: true
 
       - name: Install just
-        uses: extractions/setup-just@v2
+        uses: extractions/setup-just@v3
 
       - name: Run tests
         run: just test
@@ -106,7 +106,7 @@ jobs:
           cache: true
 
       - name: Install just
-        uses: extractions/setup-just@v2
+        uses: extractions/setup-just@v3
 
       - name: Build binary (cross-platform)
         env:
@@ -133,7 +133,7 @@ jobs:
           cache: true
 
       - name: Install just
-        uses: extractions/setup-just@v2
+        uses: extractions/setup-just@v3
 
       - name: Verify modules build
         run: just verify
