@@ -1,5 +1,0 @@
-{
-  "extends": "@tsconfig/node18/tsconfig.json",
-  "include": ["src/**/*"],
-  "references": []
-}

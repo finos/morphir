@@ -1,3 +1,0 @@
-fileGroups:
-  scalaSources:
-    - "morphir/**/*.scala"
