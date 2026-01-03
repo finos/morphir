@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	github.com/charmbracelet/bubbletea v1.3.10
-	github.com/finos/morphir-go/pkg/config v0.0.0-00010101000000-000000000000
+	github.com/finos/morphir-go/pkg/config v0.0.0
 	github.com/finos/morphir-go/pkg/tooling v0.0.0-00010101000000-000000000000
 	github.com/spf13/cobra v1.10.2
 )

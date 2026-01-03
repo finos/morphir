@@ -22,7 +22,7 @@ Recent commits on `feature/model-work`:
 
 ## What’s implemented already
 ### Stable IR models (pkg/models)
-The stable in-memory IR is in `pkg/models/stable/ir`.
+The stable in-memory IR is in `pkg/models/ir`.
 
 Implemented primitives + modules include:
 - Naming: `Name`, `Path`, `QName`, `FQName` plus Morphir-style parsing/formatting helpers.
@@ -32,7 +32,7 @@ Implemented primitives + modules include:
 - NEW: `Pattern[A]` (generic, attribute-carrying).
 
 Pattern model implementation:
-- File: `pkg/models/stable/ir/pattern.go`
+- File: `pkg/models/ir/pattern.go`
 - Variants match Morphir-Elm (`Morphir.IR.Value.Pattern`):
   - `WildcardPattern a`
   - `AsPattern a (Pattern a) Name`
@@ -47,7 +47,7 @@ Pattern model implementation:
   - `MapPatternAttributes(p, mapAttrs)` changes attribute type across the tree
 
 ### JSON codecs (versioned, Morphir-compatible)
-Codecs live in `pkg/models/stable/ir/codec/json`.
+Codecs live in `pkg/models/ir/codec/json`.
 
 General approach used across codecs:
 - Encodings are “tagged arrays” (Elm-style): `[tag, attrs, ...]`.
@@ -57,7 +57,7 @@ General approach used across codecs:
 - Decode must reject mismatched versions (tests assert that).
 
 NEW Pattern codec:
-- File: `pkg/models/stable/ir/codec/json/pattern.go`
+- File: `pkg/models/ir/codec/json/pattern.go`
 - Functions:
   - `EncodePattern(opts, encodeAttributes, pattern)`
   - `DecodePattern(opts, decodeAttributes, data)`
@@ -79,7 +79,7 @@ NEW Pattern codec:
   - `UnitPattern`: `[tag, attrs]`
 
 Pattern codec tests:
-- File: `pkg/models/stable/ir/codec/json/pattern_test.go`
+- File: `pkg/models/ir/codec/json/pattern_test.go`
 - Covers:
   - Roundtrip for v3
   - Tag assertions (v1 vs v3)
@@ -124,7 +124,7 @@ Lint note:
 
 ## Remaining work (next logical steps)
 ### 1) Port `Value` IR (stable model)
-There is currently no `Value` implementation in Go (confirmed: no `pkg/models/stable/ir/*value*.go` and no `EncodeValue/DecodeValue`).
+There is currently no `Value` implementation in Go (confirmed: no `pkg/models/ir/*value*.go` and no `EncodeValue/DecodeValue`).
 
 Next module to port is Morphir-Elm `Morphir.IR.Value.Value ta va` plus supporting `Definition` and `Specification`.
 
@@ -158,9 +158,9 @@ Where version differences exist beyond tag casing, encode/decode must branch bas
 
 ### 3) Add tests for Value codec
 Follow patterns in:
-- `pkg/models/stable/ir/codec/json/type_test.go`
-- `pkg/models/stable/ir/codec/json/literal_test.go`
-- `pkg/models/stable/ir/codec/json/pattern_test.go`
+- `pkg/models/ir/codec/json/type_test.go`
+- `pkg/models/ir/codec/json/literal_test.go`
+- `pkg/models/ir/codec/json/pattern_test.go`
 
 Minimum expected tests:
 - Roundtrip v3 of a non-trivial nested `Value` containing patterns (`Lambda`, `Destructure`, `PatternMatch`).
@@ -190,23 +190,23 @@ Do this only if it’s needed by the next ports/codegen.
    go test ./...
    ```
 3. For the next port (`Value`), keep implementation consistent with:
-   - `pkg/models/stable/ir/type.go` and `pkg/models/stable/ir/codec/json/type.go`
-   - `pkg/models/stable/ir/pattern.go` and `pkg/models/stable/ir/codec/json/pattern.go`
+   - `pkg/models/ir/type.go` and `pkg/models/ir/codec/json/type.go`
+   - `pkg/models/ir/pattern.go` and `pkg/models/ir/codec/json/pattern.go`
 4. When done, commit and push (see process rules in `AGENTS.md`).
 
 ## Key files to open first
 - Stable IR:
-  - `pkg/models/stable/ir/type.go`
-  - `pkg/models/stable/ir/literal.go`
-  - `pkg/models/stable/ir/pattern.go`
+  - `pkg/models/ir/type.go`
+  - `pkg/models/ir/literal.go`
+  - `pkg/models/ir/pattern.go`
 - JSON codecs:
-  - `pkg/models/stable/ir/codec/json/options.go`
-  - `pkg/models/stable/ir/codec/json/format_version.go`
-  - `pkg/models/stable/ir/codec/json/type.go`
-  - `pkg/models/stable/ir/codec/json/literal.go`
-  - `pkg/models/stable/ir/codec/json/pattern.go`
+  - `pkg/models/ir/codec/json/options.go`
+  - `pkg/models/ir/codec/json/format_version.go`
+  - `pkg/models/ir/codec/json/type.go`
+  - `pkg/models/ir/codec/json/literal.go`
+  - `pkg/models/ir/codec/json/pattern.go`
 - Tests:
-  - `pkg/models/stable/ir/codec/json/type_test.go`
-  - `pkg/models/stable/ir/codec/json/literal_test.go`
-  - `pkg/models/stable/ir/codec/json/pattern_test.go`
+  - `pkg/models/ir/codec/json/type_test.go`
+  - `pkg/models/ir/codec/json/literal_test.go`
+  - `pkg/models/ir/codec/json/pattern_test.go`
 

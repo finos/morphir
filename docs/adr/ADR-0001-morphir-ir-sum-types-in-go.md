@@ -58,12 +58,12 @@ This ADR describes the preferred *end-state* architecture. The repo currently im
 ### Implemented
 
 - **Sealed interfaces + per-case structs**
-  - Example: `Type[A]` in `pkg/models/stable/ir` uses an unexported interface method (e.g., `isType()`) to prevent implementations outside the package.
+  - Example: `Type[A]` in `pkg/models/ir` uses an unexported interface method (e.g., `isType()`) to prevent implementations outside the package.
 - **Match/Fold/Map helpers (manual, for `Type`)**
-  - Implemented for `Type[A]` in `pkg/models/stable/ir/type_match_fold.go`.
+  - Implemented for `Type[A]` in `pkg/models/ir/type_match_fold.go`.
   - Provides `MatchType`, `FoldType`, `MapType`, and `MapTypeAttributes` (plus `Must*` convenience functions).
 - **Codec boundary (version-aware) without leaking JSON into IR**
-  - JSON encoding/decoding is implemented under `pkg/models/stable/ir/codec/json`.
+  - JSON encoding/decoding is implemented under `pkg/models/ir/codec/json`.
   - A single codec package supports multiple Morphir JSON shapes via an `Options{FormatVersion: ...}` switch (v1/v2/v3).
   - Includes codecs for `Name`, `Path`, `QName`, `FQName`, `Type`, `TypeSpecification`, `TypeDefinition`, constructors, and `AccessControlled`.
 - **Tests exist and are version-aware**
@@ -145,8 +145,8 @@ Go lacks first-class pattern matching and exhaustiveness checking. Generated hel
 
   **As implemented today** (incremental subset of the above):
 
-  - `pkg/models/stable/ir/` — stable IR domain types (no JSON tags, no `encoding/json` hooks)
-  - `pkg/models/stable/ir/codec/json/` — version-aware Morphir-compatible JSON codecs selected via `Options.FormatVersion`
+  - `pkg/models/ir/` — stable IR domain types (no JSON tags, no `encoding/json` hooks)
+  - `pkg/models/ir/codec/json/` — version-aware Morphir-compatible JSON codecs selected via `Options.FormatVersion`
 
 ### Sealed interface pattern (closed world)
 

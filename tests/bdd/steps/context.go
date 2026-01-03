@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io/fs"
 
-	ir "github.com/finos/morphir-go/pkg/models/stable/ir"
-	codec "github.com/finos/morphir-go/pkg/models/stable/ir/codec/json"
+	ir "github.com/finos/morphir-go/pkg/models/ir"
+	codec "github.com/finos/morphir-go/pkg/models/ir/codec/json"
 )
 
 // testContextKey is used to store TestContext in context.Context.

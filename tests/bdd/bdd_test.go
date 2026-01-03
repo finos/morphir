@@ -33,6 +33,14 @@ func TestFeatures(t *testing.T) {
 				if cleanupErr := ctc.Cleanup(); cleanupErr != nil && err == nil {
 					err = cleanupErr
 				}
+
+				// Cleanup workspace test context if present
+				if wtc, getErr := steps.GetWorkspaceTestContext(ctx); getErr == nil && wtc != nil {
+					if cleanupErr := wtc.Cleanup(); cleanupErr != nil && err == nil {
+						err = cleanupErr
+					}
+				}
+
 				return ctx, err
 			})
 
@@ -41,6 +49,7 @@ func TestFeatures(t *testing.T) {
 			steps.RegisterDistributionSteps(sc)
 			steps.RegisterTypeSteps(sc)
 			steps.RegisterConfigSteps(sc)
+			steps.RegisterWorkspaceSteps(sc)
 		},
 		Options: &godog.Options{
 			Format:   "pretty",

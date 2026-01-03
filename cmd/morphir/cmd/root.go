@@ -70,6 +70,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.AddCommand(workspaceCmd)
+	rootCmd.AddCommand(projectCmd)
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(configCmd)

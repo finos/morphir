@@ -14,6 +14,12 @@ var (
 
 	// ErrPathNotExist is returned when a path does not exist.
 	ErrPathNotExist = errors.New("path does not exist")
+
+	// ErrNoProjectConfig is returned when a directory has no project configuration.
+	ErrNoProjectConfig = errors.New("no project configuration found")
+
+	// ErrUnknownConfigFormat is returned when a configuration file has an unknown format.
+	ErrUnknownConfigFormat = errors.New("unknown configuration format")
 )
 
 // DiscoverError represents an error that occurred during workspace discovery.
@@ -94,4 +100,20 @@ func (e *AlreadyExistsError) Error() string {
 func (e *AlreadyExistsError) Is(target error) bool {
 	_, ok := target.(*AlreadyExistsError)
 	return ok
+}
+
+// ProjectLoadError represents an error that occurred while loading a project.
+type ProjectLoadError struct {
+	Path string // The path to the project
+	Err  error  // The underlying error
+}
+
+// Error returns the error message.
+func (e *ProjectLoadError) Error() string {
+	return fmt.Sprintf("failed to load project at %q: %v", e.Path, e.Err)
+}
+
+// Unwrap returns the underlying error.
+func (e *ProjectLoadError) Unwrap() error {
+	return e.Err
 }

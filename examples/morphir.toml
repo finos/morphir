@@ -34,6 +34,61 @@ root = ""
 # Default: ".morphir"
 output_dir = ".morphir"
 
+# Workspace members: glob patterns for discovering member projects.
+# Similar to Cargo/npm workspaces. Each matched directory should contain
+# a morphir.toml with a [project] section, or a legacy morphir.json file.
+#
+# Examples:
+#   members = ["packages/*"]           # Direct subdirectories of packages/
+#   members = ["libs/**"]              # Recursive: all subdirs under libs/
+#   members = ["apps/*/frontend"]      # Nested pattern
+#   members = ["packages/*", "libs/*"] # Multiple patterns
+#
+# Uncomment to enable workspace members:
+# members = ["packages/*"]
+
+# Exclude patterns: directories to skip during member discovery.
+# Useful for excluding test fixtures, node_modules, etc.
+#
+# Examples:
+#   exclude = ["**/testdata"]
+#   exclude = ["packages/deprecated", "**/node_modules"]
+#
+# Uncomment to exclude directories:
+# exclude = []
+
+# Default member: which member to use when none is specified.
+# Must match a path from the members patterns.
+#
+# Example:
+#   default_member = "packages/core"
+#
+# Uncomment to set a default:
+# default_member = ""
+
+# =============================================================================
+# Project Settings (for single-project or root project in workspaces)
+# =============================================================================
+# Use this section when this config represents a project (not just a workspace).
+# In a multi-member workspace, each member has its own [project] section.
+#
+# [project]
+# # Project name: flexible identifier (kebab-case, PascalCase, or dotted)
+# name = "my-project"
+#
+# # Project version (optional, can inherit from workspace)
+# version = "1.0.0"
+#
+# # Source directory containing Morphir/Elm source files
+# source_directory = "src"
+#
+# # Modules exposed in the public API (without the module_prefix)
+# exposed_modules = ["Main", "Types", "API"]
+#
+# # Module prefix for Elm-style qualified names (optional)
+# # If not set, derived from name. Use for morphir-elm compatibility.
+# module_prefix = "MyProject"
+
 # =============================================================================
 # IR (Intermediate Representation) Settings
 # =============================================================================

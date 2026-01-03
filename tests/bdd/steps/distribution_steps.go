@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/cucumber/godog"
-	ir "github.com/finos/morphir-go/pkg/models/stable/ir"
+	ir "github.com/finos/morphir-go/pkg/models/ir"
 )
 
 // RegisterDistributionSteps registers step definitions for distribution features.

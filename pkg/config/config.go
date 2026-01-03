@@ -19,6 +19,7 @@ package config
 // All fields are accessible via getter methods to preserve immutability.
 type Config struct {
 	morphir   MorphirSection
+	project   ProjectSection
 	workspace WorkspaceSection
 	ir        IRSection
 	codegen   CodegenSection
@@ -30,6 +31,11 @@ type Config struct {
 // Morphir returns the morphir section configuration.
 func (c Config) Morphir() MorphirSection {
 	return c.morphir
+}
+
+// Project returns the project section configuration.
+func (c Config) Project() ProjectSection {
+	return c.project
 }
 
 // Workspace returns the workspace section configuration.
@@ -72,10 +78,53 @@ func (s MorphirSection) Version() string {
 	return s.version
 }
 
+// ProjectSection contains project-related settings for single-project configurations.
+type ProjectSection struct {
+	name            string   // Flexible project identifier (required)
+	version         string   // Project version (optional)
+	sourceDirectory string   // Source directory path (required)
+	exposedModules  []string // Modules exposed by this project (required)
+	modulePrefix    string   // Optional module prefix
+}
+
+// Name returns the project identifier.
+func (s ProjectSection) Name() string {
+	return s.name
+}
+
+// Version returns the project version.
+func (s ProjectSection) Version() string {
+	return s.version
+}
+
+// SourceDirectory returns the source directory path.
+func (s ProjectSection) SourceDirectory() string {
+	return s.sourceDirectory
+}
+
+// ExposedModules returns the modules exposed by this project.
+// Returns a defensive copy to preserve immutability.
+func (s ProjectSection) ExposedModules() []string {
+	if len(s.exposedModules) == 0 {
+		return nil
+	}
+	result := make([]string, len(s.exposedModules))
+	copy(result, s.exposedModules)
+	return result
+}
+
+// ModulePrefix returns the optional module prefix.
+func (s ProjectSection) ModulePrefix() string {
+	return s.modulePrefix
+}
+
 // WorkspaceSection contains workspace-related settings.
 type WorkspaceSection struct {
-	root      string // Workspace root directory
-	outputDir string // Output directory for generated artifacts
+	root          string   // Workspace root directory
+	outputDir     string   // Output directory for generated artifacts
+	members       []string // Glob patterns for workspace members
+	exclude       []string // Exclude patterns
+	defaultMember string   // Default member for the workspace
 }
 
 // Root returns the workspace root directory.
@@ -86,6 +135,33 @@ func (s WorkspaceSection) Root() string {
 // OutputDir returns the output directory for generated artifacts.
 func (s WorkspaceSection) OutputDir() string {
 	return s.outputDir
+}
+
+// Members returns the glob patterns for workspace members.
+// Returns a defensive copy to preserve immutability.
+func (s WorkspaceSection) Members() []string {
+	if len(s.members) == 0 {
+		return nil
+	}
+	result := make([]string, len(s.members))
+	copy(result, s.members)
+	return result
+}
+
+// Exclude returns the exclude patterns for workspace members.
+// Returns a defensive copy to preserve immutability.
+func (s WorkspaceSection) Exclude() []string {
+	if len(s.exclude) == 0 {
+		return nil
+	}
+	result := make([]string, len(s.exclude))
+	copy(result, s.exclude)
+	return result
+}
+
+// DefaultMember returns the default member for the workspace.
+func (s WorkspaceSection) DefaultMember() string {
+	return s.defaultMember
 }
 
 // IRSection contains IR processing settings.
@@ -314,6 +390,7 @@ func FromMap(m map[string]any) Config {
 	}
 
 	cfg.morphir = morphirFromMap(m, cfg.morphir)
+	cfg.project = projectFromMap(m, cfg.project)
 	cfg.workspace = workspaceFromMap(m, cfg.workspace)
 	cfg.ir = irFromMap(m, cfg.ir)
 	cfg.codegen = codegenFromMap(m, cfg.codegen)
@@ -335,6 +412,27 @@ func morphirFromMap(m map[string]any, def MorphirSection) MorphirSection {
 	return def
 }
 
+func projectFromMap(m map[string]any, def ProjectSection) ProjectSection {
+	section, ok := m["project"].(map[string]any)
+	if !ok {
+		return def
+	}
+	if v, ok := section["name"].(string); ok {
+		def.name = v
+	}
+	if v, ok := section["version"].(string); ok {
+		def.version = v
+	}
+	if v, ok := section["source_directory"].(string); ok {
+		def.sourceDirectory = v
+	}
+	def.exposedModules = getStringSliceFromAny(section["exposed_modules"])
+	if v, ok := section["module_prefix"].(string); ok {
+		def.modulePrefix = v
+	}
+	return def
+}
+
 func workspaceFromMap(m map[string]any, def WorkspaceSection) WorkspaceSection {
 	section, ok := m["workspace"].(map[string]any)
 	if !ok {
@@ -345,6 +443,11 @@ func workspaceFromMap(m map[string]any, def WorkspaceSection) WorkspaceSection {
 	}
 	if v, ok := section["output_dir"].(string); ok {
 		def.outputDir = v
+	}
+	def.members = getStringSliceFromAny(section["members"])
+	def.exclude = getStringSliceFromAny(section["exclude"])
+	if v, ok := section["default_member"].(string); ok {
+		def.defaultMember = v
 	}
 	return def
 }

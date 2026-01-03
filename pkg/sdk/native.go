@@ -1,7 +1,7 @@
 package sdk
 
 import (
-	ir "github.com/finos/morphir-go/pkg/models/stable/ir"
+	ir "github.com/finos/morphir-go/pkg/models/ir"
 )
 
 // NativeFunction represents a native implementation of a Morphir SDK function.
