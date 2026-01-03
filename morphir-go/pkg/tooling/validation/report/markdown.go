@@ -11,6 +11,9 @@ import (
 // MarkdownGenerator generates validation reports in Markdown format.
 type MarkdownGenerator struct{}
 
+// usedCodes tracks which error codes have been used in a report.
+type usedCodes map[ErrorCode]struct{}
+
 // Generate creates a Markdown report from a single validation result.
 func (g *MarkdownGenerator) Generate(result *validation.Result) string {
 	return g.GenerateMultiple([]*validation.Result{result})
@@ -19,14 +22,16 @@ func (g *MarkdownGenerator) Generate(result *validation.Result) string {
 // GenerateMultiple creates a Markdown report from multiple validation results.
 func (g *MarkdownGenerator) GenerateMultiple(results []*validation.Result) string {
 	var sb strings.Builder
+	codes := make(usedCodes)
 
 	g.writeHeader(&sb, results)
 	g.writeOverallSummary(&sb, results)
 
 	for i, result := range results {
-		g.writeFileSection(&sb, result, i+1, len(results))
+		g.writeFileSection(&sb, result, i+1, len(results), codes)
 	}
 
+	g.writeAppendix(&sb, codes)
 	g.writeFooter(&sb)
 
 	return sb.String()
@@ -89,7 +94,7 @@ func (g *MarkdownGenerator) writeOverallSummary(sb *strings.Builder, results []*
 	sb.WriteString("\n")
 }
 
-func (g *MarkdownGenerator) writeFileSection(sb *strings.Builder, result *validation.Result, index, total int) {
+func (g *MarkdownGenerator) writeFileSection(sb *strings.Builder, result *validation.Result, index, total int, codes usedCodes) {
 	if total > 1 {
 		sb.WriteString(fmt.Sprintf("## File %d of %d: %s\n\n", index, total, result.Path))
 	} else {
@@ -100,7 +105,7 @@ func (g *MarkdownGenerator) writeFileSection(sb *strings.Builder, result *valida
 
 	if !result.Valid {
 		g.writeErrorAnalysis(sb, result)
-		g.writeDetailedErrors(sb, result)
+		g.writeDetailedErrors(sb, result, codes)
 		g.writeRecommendations(sb, result)
 	}
 }
@@ -170,7 +175,7 @@ func (g *MarkdownGenerator) writeErrorAnalysis(sb *strings.Builder, result *vali
 	}
 }
 
-func (g *MarkdownGenerator) writeDetailedErrors(sb *strings.Builder, result *validation.Result) {
+func (g *MarkdownGenerator) writeDetailedErrors(sb *strings.Builder, result *validation.Result, codes usedCodes) {
 	sb.WriteString("### Detailed Errors\n\n")
 
 	// Create context extractor for showing JSON snippets
@@ -189,6 +194,9 @@ func (g *MarkdownGenerator) writeDetailedErrors(sb *strings.Builder, result *val
 		}
 
 		for _, p := range parsed {
+			// Track the error code as used
+			codes[p.Code] = struct{}{}
+
 			sb.WriteString(fmt.Sprintf("**Path:** `%s`\n\n", p.Path))
 
 			pathExplanation := explainJSONPath(p.Path)
@@ -196,7 +204,8 @@ func (g *MarkdownGenerator) writeDetailedErrors(sb *strings.Builder, result *val
 				sb.WriteString(fmt.Sprintf("**Location:** %s\n\n", pathExplanation))
 			}
 
-			sb.WriteString(fmt.Sprintf("**Issue:** %s\n\n", p.Message))
+			// Include error code inline with the issue message
+			sb.WriteString(fmt.Sprintf("**Issue:** [%s] %s\n\n", p.Code, p.Message))
 
 			if p.Expected != "" {
 				sb.WriteString(fmt.Sprintf("- Expected: `%s`\n", p.Expected))
@@ -264,6 +273,25 @@ func (g *MarkdownGenerator) writeRecommendations(sb *strings.Builder, result *va
 	sb.WriteString("   - If the IR was generated correctly but fails validation, this may indicate\n")
 	sb.WriteString("     a schema compatibility issue between morphir-elm and morphir-go\n")
 	sb.WriteString("   - Please report issues at: https://github.com/finos/morphir-go/issues\n\n")
+}
+
+func (g *MarkdownGenerator) writeAppendix(sb *strings.Builder, codes usedCodes) {
+	if len(codes) == 0 {
+		return
+	}
+
+	sb.WriteString("## Appendix: Error Code Reference\n\n")
+
+	// Sort codes for consistent output
+	orderedCodes := []ErrorCode{E001, E002, E003, E004, E005, E006, E007, E000}
+	for _, code := range orderedCodes {
+		if _, used := codes[code]; used {
+			info := GetErrorCodeInfo(code)
+			sb.WriteString(fmt.Sprintf("### %s: %s\n\n", code, info.Title))
+			sb.WriteString(info.Description)
+			sb.WriteString("\n\n")
+		}
+	}
 }
 
 func (g *MarkdownGenerator) writeFooter(sb *strings.Builder) {
