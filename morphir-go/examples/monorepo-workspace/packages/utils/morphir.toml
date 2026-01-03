@@ -1,0 +1,6 @@
+[project]
+name = "Utils"
+version = "1.0.0"
+source_directory = "src"
+module_prefix = "Morphir.Utils"
+exposed_modules = ["Helpers"]

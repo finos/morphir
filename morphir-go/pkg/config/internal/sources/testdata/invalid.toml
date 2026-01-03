@@ -1,0 +1,3 @@
+# Invalid TOML - missing closing bracket
+[morphir
+version = "3.0"
