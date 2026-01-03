@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - setup/**
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  format-check:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.5'
+          cache: true
+
+      - name: Install just
+        uses: extractions/setup-just@v3
+
+      - name: Check formatting
+        run: just fmt-check
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.5'
+          cache: true
+
+      - name: Install just
+        uses: extractions/setup-just@v3
+
+      - name: Install golangci-lint from source
+        run: |
+          # Build golangci-lint from source to support Go 1.25.5
+          # Pre-built binaries don't support Go 1.25 yet
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+      - name: Run linters
+        run: just lint
+
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.5'
+          cache: true
+
+      - name: Install just
+        uses: extractions/setup-just@v3
+
+      - name: Run tests
+        run: just test
+
+      - name: Upload coverage
+        if: matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.out
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        arch: [amd64, arm64]
+        exclude:
+          # Windows arm64 builds aren't well supported in GitHub Actions yet
+          - os: windows-latest
+            arch: arm64
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.5'
+          cache: true
+
+      - name: Install just
+        uses: extractions/setup-just@v3
+
+      - name: Build binary (cross-platform)
+        env:
+          GOOS: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'macos-latest' && 'darwin' || 'windows' }}
+          GOARCH: ${{ matrix.arch }}
+        run: just build
+
+      - name: Test binary execution
+        if: matrix.arch == 'amd64'
+        run: |
+          ./bin/morphir${{ matrix.os == 'windows-latest' && '.exe' || '' }} --version
+
+  verify:
+    name: Verify All Modules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.5'
+          cache: true
+
+      - name: Install just
+        uses: extractions/setup-just@v3
+
+      - name: Verify modules build
+        run: just verify

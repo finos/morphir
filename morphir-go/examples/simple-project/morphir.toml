@@ -1,0 +1,6 @@
+[project]
+name = "SimpleProject"
+version = "1.0.0"
+source_directory = "src"
+module_prefix = "Simple.Project"
+exposed_modules = ["Core", "Utils"]

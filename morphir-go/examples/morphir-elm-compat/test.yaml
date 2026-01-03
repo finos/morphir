@@ -1,0 +1,15 @@
+# Test expectations for morphir-elm-compat example
+description: Project using morphir.json format for Elm toolchain compatibility
+
+workspace:
+  loads: true
+  has_root_project: true
+  member_count: 0
+  root_project:
+    name: ElmCompat
+    source_directory: src
+    module_prefix: ElmCompat
+    exposed_modules:
+      - Main
+      - Api
+    config_format: json
