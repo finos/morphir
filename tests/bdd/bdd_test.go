@@ -41,6 +41,13 @@ func TestFeatures(t *testing.T) {
 					}
 				}
 
+				// Cleanup example test context if present
+				if etc, getErr := steps.GetExampleTestContext(ctx); getErr == nil && etc != nil {
+					if cleanupErr := etc.Cleanup(); cleanupErr != nil && err == nil {
+						err = cleanupErr
+					}
+				}
+
 				return ctx, err
 			})
 
@@ -50,6 +57,8 @@ func TestFeatures(t *testing.T) {
 			steps.RegisterTypeSteps(sc)
 			steps.RegisterConfigSteps(sc)
 			steps.RegisterWorkspaceSteps(sc)
+			steps.RegisterExampleSteps(sc)
+			steps.RegisterCLISteps(sc)
 		},
 		Options: &godog.Options{
 			Format:   "pretty",

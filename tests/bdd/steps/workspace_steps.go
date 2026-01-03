@@ -450,32 +450,78 @@ func loadWorkspaceForTest(root string) (*LoadedWorkspaceResult, error) {
 		Config:  make(map[string]any),
 	}
 
-	// Read workspace config
-	configPath := filepath.Join(root, "morphir.toml")
-	configData, err := os.ReadFile(configPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read workspace config: %w", err)
+	// Try to find workspace config in priority order:
+	// 1. morphir.toml
+	// 2. .morphir/morphir.toml
+	// 3. .morphir/ directory (minimal marker, check for morphir.json as root project)
+	var configPath string
+	var configData []byte
+	var err error
+
+	tomlPath := filepath.Join(root, "morphir.toml")
+	hiddenTomlPath := filepath.Join(root, ".morphir", "morphir.toml")
+	morphirDir := filepath.Join(root, ".morphir")
+
+	if configData, err = os.ReadFile(tomlPath); err == nil {
+		configPath = tomlPath
+	} else if configData, err = os.ReadFile(hiddenTomlPath); err == nil {
+		configPath = hiddenTomlPath
+	} else if info, statErr := os.Stat(morphirDir); statErr == nil && info.IsDir() {
+		// .morphir/ directory exists as minimal marker
+		// Check for morphir.json as root project
+		configPath = morphirDir
+		configData = nil // No TOML config, will check for JSON project
+	} else {
+		return nil, fmt.Errorf("failed to read workspace config: no workspace marker found")
 	}
 	result.ConfigPath = configPath
 
-	// Parse TOML (simplified)
-	config, err := parseSimpleTOML(string(configData))
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse workspace config: %w", err)
-	}
-	result.Config = config
+	// Parse config if we have TOML data
+	var config map[string]any
+	if configData != nil {
+		config, err = parseSimpleTOML(string(configData))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse workspace config: %w", err)
+		}
+		result.Config = config
 
-	// Check for root project
-	if projectSection, ok := config["project"].(map[string]any); ok {
-		if name, ok := projectSection["name"].(string); ok && name != "" {
-			result.RootProject = &MemberResult{
-				Name:           name,
-				Path:           root,
-				SourceDir:      getStringDefault(projectSection, "source_directory", "src"),
-				ModulePrefix:   getStringDefault(projectSection, "module_prefix", name),
-				ExposedModules: getStringSliceDefault(projectSection, "exposed_modules", nil),
-				ConfigFormat:   "toml",
-				Version:        getStringDefault(projectSection, "version", ""),
+		// Check for root project in TOML
+		if projectSection, ok := config["project"].(map[string]any); ok {
+			if name, ok := projectSection["name"].(string); ok && name != "" {
+				result.RootProject = &MemberResult{
+					Name:           name,
+					Path:           root,
+					SourceDir:      getStringDefault(projectSection, "source_directory", "src"),
+					ModulePrefix:   getStringDefault(projectSection, "module_prefix", name),
+					ExposedModules: getStringSliceDefault(projectSection, "exposed_modules", nil),
+					ConfigFormat:   "toml",
+					Version:        getStringDefault(projectSection, "version", ""),
+				}
+			}
+		}
+	} else {
+		config = make(map[string]any)
+		result.Config = config
+	}
+
+	// If no root project from TOML, check for morphir.json
+	if result.RootProject == nil {
+		jsonPath := filepath.Join(root, "morphir.json")
+		if jsonData, jsonErr := os.ReadFile(jsonPath); jsonErr == nil {
+			jsonConfig, parseErr := parseSimpleJSON(string(jsonData))
+			if parseErr == nil {
+				name := getStringDefault(jsonConfig, "name", "")
+				if name != "" {
+					result.RootProject = &MemberResult{
+						Name:           name,
+						Path:           root,
+						SourceDir:      getStringDefault(jsonConfig, "sourceDirectory", "src"),
+						ModulePrefix:   name, // morphir.json uses name as prefix
+						ExposedModules: getStringSliceDefault(jsonConfig, "exposedModules", nil),
+						ConfigFormat:   "json",
+						Version:        getStringDefault(jsonConfig, "version", ""),
+					}
+				}
 			}
 		}
 	}

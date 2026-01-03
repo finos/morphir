@@ -1,0 +1,6 @@
+[project]
+name = "Core"
+version = "1.0.0"
+source_directory = "src"
+module_prefix = "Morphir.Core"
+exposed_modules = ["Types", "Functions"]

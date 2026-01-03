@@ -1,12 +1,16 @@
 #!/bin/bash
 # Fetches morphir IR fixtures from upstream repositories
 #
-# Usage: ./fetch-fixtures.sh
+# Usage:
+#   ./fetch-fixtures.sh                    # Fetch pre-built IR test files
+#   ./fetch-fixtures.sh --with-reference-model  # Also build reference model (requires npm)
+#   ./fetch-fixtures.sh --skip-elm         # Skip morphir-elm, minimal fixtures only
 #
 # This script:
-# 1. Clones morphir-elm and builds the reference model to generate morphir-ir.json
-# 2. Creates V1/V2/V3 format variants of fixtures
-# 3. Places all fixtures in the testdata directory
+# 1. Creates V1/V2/V3 minimal format fixtures (always)
+# 2. Fetches pre-built IR test files from morphir-elm (no build required)
+# 3. Optionally builds the reference model using morphir-elm make
+# 4. Places all fixtures in the testdata directory
 
 set -e
 
@@ -32,6 +36,40 @@ check_requirements() {
     fi
 
     echo "All requirements met."
+}
+
+# Fetch pre-built IR test files from morphir-elm (no build required)
+fetch_ir_test_files() {
+    echo ""
+    echo "=== Fetching morphir-elm IR test files ==="
+
+    local TEMP_DIR=$(mktemp -d)
+    echo "Working in: $TEMP_DIR"
+
+    cd "$TEMP_DIR"
+
+    echo "Cloning morphir-elm (shallow)..."
+    git clone --depth 1 https://github.com/finos/morphir-elm.git
+
+    local SRC_DIR="morphir-elm/tests-integration/cli/test-ir-files"
+    local DEST_DIR="$TESTDATA_DIR/morphir-elm/cli-test-ir"
+
+    if [ -d "$SRC_DIR" ]; then
+        echo "Copying IR test files..."
+        mkdir -p "$DEST_DIR"
+        # Only copy *-ir.json files, not *-result.json files
+        cp "$SRC_DIR"/*-ir.json "$DEST_DIR/"
+        echo "Copied IR test files to: $DEST_DIR"
+        ls -la "$DEST_DIR"
+    else
+        echo "Warning: test-ir-files directory not found"
+    fi
+
+    # Cleanup
+    cd /
+    rm -rf "$TEMP_DIR"
+
+    echo "Done fetching IR test files."
 }
 
 # Fetch and build morphir-elm reference model
@@ -136,9 +174,19 @@ This directory contains morphir IR test fixtures for BDD testing.
 
 ## Sources
 
-### morphir-elm/
-Fixtures generated from the [finos/morphir-elm](https://github.com/finos/morphir-elm)
-reference model using `morphir-elm make`.
+### morphir-elm/cli-test-ir/
+Pre-built IR test files from [finos/morphir-elm](https://github.com/finos/morphir-elm)
+`tests-integration/cli/test-ir-files`. These include various IR structures for testing:
+- `base-ir.json` - Basic IR structure
+- `listType-ir.json` - List type handling
+- `multilevelModules-ir.json` - Nested module structures
+- `simpleTypeTree-ir.json` - Simple type trees
+- `simpleValueTree-ir.json` - Simple value trees
+- `tupleType-ir.json` - Tuple type handling
+
+### morphir-elm/reference-model/
+(Optional) Full reference model IR generated from morphir-elm using `morphir-elm make`.
+Only fetched when using `--with-reference-model` flag.
 
 ### v1/, v2/, v3/
 Hand-crafted minimal fixtures for testing format version compatibility:
@@ -150,7 +198,14 @@ Hand-crafted minimal fixtures for testing format version compatibility:
 
 Run the fetch script to regenerate fixtures:
 ```bash
+# Fetch pre-built IR test files (recommended, no npm required)
 ./scripts/fetch-fixtures.sh
+
+# Also build reference model (requires npm and morphir-elm CLI)
+./scripts/fetch-fixtures.sh --with-reference-model
+
+# Skip all morphir-elm fetching (minimal fixtures only)
+./scripts/fetch-fixtures.sh --skip-elm
 ```
 
 ## License
@@ -169,17 +224,28 @@ main() {
     # Always create minimal fixtures first (no external deps needed)
     create_minimal_fixtures
 
-    # Try to fetch morphir-elm, but don't fail if it doesn't work
+    # Try to fetch morphir-elm fixtures
     if [ "$1" == "--skip-elm" ]; then
         echo ""
         echo "Skipping morphir-elm fetch (--skip-elm specified)"
     else
-        fetch_morphir_elm || {
+        # Fetch pre-built IR test files (no npm/build required)
+        fetch_ir_test_files || {
             echo ""
-            echo "Warning: Failed to fetch morphir-elm fixtures."
-            echo "Minimal fixtures are still available for testing."
-            echo "Re-run without --skip-elm once morphir-elm CLI is available."
+            echo "Warning: Failed to fetch IR test files."
         }
+
+        # Optionally build reference model (requires npm)
+        if [ "$1" == "--with-reference-model" ]; then
+            fetch_morphir_elm || {
+                echo ""
+                echo "Warning: Failed to fetch morphir-elm reference model."
+                echo "This requires npm and morphir-elm CLI."
+            }
+        else
+            echo ""
+            echo "Skipping reference model build (use --with-reference-model to include)"
+        fi
     fi
 
     create_readme

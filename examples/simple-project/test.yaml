@@ -1,0 +1,16 @@
+# Test expectations for simple-project example
+description: Minimal single-project workspace with TOML configuration
+
+workspace:
+  loads: true
+  has_root_project: true
+  member_count: 0
+  root_project:
+    name: SimpleProject
+    version: "1.0.0"
+    source_directory: src
+    module_prefix: Simple.Project
+    exposed_modules:
+      - Core
+      - Utils
+    config_format: toml

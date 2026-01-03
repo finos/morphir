@@ -91,6 +91,99 @@ Tests should be:
 - Define scenarios with Given-When-Then structure
 - Ensure tests reflect business requirements
 
+### Adding Self-Describing Example Tests
+
+The `examples/` directory contains self-describing example projects that serve as both documentation and integration tests. Each example includes a `test.yaml` file that declares expected behavior.
+
+**To add a new example project:**
+
+1. **Create the example directory:**
+   ```bash
+   mkdir -p examples/my-example
+   ```
+
+2. **Add the project configuration** (`morphir.toml` or `morphir.json`):
+   ```toml
+   # examples/my-example/morphir.toml
+   [project]
+   name = "MyExample"
+   version = "1.0.0"
+   source_directory = "src"
+   exposed_modules = ["Main"]
+   ```
+
+3. **Create the `test.yaml` file with expectations:**
+   ```yaml
+   # examples/my-example/test.yaml
+   description: Description of what this example demonstrates
+
+   workspace:
+     loads: true
+     has_root_project: true
+     member_count: 0
+     root_project:
+       name: MyExample
+       version: "1.0.0"
+       source_directory: src
+       exposed_modules:
+         - Main
+       config_format: toml
+   ```
+
+4. **The example is automatically discovered and tested!**
+   - The discovery-based scenario finds all `examples/*/test.yaml` files
+   - No need to modify any feature files
+   - Run tests with `go test ./tests/bdd/...`
+
+**Available test.yaml fields:**
+
+| Field | Description |
+|-------|-------------|
+| `description` | Human-readable description of the example |
+| `workspace.loads` | Whether the workspace should load successfully |
+| `workspace.has_root_project` | Whether the workspace has a root project |
+| `workspace.member_count` | Number of workspace members expected |
+| `workspace.root_project` | Expectations for the root project |
+| `workspace.members` | Array of expectations for member projects |
+
+**Project expectations:**
+
+| Field | Description |
+|-------|-------------|
+| `name` | Project name |
+| `version` | Project version (optional) |
+| `source_directory` | Source directory path |
+| `module_prefix` | Module prefix (optional) |
+| `exposed_modules` | List of exposed module names |
+| `config_format` | Configuration format (`toml` or `json`) |
+
+**Testing specific examples:**
+
+You can also test specific examples using the Scenario Outline pattern in feature files:
+
+```gherkin
+Scenario Outline: Load <example> workspace and verify expectations
+  Given the example project "<example>"
+  When I load the example workspace
+  Then all workspace expectations should pass
+
+  Examples:
+    | example     |
+    | my-example  |
+```
+
+**Granular assertions:**
+
+For more specific testing, use individual assertion steps:
+
+```gherkin
+Scenario: Verify my example workspace details
+  Given the example project "my-example"
+  When I load the example workspace
+  Then the workspace loading expectation should pass
+  And the root project expectations should pass
+```
+
 ### Functional Domain Modeling
 
 **Model the domain using functional patterns:**
