@@ -24,6 +24,8 @@ type Viewer struct {
 	title         string
 	keymap        keymap.VimKeyMap
 	showLineNums  bool
+	showCursor    bool   // Show cursor line highlight
+	cursorLine    int    // Current cursor line (0-based)
 	renderer      *glamour.TermRenderer
 	searchMode    bool
 	searchQuery   string
@@ -40,7 +42,9 @@ func NewViewer(title string, km keymap.VimKeyMap) *Viewer {
 		title:         title,
 		keymap:        km,
 		viewport:      vp,
-		showLineNums:  true, // Show line numbers by default
+		showLineNums:  true,  // Show line numbers by default
+		showCursor:    true,  // Show cursor line highlight by default
+		cursorLine:    0,     // Start at first line
 		searchMatches: make([]int, 0),
 	}
 }
@@ -129,11 +133,20 @@ func (v *Viewer) View() string {
 }
 
 func (v *Viewer) handleKeyPress(msg tea.KeyMsg) (*Viewer, tea.Cmd) {
+	lines := strings.Split(v.rendered, "\n")
+	maxLine := len(lines) - 1
+
 	switch {
 	case key.Matches(msg, v.keymap.Up):
-		v.viewport.LineUp(1)
+		if v.cursorLine > 0 {
+			v.cursorLine--
+			v.ensureCursorVisible()
+		}
 	case key.Matches(msg, v.keymap.Down):
-		v.viewport.LineDown(1)
+		if v.cursorLine < maxLine {
+			v.cursorLine++
+			v.ensureCursorVisible()
+		}
 	case key.Matches(msg, v.keymap.PageUp):
 		v.viewport.ViewUp()
 	case key.Matches(msg, v.keymap.PageDown):
@@ -148,7 +161,8 @@ func (v *Viewer) handleKeyPress(msg tea.KeyMsg) (*Viewer, tea.Cmd) {
 			return v, v.waitForSecondG()
 		}
 	case key.Matches(msg, v.keymap.Bottom):
-		v.viewport.GotoBottom()
+		v.cursorLine = maxLine
+		v.ensureCursorVisible()
 	case key.Matches(msg, v.keymap.Search):
 		v.searchMode = true
 		v.searchQuery = ""
@@ -330,7 +344,17 @@ func (v *Viewer) getViewportContent() string {
 		lineNumStr := fmt.Sprintf("%*d ", lineNumWidth, lineNum)
 		lineNumStyle := lipgloss.NewStyle().
 			Foreground(styles.DefaultTheme.Muted)
-		numberedLines = append(numberedLines, lineNumStyle.Render(lineNumStr)+line)
+
+		// Highlight cursor line
+		styledLine := line
+		if v.showCursor && i == v.cursorLine {
+			cursorStyle := lipgloss.NewStyle().
+				Background(styles.DefaultTheme.SelectedBg).
+				Foreground(styles.DefaultTheme.Foreground)
+			styledLine = cursorStyle.Render(line)
+		}
+
+		numberedLines = append(numberedLines, lineNumStyle.Render(lineNumStr)+styledLine)
 	}
 
 	numberedContent := strings.Join(numberedLines, "\n")
@@ -351,6 +375,21 @@ func (v *Viewer) getViewportContent() string {
 	tempViewport.YOffset = v.viewport.YOffset
 
 	return tempViewport.View()
+}
+
+// ensureCursorVisible scrolls the viewport to ensure the cursor line is visible
+func (v *Viewer) ensureCursorVisible() {
+	viewportTop := v.viewport.YOffset
+	viewportBottom := v.viewport.YOffset + v.viewport.Height - 1
+
+	// If cursor is above viewport, scroll up
+	if v.cursorLine < viewportTop {
+		v.viewport.YOffset = v.cursorLine
+	}
+	// If cursor is below viewport, scroll down
+	if v.cursorLine > viewportBottom {
+		v.viewport.YOffset = v.cursorLine - v.viewport.Height + 1
+	}
 }
 
 func (v *Viewer) renderContent() {
@@ -447,11 +486,14 @@ func (v *Viewer) GetPosition() (current, total int) {
 
 // ScrollToTop scrolls to the top of the content
 func (v *Viewer) ScrollToTop() {
+	v.cursorLine = 0
 	v.viewport.GotoTop()
 }
 
 // ScrollToBottom scrolls to the bottom of the content
 func (v *Viewer) ScrollToBottom() {
+	lines := strings.Split(v.rendered, "\n")
+	v.cursorLine = len(lines) - 1
 	v.viewport.GotoBottom()
 }
 
