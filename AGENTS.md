@@ -483,39 +483,111 @@ git commit -m "feat!: change IR structure to match spec v2"
 
 ### Release Workflow
 
-**Releases are automated via GitHub Actions:**
+**This project uses a multi-module Go workspace. The release process is designed to support `go install` compatibility.**
 
-1. **Update CHANGELOG.md**
-   - Move changes from `[Unreleased]` to new version section
-   - Add release date: `## [X.Y.Z] - YYYY-MM-DD`
-   - Add new `[Unreleased]` section at top
-   - Update version comparison links at bottom
+#### Understanding Go Module Tagging
 
-2. **Commit changelog**
-   ```bash
-   git add CHANGELOG.md
-   git commit -m "chore: prepare release vX.Y.Z"
-   ```
+Since Morphir uses multiple Go modules in a monorepo, each module can be versioned independently using subdirectory prefixes in tags:
 
-3. **Create and push tag**
-   ```bash
-   git tag -a vX.Y.Z -m "Release X.Y.Z"
-   git push origin main
-   git push origin vX.Y.Z
-   ```
+```
+pkg/config/v0.3.0       # Tag for pkg/config module
+pkg/models/v0.3.0       # Tag for pkg/models module
+cmd/morphir/v0.3.0      # Tag for cmd/morphir module
+v0.3.0                  # Main repository tag
+```
 
-4. **GitHub Actions automatically:**
-   - Runs CI checks (format, lint, test, build)
-   - Builds binaries for all platforms (Linux, macOS, Windows)
-   - Builds for all architectures (amd64, arm64)
-   - Generates checksums
-   - Creates GitHub Release with artifacts
-   - Generates release notes from git history
+**For synchronized releases** (recommended), all modules share the same version number.
 
-5. **Manual release trigger (optional):**
-   - Go to GitHub Actions → Release workflow
-   - Click "Run workflow"
-   - Enter tag name (e.g., `v0.1.0`)
+#### Automated Release Process
+
+Use the provided automation script for releases:
+
+```bash
+# 1. Ensure you're on main and up to date
+git checkout main
+git pull origin main
+
+# 2. Update CHANGELOG.md
+#    - Move changes from [Unreleased] to new version section
+#    - Add release date: ## [X.Y.Z] - YYYY-MM-DD
+#    - Add new [Unreleased] section at top
+
+# 3. Commit changelog
+git add CHANGELOG.md
+git commit -m "chore: prepare release vX.Y.Z"
+git push origin main
+
+# 4. Run release preparation script
+./scripts/release-prep.sh vX.Y.Z
+
+# This script will:
+#   - Verify no uncommitted changes
+#   - Run all verifications (tests, lint, build)
+#   - Create tags for all modules:
+#     - pkg/config/vX.Y.Z
+#     - pkg/models/vX.Y.Z
+#     - pkg/pipeline/vX.Y.Z
+#     - pkg/sdk/vX.Y.Z
+#     - pkg/tooling/vX.Y.Z
+#     - cmd/morphir/vX.Y.Z
+#     - vX.Y.Z (main tag)
+
+# 5. Push tags to trigger release
+git push origin --tags
+```
+
+#### What Happens Next
+
+When tags are pushed, **GitHub Actions automatically:**
+1. Runs CI checks (format, lint, test, build)
+2. **Runs safeguard script** to ensure no replace directives exist
+3. Builds binaries for all platforms (Linux, macOS, Windows)
+4. Builds for all architectures (amd64, arm64)
+5. Generates checksums
+6. Creates GitHub Release with artifacts
+7. Generates release notes from git history
+8. **Enables `go install github.com/finos/morphir/cmd/morphir@vX.Y.Z`**
+
+#### Manual Release (Advanced)
+
+If you need to create a release manually:
+
+```bash
+# 1. Update CHANGELOG.md and commit
+git add CHANGELOG.md
+git commit -m "chore: prepare release vX.Y.Z"
+
+# 2. Manually create all tags
+git tag -a pkg/config/vX.Y.Z -m "Release vX.Y.Z - pkg/config"
+git tag -a pkg/models/vX.Y.Z -m "Release vX.Y.Z - pkg/models"
+git tag -a pkg/pipeline/vX.Y.Z -m "Release vX.Y.Z - pkg/pipeline"
+git tag -a pkg/sdk/vX.Y.Z -m "Release vX.Y.Z - pkg/sdk"
+git tag -a pkg/tooling/vX.Y.Z -m "Release vX.Y.Z - pkg/tooling"
+git tag -a cmd/morphir/vX.Y.Z -m "Release vX.Y.Z - cmd/morphir"
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+
+# 3. Push tags
+git push origin main
+git push origin --tags
+```
+
+#### Manual GitHub Actions Trigger
+
+You can also manually trigger a release:
+
+1. Go to GitHub Actions → Release workflow
+2. Click "Run workflow"
+3. Enter tag name (e.g., `v0.3.0`)
+
+#### Important: Replace Directives and go install
+
+**This repository does NOT use replace directives in go.mod files.** This is intentional to ensure `go install` compatibility.
+
+- ✅ **For releases**: No replace directives = `go install` works
+- ✅ **For local development**: Use `go.work` (run `./scripts/dev-setup.sh`)
+- ⚠️ **Safeguard**: GoReleaser runs `./scripts/remove-replace-directives.sh` to catch any accidental additions
+
+**Never commit replace directives to go.mod files.** If you need to work across modules locally, use the Go workspace (`go.work`).
 
 ### Local Release Testing
 

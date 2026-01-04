@@ -18,7 +18,6 @@ require (
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 
-replace (
-	github.com/finos/morphir/pkg/config => ../config
-	github.com/finos/morphir/pkg/models => ../models
-)
+replace github.com/finos/morphir/pkg/config => ../config
+
+replace github.com/finos/morphir/pkg/models => ../models

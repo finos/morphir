@@ -211,19 +211,22 @@ verify:
         ./scripts/verify.sh
     fi
 
-# Set up development environment (install dependencies, git hooks, etc.)
-setup:
+# Configure Go workspace for local development
+dev-setup:
+    @echo "Configuring Go workspace..."
+    @./scripts/dev-setup.sh
+
+# Set up development environment (install dependencies, git hooks, workspace, etc.)
+setup: dev-setup
     @echo "Setting up development environment..."
-    @echo "1. Syncing Go modules..."
-    @go work sync
-    @echo "2. Installing npm dependencies (for git hooks)..."
+    @echo "1. Installing npm dependencies (for git hooks)..."
     @if command -v npm > /dev/null; then \
         npm install; \
     else \
         echo "Warning: npm not found. Git hooks will not be installed."; \
         echo "Install Node.js from https://nodejs.org/ to enable git hooks."; \
     fi
-    @echo "3. Verifying git hooks are installed..."
+    @echo "2. Verifying git hooks are installed..."
     @if [ -f ".husky/pre-push" ]; then \
         echo "   ✓ Git hooks installed successfully"; \
     else \
@@ -265,6 +268,40 @@ release-test:
     else \
         echo "goreleaser not found. Install with: go install github.com/goreleaser/goreleaser@latest"; \
         exit 1; \
+    fi
+
+# Suggest changelog entries from git commits
+changelog-suggest:
+    @echo "Analyzing commits for changelog..."
+    @./scripts/changelog-suggest.sh
+
+# Prepare a new release (creates tags for all modules)
+# Usage: just release-prepare v0.3.0
+release-prepare VERSION:
+    @echo "Preparing release {{VERSION}}..."
+    @./scripts/release-prep.sh {{VERSION}}
+
+# Complete release process (prepare + push tags)
+# Usage: just release v0.3.0
+release VERSION:
+    @echo "Starting release process for {{VERSION}}..."
+    @echo ""
+    @echo "This will:"
+    @echo "  1. Run all verifications"
+    @echo "  2. Create tags for all modules"
+    @echo "  3. Push tags to trigger GitHub Actions release"
+    @echo ""
+    @read -p "Continue? (y/N) " -n 1 -r && echo; \
+    if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+        ./scripts/release-prep.sh {{VERSION}} && \
+        git push origin --tags && \
+        echo "" && \
+        echo "✅ Release {{VERSION}} triggered!" && \
+        echo "" && \
+        echo "Monitor progress at:" && \
+        echo "  https://github.com/finos/morphir/actions"; \
+    else \
+        echo "Release cancelled."; \
     fi
 
 # Note: Actual releases are handled by GitHub Actions on tag push

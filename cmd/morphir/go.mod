@@ -40,8 +40,8 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
-replace (
-	github.com/finos/morphir/pkg/config => ../../pkg/config
-	github.com/finos/morphir/pkg/models => ../../pkg/models
-	github.com/finos/morphir/pkg/tooling => ../../pkg/tooling
-)
+replace github.com/finos/morphir/pkg/config => ../../pkg/config
+
+replace github.com/finos/morphir/pkg/models => ../../pkg/models
+
+replace github.com/finos/morphir/pkg/tooling => ../../pkg/tooling
