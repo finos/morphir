@@ -270,6 +270,11 @@ release-test:
         exit 1; \
     fi
 
+# Suggest changelog entries from git commits
+changelog-suggest:
+    @echo "Analyzing commits for changelog..."
+    @./scripts/changelog-suggest.sh
+
 # Prepare a new release (creates tags for all modules)
 # Usage: just release-prepare v0.3.0
 release-prepare VERSION:

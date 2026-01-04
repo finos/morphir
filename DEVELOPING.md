@@ -271,3 +271,39 @@ git push origin --tags
 - [Go Workspaces Documentation](https://go.dev/doc/tutorial/workspaces)
 - [Morphir Documentation](https://morphir.finos.org)
 - [FINOS Community](https://finos.org)
+
+## Using AI Assistance
+
+### Release Manager Skill
+
+The repository includes a Claude Code skill for release management. To use it:
+
+```
+/skill release-manager
+```
+
+The release manager can help with:
+- Analyzing commits and suggesting changelog entries
+- Determining appropriate version numbers
+- Updating CHANGELOG.md
+- Creating release tags
+- Managing the release process
+
+### Quick Release Workflow with AI
+
+```bash
+# 1. Suggest changelog entries
+just changelog-suggest
+
+# 2. Use release manager skill to update CHANGELOG.md
+# /skill release-manager
+# Ask: "Help me prepare a release with the suggested changes"
+
+# 3. The skill will guide you through:
+#    - Version number selection
+#    - CHANGELOG.md updates
+#    - Tagging and release
+
+# 4. Or do it manually:
+just release v0.3.0
+```

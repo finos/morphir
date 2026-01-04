@@ -1,0 +1,10 @@
+{
+  "skills": [
+    {
+      "name": "release-manager",
+      "description": "Release management for Morphir: changelog updates, version bumping, module tagging, and release execution",
+      "file": "release-manager.md",
+      "tags": ["release", "changelog", "versioning", "deployment"]
+    }
+  ]
+}
