@@ -267,5 +267,34 @@ release-test:
         exit 1; \
     fi
 
+# Prepare a new release (creates tags for all modules)
+# Usage: just release-prepare v0.3.0
+release-prepare VERSION:
+    @echo "Preparing release {{VERSION}}..."
+    @./scripts/release-prep.sh {{VERSION}}
+
+# Complete release process (prepare + push tags)
+# Usage: just release v0.3.0
+release VERSION:
+    @echo "Starting release process for {{VERSION}}..."
+    @echo ""
+    @echo "This will:"
+    @echo "  1. Run all verifications"
+    @echo "  2. Create tags for all modules"
+    @echo "  3. Push tags to trigger GitHub Actions release"
+    @echo ""
+    @read -p "Continue? (y/N) " -n 1 -r && echo; \
+    if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+        ./scripts/release-prep.sh {{VERSION}} && \
+        git push origin --tags && \
+        echo "" && \
+        echo "✅ Release {{VERSION}} triggered!" && \
+        echo "" && \
+        echo "Monitor progress at:" && \
+        echo "  https://github.com/finos/morphir/actions"; \
+    else \
+        echo "Release cancelled."; \
+    fi
+
 # Note: Actual releases are handled by GitHub Actions on tag push
 # To release: git tag -a vX.Y.Z -m "Release X.Y.Z" && git push origin vX.Y.Z
