@@ -94,12 +94,36 @@ func (s *StatusBar) View() string {
 
 	line := strings.Join(parts, "")
 
-	// Truncate if too long
-	if lipgloss.Width(line) > s.width {
-		line = line[:s.width]
+	// Ensure we don't exceed width to prevent wrapping
+	lineWidth := lipgloss.Width(line)
+	if lineWidth > s.width {
+		// Truncate content to fit within width
+		overflow := lineWidth - s.width
+		// Remove overflow from center section first (keybindings)
+		if overflow > 0 && centerWidth > 0 {
+			centerSection = ""
+			centerWidth = 0
+			// Rebuild without center section
+			parts = []string{leftSection}
+			if rightWidth > 0 {
+				padding := s.width - leftWidth - rightWidth
+				if padding > 0 {
+					parts = append(parts, strings.Repeat(" ", padding))
+				}
+				parts = append(parts, rightSection)
+			}
+			line = strings.Join(parts, "")
+		}
 	}
 
-	return styles.StatusBarStyle.Width(s.width).Render(line)
+	// Render with explicit height constraint to prevent wrapping to multiple lines
+	return styles.StatusBarStyle.
+		Width(s.width).
+		MaxWidth(s.width).
+		Height(1).
+		MaxHeight(1).
+		Inline(true).
+		Render(line)
 }
 
 func (s *StatusBar) renderLeftSection() string {
