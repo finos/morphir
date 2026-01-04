@@ -65,6 +65,16 @@ func (s *Sidebar) Update(msg tea.Msg) (*Sidebar, tea.Cmd) {
 		s.height = msg.Height
 		s.viewport.Width = s.width - 2 // Account for borders
 		s.viewport.Height = s.height - 3 // Account for title and borders
+	case tea.MouseMsg:
+		// Handle mouse wheel scrolling
+		switch msg.Type {
+		case tea.MouseWheelUp:
+			s.viewport.LineUp(3)
+			return s, nil
+		case tea.MouseWheelDown:
+			s.viewport.LineDown(3)
+			return s, nil
+		}
 	}
 
 	var cmd tea.Cmd

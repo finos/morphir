@@ -68,6 +68,16 @@ func (v *Viewer) Update(msg tea.Msg) (*Viewer, tea.Cmd) {
 		v.viewport.Height = v.height - 3
 		// Re-render content with new width
 		v.renderContent()
+	case tea.MouseMsg:
+		// Handle mouse wheel scrolling
+		switch msg.Type {
+		case tea.MouseWheelUp:
+			v.viewport.LineUp(3)
+			return v, nil
+		case tea.MouseWheelDown:
+			v.viewport.LineDown(3)
+			return v, nil
+		}
 	}
 
 	var cmd tea.Cmd
