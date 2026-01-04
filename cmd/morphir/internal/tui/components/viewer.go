@@ -336,7 +336,17 @@ func (v *Viewer) getViewportContent() string {
 	numberedContent := strings.Join(numberedLines, "\n")
 
 	// Create a temporary viewport with numbered content
-	tempViewport := viewport.New(v.viewport.Width, v.viewport.Height)
+	// Use actual viewport dimensions, or defaults if not sized yet
+	vpWidth := v.viewport.Width
+	vpHeight := v.viewport.Height
+	if vpWidth == 0 {
+		vpWidth = 78 // Default width minus borders (80-2)
+	}
+	if vpHeight == 0 {
+		vpHeight = 21 // Default height minus title and borders (24-3)
+	}
+
+	tempViewport := viewport.New(vpWidth, vpHeight)
 	tempViewport.SetContent(numberedContent)
 	tempViewport.YOffset = v.viewport.YOffset
 
