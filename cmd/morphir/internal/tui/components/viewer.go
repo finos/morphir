@@ -142,11 +142,13 @@ func (v *Viewer) handleKeyPress(msg tea.KeyMsg) (*Viewer, tea.Cmd) {
 			v.cursorLine--
 			v.ensureCursorVisible()
 		}
+		return v, nil
 	case key.Matches(msg, v.keymap.Down):
 		if v.cursorLine < maxLine {
 			v.cursorLine++
 			v.ensureCursorVisible()
 		}
+		return v, nil
 	case key.Matches(msg, v.keymap.PageUp):
 		v.viewport.ViewUp()
 	case key.Matches(msg, v.keymap.PageDown):
@@ -348,9 +350,16 @@ func (v *Viewer) getViewportContent() string {
 		// Highlight cursor line
 		styledLine := line
 		if v.showCursor && i == v.cursorLine {
+			// Calculate available width for the line (viewport width minus line number width)
+			availableWidth := v.viewport.Width - lineNumWidth - 1
+			if availableWidth < 0 {
+				availableWidth = 0
+			}
+
 			cursorStyle := lipgloss.NewStyle().
 				Background(styles.DefaultTheme.SelectedBg).
-				Foreground(styles.DefaultTheme.Foreground)
+				Foreground(styles.DefaultTheme.Foreground).
+				Width(availableWidth)
 			styledLine = cursorStyle.Render(line)
 		}
 
@@ -481,7 +490,8 @@ func (v *Viewer) SetHeight(height int) {
 // GetPosition returns the current line and total lines
 func (v *Viewer) GetPosition() (current, total int) {
 	lines := strings.Split(v.rendered, "\n")
-	return v.viewport.YOffset + 1, len(lines)
+	// Return cursor line position, not viewport offset
+	return v.cursorLine + 1, len(lines)
 }
 
 // ScrollToTop scrolls to the top of the content
