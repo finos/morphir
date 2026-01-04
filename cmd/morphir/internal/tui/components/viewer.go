@@ -37,10 +37,10 @@ type Viewer struct {
 func NewViewer(title string, km keymap.VimKeyMap) *Viewer {
 	vp := viewport.New(0, 0)
 	return &Viewer{
-		title:      title,
-		keymap:     km,
-		viewport:   vp,
-		showLineNums: false,
+		title:         title,
+		keymap:        km,
+		viewport:      vp,
+		showLineNums:  true, // Show line numbers by default
 		searchMatches: make([]int, 0),
 	}
 }
@@ -77,8 +77,18 @@ func (v *Viewer) Update(msg tea.Msg) (*Viewer, tea.Cmd) {
 
 // View implements tea.Model
 func (v *Viewer) View() string {
+	// Use default dimensions if not sized yet
+	width := v.width
+	height := v.height
+	if width == 0 {
+		width = 80 // Default width
+	}
+	if height == 0 {
+		height = 24 // Default height
+	}
+
 	// Render title
-	titleBar := styles.TitleStyle.Width(v.width - 2).Render(v.title)
+	titleBar := styles.TitleStyle.Width(width - 2).Render(v.title)
 
 	// Render input bar if in search or goto-line mode
 	var inputBar string
@@ -103,8 +113,8 @@ func (v *Viewer) View() string {
 
 	// Add border
 	return styles.BorderStyle.
-		Width(v.width - 2).
-		Height(v.height - 2).
+		Width(width - 2).
+		Height(height - 2).
 		Render(main)
 }
 
