@@ -391,7 +391,12 @@ func (v *Viewer) renderContent() {
 		return
 	}
 
-	v.rendered = rendered
+	// Trim leading/trailing whitespace from rendered content to prevent cutoff
+	v.rendered = strings.TrimSpace(rendered)
+
+	// Add a blank line at the top to ensure first line is fully visible
+	v.rendered = "\n" + v.rendered
+
 	v.viewport.SetContent(v.rendered)
 }
 
