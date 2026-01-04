@@ -17,8 +17,3 @@ require (
 	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
-
-replace (
-	github.com/finos/morphir/pkg/config => ../config
-	github.com/finos/morphir/pkg/models => ../models
-)

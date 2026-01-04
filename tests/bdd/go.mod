@@ -19,5 +19,3 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 )
-
-replace github.com/finos/morphir/pkg/models => ../../pkg/models
