@@ -2,14 +2,14 @@
 package-lock.json
 node_modules/
 
-# IDE Related 
+# IDE Related
 .idea/
 .fake
 .ionide
 .vscode/
 
 
-# Elm related 
+# Elm related
 elm-stuff/
 
 # Zig related
@@ -21,8 +21,9 @@ zig-out/
 out/
 dist/
 target/
+bin/
 
-# Scala 
+# Scala
 .scala-build/
 .metals/
 .bloop/
@@ -30,3 +31,30 @@ target/
 # moon
 .moon/cache
 .moon/docker
+
+# Go Related
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+
+# Go workspace files
+# Uncomment if you don't want to track go.work
+# go.work
+# go.work.sum
+
+# Docusaurus generated folders
+website/translated_docs/
+website/build/
+website/i18n/
+website/.docusaurus/
+
+# Local planning prompt files
+*.prompt.md
+
+# bv (beads viewer) local config and caches
+.bv/
