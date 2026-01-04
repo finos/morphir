@@ -18,17 +18,20 @@ const (
 
 // App is the main TUI application shell
 type App struct {
-	keymap    keymap.VimKeyMap
-	sidebar   *components.Sidebar
-	viewer    *components.Viewer
-	statusBar *components.StatusBar
-	layout    *Layout
-	focus     FocusPanel
-	title     string
-	width     int
-	height    int
-	ready     bool
-	quitting  bool
+	keymap          keymap.VimKeyMap
+	sidebar         *components.Sidebar
+	viewer          *components.Viewer
+	statusBar       *components.StatusBar
+	layout          *Layout
+	focus           FocusPanel
+	title           string
+	width           int
+	height          int
+	ready           bool
+	quitting        bool
+	showingHelp     bool
+	previousContent string
+	previousTitle   string
 
 	// Callbacks
 	onSelect func(item *components.SidebarItem) error
@@ -138,14 +141,30 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.updateStatusBar()
 
 	case tea.KeyMsg:
+		// If showing help, any key closes it
+		if a.showingHelp {
+			a.closeHelp()
+			return a, nil
+		}
+
 		// Handle global keys
 		switch {
-		case msg.String() == "ctrl+c" || msg.String() == "q":
+		case msg.String() == "ctrl+c":
 			a.quitting = true
 			if a.onQuit != nil {
 				a.onQuit()
 			}
 			return a, tea.Quit
+
+		case msg.String() == "q":
+			// Only quit if not in search mode
+			if !a.viewer.IsSearchMode() {
+				a.quitting = true
+				if a.onQuit != nil {
+					a.onQuit()
+				}
+				return a, tea.Quit
+			}
 
 		case msg.String() == "b" || msg.String() == "ctrl+b":
 			// Toggle sidebar
@@ -278,6 +297,11 @@ func (a *App) updateStatusBar() {
 }
 
 func (a *App) showHelp() {
+	// Save current viewer state
+	a.previousContent = a.viewer.GetContent()
+	a.previousTitle = a.viewer.GetTitle()
+	a.showingHelp = true
+
 	helpContent := `# Morphir TUI Help
 
 ## Navigation
@@ -322,6 +346,13 @@ Press any key to return.
 	a.viewer.SetContent(helpContent)
 	a.viewer.SetTitle("Help")
 	a.focus = FocusViewer
+}
+
+func (a *App) closeHelp() {
+	// Restore previous viewer state
+	a.viewer.SetContent(a.previousContent)
+	a.viewer.SetTitle(a.previousTitle)
+	a.showingHelp = false
 }
 
 // Public API

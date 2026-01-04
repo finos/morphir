@@ -321,3 +321,13 @@ func (v *Viewer) GetSearchQuery() string {
 func (v *Viewer) GetSearchResults() int {
 	return len(v.searchMatches)
 }
+
+// GetContent returns the current raw markdown content
+func (v *Viewer) GetContent() string {
+	return v.content
+}
+
+// GetTitle returns the current viewer title
+func (v *Viewer) GetTitle() string {
+	return v.title
+}
