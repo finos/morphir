@@ -114,6 +114,9 @@ func WithOnQuit(fn func()) AppOption {
 
 // Init implements tea.Model
 func (a *App) Init() tea.Cmd {
+	// Set initial focus states
+	a.updateFocusStates()
+
 	// Auto-select the first item if we have an onSelect callback and sidebar items
 	if a.onSelect != nil {
 		items := a.sidebar.GetItems()
@@ -197,6 +200,11 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.layout.ToggleSidebar()
 			dims := a.layout.CalculateDimensions()
 			dims.ApplyToComponents(a.sidebar, a.viewer, a.statusBar)
+			// If hiding sidebar and it had focus, switch to viewer
+			if !a.layout.IsSidebarVisible() && a.focus == FocusSidebar {
+				a.focus = FocusViewer
+				a.updateFocusStates()
+			}
 			return a, nil
 
 		case msg.String() == "tab":
@@ -300,6 +308,7 @@ func (a *App) switchFocus() {
 			a.focus = FocusSidebar
 		}
 	}
+	a.updateFocusStates()
 }
 
 func (a *App) switchFocusBackwards() {
@@ -312,6 +321,19 @@ func (a *App) switchFocusBackwards() {
 		if a.layout.IsSidebarVisible() {
 			a.focus = FocusViewer
 		}
+	}
+	a.updateFocusStates()
+}
+
+func (a *App) updateFocusStates() {
+	// Update focus states in components
+	switch a.focus {
+	case FocusSidebar:
+		a.sidebar.SetFocused(true)
+		a.viewer.SetFocused(false)
+	case FocusViewer:
+		a.sidebar.SetFocused(false)
+		a.viewer.SetFocused(true)
 	}
 }
 

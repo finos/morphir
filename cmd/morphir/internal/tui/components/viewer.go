@@ -33,6 +33,7 @@ type Viewer struct {
 	currentMatch  int
 	gotoLineMode  bool
 	gotoLineInput string
+	focused       bool   // Whether this viewer has focus
 }
 
 // NewViewer creates a new viewer component
@@ -101,8 +102,8 @@ func (v *Viewer) View() string {
 		height = 24 // Default height
 	}
 
-	// Render title
-	titleBar := styles.TitleStyle.Width(width - 2).Render(v.title)
+	// Render title with scrollbar indicator
+	titleBar := v.renderTitleBar(width)
 
 	// Render input bar if in search or goto-line mode
 	var inputBar string
@@ -125,8 +126,13 @@ func (v *Viewer) View() string {
 
 	main := lipgloss.JoinVertical(lipgloss.Left, components...)
 
-	// Add border
-	return styles.BorderStyle.
+	// Add border with focus indication
+	borderStyle := styles.BorderStyle
+	if v.focused {
+		borderStyle = borderStyle.BorderForeground(styles.DefaultTheme.Primary)
+	}
+
+	return borderStyle.
 		Width(width - 2).
 		Height(height - 2).
 		Render(main)
@@ -237,6 +243,72 @@ func (v *Viewer) handleGotoLineKeyPress(msg tea.KeyMsg) (*Viewer, tea.Cmd) {
 func (v *Viewer) waitForSecondG() tea.Cmd {
 	return func() tea.Msg {
 		return GotoTopMsg{}
+	}
+}
+
+func (v *Viewer) renderTitleBar(width int) string {
+	// Create title text
+	titleText := v.title
+
+	// Add scrollbar indicator if content is scrollable
+	scrollIndicator := v.getScrollIndicator()
+	if scrollIndicator != "" {
+		// Reserve space for scroll indicator on the right
+		availableWidth := width - 4 - len(scrollIndicator)
+		if availableWidth < len(titleText) {
+			titleText = titleText[:availableWidth-3] + "..."
+		}
+
+		titleStyle := styles.TitleStyle.Width(availableWidth)
+		indicatorStyle := lipgloss.NewStyle().
+			Foreground(styles.DefaultTheme.Muted).
+			Padding(0, 1)
+
+		title := titleStyle.Render(titleText)
+		indicator := indicatorStyle.Render(scrollIndicator)
+
+		return lipgloss.JoinHorizontal(lipgloss.Top, title, indicator)
+	}
+
+	return styles.TitleStyle.Width(width - 2).Render(titleText)
+}
+
+func (v *Viewer) getScrollIndicator() string {
+	lines := strings.Split(v.rendered, "\n")
+	totalLines := len(lines)
+
+	if totalLines == 0 || v.viewport.Height == 0 {
+		return ""
+	}
+
+	// Only show scrollbar if content is larger than viewport
+	if totalLines <= v.viewport.Height {
+		return ""
+	}
+
+	// Calculate scroll percentage
+	viewportTop := v.viewport.YOffset
+	viewportBottom := viewportTop + v.viewport.Height
+	if viewportBottom > totalLines {
+		viewportBottom = totalLines
+	}
+
+	// Show position like "1-20/100" or use scroll percentage
+	scrollPercent := int(float64(viewportTop) / float64(totalLines-v.viewport.Height) * 100)
+	if scrollPercent > 100 {
+		scrollPercent = 100
+	}
+	if scrollPercent < 0 {
+		scrollPercent = 0
+	}
+
+	// Return indicator showing current position
+	if viewportTop == 0 {
+		return "Top"
+	} else if viewportBottom >= totalLines {
+		return "Bot"
+	} else {
+		return fmt.Sprintf("%d%%", scrollPercent)
 	}
 }
 
@@ -551,4 +623,14 @@ func (v *Viewer) ToggleLineNumbers() {
 // GetShowLineNumbers returns whether line numbers are shown
 func (v *Viewer) GetShowLineNumbers() bool {
 	return v.showLineNums
+}
+
+// SetFocused sets whether this viewer has focus
+func (v *Viewer) SetFocused(focused bool) {
+	v.focused = focused
+}
+
+// IsFocused returns whether this viewer has focus
+func (v *Viewer) IsFocused() bool {
+	return v.focused
 }

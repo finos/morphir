@@ -34,6 +34,7 @@ type Sidebar struct {
 	keymap     keymap.VimKeyMap
 	filter     string
 	treeMode   bool // true for tree, false for flat list
+	focused    bool // Whether this sidebar has focus
 }
 
 // NewSidebar creates a new sidebar component
@@ -99,8 +100,13 @@ func (s *Sidebar) View() string {
 	// Combine title and content
 	main := lipgloss.JoinVertical(lipgloss.Left, titleBar, s.viewport.View())
 
-	// Add border
-	return styles.BorderStyle.
+	// Add border with focus indication
+	borderStyle := styles.BorderStyle
+	if s.focused {
+		borderStyle = borderStyle.BorderForeground(styles.DefaultTheme.Primary)
+	}
+
+	return borderStyle.
 		Width(s.width - 2).
 		Height(s.height - 2).
 		Render(main)
@@ -357,4 +363,14 @@ func (s *Sidebar) SetTreeMode(enabled bool) {
 // SetExpanded sets the expanded state of a sidebar item
 func (item *SidebarItem) SetExpanded(expanded bool) {
 	item.expanded = expanded
+}
+
+// SetFocused sets whether this sidebar has focus
+func (s *Sidebar) SetFocused(focused bool) {
+	s.focused = focused
+}
+
+// IsFocused returns whether this sidebar has focus
+func (s *Sidebar) IsFocused() bool {
+	return s.focused
 }
