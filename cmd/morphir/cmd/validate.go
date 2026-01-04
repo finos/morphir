@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/finos/morphir/cmd/morphir/internal/tui"
+	"github.com/finos/morphir/cmd/morphir/internal/tui/components"
 	"github.com/finos/morphir/pkg/tooling/markdown"
 	"github.com/finos/morphir/pkg/tooling/validation"
 	"github.com/finos/morphir/pkg/tooling/validation/report"
@@ -16,6 +18,7 @@ var (
 	validateVersion int
 	validateJSON    bool
 	validateReport  string
+	validateTUI     bool
 )
 
 var validateCmd = &cobra.Command{
@@ -30,8 +33,17 @@ directory.
 The format version is auto-detected from the formatVersion field in the IR file.
 Use --version to force validation against a specific schema version.
 
-Use --report to generate a detailed validation report that explains any errors
-and provides suggestions for fixing them.`,
+Output Modes:
+  - Default: Colored terminal output with summary
+  - --tui/-i: Interactive TUI with vim-style navigation
+  - --report markdown: Detailed markdown report with glamour rendering
+  - --json: Machine-readable JSON output
+
+The TUI mode provides an interactive explorer for validation results with:
+  - File list sidebar with status indicators (✓/✗)
+  - Markdown report viewer with syntax highlighting
+  - Vim-style navigation (j/k, gg/G, /, etc.)
+  - Search and filtering capabilities`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runValidate,
 }
@@ -40,6 +52,7 @@ func init() {
 	validateCmd.Flags().IntVar(&validateVersion, "version", 0, "Schema version to validate against (1, 2, or 3). Auto-detects if not specified.")
 	validateCmd.Flags().BoolVar(&validateJSON, "json", false, "Output result as JSON")
 	validateCmd.Flags().StringVar(&validateReport, "report", "", "Generate a detailed report (format: markdown). Output to stdout or specify a file path.")
+	validateCmd.Flags().BoolVarP(&validateTUI, "tui", "i", false, "Launch interactive TUI for exploring validation results")
 }
 
 // runValidate executes the validate command
@@ -65,6 +78,9 @@ func runValidate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Output result
+	if validateTUI {
+		return outputValidationTUI(cmd, result)
+	}
 	if validateReport != "" {
 		return outputValidationReport(cmd, result)
 	}
@@ -154,4 +170,56 @@ func outputValidationText(cmd *cobra.Command, result *validation.Result) error {
 	}
 
 	return fmt.Errorf("validation failed with %d error(s)", len(result.Errors))
+}
+
+func outputValidationTUI(cmd *cobra.Command, result *validation.Result) error {
+	// Generate markdown report content
+	gen := report.NewGenerator(report.FormatMarkdown)
+	reportContent := gen.Generate(result)
+
+	// Create sidebar item for the validated file
+	status := "✓"
+	if !result.Valid {
+		status = "✗"
+	}
+
+	items := []*components.SidebarItem{
+		{
+			ID:    result.Path,
+			Title: fmt.Sprintf("%s %s", status, result.Path),
+			Data:  result,
+		},
+	}
+
+	// Create TUI app
+	var app *tui.App
+	app = tui.NewApp(
+		tui.WithTitle("Morphir IR Validation Report"),
+		tui.WithSidebarTitle("Validated Files"),
+		tui.WithSidebar(items),
+		tui.WithViewerTitle("Validation Report"),
+		tui.WithViewer(reportContent),
+		tui.WithOnSelect(func(item *components.SidebarItem) error {
+			// When a file is selected, show its validation report
+			if validationResult, ok := item.Data.(*validation.Result); ok {
+				gen := report.NewGenerator(report.FormatMarkdown)
+				content := gen.Generate(validationResult)
+				app.SetViewerContent(content)
+				app.SetViewerTitle(fmt.Sprintf("Report: %s", validationResult.Path))
+			}
+			return nil
+		}),
+	)
+
+	// Run the TUI
+	if err := app.Run(); err != nil {
+		return fmt.Errorf("TUI error: %w", err)
+	}
+
+	// Return error if validation failed (after TUI closes)
+	if !result.Valid {
+		return fmt.Errorf("validation failed with %d error(s)", len(result.Errors))
+	}
+
+	return nil
 }
