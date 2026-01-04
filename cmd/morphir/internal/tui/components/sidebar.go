@@ -133,6 +133,14 @@ func (s *Sidebar) handleKeyPress(msg tea.KeyMsg) (*Sidebar, tea.Cmd) {
 				s.selectParent(item)
 			}
 		}
+	case msg.String() == " ":
+		// Toggle expand/collapse with space bar
+		if s.selected < len(s.flatItems) {
+			item := s.flatItems[s.selected]
+			if len(item.Children) > 0 {
+				item.expanded = !item.expanded
+			}
+		}
 	case key.Matches(msg, s.keymap.Select):
 		// Return selected event
 		return s, s.emitSelectEvent()
