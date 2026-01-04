@@ -211,19 +211,22 @@ verify:
         ./scripts/verify.sh
     fi
 
-# Set up development environment (install dependencies, git hooks, etc.)
-setup:
+# Configure Go workspace for local development
+dev-setup:
+    @echo "Configuring Go workspace..."
+    @./scripts/dev-setup.sh
+
+# Set up development environment (install dependencies, git hooks, workspace, etc.)
+setup: dev-setup
     @echo "Setting up development environment..."
-    @echo "1. Syncing Go modules..."
-    @go work sync
-    @echo "2. Installing npm dependencies (for git hooks)..."
+    @echo "1. Installing npm dependencies (for git hooks)..."
     @if command -v npm > /dev/null; then \
         npm install; \
     else \
         echo "Warning: npm not found. Git hooks will not be installed."; \
         echo "Install Node.js from https://nodejs.org/ to enable git hooks."; \
     fi
-    @echo "3. Verifying git hooks are installed..."
+    @echo "2. Verifying git hooks are installed..."
     @if [ -f ".husky/pre-push" ]; then \
         echo "   ✓ Git hooks installed successfully"; \
     else \

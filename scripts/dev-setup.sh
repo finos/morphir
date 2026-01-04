@@ -27,15 +27,23 @@ else
     echo "✓ Created go.work"
 fi
 
-# Sync workspace
+# Sync workspace (ignore errors if modules aren't tagged yet)
 echo "Syncing workspace..."
-go work sync
+if go work sync 2>/dev/null; then
+    echo "✓ Workspace synced successfully"
+else
+    echo "⚠ Workspace sync failed (this is normal if modules aren't tagged yet)"
+    echo "  The workspace will work for local development anyway"
+fi
 
 echo ""
 echo "✅ Development environment ready!"
 echo ""
 echo "The go.work file enables you to make changes across modules locally"
 echo "without needing replace directives or version tags."
+echo ""
+echo "Note: If you see 'unknown revision' errors, that's expected until"
+echo "      modules are tagged. Local development will still work."
 echo ""
 echo "To verify your setup, run:"
 echo "  just verify"
