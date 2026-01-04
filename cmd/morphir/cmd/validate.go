@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/finos/morphir/pkg/tooling/markdown"
 	"github.com/finos/morphir/pkg/tooling/validation"
 	"github.com/finos/morphir/pkg/tooling/validation/report"
 	"github.com/spf13/cobra"
@@ -79,10 +80,17 @@ func outputValidationReport(cmd *cobra.Command, result *validation.Result) error
 
 	// Determine output destination
 	if validateReport == "markdown" || validateReport == "md" {
-		// Output to stdout
-		fmt.Fprint(cmd.OutOrStdout(), reportContent)
+		// Output to stdout with glamour rendering (auto-detects TTY)
+		renderer := markdown.DefaultRenderer()
+		rendered, err := renderer.Render(reportContent, cmd.OutOrStdout())
+		if err != nil {
+			// Fallback to plain markdown on error
+			fmt.Fprint(cmd.OutOrStdout(), reportContent)
+		} else {
+			fmt.Fprint(cmd.OutOrStdout(), rendered)
+		}
 	} else {
-		// Treat as file path
+		// Treat as file path - always write plain markdown to files
 		reportPath := validateReport
 		if !strings.HasSuffix(reportPath, ".md") {
 			reportPath += ".md"
