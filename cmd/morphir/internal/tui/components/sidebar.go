@@ -71,14 +71,10 @@ func (s *Sidebar) Update(msg tea.Msg) (*Sidebar, tea.Cmd) {
 		if msg.Action == tea.MouseActionPress {
 			switch msg.Button {
 			case tea.MouseButtonWheelUp:
-				for i := 0; i < 3; i++ {
-					s.viewport.LineUp(1)
-				}
+				s.viewport.ScrollUp(3)
 				return s, nil
 			case tea.MouseButtonWheelDown:
-				for i := 0; i < 3; i++ {
-					s.viewport.LineDown(1)
-				}
+				s.viewport.ScrollDown(3)
 				return s, nil
 			}
 		}
@@ -199,9 +195,9 @@ func (s *Sidebar) renderItem(item *SidebarItem, selected bool) string {
 	}
 
 	// Create style with fixed width to prevent wrapping
-	style := styles.NormalItemStyle.Copy().Width(maxWidth)
+	style := styles.NormalItemStyle.Width(maxWidth)
 	if selected {
-		style = styles.SelectedItemStyle.Copy().Width(maxWidth)
+		style = styles.SelectedItemStyle.Width(maxWidth)
 	}
 
 	return style.Render(text)

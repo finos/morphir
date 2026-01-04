@@ -78,14 +78,10 @@ func (v *Viewer) Update(msg tea.Msg) (*Viewer, tea.Cmd) {
 		if msg.Action == tea.MouseActionPress {
 			switch msg.Button {
 			case tea.MouseButtonWheelUp:
-				for i := 0; i < 3; i++ {
-					v.viewport.LineUp(1)
-				}
+				v.viewport.ScrollUp(3)
 				return v, nil
 			case tea.MouseButtonWheelDown:
-				for i := 0; i < 3; i++ {
-					v.viewport.LineDown(1)
-				}
+				v.viewport.ScrollDown(3)
 				return v, nil
 			}
 		}
