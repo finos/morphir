@@ -245,6 +245,17 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if a.focus == FocusViewer {
 			a.viewer.ScrollToTop()
 		}
+
+	case tea.MouseMsg:
+		// Route mouse events to focused component
+		switch a.focus {
+		case FocusSidebar:
+			a.sidebar, cmd = a.sidebar.Update(msg)
+			cmds = append(cmds, cmd)
+		case FocusViewer:
+			a.viewer, cmd = a.viewer.Update(msg)
+			cmds = append(cmds, cmd)
+		}
 	}
 
 	return a, tea.Batch(cmds...)
