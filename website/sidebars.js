@@ -59,7 +59,48 @@ const sidebars = {
       label: 'Concepts',
       items: [
           'morphir-sdk',
-          'morphir-ir'
+          'morphir-ir',
+          {
+            type: 'category',
+            label: 'IR Specification',
+            items: [
+              'spec/index',
+              'spec/morphir-ir-specification',
+              {
+                type: 'category',
+                label: 'JSON Schemas',
+                items: [
+                  'spec/schemas/index',
+                  {
+                    type: 'category',
+                    label: 'Version 3 (Current)',
+                    items: [
+                      'spec/schemas/v3/index',
+                      'spec/schemas/v3/whats-new',
+                      'spec/schemas/v3/full/index'
+                    ]
+                  },
+                  {
+                    type: 'category',
+                    label: 'Version 2',
+                    items: [
+                      'spec/schemas/v2/index',
+                      'spec/schemas/v2/whats-new',
+                      'spec/schemas/v2/full/index'
+                    ]
+                  },
+                  {
+                    type: 'category',
+                    label: 'Version 1',
+                    items: [
+                      'spec/schemas/v1/index',
+                      'spec/schemas/v1/full/index'
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
       ]
     },
     {
