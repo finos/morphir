@@ -511,11 +511,8 @@ func (v *Viewer) renderContent() {
 		return
 	}
 
-	// Trim leading/trailing whitespace from rendered content to prevent cutoff
-	v.rendered = strings.TrimSpace(rendered)
-
-	// Add a blank line at the top to ensure first line is fully visible
-	v.rendered = "\n" + v.rendered
+	// Use rendered content as-is - glamour handles spacing
+	v.rendered = rendered
 
 	v.viewport.SetContent(v.rendered)
 }
