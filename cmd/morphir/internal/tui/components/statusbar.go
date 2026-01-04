@@ -101,8 +101,6 @@ func (s *StatusBar) View() string {
 		overflow := lineWidth - s.width
 		// Remove overflow from center section first (keybindings)
 		if overflow > 0 && centerWidth > 0 {
-			centerSection = ""
-			centerWidth = 0
 			// Rebuild without center section
 			parts = []string{leftSection}
 			if rightWidth > 0 {

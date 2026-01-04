@@ -75,13 +75,19 @@ func (v *Viewer) Update(msg tea.Msg) (*Viewer, tea.Cmd) {
 		v.renderContent()
 	case tea.MouseMsg:
 		// Handle mouse wheel scrolling
-		switch msg.Type {
-		case tea.MouseWheelUp:
-			v.viewport.LineUp(3)
-			return v, nil
-		case tea.MouseWheelDown:
-			v.viewport.LineDown(3)
-			return v, nil
+		if msg.Action == tea.MouseActionPress {
+			switch msg.Button {
+			case tea.MouseButtonWheelUp:
+				for i := 0; i < 3; i++ {
+					v.viewport.LineUp(1)
+				}
+				return v, nil
+			case tea.MouseButtonWheelDown:
+				for i := 0; i < 3; i++ {
+					v.viewport.LineDown(1)
+				}
+				return v, nil
+			}
 		}
 	}
 
@@ -156,13 +162,13 @@ func (v *Viewer) handleKeyPress(msg tea.KeyMsg) (*Viewer, tea.Cmd) {
 		}
 		return v, nil
 	case key.Matches(msg, v.keymap.PageUp):
-		v.viewport.ViewUp()
+		v.viewport.PageUp()
 	case key.Matches(msg, v.keymap.PageDown):
-		v.viewport.ViewDown()
+		v.viewport.PageDown()
 	case key.Matches(msg, v.keymap.HalfPageUp):
-		v.viewport.HalfViewUp()
+		v.viewport.HalfPageUp()
 	case key.Matches(msg, v.keymap.HalfPageDown):
-		v.viewport.HalfViewDown()
+		v.viewport.HalfPageDown()
 	case key.Matches(msg, v.keymap.Top):
 		// Handle 'gg' for top - need to track double 'g' press
 		if msg.String() == "g" {
