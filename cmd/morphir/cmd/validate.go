@@ -177,19 +177,37 @@ func outputValidationTUI(cmd *cobra.Command, result *validation.Result) error {
 	gen := report.NewGenerator(report.FormatMarkdown)
 	reportContent := gen.Generate(result)
 
-	// Create sidebar item for the validated file
+	// Create sidebar tree structure
 	status := "✓"
 	if !result.Valid {
 		status = "✗"
 	}
 
-	items := []*components.SidebarItem{
-		{
-			ID:    result.Path,
-			Title: fmt.Sprintf("%s %s", status, result.Path),
-			Data:  result,
+	// Extract just the filename for display
+	filename := result.Path
+	if idx := strings.LastIndex(filename, "/"); idx != -1 {
+		filename = filename[idx+1:]
+	}
+	if idx := strings.LastIndex(filename, "\\"); idx != -1 {
+		filename = filename[idx+1:]
+	}
+
+	// Create tree structure: Validated Files > filename
+	parentItem := &components.SidebarItem{
+		ID:    "validated",
+		Title: "Validated Files",
+		Children: []*components.SidebarItem{
+			{
+				ID:    result.Path,
+				Title: fmt.Sprintf("%s %s", status, filename),
+				Data:  result,
+			},
 		},
 	}
+	// Expand parent by default to show the file
+	parentItem.SetExpanded(true)
+
+	items := []*components.SidebarItem{parentItem}
 
 	// Create TUI app
 	var app *tui.App

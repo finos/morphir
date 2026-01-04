@@ -161,10 +161,20 @@ func (s *Sidebar) renderItem(item *SidebarItem, selected bool) string {
 
 	text := indent + icon + item.Title
 
-	if selected {
-		return styles.SelectedItemStyle.Render(text)
+	// Calculate available width for text (account for borders and padding)
+	maxWidth := s.width - 4
+	if len(text) > maxWidth {
+		// Truncate and add ellipsis
+		text = text[:maxWidth-3] + "..."
 	}
-	return styles.NormalItemStyle.Render(text)
+
+	// Create style with fixed width to prevent wrapping
+	style := styles.NormalItemStyle.Copy().Width(maxWidth)
+	if selected {
+		style = styles.SelectedItemStyle.Copy().Width(maxWidth)
+	}
+
+	return style.Render(text)
 }
 
 func (s *Sidebar) rebuildFlatItems() {
@@ -319,4 +329,9 @@ func (s *Sidebar) GetWidth() int {
 func (s *Sidebar) SetTreeMode(enabled bool) {
 	s.treeMode = enabled
 	s.rebuildFlatItems()
+}
+
+// SetExpanded sets the expanded state of a sidebar item
+func (item *SidebarItem) SetExpanded(expanded bool) {
+	item.expanded = expanded
 }
