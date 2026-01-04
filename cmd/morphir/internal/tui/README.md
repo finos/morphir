@@ -175,6 +175,12 @@ statusBar.SetPosition(10, 100)
 | N | Previous match |
 | Esc | Cancel search |
 
+### View Options
+| Key | Action |
+|-----|--------|
+| Ctrl+n | Toggle line numbers |
+| :number | Go to line number |
+
 ### General
 | Key | Action |
 |-----|--------|

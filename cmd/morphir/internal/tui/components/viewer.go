@@ -1,6 +1,8 @@
 package components
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -14,19 +16,21 @@ import (
 
 // Viewer displays markdown content with vim-style navigation
 type Viewer struct {
-	width        int
-	height       int
-	content      string // Raw markdown content
-	rendered     string // Glamour-rendered content
-	viewport     viewport.Model
-	title        string
-	keymap       keymap.VimKeyMap
-	showLineNums bool
-	renderer     *glamour.TermRenderer
-	searchMode   bool
-	searchQuery  string
+	width         int
+	height        int
+	content       string // Raw markdown content
+	rendered      string // Glamour-rendered content
+	viewport      viewport.Model
+	title         string
+	keymap        keymap.VimKeyMap
+	showLineNums  bool
+	renderer      *glamour.TermRenderer
+	searchMode    bool
+	searchQuery   string
 	searchMatches []int
-	currentMatch int
+	currentMatch  int
+	gotoLineMode  bool
+	gotoLineInput string
 }
 
 // NewViewer creates a new viewer component
@@ -50,6 +54,9 @@ func (v *Viewer) Init() tea.Cmd {
 func (v *Viewer) Update(msg tea.Msg) (*Viewer, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if v.gotoLineMode {
+			return v.handleGotoLineKeyPress(msg)
+		}
 		if v.searchMode {
 			return v.handleSearchKeyPress(msg)
 		}
@@ -73,19 +80,24 @@ func (v *Viewer) View() string {
 	// Render title
 	titleBar := styles.TitleStyle.Width(v.width - 2).Render(v.title)
 
-	// Render search bar if in search mode
-	var searchBar string
+	// Render input bar if in search or goto-line mode
+	var inputBar string
 	if v.searchMode {
-		searchBar = v.renderSearchBar()
+		inputBar = v.renderSearchBar()
+	} else if v.gotoLineMode {
+		inputBar = v.renderGotoLineBar()
 	}
+
+	// Get viewport content with optional line numbers
+	viewportContent := v.getViewportContent()
 
 	// Combine components
 	var components []string
 	components = append(components, titleBar)
-	if searchBar != "" {
-		components = append(components, searchBar)
+	if inputBar != "" {
+		components = append(components, inputBar)
 	}
-	components = append(components, v.viewport.View())
+	components = append(components, viewportContent)
 
 	main := lipgloss.JoinVertical(lipgloss.Left, components...)
 
@@ -125,6 +137,14 @@ func (v *Viewer) handleKeyPress(msg tea.KeyMsg) (*Viewer, tea.Cmd) {
 		v.nextSearchMatch()
 	case key.Matches(msg, v.keymap.PrevMatch):
 		v.prevSearchMatch()
+	case key.Matches(msg, v.keymap.ToggleLineNumbers):
+		v.showLineNums = !v.showLineNums
+		v.renderContent()
+		return v, nil
+	case key.Matches(msg, v.keymap.GotoLine):
+		v.gotoLineMode = true
+		v.gotoLineInput = ""
+		return v, nil
 	}
 
 	return v, nil
@@ -153,6 +173,31 @@ func (v *Viewer) handleSearchKeyPress(msg tea.KeyMsg) (*Viewer, tea.Cmd) {
 	return v, nil
 }
 
+func (v *Viewer) handleGotoLineKeyPress(msg tea.KeyMsg) (*Viewer, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		// Execute goto line
+		v.gotoLineMode = false
+		v.executeGotoLine()
+		return v, nil
+	case "esc":
+		// Cancel goto line
+		v.gotoLineMode = false
+		v.gotoLineInput = ""
+		return v, nil
+	case "backspace":
+		if len(v.gotoLineInput) > 0 {
+			v.gotoLineInput = v.gotoLineInput[:len(v.gotoLineInput)-1]
+		}
+	default:
+		// Only accept digits
+		if len(msg.String()) == 1 && msg.String()[0] >= '0' && msg.String()[0] <= '9' {
+			v.gotoLineInput += msg.String()
+		}
+	}
+	return v, nil
+}
+
 func (v *Viewer) waitForSecondG() tea.Cmd {
 	return func() tea.Msg {
 		return GotoTopMsg{}
@@ -165,6 +210,14 @@ func (v *Viewer) renderSearchBar() string {
 		Padding(0, 1)
 
 	return searchStyle.Render("/" + v.searchQuery)
+}
+
+func (v *Viewer) renderGotoLineBar() string {
+	gotoStyle := lipgloss.NewStyle().
+		Foreground(styles.DefaultTheme.Accent).
+		Padding(0, 1)
+
+	return gotoStyle.Render(":" + v.gotoLineInput)
 }
 
 func (v *Viewer) executeSearch() {
@@ -214,6 +267,60 @@ func (v *Viewer) prevSearchMatch() {
 	}
 
 	v.viewport.YOffset = v.searchMatches[v.currentMatch]
+}
+
+func (v *Viewer) executeGotoLine() {
+	if v.gotoLineInput == "" {
+		return
+	}
+
+	lineNum, err := strconv.Atoi(v.gotoLineInput)
+	if err != nil {
+		return
+	}
+
+	// Convert to 0-based index
+	lineNum--
+
+	// Clamp to valid range
+	lines := strings.Split(v.rendered, "\n")
+	if lineNum < 0 {
+		lineNum = 0
+	}
+	if lineNum >= len(lines) {
+		lineNum = len(lines) - 1
+	}
+
+	v.viewport.YOffset = lineNum
+}
+
+func (v *Viewer) getViewportContent() string {
+	if !v.showLineNums {
+		return v.viewport.View()
+	}
+
+	// Add line numbers to viewport content
+	lines := strings.Split(v.rendered, "\n")
+	maxLineNum := len(lines)
+	lineNumWidth := len(fmt.Sprintf("%d", maxLineNum))
+
+	numberedLines := make([]string, 0, len(lines))
+	for i, line := range lines {
+		lineNum := i + 1
+		lineNumStr := fmt.Sprintf("%*d ", lineNumWidth, lineNum)
+		lineNumStyle := lipgloss.NewStyle().
+			Foreground(styles.DefaultTheme.Muted)
+		numberedLines = append(numberedLines, lineNumStyle.Render(lineNumStr)+line)
+	}
+
+	numberedContent := strings.Join(numberedLines, "\n")
+
+	// Create a temporary viewport with numbered content
+	tempViewport := viewport.New(v.viewport.Width, v.viewport.Height)
+	tempViewport.SetContent(numberedContent)
+	tempViewport.YOffset = v.viewport.YOffset
+
+	return tempViewport.View()
 }
 
 func (v *Viewer) renderContent() {
@@ -330,4 +437,25 @@ func (v *Viewer) GetContent() string {
 // GetTitle returns the current viewer title
 func (v *Viewer) GetTitle() string {
 	return v.title
+}
+
+// IsGotoLineMode returns whether the viewer is in goto-line mode
+func (v *Viewer) IsGotoLineMode() bool {
+	return v.gotoLineMode
+}
+
+// GetGotoLineInput returns the current goto-line input
+func (v *Viewer) GetGotoLineInput() string {
+	return v.gotoLineInput
+}
+
+// ToggleLineNumbers toggles line number display
+func (v *Viewer) ToggleLineNumbers() {
+	v.showLineNums = !v.showLineNums
+	v.renderContent()
+}
+
+// GetShowLineNumbers returns whether line numbers are shown
+func (v *Viewer) GetShowLineNumbers() bool {
+	return v.showLineNums
 }

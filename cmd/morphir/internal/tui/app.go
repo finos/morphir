@@ -287,6 +287,9 @@ func (a *App) updateStatusBar() {
 		if a.viewer.IsSearchMode() {
 			a.statusBar.SetMode("SEARCH")
 			a.statusBar.SetLeftInfo(a.viewer.GetSearchQuery())
+		} else if a.viewer.IsGotoLineMode() {
+			a.statusBar.SetMode("GOTO")
+			a.statusBar.SetLeftInfo(a.viewer.GetGotoLineInput())
 		} else {
 			a.statusBar.SetMode("VIEWER")
 			// Update position
@@ -332,6 +335,13 @@ func (a *App) showHelp() {
 | n | Next match |
 | N | Previous match |
 | Esc | Cancel search |
+
+## View Options
+
+| Key | Action |
+|-----|--------|
+| Ctrl+n | Toggle line numbers |
+| :line | Go to line number |
 
 ## General
 

@@ -30,6 +30,10 @@ type VimKeyMap struct {
 	Select     key.Binding
 	Help       key.Binding
 	Quit       key.Binding
+
+	// View options
+	ToggleLineNumbers key.Binding
+	GotoLine          key.Binding
 }
 
 // DefaultVimKeyMap returns the default vim-style keybindings
@@ -120,6 +124,16 @@ func DefaultVimKeyMap() VimKeyMap {
 			key.WithKeys("q", "ctrl+c"),
 			key.WithHelp("q", "quit"),
 		),
+
+		// View options
+		ToggleLineNumbers: key.NewBinding(
+			key.WithKeys("ctrl+n"),
+			key.WithHelp("ctrl+n", "toggle line numbers"),
+		),
+		GotoLine: key.NewBinding(
+			key.WithKeys(":"),
+			key.WithHelp(":", "go to line"),
+		),
 	}
 }
 
@@ -142,6 +156,7 @@ func (k VimKeyMap) FullHelp() [][]key.Binding {
 		{k.Top, k.Bottom},
 		{k.NextPanel, k.PrevPanel, k.ToggleSidebar},
 		{k.Search, k.NextMatch, k.PrevMatch},
+		{k.ToggleLineNumbers, k.GotoLine},
 		{k.Select, k.Help, k.Quit},
 	}
 }
