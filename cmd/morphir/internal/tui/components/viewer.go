@@ -43,7 +43,7 @@ func NewViewer(title string, km keymap.VimKeyMap) *Viewer {
 		title:         title,
 		keymap:        km,
 		viewport:      vp,
-		showLineNums:  true,  // Show line numbers by default
+		showLineNums:  false, // Line numbers off by default for rendered content
 		showCursor:    true,  // Show cursor line highlight by default
 		cursorLine:    0,     // Start at first line
 		searchMatches: make([]int, 0),
