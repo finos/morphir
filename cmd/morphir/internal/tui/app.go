@@ -114,6 +114,32 @@ func WithOnQuit(fn func()) AppOption {
 
 // Init implements tea.Model
 func (a *App) Init() tea.Cmd {
+	// Auto-select the first item if we have an onSelect callback and sidebar items
+	if a.onSelect != nil {
+		items := a.sidebar.GetItems()
+		if len(items) > 0 {
+			firstItem := findFirstSelectableItem(items)
+			if firstItem != nil {
+				_ = a.onSelect(firstItem)
+			}
+		}
+	}
+	return nil
+}
+
+// findFirstSelectableItem recursively finds the first selectable item
+func findFirstSelectableItem(items []*components.SidebarItem) *components.SidebarItem {
+	for _, item := range items {
+		if len(item.Children) > 0 {
+			// Try children first
+			if child := findFirstSelectableItem(item.Children); child != nil {
+				return child
+			}
+		} else {
+			// This is a leaf item, return it
+			return item
+		}
+	}
 	return nil
 }
 

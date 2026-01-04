@@ -169,7 +169,9 @@ func (s *StatusBar) SetKeybindings(bindings []string) {
 
 // SetPosition updates the right info with current position
 func (s *StatusBar) SetPosition(line, total int) {
-	s.rightInfo = fmt.Sprintf("Ln %d/%d", line, total)
+	// Calculate width needed for total to ensure alignment
+	totalWidth := len(fmt.Sprintf("%d", total))
+	s.rightInfo = fmt.Sprintf("Ln %*d/%d", totalWidth, line, total)
 }
 
 // SetWidth updates the width of the status bar

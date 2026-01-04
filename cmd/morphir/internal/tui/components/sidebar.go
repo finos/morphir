@@ -272,6 +272,11 @@ func (s *Sidebar) SetItems(items []*SidebarItem) {
 	s.rebuildFlatItems()
 }
 
+// GetItems returns the current sidebar items
+func (s *Sidebar) GetItems() []*SidebarItem {
+	return s.items
+}
+
 // AddItem adds a single item to the sidebar
 func (s *Sidebar) AddItem(item *SidebarItem) {
 	s.items = append(s.items, item)
