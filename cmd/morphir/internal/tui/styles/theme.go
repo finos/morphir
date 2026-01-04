@@ -4,19 +4,19 @@ import "github.com/charmbracelet/lipgloss"
 
 // Theme defines the color palette and styles for the TUI
 type Theme struct {
-	Primary        lipgloss.AdaptiveColor
-	Secondary      lipgloss.AdaptiveColor
-	Accent         lipgloss.AdaptiveColor
-	Muted          lipgloss.AdaptiveColor
-	Background     lipgloss.AdaptiveColor
-	Foreground     lipgloss.AdaptiveColor
-	Border         lipgloss.AdaptiveColor
-	SelectedBg     lipgloss.AdaptiveColor
-	SelectedFg     lipgloss.AdaptiveColor
-	ErrorFg        lipgloss.AdaptiveColor
-	WarningFg      lipgloss.AdaptiveColor
-	SuccessFg      lipgloss.AdaptiveColor
-	InfoFg         lipgloss.AdaptiveColor
+	Primary    lipgloss.AdaptiveColor
+	Secondary  lipgloss.AdaptiveColor
+	Accent     lipgloss.AdaptiveColor
+	Muted      lipgloss.AdaptiveColor
+	Background lipgloss.AdaptiveColor
+	Foreground lipgloss.AdaptiveColor
+	Border     lipgloss.AdaptiveColor
+	SelectedBg lipgloss.AdaptiveColor
+	SelectedFg lipgloss.AdaptiveColor
+	ErrorFg    lipgloss.AdaptiveColor
+	WarningFg  lipgloss.AdaptiveColor
+	SuccessFg  lipgloss.AdaptiveColor
+	InfoFg     lipgloss.AdaptiveColor
 }
 
 // DefaultTheme provides a professional, terminal-friendly color scheme

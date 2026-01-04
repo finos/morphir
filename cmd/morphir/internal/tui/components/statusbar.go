@@ -12,12 +12,12 @@ import (
 
 // StatusBar displays status information and keybinding hints at the bottom of the screen
 type StatusBar struct {
-	width      int
-	mode       string
-	leftInfo   string
-	rightInfo  string
+	width       int
+	mode        string
+	leftInfo    string
+	rightInfo   string
 	keybindings []string
-	keymap     keymap.VimKeyMap
+	keymap      keymap.VimKeyMap
 }
 
 // NewStatusBar creates a new status bar component

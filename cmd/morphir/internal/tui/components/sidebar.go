@@ -23,18 +23,18 @@ type SidebarItem struct {
 
 // Sidebar displays a collapsible tree or list view
 type Sidebar struct {
-	width      int
-	height     int
-	items      []*SidebarItem
-	flatItems  []*SidebarItem // Flattened view based on expansion state
-	selected   int
-	viewport   viewport.Model
-	visible    bool
-	title      string
-	keymap     keymap.VimKeyMap
-	filter     string
-	treeMode   bool // true for tree, false for flat list
-	focused    bool // Whether this sidebar has focus
+	width     int
+	height    int
+	items     []*SidebarItem
+	flatItems []*SidebarItem // Flattened view based on expansion state
+	selected  int
+	viewport  viewport.Model
+	visible   bool
+	title     string
+	keymap    keymap.VimKeyMap
+	filter    string
+	treeMode  bool // true for tree, false for flat list
+	focused   bool // Whether this sidebar has focus
 }
 
 // NewSidebar creates a new sidebar component
@@ -64,7 +64,7 @@ func (s *Sidebar) Update(msg tea.Msg) (*Sidebar, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		s.width = msg.Width
 		s.height = msg.Height
-		s.viewport.Width = s.width - 2 // Account for borders
+		s.viewport.Width = s.width - 2   // Account for borders
 		s.viewport.Height = s.height - 3 // Account for title and borders
 	case tea.MouseMsg:
 		// Handle mouse wheel scrolling

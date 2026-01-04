@@ -5,31 +5,31 @@ import "github.com/charmbracelet/bubbles/key"
 // VimKeyMap defines vim-style keybindings for TUI navigation
 type VimKeyMap struct {
 	// Navigation
-	Up         key.Binding
-	Down       key.Binding
-	Left       key.Binding
-	Right      key.Binding
-	PageUp     key.Binding
-	PageDown   key.Binding
-	HalfPageUp key.Binding
+	Up           key.Binding
+	Down         key.Binding
+	Left         key.Binding
+	Right        key.Binding
+	PageUp       key.Binding
+	PageDown     key.Binding
+	HalfPageUp   key.Binding
 	HalfPageDown key.Binding
-	Top        key.Binding
-	Bottom     key.Binding
+	Top          key.Binding
+	Bottom       key.Binding
 
 	// Panel navigation
-	NextPanel key.Binding
-	PrevPanel key.Binding
+	NextPanel     key.Binding
+	PrevPanel     key.Binding
 	ToggleSidebar key.Binding
 
 	// Search
-	Search     key.Binding
-	NextMatch  key.Binding
-	PrevMatch  key.Binding
+	Search    key.Binding
+	NextMatch key.Binding
+	PrevMatch key.Binding
 
 	// Actions
-	Select     key.Binding
-	Help       key.Binding
-	Quit       key.Binding
+	Select key.Binding
+	Help   key.Binding
+	Quit   key.Binding
 
 	// View options
 	ToggleLineNumbers key.Binding

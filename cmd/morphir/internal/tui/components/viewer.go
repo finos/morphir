@@ -24,8 +24,8 @@ type Viewer struct {
 	title         string
 	keymap        keymap.VimKeyMap
 	showLineNums  bool
-	showCursor    bool   // Show cursor line highlight
-	cursorLine    int    // Current cursor line (0-based)
+	showCursor    bool // Show cursor line highlight
+	cursorLine    int  // Current cursor line (0-based)
 	renderer      *glamour.TermRenderer
 	searchMode    bool
 	searchQuery   string
@@ -33,7 +33,7 @@ type Viewer struct {
 	currentMatch  int
 	gotoLineMode  bool
 	gotoLineInput string
-	focused       bool   // Whether this viewer has focus
+	focused       bool // Whether this viewer has focus
 }
 
 // NewViewer creates a new viewer component

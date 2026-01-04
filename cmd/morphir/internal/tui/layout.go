@@ -8,12 +8,12 @@ import (
 
 // Layout manages the positioning and sizing of TUI components
 type Layout struct {
-	width         int
-	height        int
-	sidebarWidth  int
+	width           int
+	height          int
+	sidebarWidth    int
 	minSidebarWidth int
 	maxSidebarWidth int
-	sidebarVisible bool
+	sidebarVisible  bool
 }
 
 // NewLayout creates a new layout manager
@@ -84,10 +84,10 @@ func (l *Layout) CalculateDimensions() LayoutDimensions {
 	contentHeight := l.GetContentHeight()
 
 	return LayoutDimensions{
-		SidebarWidth:  l.GetSidebarWidth(),
-		SidebarHeight: contentHeight,
-		ViewerWidth:   l.GetViewerWidth(),
-		ViewerHeight:  contentHeight,
+		SidebarWidth:   l.GetSidebarWidth(),
+		SidebarHeight:  contentHeight,
+		ViewerWidth:    l.GetViewerWidth(),
+		ViewerHeight:   contentHeight,
 		StatusBarWidth: l.width,
 		SidebarVisible: l.sidebarVisible,
 	}
