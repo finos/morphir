@@ -330,12 +330,18 @@ func (v *Viewer) renderContent() {
 		return
 	}
 
-	// Initialize renderer if needed
+	// Determine wrap width - use a reasonable default if viewport not sized yet
+	wrapWidth := v.viewport.Width
+	if wrapWidth == 0 {
+		wrapWidth = 80 // Default width before first resize
+	}
+
+	// Initialize renderer if needed or if width changed significantly
 	if v.renderer == nil {
 		// Use auto-detection for dark/light mode
 		renderer, err := glamour.NewTermRenderer(
 			glamour.WithAutoStyle(),
-			glamour.WithWordWrap(v.viewport.Width),
+			glamour.WithWordWrap(wrapWidth),
 		)
 		if err != nil {
 			// Fallback to plain content
