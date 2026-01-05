@@ -12,9 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **`morphir about` command**: Display version, platform information, and embedded changelog
   - Shows version, git commit, build date, Go version, and platform details
-  - `--changelog` flag to display full embedded CHANGELOG.md with markdown rendering
+  - `--changelog` flag displays full embedded CHANGELOG.md with colorful markdown rendering by default
+  - `--no-color` flag and `NO_COLOR` environment variable support for plain text output
   - `--json` flag for programmatic access to version information
   - Embedded CHANGELOG synced automatically during build process
+  - Glamour-powered markdown rendering with automatic dark/light theme detection
 - **Install script enhancements**: Support for installing specific versions
   - `install.sh <version>` and `install.ps1 <version>` now accept version argument
   - Still defaults to latest release if no version specified
