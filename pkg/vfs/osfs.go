@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // OSFile is a file backed by the local filesystem.
@@ -70,12 +71,17 @@ func (f OSFolder) Children() ([]Entry, error) {
 			return nil, err
 		}
 		childOSPath := filepath.Join(f.osPath, entry.Name())
+		info, err := entry.Info()
+		if err != nil {
+			return nil, err
+		}
+		childMeta := metaWithOSInfo(f.meta, info, childOSPath)
 
 		if entry.IsDir() {
-			out = append(out, NewOSFolder(childPath, Meta{}, f.origin, childOSPath))
+			out = append(out, NewOSFolder(childPath, childMeta, f.origin, childOSPath))
 			continue
 		}
-		out = append(out, NewOSFile(childPath, Meta{}, f.origin, childOSPath))
+		out = append(out, NewOSFile(childPath, childMeta, f.origin, childOSPath))
 	}
 
 	return out, nil
@@ -89,4 +95,22 @@ func NewOSMount(name string, mode MountMode, rootPath string, mountPath VPath) M
 		Mode: mode,
 		Root: root,
 	}
+}
+
+func metaWithOSInfo(base Meta, info os.FileInfo, osPath string) Meta {
+	meta := cloneMeta(base)
+	if meta.Dynamic == nil {
+		meta.Dynamic = make(map[string]any)
+	}
+
+	meta.Dynamic["os.path"] = osPath
+	if info == nil {
+		return meta
+	}
+
+	meta.Dynamic["os.is_dir"] = info.IsDir()
+	meta.Dynamic["os.mode"] = info.Mode().String()
+	meta.Dynamic["os.size"] = info.Size()
+	meta.Dynamic["os.mod_time"] = info.ModTime().UTC().Format(time.RFC3339)
+	return meta
 }

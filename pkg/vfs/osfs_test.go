@@ -47,6 +47,24 @@ func TestOSFolderChildren(t *testing.T) {
 	require.Equal(t, MustVPath("/dir/b.txt"), dirChildren[0].Path())
 }
 
+func TestOSFolderChildMetadata(t *testing.T) {
+	rootDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(rootDir, "a.txt"), []byte("a"), 0644))
+
+	parentMeta := Meta{
+		Dynamic: map[string]any{"parent": "value"},
+	}
+	folder := NewOSFolder(MustVPath("/"), parentMeta, Origin{MountName: "os"}, rootDir)
+	children, err := folder.Children()
+	require.NoError(t, err)
+	require.Len(t, children, 1)
+
+	childMeta := children[0].Meta()
+	require.Equal(t, "value", childMeta.Dynamic["parent"])
+	require.Equal(t, filepath.Join(rootDir, "a.txt"), childMeta.Dynamic["os.path"])
+	require.Equal(t, false, childMeta.Dynamic["os.is_dir"])
+}
+
 func TestOSFileBytesAndStream(t *testing.T) {
 	rootDir := t.TempDir()
 	path := filepath.Join(rootDir, "file.txt")
