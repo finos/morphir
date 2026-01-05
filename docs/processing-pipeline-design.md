@@ -282,6 +282,17 @@ Suggested functional helpers:
 Visitor-style helpers can be provided for case-based extension without
 type switches.
 
+### VFS Write API (Proposed)
+
+VFS should support single-operation writes with optional transactional grouping.
+Mount targeting should be exposed via a scoped writer:
+
+- `Writer()` returns a default writer that targets the highest-precedence RW mount.
+- `WriterForMount(name)` returns a writer scoped to a specific mount.
+- `Begin()` creates an optional transactional scope for batching writes.
+
+Write operations should return the updated `Entry` and enforce mount RO/RW rules.
+
 ## Extension and Traversal Patterns
 
 We will use patterns that enable extensible behavior over the core types. In Go, this

@@ -1,10 +1,6 @@
 package vfs
 
-import (
-	"errors"
-
-	"github.com/bmatcuk/doublestar/v4"
-)
+import "github.com/bmatcuk/doublestar/v4"
 
 // OverlayVFS provides a mount-based virtual filesystem with precedence.
 // Mounts are ordered from lowest to highest precedence.
@@ -17,6 +13,29 @@ func NewOverlayVFS(mounts []Mount) OverlayVFS {
 	copied := make([]Mount, len(mounts))
 	copy(copied, mounts)
 	return OverlayVFS{mounts: copied}
+}
+
+// Writer returns a writer that targets the highest-precedence RW mount.
+func (vfs OverlayVFS) Writer() (VFSWriter, error) {
+	for i := len(vfs.mounts) - 1; i >= 0; i-- {
+		if vfs.mounts[i].Mode == MountRW {
+			return &overlayWriter{vfs: vfs, mount: &vfs.mounts[i]}, nil
+		}
+	}
+	return nil, VFSError{Code: ErrReadOnlyMountCode, Op: "writer"}
+}
+
+// WriterForMount returns a writer scoped to a specific mount.
+func (vfs OverlayVFS) WriterForMount(name string) (VFSWriter, error) {
+	for i := range vfs.mounts {
+		if vfs.mounts[i].Name == name {
+			if vfs.mounts[i].Mode != MountRW {
+				return nil, VFSError{Code: ErrReadOnlyMountCode, Mount: name, Op: "writer_for_mount"}
+			}
+			return &overlayWriter{vfs: vfs, mount: &vfs.mounts[i]}, nil
+		}
+	}
+	return nil, VFSError{Code: ErrMountNotFoundCode, Mount: name, Op: "writer_for_mount"}
 }
 
 // Resolve returns the visible entry at a path and its shadowed lineage.
@@ -48,7 +67,7 @@ func (vfs OverlayVFS) Resolve(path VPath) (Entry, []ShadowedEntry, error) {
 	}
 
 	if visible == nil {
-		return nil, nil, errors.New("vfs: entry not found")
+		return nil, nil, VFSError{Code: ErrNotFoundCode, Path: path, Op: "resolve"}
 	}
 
 	return visible, shadowed, nil
@@ -178,9 +197,9 @@ func walkEntry(entry Entry, fn func(Entry) error) error {
 	}
 
 	children, err := folder.Children()
-	if err != nil {
-		return err
-	}
+			if err != nil {
+				return err
+			}
 	for _, child := range children {
 		if err := walkEntry(child, fn); err != nil {
 			return err

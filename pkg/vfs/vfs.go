@@ -106,4 +106,34 @@ type VFS interface {
 	Resolve(path VPath) (Entry, []ShadowedEntry, error)
 	List(path VPath, opts ListOptions) ([]Entry, error)
 	Find(glob Glob, opts FindOptions) ([]Entry, error)
+
+	Writer() (VFSWriter, error)
+	WriterForMount(name string) (VFSWriter, error)
+}
+
+// WriteOptions configures write behavior.
+type WriteOptions struct {
+	MkdirParents bool
+	Overwrite    bool
+}
+
+// VFSWriter performs write operations.
+type VFSWriter interface {
+	CreateFile(path VPath, data []byte, opts WriteOptions) (Entry, error)
+	CreateFolder(path VPath, opts WriteOptions) (Entry, error)
+	UpdateFile(path VPath, data []byte, opts WriteOptions) (Entry, error)
+	Delete(path VPath) (Entry, error)
+	Move(from VPath, to VPath, opts WriteOptions) (Entry, error)
+	Begin() (VFSTransaction, error)
+}
+
+// VFSTransaction batches write operations.
+type VFSTransaction interface {
+	CreateFile(path VPath, data []byte, opts WriteOptions) (Entry, error)
+	CreateFolder(path VPath, opts WriteOptions) (Entry, error)
+	UpdateFile(path VPath, data []byte, opts WriteOptions) (Entry, error)
+	Delete(path VPath) (Entry, error)
+	Move(from VPath, to VPath, opts WriteOptions) (Entry, error)
+	Commit() error
+	Rollback() error
 }
