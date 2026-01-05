@@ -7,7 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-01-04
+
 ### Added
+- **Interactive TUI Framework**: Full-featured terminal UI with vim-style navigation
+  - Modern terminal interface using Bubbletea and Lipgloss
+  - Vim-style keybindings (h/j/k/l navigation, gg/G, Ctrl+d/u)
+  - Three-panel layout: sidebar, content viewer, and status bar
+  - Markdown rendering support with syntax highlighting
+  - Collapsible sections and tree navigation
+  - Demo application showcasing TUI capabilities
+- **Markdown Rendering**: Rich markdown support in terminal
+  - Headings, lists, code blocks with syntax highlighting
+  - Links, emphasis (bold, italic), blockquotes
+  - Horizontal rules and inline code
+  - Configurable color themes
+- **Enhanced Validation**: Improved `morphir validate` command
+  - Better error reporting and diagnostics
+  - JSON output support for programmatic use
+  - Validation of Morphir IR structure
 - **Layered Configuration System**: Complete configuration management with multiple sources
   - TOML file support (`morphir.toml`, `.morphir/morphir.toml`)
   - XDG-compliant path resolution for global config (`~/.config/morphir/`)
@@ -29,22 +47,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **New Packages**:
   - `pkg/config` - Public configuration API with immutable types
   - `pkg/tooling/workspace` - Workspace discovery and initialization
+  - `pkg/tooling/markdown` - Markdown rendering for terminal output
+  - `cmd/morphir/internal/tui` - Reusable TUI framework components
 - **Documentation**:
   - Comprehensive configuration guide (`docs/configuration.md`)
+  - TUI framework documentation and examples
   - Package documentation (`doc.go` files)
   - Example configurations (`examples/morphir.toml`, `examples/morphir.minimal.toml`)
   - Updated README with Configuration section
-- GoReleaser configuration for automated releases
-- GitHub Actions CI workflow for format, lint, test, and build checks
-- GitHub Actions release workflow for automated releases on tags
-- Version information in CLI (`morphir --version`)
-- Cross-platform support: Linux, macOS, Windows (amd64, arm64)
-- Changelog management following Keep a Changelog format
+  - New DEVELOPING.md and INSTALLING.md guides
+- **Release Infrastructure**:
+  - GoReleaser configuration for automated releases
+  - GitHub Actions CI workflow for format, lint, test, and build checks
+  - GitHub Actions release workflow for automated releases on tags
+  - Release preparation scripts with multi-module tagging support
+  - `go install` support with proper module structure
+- **Development Tools**:
+  - Installation scripts for Linux/macOS and Windows (PowerShell)
+  - Development setup scripts
+  - Changelog suggestion script
+  - Enhanced Justfile with new development targets
 
 ### Changed
 - `morphir workspace init` now fully functional (was stubbed)
 - Migrated morphir-go codebase into main morphir repository
 - Updated module paths from `github.com/finos/morphir-go` to `github.com/finos/morphir`
+- Enhanced build system with workspace-based development support
+- Improved CLI architecture for better extensibility
+
+### Fixed
+- Module path resolution for `go install` compatibility
+- Replace directives handling in multi-module workspace
 
 ## [0.1.0] - 2026-01-01
 
@@ -72,5 +105,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Duplicate help command registration in CLI
 
-[Unreleased]: https://github.com/finos/morphir/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/finos/morphir/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/finos/morphir/compare/v0.2.1...v0.3.0
 [0.1.0]: https://github.com/finos/morphir/releases/tag/v0.1.0
