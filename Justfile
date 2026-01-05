@@ -37,47 +37,25 @@ _powershell:
             echo ""; \
         fi'
 
+# Sync CHANGELOG.md to cmd directory for embedding
+sync-changelog:
+    @echo "Syncing CHANGELOG.md to cmd directory..."
+    @cp CHANGELOG.md cmd/morphir/cmd/CHANGELOG.md
+
 # Build the CLI application
-build:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    echo "Building morphir CLI..."
-    # Determine binary extension based on GOOS (for cross-compilation) or current OS
-    EXT=""
-    if [ "${GOOS:-}" = "windows" ]; then
-        EXT=".exe"
-    elif [ "${GOOS:-}" = "" ]; then
-        # GOOS not set, detect current OS
-        OS=$(./scripts/detect-os.sh)
-        if [ "$OS" = "windows" ]; then
-            EXT=".exe"
-        fi
-    fi
-    # Create bin directory if it doesn't exist
-    mkdir -p bin
-    # Build the binary
-    go build -o "bin/morphir${EXT}" ./cmd/morphir
+build: sync-changelog
+    @echo "Building morphir CLI..."
+    {{if os() == "windows" { "powershell -c \"if (-not (Test-Path bin)) { New-Item -ItemType Directory -Path bin }\"" } else { "mkdir -p bin" } }}
+    {{if os() == "windows" { "go build -o bin/morphir.exe ./cmd/morphir" } else { "go build -o bin/morphir ./cmd/morphir" } }}
 
 # Build the development version of the CLI (morphir-dev)
-build-dev:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    echo "Building morphir-dev CLI..."
-    # Determine binary extension based on GOOS or current OS
-    EXT=""
-    if [ "${GOOS:-}" = "windows" ]; then
-        EXT=".exe"
-    elif [ "${GOOS:-}" = "" ]; then
-        OS=$(./scripts/detect-os.sh)
-        if [ "$OS" = "windows" ]; then
-            EXT=".exe"
-        fi
-    fi
-    mkdir -p bin
-    go build -o "bin/morphir-dev${EXT}" ./cmd/morphir
+build-dev: sync-changelog
+    @echo "Building morphir-dev CLI..."
+    {{if os() == "windows" { "powershell -c \"if (-not (Test-Path bin)) { New-Item -ItemType Directory -Path bin }\"" } else { "mkdir -p bin" } }}
+    {{if os() == "windows" { "go build -o bin/morphir-dev.exe ./cmd/morphir" } else { "go build -o bin/morphir-dev ./cmd/morphir" } }}
 
 # Run tests across all modules
-test:
+test: sync-changelog
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Running tests..."
@@ -94,7 +72,7 @@ fmt:
     go fmt ./...
 
 # Check code formatting without modifying files
-fmt-check:
+fmt-check: sync-changelog
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Checking code formatting..."
@@ -110,7 +88,7 @@ fmt-check:
     fi
 
 # Run linters (requires golangci-lint)
-lint:
+lint: sync-changelog
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Running linters..."
@@ -137,19 +115,7 @@ deps:
 
 # Run go mod tidy for all modules
 mod-tidy:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    OS=$(./scripts/detect-os.sh)
-    if [ "$OS" = "windows" ]; then
-        if command -v pwsh >/dev/null 2>&1; then
-            PS="pwsh"
-        else
-            PS="powershell"
-        fi
-        "$PS" -ExecutionPolicy Bypass -File scripts/mod-tidy.ps1
-    else
-        ./scripts/mod-tidy.sh
-    fi
+    {{if os() == "windows" { "powershell -ExecutionPolicy Bypass -File scripts/mod-tidy.ps1" } else { "./scripts/mod-tidy.sh" } }}
 
 # Install the CLI using go install (installs to $GOPATH/bin or $GOBIN)
 install:
@@ -159,57 +125,26 @@ install:
 
 # Install the development version as morphir-dev
 install-dev: build-dev
-    #!/usr/bin/env bash
-    set -euo pipefail
-    OS=$(./scripts/detect-os.sh)
-    if [ "$OS" = "windows" ]; then
-        if command -v pwsh >/dev/null 2>&1; then
-            PS="pwsh"
-        else
-            PS="powershell"
-        fi
-        "$PS" -ExecutionPolicy Bypass -File scripts/install-dev.ps1
-    else
-        ./scripts/install-dev.sh
-    fi
+    {{if os() == "windows" { "powershell -ExecutionPolicy Bypass -File scripts/install-dev.ps1" } else { "./scripts/install-dev.sh" } }}
 
 # Run the CLI application
 run: build
-    #!/usr/bin/env bash
-    set -euo pipefail
-    EXT=""
-    OS=$(./scripts/detect-os.sh)
-    if [ "$OS" = "windows" ]; then
-        EXT=".exe"
-    fi
-    "./bin/morphir${EXT}"
+    {{if os() == "windows" { "./bin/morphir.exe" } else { "./bin/morphir" } }}
 
 # Run the development version of the CLI
 run-dev: build-dev
-    #!/usr/bin/env bash
-    set -euo pipefail
-    EXT=""
-    OS=$(./scripts/detect-os.sh)
-    if [ "$OS" = "windows" ]; then
-        EXT=".exe"
-    fi
-    "./bin/morphir-dev${EXT}"
+    {{if os() == "windows" { "./bin/morphir-dev.exe" } else { "./bin/morphir-dev" } }}
 
 # Verify all modules build successfully
-verify:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    OS=$(./scripts/detect-os.sh)
-    if [ "$OS" = "windows" ]; then
-        if command -v pwsh >/dev/null 2>&1; then
-            PS="pwsh"
-        else
-            PS="powershell"
-        fi
-        "$PS" -ExecutionPolicy Bypass -File scripts/verify.ps1
-    else
-        ./scripts/verify.sh
-    fi
+verify: sync-changelog
+    {{if os() == "windows" { "powershell -ExecutionPolicy Bypass -File scripts/verify.ps1" } else { "./scripts/verify.sh" } }}
+
+# Test external consumption (building without go.work)
+test-external: sync-changelog
+    @echo "Testing external consumption (no go.work)..."
+    @echo "This verifies that module versions in go.mod are correct."
+    @cd cmd/morphir && go mod download && go build .
+    @echo "✅ cmd/morphir builds successfully as external consumer would use it"
 
 # Configure Go workspace for local development
 dev-setup:

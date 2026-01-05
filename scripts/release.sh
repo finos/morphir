@@ -115,9 +115,42 @@ log_success "All tests pass"
 
 # Check 7: Verify CI passed on main
 log_info "Checking CI status on main..."
-CI_STATUS=$(gh run list --branch=main --limit=1 --json conclusion -q '.[0].conclusion')
-if [ "$CI_STATUS" != "success" ]; then
-    log_warning "Latest CI run on main: $CI_STATUS"
+CI_STATUS=$(gh run list --branch=main --limit=1 --json conclusion,status -q '.[0]')
+CI_CONCLUSION=$(echo "$CI_STATUS" | jq -r '.conclusion')
+CI_RUN_STATUS=$(echo "$CI_STATUS" | jq -r '.status')
+
+if [ "$CI_RUN_STATUS" = "in_progress" ] || [ "$CI_RUN_STATUS" = "queued" ]; then
+    log_warning "CI is currently $CI_RUN_STATUS on main"
+    log_info "Waiting for CI to complete (timeout: 10 minutes)..."
+
+    TIMEOUT=600  # 10 minutes
+    ELAPSED=0
+    POLL_INTERVAL=30
+
+    while [ $ELAPSED -lt $TIMEOUT ]; do
+        sleep $POLL_INTERVAL
+        ELAPSED=$((ELAPSED + POLL_INTERVAL))
+
+        CI_STATUS=$(gh run list --branch=main --limit=1 --json conclusion,status -q '.[0]')
+        CI_CONCLUSION=$(echo "$CI_STATUS" | jq -r '.conclusion')
+        CI_RUN_STATUS=$(echo "$CI_STATUS" | jq -r '.status')
+
+        if [ "$CI_RUN_STATUS" != "in_progress" ] && [ "$CI_RUN_STATUS" != "queued" ]; then
+            break
+        fi
+
+        log_info "Still waiting... ($ELAPSED/${TIMEOUT}s elapsed)"
+    done
+
+    if [ $ELAPSED -ge $TIMEOUT ]; then
+        log_error "CI did not complete within timeout"
+        log_info "Check: gh run list --branch=main --limit=5"
+        exit 1
+    fi
+fi
+
+if [ "$CI_CONCLUSION" != "success" ]; then
+    log_warning "Latest CI run on main: $CI_CONCLUSION"
     log_info "Check: gh run list --branch=main --limit=5"
     read -p "Continue anyway? (y/N) " -n 1 -r
     echo

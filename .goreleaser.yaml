@@ -8,6 +8,8 @@ before:
     # Safeguard: Remove any replace directives that may have been accidentally committed
     # This ensures go install compatibility
     - bash ./scripts/remove-replace-directives.sh
+    # Sync CHANGELOG.md for embedding in about command
+    - cp CHANGELOG.md cmd/morphir/cmd/CHANGELOG.md
     # Ensure all modules have their dependencies in order
     - go mod tidy -C cmd/morphir
     - go mod tidy -C pkg/models

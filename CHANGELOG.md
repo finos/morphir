@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-01-05
+
+### Added
+- **`morphir about` command**: Display version, platform information, and embedded changelog
+  - Shows version, git commit, build date, Go version, and platform details
+  - `--changelog` flag displays full embedded CHANGELOG.md with colorful markdown rendering by default
+  - `--no-color` flag and `NO_COLOR` environment variable support for plain text output
+  - `--json` flag for programmatic access to version information
+  - Embedded CHANGELOG synced automatically during build process
+  - Glamour-powered markdown rendering with automatic dark/light theme detection
+- **Install script enhancements**: Support for installing specific versions
+  - `install.sh <version>` and `install.ps1 <version>` now accept version argument
+  - Still defaults to latest release if no version specified
+  - Downloads pre-built binaries from GitHub releases (no Go required)
+
+### Fixed
+- **Release script CI wait logic**: Improved automation and reliability
+  - Now actively polls and waits for CI to complete (10 minute timeout)
+  - Shows progress indicators during wait
+  - Prevents releases when CI is still running or failed
+  - Reduces manual intervention needed for releases
+
+### Changed
+- **Build process**: CHANGELOG.md now automatically synced to cmd directory
+  - Added `sync-changelog` just recipe with dependency tracking
+  - GoReleaser hooks updated to include changelog sync
+  - `.gitignore` updated to exclude generated `cmd/morphir/cmd/CHANGELOG.md`
+
 ## [0.3.2] - 2026-01-05
 
 ### Fixed
