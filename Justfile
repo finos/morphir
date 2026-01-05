@@ -44,42 +44,15 @@ sync-changelog:
 
 # Build the CLI application
 build: sync-changelog
-    #!/usr/bin/env bash
-    set -euo pipefail
-    echo "Building morphir CLI..."
-    # Determine binary extension based on GOOS (for cross-compilation) or current OS
-    EXT=""
-    if [ "${GOOS:-}" = "windows" ]; then
-        EXT=".exe"
-    elif [ "${GOOS:-}" = "" ]; then
-        # GOOS not set, detect current OS
-        OS=$(./scripts/detect-os.sh)
-        if [ "$OS" = "windows" ]; then
-            EXT=".exe"
-        fi
-    fi
-    # Create bin directory if it doesn't exist
-    mkdir -p bin
-    # Build the binary
-    go build -o "bin/morphir${EXT}" ./cmd/morphir
+    @echo "Building morphir CLI..."
+    {{if os() == "windows" { "powershell -c \"if (-not (Test-Path bin)) { New-Item -ItemType Directory -Path bin }\"" } else { "mkdir -p bin" } }}
+    {{if os() == "windows" { "go build -o bin/morphir.exe ./cmd/morphir" } else { "go build -o bin/morphir ./cmd/morphir" } }}
 
 # Build the development version of the CLI (morphir-dev)
 build-dev: sync-changelog
-    #!/usr/bin/env bash
-    set -euo pipefail
-    echo "Building morphir-dev CLI..."
-    # Determine binary extension based on GOOS or current OS
-    EXT=""
-    if [ "${GOOS:-}" = "windows" ]; then
-        EXT=".exe"
-    elif [ "${GOOS:-}" = "" ]; then
-        OS=$(./scripts/detect-os.sh)
-        if [ "$OS" = "windows" ]; then
-            EXT=".exe"
-        fi
-    fi
-    mkdir -p bin
-    go build -o "bin/morphir-dev${EXT}" ./cmd/morphir
+    @echo "Building morphir-dev CLI..."
+    {{if os() == "windows" { "powershell -c \"if (-not (Test-Path bin)) { New-Item -ItemType Directory -Path bin }\"" } else { "mkdir -p bin" } }}
+    {{if os() == "windows" { "go build -o bin/morphir-dev.exe ./cmd/morphir" } else { "go build -o bin/morphir-dev ./cmd/morphir" } }}
 
 # Run tests across all modules
 test:
