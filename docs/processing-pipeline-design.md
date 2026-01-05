@@ -46,6 +46,17 @@ type Context struct {
 	VFS           VFS
 }
 
+## VFS Integration Note
+
+The pipeline `Context` should carry a `VFS` instance so steps can access inputs and
+artifacts via a mountable filesystem abstraction. Implementation guidance:
+
+- Construct the VFS in the CLI or orchestration layer (e.g., OS-backed mounts for
+  workspace/config/env, in-memory mounts for generated artifacts).
+- Keep the pipeline steps pure: steps read from VFS and emit artifacts/diagnostics,
+  but do not perform direct OS I/O.
+- Pipeline tests can inject in-memory VFS mounts to avoid filesystem dependencies.
+
 // StepResult captures diagnostics and artifacts emitted by a step.
 type StepResult struct {
 	Diagnostics []Diagnostic
