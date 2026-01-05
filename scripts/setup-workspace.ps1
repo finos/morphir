@@ -31,6 +31,9 @@ foreach ($ModFile in $ModFiles) {
 Write-Host ""
 Write-Host "📦 Setting up go.work with $($Modules.Count) modules..." -ForegroundColor Blue
 
+# Remove existing go.work if present (idempotent operation)
+Remove-Item -Path "go.work", "go.work.sum" -ErrorAction SilentlyContinue
+
 # Initialize go.work
 go work init
 

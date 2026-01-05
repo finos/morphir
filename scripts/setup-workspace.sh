@@ -29,6 +29,9 @@ fi
 echo ""
 echo "📦 Setting up go.work with ${#MODULES[@]} modules..."
 
+# Remove existing go.work if present (idempotent operation)
+rm -f go.work go.work.sum
+
 # Initialize go.work
 go work init
 
