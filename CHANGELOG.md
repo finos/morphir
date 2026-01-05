@@ -30,11 +30,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Workflow triggering and monitoring
   - Post-release verification
   - go install compatibility testing
+- **Workspace setup scripts**: Dynamic go.work configuration
+  - `scripts/setup-workspace.sh` for Linux/macOS
+  - `scripts/setup-workspace.ps1` for Windows
+  - Automatically discovers all Go modules
+  - Used by CI and local development
+- **CI enhancements**: go.work setup for all build/test jobs
+  - All CI jobs now use go.work for local module resolution
+  - External consumption test for release PRs
+  - Verifies module versions are correct before release
 
 ### Changed
 - Development workflow: Use `go work` for local development instead of replace directives
 - Release process: Source code in tags no longer contains replace directives
 - Release process: Automated with `scripts/release.sh` for consistency
+- CI workflow: All jobs now set up go.work automatically
+  - Ensures consistent behavior between local dev and CI
+  - Release PRs get additional external consumption test
 
 ## [0.3.1] - 2026-01-05
 

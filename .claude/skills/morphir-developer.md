@@ -59,7 +59,15 @@ bd update <issue-id> --status in-progress
 
 **CRITICAL**: `go.work` must exist locally but NEVER be committed!
 
-Check and create go.work:
+**Easy Setup** - Use the provided script:
+```bash
+# Automatically discover and configure all modules
+bash ./scripts/setup-workspace.sh   # Linux/macOS
+# or
+pwsh ./scripts/setup-workspace.ps1  # Windows
+```
+
+**Manual Setup** (if needed):
 ```bash
 # Check if go.work exists
 if [ ! -f go.work ]; then
@@ -80,6 +88,11 @@ grep -q "go.work" .gitignore || echo "⚠️  WARNING: go.work should be in .git
 # Ensure go.work is not staged
 git status --short | grep "go.work" && echo "⚠️  WARNING: go.work is staged! Run: git reset go.work"
 ```
+
+**What CI Does:**
+- CI automatically runs `setup-workspace.sh` before building/testing
+- This ensures consistent behavior between local dev and CI
+- For release PRs, CI also runs an external consumption test (without go.work)
 
 ### 3. Verify Environment Setup
 
@@ -420,26 +433,39 @@ Your job as developer:
 
 ### Important: Module Version Coordination
 
-**Critical workflow for release PRs:**
+**How CI Handles Cross-Module Dependencies:**
+
+CI uses `go.work` to test local code, not published versions:
+- `setup-workspace.sh` runs before all build/test jobs
+- This makes CI use **your PR's local code**, not v0.3.1 from the registry
+- You can freely change multiple modules in a single PR
+
+**For Release PRs Only:**
 
 When creating a release PR (e.g., for v0.3.2), go.mod files must reference the **current** released version (v0.3.1), NOT the version being released (v0.3.2). This is because:
 
-1. CI needs to download module dependencies to run tests
-2. The new version (v0.3.2) doesn't exist yet, so CI will fail
-3. The release script will update versions to v0.3.2 before creating tags
+1. Release PRs get an **additional** external consumption test (without go.work)
+2. This test verifies that module versions are correct for external users
+3. The new version (v0.3.2) doesn't exist yet, so external consumption would fail
+4. The release script will update versions to v0.3.2 before creating tags
 
 **Example for v0.3.2 release:**
 ```bash
-# ❌ WRONG - CI will fail
+# ❌ WRONG - External consumption test will fail
 require (
     github.com/finos/morphir/pkg/config v0.3.2  // Doesn't exist yet!
 )
 
-# ✅ CORRECT - CI can pass
+# ✅ CORRECT - External consumption test passes
 require (
     github.com/finos/morphir/pkg/config v0.3.1  // Current released version
 )
 ```
+
+**For Non-Release PRs:**
+- You can modify multiple modules freely
+- CI uses go.work, so cross-module changes work automatically
+- No need to worry about version numbers until release time
 
 **The release-manager handles version updates automatically during release.**
 
