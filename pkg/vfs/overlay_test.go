@@ -1,6 +1,8 @@
 package vfs
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -98,6 +100,20 @@ func TestOverlayFind(t *testing.T) {
 	vfs := NewOverlayVFS([]Mount{
 		{Name: "root", Mode: MountRO, Root: root},
 	})
+
+	matches, err := vfs.Find(MustGlob("**/*.txt"), FindOptions{})
+	require.NoError(t, err)
+	require.Len(t, matches, 2)
+}
+
+func TestOverlayFindWithOSMount(t *testing.T) {
+	rootDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(rootDir, "a.txt"), []byte("a"), 0644))
+	require.NoError(t, os.MkdirAll(filepath.Join(rootDir, "dir"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(rootDir, "dir", "b.txt"), []byte("b"), 0644))
+
+	mount := NewOSMount("os", MountRO, rootDir, MustVPath("/"))
+	vfs := NewOverlayVFS([]Mount{mount})
 
 	matches, err := vfs.Find(MustGlob("**/*.txt"), FindOptions{})
 	require.NoError(t, err)
