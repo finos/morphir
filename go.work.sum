@@ -3,6 +3,9 @@ github.com/atotto/clipboard v0.1.4/go.mod h1:ZY9tmq7sm5xIbd9bOK4onWV4S6X0u6GY7Vn
 github.com/bits-and-blooms/bitset v1.22.0/go.mod h1:7hO7Gc7Pp1vODcmWvKMRA9BNmbv6a/7QIWpPxHddWR8=
 github.com/charmbracelet/harmonica v0.2.0/go.mod h1:KSri/1RMQOZLbw7AHqgcBycp8pgJnQMYYT8QZRqZ1Ao=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
+github.com/finos/morphir/pkg/config v0.3.0/go.mod h1:zTse9D7Z47N6ACFGvfOJ1sTrivghSarYeBdXkShR4U4=
+github.com/finos/morphir/pkg/models v0.3.0/go.mod h1:q6yKUR8+xTpYfLJUj75g8QQ4k9fxEpUltir3wSu3utI=
+github.com/finos/morphir/pkg/tooling v0.3.0/go.mod h1:YOzXFsG1SOignht7Xg02x3U5PB9+CO/eRMejRhPmhDQ=
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/sahilm/fuzzy v0.1.1/go.mod h1:VFvziUEIMCrT6A6tw2RFIXPXXmzXbOsSHF0DOI8ZK9Y=
 github.com/santhosh-tekuri/jsonschema/v6 v6.0.1 h1:PKK9DyHxif4LZo+uQSgXNqs0jj5+xZwwfKHgph2lxBw=

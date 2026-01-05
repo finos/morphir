@@ -32,7 +32,8 @@ for gomod in $GO_MOD_FILES; do
             -dropreplace=github.com/finos/morphir/pkg/models \
             -dropreplace=github.com/finos/morphir/pkg/pipeline \
             -dropreplace=github.com/finos/morphir/pkg/sdk \
-            -dropreplace=github.com/finos/morphir/pkg/tooling 2>/dev/null || true
+            -dropreplace=github.com/finos/morphir/pkg/tooling \
+            -dropreplace=github.com/finos/morphir/tests/bdd 2>/dev/null || true
 
         echo "  ✓ Removed replace directives from $gomod"
         cd "$PROJECT_ROOT"
