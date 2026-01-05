@@ -84,9 +84,11 @@ type Mount struct {
 
 // ShadowedEntry represents a hidden entry from a lower-precedence mount.
 type ShadowedEntry struct {
-	Entry  Entry
-	Mount  Mount
-	Reason string
+	Entry       Entry
+	Mount       Mount
+	Reason      string
+	ShadowedBy  string
+	VisiblePath VPath
 }
 
 // ListOptions configures directory listing.

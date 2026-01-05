@@ -22,6 +22,7 @@ func NewOverlayVFS(mounts []Mount) OverlayVFS {
 // Resolve returns the visible entry at a path and its shadowed lineage.
 func (vfs OverlayVFS) Resolve(path VPath) (Entry, []ShadowedEntry, error) {
 	var visible Entry
+	var visibleMountName string
 	var shadowed []ShadowedEntry
 
 	for i := len(vfs.mounts) - 1; i >= 0; i-- {
@@ -34,12 +35,15 @@ func (vfs OverlayVFS) Resolve(path VPath) (Entry, []ShadowedEntry, error) {
 		}
 		if visible == nil {
 			visible = entry
+			visibleMountName = vfs.mounts[i].Name
 			continue
 		}
 		shadowed = append(shadowed, ShadowedEntry{
-			Entry:  entry,
-			Mount:  vfs.mounts[i],
-			Reason: "overridden by higher-precedence mount",
+			Entry:       entry,
+			Mount:       vfs.mounts[i],
+			Reason:      "overridden by higher-precedence mount",
+			ShadowedBy:  visibleMountName,
+			VisiblePath: visible.Path(),
 		})
 	}
 

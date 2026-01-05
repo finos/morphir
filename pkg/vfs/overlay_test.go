@@ -34,6 +34,8 @@ func TestOverlayResolve(t *testing.T) {
 	require.Equal(t, "high", entry.Origin().MountName)
 	require.Len(t, shadowed, 1)
 	require.Equal(t, "low", shadowed[0].Entry.Origin().MountName)
+	require.Equal(t, "high", shadowed[0].ShadowedBy)
+	require.Equal(t, MustVPath("/a.txt"), shadowed[0].VisiblePath)
 }
 
 func TestOverlayResolveNotFound(t *testing.T) {
