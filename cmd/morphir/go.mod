@@ -52,9 +52,3 @@ require (
 	golang.org/x/text v0.24.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
-
-replace github.com/finos/morphir/pkg/config => ../../pkg/config
-
-replace github.com/finos/morphir/pkg/models => ../../pkg/models
-
-replace github.com/finos/morphir/pkg/tooling => ../../pkg/tooling

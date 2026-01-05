@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-01-05
+
+### Fixed
+- **CRITICAL**: Remove replace directives from source code for go install compatibility
+  - Removed all `replace` directives from cmd/morphir/go.mod
+  - Removed all `replace` directives from pkg/tooling/go.mod
+  - Removed all `replace` directives from tests/bdd/go.mod
+  - `go install github.com/finos/morphir/cmd/morphir@v0.3.2` now works correctly
+- Documented workflow trigger limitations for re-pushed tags
+
+### Added
+- **morphir-developer skill**: Comprehensive development workflow assistant
+  - go.work management and verification
+  - Branch/worktree setup with issue tracking
+  - Pre-commit checks and best practices
+  - Integration with beads and GitHub issues
+  - TDD/BDD workflow guidance
+- **Release automation script**: `scripts/release.sh` for automated releases
+  - Complete pre-flight checks
+  - Automated tag creation and pushing
+  - Workflow triggering and monitoring
+  - Post-release verification
+  - go install compatibility testing
+- **Workspace setup scripts**: Dynamic go.work configuration
+  - `scripts/setup-workspace.sh` for Linux/macOS
+  - `scripts/setup-workspace.ps1` for Windows
+  - Automatically discovers all Go modules
+  - Used by CI and local development
+- **CI enhancements**: go.work setup for all build/test jobs
+  - All CI jobs now use go.work for local module resolution
+  - External consumption test for release PRs
+  - Verifies module versions are correct before release
+
+### Changed
+- Development workflow: Use `go work` for local development instead of replace directives
+- Release process: Source code in tags no longer contains replace directives
+- Release process: Automated with `scripts/release.sh` for consistency
+- CI workflow: All jobs now set up go.work automatically
+  - Ensures consistent behavior between local dev and CI
+  - Release PRs get additional external consumption test
+
 ## [0.3.1] - 2026-01-05
 
 ### Fixed
@@ -114,7 +155,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Duplicate help command registration in CLI
 
-[Unreleased]: https://github.com/finos/morphir/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/finos/morphir/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/finos/morphir/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/finos/morphir/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/finos/morphir/compare/v0.2.1...v0.3.0
 [0.1.0]: https://github.com/finos/morphir/releases/tag/v0.1.0

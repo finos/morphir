@@ -246,6 +246,12 @@ The `go.work` file tells Go to use your local copies of modules instead of fetch
 - ✅ **No replace directives**: Cleaner go.mod files
 - ✅ **Go install compatible**: Modules can be installed via `go install` since they have no replace directives
 
+**Questions about how CI and releases work?** See [CI_RELEASE_FAQ.md](./CI_RELEASE_FAQ.md) for detailed answers about:
+- How CI tests your PR code (not old published versions)
+- How multi-module PRs work
+- How the release workflow handles versioning
+- Common troubleshooting scenarios
+
 ## Release Process
 
 For maintainers preparing releases, see the detailed release process in [AGENTS.md](./AGENTS.md).
