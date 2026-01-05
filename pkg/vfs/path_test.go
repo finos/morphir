@@ -1,92 +1,67 @@
 package vfs
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestParseVPath(t *testing.T) {
 	t.Run("absolute path normalizes", func(t *testing.T) {
 		path, err := ParseVPath("/a/./b//c")
-		if err != nil {
-			t.Fatalf("ParseVPath() error = %v", err)
-		}
-		if got := path.String(); got != "/a/b/c" {
-			t.Fatalf("ParseVPath() = %q, want %q", got, "/a/b/c")
-		}
+		require.NoError(t, err)
+		require.Equal(t, "/a/b/c", path.String())
 	})
 
 	t.Run("root path stays root", func(t *testing.T) {
 		path, err := ParseVPath("/")
-		if err != nil {
-			t.Fatalf("ParseVPath() error = %v", err)
-		}
-		if got := path.String(); got != "/" {
-			t.Fatalf("ParseVPath() = %q, want %q", got, "/")
-		}
+		require.NoError(t, err)
+		require.Equal(t, "/", path.String())
 	})
 
 	t.Run("relative path normalizes", func(t *testing.T) {
 		path, err := ParseVPath("a/./b")
-		if err != nil {
-			t.Fatalf("ParseVPath() error = %v", err)
-		}
-		if got := path.String(); got != "a/b" {
-			t.Fatalf("ParseVPath() = %q, want %q", got, "a/b")
-		}
+		require.NoError(t, err)
+		require.Equal(t, "a/b", path.String())
 	})
 
 	t.Run("rejects empty path", func(t *testing.T) {
-		if _, err := ParseVPath(""); err == nil {
-			t.Fatalf("ParseVPath() expected error")
-		}
+		_, err := ParseVPath("")
+		require.Error(t, err)
 	})
 
 	t.Run("rejects empty relative after normalization", func(t *testing.T) {
-		if _, err := ParseVPath("./"); err == nil {
-			t.Fatalf("ParseVPath() expected error")
-		}
+		_, err := ParseVPath("./")
+		require.Error(t, err)
 	})
 
 	t.Run("rejects backslashes", func(t *testing.T) {
-		if _, err := ParseVPath(`a\\b`); err == nil {
-			t.Fatalf("ParseVPath() expected error")
-		}
+		_, err := ParseVPath(`a\\b`)
+		require.Error(t, err)
 	})
 
 	t.Run("rejects escape above root", func(t *testing.T) {
-		if _, err := ParseVPath("/../a"); err == nil {
-			t.Fatalf("ParseVPath() expected error")
-		}
+		_, err := ParseVPath("/../a")
+		require.Error(t, err)
 	})
 }
 
 func TestVPathJoin(t *testing.T) {
 	base := MustVPath("/a/b")
 	joined, err := base.Join("c", "d")
-	if err != nil {
-		t.Fatalf("Join() error = %v", err)
-	}
-	if got := joined.String(); got != "/a/b/c/d" {
-		t.Fatalf("Join() = %q, want %q", got, "/a/b/c/d")
-	}
+	require.NoError(t, err)
+	require.Equal(t, "/a/b/c/d", joined.String())
 
 	relative := MustVPath("a/b")
 	relJoined, err := relative.Join("c")
-	if err != nil {
-		t.Fatalf("Join() error = %v", err)
-	}
-	if got := relJoined.String(); got != "a/b/c" {
-		t.Fatalf("Join() = %q, want %q", got, "a/b/c")
-	}
+	require.NoError(t, err)
+	require.Equal(t, "a/b/c", relJoined.String())
 }
 
 func TestMustVPath(t *testing.T) {
-	if MustVPath("a/b").String() != "a/b" {
-		t.Fatalf("MustVPath() did not return expected value")
-	}
+	require.Equal(t, "a/b", MustVPath("a/b").String())
 
-	defer func() {
-		if recover() == nil {
-			t.Fatalf("MustVPath() expected panic")
-		}
-	}()
-	_ = MustVPath("")
+	require.Panics(t, func() {
+		_ = MustVPath("")
+	})
 }

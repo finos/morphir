@@ -1,40 +1,32 @@
 package vfs
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestParseGlob(t *testing.T) {
 	t.Run("accepts simple glob", func(t *testing.T) {
 		glob, err := ParseGlob("**/*.elm")
-		if err != nil {
-			t.Fatalf("ParseGlob() error = %v", err)
-		}
-		if got := glob.String(); got != "**/*.elm" {
-			t.Fatalf("ParseGlob() = %q, want %q", got, "**/*.elm")
-		}
+		require.NoError(t, err)
+		require.Equal(t, "**/*.elm", glob.String())
 	})
 
 	t.Run("rejects empty glob", func(t *testing.T) {
-		if _, err := ParseGlob(""); err == nil {
-			t.Fatalf("ParseGlob() expected error")
-		}
+		_, err := ParseGlob("")
+		require.Error(t, err)
 	})
 
 	t.Run("rejects backslashes", func(t *testing.T) {
-		if _, err := ParseGlob(`**\\*.elm`); err == nil {
-			t.Fatalf("ParseGlob() expected error")
-		}
+		_, err := ParseGlob(`**\\*.elm`)
+		require.Error(t, err)
 	})
 }
 
 func TestMustGlob(t *testing.T) {
-	if MustGlob("**/*.elm").String() != "**/*.elm" {
-		t.Fatalf("MustGlob() did not return expected value")
-	}
-
-	defer func() {
-		if recover() == nil {
-			t.Fatalf("MustGlob() expected panic")
-		}
-	}()
-	_ = MustGlob("")
+	require.Equal(t, "**/*.elm", MustGlob("**/*.elm").String())
+	require.Panics(t, func() {
+		_ = MustGlob("")
+	})
 }
