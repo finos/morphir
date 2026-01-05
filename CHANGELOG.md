@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-01-05
+
+### Fixed
+- Complete module version references for all internal dependencies
+  - Updated pkg/tooling/go.mod to reference v0.3.0 for pkg/config and pkg/models
+  - Updated tests/bdd/go.mod to reference v0.3.0 for pkg/models
+  - Fixed release workflow to handle existing tags with `-f` flag
+- Release workflow now supports manual re-triggering for failed releases
+
 ## [0.3.0] - 2026-01-04
 
 ### Added
@@ -105,6 +114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Duplicate help command registration in CLI
 
-[Unreleased]: https://github.com/finos/morphir/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/finos/morphir/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/finos/morphir/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/finos/morphir/compare/v0.2.1...v0.3.0
 [0.1.0]: https://github.com/finos/morphir/releases/tag/v0.1.0
