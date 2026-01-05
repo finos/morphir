@@ -1,0 +1,103 @@
+package cmd
+
+import (
+	_ "embed"
+	"encoding/json"
+	"fmt"
+	"runtime"
+
+	"github.com/charmbracelet/glamour"
+	"github.com/spf13/cobra"
+)
+
+//go:embed CHANGELOG.md
+var changelog string
+
+var aboutCmd = &cobra.Command{
+	Use:   "about",
+	Short: "Display information about Morphir",
+	Long:  `Display version, platform information, and changelog for Morphir.`,
+	RunE:  runAbout,
+}
+
+func init() {
+	aboutCmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	aboutCmd.Flags().Bool("changelog", false, "Show full changelog")
+}
+
+type AboutInfo struct {
+	Version    string `json:"version"`
+	GitCommit  string `json:"git_commit"`
+	BuildDate  string `json:"build_date"`
+	GoVersion  string `json:"go_version"`
+	Platform   string `json:"platform"`
+	OS         string `json:"os"`
+	Arch       string `json:"arch"`
+	Changelog  string `json:"changelog,omitempty"`
+}
+
+func runAbout(cmd *cobra.Command, args []string) error {
+	jsonFlag, _ := cmd.Flags().GetBool("json")
+	showChangelog, _ := cmd.Flags().GetBool("changelog")
+
+	info := AboutInfo{
+		Version:   Version,
+		GitCommit: GitCommit,
+		BuildDate: BuildDate,
+		GoVersion: runtime.Version(),
+		Platform:  fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+		OS:        runtime.GOOS,
+		Arch:      runtime.GOARCH,
+	}
+
+	if showChangelog {
+		info.Changelog = changelog
+	}
+
+	if jsonFlag {
+		encoder := json.NewEncoder(cmd.OutOrStdout())
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(info)
+	}
+
+	// Pretty output
+	fmt.Fprintf(cmd.OutOrStdout(), "Morphir - Functional Data Modeling\n")
+	fmt.Fprintf(cmd.OutOrStdout(), "═══════════════════════════════════\n\n")
+	fmt.Fprintf(cmd.OutOrStdout(), "Version:      %s\n", info.Version)
+	fmt.Fprintf(cmd.OutOrStdout(), "Git Commit:   %s\n", info.GitCommit)
+	fmt.Fprintf(cmd.OutOrStdout(), "Build Date:   %s\n", info.BuildDate)
+	fmt.Fprintf(cmd.OutOrStdout(), "Go Version:   %s\n", info.GoVersion)
+	fmt.Fprintf(cmd.OutOrStdout(), "Platform:     %s\n", info.Platform)
+	fmt.Fprintf(cmd.OutOrStdout(), "\n")
+
+	if showChangelog {
+		fmt.Fprintf(cmd.OutOrStdout(), "Changelog\n")
+		fmt.Fprintf(cmd.OutOrStdout(), "─────────\n\n")
+
+		// Render markdown with glamour
+		r, err := glamour.NewTermRenderer(
+			glamour.WithAutoStyle(),
+			glamour.WithWordWrap(100),
+		)
+		if err != nil {
+			// Fallback to plain text if glamour fails
+			fmt.Fprintf(cmd.OutOrStdout(), "%s\n", changelog)
+			return nil
+		}
+
+		rendered, err := r.Render(changelog)
+		if err != nil {
+			fmt.Fprintf(cmd.OutOrStdout(), "%s\n", changelog)
+			return nil
+		}
+
+		fmt.Fprint(cmd.OutOrStdout(), rendered)
+	} else {
+		fmt.Fprintf(cmd.OutOrStdout(), "For more information:\n")
+		fmt.Fprintf(cmd.OutOrStdout(), "  Website:    https://morphir.finos.org\n")
+		fmt.Fprintf(cmd.OutOrStdout(), "  Repository: https://github.com/finos/morphir\n")
+		fmt.Fprintf(cmd.OutOrStdout(), "  Changelog:  morphir about --changelog\n")
+	}
+
+	return nil
+}

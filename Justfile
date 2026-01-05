@@ -37,8 +37,13 @@ _powershell:
             echo ""; \
         fi'
 
+# Sync CHANGELOG.md to cmd directory for embedding
+sync-changelog:
+    @echo "Syncing CHANGELOG.md to cmd directory..."
+    @cp CHANGELOG.md cmd/morphir/cmd/CHANGELOG.md
+
 # Build the CLI application
-build:
+build: sync-changelog
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Building morphir CLI..."
@@ -59,7 +64,7 @@ build:
     go build -o "bin/morphir${EXT}" ./cmd/morphir
 
 # Build the development version of the CLI (morphir-dev)
-build-dev:
+build-dev: sync-changelog
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Building morphir-dev CLI..."

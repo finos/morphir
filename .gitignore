@@ -58,3 +58,6 @@ website/.docusaurus/
 
 # bv (beads viewer) local config and caches
 .bv/
+
+# Generated files for embedding
+cmd/morphir/cmd/CHANGELOG.md

@@ -1,5 +1,13 @@
 # Morphir Installation Script for Windows
-# Downloads and installs the latest Morphir release
+# Downloads and installs Morphir from GitHub releases
+#
+# Usage:
+#   .\install.ps1           # Install latest version
+#   .\install.ps1 v0.3.2    # Install specific version
+
+param(
+    [string]$RequestedVersion = ""
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -22,26 +30,31 @@ switch ($Arch) {
 Write-Host "Detected: Windows $ArchType"
 Write-Host ""
 
-# Get latest release version from GitHub
-Write-Host "Fetching latest release..."
-try {
-    $ApiResponse = Invoke-RestMethod -Uri "https://api.github.com/repos/finos/morphir/releases/latest"
-    $LatestVersion = $ApiResponse.tag_name
-    Write-Host "✓ Latest version: $LatestVersion" -ForegroundColor Green
-}
-catch {
-    Write-Host "✗ Failed to fetch latest release version" -ForegroundColor Red
-    Write-Host $_.Exception.Message
-    exit 1
+# Determine version to install
+if ([string]::IsNullOrEmpty($RequestedVersion)) {
+    Write-Host "Fetching latest release..."
+    try {
+        $ApiResponse = Invoke-RestMethod -Uri "https://api.github.com/repos/finos/morphir/releases/latest"
+        $InstallVersion = $ApiResponse.tag_name
+        Write-Host "✓ Latest version: $InstallVersion" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "✗ Failed to fetch latest release version" -ForegroundColor Red
+        Write-Host $_.Exception.Message
+        exit 1
+    }
+} else {
+    $InstallVersion = $RequestedVersion
+    Write-Host "Installing version: $InstallVersion"
 }
 
 Write-Host ""
 
 # Construct download URL
-$VersionNumber = $LatestVersion -replace '^v', ''
+$VersionNumber = $InstallVersion -replace '^v', ''
 $Filename = "morphir_${VersionNumber}_Windows_${ArchType}.tar.gz"
-$DownloadUrl = "https://github.com/finos/morphir/releases/download/${LatestVersion}/${Filename}"
-$ChecksumsUrl = "https://github.com/finos/morphir/releases/download/${LatestVersion}/checksums.txt"
+$DownloadUrl = "https://github.com/finos/morphir/releases/download/${InstallVersion}/${Filename}"
+$ChecksumsUrl = "https://github.com/finos/morphir/releases/download/${InstallVersion}/checksums.txt"
 
 # Create temporary directory
 $TempDir = New-Item -ItemType Directory -Path (Join-Path $env:TEMP "morphir-install-$(Get-Random)")

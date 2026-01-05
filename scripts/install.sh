@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Morphir Installation Script for Linux/macOS
-# Downloads and installs the latest Morphir release
+# Downloads and installs Morphir from GitHub releases
+#
+# Usage:
+#   ./install.sh           # Install latest version
+#   ./install.sh v0.3.2    # Install specific version
 
 set -e
 
@@ -13,6 +17,9 @@ NC='\033[0m' # No Color
 echo "Morphir Installation Script"
 echo "============================="
 echo ""
+
+# Parse version argument
+VERSION="${1:-}"
 
 # Detect OS
 OS="$(uname -s)"
@@ -43,22 +50,26 @@ esac
 echo "Detected: $OS_TYPE $ARCH_TYPE"
 echo ""
 
-# Get latest release version from GitHub
-echo "Fetching latest release..."
-LATEST_VERSION=$(curl -sL https://api.github.com/repos/finos/morphir/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+# Determine version to install
+if [ -z "$VERSION" ]; then
+    echo "Fetching latest release..."
+    VERSION=$(curl -sL https://api.github.com/repos/finos/morphir/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
 
-if [ -z "$LATEST_VERSION" ]; then
-    echo -e "${RED}✗ Failed to fetch latest release version${NC}"
-    exit 1
+    if [ -z "$VERSION" ]; then
+        echo -e "${RED}✗ Failed to fetch latest release version${NC}"
+        exit 1
+    fi
+
+    echo -e "${GREEN}✓ Latest version: $VERSION${NC}"
+else
+    echo "Installing version: $VERSION"
 fi
-
-echo -e "${GREEN}✓ Latest version: $LATEST_VERSION${NC}"
 echo ""
 
 # Construct download URL
-FILENAME="morphir_${LATEST_VERSION#v}_${OS_TYPE}_${ARCH_TYPE}.tar.gz"
-DOWNLOAD_URL="https://github.com/finos/morphir/releases/download/${LATEST_VERSION}/${FILENAME}"
-CHECKSUMS_URL="https://github.com/finos/morphir/releases/download/${LATEST_VERSION}/checksums.txt"
+FILENAME="morphir_${VERSION#v}_${OS_TYPE}_${ARCH_TYPE}.tar.gz"
+DOWNLOAD_URL="https://github.com/finos/morphir/releases/download/${VERSION}/${FILENAME}"
+CHECKSUMS_URL="https://github.com/finos/morphir/releases/download/${VERSION}/checksums.txt"
 
 # Create temporary directory
 TEMP_DIR=$(mktemp -d)
