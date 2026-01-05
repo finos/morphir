@@ -7,5 +7,6 @@ use (
 	./pkg/pipeline
 	./pkg/sdk
 	./pkg/tooling
+	./pkg/vfs
 	./tests/bdd
 )
