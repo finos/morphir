@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/bmatcuk/doublestar/v4 v4.9.1
 	github.com/cucumber/godog v0.15.0
-	github.com/finos/morphir/pkg/models v0.3.2
+	github.com/finos/morphir/pkg/models v0.3.1
 	github.com/pelletier/go-toml/v2 v2.2.4
 	gopkg.in/yaml.v3 v3.0.1
 )
