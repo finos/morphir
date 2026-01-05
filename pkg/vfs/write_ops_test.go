@@ -86,3 +86,42 @@ func TestWriterForMountReadOnly(t *testing.T) {
 	_, err := vfs.WriterForMount("mem")
 	require.Error(t, err)
 }
+
+func TestTransactionCommit(t *testing.T) {
+	root := NewMemFolder(MustVPath("/"), Meta{}, Origin{MountName: "mem"}, nil)
+	vfs := NewOverlayVFS([]Mount{{Name: "mem", Mode: MountRW, Root: root}})
+
+	writer, err := vfs.Writer()
+	require.NoError(t, err)
+
+	tx, err := writer.Begin()
+	require.NoError(t, err)
+
+	_, err = tx.CreateFolder(MustVPath("/dir"), WriteOptions{})
+	require.NoError(t, err)
+	_, err = tx.CreateFile(MustVPath("/dir/file.txt"), []byte("data"), WriteOptions{})
+	require.NoError(t, err)
+
+	require.NoError(t, tx.Commit())
+
+	_, _, err = vfs.Resolve(MustVPath("/dir/file.txt"))
+	require.NoError(t, err)
+}
+
+func TestTransactionRollback(t *testing.T) {
+	root := NewMemFolder(MustVPath("/"), Meta{}, Origin{MountName: "mem"}, nil)
+	vfs := NewOverlayVFS([]Mount{{Name: "mem", Mode: MountRW, Root: root}})
+
+	writer, err := vfs.Writer()
+	require.NoError(t, err)
+
+	tx, err := writer.Begin()
+	require.NoError(t, err)
+
+	_, err = tx.CreateFile(MustVPath("/file.txt"), []byte("data"), WriteOptions{})
+	require.NoError(t, err)
+	require.NoError(t, tx.Rollback())
+
+	_, _, err = vfs.Resolve(MustVPath("/file.txt"))
+	require.Error(t, err)
+}
