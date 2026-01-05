@@ -7,7 +7,7 @@ before:
   hooks:
     # Safeguard: Remove any replace directives that may have been accidentally committed
     # This ensures go install compatibility
-    - ./scripts/remove-replace-directives.sh
+    - bash ./scripts/remove-replace-directives.sh
     # Ensure all modules have their dependencies in order
     - go mod tidy -C cmd/morphir
     - go mod tidy -C pkg/models
