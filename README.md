@@ -46,6 +46,13 @@ Defines a standard format for storing and sharing business logic. A clear set of
 ## Documentation
 If you want to start using Morphir, start with the [Documentation](docs/).
 
+### For Contributors
+
+- **[Development Guide](DEVELOPING.md)** - Set up your local environment and development workflow
+- **[CI/Release FAQ](CI_RELEASE_FAQ.md)** - Understand how our CI and release workflows handle multi-module development
+- **[Contributing Guidelines](docs/contributing.md)** - Contribution process and governance policies
+- **[Agent Guidelines](AGENTS.md)** - Coding standards and best practices
+
 ## The Morphir Projects
 Morphir consists of a few projects based on the features they provide.  
 
