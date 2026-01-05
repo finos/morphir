@@ -55,7 +55,7 @@ build-dev: sync-changelog
     {{if os() == "windows" { "go build -o bin/morphir-dev.exe ./cmd/morphir" } else { "go build -o bin/morphir-dev ./cmd/morphir" } }}
 
 # Run tests across all modules
-test:
+test: sync-changelog
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Running tests..."
@@ -72,7 +72,7 @@ fmt:
     go fmt ./...
 
 # Check code formatting without modifying files
-fmt-check:
+fmt-check: sync-changelog
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Checking code formatting..."
@@ -88,7 +88,7 @@ fmt-check:
     fi
 
 # Run linters (requires golangci-lint)
-lint:
+lint: sync-changelog
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Running linters..."
@@ -136,8 +136,15 @@ run-dev: build-dev
     {{if os() == "windows" { "./bin/morphir-dev.exe" } else { "./bin/morphir-dev" } }}
 
 # Verify all modules build successfully
-verify:
+verify: sync-changelog
     {{if os() == "windows" { "powershell -ExecutionPolicy Bypass -File scripts/verify.ps1" } else { "./scripts/verify.sh" } }}
+
+# Test external consumption (building without go.work)
+test-external: sync-changelog
+    @echo "Testing external consumption (no go.work)..."
+    @echo "This verifies that module versions in go.mod are correct."
+    @cd cmd/morphir && go mod download && go build .
+    @echo "✅ cmd/morphir builds successfully as external consumer would use it"
 
 # Configure Go workspace for local development
 dev-setup:

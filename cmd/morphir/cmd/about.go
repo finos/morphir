@@ -28,14 +28,14 @@ func init() {
 }
 
 type AboutInfo struct {
-	Version    string `json:"version"`
-	GitCommit  string `json:"git_commit"`
-	BuildDate  string `json:"build_date"`
-	GoVersion  string `json:"go_version"`
-	Platform   string `json:"platform"`
-	OS         string `json:"os"`
-	Arch       string `json:"arch"`
-	Changelog  string `json:"changelog,omitempty"`
+	Version   string `json:"version"`
+	GitCommit string `json:"git_commit"`
+	BuildDate string `json:"build_date"`
+	GoVersion string `json:"go_version"`
+	Platform  string `json:"platform"`
+	OS        string `json:"os"`
+	Arch      string `json:"arch"`
+	Changelog string `json:"changelog,omitempty"`
 }
 
 func runAbout(cmd *cobra.Command, args []string) error {
