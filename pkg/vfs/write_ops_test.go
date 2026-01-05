@@ -87,6 +87,15 @@ func TestWriterForMountReadOnly(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestWriterForMountNotFound(t *testing.T) {
+	root := NewMemFolder(MustVPath("/"), Meta{}, Origin{MountName: "mem"}, nil)
+	vfs := NewOverlayVFS([]Mount{{Name: "mem", Mode: MountRW, Root: root}})
+
+	_, err := vfs.WriterForMount("missing")
+	require.Error(t, err)
+	require.True(t, IsMountNotFound(err))
+}
+
 func TestTransactionCommit(t *testing.T) {
 	root := NewMemFolder(MustVPath("/"), Meta{}, Origin{MountName: "mem"}, nil)
 	vfs := NewOverlayVFS([]Mount{{Name: "mem", Mode: MountRW, Root: root}})

@@ -84,3 +84,33 @@ func TestOSFileBytesAndStream(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte("data"), buf)
 }
+
+func TestOSMoveAndUpdate(t *testing.T) {
+	rootDir := t.TempDir()
+	path := filepath.Join(rootDir, "file.txt")
+	require.NoError(t, os.WriteFile(path, []byte("data"), 0644))
+
+	mount := NewOSMount("os", MountRW, rootDir, MustVPath("/"))
+	vfs := NewOverlayVFS([]Mount{mount})
+
+	writer, err := vfs.Writer()
+	require.NoError(t, err)
+
+	updated, err := writer.UpdateFile(MustVPath("/file.txt"), []byte("updated"), WriteOptions{})
+	require.NoError(t, err)
+	require.Equal(t, MustVPath("/file.txt"), updated.Path())
+
+	contents, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Equal(t, []byte("updated"), contents)
+
+	_, err = writer.Move(MustVPath("/file.txt"), MustVPath("/moved.txt"), WriteOptions{Overwrite: true})
+	require.NoError(t, err)
+
+	_, err = os.Stat(path)
+	require.Error(t, err)
+	newPath := filepath.Join(rootDir, "moved.txt")
+	contents, err = os.ReadFile(newPath)
+	require.NoError(t, err)
+	require.Equal(t, []byte("updated"), contents)
+}
