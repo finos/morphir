@@ -74,11 +74,12 @@ if [ "$LOCAL" != "$REMOTE" ]; then
 fi
 log_success "Main is up to date"
 
-# Check 3: Verify no uncommitted changes
+# Check 3: Verify no uncommitted changes (excluding go.work files which are git-ignored)
 log_info "Checking for uncommitted changes..."
-if [ -n "$(git status --porcelain)" ]; then
+UNCOMMITTED=$(git status --porcelain | grep -v "go.work" || true)
+if [ -n "$UNCOMMITTED" ]; then
     log_error "Uncommitted changes detected:"
-    git status --short
+    echo "$UNCOMMITTED"
     log_info "Commit or stash changes before releasing"
     exit 1
 fi

@@ -23,9 +23,11 @@ echo ""
 
 cd "$PROJECT_ROOT"
 
-# Verify no uncommitted changes
-if [ -n "$(git status --porcelain)" ]; then
+# Verify no uncommitted changes (excluding go.work files which are git-ignored)
+UNCOMMITTED=$(git status --porcelain | grep -v "go.work" || true)
+if [ -n "$UNCOMMITTED" ]; then
     echo "❌ Error: You have uncommitted changes. Please commit or stash them first."
+    echo "$UNCOMMITTED"
     exit 1
 fi
 
