@@ -418,6 +418,31 @@ Your job as developer:
 3. Write quality code with tests
 4. Follow commit conventions
 
+### Important: Module Version Coordination
+
+**Critical workflow for release PRs:**
+
+When creating a release PR (e.g., for v0.3.2), go.mod files must reference the **current** released version (v0.3.1), NOT the version being released (v0.3.2). This is because:
+
+1. CI needs to download module dependencies to run tests
+2. The new version (v0.3.2) doesn't exist yet, so CI will fail
+3. The release script will update versions to v0.3.2 before creating tags
+
+**Example for v0.3.2 release:**
+```bash
+# ❌ WRONG - CI will fail
+require (
+    github.com/finos/morphir/pkg/config v0.3.2  // Doesn't exist yet!
+)
+
+# ✅ CORRECT - CI can pass
+require (
+    github.com/finos/morphir/pkg/config v0.3.1  // Current released version
+)
+```
+
+**The release-manager handles version updates automatically during release.**
+
 ## Proactive Assistance
 
 When helping a developer, you should:
