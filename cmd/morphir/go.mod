@@ -7,8 +7,8 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/glamour v0.10.0
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
-	github.com/finos/morphir/pkg/config v0.3.1
-	github.com/finos/morphir/pkg/tooling v0.3.1
+	github.com/finos/morphir/pkg/config v0.3.2
+	github.com/finos/morphir/pkg/tooling v0.3.2
 	github.com/spf13/cobra v1.10.2
 )
 
@@ -25,7 +25,7 @@ require (
 	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/dlclark/regexp2 v1.11.0 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
-	github.com/finos/morphir/pkg/models v0.3.1 // indirect
+	github.com/finos/morphir/pkg/models v0.3.2 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
@@ -52,9 +52,3 @@ require (
 	golang.org/x/text v0.24.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
-
-replace github.com/finos/morphir/pkg/config => ../../pkg/config
-
-replace github.com/finos/morphir/pkg/models => ../../pkg/models
-
-replace github.com/finos/morphir/pkg/tooling => ../../pkg/tooling
