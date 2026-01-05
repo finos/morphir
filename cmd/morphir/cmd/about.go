@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"os"
 	"runtime"
 
 	"github.com/charmbracelet/glamour"
@@ -23,6 +24,7 @@ var aboutCmd = &cobra.Command{
 func init() {
 	aboutCmd.Flags().BoolP("json", "j", false, "Output in JSON format")
 	aboutCmd.Flags().Bool("changelog", false, "Show full changelog")
+	aboutCmd.Flags().Bool("no-color", false, "Disable colored output (also honors NO_COLOR env var)")
 }
 
 type AboutInfo struct {
@@ -39,6 +41,12 @@ type AboutInfo struct {
 func runAbout(cmd *cobra.Command, args []string) error {
 	jsonFlag, _ := cmd.Flags().GetBool("json")
 	showChangelog, _ := cmd.Flags().GetBool("changelog")
+	noColor, _ := cmd.Flags().GetBool("no-color")
+
+	// Check NO_COLOR environment variable (standard: https://no-color.org/)
+	if os.Getenv("NO_COLOR") != "" {
+		noColor = true
+	}
 
 	info := AboutInfo{
 		Version:   Version,
@@ -74,24 +82,31 @@ func runAbout(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(cmd.OutOrStdout(), "Changelog\n")
 		fmt.Fprintf(cmd.OutOrStdout(), "─────────\n\n")
 
-		// Render markdown with glamour
-		r, err := glamour.NewTermRenderer(
-			glamour.WithAutoStyle(),
-			glamour.WithWordWrap(100),
-		)
-		if err != nil {
-			// Fallback to plain text if glamour fails
+		if noColor {
+			// Plain text output without colors
 			fmt.Fprintf(cmd.OutOrStdout(), "%s\n", changelog)
-			return nil
-		}
+		} else {
+			// Render markdown with glamour (colorful by default)
+			rendererOpts := []glamour.TermRendererOption{
+				glamour.WithAutoStyle(), // Automatically adapts to dark/light terminal
+				glamour.WithWordWrap(100),
+			}
 
-		rendered, err := r.Render(changelog)
-		if err != nil {
-			fmt.Fprintf(cmd.OutOrStdout(), "%s\n", changelog)
-			return nil
-		}
+			r, err := glamour.NewTermRenderer(rendererOpts...)
+			if err != nil {
+				// Fallback to plain text if glamour fails
+				fmt.Fprintf(cmd.OutOrStdout(), "%s\n", changelog)
+				return nil
+			}
 
-		fmt.Fprint(cmd.OutOrStdout(), rendered)
+			rendered, err := r.Render(changelog)
+			if err != nil {
+				fmt.Fprintf(cmd.OutOrStdout(), "%s\n", changelog)
+				return nil
+			}
+
+			fmt.Fprint(cmd.OutOrStdout(), rendered)
+		}
 	} else {
 		fmt.Fprintf(cmd.OutOrStdout(), "For more information:\n")
 		fmt.Fprintf(cmd.OutOrStdout(), "  Website:    https://morphir.finos.org\n")
