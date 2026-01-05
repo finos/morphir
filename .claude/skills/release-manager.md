@@ -41,21 +41,33 @@ This is a **Go multi-module repository** using workspaces:
 
 ## Release Process
 
-### 1. Pre-Release Checks
+**CRITICAL PRINCIPLE**: Never create tags until ALL checks pass locally and the release PR is merged!
 
-Before starting a release:
+Tags trigger the release workflow, so we must validate everything first to avoid constant retag cycles.
+
+### 1. Pre-Release Checks (Run Locally BEFORE Any Tags)
+
+Before starting a release, run these checks locally:
 
 ```bash
-# Ensure you're on main and up to date
+# 1. Ensure you're on main and up to date
 git checkout main
 git pull origin main
 
-# Verify all checks pass
+# 2. Check for uncommitted changes
+git status --porcelain
+
+# 3. Verify all modules build successfully
 just verify
 
-# Check for uncommitted changes
-git status
+# 4. Run tests
+just test
+
+# 5. Try a local snapshot build to catch GoReleaser issues
+just release-snapshot
 ```
+
+**If any check fails, fix it before proceeding!**
 
 ### 2. Determine Version Number
 
@@ -171,57 +183,112 @@ go mod edit \
 
 If go.mod files need updating, add these changes to the release PR.
 
-### 6. Create Release Tags
+### 6. Verify Release PR Locally
 
-Use the release preparation script:
+Before creating the PR, simulate what GoReleaser will do:
 
 ```bash
-./scripts/release-prep.sh vX.Y.Z
+# 1. Test removing replace directives
+bash ./scripts/remove-replace-directives.sh
+
+# 2. Test go mod tidy on all modules
+go mod tidy -C cmd/morphir
+go mod tidy -C pkg/models
+go mod tidy -C pkg/tooling
+go mod tidy -C pkg/sdk
+go mod tidy -C pkg/pipeline
+go work sync
+
+# 3. Ensure everything still builds
+just verify
+
+# 4. Restore replace directives (if needed for development)
+git restore cmd/morphir/go.mod pkg/*/go.mod
+
+# 5. Test local release build
+just release-snapshot
 ```
 
-Or use the just recipe:
+**Only proceed if all checks pass!**
+
+### 7. Create and Merge Release PR
+
+Create the release PR with all changes:
 
 ```bash
-just release-prepare vX.Y.Z
+# Push release branch
+git push -u origin release/vX.Y.Z
+
+# Create PR
+gh pr create --title "chore: release vX.Y.Z" --body "..."
 ```
 
-This creates tags for all modules plus the main vX.Y.Z tag.
+**IMPORTANT**: Do NOT create tags yet! Wait for PR to be merged and CI to pass.
 
-### 7. Merge Release PR and Update Local Main
+### 8. Wait for PR Merge and Validation
 
-**IMPORTANT**: Wait for the release PR to be merged before creating tags!
+After the PR is created:
 
-Once the release PR is merged:
+1. ✅ Wait for CI checks to pass on the PR
+2. ✅ Get PR approved and merged
+3. ✅ Verify merged commit on main has passing CI
+4. ✅ **Only then** proceed to create tags
+
+### 9. Update Local Main to Merged Commit
+
+**CRITICAL**: Tags must point to the merged commit on main!
+
+Once the release PR is merged and CI passes on main:
 
 ```bash
-# Update local main to the merged commit
+# 1. Update local main to the merged commit
 git checkout main
 git fetch origin
 git reset --hard origin/main
-```
 
-Verify you're on the correct commit:
-```bash
+# 2. Verify you're on the correct commit
 git log -1 --oneline  # Should show the merged release commit
+
+# 3. Verify CI passed on this commit
+gh run list --branch=main --limit=1
+
+# 4. One final local verification
+just verify
 ```
 
-Then recreate the release tags on this commit (they may have been created earlier on the PR branch):
+### 10. Create Tags (First Time Only)
+
+**NOW** create tags - only after all validation passes:
 
 ```bash
-# Delete and recreate all tags to point to merged commit
+# Create all tags pointing to current (merged) commit
 ./scripts/release-prep.sh vX.Y.Z
+
+# Verify tags were created correctly
+git tag -l "*vX.Y.Z"
+git show vX.Y.Z --no-patch  # Should show the merged commit
 ```
 
-### 8. Push Tags and Trigger Release
+### 11. Push Tags and Trigger Release
+
+**Final check before pushing**:
+
+```bash
+# Verify no uncommitted changes
+git status --porcelain
+
+# Verify tags point to correct commit
+git show vX.Y.Z --no-patch
+```
+
+Now push tags to trigger the release:
 
 ```bash
 # Push all tags (use --no-verify if pre-push hooks cause issues)
-git push origin --tags
-# or bypass hooks if needed
 git push --no-verify origin --tags
 ```
 
-**Note**: If you have pre-push hooks that check for uncommitted changes (like beads), you may need `--no-verify`.
+**Note**: We use `--no-verify` to bypass pre-push hooks (like beads) that may check for uncommitted changes.
 
 This triggers the GitHub Actions release workflow which:
 1. Removes replace directives (safeguard script)
@@ -230,7 +297,9 @@ This triggers the GitHub Actions release workflow which:
 4. Creates GitHub release with artifacts and checksums
 5. Generates release notes from commits and CHANGELOG
 
-### 9. Monitor Release
+**If the workflow fails**: See "Handle Release Failures" section below. Do NOT immediately retag - diagnose and fix first.
+
+### 12. Monitor Release
 
 ```bash
 # Watch the release workflow
@@ -249,9 +318,18 @@ gh run view <run-id> --log-failed
 gh release view vX.Y.Z
 ```
 
-### 10. Handle Release Failures
+### 13. Handle Release Failures
 
-If the release workflow fails, here are common issues and how to fix them:
+**IMPORTANT**: If the release workflow fails, do NOT immediately delete and retag!
+
+Follow this process:
+
+1. **Diagnose**: Fetch and analyze the error logs
+2. **Fix**: Create a PR with the fix
+3. **Merge**: Wait for PR to merge and CI to pass
+4. **Retag**: Only then update tags to point to the new commit
+
+Common issues and fixes:
 
 #### Issue 1: Script Permission Denied
 
@@ -331,12 +409,14 @@ Warning: Module pkg/newmodule was not tagged
 3. Create PR, get it merged
 4. Proceed with tagging
 
-### 11. Retag After Fixes
+### 14. Retag After Fixes (Only If Necessary)
 
-When you need to update tags after merging fixes:
+**Use this ONLY when you need to update tags after merging fixes.**
+
+This should be rare if you followed the validation steps before initial tagging.
 
 ```bash
-# 1. Fetch latest main
+# 1. Fetch latest main (with merged fix)
 git checkout main
 git fetch origin
 git reset --hard origin/main
@@ -344,26 +424,44 @@ git reset --hard origin/main
 # 2. Verify you're on the correct commit
 git log -1 --oneline
 
-# 3. Delete local tags
+# 3. Verify CI passed on this commit
+gh run list --branch=main --limit=1
+
+# 4. Verify local build still works
+just verify
+
+# 5. Delete local tags
 git tag -d vX.Y.Z
 for module in pkg/config pkg/models pkg/pipeline pkg/sdk pkg/tooling cmd/morphir; do
     git tag -d "$module/vX.Y.Z" 2>/dev/null || true
 done
 
-# 4. Delete remote tags
+# 6. Delete remote tags
 git push origin :refs/tags/vX.Y.Z
 for module in pkg/config pkg/models pkg/pipeline pkg/sdk pkg/tooling cmd/morphir; do
     git push origin ":refs/tags/$module/vX.Y.Z" 2>/dev/null || true
 done
 
-# 5. Recreate all tags on current commit
+# 7. Recreate all tags on current commit
 ./scripts/release-prep.sh vX.Y.Z
 
-# 6. Push tags (bypassing hooks if needed)
+# 8. Verify tags before pushing
+git tag -l "*vX.Y.Z"
+git show vX.Y.Z --no-patch
+
+# 9. Push tags (bypassing hooks if needed)
 git push --no-verify origin --tags
 ```
 
-### 12. Verify Successful Release
+**Retag checklist** (verify all before pushing):
+- ✅ Fix PR merged and CI passed on main
+- ✅ Local main updated to merged commit
+- ✅ `just verify` passes locally
+- ✅ Old tags deleted from remote
+- ✅ New tags created locally
+- ✅ New tags point to correct commit (`git show vX.Y.Z`)
+
+### 15. Verify Successful Release
 
 Once the release workflow completes successfully, verify all artifacts and modules:
 
@@ -742,9 +840,27 @@ You are the automated safety net between development and production. Be thorough
 
 ## Key Principles
 
-1. **Main is Protected**: Never push directly, always use PRs
-2. **Tags Follow Merges**: Tags must point to merged commits on main
-3. **Batch Fixes**: Include multiple fixes in one PR when possible
-4. **Auto-Detect**: Always discover modules dynamically
-5. **Diagnose Fast**: Parse workflow logs to quickly identify issues
-6. **Learn**: Remember common failures and check for them proactively
+1. **Validate First, Tag Last**: NEVER create tags until all local checks pass and PR is merged
+   - Run `just verify`, `just test`, `just release-snapshot` locally first
+   - Tags trigger workflows - validate everything before pushing them
+   - Minimize retag cycles by thorough pre-flight checks
+2. **Main is Protected**: Never push directly, always use PRs
+   - CHANGELOG updates require PRs
+   - go.mod updates require PRs
+   - All release preparation goes through PR process
+3. **Tags Follow Merges**: Tags must point to merged commits on main
+   - Never tag on a branch
+   - Always fetch main, verify CI passed, then tag
+4. **Batch Fixes**: Include multiple fixes in one PR when possible
+   - CHANGELOG + go.mod updates in one PR
+   - Reduces round trips and merge conflicts
+5. **Auto-Detect**: Always discover modules dynamically
+   - Never rely on hardcoded module lists
+   - Check for new packages before each release
+6. **Diagnose Fast**: Parse workflow logs to quickly identify issues
+   - When failures occur, analyze before retagging
+   - Create fix PRs, don't just retag
+7. **Learn**: Remember common failures and check for them proactively
+   - Check go.mod for v0.0.0 versions
+   - Simulate GoReleaser steps locally
+   - Verify script permissions and hooks
