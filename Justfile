@@ -115,19 +115,7 @@ deps:
 
 # Run go mod tidy for all modules
 mod-tidy:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    OS=$(./scripts/detect-os.sh)
-    if [ "$OS" = "windows" ]; then
-        if command -v pwsh >/dev/null 2>&1; then
-            PS="pwsh"
-        else
-            PS="powershell"
-        fi
-        "$PS" -ExecutionPolicy Bypass -File scripts/mod-tidy.ps1
-    else
-        ./scripts/mod-tidy.sh
-    fi
+    {{if os() == "windows" { "powershell -ExecutionPolicy Bypass -File scripts/mod-tidy.ps1" } else { "./scripts/mod-tidy.sh" } }}
 
 # Install the CLI using go install (installs to $GOPATH/bin or $GOBIN)
 install:
@@ -137,57 +125,19 @@ install:
 
 # Install the development version as morphir-dev
 install-dev: build-dev
-    #!/usr/bin/env bash
-    set -euo pipefail
-    OS=$(./scripts/detect-os.sh)
-    if [ "$OS" = "windows" ]; then
-        if command -v pwsh >/dev/null 2>&1; then
-            PS="pwsh"
-        else
-            PS="powershell"
-        fi
-        "$PS" -ExecutionPolicy Bypass -File scripts/install-dev.ps1
-    else
-        ./scripts/install-dev.sh
-    fi
+    {{if os() == "windows" { "powershell -ExecutionPolicy Bypass -File scripts/install-dev.ps1" } else { "./scripts/install-dev.sh" } }}
 
 # Run the CLI application
 run: build
-    #!/usr/bin/env bash
-    set -euo pipefail
-    EXT=""
-    OS=$(./scripts/detect-os.sh)
-    if [ "$OS" = "windows" ]; then
-        EXT=".exe"
-    fi
-    "./bin/morphir${EXT}"
+    {{if os() == "windows" { "./bin/morphir.exe" } else { "./bin/morphir" } }}
 
 # Run the development version of the CLI
 run-dev: build-dev
-    #!/usr/bin/env bash
-    set -euo pipefail
-    EXT=""
-    OS=$(./scripts/detect-os.sh)
-    if [ "$OS" = "windows" ]; then
-        EXT=".exe"
-    fi
-    "./bin/morphir-dev${EXT}"
+    {{if os() == "windows" { "./bin/morphir-dev.exe" } else { "./bin/morphir-dev" } }}
 
 # Verify all modules build successfully
 verify:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    OS=$(./scripts/detect-os.sh)
-    if [ "$OS" = "windows" ]; then
-        if command -v pwsh >/dev/null 2>&1; then
-            PS="pwsh"
-        else
-            PS="powershell"
-        fi
-        "$PS" -ExecutionPolicy Bypass -File scripts/verify.ps1
-    else
-        ./scripts/verify.sh
-    fi
+    {{if os() == "windows" { "powershell -ExecutionPolicy Bypass -File scripts/verify.ps1" } else { "./scripts/verify.sh" } }}
 
 # Configure Go workspace for local development
 dev-setup:
