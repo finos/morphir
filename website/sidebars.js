@@ -49,6 +49,7 @@ const sidebars = {
       label: 'Getting Started',
       items: [
           "installation",
+          "morphir-go-preview",
           "editor-setup",
           'morphir-testing-setup',
           'installation-and-usage'
