@@ -226,7 +226,7 @@ test-external: sync-changelog
     @echo "✅ cmd/morphir builds successfully as external consumer would use it"
 
 # Configure Go workspace for local development
-dev-setup:
+dev-setup: link-skills
     @echo "Configuring Go workspace..."
     @./scripts/dev-setup.sh
 
