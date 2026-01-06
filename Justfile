@@ -232,7 +232,7 @@ dev-setup: link-skills
 
 # Link Codex skills to Claude skills (~/.codex/skills -> ~/.claude/skills)
 link-skills:
-    {{if os() == "windows" { "powershell -ExecutionPolicy Bypass -File scripts/link-codex-skills.ps1" } else { "./scripts/link-codex-skills.sh" } }}
+    {{if os() == "windows" { "powershell -ExecutionPolicy Bypass -File scripts/link-codex-skills.ps1" } else { "bash ./scripts/link-codex-skills.sh" } }} || true
 
 # Set up development environment (install dependencies, git hooks, workspace, etc.)
 setup: dev-setup
