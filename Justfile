@@ -72,15 +72,18 @@ test-coverage: sync-changelog
     set -euo pipefail
     echo "Running tests with coverage..."
 
+    # Get absolute path to repo root
+    REPO_ROOT=$(pwd)
+
     # Create coverage directory
-    mkdir -p coverage
+    mkdir -p "$REPO_ROOT/coverage"
 
     # Run tests with coverage for each module
     for dir in cmd/morphir pkg/models pkg/tooling pkg/sdk pkg/pipeline; do
         if [ -d "$dir" ]; then
             echo "Testing $dir with coverage..."
             MODULE_NAME=$(basename "$dir")
-            (cd "$dir" && go test -coverprofile="../coverage/${MODULE_NAME}.out" -covermode=atomic ./...)
+            (cd "$dir" && go test -coverprofile="$REPO_ROOT/coverage/${MODULE_NAME}.out" -covermode=atomic ./...)
         fi
     done
 
@@ -110,8 +113,11 @@ test-junit: sync-changelog
         go install gotest.tools/gotestsum@latest
     fi
 
+    # Get absolute path to repo root
+    REPO_ROOT=$(pwd)
+
     # Create directories for test results and coverage
-    mkdir -p test-results coverage
+    mkdir -p "$REPO_ROOT/test-results" "$REPO_ROOT/coverage"
 
     # Run tests with JUnit output for each module
     for dir in cmd/morphir pkg/models pkg/tooling pkg/sdk pkg/pipeline; do
@@ -119,10 +125,10 @@ test-junit: sync-changelog
             echo "Testing $dir..."
             MODULE_NAME=$(basename "$dir")
             (cd "$dir" && gotestsum \
-                --junitfile="../test-results/${MODULE_NAME}.xml" \
+                --junitfile="$REPO_ROOT/test-results/${MODULE_NAME}.xml" \
                 --format=testname \
                 -- \
-                -coverprofile="../coverage/${MODULE_NAME}.out" \
+                -coverprofile="$REPO_ROOT/coverage/${MODULE_NAME}.out" \
                 -covermode=atomic \
                 ./...)
         fi
