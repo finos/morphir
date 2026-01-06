@@ -3,6 +3,7 @@
 #USAGE bin release-prepare.ps1
 #USAGE about "Prepare release tags"
 #USAGE usage "mise run release-prepare -- vX.Y.Z"
+#USAGE arg <version> help="Semver tag like v1.2.3"
 
  = "Stop"
 

@@ -3,6 +3,7 @@
 #USAGE bin release.ps1
 #USAGE about "Run release automation"
 #USAGE usage "mise run release -- vX.Y.Z"
+#USAGE arg <version> help="Semver tag like v1.2.3"
 
  = "Stop"
 
