@@ -4,6 +4,6 @@
     "config:recommended",
     "group:allNonMajor"
   ],
-  "prHourlyLimit": 2,
+  "prHourlyLimit": 5,
   "prConcurrentLimit": 10
 }
