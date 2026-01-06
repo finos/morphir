@@ -5,6 +5,7 @@ The `docling-doc` package provides a pure functional Go implementation for worki
 ## Features
 
 - **Immutable Data Structures** - All types follow functional programming principles with value semantics
+- **Efficient Builder** - Fluent builder API for constructing documents without intermediate allocations
 - **Type-Safe Document Model** - Making illegal states unrepresentable through Go's type system
 - **DOM-Like Navigation** - Traverse document hierarchies with parent/child relationships
 - **Visitor Pattern** - Push-based processing with functional visitors
@@ -20,7 +21,7 @@ go get github.com/finos/morphir/pkg/docling-doc
 
 ## Quick Start
 
-### Creating a Document
+### Creating a Document (Immutable API)
 
 ```go
 import "github.com/finos/morphir/pkg/docling-doc"
@@ -36,7 +37,24 @@ doc = doc.WithItem(text)
 doc = doc.WithMetadata("author", "Jane Doe")
 ```
 
-### Building a Document Tree
+### Creating a Document (Efficient Builder)
+
+For building documents with many items, use the builder to avoid allocations:
+
+```go
+import "github.com/finos/morphir/pkg/docling-doc"
+
+// Use fluent builder API
+doc := docling.NewBuilder("My Document").
+    AddTextItem(docling.Ref("text1"), "Hello, World!").
+    AddTextItem(docling.Ref("text2"), "More content").
+    AddTableItem(docling.Ref("table1"), 5, 3).
+    WithMetadata("author", "Jane Doe").
+    WithMetadata("version", "1.0").
+    Build()
+```
+
+### Building a Document Tree (Immutable API)
 
 ```go
 // Create hierarchical structure: document -> section -> paragraphs
@@ -59,6 +77,50 @@ doc = doc.WithBody(docling.Ref("doc")).
     WithItem(section).
     WithItem(para1).
     WithItem(para2)
+```
+
+### Building a Document Tree (Efficient Builder)
+
+```go
+// Build complex documents efficiently
+builder := docling.NewBuilder("My Report")
+
+// Add items with fluent API
+root := docling.NewGroupItem(docling.Ref("root"), docling.LabelSectionHeader)
+section := docling.NewNodeItem(docling.Ref("section1"), docling.LabelSectionHeader).
+    WithParent(docling.Ref("root"))
+para1 := docling.NewTextItem(docling.Ref("para1"), "First paragraph")
+para1.DocItem = para1.DocItem.WithParent(docling.Ref("section1"))
+para2 := docling.NewTextItem(docling.Ref("para2"), "Second paragraph")
+para2.DocItem = para2.DocItem.WithParent(docling.Ref("section1"))
+
+root = root.NodeItem.WithChild(docling.Ref("section1"))
+section = section.WithChild(docling.Ref("para1")).WithChild(docling.Ref("para2"))
+
+doc := builder.
+    AddItem(root).
+    AddItem(section).
+    AddItem(para1).
+    AddItem(para2).
+    WithBody(docling.Ref("root")).
+    WithMetadata("author", "Alice").
+    AddPageSimple(1, 612, 792).
+    Build()
+```
+
+### Modifying Existing Documents
+
+```go
+// Create builder from existing document
+builder := docling.NewBuilderFrom(existingDoc)
+
+// Make modifications efficiently
+newDoc := builder.
+    AddTextItem(docling.Ref("newText"), "Additional content").
+    WithMetadata("modified", true).
+    Build()
+
+// Original document is unchanged (immutability preserved)
 ```
 
 ### Traversing Documents
@@ -318,6 +380,29 @@ count := docling.Count(textItems, func(item docling.Item) bool {
 - `(d DoclingDocument) WithoutItem(ref Ref) DoclingDocument`
 - `(d DoclingDocument) GetItem(ref Ref) Item`
 - `(d DoclingDocument) HasItem(ref Ref) bool`
+
+### Builder Functions
+
+- `NewBuilder(name string) *Builder` - Create a new builder
+- `NewBuilderFrom(doc DoclingDocument) *Builder` - Create builder from existing document
+- `(b *Builder) AddItem(item Item) *Builder` - Add any item
+- `(b *Builder) AddTextItem(ref Ref, text string) *Builder` - Add text item
+- `(b *Builder) AddTableItem(ref Ref, numRows, numCols int) *Builder` - Add table
+- `(b *Builder) AddPictureItem(ref Ref, mimeType string) *Builder` - Add picture
+- `(b *Builder) AddPictureItemWithData(ref Ref, mimeType string, data []byte) *Builder` - Add picture with data
+- `(b *Builder) AddNodeItem(ref Ref, label ItemLabel) *Builder` - Add node
+- `(b *Builder) AddGroupItem(ref Ref, label ItemLabel) *Builder` - Add group
+- `(b *Builder) RemoveItem(ref Ref) *Builder` - Remove item
+- `(b *Builder) WithBody(ref Ref) *Builder` - Set body reference
+- `(b *Builder) AddPage(page PageInfo) *Builder` - Add page info
+- `(b *Builder) AddPageSimple(pageNum int, width, height float64) *Builder` - Add page with dimensions
+- `(b *Builder) WithMetadata(key string, value interface{}) *Builder` - Add metadata
+- `(b *Builder) Build() DoclingDocument` - Build immutable document
+- `(b *Builder) Reset(name string) *Builder` - Reset builder for reuse
+- `(b *Builder) ItemCount() int` - Get current item count
+- `(b *Builder) PageCount() int` - Get current page count
+- `(b *Builder) HasItem(ref Ref) bool` - Check if item exists
+- `(b *Builder) GetItem(ref Ref) Item` - Get item from builder
 
 ### Traversal Functions
 
