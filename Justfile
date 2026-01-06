@@ -110,8 +110,8 @@ test-junit: sync-changelog
         go install gotest.tools/gotestsum@latest
     fi
 
-    # Create test-results directory
-    mkdir -p test-results
+    # Create directories for test results and coverage
+    mkdir -p test-results coverage
 
     # Run tests with JUnit output for each module
     for dir in cmd/morphir pkg/models pkg/tooling pkg/sdk pkg/pipeline; do
@@ -128,9 +128,16 @@ test-junit: sync-changelog
         fi
     done
 
+    # Merge coverage profiles
+    echo ""
+    echo "Merging coverage profiles..."
+    echo "mode: atomic" > coverage.out
+    grep -h -v "^mode:" coverage/*.out >> coverage.out || true
+
     echo ""
     echo "Test results generated in test-results/"
     echo "Coverage profiles generated in coverage/"
+    echo "Merged coverage: coverage.out"
 
 # Format all Go code
 fmt:
