@@ -196,6 +196,7 @@ jobs:
 
       - name: Post coverage comment
         uses: fgrosse/go-coverage-report@v1.2.0
+        continue-on-error: true  # Allow failure if baseline coverage doesn't exist yet
         with:
           coverage-artifact-name: "code-coverage"
           coverage-file-name: "coverage.out"
