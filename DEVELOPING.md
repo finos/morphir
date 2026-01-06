@@ -6,7 +6,7 @@ This guide covers the development workflow for contributing to Morphir.
 
 - Go 1.25.5 or later
 - Git
-- Just (command runner) - Install from https://github.com/casey/just
+- Mise (task runner) - Install from https://mise.jdx.dev
 - (Optional) Beads - For issue tracking
 
 ## Quick Start
@@ -20,10 +20,10 @@ cd morphir
 
 ### 2. Set Up Development Environment
 
-Run the development setup script to configure your local Go workspace:
+Run the development setup task to configure your local Go workspace:
 
 ```bash
-./scripts/dev-setup.sh
+mise run dev-setup
 ```
 
 This script will:
@@ -36,7 +36,7 @@ This script will:
 ### 3. Verify Your Setup
 
 ```bash
-just verify
+mise run verify
 ```
 
 This will run all module verifications, ensuring everything is correctly configured.
@@ -63,7 +63,7 @@ The Go workspace automatically handles the module dependencies using your local 
 
 ```bash
 # Run all tests
-just test
+mise run test
 
 # Run tests for a specific module
 cd pkg/models
@@ -74,7 +74,7 @@ go test ./...
 
 ```bash
 # Build morphir CLI
-just build
+mise run build
 
 # Run the CLI
 ./bin/morphir --help
@@ -84,13 +84,13 @@ just build
 
 ```bash
 # Run linting
-just lint
+mise run lint
 
 # Format code
-just fmt
+mise run fmt
 
 # Run all verifications (tests, lint, build)
-just verify
+mise run verify
 ```
 
 ## Module Structure
@@ -129,7 +129,7 @@ Edit code across any modules as needed. The workspace handles dependencies autom
 ### 3. Run Verifications
 
 ```bash
-just verify
+mise run verify
 ```
 
 ### 4. Commit Your Changes
@@ -168,7 +168,7 @@ go work sync
 
 ```bash
 # Update all modules
-just mod-tidy
+mise run mod-tidy
 
 # Or manually for each module
 cd pkg/models && go get -u ./...
@@ -179,7 +179,7 @@ cd ../config && go get -u ./...
 ### Cleaning Build Artifacts
 
 ```bash
-just clean
+mise run clean
 ```
 
 ## Troubleshooting
@@ -231,10 +231,10 @@ After pulling changes from main:
 go work sync
 
 # Update dependencies
-just mod-tidy
+mise run mod-tidy
 
 # Verify everything works
-just verify
+mise run verify
 ```
 
 ## Understanding the Workspace
@@ -299,7 +299,7 @@ The release manager can help with:
 
 ```bash
 # 1. Suggest changelog entries
-just changelog-suggest
+mise run changelog-suggest
 
 # 2. Use release manager skill to update CHANGELOG.md
 # /skill release-manager
@@ -311,5 +311,5 @@ just changelog-suggest
 #    - Tagging and release
 
 # 4. Or do it manually:
-just release v0.3.0
+mise run release -- v0.3.0
 ```

@@ -6,6 +6,10 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+if [ -x "$SCRIPT_DIR/build-dev.sh" ]; then
+    "$SCRIPT_DIR/build-dev.sh"
+fi
+
 # Check for binary with or without .exe extension
 if [ -f "$REPO_ROOT/bin/morphir-dev.exe" ]; then
     BINARY="$REPO_ROOT/bin/morphir-dev.exe"
@@ -15,7 +19,7 @@ elif [ -f "$REPO_ROOT/bin/morphir-dev" ]; then
     TARGET_NAME="morphir-dev"
 else
     echo "Error: morphir-dev binary not found"
-    echo "Please run 'just build-dev' first"
+    echo "Please run 'mise run build-dev' first"
     exit 1
 fi
 

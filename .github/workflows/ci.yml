@@ -17,17 +17,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Install mise
+        uses: jdx/mise-action@v2
         with:
-          go-version: '1.25.5'
-          cache: true
-
-      - name: Install just
-        uses: extractions/setup-just@v3
+          version: latest
 
       - name: Check formatting
-        run: just fmt-check
+        run: mise run fmt-check
 
   lint:
     name: Lint
@@ -36,17 +32,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Install mise
+        uses: jdx/mise-action@v2
         with:
-          go-version: '1.25.5'
-          cache: true
-
-      - name: Install just
-        uses: extractions/setup-just@v3
+          version: latest
 
       - name: Set up Go workspace
-        run: bash ./scripts/setup-workspace.sh
+        run: mise run setup-workspace
 
       - name: Install golangci-lint from source
         run: |
@@ -55,7 +47,7 @@ jobs:
           go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
       - name: Run linters
-        run: just lint
+        run: mise run lint
 
   test:
     name: Test
@@ -67,22 +59,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Install mise
+        uses: jdx/mise-action@v2
         with:
-          go-version: '1.25.5'
-          cache: true
-
-      - name: Install just
-        uses: extractions/setup-just@v3
+          version: latest
 
       - name: Set up Go workspace
-        shell: bash
-        run: bash ./scripts/setup-workspace.sh
+        run: mise run setup-workspace
 
       - name: Run tests with coverage and JUnit reports
-        shell: bash
-        run: just test-junit
+        run: mise run test-junit
 
       - name: Upload coverage artifact
         if: matrix.os == 'ubuntu-latest'
@@ -130,24 +116,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Install mise
+        uses: jdx/mise-action@v2
         with:
-          go-version: '1.25.5'
-          cache: true
-
-      - name: Install just
-        uses: extractions/setup-just@v3
+          version: latest
 
       - name: Set up Go workspace
-        shell: bash
-        run: bash ./scripts/setup-workspace.sh
+        run: mise run setup-workspace
 
       - name: Build binary (cross-platform)
         env:
           GOOS: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'macos-latest' && 'darwin' || 'windows' }}
           GOARCH: ${{ matrix.arch }}
-        run: just build
+        run: mise run build
 
       - name: Test binary execution
         if: matrix.arch == 'amd64'
@@ -161,20 +142,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Install mise
+        uses: jdx/mise-action@v2
         with:
-          go-version: '1.25.5'
-          cache: true
-
-      - name: Install just
-        uses: extractions/setup-just@v3
+          version: latest
 
       - name: Set up Go workspace
-        run: bash ./scripts/setup-workspace.sh
+        run: mise run setup-workspace
 
       - name: Verify modules build
-        run: just verify
+        run: mise run verify
 
   coverage-report:
     name: Coverage Report
@@ -210,14 +187,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Install mise
+        uses: jdx/mise-action@v2
         with:
-          go-version: '1.25.5'
-          cache: true
-
-      - name: Install just
-        uses: extractions/setup-just@v3
+          version: latest
 
       - name: Test cmd/morphir builds without go.work
-        run: just test-external
+        run: mise run test-external

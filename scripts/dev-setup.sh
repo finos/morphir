@@ -7,6 +7,10 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+if [ -x "$SCRIPT_DIR/link-skills.sh" ]; then
+    "$SCRIPT_DIR/link-skills.sh" || true
+fi
+
 echo "Setting up Go workspace for local development..."
 
 cd "$PROJECT_ROOT"
@@ -46,5 +50,5 @@ echo "Note: If you see 'unknown revision' errors, that's expected until"
 echo "      modules are tagged. Local development will still work."
 echo ""
 echo "To verify your setup, run:"
-echo "  just verify"
+echo "  mise run verify"
 echo ""

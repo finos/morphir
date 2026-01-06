@@ -43,7 +43,7 @@ if [ "$CURRENT_BRANCH" != "main" ]; then
 fi
 
 echo "Verifying all modules..."
-just verify
+mise run verify
 
 echo ""
 echo "Creating release tags for all modules..."

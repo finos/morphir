@@ -97,18 +97,18 @@ log_success "No replace directives found"
 
 # Check 5: Verify all modules build
 log_info "Verifying all modules build..."
-if ! just verify > /dev/null 2>&1; then
+if ! mise run verify > /dev/null 2>&1; then
     log_error "Build failed!"
-    log_info "Run: just verify"
+    log_info "Run: mise run verify"
     exit 1
 fi
 log_success "All modules build successfully"
 
 # Check 6: Run tests
 log_info "Running tests..."
-if ! just test > /dev/null 2>&1; then
+if ! mise run test > /dev/null 2>&1; then
     log_error "Tests failed!"
-    log_info "Run: just test"
+    log_info "Run: mise run test"
     exit 1
 fi
 log_success "All tests pass"

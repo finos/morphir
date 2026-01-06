@@ -151,7 +151,7 @@ cd morphir
 ./scripts/dev-setup.sh
 
 # Build the CLI
-just build
+mise run build
 
 # The binary will be at ./bin/morphir
 # Copy it to your PATH

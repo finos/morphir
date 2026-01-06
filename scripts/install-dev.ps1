@@ -6,9 +6,13 @@ $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptPath
 $binary = Join-Path $repoRoot "bin\morphir-dev.exe"
 
+if (Test-Path (Join-Path $scriptPath "build-dev.ps1")) {
+    & (Join-Path $scriptPath "build-dev.ps1")
+}
+
 if (-not (Test-Path $binary)) {
     Write-Host "Error: morphir-dev binary not found at $binary" -ForegroundColor Red
-    Write-Host "Please run 'just build-dev' first" -ForegroundColor Red
+    Write-Host "Please run 'mise run build-dev' first" -ForegroundColor Red
     exit 1
 }
 

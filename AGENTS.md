@@ -381,15 +381,15 @@ Each package is a separate Go module, managed via `go.work` for development.
 
 ## Build and Development
 
-- Use `just` for build orchestration (see `Justfile`)
-- Run `just build` to build the CLI
-- Run `just test` to run all tests
-- Run `just fmt` to format code
-- Run `just lint` to run linters
+- Use `mise` task runner (`mise run <task>`) for build orchestration
+- Run `mise run build` to build the CLI
+- Run `mise run test` to run all tests
+- Run `mise run fmt` to format code
+- Run `mise run lint` to run linters
 
 ### Scripts Directory
 
-The `scripts/` directory contains reusable shell scripts used in build, CI, and development workflows. These scripts are referenced from the `Justfile` for longer task definitions and can also be used directly.
+The `scripts/` directory contains reusable shell scripts used in build, CI, and development workflows. These scripts are referenced from `mise` tasks for longer task definitions and can also be used directly.
 
 **Available Scripts:**
 - `scripts/mod-tidy.sh` / `scripts/mod-tidy.ps1` - Runs `go mod tidy` for all modules in the monorepo
@@ -398,11 +398,9 @@ The `scripts/` directory contains reusable shell scripts used in build, CI, and 
 
 **Cross-Platform Support:**
 - All scripts have both bash (`.sh`) and PowerShell (`.ps1`) versions for cross-platform support
-- The `Justfile` uses `scripts/detect-os.sh` for proper OS detection (windows, linux, darwin)
-- OS detection is done via helper recipes (`_os`, `_bin-ext`, `_script-ext`, `_powershell`)
+- `mise` automatically selects the correct `.sh` or `.ps1` script based on OS
 - Windows: Uses PowerShell scripts (`.ps1`) and adds `.exe` extension to binaries
 - Unix-like (Linux, macOS): Uses bash scripts (`.sh`) and no extension for binaries
-- The Justfile automatically selects the correct scripts and binary extensions based on detected OS
 
 **Guidelines for Scripts:**
 - Scripts should be executable (`chmod +x` for `.sh` files)
@@ -410,15 +408,15 @@ The `scripts/` directory contains reusable shell scripts used in build, CI, and 
 - PowerShell scripts: Use `$ErrorActionPreference = "Stop"` for error handling
 - Scripts should be idempotent when possible
 - Keep scripts focused on a single task
-- Use scripts in `Justfile` for complex or multi-step operations
-- Scripts can be used directly or via `just` commands
+- Use scripts in `mise` tasks for complex or multi-step operations
+- Scripts can be used directly or via `mise run` commands
 - When adding new scripts, create both `.sh` and `.ps1` versions for cross-platform support
 
 **Adding New Scripts:**
 - Place new scripts in the `scripts/` directory
 - Create both `.sh` (bash) and `.ps1` (PowerShell) versions
 - Make bash scripts executable: `chmod +x scripts/your-script.sh`
-- Reference them in the `Justfile` with platform detection
+- Reference them in `mise.toml` with task definitions
 - Document their purpose in comments at the top of the script
 
 ## Release Process
@@ -599,13 +597,13 @@ You can also manually trigger a release:
 
 ```bash
 # Validate GoReleaser configuration
-just goreleaser-check
+mise run goreleaser-check
 
 # Build a snapshot (local test, no publish)
-just release-snapshot
+mise run release-snapshot
 
 # Full dry-run (validates everything without publishing)
-just release-test
+mise run release-test
 ```
 
 ### Release Artifacts

@@ -40,7 +40,7 @@ go install github.com/finos/morphir/cmd/morphir@latest
 
 **Prerequisites:**
 - **Go 1.25.5** or later ([download](https://golang.org/dl/))
-- **just** - A command runner for build orchestration ([install](https://github.com/casey/just))
+- **mise** - A task runner for build orchestration ([install](https://mise.jdx.dev))
 - **PowerShell** (Windows only) - For running build scripts on Windows ([install](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell))
 
 **Build steps:**
@@ -51,7 +51,7 @@ git clone https://github.com/finos/morphir.git
 cd morphir
 
 # Build the CLI application
-just build
+mise run build
 
 # The binary will be in bin/morphir
 ```
@@ -60,7 +60,7 @@ just build
 
 ```sh
 # Build and install to $GOPATH/bin or $GOBIN
-just install
+mise run install
 ```
 
 ### Verify Installation
@@ -162,43 +162,43 @@ Each package is a separate Go module, managed via `go.work` for seamless develop
 
 ## Development Workflow
 
-### Build Orchestration with Just
+### Build Orchestration with Mise
 
-We use [`just`](https://github.com/casey/just) for build orchestration. Common commands:
+We use [`mise`](https://mise.jdx.dev) for build orchestration. Common commands:
 
 ```sh
 # List all available commands
-just
+mise tasks
 
 # Set up development environment (first time setup)
-just setup
+mise run setup
 
 # Build the CLI application
-just build
+mise run build
 
 # Run tests across all modules
-just test
+mise run test
 
 # Format all Go code
-just fmt
+mise run fmt
 
 # Run linters (requires golangci-lint)
-just lint
+mise run lint
 
 # Download dependencies for all modules
-just deps
+mise run deps
 
 # Run go mod tidy for all modules
-just mod-tidy
+mise run mod-tidy
 
 # Clean build artifacts
-just clean
+mise run clean
 
 # Verify all modules build successfully
-just verify
+mise run verify
 
 # Run CI checks (format, build, test, lint)
-just ci-check
+mise run ci-check
 ```
 
 ### Local Development and Testing
@@ -207,12 +207,12 @@ For local development, we recommend using `morphir-dev` to distinguish your deve
 
 ```sh
 # Build the development version
-just build-dev
+mise run build-dev
 
 # The binary will be in bin/morphir-dev
 
 # Run the development version directly
-just run-dev
+mise run run-dev
 
 # Or run it manually
 ./bin/morphir-dev
@@ -225,7 +225,7 @@ just run-dev
 ./bin/morphir-dev
 
 # Install morphir-dev to your system (makes it available in PATH)
-just install-dev
+mise run install-dev
 
 # After installation, you can use morphir-dev from anywhere
 morphir-dev help
@@ -248,7 +248,7 @@ morphir-dev help
 
 2. **Set up the development environment**
    ```sh
-   just setup
+   mise run setup
    ```
 
    This command will:
@@ -256,28 +256,28 @@ morphir-dev help
    - Install npm dependencies (for git hooks)
    - Set up pre-push hooks that run formatting, linting, and tests
 
-   **Prerequisites for `just setup`:**
+   **Prerequisites for `mise run setup`:**
    - [Node.js](https://nodejs.org/) (v16+) - for git hooks via Husky
    - [npm](https://www.npmjs.com/) - comes with Node.js
 
 3. **Build the project**
    ```sh
    # For development, use build-dev
-   just build-dev
+   mise run build-dev
 
    # Or for standard build
-   just build
+   mise run build
    ```
 
 4. **Run tests**
    ```sh
-   just test
+   mise run test
    ```
 
 5. **Test your changes**
    ```sh
    # Build and run the development version
-   just run-dev
+   mise run run-dev
 
    # Or test specific commands
    ./bin/morphir-dev help
@@ -285,7 +285,7 @@ morphir-dev help
 
 ### Git Hooks
 
-This project uses [Husky](https://typicode.github.io/husky/) for git hooks. After running `just setup`, the following hooks are installed:
+This project uses [Husky](https://typicode.github.io/husky/) for git hooks. After running `mise run setup`, the following hooks are installed:
 
 - **pre-push**: Runs before each push to verify:
   - Go code formatting (`gofmt`)
@@ -303,7 +303,7 @@ This project uses Go workspaces (`go.work`) to manage the multi-module monorepo.
 
 ### Scripts Directory
 
-The `scripts/` directory contains reusable scripts used in build, CI, and development workflows. These scripts are referenced from the `Justfile` and can also be used directly:
+The `scripts/` directory contains reusable scripts used in build, CI, and development workflows. These scripts are referenced from `mise` tasks and can also be used directly:
 
 - `scripts/mod-tidy.sh` / `scripts/mod-tidy.ps1` - Runs `go mod tidy` for all modules
 - `scripts/install-dev.sh` / `scripts/install-dev.ps1` - Installs `morphir-dev` to Go bin directory
@@ -311,11 +311,11 @@ The `scripts/` directory contains reusable scripts used in build, CI, and develo
 
 **Cross-Platform Support:**
 - All scripts have both bash (`.sh`) and PowerShell (`.ps1`) versions
-- The `Justfile` automatically detects the platform and uses the appropriate script
+- `mise` automatically detects the platform and uses the appropriate script
 - On Windows, PowerShell scripts are used when PowerShell is available
 - On Unix-like systems (Linux, macOS), bash scripts are used
 
-Scripts are used in the `Justfile` for complex operations and can be invoked directly when needed.
+Scripts are used in `mise` tasks for complex operations and can be invoked directly when needed.
 
 ## Development Principles
 
@@ -377,13 +377,13 @@ Before creating a release, test locally:
 
 ```sh
 # Validate GoReleaser config
-just goreleaser-check
+mise run goreleaser-check
 
 # Build snapshot (no publish)
-just release-snapshot
+mise run release-snapshot
 
 # Full dry-run
-just release-test
+mise run release-test
 ```
 
 ### Versioning

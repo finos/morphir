@@ -2,11 +2,17 @@
 
 $ErrorActionPreference = "Stop"
 
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+& (Join-Path $scriptDir "sync-changelog.ps1")
+
 Write-Host "Verifying all modules build..."
 
-$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Split-Path -Parent $scriptPath
+$repoRoot = Split-Path -Parent $scriptDir
 Set-Location $repoRoot
+
+if (-not (Test-Path "go.work")) {
+    & (Join-Path $scriptDir "setup-workspace.ps1")
+}
 
 $modules = @(
     "cmd/morphir",
@@ -18,7 +24,12 @@ $modules = @(
 
 foreach ($module in $modules) {
     Write-Host "Building $module..."
-    go build "./$module"
+    Push-Location $module
+    try {
+        go build ./...
+    } finally {
+        Pop-Location
+    }
 }
 
 Write-Host "All modules build successfully!" -ForegroundColor Green
