@@ -66,6 +66,72 @@ test: sync-changelog
         fi
     done
 
+# Run tests with coverage report
+test-coverage: sync-changelog
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Running tests with coverage..."
+
+    # Create coverage directory
+    mkdir -p coverage
+
+    # Run tests with coverage for each module
+    for dir in cmd/morphir pkg/models pkg/tooling pkg/sdk pkg/pipeline; do
+        if [ -d "$dir" ]; then
+            echo "Testing $dir with coverage..."
+            MODULE_NAME=$(basename "$dir")
+            (cd "$dir" && go test -coverprofile="../coverage/${MODULE_NAME}.out" -covermode=atomic ./...)
+        fi
+    done
+
+    # Merge coverage profiles
+    echo "Merging coverage profiles..."
+    echo "mode: atomic" > coverage.out
+    grep -h -v "^mode:" coverage/*.out >> coverage.out || true
+
+    # Display coverage summary
+    echo ""
+    echo "Coverage Summary:"
+    go tool cover -func=coverage.out | tail -1
+
+    echo ""
+    echo "Coverage report generated: coverage.out"
+    echo "View HTML report: go tool cover -html=coverage.out"
+
+# Run tests with JUnit XML output for CI
+test-junit: sync-changelog
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Running tests with JUnit XML output..."
+
+    # Check if gotestsum is installed
+    if ! command -v gotestsum >/dev/null 2>&1; then
+        echo "Installing gotestsum..."
+        go install gotest.tools/gotestsum@latest
+    fi
+
+    # Create test-results directory
+    mkdir -p test-results
+
+    # Run tests with JUnit output for each module
+    for dir in cmd/morphir pkg/models pkg/tooling pkg/sdk pkg/pipeline; do
+        if [ -d "$dir" ]; then
+            echo "Testing $dir..."
+            MODULE_NAME=$(basename "$dir")
+            (cd "$dir" && gotestsum \
+                --junitfile="../test-results/${MODULE_NAME}.xml" \
+                --format=testname \
+                -- \
+                -coverprofile="../coverage/${MODULE_NAME}.out" \
+                -covermode=atomic \
+                ./...)
+        fi
+    done
+
+    echo ""
+    echo "Test results generated in test-results/"
+    echo "Coverage profiles generated in coverage/"
+
 # Format all Go code
 fmt:
     @echo "Formatting Go code..."
