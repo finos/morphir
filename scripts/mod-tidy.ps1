@@ -10,6 +10,7 @@ Set-Location $repoRoot
 
 $modules = @(
     "cmd/morphir",
+    "pkg/bindings/wasm-componentmodel",
     "pkg/models",
     "pkg/tooling",
     "pkg/sdk",

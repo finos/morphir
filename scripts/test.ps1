@@ -6,6 +6,7 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Write-Host "Running tests..."
 $modules = @(
     "cmd/morphir",
+    "pkg/bindings/wasm-componentmodel",
     "pkg/models",
     "pkg/tooling",
     "pkg/sdk",

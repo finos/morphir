@@ -17,6 +17,7 @@ cd "$(dirname "$0")/.." || exit 1
 
 modules=(
     "cmd/morphir"
+    "pkg/bindings/wasm-componentmodel"
     "pkg/models"
     "pkg/nbformat"
     "pkg/pipeline"
