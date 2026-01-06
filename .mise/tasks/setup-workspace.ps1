@@ -1,3 +1,6 @@
+# Description: Generate go.work for all modules
+# Usage: mise run setup-workspace
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

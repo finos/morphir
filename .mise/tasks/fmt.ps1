@@ -1,3 +1,6 @@
+# Description: Format Go code
+# Usage: mise run fmt
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

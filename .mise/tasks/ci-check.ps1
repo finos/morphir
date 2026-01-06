@@ -1,3 +1,6 @@
+# Description: Run format, verify, test, and lint
+# Usage: mise run ci-check
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

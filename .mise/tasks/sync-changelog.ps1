@@ -1,3 +1,6 @@
+# Description: Sync CHANGELOG.md into cmd/morphir
+# Usage: mise run sync-changelog
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

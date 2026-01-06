@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Description: Run release automation
+# Usage: mise run release -- vX.Y.Z
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)"

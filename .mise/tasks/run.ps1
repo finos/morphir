@@ -1,3 +1,6 @@
+# Description: Run morphir CLI
+# Usage: mise run run
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

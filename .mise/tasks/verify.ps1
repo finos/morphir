@@ -1,3 +1,6 @@
+# Description: Verify all modules build
+# Usage: mise run verify
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

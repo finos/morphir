@@ -1,3 +1,6 @@
+# Description: Suggest changelog entries
+# Usage: mise run changelog-suggest
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

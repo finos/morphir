@@ -1,3 +1,6 @@
+# Description: Build the morphir-dev CLI
+# Usage: mise run build-dev
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

@@ -1,7 +1,10 @@
-$ErrorActionPreference = "Stop"
+# Description: Install morphir CLI with go install
+# Usage: mise run install
 
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
+ = "Stop"
 
-Set-Location $repoRoot
+ = Split-Path -Parent .MyCommand.Path
+ = Split-Path -Parent (Split-Path -Parent )
+
+Set-Location 
 go install ./cmd/morphir

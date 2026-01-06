@@ -1,3 +1,6 @@
+# Description: Run a release dry-run
+# Usage: mise run release-test
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

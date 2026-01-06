@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Description: Prepare release tags
+# Usage: mise run release-prepare -- vX.Y.Z
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)"

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Description: Run tests with coverage reports
+# Usage: mise run test-coverage
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)"

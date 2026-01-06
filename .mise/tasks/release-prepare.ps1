@@ -1,3 +1,6 @@
+# Description: Prepare release tags
+# Usage: mise run release-prepare -- vX.Y.Z
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

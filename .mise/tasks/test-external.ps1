@@ -1,3 +1,6 @@
+# Description: Test external consumption without go.work
+# Usage: mise run test-external
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

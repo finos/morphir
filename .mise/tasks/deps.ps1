@@ -1,3 +1,6 @@
+# Description: Download Go module dependencies
+# Usage: mise run deps
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

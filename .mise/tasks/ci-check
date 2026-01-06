@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Description: Run format, verify, test, and lint
+# Usage: mise run ci-check
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)"

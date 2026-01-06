@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
+# Description: Install morphir CLI with go install
+# Usage: mise run install
+
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SCRIPT_DIR="$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)"
+REPO_ROOT="$(cd \"/../..\" && pwd)"
 
-cd "$REPO_ROOT"
+cd ""
 go install ./cmd/morphir

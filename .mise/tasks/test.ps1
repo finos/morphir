@@ -1,3 +1,6 @@
+# Description: Run all Go tests
+# Usage: mise run test
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

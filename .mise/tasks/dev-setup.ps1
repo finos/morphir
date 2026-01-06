@@ -1,3 +1,6 @@
+# Description: Set up local Go workspace
+# Usage: mise run dev-setup
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

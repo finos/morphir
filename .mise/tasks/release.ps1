@@ -1,3 +1,6 @@
+# Description: Run release automation
+# Usage: mise run release -- vX.Y.Z
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

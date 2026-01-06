@@ -1,3 +1,6 @@
+# Description: Check Go formatting
+# Usage: mise run fmt-check
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

@@ -1,3 +1,6 @@
+# Description: Run golangci-lint
+# Usage: mise run lint
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

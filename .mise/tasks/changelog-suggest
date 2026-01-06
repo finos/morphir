@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Description: Suggest changelog entries
+# Usage: mise run changelog-suggest
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)"

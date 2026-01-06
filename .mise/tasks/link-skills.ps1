@@ -1,3 +1,6 @@
+# Description: Link Codex skills to Claude skills
+# Usage: mise run link-skills
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

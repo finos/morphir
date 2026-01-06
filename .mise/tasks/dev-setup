@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Description: Set up local Go workspace
+# Usage: mise run dev-setup
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)"

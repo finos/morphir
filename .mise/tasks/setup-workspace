@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Description: Generate go.work for all modules
+# Usage: mise run setup-workspace
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)"

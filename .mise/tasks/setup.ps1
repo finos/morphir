@@ -1,3 +1,6 @@
+# Description: Run full dev environment setup
+# Usage: mise run setup
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

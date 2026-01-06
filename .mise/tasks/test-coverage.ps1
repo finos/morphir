@@ -1,3 +1,6 @@
+# Description: Run tests with coverage reports
+# Usage: mise run test-coverage
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

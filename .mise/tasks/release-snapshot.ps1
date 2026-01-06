@@ -1,3 +1,6 @@
+# Description: Build a release snapshot
+# Usage: mise run release-snapshot
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path

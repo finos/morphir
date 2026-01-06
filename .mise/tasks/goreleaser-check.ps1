@@ -1,3 +1,6 @@
+# Description: Validate GoReleaser configuration
+# Usage: mise run goreleaser-check
+
  = "Stop"
 
  = Split-Path -Parent .MyCommand.Path
