@@ -83,6 +83,10 @@ Tests should be:
 - Self-validating
 - Timely
 
+### Testing Libraries
+
+- Use `github.com/stretchr/testify` (`require`/`assert`) for unit test assertions.
+
 ### Behavior-Driven Development (BDD)
 
 **Specify behavior before implementation.** Use BDD for feature specifications:

@@ -44,8 +44,8 @@ vendor/
 
 # Go workspace files
 # Uncomment if you don't want to track go.work
-# go.work
-# go.work.sum
+go.work
+go.work.sum
 
 # Docusaurus generated folders
 website/translated_docs/

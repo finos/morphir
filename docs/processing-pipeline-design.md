@@ -46,6 +46,17 @@ type Context struct {
 	VFS           VFS
 }
 
+## VFS Integration Note
+
+The pipeline `Context` should carry a `VFS` instance so steps can access inputs and
+artifacts via a mountable filesystem abstraction. Implementation guidance:
+
+- Construct the VFS in the CLI or orchestration layer (e.g., OS-backed mounts for
+  workspace/config/env, in-memory mounts for generated artifacts).
+- Keep the pipeline steps pure: steps read from VFS and emit artifacts/diagnostics,
+  but do not perform direct OS I/O.
+- Pipeline tests can inject in-memory VFS mounts to avoid filesystem dependencies.
+
 // StepResult captures diagnostics and artifacts emitted by a step.
 type StepResult struct {
 	Diagnostics []Diagnostic
@@ -270,6 +281,17 @@ Suggested functional helpers:
 
 Visitor-style helpers can be provided for case-based extension without
 type switches.
+
+### VFS Write API (Proposed)
+
+VFS should support single-operation writes with optional transactional grouping.
+Mount targeting should be exposed via a scoped writer:
+
+- `Writer()` returns a default writer that targets the highest-precedence RW mount.
+- `WriterForMount(name)` returns a writer scoped to a specific mount.
+- `Begin()` creates an optional transactional scope for batching writes.
+
+Write operations should return the updated `Entry` and enforce mount RO/RW rules.
 
 ## Extension and Traversal Patterns
 
