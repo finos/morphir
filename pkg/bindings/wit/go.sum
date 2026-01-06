@@ -1,0 +1,4 @@
+github.com/Masterminds/semver/v3 v3.4.0 h1:Zog+i5UMtVoCU8oKka5P7i9q9HgrJeGzI9SA1Xbatp0=
+github.com/Masterminds/semver/v3 v3.4.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
+go.bytecodealliance.org v0.7.0 h1:CTJ1eb5kFhBKHw1/xycxxz4SmVWNKXYHhrA78oLNXhY=
+go.bytecodealliance.org v0.7.0/go.mod h1:PCLMft5yTQsHT9oNPWlq0I6Qdmo6THvdky2AZHjNUkA=
