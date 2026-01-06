@@ -7,7 +7,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/glamour v0.10.0
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
-	github.com/finos/morphir/pkg/config v0.3.2
+	github.com/finos/morphir/pkg/config v0.3.3
 	github.com/finos/morphir/pkg/tooling v0.3.2
 	github.com/spf13/cobra v1.10.2
 )

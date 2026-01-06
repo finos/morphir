@@ -41,10 +41,16 @@ github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f h1:Y/CXytFA4m6
 github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f/go.mod h1:vw97MGsxSvLiUE2X8qFplwetxpGLQrlU1Q9AUEIzCaM=
 github.com/finos/morphir/pkg/config v0.3.1 h1:lNDXF4L/JkFnEhACykq0tmGXU6DwHfNYnSi/ulbbJuI=
 github.com/finos/morphir/pkg/config v0.3.1/go.mod h1:zTse9D7Z47N6ACFGvfOJ1sTrivghSarYeBdXkShR4U4=
+github.com/finos/morphir/pkg/config v0.3.3 h1:YPSCQP3lLHbRCfqObuHtSOYPn4mrqtzTJY93YZbgoSo=
+github.com/finos/morphir/pkg/config v0.3.3/go.mod h1:zTse9D7Z47N6ACFGvfOJ1sTrivghSarYeBdXkShR4U4=
 github.com/finos/morphir/pkg/models v0.3.1 h1:4R9tiCKGYJ7v7aGUmxg5xEKUO0rOHxqQfx6xCmIA4jU=
 github.com/finos/morphir/pkg/models v0.3.1/go.mod h1:q6yKUR8+xTpYfLJUj75g8QQ4k9fxEpUltir3wSu3utI=
+github.com/finos/morphir/pkg/models v0.3.2 h1:AsvmCj4IrpX77ncuPUI1DESE5/hS6EORnNNA3gcZiJo=
+github.com/finos/morphir/pkg/models v0.3.2/go.mod h1:q6yKUR8+xTpYfLJUj75g8QQ4k9fxEpUltir3wSu3utI=
 github.com/finos/morphir/pkg/tooling v0.3.1 h1:u4lhViyIPzfysEoJpgetetsq22jevU/auUdeeOkRoUg=
 github.com/finos/morphir/pkg/tooling v0.3.1/go.mod h1:7rnUj/uERrWYC64chFlXOQgPD3ju7hOgX9todkA1zN4=
+github.com/finos/morphir/pkg/tooling v0.3.2 h1:dmSYYNCTalHGqo9g4kMyvttknSo9APFrh2PxyEo/tAE=
+github.com/finos/morphir/pkg/tooling v0.3.2/go.mod h1:qZ5lUcrFVTngAlDP6k3httA9C3F3I+4fCeS67JrdlJo=
 github.com/google/go-cmp v0.5.9 h1:O2Tfq5qg4qc4AmwVlvv0oLiVAGB7enBSJ2x2DqQFi38=
 github.com/google/go-cmp v0.5.9/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 github.com/gorilla/css v1.0.1 h1:ntNaBIghp6JmvWnxbZKANoLyuXTPZ4cAMlo6RyhlbO8=
