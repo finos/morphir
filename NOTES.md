@@ -309,6 +309,8 @@ The `scripts/` directory contains reusable scripts used in build, CI, and develo
 - `scripts/install-dev.sh` / `scripts/install-dev.ps1` - Installs `morphir-dev` to Go bin directory
 - `scripts/verify.sh` / `scripts/verify.ps1` - Verifies all modules build successfully
 
+Task entry points live in `.mise/tasks` and call into these scripts.
+
 **Cross-Platform Support:**
 - All scripts have both bash (`.sh`) and PowerShell (`.ps1`) versions
 - `mise` automatically detects the platform and uses the appropriate script
