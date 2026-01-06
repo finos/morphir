@@ -1,5 +1,8 @@
 #MISE description="Set up local Go workspace"
-#MISE usage="mise run dev-setup"
+#USAGE name dev-setup.ps1
+#USAGE bin dev-setup.ps1
+#USAGE about "Set up local Go workspace"
+#USAGE usage "mise run dev-setup"
 
  = "Stop"
 

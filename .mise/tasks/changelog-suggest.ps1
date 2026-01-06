@@ -1,5 +1,8 @@
 #MISE description="Suggest changelog entries"
-#MISE usage="mise run changelog-suggest"
+#USAGE name changelog-suggest.ps1
+#USAGE bin changelog-suggest.ps1
+#USAGE about "Suggest changelog entries"
+#USAGE usage "mise run changelog-suggest"
 
  = "Stop"
 

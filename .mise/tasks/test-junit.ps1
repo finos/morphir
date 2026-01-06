@@ -1,5 +1,8 @@
 #MISE description="Run tests with JUnit XML output"
-#MISE usage="mise run test-junit"
+#USAGE name test-junit.ps1
+#USAGE bin test-junit.ps1
+#USAGE about "Run tests with JUnit XML output"
+#USAGE usage "mise run test-junit"
 
  = "Stop"
 

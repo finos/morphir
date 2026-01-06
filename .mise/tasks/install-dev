@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Install morphir-dev to Go bin"
-#MISE usage="mise run install-dev"
+#USAGE name install-dev
+#USAGE bin install-dev
+#USAGE about "Install morphir-dev to Go bin"
+#USAGE usage "mise run install-dev"
 
 set -euo pipefail
 

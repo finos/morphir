@@ -1,5 +1,8 @@
 #MISE description="Sync CHANGELOG.md into cmd/morphir"
-#MISE usage="mise run sync-changelog"
+#USAGE name sync-changelog.ps1
+#USAGE bin sync-changelog.ps1
+#USAGE about "Sync CHANGELOG.md into cmd/morphir"
+#USAGE usage "mise run sync-changelog"
 
  = "Stop"
 

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Build the morphir-dev CLI"
-#MISE usage="mise run build-dev"
+#USAGE name build-dev
+#USAGE bin build-dev
+#USAGE about "Build the morphir-dev CLI"
+#USAGE usage "mise run build-dev"
 
 set -euo pipefail
 

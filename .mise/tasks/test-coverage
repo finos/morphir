@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Run tests with coverage reports"
-#MISE usage="mise run test-coverage"
+#USAGE name test-coverage
+#USAGE bin test-coverage
+#USAGE about "Run tests with coverage reports"
+#USAGE usage "mise run test-coverage"
 
 set -euo pipefail
 

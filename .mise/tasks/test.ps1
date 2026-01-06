@@ -1,5 +1,8 @@
 #MISE description="Run all Go tests"
-#MISE usage="mise run test"
+#USAGE name test.ps1
+#USAGE bin test.ps1
+#USAGE about "Run all Go tests"
+#USAGE usage "mise run test"
 
  = "Stop"
 

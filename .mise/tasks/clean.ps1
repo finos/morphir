@@ -1,5 +1,8 @@
 #MISE description="Clean build artifacts"
-#MISE usage="mise run clean"
+#USAGE name clean.ps1
+#USAGE bin clean.ps1
+#USAGE about "Clean build artifacts"
+#USAGE usage "mise run clean"
 
  = "Stop"
 

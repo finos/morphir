@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Check Go formatting"
-#MISE usage="mise run fmt-check"
+#USAGE name fmt-check
+#USAGE bin fmt-check
+#USAGE about "Check Go formatting"
+#USAGE usage "mise run fmt-check"
 
 set -euo pipefail
 

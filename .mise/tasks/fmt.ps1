@@ -1,5 +1,8 @@
 #MISE description="Format Go code"
-#MISE usage="mise run fmt"
+#USAGE name fmt.ps1
+#USAGE bin fmt.ps1
+#USAGE about "Format Go code"
+#USAGE usage "mise run fmt"
 
  = "Stop"
 

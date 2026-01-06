@@ -1,5 +1,8 @@
 #MISE description="Run go mod tidy for all modules"
-#MISE usage="mise run mod-tidy"
+#USAGE name mod-tidy.ps1
+#USAGE bin mod-tidy.ps1
+#USAGE about "Run go mod tidy for all modules"
+#USAGE usage "mise run mod-tidy"
 
  = "Stop"
 

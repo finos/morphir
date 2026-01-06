@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Format Go code"
-#MISE usage="mise run fmt"
+#USAGE name fmt
+#USAGE bin fmt
+#USAGE about "Format Go code"
+#USAGE usage "mise run fmt"
 
 set -euo pipefail
 

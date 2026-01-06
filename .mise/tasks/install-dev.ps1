@@ -1,5 +1,8 @@
 #MISE description="Install morphir-dev to Go bin"
-#MISE usage="mise run install-dev"
+#USAGE name install-dev.ps1
+#USAGE bin install-dev.ps1
+#USAGE about "Install morphir-dev to Go bin"
+#USAGE usage "mise run install-dev"
 
  = "Stop"
 

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Run all Go tests"
-#MISE usage="mise run test"
+#USAGE name test
+#USAGE bin test
+#USAGE about "Run all Go tests"
+#USAGE usage "mise run test"
 
 set -euo pipefail
 

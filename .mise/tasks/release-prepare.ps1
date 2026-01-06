@@ -1,5 +1,8 @@
 #MISE description="Prepare release tags"
-#MISE usage="mise run release-prepare -- vX.Y.Z"
+#USAGE name release-prepare.ps1
+#USAGE bin release-prepare.ps1
+#USAGE about "Prepare release tags"
+#USAGE usage "mise run release-prepare -- vX.Y.Z"
 
  = "Stop"
 

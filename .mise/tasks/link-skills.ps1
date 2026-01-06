@@ -1,5 +1,8 @@
 #MISE description="Link Codex skills to Claude skills"
-#MISE usage="mise run link-skills"
+#USAGE name link-skills.ps1
+#USAGE bin link-skills.ps1
+#USAGE about "Link Codex skills to Claude skills"
+#USAGE usage "mise run link-skills"
 
  = "Stop"
 

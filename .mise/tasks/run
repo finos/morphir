@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Run morphir CLI"
-#MISE usage="mise run run"
+#USAGE name run
+#USAGE bin run
+#USAGE about "Run morphir CLI"
+#USAGE usage "mise run run"
 
 set -euo pipefail
 

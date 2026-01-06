@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Run release automation"
-#MISE usage="mise run release -- vX.Y.Z"
+#USAGE name release
+#USAGE bin release
+#USAGE about "Run release automation"
+#USAGE usage "mise run release -- vX.Y.Z"
 
 set -euo pipefail
 

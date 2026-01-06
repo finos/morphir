@@ -1,5 +1,8 @@
 #MISE description="Run golangci-lint"
-#MISE usage="mise run lint"
+#USAGE name lint.ps1
+#USAGE bin lint.ps1
+#USAGE about "Run golangci-lint"
+#USAGE usage "mise run lint"
 
  = "Stop"
 

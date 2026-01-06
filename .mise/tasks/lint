@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Run golangci-lint"
-#MISE usage="mise run lint"
+#USAGE name lint
+#USAGE bin lint
+#USAGE about "Run golangci-lint"
+#USAGE usage "mise run lint"
 
 set -euo pipefail
 

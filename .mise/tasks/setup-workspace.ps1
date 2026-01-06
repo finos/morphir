@@ -1,5 +1,8 @@
 #MISE description="Generate go.work for all modules"
-#MISE usage="mise run setup-workspace"
+#USAGE name setup-workspace.ps1
+#USAGE bin setup-workspace.ps1
+#USAGE about "Generate go.work for all modules"
+#USAGE usage "mise run setup-workspace"
 
  = "Stop"
 

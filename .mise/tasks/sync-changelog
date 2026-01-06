@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Sync CHANGELOG.md into cmd/morphir"
-#MISE usage="mise run sync-changelog"
+#USAGE name sync-changelog
+#USAGE bin sync-changelog
+#USAGE about "Sync CHANGELOG.md into cmd/morphir"
+#USAGE usage "mise run sync-changelog"
 
 set -euo pipefail
 

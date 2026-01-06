@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Validate GoReleaser configuration"
-#MISE usage="mise run goreleaser-check"
+#USAGE name goreleaser-check
+#USAGE bin goreleaser-check
+#USAGE about "Validate GoReleaser configuration"
+#USAGE usage "mise run goreleaser-check"
 
 set -euo pipefail
 

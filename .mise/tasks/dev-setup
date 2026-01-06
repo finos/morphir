@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Set up local Go workspace"
-#MISE usage="mise run dev-setup"
+#USAGE name dev-setup
+#USAGE bin dev-setup
+#USAGE about "Set up local Go workspace"
+#USAGE usage "mise run dev-setup"
 
 set -euo pipefail
 

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Test external consumption without go.work"
-#MISE usage="mise run test-external"
+#USAGE name test-external
+#USAGE bin test-external
+#USAGE about "Test external consumption without go.work"
+#USAGE usage "mise run test-external"
 
 set -euo pipefail
 

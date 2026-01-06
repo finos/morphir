@@ -1,5 +1,8 @@
 #MISE description="Validate GoReleaser configuration"
-#MISE usage="mise run goreleaser-check"
+#USAGE name goreleaser-check.ps1
+#USAGE bin goreleaser-check.ps1
+#USAGE about "Validate GoReleaser configuration"
+#USAGE usage "mise run goreleaser-check"
 
  = "Stop"
 

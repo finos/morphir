@@ -1,5 +1,8 @@
 #MISE description="Run release automation"
-#MISE usage="mise run release -- vX.Y.Z"
+#USAGE name release.ps1
+#USAGE bin release.ps1
+#USAGE about "Run release automation"
+#USAGE usage "mise run release -- vX.Y.Z"
 
  = "Stop"
 

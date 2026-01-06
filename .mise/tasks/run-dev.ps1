@@ -1,5 +1,8 @@
 #MISE description="Run morphir-dev CLI"
-#MISE usage="mise run run-dev"
+#USAGE name run-dev.ps1
+#USAGE bin run-dev.ps1
+#USAGE about "Run morphir-dev CLI"
+#USAGE usage "mise run run-dev"
 
  = "Stop"
 

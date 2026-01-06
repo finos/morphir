@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Run a release dry-run"
-#MISE usage="mise run release-test"
+#USAGE name release-test
+#USAGE bin release-test
+#USAGE about "Run a release dry-run"
+#USAGE usage "mise run release-test"
 
 set -euo pipefail
 

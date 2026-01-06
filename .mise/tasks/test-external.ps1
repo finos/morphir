@@ -1,5 +1,8 @@
 #MISE description="Test external consumption without go.work"
-#MISE usage="mise run test-external"
+#USAGE name test-external.ps1
+#USAGE bin test-external.ps1
+#USAGE about "Test external consumption without go.work"
+#USAGE usage "mise run test-external"
 
  = "Stop"
 

@@ -1,5 +1,8 @@
 #MISE description="Check Go formatting"
-#MISE usage="mise run fmt-check"
+#USAGE name fmt-check.ps1
+#USAGE bin fmt-check.ps1
+#USAGE about "Check Go formatting"
+#USAGE usage "mise run fmt-check"
 
  = "Stop"
 

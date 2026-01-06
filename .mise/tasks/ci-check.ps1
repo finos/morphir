@@ -1,5 +1,8 @@
 #MISE description="Run format, verify, test, and lint"
-#MISE usage="mise run ci-check"
+#USAGE name ci-check.ps1
+#USAGE bin ci-check.ps1
+#USAGE about "Run format, verify, test, and lint"
+#USAGE usage "mise run ci-check"
 
  = "Stop"
 

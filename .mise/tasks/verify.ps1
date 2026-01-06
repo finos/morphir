@@ -1,5 +1,8 @@
 #MISE description="Verify all modules build"
-#MISE usage="mise run verify"
+#USAGE name verify.ps1
+#USAGE bin verify.ps1
+#USAGE about "Verify all modules build"
+#USAGE usage "mise run verify"
 
  = "Stop"
 

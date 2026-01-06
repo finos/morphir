@@ -1,5 +1,8 @@
 #MISE description="Download Go module dependencies"
-#MISE usage="mise run deps"
+#USAGE name deps.ps1
+#USAGE bin deps.ps1
+#USAGE about "Download Go module dependencies"
+#USAGE usage "mise run deps"
 
  = "Stop"
 

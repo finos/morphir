@@ -1,5 +1,8 @@
 #MISE description="Run full dev environment setup"
-#MISE usage="mise run setup"
+#USAGE name setup.ps1
+#USAGE bin setup.ps1
+#USAGE about "Run full dev environment setup"
+#USAGE usage "mise run setup"
 
  = "Stop"
 

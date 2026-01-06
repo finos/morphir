@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Build a release snapshot"
-#MISE usage="mise run release-snapshot"
+#USAGE name release-snapshot
+#USAGE bin release-snapshot
+#USAGE about "Build a release snapshot"
+#USAGE usage "mise run release-snapshot"
 
 set -euo pipefail
 

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Clean build artifacts"
-#MISE usage="mise run clean"
+#USAGE name clean
+#USAGE bin clean
+#USAGE about "Clean build artifacts"
+#USAGE usage "mise run clean"
 
 set -euo pipefail
 

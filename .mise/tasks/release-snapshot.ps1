@@ -1,5 +1,8 @@
 #MISE description="Build a release snapshot"
-#MISE usage="mise run release-snapshot"
+#USAGE name release-snapshot.ps1
+#USAGE bin release-snapshot.ps1
+#USAGE about "Build a release snapshot"
+#USAGE usage "mise run release-snapshot"
 
  = "Stop"
 

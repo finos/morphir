@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Verify all modules build"
-#MISE usage="mise run verify"
+#USAGE name verify
+#USAGE bin verify
+#USAGE about "Verify all modules build"
+#USAGE usage "mise run verify"
 
 set -euo pipefail
 

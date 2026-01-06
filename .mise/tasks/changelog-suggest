@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Suggest changelog entries"
-#MISE usage="mise run changelog-suggest"
+#USAGE name changelog-suggest
+#USAGE bin changelog-suggest
+#USAGE about "Suggest changelog entries"
+#USAGE usage "mise run changelog-suggest"
 
 set -euo pipefail
 

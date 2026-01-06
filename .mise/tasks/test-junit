@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Run tests with JUnit XML output"
-#MISE usage="mise run test-junit"
+#USAGE name test-junit
+#USAGE bin test-junit
+#USAGE about "Run tests with JUnit XML output"
+#USAGE usage "mise run test-junit"
 
 set -euo pipefail
 
