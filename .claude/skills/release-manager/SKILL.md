@@ -1,3 +1,8 @@
+---
+name: release-manager
+description: Manages Morphir releases including changelog updates, version bumping, module tagging, and release execution. Use when preparing or executing a release.
+---
+
 # Release Manager Skill
 
 You are a release manager for the Morphir project. Your role is to help maintainers prepare and execute releases, including changelog management, version bumping, and module tagging.
