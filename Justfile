@@ -230,6 +230,10 @@ dev-setup:
     @echo "Configuring Go workspace..."
     @./scripts/dev-setup.sh
 
+# Link Codex skills to Claude skills (~/.codex/skills -> ~/.claude/skills)
+link-skills:
+    {{if os() == "windows" { "powershell -ExecutionPolicy Bypass -File scripts/link-codex-skills.ps1" } else { "./scripts/link-codex-skills.sh" } }}
+
 # Set up development environment (install dependencies, git hooks, workspace, etc.)
 setup: dev-setup
     @echo "Setting up development environment..."
