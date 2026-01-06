@@ -6,7 +6,10 @@ CODEX_DIR="${CODEX_DIR:-$HOME/.codex}"
 CLAUDE_SKILLS="${CLAUDE_DIR}/skills"
 CODEX_SKILLS="${CODEX_DIR}/skills"
 
-mkdir -p "$CLAUDE_SKILLS"
+if ! mkdir -p "$CLAUDE_SKILLS" 2>/dev/null; then
+    echo "Warning: unable to create $CLAUDE_SKILLS; skipping Codex skills link." >&2
+    exit 0
+fi
 
 if [ -L "$CODEX_SKILLS" ]; then
     TARGET=$(readlink "$CODEX_SKILLS")
@@ -22,6 +25,13 @@ if [ -e "$CODEX_SKILLS" ]; then
     exit 0
 fi
 
-mkdir -p "$CODEX_DIR"
-ln -s "$CLAUDE_SKILLS" "$CODEX_SKILLS"
-echo "Linked $CODEX_SKILLS -> $CLAUDE_SKILLS" >&2
+if ! mkdir -p "$CODEX_DIR" 2>/dev/null; then
+    echo "Warning: unable to create $CODEX_DIR; skipping Codex skills link." >&2
+    exit 0
+fi
+
+if ln -s "$CLAUDE_SKILLS" "$CODEX_SKILLS" 2>/dev/null; then
+    echo "Linked $CODEX_SKILLS -> $CLAUDE_SKILLS" >&2
+else
+    echo "Warning: failed to create symlink $CODEX_SKILLS -> $CLAUDE_SKILLS." >&2
+fi

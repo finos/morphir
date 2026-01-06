@@ -13,7 +13,12 @@ if ([string]::IsNullOrEmpty($codexDir)) {
 $claudeSkills = Join-Path $claudeDir "skills"
 $codexSkills = Join-Path $codexDir "skills"
 
-New-Item -ItemType Directory -Force -Path $claudeSkills | Out-Null
+try {
+    New-Item -ItemType Directory -Force -Path $claudeSkills | Out-Null
+} catch {
+    Write-Warning "Unable to create $claudeSkills; skipping Codex skills link. $($_.Exception.Message)"
+    exit 0
+}
 
 $item = Get-Item -Path $codexSkills -Force -ErrorAction SilentlyContinue
 if ($item) {
@@ -29,8 +34,8 @@ if ($item) {
     exit 0
 }
 
-New-Item -ItemType Directory -Force -Path $codexDir | Out-Null
 try {
+    New-Item -ItemType Directory -Force -Path $codexDir | Out-Null
     New-Item -ItemType SymbolicLink -Path $codexSkills -Target $claudeSkills | Out-Null
     Write-Host "Linked $codexSkills -> $claudeSkills" -ForegroundColor DarkGray
 } catch {
