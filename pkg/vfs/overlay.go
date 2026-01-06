@@ -197,9 +197,9 @@ func walkEntry(entry Entry, fn func(Entry) error) error {
 	}
 
 	children, err := folder.Children()
-			if err != nil {
-				return err
-			}
+	if err != nil {
+		return err
+	}
 	for _, child := range children {
 		if err := walkEntry(child, fn); err != nil {
 			return err

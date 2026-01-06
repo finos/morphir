@@ -60,15 +60,15 @@ func (w *overlayWriter) Begin() (VFSTransaction, error) {
 }
 
 type overlayTransaction struct {
-	writer *overlayWriter
-	base   Folder
+	writer  *overlayWriter
+	base    Folder
 	working Folder
 }
 
 func newOverlayTransaction(writer *overlayWriter) *overlayTransaction {
 	return &overlayTransaction{
-		writer: writer,
-		base:   writer.mount.Root,
+		writer:  writer,
+		base:    writer.mount.Root,
 		working: writer.mount.Root,
 	}
 }

@@ -23,10 +23,10 @@ func NewMemFile(path VPath, meta Meta, origin Origin, data []byte) MemFile {
 	}
 }
 
-func (f MemFile) Path() VPath       { return f.path }
-func (f MemFile) Kind() EntryKind   { return KindFile }
-func (f MemFile) Meta() Meta        { return cloneMeta(f.meta) }
-func (f MemFile) Origin() Origin    { return f.origin }
+func (f MemFile) Path() VPath     { return f.path }
+func (f MemFile) Kind() EntryKind { return KindFile }
+func (f MemFile) Meta() Meta      { return cloneMeta(f.meta) }
+func (f MemFile) Origin() Origin  { return f.origin }
 func (f MemFile) Bytes() ([]byte, error) {
 	return cloneBytes(f.data), nil
 }
@@ -82,10 +82,10 @@ func NewMemNode(path VPath, meta Meta, origin Origin, nodeType string, attrs map
 	}
 }
 
-func (n MemNode) Path() VPath     { return n.path }
-func (n MemNode) Kind() EntryKind { return KindNode }
-func (n MemNode) Meta() Meta      { return cloneMeta(n.meta) }
-func (n MemNode) Origin() Origin  { return n.origin }
+func (n MemNode) Path() VPath      { return n.path }
+func (n MemNode) Kind() EntryKind  { return KindNode }
+func (n MemNode) Meta() Meta       { return cloneMeta(n.meta) }
+func (n MemNode) Origin() Origin   { return n.origin }
 func (n MemNode) NodeType() string { return n.nodeType }
 func (n MemNode) Attrs() map[string]any {
 	return cloneStringAnyMap(n.attrs)
