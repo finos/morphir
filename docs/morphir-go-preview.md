@@ -237,6 +237,68 @@ just build
 
 The binary will be in `./bin/morphir`.
 
+## Testing and Code Coverage
+
+The Morphir Go project includes comprehensive testing infrastructure with code coverage reporting.
+
+### Running Tests Locally
+
+```bash
+# Run all tests
+just test
+
+# Run tests with coverage report
+just test-coverage
+
+# Run tests with JUnit XML output (for CI integration)
+just test-junit
+```
+
+### Coverage Reports
+
+The `test-coverage` recipe generates:
+- **coverage.out**: Combined coverage profile for all modules
+- **coverage/**: Individual coverage files per module
+- **Coverage summary**: Displayed in terminal after test run
+
+View detailed HTML coverage report:
+
+```bash
+go tool cover -html=coverage.out
+```
+
+### CI/CD Integration
+
+Pull requests automatically include:
+- **Test Results Summary**: GitHub Actions test summary showing pass/fail status for all tests
+- **Coverage Report Comment**: Automated PR comment showing coverage changes with emoji indicators:
+  - 🌟 Significant improvement (>20%)
+  - 🎉 Good improvement (≤20%)
+  - 👍 Minor improvement (≤10%)
+  - 👎 Minor decrease (≤10%)
+  - 💀 Significant decrease (>10%)
+- **Codecov Integration**: Historical coverage tracking at [codecov.io](https://codecov.io)
+
+### Writing Tests
+
+Follow Go's standard testing conventions:
+
+```go
+// pkg/example/example_test.go
+package example
+
+import "testing"
+
+func TestSomething(t *testing.T) {
+    result := Something()
+    if result != expected {
+        t.Errorf("got %v, want %v", result, expected)
+    }
+}
+```
+
+For more on Go testing, see the [official Go testing documentation](https://golang.org/pkg/testing/).
+
 ## For Production Use
 
 :::caution Recommended Approach

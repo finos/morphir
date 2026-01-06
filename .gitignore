@@ -42,6 +42,11 @@ bin/
 *.out
 vendor/
 
+# Test coverage and results
+coverage/
+coverage.out
+test-results/
+
 # Go workspace files
 # Uncomment if you don't want to track go.work
 go.work
