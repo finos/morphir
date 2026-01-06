@@ -1,5 +1,5 @@
-# Description: Build a release snapshot
-# Usage: mise run release-snapshot
+#MISE description="Build a release snapshot"
+#MISE usage="mise run release-snapshot"
 
  = "Stop"
 

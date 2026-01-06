@@ -1,5 +1,5 @@
-# Description: Run tests with coverage reports
-# Usage: mise run test-coverage
+#MISE description="Run tests with coverage reports"
+#MISE usage="mise run test-coverage"
 
  = "Stop"
 

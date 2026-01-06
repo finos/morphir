@@ -1,5 +1,5 @@
-# Description: Run tests with JUnit XML output
-# Usage: mise run test-junit
+#MISE description="Run tests with JUnit XML output"
+#MISE usage="mise run test-junit"
 
  = "Stop"
 

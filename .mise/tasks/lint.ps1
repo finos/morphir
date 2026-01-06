@@ -1,5 +1,5 @@
-# Description: Run golangci-lint
-# Usage: mise run lint
+#MISE description="Run golangci-lint"
+#MISE usage="mise run lint"
 
  = "Stop"
 

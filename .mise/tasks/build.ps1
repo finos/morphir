@@ -1,5 +1,5 @@
-# Description: Build the morphir CLI
-# Usage: mise run build
+#MISE description="Build the morphir CLI"
+#MISE usage="mise run build"
 
  = "Stop"
 

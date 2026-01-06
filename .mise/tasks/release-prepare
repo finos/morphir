@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Description: Prepare release tags
-# Usage: mise run release-prepare -- vX.Y.Z
+#MISE description="Prepare release tags"
+#MISE usage="mise run release-prepare -- vX.Y.Z"
 
 set -euo pipefail
 

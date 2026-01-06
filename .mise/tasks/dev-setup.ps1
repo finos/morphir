@@ -1,5 +1,5 @@
-# Description: Set up local Go workspace
-# Usage: mise run dev-setup
+#MISE description="Set up local Go workspace"
+#MISE usage="mise run dev-setup"
 
  = "Stop"
 

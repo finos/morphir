@@ -1,5 +1,5 @@
-# Description: Run all Go tests
-# Usage: mise run test
+#MISE description="Run all Go tests"
+#MISE usage="mise run test"
 
  = "Stop"
 

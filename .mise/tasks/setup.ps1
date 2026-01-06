@@ -1,5 +1,5 @@
-# Description: Run full dev environment setup
-# Usage: mise run setup
+#MISE description="Run full dev environment setup"
+#MISE usage="mise run setup"
 
  = "Stop"
 

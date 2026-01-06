@@ -1,5 +1,5 @@
-# Description: Suggest changelog entries
-# Usage: mise run changelog-suggest
+#MISE description="Suggest changelog entries"
+#MISE usage="mise run changelog-suggest"
 
  = "Stop"
 

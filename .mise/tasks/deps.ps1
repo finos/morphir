@@ -1,5 +1,5 @@
-# Description: Download Go module dependencies
-# Usage: mise run deps
+#MISE description="Download Go module dependencies"
+#MISE usage="mise run deps"
 
  = "Stop"
 

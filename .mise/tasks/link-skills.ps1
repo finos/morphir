@@ -1,5 +1,5 @@
-# Description: Link Codex skills to Claude skills
-# Usage: mise run link-skills
+#MISE description="Link Codex skills to Claude skills"
+#MISE usage="mise run link-skills"
 
  = "Stop"
 

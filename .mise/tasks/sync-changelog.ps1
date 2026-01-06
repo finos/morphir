@@ -1,5 +1,5 @@
-# Description: Sync CHANGELOG.md into cmd/morphir
-# Usage: mise run sync-changelog
+#MISE description="Sync CHANGELOG.md into cmd/morphir"
+#MISE usage="mise run sync-changelog"
 
  = "Stop"
 

@@ -1,5 +1,5 @@
-# Description: Check Go formatting
-# Usage: mise run fmt-check
+#MISE description="Check Go formatting"
+#MISE usage="mise run fmt-check"
 
  = "Stop"
 

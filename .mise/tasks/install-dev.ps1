@@ -1,5 +1,5 @@
-# Description: Install morphir-dev to Go bin
-# Usage: mise run install-dev
+#MISE description="Install morphir-dev to Go bin"
+#MISE usage="mise run install-dev"
 
  = "Stop"
 

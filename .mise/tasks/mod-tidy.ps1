@@ -1,5 +1,5 @@
-# Description: Run go mod tidy for all modules
-# Usage: mise run mod-tidy
+#MISE description="Run go mod tidy for all modules"
+#MISE usage="mise run mod-tidy"
 
  = "Stop"
 

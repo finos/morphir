@@ -1,5 +1,5 @@
-# Description: Run release automation
-# Usage: mise run release -- vX.Y.Z
+#MISE description="Run release automation"
+#MISE usage="mise run release -- vX.Y.Z"
 
  = "Stop"
 

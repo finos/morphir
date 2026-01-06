@@ -1,5 +1,5 @@
-# Description: Validate GoReleaser configuration
-# Usage: mise run goreleaser-check
+#MISE description="Validate GoReleaser configuration"
+#MISE usage="mise run goreleaser-check"
 
  = "Stop"
 

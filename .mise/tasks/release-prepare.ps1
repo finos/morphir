@@ -1,5 +1,5 @@
-# Description: Prepare release tags
-# Usage: mise run release-prepare -- vX.Y.Z
+#MISE description="Prepare release tags"
+#MISE usage="mise run release-prepare -- vX.Y.Z"
 
  = "Stop"
 

@@ -1,5 +1,5 @@
-# Description: Verify all modules build
-# Usage: mise run verify
+#MISE description="Verify all modules build"
+#MISE usage="mise run verify"
 
  = "Stop"
 

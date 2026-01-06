@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Description: Download Go module dependencies
-# Usage: mise run deps
+#MISE description="Download Go module dependencies"
+#MISE usage="mise run deps"
 
 set -euo pipefail
 

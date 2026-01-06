@@ -1,5 +1,5 @@
-# Description: Install morphir CLI with go install
-# Usage: mise run install
+#MISE description="Install morphir CLI with go install"
+#MISE usage="mise run install"
 
  = "Stop"
 

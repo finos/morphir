@@ -1,5 +1,5 @@
-# Description: Run format, verify, test, and lint
-# Usage: mise run ci-check
+#MISE description="Run format, verify, test, and lint"
+#MISE usage="mise run ci-check"
 
  = "Stop"
 

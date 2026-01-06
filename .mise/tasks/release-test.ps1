@@ -1,5 +1,5 @@
-# Description: Run a release dry-run
-# Usage: mise run release-test
+#MISE description="Run a release dry-run"
+#MISE usage="mise run release-test"
 
  = "Stop"
 

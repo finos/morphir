@@ -1,5 +1,5 @@
-# Description: Format Go code
-# Usage: mise run fmt
+#MISE description="Format Go code"
+#MISE usage="mise run fmt"
 
  = "Stop"
 

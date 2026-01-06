@@ -1,5 +1,5 @@
-# Description: Clean build artifacts
-# Usage: mise run clean
+#MISE description="Clean build artifacts"
+#MISE usage="mise run clean"
 
  = "Stop"
 

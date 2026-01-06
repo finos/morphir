@@ -1,5 +1,5 @@
-# Description: Test external consumption without go.work
-# Usage: mise run test-external
+#MISE description="Test external consumption without go.work"
+#MISE usage="mise run test-external"
 
  = "Stop"
 

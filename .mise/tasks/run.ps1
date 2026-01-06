@@ -1,5 +1,5 @@
-# Description: Run morphir CLI
-# Usage: mise run run
+#MISE description="Run morphir CLI"
+#MISE usage="mise run run"
 
  = "Stop"
 
