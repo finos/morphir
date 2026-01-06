@@ -1,13 +1,13 @@
 #MISE description="Prepare release tags"
-#USAGE name release-prepare.ps1
-#USAGE bin release-prepare.ps1
+#USAGE name release-prepare
+#USAGE bin release-prepare
 #USAGE about "Prepare release tags"
 #USAGE usage "mise run release-prepare -- vX.Y.Z"
 #USAGE arg <version> help="Semver tag like v1.2.3"
 
- = "Stop"
+$ErrorActionPreference = "Stop"
 
- = Split-Path -Parent .MyCommand.Path
- = Split-Path -Parent (Split-Path -Parent )
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
 
-& (Join-Path  "scripts\release-prepare.ps1") @Args
+& (Join-Path $repoRoot "scripts\release-prepare.ps1") @Args

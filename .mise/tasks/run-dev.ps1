@@ -1,12 +1,12 @@
 #MISE description="Run morphir-dev CLI"
-#USAGE name run-dev.ps1
-#USAGE bin run-dev.ps1
+#USAGE name run-dev
+#USAGE bin run-dev
 #USAGE about "Run morphir-dev CLI"
 #USAGE usage "mise run run-dev"
 
- = "Stop"
+$ErrorActionPreference = "Stop"
 
- = Split-Path -Parent .MyCommand.Path
- = Split-Path -Parent (Split-Path -Parent )
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
 
-& (Join-Path  "scripts\run-dev.ps1") @Args
+& (Join-Path $repoRoot "scripts\run-dev.ps1") @Args

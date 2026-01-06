@@ -1,12 +1,12 @@
 #MISE description="Build a release snapshot"
-#USAGE name release-snapshot.ps1
-#USAGE bin release-snapshot.ps1
+#USAGE name release-snapshot
+#USAGE bin release-snapshot
 #USAGE about "Build a release snapshot"
 #USAGE usage "mise run release-snapshot"
 
- = "Stop"
+$ErrorActionPreference = "Stop"
 
- = Split-Path -Parent .MyCommand.Path
- = Split-Path -Parent (Split-Path -Parent )
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
 
-& (Join-Path  "scripts\release-snapshot.ps1") @Args
+& (Join-Path $repoRoot "scripts\release-snapshot.ps1") @Args

@@ -1,12 +1,12 @@
 #MISE description="Format Go code"
-#USAGE name fmt.ps1
-#USAGE bin fmt.ps1
+#USAGE name fmt
+#USAGE bin fmt
 #USAGE about "Format Go code"
 #USAGE usage "mise run fmt"
 
- = "Stop"
+$ErrorActionPreference = "Stop"
 
- = Split-Path -Parent .MyCommand.Path
- = Split-Path -Parent (Split-Path -Parent )
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
 
-& (Join-Path  "scripts\fmt.ps1") @Args
+& (Join-Path $repoRoot "scripts\fmt.ps1") @Args

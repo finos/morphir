@@ -1,12 +1,12 @@
 #MISE description="Clean build artifacts"
-#USAGE name clean.ps1
-#USAGE bin clean.ps1
+#USAGE name clean
+#USAGE bin clean
 #USAGE about "Clean build artifacts"
 #USAGE usage "mise run clean"
 
- = "Stop"
+$ErrorActionPreference = "Stop"
 
- = Split-Path -Parent .MyCommand.Path
- = Split-Path -Parent (Split-Path -Parent )
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
 
-& (Join-Path  "scripts\clean.ps1") @Args
+& (Join-Path $repoRoot "scripts\clean.ps1") @Args

@@ -1,12 +1,12 @@
 #MISE description="Sync CHANGELOG.md into cmd/morphir"
-#USAGE name sync-changelog.ps1
-#USAGE bin sync-changelog.ps1
+#USAGE name sync-changelog
+#USAGE bin sync-changelog
 #USAGE about "Sync CHANGELOG.md into cmd/morphir"
 #USAGE usage "mise run sync-changelog"
 
- = "Stop"
+$ErrorActionPreference = "Stop"
 
- = Split-Path -Parent .MyCommand.Path
- = Split-Path -Parent (Split-Path -Parent )
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
 
-& (Join-Path  "scripts\sync-changelog.ps1") @Args
+& (Join-Path $repoRoot "scripts\sync-changelog.ps1") @Args

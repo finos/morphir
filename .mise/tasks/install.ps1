@@ -1,13 +1,14 @@
 #MISE description="Install morphir CLI with go install"
-#USAGE name install.ps1
-#USAGE bin install.ps1
+#USAGE name install
+#USAGE bin install
 #USAGE about "Install morphir CLI with go install"
 #USAGE usage "mise run install"
 
- = "Stop"
+$ErrorActionPreference = "Stop"
 
- = Split-Path -Parent .MyCommand.Path
- = Split-Path -Parent (Split-Path -Parent )
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
 
-Set-Location 
+Push-Location $repoRoot
 go install ./cmd/morphir
+Pop-Location

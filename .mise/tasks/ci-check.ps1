@@ -1,12 +1,12 @@
 #MISE description="Run format, verify, test, and lint"
-#USAGE name ci-check.ps1
-#USAGE bin ci-check.ps1
+#USAGE name ci-check
+#USAGE bin ci-check
 #USAGE about "Run format, verify, test, and lint"
 #USAGE usage "mise run ci-check"
 
- = "Stop"
+$ErrorActionPreference = "Stop"
 
- = Split-Path -Parent .MyCommand.Path
- = Split-Path -Parent (Split-Path -Parent )
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
 
-& (Join-Path  "scripts\ci-check.ps1") @Args
+& (Join-Path $repoRoot "scripts\ci-check.ps1") @Args

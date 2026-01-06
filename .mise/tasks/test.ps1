@@ -1,12 +1,12 @@
 #MISE description="Run all Go tests"
-#USAGE name test.ps1
-#USAGE bin test.ps1
+#USAGE name test
+#USAGE bin test
 #USAGE about "Run all Go tests"
 #USAGE usage "mise run test"
 
- = "Stop"
+$ErrorActionPreference = "Stop"
 
- = Split-Path -Parent .MyCommand.Path
- = Split-Path -Parent (Split-Path -Parent )
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
 
-& (Join-Path  "scripts\test.ps1") @Args
+& (Join-Path $repoRoot "scripts\test.ps1") @Args

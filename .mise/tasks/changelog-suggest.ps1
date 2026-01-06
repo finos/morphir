@@ -1,12 +1,12 @@
 #MISE description="Suggest changelog entries"
-#USAGE name changelog-suggest.ps1
-#USAGE bin changelog-suggest.ps1
+#USAGE name changelog-suggest
+#USAGE bin changelog-suggest
 #USAGE about "Suggest changelog entries"
 #USAGE usage "mise run changelog-suggest"
 
- = "Stop"
+$ErrorActionPreference = "Stop"
 
- = Split-Path -Parent .MyCommand.Path
- = Split-Path -Parent (Split-Path -Parent )
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
 
-& (Join-Path  "scripts\changelog-suggest.ps1") @Args
+& (Join-Path $repoRoot "scripts\changelog-suggest.ps1") @Args

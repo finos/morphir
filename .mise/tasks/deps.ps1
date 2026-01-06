@@ -1,12 +1,12 @@
 #MISE description="Download Go module dependencies"
-#USAGE name deps.ps1
-#USAGE bin deps.ps1
+#USAGE name deps
+#USAGE bin deps
 #USAGE about "Download Go module dependencies"
 #USAGE usage "mise run deps"
 
- = "Stop"
+$ErrorActionPreference = "Stop"
 
- = Split-Path -Parent .MyCommand.Path
- = Split-Path -Parent (Split-Path -Parent )
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
 
-& (Join-Path  "scripts\deps.ps1") @Args
+& (Join-Path $repoRoot "scripts\deps.ps1") @Args

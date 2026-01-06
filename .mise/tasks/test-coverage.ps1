@@ -1,12 +1,12 @@
 #MISE description="Run tests with coverage reports"
-#USAGE name test-coverage.ps1
-#USAGE bin test-coverage.ps1
+#USAGE name test-coverage
+#USAGE bin test-coverage
 #USAGE about "Run tests with coverage reports"
 #USAGE usage "mise run test-coverage"
 
- = "Stop"
+$ErrorActionPreference = "Stop"
 
- = Split-Path -Parent .MyCommand.Path
- = Split-Path -Parent (Split-Path -Parent )
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
 
-& (Join-Path  "scripts\test-coverage.ps1") @Args
+& (Join-Path $repoRoot "scripts\test-coverage.ps1") @Args

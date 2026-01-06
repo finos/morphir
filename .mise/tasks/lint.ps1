@@ -1,12 +1,12 @@
 #MISE description="Run golangci-lint"
-#USAGE name lint.ps1
-#USAGE bin lint.ps1
+#USAGE name lint
+#USAGE bin lint
 #USAGE about "Run golangci-lint"
 #USAGE usage "mise run lint"
 
- = "Stop"
+$ErrorActionPreference = "Stop"
 
- = Split-Path -Parent .MyCommand.Path
- = Split-Path -Parent (Split-Path -Parent )
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
 
-& (Join-Path  "scripts\lint.ps1") @Args
+& (Join-Path $repoRoot "scripts\lint.ps1") @Args

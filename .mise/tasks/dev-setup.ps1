@@ -1,12 +1,12 @@
 #MISE description="Set up local Go workspace"
-#USAGE name dev-setup.ps1
-#USAGE bin dev-setup.ps1
+#USAGE name dev-setup
+#USAGE bin dev-setup
 #USAGE about "Set up local Go workspace"
 #USAGE usage "mise run dev-setup"
 
- = "Stop"
+$ErrorActionPreference = "Stop"
 
- = Split-Path -Parent .MyCommand.Path
- = Split-Path -Parent (Split-Path -Parent )
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
 
-& (Join-Path  "scripts\dev-setup.ps1") @Args
+& (Join-Path $repoRoot "scripts\dev-setup.ps1") @Args

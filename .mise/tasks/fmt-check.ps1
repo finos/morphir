@@ -1,12 +1,12 @@
 #MISE description="Check Go formatting"
-#USAGE name fmt-check.ps1
-#USAGE bin fmt-check.ps1
+#USAGE name fmt-check
+#USAGE bin fmt-check
 #USAGE about "Check Go formatting"
 #USAGE usage "mise run fmt-check"
 
- = "Stop"
+$ErrorActionPreference = "Stop"
 
- = Split-Path -Parent .MyCommand.Path
- = Split-Path -Parent (Split-Path -Parent )
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
 
-& (Join-Path  "scripts\fmt-check.ps1") @Args
+& (Join-Path $repoRoot "scripts\fmt-check.ps1") @Args

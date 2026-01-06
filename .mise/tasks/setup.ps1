@@ -1,12 +1,12 @@
 #MISE description="Run full dev environment setup"
-#USAGE name setup.ps1
-#USAGE bin setup.ps1
+#USAGE name setup
+#USAGE bin setup
 #USAGE about "Run full dev environment setup"
 #USAGE usage "mise run setup"
 
- = "Stop"
+$ErrorActionPreference = "Stop"
 
- = Split-Path -Parent .MyCommand.Path
- = Split-Path -Parent (Split-Path -Parent )
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
 
-& (Join-Path  "scripts\setup.ps1") @Args
+& (Join-Path $repoRoot "scripts\setup.ps1") @Args
