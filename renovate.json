@@ -2,5 +2,17 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "prHourlyLimit": 5,
+  "prConcurrentLimit": 10,
+  "packageRules": [
+    {
+      "groupName": "go",
+      "matchManagers": ["gomod"]
+    },
+    {
+      "groupName": "npm",
+      "matchManagers": ["npm", "pnpm", "yarn"]
+    }
   ]
 }
