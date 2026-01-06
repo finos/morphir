@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 # Verify all modules build successfully
 
-set -e
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+"$SCRIPT_DIR/sync-changelog.sh"
+
+if [ ! -f "$SCRIPT_DIR/../go.work" ]; then
+    "$SCRIPT_DIR/setup-workspace.sh"
+fi
 
 echo "Verifying all modules build..."
 
@@ -17,7 +25,7 @@ modules=(
 
 for module in "${modules[@]}"; do
     echo "Building $module..."
-    go build "./$module"
+    (cd "$module" && go build ./...)
 done
 
 echo "All modules build successfully!"

@@ -231,8 +231,8 @@ For the latest development version:
 ```bash
 git clone https://github.com/finos/morphir.git
 cd morphir
-just setup
-just build
+mise run setup
+mise run build
 ```
 
 The binary will be in `./bin/morphir`.
@@ -245,13 +245,13 @@ The Morphir Go project includes comprehensive testing infrastructure with code c
 
 ```bash
 # Run all tests
-just test
+mise run test
 
 # Run tests with coverage report
-just test-coverage
+mise run test-coverage
 
 # Run tests with JUnit XML output (for CI integration)
-just test-junit
+mise run test-junit
 ```
 
 ### Coverage Reports

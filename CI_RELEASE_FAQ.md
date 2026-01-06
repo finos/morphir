@@ -52,8 +52,8 @@ When `cmd/morphir` imports `github.com/finos/morphir/pkg/config`, Go uses the **
 3. **Release verification**: We need to verify that external users can consume our modules
 
 **Instead of committing go.work:**
-- **Local development**: Run `bash ./scripts/setup-workspace.sh` to create go.work locally
-- **CI**: Automatically runs `setup-workspace.sh` before every build/test job
+- **Local development**: Run `mise run setup-workspace` to create go.work locally
+- **CI**: Automatically runs `mise run setup-workspace` before every build/test job
 - **Release**: Tests work **without** go.work (simulating external consumption)
 
 ### What are "replace directives" and why don't we use them?
@@ -86,7 +86,7 @@ replace github.com/finos/morphir/pkg/config => ../pkg/config
 
 **How it works:**
 
-1. **Every CI job** runs `bash ./scripts/setup-workspace.sh` as the first step
+1. **Every CI job** runs `mise run setup-workspace` as the first step
 2. This creates a `go.work` file that includes all modules in the PR
 3. When tests/builds run, Go uses **local code from the PR checkout**, not published versions
 
@@ -98,10 +98,10 @@ replace github.com/finos/morphir/pkg/config => ../pkg/config
   uses: actions/checkout@v6
 
 - name: Set up Go workspace
-  run: bash ./scripts/setup-workspace.sh  # ← Creates go.work with all modules
+  run: mise run setup-workspace  # ← Creates go.work with all modules
 
 - name: Run tests
-  run: just test  # ← Uses local code via go.work
+  run: mise run test  # ← Uses local code via go.work
 ```
 
 **Proof you can verify:**
@@ -143,7 +143,7 @@ use (
 ```
 CI Job starts
   └─> Checkout PR code (has your new changes in pkg/config)
-      └─> Run setup-workspace.sh
+      └─> Run mise run setup-workspace
           └─> Creates go.work listing ./pkg/config
               └─> Run tests
                   └─> Import github.com/finos/morphir/pkg/config
@@ -189,7 +189,7 @@ test-external-consumption:
     - name: Checkout code
       uses: actions/checkout@v6
 
-    # NOTE: No setup-workspace.sh step!
+    # NOTE: No mise run setup-workspace step!
 
     - name: Test cmd/morphir builds without go.work
       working-directory: cmd/morphir
@@ -221,7 +221,7 @@ go install github.com/finos/morphir/cmd/morphir@v0.3.2
 | **Feature PR** | ✅ Runs | ❌ Skipped |
 | **Release PR** | ✅ Runs | ✅ Runs |
 
-### Q: What does setup-workspace.sh actually do?
+### Q: What does mise run setup-workspace actually do?
 
 **A: Dynamically discovers all Go modules and creates a workspace.**
 
@@ -460,10 +460,10 @@ git clone https://github.com/finos/morphir.git
 cd morphir
 
 # Set up workspace
-bash ./scripts/setup-workspace.sh
+mise run setup-workspace
 
 # Verify setup
-just verify
+mise run verify
 ```
 
 **What this does:**
@@ -488,7 +488,7 @@ git worktree add ../morphir-feature-x feature/feature-x
 
 # Each worktree needs its own go.work
 cd ../morphir-feature-x
-bash ./scripts/setup-workspace.sh
+mise run setup-workspace
 
 # Now you have:
 # - morphir/ (main branch) with go.work
@@ -500,11 +500,11 @@ bash ./scripts/setup-workspace.sh
 ```bash
 # In morphir/
 cd morphir
-just test  # Uses local go.work
+mise run test  # Uses local go.work
 
 # In morphir-feature-x/
 cd ../morphir-feature-x
-just test  # Uses its own go.work
+mise run test  # Uses its own go.work
 ```
 
 ### Q: What should I NEVER commit?
@@ -544,19 +544,19 @@ git status | grep -E "go.work"  # Should output nothing
 
 ```bash
 # 1. Ensure go.work exists
-ls go.work || bash ./scripts/setup-workspace.sh
+ls go.work || mise run setup-workspace
 
 # 2. Format code
-just fmt
+mise run fmt
 
 # 3. Run linters
-just lint
+mise run lint
 
 # 4. Verify all modules build
-just verify
+mise run verify
 
 # 5. Run tests
-just test
+mise run test
 
 # 6. Check for uncommitted changes
 git status
@@ -568,8 +568,8 @@ git status --short | grep go.work && echo "❌ go.work is staged!" || echo "✅ 
 **If all pass locally, CI will likely pass.**
 
 **CI runs the same commands:**
-- Creates go.work via `setup-workspace.sh`
-- Runs `just lint`, `just test`, `just verify`
+- Creates go.work via `mise run setup-workspace`
+- Runs `mise run lint`, `mise run test`, `mise run verify`
 - Uses the same Go version (1.25.5)
 
 ---
@@ -591,7 +591,7 @@ package github.com/finos/morphir/pkg/config is not in std
 ls go.work
 
 # If missing, create it:
-bash ./scripts/setup-workspace.sh
+mise run setup-workspace
 
 # If exists, verify it has the module:
 grep "pkg/config" go.work
@@ -601,7 +601,7 @@ grep "pkg/config" go.work
 
 ```bash
 # Solution 1: Recreate workspace
-bash ./scripts/setup-workspace.sh
+mise run setup-workspace
 
 # Solution 2: Manually add missing module
 go work use ./pkg/config
@@ -644,7 +644,7 @@ Update go.mod files to reference the **currently published** version.
 
 **Symptom:**
 ```bash
-$ just verify
+$ mise run verify
 # Fails locally but CI shows ✅
 ```
 
@@ -657,20 +657,20 @@ $ just verify
 go work sync
 
 # Update all modules
-just mod-tidy
+mise run mod-tidy
 
 # Retry
-just verify
+mise run verify
 ```
 
 2. **Missing go.work**
 
 ```bash
 # Recreate workspace
-bash ./scripts/setup-workspace.sh
+mise run setup-workspace
 
 # Retry
-just verify
+mise run verify
 ```
 
 3. **Different Go version**
@@ -687,7 +687,7 @@ go version  # Should be 1.25.5 or later
 
 **Symptom:**
 ```bash
-$ just verify
+$ mise run verify
 ✅ Success
 
 # But CI shows ❌
@@ -784,13 +784,13 @@ go mod edit -require=github.com/finos/morphir/pkg/config@v0.3.1
 
 ```bash
 # Setup (once)
-bash ./scripts/setup-workspace.sh
+mise run setup-workspace
 
 # Daily workflow
-just verify  # Build + test
-just test    # Run tests only
-just fmt     # Format code
-just lint    # Run linters
+mise run verify  # Build + test
+mise run test    # Run tests only
+mise run fmt     # Format code
+mise run lint    # Run linters
 
 # Pre-commit
 git status   # Check what's staged
@@ -811,9 +811,9 @@ git status   # Check what's staged
 
 ```bash
 # CI always runs:
-1. setup-workspace.sh  # Create go.work
-2. just test          # Use local code
-3. just verify        # Build local code
+1. mise run setup-workspace  # Create go.work
+2. mise run test          # Use local code
+3. mise run verify        # Build local code
 
 # Release PRs additionally run:
 4. go build (no go.work)  # Test external consumption

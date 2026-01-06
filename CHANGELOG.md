@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Migrated task runner from Justfile to `mise` tasks across scripts, docs, and CI
+
 ## [0.3.3] - 2026-01-05
 
 ### Added
@@ -31,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Build process**: CHANGELOG.md now automatically synced to cmd directory
-  - Added `sync-changelog` just recipe with dependency tracking
+  - Added `sync-changelog` mise task with dependency tracking
   - GoReleaser hooks updated to include changelog sync
   - `.gitignore` updated to exclude generated `cmd/morphir/cmd/CHANGELOG.md`
 

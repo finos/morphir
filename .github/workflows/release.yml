@@ -34,6 +34,11 @@ jobs:
           go-version: '1.25.5'
           cache: true
 
+      - name: Install mise
+        uses: jdx/mise-action@v3
+        with:
+          version: 2025.12.13
+
       - name: Install GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:

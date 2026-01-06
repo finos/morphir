@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#MISE description="Link Codex skills to Claude skills"
+#USAGE name link-skills
+#USAGE bin link-skills
+#USAGE about "Link Codex skills to Claude skills"
+#USAGE usage "mise run link-skills"
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+"$REPO_ROOT/scripts/link-skills.sh" "$@"
