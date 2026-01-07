@@ -31,11 +31,11 @@ type TaskConfig struct {
 // TaskResult represents the output of a task execution.
 type TaskResult struct {
 	Name         string
-	Output       any                       // JSON-serializable task output
-	Diagnostics  []pipeline.Diagnostic     // Diagnostics from the task
-	Artifacts    []pipeline.Artifact       // Artifacts produced
-	Dependencies []string                  // Actual dependencies run
-	Err          error                     // Error if task failed
+	Output       any                   // JSON-serializable task output
+	Diagnostics  []pipeline.Diagnostic // Diagnostics from the task
+	Artifacts    []pipeline.Artifact   // Artifacts produced
+	Dependencies []string              // Actual dependencies run
+	Err          error                 // Error if task failed
 }
 
 // Task represents an executable task.
