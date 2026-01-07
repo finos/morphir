@@ -7,27 +7,27 @@ import (
 
 // jsonDocument represents the JSON structure for serialization.
 type jsonDocument struct {
-	Name     string                `json:"name"`
-	Items    map[string]jsonItem   `json:"items"`
-	Body     *string               `json:"body,omitempty"`
-	Pages    map[int]PageInfo      `json:"pages,omitempty"`
+	Name     string                 `json:"name"`
+	Items    map[string]jsonItem    `json:"items"`
+	Body     *string                `json:"body,omitempty"`
+	Pages    map[int]PageInfo       `json:"pages,omitempty"`
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // jsonItem represents a generic item for JSON serialization.
 type jsonItem struct {
-	Type        string                 `json:"type"`
-	SelfRef     string                 `json:"self_ref"`
-	Parent      *string                `json:"parent,omitempty"`
-	Children    []string               `json:"children,omitempty"`
-	Label       string                 `json:"label"`
-	Provenance  []ProvenanceItem       `json:"prov,omitempty"`
-	Metadata    map[string]interface{} `json:"meta,omitempty"`
-	Text        *string                `json:"text,omitempty"`
-	NumRows     *int                   `json:"num_rows,omitempty"`
-	NumCols     *int                   `json:"num_cols,omitempty"`
-	MimeType    *string                `json:"mime_type,omitempty"`
-	ImageData   []byte                 `json:"image_data,omitempty"`
+	Type       string                 `json:"type"`
+	SelfRef    string                 `json:"self_ref"`
+	Parent     *string                `json:"parent,omitempty"`
+	Children   []string               `json:"children,omitempty"`
+	Label      string                 `json:"label"`
+	Provenance []ProvenanceItem       `json:"prov,omitempty"`
+	Metadata   map[string]interface{} `json:"meta,omitempty"`
+	Text       *string                `json:"text,omitempty"`
+	NumRows    *int                   `json:"num_rows,omitempty"`
+	NumCols    *int                   `json:"num_cols,omitempty"`
+	MimeType   *string                `json:"mime_type,omitempty"`
+	ImageData  []byte                 `json:"image_data,omitempty"`
 }
 
 // MarshalJSON implements json.Marshaler for DoclingDocument.

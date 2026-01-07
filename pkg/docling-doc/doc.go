@@ -23,7 +23,7 @@
 //
 //	doc := docling.NewDocument("My Document")
 //	doc = docling.AddText(doc, "Hello, World!", 1)
-//	
+//
 //	// Traverse using visitor pattern
 //	docling.Walk(doc, func(item Item) error {
 //	    fmt.Println(item.Label())

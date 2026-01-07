@@ -12,10 +12,10 @@ type DoclingDocument struct {
 
 // PageInfo represents information about a page in the document.
 type PageInfo struct {
-	Number int              `json:"page"`
-	Width  float64          `json:"width"`
-	Height float64          `json:"height"`
-	Meta   Metadata         `json:"metadata,omitempty"`
+	Number int      `json:"page"`
+	Width  float64  `json:"width"`
+	Height float64  `json:"height"`
+	Meta   Metadata `json:"metadata,omitempty"`
 }
 
 // NewDocument creates a new empty Docling document.
