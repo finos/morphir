@@ -3,11 +3,12 @@ package steps
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/cucumber/godog"
-	"github.com/finos/morphir/pkg/bindings/wit"
+	morphirwit "github.com/finos/morphir/pkg/bindings/wit"
 	"github.com/finos/morphir/pkg/bindings/wit/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,11 +32,11 @@ type WITTestContext struct {
 	packageError     error
 
 	// WASI package parsing
-	wasiPackageID     string
-	parsedPackages    []domain.Package
-	parseError        error
-	currentInterface  *domain.Interface
-	parseWarnings     []string
+	wasiPackageID    string
+	parsedPackages   []domain.Package
+	parseError       error
+	currentInterface *domain.Interface
+	parseWarnings    []string
 
 	// Use paths
 	usePath      domain.UsePath
@@ -584,10 +585,11 @@ func (wtc *WITTestContext) iParseThePackage() error {
 	}
 
 	// Load and parse the WIT file
-	packages, warnings, parseErr := wit.LoadAndParseWIT(fixturePath)
+	packages, warnings, parseErr := morphirwit.LoadAndParseWIT(fixturePath)
 	wtc.parsedPackages = packages
 	wtc.parseWarnings = warnings
 	wtc.parseError = parseErr
+
 	return nil
 }
 
@@ -612,9 +614,23 @@ func (wtc *WITTestContext) resolveWASIFixturePath(packageID string) (string, err
 		return "", fmt.Errorf("only wasi packages are currently supported in fixtures")
 	}
 
-	// The fixture path is relative to the test binary
-	// Use filepath.Join to build the path
-	return filepath.Join("..", "..", "..", "..", "..", "tests", "bdd", "testdata", "wit", namespace, name+".wit"), nil
+	// Get current working directory (should be tests/bdd when running tests)
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	// Build absolute path to fixture
+	// Format: testdata/wit/{namespace}/{name}.wit
+	fixturePath := filepath.Join(cwd, "testdata", "wit", namespace, name+".wit")
+
+	// Convert to absolute path
+	absPath, err := filepath.Abs(fixturePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	return absPath, nil
 }
 
 // itShouldContainAnInterface verifies the package contains a specific interface
