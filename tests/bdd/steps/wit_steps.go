@@ -604,9 +604,11 @@ func (wtc *WITTestContext) resolveWASIFixturePath(packageID string) (string, err
 	namespace := parts[0]
 	nameAndVersion := parts[1]
 
-	// Extract package name (before @)
+	// Extract package name (before @ and before any interface path like /types)
 	nameParts := strings.Split(nameAndVersion, "@")
-	name := nameParts[0]
+	nameWithPath := nameParts[0]
+	// Handle interface paths like "http/types" -> extract just "http"
+	name := strings.Split(nameWithPath, "/")[0]
 
 	// Build fixture path
 	// We currently only have fixtures in tests/bdd/testdata/wit/wasi/
@@ -635,19 +637,22 @@ func (wtc *WITTestContext) resolveWASIFixturePath(packageID string) (string, err
 
 // itShouldContainAnInterface verifies the package contains a specific interface
 func (wtc *WITTestContext) itShouldContainAnInterface(interfaceName string) error {
-	require.NoError(wtc.t, wtc.parseError, "parse should have succeeded")
-	require.NotEmpty(wtc.t, wtc.parsedPackages, "should have parsed packages")
+	if wtc.parseError != nil {
+		return fmt.Errorf("parse failed: %w", wtc.parseError)
+	}
+	if len(wtc.parsedPackages) == 0 {
+		return fmt.Errorf("no packages parsed")
+	}
 
 	pkg := wtc.parsedPackages[0]
 	for _, iface := range pkg.Interfaces {
 		if iface.Name.String() == interfaceName {
 			wtc.currentInterface = &iface
-			return wtc.t.err
+			return nil
 		}
 	}
 
-	assert.Fail(wtc.t, fmt.Sprintf("interface %s not found in package", interfaceName))
-	return wtc.t.err
+	return fmt.Errorf("interface %s not found in package", interfaceName)
 }
 
 // theInterfaceShouldHaveTheFollowingTypes verifies interface types from a table

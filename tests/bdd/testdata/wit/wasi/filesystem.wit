@@ -1,0 +1,100 @@
+// WASI Filesystem - simplified version for testing
+package wasi:filesystem@0.2.0;
+
+interface types {
+    // Error codes for filesystem operations
+    enum error-code {
+        access,
+        would-block,
+        already,
+        bad-descriptor,
+        busy,
+        deadlock,
+        quota,
+        exist,
+        file-too-large,
+        illegal-byte-sequence,
+        in-progress,
+        interrupted,
+        invalid,
+        io,
+        is-directory,
+        loop,
+        too-many-links,
+        message-size,
+        name-too-long,
+        no-device,
+        no-entry,
+        no-lock,
+        insufficient-memory,
+        insufficient-space,
+        not-directory,
+        not-empty,
+        not-recoverable,
+        unsupported,
+        no-tty,
+        no-such-device,
+        overflow,
+        not-permitted,
+        pipe,
+        read-only,
+        invalid-seek,
+        text-file-busy,
+        cross-device,
+    }
+
+    // Alias for errno compatibility
+    type errno = error-code;
+
+    // File descriptor flags
+    flags descriptor-flags {
+        read,
+        write,
+        file-integrity-sync,
+        data-integrity-sync,
+        requested-write-sync,
+        mutate-directory,
+    }
+
+    // File type enumeration
+    enum descriptor-type {
+        unknown,
+        block-device,
+        character-device,
+        directory,
+        fifo,
+        symbolic-link,
+        regular-file,
+        socket,
+    }
+
+    // File statistics record
+    record stat {
+        %type: descriptor-type,
+        link-count: u64,
+        size: u64,
+        data-access-timestamp: option<u64>,
+        data-modification-timestamp: option<u64>,
+        status-change-timestamp: option<u64>,
+    }
+
+    // Descriptor resource for file operations
+    resource descriptor {
+        read-via-stream: func(offset: u64) -> result<u32, error-code>;
+        write-via-stream: func(offset: u64) -> result<u32, error-code>;
+        append-via-stream: func() -> result<u32, error-code>;
+        get-type: func() -> result<descriptor-type, error-code>;
+        stat: func() -> result<stat, error-code>;
+        sync: func() -> result<_, error-code>;
+        sync-data: func() -> result<_, error-code>;
+    }
+
+    // Directory entry stream resource
+    resource directory-entry-stream {
+        read-directory-entry: func() -> result<option<string>, error-code>;
+    }
+}
+
+world filesystem {
+    import types;
+}

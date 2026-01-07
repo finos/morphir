@@ -357,7 +357,29 @@ func adaptTypeDefKindToTypeDefKind(ctx *AdapterContext, kind wit.TypeDefKind) (d
 			return domain.EnumDef{Cases: cases}, nil
 		}
 
-		// TODO: Implement flags, resource
+	case "flags":
+		if flags, ok := kind.(*wit.Flags); ok {
+			flagNames := make([]domain.Identifier, 0, len(flags.Flags))
+			for _, witFlag := range flags.Flags {
+				flagName, err := domain.NewIdentifier(witFlag.Name)
+				if err != nil {
+					return nil, newAdapterError("flag name", witFlag.Name, err)
+				}
+				flagNames = append(flagNames, flagName)
+			}
+			return domain.FlagsDef{Flags: flagNames}, nil
+		}
+
+	case "resource":
+		// Resources in the wit package are marker types.
+		// Methods, constructors, and static functions are stored as Functions
+		// in the interface with special FunctionKind values.
+		if _, ok := kind.(*wit.Resource); ok {
+			return domain.ResourceDef{
+				Constructor: nil,
+				Methods:     nil,
+			}, nil
+		}
 	}
 
 	// If it's not a special construct (record/variant/enum/flags/resource),
@@ -527,7 +549,31 @@ func adaptTypeDefKind(ctx *AdapterContext, kind wit.TypeDefKind) (domain.Type, e
 			return domain.TupleType{Types: types}, nil
 		}
 
-		// TODO: Handle variant, enum, flags, resource, handle when encountered as inline types (not via TypeDef)
+	case "own":
+		if own, ok := kind.(*wit.Own); ok {
+			// own<T> is a handle type for owned resources
+			if own.Type != nil && own.Type.Name != nil {
+				resourceName, err := domain.NewIdentifier(*own.Type.Name)
+				if err != nil {
+					return nil, newAdapterError("own resource name", witKind, err)
+				}
+				return domain.HandleType{Resource: resourceName, IsBorrow: false}, nil
+			}
+			return nil, newValidationError("own", "own handle must reference a named resource")
+		}
+
+	case "borrow":
+		if borrow, ok := kind.(*wit.Borrow); ok {
+			// borrow<T> is a handle type for borrowed resources
+			if borrow.Type != nil && borrow.Type.Name != nil {
+				resourceName, err := domain.NewIdentifier(*borrow.Type.Name)
+				if err != nil {
+					return nil, newAdapterError("borrow resource name", witKind, err)
+				}
+				return domain.HandleType{Resource: resourceName, IsBorrow: true}, nil
+			}
+			return nil, newValidationError("borrow", "borrow handle must reference a named resource")
+		}
 	}
 
 	// If we get here, it's an unsupported or unknown type kind
