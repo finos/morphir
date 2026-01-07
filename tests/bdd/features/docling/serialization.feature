@@ -1,4 +1,4 @@
-@docling @serialization @pending
+@docling @serialization
 Feature: Docling Document Serialization
   As a developer
   I want to serialize and deserialize Docling documents

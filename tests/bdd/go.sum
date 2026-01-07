@@ -11,6 +11,8 @@ github.com/cucumber/messages/go/v22 v22.0.0/go.mod h1:aZipXTKc0JnjCsXrJnuZpWhtay
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/finos/morphir/pkg/docling-doc v0.0.0-20260107094914-effc3f95fab5 h1:ZypC2+lJiRjQe5py9g7+zG8YK7TCFckgYR+ZF8ICHWw=
+github.com/finos/morphir/pkg/docling-doc v0.0.0-20260107094914-effc3f95fab5/go.mod h1:vJAWo3rZVJSuJBtk0S5ToCqNiAUxd7FJZQ1ZaAl+I+w=
 github.com/finos/morphir/pkg/models v0.3.1 h1:4R9tiCKGYJ7v7aGUmxg5xEKUO0rOHxqQfx6xCmIA4jU=
 github.com/finos/morphir/pkg/models v0.3.1/go.mod h1:q6yKUR8+xTpYfLJUj75g8QQ4k9fxEpUltir3wSu3utI=
 github.com/gofrs/uuid v4.2.0+incompatible/go.mod h1:b2aQJv3Z4Fp6yNu3cdSllBxTCLRxnplIgP/c0N/04lM=

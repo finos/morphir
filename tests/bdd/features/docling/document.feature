@@ -1,4 +1,4 @@
-@docling @document @pending
+@docling @document
 Feature: Docling Document Creation and Manipulation
   As a developer
   I want to create and manipulate Docling documents
