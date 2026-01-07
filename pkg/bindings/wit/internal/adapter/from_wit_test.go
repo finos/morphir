@@ -665,6 +665,165 @@ func TestAdaptType_NamedRecordType(t *testing.T) {
 	assert.Equal(t, "datetime", namedType.Name.String())
 }
 
+func TestAdaptTypeDef_VariantType(t *testing.T) {
+	resultName := "result"
+	witTypeDef := &wit.TypeDef{
+		Name: &resultName,
+		Kind: &wit.Variant{
+			Cases: []wit.Case{
+				{Name: "ok", Type: wit.String{}},
+				{Name: "err", Type: wit.U32{}},
+			},
+		},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	typeDef, err := adaptTypeDef(ctx, witTypeDef)
+
+	require.NoError(t, err)
+	assert.Equal(t, "result", typeDef.Name.String())
+
+	variantDef, ok := typeDef.Kind.(domain.VariantDef)
+	require.True(t, ok, "Kind should be VariantDef")
+	assert.Len(t, variantDef.Cases, 2)
+	assert.Equal(t, "ok", variantDef.Cases[0].Name.String())
+	assert.NotNil(t, variantDef.Cases[0].Payload)
+	assert.Equal(t, "err", variantDef.Cases[1].Name.String())
+	assert.NotNil(t, variantDef.Cases[1].Payload)
+}
+
+func TestAdaptTypeDef_VariantWithoutPayload(t *testing.T) {
+	optionName := "option"
+	witTypeDef := &wit.TypeDef{
+		Name: &optionName,
+		Kind: &wit.Variant{
+			Cases: []wit.Case{
+				{Name: "none", Type: nil}, // No payload
+				{Name: "some", Type: wit.U32{}},
+			},
+		},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	typeDef, err := adaptTypeDef(ctx, witTypeDef)
+
+	require.NoError(t, err)
+	variantDef, ok := typeDef.Kind.(domain.VariantDef)
+	require.True(t, ok, "Kind should be VariantDef")
+	assert.Len(t, variantDef.Cases, 2)
+	assert.Nil(t, variantDef.Cases[0].Payload, "none case should have no payload")
+	assert.NotNil(t, variantDef.Cases[1].Payload, "some case should have payload")
+}
+
+func TestAdaptTypeDef_EnumType(t *testing.T) {
+	colorName := "color"
+	witTypeDef := &wit.TypeDef{
+		Name: &colorName,
+		Kind: &wit.Enum{
+			Cases: []wit.EnumCase{
+				{Name: "red"},
+				{Name: "green"},
+				{Name: "blue"},
+			},
+		},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	typeDef, err := adaptTypeDef(ctx, witTypeDef)
+
+	require.NoError(t, err)
+	assert.Equal(t, "color", typeDef.Name.String())
+
+	enumDef, ok := typeDef.Kind.(domain.EnumDef)
+	require.True(t, ok, "Kind should be EnumDef")
+	assert.Len(t, enumDef.Cases, 3)
+	assert.Equal(t, "red", enumDef.Cases[0].String())
+	assert.Equal(t, "green", enumDef.Cases[1].String())
+	assert.Equal(t, "blue", enumDef.Cases[2].String())
+}
+
+func TestAdaptTypeDefKind_VariantWithMultipleCases(t *testing.T) {
+	witVariant := &wit.Variant{
+		Cases: []wit.Case{
+			{Name: "success", Type: wit.String{}},
+			{Name: "error", Type: wit.U32{}},
+			{Name: "pending", Type: nil},
+		},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	kind, err := adaptTypeDefKindToTypeDefKind(ctx, witVariant)
+
+	require.NoError(t, err)
+	variantDef, ok := kind.(domain.VariantDef)
+	require.True(t, ok)
+	assert.Len(t, variantDef.Cases, 3)
+	assert.Equal(t, "success", variantDef.Cases[0].Name.String())
+	assert.NotNil(t, variantDef.Cases[0].Payload)
+	assert.Equal(t, "error", variantDef.Cases[1].Name.String())
+	assert.NotNil(t, variantDef.Cases[1].Payload)
+	assert.Equal(t, "pending", variantDef.Cases[2].Name.String())
+	assert.Nil(t, variantDef.Cases[2].Payload)
+}
+
+func TestAdaptTypeDefKind_EmptyEnum(t *testing.T) {
+	witEnum := &wit.Enum{
+		Cases: []wit.EnumCase{},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	kind, err := adaptTypeDefKindToTypeDefKind(ctx, witEnum)
+
+	require.NoError(t, err)
+	enumDef, ok := kind.(domain.EnumDef)
+	require.True(t, ok)
+	assert.Len(t, enumDef.Cases, 0)
+}
+
+func TestAdaptType_NamedVariantType(t *testing.T) {
+	// When we reference a named variant type in a function signature,
+	// it should be converted to a NamedType
+	resultName := "result"
+	witTypeDef := &wit.TypeDef{
+		Name: &resultName,
+		Kind: &wit.Variant{
+			Cases: []wit.Case{
+				{Name: "ok", Type: wit.U32{}},
+			},
+		},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	typ, err := adaptType(ctx, witTypeDef)
+
+	require.NoError(t, err)
+	namedType, ok := typ.(domain.NamedType)
+	require.True(t, ok, "Should be NamedType, not VariantDef")
+	assert.Equal(t, "result", namedType.Name.String())
+}
+
+func TestAdaptType_NamedEnumType(t *testing.T) {
+	// When we reference a named enum type in a function signature,
+	// it should be converted to a NamedType
+	colorName := "color"
+	witTypeDef := &wit.TypeDef{
+		Name: &colorName,
+		Kind: &wit.Enum{
+			Cases: []wit.EnumCase{
+				{Name: "red"},
+			},
+		},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	typ, err := adaptType(ctx, witTypeDef)
+
+	require.NoError(t, err)
+	namedType, ok := typ.(domain.NamedType)
+	require.True(t, ok, "Should be NamedType, not EnumDef")
+	assert.Equal(t, "color", namedType.Name.String())
+}
+
 // TODO: Add tests for world items once implemented
 // func TestAdaptWorldItem_InterfaceImport(t *testing.T) { }
 // func TestAdaptWorldItem_FunctionImport(t *testing.T) { }

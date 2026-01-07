@@ -314,7 +314,50 @@ func adaptTypeDefKindToTypeDefKind(ctx *AdapterContext, kind wit.TypeDefKind) (d
 			return domain.RecordDef{Fields: fields}, nil
 		}
 
-		// TODO: Implement variant, enum, flags, resource
+	case "variant":
+		if variant, ok := kind.(*wit.Variant); ok {
+			cases := make([]domain.VariantCase, 0, len(variant.Cases))
+			for _, witCase := range variant.Cases {
+				// Adapt case name
+				caseName, err := domain.NewIdentifier(witCase.Name)
+				if err != nil {
+					return nil, newAdapterError("variant case name", witCase.Name, err)
+				}
+
+				// Adapt optional payload type
+				var payload *domain.Type
+				if witCase.Type != nil {
+					payloadType, err := adaptType(ctx, witCase.Type)
+					if err != nil {
+						return nil, newAdapterError(fmt.Sprintf("variant case %s payload", witCase.Name), witCase.Name, err)
+					}
+					payload = &payloadType
+				}
+
+				cases = append(cases, domain.VariantCase{
+					Name:    caseName,
+					Payload: payload,
+					Docs:    domain.NewDocumentation(""), // TODO: Extract from witCase.Docs
+				})
+			}
+			return domain.VariantDef{Cases: cases}, nil
+		}
+
+	case "enum":
+		if enum, ok := kind.(*wit.Enum); ok {
+			cases := make([]domain.Identifier, 0, len(enum.Cases))
+			for _, witCase := range enum.Cases {
+				// Adapt case name
+				caseName, err := domain.NewIdentifier(witCase.Name)
+				if err != nil {
+					return nil, newAdapterError("enum case name", witCase.Name, err)
+				}
+				cases = append(cases, caseName)
+			}
+			return domain.EnumDef{Cases: cases}, nil
+		}
+
+		// TODO: Implement flags, resource
 	}
 
 	// If it's not a special construct (record/variant/enum/flags/resource),
