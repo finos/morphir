@@ -174,20 +174,7 @@ func (e *Executor) executeIntrinsic(ctx pipeline.Context, task Task) (TaskResult
 	}, nil
 }
 
-func (e *Executor) executeCommand(ctx pipeline.Context, task Task) (TaskResult, error) {
-	// TODO: Implement external command execution with sandboxing
-	// This would involve:
-	// 1. Setting up mount permissions based on task.Config.Mounts
-	// 2. Setting environment variables from task.Config.Env
-	// 3. Running the command in a sandboxed context
-	// 4. Capturing stdout/stderr
-	// 5. Returning structured output
-
-	return TaskResult{}, &TaskError{
-		TaskName: task.Name,
-		Message:  "command execution not yet implemented",
-	}
-}
+// executeCommand is now implemented in command.go
 
 // TaskError represents an error during task execution.
 type TaskError struct {
