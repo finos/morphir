@@ -467,6 +467,512 @@ func TestNewLoadResult(t *testing.T) {
 	}
 }
 
+// TaskSection Tests
+
+func TestDefaultTasksEmpty(t *testing.T) {
+	cfg := Default()
+
+	tasks := cfg.Tasks()
+	if got := tasks.Len(); got != 0 {
+		t.Errorf("Tasks.Len: want 0, got %d", got)
+	}
+	if got := tasks.Names(); got != nil {
+		t.Errorf("Tasks.Names: want nil, got %v", got)
+	}
+}
+
+func TestTasksSectionGet(t *testing.T) {
+	tasks := TasksSection{
+		definitions: map[string]TaskDefinition{
+			"build": {
+				kind:      TaskKindIntrinsic,
+				action:    "morphir.pipeline.compile",
+				dependsOn: []string{"setup"},
+			},
+		},
+	}
+
+	t.Run("existing task", func(t *testing.T) {
+		task, ok := tasks.Get("build")
+		if !ok {
+			t.Fatal("expected task 'build' to exist")
+		}
+		if task.Kind() != TaskKindIntrinsic {
+			t.Errorf("task.Kind: want intrinsic, got %q", task.Kind())
+		}
+		if task.Action() != "morphir.pipeline.compile" {
+			t.Errorf("task.Action: want morphir.pipeline.compile, got %q", task.Action())
+		}
+	})
+
+	t.Run("non-existing task", func(t *testing.T) {
+		_, ok := tasks.Get("nonexistent")
+		if ok {
+			t.Error("expected task 'nonexistent' to not exist")
+		}
+	})
+
+	t.Run("nil definitions", func(t *testing.T) {
+		emptyTasks := TasksSection{definitions: nil}
+		_, ok := emptyTasks.Get("build")
+		if ok {
+			t.Error("expected no tasks in empty section")
+		}
+	})
+}
+
+func TestTasksSectionNames(t *testing.T) {
+	tasks := TasksSection{
+		definitions: map[string]TaskDefinition{
+			"build": {},
+			"test":  {},
+			"clean": {},
+		},
+	}
+
+	names := tasks.Names()
+	if len(names) != 3 {
+		t.Fatalf("expected 3 names, got %d", len(names))
+	}
+
+	// Names should be present (order may vary due to map iteration)
+	nameSet := make(map[string]bool)
+	for _, name := range names {
+		nameSet[name] = true
+	}
+	for _, expected := range []string{"build", "test", "clean"} {
+		if !nameSet[expected] {
+			t.Errorf("expected name %q to be present", expected)
+		}
+	}
+}
+
+func TestTasksSectionLen(t *testing.T) {
+	t.Run("with tasks", func(t *testing.T) {
+		tasks := TasksSection{
+			definitions: map[string]TaskDefinition{
+				"build": {},
+				"test":  {},
+			},
+		}
+		if got := tasks.Len(); got != 2 {
+			t.Errorf("Len: want 2, got %d", got)
+		}
+	})
+
+	t.Run("nil definitions", func(t *testing.T) {
+		tasks := TasksSection{definitions: nil}
+		if got := tasks.Len(); got != 0 {
+			t.Errorf("Len: want 0, got %d", got)
+		}
+	})
+}
+
+func TestTaskDefinitionAccessors(t *testing.T) {
+	def := TaskDefinition{
+		kind:      TaskKindCommand,
+		action:    "morphir.test.run",
+		cmd:       []string{"go", "test", "./..."},
+		dependsOn: []string{"compile"},
+		pre:       []string{"setup"},
+		post:      []string{"cleanup"},
+		inputs:    []string{"workspace:/src/**/*.go"},
+		outputs:   []string{"workspace:/build/**"},
+		params:    map[string]any{"profile": "dev", "verbose": true},
+		env:       map[string]string{"GOFLAGS": "-mod=mod"},
+		mounts:    map[string]string{"workspace": "rw", "config": "ro"},
+	}
+
+	assertString(t, "Kind", "command", string(def.Kind()))
+	assertString(t, "Action", "morphir.test.run", def.Action())
+
+	// Test Cmd
+	cmd := def.Cmd()
+	if len(cmd) != 3 || cmd[0] != "go" || cmd[1] != "test" || cmd[2] != "./..." {
+		t.Errorf("Cmd: want [go test ./...], got %v", cmd)
+	}
+
+	// Test DependsOn
+	deps := def.DependsOn()
+	if len(deps) != 1 || deps[0] != "compile" {
+		t.Errorf("DependsOn: want [compile], got %v", deps)
+	}
+
+	// Test Pre
+	pre := def.Pre()
+	if len(pre) != 1 || pre[0] != "setup" {
+		t.Errorf("Pre: want [setup], got %v", pre)
+	}
+
+	// Test Post
+	post := def.Post()
+	if len(post) != 1 || post[0] != "cleanup" {
+		t.Errorf("Post: want [cleanup], got %v", post)
+	}
+
+	// Test Inputs
+	inputs := def.Inputs()
+	if len(inputs) != 1 || inputs[0] != "workspace:/src/**/*.go" {
+		t.Errorf("Inputs: want [workspace:/src/**/*.go], got %v", inputs)
+	}
+
+	// Test Outputs
+	outputs := def.Outputs()
+	if len(outputs) != 1 || outputs[0] != "workspace:/build/**" {
+		t.Errorf("Outputs: want [workspace:/build/**], got %v", outputs)
+	}
+
+	// Test Params
+	params := def.Params()
+	if params["profile"] != "dev" || params["verbose"] != true {
+		t.Errorf("Params: want {profile:dev, verbose:true}, got %v", params)
+	}
+
+	// Test Env
+	env := def.Env()
+	if env["GOFLAGS"] != "-mod=mod" {
+		t.Errorf("Env: want {GOFLAGS:-mod=mod}, got %v", env)
+	}
+
+	// Test Mounts
+	mounts := def.Mounts()
+	if mounts["workspace"] != "rw" || mounts["config"] != "ro" {
+		t.Errorf("Mounts: want {workspace:rw, config:ro}, got %v", mounts)
+	}
+}
+
+func TestTaskDefinitionEmptyAccessors(t *testing.T) {
+	def := TaskDefinition{}
+
+	if def.Kind() != "" {
+		t.Errorf("Kind: want empty, got %q", def.Kind())
+	}
+	if def.Action() != "" {
+		t.Errorf("Action: want empty, got %q", def.Action())
+	}
+	if def.Cmd() != nil {
+		t.Errorf("Cmd: want nil, got %v", def.Cmd())
+	}
+	if def.DependsOn() != nil {
+		t.Errorf("DependsOn: want nil, got %v", def.DependsOn())
+	}
+	if def.Pre() != nil {
+		t.Errorf("Pre: want nil, got %v", def.Pre())
+	}
+	if def.Post() != nil {
+		t.Errorf("Post: want nil, got %v", def.Post())
+	}
+	if def.Inputs() != nil {
+		t.Errorf("Inputs: want nil, got %v", def.Inputs())
+	}
+	if def.Outputs() != nil {
+		t.Errorf("Outputs: want nil, got %v", def.Outputs())
+	}
+	if def.Params() != nil {
+		t.Errorf("Params: want nil, got %v", def.Params())
+	}
+	if def.Env() != nil {
+		t.Errorf("Env: want nil, got %v", def.Env())
+	}
+	if def.Mounts() != nil {
+		t.Errorf("Mounts: want nil, got %v", def.Mounts())
+	}
+}
+
+func TestTaskDefinitionDefensiveCopy(t *testing.T) {
+	def := TaskDefinition{
+		cmd:       []string{"go", "build"},
+		dependsOn: []string{"setup"},
+		pre:       []string{"lint"},
+		post:      []string{"test"},
+		inputs:    []string{"*.go"},
+		outputs:   []string{"./bin/*"},
+		params:    map[string]any{"opt": "value"},
+		env:       map[string]string{"KEY": "value"},
+		mounts:    map[string]string{"src": "ro"},
+	}
+
+	// Modify returned slices
+	def.Cmd()[0] = "mutated"
+	def.DependsOn()[0] = "mutated"
+	def.Pre()[0] = "mutated"
+	def.Post()[0] = "mutated"
+	def.Inputs()[0] = "mutated"
+	def.Outputs()[0] = "mutated"
+
+	// Modify returned maps
+	def.Params()["opt"] = "mutated"
+	def.Env()["KEY"] = "mutated"
+	def.Mounts()["src"] = "mutated"
+
+	// Verify originals are unchanged
+	if def.Cmd()[0] != "go" {
+		t.Error("Cmd defensive copy failed")
+	}
+	if def.DependsOn()[0] != "setup" {
+		t.Error("DependsOn defensive copy failed")
+	}
+	if def.Pre()[0] != "lint" {
+		t.Error("Pre defensive copy failed")
+	}
+	if def.Post()[0] != "test" {
+		t.Error("Post defensive copy failed")
+	}
+	if def.Inputs()[0] != "*.go" {
+		t.Error("Inputs defensive copy failed")
+	}
+	if def.Outputs()[0] != "./bin/*" {
+		t.Error("Outputs defensive copy failed")
+	}
+	if def.Params()["opt"] != "value" {
+		t.Error("Params defensive copy failed")
+	}
+	if def.Env()["KEY"] != "value" {
+		t.Error("Env defensive copy failed")
+	}
+	if def.Mounts()["src"] != "ro" {
+		t.Error("Mounts defensive copy failed")
+	}
+}
+
+func TestFromMapWithTasks(t *testing.T) {
+	m := map[string]any{
+		"tasks": map[string]any{
+			"build": map[string]any{
+				"kind":       "intrinsic",
+				"action":     "morphir.pipeline.compile",
+				"depends_on": []any{"setup"},
+				"inputs":     []any{"workspace:/src/**"},
+				"outputs":    []any{"workspace:/build/**"},
+			},
+			"codegen": map[string]any{
+				"kind": "command",
+				"cmd":  []any{"morphir", "gen", "--target", "Scala"},
+				"env": map[string]any{
+					"GOFLAGS": "-mod=mod",
+				},
+				"mounts": map[string]any{
+					"workspace": "rw",
+					"config":    "ro",
+				},
+			},
+		},
+	}
+
+	cfg := FromMap(m)
+	tasks := cfg.Tasks()
+
+	if tasks.Len() != 2 {
+		t.Fatalf("expected 2 tasks, got %d", tasks.Len())
+	}
+
+	// Test build task
+	build, ok := tasks.Get("build")
+	if !ok {
+		t.Fatal("expected 'build' task to exist")
+	}
+	if build.Kind() != TaskKindIntrinsic {
+		t.Errorf("build.Kind: want intrinsic, got %q", build.Kind())
+	}
+	if build.Action() != "morphir.pipeline.compile" {
+		t.Errorf("build.Action: want morphir.pipeline.compile, got %q", build.Action())
+	}
+	if deps := build.DependsOn(); len(deps) != 1 || deps[0] != "setup" {
+		t.Errorf("build.DependsOn: want [setup], got %v", deps)
+	}
+
+	// Test codegen task
+	codegen, ok := tasks.Get("codegen")
+	if !ok {
+		t.Fatal("expected 'codegen' task to exist")
+	}
+	if codegen.Kind() != TaskKindCommand {
+		t.Errorf("codegen.Kind: want command, got %q", codegen.Kind())
+	}
+	cmd := codegen.Cmd()
+	if len(cmd) != 4 || cmd[0] != "morphir" {
+		t.Errorf("codegen.Cmd: want [morphir gen --target Scala], got %v", cmd)
+	}
+	if env := codegen.Env(); env["GOFLAGS"] != "-mod=mod" {
+		t.Errorf("codegen.Env: want GOFLAGS=-mod=mod, got %v", env)
+	}
+	if mounts := codegen.Mounts(); mounts["workspace"] != "rw" {
+		t.Errorf("codegen.Mounts: want workspace=rw, got %v", mounts)
+	}
+}
+
+func TestFromMapTasksWithParams(t *testing.T) {
+	m := map[string]any{
+		"tasks": map[string]any{
+			"compile": map[string]any{
+				"kind":   "intrinsic",
+				"action": "morphir.pipeline.compile",
+				"params": map[string]any{
+					"profile":    "production",
+					"optimize":   true,
+					"max_errors": int64(10),
+				},
+			},
+		},
+	}
+
+	cfg := FromMap(m)
+	compile, ok := cfg.Tasks().Get("compile")
+	if !ok {
+		t.Fatal("expected 'compile' task to exist")
+	}
+
+	params := compile.Params()
+	if params["profile"] != "production" {
+		t.Errorf("params.profile: want production, got %v", params["profile"])
+	}
+	if params["optimize"] != true {
+		t.Errorf("params.optimize: want true, got %v", params["optimize"])
+	}
+	if params["max_errors"] != int64(10) {
+		t.Errorf("params.max_errors: want 10, got %v", params["max_errors"])
+	}
+}
+
+func TestFromMapTasksWithPrePost(t *testing.T) {
+	m := map[string]any{
+		"tasks": map[string]any{
+			"build": map[string]any{
+				"kind": "intrinsic",
+				"pre":  []any{"lint", "format"},
+				"post": []any{"test", "deploy"},
+			},
+		},
+	}
+
+	cfg := FromMap(m)
+	build, ok := cfg.Tasks().Get("build")
+	if !ok {
+		t.Fatal("expected 'build' task to exist")
+	}
+
+	pre := build.Pre()
+	if len(pre) != 2 || pre[0] != "lint" || pre[1] != "format" {
+		t.Errorf("pre: want [lint format], got %v", pre)
+	}
+
+	post := build.Post()
+	if len(post) != 2 || post[0] != "test" || post[1] != "deploy" {
+		t.Errorf("post: want [test deploy], got %v", post)
+	}
+}
+
+func TestFromMapEmptyTasks(t *testing.T) {
+	m := map[string]any{
+		"tasks": map[string]any{},
+	}
+
+	cfg := FromMap(m)
+	if cfg.Tasks().Len() != 0 {
+		t.Errorf("expected 0 tasks for empty tasks section, got %d", cfg.Tasks().Len())
+	}
+}
+
+func TestFromMapNoTasks(t *testing.T) {
+	m := map[string]any{
+		"ir": map[string]any{
+			"format_version": int64(3),
+		},
+	}
+
+	cfg := FromMap(m)
+	if cfg.Tasks().Len() != 0 {
+		t.Errorf("expected 0 tasks when no tasks section, got %d", cfg.Tasks().Len())
+	}
+}
+
+func TestLoadWithTasksFromFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := tmpDir + "/morphir.toml"
+	configContent := `
+[tasks.compile]
+kind = "intrinsic"
+action = "morphir.pipeline.compile"
+depends_on = ["setup"]
+inputs = ["workspace:/src/**/*.elm"]
+outputs = ["workspace:/build/**"]
+
+[tasks.compile.params]
+profile = "dev"
+
+[tasks.compile.env]
+GOFLAGS = "-mod=mod"
+
+[tasks.compile.mounts]
+workspace = "rw"
+config = "ro"
+
+[tasks.codegen]
+kind = "command"
+cmd = ["morphir", "gen", "--target", "Scala"]
+pre = ["compile"]
+post = ["test"]
+`
+	if err := writeFile(configPath, configContent); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
+	cfg, err := Load(
+		WithWorkDir(tmpDir),
+		WithoutSystem(),
+		WithoutGlobal(),
+		WithoutEnv(),
+	)
+	if err != nil {
+		t.Fatalf("Load: unexpected error: %v", err)
+	}
+
+	tasks := cfg.Tasks()
+	if tasks.Len() != 2 {
+		t.Fatalf("expected 2 tasks, got %d", tasks.Len())
+	}
+
+	// Verify compile task
+	compile, ok := tasks.Get("compile")
+	if !ok {
+		t.Fatal("expected 'compile' task to exist")
+	}
+	if compile.Kind() != TaskKindIntrinsic {
+		t.Errorf("compile.Kind: want intrinsic, got %q", compile.Kind())
+	}
+	if compile.Action() != "morphir.pipeline.compile" {
+		t.Errorf("compile.Action: want morphir.pipeline.compile, got %q", compile.Action())
+	}
+	if params := compile.Params(); params["profile"] != "dev" {
+		t.Errorf("compile.Params: want profile=dev, got %v", params)
+	}
+	if env := compile.Env(); env["GOFLAGS"] != "-mod=mod" {
+		t.Errorf("compile.Env: want GOFLAGS=-mod=mod, got %v", env)
+	}
+	if mounts := compile.Mounts(); mounts["workspace"] != "rw" {
+		t.Errorf("compile.Mounts: want workspace=rw, got %v", mounts)
+	}
+
+	// Verify codegen task
+	codegen, ok := tasks.Get("codegen")
+	if !ok {
+		t.Fatal("expected 'codegen' task to exist")
+	}
+	if codegen.Kind() != TaskKindCommand {
+		t.Errorf("codegen.Kind: want command, got %q", codegen.Kind())
+	}
+	cmd := codegen.Cmd()
+	if len(cmd) < 1 || cmd[0] != "morphir" {
+		t.Errorf("codegen.Cmd: want [morphir gen --target Scala], got %v", cmd)
+	}
+	if pre := codegen.Pre(); len(pre) != 1 || pre[0] != "compile" {
+		t.Errorf("codegen.Pre: want [compile], got %v", pre)
+	}
+	if post := codegen.Post(); len(post) != 1 || post[0] != "test" {
+		t.Errorf("codegen.Post: want [test], got %v", post)
+	}
+}
+
 // Helper functions for tests
 func writeFile(path, content string) error {
 	return os.WriteFile(path, []byte(content), 0644)

@@ -26,6 +26,7 @@ type Config struct {
 	cache     CacheSection
 	logging   LoggingSection
 	ui        UISection
+	tasks     TasksSection
 }
 
 // Morphir returns the morphir section configuration.
@@ -66,6 +67,11 @@ func (c Config) Logging() LoggingSection {
 // UI returns the UI section configuration.
 func (c Config) UI() UISection {
 	return c.ui
+}
+
+// Tasks returns the tasks section configuration.
+func (c Config) Tasks() TasksSection {
+	return c.tasks
 }
 
 // MorphirSection contains core Morphir settings.
@@ -274,6 +280,182 @@ func (s UISection) Theme() string {
 	return s.theme
 }
 
+// TaskKind identifies the type of task execution.
+type TaskKind string
+
+const (
+	// TaskKindIntrinsic represents an internal Morphir pipeline step.
+	TaskKindIntrinsic TaskKind = "intrinsic"
+	// TaskKindCommand represents an external command execution.
+	TaskKindCommand TaskKind = "command"
+)
+
+// TasksSection contains task definitions for the project.
+// Tasks can be intrinsic (built-in Morphir actions) or commands (external executables).
+type TasksSection struct {
+	definitions map[string]TaskDefinition
+}
+
+// Get retrieves a task definition by name.
+// Returns the task definition and true if found, empty definition and false otherwise.
+func (s TasksSection) Get(name string) (TaskDefinition, bool) {
+	if s.definitions == nil {
+		return TaskDefinition{}, false
+	}
+	def, ok := s.definitions[name]
+	return def, ok
+}
+
+// Names returns a list of all defined task names.
+// Returns a defensive copy to preserve immutability.
+func (s TasksSection) Names() []string {
+	if s.definitions == nil {
+		return nil
+	}
+	names := make([]string, 0, len(s.definitions))
+	for name := range s.definitions {
+		names = append(names, name)
+	}
+	return names
+}
+
+// Len returns the number of defined tasks.
+func (s TasksSection) Len() int {
+	return len(s.definitions)
+}
+
+// TaskDefinition defines the configuration for a single task.
+type TaskDefinition struct {
+	kind      TaskKind          // "intrinsic" or "command"
+	action    string            // For intrinsic tasks: action identifier
+	cmd       []string          // For command tasks: command and arguments
+	dependsOn []string          // Task dependencies (run before this task)
+	pre       []string          // Pre-hooks (run immediately before)
+	post      []string          // Post-hooks (run immediately after)
+	inputs    []string          // Input globs for caching
+	outputs   []string          // Output globs
+	params    map[string]any    // Task parameters
+	env       map[string]string // Environment variables
+	mounts    map[string]string // Mount permissions (ro/rw)
+}
+
+// Kind returns the task kind (intrinsic or command).
+func (d TaskDefinition) Kind() TaskKind {
+	return d.kind
+}
+
+// Action returns the intrinsic action identifier.
+// Only meaningful when Kind() is TaskKindIntrinsic.
+func (d TaskDefinition) Action() string {
+	return d.action
+}
+
+// Cmd returns the command and arguments.
+// Only meaningful when Kind() is TaskKindCommand.
+// Returns a defensive copy to preserve immutability.
+func (d TaskDefinition) Cmd() []string {
+	if len(d.cmd) == 0 {
+		return nil
+	}
+	result := make([]string, len(d.cmd))
+	copy(result, d.cmd)
+	return result
+}
+
+// DependsOn returns the task dependencies.
+// Returns a defensive copy to preserve immutability.
+func (d TaskDefinition) DependsOn() []string {
+	if len(d.dependsOn) == 0 {
+		return nil
+	}
+	result := make([]string, len(d.dependsOn))
+	copy(result, d.dependsOn)
+	return result
+}
+
+// Pre returns the pre-hooks.
+// Returns a defensive copy to preserve immutability.
+func (d TaskDefinition) Pre() []string {
+	if len(d.pre) == 0 {
+		return nil
+	}
+	result := make([]string, len(d.pre))
+	copy(result, d.pre)
+	return result
+}
+
+// Post returns the post-hooks.
+// Returns a defensive copy to preserve immutability.
+func (d TaskDefinition) Post() []string {
+	if len(d.post) == 0 {
+		return nil
+	}
+	result := make([]string, len(d.post))
+	copy(result, d.post)
+	return result
+}
+
+// Inputs returns the input globs.
+// Returns a defensive copy to preserve immutability.
+func (d TaskDefinition) Inputs() []string {
+	if len(d.inputs) == 0 {
+		return nil
+	}
+	result := make([]string, len(d.inputs))
+	copy(result, d.inputs)
+	return result
+}
+
+// Outputs returns the output globs.
+// Returns a defensive copy to preserve immutability.
+func (d TaskDefinition) Outputs() []string {
+	if len(d.outputs) == 0 {
+		return nil
+	}
+	result := make([]string, len(d.outputs))
+	copy(result, d.outputs)
+	return result
+}
+
+// Params returns the task parameters.
+// Returns a defensive copy to preserve immutability.
+func (d TaskDefinition) Params() map[string]any {
+	if len(d.params) == 0 {
+		return nil
+	}
+	result := make(map[string]any, len(d.params))
+	for k, v := range d.params {
+		result[k] = v
+	}
+	return result
+}
+
+// Env returns the environment variables.
+// Returns a defensive copy to preserve immutability.
+func (d TaskDefinition) Env() map[string]string {
+	if len(d.env) == 0 {
+		return nil
+	}
+	result := make(map[string]string, len(d.env))
+	for k, v := range d.env {
+		result[k] = v
+	}
+	return result
+}
+
+// Mounts returns the mount permissions.
+// Returns a defensive copy to preserve immutability.
+func (d TaskDefinition) Mounts() map[string]string {
+	if len(d.mounts) == 0 {
+		return nil
+	}
+	result := make(map[string]string, len(d.mounts))
+	for k, v := range d.mounts {
+		result[k] = v
+	}
+	return result
+}
+
 // Default returns a Config with sensible default values.
 func Default() Config {
 	return Config{
@@ -307,6 +489,9 @@ func Default() Config {
 			color:       true,
 			interactive: true,
 			theme:       "default",
+		},
+		tasks: TasksSection{
+			definitions: nil, // No tasks defined by default
 		},
 	}
 }
@@ -381,6 +566,7 @@ func (r LoadResult) Sources() []SourceInfo {
 //	  "cache": { "enabled": bool, "dir": string, "max_size": int64 },
 //	  "logging": { "level": string, "format": string, "file": string },
 //	  "ui": { "color": bool, "interactive": bool, "theme": string },
+//	  "tasks": { "<task_name>": { "kind": string, "action": string, "cmd": []string, ... } },
 //	}
 func FromMap(m map[string]any) Config {
 	cfg := Default()
@@ -397,6 +583,7 @@ func FromMap(m map[string]any) Config {
 	cfg.cache = cacheFromMap(m, cfg.cache)
 	cfg.logging = loggingFromMap(m, cfg.logging)
 	cfg.ui = uiFromMap(m, cfg.ui)
+	cfg.tasks = tasksFromMap(m, cfg.tasks)
 
 	return cfg
 }
@@ -528,6 +715,73 @@ func uiFromMap(m map[string]any, def UISection) UISection {
 	return def
 }
 
+func tasksFromMap(m map[string]any, def TasksSection) TasksSection {
+	section, ok := m["tasks"].(map[string]any)
+	if !ok {
+		return def
+	}
+
+	definitions := make(map[string]TaskDefinition)
+
+	for taskName, taskValue := range section {
+		taskMap, ok := taskValue.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		taskDef := taskDefinitionFromMap(taskMap)
+		definitions[taskName] = taskDef
+	}
+
+	if len(definitions) == 0 {
+		return def
+	}
+
+	return TasksSection{definitions: definitions}
+}
+
+func taskDefinitionFromMap(m map[string]any) TaskDefinition {
+	def := TaskDefinition{}
+
+	// Parse kind
+	if v, ok := m["kind"].(string); ok {
+		def.kind = TaskKind(v)
+	}
+
+	// Parse action (for intrinsic tasks)
+	if v, ok := m["action"].(string); ok {
+		def.action = v
+	}
+
+	// Parse cmd (for command tasks)
+	def.cmd = getStringSliceFromAny(m["cmd"])
+
+	// Parse dependencies
+	def.dependsOn = getStringSliceFromAny(m["depends_on"])
+	def.pre = getStringSliceFromAny(m["pre"])
+	def.post = getStringSliceFromAny(m["post"])
+
+	// Parse inputs/outputs
+	def.inputs = getStringSliceFromAny(m["inputs"])
+	def.outputs = getStringSliceFromAny(m["outputs"])
+
+	// Parse params
+	if paramsMap, ok := m["params"].(map[string]any); ok {
+		def.params = make(map[string]any, len(paramsMap))
+		for k, v := range paramsMap {
+			def.params[k] = v
+		}
+	}
+
+	// Parse env
+	def.env = getStringMapFromAny(m["env"])
+
+	// Parse mounts
+	def.mounts = getStringMapFromAny(m["mounts"])
+
+	return def
+}
+
 // getIntFromAny converts various numeric types to int.
 func getIntFromAny(v any, defaultVal int) int {
 	switch val := v.(type) {
@@ -580,6 +834,27 @@ func getStringSliceFromAny(v any) []string {
 		return result
 	}
 	return nil
+}
+
+// getStringMapFromAny converts various map types to map[string]string.
+func getStringMapFromAny(v any) map[string]string {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return nil
+	}
+	if len(m) == 0 {
+		return nil
+	}
+	result := make(map[string]string, len(m))
+	for k, val := range m {
+		if s, ok := val.(string); ok {
+			result[k] = s
+		}
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
 }
 
 // NewSourceInfo creates a new SourceInfo with the given parameters.
