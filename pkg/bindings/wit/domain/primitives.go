@@ -143,8 +143,8 @@ func (d Documentation) IsEmpty() bool {
 }
 
 // kebabCaseRegex matches valid kebab-case identifiers:
-// lowercase letters, digits, and hyphens, starting with a letter
-var kebabCaseRegex = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
+// lowercase letters, digits, and hyphens, starting with a letter, not ending with a hyphen
+var kebabCaseRegex = regexp.MustCompile(`^[a-z]([a-z0-9-]*[a-z0-9])?$`)
 
 // isKebabCase checks if a string is valid kebab-case
 func isKebabCase(s string) bool {
