@@ -59,33 +59,33 @@ type CellJSON struct {
 
 // CellMetadataJSON represents the JSON structure of cell metadata.
 type CellMetadataJSON struct {
-	Collapsed bool                    `json:"collapsed,omitempty"`
-	Scrolled  any                     `json:"scrolled,omitempty"` // bool, "auto", or absent
-	Deletable *bool                   `json:"deletable,omitempty"`
-	Editable  *bool                   `json:"editable,omitempty"`
-	Name      string                  `json:"name,omitempty"`
-	Tags      []string                `json:"tags,omitempty"`
-	Jupyter   *JupyterCellMetaJSON    `json:"jupyter,omitempty"`
-	Extra     map[string]any          `json:"-"`
+	Collapsed bool                 `json:"collapsed,omitempty"`
+	Scrolled  any                  `json:"scrolled,omitempty"` // bool, "auto", or absent
+	Deletable *bool                `json:"deletable,omitempty"`
+	Editable  *bool                `json:"editable,omitempty"`
+	Name      string               `json:"name,omitempty"`
+	Tags      []string             `json:"tags,omitempty"`
+	Jupyter   *JupyterCellMetaJSON `json:"jupyter,omitempty"`
+	Extra     map[string]any       `json:"-"`
 }
 
 // JupyterCellMetaJSON represents the Jupyter-specific cell metadata.
 type JupyterCellMetaJSON struct {
-	SourceHidden   bool `json:"source_hidden,omitempty"`
-	OutputsHidden  bool `json:"outputs_hidden,omitempty"`
+	SourceHidden  bool `json:"source_hidden,omitempty"`
+	OutputsHidden bool `json:"outputs_hidden,omitempty"`
 }
 
 // OutputJSON represents the JSON structure of a cell output.
 type OutputJSON struct {
 	OutputType     string          `json:"output_type"`
-	Name           string          `json:"name,omitempty"`           // stream
-	Text           MultilineString `json:"text,omitempty"`           // stream
-	Data           map[string]any  `json:"data,omitempty"`           // display_data, execute_result
-	Metadata       map[string]any  `json:"metadata,omitempty"`       // display_data, execute_result
+	Name           string          `json:"name,omitempty"`            // stream
+	Text           MultilineString `json:"text,omitempty"`            // stream
+	Data           map[string]any  `json:"data,omitempty"`            // display_data, execute_result
+	Metadata       map[string]any  `json:"metadata,omitempty"`        // display_data, execute_result
 	ExecutionCount *int            `json:"execution_count,omitempty"` // execute_result
-	Ename          string          `json:"ename,omitempty"`          // error
-	Evalue         string          `json:"evalue,omitempty"`         // error
-	Traceback      []string        `json:"traceback,omitempty"`      // error
+	Ename          string          `json:"ename,omitempty"`           // error
+	Evalue         string          `json:"evalue,omitempty"`          // error
+	Traceback      []string        `json:"traceback,omitempty"`       // error
 }
 
 // MultilineString handles JSON fields that can be either a string or array of strings.

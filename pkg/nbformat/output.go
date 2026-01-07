@@ -35,8 +35,8 @@ type StreamOutput struct {
 	text string
 }
 
-func (StreamOutput) isOutput()                {}
-func (StreamOutput) OutputType() OutputType   { return OutputTypeStream }
+func (StreamOutput) isOutput()              {}
+func (StreamOutput) OutputType() OutputType { return OutputTypeStream }
 
 // Name returns the stream name (stdout or stderr).
 func (o StreamOutput) Name() StreamName { return o.name }

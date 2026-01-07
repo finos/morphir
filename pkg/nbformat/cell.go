@@ -218,11 +218,11 @@ type CodeCell struct {
 	outputs        []Output
 }
 
-func (CodeCell) isCell()              {}
-func (CodeCell) CellType() CellType   { return CellTypeCode }
-func (c CodeCell) Source() string     { return c.source }
+func (CodeCell) isCell()                  {}
+func (CodeCell) CellType() CellType       { return CellTypeCode }
+func (c CodeCell) Source() string         { return c.source }
 func (c CodeCell) Metadata() CellMetadata { return c.metadata }
-func (c CodeCell) ID() string         { return c.id }
+func (c CodeCell) ID() string             { return c.id }
 
 // ExecutionCount returns the execution count of the cell.
 // Returns nil if the cell has not been executed.
@@ -301,11 +301,11 @@ type MarkdownCell struct {
 	attachments map[string]MimeBundle
 }
 
-func (MarkdownCell) isCell()              {}
-func (MarkdownCell) CellType() CellType   { return CellTypeMarkdown }
-func (c MarkdownCell) Source() string     { return c.source }
+func (MarkdownCell) isCell()                  {}
+func (MarkdownCell) CellType() CellType       { return CellTypeMarkdown }
+func (c MarkdownCell) Source() string         { return c.source }
 func (c MarkdownCell) Metadata() CellMetadata { return c.metadata }
-func (c MarkdownCell) ID() string         { return c.id }
+func (c MarkdownCell) ID() string             { return c.id }
 
 // Attachments returns a copy of the cell's attachments.
 func (c MarkdownCell) Attachments() map[string]MimeBundle {
@@ -363,11 +363,11 @@ type RawCell struct {
 	attachments map[string]MimeBundle
 }
 
-func (RawCell) isCell()              {}
-func (RawCell) CellType() CellType   { return CellTypeRaw }
-func (c RawCell) Source() string     { return c.source }
+func (RawCell) isCell()                  {}
+func (RawCell) CellType() CellType       { return CellTypeRaw }
+func (c RawCell) Source() string         { return c.source }
 func (c RawCell) Metadata() CellMetadata { return c.metadata }
-func (c RawCell) ID() string         { return c.id }
+func (c RawCell) ID() string             { return c.id }
 
 // Attachments returns a copy of the cell's attachments.
 func (c RawCell) Attachments() map[string]MimeBundle {

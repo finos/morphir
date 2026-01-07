@@ -92,9 +92,9 @@ func TestMustMatchCell(t *testing.T) {
 
 type testCellVisitor struct{}
 
-func (v testCellVisitor) VisitCodeCell(c CodeCell) string     { return "visited code" }
+func (v testCellVisitor) VisitCodeCell(c CodeCell) string         { return "visited code" }
 func (v testCellVisitor) VisitMarkdownCell(c MarkdownCell) string { return "visited markdown" }
-func (v testCellVisitor) VisitRawCell(c RawCell) string       { return "visited raw" }
+func (v testCellVisitor) VisitRawCell(c RawCell) string           { return "visited raw" }
 
 func TestAcceptCellVisitor(t *testing.T) {
 	visitor := testCellVisitor{}
