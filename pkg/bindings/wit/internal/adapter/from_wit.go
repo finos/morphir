@@ -395,7 +395,7 @@ func adaptTypeDefKind(ctx *AdapterContext, kind wit.TypeDefKind) (domain.Type, e
 			return domain.NamedType{Name: name}, nil
 		}
 
-	// TODO: Handle record, variant, enum, flags, resource, handle when needed
+		// TODO: Handle record, variant, enum, flags, resource, handle when needed
 	}
 
 	// If we get here, it's an unsupported or unknown type kind
