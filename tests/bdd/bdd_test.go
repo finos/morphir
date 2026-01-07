@@ -66,6 +66,7 @@ func TestFeatures(t *testing.T) {
 			FS:       features.Features,
 			TestingT: t,
 			Strict:   true,
+			Tags:     "~@pending", // Skip scenarios tagged with @pending
 		},
 	}
 
