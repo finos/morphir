@@ -180,13 +180,13 @@ if git tag -l "$VERSION" | grep -q "$VERSION"; then
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         log_info "Deleting local tags..."
         git tag -d "$VERSION" 2>/dev/null || true
-        for module in pkg/config pkg/models pkg/pipeline pkg/sdk pkg/tooling cmd/morphir; do
+        for module in pkg/config pkg/docling-doc pkg/models pkg/pipeline pkg/sdk pkg/tooling cmd/morphir; do
             git tag -d "$module/$VERSION" 2>/dev/null || true
         done
 
         log_info "Deleting remote tags..."
         git push origin ":refs/tags/$VERSION" 2>/dev/null || true
-        for module in pkg/config pkg/models pkg/pipeline pkg/sdk pkg/tooling cmd/morphir; do
+        for module in pkg/config pkg/docling-doc pkg/models pkg/pipeline pkg/sdk pkg/tooling cmd/morphir; do
             git push origin ":refs/tags/$module/$VERSION" 2>/dev/null || true
         done
     else
@@ -300,6 +300,7 @@ fi
 log_info "Verifying Go modules are published..."
 MODULES=(
     "github.com/finos/morphir/pkg/config"
+    "github.com/finos/morphir/pkg/docling-doc"
     "github.com/finos/morphir/pkg/models"
     "github.com/finos/morphir/pkg/pipeline"
     "github.com/finos/morphir/pkg/sdk"

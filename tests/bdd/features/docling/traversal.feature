@@ -1,4 +1,4 @@
-@docling @traversal @pending
+@docling @traversal
 Feature: Docling Document Traversal
   As a developer
   I want to traverse Docling documents

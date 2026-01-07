@@ -25,7 +25,7 @@ You are a specialized assistant for developing the Morphir project. You help dev
 
 This is a **Go multi-module monorepo** using workspaces:
 
-- **Modules**: cmd/morphir, pkg/config, pkg/models, pkg/pipeline, pkg/sdk, pkg/tooling, tests/bdd
+- **Modules**: cmd/morphir, pkg/config, pkg/docling-doc, pkg/models, pkg/pipeline, pkg/sdk, pkg/tooling, tests/bdd
 - **Workspace**: Uses `go.work` for local module resolution (NOT checked into git)
 - **Replace Directives**: NEVER use replace directives in go.mod files (releases require clean modules)
 - **Issue Tracking**: Uses beads for local issue management, GitHub for public issues
@@ -80,6 +80,7 @@ if [ ! -f go.work ]; then
     go work init
     go work use ./cmd/morphir
     go work use ./pkg/config
+    go work use ./pkg/docling-doc
     go work use ./pkg/models
     go work use ./pkg/pipeline
     go work use ./pkg/sdk
