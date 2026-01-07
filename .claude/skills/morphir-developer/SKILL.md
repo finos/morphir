@@ -54,7 +54,7 @@ git pull origin main
 git checkout -b feature/<issue-id>-<short-description>
 
 # 4. Ensure go.work exists and is NOT staged
-just ensure-workspace  # or manually create go.work if needed
+mise run dev-setup  # or manually create go.work if needed
 
 # 5. Start development
 bd update <issue-id> --status in-progress
@@ -111,7 +111,7 @@ go version  # Should be 1.25.5 or later
 # 2. Required tools
 command -v goreleaser || echo "Install: go install github.com/goreleaser/goreleaser/v2@latest"
 command -v gh || echo "Install GitHub CLI: https://cli.github.com/"
-command -v just || echo "Install just: https://github.com/casey/just"
+command -v mise || echo "Install mise: https://mise.jdx.dev/"
 command -v bd || echo "Install beads: npm install -g @beads/cli"
 
 # 3. Git configuration
@@ -119,7 +119,7 @@ git config user.name || echo "Set: git config user.name 'Your Name'"
 git config user.email || echo "Set: git config user.email 'your.email@example.com'"
 
 # 4. Workspace verification
-just verify  # All modules should build
+mise run verify  # All modules should build
 ```
 
 ### 4. Development Best Practices
@@ -128,11 +128,11 @@ just verify  # All modules should build
 ```bash
 # 1. Write tests first (in tests/bdd or package-level tests)
 # 2. Run tests (they should fail)
-just test
+mise run test
 
 # 3. Implement functionality
 # 4. Run tests again (they should pass)
-just test
+mise run test
 
 # 5. Refactor while keeping tests green
 ```
@@ -166,16 +166,16 @@ grep -r "^replace " --include="go.mod" . && echo "❌ FAIL: Replace directives f
 git status --short | grep "go.work" && echo "❌ FAIL: go.work is staged!" || echo "✅ PASS: go.work not staged"
 
 # 3. Format code
-just format
+mise run fmt
 
 # 4. Run linters
-just lint
+mise run lint
 
 # 5. Build all modules
-just verify
+mise run verify
 
 # 6. Run tests
-just test
+mise run test
 
 # 7. Check for uncommitted changes in tracked files
 git status --short
@@ -216,7 +216,7 @@ git worktree add ../morphir-feature-x feature/issue-123-feature-x
 
 # Each worktree needs its own go.work
 cd ../morphir-feature-x
-just ensure-workspace  # Creates go.work in this worktree
+mise run dev-setup  # Creates go.work in this worktree
 
 # When done, remove worktree
 cd ../morphir
@@ -230,7 +230,7 @@ When other modules are updated:
 ```bash
 # go.work automatically uses local versions, no action needed!
 # Just rebuild
-just verify
+mise run verify
 ```
 
 ### Adding New Module
@@ -250,7 +250,7 @@ go work use ./pkg/newmodule
 # 4. Update documentation
 
 # 5. Verify
-just verify
+mise run verify
 ```
 
 ### Debugging Module Resolution
@@ -272,7 +272,7 @@ go mod graph
 
 # 5. Clean and rebuild
 go clean -modcache
-just verify
+mise run verify
 ```
 
 ## Issue Management
@@ -336,7 +336,7 @@ gh issue close <issue-number>
 **Solution**:
 ```bash
 # 1. Ensure go.work exists
-ls go.work || just ensure-workspace
+ls go.work || mise run dev-setup
 
 # 2. Verify module is in go.work
 grep "pkg/xxx" go.work || go work use ./pkg/xxx
@@ -346,7 +346,7 @@ go work sync
 
 # 4. Clean and rebuild
 go clean -modcache
-just verify
+mise run verify
 ```
 
 ### Replace directives detected
@@ -359,10 +359,10 @@ just verify
 bash ./scripts/remove-replace-directives.sh
 
 # Ensure go.work exists for local development
-just ensure-workspace
+mise run dev-setup
 
 # Verify modules still build
-just verify
+mise run verify
 ```
 
 ### go.work accidentally committed
@@ -399,14 +399,14 @@ git checkout main && git pull
 bd ready  # Find work to do
 
 # During development
-just verify  # Build everything
-just test    # Run all tests
-just format  # Format code
-just lint    # Run linters
+mise run verify  # Build everything
+mise run test    # Run all tests
+mise run fmt     # Format code
+mise run lint    # Run linters
 
 # Before commit
-just ci-check  # Run all checks (if available)
-git status    # Review changes
+mise run ci-check  # Run all checks
+git status        # Review changes
 
 # End of day
 bd list --status in-progress  # Review work in progress
