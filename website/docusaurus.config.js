@@ -133,6 +133,7 @@ const config = {
       prism: {
         theme: lightCodeTheme,
         darkTheme: darkCodeTheme,
+        additionalLanguages: ['elm', 'java', 'bash', 'toml', 'sql'],
       },
     }),
 };
