@@ -389,11 +389,152 @@ func TestAdaptType_NilType(t *testing.T) {
 	assert.Contains(t, validationErr.Error(), "type cannot be nil")
 }
 
-// TODO: Add tests for function adaptation once implemented
-// func TestAdaptFunction_NoParams(t *testing.T) { }
-// func TestAdaptFunction_WithParams(t *testing.T) { }
-// func TestAdaptFunction_WithResults(t *testing.T) { }
-// func TestAdaptFunction_Async(t *testing.T) { }
+// Function adaptation tests
+
+func TestAdaptFunction_NilFunction(t *testing.T) {
+	ctx := NewAdapterContext(&wit.Resolve{})
+
+	_, err := adaptFunction(ctx, nil)
+
+	require.Error(t, err)
+	var validationErr *ValidationError
+	require.ErrorAs(t, err, &validationErr)
+	assert.Contains(t, validationErr.Error(), "function cannot be nil")
+}
+
+func TestAdaptFunction_NoParamsNoResults(t *testing.T) {
+	witFunc := &wit.Function{
+		Name:    "do-something",
+		Kind:    &wit.Freestanding{},
+		Params:  []wit.Param{},
+		Results: []wit.Param{},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	fn, err := adaptFunction(ctx, witFunc)
+
+	require.NoError(t, err)
+	assert.Equal(t, "do-something", fn.Name.String())
+	assert.Empty(t, fn.Params)
+	assert.Empty(t, fn.Results)
+	assert.False(t, fn.IsAsync)
+}
+
+func TestAdaptFunction_WithParams(t *testing.T) {
+	witFunc := &wit.Function{
+		Name: "add",
+		Kind: &wit.Freestanding{},
+		Params: []wit.Param{
+			{Name: "a", Type: wit.U32{}},
+			{Name: "b", Type: wit.U32{}},
+		},
+		Results: []wit.Param{},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	fn, err := adaptFunction(ctx, witFunc)
+
+	require.NoError(t, err)
+	assert.Equal(t, "add", fn.Name.String())
+	assert.Len(t, fn.Params, 2)
+	assert.Equal(t, "a", fn.Params[0].Name.String())
+	assert.Equal(t, "b", fn.Params[1].Name.String())
+}
+
+func TestAdaptFunction_WithSingleResult(t *testing.T) {
+	witFunc := &wit.Function{
+		Name:   "get-number",
+		Kind:   &wit.Freestanding{},
+		Params: []wit.Param{},
+		Results: []wit.Param{
+			{Name: "", Type: wit.U32{}}, // Single unnamed result
+		},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	fn, err := adaptFunction(ctx, witFunc)
+
+	require.NoError(t, err)
+	assert.Equal(t, "get-number", fn.Name.String())
+	assert.Len(t, fn.Results, 1)
+}
+
+func TestAdaptFunction_WithMultipleResults(t *testing.T) {
+	witFunc := &wit.Function{
+		Name:   "divide",
+		Kind:   &wit.Freestanding{},
+		Params: []wit.Param{},
+		Results: []wit.Param{
+			{Name: "quotient", Type: wit.U32{}},
+			{Name: "remainder", Type: wit.U32{}},
+		},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	fn, err := adaptFunction(ctx, witFunc)
+
+	require.NoError(t, err)
+	assert.Equal(t, "divide", fn.Name.String())
+	assert.Len(t, fn.Results, 2)
+}
+
+func TestAdaptFunction_InvalidName(t *testing.T) {
+	witFunc := &wit.Function{
+		Name:    "INVALID_NAME",
+		Kind:    &wit.Freestanding{},
+		Params:  []wit.Param{},
+		Results: []wit.Param{},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	_, err := adaptFunction(ctx, witFunc)
+
+	require.Error(t, err)
+	var adapterErr *AdapterError
+	require.ErrorAs(t, err, &adapterErr)
+	assert.Equal(t, "function name", adapterErr.Context)
+}
+
+func TestAdaptParam_NamedParam(t *testing.T) {
+	witParam := wit.Param{
+		Name: "value",
+		Type: wit.U32{},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	param, err := adaptParam(ctx, witParam)
+
+	require.NoError(t, err)
+	assert.Equal(t, "value", param.Name.String())
+}
+
+func TestAdaptParam_UnnamedParam(t *testing.T) {
+	witParam := wit.Param{
+		Name: "", // Unnamed parameter
+		Type: wit.U32{},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	param, err := adaptParam(ctx, witParam)
+
+	require.NoError(t, err)
+	assert.Equal(t, "", param.Name.String())
+}
+
+func TestAdaptParam_InvalidName(t *testing.T) {
+	witParam := wit.Param{
+		Name: "INVALID_NAME",
+		Type: wit.U32{},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	_, err := adaptParam(ctx, witParam)
+
+	require.Error(t, err)
+	var adapterErr *AdapterError
+	require.ErrorAs(t, err, &adapterErr)
+	assert.Equal(t, "parameter name", adapterErr.Context)
+}
 
 // TODO: Add tests for world items once implemented
 // func TestAdaptWorldItem_InterfaceImport(t *testing.T) { }

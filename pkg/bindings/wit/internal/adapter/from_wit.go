@@ -111,8 +111,18 @@ func adaptInterface(ctx *AdapterContext, name string, witIface *wit.Interface) (
 	// TODO: Adapt types
 	types := make([]domain.TypeDef, 0)
 
-	// TODO: Adapt functions
-	functions := make([]domain.Function, 0)
+	// Adapt functions using ordered.Map.All()
+	functions := make([]domain.Function, 0, witIface.Functions.Len())
+	for _, witFunc := range witIface.Functions.All() {
+		if witFunc == nil {
+			continue
+		}
+		fn, err := adaptFunction(ctx, witFunc)
+		if err != nil {
+			return domain.Interface{}, err
+		}
+		functions = append(functions, fn)
+	}
 
 	// TODO: Adapt uses
 	uses := make([]domain.Use, 0)
@@ -154,6 +164,76 @@ func adaptWorld(ctx *AdapterContext, name string, witWorld *wit.World) (domain.W
 		Exports: exports,
 		Uses:    uses,
 		Docs:    docs,
+	}, nil
+}
+
+// adaptFunction converts a wit.Function to domain.Function.
+func adaptFunction(ctx *AdapterContext, witFunc *wit.Function) (domain.Function, error) {
+	if witFunc == nil {
+		return domain.Function{}, newValidationError("function", "function cannot be nil")
+	}
+
+	// Parse function name - for now we only handle freestanding functions
+	// TODO: Handle methods, constructors, and static functions
+	funcName, err := domain.NewIdentifier(witFunc.BaseName())
+	if err != nil {
+		return domain.Function{}, newAdapterError("function name", witFunc.Name, err)
+	}
+
+	// Adapt parameters
+	params := make([]domain.Param, 0, len(witFunc.Params))
+	for i, witParam := range witFunc.Params {
+		param, err := adaptParam(ctx, witParam)
+		if err != nil {
+			return domain.Function{}, newAdapterError(fmt.Sprintf("function %s param %d", witFunc.Name, i), witParam.Name, err)
+		}
+		params = append(params, param)
+	}
+
+	// Adapt results
+	// WIT functions can have 0, 1 unnamed, or multiple named results
+	results := make([]domain.Type, 0, len(witFunc.Results))
+	for i, witResult := range witFunc.Results {
+		resultType, err := adaptType(ctx, witResult.Type)
+		if err != nil {
+			return domain.Function{}, newAdapterError(fmt.Sprintf("function %s result %d", witFunc.Name, i), witResult.Name, err)
+		}
+		results = append(results, resultType)
+	}
+
+	// TODO: Extract documentation from witFunc.Docs
+	docs := domain.NewDocumentation("")
+
+	return domain.Function{
+		Name:    funcName,
+		Params:  params,
+		Results: results,
+		IsAsync: false, // WIT doesn't have async functions yet
+		Docs:    docs,
+	}, nil
+}
+
+// adaptParam converts a wit.Param to domain.Param.
+func adaptParam(ctx *AdapterContext, witParam wit.Param) (domain.Param, error) {
+	// WIT params can be unnamed (empty string)
+	var paramName domain.Identifier
+	var err error
+
+	if witParam.Name != "" {
+		paramName, err = domain.NewIdentifier(witParam.Name)
+		if err != nil {
+			return domain.Param{}, newAdapterError("parameter name", witParam.Name, err)
+		}
+	}
+
+	paramType, err := adaptType(ctx, witParam.Type)
+	if err != nil {
+		return domain.Param{}, newAdapterError("parameter type", witParam.Name, err)
+	}
+
+	return domain.Param{
+		Name: paramName,
+		Type: paramType,
 	}, nil
 }
 
@@ -215,39 +295,32 @@ func adaptTypeDefKind(ctx *AdapterContext, kind wit.TypeDefKind) (domain.Type, e
 
 	switch witKind {
 	// Primitive types (when encountered as TypeDefKind)
-	case "bool", "u8", "u16", "u32", "u64", "s8", "s16", "s32", "s64", "f32", "f64", "char", "string":
-		// Check if it's also a wit.Type and extract TypeName
-		if witType, ok := kind.(wit.Type); ok {
-			typeName := witType.TypeName()
-			switch typeName {
-			case "bool":
-				return domain.PrimitiveType{Kind: domain.Bool}, nil
-			case "u8":
-				return domain.PrimitiveType{Kind: domain.U8}, nil
-			case "u16":
-				return domain.PrimitiveType{Kind: domain.U16}, nil
-			case "u32":
-				return domain.PrimitiveType{Kind: domain.U32}, nil
-			case "u64":
-				return domain.PrimitiveType{Kind: domain.U64}, nil
-			case "s8":
-				return domain.PrimitiveType{Kind: domain.S8}, nil
-			case "s16":
-				return domain.PrimitiveType{Kind: domain.S16}, nil
-			case "s32":
-				return domain.PrimitiveType{Kind: domain.S32}, nil
-			case "s64":
-				return domain.PrimitiveType{Kind: domain.S64}, nil
-			case "f32":
-				return domain.PrimitiveType{Kind: domain.F32}, nil
-			case "f64":
-				return domain.PrimitiveType{Kind: domain.F64}, nil
-			case "char":
-				return domain.PrimitiveType{Kind: domain.Char}, nil
-			case "string":
-				return domain.PrimitiveType{Kind: domain.String}, nil
-			}
-		}
+	case "bool":
+		return domain.PrimitiveType{Kind: domain.Bool}, nil
+	case "u8":
+		return domain.PrimitiveType{Kind: domain.U8}, nil
+	case "u16":
+		return domain.PrimitiveType{Kind: domain.U16}, nil
+	case "u32":
+		return domain.PrimitiveType{Kind: domain.U32}, nil
+	case "u64":
+		return domain.PrimitiveType{Kind: domain.U64}, nil
+	case "s8":
+		return domain.PrimitiveType{Kind: domain.S8}, nil
+	case "s16":
+		return domain.PrimitiveType{Kind: domain.S16}, nil
+	case "s32":
+		return domain.PrimitiveType{Kind: domain.S32}, nil
+	case "s64":
+		return domain.PrimitiveType{Kind: domain.S64}, nil
+	case "f32":
+		return domain.PrimitiveType{Kind: domain.F32}, nil
+	case "f64":
+		return domain.PrimitiveType{Kind: domain.F64}, nil
+	case "char":
+		return domain.PrimitiveType{Kind: domain.Char}, nil
+	case "string":
+		return domain.PrimitiveType{Kind: domain.String}, nil
 
 	case "list":
 		// Cast to *wit.List using type assertion on the underlying interface
