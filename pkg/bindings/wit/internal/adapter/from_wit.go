@@ -156,3 +156,176 @@ func adaptWorld(ctx *AdapterContext, name string, witWorld *wit.World) (domain.W
 		Docs:    docs,
 	}, nil
 }
+
+// adaptType converts a wit.TypeDefKind to domain.Type.
+// wit.TypeDefKind is the common interface for all WIT type constructs.
+func adaptType(ctx *AdapterContext, kind wit.TypeDefKind) (domain.Type, error) {
+	if kind == nil {
+		return nil, newValidationError("type", "type cannot be nil")
+	}
+
+	// Check if this is a wit.Type (primitive type) using type assertion
+	if witType, ok := kind.(wit.Type); ok {
+		// WIT types use the TypeName() method to identify themselves
+		typeName := witType.TypeName()
+
+		switch typeName {
+		// Primitive types
+		case "bool":
+			return domain.PrimitiveType{Kind: domain.Bool}, nil
+		case "u8":
+			return domain.PrimitiveType{Kind: domain.U8}, nil
+		case "u16":
+			return domain.PrimitiveType{Kind: domain.U16}, nil
+		case "u32":
+			return domain.PrimitiveType{Kind: domain.U32}, nil
+		case "u64":
+			return domain.PrimitiveType{Kind: domain.U64}, nil
+		case "s8":
+			return domain.PrimitiveType{Kind: domain.S8}, nil
+		case "s16":
+			return domain.PrimitiveType{Kind: domain.S16}, nil
+		case "s32":
+			return domain.PrimitiveType{Kind: domain.S32}, nil
+		case "s64":
+			return domain.PrimitiveType{Kind: domain.S64}, nil
+		case "f32":
+			return domain.PrimitiveType{Kind: domain.F32}, nil
+		case "f64":
+			return domain.PrimitiveType{Kind: domain.F64}, nil
+		case "char":
+			return domain.PrimitiveType{Kind: domain.Char}, nil
+		case "string":
+			return domain.PrimitiveType{Kind: domain.String}, nil
+		}
+	}
+
+	// For composite types, delegate to adaptTypeDefKind
+	return adaptTypeDefKind(ctx, kind)
+}
+
+// adaptTypeDefKind adapts a wit.TypeDefKind (the underlying type in a TypeDef).
+func adaptTypeDefKind(ctx *AdapterContext, kind wit.TypeDefKind) (domain.Type, error) {
+	if kind == nil {
+		return nil, newValidationError("typedef kind", "kind cannot be nil")
+	}
+
+	// Use WITKind() to discriminate between different TypeDefKind variants
+	witKind := kind.WITKind()
+
+	switch witKind {
+	// Primitive types (when encountered as TypeDefKind)
+	case "bool", "u8", "u16", "u32", "u64", "s8", "s16", "s32", "s64", "f32", "f64", "char", "string":
+		// Check if it's also a wit.Type and extract TypeName
+		if witType, ok := kind.(wit.Type); ok {
+			typeName := witType.TypeName()
+			switch typeName {
+			case "bool":
+				return domain.PrimitiveType{Kind: domain.Bool}, nil
+			case "u8":
+				return domain.PrimitiveType{Kind: domain.U8}, nil
+			case "u16":
+				return domain.PrimitiveType{Kind: domain.U16}, nil
+			case "u32":
+				return domain.PrimitiveType{Kind: domain.U32}, nil
+			case "u64":
+				return domain.PrimitiveType{Kind: domain.U64}, nil
+			case "s8":
+				return domain.PrimitiveType{Kind: domain.S8}, nil
+			case "s16":
+				return domain.PrimitiveType{Kind: domain.S16}, nil
+			case "s32":
+				return domain.PrimitiveType{Kind: domain.S32}, nil
+			case "s64":
+				return domain.PrimitiveType{Kind: domain.S64}, nil
+			case "f32":
+				return domain.PrimitiveType{Kind: domain.F32}, nil
+			case "f64":
+				return domain.PrimitiveType{Kind: domain.F64}, nil
+			case "char":
+				return domain.PrimitiveType{Kind: domain.Char}, nil
+			case "string":
+				return domain.PrimitiveType{Kind: domain.String}, nil
+			}
+		}
+
+	case "list":
+		// Cast to *wit.List using type assertion on the underlying interface
+		if list, ok := kind.(*wit.List); ok {
+			elem, err := adaptType(ctx, list.Type)
+			if err != nil {
+				return nil, newAdapterError("list element type", witKind, err)
+			}
+			return domain.ListType{Element: elem}, nil
+		}
+
+	case "option":
+		if option, ok := kind.(*wit.Option); ok {
+			inner, err := adaptType(ctx, option.Type)
+			if err != nil {
+				return nil, newAdapterError("option inner type", witKind, err)
+			}
+			return domain.OptionType{Inner: inner}, nil
+		}
+
+	case "result":
+		if result, ok := kind.(*wit.Result); ok {
+			var ok *domain.Type
+			var errType *domain.Type
+
+			if result.OK != nil {
+				okType, err := adaptType(ctx, result.OK)
+				if err != nil {
+					return nil, newAdapterError("result ok type", witKind, err)
+				}
+				ok = &okType
+			}
+
+			if result.Err != nil {
+				eType, err := adaptType(ctx, result.Err)
+				if err != nil {
+					return nil, newAdapterError("result err type", witKind, err)
+				}
+				errType = &eType
+			}
+
+			return domain.ResultType{Ok: ok, Err: errType}, nil
+		}
+
+	case "tuple":
+		if tuple, ok := kind.(*wit.Tuple); ok {
+			types := make([]domain.Type, 0, len(tuple.Types))
+			for i, witElem := range tuple.Types {
+				elem, err := adaptType(ctx, witElem)
+				if err != nil {
+					return nil, newAdapterError(fmt.Sprintf("tuple element %d", i), witKind, err)
+				}
+				types = append(types, elem)
+			}
+			return domain.TupleType{Types: types}, nil
+		}
+
+	case "type":
+		// This is a TypeDef wrapping another type
+		if typedef, ok := kind.(*wit.TypeDef); ok {
+			// TypeDef represents a named type definition
+			if typedef.Name == nil {
+				ctx.AddWarning("encountered TypeDef without name, treating as inline definition")
+				// Recursively adapt the underlying kind
+				return adaptTypeDefKind(ctx, typedef.Kind)
+			}
+
+			name, err := domain.NewIdentifier(*typedef.Name)
+			if err != nil {
+				return nil, newAdapterError("type name", *typedef.Name, err)
+			}
+			return domain.NamedType{Name: name}, nil
+		}
+
+	// TODO: Handle record, variant, enum, flags, resource, handle when needed
+	}
+
+	// If we get here, it's an unsupported or unknown type kind
+	ctx.AddWarning("encountered unsupported TypeDefKind: %s (%T)", witKind, kind)
+	return nil, fmt.Errorf("unsupported TypeDefKind: %s (%T)", witKind, kind)
+}
