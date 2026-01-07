@@ -51,6 +51,6 @@ The static files will be generated in the `build/` directory.
 
 This website is configured to deploy on Netlify with Node.js 24. The configuration is in the root `netlify.toml` file, which specifies:
 - Build base directory: `website`
-- Publish directory: `website/build`
+- Publish directory: `build` (relative to base, resolves to `website/build`)
 - Node version: 24
 - Build command: `npm run build`
