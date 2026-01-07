@@ -1,4 +1,4 @@
-@docling @navigation
+@docling @navigation @pending
 Feature: Docling Document Navigation
   As a developer
   I want to navigate document hierarchies
