@@ -16,18 +16,26 @@ const (
 	ErrMountNotFoundCode ErrorCode = "mount_not_found"
 	ErrInvalidPathCode   ErrorCode = "invalid_path"
 	ErrConflictCode      ErrorCode = "conflict"
+	ErrPolicyDeniedCode  ErrorCode = "policy_denied"
 )
 
 // VFSError provides structured error details for VFS operations.
 type VFSError struct {
-	Code  ErrorCode
-	Path  VPath
-	Mount string
-	Op    string
-	Err   error
+	Code   ErrorCode
+	Path   VPath
+	Mount  string
+	Op     string
+	Err    error
+	Reason string // Additional context (e.g., for policy denials)
 }
 
 func (e VFSError) Error() string {
+	if e.Reason != "" {
+		if e.Err != nil {
+			return fmt.Sprintf("vfs: %s %s (%s): %s: %v", e.Op, e.Path.String(), e.Code, e.Reason, e.Err)
+		}
+		return fmt.Sprintf("vfs: %s %s (%s): %s", e.Op, e.Path.String(), e.Code, e.Reason)
+	}
 	if e.Err != nil {
 		return fmt.Sprintf("vfs: %s %s (%s): %v", e.Op, e.Path.String(), e.Code, e.Err)
 	}
@@ -64,6 +72,10 @@ func IsInvalidPath(err error) bool {
 
 func IsConflict(err error) bool {
 	return hasCode(err, ErrConflictCode)
+}
+
+func IsPolicyDenied(err error) bool {
+	return hasCode(err, ErrPolicyDeniedCode)
 }
 
 func hasCode(err error, code ErrorCode) bool {
