@@ -3,8 +3,11 @@ package steps
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"strings"
 
 	"github.com/cucumber/godog"
+	"github.com/finos/morphir/pkg/bindings/wit"
 	"github.com/finos/morphir/pkg/bindings/wit/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,6 +29,13 @@ type WITTestContext struct {
 	packageVersion   string
 	pkg              *domain.Package
 	packageError     error
+
+	// WASI package parsing
+	wasiPackageID     string
+	parsedPackages    []domain.Package
+	parseError        error
+	currentInterface  *domain.Interface
+	parseWarnings     []string
 
 	// Use paths
 	usePath      domain.UsePath
@@ -114,6 +124,11 @@ func (wtc *WITTestContext) Reset() {
 	wtc.packageVersion = ""
 	wtc.pkg = nil
 	wtc.packageError = nil
+	wtc.wasiPackageID = ""
+	wtc.parsedPackages = nil
+	wtc.parseError = nil
+	wtc.currentInterface = nil
+	wtc.parseWarnings = nil
 	wtc.usePath = nil
 	wtc.usePathError = nil
 	wtc.currentType = nil
@@ -195,6 +210,18 @@ func RegisterWITSteps(sc *godog.ScenarioContext) {
 	sc.Step(`^I should visit (\d+) types$`, wtc.iShouldVisitNTypes)
 	sc.Step(`^I calculate the type depth$`, wtc.iCalculateTheTypeDepth)
 	sc.Step(`^the depth should be (\d+)$`, wtc.theDepthShouldBe)
+
+	// WASI package parsing steps
+	sc.Step(`^the WASI package "([^"]*)"$`, wtc.theWASIPackage)
+	sc.Step(`^I parse the package$`, wtc.iParseThePackage)
+	sc.Step(`^it should contain an interface "([^"]*)"$`, wtc.itShouldContainAnInterface)
+	sc.Step(`^the interface should have the following types:$`, wtc.theInterfaceShouldHaveTheFollowingTypes)
+	sc.Step(`^the interface should have the following functions:$`, wtc.theInterfaceShouldHaveTheFollowingFunctions)
+	sc.Step(`^the interface should have the following type aliases:$`, wtc.theInterfaceShouldHaveTheFollowingTypeAliases)
+	sc.Step(`^the package namespace should be "([^"]*)"$`, wtc.thePackageNamespaceShouldBe)
+	sc.Step(`^the package name should be "([^"]*)"$`, wtc.thePackageNameShouldBe)
+	sc.Step(`^the package version should be "([^"]*)"$`, wtc.thePackageVersionShouldBe)
+	sc.Step(`^it should have at least (\d+) interfaces$`, wtc.itShouldHaveAtLeastNInterfaces)
 }
 
 // Step implementations
@@ -533,5 +560,290 @@ func (wtc *WITTestContext) iCalculateTheTypeDepth() error {
 
 func (wtc *WITTestContext) theDepthShouldBe(expected int) error {
 	assert.Equal(wtc.t, expected, wtc.typeDepth, "type depth mismatch")
+	return wtc.t.err
+}
+
+// ====================
+// WASI Package Parsing Steps
+// ====================
+
+// theWASIPackage sets up a WASI package to be parsed
+func (wtc *WITTestContext) theWASIPackage(packageID string) error {
+	wtc.wasiPackageID = packageID
+	return nil
+}
+
+// iParse ThePackage parses the WIT package
+func (wtc *WITTestContext) iParseThePackage() error {
+	// Map package ID to fixture path
+	// e.g., "wasi:clocks@0.2.0" -> "wit/wasi/clocks.wit"
+	fixturePath, err := wtc.resolveWASIFixturePath(wtc.wasiPackageID)
+	if err != nil {
+		wtc.parseError = err
+		return nil
+	}
+
+	// Load and parse the WIT file
+	packages, warnings, parseErr := wit.LoadAndParseWIT(fixturePath)
+	wtc.parsedPackages = packages
+	wtc.parseWarnings = warnings
+	wtc.parseError = parseErr
+	return nil
+}
+
+// resolveWASIFixturePath converts a package ID to a fixture file path
+func (wtc *WITTestContext) resolveWASIFixturePath(packageID string) (string, error) {
+	// Parse package ID: "wasi:clocks@0.2.0" -> namespace=wasi, name=clocks
+	parts := strings.Split(packageID, ":")
+	if len(parts) != 2 {
+		return "", fmt.Errorf("invalid package ID format: %s", packageID)
+	}
+
+	namespace := parts[0]
+	nameAndVersion := parts[1]
+
+	// Extract package name (before @)
+	nameParts := strings.Split(nameAndVersion, "@")
+	name := nameParts[0]
+
+	// Build fixture path
+	// We currently only have fixtures in tests/bdd/testdata/wit/wasi/
+	if namespace != "wasi" {
+		return "", fmt.Errorf("only wasi packages are currently supported in fixtures")
+	}
+
+	// The fixture path is relative to the test binary
+	// Use filepath.Join to build the path
+	return filepath.Join("..", "..", "..", "..", "..", "tests", "bdd", "testdata", "wit", namespace, name+".wit"), nil
+}
+
+// itShouldContainAnInterface verifies the package contains a specific interface
+func (wtc *WITTestContext) itShouldContainAnInterface(interfaceName string) error {
+	require.NoError(wtc.t, wtc.parseError, "parse should have succeeded")
+	require.NotEmpty(wtc.t, wtc.parsedPackages, "should have parsed packages")
+
+	pkg := wtc.parsedPackages[0]
+	for _, iface := range pkg.Interfaces {
+		if iface.Name.String() == interfaceName {
+			wtc.currentInterface = &iface
+			return wtc.t.err
+		}
+	}
+
+	assert.Fail(wtc.t, fmt.Sprintf("interface %s not found in package", interfaceName))
+	return wtc.t.err
+}
+
+// theInterfaceShouldHaveTheFollowingTypes verifies interface types from a table
+func (wtc *WITTestContext) theInterfaceShouldHaveTheFollowingTypes(table *godog.Table) error {
+	require.NotNil(wtc.t, wtc.currentInterface, "current interface should be set")
+
+	for i, row := range table.Rows {
+		if i == 0 {
+			// Skip header row
+			continue
+		}
+
+		typeName := row.Cells[0].Value
+		expectedKind := row.Cells[1].Value
+
+		// Find the type in the interface
+		found := false
+		for _, typeDef := range wtc.currentInterface.Types {
+			if typeDef.Name.String() == typeName {
+				found = true
+				// Check the kind
+				actualKind := getTypeDefKindName(typeDef.Kind)
+				assert.Equal(wtc.t, expectedKind, actualKind,
+					fmt.Sprintf("type %s should be %s but got %s", typeName, expectedKind, actualKind))
+				break
+			}
+		}
+
+		if !found {
+			assert.Fail(wtc.t, fmt.Sprintf("type %s not found in interface", typeName))
+		}
+	}
+
+	return wtc.t.err
+}
+
+// getTypeDefKindName returns the string name of a TypeDefKind
+func getTypeDefKindName(kind domain.TypeDefKind) string {
+	switch kind.(type) {
+	case domain.RecordDef:
+		return "record"
+	case domain.VariantDef:
+		return "variant"
+	case domain.EnumDef:
+		return "enum"
+	case domain.FlagsDef:
+		return "flags"
+	case domain.ResourceDef:
+		return "resource"
+	case domain.TypeAliasDef:
+		return "alias"
+	default:
+		return "unknown"
+	}
+}
+
+// primitiveKindToString converts a PrimitiveKind to its string representation
+func primitiveKindToString(kind domain.PrimitiveKind) string {
+	switch kind {
+	case domain.U8:
+		return "u8"
+	case domain.U16:
+		return "u16"
+	case domain.U32:
+		return "u32"
+	case domain.U64:
+		return "u64"
+	case domain.S8:
+		return "s8"
+	case domain.S16:
+		return "s16"
+	case domain.S32:
+		return "s32"
+	case domain.S64:
+		return "s64"
+	case domain.F32:
+		return "f32"
+	case domain.F64:
+		return "f64"
+	case domain.Bool:
+		return "bool"
+	case domain.Char:
+		return "char"
+	case domain.String:
+		return "string"
+	default:
+		return "unknown"
+	}
+}
+
+// theInterfaceShouldHaveTheFollowingFunctions verifies interface functions from a table
+func (wtc *WITTestContext) theInterfaceShouldHaveTheFollowingFunctions(table *godog.Table) error {
+	require.NotNil(wtc.t, wtc.currentInterface, "current interface should be set")
+
+	for i, row := range table.Rows {
+		if i == 0 {
+			// Skip header row
+			continue
+		}
+
+		funcName := row.Cells[0].Value
+		// params := row.Cells[1].Value  // TODO: Verify params
+		returns := row.Cells[2].Value
+
+		// Find the function in the interface
+		found := false
+		for _, fn := range wtc.currentInterface.Functions {
+			if fn.Name.String() == funcName {
+				found = true
+				// Verify return type
+				if returns != "" {
+					require.NotEmpty(wtc.t, fn.Results, "function should have results")
+					// For now, just check that results exist
+					// TODO: More detailed verification of return types
+				}
+				break
+			}
+		}
+
+		if !found {
+			assert.Fail(wtc.t, fmt.Sprintf("function %s not found in interface", funcName))
+		}
+	}
+
+	return wtc.t.err
+}
+
+// theInterfaceShouldHaveTheFollowingTypeAliases verifies type aliases from a table
+func (wtc *WITTestContext) theInterfaceShouldHaveTheFollowingTypeAliases(table *godog.Table) error {
+	require.NotNil(wtc.t, wtc.currentInterface, "current interface should be set")
+
+	for i, row := range table.Rows {
+		if i == 0 {
+			// Skip header row
+			continue
+		}
+
+		aliasName := row.Cells[0].Value
+		expectedTarget := row.Cells[1].Value
+
+		// Find the type alias in the interface
+		found := false
+		for _, typeDef := range wtc.currentInterface.Types {
+			if typeDef.Name.String() == aliasName {
+				found = true
+				// Check if it's a type alias
+				alias, ok := typeDef.Kind.(domain.TypeAliasDef)
+				if !ok {
+					assert.Fail(wtc.t, fmt.Sprintf("type %s is not an alias", aliasName))
+					continue
+				}
+
+				// Verify target type
+				// For primitives, check the primitive kind
+				if prim, ok := alias.Target.(domain.PrimitiveType); ok {
+					actualTarget := primitiveKindToString(prim.Kind)
+					assert.Equal(wtc.t, expectedTarget, actualTarget,
+						fmt.Sprintf("alias %s target mismatch", aliasName))
+				}
+				break
+			}
+		}
+
+		if !found {
+			assert.Fail(wtc.t, fmt.Sprintf("type alias %s not found in interface", aliasName))
+		}
+	}
+
+	return wtc.t.err
+}
+
+// thePackageNamespaceShouldBe verifies the package namespace
+func (wtc *WITTestContext) thePackageNamespaceShouldBe(expected string) error {
+	require.NoError(wtc.t, wtc.parseError, "parse should have succeeded")
+	require.NotEmpty(wtc.t, wtc.parsedPackages, "should have parsed packages")
+
+	pkg := wtc.parsedPackages[0]
+	assert.Equal(wtc.t, expected, pkg.Namespace.String(), "package namespace mismatch")
+	return wtc.t.err
+}
+
+// thePackageNameShouldBe verifies the package name
+func (wtc *WITTestContext) thePackageNameShouldBe(expected string) error {
+	require.NoError(wtc.t, wtc.parseError, "parse should have succeeded")
+	require.NotEmpty(wtc.t, wtc.parsedPackages, "should have parsed packages")
+
+	pkg := wtc.parsedPackages[0]
+	assert.Equal(wtc.t, expected, pkg.Name.String(), "package name mismatch")
+	return wtc.t.err
+}
+
+// thePackageVersionShouldBe verifies the package version
+func (wtc *WITTestContext) thePackageVersionShouldBe(expected string) error {
+	require.NoError(wtc.t, wtc.parseError, "parse should have succeeded")
+	require.NotEmpty(wtc.t, wtc.parsedPackages, "should have parsed packages")
+
+	pkg := wtc.parsedPackages[0]
+	if pkg.Version != nil {
+		assert.Equal(wtc.t, expected, pkg.Version.String(), "package version mismatch")
+	} else {
+		assert.Fail(wtc.t, "package has no version")
+	}
+	return wtc.t.err
+}
+
+// itShouldHaveAtLeastNInterfaces verifies minimum interface count
+func (wtc *WITTestContext) itShouldHaveAtLeastNInterfaces(minCount int) error {
+	require.NoError(wtc.t, wtc.parseError, "parse should have succeeded")
+	require.NotEmpty(wtc.t, wtc.parsedPackages, "should have parsed packages")
+
+	pkg := wtc.parsedPackages[0]
+	assert.GreaterOrEqual(wtc.t, len(pkg.Interfaces), minCount,
+		fmt.Sprintf("package should have at least %d interfaces", minCount))
 	return wtc.t.err
 }
