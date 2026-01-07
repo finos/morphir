@@ -1,0 +1,9 @@
+[build]
+  # Website build configuration
+  base = "website"
+  publish = "website/build"
+  command = "npm run build"
+
+[build.environment]
+  # Use Node.js 24 for builds
+  NODE_VERSION = "24"
