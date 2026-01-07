@@ -108,8 +108,18 @@ func adaptInterface(ctx *AdapterContext, name string, witIface *wit.Interface) (
 		return domain.Interface{}, newAdapterError("interface name", name, err)
 	}
 
-	// TODO: Adapt types
-	types := make([]domain.TypeDef, 0)
+	// Adapt types (record, variant, enum, flags, resource, type aliases)
+	types := make([]domain.TypeDef, 0, witIface.TypeDefs.Len())
+	for _, witTypeDef := range witIface.TypeDefs.All() {
+		if witTypeDef == nil {
+			continue
+		}
+		typeDef, err := adaptTypeDef(ctx, witTypeDef)
+		if err != nil {
+			return domain.Interface{}, err
+		}
+		types = append(types, typeDef)
+	}
 
 	// Adapt functions using ordered.Map.All()
 	functions := make([]domain.Function, 0, witIface.Functions.Len())
@@ -237,6 +247,85 @@ func adaptParam(ctx *AdapterContext, witParam wit.Param) (domain.Param, error) {
 	}, nil
 }
 
+// adaptTypeDef converts a wit.TypeDef to domain.TypeDef.
+func adaptTypeDef(ctx *AdapterContext, witTypeDef *wit.TypeDef) (domain.TypeDef, error) {
+	if witTypeDef == nil {
+		return domain.TypeDef{}, newValidationError("typedef", "typedef cannot be nil")
+	}
+
+	if witTypeDef.Name == nil {
+		return domain.TypeDef{}, newValidationError("typedef", "typedef must have a name")
+	}
+
+	// Adapt the name
+	name, err := domain.NewIdentifier(*witTypeDef.Name)
+	if err != nil {
+		return domain.TypeDef{}, newAdapterError("typedef name", *witTypeDef.Name, err)
+	}
+
+	// Adapt the kind
+	kind, err := adaptTypeDefKindToTypeDefKind(ctx, witTypeDef.Kind)
+	if err != nil {
+		return domain.TypeDef{}, newAdapterError(fmt.Sprintf("typedef %s kind", *witTypeDef.Name), *witTypeDef.Name, err)
+	}
+
+	// TODO: Extract documentation
+	docs := domain.NewDocumentation("")
+
+	return domain.TypeDef{
+		Name: name,
+		Kind: kind,
+		Docs: docs,
+	}, nil
+}
+
+// adaptTypeDefKindToTypeDefKind converts a wit.TypeDefKind to domain.TypeDefKind.
+// This handles record, variant, enum, flags, resource, and type alias definitions.
+func adaptTypeDefKindToTypeDefKind(ctx *AdapterContext, kind wit.TypeDefKind) (domain.TypeDefKind, error) {
+	if kind == nil {
+		return nil, newValidationError("typedef kind", "kind cannot be nil")
+	}
+
+	witKind := kind.WITKind()
+
+	switch witKind {
+	case "record":
+		if record, ok := kind.(*wit.Record); ok {
+			fields := make([]domain.Field, 0, len(record.Fields))
+			for _, witField := range record.Fields {
+				// Adapt field name
+				fieldName, err := domain.NewIdentifier(witField.Name)
+				if err != nil {
+					return nil, newAdapterError("record field name", witField.Name, err)
+				}
+
+				// Adapt field type
+				fieldType, err := adaptType(ctx, witField.Type)
+				if err != nil {
+					return nil, newAdapterError(fmt.Sprintf("record field %s type", witField.Name), witField.Name, err)
+				}
+
+				fields = append(fields, domain.Field{
+					Name: fieldName,
+					Type: fieldType,
+					Docs: domain.NewDocumentation(""), // TODO: Extract from witField.Docs
+				})
+			}
+			return domain.RecordDef{Fields: fields}, nil
+		}
+
+		// TODO: Implement variant, enum, flags, resource
+	}
+
+	// If it's not a special construct (record/variant/enum/flags/resource),
+	// treat it as a type alias - adapt the underlying type
+	targetType, err := adaptType(ctx, kind)
+	if err != nil {
+		return nil, err
+	}
+	return domain.TypeAliasDef{Target: targetType}, nil
+}
+
 // adaptType converts a wit.TypeDefKind to domain.Type.
 // wit.TypeDefKind is the common interface for all WIT type constructs.
 func adaptType(ctx *AdapterContext, kind wit.TypeDefKind) (domain.Type, error) {
@@ -288,6 +377,23 @@ func adaptType(ctx *AdapterContext, kind wit.TypeDefKind) (domain.Type, error) {
 func adaptTypeDefKind(ctx *AdapterContext, kind wit.TypeDefKind) (domain.Type, error) {
 	if kind == nil {
 		return nil, newValidationError("typedef kind", "kind cannot be nil")
+	}
+
+	// Special case: Check if this is a named TypeDef (reference to a type definition)
+	// This must be checked BEFORE calling WITKind() because TypeDef delegates to its Kind
+	if typedef, ok := kind.(*wit.TypeDef); ok {
+		// TypeDef represents a reference to a named type definition
+		if typedef.Name == nil {
+			ctx.AddWarning("encountered TypeDef without name, treating as inline definition")
+			// Recursively adapt the underlying kind
+			return adaptTypeDefKind(ctx, typedef.Kind)
+		}
+
+		name, err := domain.NewIdentifier(*typedef.Name)
+		if err != nil {
+			return nil, newAdapterError("type name", *typedef.Name, err)
+		}
+		return domain.NamedType{Name: name}, nil
 	}
 
 	// Use WITKind() to discriminate between different TypeDefKind variants
@@ -378,24 +484,7 @@ func adaptTypeDefKind(ctx *AdapterContext, kind wit.TypeDefKind) (domain.Type, e
 			return domain.TupleType{Types: types}, nil
 		}
 
-	case "type":
-		// This is a TypeDef wrapping another type
-		if typedef, ok := kind.(*wit.TypeDef); ok {
-			// TypeDef represents a named type definition
-			if typedef.Name == nil {
-				ctx.AddWarning("encountered TypeDef without name, treating as inline definition")
-				// Recursively adapt the underlying kind
-				return adaptTypeDefKind(ctx, typedef.Kind)
-			}
-
-			name, err := domain.NewIdentifier(*typedef.Name)
-			if err != nil {
-				return nil, newAdapterError("type name", *typedef.Name, err)
-			}
-			return domain.NamedType{Name: name}, nil
-		}
-
-		// TODO: Handle record, variant, enum, flags, resource, handle when needed
+		// TODO: Handle variant, enum, flags, resource, handle when encountered as inline types (not via TypeDef)
 	}
 
 	// If we get here, it's an unsupported or unknown type kind

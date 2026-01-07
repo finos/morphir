@@ -3,6 +3,7 @@ package adapter
 import (
 	"testing"
 
+	"github.com/finos/morphir/pkg/bindings/wit/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.bytecodealliance.org/wit"
@@ -534,6 +535,134 @@ func TestAdaptParam_InvalidName(t *testing.T) {
 	var adapterErr *AdapterError
 	require.ErrorAs(t, err, &adapterErr)
 	assert.Equal(t, "parameter name", adapterErr.Context)
+}
+
+// === Type Definition Adapter Tests ===
+
+func TestAdaptTypeDef_RecordType(t *testing.T) {
+	datetimeName := "datetime"
+	witTypeDef := &wit.TypeDef{
+		Name: &datetimeName,
+		Kind: &wit.Record{
+			Fields: []wit.Field{
+				{Name: "seconds", Type: wit.U64{}},
+				{Name: "nanoseconds", Type: wit.U32{}},
+			},
+		},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	typeDef, err := adaptTypeDef(ctx, witTypeDef)
+
+	require.NoError(t, err)
+	assert.Equal(t, "datetime", typeDef.Name.String())
+
+	recordDef, ok := typeDef.Kind.(domain.RecordDef)
+	require.True(t, ok, "Kind should be RecordDef")
+	assert.Len(t, recordDef.Fields, 2)
+	assert.Equal(t, "seconds", recordDef.Fields[0].Name.String())
+	assert.Equal(t, "nanoseconds", recordDef.Fields[1].Name.String())
+}
+
+func TestAdaptTypeDef_TypeAlias(t *testing.T) {
+	instantName := "instant"
+	witTypeDef := &wit.TypeDef{
+		Name: &instantName,
+		Kind: wit.U64{},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	typeDef, err := adaptTypeDef(ctx, witTypeDef)
+
+	require.NoError(t, err)
+	assert.Equal(t, "instant", typeDef.Name.String())
+
+	aliasDef, ok := typeDef.Kind.(domain.TypeAliasDef)
+	require.True(t, ok, "Kind should be TypeAliasDef")
+
+	primType, ok := aliasDef.Target.(domain.PrimitiveType)
+	require.True(t, ok, "Target should be PrimitiveType")
+	assert.Equal(t, domain.U64, primType.Kind)
+}
+
+func TestAdaptTypeDef_NilTypeDef(t *testing.T) {
+	ctx := NewAdapterContext(&wit.Resolve{})
+	_, err := adaptTypeDef(ctx, nil)
+
+	require.Error(t, err)
+	var validationErr *ValidationError
+	require.ErrorAs(t, err, &validationErr)
+}
+
+func TestAdaptTypeDef_MissingName(t *testing.T) {
+	witTypeDef := &wit.TypeDef{
+		Name: nil,
+		Kind: wit.U64{},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	_, err := adaptTypeDef(ctx, witTypeDef)
+
+	require.Error(t, err)
+	var validationErr *ValidationError
+	require.ErrorAs(t, err, &validationErr)
+}
+
+func TestAdaptTypeDefKind_RecordWithMultipleFields(t *testing.T) {
+	witRecord := &wit.Record{
+		Fields: []wit.Field{
+			{Name: "x", Type: wit.S32{}},
+			{Name: "y", Type: wit.S32{}},
+			{Name: "z", Type: wit.S32{}},
+		},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	kind, err := adaptTypeDefKindToTypeDefKind(ctx, witRecord)
+
+	require.NoError(t, err)
+	recordDef, ok := kind.(domain.RecordDef)
+	require.True(t, ok)
+	assert.Len(t, recordDef.Fields, 3)
+	assert.Equal(t, "x", recordDef.Fields[0].Name.String())
+	assert.Equal(t, "y", recordDef.Fields[1].Name.String())
+	assert.Equal(t, "z", recordDef.Fields[2].Name.String())
+}
+
+func TestAdaptTypeDefKind_EmptyRecord(t *testing.T) {
+	witRecord := &wit.Record{
+		Fields: []wit.Field{},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	kind, err := adaptTypeDefKindToTypeDefKind(ctx, witRecord)
+
+	require.NoError(t, err)
+	recordDef, ok := kind.(domain.RecordDef)
+	require.True(t, ok)
+	assert.Len(t, recordDef.Fields, 0)
+}
+
+func TestAdaptType_NamedRecordType(t *testing.T) {
+	// When we reference a named record type (e.g., "datetime" in function return),
+	// it should be converted to a NamedType
+	datetimeName := "datetime"
+	witTypeDef := &wit.TypeDef{
+		Name: &datetimeName,
+		Kind: &wit.Record{
+			Fields: []wit.Field{
+				{Name: "seconds", Type: wit.U64{}},
+			},
+		},
+	}
+
+	ctx := NewAdapterContext(&wit.Resolve{})
+	typ, err := adaptType(ctx, witTypeDef)
+
+	require.NoError(t, err)
+	namedType, ok := typ.(domain.NamedType)
+	require.True(t, ok, "Should be NamedType, not RecordDef")
+	assert.Equal(t, "datetime", namedType.Name.String())
 }
 
 // TODO: Add tests for world items once implemented
