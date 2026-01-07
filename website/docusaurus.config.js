@@ -4,12 +4,19 @@
 const lightCodeTheme = require('prism-react-renderer/themes/github');
 const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 
+// Use environment variable to determine baseUrl
+// For Netlify deploy previews, use root path
+// For production (GitHub Pages), use /morphir/
+const baseUrl = process.env.NETLIFY && process.env.CONTEXT !== 'production' 
+  ? '/' 
+  : '/morphir/';
+
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'Morphir',
   tagline: `A multi-language system built on a data format that captures an application's domain model and business logic in a technology agnostic manner`,
   url: 'https://finos.github.io',
-  baseUrl: '/morphir/',
+  baseUrl: baseUrl,
   onBrokenLinks: 'warn',
   onBrokenMarkdownLinks: 'warn',
   favicon: 'img/favicon.ico',
