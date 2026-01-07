@@ -10,6 +10,7 @@ cd "$(dirname "$0")/.." || exit 1
 modules=(
     "cmd/morphir"
     "pkg/models"
+    "pkg/nbformat"
     "pkg/tooling"
     "pkg/sdk"
     "pkg/pipeline"

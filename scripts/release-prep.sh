@@ -53,6 +53,7 @@ echo ""
 MODULES=(
     "pkg/config"
     "pkg/models"
+    "pkg/nbformat"
     "pkg/pipeline"
     "pkg/sdk"
     "pkg/tooling"
