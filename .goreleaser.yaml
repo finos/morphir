@@ -13,6 +13,7 @@ before:
     # Ensure all modules have their dependencies in order
     - go mod tidy -C cmd/morphir
     - go mod tidy -C pkg/models
+    - go mod tidy -C pkg/nbformat
     - go mod tidy -C pkg/tooling
     - go mod tidy -C pkg/sdk
     - go mod tidy -C pkg/pipeline
