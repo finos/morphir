@@ -109,6 +109,8 @@ type VFS interface {
 
 	Writer() (VFSWriter, error)
 	WriterForMount(name string) (VFSWriter, error)
+	WriterWithPolicy(policy WritePolicy) (VFSWriter, error)
+	WriterForMountWithPolicy(name string, policy WritePolicy) (VFSWriter, error)
 }
 
 // WriteOptions configures write behavior.

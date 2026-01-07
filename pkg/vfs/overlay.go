@@ -19,7 +19,7 @@ func NewOverlayVFS(mounts []Mount) OverlayVFS {
 func (vfs OverlayVFS) Writer() (VFSWriter, error) {
 	for i := len(vfs.mounts) - 1; i >= 0; i-- {
 		if vfs.mounts[i].Mode == MountRW {
-			return &overlayWriter{vfs: vfs, mount: &vfs.mounts[i]}, nil
+			return &overlayWriter{vfs: vfs, mount: &vfs.mounts[i], policy: nil}, nil
 		}
 	}
 	return nil, VFSError{Code: ErrReadOnlyMountCode, Op: "writer"}
@@ -32,10 +32,33 @@ func (vfs OverlayVFS) WriterForMount(name string) (VFSWriter, error) {
 			if vfs.mounts[i].Mode != MountRW {
 				return nil, VFSError{Code: ErrReadOnlyMountCode, Mount: name, Op: "writer_for_mount"}
 			}
-			return &overlayWriter{vfs: vfs, mount: &vfs.mounts[i]}, nil
+			return &overlayWriter{vfs: vfs, mount: &vfs.mounts[i], policy: nil}, nil
 		}
 	}
 	return nil, VFSError{Code: ErrMountNotFoundCode, Mount: name, Op: "writer_for_mount"}
+}
+
+// WriterWithPolicy returns a writer with a custom write policy.
+func (vfs OverlayVFS) WriterWithPolicy(policy WritePolicy) (VFSWriter, error) {
+	for i := len(vfs.mounts) - 1; i >= 0; i-- {
+		if vfs.mounts[i].Mode == MountRW {
+			return &overlayWriter{vfs: vfs, mount: &vfs.mounts[i], policy: policy}, nil
+		}
+	}
+	return nil, VFSError{Code: ErrReadOnlyMountCode, Op: "writer_with_policy"}
+}
+
+// WriterForMountWithPolicy returns a writer scoped to a specific mount with a custom policy.
+func (vfs OverlayVFS) WriterForMountWithPolicy(name string, policy WritePolicy) (VFSWriter, error) {
+	for i := range vfs.mounts {
+		if vfs.mounts[i].Name == name {
+			if vfs.mounts[i].Mode != MountRW {
+				return nil, VFSError{Code: ErrReadOnlyMountCode, Mount: name, Op: "writer_for_mount_with_policy"}
+			}
+			return &overlayWriter{vfs: vfs, mount: &vfs.mounts[i], policy: policy}, nil
+		}
+	}
+	return nil, VFSError{Code: ErrMountNotFoundCode, Mount: name, Op: "writer_for_mount_with_policy"}
 }
 
 // Resolve returns the visible entry at a path and its shadowed lineage.
