@@ -22,7 +22,6 @@ before:
     - go mod tidy -C pkg/tooling
     - go mod tidy -C pkg/sdk
     - go mod tidy -C pkg/pipeline
-    - go work sync
 
 builds:
   - id: morphir
