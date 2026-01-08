@@ -25,7 +25,7 @@ You are a specialized assistant for developing the Morphir project. You help dev
 
 This is a **Go multi-module monorepo** using workspaces:
 
-- **Modules**: cmd/morphir, pkg/config, pkg/docling-doc, pkg/models, pkg/pipeline, pkg/sdk, pkg/tooling, tests/bdd
+- **Modules**: cmd/morphir, pkg/bindings/typemap, pkg/bindings/wit, pkg/config, pkg/docling-doc, pkg/models, pkg/nbformat, pkg/pipeline, pkg/sdk, pkg/task, pkg/tooling, pkg/vfs, tests/bdd
 - **Workspace**: Uses `go.work` for local module resolution (NOT checked into git)
 - **Replace Directives**: NEVER use replace directives in go.mod files (releases require clean modules)
 - **Issue Tracking**: Uses beads for local issue management, GitHub for public issues
@@ -79,12 +79,17 @@ if [ ! -f go.work ]; then
     echo "Creating go.work for local development..."
     go work init
     go work use ./cmd/morphir
+    go work use ./pkg/bindings/typemap
+    go work use ./pkg/bindings/wit
     go work use ./pkg/config
     go work use ./pkg/docling-doc
     go work use ./pkg/models
+    go work use ./pkg/nbformat
     go work use ./pkg/pipeline
     go work use ./pkg/sdk
+    go work use ./pkg/task
     go work use ./pkg/tooling
+    go work use ./pkg/vfs
     go work use ./tests/bdd
 fi
 
@@ -247,11 +252,159 @@ go mod init github.com/finos/morphir/pkg/newmodule
 go work use ./pkg/newmodule
 
 # 3. Add to build scripts (scripts/release-prep.sh, .goreleaser.yaml)
-# 4. Update documentation
 
-# 5. Verify
+# 4. Set up coverage tracking
+mise run setup-coverage  # Discovers and verifies all modules
+
+# 5. Update test-junit.sh MODULES array if needed (for JUnit reports)
+
+# 6. Update documentation
+
+# 7. Verify
 mise run verify
 ```
+
+## Code Coverage
+
+### Understanding Coverage in CI
+
+The CI pipeline generates comprehensive code coverage reports:
+
+1. **Per-module coverage**: Each module gets its own coverage profile
+2. **Merged coverage**: All profiles merged into `coverage.out`
+3. **PR comments**: Coverage delta shown in PR comments (via go-coverage-report)
+4. **Codecov integration**: Uploaded to Codecov for tracking trends
+5. **JUnit reports**: Test results in XML format for GitHub Actions summary
+
+### Running Coverage Locally
+
+```bash
+# Run tests with full coverage report
+mise run test-junit
+
+# This generates:
+# - test-results/*.xml   (JUnit test reports)
+# - coverage/*.out       (Per-module coverage profiles)
+# - coverage.out         (Merged coverage profile)
+
+# View coverage summary
+go tool cover -func=coverage.out | tail -1
+
+# View detailed coverage by function
+go tool cover -func=coverage.out
+
+# Generate HTML coverage report (opens in browser)
+go tool cover -html=coverage.out -o coverage.html
+open coverage.html  # macOS
+# xdg-open coverage.html  # Linux
+```
+
+### Coverage for Specific Packages
+
+```bash
+# Run coverage for a single module
+cd pkg/pipeline
+go test -coverprofile=coverage.out -covermode=atomic ./...
+go tool cover -func=coverage.out
+
+# Run coverage with race detection
+go test -race -coverprofile=coverage.out -covermode=atomic ./...
+```
+
+### Setting Up Coverage for New Packages
+
+Use the `setup-coverage` task to automatically discover and verify coverage for all modules:
+
+```bash
+# Discover all modules and verify coverage works
+mise run setup-coverage
+
+# Check only (don't run tests)
+mise run setup-coverage -- --check
+
+# List all discoverable modules
+mise run setup-coverage -- --list
+```
+
+The setup-coverage script will:
+1. Find all Go modules in the repository
+2. Identify which modules have test files
+3. Verify each module can run tests with coverage
+4. Generate a MODULES array you can copy to scripts
+
+### Adding New Packages to Coverage Tracking
+
+When adding a new Go module, follow these steps:
+
+1. **Run setup-coverage to verify the module is discovered**:
+   ```bash
+   mise run setup-coverage
+   # Your new module should appear in the output
+   ```
+
+2. **Update `scripts/test-junit.sh`** (for JUnit XML reports in CI):
+   ```bash
+   # Find the MODULES array and add your module
+   MODULES=(
+       "cmd/morphir"
+       "pkg/bindings/typemap"
+       "pkg/bindings/wit"
+       "pkg/config"
+       "pkg/docling-doc"
+       "pkg/models"
+       "pkg/nbformat"
+       "pkg/pipeline"
+       "pkg/sdk"
+       "pkg/task"
+       "pkg/tooling"
+       "pkg/vfs"
+       "pkg/newmodule"  # <-- Add your new module here
+   )
+   ```
+
+   Note: `test-coverage.sh` uses dynamic discovery, so no update needed there.
+
+3. **Verify coverage works**:
+   ```bash
+   mise run test-junit
+   # Check that pkg/newmodule appears in output
+   ls coverage/newmodule.out
+   ```
+
+4. **Write tests for your module**:
+   - Every new package should have tests
+   - Aim for meaningful coverage (not just line count)
+   - Focus on testing public API and edge cases
+
+### Coverage Best Practices
+
+1. **Write tests first (TDD)**: Coverage comes naturally with TDD
+2. **Focus on behavior, not lines**: High coverage doesn't mean good tests
+3. **Test edge cases**: Empty inputs, errors, boundaries
+4. **Don't chase 100%**: Some code (like simple getters) may not need tests
+5. **Review coverage diffs in PRs**: Check what new code isn't tested
+
+### Interpreting Coverage Reports
+
+```bash
+# The coverage summary shows:
+go tool cover -func=coverage.out
+# github.com/finos/morphir/pkg/pipeline/pipeline.go:42:  NewPipeline  100.0%
+# github.com/finos/morphir/pkg/pipeline/pipeline.go:58:  Run          85.7%
+# total:                                                 (statements) 55.0%
+
+# What the numbers mean:
+# - 100.0% = All statements in function are covered
+# - 85.7%  = Most statements covered, some branches missing
+# - 0.0%   = No tests cover this function (needs attention!)
+```
+
+### Coverage Thresholds
+
+Currently there are no enforced coverage thresholds, but:
+- New code should generally have tests
+- PR coverage reports show if your changes reduce overall coverage
+- Aim to maintain or improve coverage with each PR
 
 ### Debugging Module Resolution
 
