@@ -3,6 +3,11 @@
 
 version: 2
 
+env:
+  # Skip checksum verification for our own modules during release
+  # This is needed because tags may not be indexed by sum.golang.org yet
+  - GONOSUMDB=github.com/finos/morphir/*
+
 before:
   hooks:
     # Safeguard: Remove any replace directives that may have been accidentally committed
@@ -11,18 +16,24 @@ before:
     # Sync CHANGELOG.md for embedding in about command
     - cp CHANGELOG.md cmd/morphir/cmd/CHANGELOG.md
     # Ensure all modules have their dependencies in order
+    # NOTE: Keep this list in sync with scripts/release-tags.sh MODULES array
     - go mod tidy -C cmd/morphir
+    - go mod tidy -C pkg/bindings/typemap
+    - go mod tidy -C pkg/bindings/wit
+    - go mod tidy -C pkg/config
+    - go mod tidy -C pkg/docling-doc
     - go mod tidy -C pkg/models
     - go mod tidy -C pkg/nbformat
-    - go mod tidy -C pkg/tooling
-    - go mod tidy -C pkg/sdk
     - go mod tidy -C pkg/pipeline
-    - go mod tidy -C tests/bdd
-    - go work sync
+    - go mod tidy -C pkg/sdk
+    - go mod tidy -C pkg/task
+    - go mod tidy -C pkg/tooling
+    - go mod tidy -C pkg/vfs
 
 builds:
   - id: morphir
-    main: ./cmd/morphir
+    dir: cmd/morphir
+    main: .
     binary: morphir
     env:
       - CGO_ENABLED=0

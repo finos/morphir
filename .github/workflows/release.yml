@@ -16,9 +16,54 @@ permissions:
   packages: write
 
 jobs:
+  validate:
+    name: Pre-Release Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Fetch all tags
+        run: git fetch --force --tags
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run release validation
+        run: |
+          if [ -f "./scripts/release-validate.sh" ]; then
+            chmod +x ./scripts/release-validate.sh
+            ./scripts/release-validate.sh --json ${{ steps.version.outputs.VERSION }} | tee validation-results.json
+            # Check for errors in JSON output
+            if jq -e '.status == "error"' validation-results.json > /dev/null; then
+              echo "::error::Pre-release validation failed. Check the validation results above."
+              jq -r '.checks[] | select(.status == "error") | "❌ \(.name): \(.message)"' validation-results.json
+              exit 1
+            fi
+          else
+            echo "⚠️ release-validate.sh not found, skipping validation"
+          fi
+
+      - name: Upload validation results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: validation-results
+          path: validation-results.json
+          if-no-files-found: ignore
+
   goreleaser:
     name: GoReleaser
     runs-on: ubuntu-latest
+    needs: validate
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -55,12 +100,7 @@ jobs:
       - name: Run GoReleaser
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            goreleaser release --clean
-          else
-            goreleaser release --clean
-          fi
+        run: goreleaser release --clean
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6

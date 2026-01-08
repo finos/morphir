@@ -3,7 +3,7 @@ module github.com/finos/morphir/pkg/pipeline
 go 1.25.5
 
 require (
-	github.com/finos/morphir/pkg/vfs v0.0.0
+	github.com/finos/morphir/pkg/vfs v0.4.0-alpha.1
 	github.com/stretchr/testify v1.11.1
 )
 
@@ -14,5 +14,3 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/finos/morphir/pkg/vfs => ../vfs

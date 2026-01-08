@@ -680,6 +680,88 @@ Your job as developer:
 3. Write quality code with tests
 4. Follow commit conventions
 
+## Release Process for Developers
+
+> **Full release procedures**: See the `release-manager` skill for complete release workflows.
+
+### Pre-Release Validation
+
+Before any release, validate the repository is ready:
+
+```bash
+# Run pre-release validation
+./scripts/release-validate.sh v0.4.0-alpha.1
+
+# Check with JSON output for automation
+./scripts/release-validate.sh --json v0.4.0-alpha.1 | jq '.checks[] | select(.status == "error")'
+```
+
+The validation checks:
+- No replace directives in go.mod files
+- No pseudo-versions referencing internal modules
+- CHANGELOG.md copied to cmd/morphir/cmd/ for go:embed
+- go.work not staged for commit
+- GoReleaser configuration is valid
+- GONOSUMDB is configured correctly
+- Module list matches actual modules
+
+### Tag Management
+
+Use the tag management script for release tags:
+
+```bash
+# Preview what tags would be created (safe, non-destructive)
+./scripts/release-tags.sh --dry-run create v0.4.0-alpha.1
+
+# List existing tags for a version
+./scripts/release-tags.sh list v0.4.0-alpha.1
+
+# Create tags locally (after validation passes)
+./scripts/release-tags.sh create v0.4.0-alpha.1
+```
+
+**Important**: This script manages tags for all 12+ modules in the monorepo.
+
+### Post-Release Verification
+
+After a release completes, verify it was successful:
+
+```bash
+# Verify the release
+./scripts/release-verify.sh v0.4.0-alpha.1
+
+# Skip go install test for faster verification
+./scripts/release-verify.sh --skip-install v0.4.0-alpha.1
+
+# JSON output for CI integration
+./scripts/release-verify.sh --json v0.4.0-alpha.1
+```
+
+### Common Release Issues for Developers
+
+| Issue | Developer Impact | Prevention |
+|-------|------------------|------------|
+| Replace directives in go.mod | Blocks release | Never use `replace`, use `go.work` instead |
+| Pseudo-versions | Module resolution fails | Wait for tags to be pushed before depending on them |
+| Missing CHANGELOG.md | Binary can't show changelog | Ensure `cmd/morphir/cmd/CHANGELOG.md` is updated |
+| go.work staged | Breaks external consumers | Always check `git status` before commits |
+
+### When Releases Fail
+
+If a release fails:
+
+1. **Don't panic** - Failed releases can be retried
+2. **Check the logs** - GoReleaser and GitHub Actions logs show what failed
+3. **Use release scripts** - The automation scripts help diagnose and fix issues:
+   ```bash
+   # Check tag status
+   ./scripts/release-tags.sh --json list v0.4.0-alpha.1
+
+   # Recreate tags if needed (after fixing issues)
+   ./scripts/release-tags.sh --dry-run recreate v0.4.0-alpha.1
+   ```
+4. **Ask for help** - Use the `release-manager` skill for complex release issues
+
 ### Important: Module Version Coordination
 
 **How CI Handles Cross-Module Dependencies:**

@@ -64,5 +64,5 @@ website/.docusaurus/
 # bv (beads viewer) local config and caches
 .bv/
 
-# Generated files for embedding
-cmd/morphir/cmd/CHANGELOG.md
+# NOTE: cmd/morphir/cmd/CHANGELOG.md is committed and kept in sync
+# with root CHANGELOG.md during releases for go:embed to work with go install
