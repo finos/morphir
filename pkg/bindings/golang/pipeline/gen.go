@@ -2,7 +2,9 @@ package pipeline
 
 import (
 	"fmt"
+	"path/filepath"
 
+	"github.com/finos/morphir/pkg/bindings/golang/domain"
 	"github.com/finos/morphir/pkg/pipeline"
 )
 
@@ -47,21 +49,124 @@ func NewGenStep() pipeline.Step[GenInput, GenOutput] {
 				ModuleFiles:    []pipeline.Artifact{},
 			}
 
-			// Add diagnostic indicating this is a stub implementation
-			result.Diagnostics = []pipeline.Diagnostic{
-				DiagnosticInfo(
-					CodeGenerationError,
-					"Go code generation is not yet fully implemented - this is a placeholder",
+			// Convert IR to Go domain model
+			packageName := "generated"
+			goPkg, warnings := domain.ConvertModuleToPackage(
+				in.Module,
+				in.Options.ModulePath,
+				packageName,
+			)
+
+			// Add warnings as diagnostics
+			for _, warning := range warnings {
+				result.Diagnostics = append(result.Diagnostics, DiagnosticWarn(
+					CodeTypeMappingLost,
+					warning,
 					"golang-gen",
-				),
+				))
 			}
 
-			// Future implementation will:
-			// 1. Convert Morphir IR to Go domain model
-			// 2. Generate Go source code from domain model
-			// 3. Create go.mod file(s)
-			// 4. Create go.work file if workspace mode
-			// 5. Add artifacts to result
+			// Generate Go source code
+			sourceCode, err := domain.EmitPackage(goPkg)
+			if err != nil {
+				result.Diagnostics = append(result.Diagnostics, DiagnosticError(
+					CodeFormatError,
+					fmt.Sprintf("failed to format generated code: %v", err),
+					"golang-gen",
+				))
+				result.Err = err
+				return output, result
+			}
+
+			// Add generated source file
+			sourceFilePath := filepath.Join(packageName, packageName+".go")
+			output.GeneratedFiles[sourceFilePath] = sourceCode
+
+			// Create artifact for source file
+			sourceArtifactPath, err := in.OutputDir.Join(sourceFilePath)
+			if err != nil {
+				result.Diagnostics = append(result.Diagnostics, DiagnosticError(
+					CodeGenerationError,
+					fmt.Sprintf("failed to create artifact path: %v", err),
+					"golang-gen",
+				))
+				result.Err = err
+				return output, result
+			}
+			sourceArtifact := pipeline.Artifact{
+				Kind:        pipeline.ArtifactCodegen,
+				Path:        sourceArtifactPath,
+				ContentType: "text/x-go",
+				Content:     []byte(sourceCode),
+			}
+			result.Artifacts = append(result.Artifacts, sourceArtifact)
+
+			// Generate go.mod file
+			goModule := domain.GoModule{
+				ModulePath:   in.Options.ModulePath,
+				GoVersion:    "1.25",
+				Packages:     []domain.GoPackage{goPkg},
+				Dependencies: make(map[string]string),
+			}
+
+			goModContent := domain.EmitGoMod(goModule)
+			output.GeneratedFiles["go.mod"] = goModContent
+
+			// Create artifact for go.mod
+			goModPath, err := in.OutputDir.Join("go.mod")
+			if err != nil {
+				result.Diagnostics = append(result.Diagnostics, DiagnosticError(
+					CodeGenerationError,
+					fmt.Sprintf("failed to create go.mod path: %v", err),
+					"golang-gen",
+				))
+				result.Err = err
+				return output, result
+			}
+			goModArtifact := pipeline.Artifact{
+				Kind:        pipeline.ArtifactMetadata,
+				Path:        goModPath,
+				ContentType: "text/plain",
+				Content:     []byte(goModContent),
+			}
+			result.Artifacts = append(result.Artifacts, goModArtifact)
+			output.ModuleFiles = append(output.ModuleFiles, goModArtifact)
+
+			// Generate go.work if workspace mode
+			if in.Options.Workspace {
+				workspace := domain.GoWorkspace{
+					Modules:   []domain.GoModule{goModule},
+					GoVersion: "1.25",
+				}
+				goWorkContent := domain.EmitGoWork(workspace)
+				output.GeneratedFiles["go.work"] = goWorkContent
+
+				goWorkPath, err := in.OutputDir.Join("go.work")
+				if err != nil {
+					result.Diagnostics = append(result.Diagnostics, DiagnosticError(
+						CodeGenerationError,
+						fmt.Sprintf("failed to create go.work path: %v", err),
+						"golang-gen",
+					))
+					result.Err = err
+					return output, result
+				}
+				goWorkArtifact := pipeline.Artifact{
+					Kind:        pipeline.ArtifactMetadata,
+					Path:        goWorkPath,
+					ContentType: "text/plain",
+					Content:     []byte(goWorkContent),
+				}
+				result.Artifacts = append(result.Artifacts, goWorkArtifact)
+				output.WorkspaceFile = &goWorkArtifact
+			}
+
+			// Add info diagnostic about generation success
+			result.Diagnostics = append(result.Diagnostics, DiagnosticInfo(
+				CodeGenerationError,
+				fmt.Sprintf("Generated %d files for module %s", len(output.GeneratedFiles), in.Options.ModulePath),
+				"golang-gen",
+			))
 
 			return output, result
 		},
