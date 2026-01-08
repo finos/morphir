@@ -34,15 +34,46 @@ You are a release manager for the Morphir project. Your role is to help maintain
 
 This is a **Go multi-module repository** using workspaces:
 
-- **Modules**: cmd/morphir, pkg/config, pkg/models, pkg/pipeline, pkg/sdk, pkg/tooling
+- **Modules**: Auto-detected from go.mod files (typically 12+ modules)
+  - Core: cmd/morphir, pkg/config, pkg/models, pkg/pipeline, pkg/sdk, pkg/tooling
+  - Bindings: pkg/bindings/typemap, pkg/bindings/wit
+  - Utilities: pkg/vfs, pkg/task, pkg/docling-doc, pkg/nbformat
+  - Tests: tests/bdd (excluded from release)
   - **Note**: New packages may be added over time - always auto-detect modules dynamically
 - **Versioning**: All modules share the same version number (synchronized releases)
-- **Tagging**: Each module gets a subdirectory-prefixed tag (e.g., `pkg/config/v0.3.0`)
-- **Main tag**: Repository also gets a main version tag (e.g., `v0.3.0`)
+- **Tagging**: Each module gets a subdirectory-prefixed tag (e.g., `pkg/config/v0.4.0`)
+- **Main tag**: Repository also gets a main version tag (e.g., `v0.4.0`)
 - **Branch Protection**: The `main` branch is protected - all changes require PRs
   - **CRITICAL**: Never attempt to push directly to main
   - Always create feature branches for release preparation
   - CHANGELOG updates must go through PR process
+
+## Automation Scripts
+
+Three scripts automate the release process:
+
+| Script | Purpose | When to Use |
+|--------|---------|-------------|
+| `scripts/release-validate.sh` | Pre-release validation | Before creating any tags |
+| `scripts/release-tags.sh` | Tag management | Creating, deleting, recreating tags |
+| `scripts/release-verify.sh` | Post-release verification | After release workflow completes |
+
+### Quick Reference
+
+```bash
+# Before release: validate everything
+./scripts/release-validate.sh v0.4.0
+
+# Create tags
+./scripts/release-tags.sh create v0.4.0
+./scripts/release-tags.sh push v0.4.0
+
+# If release fails: recreate tags on fixed commit
+./scripts/release-tags.sh recreate v0.4.0
+
+# After release: verify success
+./scripts/release-verify.sh v0.4.0
+```
 
 ## Release Process
 
@@ -59,20 +90,28 @@ Before starting a release, run these checks locally:
 git checkout main
 git pull origin main
 
-# 2. Check for uncommitted changes
-git status --porcelain
+# 2. Run the automated validation script
+./scripts/release-validate.sh v0.4.0
 
-# 3. Verify all modules build successfully
-just verify
+# 3. If validation passes, also run full test suite
+mise run verify
+mise run test
 
-# 4. Run tests
-just test
-
-# 5. Try a local snapshot build to catch GoReleaser issues
-just release-snapshot
+# 4. Try a local snapshot build to catch GoReleaser issues
+mise run release-snapshot
 ```
 
 **If any check fails, fix it before proceeding!**
+
+The validation script checks for:
+- Replace directives in go.mod files
+- Pseudo-versions (stale development versions)
+- CHANGELOG.md is committed in cmd/morphir/cmd/
+- go.work is not staged
+- GoReleaser configuration is valid
+- GONOSUMDB is configured
+- Build directory is set correctly
+- No problematic hooks (like go work sync)
 
 ### 2. Determine Version Number
 
@@ -330,9 +369,23 @@ gh release view vX.Y.Z
 Follow this process:
 
 1. **Diagnose**: Fetch and analyze the error logs
-2. **Fix**: Create a PR with the fix
+2. **Fix**: Create a PR with the fix (or push directly if you have bypass permissions)
 3. **Merge**: Wait for PR to merge and CI to pass
-4. **Retag**: Only then update tags to point to the new commit
+4. **Retag**: Use `./scripts/release-tags.sh recreate VERSION` to update tags
+
+```bash
+# Diagnose failure
+gh run view <run-id> --log-failed
+
+# After fixing, recreate tags on new commit
+./scripts/release-tags.sh recreate v0.4.0
+
+# Trigger release workflow
+gh workflow run release.yml --field tag=v0.4.0
+
+# Monitor
+gh run watch
+```
 
 Common issues and fixes:
 

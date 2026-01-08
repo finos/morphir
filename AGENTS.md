@@ -476,6 +476,13 @@ The `scripts/` directory contains reusable shell scripts used in build, CI, and 
 - `scripts/install-dev.sh` / `scripts/install-dev.ps1` - Installs the `morphir-dev` binary to the Go bin directory
 - `scripts/verify.sh` / `scripts/verify.ps1` - Verifies all modules build successfully
 
+**Release Automation Scripts:**
+- `scripts/release-validate.sh` - Pre-release validation (checks replace directives, go.work, CHANGELOG, etc.)
+- `scripts/release-tags.sh` - Tag management (create, delete, recreate, list, push)
+- `scripts/release-verify.sh` - Post-release verification (GitHub release, assets, go install)
+
+All release scripts support `--dry-run` for non-destructive testing and `--json` for automation.
+
 `mise` task entry points live in `.mise/tasks` and delegate to the scripts above.
 
 **Cross-Platform Support:**
@@ -569,6 +576,8 @@ git commit -m "feat!: change IR structure to match spec v2"
 
 **This project uses a multi-module Go workspace. The release process is designed to support `go install` compatibility.**
 
+> **For AI assistants**: Use the `release-manager` skill for full release procedures. The skill provides step-by-step guidance, automation scripts, and troubleshooting for common release issues. For developer-focused release guidance, see the `morphir-developer` skill.
+
 #### Understanding Go Module Tagging
 
 Since Morphir uses multiple Go modules in a monorepo, each module can be versioned independently using subdirectory prefixes in tags:
@@ -584,7 +593,7 @@ v0.3.0                  # Main repository tag
 
 #### Automated Release Process
 
-Use the provided automation script for releases:
+Use the provided automation scripts for releases:
 
 ```bash
 # 1. Ensure you're on main and up to date
@@ -596,29 +605,28 @@ git pull origin main
 #    - Add release date: ## [X.Y.Z] - YYYY-MM-DD
 #    - Add new [Unreleased] section at top
 
-# 3. Commit changelog
+# 3. Pre-release validation (ALWAYS run this first!)
+./scripts/release-validate.sh vX.Y.Z
+# For JSON output: ./scripts/release-validate.sh --json vX.Y.Z
+
+# 4. Commit changelog
 git add CHANGELOG.md
 git commit -m "chore: prepare release vX.Y.Z"
 git push origin main
 
-# 4. Run release preparation script
-./scripts/release-prep.sh vX.Y.Z
+# 5. Create tags (preview with --dry-run first)
+./scripts/release-tags.sh --dry-run create vX.Y.Z  # Preview what would happen
+./scripts/release-tags.sh create vX.Y.Z            # Create tags locally
 
-# This script will:
-#   - Verify no uncommitted changes
-#   - Run all verifications (tests, lint, build)
-#   - Create tags for all modules:
-#     - pkg/config/vX.Y.Z
-#     - pkg/models/vX.Y.Z
-#     - pkg/pipeline/vX.Y.Z
-#     - pkg/sdk/vX.Y.Z
-#     - pkg/tooling/vX.Y.Z
-#     - cmd/morphir/vX.Y.Z
-#     - vX.Y.Z (main tag)
+# 6. Push tags to trigger release
+./scripts/release-tags.sh push vX.Y.Z
+# Or: git push origin --tags
 
-# 5. Push tags to trigger release
-git push origin --tags
+# 7. After release completes, verify
+./scripts/release-verify.sh vX.Y.Z
 ```
+
+**Legacy alternative:** `./scripts/release-prep.sh vX.Y.Z` runs validations and creates tags in one step.
 
 #### What Happens Next
 
