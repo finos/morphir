@@ -228,7 +228,7 @@ func TestMapSame(t *testing.T) {
 
 	// Verify all entries have the tag
 	var count int
-	Walk(result, func(e Entry) (WalkControl, error) {
+	_ = Walk(result, func(e Entry) (WalkControl, error) {
 		require.Equal(t, true, e.Meta().Dynamic["tagged"], "entry %s missing tag", e.Path().String())
 		count++
 		return WalkContinue, nil
@@ -268,7 +268,7 @@ func TestMap(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check that files have doubled data
-	Filter(result, func(e Entry) (bool, error) {
+	_, _ = Filter(result, func(e Entry) (bool, error) {
 		if e.Kind() == KindFile {
 			if file, ok := e.(File); ok {
 				data, _ := file.Bytes()
