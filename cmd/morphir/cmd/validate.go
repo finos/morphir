@@ -3,14 +3,17 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/finos/morphir/cmd/morphir/internal/tui"
 	"github.com/finos/morphir/cmd/morphir/internal/tui/components"
+	"github.com/finos/morphir/pkg/pipeline"
 	"github.com/finos/morphir/pkg/tooling/markdown"
 	"github.com/finos/morphir/pkg/tooling/validation"
 	"github.com/finos/morphir/pkg/tooling/validation/report"
+	"github.com/finos/morphir/pkg/vfs"
 	"github.com/spf13/cobra"
 )
 
@@ -55,7 +58,7 @@ func init() {
 	validateCmd.Flags().BoolVarP(&validateTUI, "tui", "i", false, "Launch interactive TUI for exploring validation results")
 }
 
-// runValidate executes the validate command
+// runValidate executes the validate command using the pipeline runner
 func runValidate(cmd *cobra.Command, args []string) error {
 	path := "."
 	if len(args) > 0 {
@@ -68,16 +71,66 @@ func runValidate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to find IR file: %w", err)
 	}
 
-	// Validate
-	opts := validation.Options{
-		Version: validateVersion,
-	}
-	result, err := validation.ValidateFile(irPath, opts)
+	// Get absolute path for VFS setup
+	absIRPath, err := filepath.Abs(irPath)
 	if err != nil {
-		return fmt.Errorf("validation failed: %w", err)
+		return fmt.Errorf("failed to get absolute path: %w", err)
 	}
 
-	// Output result
+	// Determine the workspace root (directory containing the IR file)
+	workspaceRoot := filepath.Dir(absIRPath)
+
+	// Create VFS with OS mount for the workspace
+	mount := vfs.NewOSMount("workspace", vfs.MountRO, workspaceRoot, vfs.MustVPath("/"))
+	overlay := vfs.NewOverlayVFS([]vfs.Mount{mount})
+
+	// Inject the real validation logic from pkg/tooling/validation
+	pipeline.SetValidateIRBytes(func(data []byte, sourcePath string, version int) (*pipeline.InternalValidationResult, error) {
+		opts := validation.Options{Version: version}
+		result, err := validation.ValidateBytes(data, sourcePath, opts)
+		if err != nil {
+			return nil, err
+		}
+		return &pipeline.InternalValidationResult{
+			Valid:   result.Valid,
+			Version: result.Version,
+			Path:    result.Path,
+			Errors:  result.Errors,
+			RawData: result.RawData,
+		}, nil
+	})
+
+	// Create pipeline context
+	ctx := pipeline.NewContext(workspaceRoot, validateVersion, pipeline.ModeDefault, overlay)
+
+	// Create and run the validation pipeline
+	validateStep := pipeline.NewValidateStep()
+	validationPipeline := pipeline.NewPipeline("validate-ir", "Validates Morphir IR", validateStep)
+
+	// Determine the VFS path for the IR file (relative to workspace root)
+	irFileName := filepath.Base(absIRPath)
+	vfsIRPath := vfs.MustVPath("/" + irFileName)
+
+	input := pipeline.ValidateInput{
+		IRPath:  vfsIRPath,
+		Version: validateVersion,
+	}
+
+	output, _, err := validationPipeline.Run(ctx, input)
+	if err != nil {
+		return fmt.Errorf("validation pipeline failed: %w", err)
+	}
+
+	// Convert pipeline output to validation.Result for existing output functions
+	result := &validation.Result{
+		Valid:   output.Valid,
+		Version: output.Version,
+		Path:    absIRPath, // Use the absolute path for display
+		Errors:  output.Errors,
+		RawData: output.RawData,
+	}
+
+	// Output result using existing output functions
 	if validateTUI {
 		return outputValidationTUI(cmd, result)
 	}
