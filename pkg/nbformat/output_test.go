@@ -66,7 +66,7 @@ func TestDisplayDataOutput(t *testing.T) {
 
 		// Modify the returned data
 		outputData := output.Data()
-		outputData = outputData.WithData("text/html", "<b>test</b>")
+		_ = outputData.WithData("text/html", "<b>test</b>")
 
 		// Original output should be unaffected
 		_, ok := output.Data().Get("text/html")
