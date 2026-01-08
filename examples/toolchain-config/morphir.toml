@@ -1,0 +1,69 @@
+# Example Morphir Project with Toolchain Configuration
+
+[project]
+name = "example-toolchain"
+version = "1.0.0"
+source_directory = "src"
+exposed_modules = ["Example"]
+
+# Example toolchain: morphir-elm (external process-based toolchain)
+[toolchain.morphir-elm]
+version = "2.90.0"
+working_dir = "."
+timeout = "5m"
+
+# Acquisition configuration - tool already on PATH
+[toolchain.morphir-elm.acquire]
+backend = "path"
+executable = "morphir-elm"
+
+# Environment variables for the toolchain
+[toolchain.morphir-elm.env]
+NODE_OPTIONS = "--max-old-space-size=4096"
+
+# Task: make - Compile Elm sources to Morphir IR
+[toolchain.morphir-elm.tasks.make]
+exec = "morphir-elm"
+args = ["make", "-o", "{outputs.ir}"]
+fulfills = ["make"]
+
+# Input files
+[toolchain.morphir-elm.tasks.make.inputs]
+files = ["elm.json", "src/**/*.elm"]
+
+# Output artifacts
+[toolchain.morphir-elm.tasks.make.outputs.ir]
+path = "morphir-ir.json"
+type = "morphir-ir"
+
+# Task: gen - Generate code from IR
+[toolchain.morphir-elm.tasks.gen]
+exec = "morphir-elm"
+args = ["gen", "-i", "{inputs.ir}", "-o", "{outputs.dir}", "-t", "{variant}"]
+fulfills = ["gen"]
+variants = ["Scala", "JsonSchema", "TypeScript"]
+
+# Input references (artifact from another task)
+[toolchain.morphir-elm.tasks.gen.inputs]
+artifacts = { ir = "@morphir-elm/make:ir" }
+
+# Output directory
+[toolchain.morphir-elm.tasks.gen.outputs.dir]
+path = "dist/{variant}"
+type = "generated-code"
+
+# Example toolchain: custom-validator (simple path-based tool)
+[toolchain.custom-validator]
+version = "1.0.0"
+
+[toolchain.custom-validator.acquire]
+backend = "path"
+executable = "morphir-validate"
+
+[toolchain.custom-validator.tasks.validate]
+exec = "morphir-validate"
+args = ["{inputs.ir}"]
+fulfills = ["validate"]
+
+[toolchain.custom-validator.tasks.validate.inputs]
+artifacts = { ir = "@morphir-elm/make:ir" }

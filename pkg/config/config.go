@@ -742,8 +742,8 @@ func (c InputsConfig) Artifacts() map[string]string {
 
 // OutputConfig specifies a task output.
 type OutputConfig struct {
-	path     string
-	typeVal  string // "type" is a reserved keyword in Go
+	path    string
+	typeVal string // "type" is a reserved keyword in Go
 }
 
 // Path returns the output path.
@@ -793,7 +793,7 @@ func Default() Config {
 		tasks: TasksSection{
 			definitions: nil, // No tasks defined by default
 		},
-		bindings:   BindingsSection{}, // Empty by default; bindings use their built-in defaults
+		bindings: BindingsSection{}, // Empty by default; bindings use their built-in defaults
 		toolchains: ToolchainsSection{
 			definitions: nil, // No toolchains defined by default
 		},
@@ -1416,4 +1416,3 @@ func outputConfigFromMap(m map[string]any) OutputConfig {
 
 	return cfg
 }
-
