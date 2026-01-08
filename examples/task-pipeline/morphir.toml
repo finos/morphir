@@ -1,0 +1,128 @@
+# Task Pipeline Example
+#
+# This example demonstrates task configuration in Morphir.
+# Run `morphir tasks` or `morphir task list` to see all defined tasks.
+# Run `morphir task list --json` for JSON output.
+#
+# Tasks support two kinds:
+#   - intrinsic: Built-in Morphir pipeline actions
+#   - command: External shell commands
+
+[project]
+name = "task-pipeline-example"
+version = "1.0.0"
+source_directory = "src"
+exposed_modules = ["Main"]
+
+# =============================================================================
+# Intrinsic Tasks - Built-in Morphir Pipeline Actions
+# =============================================================================
+
+# Compile Morphir source files to IR
+[tasks.compile]
+kind = "intrinsic"
+action = "morphir.pipeline.compile"
+inputs = ["workspace:/src/**/*.elm"]
+outputs = ["workspace:/.morphir/ir.json"]
+
+# Validate the generated IR
+[tasks.validate]
+kind = "intrinsic"
+action = "morphir.pipeline.validate"
+depends_on = ["compile"]
+inputs = ["workspace:/.morphir/ir.json"]
+
+[tasks.validate.params]
+strict = true
+
+# Run static analysis on IR
+[tasks.analyze]
+kind = "intrinsic"
+action = "morphir.analyzer.run"
+depends_on = ["validate"]
+inputs = ["workspace:/.morphir/ir.json"]
+outputs = ["workspace:/.morphir/analysis.json"]
+
+# Generate summary report
+[tasks.report]
+kind = "intrinsic"
+action = "morphir.report.summary"
+depends_on = ["analyze"]
+
+# =============================================================================
+# Command Tasks - External Shell Commands
+# =============================================================================
+
+# Setup task - runs before other tasks
+[tasks.setup]
+kind = "command"
+cmd = ["echo", "Setting up build environment..."]
+
+# Run Go tests
+[tasks.test]
+kind = "command"
+cmd = ["go", "test", "./...", "-v"]
+depends_on = ["compile"]
+
+[tasks.test.env]
+GO111MODULE = "on"
+CGO_ENABLED = "0"
+
+# Run linter
+[tasks.lint]
+kind = "command"
+cmd = ["golangci-lint", "run", "--timeout", "5m"]
+pre = ["setup"]
+
+[tasks.lint.mounts]
+workspace = "ro"
+config = "ro"
+
+# Generate Go code from IR
+[tasks.codegen]
+kind = "command"
+cmd = ["morphir", "gen", "--target", "go", "--output", "dist/"]
+depends_on = ["validate"]
+inputs = ["workspace:/.morphir/ir.json"]
+outputs = ["workspace:/dist/**/*.go"]
+
+[tasks.codegen.env]
+MORPHIR_CODEGEN_TARGET = "go"
+
+# Clean build artifacts
+[tasks.clean]
+kind = "command"
+cmd = ["rm", "-rf", ".morphir/", "dist/"]
+
+[tasks.clean.mounts]
+workspace = "rw"
+
+# =============================================================================
+# Composite Tasks - Orchestrating Multiple Steps
+# =============================================================================
+
+# Full build pipeline
+[tasks.build]
+kind = "intrinsic"
+action = "morphir.pipeline.compile"
+depends_on = ["setup", "lint"]
+pre = ["clean"]
+post = ["validate", "report"]
+inputs = ["workspace:/src/**/*.elm"]
+outputs = ["workspace:/.morphir/**"]
+
+[tasks.build.params]
+optimize = true
+profile = "release"
+
+# CI pipeline - runs everything
+[tasks.ci]
+kind = "command"
+cmd = ["echo", "CI pipeline complete"]
+depends_on = ["build", "test", "analyze"]
+pre = ["setup"]
+post = ["report"]
+
+[tasks.ci.env]
+CI = "true"
+MORPHIR_STRICT = "true"
