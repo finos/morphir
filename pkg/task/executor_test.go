@@ -45,14 +45,8 @@ func TestExecuteSimpleIntrinsicTask(t *testing.T) {
 	})
 
 	tasks := map[string]Task{
-		"echo": {
-			Name: "echo",
-			Config: TaskConfig{
-				Kind:   TaskKindIntrinsic,
-				Action: "test.echo",
-				Params: map[string]any{"message": "hello world"},
-			},
-		},
+		"echo": NewIntrinsicTask("echo", "test.echo",
+			WithParams(map[string]any{"message": "hello world"})),
 	}
 
 	executor := NewExecutor(registry, tasks)
@@ -82,13 +76,7 @@ func TestExecuteIntrinsicTaskWithDiagnostics(t *testing.T) {
 	})
 
 	tasks := map[string]Task{
-		"validate": {
-			Name: "validate",
-			Config: TaskConfig{
-				Kind:   TaskKindIntrinsic,
-				Action: "test.validate",
-			},
-		},
+		"validate": NewIntrinsicTask("validate", "test.validate"),
 	}
 
 	executor := NewExecutor(registry, tasks)
@@ -110,13 +98,7 @@ func TestExecuteIntrinsicTaskWithError(t *testing.T) {
 	})
 
 	tasks := map[string]Task{
-		"fail": {
-			Name: "fail",
-			Config: TaskConfig{
-				Kind:   TaskKindIntrinsic,
-				Action: "test.fail",
-			},
-		},
+		"fail": NewIntrinsicTask("fail", "test.fail"),
 	}
 
 	executor := NewExecutor(registry, tasks)
@@ -152,32 +134,14 @@ func TestExecuteTaskWithDependencies(t *testing.T) {
 	})
 
 	tasks := map[string]Task{
-		"a": {
-			Name: "a",
-			Config: TaskConfig{
-				Kind:   TaskKindIntrinsic,
-				Action: "test.step",
-				Params: map[string]any{"name": "a"},
-			},
-		},
-		"b": {
-			Name: "b",
-			Config: TaskConfig{
-				Kind:      TaskKindIntrinsic,
-				Action:    "test.step",
-				DependsOn: []string{"a"},
-				Params:    map[string]any{"name": "b"},
-			},
-		},
-		"c": {
-			Name: "c",
-			Config: TaskConfig{
-				Kind:      TaskKindIntrinsic,
-				Action:    "test.step",
-				DependsOn: []string{"a", "b"},
-				Params:    map[string]any{"name": "c"},
-			},
-		},
+		"a": NewIntrinsicTask("a", "test.step",
+			WithParams(map[string]any{"name": "a"})),
+		"b": NewIntrinsicTask("b", "test.step",
+			WithDependsOn([]string{"a"}),
+			WithParams(map[string]any{"name": "b"})),
+		"c": NewIntrinsicTask("c", "test.step",
+			WithDependsOn([]string{"a", "b"}),
+			WithParams(map[string]any{"name": "c"})),
 	}
 
 	executor := NewExecutor(registry, tasks)
@@ -206,23 +170,11 @@ func TestExecuteTaskWithPreHook(t *testing.T) {
 	})
 
 	tasks := map[string]Task{
-		"setup": {
-			Name: "setup",
-			Config: TaskConfig{
-				Kind:   TaskKindIntrinsic,
-				Action: "test.step",
-				Params: map[string]any{"name": "setup"},
-			},
-		},
-		"main": {
-			Name: "main",
-			Config: TaskConfig{
-				Kind:   TaskKindIntrinsic,
-				Action: "test.step",
-				Pre:    []string{"setup"},
-				Params: map[string]any{"name": "main"},
-			},
-		},
+		"setup": NewIntrinsicTask("setup", "test.step",
+			WithParams(map[string]any{"name": "setup"})),
+		"main": NewIntrinsicTask("main", "test.step",
+			WithPre([]string{"setup"}),
+			WithParams(map[string]any{"name": "main"})),
 	}
 
 	executor := NewExecutor(registry, tasks)
@@ -247,23 +199,11 @@ func TestExecuteTaskWithPostHook(t *testing.T) {
 	})
 
 	tasks := map[string]Task{
-		"cleanup": {
-			Name: "cleanup",
-			Config: TaskConfig{
-				Kind:   TaskKindIntrinsic,
-				Action: "test.step",
-				Params: map[string]any{"name": "cleanup"},
-			},
-		},
-		"main": {
-			Name: "main",
-			Config: TaskConfig{
-				Kind:   TaskKindIntrinsic,
-				Action: "test.step",
-				Post:   []string{"cleanup"},
-				Params: map[string]any{"name": "main"},
-			},
-		},
+		"cleanup": NewIntrinsicTask("cleanup", "test.step",
+			WithParams(map[string]any{"name": "cleanup"})),
+		"main": NewIntrinsicTask("main", "test.step",
+			WithPost([]string{"cleanup"}),
+			WithParams(map[string]any{"name": "main"})),
 	}
 
 	executor := NewExecutor(registry, tasks)
@@ -288,32 +228,14 @@ func TestExecuteTaskWithPreAndPostHooks(t *testing.T) {
 	})
 
 	tasks := map[string]Task{
-		"setup": {
-			Name: "setup",
-			Config: TaskConfig{
-				Kind:   TaskKindIntrinsic,
-				Action: "test.step",
-				Params: map[string]any{"name": "setup"},
-			},
-		},
-		"cleanup": {
-			Name: "cleanup",
-			Config: TaskConfig{
-				Kind:   TaskKindIntrinsic,
-				Action: "test.step",
-				Params: map[string]any{"name": "cleanup"},
-			},
-		},
-		"main": {
-			Name: "main",
-			Config: TaskConfig{
-				Kind:   TaskKindIntrinsic,
-				Action: "test.step",
-				Pre:    []string{"setup"},
-				Post:   []string{"cleanup"},
-				Params: map[string]any{"name": "main"},
-			},
-		},
+		"setup": NewIntrinsicTask("setup", "test.step",
+			WithParams(map[string]any{"name": "setup"})),
+		"cleanup": NewIntrinsicTask("cleanup", "test.step",
+			WithParams(map[string]any{"name": "cleanup"})),
+		"main": NewIntrinsicTask("main", "test.step",
+			WithPre([]string{"setup"}),
+			WithPost([]string{"cleanup"}),
+			WithParams(map[string]any{"name": "main"})),
 	}
 
 	executor := NewExecutor(registry, tasks)
@@ -331,13 +253,7 @@ func TestExecuteIntrinsicActionNotFound(t *testing.T) {
 	registry := NewTaskRegistry()
 
 	tasks := map[string]Task{
-		"test": {
-			Name: "test",
-			Config: TaskConfig{
-				Kind:   TaskKindIntrinsic,
-				Action: "non.existent",
-			},
-		},
+		"test": NewIntrinsicTask("test", "non.existent"),
 	}
 
 	executor := NewExecutor(registry, tasks)
@@ -351,28 +267,8 @@ func TestExecuteIntrinsicActionNotFound(t *testing.T) {
 	require.Contains(t, taskErr.Message, "intrinsic action not found")
 }
 
-func TestExecuteUnknownTaskKind(t *testing.T) {
-	ctx := newTestContext()
-	registry := NewTaskRegistry()
-
-	tasks := map[string]Task{
-		"test": {
-			Name: "test",
-			Config: TaskConfig{
-				Kind: TaskKind("unknown"),
-			},
-		},
-	}
-
-	executor := NewExecutor(registry, tasks)
-	_, err := executor.Execute(ctx, "test")
-
-	require.Error(t, err)
-
-	var taskErr *TaskError
-	require.ErrorAs(t, err, &taskErr)
-	require.Contains(t, taskErr.Message, "unknown task kind")
-}
+// Note: TestExecuteUnknownTaskKind is no longer needed with typestate pattern
+// since the type system now prevents unknown task kinds at compile time
 
 func TestDuplicateDependencies(t *testing.T) {
 	ctx := newTestContext()
@@ -389,41 +285,17 @@ func TestDuplicateDependencies(t *testing.T) {
 	// Diamond dependency: d depends on b and c, both depend on a
 	// a should only be executed once
 	tasks := map[string]Task{
-		"a": {
-			Name: "a",
-			Config: TaskConfig{
-				Kind:   TaskKindIntrinsic,
-				Action: "test.step",
-				Params: map[string]any{"name": "a"},
-			},
-		},
-		"b": {
-			Name: "b",
-			Config: TaskConfig{
-				Kind:      TaskKindIntrinsic,
-				Action:    "test.step",
-				DependsOn: []string{"a"},
-				Params:    map[string]any{"name": "b"},
-			},
-		},
-		"c": {
-			Name: "c",
-			Config: TaskConfig{
-				Kind:      TaskKindIntrinsic,
-				Action:    "test.step",
-				DependsOn: []string{"a"},
-				Params:    map[string]any{"name": "c"},
-			},
-		},
-		"d": {
-			Name: "d",
-			Config: TaskConfig{
-				Kind:      TaskKindIntrinsic,
-				Action:    "test.step",
-				DependsOn: []string{"b", "c"},
-				Params:    map[string]any{"name": "d"},
-			},
-		},
+		"a": NewIntrinsicTask("a", "test.step",
+			WithParams(map[string]any{"name": "a"})),
+		"b": NewIntrinsicTask("b", "test.step",
+			WithDependsOn([]string{"a"}),
+			WithParams(map[string]any{"name": "b"})),
+		"c": NewIntrinsicTask("c", "test.step",
+			WithDependsOn([]string{"a"}),
+			WithParams(map[string]any{"name": "c"})),
+		"d": NewIntrinsicTask("d", "test.step",
+			WithDependsOn([]string{"b", "c"}),
+			WithParams(map[string]any{"name": "d"})),
 	}
 
 	executor := NewExecutor(registry, tasks)

@@ -33,7 +33,7 @@ func (e *Executor) Execute(ctx pipeline.Context, taskName string) (TaskResult, e
 
 	// Resolve and execute dependencies
 	var allDeps []string
-	if err := e.executeDependencies(ctx, task.Config.DependsOn, &allDeps); err != nil {
+	if err := e.executeDependencies(ctx, task.Config.DependsOn(), &allDeps); err != nil {
 		return TaskResult{
 			Name:         taskName,
 			Dependencies: allDeps,
@@ -42,7 +42,7 @@ func (e *Executor) Execute(ctx pipeline.Context, taskName string) (TaskResult, e
 	}
 
 	// Execute pre hooks
-	if err := e.executeHooks(ctx, task.Config.Pre, &allDeps); err != nil {
+	if err := e.executeHooks(ctx, task.Config.Pre(), &allDeps); err != nil {
 		return TaskResult{
 			Name:         taskName,
 			Dependencies: allDeps,
@@ -60,7 +60,7 @@ func (e *Executor) Execute(ctx pipeline.Context, taskName string) (TaskResult, e
 	}
 
 	// Execute post hooks
-	if err := e.executeHooks(ctx, task.Config.Post, &allDeps); err != nil {
+	if err := e.executeHooks(ctx, task.Config.Post(), &allDeps); err != nil {
 		result.Dependencies = allDeps
 		result.Err = err
 		return result, err
@@ -110,12 +110,12 @@ func (e *Executor) executeTaskChain(ctx pipeline.Context, taskName string, execu
 	*executed = append(*executed, taskName)
 
 	// Execute dependencies first
-	if err := e.executeDependencies(ctx, task.Config.DependsOn, executed); err != nil {
+	if err := e.executeDependencies(ctx, task.Config.DependsOn(), executed); err != nil {
 		return err
 	}
 
 	// Execute pre hooks
-	if err := e.executeHooks(ctx, task.Config.Pre, executed); err != nil {
+	if err := e.executeHooks(ctx, task.Config.Pre(), executed); err != nil {
 		return err
 	}
 
@@ -126,7 +126,7 @@ func (e *Executor) executeTaskChain(ctx pipeline.Context, taskName string, execu
 	}
 
 	// Execute post hooks
-	if err := e.executeHooks(ctx, task.Config.Post, executed); err != nil {
+	if err := e.executeHooks(ctx, task.Config.Post(), executed); err != nil {
 		return err
 	}
 
@@ -134,29 +134,29 @@ func (e *Executor) executeTaskChain(ctx pipeline.Context, taskName string, execu
 }
 
 func (e *Executor) executeTask(ctx pipeline.Context, task Task) (TaskResult, error) {
-	switch task.Config.Kind {
-	case TaskKindIntrinsic:
-		return e.executeIntrinsic(ctx, task)
-	case TaskKindCommand:
-		return e.executeCommand(ctx, task)
+	switch cfg := task.Config.(type) {
+	case IntrinsicTaskConfig:
+		return e.executeIntrinsic(ctx, task.Name, cfg)
+	case CommandTaskConfig:
+		return e.executeCommand(ctx, task.Name, cfg)
 	default:
 		return TaskResult{}, &TaskError{
 			TaskName: task.Name,
-			Message:  fmt.Sprintf("unknown task kind: %s", task.Config.Kind),
+			Message:  fmt.Sprintf("unknown task config type: %T", cfg),
 		}
 	}
 }
 
-func (e *Executor) executeIntrinsic(ctx pipeline.Context, task Task) (TaskResult, error) {
-	action, ok := e.registry.Get(task.Config.Action)
+func (e *Executor) executeIntrinsic(ctx pipeline.Context, name string, cfg IntrinsicTaskConfig) (TaskResult, error) {
+	action, ok := e.registry.Get(cfg.Action())
 	if !ok {
 		return TaskResult{}, &TaskError{
-			TaskName: task.Name,
-			Message:  fmt.Sprintf("intrinsic action not found: %s", task.Config.Action),
+			TaskName: name,
+			Message:  fmt.Sprintf("intrinsic action not found: %s", cfg.Action()),
 		}
 	}
 
-	output, stepResult := action(ctx, task.Config.Params)
+	output, stepResult := action(ctx, cfg.Params())
 
 	if stepResult.Err != nil {
 		return TaskResult{

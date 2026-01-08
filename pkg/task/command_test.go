@@ -234,13 +234,7 @@ func TestExecuteCommandTask(t *testing.T) {
 	}
 
 	tasks := map[string]Task{
-		"test-cmd": {
-			Name: "test-cmd",
-			Config: TaskConfig{
-				Kind: TaskKindCommand,
-				Cmd:  cmd,
-			},
-		},
+		"test-cmd": NewCommandTask("test-cmd", cmd),
 	}
 
 	executor := NewExecutor(registry, tasks)
@@ -264,16 +258,8 @@ func TestExecuteCommandTaskWithEnv(t *testing.T) {
 	}
 
 	tasks := map[string]Task{
-		"test-env": {
-			Name: "test-env",
-			Config: TaskConfig{
-				Kind: TaskKindCommand,
-				Cmd:  cmd,
-				Env: map[string]string{
-					"CUSTOM_VAR": "custom_value",
-				},
-			},
-		},
+		"test-env": NewCommandTask("test-env", cmd,
+			WithEnv(map[string]string{"CUSTOM_VAR": "custom_value"})),
 	}
 
 	executor := NewExecutor(registry, tasks)
@@ -296,13 +282,7 @@ func TestExecuteCommandTaskFailure(t *testing.T) {
 	}
 
 	tasks := map[string]Task{
-		"test-fail": {
-			Name: "test-fail",
-			Config: TaskConfig{
-				Kind: TaskKindCommand,
-				Cmd:  cmd,
-			},
-		},
+		"test-fail": NewCommandTask("test-fail", cmd),
 	}
 
 	executor := NewExecutor(registry, tasks)
@@ -320,13 +300,7 @@ func TestExecuteCommandTaskNoCmd(t *testing.T) {
 	registry := NewTaskRegistry()
 
 	tasks := map[string]Task{
-		"no-cmd": {
-			Name: "no-cmd",
-			Config: TaskConfig{
-				Kind: TaskKindCommand,
-				Cmd:  []string{}, // Empty command
-			},
-		},
+		"no-cmd": NewCommandTask("no-cmd", []string{}), // Empty command
 	}
 
 	executor := NewExecutor(registry, tasks)
@@ -358,13 +332,7 @@ func TestExecuteCommandWithWorkDir(t *testing.T) {
 	}
 
 	tasks := map[string]Task{
-		"list-file": {
-			Name: "list-file",
-			Config: TaskConfig{
-				Kind: TaskKindCommand,
-				Cmd:  cmd,
-			},
-		},
+		"list-file": NewCommandTask("list-file", cmd),
 	}
 
 	executor := NewExecutor(registry, tasks)

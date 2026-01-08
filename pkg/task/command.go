@@ -170,22 +170,22 @@ func ResolveCommand(cmd []string, workDir string) ([]string, error) {
 }
 
 // executeCommand is the Executor method that runs external commands.
-func (e *Executor) executeCommand(ctx pipeline.Context, task Task) (TaskResult, error) {
-	cfg := task.Config
+func (e *Executor) executeCommand(ctx pipeline.Context, name string, cfg CommandTaskConfig) (TaskResult, error) {
+	cmd := cfg.Cmd()
 
 	// Validate command is specified
-	if len(cfg.Cmd) == 0 {
+	if len(cmd) == 0 {
 		return TaskResult{}, &TaskError{
-			TaskName: task.Name,
+			TaskName: name,
 			Message:  "no command specified",
 		}
 	}
 
 	// Resolve the command path
-	resolvedCmd, err := ResolveCommand(cfg.Cmd, ctx.WorkspaceRoot)
+	resolvedCmd, err := ResolveCommand(cmd, ctx.WorkspaceRoot)
 	if err != nil {
 		return TaskResult{}, &TaskError{
-			TaskName: task.Name,
+			TaskName: name,
 			Message:  err.Error(),
 		}
 	}
@@ -196,17 +196,17 @@ func (e *Executor) executeCommand(ctx pipeline.Context, task Task) (TaskResult, 
 	}
 
 	// Execute the command
-	output, err := runner.Run(resolvedCmd, cfg.Env)
+	output, err := runner.Run(resolvedCmd, cfg.Env())
 	if err != nil {
 		return TaskResult{
-			Name: task.Name,
+			Name: name,
 			Err:  err,
 		}, err
 	}
 
 	// Build result
 	result := TaskResult{
-		Name:   task.Name,
+		Name:   name,
 		Output: output.Parsed,
 	}
 
@@ -216,7 +216,7 @@ func (e *Executor) executeCommand(ctx pipeline.Context, task Task) (TaskResult, 
 			Severity: pipeline.SeverityError,
 			Code:     fmt.Sprintf("CMD_%d", output.ExitCode),
 			Message:  fmt.Sprintf("command exited with code %d", output.ExitCode),
-			StepName: task.Name,
+			StepName: name,
 		}
 		result.Diagnostics = append(result.Diagnostics, diag)
 
@@ -226,13 +226,13 @@ func (e *Executor) executeCommand(ctx pipeline.Context, task Task) (TaskResult, 
 				Severity: pipeline.SeverityError,
 				Code:     "CMD_STDERR",
 				Message:  strings.TrimSpace(output.Stderr),
-				StepName: task.Name,
+				StepName: name,
 			}
 			result.Diagnostics = append(result.Diagnostics, stderrDiag)
 		}
 
 		result.Err = &TaskError{
-			TaskName: task.Name,
+			TaskName: name,
 			Message:  fmt.Sprintf("command failed with exit code %d", output.ExitCode),
 		}
 		return result, result.Err

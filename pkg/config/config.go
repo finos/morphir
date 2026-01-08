@@ -280,30 +280,180 @@ func (s UISection) Theme() string {
 	return s.theme
 }
 
-// TaskKind identifies the type of task execution.
-type TaskKind string
+// Task is the sealed interface for task definitions.
+// All implementations must be defined in this package.
+// Use type assertions to access type-specific fields:
+//
+//	switch t := task.(type) {
+//	case IntrinsicTask:
+//	    action := t.Action()
+//	case CommandTask:
+//	    cmd := t.Cmd()
+//	}
+type Task interface {
+	DependsOn() []string
+	Pre() []string
+	Post() []string
+	Inputs() []string
+	Outputs() []string
+	Params() map[string]any
+	Env() map[string]string
+	Mounts() map[string]string
+	isTask() // unexported method seals the interface
+}
 
-const (
-	// TaskKindIntrinsic represents an internal Morphir pipeline step.
-	TaskKindIntrinsic TaskKind = "intrinsic"
-	// TaskKindCommand represents an external command execution.
-	TaskKindCommand TaskKind = "command"
-)
+// taskCommon contains fields shared by all task types.
+type taskCommon struct {
+	dependsOn []string
+	pre       []string
+	post      []string
+	inputs    []string
+	outputs   []string
+	params    map[string]any
+	env       map[string]string
+	mounts    map[string]string
+}
+
+// DependsOn returns the task dependencies.
+// Returns a defensive copy to preserve immutability.
+func (c taskCommon) DependsOn() []string {
+	if len(c.dependsOn) == 0 {
+		return nil
+	}
+	result := make([]string, len(c.dependsOn))
+	copy(result, c.dependsOn)
+	return result
+}
+
+// Pre returns the pre-hooks.
+// Returns a defensive copy to preserve immutability.
+func (c taskCommon) Pre() []string {
+	if len(c.pre) == 0 {
+		return nil
+	}
+	result := make([]string, len(c.pre))
+	copy(result, c.pre)
+	return result
+}
+
+// Post returns the post-hooks.
+// Returns a defensive copy to preserve immutability.
+func (c taskCommon) Post() []string {
+	if len(c.post) == 0 {
+		return nil
+	}
+	result := make([]string, len(c.post))
+	copy(result, c.post)
+	return result
+}
+
+// Inputs returns the input globs.
+// Returns a defensive copy to preserve immutability.
+func (c taskCommon) Inputs() []string {
+	if len(c.inputs) == 0 {
+		return nil
+	}
+	result := make([]string, len(c.inputs))
+	copy(result, c.inputs)
+	return result
+}
+
+// Outputs returns the output globs.
+// Returns a defensive copy to preserve immutability.
+func (c taskCommon) Outputs() []string {
+	if len(c.outputs) == 0 {
+		return nil
+	}
+	result := make([]string, len(c.outputs))
+	copy(result, c.outputs)
+	return result
+}
+
+// Params returns the task parameters.
+// Returns a defensive copy to preserve immutability.
+func (c taskCommon) Params() map[string]any {
+	if len(c.params) == 0 {
+		return nil
+	}
+	result := make(map[string]any, len(c.params))
+	for k, v := range c.params {
+		result[k] = v
+	}
+	return result
+}
+
+// Env returns the environment variables.
+// Returns a defensive copy to preserve immutability.
+func (c taskCommon) Env() map[string]string {
+	if len(c.env) == 0 {
+		return nil
+	}
+	result := make(map[string]string, len(c.env))
+	for k, v := range c.env {
+		result[k] = v
+	}
+	return result
+}
+
+// Mounts returns the mount permissions.
+// Returns a defensive copy to preserve immutability.
+func (c taskCommon) Mounts() map[string]string {
+	if len(c.mounts) == 0 {
+		return nil
+	}
+	result := make(map[string]string, len(c.mounts))
+	for k, v := range c.mounts {
+		result[k] = v
+	}
+	return result
+}
+
+// IntrinsicTask represents a built-in Morphir pipeline action.
+type IntrinsicTask struct {
+	taskCommon
+	action string
+}
+
+func (IntrinsicTask) isTask() {}
+
+// Action returns the intrinsic action identifier.
+func (t IntrinsicTask) Action() string {
+	return t.action
+}
+
+// CommandTask represents an external command execution.
+type CommandTask struct {
+	taskCommon
+	cmd []string
+}
+
+func (CommandTask) isTask() {}
+
+// Cmd returns the command and arguments.
+// Returns a defensive copy to preserve immutability.
+func (t CommandTask) Cmd() []string {
+	if len(t.cmd) == 0 {
+		return nil
+	}
+	result := make([]string, len(t.cmd))
+	copy(result, t.cmd)
+	return result
+}
 
 // TasksSection contains task definitions for the project.
 // Tasks can be intrinsic (built-in Morphir actions) or commands (external executables).
 type TasksSection struct {
-	definitions map[string]TaskDefinition
+	definitions map[string]Task
 }
 
-// Get retrieves a task definition by name.
-// Returns the task definition and true if found, empty definition and false otherwise.
-func (s TasksSection) Get(name string) (TaskDefinition, bool) {
+// Get retrieves a task by name.
+// Returns the task and true if found, nil and false otherwise.
+func (s TasksSection) Get(name string) (Task, bool) {
 	if s.definitions == nil {
-		return TaskDefinition{}, false
+		return nil, false
 	}
-	def, ok := s.definitions[name]
-	return def, ok
+	task, ok := s.definitions[name]
+	return task, ok
 }
 
 // Names returns a list of all defined task names.
@@ -322,138 +472,6 @@ func (s TasksSection) Names() []string {
 // Len returns the number of defined tasks.
 func (s TasksSection) Len() int {
 	return len(s.definitions)
-}
-
-// TaskDefinition defines the configuration for a single task.
-type TaskDefinition struct {
-	kind      TaskKind          // "intrinsic" or "command"
-	action    string            // For intrinsic tasks: action identifier
-	cmd       []string          // For command tasks: command and arguments
-	dependsOn []string          // Task dependencies (run before this task)
-	pre       []string          // Pre-hooks (run immediately before)
-	post      []string          // Post-hooks (run immediately after)
-	inputs    []string          // Input globs for caching
-	outputs   []string          // Output globs
-	params    map[string]any    // Task parameters
-	env       map[string]string // Environment variables
-	mounts    map[string]string // Mount permissions (ro/rw)
-}
-
-// Kind returns the task kind (intrinsic or command).
-func (d TaskDefinition) Kind() TaskKind {
-	return d.kind
-}
-
-// Action returns the intrinsic action identifier.
-// Only meaningful when Kind() is TaskKindIntrinsic.
-func (d TaskDefinition) Action() string {
-	return d.action
-}
-
-// Cmd returns the command and arguments.
-// Only meaningful when Kind() is TaskKindCommand.
-// Returns a defensive copy to preserve immutability.
-func (d TaskDefinition) Cmd() []string {
-	if len(d.cmd) == 0 {
-		return nil
-	}
-	result := make([]string, len(d.cmd))
-	copy(result, d.cmd)
-	return result
-}
-
-// DependsOn returns the task dependencies.
-// Returns a defensive copy to preserve immutability.
-func (d TaskDefinition) DependsOn() []string {
-	if len(d.dependsOn) == 0 {
-		return nil
-	}
-	result := make([]string, len(d.dependsOn))
-	copy(result, d.dependsOn)
-	return result
-}
-
-// Pre returns the pre-hooks.
-// Returns a defensive copy to preserve immutability.
-func (d TaskDefinition) Pre() []string {
-	if len(d.pre) == 0 {
-		return nil
-	}
-	result := make([]string, len(d.pre))
-	copy(result, d.pre)
-	return result
-}
-
-// Post returns the post-hooks.
-// Returns a defensive copy to preserve immutability.
-func (d TaskDefinition) Post() []string {
-	if len(d.post) == 0 {
-		return nil
-	}
-	result := make([]string, len(d.post))
-	copy(result, d.post)
-	return result
-}
-
-// Inputs returns the input globs.
-// Returns a defensive copy to preserve immutability.
-func (d TaskDefinition) Inputs() []string {
-	if len(d.inputs) == 0 {
-		return nil
-	}
-	result := make([]string, len(d.inputs))
-	copy(result, d.inputs)
-	return result
-}
-
-// Outputs returns the output globs.
-// Returns a defensive copy to preserve immutability.
-func (d TaskDefinition) Outputs() []string {
-	if len(d.outputs) == 0 {
-		return nil
-	}
-	result := make([]string, len(d.outputs))
-	copy(result, d.outputs)
-	return result
-}
-
-// Params returns the task parameters.
-// Returns a defensive copy to preserve immutability.
-func (d TaskDefinition) Params() map[string]any {
-	if len(d.params) == 0 {
-		return nil
-	}
-	result := make(map[string]any, len(d.params))
-	for k, v := range d.params {
-		result[k] = v
-	}
-	return result
-}
-
-// Env returns the environment variables.
-// Returns a defensive copy to preserve immutability.
-func (d TaskDefinition) Env() map[string]string {
-	if len(d.env) == 0 {
-		return nil
-	}
-	result := make(map[string]string, len(d.env))
-	for k, v := range d.env {
-		result[k] = v
-	}
-	return result
-}
-
-// Mounts returns the mount permissions.
-// Returns a defensive copy to preserve immutability.
-func (d TaskDefinition) Mounts() map[string]string {
-	if len(d.mounts) == 0 {
-		return nil
-	}
-	result := make(map[string]string, len(d.mounts))
-	for k, v := range d.mounts {
-		result[k] = v
-	}
-	return result
 }
 
 // Default returns a Config with sensible default values.
@@ -721,7 +739,7 @@ func tasksFromMap(m map[string]any, def TasksSection) TasksSection {
 		return def
 	}
 
-	definitions := make(map[string]TaskDefinition)
+	definitions := make(map[string]Task)
 
 	for taskName, taskValue := range section {
 		taskMap, ok := taskValue.(map[string]any)
@@ -729,8 +747,8 @@ func tasksFromMap(m map[string]any, def TasksSection) TasksSection {
 			continue
 		}
 
-		taskDef := taskDefinitionFromMap(taskMap)
-		definitions[taskName] = taskDef
+		task := taskFromMap(taskMap)
+		definitions[taskName] = task
 	}
 
 	if len(definitions) == 0 {
@@ -740,46 +758,42 @@ func tasksFromMap(m map[string]any, def TasksSection) TasksSection {
 	return TasksSection{definitions: definitions}
 }
 
-func taskDefinitionFromMap(m map[string]any) TaskDefinition {
-	def := TaskDefinition{}
-
-	// Parse kind
-	if v, ok := m["kind"].(string); ok {
-		def.kind = TaskKind(v)
+func taskFromMap(m map[string]any) Task {
+	// Parse common fields first
+	common := taskCommon{
+		dependsOn: getStringSliceFromAny(m["depends_on"]),
+		pre:       getStringSliceFromAny(m["pre"]),
+		post:      getStringSliceFromAny(m["post"]),
+		inputs:    getStringSliceFromAny(m["inputs"]),
+		outputs:   getStringSliceFromAny(m["outputs"]),
+		env:       getStringMapFromAny(m["env"]),
+		mounts:    getStringMapFromAny(m["mounts"]),
 	}
-
-	// Parse action (for intrinsic tasks)
-	if v, ok := m["action"].(string); ok {
-		def.action = v
-	}
-
-	// Parse cmd (for command tasks)
-	def.cmd = getStringSliceFromAny(m["cmd"])
-
-	// Parse dependencies
-	def.dependsOn = getStringSliceFromAny(m["depends_on"])
-	def.pre = getStringSliceFromAny(m["pre"])
-	def.post = getStringSliceFromAny(m["post"])
-
-	// Parse inputs/outputs
-	def.inputs = getStringSliceFromAny(m["inputs"])
-	def.outputs = getStringSliceFromAny(m["outputs"])
 
 	// Parse params
 	if paramsMap, ok := m["params"].(map[string]any); ok {
-		def.params = make(map[string]any, len(paramsMap))
+		common.params = make(map[string]any, len(paramsMap))
 		for k, v := range paramsMap {
-			def.params[k] = v
+			common.params[k] = v
 		}
 	}
 
-	// Parse env
-	def.env = getStringMapFromAny(m["env"])
-
-	// Parse mounts
-	def.mounts = getStringMapFromAny(m["mounts"])
-
-	return def
+	// Dispatch based on kind
+	kind, _ := m["kind"].(string)
+	switch kind {
+	case "command":
+		return CommandTask{
+			taskCommon: common,
+			cmd:        getStringSliceFromAny(m["cmd"]),
+		}
+	default:
+		// Default to intrinsic (includes explicit "intrinsic" and empty kind)
+		action, _ := m["action"].(string)
+		return IntrinsicTask{
+			taskCommon: common,
+			action:     action,
+		}
+	}
 }
 
 // getIntFromAny converts various numeric types to int.
