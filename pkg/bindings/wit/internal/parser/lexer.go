@@ -8,11 +8,11 @@ import (
 
 // Lexer tokenizes WIT source code.
 type Lexer struct {
-	input  string
-	pos    int  // current position in input (points to current char)
-	line   int  // current line number (1-indexed)
-	column int  // current column number (1-indexed)
-	start  int  // start position of current token
+	input       string
+	pos         int // current position in input (points to current char)
+	line        int // current line number (1-indexed)
+	column      int // current column number (1-indexed)
+	start       int // start position of current token
 	startLine   int
 	startColumn int
 }

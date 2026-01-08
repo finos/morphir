@@ -17,22 +17,22 @@ const (
 	TokenInteger // integer literal
 
 	// Punctuation
-	TokenLParen    // (
-	TokenRParen    // )
-	TokenLBrace    // {
-	TokenRBrace    // }
-	TokenLAngle    // <
-	TokenRAngle    // >
-	TokenComma     // ,
-	TokenColon     // :
-	TokenSemicolon // ;
-	TokenEqual     // =
-	TokenArrow     // ->
-	TokenStar      // *
-	TokenSlash     // /
-	TokenDot       // .
-	TokenAt        // @
-	TokenPercent   // %
+	TokenLParen     // (
+	TokenRParen     // )
+	TokenLBrace     // {
+	TokenRBrace     // }
+	TokenLAngle     // <
+	TokenRAngle     // >
+	TokenComma      // ,
+	TokenColon      // :
+	TokenSemicolon  // ;
+	TokenEqual      // =
+	TokenArrow      // ->
+	TokenStar       // *
+	TokenSlash      // /
+	TokenDot        // .
+	TokenAt         // @
+	TokenPercent    // %
 	TokenUnderscore // _
 
 	// Keywords
