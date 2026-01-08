@@ -299,4 +299,3 @@ func TestCleanActionMissingFiles(t *testing.T) {
 	outputMap := output.(map[string]any)
 	require.Equal(t, 0, outputMap["count"])
 }
-
