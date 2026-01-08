@@ -16,7 +16,24 @@ REPO_ROOT=$(pwd)
 
 mkdir -p "$REPO_ROOT/test-results" "$REPO_ROOT/coverage"
 
-for dir in cmd/morphir pkg/bindings/wasm-componentmodel pkg/models pkg/tooling pkg/sdk pkg/pipeline; do
+# List of all modules to test
+# Add new modules here when they are created
+MODULES=(
+    "cmd/morphir"
+    "pkg/bindings/typemap"
+    "pkg/bindings/wit"
+    "pkg/config"
+    "pkg/docling-doc"
+    "pkg/models"
+    "pkg/nbformat"
+    "pkg/pipeline"
+    "pkg/sdk"
+    "pkg/task"
+    "pkg/tooling"
+    "pkg/vfs"
+)
+
+for dir in "${MODULES[@]}"; do
     if [ -d "$dir" ]; then
         echo "Testing $dir..."
         MODULE_NAME=$(basename "$dir")
@@ -27,6 +44,8 @@ for dir in cmd/morphir pkg/bindings/wasm-componentmodel pkg/models pkg/tooling p
             -coverprofile="$REPO_ROOT/coverage/${MODULE_NAME}.out" \
             -covermode=atomic \
             ./...)
+    else
+        echo "Skipping $dir (directory not found)"
     fi
 done
 
@@ -39,3 +58,10 @@ echo ""
 echo "Test results generated in test-results/"
 echo "Coverage profiles generated in coverage/"
 echo "Merged coverage: coverage.out"
+
+# Show coverage summary if go tool is available
+if command -v go >/dev/null 2>&1 && [ -f coverage.out ]; then
+    echo ""
+    echo "Coverage Summary:"
+    go tool cover -func=coverage.out | tail -1
+fi
