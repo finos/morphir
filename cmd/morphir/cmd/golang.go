@@ -1,10 +1,13 @@
 package cmd
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	golangpipeline "github.com/finos/morphir/pkg/bindings/golang/pipeline"
@@ -24,6 +27,8 @@ var (
 	golangVerbose       bool
 	golangWarningsAsErr bool
 	golangSourcePath    string
+	golangJSONL         bool   // JSONL output mode (one JSON object per line)
+	golangJSONLInput    string // Path to JSONL input file for batch processing
 )
 
 // JSONGolangGenOutput represents the JSON output for golang gen command
@@ -47,6 +52,42 @@ type JSONGolangMakeOutput struct {
 
 // JSONGolangBuildOutput represents the JSON output for golang build command
 type JSONGolangBuildOutput struct {
+	Success        bool                `json:"success"`
+	IRPath         string              `json:"irPath,omitempty"`
+	OutputDir      string              `json:"outputDir,omitempty"`
+	ModulePath     string              `json:"modulePath,omitempty"`
+	GeneratedFiles []string            `json:"generatedFiles,omitempty"`
+	FileCount      int                 `json:"fileCount"`
+	Error          string              `json:"error,omitempty"`
+	Diagnostics    []map[string]string `json:"diagnostics,omitempty"`
+}
+
+// JSONLGolangInput represents a single input in JSONL batch mode
+type JSONLGolangInput struct {
+	// Name is an optional identifier for this input (used in output)
+	Name string `json:"name,omitempty"`
+	// IRFile is a path to a Morphir IR JSON file (for build/gen)
+	IRFile string `json:"irFile,omitempty"`
+	// SourceFile is a path to a Go source file (for make)
+	SourceFile string `json:"sourceFile,omitempty"`
+	// OutputDir is the output directory for generated files
+	OutputDir string `json:"outputDir,omitempty"`
+	// ModulePath is the Go module path for generated go.mod
+	ModulePath string `json:"modulePath,omitempty"`
+}
+
+// JSONLGolangMakeOutput represents a single make result in JSONL output mode
+type JSONLGolangMakeOutput struct {
+	Name        string              `json:"name,omitempty"`
+	Success     bool                `json:"success"`
+	SourcePath  string              `json:"sourcePath,omitempty"`
+	Error       string              `json:"error,omitempty"`
+	Diagnostics []map[string]string `json:"diagnostics,omitempty"`
+}
+
+// JSONLGolangBuildOutput represents a single build result in JSONL output mode
+type JSONLGolangBuildOutput struct {
+	Name           string              `json:"name,omitempty"`
 	Success        bool                `json:"success"`
 	IRPath         string              `json:"irPath,omitempty"`
 	OutputDir      string              `json:"outputDir,omitempty"`
@@ -107,10 +148,25 @@ Examples:
   morphir golang make ./src/main.go
   morphir golang make -s ./pkg/domain/ --json
 
+JSONL Batch Mode:
+  Process multiple Go sources from a JSONL file (one JSON object per line):
+
+  morphir golang make --jsonl-input sources.jsonl --jsonl
+
+  Input format (sources.jsonl):
+    {"name": "pkg1", "sourceFile": "./pkg/domain/types.go"}
+    {"name": "pkg2", "sourceFile": "./pkg/service/api.go"}
+
+  Output format (--jsonl):
+    {"name": "pkg1", "success": true, "diagnostics": [...]}
+    {"name": "pkg2", "success": true, "diagnostics": [...]}
+
 Flags:
   -s, --source       Path to Go source file or directory
   -v, --verbose      Show detailed diagnostics
-      --json         Output result as JSON`,
+      --json         Output result as JSON
+      --jsonl        Output as JSONL (one JSON object per line)
+      --jsonl-input  Path to JSONL file with batch inputs`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runGolangMake,
 }
@@ -128,13 +184,28 @@ Examples:
   morphir golang build -f ir.json -o ./out -m example.com/pkg --workspace
   morphir golang build ir.json -o ./out -m mymod --json
 
+JSONL Batch Mode:
+  Process multiple IR files from a JSONL file (one JSON object per line):
+
+  morphir golang build --jsonl-input builds.jsonl --jsonl
+
+  Input format (builds.jsonl):
+    {"name": "app1", "irFile": "./app1/morphir-ir.json", "outputDir": "./gen/app1", "modulePath": "example.com/app1"}
+    {"name": "app2", "irFile": "./app2/morphir-ir.json", "outputDir": "./gen/app2", "modulePath": "example.com/app2"}
+
+  Output format (--jsonl):
+    {"name": "app1", "success": true, "fileCount": 5, "generatedFiles": [...], "diagnostics": [...]}
+    {"name": "app2", "success": true, "fileCount": 3, "generatedFiles": [...], "diagnostics": [...]}
+
 Flags:
   -f, --file         Path to Morphir IR JSON file
   -o, --output       Output directory for generated Go code (required)
   -m, --module-path  Go module path for generated go.mod (required)
   -w, --workspace    Enable workspace mode (generates go.work)
   -v, --verbose      Show detailed diagnostics
-      --json         Output result as JSON`,
+      --json         Output result as JSON
+      --jsonl        Output as JSONL (one JSON object per line)
+      --jsonl-input  Path to JSONL file with batch inputs`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runGolangBuild,
 }
@@ -157,6 +228,8 @@ func init() {
 	golangMakeCmd.Flags().StringVarP(&golangSourcePath, "source", "s", "", "Path to Go source file or directory")
 	golangMakeCmd.Flags().BoolVarP(&golangVerbose, "verbose", "v", false, "Show detailed diagnostics")
 	golangMakeCmd.Flags().BoolVar(&golangJSON, "json", false, "Output result as JSON")
+	golangMakeCmd.Flags().BoolVar(&golangJSONL, "jsonl", false, "Output as JSONL (one JSON object per line)")
+	golangMakeCmd.Flags().StringVar(&golangJSONLInput, "jsonl-input", "", "Path to JSONL file with batch inputs")
 	golangMakeCmd.Flags().BoolVar(&golangWarningsAsErr, "warnings-as-errors", false, "Treat warnings as errors")
 
 	// Build command flags
@@ -166,11 +239,9 @@ func init() {
 	golangBuildCmd.Flags().BoolVarP(&golangWorkspace, "workspace", "w", false, "Enable workspace mode (generates go.work)")
 	golangBuildCmd.Flags().BoolVarP(&golangVerbose, "verbose", "v", false, "Show detailed diagnostics")
 	golangBuildCmd.Flags().BoolVar(&golangJSON, "json", false, "Output result as JSON")
+	golangBuildCmd.Flags().BoolVar(&golangJSONL, "jsonl", false, "Output as JSONL (one JSON object per line)")
+	golangBuildCmd.Flags().StringVar(&golangJSONLInput, "jsonl-input", "", "Path to JSONL file with batch inputs")
 	golangBuildCmd.Flags().BoolVar(&golangWarningsAsErr, "warnings-as-errors", false, "Treat warnings as errors")
-
-	// Mark required flags for build
-	_ = golangBuildCmd.MarkFlagRequired("output")
-	_ = golangBuildCmd.MarkFlagRequired("module-path")
 
 	// Add subcommands
 	golangCmd.AddCommand(golangGenCmd)
@@ -403,6 +474,11 @@ func outputGolangDiagnostics(cmd *cobra.Command, diagnostics []pipeline.Diagnost
 
 // runGolangMake executes the golang make command (placeholder)
 func runGolangMake(cmd *cobra.Command, args []string) error {
+	// Check for JSONL batch mode
+	if golangJSONLInput != "" {
+		return runGolangMakeBatch(cmd, args)
+	}
+
 	// Determine source path
 	sourcePath := ""
 	if len(args) > 0 {
@@ -427,6 +503,11 @@ func runGolangMake(cmd *cobra.Command, args []string) error {
 	}
 
 	_, result := makeStep.Execute(ctx, makeInput)
+
+	// JSONL output mode
+	if golangJSONL {
+		return outputGolangMakeJSONL(cmd, "", sourcePath, result)
+	}
 
 	// JSON output mode
 	if golangJSON {
@@ -453,6 +534,45 @@ func runGolangMake(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// runGolangMakeBatch processes multiple Go sources from JSONL input
+func runGolangMakeBatch(cmd *cobra.Command, _ []string) error {
+	inputs, err := readGolangJSONLInputs(golangJSONLInput)
+	if err != nil {
+		return fmt.Errorf("failed to read JSONL input: %w", err)
+	}
+
+	// Create pipeline context
+	ctx := pipeline.NewContext(".", 0, pipeline.ModeDefault, nil)
+
+	makeStep := golangpipeline.NewMakeStep()
+	var hasErrors bool
+
+	for _, input := range inputs {
+		makeInput := golangpipeline.MakeInput{
+			Options: golangpipeline.MakeOptions{
+				WarningsAsErrors: golangWarningsAsErr,
+			},
+		}
+		if input.SourceFile != "" {
+			makeInput.FilePath = vfs.MustVPath(input.SourceFile)
+		}
+
+		_, result := makeStep.Execute(ctx, makeInput)
+		if err := outputGolangMakeJSONL(cmd, input.Name, input.SourceFile, result); err != nil {
+			hasErrors = true
+		}
+
+		if result.Err != nil {
+			hasErrors = true
+		}
+	}
+
+	if hasErrors {
+		return fmt.Errorf("one or more inputs failed")
+	}
+	return nil
+}
+
 // outputGolangMakeJSON outputs the make result as JSON
 func outputGolangMakeJSON(cmd *cobra.Command, sourcePath string, result pipeline.StepResult) error {
 	jsonOutput := JSONGolangMakeOutput{
@@ -476,6 +596,11 @@ func outputGolangMakeJSON(cmd *cobra.Command, sourcePath string, result pipeline
 
 // runGolangBuild executes the golang build command
 func runGolangBuild(cmd *cobra.Command, args []string) error {
+	// Check for JSONL batch mode
+	if golangJSONLInput != "" {
+		return runGolangBuildBatch(cmd, args)
+	}
+
 	// Determine input IR path
 	irPath := ""
 	if len(args) > 0 {
@@ -556,6 +681,14 @@ func runGolangBuild(cmd *cobra.Command, args []string) error {
 
 	// Combine diagnostics from both steps
 	allDiagnostics := append(buildResult.Diagnostics, genResult.Diagnostics...)
+
+	// JSONL output mode
+	if golangJSONL {
+		return outputGolangBuildJSONL(cmd, "", irPath, outputDir, &genOutput, pipeline.StepResult{
+			Err:         genResult.Err,
+			Diagnostics: allDiagnostics,
+		})
+	}
 
 	// JSON output mode
 	if golangJSON {
@@ -644,4 +777,233 @@ func outputGolangBuildJSON(cmd *cobra.Command, irPath string, output *golangpipe
 		return result.Err
 	}
 	return nil
+}
+
+// runGolangBuildBatch processes multiple IR files from JSONL input
+func runGolangBuildBatch(cmd *cobra.Command, _ []string) error {
+	inputs, err := readGolangJSONLInputs(golangJSONLInput)
+	if err != nil {
+		return fmt.Errorf("failed to read JSONL input: %w", err)
+	}
+
+	var hasErrors bool
+
+	for _, input := range inputs {
+		// Determine IR path
+		irPath := input.IRFile
+		if irPath == "" {
+			if err := outputGolangBuildJSONLError(cmd, input.Name, "", "", fmt.Errorf("irFile is required")); err != nil {
+				hasErrors = true
+			}
+			continue
+		}
+
+		// Determine output directory
+		outputDir := input.OutputDir
+		if outputDir == "" {
+			outputDir = golangOutputDir
+		}
+		if outputDir == "" {
+			if err := outputGolangBuildJSONLError(cmd, input.Name, irPath, "", fmt.Errorf("outputDir is required")); err != nil {
+				hasErrors = true
+			}
+			continue
+		}
+
+		// Determine module path
+		modulePath := input.ModulePath
+		if modulePath == "" {
+			modulePath = golangModulePath
+		}
+		if modulePath == "" {
+			if err := outputGolangBuildJSONLError(cmd, input.Name, irPath, outputDir, fmt.Errorf("modulePath is required")); err != nil {
+				hasErrors = true
+			}
+			continue
+		}
+
+		// Read and parse IR file
+		module, err := loadMorphirIR(irPath)
+		if err != nil {
+			if err := outputGolangBuildJSONLError(cmd, input.Name, irPath, outputDir, err); err != nil {
+				hasErrors = true
+			}
+			continue
+		}
+
+		// Resolve output directory to absolute path
+		absOutputDir, err := filepath.Abs(outputDir)
+		if err != nil {
+			if err := outputGolangBuildJSONLError(cmd, input.Name, irPath, outputDir, err); err != nil {
+				hasErrors = true
+			}
+			continue
+		}
+
+		// Create output directory if it doesn't exist
+		if err := os.MkdirAll(absOutputDir, 0755); err != nil {
+			if err := outputGolangBuildJSONLError(cmd, input.Name, irPath, absOutputDir, err); err != nil {
+				hasErrors = true
+			}
+			continue
+		}
+
+		// Create pipeline context
+		mount := vfs.NewOSMount("workspace", vfs.MountRW, absOutputDir, vfs.MustVPath("/"))
+		overlay := vfs.NewOverlayVFS([]vfs.Mount{mount})
+		ctx := pipeline.NewContext(absOutputDir, 0, pipeline.ModeDefault, overlay)
+
+		// Create and run gen step
+		genStep := golangpipeline.NewGenStep()
+		genInput := golangpipeline.GenInput{
+			Module:    module,
+			OutputDir: vfs.MustVPath("/"),
+			Options: golangpipeline.GenOptions{
+				ModulePath:       modulePath,
+				Workspace:        golangWorkspace,
+				WarningsAsErrors: golangWarningsAsErr,
+				Format:           golangpipeline.DefaultFormatOptions(),
+			},
+		}
+
+		genOutput, genResult := genStep.Execute(ctx, genInput)
+
+		// Write generated files to disk
+		if genResult.Err == nil {
+			for relPath, content := range genOutput.GeneratedFiles {
+				fullPath := filepath.Join(absOutputDir, relPath)
+
+				// Create parent directories
+				parentDir := filepath.Dir(fullPath)
+				if mkErr := os.MkdirAll(parentDir, 0755); mkErr != nil {
+					genResult.Err = mkErr
+					break
+				}
+
+				// Write file
+				if writeErr := os.WriteFile(fullPath, []byte(content), 0644); writeErr != nil {
+					genResult.Err = writeErr
+					break
+				}
+			}
+		}
+
+		if err := outputGolangBuildJSONL(cmd, input.Name, irPath, absOutputDir, &genOutput, genResult); err != nil {
+			hasErrors = true
+		}
+
+		if genResult.Err != nil {
+			hasErrors = true
+		}
+	}
+
+	if hasErrors {
+		return fmt.Errorf("one or more inputs failed")
+	}
+	return nil
+}
+
+// readGolangJSONLInputs reads a JSONL file and returns a slice of inputs
+func readGolangJSONLInputs(path string) ([]JSONLGolangInput, error) {
+	var file io.Reader
+
+	if path == "-" {
+		file = os.Stdin
+	} else {
+		f, err := os.Open(path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open file: %w", err)
+		}
+		defer f.Close()
+		file = f
+	}
+
+	var inputs []JSONLGolangInput
+	scanner := bufio.NewScanner(file)
+
+	lineNum := 0
+	for scanner.Scan() {
+		lineNum++
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue // Skip empty lines and comments
+		}
+
+		var input JSONLGolangInput
+		if err := json.Unmarshal([]byte(line), &input); err != nil {
+			return nil, fmt.Errorf("failed to parse line %d: %w", lineNum, err)
+		}
+		inputs = append(inputs, input)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	return inputs, nil
+}
+
+// outputGolangMakeJSONL outputs a single make result as a JSONL line
+func outputGolangMakeJSONL(cmd *cobra.Command, name, sourcePath string, result pipeline.StepResult) error {
+	output := JSONLGolangMakeOutput{
+		Name:        name,
+		Success:     result.Err == nil,
+		SourcePath:  sourcePath,
+		Diagnostics: formatDiagnosticsJSON(result.Diagnostics),
+	}
+
+	if result.Err != nil {
+		output.Error = result.Err.Error()
+	}
+
+	return writeGolangJSONL(cmd.OutOrStdout(), output)
+}
+
+// outputGolangBuildJSONL outputs a single build result as a JSONL line
+func outputGolangBuildJSONL(cmd *cobra.Command, name, irPath, outputDir string, genOutput *golangpipeline.GenOutput, result pipeline.StepResult) error {
+	output := JSONLGolangBuildOutput{
+		Name:        name,
+		Success:     result.Err == nil,
+		IRPath:      irPath,
+		OutputDir:   outputDir,
+		ModulePath:  golangModulePath,
+		Diagnostics: formatDiagnosticsJSON(result.Diagnostics),
+	}
+
+	if result.Err != nil {
+		output.Error = result.Err.Error()
+	}
+
+	if genOutput != nil {
+		output.FileCount = len(genOutput.GeneratedFiles)
+		output.GeneratedFiles = make([]string, 0, len(genOutput.GeneratedFiles))
+		for relPath := range genOutput.GeneratedFiles {
+			output.GeneratedFiles = append(output.GeneratedFiles, relPath)
+		}
+	}
+
+	return writeGolangJSONL(cmd.OutOrStdout(), output)
+}
+
+// outputGolangBuildJSONLError outputs a build error as a JSONL line
+func outputGolangBuildJSONLError(cmd *cobra.Command, name, irPath, outputDir string, err error) error {
+	output := JSONLGolangBuildOutput{
+		Name:      name,
+		Success:   false,
+		IRPath:    irPath,
+		OutputDir: outputDir,
+		Error:     err.Error(),
+	}
+
+	return writeGolangJSONL(cmd.OutOrStdout(), output)
+}
+
+// writeGolangJSONL writes a value as a single JSONL line
+func writeGolangJSONL(w io.Writer, v interface{}) error {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(w, string(data))
+	return err
 }
