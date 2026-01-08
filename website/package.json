@@ -15,10 +15,10 @@
 		"typecheck": "tsc"
 	},
 	"dependencies": {
-		"@cmfcmf/docusaurus-search-local": "^1.1.0",
-		"@docusaurus/core": "2.4.3",
-		"@docusaurus/plugin-google-gtag": "2.4.3",
-		"@docusaurus/preset-classic": "2.4.3",
+		"@cmfcmf/docusaurus-search-local": "^2.0.1",
+		"@docusaurus/core": "3.9.2",
+		"@docusaurus/plugin-google-gtag": "3.9.2",
+		"@docusaurus/preset-classic": "3.9.2",
 		"@mdx-js/react": "^1.6.22",
 		"clsx": "^1.2.1",
 		"prism-react-renderer": "^1.3.5",
