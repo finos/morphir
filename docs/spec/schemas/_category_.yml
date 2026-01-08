@@ -1,0 +1,6 @@
+label: 'JSON Schemas'
+position: 2
+collapsed: true
+link:
+  type: doc
+  id: spec/schemas/index

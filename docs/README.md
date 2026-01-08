@@ -18,6 +18,15 @@ Start here if you're new to Morphir!
 - [Quick Start Tutorial](getting-started/tutorials.md) - Get up and running quickly
 - [Editor Setup](getting-started/editor-setup.md) - Configure your development environment
 - [Morphir Web UI](getting-started/Morphir%20Web%20UI.md) - Browse and visualize Morphir models
+- [Morphir Go Preview](getting-started/morphir-go-preview.md) - Preview of the new Go-based Morphir CLI
+
+### [CLI Preview](cli-preview/)
+The next-generation Morphir CLI built in Go
+- [Overview](cli-preview/index.md) - Introduction to the new CLI
+- [Getting Started](cli-preview/getting-started.md) - Quick start with the new CLI
+- [What's New](cli-preview/whats-new.md) - Latest features and improvements
+- [Commands](cli-preview/commands/) - CLI command reference
+- [Release Notes](cli-preview/release-notes/) - Version history and changelogs
 
 ### [Core Concepts](concepts/)
 Understand the fundamental concepts behind Morphir
@@ -26,6 +35,15 @@ Understand the fundamental concepts behind Morphir
 - [Why Functional Programming?](concepts/why-functional-programming.md) - The FP paradigm in Morphir
 - [Morphir IR](concepts/morphir-ir.md) - The Intermediate Representation structure
 - [Morphir SDK](concepts/morphir-sdk.md) - Standard library and SDK
+
+### [IR Specification](spec/)
+Technical specification of the Morphir Intermediate Representation
+- [Overview](spec/index.md) - IR specification overview
+- [IR Specification](spec/morphir-ir-specification.md) - Detailed IR specification
+- [JSON Schemas](spec/schemas/) - JSON schemas for IR versions
+  - [Version 3 (Current)](spec/schemas/v3/) - Latest IR schema
+  - [Version 2](spec/schemas/v2/) - Previous IR schema
+  - [Version 1](spec/schemas/v1/) - Original IR schema
 
 ### [User Guides](user-guides/)
 Learn how to model business logic and use Morphir tools
@@ -106,6 +124,7 @@ Contributing to Morphir and advanced development topics
 - [Development Bots](developers/dev-bots.md)
 - [Integrating Morphir with JVM Projects](developers/integrating-morphir-and-jvm-projects.md)
 - [Publishing](developers/publishing.md)
+- [Release Retrospective v0.4.0-alpha.1](developers/release-retrospective-v0.4.0-alpha.1.md) - Lessons learned from v0.4.0-alpha.1 release
 
 ### [Community](community/)
 Join the Morphir community
