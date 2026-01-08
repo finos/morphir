@@ -10,6 +10,7 @@ require (
 	github.com/finos/morphir/pkg/bindings/wit v0.0.0
 	github.com/finos/morphir/pkg/config v0.3.3
 	github.com/finos/morphir/pkg/pipeline v0.3.3
+	github.com/finos/morphir/pkg/task v0.0.0
 	github.com/finos/morphir/pkg/tooling v0.3.3
 	github.com/finos/morphir/pkg/vfs v0.0.0
 	github.com/spf13/cobra v1.10.2
@@ -26,6 +27,8 @@ replace github.com/finos/morphir/pkg/models => ../../pkg/models
 replace github.com/finos/morphir/pkg/pipeline => ../../pkg/pipeline
 
 replace github.com/finos/morphir/pkg/tooling => ../../pkg/tooling
+
+replace github.com/finos/morphir/pkg/task => ../../pkg/task
 
 replace github.com/finos/morphir/pkg/vfs => ../../pkg/vfs
 
@@ -49,7 +52,6 @@ require (
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect

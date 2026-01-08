@@ -22,12 +22,17 @@ else
     echo "Creating go.work..."
     go work init \
         ./cmd/morphir \
-        ./pkg/bindings/wasm-componentmodel \
+        ./pkg/bindings/typemap \
+        ./pkg/bindings/wit \
         ./pkg/config \
+        ./pkg/docling-doc \
         ./pkg/models \
+        ./pkg/nbformat \
         ./pkg/pipeline \
         ./pkg/sdk \
+        ./pkg/task \
         ./pkg/tooling \
+        ./pkg/vfs \
         ./tests/bdd
     echo "✓ Created go.work"
 fi

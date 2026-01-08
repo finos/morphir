@@ -17,6 +17,7 @@ cd "$(dirname "$0")/.." || exit 1
 
 modules=(
     "cmd/morphir"
+    "pkg/bindings/typemap"
     "pkg/bindings/wit"
     "pkg/config"
     "pkg/docling-doc"
