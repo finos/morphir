@@ -67,6 +67,7 @@ func TestFeatures(t *testing.T) {
 			steps.RegisterWITCLISteps(sc)
 			steps.RegisterDoclingSteps(sc)
 			steps.RegisterWITSteps(sc)
+			steps.RegisterGolangSteps(sc)
 		},
 		Options: &godog.Options{
 			Format:   "pretty",
