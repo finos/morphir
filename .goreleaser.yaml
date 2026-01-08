@@ -25,7 +25,8 @@ before:
 
 builds:
   - id: morphir
-    main: ./cmd/morphir
+    dir: cmd/morphir
+    main: .
     binary: morphir
     env:
       - CGO_ENABLED=0
