@@ -897,6 +897,145 @@ func TestFromMapEmptyTasks(t *testing.T) {
 	}
 }
 
+// Bindings Section Tests
+
+func TestDefaultBindingsEmpty(t *testing.T) {
+	cfg := Default()
+
+	bindings := cfg.Bindings()
+	if !bindings.IsEmpty() {
+		t.Error("expected default bindings to be empty")
+	}
+	if !bindings.WIT().IsEmpty() {
+		t.Error("expected default WIT bindings to be empty")
+	}
+	if !bindings.Protobuf().IsEmpty() {
+		t.Error("expected default Protobuf bindings to be empty")
+	}
+	if !bindings.JSON().IsEmpty() {
+		t.Error("expected default JSON bindings to be empty")
+	}
+}
+
+func TestFromMapWithBindings(t *testing.T) {
+	m := map[string]any{
+		"bindings": map[string]any{
+			"wit": map[string]any{
+				"primitives": []any{
+					map[string]any{
+						"external":      "u128",
+						"morphir":       "Morphir.SDK:Int:Int128",
+						"bidirectional": true,
+						"priority":      int64(100),
+					},
+				},
+				"containers": []any{
+					map[string]any{
+						"external_pattern": "hashmap",
+						"morphir_pattern":  "Morphir.SDK:Dict:Dict",
+						"type_params":      int64(2),
+						"bidirectional":    true,
+						"priority":         int64(100),
+					},
+				},
+			},
+		},
+	}
+
+	cfg := FromMap(m)
+	bindings := cfg.Bindings()
+
+	if bindings.IsEmpty() {
+		t.Error("expected bindings to not be empty")
+	}
+
+	wit := bindings.WIT()
+	if wit.IsEmpty() {
+		t.Error("expected WIT bindings to not be empty")
+	}
+	if len(wit.Primitives) != 1 {
+		t.Errorf("expected 1 primitive, got %d", len(wit.Primitives))
+	}
+	if wit.Primitives[0].ExternalType != "u128" {
+		t.Errorf("expected external=u128, got %s", wit.Primitives[0].ExternalType)
+	}
+	if wit.Primitives[0].MorphirType != "Morphir.SDK:Int:Int128" {
+		t.Errorf("expected morphir=Morphir.SDK:Int:Int128, got %s", wit.Primitives[0].MorphirType)
+	}
+	if wit.Primitives[0].Priority != 100 {
+		t.Errorf("expected priority=100, got %d", wit.Primitives[0].Priority)
+	}
+
+	if len(wit.Containers) != 1 {
+		t.Errorf("expected 1 container, got %d", len(wit.Containers))
+	}
+	if wit.Containers[0].ExternalPattern != "hashmap" {
+		t.Errorf("expected external_pattern=hashmap, got %s", wit.Containers[0].ExternalPattern)
+	}
+	if wit.Containers[0].TypeParamCount != 2 {
+		t.Errorf("expected type_params=2, got %d", wit.Containers[0].TypeParamCount)
+	}
+}
+
+func TestFromMapBindingsEmptySection(t *testing.T) {
+	m := map[string]any{
+		"bindings": map[string]any{},
+	}
+
+	cfg := FromMap(m)
+	if !cfg.Bindings().IsEmpty() {
+		t.Error("expected bindings to be empty for empty bindings section")
+	}
+}
+
+func TestFromMapBindingsMultipleBindingTypes(t *testing.T) {
+	m := map[string]any{
+		"bindings": map[string]any{
+			"wit": map[string]any{
+				"primitives": []any{
+					map[string]any{
+						"external": "u128",
+						"morphir":  "Int128",
+					},
+				},
+			},
+			"protobuf": map[string]any{
+				"primitives": []any{
+					map[string]any{
+						"external": "int32",
+						"morphir":  "Int",
+					},
+				},
+			},
+			"json": map[string]any{
+				"primitives": []any{
+					map[string]any{
+						"external": "number",
+						"morphir":  "Float",
+					},
+				},
+			},
+		},
+	}
+
+	cfg := FromMap(m)
+	bindings := cfg.Bindings()
+
+	if bindings.IsEmpty() {
+		t.Error("expected bindings to not be empty")
+	}
+
+	if len(bindings.WIT().Primitives) != 1 {
+		t.Errorf("expected 1 WIT primitive, got %d", len(bindings.WIT().Primitives))
+	}
+	if len(bindings.Protobuf().Primitives) != 1 {
+		t.Errorf("expected 1 Protobuf primitive, got %d", len(bindings.Protobuf().Primitives))
+	}
+	if len(bindings.JSON().Primitives) != 1 {
+		t.Errorf("expected 1 JSON primitive, got %d", len(bindings.JSON().Primitives))
+	}
+}
+
 func TestFromMapNoTasks(t *testing.T) {
 	m := map[string]any{
 		"ir": map[string]any{

@@ -3,6 +3,7 @@ package adapter
 import (
 	"fmt"
 
+	"github.com/finos/morphir/pkg/bindings/typemap"
 	"go.bytecodealliance.org/wit"
 )
 
@@ -59,6 +60,10 @@ type AdapterContext struct {
 	// Resolve is the complete WIT resolution containing all packages and types
 	Resolve *wit.Resolve
 
+	// TypeRegistry provides type mappings between WIT and Morphir types.
+	// If nil, default mappings are used.
+	TypeRegistry *typemap.Registry
+
 	// Strict mode causes the adapter to fail on unsupported features
 	// rather than skip them with warnings
 	Strict bool
@@ -73,6 +78,22 @@ func NewAdapterContext(resolve *wit.Resolve) *AdapterContext {
 		Resolve:  resolve,
 		Warnings: make([]string, 0),
 	}
+}
+
+// NewAdapterContextWithRegistry creates a new adapter context with a type registry.
+func NewAdapterContextWithRegistry(resolve *wit.Resolve, registry *typemap.Registry) *AdapterContext {
+	return &AdapterContext{
+		Resolve:      resolve,
+		TypeRegistry: registry,
+		Warnings:     make([]string, 0),
+	}
+}
+
+// WithTypeRegistry returns a new context with the given type registry.
+func (ctx *AdapterContext) WithTypeRegistry(registry *typemap.Registry) *AdapterContext {
+	newCtx := *ctx
+	newCtx.TypeRegistry = registry
+	return &newCtx
 }
 
 // AddWarning adds a warning to the context.

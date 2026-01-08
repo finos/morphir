@@ -4,9 +4,12 @@ go 1.25.5
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
+	github.com/finos/morphir/pkg/bindings/typemap v0.0.0
 	github.com/stretchr/testify v1.11.1
 	go.bytecodealliance.org v0.7.0
 )
+
+replace github.com/finos/morphir/pkg/bindings/typemap => ../typemap
 
 require (
 	github.com/coreos/go-semver v0.3.1 // indirect
