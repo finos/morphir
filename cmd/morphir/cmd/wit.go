@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,8 +24,42 @@ var (
 	witWarningsAsErrors bool
 	witStrictMode       bool
 	witJSON             bool
+	witJSONL            bool // JSONL output mode (one JSON object per line)
+	witJSONLInput       string // Path to JSONL input file for batch processing
 	witVerbose          bool
 )
+
+// JSONLInput represents a single input in JSONL batch mode
+type JSONLInput struct {
+	// Name is an optional identifier for this input (used in output)
+	Name string `json:"name,omitempty"`
+	// Source is inline WIT source code
+	Source string `json:"source,omitempty"`
+	// File is a path to a WIT file
+	File string `json:"file,omitempty"`
+}
+
+// JSONLMakeOutput represents a single make result in JSONL output mode
+type JSONLMakeOutput struct {
+	Name        string                   `json:"name,omitempty"`
+	Success     bool                     `json:"success"`
+	TypeCount   int                      `json:"typeCount,omitempty"`
+	ValueCount  int                      `json:"valueCount,omitempty"`
+	Error       string                   `json:"error,omitempty"`
+	Diagnostics []map[string]string      `json:"diagnostics,omitempty"`
+}
+
+// JSONLBuildOutput represents a single build result in JSONL output mode
+type JSONLBuildOutput struct {
+	Name           string              `json:"name,omitempty"`
+	Success        bool                `json:"success"`
+	RoundTripValid bool                `json:"roundTripValid,omitempty"`
+	TypeCount      int                 `json:"typeCount,omitempty"`
+	ValueCount     int                 `json:"valueCount,omitempty"`
+	WITSource      string              `json:"witSource,omitempty"`
+	Error          string              `json:"error,omitempty"`
+	Diagnostics    []map[string]string `json:"diagnostics,omitempty"`
+}
 
 var witCmd = &cobra.Command{
 	Use:   "wit",
@@ -51,7 +86,20 @@ to Morphir's intermediate representation.
 Examples:
   morphir wit make example.wit -o example.ir.json
   morphir wit make -s "interface foo { bar: func(); }" -o out.ir.json
-  cat example.wit | morphir wit make -o out.ir.json`,
+  cat example.wit | morphir wit make -o out.ir.json
+
+JSONL Batch Mode:
+  Process multiple WIT sources from a JSONL file (one JSON object per line):
+
+  morphir wit make --jsonl-input sources.jsonl --jsonl
+
+  Input format (each line):
+    {"name": "foo", "source": "package a:b; interface foo { ... }"}
+    {"name": "bar", "file": "path/to/bar.wit"}
+
+  Output format (--jsonl):
+    {"name": "foo", "success": true, "typeCount": 2, "valueCount": 1}
+    {"name": "bar", "success": false, "error": "parse error..."}`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runWitMake,
 }
@@ -81,7 +129,19 @@ to verify that the conversion is semantically correct.
 
 Examples:
   morphir wit build example.wit -o regenerated.wit
-  morphir wit build -s "interface foo { bar: func(); }" -o out.wit`,
+  morphir wit build -s "interface foo { bar: func(); }" -o out.wit
+
+JSONL Batch Mode:
+  Process multiple WIT sources from a JSONL file:
+
+  morphir wit build --jsonl-input sources.jsonl --jsonl
+
+  Input format (each line):
+    {"name": "foo", "source": "package a:b; interface foo { ... }"}
+    {"name": "bar", "file": "path/to/bar.wit"}
+
+  Output format (--jsonl):
+    {"name": "foo", "success": true, "roundTripValid": true, "witSource": "..."}`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runWitBuild,
 }
@@ -93,14 +153,17 @@ func init() {
 	witMakeCmd.Flags().StringVarP(&witOutputPath, "output", "o", "", "Output path for IR JSON")
 	witMakeCmd.Flags().BoolVar(&witWarningsAsErrors, "warnings-as-errors", false, "Treat warnings as errors")
 	witMakeCmd.Flags().BoolVar(&witStrictMode, "strict", false, "Fail on unsupported constructs")
-	witMakeCmd.Flags().BoolVar(&witJSON, "json", false, "Output result as JSON")
+	witMakeCmd.Flags().BoolVar(&witJSON, "json", false, "Output result as JSON (pretty-printed)")
+	witMakeCmd.Flags().BoolVar(&witJSONL, "jsonl", false, "Output as JSONL (one JSON object per line)")
+	witMakeCmd.Flags().StringVar(&witJSONLInput, "jsonl-input", "", "Path to JSONL file with batch inputs")
 	witMakeCmd.Flags().BoolVarP(&witVerbose, "verbose", "v", false, "Show detailed diagnostics")
 
 	// Gen command flags
 	witGenCmd.Flags().StringVarP(&witFilePath, "file", "f", "", "Path to IR JSON file")
 	witGenCmd.Flags().StringVarP(&witOutputPath, "output", "o", "", "Output path for WIT file")
 	witGenCmd.Flags().BoolVar(&witWarningsAsErrors, "warnings-as-errors", false, "Treat warnings as errors")
-	witGenCmd.Flags().BoolVar(&witJSON, "json", false, "Output result as JSON")
+	witGenCmd.Flags().BoolVar(&witJSON, "json", false, "Output result as JSON (pretty-printed)")
+	witGenCmd.Flags().BoolVar(&witJSONL, "jsonl", false, "Output as JSONL (one JSON object per line)")
 	witGenCmd.Flags().BoolVarP(&witVerbose, "verbose", "v", false, "Show detailed diagnostics")
 
 	// Build command flags
@@ -109,7 +172,9 @@ func init() {
 	witBuildCmd.Flags().StringVarP(&witOutputPath, "output", "o", "", "Output path for regenerated WIT")
 	witBuildCmd.Flags().BoolVar(&witWarningsAsErrors, "warnings-as-errors", false, "Treat warnings as errors")
 	witBuildCmd.Flags().BoolVar(&witStrictMode, "strict", false, "Fail on unsupported constructs")
-	witBuildCmd.Flags().BoolVar(&witJSON, "json", false, "Output result as JSON")
+	witBuildCmd.Flags().BoolVar(&witJSON, "json", false, "Output result as JSON (pretty-printed)")
+	witBuildCmd.Flags().BoolVar(&witJSONL, "jsonl", false, "Output as JSONL (one JSON object per line)")
+	witBuildCmd.Flags().StringVar(&witJSONLInput, "jsonl-input", "", "Path to JSONL file with batch inputs")
 	witBuildCmd.Flags().BoolVarP(&witVerbose, "verbose", "v", false, "Show detailed diagnostics")
 
 	// Add subcommands
@@ -119,6 +184,11 @@ func init() {
 }
 
 func runWitMake(cmd *cobra.Command, args []string) error {
+	// Check for JSONL batch mode
+	if witJSONLInput != "" {
+		return runWitMakeBatch(cmd, args)
+	}
+
 	// Determine source
 	source, inputPath, err := resolveWitSource(args)
 	if err != nil {
@@ -147,7 +217,12 @@ func runWitMake(cmd *cobra.Command, args []string) error {
 
 	output, result := makeStep.Execute(ctx, makeInput)
 
-	// Output diagnostics
+	// JSONL output mode
+	if witJSONL {
+		return outputMakeJSONL(cmd, "", output, result)
+	}
+
+	// Output diagnostics (not in JSONL mode)
 	if witVerbose || len(result.Diagnostics) > 0 {
 		outputDiagnostics(cmd, result.Diagnostics)
 	}
@@ -156,7 +231,7 @@ func runWitMake(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("make failed: %w", result.Err)
 	}
 
-	// Output result
+	// Output result as pretty JSON
 	if witJSON {
 		return outputMakeJSON(cmd, output, result)
 	}
@@ -179,6 +254,54 @@ func runWitMake(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "  Types: %d, Values: %d\n",
 		len(output.Module.Types()), len(output.Module.Values()))
 
+	return nil
+}
+
+// runWitMakeBatch processes multiple WIT sources from JSONL input
+func runWitMakeBatch(cmd *cobra.Command, args []string) error {
+	inputs, err := readJSONLInputs(witJSONLInput)
+	if err != nil {
+		return fmt.Errorf("failed to read JSONL input: %w", err)
+	}
+
+	// Create pipeline context
+	workDir, _ := os.Getwd()
+	mount := vfs.NewOSMount("workspace", vfs.MountRW, workDir, vfs.MustVPath("/"))
+	overlay := vfs.NewOverlayVFS([]vfs.Mount{mount})
+	ctx := pipeline.NewContext(workDir, 0, pipeline.ModeDefault, overlay)
+
+	makeStep := witpipeline.NewMakeStep()
+	var hasErrors bool
+
+	for _, input := range inputs {
+		// Resolve source for this input
+		source, err := resolveJSONLInputSource(input)
+		if err != nil {
+			// Output error as JSONL
+			outputMakeJSONLError(cmd, input.Name, err)
+			hasErrors = true
+			continue
+		}
+
+		makeInput := witpipeline.MakeInput{
+			Source: source,
+			Options: witpipeline.MakeOptions{
+				WarningsAsErrors: witWarningsAsErrors,
+				StrictMode:       witStrictMode,
+			},
+		}
+
+		output, result := makeStep.Execute(ctx, makeInput)
+		outputMakeJSONL(cmd, input.Name, output, result)
+
+		if result.Err != nil {
+			hasErrors = true
+		}
+	}
+
+	if hasErrors {
+		return fmt.Errorf("one or more inputs failed")
+	}
 	return nil
 }
 
@@ -215,6 +338,11 @@ func runWitGen(cmd *cobra.Command, args []string) error {
 }
 
 func runWitBuild(cmd *cobra.Command, args []string) error {
+	// Check for JSONL batch mode
+	if witJSONLInput != "" {
+		return runWitBuildBatch(cmd, args)
+	}
+
 	// Determine source
 	source, inputPath, err := resolveWitSource(args)
 	if err != nil {
@@ -253,7 +381,12 @@ func runWitBuild(cmd *cobra.Command, args []string) error {
 
 	output, result := buildStep.Execute(ctx, buildInput)
 
-	// Output diagnostics
+	// JSONL output mode
+	if witJSONL {
+		return outputBuildJSONL(cmd, "", output, result)
+	}
+
+	// Output diagnostics (not in JSONL mode)
 	if witVerbose || len(result.Diagnostics) > 0 {
 		outputDiagnostics(cmd, result.Diagnostics)
 	}
@@ -262,7 +395,7 @@ func runWitBuild(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("build failed: %w", result.Err)
 	}
 
-	// Output result
+	// Output result as pretty JSON
 	if witJSON {
 		return outputBuildJSON(cmd, output, result)
 	}
@@ -287,6 +420,57 @@ func runWitBuild(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(cmd.OutOrStdout(), "%s Round-trip produced different output (lossy conversion)\n", warnStyle.Render("WARN"))
 	}
 
+	return nil
+}
+
+// runWitBuildBatch processes multiple WIT sources from JSONL input
+func runWitBuildBatch(cmd *cobra.Command, args []string) error {
+	inputs, err := readJSONLInputs(witJSONLInput)
+	if err != nil {
+		return fmt.Errorf("failed to read JSONL input: %w", err)
+	}
+
+	// Create pipeline context
+	workDir, _ := os.Getwd()
+	mount := vfs.NewOSMount("workspace", vfs.MountRW, workDir, vfs.MustVPath("/"))
+	overlay := vfs.NewOverlayVFS([]vfs.Mount{mount})
+	ctx := pipeline.NewContext(workDir, 0, pipeline.ModeDefault, overlay)
+
+	buildStep := witpipeline.NewBuildStep()
+	var hasErrors bool
+
+	for _, input := range inputs {
+		// Resolve source for this input
+		source, err := resolveJSONLInputSource(input)
+		if err != nil {
+			// Output error as JSONL
+			outputBuildJSONLError(cmd, input.Name, err)
+			hasErrors = true
+			continue
+		}
+
+		buildInput := witpipeline.BuildInput{
+			Source: source,
+			MakeOptions: witpipeline.MakeOptions{
+				WarningsAsErrors: witWarningsAsErrors,
+				StrictMode:       witStrictMode,
+			},
+			GenOptions: witpipeline.GenOptions{
+				WarningsAsErrors: witWarningsAsErrors,
+			},
+		}
+
+		output, result := buildStep.Execute(ctx, buildInput)
+		outputBuildJSONL(cmd, input.Name, output, result)
+
+		if result.Err != nil {
+			hasErrors = true
+		}
+	}
+
+	if hasErrors {
+		return fmt.Errorf("one or more inputs failed")
+	}
 	return nil
 }
 
@@ -418,4 +602,151 @@ func formatDiagnosticsJSON(diagnostics []pipeline.Diagnostic) []map[string]strin
 		}
 	}
 	return result
+}
+
+// ============================================================================
+// JSONL Input/Output Functions
+// ============================================================================
+
+// readJSONLInputs reads a JSONL file and returns the parsed inputs
+func readJSONLInputs(path string) ([]JSONLInput, error) {
+	var reader io.Reader
+
+	if path == "-" {
+		// Read from stdin
+		reader = os.Stdin
+	} else {
+		file, err := os.Open(path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open JSONL file: %w", err)
+		}
+		defer file.Close()
+		reader = file
+	}
+
+	var inputs []JSONLInput
+	scanner := bufio.NewScanner(reader)
+	lineNum := 0
+
+	for scanner.Scan() {
+		lineNum++
+		line := strings.TrimSpace(scanner.Text())
+
+		// Skip empty lines
+		if line == "" {
+			continue
+		}
+
+		var input JSONLInput
+		if err := json.Unmarshal([]byte(line), &input); err != nil {
+			return nil, fmt.Errorf("line %d: invalid JSON: %w", lineNum, err)
+		}
+
+		// Validate input has either source or file
+		if input.Source == "" && input.File == "" {
+			return nil, fmt.Errorf("line %d: must specify either 'source' or 'file'", lineNum)
+		}
+
+		// Default name to line number if not specified
+		if input.Name == "" {
+			if input.File != "" {
+				input.Name = filepath.Base(input.File)
+			} else {
+				input.Name = fmt.Sprintf("input-%d", lineNum)
+			}
+		}
+
+		inputs = append(inputs, input)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading JSONL: %w", err)
+	}
+
+	return inputs, nil
+}
+
+// resolveJSONLInputSource resolves the source code for a JSONL input
+func resolveJSONLInputSource(input JSONLInput) (string, error) {
+	if input.Source != "" {
+		return input.Source, nil
+	}
+
+	if input.File != "" {
+		data, err := os.ReadFile(input.File)
+		if err != nil {
+			return "", fmt.Errorf("failed to read file %s: %w", input.File, err)
+		}
+		return string(data), nil
+	}
+
+	return "", fmt.Errorf("no source or file specified")
+}
+
+// outputMakeJSONL outputs a make result as a single JSONL line
+func outputMakeJSONL(cmd *cobra.Command, name string, output witpipeline.MakeOutput, result pipeline.StepResult) error {
+	out := JSONLMakeOutput{
+		Name:        name,
+		Success:     result.Err == nil,
+		Diagnostics: formatDiagnosticsJSON(result.Diagnostics),
+	}
+
+	if result.Err == nil {
+		out.TypeCount = len(output.Module.Types())
+		out.ValueCount = len(output.Module.Values())
+	} else {
+		out.Error = result.Err.Error()
+	}
+
+	return writeJSONL(cmd, out)
+}
+
+// outputMakeJSONLError outputs an error for a make input as JSONL
+func outputMakeJSONLError(cmd *cobra.Command, name string, err error) {
+	out := JSONLMakeOutput{
+		Name:    name,
+		Success: false,
+		Error:   err.Error(),
+	}
+	writeJSONL(cmd, out)
+}
+
+// outputBuildJSONL outputs a build result as a single JSONL line
+func outputBuildJSONL(cmd *cobra.Command, name string, output witpipeline.BuildOutput, result pipeline.StepResult) error {
+	out := JSONLBuildOutput{
+		Name:        name,
+		Success:     result.Err == nil,
+		Diagnostics: formatDiagnosticsJSON(result.Diagnostics),
+	}
+
+	if result.Err == nil {
+		out.RoundTripValid = output.RoundTripValid
+		out.TypeCount = len(output.Make.Module.Types())
+		out.ValueCount = len(output.Make.Module.Values())
+		out.WITSource = output.Gen.Source
+	} else {
+		out.Error = result.Err.Error()
+	}
+
+	return writeJSONL(cmd, out)
+}
+
+// outputBuildJSONLError outputs an error for a build input as JSONL
+func outputBuildJSONLError(cmd *cobra.Command, name string, err error) {
+	out := JSONLBuildOutput{
+		Name:    name,
+		Success: false,
+		Error:   err.Error(),
+	}
+	writeJSONL(cmd, out)
+}
+
+// writeJSONL writes a value as a single JSON line (no pretty printing)
+func writeJSONL(cmd *cobra.Command, v interface{}) error {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSONL: %w", err)
+	}
+	fmt.Fprintln(cmd.OutOrStdout(), string(data))
+	return nil
 }
