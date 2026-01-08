@@ -138,9 +138,9 @@ func TestValidateRoundTrip_PrimitiveTypeEquivalence(t *testing.T) {
 	}{
 		{"same bool", domain.Bool, domain.Bool, true},
 		{"same string", domain.String, domain.String, true},
-		{"u8 and u32", domain.U8, domain.U32, true},      // Both integers
-		{"s8 and s64", domain.S8, domain.S64, true},      // Both integers
-		{"f32 and f64", domain.F32, domain.F64, true},    // Both floats
+		{"u8 and u32", domain.U8, domain.U32, true},   // Both integers
+		{"s8 and s64", domain.S8, domain.S64, true},   // Both integers
+		{"f32 and f64", domain.F32, domain.F64, true}, // Both floats
 		{"bool and string", domain.Bool, domain.String, false},
 		{"int and float", domain.U32, domain.F64, false},
 	}

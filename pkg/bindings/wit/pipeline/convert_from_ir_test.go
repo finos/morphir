@@ -47,10 +47,8 @@ func TestConvertFromIR_RecordType(t *testing.T) {
 
 	pkg, diagnostics := pipeline.ConvertFromIR(module, pipeline.GenOptions{})
 
-	// Should have info diagnostics for Int -> s32 default
-	if !pipeline.HasWarnings(diagnostics) && len(diagnostics) == 0 {
-		// Info diagnostics are expected
-	}
+	// Info diagnostics for Int -> s32 default are expected, not warnings
+	_ = diagnostics
 
 	// Should have one interface with one type
 	if len(pkg.Interfaces) != 1 {
@@ -219,9 +217,9 @@ func TestConvertFromIR_Function(t *testing.T) {
 
 func TestConvertFromIR_ContainerTypes(t *testing.T) {
 	tests := []struct {
-		name       string
-		irType     ir.Type[any]
-		checkWIT   func(domain.Type) bool
+		name     string
+		irType   ir.Type[any]
+		checkWIT func(domain.Type) bool
 	}{
 		{
 			name:   "list",

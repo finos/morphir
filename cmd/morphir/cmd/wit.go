@@ -24,7 +24,7 @@ var (
 	witWarningsAsErrors bool
 	witStrictMode       bool
 	witJSON             bool
-	witJSONL            bool // JSONL output mode (one JSON object per line)
+	witJSONL            bool   // JSONL output mode (one JSON object per line)
 	witJSONLInput       string // Path to JSONL input file for batch processing
 	witVerbose          bool
 )
@@ -260,7 +260,7 @@ func runWitMake(cmd *cobra.Command, args []string) error {
 }
 
 // runWitMakeBatch processes multiple WIT sources from JSONL input
-func runWitMakeBatch(cmd *cobra.Command, args []string) error {
+func runWitMakeBatch(cmd *cobra.Command, _ []string) error {
 	inputs, err := readJSONLInputs(witJSONLInput)
 	if err != nil {
 		return fmt.Errorf("failed to read JSONL input: %w", err)
@@ -294,7 +294,9 @@ func runWitMakeBatch(cmd *cobra.Command, args []string) error {
 		}
 
 		output, result := makeStep.Execute(ctx, makeInput)
-		outputMakeJSONL(cmd, input.Name, output, result)
+		if err := outputMakeJSONL(cmd, input.Name, output, result); err != nil {
+			hasErrors = true
+		}
 
 		if result.Err != nil {
 			hasErrors = true
@@ -426,7 +428,7 @@ func runWitBuild(cmd *cobra.Command, args []string) error {
 }
 
 // runWitBuildBatch processes multiple WIT sources from JSONL input
-func runWitBuildBatch(cmd *cobra.Command, args []string) error {
+func runWitBuildBatch(cmd *cobra.Command, _ []string) error {
 	inputs, err := readJSONLInputs(witJSONLInput)
 	if err != nil {
 		return fmt.Errorf("failed to read JSONL input: %w", err)
@@ -463,7 +465,9 @@ func runWitBuildBatch(cmd *cobra.Command, args []string) error {
 		}
 
 		output, result := buildStep.Execute(ctx, buildInput)
-		outputBuildJSONL(cmd, input.Name, output, result)
+		if err := outputBuildJSONL(cmd, input.Name, output, result); err != nil {
+			hasErrors = true
+		}
 
 		if result.Err != nil {
 			hasErrors = true
@@ -548,7 +552,7 @@ func outputDiagnostics(cmd *cobra.Command, diagnostics []pipeline.Diagnostic) {
 
 // outputMakeJSON outputs make result as JSON
 func outputMakeJSON(cmd *cobra.Command, output witpipeline.MakeOutput, result pipeline.StepResult) error {
-	jsonResult := map[string]interface{}{
+	jsonResult := map[string]any{
 		"success":     result.Err == nil,
 		"typeCount":   len(output.Module.Types()),
 		"valueCount":  len(output.Module.Values()),
@@ -569,7 +573,7 @@ func outputMakeJSON(cmd *cobra.Command, output witpipeline.MakeOutput, result pi
 
 // outputBuildJSON outputs build result as JSON
 func outputBuildJSON(cmd *cobra.Command, output witpipeline.BuildOutput, result pipeline.StepResult) error {
-	jsonResult := map[string]interface{}{
+	jsonResult := map[string]any{
 		"success":        result.Err == nil,
 		"roundTripValid": output.RoundTripValid,
 		"typeCount":      len(output.Make.Module.Types()),
@@ -760,7 +764,7 @@ func outputMakeJSONLError(cmd *cobra.Command, name string, err error) {
 		Success: false,
 		Error:   err.Error(),
 	}
-	writeJSONL(cmd, out)
+	_ = writeJSONL(cmd, out)
 }
 
 // outputBuildJSONL outputs a build result as a single JSONL line
@@ -791,11 +795,11 @@ func outputBuildJSONLError(cmd *cobra.Command, name string, err error) {
 		Success: false,
 		Error:   err.Error(),
 	}
-	writeJSONL(cmd, out)
+	_ = writeJSONL(cmd, out)
 }
 
 // writeJSONL writes a value as a single JSON line (no pretty printing)
-func writeJSONL(cmd *cobra.Command, v interface{}) error {
+func writeJSONL(cmd *cobra.Command, v any) error {
 	data, err := json.Marshal(v)
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSONL: %w", err)
