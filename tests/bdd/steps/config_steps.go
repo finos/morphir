@@ -253,6 +253,25 @@ func RegisterConfigSteps(sc *godog.ScenarioContext) {
 	sc.Step(`^config "([^"]*)" should have (\d+) items$`, configShouldHaveItems)
 	sc.Step(`^source "([^"]*)" should be marked as loaded$`, sourceShouldBeMarkedAsLoaded)
 	sc.Step(`^source "([^"]*)" should be marked as not loaded$`, sourceShouldBeMarkedAsNotLoaded)
+
+	// Task assertion steps
+	sc.Step(`^task "([^"]*)" should exist$`, taskShouldExist)
+	sc.Step(`^task "([^"]*)" kind should be "([^"]*)"$`, taskKindShouldBe)
+	sc.Step(`^task "([^"]*)" action should be "([^"]*)"$`, taskActionShouldBe)
+	sc.Step(`^task "([^"]*)" cmd should have (\d+) items$`, taskCmdShouldHaveItems)
+	sc.Step(`^task "([^"]*)" cmd\[(\d+)\] should be "([^"]*)"$`, taskCmdItemShouldBe)
+	sc.Step(`^task "([^"]*)" depends_on should have (\d+) items$`, taskDependsOnShouldHaveItems)
+	sc.Step(`^task "([^"]*)" depends_on\[(\d+)\] should be "([^"]*)"$`, taskDependsOnItemShouldBe)
+	sc.Step(`^task "([^"]*)" pre should have (\d+) items$`, taskPreShouldHaveItems)
+	sc.Step(`^task "([^"]*)" post should have (\d+) items$`, taskPostShouldHaveItems)
+	sc.Step(`^task "([^"]*)" inputs should have (\d+) items$`, taskInputsShouldHaveItems)
+	sc.Step(`^task "([^"]*)" inputs\[(\d+)\] should be "([^"]*)"$`, taskInputsItemShouldBe)
+	sc.Step(`^task "([^"]*)" outputs should have (\d+) items$`, taskOutputsShouldHaveItems)
+	sc.Step(`^task "([^"]*)" outputs\[(\d+)\] should be "([^"]*)"$`, taskOutputsItemShouldBe)
+	sc.Step(`^task "([^"]*)" env "([^"]*)" should be "([^"]*)"$`, taskEnvShouldBe)
+	sc.Step(`^task "([^"]*)" mount "([^"]*)" should be "([^"]*)"$`, taskMountShouldBe)
+	sc.Step(`^task "([^"]*)" param "([^"]*)" should be "([^"]*)"$`, taskParamShouldBe)
+	sc.Step(`^(\d+) tasks should be defined$`, taskCountShouldBe)
 }
 
 // Step implementations
@@ -736,4 +755,326 @@ func getNestedValue(m map[string]any, path string) any {
 	}
 
 	return current
+}
+
+// Task step implementations
+
+func getTask(ctc *ConfigTestContext, taskName string) (map[string]any, error) {
+	tasks, ok := ctc.LoadedConfig["tasks"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("no tasks section in config")
+	}
+	task, ok := tasks[taskName].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("task %q not found", taskName)
+	}
+	return task, nil
+}
+
+func taskShouldExist(ctx context.Context, taskName string) error {
+	ctc, err := GetConfigTestContext(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = getTask(ctc, taskName)
+	return err
+}
+
+func taskKindShouldBe(ctx context.Context, taskName, expected string) error {
+	ctc, err := GetConfigTestContext(ctx)
+	if err != nil {
+		return err
+	}
+	task, err := getTask(ctc, taskName)
+	if err != nil {
+		return err
+	}
+	kind, _ := task["kind"].(string)
+	if kind != expected {
+		return fmt.Errorf("task %q kind: expected %q, got %q", taskName, expected, kind)
+	}
+	return nil
+}
+
+func taskActionShouldBe(ctx context.Context, taskName, expected string) error {
+	ctc, err := GetConfigTestContext(ctx)
+	if err != nil {
+		return err
+	}
+	task, err := getTask(ctc, taskName)
+	if err != nil {
+		return err
+	}
+	action, _ := task["action"].(string)
+	if action != expected {
+		return fmt.Errorf("task %q action: expected %q, got %q", taskName, expected, action)
+	}
+	return nil
+}
+
+func taskCmdShouldHaveItems(ctx context.Context, taskName string, count int) error {
+	ctc, err := GetConfigTestContext(ctx)
+	if err != nil {
+		return err
+	}
+	task, err := getTask(ctc, taskName)
+	if err != nil {
+		return err
+	}
+	cmd := getTaskStringSlice(task, "cmd")
+	if len(cmd) != count {
+		return fmt.Errorf("task %q cmd: expected %d items, got %d", taskName, count, len(cmd))
+	}
+	return nil
+}
+
+func taskCmdItemShouldBe(ctx context.Context, taskName string, index int, expected string) error {
+	ctc, err := GetConfigTestContext(ctx)
+	if err != nil {
+		return err
+	}
+	task, err := getTask(ctc, taskName)
+	if err != nil {
+		return err
+	}
+	cmd := getTaskStringSlice(task, "cmd")
+	if index >= len(cmd) {
+		return fmt.Errorf("task %q cmd[%d]: index out of range (len=%d)", taskName, index, len(cmd))
+	}
+	if cmd[index] != expected {
+		return fmt.Errorf("task %q cmd[%d]: expected %q, got %q", taskName, index, expected, cmd[index])
+	}
+	return nil
+}
+
+func taskDependsOnShouldHaveItems(ctx context.Context, taskName string, count int) error {
+	ctc, err := GetConfigTestContext(ctx)
+	if err != nil {
+		return err
+	}
+	task, err := getTask(ctc, taskName)
+	if err != nil {
+		return err
+	}
+	deps := getTaskStringSlice(task, "depends_on")
+	if len(deps) != count {
+		return fmt.Errorf("task %q depends_on: expected %d items, got %d", taskName, count, len(deps))
+	}
+	return nil
+}
+
+func taskDependsOnItemShouldBe(ctx context.Context, taskName string, index int, expected string) error {
+	ctc, err := GetConfigTestContext(ctx)
+	if err != nil {
+		return err
+	}
+	task, err := getTask(ctc, taskName)
+	if err != nil {
+		return err
+	}
+	deps := getTaskStringSlice(task, "depends_on")
+	if index >= len(deps) {
+		return fmt.Errorf("task %q depends_on[%d]: index out of range (len=%d)", taskName, index, len(deps))
+	}
+	if deps[index] != expected {
+		return fmt.Errorf("task %q depends_on[%d]: expected %q, got %q", taskName, index, expected, deps[index])
+	}
+	return nil
+}
+
+func taskPreShouldHaveItems(ctx context.Context, taskName string, count int) error {
+	ctc, err := GetConfigTestContext(ctx)
+	if err != nil {
+		return err
+	}
+	task, err := getTask(ctc, taskName)
+	if err != nil {
+		return err
+	}
+	pre := getTaskStringSlice(task, "pre")
+	if len(pre) != count {
+		return fmt.Errorf("task %q pre: expected %d items, got %d", taskName, count, len(pre))
+	}
+	return nil
+}
+
+func taskPostShouldHaveItems(ctx context.Context, taskName string, count int) error {
+	ctc, err := GetConfigTestContext(ctx)
+	if err != nil {
+		return err
+	}
+	task, err := getTask(ctc, taskName)
+	if err != nil {
+		return err
+	}
+	post := getTaskStringSlice(task, "post")
+	if len(post) != count {
+		return fmt.Errorf("task %q post: expected %d items, got %d", taskName, count, len(post))
+	}
+	return nil
+}
+
+func taskInputsShouldHaveItems(ctx context.Context, taskName string, count int) error {
+	ctc, err := GetConfigTestContext(ctx)
+	if err != nil {
+		return err
+	}
+	task, err := getTask(ctc, taskName)
+	if err != nil {
+		return err
+	}
+	inputs := getTaskStringSlice(task, "inputs")
+	if len(inputs) != count {
+		return fmt.Errorf("task %q inputs: expected %d items, got %d", taskName, count, len(inputs))
+	}
+	return nil
+}
+
+func taskInputsItemShouldBe(ctx context.Context, taskName string, index int, expected string) error {
+	ctc, err := GetConfigTestContext(ctx)
+	if err != nil {
+		return err
+	}
+	task, err := getTask(ctc, taskName)
+	if err != nil {
+		return err
+	}
+	inputs := getTaskStringSlice(task, "inputs")
+	if index >= len(inputs) {
+		return fmt.Errorf("task %q inputs[%d]: index out of range (len=%d)", taskName, index, len(inputs))
+	}
+	if inputs[index] != expected {
+		return fmt.Errorf("task %q inputs[%d]: expected %q, got %q", taskName, index, expected, inputs[index])
+	}
+	return nil
+}
+
+func taskOutputsShouldHaveItems(ctx context.Context, taskName string, count int) error {
+	ctc, err := GetConfigTestContext(ctx)
+	if err != nil {
+		return err
+	}
+	task, err := getTask(ctc, taskName)
+	if err != nil {
+		return err
+	}
+	outputs := getTaskStringSlice(task, "outputs")
+	if len(outputs) != count {
+		return fmt.Errorf("task %q outputs: expected %d items, got %d", taskName, count, len(outputs))
+	}
+	return nil
+}
+
+func taskOutputsItemShouldBe(ctx context.Context, taskName string, index int, expected string) error {
+	ctc, err := GetConfigTestContext(ctx)
+	if err != nil {
+		return err
+	}
+	task, err := getTask(ctc, taskName)
+	if err != nil {
+		return err
+	}
+	outputs := getTaskStringSlice(task, "outputs")
+	if index >= len(outputs) {
+		return fmt.Errorf("task %q outputs[%d]: index out of range (len=%d)", taskName, index, len(outputs))
+	}
+	if outputs[index] != expected {
+		return fmt.Errorf("task %q outputs[%d]: expected %q, got %q", taskName, index, expected, outputs[index])
+	}
+	return nil
+}
+
+func taskEnvShouldBe(ctx context.Context, taskName, envKey, expected string) error {
+	ctc, err := GetConfigTestContext(ctx)
+	if err != nil {
+		return err
+	}
+	task, err := getTask(ctc, taskName)
+	if err != nil {
+		return err
+	}
+	env, ok := task["env"].(map[string]any)
+	if !ok {
+		return fmt.Errorf("task %q has no env section", taskName)
+	}
+	value, _ := env[envKey].(string)
+	if value != expected {
+		return fmt.Errorf("task %q env[%q]: expected %q, got %q", taskName, envKey, expected, value)
+	}
+	return nil
+}
+
+func taskMountShouldBe(ctx context.Context, taskName, mountName, expected string) error {
+	ctc, err := GetConfigTestContext(ctx)
+	if err != nil {
+		return err
+	}
+	task, err := getTask(ctc, taskName)
+	if err != nil {
+		return err
+	}
+	mounts, ok := task["mounts"].(map[string]any)
+	if !ok {
+		return fmt.Errorf("task %q has no mounts section", taskName)
+	}
+	value, _ := mounts[mountName].(string)
+	if value != expected {
+		return fmt.Errorf("task %q mount[%q]: expected %q, got %q", taskName, mountName, expected, value)
+	}
+	return nil
+}
+
+func taskParamShouldBe(ctx context.Context, taskName, paramName, expected string) error {
+	ctc, err := GetConfigTestContext(ctx)
+	if err != nil {
+		return err
+	}
+	task, err := getTask(ctc, taskName)
+	if err != nil {
+		return err
+	}
+	params, ok := task["params"].(map[string]any)
+	if !ok {
+		return fmt.Errorf("task %q has no params section", taskName)
+	}
+	value := fmt.Sprintf("%v", params[paramName])
+	if value != expected {
+		return fmt.Errorf("task %q param[%q]: expected %q, got %q", taskName, paramName, expected, value)
+	}
+	return nil
+}
+
+func taskCountShouldBe(ctx context.Context, count int) error {
+	ctc, err := GetConfigTestContext(ctx)
+	if err != nil {
+		return err
+	}
+	tasks, ok := ctc.LoadedConfig["tasks"].(map[string]any)
+	if !ok {
+		if count == 0 {
+			return nil
+		}
+		return fmt.Errorf("expected %d tasks, but no tasks section exists", count)
+	}
+	if len(tasks) != count {
+		return fmt.Errorf("expected %d tasks, got %d", count, len(tasks))
+	}
+	return nil
+}
+
+func getTaskStringSlice(task map[string]any, key string) []string {
+	val := task[key]
+	switch v := val.(type) {
+	case []string:
+		return v
+	case []any:
+		result := make([]string, 0, len(v))
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				result = append(result, s)
+			}
+		}
+		return result
+	}
+	return nil
 }

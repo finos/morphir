@@ -422,6 +422,96 @@ git push      # Push branches
 5. **Link work to issues** - Beads or GitHub issues
 6. **Functional programming** - See AGENTS.md
 7. **No AI co-authors** - Breaks EasyCLA (see CLAUDE.md)
+8. **Typestate pattern for variants** - Use sealed interfaces, not tagged structs
+9. **Document exceptions** - When deviating from principles, add comments explaining why
+
+## Principle Enforcement and Exception Handling
+
+### Core Design Principles to Enforce
+
+When reviewing or writing code, actively flag violations of these principles:
+
+| Principle | What to Flag | Required Action |
+|-----------|--------------|-----------------|
+| **Typestate Pattern** | Tagged structs with `kind` field and variant-specific fields | Refactor to sealed interface + concrete types, OR add exception comment |
+| **Immutability** | Mutable state, pointer receivers that mutate | Use value semantics and functional updates, OR add exception comment |
+| **Pure Functions** | Side effects in business logic | Move side effects to boundaries, OR add exception comment |
+| **TDD/BDD** | Code without tests | Write tests first, OR document why tests are deferred |
+| **No Replace Directives** | `replace` in go.mod | Remove and use go.work |
+
+### When to Flag Deviations
+
+**Proactively call out when code:**
+1. Uses a tagged struct with a `kind`/`type` discriminator field instead of sealed interface pattern
+2. Has comments like "only valid when X is Y" or "only meaningful when Kind is Z"
+3. Uses mutable state where immutable would work
+4. Has side effects in core business logic
+5. Lacks tests for new functionality
+
+**Example flags to raise:**
+```
+⚠️ PRINCIPLE VIOLATION: This struct uses a 'kind' field pattern instead of typestate.
+   See AGENTS.md "Making Illegal States Unrepresentable" for the preferred approach.
+   If this is intentional, please add an exception comment explaining why.
+
+⚠️ PRINCIPLE VIOLATION: This function mutates its input instead of returning a new value.
+   Consider using functional update pattern. If mutation is required for performance,
+   add an exception comment explaining the trade-off.
+```
+
+### Exception Documentation Format
+
+When deviating from principles, **document the exception** with a comment:
+
+```go
+// EXCEPTION: Using tagged struct instead of typestate pattern.
+// Reason: This type is only used for JSON serialization and the schema
+// requires a discriminator field. The internal types use proper typestate.
+// See: https://github.com/finos/morphir/issues/XXX
+type SerializedTask struct {
+    Kind   string `json:"kind"`
+    // ...
+}
+```
+
+```go
+// EXCEPTION: Mutable state for performance.
+// Reason: This buffer is reused across iterations to avoid allocations
+// in a hot path. Benchmarks show 3x improvement.
+// See: pkg/pipeline/benchmark_test.go
+type StreamProcessor struct {
+    buffer []byte // mutable, reused
+}
+```
+
+**Exception comment requirements:**
+1. Start with `// EXCEPTION:` followed by which principle is violated
+2. Include `// Reason:` explaining why the exception is necessary
+3. Optionally include `// See:` with a link to issue, benchmark, or documentation
+4. Keep exceptions minimal and well-justified
+
+### Pre-Commit Principle Check
+
+Add to your pre-commit checklist:
+
+```bash
+# Check for potential principle violations
+echo "Checking for tagged struct patterns..."
+grep -rn "Kind.*TaskKind\|Type.*string.*//.*kind\|kind.*=.*\"" --include="*.go" pkg/ cmd/ | grep -v "_test.go" | grep -v "EXCEPTION:" && echo "⚠️  Review: Possible tagged struct pattern found"
+
+echo "Checking for undocumented exceptions..."
+grep -rn "EXCEPTION:" --include="*.go" pkg/ cmd/ | while read line; do
+    echo "📝 Exception found: $line"
+done
+```
+
+### During Code Review
+
+When reviewing PRs, check for:
+1. New types that could use typestate but don't
+2. Missing exception documentation for deviations
+3. Exception comments that lack proper justification
+4. Opportunities to refactor tagged structs to typestate
 
 ## Integration with Release Manager
 

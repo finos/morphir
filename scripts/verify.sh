@@ -19,9 +19,10 @@ modules=(
     "cmd/morphir"
     "pkg/models"
     "pkg/nbformat"
+    "pkg/pipeline"
+    "pkg/task"
     "pkg/tooling"
     "pkg/sdk"
-    "pkg/pipeline"
 )
 
 for module in "${modules[@]}"; do

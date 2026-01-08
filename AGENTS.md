@@ -197,6 +197,72 @@ Scenario: Verify my example workspace details
 - Separate domain logic from infrastructure concerns
 - Use functional composition to build domain workflows
 
+### Making Illegal States Unrepresentable
+
+**This is a core design principle.** Use the typestate pattern and sum types to encode invariants in the type system, making invalid states impossible to construct.
+
+**Reference:** See [Typestate-Oriented Programming](https://www.cs.cmu.edu/~aldrich/papers/onward2009-state.pdf) for the theoretical foundation.
+
+**Preferred approach in Go - Sealed Interface Pattern:**
+
+```go
+// GOOD: Typestate pattern - kind is encoded in the type
+type Task interface {
+    DependsOn() []string
+    isTask() // unexported method seals the interface
+}
+
+type IntrinsicTask struct {
+    // fields specific to intrinsic tasks
+    action string
+}
+func (IntrinsicTask) isTask() {}
+
+type CommandTask struct {
+    // fields specific to command tasks
+    cmd []string
+}
+func (CommandTask) isTask() {}
+
+// Usage: type switch for exhaustive handling
+switch t := task.(type) {
+case IntrinsicTask:
+    // handle intrinsic
+case CommandTask:
+    // handle command
+}
+```
+
+```go
+// AVOID: Tagged struct with kind field
+type Task struct {
+    Kind   TaskKind
+    Action string   // only valid when Kind == Intrinsic
+    Cmd    []string // only valid when Kind == Command
+}
+// Problem: Can construct Task{Kind: Intrinsic, Cmd: []string{"echo"}}
+// which is an invalid state
+```
+
+**Key benefits:**
+- Compiler enforces valid states - invalid combinations cannot be constructed
+- Type switch provides exhaustive pattern matching
+- Adding new variants requires updating all switch statements (caught at compile time)
+- Self-documenting - the types themselves express what's valid
+
+**When to use this pattern:**
+- When a type has mutually exclusive variants (sum types)
+- When certain fields are only valid for specific variants
+- When you find yourself writing comments like "only meaningful when X is Y"
+- When modeling domain concepts with distinct states or modes
+
+**Implementation guidelines:**
+1. Define a sealed interface with an unexported method
+2. Create concrete types for each variant
+3. Use embedded structs for shared fields
+4. Provide constructor functions that enforce valid construction
+5. Use functional options for optional configuration
+
 ### Clean, Well-Organized Code
 
 - Write self-documenting code with clear names
