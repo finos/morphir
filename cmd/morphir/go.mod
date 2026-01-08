@@ -6,15 +6,31 @@ require (
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/glamour v0.10.0
-	github.com/charmbracelet/lipgloss/v2 v2.0.0-beta.3
-	github.com/charmbracelet/lipgloss/v2 v2.0.0-beta.3
+	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
 	github.com/finos/morphir/pkg/bindings/wit v0.4.0-alpha.1
 	github.com/finos/morphir/pkg/config v0.4.0-alpha.1
 	github.com/finos/morphir/pkg/pipeline v0.4.0-alpha.1
+	github.com/finos/morphir/pkg/task v0.0.0
 	github.com/finos/morphir/pkg/tooling v0.4.0-alpha.1
 	github.com/finos/morphir/pkg/vfs v0.4.0-alpha.1
 	github.com/spf13/cobra v1.10.2
 )
+
+replace github.com/finos/morphir/pkg/bindings/typemap => ../../pkg/bindings/typemap
+
+replace github.com/finos/morphir/pkg/bindings/wit => ../../pkg/bindings/wit
+
+replace github.com/finos/morphir/pkg/config => ../../pkg/config
+
+replace github.com/finos/morphir/pkg/models => ../../pkg/models
+
+replace github.com/finos/morphir/pkg/pipeline => ../../pkg/pipeline
+
+replace github.com/finos/morphir/pkg/task => ../../pkg/task
+
+replace github.com/finos/morphir/pkg/tooling => ../../pkg/tooling
+
+replace github.com/finos/morphir/pkg/vfs => ../../pkg/vfs
 
 require (
 	github.com/BurntSushi/toml v1.6.0 // indirect
@@ -36,7 +52,6 @@ require (
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
@@ -56,7 +71,6 @@ require (
 	github.com/yuin/goldmark-emoji v1.0.5 // indirect
 	go.bytecodealliance.org v0.7.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
-	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/term v0.31.0 // indirect
