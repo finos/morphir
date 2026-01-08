@@ -253,12 +253,14 @@ go work use ./pkg/newmodule
 
 # 3. Add to build scripts (scripts/release-prep.sh, .goreleaser.yaml)
 
-# 4. Add to coverage tracking (scripts/test-junit.sh)
-#    Edit the MODULES array to include the new module
+# 4. Set up coverage tracking
+mise run setup-coverage  # Discovers and verifies all modules
 
-# 5. Update documentation
+# 5. Update test-junit.sh MODULES array if needed (for JUnit reports)
 
-# 6. Verify
+# 6. Update documentation
+
+# 7. Verify
 mise run verify
 ```
 
@@ -309,11 +311,38 @@ go tool cover -func=coverage.out
 go test -race -coverprofile=coverage.out -covermode=atomic ./...
 ```
 
+### Setting Up Coverage for New Packages
+
+Use the `setup-coverage` task to automatically discover and verify coverage for all modules:
+
+```bash
+# Discover all modules and verify coverage works
+mise run setup-coverage
+
+# Check only (don't run tests)
+mise run setup-coverage -- --check
+
+# List all discoverable modules
+mise run setup-coverage -- --list
+```
+
+The setup-coverage script will:
+1. Find all Go modules in the repository
+2. Identify which modules have test files
+3. Verify each module can run tests with coverage
+4. Generate a MODULES array you can copy to scripts
+
 ### Adding New Packages to Coverage Tracking
 
-When adding a new Go module, you MUST add it to coverage tracking:
+When adding a new Go module, follow these steps:
 
-1. **Update `scripts/test-junit.sh`**:
+1. **Run setup-coverage to verify the module is discovered**:
+   ```bash
+   mise run setup-coverage
+   # Your new module should appear in the output
+   ```
+
+2. **Update `scripts/test-junit.sh`** (for JUnit XML reports in CI):
    ```bash
    # Find the MODULES array and add your module
    MODULES=(
@@ -333,14 +362,16 @@ When adding a new Go module, you MUST add it to coverage tracking:
    )
    ```
 
-2. **Verify coverage works**:
+   Note: `test-coverage.sh` uses dynamic discovery, so no update needed there.
+
+3. **Verify coverage works**:
    ```bash
    mise run test-junit
    # Check that pkg/newmodule appears in output
    ls coverage/newmodule.out
    ```
 
-3. **Write tests for your module**:
+4. **Write tests for your module**:
    - Every new package should have tests
    - Aim for meaningful coverage (not just line count)
    - Focus on testing public API and edge cases

@@ -1,28 +1,41 @@
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent $scriptDir
+
 & (Join-Path $scriptDir "sync-changelog.ps1")
 
 Write-Host "Running tests with coverage..."
 
-$repoRoot = (Get-Location).Path
 $coverageDir = Join-Path $repoRoot "coverage"
 New-Item -ItemType Directory -Force -Path $coverageDir | Out-Null
 
-$modules = @(
-    "cmd/morphir",
-    "pkg/bindings/wasm-componentmodel",
-    "pkg/models",
-    "pkg/tooling",
-    "pkg/sdk",
-    "pkg/pipeline"
-)
+# Dynamically discover all Go modules with tests
+function Get-TestableModules {
+    Get-ChildItem -Path $repoRoot -Recurse -Name "go.mod" -File |
+        Where-Object { $_ -notlike "*vendor*" -and $_ -notlike "*testdata*" } |
+        ForEach-Object {
+            $modulePath = Split-Path -Parent $_
+            $fullPath = Join-Path $repoRoot $modulePath
+            $testFiles = Get-ChildItem -Path $fullPath -Recurse -Name "*_test.go" -File -ErrorAction SilentlyContinue
+            if ($testFiles.Count -gt 0) {
+                $modulePath
+            }
+        } |
+        Sort-Object -Unique
+}
+
+Write-Host "Discovering Go modules with tests..."
+$modules = @(Get-TestableModules)
+Write-Host "Found $($modules.Count) testable modules"
+Write-Host ""
 
 foreach ($module in $modules) {
-    if (Test-Path $module) {
+    $fullPath = Join-Path $repoRoot $module
+    if (Test-Path $fullPath) {
         Write-Host "Testing $module with coverage..."
         $moduleName = Split-Path $module -Leaf
-        Push-Location $module
+        Push-Location $fullPath
         try {
             $profilePath = Join-Path $coverageDir "${moduleName}.out"
             go test -coverprofile="$profilePath" -covermode=atomic ./...
@@ -32,6 +45,7 @@ foreach ($module in $modules) {
     }
 }
 
+Write-Host ""
 Write-Host "Merging coverage profiles..."
 $mergedCoverage = Join-Path $repoRoot "coverage.out"
 "mode: atomic" | Set-Content -Path $mergedCoverage
@@ -41,7 +55,7 @@ Get-ChildItem -Path $coverageDir -Filter "*.out" | ForEach-Object {
 
 Write-Host ""
 Write-Host "Coverage Summary:"
-(go tool cover -func=coverage.out | Select-Object -Last 1) | Write-Host
+(go tool cover -func=$mergedCoverage | Select-Object -Last 1) | Write-Host
 
 Write-Host ""
 Write-Host "Coverage report generated: coverage.out"
