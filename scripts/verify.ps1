@@ -16,6 +16,7 @@ if (-not (Test-Path "go.work")) {
 
 $modules = @(
     "cmd/morphir",
+    "pkg/bindings/wasm-componentmodel",
     "pkg/models",
     "pkg/tooling",
     "pkg/sdk",

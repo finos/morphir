@@ -372,11 +372,18 @@ func runValidate(cmd *cobra.Command, args []string) error {
    - Add `--json` flag support to all non-interactive commands
    - Ensure JSON output is well-structured and consistent
 
-### Commit Authorship for AI Assistants
+### ⚠️ CRITICAL: Commit Authorship for AI Assistants
 
-**IMPORTANT: When AI assistants (like Claude) create commits, DO NOT include Claude as a co-author.**
+**ABSOLUTELY DO NOT include AI assistants (like Claude) as co-authors in commits.**
 
-This project is part of the FINOS foundation and uses EasyCLA for Contributor License Agreement management. Adding AI assistants as co-authors breaks the CLA verification process.
+This is not optional. This project is part of the FINOS foundation and uses **EasyCLA (Easy Contributor License Agreement)** for compliance.
+
+**Why this matters:**
+- ✅ EasyCLA validates that all commit authors/co-authors have signed the CLA
+- ❌ AI assistants cannot sign CLAs
+- ❌ Adding AI co-authors **breaks the CLA check**
+- ❌ This **blocks pull requests** from being merged
+- ❌ This **violates FINOS contribution requirements**
 
 **Correct approach:**
 ```bash
@@ -385,20 +392,27 @@ git commit -m "feat: add new feature
 This implements the new feature as requested."
 ```
 
-**INCORRECT approach (will break EasyCLA):**
+**INCORRECT approach (WILL BREAK EasyCLA):**
 ```bash
 git commit -m "feat: add new feature
 
 This implements the new feature as requested.
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
+
+# Also NEVER include:
+# 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
 
 **For AI assistants generating commits:**
-- Only include the actual human contributor as the author
-- Do not add yourself as a co-author in the commit message
-- Do not add footer notes like "Generated with Claude Code"
-- Keep commit messages focused on the technical changes
+- ❌ NEVER add yourself as a co-author in the commit message
+- ❌ NEVER add footer notes like "Generated with Claude Code" or emojis
+- ✅ Only include the actual human contributor as the author
+- ✅ Keep commit messages focused on the technical changes
+- ✅ The human developer takes full responsibility for the commit
+
+**If you accidentally added AI co-authors:**
+Use `git filter-branch` or `git rebase -i` to rewrite commit history and remove the co-author lines before pushing.
 
 ### Example: Functional Pattern
 

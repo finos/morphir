@@ -1,0 +1,29 @@
+// WASI Random - simplified version for testing
+package wasi:random@0.2.0;
+
+interface random {
+    // Get cryptographically secure random bytes
+    get-random-bytes: func(len: u64) -> list<u8>;
+
+    // Get cryptographically secure random u64
+    get-random-u64: func() -> u64;
+}
+
+interface insecure {
+    // Get insecure random bytes (faster but not cryptographic)
+    get-insecure-random-bytes: func(len: u64) -> list<u8>;
+
+    // Get insecure random u64
+    get-insecure-random-u64: func() -> u64;
+}
+
+interface insecure-seed {
+    // Get a seed for insecure random number generators
+    insecure-seed: func() -> tuple<u64, u64>;
+}
+
+world random-world {
+    import random;
+    import insecure;
+    import insecure-seed;
+}

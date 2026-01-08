@@ -11,6 +11,7 @@ New-Item -ItemType Directory -Force -Path $coverageDir | Out-Null
 
 $modules = @(
     "cmd/morphir",
+    "pkg/bindings/wasm-componentmodel",
     "pkg/models",
     "pkg/tooling",
     "pkg/sdk",

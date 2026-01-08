@@ -16,7 +16,7 @@ REPO_ROOT=$(pwd)
 
 mkdir -p "$REPO_ROOT/test-results" "$REPO_ROOT/coverage"
 
-for dir in cmd/morphir pkg/models pkg/tooling pkg/sdk pkg/pipeline; do
+for dir in cmd/morphir pkg/bindings/wasm-componentmodel pkg/models pkg/tooling pkg/sdk pkg/pipeline; do
     if [ -d "$dir" ]; then
         echo "Testing $dir..."
         MODULE_NAME=$(basename "$dir")

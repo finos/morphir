@@ -221,9 +221,7 @@ func VFSCountEntries(vfs VFS, path VPath, opts VFSWalkOptions) (int, error) {
 // VFSWalkGlob traverses entries matching a glob pattern.
 // It uses VFS.Find to locate matching entries and walks each one.
 func VFSWalkGlob(vfs VFS, pattern Glob, opts VFSWalkOptions, preFn, postFn VFSWalkFunc) error {
-	findOpts := FindOptions{
-		IncludeShadowed: opts.IncludeShadowed,
-	}
+	findOpts := FindOptions(opts)
 
 	entries, err := vfs.Find(pattern, findOpts)
 	if err != nil {
@@ -258,9 +256,5 @@ func VFSWalkGlob(vfs VFS, pattern Glob, opts VFSWalkOptions, preFn, postFn VFSWa
 
 // VFSCollectGlob returns all entries matching a glob pattern.
 func VFSCollectGlob(vfs VFS, pattern Glob, opts VFSWalkOptions) ([]Entry, error) {
-	findOpts := FindOptions{
-		IncludeShadowed: opts.IncludeShadowed,
-	}
-
-	return vfs.Find(pattern, findOpts)
+	return vfs.Find(pattern, FindOptions(opts))
 }

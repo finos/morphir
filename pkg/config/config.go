@@ -15,6 +15,10 @@
 //   - Clear separation of concerns
 package config
 
+import (
+	"github.com/finos/morphir/pkg/bindings/typemap"
+)
+
 // Config represents the complete, immutable configuration for Morphir tooling.
 // All fields are accessible via getter methods to preserve immutability.
 type Config struct {
@@ -27,6 +31,7 @@ type Config struct {
 	logging   LoggingSection
 	ui        UISection
 	tasks     TasksSection
+	bindings  BindingsSection
 }
 
 // Morphir returns the morphir section configuration.
@@ -72,6 +77,11 @@ func (c Config) UI() UISection {
 // Tasks returns the tasks section configuration.
 func (c Config) Tasks() TasksSection {
 	return c.tasks
+}
+
+// Bindings returns the bindings section configuration.
+func (c Config) Bindings() BindingsSection {
+	return c.bindings
 }
 
 // MorphirSection contains core Morphir settings.
@@ -474,6 +484,34 @@ func (s TasksSection) Len() int {
 	return len(s.definitions)
 }
 
+// BindingsSection contains type mapping configuration for external bindings.
+// Each binding (WIT, Protobuf, JSON Schema, etc.) can have its own type mappings.
+type BindingsSection struct {
+	wit      typemap.TypeMappingConfig
+	protobuf typemap.TypeMappingConfig
+	json     typemap.TypeMappingConfig
+}
+
+// WIT returns the WIT binding type mapping configuration.
+func (s BindingsSection) WIT() typemap.TypeMappingConfig {
+	return s.wit
+}
+
+// Protobuf returns the Protocol Buffers binding type mapping configuration.
+func (s BindingsSection) Protobuf() typemap.TypeMappingConfig {
+	return s.protobuf
+}
+
+// JSON returns the JSON Schema binding type mapping configuration.
+func (s BindingsSection) JSON() typemap.TypeMappingConfig {
+	return s.json
+}
+
+// IsEmpty returns true if no binding configurations are defined.
+func (s BindingsSection) IsEmpty() bool {
+	return s.wit.IsEmpty() && s.protobuf.IsEmpty() && s.json.IsEmpty()
+}
+
 // Default returns a Config with sensible default values.
 func Default() Config {
 	return Config{
@@ -511,6 +549,7 @@ func Default() Config {
 		tasks: TasksSection{
 			definitions: nil, // No tasks defined by default
 		},
+		bindings: BindingsSection{}, // Empty by default; bindings use their built-in defaults
 	}
 }
 
@@ -585,6 +624,7 @@ func (r LoadResult) Sources() []SourceInfo {
 //	  "logging": { "level": string, "format": string, "file": string },
 //	  "ui": { "color": bool, "interactive": bool, "theme": string },
 //	  "tasks": { "<task_name>": { "kind": string, "action": string, "cmd": []string, ... } },
+//	  "bindings": { "wit": { "primitives": [...], "containers": [...] }, ... },
 //	}
 func FromMap(m map[string]any) Config {
 	cfg := Default()
@@ -602,6 +642,7 @@ func FromMap(m map[string]any) Config {
 	cfg.logging = loggingFromMap(m, cfg.logging)
 	cfg.ui = uiFromMap(m, cfg.ui)
 	cfg.tasks = tasksFromMap(m, cfg.tasks)
+	cfg.bindings = bindingsFromMap(m, cfg.bindings)
 
 	return cfg
 }
@@ -888,4 +929,86 @@ func NewLoadResult(cfg Config, sources []SourceInfo) LoadResult {
 		config:  cfg,
 		sources: sources,
 	}
+}
+
+// bindingsFromMap parses binding configurations from a map.
+func bindingsFromMap(m map[string]any, def BindingsSection) BindingsSection {
+	section, ok := m["bindings"].(map[string]any)
+	if !ok {
+		return def
+	}
+
+	if witSection, ok := section["wit"].(map[string]any); ok {
+		def.wit = typeMappingConfigFromMap(witSection)
+	}
+	if protobufSection, ok := section["protobuf"].(map[string]any); ok {
+		def.protobuf = typeMappingConfigFromMap(protobufSection)
+	}
+	if jsonSection, ok := section["json"].(map[string]any); ok {
+		def.json = typeMappingConfigFromMap(jsonSection)
+	}
+
+	return def
+}
+
+// typeMappingConfigFromMap parses a TypeMappingConfig from a map.
+func typeMappingConfigFromMap(m map[string]any) typemap.TypeMappingConfig {
+	cfg := typemap.TypeMappingConfig{}
+
+	// Parse primitives array
+	if primitives, ok := m["primitives"].([]any); ok {
+		for _, item := range primitives {
+			if prim, ok := item.(map[string]any); ok {
+				cfg.Primitives = append(cfg.Primitives, primitiveMappingFromMap(prim))
+			}
+		}
+	}
+
+	// Parse containers array
+	if containers, ok := m["containers"].([]any); ok {
+		for _, item := range containers {
+			if cont, ok := item.(map[string]any); ok {
+				cfg.Containers = append(cfg.Containers, containerMappingFromMap(cont))
+			}
+		}
+	}
+
+	return cfg
+}
+
+// primitiveMappingFromMap parses a PrimitiveMappingConfig from a map.
+func primitiveMappingFromMap(m map[string]any) typemap.PrimitiveMappingConfig {
+	cfg := typemap.PrimitiveMappingConfig{}
+
+	if v, ok := m["external"].(string); ok {
+		cfg.ExternalType = v
+	}
+	if v, ok := m["morphir"].(string); ok {
+		cfg.MorphirType = v
+	}
+	if v, ok := m["bidirectional"].(bool); ok {
+		cfg.Bidirectional = v
+	}
+	cfg.Priority = getIntFromAny(m["priority"], 0)
+
+	return cfg
+}
+
+// containerMappingFromMap parses a ContainerMappingConfig from a map.
+func containerMappingFromMap(m map[string]any) typemap.ContainerMappingConfig {
+	cfg := typemap.ContainerMappingConfig{}
+
+	if v, ok := m["external_pattern"].(string); ok {
+		cfg.ExternalPattern = v
+	}
+	if v, ok := m["morphir_pattern"].(string); ok {
+		cfg.MorphirPattern = v
+	}
+	cfg.TypeParamCount = getIntFromAny(m["type_params"], 0)
+	if v, ok := m["bidirectional"].(bool); ok {
+		cfg.Bidirectional = v
+	}
+	cfg.Priority = getIntFromAny(m["priority"], 0)
+
+	return cfg
 }

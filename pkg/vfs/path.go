@@ -142,9 +142,7 @@ func (p VPath) Ext() string {
 		return ""
 	}
 	// Don't treat leading dot as extension (e.g., .dotfile)
-	if strings.HasPrefix(base, ".") {
-		base = base[1:]
-	}
+	base = strings.TrimPrefix(base, ".")
 	idx := strings.LastIndex(base, ".")
 	if idx == -1 {
 		return ""

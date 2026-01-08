@@ -51,6 +51,7 @@ echo ""
 
 # Tag all modules with subdirectory prefixes
 MODULES=(
+    "pkg/bindings/wasm-componentmodel"
     "pkg/config"
     "pkg/models"
     "pkg/nbformat"

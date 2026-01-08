@@ -11,6 +11,7 @@ if (-not (Get-Command golangci-lint -ErrorAction SilentlyContinue)) {
 
 $modules = @(
     "cmd/morphir",
+    "pkg/bindings/wasm-componentmodel",
     "pkg/models",
     "pkg/tooling",
     "pkg/sdk",

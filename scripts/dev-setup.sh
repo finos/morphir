@@ -22,6 +22,7 @@ else
     echo "Creating go.work..."
     go work init \
         ./cmd/morphir \
+        ./pkg/bindings/wasm-componentmodel \
         ./pkg/config \
         ./pkg/models \
         ./pkg/pipeline \
