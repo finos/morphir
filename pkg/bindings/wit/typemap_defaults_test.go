@@ -80,9 +80,9 @@ func TestNewWITRegistry(t *testing.T) {
 		r := wit.DefaultWITRegistry()
 
 		tests := []struct {
-			pattern       string
-			wantMorphir   string
-			wantParamCnt  int
+			pattern      string
+			wantMorphir  string
+			wantParamCnt int
 		}{
 			{"list", "Morphir.SDK:List:List", 1},
 			{"option", "Morphir.SDK:Maybe:Maybe", 1},

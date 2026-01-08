@@ -8,11 +8,11 @@ import (
 
 func TestParseMorphirTypeRef(t *testing.T) {
 	tests := []struct {
-		name        string
-		input       string
-		wantFQName  string
+		name          string
+		input         string
+		wantFQName    string
 		wantPrimitive string
-		wantErr     bool
+		wantErr       bool
 	}{
 		{
 			name:          "primitive kind",
