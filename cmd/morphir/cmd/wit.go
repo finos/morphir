@@ -41,12 +41,13 @@ type JSONLInput struct {
 
 // JSONLMakeOutput represents a single make result in JSONL output mode
 type JSONLMakeOutput struct {
-	Name        string                   `json:"name,omitempty"`
-	Success     bool                     `json:"success"`
-	TypeCount   int                      `json:"typeCount,omitempty"`
-	ValueCount  int                      `json:"valueCount,omitempty"`
-	Error       string                   `json:"error,omitempty"`
-	Diagnostics []map[string]string      `json:"diagnostics,omitempty"`
+	Name        string              `json:"name,omitempty"`
+	Success     bool                `json:"success"`
+	TypeCount   int                 `json:"typeCount,omitempty"`
+	ValueCount  int                 `json:"valueCount,omitempty"`
+	Module      any                 `json:"module,omitempty"`
+	Error       string              `json:"error,omitempty"`
+	Diagnostics []map[string]string `json:"diagnostics,omitempty"`
 }
 
 // JSONLBuildOutput represents a single build result in JSONL output mode
@@ -56,6 +57,7 @@ type JSONLBuildOutput struct {
 	RoundTripValid bool                `json:"roundTripValid,omitempty"`
 	TypeCount      int                 `json:"typeCount,omitempty"`
 	ValueCount     int                 `json:"valueCount,omitempty"`
+	Module         any                 `json:"module,omitempty"`
 	WITSource      string              `json:"witSource,omitempty"`
 	Error          string              `json:"error,omitempty"`
 	Diagnostics    []map[string]string `json:"diagnostics,omitempty"`
@@ -605,6 +607,55 @@ func formatDiagnosticsJSON(diagnostics []pipeline.Diagnostic) []map[string]strin
 }
 
 // ============================================================================
+// IR Serialization Helpers
+// ============================================================================
+
+// moduleToJSON converts an IR module to a JSON-serializable structure
+// since IR types use unexported fields
+func moduleToJSON(module witpipeline.MakeOutput) map[string]any {
+	result := map[string]any{}
+
+	// Serialize types
+	types := module.Module.Types()
+	if len(types) > 0 {
+		typeList := make([]map[string]any, 0, len(types))
+		for _, t := range types {
+			typeList = append(typeList, map[string]any{
+				"name": t.Name().ToTitleCase(),
+			})
+		}
+		result["types"] = typeList
+	}
+
+	// Serialize values (functions)
+	values := module.Module.Values()
+	if len(values) > 0 {
+		valueList := make([]map[string]any, 0, len(values))
+		for _, v := range values {
+			valueList = append(valueList, map[string]any{
+				"name": v.Name().ToTitleCase(),
+			})
+		}
+		result["values"] = valueList
+	}
+
+	// Include doc if present
+	if doc := module.Module.Doc(); doc != nil && *doc != "" {
+		result["doc"] = *doc
+	}
+
+	// Include source package info if available
+	if ns := module.SourcePackage.Namespace.String(); ns != "" {
+		result["sourcePackage"] = map[string]any{
+			"namespace": ns,
+			"name":      module.SourcePackage.Name.String(),
+		}
+	}
+
+	return result
+}
+
+// ============================================================================
 // JSONL Input/Output Functions
 // ============================================================================
 
@@ -694,6 +745,7 @@ func outputMakeJSONL(cmd *cobra.Command, name string, output witpipeline.MakeOut
 	if result.Err == nil {
 		out.TypeCount = len(output.Module.Types())
 		out.ValueCount = len(output.Module.Values())
+		out.Module = moduleToJSON(output) // Serialize the IR module
 	} else {
 		out.Error = result.Err.Error()
 	}
@@ -723,6 +775,7 @@ func outputBuildJSONL(cmd *cobra.Command, name string, output witpipeline.BuildO
 		out.RoundTripValid = output.RoundTripValid
 		out.TypeCount = len(output.Make.Module.Types())
 		out.ValueCount = len(output.Make.Module.Values())
+		out.Module = moduleToJSON(output.Make) // Serialize the IR module
 		out.WITSource = output.Gen.Source
 	} else {
 		out.Error = result.Err.Error()
