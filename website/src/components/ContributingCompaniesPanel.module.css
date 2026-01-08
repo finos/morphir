@@ -1,0 +1,43 @@
+.panel {
+	padding: 3rem 0 2.5rem;
+	border-top: 1px solid var(--ifm-color-primary-darkest);
+	border-bottom: 1px solid var(--ifm-color-primary-darkest);
+	background: linear-gradient(180deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0));
+}
+
+.header {
+	text-align: center;
+	margin-bottom: 2rem;
+}
+
+.header p {
+	margin: 0.75rem auto 0;
+	max-width: 640px;
+}
+
+.logoGrid {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 2rem;
+}
+
+.logoCard {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.5rem 1rem;
+}
+
+.logo {
+	max-width: 320px;
+	width: 100%;
+	height: auto;
+	object-fit: contain;
+}
+
+@media screen and (max-width: 996px) {
+	.logo {
+		max-width: 240px;
+	}
+}
