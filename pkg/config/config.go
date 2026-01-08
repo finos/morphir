@@ -519,11 +519,24 @@ func (s BindingsSection) IsEmpty() bool {
 }
 
 // ToolchainsSection contains toolchain definitions for the project.
+// Toolchains define how to acquire and execute external tools or native
+// implementations for tasks like compilation, code generation, and validation.
+//
+// Example usage:
+//
+//	cfg := config.Load()
+//	tc, ok := cfg.Toolchains().Get("morphir-elm")
+//	if ok {
+//	    version := tc.Version()
+//	    tasks := tc.Tasks()
+//	}
 type ToolchainsSection struct {
 	definitions map[string]ToolchainConfig
 }
 
 // Get retrieves a toolchain configuration by name.
+// Returns the toolchain config and true if found, otherwise returns an empty
+// config and false.
 func (s ToolchainsSection) Get(name string) (ToolchainConfig, bool) {
 	if s.definitions == nil {
 		return ToolchainConfig{}, false
@@ -550,6 +563,23 @@ func (s ToolchainsSection) Len() int {
 }
 
 // ToolchainConfig represents the configuration for a toolchain.
+// A toolchain can be either native (in-process Go implementation) or external
+// (process-based tool like morphir-elm).
+//
+// Example configuration in morphir.toml:
+//
+//	[toolchain.morphir-elm]
+//	version = "2.90.0"
+//	timeout = "5m"
+//
+//	[toolchain.morphir-elm.acquire]
+//	backend = "path"
+//	executable = "morphir-elm"
+//
+//	[toolchain.morphir-elm.tasks.make]
+//	exec = "morphir-elm"
+//	args = ["make", "-o", "{outputs.ir}"]
+//	fulfills = ["make"]
 type ToolchainConfig struct {
 	name       string
 	version    string
@@ -610,6 +640,17 @@ func (c ToolchainConfig) Tasks() map[string]ToolchainTaskConfig {
 }
 
 // AcquireConfig specifies how to acquire a toolchain.
+// Supported backends include:
+//   - "path": Tool is already on PATH
+//   - "npx": Run via npx (planned)
+//   - "npm": Install via npm (planned)
+//   - "mise": Manage via mise (planned)
+//
+// Example:
+//
+//	[toolchain.morphir-elm.acquire]
+//	backend = "path"
+//	executable = "morphir-elm"
 type AcquireConfig struct {
 	backend    string
 	packageVal string // "package" is a reserved keyword in Go
@@ -638,6 +679,23 @@ func (c AcquireConfig) Executable() string {
 }
 
 // ToolchainTaskConfig represents a task in a toolchain definition.
+// Tasks are concrete implementations that execute external commands or
+// native Go code to perform operations like compilation or code generation.
+//
+// Example:
+//
+//	[toolchain.morphir-elm.tasks.make]
+//	exec = "morphir-elm"
+//	args = ["make", "-o", "{outputs.ir}"]
+//	fulfills = ["make"]
+//	variants = ["Scala", "TypeScript"]
+//
+//	[toolchain.morphir-elm.tasks.make.inputs]
+//	files = ["elm.json", "src/**/*.elm"]
+//
+//	[toolchain.morphir-elm.tasks.make.outputs.ir]
+//	path = "morphir-ir.json"
+//	type = "morphir-ir"
 type ToolchainTaskConfig struct {
 	exec     string
 	args     []string
@@ -713,6 +771,14 @@ func (c ToolchainTaskConfig) Env() map[string]string {
 }
 
 // InputsConfig specifies task inputs.
+// Inputs can be either file patterns or references to artifacts produced
+// by other tasks.
+//
+// Example:
+//
+//	[toolchain.morphir-elm.tasks.gen.inputs]
+//	files = ["src/**/*.elm"]
+//	artifacts = { ir = "@morphir-elm/make:ir" }
 type InputsConfig struct {
 	files     []string
 	artifacts map[string]string
@@ -741,6 +807,13 @@ func (c InputsConfig) Artifacts() map[string]string {
 }
 
 // OutputConfig specifies a task output.
+// Outputs are written to .morphir/out/{toolchain}/{task}/ directory.
+//
+// Example:
+//
+//	[toolchain.morphir-elm.tasks.make.outputs.ir]
+//	path = "morphir-ir.json"
+//	type = "morphir-ir"
 type OutputConfig struct {
 	path    string
 	typeVal string // "type" is a reserved keyword in Go
