@@ -3,6 +3,11 @@
 
 version: 2
 
+env:
+  # Skip checksum verification for our own modules during release
+  # This is needed because tags may not be indexed by sum.golang.org yet
+  - GONOSUMDB=github.com/finos/morphir/*
+
 before:
   hooks:
     # Safeguard: Remove any replace directives that may have been accidentally committed
