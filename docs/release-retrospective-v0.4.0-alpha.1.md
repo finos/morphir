@@ -162,6 +162,33 @@ Total time: ~45 minutes for a release that should take <5 minutes.
    - Already fixed, but add comments explaining each section
    - Document the multi-module setup requirements
 
+### CI External Consumption Test
+
+The CI workflow includes a "Test External Consumption (Release PRs)" job that only runs when:
+- The PR title contains "release", OR
+- The PR has a "release" label
+
+This test validates that `cmd/morphir` can be built without `go.work`, which catches:
+- Missing go.sum entries for internal modules
+- Incorrect module version references
+
+**When to use this test:**
+- Actual release PRs where module versions are being updated
+- PRs that modify go.mod files with internal module dependencies
+
+**Not needed for:**
+- Regular feature/bugfix PRs (go.work handles cross-module development)
+- Documentation or configuration changes
+
+The pre-release validation script (`scripts/release-validate.sh`) complements this by checking for configuration issues (replace directives, pseudo-versions, etc.) that would cause release failures. Both checks serve different purposes:
+
+| Check | Purpose | When to Run |
+|-------|---------|-------------|
+| External Consumption Test | Validates build without go.work | Release PRs only |
+| Pre-release Validation | Checks configuration and setup | Before creating tags |
+
+**Note**: The external consumption test may fail even on valid release PRs if the module versions in go.mod refer to the previous release (which is correct - they should reference the last published version, not the version being released). The release process updates versions before creating tags.
+
 ## Metrics
 
 - **Release attempts**: 7
