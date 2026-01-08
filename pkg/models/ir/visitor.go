@@ -192,13 +192,15 @@ func (BaseTypeVisitor[A, S]) EnterTypeUnit(state S, t TypeUnit[A]) (S, Traversal
 	return state, Continue
 }
 
-func (BaseTypeVisitor[A, S]) ExitTypeVariable(state S, t TypeVariable[A]) S         { return state }
-func (BaseTypeVisitor[A, S]) ExitTypeReference(state S, t TypeReference[A]) S       { return state }
-func (BaseTypeVisitor[A, S]) ExitTypeTuple(state S, t TypeTuple[A]) S               { return state }
-func (BaseTypeVisitor[A, S]) ExitTypeRecord(state S, t TypeRecord[A]) S             { return state }
-func (BaseTypeVisitor[A, S]) ExitTypeExtensibleRecord(state S, t TypeExtensibleRecord[A]) S { return state }
-func (BaseTypeVisitor[A, S]) ExitTypeFunction(state S, t TypeFunction[A]) S         { return state }
-func (BaseTypeVisitor[A, S]) ExitTypeUnit(state S, t TypeUnit[A]) S                 { return state }
+func (BaseTypeVisitor[A, S]) ExitTypeVariable(state S, t TypeVariable[A]) S   { return state }
+func (BaseTypeVisitor[A, S]) ExitTypeReference(state S, t TypeReference[A]) S { return state }
+func (BaseTypeVisitor[A, S]) ExitTypeTuple(state S, t TypeTuple[A]) S         { return state }
+func (BaseTypeVisitor[A, S]) ExitTypeRecord(state S, t TypeRecord[A]) S       { return state }
+func (BaseTypeVisitor[A, S]) ExitTypeExtensibleRecord(state S, t TypeExtensibleRecord[A]) S {
+	return state
+}
+func (BaseTypeVisitor[A, S]) ExitTypeFunction(state S, t TypeFunction[A]) S { return state }
+func (BaseTypeVisitor[A, S]) ExitTypeUnit(state S, t TypeUnit[A]) S         { return state }
 
 // WalkType traverses a Type tree using the provided visitor.
 // Returns the final state and whether traversal completed (true) or was stopped (false).
@@ -442,14 +444,16 @@ func (BasePatternVisitor[A, S]) EnterUnitPattern(state S, p UnitPattern[A]) (S, 
 	return state, Continue
 }
 
-func (BasePatternVisitor[A, S]) ExitWildcardPattern(state S, p WildcardPattern[A]) S     { return state }
-func (BasePatternVisitor[A, S]) ExitAsPattern(state S, p AsPattern[A]) S                 { return state }
-func (BasePatternVisitor[A, S]) ExitTuplePattern(state S, p TuplePattern[A]) S           { return state }
-func (BasePatternVisitor[A, S]) ExitConstructorPattern(state S, p ConstructorPattern[A]) S { return state }
-func (BasePatternVisitor[A, S]) ExitEmptyListPattern(state S, p EmptyListPattern[A]) S   { return state }
-func (BasePatternVisitor[A, S]) ExitHeadTailPattern(state S, p HeadTailPattern[A]) S     { return state }
-func (BasePatternVisitor[A, S]) ExitLiteralPattern(state S, p LiteralPattern[A]) S       { return state }
-func (BasePatternVisitor[A, S]) ExitUnitPattern(state S, p UnitPattern[A]) S             { return state }
+func (BasePatternVisitor[A, S]) ExitWildcardPattern(state S, p WildcardPattern[A]) S { return state }
+func (BasePatternVisitor[A, S]) ExitAsPattern(state S, p AsPattern[A]) S             { return state }
+func (BasePatternVisitor[A, S]) ExitTuplePattern(state S, p TuplePattern[A]) S       { return state }
+func (BasePatternVisitor[A, S]) ExitConstructorPattern(state S, p ConstructorPattern[A]) S {
+	return state
+}
+func (BasePatternVisitor[A, S]) ExitEmptyListPattern(state S, p EmptyListPattern[A]) S { return state }
+func (BasePatternVisitor[A, S]) ExitHeadTailPattern(state S, p HeadTailPattern[A]) S   { return state }
+func (BasePatternVisitor[A, S]) ExitLiteralPattern(state S, p LiteralPattern[A]) S     { return state }
+func (BasePatternVisitor[A, S]) ExitUnitPattern(state S, p UnitPattern[A]) S           { return state }
 
 // WalkPattern traverses a Pattern tree using the provided visitor.
 func WalkPattern[A any, S any](p Pattern[A], visitor PatternVisitor[A, S], state S) (S, bool) {
