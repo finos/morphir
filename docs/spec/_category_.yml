@@ -1,0 +1,6 @@
+label: 'IR Specification'
+position: 5
+collapsed: true
+link:
+  type: doc
+  id: spec/index

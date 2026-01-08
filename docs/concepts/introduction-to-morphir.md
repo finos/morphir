@@ -1,10 +1,12 @@
+---
+id: introduction-to-morphir
+title: Introducing Morphir
+sidebar_position: 1
+---
 
-[![FINOS Hosted Platform - LCR Interactive](https://img.shields.io/badge/FINOS%20Hosted%20Platform-LCR%20Interactive-blue)](https://lcr-interactive.finos.org/)
-[![FINOS - Active](https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-active.svg)](https://community.finos.org/docs/governance/Software-Projects/stages/active)
+[![FINOS - Incubating](https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-incubating.svg)](https://finosfoundation.atlassian.net/wiki/display/FINOS/Incubating)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/6526/badge)](https://bestpractices.coreinfrastructure.org/projects/6526)
-[<img src="https://img.shields.io/badge/slack-@finos/morphir-green.svg?logo=slack">](https://finos-lf.slack.com/messages/morphir/)
-
-<img src="https://github.com/finos/branding/blob/master/project-logos/active-project-logos/Morphir%20Logo/Horizontal/2020_Morphir_Logo_Horizontal.png?raw=true" width="450">
+<!-- [<img src="https://img.shields.io/badge/slack-@finos/morphir-green.svg?logo=slack">](https://finos-lf.slack.com/messages/morphir/) -->
 
 # Morphir
 
@@ -46,24 +48,17 @@ Defines a standard format for storing and sharing business logic. A clear set of
 ## Documentation
 If you want to start using Morphir, start with the [Documentation](docs/).
 
-### For Contributors
-
-- **[Development Guide](DEVELOPING.md)** - Set up your local environment and development workflow
-- **[CI/Release FAQ](CI_RELEASE_FAQ.md)** - Understand how our CI and release workflows handle multi-module development
-- **[Contributing Guidelines](docs/contributing.md)** - Contribution process and governance policies
-- **[Agent Guidelines](AGENTS.md)** - Coding standards and best practices
-
 ## The Morphir Projects
-Morphir consists of a few projects based on the features they provide.  
+Morphir consists of a few projects based on the features they provide.
 
 ### Core Morphir Projects
 - **[morphir (this project)](https://github.com/finos/morphir/)** - The umbrella project
 - **[morphir-elm](https://github.com/finos/morphir-elm)** - Contains most of the core morphir functionality, including:
-  - The definition of the IR
-  - The Elm compiler for authoring morphir applications in Elm
-  - The morphir visualization components and developer tools
-  - The Scala, JSON Schema, TypeScript, TypeSpec (Cadl), cypher, semantic, and more backend processors.
-- **[morphir-jvm](https://github.com/finos/morphir-jvm)** - Supporting SDK and packaging for running morphir on the JVM.
+    - The definition of the IR
+    - The Elm compiler for authoring morphir applications in Elm
+    - The morphir visualization components and developer tools
+    - The Scala, JSON Schema, TypeScript, TypeSpec (Cadl), cypher, semantic, and more backend processors.
+- **[morphir-jvm](https://github.com/finos/morphir)** - Supporting SDK and packaging for running morphir on the JVM.
 - **[morphir-examples](https://github.com/finos/morphir-examples)** - A whole lot of examples.
 
 ### Incubator Morphir Projects
@@ -73,18 +68,18 @@ Morphir consists of a few projects based on the features they provide.
 
 
 ## Other Resources
-[List of media](docs/community/media.md)
+[List of media](../community/media.md)
 
 
 ### Further reading
 
-| Introduction & Background                                                  | Using Morphir                                                                                              | Applicability                                                                           |
-| :------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------- |
-| [Resource Centre](https://resources.finos.org/morphir/)                    | [What Makes a Good Model](./docs/user-guides/what-makes-a-good-domain-model.md)                                        | [Sharing Business Logic Across Application Boundaries](./docs/shared_logic_modeling.md) |
-| [Background](docs/Morphir%20Overview/background.md)                                         | [Development Automation (Dev Bots)](./docs/developers/dev-bots.md)                                                    | [Regulatory Technology](./docs/use-cases/regtech-modeling.md)                                     |
-| [Community](./docs/community/morphir-community.md)                                   | [Modeling an Application](./docs/user-guides/application-modeling.md)                                                  |                                                                                         |
-| [What's it all about?](./docs/concepts/whats-it-about.md)                           | [Modeling Decision Tables](https://github.com/finos/morphir-examples/tree/master/src/Morphir/Sample/Rules) |                                                                                         |
-| [Why we use Functional Programming?](./docs/concepts/why-functional-programming.md) | [Modeling for database developers](docs/user-guides/modeling-for-database-developers.md)                    |
+| Introduction & Background                                             | Using Morphir                                                                                              | Applicability                                                                      |
+|:----------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------|
+| [Resource Centre](https://resources.finos.org/morphir/)               | [What Makes a Good Model](../user-guides/what-makes-a-good-domain-model.md)                                             | [Sharing Business Logic Across Application Boundaries](../shared_logic_modeling.md) |
+| [Background](../Morphir%20Overview/background.md)                                         | [Development Automation (Dev Bots)](../developers/dev-bots.md)                                                         | [Regulatory Technology](../use-cases/regtech-modeling.md)                                     |
+| [Community](../community/morphir-community.md)                                   | [Modeling an Application](../user-guides/application-modeling.md)                                                       |                                                                                    |
+| [What's it all about?](./whats-it-about.md)                           | [Modeling Decision Tables](https://github.com/finos/morphir-examples/tree/master/src/Morphir/Sample/Rules) |                                                                                    |
+| [Why we use Functional Programming?](./why-functional-programming.md) | [Modeling for database developers](../user-guides/modeling-for-database-developers.md)                                  |
 
 ## Roadmap
 
@@ -95,18 +90,11 @@ List the roadmap steps; alternatively link the Confluence Wiki page where the pr
 3. Support for Microsoft's Bosque language for defining models.
 4. Modeling queries and aggregations across databases and event processing.
 
-## Getting Involved
-
-### Project Meetings
-
-A great way to interact with the Morphir community is to attend the bi-weekly Thursday Morphir meetings.
-Email help@finos.org to be added to the meeting invite directly, or find the meeting in the [FINOS Community Calendar](https://calendar.finos.org/).
-
 ## Contributing
 
 1. Fork it (<https://github.com/finos/morphir/fork>)
 2. Create your feature branch (`git checkout -b feature/fooBar`)
-3. Read our [contribution guidelines](docs/developers/contributing.md) and [Community Code of Conduct](https://www.finos.org/code-of-conduct)
+3. Read our [contribution guidelines](../developers/contributing.md) and [Community Code of Conduct](https://www.finos.org/code-of-conduct)
 4. Commit your changes (`git commit -am 'Add some fooBar'`)
 5. Push to the branch (`git push origin feature/fooBar`)
 6. Create a new Pull Request
@@ -117,9 +105,10 @@ _Need an ICLA? Unsure if you are covered under an existing CCLA? Email [help@fin
 
 ## Join the Morphir Slack Channel
 
-Join Morphir on the FINOS Slack by signing up at https://finos-lf.slack.com/. The Morphir channel on Slack is found directly at https://finos-lf.slack.com/messages/morphir/.
+Join Morphir on the FINOS Slack by signing up [here](https://finos-lf.slack.com/). 
+The Morphir channel on Slack is found directly [here](https://finos-lf.slack.com/messages/morphir/)
 
-[<img src="https://img.shields.io/badge/slack-@finos/morphir-green.svg?logo=slack">](https://finos-lf.slack.com/messages/morphir/)
+<!-- [<img src="https://img.shields.io/badge/slack-@finos/morphir-green.svg?logo=slack">](https://finos-lf.slack.com/messages/morphir/) -->
 
 Reach out to help@finos.org for any issues when joining Morphir on the FINOS Slack.
 
