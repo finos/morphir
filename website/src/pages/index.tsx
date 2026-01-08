@@ -6,6 +6,7 @@ import styles from './index.module.css'
 import { Link } from '@docusaurus/router'
 import HomepageFeatures from '../components/HomepageFeatures'
 import MediaPanel from '../components/MediaPanel'
+import ContributingCompaniesPanel from '../components/ContributingCompaniesPanel'
 
 function HomepageHeader() {
 	const { siteConfig } = useDocusaurusContext()
@@ -41,6 +42,7 @@ export default function Home(): JSX.Element {
 			<HomepageHeader />
 			<main>
 				<HomepageFeatures />
+				<ContributingCompaniesPanel />
 				<MediaPanel />
 			</main>
 		</Layout>
