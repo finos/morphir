@@ -57,6 +57,29 @@ const sidebars = {
     },
     {
       type: 'category',
+      label: 'CLI Preview',
+      items: [
+          'cli-preview/cli-preview-index',
+          'cli-preview/getting-started',
+          'cli-preview/whats-new',
+          {
+            type: 'category',
+            label: 'Commands',
+            items: [
+              'cli-preview/commands/wit-command'
+            ]
+          },
+          {
+            type: 'category',
+            label: 'Release Notes',
+            items: [
+              'cli-preview/release-notes/release-notes-v0.4.0-alpha.1'
+            ]
+          }
+      ]
+    },
+    {
+      type: 'category',
       label: 'Concepts',
       items: [
           'morphir-sdk',

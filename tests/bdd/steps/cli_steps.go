@@ -451,3 +451,500 @@ func theJSONOutputShouldHaveIntEqual(ctx context.Context, key string, expected i
 
 	return nil
 }
+
+// ============================================================================
+// WIT JSONL CLI Steps
+// ============================================================================
+
+// RegisterWITCLISteps registers WIT CLI step definitions including JSONL support.
+func RegisterWITCLISteps(sc *godog.ScenarioContext) {
+	// WIT make/build commands
+	sc.Step(`^I run morphir wit make with source "([^"]*)" and --jsonl$`, iRunMorphirWitMakeWithSourceAndJSONL)
+	sc.Step(`^I run morphir wit build with source "([^"]*)" and --jsonl$`, iRunMorphirWitBuildWithSourceAndJSONL)
+	sc.Step(`^I run morphir wit make with --jsonl-input and --jsonl$`, iRunMorphirWitMakeWithJSONLInputAndJSONL)
+	sc.Step(`^I run morphir wit make with --jsonl-input - and --jsonl$`, iRunMorphirWitMakeWithJSONLInputStdinAndJSONL)
+
+	// JSONL input setup
+	sc.Step(`^a JSONL input file with the following entries:$`, aJSONLInputFileWithEntries)
+	sc.Step(`^JSONL input via stdin:$`, jsonlInputViaStdin)
+
+	// JSONL output assertions
+	sc.Step(`^the JSONL output should have "([^"]*)" equal to (true|false)$`, theJSONLOutputShouldHaveBoolEqual)
+	sc.Step(`^the JSONL output should have "([^"]*)" equal to (\d+)$`, theJSONLOutputShouldHaveIntEqual)
+	sc.Step(`^the JSONL output should have "([^"]*)" equal to "([^"]*)"$`, theJSONLOutputShouldHaveStringEqual)
+	sc.Step(`^the JSONL output should have diagnostics with code "([^"]*)"$`, theJSONLOutputShouldHaveDiagnosticsWithCode)
+	sc.Step(`^the JSONL output should have diagnostics with severity "([^"]*)"$`, theJSONLOutputShouldHaveDiagnosticsWithSeverity)
+
+	// JSONL module assertions
+	sc.Step(`^the JSONL module should have sourcePackage namespace "([^"]*)"$`, theJSONLModuleShouldHaveNamespace)
+	sc.Step(`^the JSONL module should have sourcePackage name "([^"]*)"$`, theJSONLModuleShouldHaveName)
+	sc.Step(`^the JSONL module should have (\d+) values$`, theJSONLModuleShouldHaveNValues)
+	sc.Step(`^the JSONL module should have (\d+) types$`, theJSONLModuleShouldHaveNTypes)
+
+	// Batch JSONL assertions
+	sc.Step(`^the output should contain (\d+) JSONL lines$`, theOutputShouldContainNJSONLLines)
+	sc.Step(`^JSONL line (\d+) should have "([^"]*)" equal to "([^"]*)"$`, jsonlLineShouldHaveStringEqual)
+	sc.Step(`^JSONL line (\d+) should have "([^"]*)" equal to (true|false)$`, jsonlLineShouldHaveBoolEqual)
+}
+
+// jsonlInputFile stores the path to a temporary JSONL input file
+var jsonlInputFile string
+
+// jsonlStdinContent stores content to be piped to stdin
+var jsonlStdinContent string
+
+func iRunMorphirWitMakeWithSourceAndJSONL(ctx context.Context, source string) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+	return runMorphirCommand(ctc, "wit", "make", "-s", source, "--jsonl")
+}
+
+func iRunMorphirWitBuildWithSourceAndJSONL(ctx context.Context, source string) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+	return runMorphirCommand(ctc, "wit", "build", "-s", source, "--jsonl")
+}
+
+func aJSONLInputFileWithEntries(ctx context.Context, table *godog.Table) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Create temp file for JSONL input
+	tmpFile, err := os.CreateTemp("", "wit-jsonl-input-*.jsonl")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+
+	// Write JSONL entries from table
+	for i, row := range table.Rows {
+		if i == 0 {
+			continue // Skip header
+		}
+		name := row.Cells[0].Value
+		source := row.Cells[1].Value
+
+		entry := map[string]string{"name": name, "source": source}
+		data, err := json.Marshal(entry)
+		if err != nil {
+			return fmt.Errorf("failed to marshal entry: %w", err)
+		}
+		tmpFile.Write(data)
+		tmpFile.WriteString("\n")
+	}
+	tmpFile.Close()
+
+	jsonlInputFile = tmpFile.Name()
+	// Ensure cleanup
+	ctc.WorkDir = filepath.Dir(tmpFile.Name())
+
+	return nil
+}
+
+func jsonlInputViaStdin(ctx context.Context, content *godog.DocString) error {
+	jsonlStdinContent = content.Content
+	return nil
+}
+
+func iRunMorphirWitMakeWithJSONLInputAndJSONL(ctx context.Context) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+	if jsonlInputFile == "" {
+		return fmt.Errorf("no JSONL input file set")
+	}
+	return runMorphirCommand(ctc, "wit", "make", "--jsonl-input", jsonlInputFile, "--jsonl")
+}
+
+func iRunMorphirWitMakeWithJSONLInputStdinAndJSONL(ctx context.Context) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	binary := getMorphirBinary()
+	cmd := exec.Command(binary, "wit", "make", "--jsonl-input", "-", "--jsonl")
+	cmd.Dir = ctc.WorkDir
+	cmd.Stdin = strings.NewReader(jsonlStdinContent)
+	cmd.Stdout = &ctc.Stdout
+	cmd.Stderr = &ctc.Stderr
+
+	ctc.Command = binary
+	ctc.Args = []string{"wit", "make", "--jsonl-input", "-", "--jsonl"}
+
+	err = cmd.Run()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			ctc.ExitCode = exitErr.ExitCode()
+		} else {
+			ctc.LastError = err
+		}
+	} else {
+		ctc.ExitCode = 0
+	}
+
+	return nil
+}
+
+// parseFirstJSONLLine parses the first line of JSONL output
+func parseFirstJSONLLine(output string) (map[string]interface{}, error) {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) == 0 || lines[0] == "" {
+		return nil, fmt.Errorf("no JSONL output")
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(lines[0]), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse JSONL: %w\nline: %s", err, lines[0])
+	}
+	return result, nil
+}
+
+// parseJSONLLine parses a specific line (1-indexed) from JSONL output
+func parseJSONLLine(output string, lineNum int) (map[string]interface{}, error) {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if lineNum < 1 || lineNum > len(lines) {
+		return nil, fmt.Errorf("line %d out of range (have %d lines)", lineNum, len(lines))
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(lines[lineNum-1]), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse JSONL line %d: %w\nline: %s", lineNum, err, lines[lineNum-1])
+	}
+	return result, nil
+}
+
+func theJSONLOutputShouldHaveBoolEqual(ctx context.Context, key, expected string) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	result, err := parseFirstJSONLLine(ctc.Stdout.String())
+	if err != nil {
+		return err
+	}
+
+	actual, ok := result[key].(bool)
+	if !ok {
+		return fmt.Errorf("key %q not found or not boolean in JSONL output: %v", key, result)
+	}
+
+	expectedBool := expected == "true"
+	if actual != expectedBool {
+		return fmt.Errorf("JSONL %q: expected %v, got %v", key, expectedBool, actual)
+	}
+
+	return nil
+}
+
+func theJSONLOutputShouldHaveIntEqual(ctx context.Context, key string, expected int) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	result, err := parseFirstJSONLLine(ctc.Stdout.String())
+	if err != nil {
+		return err
+	}
+
+	actual, ok := result[key].(float64)
+	if !ok {
+		// Key might not exist for failed cases, check if expected is 0
+		if expected == 0 {
+			return nil
+		}
+		return fmt.Errorf("key %q not found or not a number in JSONL output: %v", key, result)
+	}
+
+	if int(actual) != expected {
+		return fmt.Errorf("JSONL %q: expected %d, got %d", key, expected, int(actual))
+	}
+
+	return nil
+}
+
+func theJSONLOutputShouldHaveStringEqual(ctx context.Context, key, expected string) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	result, err := parseFirstJSONLLine(ctc.Stdout.String())
+	if err != nil {
+		return err
+	}
+
+	actual, ok := result[key].(string)
+	if !ok {
+		return fmt.Errorf("key %q not found or not a string in JSONL output", key)
+	}
+
+	if actual != expected {
+		return fmt.Errorf("JSONL %q: expected %q, got %q", key, expected, actual)
+	}
+
+	return nil
+}
+
+func theJSONLOutputShouldHaveDiagnosticsWithCode(ctx context.Context, code string) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	result, err := parseFirstJSONLLine(ctc.Stdout.String())
+	if err != nil {
+		return err
+	}
+
+	diagnostics, ok := result["diagnostics"].([]interface{})
+	if !ok || len(diagnostics) == 0 {
+		return fmt.Errorf("no diagnostics found in JSONL output")
+	}
+
+	for _, d := range diagnostics {
+		diag, ok := d.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if diag["code"] == code {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("diagnostic with code %q not found", code)
+}
+
+func theJSONLOutputShouldHaveDiagnosticsWithSeverity(ctx context.Context, severity string) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	result, err := parseFirstJSONLLine(ctc.Stdout.String())
+	if err != nil {
+		return err
+	}
+
+	diagnostics, ok := result["diagnostics"].([]interface{})
+	if !ok || len(diagnostics) == 0 {
+		return fmt.Errorf("no diagnostics found in JSONL output")
+	}
+
+	for _, d := range diagnostics {
+		diag, ok := d.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if diag["severity"] == severity {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("diagnostic with severity %q not found", severity)
+}
+
+func theJSONLModuleShouldHaveNamespace(ctx context.Context, expected string) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	result, err := parseFirstJSONLLine(ctc.Stdout.String())
+	if err != nil {
+		return err
+	}
+
+	module, ok := result["module"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("module not found in JSONL output")
+	}
+
+	sourcePackage, ok := module["sourcePackage"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("sourcePackage not found in module")
+	}
+
+	actual, ok := sourcePackage["namespace"].(string)
+	if !ok {
+		return fmt.Errorf("namespace not found in sourcePackage")
+	}
+
+	if actual != expected {
+		return fmt.Errorf("namespace: expected %q, got %q", expected, actual)
+	}
+
+	return nil
+}
+
+func theJSONLModuleShouldHaveName(ctx context.Context, expected string) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	result, err := parseFirstJSONLLine(ctc.Stdout.String())
+	if err != nil {
+		return err
+	}
+
+	module, ok := result["module"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("module not found in JSONL output")
+	}
+
+	sourcePackage, ok := module["sourcePackage"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("sourcePackage not found in module")
+	}
+
+	actual, ok := sourcePackage["name"].(string)
+	if !ok {
+		return fmt.Errorf("name not found in sourcePackage")
+	}
+
+	if actual != expected {
+		return fmt.Errorf("name: expected %q, got %q", expected, actual)
+	}
+
+	return nil
+}
+
+func theJSONLModuleShouldHaveNValues(ctx context.Context, expected int) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	result, err := parseFirstJSONLLine(ctc.Stdout.String())
+	if err != nil {
+		return err
+	}
+
+	module, ok := result["module"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("module not found in JSONL output")
+	}
+
+	values, ok := module["values"].([]interface{})
+	if !ok {
+		if expected == 0 {
+			return nil
+		}
+		return fmt.Errorf("values not found in module")
+	}
+
+	if len(values) != expected {
+		return fmt.Errorf("values count: expected %d, got %d", expected, len(values))
+	}
+
+	return nil
+}
+
+func theJSONLModuleShouldHaveNTypes(ctx context.Context, expected int) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	result, err := parseFirstJSONLLine(ctc.Stdout.String())
+	if err != nil {
+		return err
+	}
+
+	module, ok := result["module"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("module not found in JSONL output")
+	}
+
+	types, ok := module["types"].([]interface{})
+	if !ok {
+		if expected == 0 {
+			return nil
+		}
+		return fmt.Errorf("types not found in module")
+	}
+
+	if len(types) != expected {
+		return fmt.Errorf("types count: expected %d, got %d", expected, len(types))
+	}
+
+	return nil
+}
+
+func theOutputShouldContainNJSONLLines(ctx context.Context, expected int) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	lines := strings.Split(strings.TrimSpace(ctc.Stdout.String()), "\n")
+	// Filter out empty lines
+	nonEmpty := 0
+	for _, line := range lines {
+		if strings.TrimSpace(line) != "" {
+			nonEmpty++
+		}
+	}
+
+	if nonEmpty != expected {
+		return fmt.Errorf("expected %d JSONL lines, got %d\noutput: %s", expected, nonEmpty, ctc.Stdout.String())
+	}
+
+	return nil
+}
+
+func jsonlLineShouldHaveStringEqual(ctx context.Context, lineNum int, key, expected string) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	result, err := parseJSONLLine(ctc.Stdout.String(), lineNum)
+	if err != nil {
+		return err
+	}
+
+	actual, ok := result[key].(string)
+	if !ok {
+		return fmt.Errorf("line %d: key %q not found or not a string", lineNum, key)
+	}
+
+	if actual != expected {
+		return fmt.Errorf("line %d: %q expected %q, got %q", lineNum, key, expected, actual)
+	}
+
+	return nil
+}
+
+func jsonlLineShouldHaveBoolEqual(ctx context.Context, lineNum int, key, expected string) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	result, err := parseJSONLLine(ctc.Stdout.String(), lineNum)
+	if err != nil {
+		return err
+	}
+
+	actual, ok := result[key].(bool)
+	if !ok {
+		return fmt.Errorf("line %d: key %q not found or not boolean", lineNum, key)
+	}
+
+	expectedBool := expected == "true"
+	if actual != expectedBool {
+		return fmt.Errorf("line %d: %q expected %v, got %v", lineNum, key, expectedBool, actual)
+	}
+
+	return nil
+}

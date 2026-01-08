@@ -64,6 +64,7 @@ func TestFeatures(t *testing.T) {
 			steps.RegisterWorkspaceSteps(sc)
 			steps.RegisterExampleSteps(sc)
 			steps.RegisterCLISteps(sc)
+			steps.RegisterWITCLISteps(sc)
 			steps.RegisterDoclingSteps(sc)
 			steps.RegisterWITSteps(sc)
 		},
