@@ -4,3 +4,13 @@ version = "1.0.0"
 source_directory = "src"
 module_prefix = "Simple.Project"
 exposed_modules = ["Core", "Utils"]
+
+# Basic task configuration
+[tasks.build]
+kind = "intrinsic"
+action = "morphir.pipeline.compile"
+
+[tasks.test]
+kind = "command"
+cmd = ["echo", "Running tests..."]
+depends_on = ["build"]
