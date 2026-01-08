@@ -7,8 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-alpha.1] - 2026-01-08
+
+### Added
+- **WIT Pipeline** (CLI Preview): WebAssembly Interface Types support for Morphir
+  - `morphir wit make` command to compile WIT files to Morphir IR
+  - `morphir wit gen` command to generate WIT from Morphir IR
+  - `morphir wit build` command for full WIT→IR→WIT pipeline
+  - JSONL batch processing mode for streaming/CI workflows (`--jsonl` flag)
+  - Type mapping infrastructure with diagnostics for lossy transformations
+  - WIT parser adapter and emitter with round-trip support
+  - BDD tests with scenario outlines for comprehensive coverage
+- **Virtual File System (VFS)**: New `pkg/vfs` module for filesystem abstraction
+  - Core VFS implementation with virtual paths (`VPath`)
+  - Traversal helpers for entry tree manipulation
+  - Shadowing support for overlaying file systems
+  - Sandbox policy hooks for write operations
+  - Path manipulation helpers
+- **Task Execution Engine**: New `pkg/task` module for build orchestration
+  - Task/target execution with dependency tracking
+  - Pipeline integration for task configuration
+  - `morphir task list` command to display configured tasks
+- **Pipeline Enhancements**: Major improvements to `pkg/pipeline`
+  - Core pipeline types and composition framework
+  - Validation step with improved diagnostics
+  - Comprehensive unit tests for composition and error handling
+- **Document Processing**: New `pkg/docling-doc` module
+  - Functional document processing with efficient builder pattern
+  - BDD tests integrated into release process
+- **Jupyter Notebook Support**: New `pkg/nbformat` module
+  - Support for reading and processing `.ipynb` files
+- **IR Visitor Framework**: New visitor pattern for Morphir IR
+  - Type and Pattern traversal helpers
+  - Extensible visitor infrastructure
+- **Type Mapping Infrastructure**: New `pkg/bindings/typemap` module
+  - Registry for bidirectional type mappings
+  - Support for multiple binding targets (WIT, Protocol Buffers, etc.)
+
 ### Changed
 - Migrated task runner from Justfile to `mise` tasks across scripts, docs, and CI
+- Removed outdated morphir-elm subtree and related Elm code
+- Upgraded Docusaurus from 2.0.0-beta.15 to stable 2.4.3
+- Updated lipgloss dependency to v2
+
+### Documentation
+- Added CLI Preview documentation for v0.4.0-alpha.1
+- Improved code coverage documentation and module tracking
+- Added module and package documentation for `pkg/models`
+
+### Infrastructure
+- Comprehensive code coverage and test reporting in CI/CD
+- Node.js 24 configured for Docusaurus website builds
+- Updated GitHub Actions (checkout v6, artifact actions, create-issue-from-file v6)
+- Security dependency updates for website
 
 ## [0.3.3] - 2026-01-05
 
@@ -186,7 +237,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Duplicate help command registration in CLI
 
-[Unreleased]: https://github.com/finos/morphir/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-alpha.1...HEAD
+[0.4.0-alpha.1]: https://github.com/finos/morphir/compare/v0.3.3...v0.4.0-alpha.1
+[0.3.3]: https://github.com/finos/morphir/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/finos/morphir/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/finos/morphir/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/finos/morphir/compare/v0.2.1...v0.3.0

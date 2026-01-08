@@ -50,14 +50,19 @@ echo "Creating release tags for all modules..."
 echo ""
 
 # Tag all modules with subdirectory prefixes
+# NOTE: tests/bdd is excluded as it's not a publishable module
 MODULES=(
-    "pkg/bindings/wasm-componentmodel"
+    "pkg/bindings/typemap"
+    "pkg/bindings/wit"
     "pkg/config"
+    "pkg/docling-doc"
     "pkg/models"
     "pkg/nbformat"
     "pkg/pipeline"
     "pkg/sdk"
+    "pkg/task"
     "pkg/tooling"
+    "pkg/vfs"
     "cmd/morphir"
 )
 
