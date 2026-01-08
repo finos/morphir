@@ -7,21 +7,33 @@
 
 ## Overview
 
-This document describes the design of Morphir's Toolchain Integration Framework, which enables orchestration of external tools (like `morphir-elm`) through a flexible, composable abstraction.
+This document describes the design of Morphir's Toolchain Integration Framework, which enables orchestration of both external tools (like `morphir-elm`) and native Go implementations (like WIT bindings) through a flexible, composable abstraction.
 
 ### Goals
 
 1. **Polyglot Integration**: Support tools from any ecosystem (npm, dotnet, native binaries)
-2. **Unified CLI**: Present a consistent interface regardless of underlying toolchain
-3. **Composable Workflows**: Enable complex build pipelines from simple building blocks
-4. **Inspectability**: Users can understand and debug what will happen before execution
-5. **Extensibility**: Third-party toolchains can integrate seamlessly
+2. **Native & External**: Support both in-process Go toolchains and external process-based tools
+3. **Unified CLI**: Present a consistent interface regardless of underlying toolchain
+4. **Composable Workflows**: Enable complex build pipelines from simple building blocks
+5. **Inspectability**: Users can understand and debug what will happen before execution
+6. **Extensibility**: Third-party toolchains can integrate seamlessly
 
 ### Non-Goals (for initial version)
 
 - LSP/MCP/BSP/gRPC communication protocols (future)
 - Distributed/remote execution (future)
 - Fine-grained incremental compilation (future)
+
+### Reference Implementation
+
+The **WIT bindings** (`pkg/bindings/wit/pipeline`) serve as the reference implementation for native toolchains:
+
+- `morphir wit make` → WIT source → Morphir IR (frontend)
+- `morphir wit gen` → Morphir IR → WIT source (backend)
+- `morphir wit build` → Full pipeline with round-trip validation
+- JSONL batch processing for streaming workflows
+
+This implementation demonstrates the patterns that the toolchain framework will generalize.
 
 ## Core Concepts
 
@@ -48,12 +60,17 @@ This document describes the design of Morphir's Toolchain Integration Framework,
 
 ### Toolchains
 
-A **toolchain** is both an external tool adapter AND a capability provider. It:
+A **toolchain** is both a tool adapter AND a capability provider. Toolchains come in two flavors:
 
-- Declares how to acquire and invoke external tools
-- Registers tasks that fulfill targets
-- Can hook into task execution lifecycle (middleware pattern)
+#### External Toolchains (Process-Based)
 
+External toolchains invoke tools via process execution. They:
+
+- Declare how to acquire and invoke external tools (npm, mise, path)
+- Communicate via file-based artifacts (JSONC) and diagnostics (JSONL)
+- Run in separate processes with configurable environment
+
+**Example: morphir-elm**
 ```toml
 [toolchain.morphir-elm]
 name = "morphir-elm"
@@ -85,6 +102,54 @@ outputs = { dir = "dist/{variant}/**/*" }
 fulfills = ["gen"]
 variants = ["Scala", "JsonSchema", "TypeScript"]
 ```
+
+#### Native Toolchains (In-Process)
+
+Native toolchains are implemented in Go and run in-process. They:
+
+- Register Go functions as task handlers
+- Share memory with the Morphir runtime (zero-copy artifact passing)
+- Support streaming via Go channels
+
+**Example: WIT bindings (existing implementation)**
+
+The WIT bindings in `pkg/bindings/wit/pipeline` demonstrate native toolchains:
+
+```go
+// Native toolchain registration (conceptual)
+type WITToolchain struct{}
+
+func (t *WITToolchain) Name() string { return "wit" }
+
+func (t *WITToolchain) Tasks() []Task {
+    return []Task{
+        {Name: "make", Handler: t.Make, Fulfills: []string{"make"}},
+        {Name: "gen", Handler: t.Gen, Fulfills: []string{"gen"}},
+        {Name: "build", Handler: t.Build, Fulfills: []string{"build"}},
+    }
+}
+
+func (t *WITToolchain) Make(ctx Context, input MakeInput) (MakeOutput, error) {
+    // Direct Go implementation - no process spawning
+    return witpipeline.Make(input)
+}
+```
+
+**Current WIT CLI** (`cmd/morphir/cmd/wit.go`):
+- `morphir wit make` - Compile WIT → Morphir IR
+- `morphir wit gen` - Generate Morphir IR → WIT
+- `morphir wit build` - Full pipeline with round-trip validation
+- Supports `--jsonl` output and `--jsonl-input` for batch processing
+
+#### Toolchain Registration
+
+Both external and native toolchains register tasks that fulfill targets:
+
+| Toolchain | Type | Tasks | Targets Fulfilled |
+|-----------|------|-------|-------------------|
+| morphir-elm | External | make, gen | make, gen |
+| wit | Native | make, gen, build | make, gen, build |
+| morphir-native | Native | validate, format | validate, format |
 
 ### Targets
 
@@ -521,31 +586,38 @@ Suggestions:
 ### Phase 1: Foundation
 - [ ] Core types: Toolchain, Target, Task, Workflow
 - [ ] Configuration loading for toolchains
-- [ ] Basic task execution (path backend only)
-- [ ] Output directory structure
+- [ ] Toolchain registry for native and external toolchains
+- [ ] Output directory structure (`.morphir/out/`)
 
-### Phase 2: morphir-elm Integration
+### Phase 2: WIT Toolchain Adapter
+- [ ] Adapt existing WIT pipeline to toolchain abstraction
+- [ ] Register WIT as native toolchain (make, gen, build targets)
+- [ ] Unify `morphir wit *` commands with toolchain CLI
+- [ ] JSONL diagnostic integration with task system
+- [ ] Validate native toolchain patterns for reuse
+
+### Phase 3: morphir-elm Integration
 - [ ] NPX acquisition backend
-- [ ] morphir-elm toolchain definition
+- [ ] morphir-elm toolchain definition (external)
 - [ ] `make` and `gen` task implementations
-- [ ] File-based artifact passing
+- [ ] File-based artifact passing between processes
 
-### Phase 3: Workflows & Planning
+### Phase 4: Workflows & Planning
 - [ ] Workflow definition and parsing
-- [ ] Execution plan computation
+- [ ] Execution plan computation (merge workflow + deps)
 - [ ] Plan validation and optimization
 - [ ] `morphir plan` command
 
-### Phase 4: Caching & Performance
-- [ ] Input hashing
+### Phase 5: Caching & Performance
+- [ ] Input hashing for cache keys
 - [ ] Cache hit/miss detection
-- [ ] Plan caching
+- [ ] Plan caching to `.morphir/out/plan.json`
 - [ ] Parallel execution within stages
 
-### Phase 5: Polish & Ecosystem
+### Phase 6: Polish & Ecosystem
 - [ ] `morphir doctor` command
 - [ ] Additional acquisition backends (mise, npm)
-- [ ] Workflow inheritance
+- [ ] Workflow inheritance (`extends`)
 - [ ] Diagnostic aggregation
 
 ## Related Documents

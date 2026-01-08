@@ -6,15 +6,24 @@
 
 ## Context
 
-Morphir needs to integrate with external tools like `morphir-elm` to provide a complete development experience. Currently, `morphir-elm` provides:
+Morphir needs to integrate with both external tools (like `morphir-elm`) and native Go implementations (like WIT bindings) to provide a complete development experience.
+
+**External tools** (morphir-elm):
 - `morphir-elm make`: Compiles Elm sources to Morphir IR (frontend)
 - `morphir-elm gen`: Generates target language code from IR (backend)
 
+**Native implementations** (WIT bindings - already implemented):
+- `morphir wit make`: Compiles WIT to Morphir IR
+- `morphir wit gen`: Generates WIT from Morphir IR
+- `morphir wit build`: Full pipeline with round-trip validation
+- JSONL batch processing support
+
 We want to:
-1. Orchestrate these external tools through Morphir's CLI
+1. Orchestrate both external tools and native implementations through a unified CLI
 2. Support future toolchains (Haskell, PureScript frontends; Spark, Scala backends)
 3. Provide a unified, inspectable build experience
 4. Enable caching and incremental builds
+5. Adapt the existing WIT pipeline as the first native toolchain
 
 ## Decision
 
@@ -22,9 +31,11 @@ We will implement a **Toolchain Integration Framework** with the following archi
 
 ### Core Abstractions
 
-1. **Toolchains**: External tool adapters that provide tasks and can hook into execution lifecycle
+1. **Toolchains**: Tool adapters (native or external) that provide tasks and can hook into execution lifecycle
+   - **Native toolchains**: In-process Go implementations (e.g., WIT bindings)
+   - **External toolchains**: Process-based tools (e.g., morphir-elm via npx)
 2. **Targets**: CLI-facing capabilities (make, gen, test) that tasks fulfill
-3. **Tasks**: Concrete implementations that execute processes and produce artifacts
+3. **Tasks**: Concrete implementations that produce artifacts (via Go code or process execution)
 4. **Workflows**: Named compositions of targets with staged execution
 
 ### Key Design Choices
