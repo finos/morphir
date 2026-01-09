@@ -167,12 +167,20 @@ func (e *Executor) executeExternalTask(tc Toolchain, task TaskDef, variant strin
 		return TaskResult{}, fmt.Errorf("failed to substitute arguments: %w", err)
 	}
 
-	// For npx/bunx backends, prepend package specifier to args
+	// For package runner backends, prepend package specifier to args
 	switch tc.Acquire.Backend {
 	case "npx":
 		args = e.buildNpxArgs(tc, task, args)
 	case "bunx":
 		args = e.buildBunxArgs(tc, task, args)
+	case "yarn-dlx":
+		args = e.buildYarnDlxArgs(tc, task, args)
+	case "pnpm-dlx":
+		args = e.buildPnpmDlxArgs(tc, task, args)
+	case "deno-npm":
+		args = e.buildDenoNpmArgs(tc, task, args)
+	case "npm-exec":
+		args = e.buildNpmExecArgs(tc, task, args)
 	}
 
 	// Prepare environment
@@ -256,6 +264,14 @@ func (e *Executor) resolveExecutable(tc Toolchain, task TaskDef) (string, error)
 		return e.resolveNpxExecutable(tc)
 	case "bunx":
 		return e.resolveBunxExecutable(tc)
+	case "yarn-dlx":
+		return e.resolveYarnDlxExecutable(tc)
+	case "pnpm-dlx":
+		return e.resolvePnpmDlxExecutable(tc)
+	case "deno-npm":
+		return e.resolveDenoNpmExecutable(tc)
+	case "npm-exec":
+		return e.resolveNpmExecExecutable(tc)
 	default:
 		return "", fmt.Errorf("acquisition backend %s not yet implemented", tc.Acquire.Backend)
 	}
@@ -350,6 +366,147 @@ func (e *Executor) buildBunxArgs(tc Toolchain, task TaskDef, taskArgs []string) 
 	bunxArgs = append(bunxArgs, taskArgs...)
 
 	return bunxArgs
+}
+
+// resolveYarnDlxExecutable resolves yarn as the executable for yarn dlx package execution.
+func (e *Executor) resolveYarnDlxExecutable(tc Toolchain) (string, error) {
+	// Verify yarn is available
+	yarnPath, err := exec.LookPath("yarn")
+	if err != nil {
+		return "", fmt.Errorf("yarn not found in PATH (required for backend 'yarn-dlx'): %w", err)
+	}
+
+	// Verify package is specified
+	if tc.Acquire.Package == "" {
+		return "", fmt.Errorf("package must be specified for yarn-dlx backend")
+	}
+
+	return yarnPath, nil
+}
+
+// buildYarnDlxArgs builds the argument list for yarn dlx execution.
+// It prepends "dlx" and the package specifier (with optional version) to the task args.
+func (e *Executor) buildYarnDlxArgs(tc Toolchain, task TaskDef, taskArgs []string) []string {
+	// Build package specifier
+	packageSpec := tc.Acquire.Package
+	if tc.Acquire.Version != "" {
+		packageSpec = packageSpec + "@" + tc.Acquire.Version
+	}
+
+	// yarn dlx args: ["dlx", "package@version", ...taskArgs]
+	// yarn dlx auto-installs without prompting
+	yarnArgs := []string{"dlx", packageSpec}
+
+	// Append the task's subcommand args
+	yarnArgs = append(yarnArgs, taskArgs...)
+
+	return yarnArgs
+}
+
+// resolvePnpmDlxExecutable resolves pnpm as the executable for pnpm dlx package execution.
+func (e *Executor) resolvePnpmDlxExecutable(tc Toolchain) (string, error) {
+	// Verify pnpm is available
+	pnpmPath, err := exec.LookPath("pnpm")
+	if err != nil {
+		return "", fmt.Errorf("pnpm not found in PATH (required for backend 'pnpm-dlx'): %w", err)
+	}
+
+	// Verify package is specified
+	if tc.Acquire.Package == "" {
+		return "", fmt.Errorf("package must be specified for pnpm-dlx backend")
+	}
+
+	return pnpmPath, nil
+}
+
+// buildPnpmDlxArgs builds the argument list for pnpm dlx execution.
+// It prepends "dlx" and the package specifier (with optional version) to the task args.
+func (e *Executor) buildPnpmDlxArgs(tc Toolchain, task TaskDef, taskArgs []string) []string {
+	// Build package specifier
+	packageSpec := tc.Acquire.Package
+	if tc.Acquire.Version != "" {
+		packageSpec = packageSpec + "@" + tc.Acquire.Version
+	}
+
+	// pnpm dlx args: ["dlx", "package@version", ...taskArgs]
+	// pnpm dlx auto-installs without prompting
+	pnpmArgs := []string{"dlx", packageSpec}
+
+	// Append the task's subcommand args
+	pnpmArgs = append(pnpmArgs, taskArgs...)
+
+	return pnpmArgs
+}
+
+// resolveDenoNpmExecutable resolves deno as the executable for deno npm package execution.
+func (e *Executor) resolveDenoNpmExecutable(tc Toolchain) (string, error) {
+	// Verify deno is available
+	denoPath, err := exec.LookPath("deno")
+	if err != nil {
+		return "", fmt.Errorf("deno not found in PATH (required for backend 'deno-npm'): %w", err)
+	}
+
+	// Verify package is specified
+	if tc.Acquire.Package == "" {
+		return "", fmt.Errorf("package must be specified for deno-npm backend")
+	}
+
+	return denoPath, nil
+}
+
+// buildDenoNpmArgs builds the argument list for deno npm execution.
+// It uses "deno run npm:package@version" to run npm packages.
+func (e *Executor) buildDenoNpmArgs(tc Toolchain, task TaskDef, taskArgs []string) []string {
+	// Build npm package specifier
+	packageSpec := "npm:" + tc.Acquire.Package
+	if tc.Acquire.Version != "" {
+		packageSpec = packageSpec + "@" + tc.Acquire.Version
+	}
+
+	// deno npm args: ["run", "-A", "npm:package@version", ...taskArgs]
+	// -A grants all permissions (required for most npm packages)
+	denoArgs := []string{"run", "-A", packageSpec}
+
+	// Append the task's subcommand args
+	denoArgs = append(denoArgs, taskArgs...)
+
+	return denoArgs
+}
+
+// resolveNpmExecExecutable resolves npm as the executable for npm exec package execution.
+func (e *Executor) resolveNpmExecExecutable(tc Toolchain) (string, error) {
+	// Verify npm is available
+	npmPath, err := exec.LookPath("npm")
+	if err != nil {
+		return "", fmt.Errorf("npm not found in PATH (required for backend 'npm-exec'): %w", err)
+	}
+
+	// Verify package is specified
+	if tc.Acquire.Package == "" {
+		return "", fmt.Errorf("package must be specified for npm-exec backend")
+	}
+
+	return npmPath, nil
+}
+
+// buildNpmExecArgs builds the argument list for npm exec execution.
+// It uses "npm exec -- package@version args..." to run packages.
+func (e *Executor) buildNpmExecArgs(tc Toolchain, task TaskDef, taskArgs []string) []string {
+	// Build package specifier
+	packageSpec := tc.Acquire.Package
+	if tc.Acquire.Version != "" {
+		packageSpec = packageSpec + "@" + tc.Acquire.Version
+	}
+
+	// npm exec args: ["exec", "--yes", "--", "package@version", ...taskArgs]
+	// --yes auto-confirms installation prompts (like npx -y)
+	// -- separates npm options from the package command
+	npmArgs := []string{"exec", "--yes", "--", packageSpec}
+
+	// Append the task's subcommand args
+	npmArgs = append(npmArgs, taskArgs...)
+
+	return npmArgs
 }
 
 // substituteArgs substitutes variables in task arguments.
