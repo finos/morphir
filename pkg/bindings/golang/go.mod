@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	github.com/finos/morphir/pkg/models v0.4.0-alpha.1
-	github.com/finos/morphir/pkg/pipeline v0.3.3
+	github.com/finos/morphir/pkg/pipeline v0.4.0-alpha.1
 	github.com/finos/morphir/pkg/vfs v0.4.0-alpha.1
 	github.com/stretchr/testify v1.11.1
 )
