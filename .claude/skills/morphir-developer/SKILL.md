@@ -182,7 +182,12 @@ mise run verify
 # 6. Run tests
 mise run test
 
-# 7. Check for uncommitted changes in tracked files
+# 7. Verify schema sync (if schema files changed)
+if git diff --cached --name-only | grep -q "schemas/"; then
+    python .claude/skills/morphir-developer/scripts/convert_schema.py --verify website/static/schemas/ || echo "❌ FAIL: Schema files out of sync!"
+fi
+
+# 8. Check for uncommitted changes in tracked files
 git status --short
 ```
 
@@ -405,6 +410,92 @@ Currently there are no enforced coverage thresholds, but:
 - New code should generally have tests
 - PR coverage reports show if your changes reduce overall coverage
 - Aim to maintain or improve coverage with each PR
+
+## Schema Management
+
+### JSON Schema Files
+
+Morphir maintains JSON Schema definitions for the IR format. These schemas are:
+- **Source of truth**: `website/static/schemas/*.yaml` (human-readable YAML)
+- **Generated**: `website/static/schemas/*.json` (tool-compatible JSON)
+- **Go model schemas**: `pkg/models/ir/schema/` (for Go code generation)
+
+### Schema Conversion Scripts
+
+The skill includes scripts to manage schema synchronization:
+
+```bash
+# Convert YAML schemas to JSON
+python .claude/skills/morphir-developer/scripts/convert_schema.py website/static/schemas/
+
+# Verify YAML and JSON are in sync
+python .claude/skills/morphir-developer/scripts/convert_schema.py --verify website/static/schemas/
+
+# Check for drift between schema and Go implementation
+python .claude/skills/morphir-developer/scripts/check_schema_drift.py --all
+
+# JSON output for CI
+python .claude/skills/morphir-developer/scripts/check_schema_drift.py --all --json
+```
+
+### Schema Drift Detection in Code Review
+
+When reviewing PRs that modify IR models or schema files, check for drift:
+
+**Pre-commit schema check:**
+```bash
+# Add to pre-commit workflow
+echo "Checking schema sync..."
+python .claude/skills/morphir-developer/scripts/convert_schema.py --verify website/static/schemas/ || {
+    echo "❌ FAIL: Schema YAML/JSON out of sync!"
+    echo "Run: python .claude/skills/morphir-developer/scripts/convert_schema.py website/static/schemas/"
+    exit 1
+}
+
+echo "Checking schema-code drift..."
+python .claude/skills/morphir-developer/scripts/check_schema_drift.py --sync
+```
+
+**During code review, flag these issues:**
+
+| Issue | Flag | Action |
+|-------|------|--------|
+| YAML/JSON schema mismatch | `❌ Schema files out of sync` | Request change: run convert_schema.py |
+| New Go type not in schema | `⚠️ Potential schema drift` | Ask user: intentional or needs schema update? |
+| Schema type missing Go impl | `ℹ️ Schema type not implemented` | Ask user: implementation planned or schema outdated? |
+
+### Handling Schema Drift
+
+When drift is detected during code review, use the AskUserQuestion tool to determine the appropriate action:
+
+**For new Go types not in schema:**
+```
+Question: I noticed a new type `{TypeName}` in the Go model that's not documented in the IR schema.
+
+Options:
+1. "Add to schema" - Create a beads issue to update the schema
+2. "Intentional" - This type is internal and shouldn't be in the public schema
+3. "Already planned" - Schema update is already tracked elsewhere
+```
+
+**For schema types without Go implementation:**
+```
+Question: The schema defines `{TypeName}` but I couldn't find a corresponding Go implementation.
+
+Options:
+1. "Implementation needed" - Create a beads issue to implement the type
+2. "Different name" - The Go type uses a different naming convention
+3. "Embedded" - This type is embedded in another Go struct
+```
+
+**Creating issues for schema work:**
+```bash
+# Create beads issue for schema update
+bd create --title "Update IR schema: add {TypeName}" --type task --priority 2
+
+# Or create GitHub issue for public tracking
+gh issue create --title "Schema drift: {TypeName}" --body "Schema and implementation are out of sync..."
+```
 
 ### Debugging Module Resolution
 
@@ -665,6 +756,18 @@ When reviewing PRs, check for:
 2. Missing exception documentation for deviations
 3. Exception comments that lack proper justification
 4. Opportunities to refactor tagged structs to typestate
+5. **Schema drift**: New IR model types that aren't in the schema, or schema changes without corresponding code updates
+
+**Schema drift review process:**
+```bash
+# Run schema drift detection
+python .claude/skills/morphir-developer/scripts/check_schema_drift.py --all
+
+# If drift detected, use AskUserQuestion to determine action:
+# - Request code changes to sync
+# - Create beads issue for future work
+# - Create GitHub issue for public tracking
+```
 
 ## Integration with Release Manager
 

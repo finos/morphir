@@ -15,6 +15,7 @@ You are a technical writing assistant specialized in Morphir documentation. You 
 4. **Check Links** - Find and fix broken links
 5. **Review Code for Docs** - Verify public APIs are documented
 6. **Create Tutorials** - Build well-structured, effective tutorials
+7. **Manage JSON Schemas** - Convert YAML schemas to JSON and detect drift
 
 ## Documentation Structure
 
@@ -240,6 +241,92 @@ python scripts/validate_tutorial.py --suggest path/to/tutorial.md
 # Strict mode
 python scripts/validate_tutorial.py --strict path/to/tutorials/
 ```
+
+### convert_schema.py
+
+Converts YAML-formatted JSON Schema files to JSON format to keep both versions in sync.
+
+```bash
+# Convert a single file
+python scripts/convert_schema.py morphir-ir-v3.yaml
+
+# Convert all schemas in a directory
+python scripts/convert_schema.py --dir website/static/schemas/
+
+# Verify YAML and JSON are in sync (no changes made)
+python scripts/convert_schema.py --verify website/static/schemas/
+
+# Force conversion even if JSON is newer
+python scripts/convert_schema.py --force morphir-ir-v3.yaml
+
+# JSON output for CI
+python scripts/convert_schema.py --verify --json website/static/schemas/
+```
+
+### check_schema_drift.py
+
+Detects drift between schema definitions and implementation.
+
+```bash
+# Check YAML/JSON sync only
+python scripts/check_schema_drift.py --sync
+
+# Check schema vs Go code drift
+python scripts/check_schema_drift.py --code
+
+# Run all drift checks
+python scripts/check_schema_drift.py --all
+
+# JSON output for CI integration
+python scripts/check_schema_drift.py --all --json
+
+# Fail on any issues (strict mode)
+python scripts/check_schema_drift.py --all --strict
+```
+
+## Schema Management Workflow
+
+### Keeping Schemas in Sync
+
+The Morphir IR schemas are maintained in YAML format (human-readable) with JSON versions generated for tool compatibility.
+
+**Schema locations:**
+- **Source of truth (YAML)**: `website/static/schemas/*.yaml`
+- **Generated (JSON)**: `website/static/schemas/*.json`
+- **Go model schemas**: `pkg/models/ir/schema/` (in main repo)
+
+**Workflow for schema changes:**
+
+1. **Edit the YAML schema file** (always start with YAML)
+2. **Regenerate JSON version:**
+   ```bash
+   python .claude/skills/technical-writer/scripts/convert_schema.py website/static/schemas/
+   ```
+3. **Verify sync:**
+   ```bash
+   python .claude/skills/technical-writer/scripts/convert_schema.py --verify website/static/schemas/
+   ```
+
+### Schema Drift Detection in Code Review
+
+When reviewing PRs that touch schemas or model code, check for drift:
+
+```bash
+# Full drift check
+python .claude/skills/technical-writer/scripts/check_schema_drift.py --all
+
+# If issues found:
+# - YAML/JSON mismatch: Run convert_schema.py to sync
+# - Schema/code mismatch: Review if schema or code needs updating
+```
+
+**Common drift scenarios:**
+
+| Scenario | Detection | Resolution |
+|----------|-----------|------------|
+| YAML edited, JSON not updated | `--sync` check fails | Run `convert_schema.py` |
+| New Go type without schema entry | `--code` shows undocumented type | Add to schema or document as intentional |
+| Schema type without Go implementation | `--code` shows potential missing impl | Implement or document as intentional |
 
 ## Best Practices
 
