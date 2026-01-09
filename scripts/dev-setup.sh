@@ -15,30 +15,12 @@ echo "Setting up Go workspace for local development..."
 
 cd "$PROJECT_ROOT"
 
-# Initialize Go workspace
-if [ -f "go.work" ]; then
-    echo "✓ go.work already exists"
+# Initialize Go workspace using dynamic discovery
+if [ -x "$SCRIPT_DIR/setup-workspace.sh" ]; then
+    "$SCRIPT_DIR/setup-workspace.sh"
 else
-    echo "Creating go.work..."
-    go work init \
-        ./cmd/morphir \
-        ./pkg/bindings/wasm-componentmodel \
-        ./pkg/config \
-        ./pkg/models \
-        ./pkg/pipeline \
-        ./pkg/sdk \
-        ./pkg/tooling \
-        ./tests/bdd
-    echo "✓ Created go.work"
-fi
-
-# Sync workspace (ignore errors if modules aren't tagged yet)
-echo "Syncing workspace..."
-if go work sync 2>/dev/null; then
-    echo "✓ Workspace synced successfully"
-else
-    echo "⚠ Workspace sync failed (this is normal if modules aren't tagged yet)"
-    echo "  The workspace will work for local development anyway"
+    echo "❌ Missing setup-workspace.sh; cannot configure go.work automatically"
+    exit 1
 fi
 
 echo ""

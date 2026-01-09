@@ -791,6 +791,9 @@ You can also manually trigger a release:
 - ⚠️ **Safeguard**: GoReleaser runs `./scripts/remove-replace-directives.sh` to catch any accidental additions
 
 **Never commit replace directives to go.mod files.** If you need to work across modules locally, use the Go workspace (`go.work`).
+**Do not commit `go.work` or `go.work.sum` changes.** Go workspace files are strictly for local development and are not shared.
+Troubleshooting: run `mise run workspace-doctor` (default fix creates `go.work` and applies versioned replaces) or see `DEVELOPING.md#go-workspace-resolution-errors` and `.claude/skills/morphir-developer/SKILL.md#go-workspace-resolution-errors`.
+Version guidance: see `docs/developers/morphir-developers-guide.md`.
 
 ### Local Release Testing
 

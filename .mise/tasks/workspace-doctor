@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#MISE description="Diagnose Go workspace issues and offer local fixes"
+#USAGE name workspace-doctor
+#USAGE bin workspace-doctor
+#USAGE about "Diagnose Go workspace issues and offer local fixes"
+#USAGE usage "mise run workspace-doctor -- --fix=replace|tags|none"
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+"$REPO_ROOT/scripts/workspace-doctor.sh" "$@"

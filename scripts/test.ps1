@@ -3,6 +3,9 @@ $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 & (Join-Path $scriptDir "sync-changelog.ps1")
 
+Write-Host "Checking workspace..."
+& (Join-Path $scriptDir "workspace-doctor.ps1") -Fix replace
+
 Write-Host "Running tests..."
 $modules = @(
     "cmd/morphir",

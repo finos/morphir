@@ -31,6 +31,7 @@ type Config struct {
 	logging    LoggingSection
 	ui         UISection
 	tasks      TasksSection
+	workflows  WorkflowsSection
 	bindings   BindingsSection
 	toolchains ToolchainsSection
 }
@@ -78,6 +79,11 @@ func (c Config) UI() UISection {
 // Tasks returns the tasks section configuration.
 func (c Config) Tasks() TasksSection {
 	return c.tasks
+}
+
+// Workflows returns the workflows section configuration.
+func (c Config) Workflows() WorkflowsSection {
+	return c.workflows
 }
 
 // Bindings returns the bindings section configuration.
@@ -490,6 +496,116 @@ func (s TasksSection) Len() int {
 	return len(s.definitions)
 }
 
+// WorkflowsSection contains workflow definitions for the project.
+// Workflows define staged orchestration of targets.
+type WorkflowsSection struct {
+	definitions map[string]WorkflowConfig
+}
+
+// Get retrieves a workflow configuration by name.
+// Returns the workflow config and true if found, otherwise returns an empty
+// config and false.
+func (s WorkflowsSection) Get(name string) (WorkflowConfig, bool) {
+	if s.definitions == nil {
+		return WorkflowConfig{}, false
+	}
+	workflow, ok := s.definitions[name]
+	return workflow, ok
+}
+
+// Names returns a list of all defined workflow names.
+// Returns a defensive copy to preserve immutability.
+func (s WorkflowsSection) Names() []string {
+	if s.definitions == nil {
+		return nil
+	}
+	names := make([]string, 0, len(s.definitions))
+	for name := range s.definitions {
+		names = append(names, name)
+	}
+	return names
+}
+
+// Len returns the number of defined workflows.
+func (s WorkflowsSection) Len() int {
+	return len(s.definitions)
+}
+
+// WorkflowConfig represents a workflow definition.
+//
+// Example configuration in morphir.toml:
+//
+//	[workflows.build]
+//	description = "Standard build workflow"
+//	stages = [
+//	  { name = "frontend", targets = ["make"] },
+//	  { name = "backend", targets = ["gen:scala"] },
+//	]
+type WorkflowConfig struct {
+	name        string
+	description string
+	extends     string
+	stages      []WorkflowStageConfig
+}
+
+// Name returns the workflow name.
+func (c WorkflowConfig) Name() string {
+	return c.name
+}
+
+// Description returns the workflow description.
+func (c WorkflowConfig) Description() string {
+	return c.description
+}
+
+// Extends returns the name of the base workflow.
+func (c WorkflowConfig) Extends() string {
+	return c.extends
+}
+
+// Stages returns the workflow stages.
+func (c WorkflowConfig) Stages() []WorkflowStageConfig {
+	if len(c.stages) == 0 {
+		return nil
+	}
+	result := make([]WorkflowStageConfig, len(c.stages))
+	copy(result, c.stages)
+	return result
+}
+
+// WorkflowStageConfig represents a single workflow stage.
+type WorkflowStageConfig struct {
+	name      string
+	targets   []string
+	parallel  bool
+	condition string
+}
+
+// Name returns the stage name.
+func (c WorkflowStageConfig) Name() string {
+	return c.name
+}
+
+// Targets returns the stage target list.
+func (c WorkflowStageConfig) Targets() []string {
+	if len(c.targets) == 0 {
+		return nil
+	}
+	result := make([]string, len(c.targets))
+	copy(result, c.targets)
+	return result
+}
+
+// Parallel returns whether the stage can run in parallel.
+func (c WorkflowStageConfig) Parallel() bool {
+	return c.parallel
+}
+
+// Condition returns the stage condition expression.
+func (c WorkflowStageConfig) Condition() string {
+	return c.condition
+}
+
 // BindingsSection contains type mapping configuration for external bindings.
 // Each binding (WIT, Protobuf, JSON Schema, etc.) can have its own type mappings.
 type BindingsSection struct {
@@ -866,6 +982,9 @@ func Default() Config {
 		tasks: TasksSection{
 			definitions: nil, // No tasks defined by default
 		},
+		workflows: WorkflowsSection{
+			definitions: nil, // No workflows defined by default
+		},
 		bindings: BindingsSection{}, // Empty by default; bindings use their built-in defaults
 		toolchains: ToolchainsSection{
 			definitions: nil, // No toolchains defined by default
@@ -944,6 +1063,7 @@ func (r LoadResult) Sources() []SourceInfo {
 //	  "logging": { "level": string, "format": string, "file": string },
 //	  "ui": { "color": bool, "interactive": bool, "theme": string },
 //	  "tasks": { "<task_name>": { "kind": string, "action": string, "cmd": []string, ... } },
+//	  "workflows": { "<workflow_name>": { "description": string, "extends": string, "stages": [...] } },
 //	  "bindings": { "wit": { "primitives": [...], "containers": [...] }, ... },
 //	}
 func FromMap(m map[string]any) Config {
@@ -962,6 +1082,7 @@ func FromMap(m map[string]any) Config {
 	cfg.logging = loggingFromMap(m, cfg.logging)
 	cfg.ui = uiFromMap(m, cfg.ui)
 	cfg.tasks = tasksFromMap(m, cfg.tasks)
+	cfg.workflows = workflowsFromMap(m, cfg.workflows)
 	cfg.bindings = bindingsFromMap(m, cfg.bindings)
 	cfg.toolchains = toolchainsFromMap(m, cfg.toolchains)
 
@@ -1118,6 +1239,92 @@ func tasksFromMap(m map[string]any, def TasksSection) TasksSection {
 	}
 
 	return TasksSection{definitions: definitions}
+}
+
+// workflowsFromMap parses workflow configurations from a map.
+func workflowsFromMap(m map[string]any, def WorkflowsSection) WorkflowsSection {
+	section, ok := m["workflows"].(map[string]any)
+	if !ok {
+		return def
+	}
+
+	definitions := make(map[string]WorkflowConfig)
+	for workflowName, workflowValue := range section {
+		workflowMap, ok := workflowValue.(map[string]any)
+		if !ok {
+			continue
+		}
+		definitions[workflowName] = workflowConfigFromMap(workflowName, workflowMap)
+	}
+
+	if len(definitions) == 0 {
+		return def
+	}
+
+	return WorkflowsSection{definitions: definitions}
+}
+
+// workflowConfigFromMap parses a WorkflowConfig from a map.
+func workflowConfigFromMap(name string, m map[string]any) WorkflowConfig {
+	cfg := WorkflowConfig{name: name}
+	if description, ok := m["description"].(string); ok {
+		cfg.description = description
+	}
+	if extends, ok := m["extends"].(string); ok {
+		cfg.extends = extends
+	}
+	if stagesVal, ok := m["stages"]; ok {
+		cfg.stages = workflowStagesFromAny(stagesVal)
+	}
+	return cfg
+}
+
+func workflowStagesFromAny(v any) []WorkflowStageConfig {
+	switch val := v.(type) {
+	case []WorkflowStageConfig:
+		if len(val) == 0 {
+			return nil
+		}
+		result := make([]WorkflowStageConfig, len(val))
+		copy(result, val)
+		return result
+	case []any:
+		if len(val) == 0 {
+			return nil
+		}
+		stages := make([]WorkflowStageConfig, 0, len(val))
+		for _, item := range val {
+			stageMap, ok := item.(map[string]any)
+			if !ok {
+				continue
+			}
+			stage := workflowStageFromMap(stageMap)
+			if stage.name == "" && len(stage.targets) == 0 && !stage.parallel && stage.condition == "" {
+				continue
+			}
+			stages = append(stages, stage)
+		}
+		if len(stages) == 0 {
+			return nil
+		}
+		return stages
+	}
+	return nil
+}
+
+func workflowStageFromMap(m map[string]any) WorkflowStageConfig {
+	cfg := WorkflowStageConfig{}
+	if name, ok := m["name"].(string); ok {
+		cfg.name = name
+	}
+	cfg.targets = getStringSliceFromAny(m["targets"])
+	if parallel, ok := m["parallel"].(bool); ok {
+		cfg.parallel = parallel
+	}
+	if condition, ok := m["condition"].(string); ok {
+		cfg.condition = condition
+	}
+	return cfg
 }
 
 func taskFromMap(m map[string]any) Task {

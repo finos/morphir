@@ -76,6 +76,7 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(aboutCmd)
 	rootCmd.AddCommand(configCmd)
+	rootCmd.AddCommand(planCmd)
 	rootCmd.AddCommand(witCmd)
 	rootCmd.AddCommand(golangCmd)
 	// Note: Cobra automatically provides a built-in 'help' command,

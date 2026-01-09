@@ -381,6 +381,62 @@ func TestValidateWrongSectionType(t *testing.T) {
 	}
 }
 
+func TestValidateWorkflows(t *testing.T) {
+	t.Run("valid workflow", func(t *testing.T) {
+		config := map[string]any{
+			"workflows": map[string]any{
+				"build": map[string]any{
+					"description": "Build workflow",
+					"stages": []any{
+						map[string]any{
+							"name":    "compile",
+							"targets": []string{"make"},
+						},
+						map[string]any{
+							"name":     "generate",
+							"targets":  []any{"gen:scala"},
+							"parallel": true,
+						},
+					},
+				},
+			},
+		}
+		result := Validate(config)
+		if result.HasErrors() {
+			t.Fatalf("valid workflows should not have errors: %s", result.Error())
+		}
+	})
+
+	t.Run("invalid workflow section type", func(t *testing.T) {
+		config := map[string]any{
+			"workflows": "not a table",
+		}
+		result := Validate(config)
+		if !hasErrorForField(result, "workflows") {
+			t.Error("expected error for invalid workflows section")
+		}
+	})
+
+	t.Run("invalid stage targets", func(t *testing.T) {
+		config := map[string]any{
+			"workflows": map[string]any{
+				"ci": map[string]any{
+					"stages": []any{
+						map[string]any{
+							"name":    "compile",
+							"targets": "make",
+						},
+					},
+				},
+			},
+		}
+		result := Validate(config)
+		if !hasErrorForField(result, "workflows.ci.stages[0].targets") {
+			t.Error("expected error for invalid stage targets")
+		}
+	})
+}
+
 // Helper functions
 
 func hasErrorForField(result *Result, field string) bool {

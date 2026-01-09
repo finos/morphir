@@ -28,6 +28,7 @@ This is a **Go multi-module monorepo** using workspaces:
 - **Modules**: cmd/morphir, pkg/bindings/typemap, pkg/bindings/wit, pkg/config, pkg/docling-doc, pkg/models, pkg/nbformat, pkg/pipeline, pkg/sdk, pkg/task, pkg/tooling, pkg/vfs, tests/bdd
 - **Workspace**: Uses `go.work` for local module resolution (NOT checked into git)
 - **Replace Directives**: NEVER use replace directives in go.mod files (releases require clean modules)
+- **Versioning**: Keep internal deps in go.mod pinned to released tags; use go.work for unreleased local changes. If a module has never been tagged, prefer a local-only, versioned go.work replace; add an initial tag only when you intend to publish and consume that version.
 - **Issue Tracking**: Uses beads for local issue management, GitHub for public issues
 - **Testing**: TDD/BDD approach with tests before implementation
 - **Style**: Functional programming principles, see AGENTS.md
@@ -134,10 +135,12 @@ mise run verify  # All modules should build
 # 1. Write tests first (in tests/bdd or package-level tests)
 # 2. Run tests (they should fail)
 mise run test
+# This runs the workspace doctor first to apply local fixes.
 
 # 3. Implement functionality
 # 4. Run tests again (they should pass)
 mise run test
+# This runs the workspace doctor first to apply local fixes.
 
 # 5. Refactor while keeping tests green
 ```
@@ -607,6 +610,53 @@ mise run dev-setup
 
 # Verify modules still build
 mise run verify
+```
+
+### Go workspace resolution errors
+
+**Problem**: Go tries to fetch local modules or errors with `unknown revision pkg/.../vX.Y.Z`.
+
+**Solution**:
+```bash
+# Confirm workspace is active
+go env GOWORK
+
+# Ensure all modules are included
+go work use -r .
+go work edit -print
+
+# Sync workspace
+go work sync
+
+# From repo root, GOMOD should be /dev/null when workspace is active
+go env GOMOD
+
+# If GOWORK is empty, set it for the command
+GOWORK="$(git rev-parse --show-toplevel)/go.work" go test ./cmd/morphir/...
+
+# Or run the workspace doctor (interactive, default uses versioned go.work replaces)
+mise run workspace-doctor
+
+# Verify no replace directives exist
+rg -n "^replace " --glob "*/go.mod"
+
+# Ensure workspace files are not staged
+git status --short | rg "go.work"
+
+# If errors still mention unknown revision pkg/.../vX.Y.Z:
+# - Ensure the dependency version exists as a tag, or
+# - Avoid adding the dependency until a release tag exists.
+#
+# go.work use does not override invalid version references in go.mod.
+# Local-only workaround:
+#   go work edit -replace=github.com/finos/morphir/pkg/<module>@vX.Y.Z=./pkg/<module>
+#
+# If using git worktrees, each worktree needs its own go.work.
+#
+# Avoid go.work replace directives unless absolutely necessary; they must be version-qualified.
+#
+# Optional cache reset after repeated attempts:
+# go clean -cache -modcache
 ```
 
 ### go.work accidentally committed

@@ -1049,6 +1049,46 @@ func TestFromMapNoTasks(t *testing.T) {
 	}
 }
 
+func TestFromMapWithWorkflows(t *testing.T) {
+	cfg := FromMap(map[string]any{
+		"workflows": map[string]any{
+			"build": map[string]any{
+				"description": "Build workflow",
+				"stages": []any{
+					map[string]any{
+						"name":    "compile",
+						"targets": []any{"make"},
+					},
+					map[string]any{
+						"name":     "generate",
+						"targets":  []string{"gen:scala"},
+						"parallel": true,
+					},
+				},
+			},
+		},
+	})
+
+	workflows := cfg.Workflows()
+	if workflows.Len() != 1 {
+		t.Fatalf("expected 1 workflow, got %d", workflows.Len())
+	}
+	build, ok := workflows.Get("build")
+	if !ok {
+		t.Fatal("expected build workflow to be loaded")
+	}
+	if build.Description() != "Build workflow" {
+		t.Errorf("unexpected description: %q", build.Description())
+	}
+	stages := build.Stages()
+	if len(stages) != 2 {
+		t.Fatalf("expected 2 stages, got %d", len(stages))
+	}
+	if stages[1].Name() != "generate" || !stages[1].Parallel() {
+		t.Errorf("unexpected stage data: %+v", stages[1])
+	}
+}
+
 func TestLoadWithTasksFromFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := tmpDir + "/morphir.toml"
