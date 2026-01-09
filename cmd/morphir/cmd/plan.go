@@ -26,6 +26,9 @@ var (
 	planStopOnError   bool
 	planMaxParallel   int
 	planTimeout       time.Duration
+	planMermaid       string
+	planMermaidFlag   bool
+	planDetailed      bool
 )
 
 var planCmd = &cobra.Command{
@@ -36,12 +39,16 @@ var planCmd = &cobra.Command{
 The workflow must be defined in morphir.toml under [workflows.<name>].
 
 Use --run to execute the plan after displaying it.
-Use --dry-run to validate the plan without executing tasks.`,
+Use --dry-run to validate the plan without executing tasks.
+Use --mermaid to emit a Mermaid diagram visualizing the plan.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runPlan,
 }
 
 func runPlan(cmd *cobra.Command, args []string) error {
+	// Check if --mermaid flag was used
+	checkMermaidFlag(cmd)
+
 	cfg, err := GetConfig()
 	if err != nil {
 		return err
@@ -73,19 +80,35 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	}
 
 	// Execute the plan if --run or --dry-run was specified
+	var result *toolchain.WorkflowResult
 	if planRun || planDryRun {
-		return executePlan(plan, registry, cfg)
+		result, err = executePlanAndGetResult(plan, registry, cfg)
+		if err != nil && !planMermaidFlag {
+			return err
+		}
+	}
+
+	// Generate mermaid diagram if requested
+	if planMermaidFlag {
+		if err := emitMermaidDiagram(plan, workflowName, cfg, result); err != nil {
+			return err
+		}
+	}
+
+	// Return execution error after mermaid generation
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
-// executePlan runs the workflow plan using WorkflowRunner.
-func executePlan(plan toolchain.Plan, registry *toolchain.Registry, cfg config.Config) error {
+// executePlanAndGetResult runs the workflow plan and returns the result.
+func executePlanAndGetResult(plan toolchain.Plan, registry *toolchain.Registry, cfg config.Config) (*toolchain.WorkflowResult, error) {
 	// Set up output directory
 	workDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get working directory: %w", err)
+		return nil, fmt.Errorf("failed to get working directory: %w", err)
 	}
 
 	outputDir := cfg.Workspace().OutputDir()
@@ -151,11 +174,54 @@ func executePlan(plan toolchain.Plan, registry *toolchain.Registry, cfg config.C
 
 	if !result.Success {
 		if result.Error != nil {
-			return result.Error
+			return &result, result.Error
 		}
-		return fmt.Errorf("workflow failed: %d task(s) failed", len(result.FailedTasks))
+		return &result, fmt.Errorf("workflow failed: %d task(s) failed", len(result.FailedTasks))
 	}
 
+	return &result, nil
+}
+
+// emitMermaidDiagram generates and writes a Mermaid diagram of the plan.
+func emitMermaidDiagram(plan toolchain.Plan, workflowName string, cfg config.Config, result *toolchain.WorkflowResult) error {
+	// Determine output path
+	outputPath := planMermaid
+	if outputPath == "" {
+		// Use default location
+		outputDir := cfg.Workspace().OutputDir()
+		if outputDir == "" {
+			outputDir = ".morphir"
+		}
+		outputPath = fmt.Sprintf("%s/out/plan/%s/plan.mmd", outputDir, workflowName)
+	}
+
+	// Build mermaid options
+	opts := toolchain.MermaidOptions{
+		Detailed: planDetailed,
+	}
+
+	// Include task results for styling if available
+	if result != nil {
+		opts.TaskResults = result.TaskResults
+	}
+
+	// Generate diagram
+	diagram := toolchain.PlanToMermaidWithOptions(plan, opts)
+
+	// Ensure directory exists
+	dir := outputPath[:strings.LastIndex(outputPath, "/")]
+	if dir != "" {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create output directory: %w", err)
+		}
+	}
+
+	// Write file
+	if err := os.WriteFile(outputPath, []byte(diagram), 0644); err != nil {
+		return fmt.Errorf("failed to write mermaid diagram: %w", err)
+	}
+
+	fmt.Printf("\nMermaid diagram written to: %s\n", outputPath)
 	return nil
 }
 
@@ -192,6 +258,20 @@ func init() {
 	planCmd.Flags().BoolVar(&planStopOnError, "stop-on-error", true, "Stop execution on first error")
 	planCmd.Flags().IntVar(&planMaxParallel, "max-parallel", 0, "Max parallel tasks (0 = unlimited)")
 	planCmd.Flags().DurationVar(&planTimeout, "timeout", 0, "Overall workflow timeout (0 = no timeout)")
+
+	// Mermaid diagram flags
+	planCmd.Flags().StringVar(&planMermaid, "mermaid", "", "Emit Mermaid diagram to path (default: .morphir/out/plan/<workflow>/plan.mmd)")
+	planCmd.Flags().BoolVar(&planDetailed, "detailed", false, "Include inputs/outputs in Mermaid diagram")
+
+	// Mark --mermaid as having an optional value
+	planCmd.Flags().Lookup("mermaid").NoOptDefVal = ""
+}
+
+// checkMermaidFlag handles the special case where --mermaid is used without a value
+func checkMermaidFlag(cmd *cobra.Command) {
+	if cmd.Flags().Changed("mermaid") {
+		planMermaidFlag = true
+	}
 }
 
 func registryFromConfig(cfg config.Config) (*toolchain.Registry, error) {
