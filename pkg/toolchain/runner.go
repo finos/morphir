@@ -276,10 +276,12 @@ func (r *WorkflowRunner) executeStage(
 		Success:   true,
 	}
 
-	// Check stage condition (placeholder for future implementation)
+	// Check stage condition
 	if stage.Condition != "" {
-		// TODO: Evaluate condition expression
-		// For now, conditions are not evaluated
+		if !evaluateCondition(stage.Condition) {
+			stageResult.Skipped = true
+			stageResult.SkipReason = fmt.Sprintf("condition %q evaluated to false", stage.Condition)
+		}
 	}
 
 	// Report stage started
@@ -531,4 +533,27 @@ func (r WorkflowResult) TaskCount() int {
 // SuccessfulTaskCount returns the number of successful tasks.
 func (r WorkflowResult) SuccessfulTaskCount() int {
 	return len(r.TaskResults) - len(r.FailedTasks) - len(r.SkippedTasks)
+}
+
+// evaluateCondition evaluates a condition expression and returns whether it's true.
+// Currently supports:
+//   - "true" - always true
+//   - "false" - always false
+//   - Any other non-empty string is treated as true (condition exists but not evaluated)
+//
+// Future implementations could support more complex expressions like:
+//   - Environment variable checks: "$VAR == 'value'"
+//   - File existence: "exists('path/to/file')"
+//   - Previous task outputs: "task.output == 'success'"
+func evaluateCondition(condition string) bool {
+	switch condition {
+	case "false", "False", "FALSE", "no", "No", "NO", "0":
+		return false
+	case "true", "True", "TRUE", "yes", "Yes", "YES", "1", "":
+		return true
+	default:
+		// For unrecognized conditions, default to true
+		// This allows forward compatibility with future expression syntax
+		return true
+	}
 }

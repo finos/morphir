@@ -104,3 +104,46 @@ Feature: Morphir Plan Command
       When I run morphir plan build --mermaid output.mmd
       Then the command should succeed
       And the file "output.mmd" should contain "(parallel)"
+
+  Rule: Error handling for invalid workflows
+
+    Scenario: Non-existent workflow produces helpful error
+      Given a morphir.toml with a build workflow
+      When I run morphir plan nonexistent
+      Then the command should fail
+      And the output should contain "workflow"
+      And the output should contain "nonexistent"
+
+    Scenario: Unknown target in workflow produces helpful error
+      Given a morphir.toml with an unknown target
+      When I run morphir plan build
+      Then the command should fail
+      And the output should contain "no task fulfills target"
+
+    Scenario: Missing morphir.toml produces helpful error
+      When I run morphir plan build
+      Then the command should fail
+      And the output should contain "no workflows defined in morphir.toml"
+
+    Scenario: Empty workflow produces helpful error
+      Given a morphir.toml with an empty workflow
+      When I run morphir plan empty
+      Then the command should fail
+      And the output should contain "no stages defined"
+
+  Rule: Stage conditions
+
+    Scenario: Stage with true condition executes
+      Given a morphir.toml with a conditional workflow
+      When I run morphir plan build --run
+      Then the command should succeed
+      And the output should contain "check-stage"
+      And the output should contain "completed"
+
+    Scenario: Stage with false condition is skipped
+      Given a morphir.toml with a false condition workflow
+      When I run morphir plan build --run
+      Then the command should succeed
+      And the output should contain "skipped"
+      And the output should contain "condition"
+      And the output should contain "1 skipped"

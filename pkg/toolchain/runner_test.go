@@ -578,3 +578,113 @@ func containsHelper(s, substr string) bool {
 	}
 	return false
 }
+
+func TestEvaluateCondition(t *testing.T) {
+	tests := []struct {
+		name      string
+		condition string
+		expected  bool
+	}{
+		// True conditions
+		{"empty string", "", true},
+		{"true lowercase", "true", true},
+		{"True mixed case", "True", true},
+		{"TRUE uppercase", "TRUE", true},
+		{"yes lowercase", "yes", true},
+		{"Yes mixed case", "Yes", true},
+		{"YES uppercase", "YES", true},
+		{"1", "1", true},
+
+		// False conditions
+		{"false lowercase", "false", false},
+		{"False mixed case", "False", false},
+		{"FALSE uppercase", "FALSE", false},
+		{"no lowercase", "no", false},
+		{"No mixed case", "No", false},
+		{"NO uppercase", "NO", false},
+		{"0", "0", false},
+
+		// Unknown conditions (default to true)
+		{"unknown expression", "env.CI == 'true'", true},
+		{"random string", "always", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := evaluateCondition(tt.condition)
+			if result != tt.expected {
+				t.Errorf("evaluateCondition(%q) = %v, want %v", tt.condition, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestWorkflowRunner_Run_StageCondition(t *testing.T) {
+	runner, registry := createTestRunner()
+
+	registerEchoToolchain(registry)
+
+	task := &PlanTask{
+		Key:       TaskKey{Toolchain: "echo", Task: "hello"},
+		Toolchain: "echo",
+		Task:      "hello",
+	}
+
+	t.Run("false condition skips stage", func(t *testing.T) {
+		plan := Plan{
+			Workflow: Workflow{Name: "conditional-test"},
+			Stages: []PlanStage{
+				{
+					Name:      "conditional-stage",
+					Condition: "false",
+					Tasks:     []*PlanTask{task},
+				},
+			},
+			Tasks: map[TaskKey]*PlanTask{task.Key: task},
+		}
+
+		result := runner.Run(plan, DefaultRunOptions())
+
+		if !result.Success {
+			t.Errorf("expected workflow to succeed, got error: %v", result.Error)
+		}
+		if len(result.Stages) != 1 {
+			t.Errorf("expected 1 stage, got %d", len(result.Stages))
+		}
+		if !result.Stages[0].Skipped {
+			t.Error("expected stage to be skipped")
+		}
+		if len(result.SkippedTasks) != 1 {
+			t.Errorf("expected 1 skipped task, got %d", len(result.SkippedTasks))
+		}
+	})
+
+	t.Run("true condition executes stage", func(t *testing.T) {
+		plan := Plan{
+			Workflow: Workflow{Name: "conditional-test"},
+			Stages: []PlanStage{
+				{
+					Name:      "conditional-stage",
+					Condition: "true",
+					Tasks:     []*PlanTask{task},
+				},
+			},
+			Tasks: map[TaskKey]*PlanTask{task.Key: task},
+		}
+
+		result := runner.Run(plan, DefaultRunOptions())
+
+		if !result.Success {
+			t.Errorf("expected workflow to succeed, got error: %v", result.Error)
+		}
+		if len(result.Stages) != 1 {
+			t.Errorf("expected 1 stage, got %d", len(result.Stages))
+		}
+		if result.Stages[0].Skipped {
+			t.Error("expected stage NOT to be skipped")
+		}
+		if len(result.TaskResults) != 1 {
+			t.Errorf("expected 1 task result, got %d", len(result.TaskResults))
+		}
+	})
+}

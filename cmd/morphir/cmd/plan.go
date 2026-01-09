@@ -57,7 +57,23 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	workflowName := args[0]
 	workflows := workflowsFromConfig(cfg)
 	if len(workflows) == 0 {
-		return fmt.Errorf("no workflows defined in config")
+		return fmt.Errorf("no workflows defined in morphir.toml (ensure [workflows.<name>] sections exist)")
+	}
+
+	// Check if the requested workflow exists
+	workflow, ok := workflows[workflowName]
+	if !ok {
+		available := make([]string, 0, len(workflows))
+		for name := range workflows {
+			available = append(available, name)
+		}
+		sort.Strings(available)
+		return fmt.Errorf("workflow %q not found; available workflows: %v", workflowName, available)
+	}
+
+	// Validate workflow has stages
+	if len(workflow.Stages) == 0 {
+		return fmt.Errorf("workflow %q has no stages defined", workflowName)
 	}
 
 	registry, err := registryFromConfig(cfg)

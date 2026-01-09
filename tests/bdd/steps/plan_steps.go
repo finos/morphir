@@ -21,6 +21,12 @@ func RegisterPlanSteps(sc *godog.ScenarioContext) {
 	sc.Step(`^a morphir\.toml with a simple echo workflow$`, aMorphirTomlWithSimpleEchoWorkflow)
 	sc.Step(`^the morphir-elm toolchain is available$`, theMorphirElmToolchainIsAvailable)
 
+	// Error scenario setup steps
+	sc.Step(`^a morphir\.toml with an unknown target$`, aMorphirTomlWithUnknownTarget)
+	sc.Step(`^a morphir\.toml with an empty workflow$`, aMorphirTomlWithEmptyWorkflow)
+	sc.Step(`^a morphir\.toml with a conditional workflow$`, aMorphirTomlWithConditionalWorkflow)
+	sc.Step(`^a morphir\.toml with a false condition workflow$`, aMorphirTomlWithFalseConditionWorkflow)
+
 	// Command execution
 	sc.Step(`^I run morphir plan$`, iRunMorphirPlan)
 	sc.Step(`^I run morphir plan --help$`, iRunMorphirPlanHelp)
@@ -30,6 +36,7 @@ func RegisterPlanSteps(sc *godog.ScenarioContext) {
 	sc.Step(`^I run morphir plan ([a-z]+) --mermaid --mermaid-path ([^\s]+) --show-inputs$`, iRunMorphirPlanWithShowInputs)
 	sc.Step(`^I run morphir plan ([a-z]+) --mermaid --mermaid-path ([^\s]+) --show-inputs --show-outputs$`, iRunMorphirPlanWithShowInputsOutputs)
 	sc.Step(`^I run morphir plan ([a-z]+) --dry-run$`, iRunMorphirPlanDryRun)
+	sc.Step(`^I run morphir plan ([a-z]+) --run$`, iRunMorphirPlanRun)
 	sc.Step(`^I run morphir plan ([a-z]+) --run --mermaid --mermaid-path ([^\s]+)$`, iRunMorphirPlanRunWithMermaidPath)
 	sc.Step(`^I run morphir plan ([a-z]+) --explain ([^\s:]+:[^\s]+)$`, iRunMorphirPlanExplain)
 
@@ -257,6 +264,72 @@ func theMorphirElmToolchainIsAvailable(ctx context.Context) error {
 	return nil
 }
 
+func aMorphirTomlWithUnknownTarget(ctx context.Context) error {
+	// A workflow that references a target that no toolchain fulfills
+	config := `
+[workflows.build]
+description = "Build with unknown target"
+
+[[workflows.build.stages]]
+name = "frontend"
+targets = ["nonexistent-target"]
+`
+	return writeMorphirToml(ctx, config)
+}
+
+func aMorphirTomlWithEmptyWorkflow(ctx context.Context) error {
+	// A workflow with no stages
+	config := `
+[workflows.empty]
+description = "Empty workflow with no stages"
+`
+	return writeMorphirToml(ctx, config)
+}
+
+func aMorphirTomlWithConditionalWorkflow(ctx context.Context) error {
+	// A workflow with a stage that has a true condition
+	config := `
+[workflows.build]
+description = "Build with conditional stage"
+
+[[workflows.build.stages]]
+name = "check-stage"
+targets = ["echo-check"]
+condition = "true"
+
+[toolchain.echo-toolchain]
+version = "1.0.0"
+
+[toolchain.echo-toolchain.tasks.check]
+exec = "echo"
+args = ["condition passed"]
+fulfills = ["echo-check"]
+`
+	return writeMorphirToml(ctx, config)
+}
+
+func aMorphirTomlWithFalseConditionWorkflow(ctx context.Context) error {
+	// A workflow with a stage that has a false condition
+	config := `
+[workflows.build]
+description = "Build with false condition stage"
+
+[[workflows.build.stages]]
+name = "skip-stage"
+targets = ["echo-skip"]
+condition = "false"
+
+[toolchain.echo-toolchain]
+version = "1.0.0"
+
+[toolchain.echo-toolchain.tasks.skip]
+exec = "echo"
+args = ["this should not run"]
+fulfills = ["echo-skip"]
+`
+	return writeMorphirToml(ctx, config)
+}
+
 // Command execution steps
 
 func iRunMorphirPlan(ctx context.Context) error {
@@ -321,6 +394,14 @@ func iRunMorphirPlanDryRun(ctx context.Context, workflow string) error {
 		return err
 	}
 	return runMorphirCommand(ctc, "plan", workflow, "--dry-run")
+}
+
+func iRunMorphirPlanRun(ctx context.Context, workflow string) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+	return runMorphirCommand(ctc, "plan", workflow, "--run")
 }
 
 func iRunMorphirPlanRunWithMermaidPath(ctx context.Context, workflow, path string) error {
