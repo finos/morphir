@@ -80,9 +80,18 @@ func TestAccessorCoverage(t *testing.T) {
 		},
 	}
 
+	projectDecorations := map[string]DecorationConfig{
+		"testDec": {
+			displayName:     "Test Decoration",
+			ir:              "test-ir.json",
+			entryPoint:      "Test:Module:Type",
+			storageLocation: "test-values.json",
+		},
+	}
+
 	cfg := Config{
 		morphir:    MorphirSection{version: "3.0"},
-		project:    ProjectSection{name: "proj", version: "1.0.0", sourceDirectory: "src", exposedModules: []string{"Foo"}, modulePrefix: "Prefix"},
+		project:    ProjectSection{name: "proj", version: "1.0.0", sourceDirectory: "src", exposedModules: []string{"Foo"}, modulePrefix: "Prefix", decorations: projectDecorations},
 		workspace:  workspace,
 		ir:         IRSection{formatVersion: 3, strictMode: true},
 		codegen:    codegen,
@@ -112,6 +121,35 @@ func TestAccessorCoverage(t *testing.T) {
 	if cfg.project.exposedModules[0] == "Changed" {
 		t.Fatal("expected exposed modules to return a defensive copy")
 	}
+
+	// Test decorations accessor
+	decorations := cfg.Project().Decorations()
+	if len(decorations) != 1 {
+		t.Fatalf("expected 1 decoration, got %d", len(decorations))
+	}
+	dec, ok := decorations["testDec"]
+	if !ok {
+		t.Fatal("expected testDec decoration to be found")
+	}
+	if dec.DisplayName() != "Test Decoration" {
+		t.Fatalf("expected display name, got %q", dec.DisplayName())
+	}
+	if dec.IR() != "test-ir.json" {
+		t.Fatalf("expected IR path, got %q", dec.IR())
+	}
+	if dec.EntryPoint() != "Test:Module:Type" {
+		t.Fatalf("expected entry point, got %q", dec.EntryPoint())
+	}
+	if dec.StorageLocation() != "test-values.json" {
+		t.Fatalf("expected storage location, got %q", dec.StorageLocation())
+	}
+
+	// Test decorations defensive copy
+	decorations["newKey"] = DecorationConfig{displayName: "New"}
+	if len(cfg.project.decorations) != 1 {
+		t.Fatal("expected decorations to return a defensive copy")
+	}
+
 	if cfg.Morphir().Version() != "3.0" {
 		t.Fatalf("expected morphir version, got %q", cfg.Morphir().Version())
 	}

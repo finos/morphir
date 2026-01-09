@@ -1145,6 +1145,165 @@ func TestWorkflowsFromMap(t *testing.T) {
 	})
 }
 
+func TestFromMapWithDecorations(t *testing.T) {
+	m := map[string]any{
+		"project": map[string]any{
+			"name":             "My.Package",
+			"source_directory": "src",
+			"exposed_modules":  []any{"Foo", "Bar"},
+			"decorations": map[string]any{
+				"myDecoration": map[string]any{
+					"display_name":     "My Amazing Decoration",
+					"ir":               "decorations/my/morphir-ir.json",
+					"entry_point":      "My.Amazing.Decoration:Foo:Shape",
+					"storage_location": "my-decoration-values.json",
+				},
+				"anotherDec": map[string]any{
+					"display_name":     "Another Decoration",
+					"ir":               "decorations/another/morphir-ir.json",
+					"entry_point":      "Another:Module:Type",
+					"storage_location": "another-values.json",
+				},
+			},
+		},
+	}
+
+	cfg := FromMap(m)
+
+	decorations := cfg.Project().Decorations()
+	if len(decorations) != 2 {
+		t.Fatalf("expected 2 decorations, got %d", len(decorations))
+	}
+
+	dec1, ok := decorations["myDecoration"]
+	if !ok {
+		t.Fatal("expected myDecoration to be found")
+	}
+	if dec1.DisplayName() != "My Amazing Decoration" {
+		t.Errorf("DisplayName: want 'My Amazing Decoration', got %q", dec1.DisplayName())
+	}
+	if dec1.IR() != "decorations/my/morphir-ir.json" {
+		t.Errorf("IR: want 'decorations/my/morphir-ir.json', got %q", dec1.IR())
+	}
+	if dec1.EntryPoint() != "My.Amazing.Decoration:Foo:Shape" {
+		t.Errorf("EntryPoint: want 'My.Amazing.Decoration:Foo:Shape', got %q", dec1.EntryPoint())
+	}
+	if dec1.StorageLocation() != "my-decoration-values.json" {
+		t.Errorf("StorageLocation: want 'my-decoration-values.json', got %q", dec1.StorageLocation())
+	}
+
+	dec2, ok := decorations["anotherDec"]
+	if !ok {
+		t.Fatal("expected anotherDec to be found")
+	}
+	if dec2.DisplayName() != "Another Decoration" {
+		t.Errorf("DisplayName: want 'Another Decoration', got %q", dec2.DisplayName())
+	}
+}
+
+func TestFromMapWithDecorationsEmpty(t *testing.T) {
+	m := map[string]any{
+		"project": map[string]any{
+			"name":             "My.Package",
+			"source_directory": "src",
+		},
+	}
+
+	cfg := FromMap(m)
+
+	decorations := cfg.Project().Decorations()
+	if decorations != nil {
+		t.Errorf("expected nil decorations when not specified, got %v", decorations)
+	}
+}
+
+func TestFromMapDecorationsDefensiveCopy(t *testing.T) {
+	m := map[string]any{
+		"project": map[string]any{
+			"name":             "My.Package",
+			"source_directory": "src",
+			"decorations": map[string]any{
+				"testDec": map[string]any{
+					"display_name":     "Test",
+					"ir":               "test.json",
+					"entry_point":      "Test:Mod:Type",
+					"storage_location": "test-values.json",
+				},
+			},
+		},
+	}
+
+	cfg := FromMap(m)
+
+	decorations := cfg.Project().Decorations()
+	decorations["newKey"] = DecorationConfig{displayName: "New"}
+
+	// Verify original was not modified
+	decorationsAgain := cfg.Project().Decorations()
+	if len(decorationsAgain) != 1 {
+		t.Errorf("expected decorations to be immutable, got %d entries", len(decorationsAgain))
+	}
+	if _, ok := decorationsAgain["newKey"]; ok {
+		t.Error("expected newKey to not exist in original")
+	}
+}
+
+func TestLoadDecorationsFromTOMLFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := tmpDir + "/morphir.toml"
+	configContent := `
+[project]
+name = "My.Package"
+source_directory = "src"
+exposed_modules = ["Foo", "Bar"]
+
+[project.decorations.myDecoration]
+display_name = "My Amazing Decoration"
+ir = "decorations/my/morphir-ir.json"
+entry_point = "My.Amazing.Decoration:Foo:Shape"
+storage_location = "my-decoration-values.json"
+`
+	if err := writeFile(configPath, configContent); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
+	cfg, err := Load(
+		WithWorkDir(tmpDir),
+		WithoutSystem(),
+		WithoutGlobal(),
+		WithoutEnv(),
+	)
+	if err != nil {
+		t.Fatalf("Load: unexpected error: %v", err)
+	}
+
+	if cfg.Project().Name() != "My.Package" {
+		t.Errorf("Project.Name: want 'My.Package', got %q", cfg.Project().Name())
+	}
+
+	decorations := cfg.Project().Decorations()
+	if len(decorations) != 1 {
+		t.Fatalf("expected 1 decoration, got %d", len(decorations))
+	}
+
+	dec, ok := decorations["myDecoration"]
+	if !ok {
+		t.Fatal("expected myDecoration to be found")
+	}
+	if dec.DisplayName() != "My Amazing Decoration" {
+		t.Errorf("DisplayName: want 'My Amazing Decoration', got %q", dec.DisplayName())
+	}
+	if dec.IR() != "decorations/my/morphir-ir.json" {
+		t.Errorf("IR: want 'decorations/my/morphir-ir.json', got %q", dec.IR())
+	}
+	if dec.EntryPoint() != "My.Amazing.Decoration:Foo:Shape" {
+		t.Errorf("EntryPoint: want 'My.Amazing.Decoration:Foo:Shape', got %q", dec.EntryPoint())
+	}
+	if dec.StorageLocation() != "my-decoration-values.json" {
+		t.Errorf("StorageLocation: want 'my-decoration-values.json', got %q", dec.StorageLocation())
+	}
+}
+
 func TestLoadWithTasksFromFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := tmpDir + "/morphir.toml"

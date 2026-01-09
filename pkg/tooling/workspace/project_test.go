@@ -225,3 +225,124 @@ exposed_modules = []
 		t.Errorf("ConfigPath() = %v, want %v", proj.ConfigPath(), expectedConfigPath)
 	}
 }
+
+func TestLoadProjectWithDecorationsFromTOML(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	projDir := filepath.Join(tmpDir, "decorated-project")
+	createDir(t, projDir)
+	createFile(t, filepath.Join(projDir, "morphir.toml"), `
+[project]
+name = "decorated-project"
+source_directory = "src"
+exposed_modules = ["Main"]
+
+[project.decorations.myDecoration]
+display_name = "My Amazing Decoration"
+ir = "decorations/my/morphir-ir.json"
+entry_point = "My.Amazing.Decoration:Foo:Shape"
+storage_location = "my-decoration-values.json"
+
+[project.decorations.anotherDec]
+display_name = "Another Decoration"
+ir = "decorations/another/ir.json"
+entry_point = "Another:Module:Type"
+storage_location = "another-values.json"
+`)
+
+	proj, err := LoadProject(projDir)
+	if err != nil {
+		t.Fatalf("LoadProject() error = %v", err)
+	}
+
+	if proj.Name() != "decorated-project" {
+		t.Errorf("Name() = %v, want decorated-project", proj.Name())
+	}
+
+	decorations := proj.Decorations()
+	if len(decorations) != 2 {
+		t.Fatalf("Decorations() len = %d, want 2", len(decorations))
+	}
+
+	dec, ok := decorations["myDecoration"]
+	if !ok {
+		t.Fatal("expected myDecoration to be found")
+	}
+	if dec.DisplayName() != "My Amazing Decoration" {
+		t.Errorf("DisplayName() = %v, want My Amazing Decoration", dec.DisplayName())
+	}
+	if dec.IR() != "decorations/my/morphir-ir.json" {
+		t.Errorf("IR() = %v, want decorations/my/morphir-ir.json", dec.IR())
+	}
+	if dec.EntryPoint() != "My.Amazing.Decoration:Foo:Shape" {
+		t.Errorf("EntryPoint() = %v, want My.Amazing.Decoration:Foo:Shape", dec.EntryPoint())
+	}
+	if dec.StorageLocation() != "my-decoration-values.json" {
+		t.Errorf("StorageLocation() = %v, want my-decoration-values.json", dec.StorageLocation())
+	}
+}
+
+func TestLoadProjectWithDecorationsFromJSON(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	projDir := filepath.Join(tmpDir, "json-decorated-project")
+	createDir(t, projDir)
+	createFile(t, filepath.Join(projDir, "morphir.json"), `{
+		"name": "My.Elm.Package",
+		"sourceDirectory": "src",
+		"exposedModules": ["Foo"],
+		"decorations": {
+			"myDecoration": {
+				"displayName": "My Amazing Decoration",
+				"ir": "decorations/my/morphir-ir.json",
+				"entryPoint": "My.Amazing.Decoration:Foo:Shape",
+				"storageLocation": "my-decoration-values.json"
+			}
+		}
+	}`)
+
+	proj, err := LoadProject(projDir)
+	if err != nil {
+		t.Fatalf("LoadProject() error = %v", err)
+	}
+
+	if proj.Name() != "My.Elm.Package" {
+		t.Errorf("Name() = %v, want My.Elm.Package", proj.Name())
+	}
+
+	decorations := proj.Decorations()
+	if len(decorations) != 1 {
+		t.Fatalf("Decorations() len = %d, want 1", len(decorations))
+	}
+
+	dec, ok := decorations["myDecoration"]
+	if !ok {
+		t.Fatal("expected myDecoration to be found")
+	}
+	if dec.DisplayName() != "My Amazing Decoration" {
+		t.Errorf("DisplayName() = %v, want My Amazing Decoration", dec.DisplayName())
+	}
+}
+
+func TestLoadProjectWithoutDecorations(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	projDir := filepath.Join(tmpDir, "no-decorations")
+	createDir(t, projDir)
+	createFile(t, filepath.Join(projDir, "morphir.toml"), `
+[project]
+name = "simple-project"
+source_directory = "src"
+exposed_modules = ["Main"]
+`)
+
+	proj, err := LoadProject(projDir)
+	if err != nil {
+		t.Fatalf("LoadProject() error = %v", err)
+	}
+
+	decorations := proj.Decorations()
+	if decorations != nil {
+		t.Errorf("expected nil decorations, got %v", decorations)
+	}
+}
