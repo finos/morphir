@@ -12,6 +12,7 @@ The golang binding now has a working implementation that:
 - Creates `go.mod` files for single modules
 - Creates `go.work` files for multi-module workspaces
 - Provides deterministic output with diagnostics
+- Integrates with the Morphir toolchain framework as a native toolchain
 
 ### What Works
 
@@ -48,8 +49,11 @@ pkg/bindings/golang/
 │   ├── types.go        # Input/output types for steps
 │   ├── diagnostics.go  # Diagnostic codes and helpers
 │   ├── make.go         # Make step (stub)
-│   ├── gen.go          # Gen step (stub)
+│   ├── gen.go          # Gen step (implemented)
 │   └── build.go        # Build step (stub)
+├── toolchain/          # Toolchain adapter for framework integration
+│   ├── toolchain.go    # Toolchain definition and handlers
+│   └── toolchain_test.go # Toolchain tests
 ├── domain/             # Domain types for Go code generation
 │   └── doc.go          # Domain model documentation
 └── internal/           # Internal implementation details
@@ -83,6 +87,110 @@ Orchestrates the full pipeline:
 2. Execute gen step
 3. Write generated files to VFS
 4. Aggregate diagnostics
+
+## Toolchain Integration
+
+The golang binding is available as a native toolchain through the Morphir toolchain framework, following the same pattern as the WIT binding.
+
+### Registration
+
+```go
+import (
+    "github.com/finos/morphir/pkg/toolchain"
+    golangToolchain "github.com/finos/morphir/pkg/bindings/golang/toolchain"
+)
+
+// Create a registry and register the Go toolchain
+registry := toolchain.NewRegistry()
+golangToolchain.Register(registry)
+
+// Access the registered toolchain
+tc, ok := registry.GetToolchain("golang")
+```
+
+### Available Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| `make` | Compile Go source to Morphir IR | Not yet implemented |
+| `gen` | Generate Go source code from Morphir IR | ✅ Working |
+| `build` | Full pipeline (load IR + gen) | Stub |
+
+### Task Options
+
+#### Gen Task Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `modulePath` | string | Yes | Go module path (e.g., `github.com/example/app`) |
+| `outputDir` | string | Yes | Output directory for generated files |
+| `module` | `ir.ModuleDefinition` | Yes | Morphir IR module to generate from |
+| `workspace` | bool | No | Generate `go.work` for multi-module workspace |
+| `warningsAsErrors` | bool | No | Treat warnings as errors |
+
+#### Make Task Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `source` | string | No | Go source code as string |
+| `filePath` | string | No | Path to Go source file |
+| `warningsAsErrors` | bool | No | Treat warnings as errors |
+| `strictMode` | bool | No | Fail on unsupported constructs |
+
+#### Build Task Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `irPath` | string | Yes | Path to Morphir IR JSON file |
+| `outputDir` | string | Yes | Output directory for generated files |
+| `modulePath` | string | Yes | Go module path for generated code |
+| `workspace` | bool | No | Generate `go.work` for multi-module workspace |
+| `warningsAsErrors` | bool | No | Treat warnings as errors |
+| `strictMode` | bool | No | Fail on unsupported constructs |
+
+### Programmatic Usage
+
+```go
+import (
+    "github.com/finos/morphir/pkg/bindings/golang/toolchain"
+    "github.com/finos/morphir/pkg/pipeline"
+    tc "github.com/finos/morphir/pkg/toolchain"
+    "github.com/finos/morphir/pkg/vfs"
+)
+
+// Set up context
+mount := vfs.NewOSMount("work", vfs.MountRW, "/path/to/project", vfs.MustVPath("/"))
+overlay := vfs.NewOverlayVFS([]vfs.Mount{mount})
+ctx := pipeline.NewContext("/path/to/project", 0, pipeline.ModeDefault, overlay)
+
+// Get the toolchain
+golang := toolchain.GolangToolchain()
+
+// Find the gen task
+var genTask *tc.TaskDef
+for i := range golang.Tasks {
+    if golang.Tasks[i].Name == "gen" {
+        genTask = &golang.Tasks[i]
+        break
+    }
+}
+
+// Execute the gen task
+input := tc.TaskInput{
+    Options: map[string]any{
+        "modulePath": "github.com/example/generated",
+        "outputDir":  "/output",
+        "module":     myIRModule,
+    },
+}
+
+result := genTask.Handler(ctx, input)
+if result.Error != nil {
+    // Handle error
+}
+
+// Access generated files from result.Outputs["generatedFiles"]
+```
 
 ## Diagnostic Codes
 
@@ -133,3 +241,5 @@ See [FUTURE_ENHANCEMENTS.md](./FUTURE_ENHANCEMENTS.md) for a detailed roadmap of
 - [Future Enhancements](./FUTURE_ENHANCEMENTS.md) - Detailed enhancement roadmap
 - [Golang Backend Requirements](../../../docs/golang-backend-requirements.md)
 - [WIT Binding Pipeline](../wit/pipeline/doc.go) - Reference implementation
+- [ADR-0003: Toolchain Integration](../../../docs/adr/ADR-0003-toolchain-integration.md) - Toolchain framework architecture
+- [WIT Toolchain Adapter](../wit/toolchain/toolchain.go) - Reference toolchain implementation
