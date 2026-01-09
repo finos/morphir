@@ -167,9 +167,12 @@ func (e *Executor) executeExternalTask(tc Toolchain, task TaskDef, variant strin
 		return TaskResult{}, fmt.Errorf("failed to substitute arguments: %w", err)
 	}
 
-	// For npx backend, prepend package specifier to args
-	if tc.Acquire.Backend == "npx" {
+	// For npx/bunx backends, prepend package specifier to args
+	switch tc.Acquire.Backend {
+	case "npx":
 		args = e.buildNpxArgs(tc, task, args)
+	case "bunx":
+		args = e.buildBunxArgs(tc, task, args)
 	}
 
 	// Prepare environment
@@ -251,6 +254,8 @@ func (e *Executor) resolveExecutable(tc Toolchain, task TaskDef) (string, error)
 		return e.resolvePathExecutable(tc, task)
 	case "npx":
 		return e.resolveNpxExecutable(tc)
+	case "bunx":
+		return e.resolveBunxExecutable(tc)
 	default:
 		return "", fmt.Errorf("acquisition backend %s not yet implemented", tc.Acquire.Backend)
 	}
@@ -310,6 +315,41 @@ func (e *Executor) buildNpxArgs(tc Toolchain, task TaskDef, taskArgs []string) [
 	npxArgs = append(npxArgs, taskArgs...)
 
 	return npxArgs
+}
+
+// resolveBunxExecutable resolves bunx as the executable for Bun package execution.
+func (e *Executor) resolveBunxExecutable(tc Toolchain) (string, error) {
+	// Verify bunx is available
+	bunxPath, err := exec.LookPath("bunx")
+	if err != nil {
+		return "", fmt.Errorf("bunx not found in PATH (required for backend 'bunx'): %w", err)
+	}
+
+	// Verify package is specified
+	if tc.Acquire.Package == "" {
+		return "", fmt.Errorf("package must be specified for bunx backend")
+	}
+
+	return bunxPath, nil
+}
+
+// buildBunxArgs builds the argument list for bunx execution.
+// It prepends the package specifier (with optional version) to the task args.
+func (e *Executor) buildBunxArgs(tc Toolchain, task TaskDef, taskArgs []string) []string {
+	// Build package specifier
+	packageSpec := tc.Acquire.Package
+	if tc.Acquire.Version != "" {
+		packageSpec = packageSpec + "@" + tc.Acquire.Version
+	}
+
+	// bunx args: ["package@version", ...taskArgs]
+	// bunx auto-installs without prompting, no -y flag needed
+	bunxArgs := []string{packageSpec}
+
+	// Append the task's subcommand args
+	bunxArgs = append(bunxArgs, taskArgs...)
+
+	return bunxArgs
 }
 
 // substituteArgs substitutes variables in task arguments.

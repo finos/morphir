@@ -624,6 +624,128 @@ func TestExecutor_BuildNpxArgs(t *testing.T) {
 	})
 }
 
+func TestExecutor_ResolveBunxExecutable(t *testing.T) {
+	vfsInstance := createTestVFS()
+	ctx := pipeline.NewContext(".", 3, pipeline.ModeDefault, vfsInstance)
+	outputDir := NewOutputDirStructure(vfs.MustVPath(".morphir/out"), vfsInstance)
+	registry := NewRegistry()
+	executor := NewExecutor(registry, outputDir, ctx)
+
+	t.Run("bunx backend requires package", func(t *testing.T) {
+		tc := Toolchain{
+			Name: "test-toolchain",
+			Type: ToolchainTypeExternal,
+			Acquire: AcquireConfig{
+				Backend: "bunx",
+				Package: "", // Missing package
+			},
+		}
+		task := TaskDef{Name: "task"}
+
+		_, err := executor.resolveExecutable(tc, task)
+		if err == nil {
+			t.Fatal("expected error for missing package")
+		}
+
+		if err.Error() != "package must be specified for bunx backend" {
+			t.Errorf("unexpected error message: %s", err.Error())
+		}
+	})
+
+	t.Run("bunx backend with valid package", func(t *testing.T) {
+		// Skip if PATH is not set (shouldn't normally happen)
+		if _, ok := os.LookupEnv("PATH"); !ok {
+			t.Skip("PATH not set")
+		}
+
+		tc := Toolchain{
+			Name: "test-toolchain",
+			Type: ToolchainTypeExternal,
+			Acquire: AcquireConfig{
+				Backend: "bunx",
+				Package: "morphir-elm",
+				Version: "2.90.0",
+			},
+		}
+		task := TaskDef{Name: "task"}
+
+		executable, err := executor.resolveExecutable(tc, task)
+		if err != nil {
+			// If bunx is not installed, skip
+			if len(err.Error()) >= 14 && err.Error()[:14] == "bunx not found" {
+				t.Skip("bunx not installed")
+			}
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		// Should resolve to bunx path
+		if executable == "" {
+			t.Error("expected executable path, got empty string")
+		}
+	})
+}
+
+func TestExecutor_BuildBunxArgs(t *testing.T) {
+	vfsInstance := createTestVFS()
+	ctx := pipeline.NewContext(".", 3, pipeline.ModeDefault, vfsInstance)
+	outputDir := NewOutputDirStructure(vfs.MustVPath(".morphir/out"), vfsInstance)
+	registry := NewRegistry()
+	executor := NewExecutor(registry, outputDir, ctx)
+
+	t.Run("builds args with package and version", func(t *testing.T) {
+		tc := Toolchain{
+			Name: "morphir-elm",
+			Acquire: AcquireConfig{
+				Backend: "bunx",
+				Package: "morphir-elm",
+				Version: "2.90.0",
+			},
+		}
+		task := TaskDef{Name: "make"}
+		taskArgs := []string{"make", "-o", "morphir-ir.json"}
+
+		bunxArgs := executor.buildBunxArgs(tc, task, taskArgs)
+
+		// Expected: ["morphir-elm@2.90.0", "make", "-o", "morphir-ir.json"]
+		// Note: bunx doesn't need -y flag like npx
+		if len(bunxArgs) != 4 {
+			t.Fatalf("expected 4 args, got %d: %v", len(bunxArgs), bunxArgs)
+		}
+
+		if bunxArgs[0] != "morphir-elm@2.90.0" {
+			t.Errorf("expected bunxArgs[0] = 'morphir-elm@2.90.0', got '%s'", bunxArgs[0])
+		}
+
+		if bunxArgs[1] != "make" {
+			t.Errorf("expected bunxArgs[1] = 'make', got '%s'", bunxArgs[1])
+		}
+	})
+
+	t.Run("builds args without version", func(t *testing.T) {
+		tc := Toolchain{
+			Name: "morphir-elm",
+			Acquire: AcquireConfig{
+				Backend: "bunx",
+				Package: "morphir-elm",
+				// No version
+			},
+		}
+		task := TaskDef{Name: "make"}
+		taskArgs := []string{"make"}
+
+		bunxArgs := executor.buildBunxArgs(tc, task, taskArgs)
+
+		// Expected: ["morphir-elm", "make"]
+		if len(bunxArgs) != 2 {
+			t.Fatalf("expected 2 args, got %d: %v", len(bunxArgs), bunxArgs)
+		}
+
+		if bunxArgs[0] != "morphir-elm" {
+			t.Errorf("expected bunxArgs[0] = 'morphir-elm', got '%s'", bunxArgs[0])
+		}
+	})
+}
+
 func TestExecutor_ResolveExecutable_Backends(t *testing.T) {
 	vfsInstance := createTestVFS()
 	ctx := pipeline.NewContext(".", 3, pipeline.ModeDefault, vfsInstance)
