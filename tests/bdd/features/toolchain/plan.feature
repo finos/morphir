@@ -82,11 +82,12 @@ Feature: Morphir Plan Command
       And the output should contain "DRY RUN"
       And the output should contain "Would execute"
 
-    @pending
     Scenario: Run with mermaid shows task execution status
-      Given a morphir.toml with a golang gen workflow
-      When I run morphir plan codegen --run --mermaid --mermaid-path output.mmd
-      Then the file "output.mmd" should contain "classDef"
+      Given a morphir.toml with a simple echo workflow
+      When I run morphir plan test --run --mermaid --mermaid-path output.mmd
+      Then the command should succeed
+      And the output should contain "SUCCESS"
+      And the file "output.mmd" should contain "classDef success"
 
   Rule: Dependency explanation
 

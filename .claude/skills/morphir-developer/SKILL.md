@@ -574,6 +574,60 @@ gh issue close <issue-number>
 # Use: "Closes #<issue-number>" or "Fixes #<issue-number>"
 ```
 
+## Test Fixtures
+
+### Morphir IR Fixtures
+
+The project includes a script to download Morphir IR fixtures from the morphir-elm project for use in testing.
+
+**Available fixtures:**
+- `rentals` - Rental request business logic example (IR format v2)
+- `rentals-v1` - Same example in IR format v1
+- `business-terms` - Business terms vocabulary example
+
+**Usage:**
+
+```bash
+# List available fixtures
+python .claude/skills/morphir-developer/scripts/fetch_morphir_ir.py --list
+
+# Download the rentals fixture (latest version)
+python .claude/skills/morphir-developer/scripts/fetch_morphir_ir.py --fixture rentals
+
+# Download specific version
+python .claude/skills/morphir-developer/scripts/fetch_morphir_ir.py --fixture rentals --version v2.100.0
+
+# Download to specific directory
+python .claude/skills/morphir-developer/scripts/fetch_morphir_ir.py --fixture rentals --output ./tests/bdd/testdata/fixtures
+
+# Download all fixtures
+python .claude/skills/morphir-developer/scripts/fetch_morphir_ir.py --all --output ./fixtures
+
+# List cached fixtures
+python .claude/skills/morphir-developer/scripts/fetch_morphir_ir.py --cached
+
+# Clear cache
+python .claude/skills/morphir-developer/scripts/fetch_morphir_ir.py --clear-cache
+```
+
+**Environment variables:**
+- `MORPHIR_CACHE_DIR` - Override the default cache directory (default: `~/.cache/morphir/fixtures`)
+
+**Using fixtures in tests:**
+
+```go
+// In Go tests, fixtures can be loaded from the testdata directory
+import "github.com/finos/morphir/tests/bdd/testdata"
+
+func TestWithFixture(t *testing.T) {
+    irData, err := testdata.LoadFixture("rentals.json")
+    if err != nil {
+        t.Fatalf("Failed to load fixture: %v", err)
+    }
+    // Use irData...
+}
+```
+
 ## Troubleshooting
 
 ### "Module not found" errors

@@ -18,6 +18,7 @@ func RegisterPlanSteps(sc *godog.ScenarioContext) {
 	sc.Step(`^a morphir\.toml with dependent tasks$`, aMorphirTomlWithDependentTasks)
 	sc.Step(`^a morphir\.toml with tasks having inputs$`, aMorphirTomlWithTasksHavingInputs)
 	sc.Step(`^a morphir\.toml with parallel stages$`, aMorphirTomlWithParallelStages)
+	sc.Step(`^a morphir\.toml with a simple echo workflow$`, aMorphirTomlWithSimpleEchoWorkflow)
 	sc.Step(`^the morphir-elm toolchain is available$`, theMorphirElmToolchainIsAvailable)
 
 	// Command execution
@@ -189,6 +190,27 @@ files = ["elm.json", "src/**/*.elm"]
 [toolchain.morphir-elm.tasks.make.outputs.ir]
 path = "morphir-ir.json"
 type = "morphir-ir"
+`
+	return writeMorphirToml(ctx, config)
+}
+
+func aMorphirTomlWithSimpleEchoWorkflow(ctx context.Context) error {
+	// A simple workflow that uses echo command - guaranteed to succeed
+	config := `
+[workflows.test]
+description = "Simple test workflow"
+
+[[workflows.test.stages]]
+name = "check"
+targets = ["echo-test"]
+
+[toolchain.echo-toolchain]
+version = "1.0.0"
+
+[toolchain.echo-toolchain.tasks.echo]
+exec = "echo"
+args = ["test succeeded"]
+fulfills = ["echo-test"]
 `
 	return writeMorphirToml(ctx, config)
 }
