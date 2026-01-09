@@ -4,7 +4,7 @@ go = "1.25.5"
 python = "3.14.2"
 
 # JavaScript runtimes and package managers (for toolchain backend tests)
-node = "22"      # Provides npm and npx
+node = "24"      # Provides npm and npx
 bun = "latest"   # Provides bunx
 deno = "latest"  # Provides deno run npm:
 yarn = "4"       # Provides yarn dlx (Yarn Berry)
