@@ -2,6 +2,9 @@
 	"name": "morphir",
 	"version": "0.0.0",
 	"private": false,
+	"engines": {
+		"node": ">=18.0"
+	},
 	"scripts": {
 		"docusaurus": "docusaurus",
 		"start": "docusaurus start",
@@ -15,20 +18,20 @@
 		"typecheck": "tsc"
 	},
 	"dependencies": {
-		"@cmfcmf/docusaurus-search-local": "^1.1.0",
-		"@docusaurus/core": "2.4.3",
-		"@docusaurus/plugin-google-gtag": "2.4.3",
-		"@docusaurus/preset-classic": "2.4.3",
-		"@mdx-js/react": "^1.6.22",
-		"clsx": "^1.2.1",
-		"prism-react-renderer": "^1.3.5",
-		"react": "^17.0.2",
-		"react-dom": "^17.0.2"
+		"@cmfcmf/docusaurus-search-local": "^2.0.0",
+		"@docusaurus/core": "^3.9.2",
+		"@docusaurus/plugin-google-gtag": "^3.9.2",
+		"@docusaurus/preset-classic": "^3.9.2",
+		"@mdx-js/react": "^3.0.0",
+		"clsx": "^2.1.0",
+		"prism-react-renderer": "^2.3.0",
+		"react": "^18.2.0",
+		"react-dom": "^18.2.0"
 	},
 	"devDependencies": {
-		"@docusaurus/module-type-aliases": "2.4.3",
-		"@tsconfig/docusaurus": "^1.0.5",
-		"typescript": "~4.9.0"
+		"@docusaurus/module-type-aliases": "^3.9.2",
+		"@docusaurus/tsconfig": "^3.9.2",
+		"typescript": "~5.2.2"
 	},
 	"browserslist": {
 		"production": [

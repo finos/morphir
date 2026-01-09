@@ -48,7 +48,7 @@ Running the command  ```morphir-elm gen --include-codecs --copy-deps --output co
             - reference
                 - model
                   - booksandrecords
-                    - Codec.scala   <----- This is your genereated codec 
+                    - Codec.scala   (This is your generated codec) 
 	- morphir.json
 	- morphir-ir.json
 

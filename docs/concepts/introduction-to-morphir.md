@@ -92,7 +92,7 @@ List the roadmap steps; alternatively link the Confluence Wiki page where the pr
 
 ## Contributing
 
-1. Fork it (<https://github.com/finos/morphir/fork>)
+1. Fork it ([https://github.com/finos/morphir/fork](https://github.com/finos/morphir/fork))
 2. Create your feature branch (`git checkout -b feature/fooBar`)
 3. Read our [contribution guidelines](../developers/contributing.md) and [Community Code of Conduct](https://www.finos.org/code-of-conduct)
 4. Commit your changes (`git commit -am 'Add some fooBar'`)
