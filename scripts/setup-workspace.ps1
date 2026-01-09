@@ -122,7 +122,7 @@ if ($MissingTags -eq 0) {
     if ($ReplaceSpecs.Count -gt 0) {
         Write-Host "  🔧 Adding go.work replace directives for missing tags..." -ForegroundColor Cyan
         foreach ($spec in $ReplaceSpecs) {
-            go work edit -replace=$spec
+            go work edit "-replace=$spec"
             Write-Host "    ✓ replace $spec" -ForegroundColor Green
             $MissingReplaces++
         }
