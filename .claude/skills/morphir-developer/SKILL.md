@@ -610,6 +610,22 @@ python .claude/skills/morphir-developer/scripts/fetch_morphir_ir.py --cached
 python .claude/skills/morphir-developer/scripts/fetch_morphir_ir.py --clear-cache
 ```
 
+**Mise tasks (recommended):**
+
+```bash
+# List available fixtures
+mise run fixtures:list
+
+# Fetch all fixtures to tests/bdd/testdata/morphir-ir
+mise run fixtures:fetch
+
+# Fetch just the rentals fixture
+mise run fixtures:fetch:rentals
+
+# Fetch fixtures from a specific version
+MORPHIR_VERSION=v2.100.0 mise run fixtures:fetch:version
+```
+
 **Environment variables:**
 - `MORPHIR_CACHE_DIR` - Override the default cache directory (default: `~/.cache/morphir/fixtures`)
 
