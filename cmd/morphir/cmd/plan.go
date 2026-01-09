@@ -1,20 +1,31 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"os/signal"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	golangtoolchain "github.com/finos/morphir/pkg/bindings/golang/toolchain"
 	wittoolchain "github.com/finos/morphir/pkg/bindings/wit/toolchain"
 	"github.com/finos/morphir/pkg/config"
+	"github.com/finos/morphir/pkg/pipeline"
 	"github.com/finos/morphir/pkg/toolchain"
+	"github.com/finos/morphir/pkg/vfs"
 	"github.com/spf13/cobra"
 )
 
 var (
 	planExplainTarget string
+	planRun           bool
+	planDryRun        bool
+	planStopOnError   bool
+	planMaxParallel   int
+	planTimeout       time.Duration
 )
 
 var planCmd = &cobra.Command{
@@ -22,7 +33,10 @@ var planCmd = &cobra.Command{
 	Short: "Show execution plan for a workflow",
 	Long: `Compute and display the execution plan for a workflow.
 
-The workflow must be defined in morphir.toml under [workflows.<name>].`,
+The workflow must be defined in morphir.toml under [workflows.<name>].
+
+Use --run to execute the plan after displaying it.
+Use --dry-run to validate the plan without executing tasks.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runPlan,
 }
@@ -58,11 +72,126 @@ func runPlan(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Execute the plan if --run or --dry-run was specified
+	if planRun || planDryRun {
+		return executePlan(plan, registry, cfg)
+	}
+
 	return nil
+}
+
+// executePlan runs the workflow plan using WorkflowRunner.
+func executePlan(plan toolchain.Plan, registry *toolchain.Registry, cfg config.Config) error {
+	// Set up output directory
+	workDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	outputDir := cfg.Workspace().OutputDir()
+	if outputDir == "" {
+		outputDir = ".morphir"
+	}
+
+	// Create VFS with OS mount for working directory
+	osMount := vfs.NewOSMount("work", vfs.MountRW, workDir, vfs.MustVPath("/"))
+	overlay := vfs.NewOverlayVFS([]vfs.Mount{osMount})
+
+	// Create output directory path
+	outputRoot := vfs.MustVPath("/" + outputDir + "/out")
+	outputDirStructure := toolchain.NewOutputDirStructure(outputRoot, overlay)
+
+	// Create pipeline context
+	formatVersion := cfg.IR().FormatVersion()
+	if formatVersion == 0 {
+		formatVersion = 3 // Default IR version
+	}
+	pipelineCtx := pipeline.NewContext(workDir, formatVersion, pipeline.ModeDefault, overlay)
+
+	// Create executor
+	executor := toolchain.NewExecutor(registry, outputDirStructure, pipelineCtx)
+
+	// Create runner
+	runner := toolchain.NewWorkflowRunner(executor, outputDirStructure)
+
+	// Set up context with cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Handle interrupt signals
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		fmt.Println("\nInterrupted, cancelling...")
+		cancel()
+	}()
+
+	// Configure run options
+	opts := toolchain.RunOptions{
+		DryRun:      planDryRun,
+		StopOnError: planStopOnError,
+		MaxParallel: planMaxParallel,
+		Timeout:     planTimeout,
+		Context:     ctx,
+		Progress:    progressCallback,
+	}
+
+	fmt.Println()
+	if planDryRun {
+		fmt.Println("=== Dry Run ===")
+	} else {
+		fmt.Println("=== Executing Plan ===")
+	}
+
+	result := runner.Run(plan, opts)
+
+	fmt.Println()
+	fmt.Print(result.Summary())
+
+	if !result.Success {
+		if result.Error != nil {
+			return result.Error
+		}
+		return fmt.Errorf("workflow failed: %d task(s) failed", len(result.FailedTasks))
+	}
+
+	return nil
+}
+
+// progressCallback reports execution progress to the console.
+func progressCallback(event toolchain.ProgressEvent) {
+	switch event.Type {
+	case toolchain.ProgressStageStarted:
+		fmt.Printf("\n[Stage] %s\n", event.Stage.Name)
+	case toolchain.ProgressTaskStarted:
+		fmt.Printf("  → %s/%s", event.Task.Toolchain, event.Task.Task)
+		if event.Task.Variant != "" {
+			fmt.Printf(" (%s)", event.Task.Variant)
+		}
+		fmt.Println()
+	case toolchain.ProgressTaskCompleted:
+		if event.TaskResult != nil {
+			if event.TaskResult.Metadata.Success {
+				fmt.Printf("    ✓ completed in %s\n", event.TaskResult.Metadata.Duration)
+			} else {
+				fmt.Printf("    ✗ failed: %v\n", event.TaskResult.Error)
+			}
+		}
+	case toolchain.ProgressStageSkipped:
+		fmt.Printf("\n[Stage] %s (skipped: %s)\n", event.Stage.Name, event.Message)
+	case toolchain.ProgressError:
+		fmt.Printf("  ⚠ error: %v\n", event.Error)
+	}
 }
 
 func init() {
 	planCmd.Flags().StringVar(&planExplainTarget, "explain", "", "Explain why a target runs (e.g., gen:scala)")
+	planCmd.Flags().BoolVar(&planRun, "run", false, "Execute the plan after displaying it")
+	planCmd.Flags().BoolVar(&planDryRun, "dry-run", false, "Validate plan without executing tasks")
+	planCmd.Flags().BoolVar(&planStopOnError, "stop-on-error", true, "Stop execution on first error")
+	planCmd.Flags().IntVar(&planMaxParallel, "max-parallel", 0, "Max parallel tasks (0 = unlimited)")
+	planCmd.Flags().DurationVar(&planTimeout, "timeout", 0, "Overall workflow timeout (0 = no timeout)")
 }
 
 func registryFromConfig(cfg config.Config) (*toolchain.Registry, error) {
