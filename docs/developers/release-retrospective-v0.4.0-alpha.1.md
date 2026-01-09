@@ -115,7 +115,7 @@ pattern CHANGELOG.md: no matching files found
 | 6 | Multi-module build dir | ~3 min |
 | 7 | **SUCCESS** | 2m 12s |
 
-Total time: ~45 minutes for a release that should take <5 minutes.
+Total time: ~45 minutes for a release that should take less than 5 minutes.
 
 ## Recommendations
 
@@ -194,7 +194,7 @@ The pre-release validation script (`scripts/release-validate.sh`) complements th
 - **Release attempts**: 7
 - **Unique issues encountered**: 5
 - **Time to successful release**: ~45 minutes
-- **Expected time (with automation)**: <10 minutes
+- **Expected time (with automation)**: less than 10 minutes
 
 ## Action Items
 

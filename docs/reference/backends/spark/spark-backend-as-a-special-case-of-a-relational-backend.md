@@ -23,16 +23,16 @@ Given that Apache Spark's data model is an extended relational data model and mo
 
 ## Decision Outcome
 
-Chosen option: "{option 1}", because {justification. e.g., only option, which meets k.o. criterion decision driver | which resolves force {force} | … | comes out best (see below)}.
+Chosen option: "[option 1]", because [justification. e.g., only option, which meets k.o. criterion decision driver | which resolves force [force] | … | comes out best (see below)].
 
-### Positive Consequences <!-- optional -->
+### Positive Consequences
 
-- {e.g., improvement of quality attribute satisfaction, follow-up decisions required, …}
+- [e.g., improvement of quality attribute satisfaction, follow-up decisions required, …]
 - …
 
-### Negative Consequences <!-- optional -->
+### Negative Consequences
 
-- {e.g., compromising quality attribute, follow-up decisions required, …}
+- [e.g., compromising quality attribute, follow-up decisions required, …]
 - …
 
 ## Pros and Cons of the Options <!-- optional -->
@@ -72,7 +72,7 @@ graph LR
 - Good, because we can fully utilize Spark's capabilities to implement all possible Morphir features
 - Good, because we can reuse the solutions we come up with for flattening and joins
 
-## Links <!-- optional -->
+## Links
 
-- {Link type} {Link to ADR} <!-- example: Refined by ADR-0005 in 0005-example.md -->
-- … <!-- numbers of links can vary -->
+- [Link type] [Link to ADR]
+- …

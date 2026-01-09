@@ -75,7 +75,7 @@ After all processing has been done, then we attempt to validate the Repo (the ou
 * Good, because It's fast.
 * Good, because this approach isn't complex.
 * Bad, because it doesn't take name resolution into account.
-* Bad, because type inferencing would be done at the very end which takes away the benefit of {agument 1}.
+* Bad, because type inferencing would be done at the very end which takes away the benefit of argument 1.
 * Bad, as it would be difficult to collect meaningful errors after validating the repo.
 
 ### Capture, order, and apply changes on a granular level
@@ -87,7 +87,7 @@ After capturing the changes, we could calculate the correct order to process eac
 * Good, because it's fast
 * Bad, because it modifies the API of the Repo and adds complexity
 * Bad, because proper name resolution would not be possible.
-* Bad, because type inferencing would be done at the very end which takes away the benefit of {agument 2}.
+* Bad, because type inferencing would be done at the very end which takes away the benefit of argument 2.
 
 ### Order modules dependency and then proceed with option 2
 
