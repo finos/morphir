@@ -1,20 +1,35 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"os/signal"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	golangtoolchain "github.com/finos/morphir/pkg/bindings/golang/toolchain"
 	wittoolchain "github.com/finos/morphir/pkg/bindings/wit/toolchain"
 	"github.com/finos/morphir/pkg/config"
+	"github.com/finos/morphir/pkg/pipeline"
 	"github.com/finos/morphir/pkg/toolchain"
+	"github.com/finos/morphir/pkg/vfs"
 	"github.com/spf13/cobra"
 )
 
 var (
 	planExplainTarget string
+	planRun           bool
+	planDryRun        bool
+	planStopOnError   bool
+	planMaxParallel   int
+	planTimeout       time.Duration
+	planMermaid       bool
+	planMermaidPath   string
+	planShowInputs    bool
+	planShowOutputs   bool
 )
 
 var planCmd = &cobra.Command{
@@ -22,7 +37,13 @@ var planCmd = &cobra.Command{
 	Short: "Show execution plan for a workflow",
 	Long: `Compute and display the execution plan for a workflow.
 
-The workflow must be defined in morphir.toml under [workflows.<name>].`,
+The workflow must be defined in morphir.toml under [workflows.<name>].
+
+Use --run to execute the plan after displaying it.
+Use --dry-run to validate the plan without executing tasks.
+Use --mermaid to emit a Mermaid diagram visualizing the plan.
+Use --mermaid-path to specify a custom output path for the diagram.
+Use --show-inputs and --show-outputs to include inputs/outputs in the diagram.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runPlan,
 }
@@ -36,7 +57,23 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	workflowName := args[0]
 	workflows := workflowsFromConfig(cfg)
 	if len(workflows) == 0 {
-		return fmt.Errorf("no workflows defined in config")
+		return fmt.Errorf("no workflows defined in morphir.toml (ensure [workflows.<name>] sections exist)")
+	}
+
+	// Check if the requested workflow exists
+	workflow, ok := workflows[workflowName]
+	if !ok {
+		available := make([]string, 0, len(workflows))
+		for name := range workflows {
+			available = append(available, name)
+		}
+		sort.Strings(available)
+		return fmt.Errorf("workflow %q not found; available workflows: %v", workflowName, available)
+	}
+
+	// Validate workflow has stages
+	if len(workflow.Stages) == 0 {
+		return fmt.Errorf("workflow %q has no stages defined", workflowName)
 	}
 
 	registry, err := registryFromConfig(cfg)
@@ -58,11 +95,200 @@ func runPlan(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Execute the plan if --run or --dry-run was specified
+	var result *toolchain.WorkflowResult
+	if planRun || planDryRun {
+		result, err = executePlanAndGetResult(plan, registry, cfg)
+		if err != nil && !planMermaid {
+			return err
+		}
+	}
+
+	// Generate mermaid diagram if requested
+	if planMermaid {
+		if err := emitMermaidDiagram(plan, workflowName, cfg, result); err != nil {
+			return err
+		}
+	}
+
+	// Return execution error after mermaid generation
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// executePlanAndGetResult runs the workflow plan and returns the result.
+func executePlanAndGetResult(plan toolchain.Plan, registry *toolchain.Registry, cfg config.Config) (*toolchain.WorkflowResult, error) {
+	// Set up output directory
+	workDir, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	outputDir := cfg.Workspace().OutputDir()
+	if outputDir == "" {
+		outputDir = ".morphir"
+	}
+
+	// Create VFS with OS mount for working directory
+	osMount := vfs.NewOSMount("work", vfs.MountRW, workDir, vfs.MustVPath("/"))
+	overlay := vfs.NewOverlayVFS([]vfs.Mount{osMount})
+
+	// Create output directory path
+	outputRoot := vfs.MustVPath("/" + outputDir + "/out")
+	outputDirStructure := toolchain.NewOutputDirStructure(outputRoot, overlay)
+
+	// Create pipeline context
+	formatVersion := cfg.IR().FormatVersion()
+	if formatVersion == 0 {
+		formatVersion = 3 // Default IR version
+	}
+	pipelineCtx := pipeline.NewContext(workDir, formatVersion, pipeline.ModeDefault, overlay)
+
+	// Create executor
+	executor := toolchain.NewExecutor(registry, outputDirStructure, pipelineCtx)
+
+	// Create runner
+	runner := toolchain.NewWorkflowRunner(executor, outputDirStructure)
+
+	// Set up context with cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Handle interrupt signals
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		fmt.Println("\nInterrupted, cancelling...")
+		cancel()
+	}()
+
+	// Configure run options
+	opts := toolchain.RunOptions{
+		DryRun:      planDryRun,
+		StopOnError: planStopOnError,
+		MaxParallel: planMaxParallel,
+		Timeout:     planTimeout,
+		Context:     ctx,
+		Progress:    makeProgressCallback(planDryRun),
+	}
+
+	fmt.Println()
+	if planDryRun {
+		fmt.Println("=== DRY RUN ===")
+		fmt.Println("The following tasks would be executed:")
+	} else {
+		fmt.Println("=== Executing Plan ===")
+	}
+
+	result := runner.Run(plan, opts)
+
+	fmt.Println()
+	fmt.Print(result.Summary())
+
+	if !result.Success {
+		if result.Error != nil {
+			return &result, result.Error
+		}
+		return &result, fmt.Errorf("workflow failed: %d task(s) failed", len(result.FailedTasks))
+	}
+
+	return &result, nil
+}
+
+// emitMermaidDiagram generates and writes a Mermaid diagram of the plan.
+func emitMermaidDiagram(plan toolchain.Plan, workflowName string, cfg config.Config, result *toolchain.WorkflowResult) error {
+	// Determine output path
+	outputPath := planMermaidPath
+	if outputPath == "" {
+		// Use default location
+		outputDir := cfg.Workspace().OutputDir()
+		if outputDir == "" {
+			outputDir = ".morphir"
+		}
+		outputPath = fmt.Sprintf("%s/out/plan/%s/plan.mmd", outputDir, workflowName)
+	}
+
+	// Build mermaid options
+	opts := toolchain.MermaidOptions{
+		ShowInputs:  planShowInputs,
+		ShowOutputs: planShowOutputs,
+	}
+
+	// Include task results for styling if available
+	if result != nil {
+		opts.TaskResults = result.TaskResults
+	}
+
+	// Generate diagram
+	diagram := toolchain.PlanToMermaidWithOptions(plan, opts)
+
+	// Ensure directory exists
+	if idx := strings.LastIndex(outputPath, "/"); idx > 0 {
+		dir := outputPath[:idx]
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create output directory: %w", err)
+		}
+	}
+
+	// Write file
+	if err := os.WriteFile(outputPath, []byte(diagram), 0644); err != nil {
+		return fmt.Errorf("failed to write mermaid diagram: %w", err)
+	}
+
+	fmt.Printf("\nMermaid diagram written to: %s\n", outputPath)
+	return nil
+}
+
+// makeProgressCallback creates a progress callback that reports execution progress to the console.
+// If dryRun is true, it reports what would be executed instead of actual execution.
+func makeProgressCallback(dryRun bool) func(toolchain.ProgressEvent) {
+	return func(event toolchain.ProgressEvent) {
+		switch event.Type {
+		case toolchain.ProgressStageStarted:
+			fmt.Printf("\n[Stage] %s\n", event.Stage.Name)
+		case toolchain.ProgressTaskStarted:
+			taskLabel := fmt.Sprintf("%s/%s", event.Task.Toolchain, event.Task.Task)
+			if event.Task.Variant != "" {
+				taskLabel += fmt.Sprintf(" (%s)", event.Task.Variant)
+			}
+			if dryRun {
+				fmt.Printf("  Would execute: %s\n", taskLabel)
+			} else {
+				fmt.Printf("  → %s\n", taskLabel)
+			}
+		case toolchain.ProgressTaskCompleted:
+			if !dryRun && event.TaskResult != nil {
+				if event.TaskResult.Metadata.Success {
+					fmt.Printf("    ✓ completed in %s\n", event.TaskResult.Metadata.Duration)
+				} else {
+					fmt.Printf("    ✗ failed: %v\n", event.TaskResult.Error)
+				}
+			}
+		case toolchain.ProgressStageSkipped:
+			fmt.Printf("\n[Stage] %s (skipped: %s)\n", event.Stage.Name, event.Message)
+		case toolchain.ProgressError:
+			fmt.Printf("  ⚠ error: %v\n", event.Error)
+		}
+	}
 }
 
 func init() {
 	planCmd.Flags().StringVar(&planExplainTarget, "explain", "", "Explain why a target runs (e.g., gen:scala)")
+	planCmd.Flags().BoolVar(&planRun, "run", false, "Execute the plan after displaying it")
+	planCmd.Flags().BoolVar(&planDryRun, "dry-run", false, "Validate plan without executing tasks")
+	planCmd.Flags().BoolVar(&planStopOnError, "stop-on-error", true, "Stop execution on first error")
+	planCmd.Flags().IntVar(&planMaxParallel, "max-parallel", 0, "Max parallel tasks (0 = unlimited)")
+	planCmd.Flags().DurationVar(&planTimeout, "timeout", 0, "Overall workflow timeout (0 = no timeout)")
+
+	// Mermaid diagram flags
+	planCmd.Flags().BoolVar(&planMermaid, "mermaid", false, "Emit Mermaid diagram of the plan")
+	planCmd.Flags().StringVar(&planMermaidPath, "mermaid-path", "", "Path for Mermaid diagram output (default: .morphir/out/plan/<workflow>/plan.mmd)")
+	planCmd.Flags().BoolVar(&planShowInputs, "show-inputs", false, "Include task inputs in Mermaid diagram")
+	planCmd.Flags().BoolVar(&planShowOutputs, "show-outputs", false, "Include task outputs in Mermaid diagram")
 }
 
 func registryFromConfig(cfg config.Config) (*toolchain.Registry, error) {
@@ -252,9 +478,18 @@ func explainPlan(plan toolchain.Plan, targetSpec string) error {
 	}
 
 	chain := dependencyChain(plan, task)
-	fmt.Printf("\nDependency chain for %q:\n", targetSpec)
-	for _, item := range chain {
-		fmt.Printf("  - %s\n", formatTaskLabel(item))
+	fmt.Printf("\nExplaining %q:\n", targetSpec)
+
+	if len(chain) <= 1 {
+		fmt.Println("  This task has no dependencies.")
+	} else {
+		// Show the target task and what it depends on
+		fmt.Printf("  %s depends on:\n", formatTaskLabel(task))
+		for _, item := range chain {
+			if item.Key != task.Key {
+				fmt.Printf("    - %s\n", formatTaskLabel(item))
+			}
+		}
 	}
 	return nil
 }

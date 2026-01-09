@@ -136,9 +136,9 @@ func RegisterGolangSteps(sc *godog.ScenarioContext) {
 	// When steps - go toolchain
 	sc.Step(`^I run go build in the output directory$`, g.runGoBuildInOutputDir)
 
-	// Then steps - command result checks
-	sc.Step(`^the command should fail$`, g.commandShouldFail)
-	sc.Step(`^the command should succeed$`, g.commandShouldSucceed)
+	// Then steps - command result checks (golang-specific to avoid conflicts with cli_steps)
+	sc.Step(`^the golang command should fail$`, g.commandShouldFail)
+	sc.Step(`^the golang command should succeed$`, g.commandShouldSucceed)
 	sc.Step(`^the error should mention "([^"]*)"$`, g.errorShouldMention)
 	sc.Step(`^the output should mention "([^"]*)"$`, g.outputShouldMention)
 	sc.Step(`^the output should be valid JSON$`, g.outputShouldBeValidJSON)

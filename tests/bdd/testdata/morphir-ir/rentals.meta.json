@@ -1,0 +1,7 @@
+{
+  "fixture": "rentals",
+  "version": "v2.100.0",
+  "source_url": "https://raw.githubusercontent.com/finos/morphir-elm/v2.100.0/tests-integration/cli/test-data/rentals/expected-morphir-ir.json",
+  "sha256": "c897d44ce57529900810dc26bab1fc3dc4e32ff3e3ca51e152770744422523fc",
+  "format_version": 2
+}
