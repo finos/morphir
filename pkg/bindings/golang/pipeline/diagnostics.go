@@ -37,6 +37,10 @@ const (
 	// CodeFormatError indicates a code formatting error.
 	// Emitted when gofmt or goimports fails on generated code.
 	CodeFormatError = "GO008"
+
+	// CodeInvalidPath indicates an invalid path was provided.
+	// Emitted when a file or directory path cannot be parsed.
+	CodeInvalidPath = "GO009"
 )
 
 // DiagnosticInfo creates an informational diagnostic.
