@@ -63,6 +63,22 @@ type AcquireConfig struct {
 	Executable string
 }
 
+// NativeTaskHandler is a function that handles native task execution.
+// It receives the pipeline context and task input, and returns the task result.
+type NativeTaskHandler func(ctx pipeline.Context, input TaskInput) TaskResult
+
+// TaskInput provides input data to a native task handler.
+type TaskInput struct {
+	// Variant is the task variant being executed (e.g., "scala", "typescript")
+	Variant string
+
+	// Options contains task-specific options as key-value pairs
+	Options map[string]any
+
+	// InputArtifacts contains resolved input artifacts from other tasks
+	InputArtifacts map[string]any
+}
+
 // TaskDef defines a concrete task implementation provided by a toolchain.
 type TaskDef struct {
 	// Name is the task identifier within this toolchain
@@ -76,6 +92,9 @@ type TaskDef struct {
 
 	// Args are the command-line arguments (supports variable substitution)
 	Args []string
+
+	// Handler is the native Go function for native toolchains (mutually exclusive with Exec)
+	Handler NativeTaskHandler
 
 	// Inputs are input file patterns or artifact references
 	Inputs InputSpec
