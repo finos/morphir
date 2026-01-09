@@ -1,14 +1,16 @@
-# JSON Schema for Morphir IR Format Version 3
-# This schema defines the structure of a Morphir IR distribution in version 3 format.
-# A distribution is the output of the Morphir compilation process (e.g., morphir-elm make).
+# JSON Schema for Morphir IR Format Version 1
+# This schema defines the structure of a Morphir IR distribution in version 1 format.
+# Format version 1 uses lowercase tag names and different structure for modules.
 
 $schema: "http://json-schema.org/draft-07/schema#"
-$id: "https://finos.github.io/morphir/schemas/morphir-ir-v3.yaml"
-title: "Morphir IR Distribution"
+$id: "https://morphir.finos.org/schemas/morphir-ir-v1.yaml"
+title: "Morphir IR Distribution (Version 1)"
 description: |
   A Morphir IR distribution represents a complete, self-contained package of business logic
   with all its dependencies. It captures the semantics of functional programs in a
   language-independent, platform-agnostic format.
+  
+  This is format version 1, which uses lowercase tags and a different module structure.
 
 type: object
 required:
@@ -17,8 +19,8 @@ required:
 properties:
   formatVersion:
     type: integer
-    const: 3
-    description: "The version of the IR format. Must be 3 for this schema."
+    const: 1
+    description: "The version of the IR format. Must be 1 for this schema."
   
   distribution:
     description: "The distribution data, currently only Library distributions are supported."
@@ -27,8 +29,8 @@ properties:
     maxItems: 4
     items:
       - type: string
-        const: "Library"
-        description: "The type of distribution. Currently only Library is supported."
+        const: "library"
+        description: "Distribution type (lowercase in v1)."
       - $ref: "#/definitions/PackageName"
       - $ref: "#/definitions/Dependencies"
       - $ref: "#/definitions/PackageDefinition"
@@ -83,19 +85,12 @@ definitions:
       Attributes can be attached to various nodes in the IR for extensibility.
       When no additional information is needed, an empty object {} is used.
   
-  # ===== Access Control =====
+  # ===== Access Control (V1 format) =====
   
-  AccessControlled:
-    type: object
-    required: ["access", "value"]
-    properties:
-      access:
-        type: string
-        enum: ["Public", "Private"]
-        description: "Controls visibility of types and values."
-      value:
-        description: "The value being access controlled."
-    description: "Wrapper that manages visibility of types and values."
+  AccessLevel:
+    type: string
+    enum: ["public", "private"]
+    description: "Controls visibility of types and values (lowercase in v1)."
   
   # Note: Documented is not a separate schema definition because it's encoded conditionally.
   # When documentation exists, the JSON has both "doc" and "value" fields.
@@ -122,18 +117,26 @@ definitions:
       modules:
         type: array
         items:
-          type: array
-          minItems: 2
-          maxItems: 2
-          items:
-            - $ref: "#/definitions/ModuleName"
-            - allOf:
-                - $ref: "#/definitions/AccessControlled"
-                - properties:
-                    value:
-                      $ref: "#/definitions/ModuleDefinition"
+          $ref: "#/definitions/ModuleEntry"
         description: "All modules in the package (public and private)."
     description: "Complete implementation of a package with all details."
+  
+  ModuleEntry:
+    type: object
+    required: ["name", "def"]
+    properties:
+      name:
+        $ref: "#/definitions/ModuleName"
+        description: "The module name/path."
+      def:
+        type: array
+        minItems: 2
+        maxItems: 2
+        items:
+          - $ref: "#/definitions/AccessLevel"
+          - $ref: "#/definitions/ModuleDefinition"
+        description: "Access-controlled module definition [accessLevel, definition]."
+    description: "Module entry with name and access-controlled definition (v1 format)."
   
   PackageSpecification:
     type: object
@@ -142,12 +145,15 @@ definitions:
       modules:
         type: array
         items:
-          type: array
-          minItems: 2
-          maxItems: 2
-          items:
-            - $ref: "#/definitions/ModuleName"
-            - $ref: "#/definitions/ModuleSpecification"
+          type: object
+          required: ["name", "spec"]
+          properties:
+            name:
+              $ref: "#/definitions/ModuleName"
+              description: "The module name/path."
+            spec:
+              $ref: "#/definitions/ModuleSpecification"
+              description: "The module specification."
         description: "Public modules only."
     description: "Public interface of a package, contains only type signatures."
   
@@ -165,20 +171,20 @@ definitions:
           maxItems: 2
           items:
             - $ref: "#/definitions/Name"
-            - allOf:
-                - $ref: "#/definitions/AccessControlled"
-                - properties:
-                    value:
-                      # Documented wrapper: can have "doc" and "value", or just the type definition directly
-                      oneOf:
-                        - type: object
-                          required: ["doc", "value"]
-                          properties:
-                            doc:
-                              type: string
-                            value:
-                              $ref: "#/definitions/TypeDefinition"
-                        - $ref: "#/definitions/TypeDefinition"
+            - type: array
+              minItems: 2
+              maxItems: 2
+              items:
+                - $ref: "#/definitions/AccessLevel"
+                - oneOf:
+                    - type: object
+                      required: ["doc", "value"]
+                      properties:
+                        doc:
+                          type: string
+                        value:
+                          $ref: "#/definitions/TypeDefinition"
+                    - $ref: "#/definitions/TypeDefinition"
         description: "All type definitions (public and private)."
       values:
         type: array
@@ -188,20 +194,20 @@ definitions:
           maxItems: 2
           items:
             - $ref: "#/definitions/Name"
-            - allOf:
-                - $ref: "#/definitions/AccessControlled"
-                - properties:
-                    value:
-                      # Documented wrapper: can have "doc" and "value", or just the value definition directly
-                      oneOf:
-                        - type: object
-                          required: ["doc", "value"]
-                          properties:
-                            doc:
-                              type: string
-                            value:
-                              $ref: "#/definitions/ValueDefinition"
-                        - $ref: "#/definitions/ValueDefinition"
+            - type: array
+              minItems: 2
+              maxItems: 2
+              items:
+                - $ref: "#/definitions/AccessLevel"
+                - oneOf:
+                    - type: object
+                      required: ["doc", "value"]
+                      properties:
+                        doc:
+                          type: string
+                        value:
+                          $ref: "#/definitions/ValueDefinition"
+                    - $ref: "#/definitions/ValueDefinition"
         description: "All value definitions (public and private)."
       doc:
         type: string
@@ -254,11 +260,12 @@ definitions:
     description: "Public interface of a module."
   
   # ===== Type System =====
+  # All type tags are lowercase in v1
   
   Type:
     description: |
       A Type is a recursive tree structure representing type expressions.
-      Each type can be one of: Variable, Reference, Tuple, Record, ExtensibleRecord, Function, or Unit.
+      Tags are lowercase in format version 1.
     oneOf:
       - $ref: "#/definitions/VariableType"
       - $ref: "#/definitions/ReferenceType"
@@ -273,7 +280,7 @@ definitions:
     minItems: 3
     maxItems: 3
     items:
-      - const: "Variable"
+      - const: "variable"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/Name"
     description: "Represents a type variable (generic parameter)."
@@ -283,7 +290,7 @@ definitions:
     minItems: 4
     maxItems: 4
     items:
-      - const: "Reference"
+      - const: "reference"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/FQName"
       - type: array
@@ -297,7 +304,7 @@ definitions:
     minItems: 3
     maxItems: 3
     items:
-      - const: "Tuple"
+      - const: "tuple"
       - $ref: "#/definitions/Attributes"
       - type: array
         items:
@@ -310,7 +317,7 @@ definitions:
     minItems: 3
     maxItems: 3
     items:
-      - const: "Record"
+      - const: "record"
       - $ref: "#/definitions/Attributes"
       - type: array
         items:
@@ -323,7 +330,7 @@ definitions:
     minItems: 4
     maxItems: 4
     items:
-      - const: "ExtensibleRecord"
+      - const: "extensible_record"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/Name"
       - type: array
@@ -337,7 +344,7 @@ definitions:
     minItems: 4
     maxItems: 4
     items:
-      - const: "Function"
+      - const: "function"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/Type"
       - $ref: "#/definitions/Type"
@@ -350,7 +357,7 @@ definitions:
     minItems: 2
     maxItems: 2
     items:
-      - const: "Unit"
+      - const: "unit"
       - $ref: "#/definitions/Attributes"
     description: "The type with exactly one value (similar to void in some languages)."
   
@@ -367,6 +374,7 @@ definitions:
     description: "A field in a record type."
   
   # ===== Type Specifications =====
+  # All type specification tags are lowercase with underscores in v1
   
   TypeSpecification:
     description: "Defines the interface of a type without implementation details."
@@ -381,7 +389,7 @@ definitions:
     minItems: 3
     maxItems: 3
     items:
-      - const: "TypeAliasSpecification"
+      - const: "type_alias_specification"
       - type: array
         items:
           $ref: "#/definitions/Name"
@@ -394,7 +402,7 @@ definitions:
     minItems: 2
     maxItems: 2
     items:
-      - const: "OpaqueTypeSpecification"
+      - const: "opaque_type_specification"
       - type: array
         items:
           $ref: "#/definitions/Name"
@@ -407,7 +415,7 @@ definitions:
     minItems: 3
     maxItems: 3
     items:
-      - const: "CustomTypeSpecification"
+      - const: "custom_type_specification"
       - type: array
         items:
           $ref: "#/definitions/Name"
@@ -420,7 +428,7 @@ definitions:
     minItems: 3
     maxItems: 3
     items:
-      - const: "DerivedTypeSpecification"
+      - const: "derived_type_specification"
       - type: array
         items:
           $ref: "#/definitions/Name"
@@ -442,6 +450,7 @@ definitions:
       A type with platform-specific representation but known serialization.
   
   # ===== Type Definitions =====
+  # All type definition tags are lowercase with underscores in v1
   
   TypeDefinition:
     description: "Provides the complete implementation of a type."
@@ -454,7 +463,7 @@ definitions:
     minItems: 3
     maxItems: 3
     items:
-      - const: "TypeAliasDefinition"
+      - const: "type_alias_definition"
       - type: array
         items:
           $ref: "#/definitions/Name"
@@ -467,19 +476,20 @@ definitions:
     minItems: 3
     maxItems: 3
     items:
-      - const: "CustomTypeDefinition"
+      - const: "custom_type_definition"
       - type: array
         items:
           $ref: "#/definitions/Name"
         description: "Type parameters."
-      - allOf:
-          - $ref: "#/definitions/AccessControlled"
-          - properties:
-              value:
-                $ref: "#/definitions/Constructors"
+      - type: array
+        minItems: 2
+        maxItems: 2
+        items:
+          - $ref: "#/definitions/AccessLevel"
+          - $ref: "#/definitions/Constructors"
     description: |
-      Complete definition of a custom type. If constructors are Private, 
-      the specification becomes OpaqueTypeSpecification.
+      Complete definition of a custom type. If constructors are private, 
+      the specification becomes opaque_type_specification.
   
   Constructors:
     type: array
@@ -501,11 +511,13 @@ definitions:
     description: "Dictionary of constructor names to their typed arguments."
   
   # ===== Value System =====
+  # Value expressions use lowercase tags with underscores in v1
   
   Value:
     description: |
       A Value is a recursive tree structure representing computations.
       All data and logic in Morphir are represented as value expressions.
+      Note: Value tags are lowercase with underscores in format version 1.
     oneOf:
       - $ref: "#/definitions/LiteralValue"
       - $ref: "#/definitions/ConstructorValue"
@@ -531,7 +543,7 @@ definitions:
     minItems: 3
     maxItems: 3
     items:
-      - const: "Literal"
+      - const: "literal"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/Literal"
     description: "A literal constant value."
@@ -541,7 +553,7 @@ definitions:
     minItems: 3
     maxItems: 3
     items:
-      - const: "Constructor"
+      - const: "constructor"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/FQName"
     description: "Reference to a custom type constructor."
@@ -551,7 +563,7 @@ definitions:
     minItems: 3
     maxItems: 3
     items:
-      - const: "Tuple"
+      - const: "tuple"
       - $ref: "#/definitions/Attributes"
       - type: array
         items:
@@ -564,7 +576,7 @@ definitions:
     minItems: 3
     maxItems: 3
     items:
-      - const: "List"
+      - const: "list"
       - $ref: "#/definitions/Attributes"
       - type: array
         items:
@@ -577,7 +589,7 @@ definitions:
     minItems: 3
     maxItems: 3
     items:
-      - const: "Record"
+      - const: "record"
       - $ref: "#/definitions/Attributes"
       - type: array
         items:
@@ -595,7 +607,7 @@ definitions:
     minItems: 3
     maxItems: 3
     items:
-      - const: "Variable"
+      - const: "variable"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/Name"
     description: "Reference to a variable in scope."
@@ -605,7 +617,7 @@ definitions:
     minItems: 3
     maxItems: 3
     items:
-      - const: "Reference"
+      - const: "reference"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/FQName"
     description: "Reference to a defined value (function or constant)."
@@ -615,7 +627,7 @@ definitions:
     minItems: 4
     maxItems: 4
     items:
-      - const: "Field"
+      - const: "field"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/Value"
       - $ref: "#/definitions/Name"
@@ -626,7 +638,7 @@ definitions:
     minItems: 3
     maxItems: 3
     items:
-      - const: "FieldFunction"
+      - const: "field_function"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/Name"
     description: "A function that extracts a field (e.g., .firstName)."
@@ -636,7 +648,7 @@ definitions:
     minItems: 4
     maxItems: 4
     items:
-      - const: "Apply"
+      - const: "apply"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/Value"
       - $ref: "#/definitions/Value"
@@ -649,7 +661,7 @@ definitions:
     minItems: 4
     maxItems: 4
     items:
-      - const: "Lambda"
+      - const: "lambda"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/Pattern"
       - $ref: "#/definitions/Value"
@@ -662,7 +674,7 @@ definitions:
     minItems: 5
     maxItems: 5
     items:
-      - const: "LetDefinition"
+      - const: "let_definition"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/Name"
       - $ref: "#/definitions/ValueDefinition"
@@ -676,7 +688,7 @@ definitions:
     minItems: 4
     maxItems: 4
     items:
-      - const: "LetRecursion"
+      - const: "let_recursion"
       - $ref: "#/definitions/Attributes"
       - type: array
         items:
@@ -695,7 +707,7 @@ definitions:
     minItems: 5
     maxItems: 5
     items:
-      - const: "Destructure"
+      - const: "destructure"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/Pattern"
       - $ref: "#/definitions/Value"
@@ -709,7 +721,7 @@ definitions:
     minItems: 5
     maxItems: 5
     items:
-      - const: "IfThenElse"
+      - const: "if_then_else"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/Value"
       - $ref: "#/definitions/Value"
@@ -723,7 +735,7 @@ definitions:
     minItems: 4
     maxItems: 4
     items:
-      - const: "PatternMatch"
+      - const: "pattern_match"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/Value"
       - type: array
@@ -742,7 +754,7 @@ definitions:
     minItems: 4
     maxItems: 4
     items:
-      - const: "UpdateRecord"
+      - const: "update_record"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/Value"
       - type: array
@@ -763,11 +775,12 @@ definitions:
     minItems: 2
     maxItems: 2
     items:
-      - const: "Unit"
+      - const: "unit"
       - $ref: "#/definitions/Attributes"
     description: "The unit value (the single value of the Unit type)."
   
   # ===== Literals =====
+  # All literal tags are lowercase with underscores in v1
   
   Literal:
     description: "Represents literal constant values."
@@ -784,7 +797,7 @@ definitions:
     minItems: 2
     maxItems: 2
     items:
-      - const: "BoolLiteral"
+      - const: "bool_literal"
       - type: boolean
     description: "Boolean literal (true or false)."
   
@@ -793,7 +806,7 @@ definitions:
     minItems: 2
     maxItems: 2
     items:
-      - const: "CharLiteral"
+      - const: "char_literal"
       - type: string
         minLength: 1
         maxLength: 1
@@ -804,7 +817,7 @@ definitions:
     minItems: 2
     maxItems: 2
     items:
-      - const: "StringLiteral"
+      - const: "string_literal"
       - type: string
     description: "Text string literal."
   
@@ -813,7 +826,7 @@ definitions:
     minItems: 2
     maxItems: 2
     items:
-      - const: "WholeNumberLiteral"
+      - const: "whole_number_literal"
       - type: integer
     description: "Integer literal."
   
@@ -822,7 +835,7 @@ definitions:
     minItems: 2
     maxItems: 2
     items:
-      - const: "FloatLiteral"
+      - const: "float_literal"
       - type: number
     description: "Floating-point number literal."
   
@@ -831,17 +844,19 @@ definitions:
     minItems: 2
     maxItems: 2
     items:
-      - const: "DecimalLiteral"
+      - const: "decimal_literal"
       - type: string
         pattern: "^-?[0-9]+(\\.[0-9]+)?$"
     description: "Arbitrary-precision decimal literal (stored as string)."
   
   # ===== Patterns =====
+  # All pattern tags are lowercase with underscores in v1
   
   Pattern:
     description: |
       Patterns are used for destructuring and filtering values.
       They appear in lambda, let destructure, and pattern match expressions.
+      Pattern tags are lowercase with underscores in format version 1.
     oneOf:
       - $ref: "#/definitions/WildcardPattern"
       - $ref: "#/definitions/AsPattern"
@@ -857,7 +872,7 @@ definitions:
     minItems: 2
     maxItems: 2
     items:
-      - const: "WildcardPattern"
+      - const: "wildcard_pattern"
       - $ref: "#/definitions/Attributes"
     description: "Matches any value without binding (the _ pattern)."
   
@@ -866,7 +881,7 @@ definitions:
     minItems: 4
     maxItems: 4
     items:
-      - const: "AsPattern"
+      - const: "as_pattern"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/Pattern"
       - $ref: "#/definitions/Name"
@@ -880,7 +895,7 @@ definitions:
     minItems: 3
     maxItems: 3
     items:
-      - const: "TuplePattern"
+      - const: "tuple_pattern"
       - $ref: "#/definitions/Attributes"
       - type: array
         items:
@@ -893,7 +908,7 @@ definitions:
     minItems: 4
     maxItems: 4
     items:
-      - const: "ConstructorPattern"
+      - const: "constructor_pattern"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/FQName"
       - type: array
@@ -907,7 +922,7 @@ definitions:
     minItems: 2
     maxItems: 2
     items:
-      - const: "EmptyListPattern"
+      - const: "empty_list_pattern"
       - $ref: "#/definitions/Attributes"
     description: "Matches an empty list (the [] pattern)."
   
@@ -916,7 +931,7 @@ definitions:
     minItems: 4
     maxItems: 4
     items:
-      - const: "HeadTailPattern"
+      - const: "head_tail_pattern"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/Pattern"
       - $ref: "#/definitions/Pattern"
@@ -929,7 +944,7 @@ definitions:
     minItems: 3
     maxItems: 3
     items:
-      - const: "LiteralPattern"
+      - const: "literal_pattern"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/Literal"
     description: "Matches an exact literal value."
@@ -939,7 +954,7 @@ definitions:
     minItems: 2
     maxItems: 2
     items:
-      - const: "UnitPattern"
+      - const: "unit_pattern"
       - $ref: "#/definitions/Attributes"
     description: "Matches the unit value."
   

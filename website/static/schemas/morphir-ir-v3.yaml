@@ -3,7 +3,7 @@
 # A distribution is the output of the Morphir compilation process (e.g., morphir-elm make).
 
 $schema: "http://json-schema.org/draft-07/schema#"
-$id: "https://finos.github.io/morphir/schemas/morphir-ir-v3.yaml"
+$id: "https://morphir.finos.org/schemas/morphir-ir-v3.yaml"
 title: "Morphir IR Distribution"
 description: |
   A Morphir IR distribution represents a complete, self-contained package of business logic

@@ -11,9 +11,11 @@ This directory contains formal JSON schema specifications for all supported form
 
 ## Schema Files
 
-- **morphir-ir-v3.yaml**: Current format version (v3)
-- **morphir-ir-v2.yaml**: Format version 2
-- **morphir-ir-v1.yaml**: Format version 1
+The schemas are available at SEO-friendly URLs:
+
+- **[morphir-ir-v3.yaml](/schemas/morphir-ir-v3.yaml)**: Current format version (v3)
+- **[morphir-ir-v2.yaml](/schemas/morphir-ir-v2.yaml)**: Format version 2
+- **[morphir-ir-v1.yaml](/schemas/morphir-ir-v1.yaml)**: Format version 1
 
 ## Format Version Differences
 
@@ -43,16 +45,18 @@ The schemas can be used to validate Morphir IR JSON files. Note that due to the 
 #### Using Python jsonschema
 
 ```bash
-pip install jsonschema pyyaml
+pip install jsonschema pyyaml requests
 
 python3 << 'EOF'
 import json
 import yaml
+import requests
 from jsonschema import validate
 
-# Load schema
-with open('morphir-ir-v3.yaml', 'r') as f:
-    schema = yaml.safe_load(f)
+# Load schema from URL
+schema = yaml.safe_load(
+    requests.get('https://morphir.finos.org/schemas/morphir-ir-v3.yaml').text
+)
 
 # Load Morphir IR JSON
 with open('morphir-ir.json', 'r') as f:
@@ -69,7 +73,8 @@ EOF
 ```bash
 npm install -g ajv-cli ajv-formats
 
-# Convert YAML to JSON first
+# Download and convert YAML to JSON
+curl -o morphir-ir-v3.yaml https://morphir.finos.org/schemas/morphir-ir-v3.yaml
 python3 -c "import yaml, json; \
   json.dump(yaml.safe_load(open('morphir-ir-v3.yaml')), open('morphir-ir-v3.json', 'w'))"
 
