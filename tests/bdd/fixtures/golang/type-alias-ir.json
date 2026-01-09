@@ -1,0 +1,61 @@
+{
+    "formatVersion": 3,
+    "distribution": [
+        "Library",
+        [["example"], ["domain"]],
+        {},
+        {
+            "modules": [
+                {
+                    "name": [["types"]],
+                    "def": [
+                        "public",
+                        {
+                            "types": [
+                                [
+                                    [["user", "id"]],
+                                    [
+                                        "public",
+                                        [
+                                            "A unique identifier for users",
+                                            [
+                                                "type_alias_definition",
+                                                [],
+                                                [
+                                                    "reference",
+                                                    {},
+                                                    [[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]],
+                                                    []
+                                                ]
+                                            ]
+                                        ]
+                                    ]
+                                ],
+                                [
+                                    [["age"]],
+                                    [
+                                        "public",
+                                        [
+                                            "Age in years",
+                                            [
+                                                "type_alias_definition",
+                                                [],
+                                                [
+                                                    "reference",
+                                                    {},
+                                                    [[["morphir"], ["s", "d", "k"]], [["basics"]], ["int"]],
+                                                    []
+                                                ]
+                                            ]
+                                        ]
+                                    ]
+                                ]
+                            ],
+                            "values": []
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,90 @@
+{
+    "formatVersion": 3,
+    "distribution": [
+        "Library",
+        [["example"], ["app"]],
+        {},
+        {
+            "modules": [
+                {
+                    "name": [["domain"]],
+                    "def": [
+                        "public",
+                        {
+                            "types": [
+                                [
+                                    [["customer", "id"]],
+                                    [
+                                        "public",
+                                        [
+                                            "Customer identifier",
+                                            [
+                                                "type_alias_definition",
+                                                [],
+                                                [
+                                                    "reference",
+                                                    {},
+                                                    [[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]],
+                                                    []
+                                                ]
+                                            ]
+                                        ]
+                                    ]
+                                ]
+                            ],
+                            "values": []
+                        }
+                    ]
+                },
+                {
+                    "name": [["service"]],
+                    "def": [
+                        "public",
+                        {
+                            "types": [
+                                [
+                                    [["request"]],
+                                    [
+                                        "public",
+                                        [
+                                            "Service request type",
+                                            [
+                                                "type_alias_definition",
+                                                [],
+                                                [
+                                                    "record",
+                                                    {},
+                                                    [
+                                                        [
+                                                            [["customer"]],
+                                                            [
+                                                                "reference",
+                                                                {},
+                                                                [[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]],
+                                                                []
+                                                            ]
+                                                        ],
+                                                        [
+                                                            [["amount"]],
+                                                            [
+                                                                "reference",
+                                                                {},
+                                                                [[["morphir"], ["s", "d", "k"]], [["basics"]], ["float"]],
+                                                                []
+                                                            ]
+                                                        ]
+                                                    ]
+                                                ]
+                                            ]
+                                        ]
+                                    ]
+                                ]
+                            ],
+                            "values": []
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
