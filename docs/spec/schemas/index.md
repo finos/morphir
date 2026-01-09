@@ -11,11 +11,15 @@ This directory contains formal JSON schema specifications for all supported form
 
 ## Schema Files
 
-The schemas are available at SEO-friendly URLs:
+The schemas are available in both YAML and JSON formats at SEO-friendly URLs:
 
-- **[morphir-ir-v3.yaml](/schemas/morphir-ir-v3.yaml)**: Current format version (v3)
-- **[morphir-ir-v2.yaml](/schemas/morphir-ir-v2.yaml)**: Format version 2
-- **[morphir-ir-v1.yaml](/schemas/morphir-ir-v1.yaml)**: Format version 1
+| Version | YAML | JSON |
+|---------|------|------|
+| v3 (Current) | [morphir-ir-v3.yaml](/schemas/morphir-ir-v3.yaml) | [morphir-ir-v3.json](/schemas/morphir-ir-v3.json) |
+| v2 | [morphir-ir-v2.yaml](/schemas/morphir-ir-v2.yaml) | [morphir-ir-v2.json](/schemas/morphir-ir-v2.json) |
+| v1 | [morphir-ir-v1.yaml](/schemas/morphir-ir-v1.yaml) | [morphir-ir-v1.json](/schemas/morphir-ir-v1.json) |
+
+Use YAML for better readability or JSON for maximum tool compatibility.
 
 ## Format Version Differences
 
@@ -73,10 +77,8 @@ EOF
 ```bash
 npm install -g ajv-cli ajv-formats
 
-# Download and convert YAML to JSON
-curl -o morphir-ir-v3.yaml https://morphir.finos.org/schemas/morphir-ir-v3.yaml
-python3 -c "import yaml, json; \
-  json.dump(yaml.safe_load(open('morphir-ir-v3.yaml')), open('morphir-ir-v3.json', 'w'))"
+# Download JSON schema directly (no conversion needed)
+curl -o morphir-ir-v3.json https://morphir.finos.org/schemas/morphir-ir-v3.json
 
 # Validate
 ajv validate -s morphir-ir-v3.json -d morphir-ir.json

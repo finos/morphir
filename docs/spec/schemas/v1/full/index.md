@@ -11,7 +11,9 @@ This page contains the complete JSON schema definition for Morphir IR format ver
 
 ## Download
 
-You can download the schema file directly: [morphir-ir-v1.yaml](/schemas/morphir-ir-v1.yaml)
+You can download the schema file directly:
+- YAML: [morphir-ir-v1.yaml](/schemas/morphir-ir-v1.yaml)
+- JSON: [morphir-ir-v1.json](/schemas/morphir-ir-v1.json)
 
 ## Usage
 
