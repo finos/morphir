@@ -1,0 +1,1598 @@
+# Morphir - Complete Documentation
+
+> Morphir is a library of tools that works to capture business logic
+> as data in a language-agnostic intermediate representation (IR).
+> This file contains the complete inline documentation for LLM consumption.
+
+## Core Documentation
+
+### Morphir Documentation
+
+# Morphir Documentation
+
+Welcome to the Morphir documentation! This guide will help you understand, install, and use Morphir effectively.
+
+## 📚 Documentation Structure
+
+### [Getting Started](getting-started/)
+Start here if you're new to Morphir!
+- [Introduction](getting-started/intro.md) - What is Morphir and why use it?
+- [Installation](getting-started/installation.md) - Install Morphir tools
+- [Installation and Usage](getting-started/installation-and-usage.md) - Detailed installation and basic usage
+- [Quick Start Tutorial](getting-started/tutorials.md) - Get up and running quickly
+- [Editor Setup](getting-started/editor-setup.md) - Configure your development environment
+- [Morphir Web UI](getting-started/Morphir%20Web%20UI.md) - Browse and visualize Morphir models
+- [Morphir Go Preview](getting-started/morphir-go-preview.md) - Preview of the new Go-based Morphir CLI
+
+### [CLI Preview](cli-preview/)
+The next-generation Morphir CLI built in Go
+- [Overview](cli-preview/index.md) - Introduction to the new CLI
+- [Getting Started](cli-preview/getting-started.md) - Quick start with the new CLI
+- [What's New](cli-preview/whats-new.md) - Latest features and improvements
+- [Commands](cli-preview/commands/) - CLI command reference
+- [Release Notes](cli-preview/release-notes/) - Version history and changelogs
+
+### [Core Concepts](concepts/)
+Understand the fundamental concepts behind Morphir
+- [Introduction to Morphir](concepts/introduction-to-morphir.md) - Overview of Morphir
+- [What's It About?](concepts/whats-it-about.md) - Business logic and application focus
+- [Why Functional Programming?](concepts/why-functional-programming.md) - The FP paradigm in Morphir
+- [Morphir IR](concepts/morphir-ir.md) - The Intermediate Representation structure
+- [Morphir SDK](concepts/morphir-sdk.md) - Standard library and SDK
+
+### [IR Specification](spec/)
+Technical specification of the Morphir Intermediate Representation
+- [Overview](spec/index.md) - IR specification overview
+- [IR Specification](spec/morphir-ir-specification.md) - Detailed IR specification
+- [JSON Schemas](spec/schemas/) - JSON schemas for IR versions
+  - [Version 3 (Current)](spec/schemas/v3/) - Latest IR schema
+  - [Version 2](spec/schemas/v2/) - Previous IR schema
+  - [Version 1](spec/schemas/v1/) - Original IR schema
+
+### [User Guides](user-guides/)
+Learn how to model business logic and use Morphir tools
+
+#### [Modeling Guides](user-guides/modeling-guides/)
+- [Application Modeling](user-guides/modeling-guides/application-modeling.md)
+- [Modeling Overview](user-guides/modeling-guides/modeling-overview.md)
+- [What Makes a Good Domain Model](user-guides/modeling-guides/what-makes-a-good-domain-model.md)
+- [Modeling for Database Developers](user-guides/modeling-guides/modeling-for-database-developers.md)
+- [Modeling in Finance](user-guides/modeling-guides/modeling-finance.md)
+- [Modeling and Testing](user-guides/modeling-guides/modelling-testing.md)
+- [Soul of Your Application](user-guides/modeling-guides/soul-of-your-application.md)
+
+#### [Command-Line Tools](user-guides/cli-tools/)
+- [Command-Line Tools](user-guides/cli-tools/command-line-tools.md)
+- [Morphir Commands Processing](user-guides/cli-tools/morphir-commands-processing.md)
+- [Morphir-Elm Commands](user-guides/cli-tools/morphir-elm-commands-processing.md)
+
+#### [Development Techniques](user-guides/development-guides/)
+- [Working with Results in Elm](user-guides/development-guides/working-with-results-in-elm.md)
+- [Decorators User Guide](user-guides/development-guides/decorators-users-guide.md)
+
+### [Reference](reference/)
+Technical reference documentation for backends, APIs, and tools
+
+#### [Backends](reference/backends/)
+
+##### [Scala](reference/backends/scala/)
+- [Scala Backend](reference/backends/scala/scala-backend.md)
+- [Scala API Usage](reference/backends/scala/scala-api-usage-docs.md)
+- [Scala JSON Codecs Backend](reference/backends/scala/scala-json-codecs-backend.md)
+- [Morphir Scala Code Generation](reference/backends/scala/morphir-scala-gen.md)
+
+##### [Spark](reference/backends/spark/)
+- [Spark Backend Design](reference/backends/spark/spark-backend-design.md)
+- [Spark Backend API](reference/backends/spark/spark-backend-api-documentation.md)
+- [Spark Backend Joins](reference/backends/spark/spark-backend-joins.md)
+- [Spark Backend Optional Values](reference/backends/spark/spark-backend-optional-values.md)
+- [Spark as Relational Backend](reference/backends/spark/spark-backend-as-a-special-case-of-a-relational-backend.md)
+- [Spark Testing Framework](reference/backends/spark/spark-testing-framework.md)
+
+##### [Other Platforms](reference/backends/other-platforms/)
+- [Relational Backend](reference/backends/other-platforms/relational-backend.md)
+- [TypeScript](reference/backends/other-platforms/typescript.md)
+- [TypeScript API](reference/backends/other-platforms/morphir-typescript-api.md)
+- [CADL/TypeSpec](reference/backends/other-platforms/cadl-doc.md)
+- [Spring Boot](reference/backends/other-platforms/spring-boot-readme.md)
+
+#### [JSON Schema](reference/json-schema/)
+- [JSON Codecs Documentation](reference/json-schema/json-codecs-doc.md)
+- [Generating JSON Schema](reference/json-schema/generating-json-schema.md)
+- [JSON Schema Configuration](reference/json-schema/json-schema-config.md)
+- [JSON Schema Mappings](reference/json-schema/json-schema-mappings.md)
+- [JSON Schema Sample](reference/json-schema/json-schema-sample.md)
+- [JSON Schema Developers Guide](reference/json-schema/json-schema-enabled%20developers%20guide.md)
+- [JSON Schema Backend Test Plan](reference/json-schema/json-schema-backend-testplan.md)
+- [JSON Schema Backend Config Test Plan](reference/json-schema/json-schema-backend-config-test-plan.md)
+- [Codec Documentation](reference/json-schema/codec-docs.md)
+
+#### [CLI Reference](reference/cli/)
+- [CLI Incremental Build](reference/cli/morphir-cli-incremental-build-approach.md)
+- [CLI Merging Documentation](reference/cli/cli-cli2-merging-docs.md)
+
+#### Other Reference
+- [Testing Framework](reference/testing-framework-readme.md)
+- [Insight](reference/insight-readme.md)
+- [User Guide](reference/user-guide-readme.md)
+- [Error: Append Not Supported](reference/error-append-not-supported.md)
+- [Table Template](reference/table-template.md)
+- [Versioning](reference/versioning.md)
+
+### [Developer Guides](developers/)
+Contributing to Morphir and advanced development topics
+- [Contributing Guide](developers/contributing.md) - How to contribute to Morphir
+- [Contribution Guide Index](developers/contribution-guide-index.md)
+- [Contribution Guide README](developers/contribution-guide-readme.md)
+- [Morphir Developers Guide](developers/morphir-developers-guide.md)
+- [Development Bots](developers/dev-bots.md)
+- [Integrating Morphir with JVM Projects](developers/integrating-morphir-and-jvm-projects.md)
+- [Publishing](developers/publishing.md)
+- [Release Retrospective v0.4.0-alpha.1](developers/release-retrospective-v0.4.0-alpha.1.md) - Lessons learned from v0.4.0-alpha.1 release
+
+### [Community](community/)
+Join the Morphir community
+- [Morphir Community](community/morphir-community.md) - Community resources and how to get involved
+- [Media](community/media.md) - Presentations, videos, and media resources
+- [Code of Conduct](community/code-of-conduct.md)
+- [FAQs](community/faqs.md) - Frequently Asked Questions
+
+### [Use Cases](use-cases/)
+Real-world applications of Morphir
+- [The Morphir Background Story](use-cases/background.md)
+- [Regulatory Technology Modeling](use-cases/regtech-modeling.md)
+
+## 🚀 Quick Links
+
+- **New to Morphir?** Start with [Introduction](getting-started/intro.md)
+- **Want to install?** See [Installation](getting-started/installation.md)
+- **Need to model business logic?** Check out [Application Modeling](user-guides/modeling-guides/application-modeling.md)
+- **Looking for API docs?** Browse the [Reference](reference/) section
+- **Want to contribute?** Read the [Contributing Guide](developers/contributing.md)
+- **Have questions?** Check the [FAQs](community/faqs.md) or join the [Community](community/morphir-community.md)
+
+## 📖 Additional Resources
+
+- **Examples**: See the [examples](examples/) folder for practical examples
+- **Presentations**: Check [presentations](presentations/) for talks and slides
+
+## 🔗 External Links
+
+- [Main Repository](https://github.com/finos/morphir)
+- [Morphir Website](https://morphir.finos.org)
+- [FINOS](https://finos.org)
+- [Slack Channel](https://finos-lf.slack.com/messages/morphir/)
+
+---
+
+**Note**: This documentation is organized to help newcomers navigate easily. If you're looking for something specific, use your browser's search function or check the [FAQs](community/faqs.md).
+
+---
+
+### Morphir IR Specification
+
+# Morphir IR Specification
+
+## Overview
+
+The Morphir Intermediate Representation (IR) is a language-independent, platform-agnostic representation of business logic and domain models. It serves as a universal format that captures the semantics of functional programs, enabling them to be transformed, analyzed, and executed across different platforms and languages.
+
+### Purpose
+
+The Morphir IR specification defines:
+
+- **Building blocks**: Core concepts and data structures that form the IR
+- **Relationships**: How different components of the IR relate to and reference each other
+- **Semantics**: The meaning and behavior of each construct
+
+This specification is designed to:
+
+- Guide implementers building tools that generate, consume, or transform Morphir IR
+- Provide context for Large Language Models (LLMs) working with Morphir
+- Serve as the authoritative reference for the Morphir IR structure
+
+### Design Principles
+
+The Morphir IR follows these key principles:
+
+- **Functional**: All logic is expressed as pure functions without side effects
+- **Type-safe**: Complete type information is preserved throughout the IR
+- **Hierarchical**: Code is organized in a hierarchical namespace (Package → Module → Type/Value)
+- **Naming-agnostic**: Names are stored in a canonical format independent of any specific naming convention
+- **Explicit**: All references are fully-qualified to eliminate ambiguity
+
+## Core Concepts
+
+### Naming
+
+Morphir uses a sophisticated naming system that is independent of any specific naming convention (camelCase, snake_case, etc.). This allows the same IR to be rendered in different conventions for different platforms.
+
+#### Name
+
+A **Name** represents a human-readable identifier made up of one or more words.
+
+- Structure: A list of lowercase word strings
+- Purpose: Serves as the atomic unit for all identifiers
+- Example: `["value", "in", "u", "s", "d"]` can be rendered as:
+  - `valueInUSD` (camelCase)
+  - `ValueInUSD` (TitleCase)
+  - `value_in_USD` (snake_case)
+
+#### Path
+
+A **Path** represents a hierarchical location in the IR structure.
+
+- Structure: A list of Names
+- Purpose: Identifies packages and modules within the hierarchy
+- Example: `[["morphir"], ["s", "d", "k"], ["string"]]` represents the path to the String module
+
+#### Qualified Name (QName)
+
+A **Qualified Name** uniquely identifies a type or value within a package.
+
+- Structure: A tuple of (module path, local name)
+- Components:
+  - Module path: The Path to the module
+  - Local name: The Name of the type or value within that module
+- Purpose: Identifies items relative to a package
+
+#### Fully-Qualified Name (FQName)
+
+A **Fully-Qualified Name** provides a globally unique identifier for any type or value.
+
+- Structure: A tuple of (package path, module path, local name)
+- Components:
+  - Package path: The Path to the package
+  - Module path: The Path to the module within the package
+  - Local name: The Name of the type or value
+- Purpose: Enables unambiguous references across package boundaries
+
+### Attributes and Annotations
+
+The IR supports extensibility through attributes that can be attached to various nodes:
+
+- **Type attributes (ta)**: Extra information attached to type nodes (e.g., source location, type inference results)
+- **Value attributes (va)**: Extra information attached to value nodes (e.g., source location, inferred types)
+
+When no additional information is needed, the unit type `()` is used as a placeholder.
+
+### Access Control
+
+#### AccessControlled
+
+An **AccessControlled** wrapper manages visibility of types and values.
+
+- Structure: `{ access, value }`
+- Access levels:
+  - **Public**: Visible to external consumers of the package
+  - **Private**: Only visible within the package
+- Purpose: Controls what parts of a package are exposed in its public API
+
+#### Documented
+
+A **Documented** wrapper associates documentation with IR elements.
+
+- Structure: `{ doc, value }`
+- Components:
+  - doc: A string containing documentation text
+  - value: The documented element
+- Purpose: Preserves documentation for types and values
+
+## Distribution
+
+A **Distribution** represents a complete, self-contained package of Morphir code with all its dependencies.
+
+### Structure
+
+Currently, Morphir supports a single distribution type: **Library**
+
+A Library distribution contains:
+
+- **Package name**: The globally unique identifier for the package (like NPM package name or Maven GroupId:ArtifactId)
+- **Dependencies**: A dictionary mapping package names to their specifications
+  - Dependencies only contain type signatures (specifications), not implementations
+- **Package definition**: The complete implementation of the package
+  - Contains all module definitions, including private modules
+  - Includes both type signatures and implementations
+
+### Purpose
+
+A distribution is:
+
+- The output of the Morphir compilation process (e.g., `morphir-elm make`)
+- A complete unit that can be executed, analyzed, or transformed
+- Self-contained with all dependency information included
+
+## Package
+
+A **Package** is a collection of modules that are versioned and distributed together. It corresponds to what package managers like NPM, NuGet, Maven, or pip consider a package.
+
+### Package Specification
+
+A **Package Specification** provides the public interface of a package.
+
+Structure:
+- **modules**: A dictionary mapping module names (Paths) to Module Specifications
+
+Characteristics:
+- Contains only publicly exposed modules
+- Types are only included if they are public
+- Values are only included if they are public
+- No implementation details are included
+
+### Package Definition
+
+A **Package Definition** provides the complete implementation of a package.
+
+Structure:
+- **modules**: A dictionary mapping module names (Paths) to AccessControlled Module Definitions
+
+Characteristics:
+- Contains all modules (both public and private)
+- All types are included (both public and private)
+- All values are included with their implementations
+- Each module is wrapped in AccessControlled to indicate its visibility
+
+### Package Name
+
+A **Package Name** is the globally unique identifier for a package.
+
+- Structure: A Path (list of Names)
+- Examples: `[["morphir"], ["s", "d", "k"]]`, `[["my"], ["company"], ["models"]]`
+- Purpose: Uniquely identifies a package across all Morphir systems
+
+## Module
+
+A **Module** groups related types and values together, similar to packages in Java or namespaces in other languages.
+
+### Module Specification
+
+A **Module Specification** provides the public interface of a module.
+
+Structure:
+- **types**: Dictionary of type names to Documented Type Specifications
+- **values**: Dictionary of value names to Documented Value Specifications  
+- **doc**: Optional documentation string for the module
+
+Characteristics:
+- Only includes publicly exposed types and values
+- Contains type signatures but no implementations
+- Documentation is preserved from the source
+
+### Module Definition
+
+A **Module Definition** provides the complete implementation of a module.
+
+Structure:
+- **types**: Dictionary of type names to AccessControlled, Documented Type Definitions
+- **values**: Dictionary of value names to AccessControlled, Documented Value Definitions
+- **doc**: Optional documentation string for the module
+
+Characteristics:
+- Includes all types and values (public and private)
+- Contains complete implementations
+- Each type and value is wrapped in AccessControlled to indicate visibility
+- Documentation is preserved from the source
+
+### Module Name
+
+A **Module Name** uniquely identifies a module within a package.
+
+- Structure: A Path (list of Names)
+- Examples: `[["morphir"], ["i", "r"], ["type"]]`, `[["my"], ["module"]]`
+
+### Qualified Module Name
+
+A **Qualified Module Name** provides a globally unique module identifier.
+
+- Structure: A tuple of (package path, module path)
+- Purpose: Enables unambiguous module references across packages
+
+## Type System
+
+The Morphir type system is based on functional programming principles, similar to languages like Elm, Haskell, or ML.
+
+### Type Expressions
+
+A **Type** is a recursive tree structure representing type expressions. Each node can have type attributes attached.
+
+#### Variable
+
+Represents a type variable (generic parameter).
+
+- Structure: `Variable a Name`
+- Components:
+  - a: Type attribute
+  - Name: The variable name
+- Example: The `a` in `List a`
+- Purpose: Enables generic/polymorphic types
+
+#### Reference
+
+A reference to another type or type alias.
+
+- Structure: `Reference a FQName (List Type)`
+- Components:
+  - a: Type attribute
+  - FQName: Fully-qualified name of the referenced type
+  - List Type: Type arguments (for generic types)
+- Examples:
+  - `String` → `Reference a (["morphir"], ["s", "d", "k"], ["string"]) []`
+  - `List Int` → `Reference a (["morphir"], ["s", "d", "k"], ["list"]) [intType]`
+- Purpose: Refers to built-in types, custom types, or type aliases
+
+#### Tuple
+
+A composition of multiple types in a fixed order.
+
+- Structure: `Tuple a (List Type)`
+- Components:
+  - a: Type attribute
+  - List Type: Element types in order
+- Examples:
+  - `(Int, String)` → `Tuple a [intType, stringType]`
+  - `(Int, Int, Bool)` → `Tuple a [intType, intType, boolType]`
+- Notes:
+  - Zero-element tuple is equivalent to Unit
+  - Single-element tuple is equivalent to the element type itself
+- Purpose: Represents product types with positional access
+
+#### Record
+
+A composition of named fields with their types.
+
+- Structure: `Record a (List Field)`
+- Components:
+  - a: Type attribute
+  - List Field: List of field definitions
+- Field structure: `{ name: Name, tpe: Type }`
+- Example: `{ firstName: String, age: Int }`
+- Notes:
+  - Field order is preserved but not semantically significant
+  - All fields are required (no optional fields)
+- Purpose: Represents product types with named field access
+
+#### ExtensibleRecord
+
+A record type that can be extended with additional fields.
+
+- Structure: `ExtensibleRecord a Name (List Field)`
+- Components:
+  - a: Type attribute
+  - Name: Type variable representing the extension
+  - List Field: Known fields
+- Example: `{ a | firstName: String, age: Int }` means "type `a` with at least these fields"
+- Purpose: Enables flexible record types that can be extended
+
+#### Function
+
+Represents a function type.
+
+- Structure: `Function a Type Type`
+- Components:
+  - a: Type attribute
+  - First Type: Argument type
+  - Second Type: Return type
+- Examples:
+  - `Int -> String` → `Function a intType stringType`
+  - `Int -> Int -> Bool` → `Function a intType (Function a intType boolType)`
+- Notes:
+  - Multi-argument functions are represented via currying (nested Function types)
+- Purpose: Represents the type of functions and lambdas
+
+#### Unit
+
+The type with exactly one value.
+
+- Structure: `Unit a`
+- Components:
+  - a: Type attribute
+- Purpose: Placeholder where a type is needed but the value is unused
+- Corresponds to `void` in some languages
+
+### Type Specifications
+
+A **Type Specification** defines the interface of a type without implementation details.
+
+#### TypeAliasSpecification
+
+An alias for another type.
+
+- Structure: `TypeAliasSpecification (List Name) Type`
+- Components:
+  - List Name: Type parameters
+  - Type: The aliased type expression
+- Example: `type alias UserId = String`
+- Purpose: Provides a meaningful name for a type expression
+
+#### OpaqueTypeSpecification
+
+A type with unknown structure.
+
+- Structure: `OpaqueTypeSpecification (List Name)`
+- Components:
+  - List Name: Type parameters
+- Characteristics:
+  - Structure is hidden from consumers
+  - Cannot be automatically serialized
+  - Values can only be created and manipulated via provided functions
+- Purpose: Encapsulates implementation details
+
+#### CustomTypeSpecification
+
+A tagged union type (sum type).
+
+- Structure: `CustomTypeSpecification (List Name) Constructors`
+- Components:
+  - List Name: Type parameters
+  - Constructors: Dictionary of constructor names to their arguments
+- Constructor arguments: `List (Name, Type)` - list of named, typed arguments
+- Example: `type Result e a = Ok a | Err e`
+- Purpose: Represents choice between multiple alternatives
+
+#### DerivedTypeSpecification
+
+A type with platform-specific representation but known serialization.
+
+- Structure: `DerivedTypeSpecification (List Name) Details`
+- Details contain:
+  - **baseType**: The type used for serialization
+  - **fromBaseType**: FQName of function to convert from base type
+  - **toBaseType**: FQName of function to convert to base type
+- Example: A `LocalDate` might serialize to/from String with conversion functions
+- Purpose: Enables platform-specific types while maintaining serialization capability
+
+### Type Definitions
+
+A **Type Definition** provides the complete implementation of a type.
+
+#### TypeAliasDefinition
+
+Complete definition of a type alias.
+
+- Structure: `TypeAliasDefinition (List Name) Type`
+- Components:
+  - List Name: Type parameters
+  - Type: The complete type expression being aliased
+- Same as specification (aliases have no hidden implementation)
+
+#### CustomTypeDefinition
+
+Complete definition of a custom type.
+
+- Structure: `CustomTypeDefinition (List Name) (AccessControlled Constructors)`
+- Components:
+  - List Name: Type parameters
+  - AccessControlled Constructors: Constructor definitions with visibility control
+- If constructors are Private → specification becomes OpaqueTypeSpecification
+- If constructors are Public → specification becomes CustomTypeSpecification
+- Purpose: Allows hiding constructors while exposing the type
+
+## Value System
+
+Values represent both data and logic in Morphir. All computations are expressed as value expressions.
+
+### Value Expressions
+
+A **Value** is a recursive tree structure representing computations. Each node can have type and value attributes.
+
+#### Literal
+
+A literal constant value.
+
+- Structure: `Literal va Literal`
+- Components:
+  - va: Value attribute
+  - Literal: The literal value
+- Supported literal types:
+  - **BoolLiteral**: Boolean values (`True`, `False`)
+  - **CharLiteral**: Single characters (`'a'`, `'Z'`)
+  - **StringLiteral**: Text strings (`"hello"`)
+  - **WholeNumberLiteral**: Integers (`42`, `-17`)
+  - **FloatLiteral**: Floating-point numbers (`3.14`, `-0.5`)
+  - **DecimalLiteral**: Arbitrary-precision decimals
+- Purpose: Represents constant data
+
+#### Constructor
+
+Reference to a custom type constructor.
+
+- Structure: `Constructor va FQName`
+- Components:
+  - va: Value attribute
+  - FQName: Fully-qualified name of the constructor
+- If the constructor has arguments, it will be wrapped in Apply nodes
+- Example: `Just` in `Maybe a`, `Ok` in `Result e a`
+- Purpose: Creates tagged union values
+
+#### Tuple
+
+A tuple value with multiple elements.
+
+- Structure: `Tuple va (List Value)`
+- Components:
+  - va: Value attribute
+  - List Value: Element values in order
+- Example: `(42, "hello", True)`
+- Purpose: Groups multiple values together with positional access
+
+#### List
+
+A list of values.
+
+- Structure: `List va (List Value)`
+- Components:
+  - va: Value attribute
+  - List Value: List elements
+- Example: `[1, 2, 3, 4]`
+- Purpose: Represents homogeneous sequences
+
+#### Record
+
+A record value with named fields.
+
+- Structure: `Record va (Dict Name Value)`
+- Components:
+  - va: Value attribute
+  - Dict Name Value: Dictionary mapping field names to values
+- Example: `{ firstName = "John", age = 30 }`
+- Purpose: Represents structured data with named field access
+
+#### Variable
+
+Reference to a variable in scope.
+
+- Structure: `Variable va Name`
+- Components:
+  - va: Value attribute
+  - Name: Variable name
+- Example: References to function parameters or let-bound variables
+- Purpose: Accesses values bound in the current scope
+
+#### Reference
+
+Reference to a defined value (function or constant).
+
+- Structure: `Reference va FQName`
+- Components:
+  - va: Value attribute
+  - FQName: Fully-qualified name of the referenced value
+- Example: `Morphir.SDK.List.map`, `Basics.add`
+- Purpose: Invokes or references defined functions and constants
+
+#### Field
+
+Field access on a record.
+
+- Structure: `Field va Value Name`
+- Components:
+  - va: Value attribute
+  - Value: The record expression
+  - Name: Field name to access
+- Example: `user.firstName` → `Field va (Variable va ["user"]) ["first", "name"]`
+- Purpose: Extracts a specific field from a record
+
+#### FieldFunction
+
+A function that extracts a field.
+
+- Structure: `FieldFunction va Name`
+- Components:
+  - va: Value attribute
+  - Name: Field name
+- Example: `.firstName` creates a function `\r -> r.firstName`
+- Purpose: Creates a field accessor function
+
+#### Apply
+
+Function application.
+
+- Structure: `Apply va Value Value`
+- Components:
+  - va: Value attribute
+  - First Value: The function
+  - Second Value: The argument
+- Multi-argument calls are represented via currying (nested Apply nodes)
+- Example: `add 1 2` → `Apply va (Apply va (Reference va add) (Literal va 1)) (Literal va 2)`
+- Purpose: Invokes functions with arguments
+
+#### Lambda
+
+Anonymous function (lambda abstraction).
+
+- Structure: `Lambda va Pattern Value`
+- Components:
+  - va: Value attribute
+  - Pattern: Pattern matching the input
+  - Value: Function body
+- Example: `\x -> x + 1` → `Lambda va (AsPattern va (WildcardPattern va) ["x"]) (body)`
+- Purpose: Creates inline functions
+
+#### LetDefinition
+
+A let binding introducing a single value.
+
+- Structure: `LetDefinition va Name Definition Value`
+- Components:
+  - va: Value attribute
+  - Name: Binding name
+  - Definition: Value definition being bound
+  - Value: Expression where the binding is in scope
+- Example: `let x = 5 in x + x`
+- Purpose: Introduces local bindings
+
+#### LetRecursion
+
+Mutually recursive let bindings.
+
+- Structure: `LetRecursion va (Dict Name Definition) Value`
+- Components:
+  - va: Value attribute
+  - Dict Name Definition: Multiple bindings that can reference each other
+  - Value: Expression where the bindings are in scope
+- Purpose: Enables mutual recursion between bindings
+
+#### Destructure
+
+Pattern-based destructuring.
+
+- Structure: `Destructure va Pattern Value Value`
+- Components:
+  - va: Value attribute
+  - Pattern: Pattern to match
+  - First Value: Expression to destructure
+  - Second Value: Expression where extracted variables are in scope
+- Example: `let (x, y) = point in ...`
+- Purpose: Extracts values from structured data
+
+#### IfThenElse
+
+Conditional expression.
+
+- Structure: `IfThenElse va Value Value Value`
+- Components:
+  - va: Value attribute
+  - First Value: Condition
+  - Second Value: Then branch
+  - Third Value: Else branch
+- Example: `if x > 0 then "positive" else "non-positive"`
+- Purpose: Conditional logic
+
+#### PatternMatch
+
+Pattern matching with multiple cases.
+
+- Structure: `PatternMatch va Value (List (Pattern, Value))`
+- Components:
+  - va: Value attribute
+  - Value: Expression to match against
+  - List (Pattern, Value): List of pattern-branch pairs
+- Example: `case maybeValue of Just x -> x; Nothing -> 0`
+- Purpose: Conditional logic based on structure
+
+#### UpdateRecord
+
+Record update expression.
+
+- Structure: `UpdateRecord va Value (Dict Name Value)`
+- Components:
+  - va: Value attribute
+  - Value: The record to update
+  - Dict Name Value: Fields to update with new values
+- Example: `{ user | age = 31 }`
+- Notes: This is copy-on-update (immutable)
+- Purpose: Creates a modified copy of a record
+
+#### Unit
+
+The unit value.
+
+- Structure: `Unit va`
+- Components:
+  - va: Value attribute
+- Purpose: Represents the single value of the Unit type
+
+### Patterns
+
+**Patterns** are used for destructuring and filtering values. They appear in lambda, let destructure, and pattern match expressions.
+
+#### WildcardPattern
+
+Matches any value without binding.
+
+- Structure: `WildcardPattern a`
+- Syntax: `_` in source languages
+- Purpose: Ignores a value
+
+#### AsPattern
+
+Binds a name to a value matched by a nested pattern.
+
+- Structure: `AsPattern a Pattern Name`
+- Components:
+  - a: Pattern attribute
+  - Pattern: Nested pattern
+  - Name: Variable name to bind
+- Syntax: `pattern as name` in source languages
+- Special case: Simple variable binding is `AsPattern a (WildcardPattern a) name`
+- Purpose: Captures matched values
+
+#### TuplePattern
+
+Matches a tuple by matching each element.
+
+- Structure: `TuplePattern a (List Pattern)`
+- Components:
+  - a: Pattern attribute
+  - List Pattern: Patterns for each tuple element
+- Example: `(x, y)` matches a 2-tuple
+- Purpose: Destructures tuples
+
+#### ConstructorPattern
+
+Matches a specific type constructor and its arguments.
+
+- Structure: `ConstructorPattern a FQName (List Pattern)`
+- Components:
+  - a: Pattern attribute
+  - FQName: Fully-qualified constructor name
+  - List Pattern: Patterns for constructor arguments
+- Example: `Just x` matches `Just` with pattern `x`
+- Purpose: Destructures and filters tagged unions
+
+#### EmptyListPattern
+
+Matches an empty list.
+
+- Structure: `EmptyListPattern a`
+- Syntax: `[]` in source languages
+- Purpose: Detects empty lists
+
+#### HeadTailPattern
+
+Matches a non-empty list by head and tail.
+
+- Structure: `HeadTailPattern a Pattern Pattern`
+- Components:
+  - a: Pattern attribute
+  - First Pattern: Matches the head element
+  - Second Pattern: Matches the tail (remaining list)
+- Syntax: `x :: xs` in source languages
+- Purpose: Destructures lists recursively
+
+#### LiteralPattern
+
+Matches an exact literal value.
+
+- Structure: `LiteralPattern a Literal`
+- Components:
+  - a: Pattern attribute
+  - Literal: The exact value to match
+- Example: `42`, `"hello"`, `True`
+- Purpose: Filters by exact value
+
+#### UnitPattern
+
+Matches the unit value.
+
+- Structure: `UnitPattern a`
+- Purpose: Matches the Unit value
+
+### Value Specifications
+
+A **Value Specification** defines the type signature of a value or function.
+
+Structure:
+- **inputs**: List of (Name, Type) pairs representing function parameters
+- **output**: The return type
+
+Characteristics:
+- Contains only type information, no implementation
+- Multi-argument functions list all parameters
+- Zero-argument values (constants) have empty inputs list
+
+Example: `add : Int -> Int -> Int` becomes:
+```
+{ inputs = [("a", Int), ("b", Int)]
+, output = Int
+}
+```
+
+### Value Definitions
+
+A **Value Definition** provides the complete implementation of a value or function.
+
+Structure:
+- **inputTypes**: List of (Name, va, Type) tuples for function parameters
+  - Name: Parameter name
+  - va: Value attribute for the parameter
+  - Type: Parameter type
+- **outputType**: The return type
+- **body**: The value expression implementing the logic
+
+Characteristics:
+- Contains both type information and implementation
+- Parameters are extracted from nested lambdas when possible
+- Body contains the actual computation
+
+## Relationships Between Concepts
+
+### Hierarchical Structure
+
+```
+Distribution
+  └─ Package (with dependencies)
+      └─ Module
+          ├─ Types
+          │   └─ Type Definition/Specification
+          └─ Values
+              └─ Value Definition/Specification
+```
+
+### Specifications vs Definitions
+
+- **Specifications**: Public interface only
+  - Used for dependencies
+  - Contain type signatures only
+  - Expose only public items
+  
+- **Definitions**: Complete implementation
+  - Used for the package being compiled
+  - Contain all details
+  - Include both public and private items
+
+### Conversion Flow
+
+```
+Definition → Specification
+  - Package Definition → Package Specification
+  - Module Definition → Module Specification  
+  - Type Definition → Type Specification
+  - Value Definition → Value Specification
+```
+
+Specifications can be created with or without private items:
+- **definitionToSpecification**: Public items only
+- **definitionToSpecificationWithPrivate**: All items included
+
+### Reference Resolution
+
+References in the IR are always fully-qualified:
+
+1. **Within expressions**: References use FQName (package, module, local name)
+2. **Within modules**: Items use local Names (looked up in module context)
+3. **Within packages**: Modules use Paths (looked up in package context)
+
+This eliminates ambiguity and enables:
+- Easy dependency tracking
+- Cross-package linking
+- Independent processing of modules
+
+## Semantics
+
+### Type System Semantics
+
+- **Type Safety**: All values have types; type checking ensures correctness
+- **Polymorphism**: Type variables enable generic programming
+- **Structural Typing**: Records and tuples are compared structurally
+- **Nominal Typing**: Custom types are compared by name
+- **Immutability**: All values are immutable; updates create new values
+
+### Value Evaluation Semantics
+
+- **Pure Functions**: All functions are pure (no side effects)
+- **Eager Evaluation**: Arguments are evaluated before function application
+- **Pattern Matching**: Patterns are tested in order; first match wins
+- **Scope Rules**:
+  - Lambda parameters are in scope in the lambda body
+  - Let bindings are in scope in the let expression body
+  - Pattern variables are in scope in the associated branch
+  
+### Access Control Semantics
+
+- **Public**: Visible in package specifications; accessible to consumers
+- **Private**: Only visible within package definition; not exposed
+- **Custom type constructors**: Can be public (pattern matching allowed) or private (opaque type)
+
+## Usage Guidelines for Tool Implementers
+
+### Generating IR
+
+When generating Morphir IR from source code:
+
+1. **Preserve names in canonical form**: Convert all identifiers to lowercase word lists
+2. **Use fully-qualified references**: Always include package and module paths
+3. **Maintain access control**: Mark public vs private appropriately
+4. **Extract lambdas into function parameters**: Use the inputTypes field instead of nested lambdas where possible
+5. **Preserve documentation**: Include doc strings from source
+
+### Consuming IR
+
+When consuming Morphir IR:
+
+1. **Respect access control**: Only access public items from dependencies
+2. **Resolve references**: Use the distribution to look up type and value definitions
+3. **Handle attributes**: Be prepared for different attribute types or use unit type
+4. **Follow naming conventions**: Use Name conversion utilities for target platform
+5. **Process hierarchically**: Start from Distribution → Package → Module → Types/Values
+
+### Transforming IR
+
+When transforming Morphir IR:
+
+1. **Preserve structure**: Maintain the hierarchical organization
+2. **Update references consistently**: If you rename items, update all references
+3. **Maintain type correctness**: Ensure transformations preserve type safety
+4. **Handle both specifications and definitions**: Transform both forms consistently
+5. **Preserve attributes**: Carry forward attributes unless explicitly changing them
+
+## JSON Schema Specifications
+
+To support tooling, validation, and interoperability, formal JSON schemas are provided for all supported format versions of the Morphir IR. These schemas are defined in YAML format for readability and include comprehensive documentation.
+
+### Available Schemas
+
+- **[Format Version 3 (Current)](/schemas/morphir-ir-v3.yaml)**: The latest format version, which uses capitalized constructor tags (e.g., `"Library"`, `"Public"`, `"Variable"`).
+
+- **[Format Version 2](/schemas/morphir-ir-v2.yaml)**: Uses capitalized distribution and type tags (e.g., `"Library"`, `"Public"`, `"Variable"`) but lowercase value and pattern tags (e.g., `"apply"`, `"lambda"`, `"as_pattern"`).
+
+- **[Format Version 1](/schemas/morphir-ir-v1.yaml)**: The original format version, which uses lowercase tags throughout (e.g., `"library"`, `"public"`) and a different module structure where modules have `name` and `def` fields.
+
+### Key Differences Between Versions
+
+#### Format Version 1 → 2
+- **Distribution tag**: Changed from `"library"` to `"Library"`
+- **Access control**: Changed from `"public"/"private"` to `"Public"/"Private"`
+- **Module structure**: Changed from `{"name": ..., "def": ...}` to array-based `[modulePath, accessControlled]`
+- **Type tags**: Changed to capitalized forms (e.g., `"variable"` → `"Variable"`)
+
+#### Format Version 2 → 3
+- **Value expression tags**: Changed from lowercase to capitalized (e.g., `"apply"` → `"Apply"`)
+- **Pattern tags**: Changed from lowercase with underscores to capitalized (e.g., `"as_pattern"` → `"AsPattern"`)
+- **Literal tags**: Changed from lowercase with underscores to capitalized (e.g., `"bool_literal"` → `"BoolLiteral"`)
+
+### Using the Schemas
+
+The JSON schemas can be used for:
+
+1. **Validation**: Validate Morphir IR JSON files against the appropriate version schema
+2. **Documentation**: Understand the structure and constraints of the IR format
+3. **Code Generation**: Generate parsers, serializers, and type definitions for various languages
+4. **Tooling**: Build editors, linters, and other tools that work with Morphir IR
+
+Example validation using a JSON schema validator:
+
+```bash
+# Using Python jsonschema (recommended for YAML schemas)
+pip install jsonschema pyyaml requests
+python -c "import json, yaml, jsonschema, requests; \
+  schema = yaml.safe_load(requests.get('https://morphir.finos.org/schemas/morphir-ir-v3.yaml').text); \
+  data = json.load(open('morphir-ir.json')); \
+  jsonschema.validate(data, schema); \
+  print('✓ Valid Morphir IR')"
+
+# Using ajv-cli (Node.js) - requires converting YAML to JSON first
+npm install -g ajv-cli
+curl -o morphir-ir-v3.yaml https://morphir.finos.org/schemas/morphir-ir-v3.yaml
+python -c "import yaml, json; \
+  json.dump(yaml.safe_load(open('morphir-ir-v3.yaml')), \
+  open('morphir-ir-v3.json', 'w'))"
+ajv validate -s morphir-ir-v3.json -d morphir-ir.json
+
+# Using sourcemeta/jsonschema CLI (fast, cross-platform C++ validator)
+# Install via: npm install -g @sourcemeta/jsonschema
+#          or: brew install sourcemeta/apps/jsonschema
+#          or: pip install jsonschema-cli
+curl -o morphir-ir-v3.json https://morphir.finos.org/schemas/morphir-ir-v3.json
+jsonschema validate morphir-ir-v3.json morphir-ir.json
+```
+
+### Schema Location
+
+Schemas are available in both YAML and JSON formats:
+
+| Version | YAML | JSON |
+|---------|------|------|
+| v3 (Current) | https://morphir.finos.org/schemas/morphir-ir-v3.yaml | https://morphir.finos.org/schemas/morphir-ir-v3.json |
+| v2 | https://morphir.finos.org/schemas/morphir-ir-v2.yaml | https://morphir.finos.org/schemas/morphir-ir-v2.json |
+| v1 | https://morphir.finos.org/schemas/morphir-ir-v1.yaml | https://morphir.finos.org/schemas/morphir-ir-v1.json |
+
+Use YAML for better readability or JSON for maximum tool compatibility.
+
+## Conclusion
+
+The Morphir IR provides a comprehensive, type-safe representation of functional business logic. Its design enables:
+
+- **Portability**: Same logic can target multiple platforms
+- **Analysis**: Logic can be analyzed for correctness and properties
+- **Transformation**: Logic can be optimized and adapted
+- **Tooling**: Rich development tools can be built on a standard format
+- **Interoperability**: Different languages can share logic via IR
+
+This specification defines the structure and semantics necessary for building a robust ecosystem of Morphir tools and ensuring consistent interpretation across implementations. The accompanying JSON schemas provide formal, machine-readable definitions that can be used for validation, code generation, and tooling support.
+
+---
+
+### Getting Started with Morphir
+
+# Getting Started with Morphir
+
+Welcome! This section will help you get started with Morphir quickly.
+
+## 📋 Contents
+
+1. **[Introduction](intro.md)** - Understand what Morphir is and why it's useful
+2. **[Installation](installation.md)** - Install Morphir tools on your system
+3. **[Installation and Usage](installation-and-usage.md)** - Detailed installation guide and basic usage
+4. **[Quick Start Tutorial](tutorials.md)** - Follow along with a tutorial to build your first Morphir application
+5. **[Editor Setup](editor-setup.md)** - Configure your IDE or editor for Morphir development
+
+## 🎯 Recommended Path for Beginners
+
+If you're completely new to Morphir, we recommend following this path:
+
+1. **Read the Introduction** ([intro.md](intro.md)) to understand Morphir's purpose
+2. **Install Morphir** ([installation.md](installation.md)) on your machine
+3. **Complete the Tutorial** ([tutorials.md](tutorials.md)) to build your first model
+4. **Configure Your Editor** ([editor-setup.md](editor-setup.md)) for a better development experience
+
+## 🔄 Next Steps
+
+After completing the getting started guide, you should:
+
+- Explore [Core Concepts](../concepts/) to understand Morphir's architecture
+- Read [User Guides](../user-guides/) to learn modeling best practices
+- Check out [Examples](../examples/) for real-world applications
+
+## 💡 Quick Tips
+
+- Morphir uses functional programming principles - if you're new to FP, read [Why Functional Programming?](../concepts/why-functional-programming.md)
+- The Morphir IR (Intermediate Representation) is at the heart of the system - learn about it in [Concepts](../concepts/)
+- Join the [Community](../community/) to get help and share your experiences
+
+---
+
+[← Back to Documentation Home](../README.md)
+
+---
+
+### Core Concepts
+
+# Core Concepts
+
+This section explains the fundamental concepts behind Morphir and how it works.
+
+## 📋 Contents
+
+### Overview & Philosophy
+- **[Introduction to Morphir](introduction-to-morphir.md)** - Complete introduction to the Morphir framework
+- **[What's It About?](whats-it-about.md)** - Understanding business logic as the core focus
+- **[Why Functional Programming?](why-functional-programming.md)** - The role of FP in Morphir
+
+### Technical Architecture
+- **[Morphir IR](morphir-ir.md)** - The Intermediate Representation structure (Distribution → Package → Module → Types/Values)
+- **[Morphir SDK](morphir-sdk.md)** - Standard library and built-in functions
+
+## 🔑 Key Concepts
+
+### The Morphir IR Hierarchy
+
+The Morphir Intermediate Representation follows a hierarchical structure (as documented in PR #378):
+
+```
+Distribution (Complete package with dependencies)
+    ↓
+Package (Versioned set of modules)
+    ↓
+Module (Container for types and values)
+    ↓
+Types & Values (Domain model and business logic)
+```
+
+**Important Distinctions:**
+- **Specifications** contain only public interfaces (no implementation) - used for dependencies
+- **Definitions** contain complete implementations including private items
+
+### Naming System
+
+Morphir uses a naming-agnostic approach where names are stored as lists of lowercase words, independent of any specific naming convention:
+
+- **Name**: `["value", "in", "u", "s", "d"]`
+- **Path**: List of Names (hierarchical location)
+- **QName** (Qualified Name): Module path + local name
+- **FQName** (Fully-Qualified Name): Package path + module path + local name
+
+This allows the same IR to be rendered in different conventions (camelCase, snake_case, etc.) for different platforms.
+
+## 🎯 Why These Concepts Matter
+
+Understanding these concepts is crucial because:
+
+1. **Portability**: The IR allows business logic to be translated to any target language
+2. **Type Safety**: Complete type information is preserved throughout
+3. **Clarity**: Naming-agnostic representation works across platforms
+4. **Separation of Concerns**: Business logic is separate from implementation details
+
+## 📚 Learn More
+
+After understanding these core concepts, you can:
+
+- Apply them in [User Guides](../user-guides/) to model business logic
+- See technical details in [Reference](../reference/) documentation
+- Explore [Use Cases](../use-cases/) for real-world applications
+
+---
+
+[← Back to Documentation Home](../README.md)
+
+---
+
+### JSON Schemas
+
+# Morphir IR JSON Schemas
+
+This directory contains formal JSON schema specifications for all supported format versions of the Morphir IR (Intermediate Representation).
+
+## Schema Files
+
+The schemas are available in both YAML and JSON formats at SEO-friendly URLs:
+
+| Version | YAML | JSON |
+|---------|------|------|
+| v3 (Current) | [morphir-ir-v3.yaml](/schemas/morphir-ir-v3.yaml) | [morphir-ir-v3.json](/schemas/morphir-ir-v3.json) |
+| v2 | [morphir-ir-v2.yaml](/schemas/morphir-ir-v2.yaml) | [morphir-ir-v2.json](/schemas/morphir-ir-v2.json) |
+| v1 | [morphir-ir-v1.yaml](/schemas/morphir-ir-v1.yaml) | [morphir-ir-v1.json](/schemas/morphir-ir-v1.json) |
+
+Use YAML for better readability or JSON for maximum tool compatibility.
+
+## Format Version Differences
+
+### Version 1 → Version 2
+
+**Tag Capitalization:**
+- Distribution: `"library"` → `"Library"`
+- Access control: `"public"/"private"` → `"Public"/"Private"`
+- Type tags: `"variable"` → `"Variable"`, `"reference"` → `"Reference"`, etc.
+
+**Structure Changes:**
+- Modules changed from `{"name": ..., "def": ...}` objects to `[modulePath, accessControlled]` arrays
+
+### Version 2 → Version 3
+
+**Tag Capitalization:**
+- Value expression tags: `"apply"` → `"Apply"`, `"lambda"` → `"Lambda"`, etc.
+- Pattern tags: `"as_pattern"` → `"AsPattern"`, `"wildcard_pattern"` → `"WildcardPattern"`, etc.
+- Literal tags: `"bool_literal"` → `"BoolLiteral"`, `"string_literal"` → `"StringLiteral"`, etc.
+
+## Usage
+
+### Validation
+
+The schemas can be used to validate Morphir IR JSON files. Note that due to the complexity and recursive nature of these schemas, validation can be slow with some validators.
+
+#### Using Python jsonschema
+
+```bash
+pip install jsonschema pyyaml requests
+
+python3 << 'EOF'
+
+from jsonschema import validate
+
+# Load schema from URL
+schema = yaml.safe_load(
+    requests.get('https://morphir.finos.org/schemas/morphir-ir-v3.yaml').text
+)
+
+# Load Morphir IR JSON
+with open('morphir-ir.json', 'r') as f:
+    data = json.load(f)
+
+# Validate
+validate(instance=data, schema=schema)
+print("✓ Valid Morphir IR")
+EOF
+```
+
+#### Using Node.js ajv
+
+```bash
+npm install -g ajv-cli ajv-formats
+
+# Download JSON schema directly (no conversion needed)
+curl -o morphir-ir-v3.json https://morphir.finos.org/schemas/morphir-ir-v3.json
+
+# Validate
+ajv validate -s morphir-ir-v3.json -d morphir-ir.json
+```
+
+#### Using sourcemeta jsonschema CLI
+
+The [sourcemeta/jsonschema](https://github.com/sourcemeta/jsonschema) CLI is a fast, cross-platform JSON Schema validator written in C++. It supports all JSON Schema versions and provides excellent error messages.
+
+**Installation:**
+
+```bash
+# Using npm
+npm install -g @sourcemeta/jsonschema
+
+# Using pip
+pip install jsonschema-cli
+
+# Using Homebrew (macOS/Linux)
+brew install sourcemeta/apps/jsonschema
+
+# Using Docker
+docker pull sourcemeta/jsonschema
+```
+
+**Basic validation:**
+
+```bash
+# Download the schema
+curl -o morphir-ir-v3.json https://morphir.finos.org/schemas/morphir-ir-v3.json
+
+# Validate a Morphir IR file
+jsonschema validate morphir-ir-v3.json morphir-ir.json
+```
+
+**Validate with detailed output:**
+
+```bash
+# Verbose mode shows validation progress
+jsonschema validate morphir-ir-v3.json morphir-ir.json --verbose
+
+# JSON output for programmatic processing
+jsonschema validate morphir-ir-v3.json morphir-ir.json --json
+```
+
+**Validate multiple files or directories:**
+
+```bash
+# Validate all JSON files in a directory
+jsonschema validate morphir-ir-v3.json ./output/
+
+# Validate specific files
+jsonschema validate morphir-ir-v3.json file1.json file2.json file3.json
+```
+
+**Fast mode (for large files):**
+
+```bash
+# Prioritize speed over detailed error messages
+jsonschema validate morphir-ir-v3.json morphir-ir.json --fast
+```
+
+**Using Docker:**
+
+```bash
+# Mount current directory and validate
+docker run --rm -v "$PWD:/data" sourcemeta/jsonschema \
+  validate /data/morphir-ir-v3.json /data/morphir-ir.json
+```
+
+### Quick Structural Check
+
+For a quick check without full validation, you can verify basic structure:
+
+```python
+
+def check_morphir_ir(filepath):
+    with open(filepath) as f:
+        data = json.load(f)
+    
+    # Check format version
+    version = data.get('formatVersion')
+    assert version in [1, 2, 3], f"Unknown format version: {version}"
+    
+    # Check distribution structure
+    dist = data['distribution']
+    assert isinstance(dist, list) and len(dist) == 4
+    assert dist[0] in ["library", "Library"], f"Unknown distribution type: {dist[0]}"
+    
+    # Check package definition
+    pkg_def = dist[3]
+    assert 'modules' in pkg_def
+    
+    print(f"✓ Basic structure valid: Format v{version}, {len(pkg_def['modules'])} modules")
+
+check_morphir_ir('morphir-ir.json')
+```
+
+## Integration with Tools
+
+These schemas can be used to:
+
+1. **Generate Code**: Create type definitions and parsers for various programming languages
+2. **IDE Support**: Provide autocomplete and validation in JSON editors
+3. **Testing**: Validate generated IR in test suites
+4. **Documentation**: Generate human-readable documentation from schema definitions
+
+## Schema Format
+
+The schemas are written in YAML format for better readability and include:
+
+- Comprehensive inline documentation
+- Type constraints and patterns
+- Required vs. optional fields
+- Recursive type definitions
+- Enum values for tagged unions
+
+## Contributing
+
+When updating the IR format:
+
+1. Update the appropriate schema file(s) to match the upstream schemas from the [main Morphir repository](https://github.com/finos/morphir/tree/main/docs/schemas)
+2. Update the format version handling in the .NET codec implementation if needed
+3. Add migration logic in the codec files if needed
+4. Update this README with the changes
+5. Test the schema against example IR files
+
+## References
+
+- [Morphir Project](https://morphir.finos.org/)
+- [Morphir Repository](https://github.com/finos/morphir)
+- [JSON Schema Specification](https://json-schema.org/)
+- [YAML Format](https://yaml.org/)
+
+---
+
+## Documentation Index
+
+### Getting Started
+
+Installation and first steps with Morphir
+
+- [Morphir Web UI](https://morphir.finos.org/docs/getting-started/Morphir Web UI/): This document details the purpose of the various functions of the Morphir UI, and how to use them and navigate between them.
+- [Getting Started with Morphir](https://morphir.finos.org/docs/getting-started/): Welcome! This section will help you get started with Morphir quickly.
+- [Editor Setup](https://morphir.finos.org/docs/getting-started/editor-setup/): Morphir is designed to allow users to write business logic in multiple ways. That currently includes the following:
+- [Untitled](https://morphir.finos.org/docs/getting-started/installation-and-usage/): Morphir is provided as a set of command-line tools that are distribution through the NPM packaging system. The current version is:
+- [Installation](https://morphir.finos.org/docs/getting-started/installation/): Morphir provides command line tools for executing morphir tasks. These tools are delivered by the ```npm``` package management system. Therefore, installation requires that ```Node.js``` and ```npm...
+- [Introduction to Morphir](https://morphir.finos.org/docs/getting-started/intro/): :::tip **Data and rules reign supreme. The rest is implementation detail.** :::
+- [Morphir Go (Preview)](https://morphir.finos.org/docs/getting-started/morphir-go-preview/): :::caution Insider Feature Morphir Go is currently in **developer preview**. For production use, please use the stable [morphir-elm](installation.md) tools. :::
+- [Morphir Quick Start](https://morphir.finos.org/docs/getting-started/tutorials/): The first step to using Morphir is installing. For this example we'll use the Elm front end for our modeling and generator into the JSON representation of the Morphir IR. So the first step is to in...
+
+### Core Concepts
+
+Fundamental concepts and theory behind Morphir
+
+- [Core Concepts](https://morphir.finos.org/docs/concepts/): This section explains the fundamental concepts behind Morphir and how it works.
+- [Introducing Morphir](https://morphir.finos.org/docs/concepts/introduction-to-morphir/): [![FINOS - Incubating](https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-incubating.svg)](https://finosfoundation.atlassian.net/wiki/display/FINOS/Incubating) [![CII Best Practi...
+- [The Morphir IR](https://morphir.finos.org/docs/concepts/morphir-ir/): The `Morphir.IR` module defines a type-safe API to work with Morphir's intermediate representation. The module structure follows the structure of the IR. Here's a list of concepts in a top-down app...
+- [The Morphir SDK](https://morphir.finos.org/docs/concepts/morphir-sdk/): The goal of the `Morphir.SDK` module is to provide you the basic building blocks to build your domain model and business logic. It also serves as a specification for backend developers that describ...
+- [I Have an Application](https://morphir.finos.org/docs/concepts/whats-it-about/): - It tracks product inventories and decides how much to grant an order request based on the product's availability. - It is deployed as a set of microservices. - We're thinking about moving the mic...
+- [Why Functional Programming?](https://morphir.finos.org/docs/concepts/why-functional-programming/): The core of Morphir is the idea your business concepts (data and logic) are valuable assets that deserve to be stored independently. Morphir needs to understand the intent of your application, whic...
+
+### User Guides
+
+Practical guides for using Morphir
+
+- [User Guides](https://morphir.finos.org/docs/user-guides/): Learn how to use Morphir to model business logic and build applications.
+- [Morphir Command Line Tools](https://morphir.finos.org/docs/user-guides/cli-tools/command-line-tools/): At the moment, Morphir provides two CLI programs that provide the tools that morphir offers, `morphir-elm` and `morphir`. `morphir-elm` is the first program created and may be deprecated in the fut...
+- [Morphir-elm Commands Processing](https://morphir.finos.org/docs/user-guides/cli-tools/morphir-commands-processing/): The purpose of the document is to explain what happens when morphir-elm commands are run. This documents also describes each morphir-elm command, options and output/result of the command.
+- [Morphir-elm Commands Processing](https://morphir.finos.org/docs/user-guides/cli-tools/morphir-elm-commands-processing/): The purpose of the document is to explain what happens when morphir-elm commands are run. This documents also describes each morphir-elm command, options and output/result of the command.
+- [WIT Commands](https://morphir.finos.org/docs/user-guides/cli-tools/wit-commands/): Morphir provides native support for WebAssembly Interface Types (WIT) through the `morphir wit` command family. These commands allow you to compile WIT source files to Morphir IR and generate WIT s...
+- [WIT Type Mapping](https://morphir.finos.org/docs/user-guides/cli-tools/wit-type-mapping/): This document describes how WebAssembly Interface Types (WIT) map to and from Morphir's Intermediate Representation (IR).
+- [Decorations User Guide](https://morphir.finos.org/docs/user-guides/development-guides/decorators-users-guide/): The Morphir IR contains all the domain models and business logic that you defined in your model but sometimes you want to add more information that cannot be captured in the language. Decorations p...
+- [Working With Results in Elm](https://morphir.finos.org/docs/user-guides/development-guides/working-with-results-in-elm/): This post explains the Result type in the Elm Programming Language and use cases in Morphir.
+- [Modeling Entire Application](https://morphir.finos.org/docs/user-guides/modeling-guides/application-modeling/): Morphir Application Modeling imagines an evolution of programming as:
+- [Modeling Financial Concepts](https://morphir.finos.org/docs/user-guides/modeling-guides/modeling-finance/): Functional Domain Modeling (FDM) is all about capturing business concepts in a precise, unambiguous, and processable manner. Those coming from a coding background will be comfortable with its use o...
+- [Databases Modeling](https://morphir.finos.org/docs/user-guides/modeling-guides/modeling-for-database-developers/): As a database developer you will find it very easy and enjoyable to learn Elm because it's basically an extended version of SQL. Being a functional programming language, Elm is based on the same st...
+- [What Does Using Morphir Entail?](https://morphir.finos.org/docs/user-guides/modeling-guides/modeling-overview/): So, you're thinking about using Morphir for your project. What does that mean exactly and what are you in for if you do?
+- [Morphir Testing Setup](https://morphir.finos.org/docs/user-guides/modeling-guides/modelling-testing/): Elm's standard testing library is elm-test. You can install it by running the following command \ in your project. It will ask questions, just say yes to everything:
+- [Soul of your Application](https://morphir.finos.org/docs/user-guides/modeling-guides/soul-of-your-application/): Morphir approaches application development from the perspective that the application's business knowledge should be enshrined. Adopting this knowledge-first has brought us great benefits, including:
+- [What Makes a Good Model?](https://morphir.finos.org/docs/user-guides/modeling-guides/what-makes-a-good-domain-model/): We all strive to build high-quality software and that begins with a clean and well-defined domain model. But what do we mean when we say "clean" or "well-defined"? It is difficult to decide whether...
+
+### CLI Preview
+
+Next-generation command-line interface documentation
+
+- [morphir wit Command Reference](https://morphir.finos.org/docs/cli-preview/commands/wit/): The `morphir wit` command group provides tools for working with WebAssembly Interface Types (WIT).
+- [Getting Started with CLI Preview](https://morphir.finos.org/docs/cli-preview/getting-started/): This guide will help you get started with the Morphir CLI Preview features, including WIT support and JSONL batch processing.
+- [Morphir CLI Preview](https://morphir.finos.org/docs/cli-preview/): :::caution Developer Preview The Morphir CLI Preview features are in active development. APIs and behavior may change. For production use, please use the stable [morphir-elm](../installation.md) to...
+- [v0.4.0-alpha.1 Release Notes](https://morphir.finos.org/docs/cli-preview/release-notes/v0.4.0-alpha.1/): **Release Date**: January 2026
+- [What's New in CLI Preview](https://morphir.finos.org/docs/cli-preview/whats-new/): This page highlights the major new features in the Morphir CLI Preview.
+
+### Specifications
+
+Technical specifications including IR format and schemas
+
+- [Morphir IR Specification](https://morphir.finos.org/docs/spec/): The complete Morphir IR specification and JSON schemas
+- [Morphir IR Specification](https://morphir.finos.org/docs/spec/morphir-ir-specification/): Complete specification of the Morphir Intermediate Representation (IR)
+- [JSON Schemas](https://morphir.finos.org/docs/spec/schemas/): JSON schema definitions for Morphir IR format versions
+- [Full Schema](https://morphir.finos.org/docs/spec/schemas/v1/full/): Complete Morphir IR JSON Schema for format version 1
+- [Schema Version 1](https://morphir.finos.org/docs/spec/schemas/v1/): Morphir IR JSON Schema for format version 1
+- [Full Schema](https://morphir.finos.org/docs/spec/schemas/v2/full/): Complete Morphir IR JSON Schema for format version 2
+- [Schema Version 2](https://morphir.finos.org/docs/spec/schemas/v2/): Morphir IR JSON Schema for format version 2
+- [What's New in Version 2](https://morphir.finos.org/docs/spec/schemas/v2/whats-new/): Changes and improvements in Morphir IR schema version 2
+- [Full Schema](https://morphir.finos.org/docs/spec/schemas/v3/full/): Complete Morphir IR JSON Schema for format version 3
+- [Schema Version 3](https://morphir.finos.org/docs/spec/schemas/v3/): Morphir IR JSON Schema for format version 3 (Current)
+- [What's New in Version 3](https://morphir.finos.org/docs/spec/schemas/v3/whats-new/): Changes and improvements in Morphir IR schema version 3
+
+### Reference
+
+API reference and backend documentation
+
+- [Reference Documentation](https://morphir.finos.org/docs/reference/): Technical reference documentation for Morphir backends, APIs, and tools.
+- [Morphir-TypeSpec Mapping](https://morphir.finos.org/docs/reference/backends/other-platforms/cadl-doc/): This is a documentation of the mapping strategy from Morphir types to Typespec types. This document describes how types in Morphir Models are represented in Typespec. Below is a quick overview of t...
+- [TypeScript - Morphir API](https://morphir.finos.org/docs/reference/backends/other-platforms/morphir-typescript-api/): The purpose of this documentation is to give a user an understanding of how to use the Morphir API created for Typescript.
+- [Relational Backend](https://morphir.finos.org/docs/reference/backends/other-platforms/relational-backend/): The purpose of joins is to look up extra information for each record in some relation and then use it to enrich or filter the original relation. While their semantics fit into relational algebra di...
+- [SpringBoot Generator](https://morphir.finos.org/docs/reference/backends/other-platforms/spring-boot-readme/): [Morphir](https://github.com/finos/morphir) is a multi-language system built on a data format that captures an application's domain model and business logic in a technology agnostic manner. This do...
+- [TypeScript API](https://morphir.finos.org/docs/reference/backends/other-platforms/typescript/): The purpose of this document is describing the TypeScript API generated for Morphir models by running `morphir-elm gen --target=TypeScript`.
+- [Scala Test Cases Generation](https://morphir.finos.org/docs/reference/backends/scala/morphir-scala-gen/): > > **Since: 2.74.0**
+- [Scala API Guide](https://morphir.finos.org/docs/reference/backends/scala/scala-api-usage-docs/): This document explains what the Scala API is, how to import it and example usages. The API exposes the internals of an IR to a developer to be able to build tools in scala. The API consist of mainl...
+- [Scala Backend](https://morphir.finos.org/docs/reference/backends/scala/scala-backend/): The Scala backend takes the Morphir IR as the input and returns an in-memory representation of files generated - FileMap The consumer is responsible for getting the input IR and saving the output t...
+- [Scala Json Codecs Backend](https://morphir.finos.org/docs/reference/backends/scala/scala-json-codecs-backend/): This document provides a description of the JSON codecs backend. The Json Codecs Backend for Scala contains functions to generate Codecs from types in the IR.\ [Circe](https://circe.github.io/circe...
+- [Spark API Documentation](https://morphir.finos.org/docs/reference/backends/spark/spark-backend-api-documentation/): This is the entry point for the Spark Backend.
+- [Spark Relational](https://morphir.finos.org/docs/reference/backends/spark/spark-backend-as-a-special-case-of-a-relational-backend/): Given that Apache Spark's data model is an extended relational data model and most of the complexity in the backend will likely be related to the differences between the FP and the relational model...
+- [Mapping Morphir to Spark](https://morphir.finos.org/docs/reference/backends/spark/spark-backend-design/): To understand how the Morphir to Apache Spark mapping works let's begin with an example Morphir domain model and business logic that we might want to transpile to Spark. We present the Morphir logi...
+- [Backend Joins](https://morphir.finos.org/docs/reference/backends/spark/spark-backend-joins/): Let's start by defining an example model that does some joins:
+- [Spark - Handling Optional Values](https://morphir.finos.org/docs/reference/backends/spark/spark-backend-optional-values/): Optional values are handled differently in SQL and Morphir. In SQL every value can potentially be `NULL` and there are implicit rules about how each operator should behave when `NULL`s are passed t...
+- [Spark - Testing Framework](https://morphir.finos.org/docs/reference/backends/spark/spark-testing-framework/): The purpose of this document is to show how someone can use and edit the spark tests.
+- [Migrating Old CLI To New CLI](https://morphir.finos.org/docs/reference/cli/cli-cli2-merging-docs/): This document contains cli commands that were migrated from the old cli, which is `morphir-elm`, into the new  all cli commands supported by the old cli,  and the **current** cli, `morphir`.
+- [ADR for Morphir CLI incremental build approach](https://morphir.finos.org/docs/reference/cli/morphir-cli-incremental-build-approach/): Morphir CLI tool offers a way to convert business models into the **Morphir IR** by parsing source files when a `make` command is run. The tooling performs poorly on very large models with especial...
+- [Error Append not Supported](https://morphir.finos.org/docs/reference/error-append-not-supported/): The ++ operator assumes a type inferencer that can tell the difference between String and List. These are the only two types that are part of the `appendable` type-class. Until the type inferencer ...
+- [Insight API Guide](https://morphir.finos.org/docs/reference/insight-readme/): The purpose of this document is how we can use Insight API into any UI.
+- [Scala JSON Serialization](https://morphir.finos.org/docs/reference/json-schema/codec-docs/): The purpose of this documentation is to give an explanation on how the JSON Codec Backend works and how to use it. This backend is a feature built on top of the Scala backend, which allows you to r...
+- [Generating a JSON Schema](https://morphir.finos.org/docs/reference/json-schema/generating-json-schema/): This document explains how to generate a JSON Schema. It covers how to specify code generation parameters via commandline, configuration file and the Develop UI. **Note**: To generate a Json Schema...
+- [Json Codec Backend](https://morphir.finos.org/docs/reference/json-schema/json-codecs-doc/): The purpose of this documentation is to give an explanation of how the Json Codec Backend works and how to use it. The Json Codec backend is a tool that generates encoders and decoders from a Morph...
+- [Json SChema Backend Config Test Plan](https://morphir.finos.org/docs/reference/json-schema/json-schema-backend-config-test-plan/): This document outlines the test plan for the Json Schema backend initial configuration processing.
+- [Backend Test Specification](https://morphir.finos.org/docs/reference/json-schema/json-schema-backend-testplan/): This document speficies the testing strategy for the Json Schema backend.
+- [Json Schema Config Algorithm](https://morphir.finos.org/docs/reference/json-schema/json-schema-config/): This a basic program execution flow algorithm that runs (for json-schema backend configuration) when a code generation command is issued:
+- [json-schema-enabled Decorator](https://morphir.finos.org/docs/reference/json-schema/json-schema-enabled developers guide/): This is a developer's guide on how the json-schema-enabled decorator works and how it is applied to: * types * modules
+- [Json Schema Mappings](https://morphir.finos.org/docs/reference/json-schema/json-schema-mappings/): This is a documentation of the mapping strategy from Morphir types to Json Schema. This document describes how Morphir Models maps to Json Schema. Json Schema Reference can be found [here](http://j...
+- [Json Schema Sample](https://morphir.finos.org/docs/reference/json-schema/json-schema-sample/): { "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://example.com/types.schema.json", "$defs": { "Morphir.Reference.Model.Types.Quantity": { "type": "integer" }, "Cart": { "t...
+- [Table Template](https://morphir.finos.org/docs/reference/table-template/): 
+- [Testing Framework Guide](https://morphir.finos.org/docs/reference/testing-framework-readme/): The purpose of this document is how we can use Testing Framework within developer server.
+- [Morphir Users' Guide](https://morphir.finos.org/docs/reference/user-guide-readme/): Morphir's core purpose is to collect and store the vital business logic of an application. To fulfill that goal, Morphir provides tools to write business logic, visualize and interact with it, and ...
+- [Model Versioning](https://morphir.finos.org/docs/reference/versioning/): Model versioning in Morphir is very similar to library versioning in any other programming language but thanks to the declarative nature of the language it is much more automated and convenient for...
+
+### Developer Guide
+
+Contributing to Morphir development
+
+- [Developer Guides](https://morphir.finos.org/docs/developers/): Documentation for contributing to Morphir and advanced development topics.
+- [Governance Policies](https://morphir.finos.org/docs/developers/contributing/): This document describes the contribution process and governance policies of the FINOS Morphir project. The project is also governed by the Linux Foundation Antitrust Policy, and the FINOS IP Policy...
+- [Contributing to Morphir](https://morphir.finos.org/docs/developers/contribution-guide-index/): Morphir contains a few components for different aspects of the development process. These can be organized into the following:
+- [Contribution Guide](https://morphir.finos.org/docs/developers/contribution-guide-readme/): The purpose of this document is to make it easier for new contributors to get up-to-speed on the project.
+- [Explaining Dev Bots](https://morphir.finos.org/docs/developers/dev-bots/): The premise of Dev Bots is that we can and should automate a significant portion of the code that we currently write by hand.
+- [JVM: Executing morphir-cli](https://morphir.finos.org/docs/developers/integrating-morphir-and-jvm-projects/): This document specifies all the necessary steps required to execute morphir-cli commands in a JVM project.
+- [Morphir Developers' Guide](https://morphir.finos.org/docs/developers/morphir-developers-guide/): The purpose of the document is to provide a detailed explanation of how various Morphir code artefacts work. It also documents the standard coding practices adopted for the Morphir project. Finally...
+- [Publishing the Elm package](https://morphir.finos.org/docs/developers/publishing/): This document describes how maintainers can push new releases of `morphir-elm` into NPM and the Elm package repo.
+- [Release Retrospective: v0.4.0-alpha.1](https://morphir.finos.org/docs/developers/release-retrospective-v0.4.0-alpha.1/): Release v0.4.0-alpha.1 was successfully published on 2026-01-08, but required multiple iterations (8+ workflow runs) due to various configuration issues. This document captures the issues encounter...
+
+### Architecture Decisions
+
+Architecture Decision Records (ADRs)
+
+- [ADR-0001: Representing Morphir IR Sum Types (Discriminated Unions) in Go](https://morphir.finos.org/docs/adr/ADR-0001-morphir-ir-sum-types-in-go/): - Status: Accepted - Date: 2026-01-01 - Deciders: Morphir Maintainers - Technical Story: Port Morphir IR from DU-first languages (F#/Elm) to Go with multi-version JSON schema support.
+- [ADR-0002: Processing Pipeline Architecture](https://morphir.finos.org/docs/adr/ADR-0002-processing-pipeline/): - Status: Proposed - Date: 2026-01-01 - Deciders: Morphir Maintainers - Technical Story: Define a functional processing pipeline for Morphir Go.
+- [ADR-0003: Toolchain Integration Framework](https://morphir.finos.org/docs/adr/ADR-0003-toolchain-integration/): **Status:** Proposed **Date:** 2026-01-08 **Authors:** Morphir Team
+
+### Community
+
+Community resources and guidelines
+
+- [Community](https://morphir.finos.org/docs/community/): Join the Morphir community and access helpful resources.
+- [Code of Conduct](https://morphir.finos.org/docs/community/code-of-conduct/): In the interest of fostering an open and welcoming environment, we as contributors and maintainers pledge to making participation in our project and our community a harassment-free experience for e...
+- [FAQs](https://morphir.finos.org/docs/community/faqs/): Run the command `morphir scala-gen -s`
+- [Media About Morphir](https://morphir.finos.org/docs/community/media/): If you're interested in learning more about the project, [Morphir Resource Centre](https://resources.finos.org/morphir/), has many links.
+- [Morphir Community](https://morphir.finos.org/docs/community/morphir-community/): **Morphir's success will depend on its community.**
+
+### Use Cases
+
+Real-world examples and applications
+
+- [Use Cases](https://morphir.finos.org/docs/use-cases/): Real-world applications and domain-specific examples of Morphir.
+- [The Morphir Background Story](https://morphir.finos.org/docs/use-cases/background/): Morphir evolved from years of frustration trying to work around technical limitations to adequately model business concepts. Then after so much effort and pain, we inevitably have to start over to ...
+- [Automating RegTech](https://morphir.finos.org/docs/use-cases/regtech-modeling/): There are a number of highly regulated industries that must adhere to complex regulations from various regulatory bodies. These often come in the form of lengthy documents that can be arcane, ambig...
+
+## JSON Schema Specifications
+
+Morphir IR files can be validated against these JSON Schemas:
+
+- Version 3 (Current): [https://morphir.finos.org/schemas/morphir-ir-v3.yaml](https://morphir.finos.org/schemas/morphir-ir-v3.yaml)
+- Version 2: [https://morphir.finos.org/schemas/morphir-ir-v2.yaml](https://morphir.finos.org/schemas/morphir-ir-v2.yaml)
+- Version 1: [https://morphir.finos.org/schemas/morphir-ir-v1.yaml](https://morphir.finos.org/schemas/morphir-ir-v1.yaml)
+
+JSON format schemas are also available by replacing `.yaml` with `.json`.

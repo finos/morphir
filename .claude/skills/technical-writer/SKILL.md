@@ -16,6 +16,7 @@ You are a technical writing assistant specialized in Morphir documentation. You 
 5. **Review Code for Docs** - Verify public APIs are documented
 6. **Create Tutorials** - Build well-structured, effective tutorials
 7. **Manage JSON Schemas** - Convert YAML schemas to JSON and detect drift
+8. **Generate llms.txt** - Create LLM-friendly documentation files
 
 ## Documentation Structure
 
@@ -327,6 +328,67 @@ python .claude/skills/technical-writer/scripts/check_schema_drift.py --all
 | YAML edited, JSON not updated | `--sync` check fails | Run `convert_schema.py` |
 | New Go type without schema entry | `--code` shows undocumented type | Add to schema or document as intentional |
 | Schema type without Go implementation | `--code` shows potential missing impl | Implement or document as intentional |
+
+## LLM-Friendly Documentation (llms.txt)
+
+### What is llms.txt?
+
+The [llms.txt specification](https://llmstxt.org/) defines a standard format for providing LLM-friendly documentation. Morphir provides two files:
+
+- **`/llms.txt`** - Compact version with curated links and descriptions
+- **`/llms-full.txt`** - Full version with inline content from key documents
+
+### generate_llms_txt.py
+
+Generates llms.txt files from Morphir documentation.
+
+```bash
+# Generate both compact and full versions
+python scripts/generate_llms_txt.py
+
+# Generate only compact version
+python scripts/generate_llms_txt.py --compact-only
+
+# Generate only full version
+python scripts/generate_llms_txt.py --full-only
+
+# Preview without writing files
+python scripts/generate_llms_txt.py --dry-run
+
+# Custom output directory
+python scripts/generate_llms_txt.py --output website/static/
+```
+
+### Regenerating llms.txt
+
+When documentation changes significantly, regenerate the llms.txt files:
+
+```bash
+# From repository root
+python .claude/skills/technical-writer/scripts/generate_llms_txt.py
+
+# Files are written to:
+# - website/static/llms.txt
+# - website/static/llms-full.txt
+```
+
+### llms.txt Structure
+
+The generated files follow the llms.txt specification:
+
+1. **H1 heading** - Project name (Morphir)
+2. **Blockquote** - Brief summary of what Morphir does
+3. **Body content** - Key information about capabilities
+4. **## Docs** - Primary documentation links with descriptions
+5. **## Specifications** - Technical specifications and schemas
+6. **## Optional** - Additional resources (ADRs, community, etc.)
+
+### Best Practices for llms.txt
+
+1. **Regenerate after major doc changes** - Keep llms.txt current
+2. **Review descriptions** - Ensure they're concise and informative
+3. **Prioritize content** - Key docs go in main sections, optional in "Optional"
+4. **Test with LLMs** - Verify the content works well for LLM queries
 
 ## Best Practices
 

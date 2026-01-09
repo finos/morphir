@@ -1,0 +1,66 @@
+# Morphir
+
+> Morphir is a library of tools that works to capture business logic
+> as data in a language-agnostic intermediate representation (IR).
+> It provides a type-safe, functional approach to defining and
+> transforming business rules across multiple platforms.
+
+Morphir enables you to write business logic once and deploy it to
+multiple targets including Scala, TypeScript, Spark, and more.
+The IR preserves full semantic information making it suitable for
+analysis, optimization, and cross-platform code generation.
+
+## Docs
+
+- [Morphir Web UI](https://morphir.finos.org/docs/getting-started/Morphir Web UI/): This document details the purpose of the various functions of the Morphir UI, and how to use them and navigate between them.
+- [Getting Started with Morphir](https://morphir.finos.org/docs/getting-started/): Welcome! This section will help you get started with Morphir quickly.
+- [Editor Setup](https://morphir.finos.org/docs/getting-started/editor-setup/): Morphir is designed to allow users to write business logic in multiple ways. That currently includes the following:
+- [Untitled](https://morphir.finos.org/docs/getting-started/installation-and-usage/): Morphir is provided as a set of command-line tools that are distribution through the NPM packaging system. The current version is:
+- [Installation](https://morphir.finos.org/docs/getting-started/installation/): Morphir provides command line tools for executing morphir tasks. These tools are delivered by the ```npm``` package management system. Therefore, installation requires that ```Node.js``` and ```npm...
+- [Core Concepts](https://morphir.finos.org/docs/concepts/): This section explains the fundamental concepts behind Morphir and how it works.
+- [Introducing Morphir](https://morphir.finos.org/docs/concepts/introduction-to-morphir/): [![FINOS - Incubating](https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-incubating.svg)](https://finosfoundation.atlassian.net/wiki/display/FINOS/Incubating) [![CII Best Practi...
+- [The Morphir IR](https://morphir.finos.org/docs/concepts/morphir-ir/): The `Morphir.IR` module defines a type-safe API to work with Morphir's intermediate representation. The module structure follows the structure of the IR. Here's a list of concepts in a top-down app...
+- [The Morphir SDK](https://morphir.finos.org/docs/concepts/morphir-sdk/): The goal of the `Morphir.SDK` module is to provide you the basic building blocks to build your domain model and business logic. It also serves as a specification for backend developers that describ...
+- [I Have an Application](https://morphir.finos.org/docs/concepts/whats-it-about/): - It tracks product inventories and decides how much to grant an order request based on the product's availability. - It is deployed as a set of microservices. - We're thinking about moving the mic...
+- [User Guides](https://morphir.finos.org/docs/user-guides/): Learn how to use Morphir to model business logic and build applications.
+- [Morphir Command Line Tools](https://morphir.finos.org/docs/user-guides/cli-tools/command-line-tools/): At the moment, Morphir provides two CLI programs that provide the tools that morphir offers, `morphir-elm` and `morphir`. `morphir-elm` is the first program created and may be deprecated in the fut...
+- [Morphir-elm Commands Processing](https://morphir.finos.org/docs/user-guides/cli-tools/morphir-commands-processing/): The purpose of the document is to explain what happens when morphir-elm commands are run. This documents also describes each morphir-elm command, options and output/result of the command.
+- [Morphir-elm Commands Processing](https://morphir.finos.org/docs/user-guides/cli-tools/morphir-elm-commands-processing/): The purpose of the document is to explain what happens when morphir-elm commands are run. This documents also describes each morphir-elm command, options and output/result of the command.
+- [WIT Commands](https://morphir.finos.org/docs/user-guides/cli-tools/wit-commands/): Morphir provides native support for WebAssembly Interface Types (WIT) through the `morphir wit` command family. These commands allow you to compile WIT source files to Morphir IR and generate WIT s...
+- [morphir wit Command Reference](https://morphir.finos.org/docs/cli-preview/commands/wit/): The `morphir wit` command group provides tools for working with WebAssembly Interface Types (WIT).
+- [Getting Started with CLI Preview](https://morphir.finos.org/docs/cli-preview/getting-started/): This guide will help you get started with the Morphir CLI Preview features, including WIT support and JSONL batch processing.
+- [Morphir CLI Preview](https://morphir.finos.org/docs/cli-preview/): :::caution Developer Preview The Morphir CLI Preview features are in active development. APIs and behavior may change. For production use, please use the stable [morphir-elm](../installation.md) to...
+- [v0.4.0-alpha.1 Release Notes](https://morphir.finos.org/docs/cli-preview/release-notes/v0.4.0-alpha.1/): **Release Date**: January 2026
+- [What's New in CLI Preview](https://morphir.finos.org/docs/cli-preview/whats-new/): This page highlights the major new features in the Morphir CLI Preview.
+- [Morphir IR Specification](https://morphir.finos.org/docs/spec/): The complete Morphir IR specification and JSON schemas
+- [Morphir IR Specification](https://morphir.finos.org/docs/spec/morphir-ir-specification/): Complete specification of the Morphir Intermediate Representation (IR)
+- [JSON Schemas](https://morphir.finos.org/docs/spec/schemas/): JSON schema definitions for Morphir IR format versions
+- [Full Schema](https://morphir.finos.org/docs/spec/schemas/v1/full/): Complete Morphir IR JSON Schema for format version 1
+- [Schema Version 1](https://morphir.finos.org/docs/spec/schemas/v1/): Morphir IR JSON Schema for format version 1
+- [Reference Documentation](https://morphir.finos.org/docs/reference/): Technical reference documentation for Morphir backends, APIs, and tools.
+- [Morphir-TypeSpec Mapping](https://morphir.finos.org/docs/reference/backends/other-platforms/cadl-doc/): This is a documentation of the mapping strategy from Morphir types to Typespec types. This document describes how types in Morphir Models are represented in Typespec. Below is a quick overview of t...
+- [TypeScript - Morphir API](https://morphir.finos.org/docs/reference/backends/other-platforms/morphir-typescript-api/): The purpose of this documentation is to give a user an understanding of how to use the Morphir API created for Typescript.
+- [Relational Backend](https://morphir.finos.org/docs/reference/backends/other-platforms/relational-backend/): The purpose of joins is to look up extra information for each record in some relation and then use it to enrich or filter the original relation. While their semantics fit into relational algebra di...
+- [SpringBoot Generator](https://morphir.finos.org/docs/reference/backends/other-platforms/spring-boot-readme/): [Morphir](https://github.com/finos/morphir) is a multi-language system built on a data format that captures an application's domain model and business logic in a technology agnostic manner. This do...
+
+## Specifications
+
+- [Morphir IR Specification](https://morphir.finos.org/docs/morphir-ir-specification/): Complete specification of the Morphir Intermediate Representation format
+- [JSON Schemas](https://morphir.finos.org/docs/spec/schemas/): JSON Schema definitions for validating Morphir IR files
+- [Schema v3 (YAML)](https://morphir.finos.org/schemas/morphir-ir-v3.yaml): Current IR schema in YAML format
+- [Schema v3 (JSON)](https://morphir.finos.org/schemas/morphir-ir-v3.json): Current IR schema in JSON format
+
+## Optional
+
+- [Developer Guides](https://morphir.finos.org/docs/developers/): Documentation for contributing to Morphir and advanced development topics.
+- [Governance Policies](https://morphir.finos.org/docs/developers/contributing/): This document describes the contribution process and governance policies of the FINOS Morphir project. The project is also governed by the Linux Foundation Antitrust Policy, and the FINOS IP Policy...
+- [Contributing to Morphir](https://morphir.finos.org/docs/developers/contribution-guide-index/): Morphir contains a few components for different aspects of the development process. These can be organized into the following:
+- [ADR-0001: Representing Morphir IR Sum Types (Discriminated Unions) in Go](https://morphir.finos.org/docs/adr/ADR-0001-morphir-ir-sum-types-in-go/): - Status: Accepted - Date: 2026-01-01 - Deciders: Morphir Maintainers - Technical Story: Port Morphir IR from DU-first languages (F#/Elm) to Go with multi-version JSON schema support.
+- [ADR-0002: Processing Pipeline Architecture](https://morphir.finos.org/docs/adr/ADR-0002-processing-pipeline/): - Status: Proposed - Date: 2026-01-01 - Deciders: Morphir Maintainers - Technical Story: Define a functional processing pipeline for Morphir Go.
+- [ADR-0003: Toolchain Integration Framework](https://morphir.finos.org/docs/adr/ADR-0003-toolchain-integration/): **Status:** Proposed **Date:** 2026-01-08 **Authors:** Morphir Team
+- [Community](https://morphir.finos.org/docs/community/): Join the Morphir community and access helpful resources.
+- [Code of Conduct](https://morphir.finos.org/docs/community/code-of-conduct/): In the interest of fostering an open and welcoming environment, we as contributors and maintainers pledge to making participation in our project and our community a harassment-free experience for e...
+- [FAQs](https://morphir.finos.org/docs/community/faqs/): Run the command `morphir scala-gen -s`
+- [Use Cases](https://morphir.finos.org/docs/use-cases/): Real-world applications and domain-specific examples of Morphir.
+- [The Morphir Background Story](https://morphir.finos.org/docs/use-cases/background/): Morphir evolved from years of frustration trying to work around technical limitations to adequately model business concepts. Then after so much effort and pain, we inevitably have to start over to ...
+- [Automating RegTech](https://morphir.finos.org/docs/use-cases/regtech-modeling/): There are a number of highly regulated industries that must adhere to complex regulations from various regulatory bodies. These often come in the form of lengthy documents that can be arcane, ambig...
