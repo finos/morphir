@@ -69,7 +69,70 @@ func (e *Executor) ExecuteTask(toolchainName, taskName string, variant string) (
 		return e.executeExternalTask(tc, *taskDef, variant)
 	}
 
-	return TaskResult{}, fmt.Errorf("native toolchains not yet implemented")
+	// Native toolchain execution
+	if tc.Type == ToolchainTypeNative {
+		return e.executeNativeTask(tc, *taskDef, variant)
+	}
+
+	return TaskResult{}, fmt.Errorf("unknown toolchain type: %s", tc.Type)
+}
+
+// executeNativeTask executes an in-process native task.
+func (e *Executor) executeNativeTask(tc Toolchain, task TaskDef, variant string) (TaskResult, error) {
+	startTime := time.Now()
+
+	// Verify task has a handler
+	if task.Handler == nil {
+		return TaskResult{}, fmt.Errorf("native task %s has no handler", task.Name)
+	}
+
+	// Create output directory
+	taskOutputDir, err := e.outputDir.TaskOutputDir(tc.Name, task.Name)
+	if err != nil {
+		return TaskResult{}, fmt.Errorf("failed to create output directory path: %w", err)
+	}
+
+	writer, err := e.ctx.VFS.Writer()
+	if err != nil {
+		return TaskResult{}, fmt.Errorf("failed to get VFS writer: %w", err)
+	}
+
+	_, err = writer.CreateFolder(taskOutputDir, vfs.WriteOptions{MkdirParents: true, Overwrite: false})
+	if err != nil {
+		return TaskResult{}, fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Build task input
+	taskInput := TaskInput{
+		Variant:        variant,
+		Options:        make(map[string]any),
+		InputArtifacts: make(map[string]any),
+	}
+
+	// Execute the native handler
+	result := task.Handler(e.ctx, taskInput)
+
+	endTime := time.Now()
+
+	// Update metadata
+	result.Metadata.ToolchainName = tc.Name
+	result.Metadata.TaskName = task.Name
+	result.Metadata.StartTime = startTime
+	result.Metadata.EndTime = endTime
+	result.Metadata.Duration = endTime.Sub(startTime)
+	result.Metadata.Success = result.Error == nil
+
+	// Write meta.json
+	if err := e.writeMetadata(tc.Name, task.Name, result.Metadata); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to write metadata: %v\n", err)
+	}
+
+	// Write diagnostics.jsonl
+	if err := e.writeDiagnostics(tc.Name, task.Name, result.Diagnostics); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to write diagnostics: %v\n", err)
+	}
+
+	return result, nil
 }
 
 // executeExternalTask executes an external process-based task.

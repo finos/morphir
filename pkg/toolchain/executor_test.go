@@ -1,6 +1,7 @@
 package toolchain
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -313,5 +314,187 @@ func TestExecutor_GetTimeout(t *testing.T) {
 	timeout3 := executor.getTimeout(tc3, task3)
 	if timeout3 != 2*time.Minute {
 		t.Errorf("expected task timeout of 2m, got %v", timeout3)
+	}
+}
+
+func TestExecutor_ExecuteNativeTask(t *testing.T) {
+	vfsInstance := createTestVFS()
+	ctx := pipeline.NewContext(".", 3, pipeline.ModeDefault, vfsInstance)
+	outputDir := NewOutputDirStructure(vfs.MustVPath(".morphir/out"), vfsInstance)
+	registry := NewRegistry()
+
+	// Create a native handler that returns success
+	successHandler := func(ctx pipeline.Context, input TaskInput) TaskResult {
+		return TaskResult{
+			Outputs: map[string]any{
+				"result": "success",
+			},
+			Diagnostics: []pipeline.Diagnostic{
+				{
+					Severity: pipeline.SeverityInfo,
+					Message:  "Task completed successfully",
+				},
+			},
+		}
+	}
+
+	tc := Toolchain{
+		Name: "native-toolchain",
+		Type: ToolchainTypeNative,
+		Tasks: []TaskDef{
+			{
+				Name:        "native-task",
+				Description: "A native task",
+				Handler:     successHandler,
+				Fulfills:    []string{"make"},
+			},
+		},
+	}
+	registry.Register(tc)
+
+	executor := NewExecutor(registry, outputDir, ctx)
+
+	result, err := executor.ExecuteTask("native-toolchain", "native-task", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !result.Metadata.Success {
+		t.Error("expected task to succeed")
+	}
+
+	if result.Metadata.ToolchainName != "native-toolchain" {
+		t.Errorf("expected toolchain name 'native-toolchain', got '%s'", result.Metadata.ToolchainName)
+	}
+
+	if result.Metadata.TaskName != "native-task" {
+		t.Errorf("expected task name 'native-task', got '%s'", result.Metadata.TaskName)
+	}
+
+	if result.Outputs["result"] != "success" {
+		t.Errorf("expected output 'result'='success', got %v", result.Outputs["result"])
+	}
+
+	if len(result.Diagnostics) != 1 {
+		t.Errorf("expected 1 diagnostic, got %d", len(result.Diagnostics))
+	}
+}
+
+func TestExecutor_ExecuteNativeTask_WithError(t *testing.T) {
+	vfsInstance := createTestVFS()
+	ctx := pipeline.NewContext(".", 3, pipeline.ModeDefault, vfsInstance)
+	outputDir := NewOutputDirStructure(vfs.MustVPath(".morphir/out"), vfsInstance)
+	registry := NewRegistry()
+
+	// Create a native handler that returns an error
+	errorHandler := func(ctx pipeline.Context, input TaskInput) TaskResult {
+		return TaskResult{
+			Error: fmt.Errorf("something went wrong"),
+			Diagnostics: []pipeline.Diagnostic{
+				{
+					Severity: pipeline.SeverityError,
+					Code:     "NATIVE_ERR",
+					Message:  "something went wrong",
+				},
+			},
+		}
+	}
+
+	tc := Toolchain{
+		Name: "native-toolchain",
+		Type: ToolchainTypeNative,
+		Tasks: []TaskDef{
+			{
+				Name:    "failing-task",
+				Handler: errorHandler,
+			},
+		},
+	}
+	registry.Register(tc)
+
+	executor := NewExecutor(registry, outputDir, ctx)
+
+	result, err := executor.ExecuteTask("native-toolchain", "failing-task", "")
+	if err != nil {
+		t.Fatalf("unexpected error from executor: %v", err)
+	}
+
+	if result.Metadata.Success {
+		t.Error("expected task to fail")
+	}
+
+	if result.Error == nil {
+		t.Error("expected error in result")
+	}
+}
+
+func TestExecutor_ExecuteNativeTask_MissingHandler(t *testing.T) {
+	vfsInstance := createTestVFS()
+	ctx := pipeline.NewContext(".", 3, pipeline.ModeDefault, vfsInstance)
+	outputDir := NewOutputDirStructure(vfs.MustVPath(".morphir/out"), vfsInstance)
+	registry := NewRegistry()
+
+	tc := Toolchain{
+		Name: "native-toolchain",
+		Type: ToolchainTypeNative,
+		Tasks: []TaskDef{
+			{
+				Name:    "no-handler-task",
+				Handler: nil, // Missing handler
+			},
+		},
+	}
+	registry.Register(tc)
+
+	executor := NewExecutor(registry, outputDir, ctx)
+
+	_, err := executor.ExecuteTask("native-toolchain", "no-handler-task", "")
+	if err == nil {
+		t.Fatal("expected error for missing handler")
+	}
+
+	expectedMsg := "native task no-handler-task has no handler"
+	if err.Error() != expectedMsg {
+		t.Errorf("expected error message '%s', got '%s'", expectedMsg, err.Error())
+	}
+}
+
+func TestExecutor_ExecuteNativeTask_WithVariant(t *testing.T) {
+	vfsInstance := createTestVFS()
+	ctx := pipeline.NewContext(".", 3, pipeline.ModeDefault, vfsInstance)
+	outputDir := NewOutputDirStructure(vfs.MustVPath(".morphir/out"), vfsInstance)
+	registry := NewRegistry()
+
+	// Create a native handler that uses the variant
+	variantHandler := func(ctx pipeline.Context, input TaskInput) TaskResult {
+		return TaskResult{
+			Outputs: map[string]any{
+				"variant": input.Variant,
+			},
+		}
+	}
+
+	tc := Toolchain{
+		Name: "native-toolchain",
+		Type: ToolchainTypeNative,
+		Tasks: []TaskDef{
+			{
+				Name:     "gen",
+				Handler:  variantHandler,
+				Variants: []string{"scala", "typescript"},
+			},
+		},
+	}
+	registry.Register(tc)
+
+	executor := NewExecutor(registry, outputDir, ctx)
+
+	result, err := executor.ExecuteTask("native-toolchain", "gen", "scala")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if result.Outputs["variant"] != "scala" {
+		t.Errorf("expected variant 'scala', got '%v'", result.Outputs["variant"])
 	}
 }
