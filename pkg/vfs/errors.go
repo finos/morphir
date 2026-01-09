@@ -29,6 +29,8 @@ type VFSError struct {
 	Reason string // Additional context (e.g., for policy denials)
 }
 
+// Error implements the error interface, returning a formatted error message
+// including the operation, path, error code, and any additional context.
 func (e VFSError) Error() string {
 	if e.Reason != "" {
 		if e.Err != nil {
@@ -42,38 +44,47 @@ func (e VFSError) Error() string {
 	return fmt.Sprintf("vfs: %s %s (%s)", e.Op, e.Path.String(), e.Code)
 }
 
+// Unwrap returns the underlying error for use with errors.Is and errors.As.
 func (e VFSError) Unwrap() error {
 	return e.Err
 }
 
+// IsNotFound reports whether err is a VFS "not found" error.
 func IsNotFound(err error) bool {
 	return hasCode(err, ErrNotFoundCode)
 }
 
+// IsNotFolder reports whether err is a VFS "not a folder" error.
 func IsNotFolder(err error) bool {
 	return hasCode(err, ErrNotFolderCode)
 }
 
+// IsAlreadyExists reports whether err is a VFS "already exists" error.
 func IsAlreadyExists(err error) bool {
 	return hasCode(err, ErrAlreadyExistsCode)
 }
 
+// IsReadOnlyMount reports whether err is a VFS "read-only mount" error.
 func IsReadOnlyMount(err error) bool {
 	return hasCode(err, ErrReadOnlyMountCode)
 }
 
+// IsMountNotFound reports whether err is a VFS "mount not found" error.
 func IsMountNotFound(err error) bool {
 	return hasCode(err, ErrMountNotFoundCode)
 }
 
+// IsInvalidPath reports whether err is a VFS "invalid path" error.
 func IsInvalidPath(err error) bool {
 	return hasCode(err, ErrInvalidPathCode)
 }
 
+// IsConflict reports whether err is a VFS "conflict" error.
 func IsConflict(err error) bool {
 	return hasCode(err, ErrConflictCode)
 }
 
+// IsPolicyDenied reports whether err is a VFS "policy denied" error.
 func IsPolicyDenied(err error) bool {
 	return hasCode(err, ErrPolicyDeniedCode)
 }

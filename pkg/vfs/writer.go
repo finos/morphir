@@ -23,6 +23,8 @@ func (w *overlayWriter) checkPolicy(req WriteRequest) error {
 	return nil
 }
 
+// CreateFile creates a new file at the given path with the specified data.
+// It returns the created entry or an error if the operation fails.
 func (w *overlayWriter) CreateFile(path VPath, data []byte, opts WriteOptions) (Entry, error) {
 	if err := w.checkPolicy(WriteRequest{
 		Op:      OpCreateFile,
@@ -42,6 +44,8 @@ func (w *overlayWriter) CreateFile(path VPath, data []byte, opts WriteOptions) (
 	return entry, nil
 }
 
+// CreateFolder creates a new folder at the given path.
+// It returns the created entry or an error if the operation fails.
 func (w *overlayWriter) CreateFolder(path VPath, opts WriteOptions) (Entry, error) {
 	if err := w.checkPolicy(WriteRequest{
 		Op:      OpCreateFolder,
@@ -61,6 +65,8 @@ func (w *overlayWriter) CreateFolder(path VPath, opts WriteOptions) (Entry, erro
 	return entry, nil
 }
 
+// UpdateFile updates an existing file at the given path with new data.
+// It returns the updated entry or an error if the operation fails.
 func (w *overlayWriter) UpdateFile(path VPath, data []byte, opts WriteOptions) (Entry, error) {
 	if err := w.checkPolicy(WriteRequest{
 		Op:      OpUpdateFile,
@@ -80,6 +86,8 @@ func (w *overlayWriter) UpdateFile(path VPath, data []byte, opts WriteOptions) (
 	return entry, nil
 }
 
+// Delete removes the entry at the given path.
+// It returns the deleted entry or an error if the operation fails.
 func (w *overlayWriter) Delete(path VPath) (Entry, error) {
 	if err := w.checkPolicy(WriteRequest{
 		Op:    OpDelete,
@@ -98,6 +106,8 @@ func (w *overlayWriter) Delete(path VPath) (Entry, error) {
 	return deleted, nil
 }
 
+// Move relocates an entry from one path to another.
+// It returns the moved entry or an error if the operation fails.
 func (w *overlayWriter) Move(from VPath, to VPath, opts WriteOptions) (Entry, error) {
 	if err := w.checkPolicy(WriteRequest{
 		Op:      OpMove,
@@ -118,6 +128,8 @@ func (w *overlayWriter) Move(from VPath, to VPath, opts WriteOptions) (Entry, er
 	return moved, nil
 }
 
+// Begin starts a new transaction for batching multiple write operations.
+// Changes are not applied until Commit is called on the returned transaction.
 func (w *overlayWriter) Begin() (VFSTransaction, error) {
 	return newOverlayTransaction(w), nil
 }
@@ -136,6 +148,8 @@ func newOverlayTransaction(writer *overlayWriter) *overlayTransaction {
 	}
 }
 
+// CreateFile creates a new file within the transaction.
+// The change is staged and not applied until Commit is called.
 func (tx *overlayTransaction) CreateFile(path VPath, data []byte, opts WriteOptions) (Entry, error) {
 	if err := tx.writer.checkPolicy(WriteRequest{
 		Op:      OpCreateFile,
@@ -150,6 +164,8 @@ func (tx *overlayTransaction) CreateFile(path VPath, data []byte, opts WriteOpti
 	})
 }
 
+// CreateFolder creates a new folder within the transaction.
+// The change is staged and not applied until Commit is called.
 func (tx *overlayTransaction) CreateFolder(path VPath, opts WriteOptions) (Entry, error) {
 	if err := tx.writer.checkPolicy(WriteRequest{
 		Op:      OpCreateFolder,
@@ -164,6 +180,8 @@ func (tx *overlayTransaction) CreateFolder(path VPath, opts WriteOptions) (Entry
 	})
 }
 
+// UpdateFile updates an existing file within the transaction.
+// The change is staged and not applied until Commit is called.
 func (tx *overlayTransaction) UpdateFile(path VPath, data []byte, opts WriteOptions) (Entry, error) {
 	if err := tx.writer.checkPolicy(WriteRequest{
 		Op:      OpUpdateFile,
@@ -178,6 +196,8 @@ func (tx *overlayTransaction) UpdateFile(path VPath, data []byte, opts WriteOpti
 	})
 }
 
+// Delete removes an entry within the transaction.
+// The change is staged and not applied until Commit is called.
 func (tx *overlayTransaction) Delete(path VPath) (Entry, error) {
 	if err := tx.writer.checkPolicy(WriteRequest{
 		Op:    OpDelete,
@@ -191,6 +211,8 @@ func (tx *overlayTransaction) Delete(path VPath) (Entry, error) {
 	})
 }
 
+// Move relocates an entry within the transaction.
+// The change is staged and not applied until Commit is called.
 func (tx *overlayTransaction) Move(from VPath, to VPath, opts WriteOptions) (Entry, error) {
 	if err := tx.writer.checkPolicy(WriteRequest{
 		Op:      OpMove,
@@ -206,11 +228,15 @@ func (tx *overlayTransaction) Move(from VPath, to VPath, opts WriteOptions) (Ent
 	})
 }
 
+// Commit applies all staged changes to the underlying filesystem.
+// After commit, the transaction should not be reused.
 func (tx *overlayTransaction) Commit() error {
 	tx.writer.mount.Root = tx.working
 	return nil
 }
 
+// Rollback discards all staged changes, reverting to the state at Begin.
+// The transaction can continue to be used after rollback.
 func (tx *overlayTransaction) Rollback() error {
 	tx.working = tx.base
 	return nil

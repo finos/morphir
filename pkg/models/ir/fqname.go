@@ -34,18 +34,22 @@ func FQNameFromParts(packagePath Path, modulePath Path, localName Name) FQName {
 	return FQName{packagePath: packagePath, modulePath: modulePath, localName: localName}
 }
 
+// PackagePath returns the package path component of this fully-qualified name.
 func (f FQName) PackagePath() Path {
 	return f.packagePath
 }
 
+// ModulePath returns the module path component of this fully-qualified name.
 func (f FQName) ModulePath() Path {
 	return f.modulePath
 }
 
+// LocalName returns the local name component of this fully-qualified name.
 func (f FQName) LocalName() Name {
 	return f.localName
 }
 
+// Parts returns all three components of the fully-qualified name: packagePath, modulePath, and localName.
 func (f FQName) Parts() (Path, Path, Name) {
 	return f.packagePath, f.modulePath, f.localName
 }
