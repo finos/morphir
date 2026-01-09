@@ -67,7 +67,6 @@ Feature: Morphir Plan Command
       And the file "output.mmd" should contain "in:"
       And the file "output.mmd" should contain "out:"
 
-    @pending
     Scenario: Show-inputs flag shows input file patterns
       Given a morphir.toml with tasks having inputs
       When I run morphir plan build --mermaid --mermaid-path output.mmd --show-inputs
@@ -76,7 +75,6 @@ Feature: Morphir Plan Command
 
   Rule: Plan execution with --run flag
 
-    @pending
     Scenario: Dry run shows what would be executed
       Given a morphir.toml with a build workflow
       When I run morphir plan build --dry-run
@@ -85,18 +83,16 @@ Feature: Morphir Plan Command
       And the output should contain "Would execute"
 
     @pending
-    Scenario: Mermaid with execution results shows task status
-      Given a morphir.toml with a build workflow
-      And the morphir-elm toolchain is available
-      When I run morphir plan build --run --mermaid output.mmd
-      Then the file "output.mmd" should contain "classDef success"
+    Scenario: Run with mermaid shows task execution status
+      Given a morphir.toml with a golang gen workflow
+      When I run morphir plan codegen --run --mermaid --mermaid-path output.mmd
+      Then the file "output.mmd" should contain "classDef"
 
   Rule: Dependency explanation
 
-    @pending
     Scenario: Explain shows why a task runs
       Given a morphir.toml with dependent tasks
-      When I run morphir plan build --explain morphir-elm/gen
+      When I run morphir plan build --explain elm-gen:Scala
       Then the command should succeed
       And the output should contain "depends on"
 

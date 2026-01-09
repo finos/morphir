@@ -26,10 +26,11 @@ func RegisterPlanSteps(sc *godog.ScenarioContext) {
 	sc.Step(`^I run morphir plan ([a-z]+)$`, iRunMorphirPlanWorkflow)
 	sc.Step(`^I run morphir plan ([a-z]+) --mermaid$`, iRunMorphirPlanWithMermaid)
 	sc.Step(`^I run morphir plan ([a-z]+) --mermaid ([^\s]+)$`, iRunMorphirPlanWithMermaidPath)
+	sc.Step(`^I run morphir plan ([a-z]+) --mermaid --mermaid-path ([^\s]+) --show-inputs$`, iRunMorphirPlanWithShowInputs)
 	sc.Step(`^I run morphir plan ([a-z]+) --mermaid --mermaid-path ([^\s]+) --show-inputs --show-outputs$`, iRunMorphirPlanWithShowInputsOutputs)
 	sc.Step(`^I run morphir plan ([a-z]+) --dry-run$`, iRunMorphirPlanDryRun)
-	sc.Step(`^I run morphir plan ([a-z]+) --run --mermaid ([^\s]+)$`, iRunMorphirPlanRunWithMermaid)
-	sc.Step(`^I run morphir plan ([a-z]+) --explain ([^\s]+)$`, iRunMorphirPlanExplain)
+	sc.Step(`^I run morphir plan ([a-z]+) --run --mermaid --mermaid-path ([^\s]+)$`, iRunMorphirPlanRunWithMermaidPath)
+	sc.Step(`^I run morphir plan ([a-z]+) --explain ([^\s:]+:[^\s]+)$`, iRunMorphirPlanExplain)
 
 	// Assertions for files
 	sc.Step(`^a mermaid file should exist at "([^"]*)"$`, aMermaidFileShouldExist)
@@ -276,6 +277,14 @@ func iRunMorphirPlanWithMermaidPath(ctx context.Context, workflow, path string) 
 	return runMorphirCommand(ctc, "plan", workflow, "--mermaid", "--mermaid-path", path)
 }
 
+func iRunMorphirPlanWithShowInputs(ctx context.Context, workflow, path string) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+	return runMorphirCommand(ctc, "plan", workflow, "--mermaid", "--mermaid-path", path, "--show-inputs")
+}
+
 func iRunMorphirPlanWithShowInputsOutputs(ctx context.Context, workflow, path string) error {
 	ctc, err := GetCLITestContext(ctx)
 	if err != nil {
@@ -292,7 +301,7 @@ func iRunMorphirPlanDryRun(ctx context.Context, workflow string) error {
 	return runMorphirCommand(ctc, "plan", workflow, "--dry-run")
 }
 
-func iRunMorphirPlanRunWithMermaid(ctx context.Context, workflow, path string) error {
+func iRunMorphirPlanRunWithMermaidPath(ctx context.Context, workflow, path string) error {
 	ctc, err := GetCLITestContext(ctx)
 	if err != nil {
 		return err

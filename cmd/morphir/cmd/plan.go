@@ -157,12 +157,13 @@ func executePlanAndGetResult(plan toolchain.Plan, registry *toolchain.Registry, 
 		MaxParallel: planMaxParallel,
 		Timeout:     planTimeout,
 		Context:     ctx,
-		Progress:    progressCallback,
+		Progress:    makeProgressCallback(planDryRun),
 	}
 
 	fmt.Println()
 	if planDryRun {
-		fmt.Println("=== Dry Run ===")
+		fmt.Println("=== DRY RUN ===")
+		fmt.Println("The following tasks would be executed:")
 	} else {
 		fmt.Println("=== Executing Plan ===")
 	}
@@ -226,29 +227,36 @@ func emitMermaidDiagram(plan toolchain.Plan, workflowName string, cfg config.Con
 	return nil
 }
 
-// progressCallback reports execution progress to the console.
-func progressCallback(event toolchain.ProgressEvent) {
-	switch event.Type {
-	case toolchain.ProgressStageStarted:
-		fmt.Printf("\n[Stage] %s\n", event.Stage.Name)
-	case toolchain.ProgressTaskStarted:
-		fmt.Printf("  → %s/%s", event.Task.Toolchain, event.Task.Task)
-		if event.Task.Variant != "" {
-			fmt.Printf(" (%s)", event.Task.Variant)
-		}
-		fmt.Println()
-	case toolchain.ProgressTaskCompleted:
-		if event.TaskResult != nil {
-			if event.TaskResult.Metadata.Success {
-				fmt.Printf("    ✓ completed in %s\n", event.TaskResult.Metadata.Duration)
-			} else {
-				fmt.Printf("    ✗ failed: %v\n", event.TaskResult.Error)
+// makeProgressCallback creates a progress callback that reports execution progress to the console.
+// If dryRun is true, it reports what would be executed instead of actual execution.
+func makeProgressCallback(dryRun bool) func(toolchain.ProgressEvent) {
+	return func(event toolchain.ProgressEvent) {
+		switch event.Type {
+		case toolchain.ProgressStageStarted:
+			fmt.Printf("\n[Stage] %s\n", event.Stage.Name)
+		case toolchain.ProgressTaskStarted:
+			taskLabel := fmt.Sprintf("%s/%s", event.Task.Toolchain, event.Task.Task)
+			if event.Task.Variant != "" {
+				taskLabel += fmt.Sprintf(" (%s)", event.Task.Variant)
 			}
+			if dryRun {
+				fmt.Printf("  Would execute: %s\n", taskLabel)
+			} else {
+				fmt.Printf("  → %s\n", taskLabel)
+			}
+		case toolchain.ProgressTaskCompleted:
+			if !dryRun && event.TaskResult != nil {
+				if event.TaskResult.Metadata.Success {
+					fmt.Printf("    ✓ completed in %s\n", event.TaskResult.Metadata.Duration)
+				} else {
+					fmt.Printf("    ✗ failed: %v\n", event.TaskResult.Error)
+				}
+			}
+		case toolchain.ProgressStageSkipped:
+			fmt.Printf("\n[Stage] %s (skipped: %s)\n", event.Stage.Name, event.Message)
+		case toolchain.ProgressError:
+			fmt.Printf("  ⚠ error: %v\n", event.Error)
 		}
-	case toolchain.ProgressStageSkipped:
-		fmt.Printf("\n[Stage] %s (skipped: %s)\n", event.Stage.Name, event.Message)
-	case toolchain.ProgressError:
-		fmt.Printf("  ⚠ error: %v\n", event.Error)
 	}
 }
 
@@ -454,9 +462,18 @@ func explainPlan(plan toolchain.Plan, targetSpec string) error {
 	}
 
 	chain := dependencyChain(plan, task)
-	fmt.Printf("\nDependency chain for %q:\n", targetSpec)
-	for _, item := range chain {
-		fmt.Printf("  - %s\n", formatTaskLabel(item))
+	fmt.Printf("\nExplaining %q:\n", targetSpec)
+
+	if len(chain) <= 1 {
+		fmt.Println("  This task has no dependencies.")
+	} else {
+		// Show the target task and what it depends on
+		fmt.Printf("  %s depends on:\n", formatTaskLabel(task))
+		for _, item := range chain {
+			if item.Key != task.Key {
+				fmt.Printf("    - %s\n", formatTaskLabel(item))
+			}
+		}
 	}
 	return nil
 }
