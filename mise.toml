@@ -1,3 +1,40 @@
 [tools]
 bun = "latest"
 go = "1.25.5"
+python = "3.12"
+
+# =============================================================================
+# Documentation Tasks
+# =============================================================================
+
+[tasks."llms-txt"]
+description = "Generate llms.txt and llms-full.txt files"
+run = "python .claude/skills/technical-writer/scripts/generate_llms_txt.py"
+
+[tasks."llms-txt:compact"]
+description = "Generate only llms.txt (compact version)"
+run = "python .claude/skills/technical-writer/scripts/generate_llms_txt.py --compact-only"
+
+[tasks."llms-txt:full"]
+description = "Generate only llms-full.txt (full version)"
+run = "python .claude/skills/technical-writer/scripts/generate_llms_txt.py --full-only"
+
+[tasks."llms-txt:preview"]
+description = "Preview llms.txt generation without writing files"
+run = "python .claude/skills/technical-writer/scripts/generate_llms_txt.py --dry-run"
+
+# =============================================================================
+# Schema Tasks
+# =============================================================================
+
+[tasks."schema:convert"]
+description = "Convert YAML JSON Schema files to JSON format"
+run = "python .claude/skills/technical-writer/scripts/convert_schema.py website/static/schemas/"
+
+[tasks."schema:verify"]
+description = "Verify YAML and JSON schema files are in sync"
+run = "python .claude/skills/technical-writer/scripts/convert_schema.py --verify website/static/schemas/"
+
+[tasks."schema:drift"]
+description = "Check for drift between schema and implementation"
+run = "python .claude/skills/technical-writer/scripts/check_schema_drift.py --all"
