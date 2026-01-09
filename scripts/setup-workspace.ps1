@@ -58,8 +58,17 @@ Write-Host ("  " + (go env GOWORK)) -ForegroundColor Gray
 
 Write-Host ""
 Write-Host "🔎 Sanity checks..." -ForegroundColor Blue
-$ReplaceHits = & rg -n "^replace " --glob "*/go.mod" 2>$null
-if ($LASTEXITCODE -eq 0) {
+$ReplaceHits = $null
+$rgCmd = Get-Command rg -ErrorAction SilentlyContinue
+if ($rgCmd) {
+    $ReplaceHits = & rg -n "^replace " --glob "*/go.mod" 2>$null
+} else {
+    $ReplaceHits = Get-ChildItem -Path . -Filter "go.mod" -Recurse -File |
+        Where-Object { $_.FullName -notmatch '\\vendor\\' -and $_.FullName -notmatch '\\node_modules\\' } |
+        Select-String -Pattern '^replace ' -SimpleMatch
+}
+
+if ($ReplaceHits) {
     Write-Host "  ⚠ Found replace directives in go.mod files (remove them and use go.work)" -ForegroundColor Yellow
 } else {
     Write-Host "  ✓ No replace directives in go.mod files" -ForegroundColor Green

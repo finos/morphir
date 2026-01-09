@@ -56,11 +56,11 @@ def parse_go_work_use(go_work_path: Path) -> list[str]:
 
 
 def has_replace_in_go_mod(root: Path) -> bool:
-    try:
-        result = run(["rg", "-n", "^replace ", "--glob", "*/go.mod"], cwd=root, check=False)
-    except FileNotFoundError:
-        result = run(["grep", "-R", "^replace ", "--include", "go.mod", "."], cwd=root, check=False)
-    return result.returncode == 0
+    for mod_file in find_go_mods(root):
+        for line in mod_file.read_text().splitlines():
+            if line.lstrip().startswith("replace "):
+                return True
+    return False
 
 
 def is_go_work_staged(root: Path) -> bool:
