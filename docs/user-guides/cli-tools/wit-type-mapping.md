@@ -1,7 +1,8 @@
 ---
 id: wit-type-mapping
 title: WIT Type Mapping
-sidebar_position: 11
+sidebar_label: WIT Type Mapping
+sidebar_position: 12
 ---
 
 # WIT Type Mapping
@@ -467,5 +468,5 @@ A successful round-trip indicates the type mapping preserved all semantic inform
 
 ## See Also
 
-- [WIT Commands](./wit-commands.md) - CLI command reference
-- [Morphir IR Specification](../../morphir-ir-specification.md) - IR format details
+- [WIT Commands](wit-commands) - CLI command reference
+- [Morphir IR Specification](/docs/morphir-ir-specification) - IR format details

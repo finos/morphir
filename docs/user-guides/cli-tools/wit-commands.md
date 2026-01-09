@@ -1,7 +1,8 @@
 ---
 id: wit-commands
 title: WIT Commands
-sidebar_position: 10
+sidebar_label: WIT Commands
+sidebar_position: 11
 ---
 
 # WIT Commands
@@ -238,5 +239,5 @@ result, err := executor.ExecuteTask("wit", "make", "")
 
 ## See Also
 
-- [WIT Type Mapping](./wit-type-mapping.md) - How WIT types map to Morphir IR
-- [Toolchain Integration](../../toolchain-integration-design.md) - Toolchain framework design
+- [WIT Type Mapping](wit-type-mapping) - How WIT types map to Morphir IR
+- [Toolchain Integration](/docs/toolchain-integration-design) - Toolchain framework design
