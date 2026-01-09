@@ -355,3 +355,81 @@ func TestValidateGenOptions(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func TestInvalidPathDiagnostics(t *testing.T) {
+	mount := vfs.NewOSMount("test", vfs.MountRW, "/tmp", vfs.MustVPath("/"))
+	overlay := vfs.NewOverlayVFS([]vfs.Mount{mount})
+	ctx := pipeline.NewContext("/tmp", 0, pipeline.ModeDefault, overlay)
+
+	t.Run("make handler emits diagnostic for invalid filePath", func(t *testing.T) {
+		handler := makeMakeHandler()
+
+		input := toolchain.TaskInput{
+			Options: map[string]any{
+				"filePath": "", // empty path triggers ParseVPath error
+			},
+		}
+
+		result := handler(ctx, input)
+
+		// Should have diagnostics including invalid path warning
+		hasPathDiagnostic := false
+		for _, d := range result.Diagnostics {
+			if d.Code == "GO009" {
+				hasPathDiagnostic = true
+				assert.Contains(t, d.Message, "invalid filePath")
+				assert.Equal(t, pipeline.SeverityWarn, d.Severity)
+			}
+		}
+		assert.True(t, hasPathDiagnostic, "expected GO009 diagnostic for invalid path")
+	})
+
+	t.Run("gen handler emits diagnostic for invalid outputDir", func(t *testing.T) {
+		handler := makeGenHandler()
+
+		input := toolchain.TaskInput{
+			Options: map[string]any{
+				"modulePath": "github.com/example/test",
+				"outputDir":  "", // empty path triggers ParseVPath error
+			},
+		}
+
+		result := handler(ctx, input)
+
+		// Should have diagnostics including invalid path warning
+		hasPathDiagnostic := false
+		for _, d := range result.Diagnostics {
+			if d.Code == "GO009" {
+				hasPathDiagnostic = true
+				assert.Contains(t, d.Message, "invalid outputDir")
+				assert.Equal(t, pipeline.SeverityWarn, d.Severity)
+			}
+		}
+		assert.True(t, hasPathDiagnostic, "expected GO009 diagnostic for invalid path")
+	})
+
+	t.Run("build handler emits diagnostic for invalid irPath", func(t *testing.T) {
+		handler := makeBuildHandler()
+
+		input := toolchain.TaskInput{
+			Options: map[string]any{
+				"modulePath": "github.com/example/test",
+				"outputDir":  "/output",
+				"irPath":     "", // empty path triggers ParseVPath error
+			},
+		}
+
+		result := handler(ctx, input)
+
+		// Should have diagnostics including invalid path warning
+		hasPathDiagnostic := false
+		for _, d := range result.Diagnostics {
+			if d.Code == "GO009" {
+				hasPathDiagnostic = true
+				assert.Contains(t, d.Message, "invalid irPath")
+				assert.Equal(t, pipeline.SeverityWarn, d.Severity)
+			}
+		}
+		assert.True(t, hasPathDiagnostic, "expected GO009 diagnostic for invalid path")
+	})
+}

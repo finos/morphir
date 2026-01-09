@@ -97,6 +97,9 @@ func makeMakeHandler() toolchain.NativeTaskHandler {
 		// Create the make step
 		makeStep := pipeline.NewMakeStep()
 
+		// Collect any diagnostics from option parsing
+		var optionDiagnostics []pipelinepkg.Diagnostic
+
 		// Build make input from task input
 		makeInput := pipeline.MakeInput{
 			Options: pipeline.MakeOptions{
@@ -113,7 +116,13 @@ func makeMakeHandler() toolchain.NativeTaskHandler {
 		// Get file path from options
 		if filePath, ok := input.Options["filePath"].(string); ok {
 			vpath, err := vfs.ParseVPath(filePath)
-			if err == nil {
+			if err != nil {
+				optionDiagnostics = append(optionDiagnostics, pipeline.DiagnosticWarn(
+					pipeline.CodeInvalidPath,
+					fmt.Sprintf("invalid filePath %q: %v", filePath, err),
+					"golang-make",
+				))
+			} else {
 				makeInput.FilePath = vpath
 			}
 		}
@@ -121,9 +130,10 @@ func makeMakeHandler() toolchain.NativeTaskHandler {
 		// Execute the step
 		output, stepResult := makeStep.Execute(ctx, makeInput)
 
-		// Convert to toolchain result
+		// Convert to toolchain result, prepending option diagnostics
+		allDiagnostics := append(optionDiagnostics, stepResult.Diagnostics...)
 		result := toolchain.TaskResult{
-			Diagnostics: stepResult.Diagnostics,
+			Diagnostics: allDiagnostics,
 			Artifacts:   stepResult.Artifacts,
 			Outputs: map[string]any{
 				"module": output.Module,
@@ -144,6 +154,9 @@ func makeGenHandler() toolchain.NativeTaskHandler {
 		// Create the gen step
 		genStep := pipeline.NewGenStep()
 
+		// Collect any diagnostics from option parsing
+		var optionDiagnostics []pipelinepkg.Diagnostic
+
 		// Build gen input from task input
 		genInput := pipeline.GenInput{
 			Options: pipeline.GenOptions{
@@ -157,7 +170,13 @@ func makeGenHandler() toolchain.NativeTaskHandler {
 		// Get output directory from options
 		if outputDir, ok := input.Options["outputDir"].(string); ok {
 			vpath, err := vfs.ParseVPath(outputDir)
-			if err == nil {
+			if err != nil {
+				optionDiagnostics = append(optionDiagnostics, pipeline.DiagnosticWarn(
+					pipeline.CodeInvalidPath,
+					fmt.Sprintf("invalid outputDir %q: %v", outputDir, err),
+					"golang-gen",
+				))
+			} else {
 				genInput.OutputDir = vpath
 			}
 		}
@@ -195,9 +214,10 @@ func makeGenHandler() toolchain.NativeTaskHandler {
 			outputs["workspaceFile"] = output.WorkspaceFile
 		}
 
-		// Convert to toolchain result
+		// Convert to toolchain result, prepending option diagnostics
+		allDiagnostics := append(optionDiagnostics, stepResult.Diagnostics...)
 		result := toolchain.TaskResult{
-			Diagnostics: stepResult.Diagnostics,
+			Diagnostics: allDiagnostics,
 			Artifacts:   stepResult.Artifacts,
 			Outputs:     outputs,
 		}
@@ -215,6 +235,9 @@ func makeBuildHandler() toolchain.NativeTaskHandler {
 	return func(ctx pipelinepkg.Context, input toolchain.TaskInput) toolchain.TaskResult {
 		// Create the build step
 		buildStep := pipeline.NewBuildStep()
+
+		// Collect any diagnostics from option parsing
+		var optionDiagnostics []pipelinepkg.Diagnostic
 
 		// Build build input from task input
 		buildInput := pipeline.BuildInput{
@@ -235,7 +258,13 @@ func makeBuildHandler() toolchain.NativeTaskHandler {
 		// Get IR path from options
 		if irPath, ok := input.Options["irPath"].(string); ok {
 			vpath, err := vfs.ParseVPath(irPath)
-			if err == nil {
+			if err != nil {
+				optionDiagnostics = append(optionDiagnostics, pipeline.DiagnosticWarn(
+					pipeline.CodeInvalidPath,
+					fmt.Sprintf("invalid irPath %q: %v", irPath, err),
+					"golang-build",
+				))
+			} else {
 				buildInput.IRPath = vpath
 			}
 		}
@@ -243,7 +272,13 @@ func makeBuildHandler() toolchain.NativeTaskHandler {
 		// Get output directory from options
 		if outputDir, ok := input.Options["outputDir"].(string); ok {
 			vpath, err := vfs.ParseVPath(outputDir)
-			if err == nil {
+			if err != nil {
+				optionDiagnostics = append(optionDiagnostics, pipeline.DiagnosticWarn(
+					pipeline.CodeInvalidPath,
+					fmt.Sprintf("invalid outputDir %q: %v", outputDir, err),
+					"golang-build",
+				))
+			} else {
 				buildInput.OutputDir = vpath
 			}
 		}
@@ -267,9 +302,10 @@ func makeBuildHandler() toolchain.NativeTaskHandler {
 			outputs["workspaceFile"] = output.GenOutput.WorkspaceFile
 		}
 
-		// Convert to toolchain result
+		// Convert to toolchain result, prepending option diagnostics
+		allDiagnostics := append(optionDiagnostics, stepResult.Diagnostics...)
 		result := toolchain.TaskResult{
-			Diagnostics: stepResult.Diagnostics,
+			Diagnostics: allDiagnostics,
 			Artifacts:   stepResult.Artifacts,
 			Outputs:     outputs,
 		}

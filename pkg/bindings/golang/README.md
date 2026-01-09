@@ -202,6 +202,7 @@ if result.Error != nil {
 - **GO006**: IR parsing error
 - **GO007**: General code generation error
 - **GO008**: Code formatting error
+- **GO009**: Invalid path provided (emitted when a file or directory path cannot be parsed)
 
 ## Usage (Future)
 
