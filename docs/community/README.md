@@ -13,6 +13,7 @@ Join the Morphir community and access helpful resources.
 - **[Media](media.md)** - Presentations, videos, talks, and media resources
 - **[Code of Conduct](code-of-conduct.md)** - Community guidelines and standards
 - **[FAQs](faqs.md)** - Frequently Asked Questions
+- **[LLM-Friendly Docs](llms-txt.md)** - Access documentation optimized for AI assistants
 
 ## 💬 Get Involved
 

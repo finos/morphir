@@ -859,11 +859,11 @@ To support tooling, validation, and interoperability, formal JSON schemas are pr
 
 ### Available Schemas
 
-- **[Format Version 3 (Current)](/docs/schemas/morphir-ir-v3.yaml)**: The latest format version, which uses capitalized constructor tags (e.g., `"Library"`, `"Public"`, `"Variable"`).
-  
-- **[Format Version 2](/docs/schemas/morphir-ir-v2.yaml)**: Uses capitalized distribution and type tags (e.g., `"Library"`, `"Public"`, `"Variable"`) but lowercase value and pattern tags (e.g., `"apply"`, `"lambda"`, `"as_pattern"`).
-  
-- **[Format Version 1](/docs/schemas/morphir-ir-v1.yaml)**: The original format version, which uses lowercase tags throughout (e.g., `"library"`, `"public"`) and a different module structure where modules have `name` and `def` fields.
+- **[Format Version 3 (Current)](/schemas/morphir-ir-v3.yaml)**: The latest format version, which uses capitalized constructor tags (e.g., `"Library"`, `"Public"`, `"Variable"`).
+
+- **[Format Version 2](/schemas/morphir-ir-v2.yaml)**: Uses capitalized distribution and type tags (e.g., `"Library"`, `"Public"`, `"Variable"`) but lowercase value and pattern tags (e.g., `"apply"`, `"lambda"`, `"as_pattern"`).
+
+- **[Format Version 1](/schemas/morphir-ir-v1.yaml)**: The original format version, which uses lowercase tags throughout (e.g., `"library"`, `"public"`) and a different module structure where modules have `name` and `def` fields.
 
 ### Key Differences Between Versions
 
@@ -891,27 +891,40 @@ Example validation using a JSON schema validator:
 
 ```bash
 # Using Python jsonschema (recommended for YAML schemas)
-pip install jsonschema pyyaml
-python -c "import json, yaml, jsonschema; \
-  schema = yaml.safe_load(open('docs/schemas/morphir-ir-v3.yaml')); \
+pip install jsonschema pyyaml requests
+python -c "import json, yaml, jsonschema, requests; \
+  schema = yaml.safe_load(requests.get('https://morphir.finos.org/schemas/morphir-ir-v3.yaml').text); \
   data = json.load(open('morphir-ir.json')); \
   jsonschema.validate(data, schema); \
   print('✓ Valid Morphir IR')"
 
 # Using ajv-cli (Node.js) - requires converting YAML to JSON first
 npm install -g ajv-cli
+curl -o morphir-ir-v3.yaml https://morphir.finos.org/schemas/morphir-ir-v3.yaml
 python -c "import yaml, json; \
-  json.dump(yaml.safe_load(open('docs/schemas/morphir-ir-v3.yaml')), \
+  json.dump(yaml.safe_load(open('morphir-ir-v3.yaml')), \
   open('morphir-ir-v3.json', 'w'))"
 ajv validate -s morphir-ir-v3.json -d morphir-ir.json
+
+# Using sourcemeta/jsonschema CLI (fast, cross-platform C++ validator)
+# Install via: npm install -g @sourcemeta/jsonschema
+#          or: brew install sourcemeta/apps/jsonschema
+#          or: pip install jsonschema-cli
+curl -o morphir-ir-v3.json https://morphir.finos.org/schemas/morphir-ir-v3.json
+jsonschema validate morphir-ir-v3.json morphir-ir.json
 ```
 
 ### Schema Location
 
-All schemas are located in the `docs/schemas/` directory of the Morphir repository:
-- `docs/schemas/morphir-ir-v1.yaml`
-- `docs/schemas/morphir-ir-v2.yaml`
-- `docs/schemas/morphir-ir-v3.yaml`
+Schemas are available in both YAML and JSON formats:
+
+| Version | YAML | JSON |
+|---------|------|------|
+| v3 (Current) | https://morphir.finos.org/schemas/morphir-ir-v3.yaml | https://morphir.finos.org/schemas/morphir-ir-v3.json |
+| v2 | https://morphir.finos.org/schemas/morphir-ir-v2.yaml | https://morphir.finos.org/schemas/morphir-ir-v2.json |
+| v1 | https://morphir.finos.org/schemas/morphir-ir-v1.yaml | https://morphir.finos.org/schemas/morphir-ir-v1.json |
+
+Use YAML for better readability or JSON for maximum tool compatibility.
 
 ## Conclusion
 

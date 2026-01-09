@@ -13,10 +13,10 @@ This section contains the Morphir IR (Intermediate Representation) specification
 
 - **[Morphir IR Specification](./morphir-ir-specification/)**: The complete Morphir IR specification document, describing the structure, semantics, and usage of the Morphir IR format.
 
-- **[JSON Schemas](./schemas/)**: JSON schema definitions for all supported format versions of the Morphir IR:
-  - `morphir-ir-v3.yaml`: Current format version (v3)
-  - `morphir-ir-v2.yaml`: Format version 2
-  - `morphir-ir-v1.yaml`: Format version 1
+- **[JSON Schemas](./schemas/)**: JSON schema definitions for all supported format versions of the Morphir IR (available in both YAML and JSON formats):
+  - v3 (Current): [YAML](/schemas/morphir-ir-v3.yaml) | [JSON](/schemas/morphir-ir-v3.json)
+  - v2: [YAML](/schemas/morphir-ir-v2.yaml) | [JSON](/schemas/morphir-ir-v2.json)
+  - v1: [YAML](/schemas/morphir-ir-v1.yaml) | [JSON](/schemas/morphir-ir-v1.json)
 
 ## Purpose
 

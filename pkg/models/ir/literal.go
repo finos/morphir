@@ -17,6 +17,7 @@ type BoolLiteral struct {
 	value bool
 }
 
+// NewBoolLiteral creates a new boolean literal with the given value.
 func NewBoolLiteral(value bool) Literal {
 	return BoolLiteral{value: value}
 }
@@ -25,6 +26,7 @@ func (BoolLiteral) isLiteral() {
 	// Marker method for the Literal sum type.
 }
 
+// Value returns the boolean value of this literal.
 func (l BoolLiteral) Value() bool {
 	return l.value
 }
@@ -36,6 +38,7 @@ type CharLiteral struct {
 	value rune
 }
 
+// NewCharLiteral creates a new character literal with the given rune value.
 func NewCharLiteral(value rune) Literal {
 	return CharLiteral{value: value}
 }
@@ -44,6 +47,7 @@ func (CharLiteral) isLiteral() {
 	// Marker method for the Literal sum type.
 }
 
+// Value returns the rune value of this character literal.
 func (l CharLiteral) Value() rune {
 	return l.value
 }
@@ -55,6 +59,7 @@ type StringLiteral struct {
 	value string
 }
 
+// NewStringLiteral creates a new string literal with the given value.
 func NewStringLiteral(value string) Literal {
 	return StringLiteral{value: value}
 }
@@ -63,6 +68,7 @@ func (StringLiteral) isLiteral() {
 	// Marker method for the Literal sum type.
 }
 
+// Value returns the string value of this literal.
 func (l StringLiteral) Value() string {
 	return l.value
 }
@@ -74,6 +80,7 @@ type WholeNumberLiteral struct {
 	value int64
 }
 
+// NewWholeNumberLiteral creates a new whole number (integer) literal with the given value.
 func NewWholeNumberLiteral(value int64) Literal {
 	return WholeNumberLiteral{value: value}
 }
@@ -82,6 +89,7 @@ func (WholeNumberLiteral) isLiteral() {
 	// Marker method for the Literal sum type.
 }
 
+// Value returns the int64 value of this whole number literal.
 func (l WholeNumberLiteral) Value() int64 {
 	return l.value
 }
@@ -93,6 +101,7 @@ type FloatLiteral struct {
 	value float64
 }
 
+// NewFloatLiteral creates a new floating-point literal with the given value.
 func NewFloatLiteral(value float64) Literal {
 	return FloatLiteral{value: value}
 }
@@ -101,6 +110,7 @@ func (FloatLiteral) isLiteral() {
 	// Marker method for the Literal sum type.
 }
 
+// Value returns the float64 value of this floating-point literal.
 func (l FloatLiteral) Value() float64 {
 	return l.value
 }
@@ -112,6 +122,7 @@ type DecimalLiteral struct {
 	value Decimal
 }
 
+// NewDecimalLiteral creates a new arbitrary-precision decimal literal with the given value.
 func NewDecimalLiteral(value Decimal) Literal {
 	return DecimalLiteral{value: value}
 }
@@ -120,6 +131,7 @@ func (DecimalLiteral) isLiteral() {
 	// Marker method for the Literal sum type.
 }
 
+// Value returns the Decimal value of this decimal literal.
 func (l DecimalLiteral) Value() Decimal {
 	return l.value
 }

@@ -25,13 +25,24 @@ func NewOSFile(path VPath, meta Meta, origin Origin, osPath string) OSFile {
 	}
 }
 
-func (f OSFile) Path() VPath     { return f.path }
+// Path returns the virtual path of this file.
+func (f OSFile) Path() VPath { return f.path }
+
+// Kind returns KindFile for this entry type.
 func (f OSFile) Kind() EntryKind { return KindFile }
-func (f OSFile) Meta() Meta      { return cloneMeta(f.meta) }
-func (f OSFile) Origin() Origin  { return f.origin }
+
+// Meta returns a defensive copy of the file's metadata.
+func (f OSFile) Meta() Meta { return cloneMeta(f.meta) }
+
+// Origin returns the origin information for this file.
+func (f OSFile) Origin() Origin { return f.origin }
+
+// Bytes reads and returns the file contents from the underlying OS path.
 func (f OSFile) Bytes() ([]byte, error) {
 	return os.ReadFile(f.osPath)
 }
+
+// Stream opens and returns a read stream to the underlying OS file.
 func (f OSFile) Stream() (io.ReadCloser, error) {
 	return os.Open(f.osPath)
 }
@@ -54,10 +65,19 @@ func NewOSFolder(path VPath, meta Meta, origin Origin, osPath string) OSFolder {
 	}
 }
 
-func (f OSFolder) Path() VPath     { return f.path }
+// Path returns the virtual path of this folder.
+func (f OSFolder) Path() VPath { return f.path }
+
+// Kind returns KindFolder for this entry type.
 func (f OSFolder) Kind() EntryKind { return KindFolder }
-func (f OSFolder) Meta() Meta      { return cloneMeta(f.meta) }
-func (f OSFolder) Origin() Origin  { return f.origin }
+
+// Meta returns a defensive copy of the folder's metadata.
+func (f OSFolder) Meta() Meta { return cloneMeta(f.meta) }
+
+// Origin returns the origin information for this folder.
+func (f OSFolder) Origin() Origin { return f.origin }
+
+// Children reads the underlying OS directory and returns child entries.
 func (f OSFolder) Children() ([]Entry, error) {
 	entries, err := os.ReadDir(f.osPath)
 	if err != nil {

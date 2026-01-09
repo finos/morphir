@@ -11,9 +11,15 @@ This directory contains formal JSON schema specifications for all supported form
 
 ## Schema Files
 
-- **morphir-ir-v3.yaml**: Current format version (v3)
-- **morphir-ir-v2.yaml**: Format version 2
-- **morphir-ir-v1.yaml**: Format version 1
+The schemas are available in both YAML and JSON formats at SEO-friendly URLs:
+
+| Version | YAML | JSON |
+|---------|------|------|
+| v3 (Current) | [morphir-ir-v3.yaml](/schemas/morphir-ir-v3.yaml) | [morphir-ir-v3.json](/schemas/morphir-ir-v3.json) |
+| v2 | [morphir-ir-v2.yaml](/schemas/morphir-ir-v2.yaml) | [morphir-ir-v2.json](/schemas/morphir-ir-v2.json) |
+| v1 | [morphir-ir-v1.yaml](/schemas/morphir-ir-v1.yaml) | [morphir-ir-v1.json](/schemas/morphir-ir-v1.json) |
+
+Use YAML for better readability or JSON for maximum tool compatibility.
 
 ## Format Version Differences
 
@@ -43,16 +49,18 @@ The schemas can be used to validate Morphir IR JSON files. Note that due to the 
 #### Using Python jsonschema
 
 ```bash
-pip install jsonschema pyyaml
+pip install jsonschema pyyaml requests
 
 python3 << 'EOF'
 import json
 import yaml
+import requests
 from jsonschema import validate
 
-# Load schema
-with open('morphir-ir-v3.yaml', 'r') as f:
-    schema = yaml.safe_load(f)
+# Load schema from URL
+schema = yaml.safe_load(
+    requests.get('https://morphir.finos.org/schemas/morphir-ir-v3.yaml').text
+)
 
 # Load Morphir IR JSON
 with open('morphir-ir.json', 'r') as f:
@@ -69,12 +77,76 @@ EOF
 ```bash
 npm install -g ajv-cli ajv-formats
 
-# Convert YAML to JSON first
-python3 -c "import yaml, json; \
-  json.dump(yaml.safe_load(open('morphir-ir-v3.yaml')), open('morphir-ir-v3.json', 'w'))"
+# Download JSON schema directly (no conversion needed)
+curl -o morphir-ir-v3.json https://morphir.finos.org/schemas/morphir-ir-v3.json
 
 # Validate
 ajv validate -s morphir-ir-v3.json -d morphir-ir.json
+```
+
+#### Using sourcemeta jsonschema CLI
+
+The [sourcemeta/jsonschema](https://github.com/sourcemeta/jsonschema) CLI is a fast, cross-platform JSON Schema validator written in C++. It supports all JSON Schema versions and provides excellent error messages.
+
+**Installation:**
+
+```bash
+# Using npm
+npm install -g @sourcemeta/jsonschema
+
+# Using pip
+pip install jsonschema-cli
+
+# Using Homebrew (macOS/Linux)
+brew install sourcemeta/apps/jsonschema
+
+# Using Docker
+docker pull sourcemeta/jsonschema
+```
+
+**Basic validation:**
+
+```bash
+# Download the schema
+curl -o morphir-ir-v3.json https://morphir.finos.org/schemas/morphir-ir-v3.json
+
+# Validate a Morphir IR file
+jsonschema validate morphir-ir-v3.json morphir-ir.json
+```
+
+**Validate with detailed output:**
+
+```bash
+# Verbose mode shows validation progress
+jsonschema validate morphir-ir-v3.json morphir-ir.json --verbose
+
+# JSON output for programmatic processing
+jsonschema validate morphir-ir-v3.json morphir-ir.json --json
+```
+
+**Validate multiple files or directories:**
+
+```bash
+# Validate all JSON files in a directory
+jsonschema validate morphir-ir-v3.json ./output/
+
+# Validate specific files
+jsonschema validate morphir-ir-v3.json file1.json file2.json file3.json
+```
+
+**Fast mode (for large files):**
+
+```bash
+# Prioritize speed over detailed error messages
+jsonschema validate morphir-ir-v3.json morphir-ir.json --fast
+```
+
+**Using Docker:**
+
+```bash
+# Mount current directory and validate
+docker run --rm -v "$PWD:/data" sourcemeta/jsonschema \
+  validate /data/morphir-ir-v3.json /data/morphir-ir.json
 ```
 
 ### Quick Structural Check

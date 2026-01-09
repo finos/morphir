@@ -23,13 +23,24 @@ func NewMemFile(path VPath, meta Meta, origin Origin, data []byte) MemFile {
 	}
 }
 
-func (f MemFile) Path() VPath     { return f.path }
+// Path returns the virtual path of this file.
+func (f MemFile) Path() VPath { return f.path }
+
+// Kind returns KindFile for this entry type.
 func (f MemFile) Kind() EntryKind { return KindFile }
-func (f MemFile) Meta() Meta      { return cloneMeta(f.meta) }
-func (f MemFile) Origin() Origin  { return f.origin }
+
+// Meta returns a defensive copy of the file's metadata.
+func (f MemFile) Meta() Meta { return cloneMeta(f.meta) }
+
+// Origin returns the origin information for this file.
+func (f MemFile) Origin() Origin { return f.origin }
+
+// Bytes returns a defensive copy of the file's contents.
 func (f MemFile) Bytes() ([]byte, error) {
 	return cloneBytes(f.data), nil
 }
+
+// Stream returns a read-only stream of the file's contents.
 func (f MemFile) Stream() (io.ReadCloser, error) {
 	return io.NopCloser(bytes.NewReader(f.data)), nil
 }
@@ -52,10 +63,19 @@ func NewMemFolder(path VPath, meta Meta, origin Origin, children []Entry) MemFol
 	}
 }
 
-func (f MemFolder) Path() VPath     { return f.path }
+// Path returns the virtual path of this folder.
+func (f MemFolder) Path() VPath { return f.path }
+
+// Kind returns KindFolder for this entry type.
 func (f MemFolder) Kind() EntryKind { return KindFolder }
-func (f MemFolder) Meta() Meta      { return cloneMeta(f.meta) }
-func (f MemFolder) Origin() Origin  { return f.origin }
+
+// Meta returns a defensive copy of the folder's metadata.
+func (f MemFolder) Meta() Meta { return cloneMeta(f.meta) }
+
+// Origin returns the origin information for this folder.
+func (f MemFolder) Origin() Origin { return f.origin }
+
+// Children returns a defensive copy of the folder's child entries.
 func (f MemFolder) Children() ([]Entry, error) {
 	return cloneEntries(f.children), nil
 }
@@ -82,10 +102,19 @@ func NewMemNode(path VPath, meta Meta, origin Origin, nodeType string, attrs map
 	}
 }
 
-func (n MemNode) Path() VPath      { return n.path }
-func (n MemNode) Kind() EntryKind  { return KindNode }
-func (n MemNode) Meta() Meta       { return cloneMeta(n.meta) }
-func (n MemNode) Origin() Origin   { return n.origin }
+// Path returns the virtual path of this node.
+func (n MemNode) Path() VPath { return n.path }
+
+// Kind returns KindNode for this entry type.
+func (n MemNode) Kind() EntryKind { return KindNode }
+
+// Meta returns a defensive copy of the node's metadata.
+func (n MemNode) Meta() Meta { return cloneMeta(n.meta) }
+
+// Origin returns the origin information for this node.
+func (n MemNode) Origin() Origin { return n.origin }
+
+// NodeType returns the type identifier for this document node.
 func (n MemNode) NodeType() string { return n.nodeType }
 func (n MemNode) Attrs() map[string]any {
 	return cloneStringAnyMap(n.attrs)
@@ -108,8 +137,11 @@ func NewMemDocument(path VPath, meta Meta, origin Origin, data []byte, root Node
 	}
 }
 
+// Kind returns KindDocument for this entry type.
 func (d MemDocument) Kind() EntryKind { return KindDocument }
-func (d MemDocument) Root() Node      { return d.root }
+
+// Root returns the root node of this document.
+func (d MemDocument) Root() Node { return d.root }
 
 // MemArchive is an in-memory archive entry.
 type MemArchive struct {
@@ -131,13 +163,24 @@ func NewMemArchive(path VPath, meta Meta, origin Origin, data []byte, exploded F
 	}
 }
 
-func (a MemArchive) Path() VPath     { return a.path }
+// Path returns the virtual path of this archive.
+func (a MemArchive) Path() VPath { return a.path }
+
+// Kind returns KindArchive for this entry type.
 func (a MemArchive) Kind() EntryKind { return KindArchive }
-func (a MemArchive) Meta() Meta      { return cloneMeta(a.meta) }
-func (a MemArchive) Origin() Origin  { return a.origin }
+
+// Meta returns a defensive copy of the archive's metadata.
+func (a MemArchive) Meta() Meta { return cloneMeta(a.meta) }
+
+// Origin returns the origin information for this archive.
+func (a MemArchive) Origin() Origin { return a.origin }
+
+// Bytes returns a defensive copy of the raw archive contents.
 func (a MemArchive) Bytes() ([]byte, error) {
 	return cloneBytes(a.data), nil
 }
+
+// Exploded returns the exploded folder view of the archive if available.
 func (a MemArchive) Exploded() (Folder, bool) {
 	if a.exploded == nil {
 		return nil, false

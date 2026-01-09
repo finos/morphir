@@ -3,7 +3,7 @@
 # Format version 2 uses capitalized tag names (e.g., "Library", "Public", "Variable").
 
 $schema: "http://json-schema.org/draft-07/schema#"
-$id: "https://finos.github.io/morphir/schemas/morphir-ir-v2.yaml"
+$id: "https://morphir.finos.org/schemas/morphir-ir-v2.yaml"
 title: "Morphir IR Distribution (Version 2)"
 description: |
   A Morphir IR distribution represents a complete, self-contained package of business logic

@@ -11,7 +11,9 @@ This page contains the complete JSON schema definition for Morphir IR format ver
 
 ## Download
 
-You can download the schema file directly: [morphir-ir-v3.yaml](../../morphir-ir-v3.yaml)
+You can download the schema file directly:
+- YAML: [morphir-ir-v3.yaml](/schemas/morphir-ir-v3.yaml)
+- JSON: [morphir-ir-v3.json](/schemas/morphir-ir-v3.json)
 
 ## Usage
 
@@ -19,9 +21,9 @@ This schema can be used to validate Morphir IR JSON files in format version 3:
 
 ```bash
 # Using Python jsonschema (recommended for YAML schemas)
-pip install jsonschema pyyaml
-python -c "import json, yaml, jsonschema; \
-  schema = yaml.safe_load(open('morphir-ir-v3.yaml')); \
+pip install jsonschema pyyaml requests
+python -c "import json, yaml, jsonschema, requests; \
+  schema = yaml.safe_load(requests.get('https://morphir.finos.org/schemas/morphir-ir-v3.yaml').text); \
   data = json.load(open('your-morphir-ir.json')); \
   jsonschema.validate(data, schema); \
   print('✓ Valid Morphir IR')"
@@ -42,7 +44,7 @@ python -c "import json, yaml, jsonschema; \
 # A distribution is the output of the Morphir compilation process (e.g., morphir-elm make).
 
 $schema: "http://json-schema.org/draft-07/schema#"
-$id: "https://finos.github.io/morphir/schemas/morphir-ir-v3.yaml"
+$id: "https://morphir.finos.org/schemas/morphir-ir-v3.yaml"
 title: "Morphir IR Distribution"
 description: |
   A Morphir IR distribution represents a complete, self-contained package of business logic
