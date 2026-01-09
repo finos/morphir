@@ -1,7 +1,14 @@
 [tools]
-bun = "latest"
+# Core tools
 go = "1.25.5"
 python = "3.12"
+
+# JavaScript runtimes and package managers (for toolchain backend tests)
+node = "22"      # Provides npm and npx
+bun = "latest"   # Provides bunx
+deno = "latest"  # Provides deno run npm:
+yarn = "4"       # Provides yarn dlx (Yarn Berry)
+pnpm = "latest"  # Provides pnpm dlx
 
 # =============================================================================
 # Documentation Tasks
