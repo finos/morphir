@@ -32,6 +32,7 @@ func Validate(config map[string]any) *Result {
 	validateCacheSection(config, result)
 	validateLoggingSection(config, result)
 	validateUISection(config, result)
+	validateWorkflowsSection(config, result)
 
 	return result
 }
@@ -180,6 +181,96 @@ func validateUISection(config map[string]any, result *Result) {
 			result.AddWarning("ui.theme",
 				fmt.Sprintf("unknown theme %q, using default (expected one of: %s)",
 					theme, strings.Join(ValidUIThemes, ", ")), theme)
+		}
+	}
+}
+
+// validateWorkflowsSection validates the [workflows] section.
+func validateWorkflowsSection(config map[string]any, result *Result) {
+	rawSection, ok := config["workflows"]
+	if rawSection == nil || !ok {
+		return
+	}
+
+	section, ok := rawSection.(map[string]any)
+	if !ok {
+		result.AddError("workflows", "expected workflows to be a table", rawSection)
+		return
+	}
+
+	for name, workflowValue := range section {
+		workflowMap, ok := workflowValue.(map[string]any)
+		if !ok {
+			result.AddError(fmt.Sprintf("workflows.%s", name),
+				"expected workflow definition to be a table", workflowValue)
+			continue
+		}
+
+		if desc, ok := workflowMap["description"]; ok {
+			if _, ok := desc.(string); !ok {
+				result.AddError(fmt.Sprintf("workflows.%s.description", name),
+					fmt.Sprintf("expected string, got %T", desc), desc)
+			}
+		}
+
+		if extends, ok := workflowMap["extends"]; ok {
+			if _, ok := extends.(string); !ok {
+				result.AddError(fmt.Sprintf("workflows.%s.extends", name),
+					fmt.Sprintf("expected string, got %T", extends), extends)
+			}
+		}
+
+		if stages, ok := workflowMap["stages"]; ok {
+			switch list := stages.(type) {
+			case []any:
+				for i, stage := range list {
+					stageMap, ok := stage.(map[string]any)
+					if !ok {
+						result.AddError(fmt.Sprintf("workflows.%s.stages[%d]", name, i),
+							fmt.Sprintf("expected table, got %T", stage), stage)
+						continue
+					}
+
+					if stageName, ok := stageMap["name"]; ok {
+						if s, ok := stageName.(string); ok {
+							if s == "" {
+								result.AddWarning(fmt.Sprintf("workflows.%s.stages[%d].name", name, i),
+									"stage name should not be empty", stageName)
+							}
+						} else {
+							result.AddError(fmt.Sprintf("workflows.%s.stages[%d].name", name, i),
+								fmt.Sprintf("expected string, got %T", stageName), stageName)
+						}
+					} else {
+						result.AddWarning(fmt.Sprintf("workflows.%s.stages[%d].name", name, i),
+							"stage name is missing", nil)
+					}
+
+					if targets, ok := stageMap["targets"]; ok {
+						validateTargets(fmt.Sprintf("workflows.%s.stages[%d].targets", name, i), targets, result)
+					} else {
+						result.AddWarning(fmt.Sprintf("workflows.%s.stages[%d].targets", name, i),
+							"targets list is missing", nil)
+					}
+
+					if parallel, ok := stageMap["parallel"]; ok {
+						if _, ok := parallel.(bool); !ok {
+							result.AddError(fmt.Sprintf("workflows.%s.stages[%d].parallel", name, i),
+								fmt.Sprintf("expected bool, got %T", parallel), parallel)
+						}
+					}
+
+					if condition, ok := stageMap["condition"]; ok {
+						if _, ok := condition.(string); !ok {
+							result.AddError(fmt.Sprintf("workflows.%s.stages[%d].condition", name, i),
+								fmt.Sprintf("expected string, got %T", condition), condition)
+						}
+					}
+				}
+			default:
+				result.AddError(fmt.Sprintf("workflows.%s.stages", name),
+					fmt.Sprintf("expected array of tables, got %T", stages), stages)
+			}
 		}
 	}
 }

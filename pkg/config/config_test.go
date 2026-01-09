@@ -1049,6 +1049,102 @@ func TestFromMapNoTasks(t *testing.T) {
 	}
 }
 
+func TestFromMapWithWorkflows(t *testing.T) {
+	cfg := FromMap(map[string]any{
+		"workflows": map[string]any{
+			"build": map[string]any{
+				"description": "Build workflow",
+				"stages": []any{
+					map[string]any{
+						"name":    "compile",
+						"targets": []any{"make"},
+					},
+					map[string]any{
+						"name":     "generate",
+						"targets":  []string{"gen:scala"},
+						"parallel": true,
+					},
+				},
+			},
+		},
+	})
+
+	workflows := cfg.Workflows()
+	if workflows.Len() != 1 {
+		t.Fatalf("expected 1 workflow, got %d", workflows.Len())
+	}
+	build, ok := workflows.Get("build")
+	if !ok {
+		t.Fatal("expected build workflow to be loaded")
+	}
+	if build.Description() != "Build workflow" {
+		t.Errorf("unexpected description: %q", build.Description())
+	}
+	stages := build.Stages()
+	if len(stages) != 2 {
+		t.Fatalf("expected 2 stages, got %d", len(stages))
+	}
+	if stages[1].Name() != "generate" || !stages[1].Parallel() {
+		t.Errorf("unexpected stage data: %+v", stages[1])
+	}
+}
+
+func TestWorkflowStagesFromAny(t *testing.T) {
+	t.Run("workflow stage slice returns copy", func(t *testing.T) {
+		input := []WorkflowStageConfig{{name: "build", targets: []string{"go"}}}
+		stages := workflowStagesFromAny(input)
+		if len(stages) != 1 || stages[0].name != "build" {
+			t.Fatalf("expected stage copy, got %#v", stages)
+		}
+		stages[0].name = "mutated"
+		if input[0].name == "mutated" {
+			t.Fatal("expected returned slice to be a copy")
+		}
+	})
+
+	t.Run("workflow stage maps ignore invalid entries", func(t *testing.T) {
+		input := []any{
+			map[string]any{"name": "build", "targets": []any{"go"}, "parallel": true, "condition": "on:ci"},
+			"not a map",
+			map[string]any{"unknown": "value"},
+			map[string]any{},
+		}
+
+		stages := workflowStagesFromAny(input)
+		if len(stages) != 1 {
+			t.Fatalf("expected 1 stage, got %d", len(stages))
+		}
+		if stages[0].name != "build" {
+			t.Fatalf("expected stage name build, got %q", stages[0].name)
+		}
+		if !stages[0].parallel {
+			t.Fatal("expected stage to be parallel")
+		}
+		if stages[0].condition != "on:ci" {
+			t.Fatalf("expected condition to be set, got %q", stages[0].condition)
+		}
+	})
+}
+
+func TestWorkflowsFromMap(t *testing.T) {
+	t.Run("ignores invalid workflow entries", func(t *testing.T) {
+		input := map[string]any{
+			"workflows": map[string]any{
+				"build": map[string]any{"description": "Build"},
+				"bad":   "not a map",
+			},
+		}
+
+		result := workflowsFromMap(input, WorkflowsSection{})
+		if result.Len() != 1 {
+			t.Fatalf("expected 1 workflow, got %d", result.Len())
+		}
+		if _, ok := result.Get("build"); !ok {
+			t.Fatal("expected build workflow to be present")
+		}
+	})
+}
+
 func TestLoadWithTasksFromFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := tmpDir + "/morphir.toml"

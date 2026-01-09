@@ -8,13 +8,16 @@ require (
 	github.com/charmbracelet/glamour v0.10.0
 	github.com/charmbracelet/lipgloss/v2 v2.0.0-beta.3
 	github.com/charmbracelet/lipgloss/v2 v2.0.0-beta.3
+	github.com/finos/morphir/pkg/bindings/golang v0.4.0-alpha.1
 	github.com/finos/morphir/pkg/bindings/wit v0.4.0-alpha.1
 	github.com/finos/morphir/pkg/config v0.4.0-alpha.1
 	github.com/finos/morphir/pkg/pipeline v0.4.0-alpha.1
+	github.com/finos/morphir/pkg/toolchain v0.4.0-alpha.1
 	github.com/finos/morphir/pkg/tooling v0.4.0-alpha.1
 	github.com/finos/morphir/pkg/vfs v0.4.0-alpha.1
 	github.com/spf13/cobra v1.10.2
 )
+
 
 require (
 	github.com/BurntSushi/toml v1.6.0 // indirect

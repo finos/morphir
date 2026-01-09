@@ -11,29 +11,12 @@ if (Test-Path (Join-Path $scriptDir "link-skills.ps1")) {
 
 Write-Host "Setting up Go workspace for local development..."
 
-if (Test-Path "go.work") {
-    Write-Host "✓ go.work already exists"
+$setupWorkspace = Join-Path $scriptDir "setup-workspace.ps1"
+if (Test-Path $setupWorkspace) {
+    & $setupWorkspace
 } else {
-    Write-Host "Creating go.work..."
-    go work init `
-        ./cmd/morphir `
-        ./pkg/bindings/wasm-componentmodel `
-        ./pkg/config `
-        ./pkg/models `
-        ./pkg/pipeline `
-        ./pkg/sdk `
-        ./pkg/tooling `
-        ./tests/bdd
-    Write-Host "✓ Created go.work"
-}
-
-Write-Host "Syncing workspace..."
-try {
-    go work sync | Out-Null
-    Write-Host "✓ Workspace synced successfully"
-} catch {
-    Write-Host "⚠ Workspace sync failed (this is normal if modules aren't tagged yet)"
-    Write-Host "  The workspace will work for local development anyway"
+    Write-Host "❌ Missing setup-workspace.ps1; cannot configure go.work automatically" -ForegroundColor Red
+    exit 1
 }
 
 Write-Host ""

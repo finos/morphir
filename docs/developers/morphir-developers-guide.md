@@ -57,6 +57,33 @@ Finally, it provides a step by step walk-throughs on how various Morphir compone
     
 ## Getting Started With Morphir
 
+## Go Workspace and Module Versions
+
+Morphir is a multi-module Go repo. Local development relies on Go workspaces:
+
+- Use `go.work` for local cross-module development; do not add `replace` directives to `go.mod`.
+- Keep internal dependencies in `go.mod` pinned to the latest released tags.
+- For unreleased local changes, add the modules to `go.work` and build/test locally.
+- If a module has no tags yet, prefer a local-only, versioned `go.work` replace as the default
+  workaround; add an initial tag only when you intend to publish and consume that version.
+- Never commit `go.work` or `go.work.sum`.
+- Use `mise run workspace-doctor` to diagnose workspace issues and apply local fixes (default
+  creates `go.work` if missing and adds versioned `go.work` replaces for missing internal tags).
+
+For setup and troubleshooting details, see `DEVELOPING.md`.
+
+## Industry Patterns (Go Workspaces)
+
+Some large monorepos commit `go.work` and even use `replace` directives in `go.work`:
+
+- **Kubernetes**: commits a generated `go.work` listing `./` and `./staging/src/k8s.io/*` modules.
+- **Grafana**: commits `go.work` with many `apps/*` and `pkg/*` modules, plus `replace` entries.
+
+Other popular repos remain single-module and do not use `go.work` (e.g., Terraform, golang.org/x/tools).
+
+Morphir’s policy differs: we **do not commit** `go.work` or `go.work.sum`, and we **never** add
+`replace` directives to `go.mod`. Local development uses `go.work` only.
+
 # `Morphir-elm Commands Processing`
 
 # Morphir-elm Commands Processing
@@ -200,4 +227,3 @@ The following endpoints are exposed by the after by the `morphir-elm develop` co
 '/server/morphir-tests.json - (GET) serves te content of the morphir-tests.json file' <br />
 '/server/morphir-tests.json - (POST) accepts a request as morphir-test.json as request body, creates the morphir-tests.json
 and returns the content as response' <br />
-

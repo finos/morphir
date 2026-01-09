@@ -70,6 +70,9 @@ cd pkg/models
 go test ./...
 ```
 
+`mise run test` is preferred because it runs the workspace doctor first and applies the default
+local fix for missing internal module tags.
+
 ### Building the CLI
 
 ```bash
@@ -222,6 +225,78 @@ If you see module version conflicts:
    go work sync
    ```
 
+### Go workspace resolution errors
+
+If you see errors like `unknown revision pkg/.../vX.Y.Z` or Go tries to fetch local modules:
+
+Run the workspace doctor for an interactive diagnosis and default fixes:
+```bash
+mise run workspace-doctor
+```
+The default fix will create `go.work` (via `setup-workspace`) if missing and add versioned
+`go.work` replaces for missing internal tags.
+
+1. Confirm the workspace is in use:
+   ```bash
+   go env GOWORK
+   ```
+   It should point at your repo's `go.work`.
+
+   From the repo root, `go env GOMOD` is expected to be `/dev/null` when the workspace is active.
+
+2. Ensure all modules are in the workspace:
+   ```bash
+   go work use -r .
+   go work edit -print
+   ```
+
+3. Sync the workspace:
+   ```bash
+   go work sync
+   ```
+
+4. If `go env GOWORK` is empty or not the repo workspace, run tests from the repo root
+   or set the workspace explicitly for the command:
+   ```bash
+   GOWORK="$(git rev-parse --show-toplevel)/go.work" go test ./cmd/morphir/...
+   ```
+
+5. Verify no `replace` directives are in any `go.mod`:
+   ```bash
+   rg -n "^replace " --glob "*/go.mod"
+   ```
+
+6. Confirm `go.work` and `go.work.sum` are not staged:
+   ```bash
+   git status --short | rg "go.work"
+   ```
+
+7. If errors still mention `unknown revision pkg/.../vX.Y.Z`, verify the version exists.
+   Untagged internal modules must not be required at non-existent versions:
+   - Prefer adding a release tag for the module, or
+   - Avoid introducing the dependency until a release tag exists.
+   - `go.work` use does not override invalid version references in go.mod.
+   - As a local-only workaround, add a versioned `go.work` replace:
+     ```bash
+     go work edit -replace=github.com/finos/morphir/pkg/<module>@vX.Y.Z=./pkg/<module>
+     ```
+
+8. If you are using git worktrees, each worktree needs its own `go.work`.
+   Re-run the workspace setup in each worktree:
+   ```bash
+   ./scripts/setup-workspace.sh
+   ```
+
+9. If you suspect stale cache behavior after repeated attempts:
+   ```bash
+   go clean -cache -modcache
+   ```
+
+**Observed behaviors (playbook notes):**
+- From repo root with workspace active, `go env GOMOD` is `/dev/null`.
+- `go work sync` fails if any internal module version in go.mod does not exist as a tag.
+- `go test ./cmd/morphir/...` will still fail when a required internal module version tag is missing.
+
 ### Build failures after pulling changes
 
 After pulling changes from main:
@@ -245,6 +320,13 @@ The `go.work` file tells Go to use your local copies of modules instead of fetch
 - ✅ **No version tagging needed**: Work with local code directly
 - ✅ **No replace directives**: Cleaner go.mod files
 - ✅ **Go install compatible**: Modules can be installed via `go install` since they have no replace directives
+- ✅ **Stable versions in go.mod**: Keep internal deps on released tags; use go.work for unreleased local changes
+
+When a module needs an unreleased change from another module, keep the dependency version in `go.mod`
+at the latest released tag and rely on `go.work` to use the local code. Avoid pseudo-versions for
+in-repo modules. If the module has never been tagged, prefer a local-only, versioned `go.work`
+replace as the default workaround; add an initial tag before depending on it only when you intend
+to publish and consume that version.
 
 **Questions about how CI and releases work?** See [CI_RELEASE_FAQ.md](./CI_RELEASE_FAQ.md) for detailed answers about:
 - How CI tests your PR code (not old published versions)
