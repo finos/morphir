@@ -498,3 +498,179 @@ func TestExecutor_ExecuteNativeTask_WithVariant(t *testing.T) {
 		t.Errorf("expected variant 'scala', got '%v'", result.Outputs["variant"])
 	}
 }
+
+func TestExecutor_ResolveNpxExecutable(t *testing.T) {
+	vfsInstance := createTestVFS()
+	ctx := pipeline.NewContext(".", 3, pipeline.ModeDefault, vfsInstance)
+	outputDir := NewOutputDirStructure(vfs.MustVPath(".morphir/out"), vfsInstance)
+	registry := NewRegistry()
+	executor := NewExecutor(registry, outputDir, ctx)
+
+	t.Run("npx backend requires package", func(t *testing.T) {
+		tc := Toolchain{
+			Name: "test-toolchain",
+			Type: ToolchainTypeExternal,
+			Acquire: AcquireConfig{
+				Backend: "npx",
+				Package: "", // Missing package
+			},
+		}
+		task := TaskDef{Name: "task"}
+
+		_, err := executor.resolveExecutable(tc, task)
+		if err == nil {
+			t.Fatal("expected error for missing package")
+		}
+
+		if err.Error() != "package must be specified for npx backend" {
+			t.Errorf("unexpected error message: %s", err.Error())
+		}
+	})
+
+	t.Run("npx backend with valid package", func(t *testing.T) {
+		// Skip if PATH is not set (shouldn't normally happen)
+		if _, ok := os.LookupEnv("PATH"); !ok {
+			t.Skip("PATH not set")
+		}
+
+		tc := Toolchain{
+			Name: "test-toolchain",
+			Type: ToolchainTypeExternal,
+			Acquire: AcquireConfig{
+				Backend: "npx",
+				Package: "morphir-elm",
+				Version: "2.90.0",
+			},
+		}
+		task := TaskDef{Name: "task"}
+
+		executable, err := executor.resolveExecutable(tc, task)
+		if err != nil {
+			// If npx is not installed, skip
+			if err.Error()[:14] == "npx not found" {
+				t.Skip("npx not installed")
+			}
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		// Should resolve to npx path
+		if executable == "" {
+			t.Error("expected executable path, got empty string")
+		}
+	})
+}
+
+func TestExecutor_BuildNpxArgs(t *testing.T) {
+	vfsInstance := createTestVFS()
+	ctx := pipeline.NewContext(".", 3, pipeline.ModeDefault, vfsInstance)
+	outputDir := NewOutputDirStructure(vfs.MustVPath(".morphir/out"), vfsInstance)
+	registry := NewRegistry()
+	executor := NewExecutor(registry, outputDir, ctx)
+
+	t.Run("builds args with package and version", func(t *testing.T) {
+		tc := Toolchain{
+			Name: "morphir-elm",
+			Acquire: AcquireConfig{
+				Backend: "npx",
+				Package: "morphir-elm",
+				Version: "2.90.0",
+			},
+		}
+		task := TaskDef{Name: "make"}
+		taskArgs := []string{"make", "-o", "morphir-ir.json"}
+
+		npxArgs := executor.buildNpxArgs(tc, task, taskArgs)
+
+		// Expected: ["-y", "morphir-elm@2.90.0", "make", "-o", "morphir-ir.json"]
+		if len(npxArgs) != 5 {
+			t.Fatalf("expected 5 args, got %d: %v", len(npxArgs), npxArgs)
+		}
+
+		if npxArgs[0] != "-y" {
+			t.Errorf("expected npxArgs[0] = '-y', got '%s'", npxArgs[0])
+		}
+
+		if npxArgs[1] != "morphir-elm@2.90.0" {
+			t.Errorf("expected npxArgs[1] = 'morphir-elm@2.90.0', got '%s'", npxArgs[1])
+		}
+
+		if npxArgs[2] != "make" {
+			t.Errorf("expected npxArgs[2] = 'make', got '%s'", npxArgs[2])
+		}
+	})
+
+	t.Run("builds args without version", func(t *testing.T) {
+		tc := Toolchain{
+			Name: "morphir-elm",
+			Acquire: AcquireConfig{
+				Backend: "npx",
+				Package: "morphir-elm",
+				// No version
+			},
+		}
+		task := TaskDef{Name: "make"}
+		taskArgs := []string{"make"}
+
+		npxArgs := executor.buildNpxArgs(tc, task, taskArgs)
+
+		// Expected: ["-y", "morphir-elm", "make"]
+		if len(npxArgs) != 3 {
+			t.Fatalf("expected 3 args, got %d: %v", len(npxArgs), npxArgs)
+		}
+
+		if npxArgs[1] != "morphir-elm" {
+			t.Errorf("expected npxArgs[1] = 'morphir-elm', got '%s'", npxArgs[1])
+		}
+	})
+}
+
+func TestExecutor_ResolveExecutable_Backends(t *testing.T) {
+	vfsInstance := createTestVFS()
+	ctx := pipeline.NewContext(".", 3, pipeline.ModeDefault, vfsInstance)
+	outputDir := NewOutputDirStructure(vfs.MustVPath(".morphir/out"), vfsInstance)
+	registry := NewRegistry()
+	executor := NewExecutor(registry, outputDir, ctx)
+
+	t.Run("unsupported backend returns error", func(t *testing.T) {
+		tc := Toolchain{
+			Name: "test-toolchain",
+			Type: ToolchainTypeExternal,
+			Acquire: AcquireConfig{
+				Backend: "docker", // Not implemented
+			},
+		}
+		task := TaskDef{Name: "task"}
+
+		_, err := executor.resolveExecutable(tc, task)
+		if err == nil {
+			t.Fatal("expected error for unsupported backend")
+		}
+
+		expectedMsg := "acquisition backend docker not yet implemented"
+		if err.Error() != expectedMsg {
+			t.Errorf("expected '%s', got '%s'", expectedMsg, err.Error())
+		}
+	})
+
+	t.Run("empty backend defaults to path", func(t *testing.T) {
+		tc := Toolchain{
+			Name: "test-toolchain",
+			Type: ToolchainTypeExternal,
+			Acquire: AcquireConfig{
+				Backend:    "", // Empty defaults to path
+				Executable: "echo",
+			},
+		}
+		task := TaskDef{Name: "task"}
+
+		executable, err := executor.resolveExecutable(tc, task)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		// Should resolve to echo
+		if executable == "" {
+			t.Error("expected executable path")
+		}
+	})
+}

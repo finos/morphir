@@ -167,6 +167,11 @@ func (e *Executor) executeExternalTask(tc Toolchain, task TaskDef, variant strin
 		return TaskResult{}, fmt.Errorf("failed to substitute arguments: %w", err)
 	}
 
+	// For npx backend, prepend package specifier to args
+	if tc.Acquire.Backend == "npx" {
+		args = e.buildNpxArgs(tc, task, args)
+	}
+
 	// Prepare environment
 	env := e.prepareEnv(tc, task)
 
@@ -241,11 +246,18 @@ func (e *Executor) executeExternalTask(tc Toolchain, task TaskDef, variant strin
 
 // resolveExecutable resolves the executable path based on acquisition config.
 func (e *Executor) resolveExecutable(tc Toolchain, task TaskDef) (string, error) {
-	// For now, only support "path" backend
-	if tc.Acquire.Backend != "path" {
+	switch tc.Acquire.Backend {
+	case "path", "":
+		return e.resolvePathExecutable(tc, task)
+	case "npx":
+		return e.resolveNpxExecutable(tc)
+	default:
 		return "", fmt.Errorf("acquisition backend %s not yet implemented", tc.Acquire.Backend)
 	}
+}
 
+// resolvePathExecutable resolves an executable from the system PATH.
+func (e *Executor) resolvePathExecutable(tc Toolchain, task TaskDef) (string, error) {
 	// Use task.Exec if provided, otherwise use tc.Acquire.Executable
 	executable := task.Exec
 	if executable == "" {
@@ -263,6 +275,41 @@ func (e *Executor) resolveExecutable(tc Toolchain, task TaskDef) (string, error)
 	}
 
 	return executable, nil
+}
+
+// resolveNpxExecutable resolves npx as the executable for npm package execution.
+func (e *Executor) resolveNpxExecutable(tc Toolchain) (string, error) {
+	// Verify npx is available
+	npxPath, err := exec.LookPath("npx")
+	if err != nil {
+		return "", fmt.Errorf("npx not found in PATH (required for backend 'npx'): %w", err)
+	}
+
+	// Verify package is specified
+	if tc.Acquire.Package == "" {
+		return "", fmt.Errorf("package must be specified for npx backend")
+	}
+
+	return npxPath, nil
+}
+
+// buildNpxArgs builds the argument list for npx execution.
+// It prepends the package specifier (with optional version) to the task args.
+func (e *Executor) buildNpxArgs(tc Toolchain, task TaskDef, taskArgs []string) []string {
+	// Build package specifier
+	packageSpec := tc.Acquire.Package
+	if tc.Acquire.Version != "" {
+		packageSpec = packageSpec + "@" + tc.Acquire.Version
+	}
+
+	// npx args: ["-y", "package@version", ...taskArgs]
+	// -y flag auto-confirms installation prompts
+	npxArgs := []string{"-y", packageSpec}
+
+	// Append the task's subcommand args
+	npxArgs = append(npxArgs, taskArgs...)
+
+	return npxArgs
 }
 
 // substituteArgs substitutes variables in task arguments.
