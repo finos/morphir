@@ -8,8 +8,11 @@ import (
 
 // MermaidOptions configures Mermaid diagram generation.
 type MermaidOptions struct {
-	// Detailed includes inputs and outputs in node labels
-	Detailed bool
+	// ShowInputs includes inputs in node labels
+	ShowInputs bool
+
+	// ShowOutputs includes outputs in node labels
+	ShowOutputs bool
 
 	// TaskResults maps task keys to their execution results (for styling)
 	TaskResults map[TaskKey]TaskResult
@@ -18,7 +21,8 @@ type MermaidOptions struct {
 // DefaultMermaidOptions returns the default options.
 func DefaultMermaidOptions() MermaidOptions {
 	return MermaidOptions{
-		Detailed:    false,
+		ShowInputs:  false,
+		ShowOutputs: false,
 		TaskResults: nil,
 	}
 }
@@ -53,8 +57,8 @@ func PlanToMermaidWithOptions(plan Plan, opts MermaidOptions) string {
 			nodeID := taskKeyToNodeID(task.Key)
 			nodeLabel := formatTaskNodeLabel(task)
 
-			if opts.Detailed {
-				nodeLabel = formatDetailedTaskLabel(task)
+			if opts.ShowInputs || opts.ShowOutputs {
+				nodeLabel = formatDetailedTaskLabel(task, opts)
 			}
 
 			fmt.Fprintf(&sb, "        %s[\"%s\"]\n", nodeID, escapeMermaidLabel(nodeLabel))
@@ -180,8 +184,8 @@ func formatTaskNodeLabel(task *PlanTask) string {
 	return label
 }
 
-// formatDetailedTaskLabel creates a detailed label including inputs and outputs.
-func formatDetailedTaskLabel(task *PlanTask) string {
+// formatDetailedTaskLabel creates a detailed label including inputs and/or outputs.
+func formatDetailedTaskLabel(task *PlanTask, opts MermaidOptions) string {
 	var parts []string
 
 	// Task name with variant
@@ -191,16 +195,16 @@ func formatDetailedTaskLabel(task *PlanTask) string {
 	}
 	parts = append(parts, name)
 
-	// Add inputs if present
-	if len(task.Inputs.Files) > 0 || len(task.Inputs.Artifacts) > 0 {
+	// Add inputs if present and requested
+	if opts.ShowInputs && (len(task.Inputs.Files) > 0 || len(task.Inputs.Artifacts) > 0) {
 		inputs := formatInputsCompact(task.Inputs)
 		if inputs != "" {
 			parts = append(parts, "in: "+inputs)
 		}
 	}
 
-	// Add outputs if present
-	if len(task.Outputs) > 0 {
+	// Add outputs if present and requested
+	if opts.ShowOutputs && len(task.Outputs) > 0 {
 		outputs := formatOutputsCompact(task.Outputs)
 		if outputs != "" {
 			parts = append(parts, "out: "+outputs)

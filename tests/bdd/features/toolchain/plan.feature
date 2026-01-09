@@ -19,19 +19,17 @@ Feature: Morphir Plan Command
       Then the command should succeed
       And the output should contain "plan"
       And the output should contain "--mermaid"
-      And the output should contain "--detailed"
+      And the output should contain "--show-inputs"
 
-    @pending
     Scenario: Plan displays execution stages and tasks
       Given a morphir.toml with a build workflow
       When I run morphir plan build
       Then the command should succeed
-      And the output should contain "Stage:"
+      And the output should contain "Stage: frontend"
       And the output should contain "morphir-elm/make"
 
   Rule: Mermaid diagram generation
 
-    @pending
     Scenario: Generate mermaid diagram with default path
       Given a morphir.toml with a build workflow
       When I run morphir plan build --mermaid
@@ -39,7 +37,6 @@ Feature: Morphir Plan Command
       And a mermaid file should exist at ".morphir/out/plan/build/plan.mmd"
       And the mermaid file should contain "flowchart TD"
 
-    @pending
     Scenario: Generate mermaid diagram to custom path
       Given a morphir.toml with a build workflow
       When I run morphir plan build --mermaid custom-plan.mmd
@@ -47,7 +44,6 @@ Feature: Morphir Plan Command
       And a file should exist at "custom-plan.mmd"
       And the file "custom-plan.mmd" should contain "flowchart TD"
 
-    @pending
     Scenario: Mermaid diagram contains stages as subgraphs
       Given a morphir.toml with a multi-stage workflow
       When I run morphir plan ci --mermaid output.mmd
@@ -56,27 +52,25 @@ Feature: Morphir Plan Command
       And the file "output.mmd" should contain "Stage: frontend"
       And the file "output.mmd" should contain "Stage: backend"
 
-    @pending
     Scenario: Mermaid diagram shows dependencies between tasks
       Given a morphir.toml with dependent tasks
       When I run morphir plan build --mermaid output.mmd
       Then the command should succeed
       And the file "output.mmd" should contain "-->"
 
-  Rule: Detailed mermaid output
+  Rule: Show inputs and outputs in mermaid output
 
-    @pending
-    Scenario: Detailed flag includes inputs and outputs
-      Given a morphir.toml with a build workflow
-      When I run morphir plan build --mermaid output.mmd --detailed
+    Scenario: Show-inputs and show-outputs flags include inputs and outputs
+      Given a morphir.toml with dependent tasks
+      When I run morphir plan build --mermaid --mermaid-path output.mmd --show-inputs --show-outputs
       Then the command should succeed
       And the file "output.mmd" should contain "in:"
       And the file "output.mmd" should contain "out:"
 
     @pending
-    Scenario: Detailed flag shows input file patterns
+    Scenario: Show-inputs flag shows input file patterns
       Given a morphir.toml with tasks having inputs
-      When I run morphir plan build --mermaid output.mmd --detailed
+      When I run morphir plan build --mermaid --mermaid-path output.mmd --show-inputs
       Then the command should succeed
       And the file "output.mmd" should contain "src/**/*.elm"
 
@@ -108,7 +102,6 @@ Feature: Morphir Plan Command
 
   Rule: Parallel execution indicator
 
-    @pending
     Scenario: Mermaid shows parallel stages
       Given a morphir.toml with parallel stages
       When I run morphir plan build --mermaid output.mmd

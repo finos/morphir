@@ -211,7 +211,7 @@ func TestPlanToMermaid_SpecialCharacters(t *testing.T) {
 	}
 }
 
-func TestPlanToMermaidWithOptions_Detailed(t *testing.T) {
+func TestPlanToMermaidWithOptions_ShowInputsAndOutputs(t *testing.T) {
 	taskKey := toolchain.TaskKey{Toolchain: "morphir-elm", Task: "make"}
 	task := &toolchain.PlanTask{
 		Key:       taskKey,
@@ -238,17 +238,40 @@ func TestPlanToMermaidWithOptions_Detailed(t *testing.T) {
 		},
 	}
 
-	opts := toolchain.MermaidOptions{Detailed: true}
+	// Test showing both inputs and outputs
+	opts := toolchain.MermaidOptions{ShowInputs: true, ShowOutputs: true}
 	result := toolchain.PlanToMermaidWithOptions(plan, opts)
 
 	// Check for inputs in label
 	if !strings.Contains(result, "in:") {
-		t.Errorf("expected inputs in detailed mode, got: %s", result)
+		t.Errorf("expected inputs when ShowInputs=true, got: %s", result)
 	}
 
 	// Check for outputs in label
 	if !strings.Contains(result, "out:") {
-		t.Errorf("expected outputs in detailed mode, got: %s", result)
+		t.Errorf("expected outputs when ShowOutputs=true, got: %s", result)
+	}
+
+	// Test showing only inputs
+	optsInputsOnly := toolchain.MermaidOptions{ShowInputs: true, ShowOutputs: false}
+	resultInputsOnly := toolchain.PlanToMermaidWithOptions(plan, optsInputsOnly)
+
+	if !strings.Contains(resultInputsOnly, "in:") {
+		t.Errorf("expected inputs when ShowInputs=true, got: %s", resultInputsOnly)
+	}
+	if strings.Contains(resultInputsOnly, "out:") {
+		t.Errorf("expected no outputs when ShowOutputs=false, got: %s", resultInputsOnly)
+	}
+
+	// Test showing only outputs
+	optsOutputsOnly := toolchain.MermaidOptions{ShowInputs: false, ShowOutputs: true}
+	resultOutputsOnly := toolchain.PlanToMermaidWithOptions(plan, optsOutputsOnly)
+
+	if strings.Contains(resultOutputsOnly, "in:") {
+		t.Errorf("expected no inputs when ShowInputs=false, got: %s", resultOutputsOnly)
+	}
+	if !strings.Contains(resultOutputsOnly, "out:") {
+		t.Errorf("expected outputs when ShowOutputs=true, got: %s", resultOutputsOnly)
 	}
 }
 

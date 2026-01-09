@@ -26,9 +26,10 @@ var (
 	planStopOnError   bool
 	planMaxParallel   int
 	planTimeout       time.Duration
-	planMermaid       string
-	planMermaidFlag   bool
-	planDetailed      bool
+	planMermaid       bool
+	planMermaidPath   string
+	planShowInputs    bool
+	planShowOutputs   bool
 )
 
 var planCmd = &cobra.Command{
@@ -40,15 +41,14 @@ The workflow must be defined in morphir.toml under [workflows.<name>].
 
 Use --run to execute the plan after displaying it.
 Use --dry-run to validate the plan without executing tasks.
-Use --mermaid to emit a Mermaid diagram visualizing the plan.`,
+Use --mermaid to emit a Mermaid diagram visualizing the plan.
+Use --mermaid-path to specify a custom output path for the diagram.
+Use --show-inputs and --show-outputs to include inputs/outputs in the diagram.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runPlan,
 }
 
 func runPlan(cmd *cobra.Command, args []string) error {
-	// Check if --mermaid flag was used
-	checkMermaidFlag(cmd)
-
 	cfg, err := GetConfig()
 	if err != nil {
 		return err
@@ -83,13 +83,13 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	var result *toolchain.WorkflowResult
 	if planRun || planDryRun {
 		result, err = executePlanAndGetResult(plan, registry, cfg)
-		if err != nil && !planMermaidFlag {
+		if err != nil && !planMermaid {
 			return err
 		}
 	}
 
 	// Generate mermaid diagram if requested
-	if planMermaidFlag {
+	if planMermaid {
 		if err := emitMermaidDiagram(plan, workflowName, cfg, result); err != nil {
 			return err
 		}
@@ -185,7 +185,7 @@ func executePlanAndGetResult(plan toolchain.Plan, registry *toolchain.Registry, 
 // emitMermaidDiagram generates and writes a Mermaid diagram of the plan.
 func emitMermaidDiagram(plan toolchain.Plan, workflowName string, cfg config.Config, result *toolchain.WorkflowResult) error {
 	// Determine output path
-	outputPath := planMermaid
+	outputPath := planMermaidPath
 	if outputPath == "" {
 		// Use default location
 		outputDir := cfg.Workspace().OutputDir()
@@ -197,7 +197,8 @@ func emitMermaidDiagram(plan toolchain.Plan, workflowName string, cfg config.Con
 
 	// Build mermaid options
 	opts := toolchain.MermaidOptions{
-		Detailed: planDetailed,
+		ShowInputs:  planShowInputs,
+		ShowOutputs: planShowOutputs,
 	}
 
 	// Include task results for styling if available
@@ -209,8 +210,8 @@ func emitMermaidDiagram(plan toolchain.Plan, workflowName string, cfg config.Con
 	diagram := toolchain.PlanToMermaidWithOptions(plan, opts)
 
 	// Ensure directory exists
-	dir := outputPath[:strings.LastIndex(outputPath, "/")]
-	if dir != "" {
+	if idx := strings.LastIndex(outputPath, "/"); idx > 0 {
+		dir := outputPath[:idx]
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return fmt.Errorf("failed to create output directory: %w", err)
 		}
@@ -260,18 +261,10 @@ func init() {
 	planCmd.Flags().DurationVar(&planTimeout, "timeout", 0, "Overall workflow timeout (0 = no timeout)")
 
 	// Mermaid diagram flags
-	planCmd.Flags().StringVar(&planMermaid, "mermaid", "", "Emit Mermaid diagram to path (default: .morphir/out/plan/<workflow>/plan.mmd)")
-	planCmd.Flags().BoolVar(&planDetailed, "detailed", false, "Include inputs/outputs in Mermaid diagram")
-
-	// Mark --mermaid as having an optional value
-	planCmd.Flags().Lookup("mermaid").NoOptDefVal = ""
-}
-
-// checkMermaidFlag handles the special case where --mermaid is used without a value
-func checkMermaidFlag(cmd *cobra.Command) {
-	if cmd.Flags().Changed("mermaid") {
-		planMermaidFlag = true
-	}
+	planCmd.Flags().BoolVar(&planMermaid, "mermaid", false, "Emit Mermaid diagram of the plan")
+	planCmd.Flags().StringVar(&planMermaidPath, "mermaid-path", "", "Path for Mermaid diagram output (default: .morphir/out/plan/<workflow>/plan.mmd)")
+	planCmd.Flags().BoolVar(&planShowInputs, "show-inputs", false, "Include task inputs in Mermaid diagram")
+	planCmd.Flags().BoolVar(&planShowOutputs, "show-outputs", false, "Include task outputs in Mermaid diagram")
 }
 
 func registryFromConfig(cfg config.Config) (*toolchain.Registry, error) {

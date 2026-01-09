@@ -26,7 +26,7 @@ func RegisterPlanSteps(sc *godog.ScenarioContext) {
 	sc.Step(`^I run morphir plan ([a-z]+)$`, iRunMorphirPlanWorkflow)
 	sc.Step(`^I run morphir plan ([a-z]+) --mermaid$`, iRunMorphirPlanWithMermaid)
 	sc.Step(`^I run morphir plan ([a-z]+) --mermaid ([^\s]+)$`, iRunMorphirPlanWithMermaidPath)
-	sc.Step(`^I run morphir plan ([a-z]+) --mermaid ([^\s]+) --detailed$`, iRunMorphirPlanWithMermaidDetailed)
+	sc.Step(`^I run morphir plan ([a-z]+) --mermaid --mermaid-path ([^\s]+) --show-inputs --show-outputs$`, iRunMorphirPlanWithShowInputsOutputs)
 	sc.Step(`^I run morphir plan ([a-z]+) --dry-run$`, iRunMorphirPlanDryRun)
 	sc.Step(`^I run morphir plan ([a-z]+) --run --mermaid ([^\s]+)$`, iRunMorphirPlanRunWithMermaid)
 	sc.Step(`^I run morphir plan ([a-z]+) --explain ([^\s]+)$`, iRunMorphirPlanExplain)
@@ -52,13 +52,14 @@ func writeMorphirToml(ctx context.Context, content string) error {
 // Step implementations
 
 func aMorphirTomlWithBuildWorkflow(ctx context.Context) error {
+	// Use unique target name "elm-make" to avoid conflicts with built-in golang/wit toolchains
 	config := `
 [workflows.build]
 description = "Standard build workflow"
 
 [[workflows.build.stages]]
 name = "frontend"
-targets = ["make"]
+targets = ["elm-make"]
 
 [toolchain.morphir-elm]
 version = "2.90.0"
@@ -70,7 +71,7 @@ package = "morphir-elm"
 [toolchain.morphir-elm.tasks.make]
 exec = "morphir-elm"
 args = ["make", "-o", "{outputs.ir}"]
-fulfills = ["make"]
+fulfills = ["elm-make"]
 
 [toolchain.morphir-elm.tasks.make.inputs]
 files = ["elm.json", "src/**/*.elm"]
@@ -83,17 +84,18 @@ type = "morphir-ir"
 }
 
 func aMorphirTomlWithMultiStageWorkflow(ctx context.Context) error {
+	// Use unique target names to avoid conflicts with built-in toolchains
 	config := `
 [workflows.ci]
 description = "CI workflow"
 
 [[workflows.ci.stages]]
 name = "frontend"
-targets = ["make"]
+targets = ["elm-make"]
 
 [[workflows.ci.stages]]
 name = "backend"
-targets = ["gen:scala"]
+targets = ["elm-gen:Scala"]
 
 [toolchain.morphir-elm]
 version = "2.90.0"
@@ -105,29 +107,30 @@ package = "morphir-elm"
 [toolchain.morphir-elm.tasks.make]
 exec = "morphir-elm"
 args = ["make"]
-fulfills = ["make"]
+fulfills = ["elm-make"]
 
 [toolchain.morphir-elm.tasks.gen]
 exec = "morphir-elm"
 args = ["gen"]
-fulfills = ["gen"]
+fulfills = ["elm-gen"]
 variants = ["Scala", "TypeScript"]
 `
 	return writeMorphirToml(ctx, config)
 }
 
 func aMorphirTomlWithDependentTasks(ctx context.Context) error {
+	// Use unique target names to avoid conflicts with built-in toolchains
 	config := `
 [workflows.build]
 description = "Build with dependencies"
 
 [[workflows.build.stages]]
 name = "frontend"
-targets = ["make"]
+targets = ["elm-make"]
 
 [[workflows.build.stages]]
 name = "backend"
-targets = ["gen:scala"]
+targets = ["elm-gen:Scala"]
 
 [toolchain.morphir-elm]
 version = "2.90.0"
@@ -139,7 +142,7 @@ package = "morphir-elm"
 [toolchain.morphir-elm.tasks.make]
 exec = "morphir-elm"
 args = ["make"]
-fulfills = ["make"]
+fulfills = ["elm-make"]
 
 [toolchain.morphir-elm.tasks.make.outputs.ir]
 path = "morphir-ir.json"
@@ -148,7 +151,7 @@ type = "morphir-ir"
 [toolchain.morphir-elm.tasks.gen]
 exec = "morphir-elm"
 args = ["gen", "-t", "scala"]
-fulfills = ["gen"]
+fulfills = ["elm-gen"]
 variants = ["Scala"]
 
 [toolchain.morphir-elm.tasks.gen.inputs.artifacts]
@@ -158,13 +161,14 @@ ir = "@morphir-elm/make:ir"
 }
 
 func aMorphirTomlWithTasksHavingInputs(ctx context.Context) error {
+	// Use unique target name to avoid conflicts with built-in toolchains
 	config := `
 [workflows.build]
 description = "Build with inputs"
 
 [[workflows.build.stages]]
 name = "frontend"
-targets = ["make"]
+targets = ["elm-make"]
 
 [toolchain.morphir-elm]
 version = "2.90.0"
@@ -176,7 +180,7 @@ package = "morphir-elm"
 [toolchain.morphir-elm.tasks.make]
 exec = "morphir-elm"
 args = ["make"]
-fulfills = ["make"]
+fulfills = ["elm-make"]
 
 [toolchain.morphir-elm.tasks.make.inputs]
 files = ["elm.json", "src/**/*.elm"]
@@ -189,17 +193,18 @@ type = "morphir-ir"
 }
 
 func aMorphirTomlWithParallelStages(ctx context.Context) error {
+	// Use unique target names to avoid conflicts with built-in toolchains
 	config := `
 [workflows.build]
 description = "Build with parallel stage"
 
 [[workflows.build.stages]]
 name = "frontend"
-targets = ["make"]
+targets = ["elm-make"]
 
 [[workflows.build.stages]]
 name = "backend"
-targets = ["gen:scala", "gen:typescript"]
+targets = ["elm-gen:Scala", "elm-gen:TypeScript"]
 parallel = true
 
 [toolchain.morphir-elm]
@@ -212,12 +217,12 @@ package = "morphir-elm"
 [toolchain.morphir-elm.tasks.make]
 exec = "morphir-elm"
 args = ["make"]
-fulfills = ["make"]
+fulfills = ["elm-make"]
 
 [toolchain.morphir-elm.tasks.gen]
 exec = "morphir-elm"
 args = ["gen"]
-fulfills = ["gen"]
+fulfills = ["elm-gen"]
 variants = ["Scala", "TypeScript"]
 `
 	return writeMorphirToml(ctx, config)
@@ -268,15 +273,15 @@ func iRunMorphirPlanWithMermaidPath(ctx context.Context, workflow, path string) 
 	if err != nil {
 		return err
 	}
-	return runMorphirCommand(ctc, "plan", workflow, "--mermaid", path)
+	return runMorphirCommand(ctc, "plan", workflow, "--mermaid", "--mermaid-path", path)
 }
 
-func iRunMorphirPlanWithMermaidDetailed(ctx context.Context, workflow, path string) error {
+func iRunMorphirPlanWithShowInputsOutputs(ctx context.Context, workflow, path string) error {
 	ctc, err := GetCLITestContext(ctx)
 	if err != nil {
 		return err
 	}
-	return runMorphirCommand(ctc, "plan", workflow, "--mermaid", path, "--detailed")
+	return runMorphirCommand(ctc, "plan", workflow, "--mermaid", "--mermaid-path", path, "--show-inputs", "--show-outputs")
 }
 
 func iRunMorphirPlanDryRun(ctx context.Context, workflow string) error {
@@ -292,7 +297,7 @@ func iRunMorphirPlanRunWithMermaid(ctx context.Context, workflow, path string) e
 	if err != nil {
 		return err
 	}
-	return runMorphirCommand(ctc, "plan", workflow, "--run", "--mermaid", path)
+	return runMorphirCommand(ctc, "plan", workflow, "--run", "--mermaid", "--mermaid-path", path)
 }
 
 func iRunMorphirPlanExplain(ctx context.Context, workflow, task string) error {
