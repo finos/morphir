@@ -508,6 +508,117 @@ All release scripts support `--dry-run` for non-destructive testing and `--json`
 - Reference them in `mise.toml` with task definitions
 - Document their purpose in comments at the top of the script
 
+## AI Agent Skills
+
+This project includes specialized skills for AI coding assistants located in `.claude/skills/`. These skills provide domain-specific guidance and tooling.
+
+### Available Skills
+
+| Skill | Purpose | Location |
+|-------|---------|----------|
+| `morphir-developer` | Go development, workspace management, TDD/BDD workflow, pre-commit checks | `.claude/skills/morphir-developer/` |
+| `technical-writer` | Documentation writing, validation, link checking, schema management, llms.txt generation | `.claude/skills/technical-writer/` |
+| `release-manager` | Release automation, changelog management, version tagging | `.claude/skills/release-manager/` |
+| `skill-creator` | Creating new Claude Code skills | `.claude/skills/skill-creator/` |
+
+### Using Skills
+
+Skills are automatically available to Claude Code. Each skill contains:
+- `SKILL.md` - Main skill instructions and workflows
+- `scripts/` - Automation scripts (Python/Shell)
+- `references/` - Supporting documentation
+- `assets/` - Templates and resources
+
+### Key Skill Scripts
+
+**Documentation Scripts** (in both `morphir-developer` and `technical-writer`):
+
+```bash
+# Generate llms.txt files for LLM-friendly documentation
+python .claude/skills/technical-writer/scripts/generate_llms_txt.py
+
+# Convert YAML JSON Schema to JSON format
+python .claude/skills/technical-writer/scripts/convert_schema.py website/static/schemas/
+
+# Check for schema drift between YAML/JSON and Go implementation
+python .claude/skills/technical-writer/scripts/check_schema_drift.py --all
+```
+
+## Documentation Tooling
+
+### LLM-Friendly Documentation (llms.txt)
+
+This project provides documentation optimized for Large Language Models following the [llms.txt specification](https://llmstxt.org/).
+
+**Available Files:**
+- `/llms.txt` - Compact version with curated links (~10KB)
+- `/llms-full.txt` - Full version with inline content (~75KB)
+
+**Access URLs:**
+- https://morphir.finos.org/llms.txt
+- https://morphir.finos.org/llms-full.txt
+
+**Mise Tasks:**
+```bash
+mise run llms-txt           # Generate both versions
+mise run llms-txt:compact   # Generate only compact version
+mise run llms-txt:full      # Generate only full version
+mise run llms-txt:preview   # Preview without writing files
+```
+
+**When to Regenerate:**
+- After significant documentation changes
+- When adding new sections or major pages
+- Before releases (ensures llms.txt is current)
+
+### JSON Schema Management
+
+Morphir IR schemas are maintained in YAML format with JSON versions for tool compatibility.
+
+**Schema Locations:**
+- Source (YAML): `website/static/schemas/*.yaml`
+- Generated (JSON): `website/static/schemas/*.json`
+- URLs: `https://morphir.finos.org/schemas/morphir-ir-v{1,2,3}.{yaml,json}`
+
+**Mise Tasks:**
+```bash
+mise run schema:convert   # Convert YAML to JSON
+mise run schema:verify    # Verify YAML/JSON sync
+mise run schema:drift     # Check schema-code drift
+```
+
+**Schema Workflow:**
+1. Edit YAML schema files (source of truth)
+2. Run `mise run schema:convert` to regenerate JSON
+3. Run `mise run schema:verify` to confirm sync
+4. Commit both YAML and JSON files together
+
+### Documentation Validation
+
+**Link Checking:**
+```bash
+# Quick markdown link check
+.claude/skills/technical-writer/scripts/check_links.sh --markdown-only
+
+# Full build with link validation
+cd website && npm run build
+```
+
+**Structure Validation:**
+```bash
+# Validate documentation structure and frontmatter
+python .claude/skills/technical-writer/scripts/validate_docs_structure.py
+
+# Validate tutorial structure
+python .claude/skills/technical-writer/scripts/validate_tutorial.py docs/path/to/tutorial.md
+```
+
+**API Documentation Coverage:**
+```bash
+# Check that public APIs are documented
+python .claude/skills/technical-writer/scripts/check_api_docs.py --path pkg/
+```
+
 ## Release Process
 
 ### Versioning Strategy
