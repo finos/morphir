@@ -10,18 +10,18 @@ Feature: Go Make Command (Placeholder)
 
     Scenario: morphir golang make shows not-implemented message
       When I run morphir golang make
-      Then the command should succeed
+      Then the golang command should succeed
       And the output should mention "not yet implemented"
 
     Scenario: morphir golang make with source file shows info
       Given a Go source file
       When I run morphir golang make with the source file
-      Then the command should succeed
+      Then the golang command should succeed
       And the output should mention "placeholder"
 
     Scenario: morphir golang make with --json outputs JSON
       When I run morphir golang make with --json flag
-      Then the command should succeed
+      Then the golang command should succeed
       And the output should be valid JSON
       And the JSON output should have "success" field
 
