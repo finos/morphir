@@ -912,14 +912,26 @@ python -c "import yaml, json; \
   json.dump(yaml.safe_load(open('morphir-ir-v3.yaml')), \
   open('morphir-ir-v3.json', 'w'))"
 ajv validate -s morphir-ir-v3.json -d morphir-ir.json
+
+# Using sourcemeta/jsonschema CLI (fast, cross-platform C++ validator)
+# Install via: npm install -g @sourcemeta/jsonschema
+#          or: brew install sourcemeta/apps/jsonschema
+#          or: pip install jsonschema-cli
+curl -o morphir-ir-v3.json https://morphir.finos.org/schemas/morphir-ir-v3.json
+jsonschema validate morphir-ir-v3.json morphir-ir.json
 ```
 
 ### Schema Location
 
-Schemas are available at:
-- https://morphir.finos.org/schemas/morphir-ir-v1.yaml
-- https://morphir.finos.org/schemas/morphir-ir-v2.yaml
-- https://morphir.finos.org/schemas/morphir-ir-v3.yaml
+Schemas are available in both YAML and JSON formats:
+
+| Version | YAML | JSON |
+|---------|------|------|
+| v3 (Current) | https://morphir.finos.org/schemas/morphir-ir-v3.yaml | https://morphir.finos.org/schemas/morphir-ir-v3.json |
+| v2 | https://morphir.finos.org/schemas/morphir-ir-v2.yaml | https://morphir.finos.org/schemas/morphir-ir-v2.json |
+| v1 | https://morphir.finos.org/schemas/morphir-ir-v1.yaml | https://morphir.finos.org/schemas/morphir-ir-v1.json |
+
+Use YAML for better readability or JSON for maximum tool compatibility.
 
 ## Conclusion
 

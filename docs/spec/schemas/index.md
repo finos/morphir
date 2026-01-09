@@ -84,6 +84,71 @@ curl -o morphir-ir-v3.json https://morphir.finos.org/schemas/morphir-ir-v3.json
 ajv validate -s morphir-ir-v3.json -d morphir-ir.json
 ```
 
+#### Using sourcemeta jsonschema CLI
+
+The [sourcemeta/jsonschema](https://github.com/sourcemeta/jsonschema) CLI is a fast, cross-platform JSON Schema validator written in C++. It supports all JSON Schema versions and provides excellent error messages.
+
+**Installation:**
+
+```bash
+# Using npm
+npm install -g @sourcemeta/jsonschema
+
+# Using pip
+pip install jsonschema-cli
+
+# Using Homebrew (macOS/Linux)
+brew install sourcemeta/apps/jsonschema
+
+# Using Docker
+docker pull sourcemeta/jsonschema
+```
+
+**Basic validation:**
+
+```bash
+# Download the schema
+curl -o morphir-ir-v3.json https://morphir.finos.org/schemas/morphir-ir-v3.json
+
+# Validate a Morphir IR file
+jsonschema validate morphir-ir-v3.json morphir-ir.json
+```
+
+**Validate with detailed output:**
+
+```bash
+# Verbose mode shows validation progress
+jsonschema validate morphir-ir-v3.json morphir-ir.json --verbose
+
+# JSON output for programmatic processing
+jsonschema validate morphir-ir-v3.json morphir-ir.json --json
+```
+
+**Validate multiple files or directories:**
+
+```bash
+# Validate all JSON files in a directory
+jsonschema validate morphir-ir-v3.json ./output/
+
+# Validate specific files
+jsonschema validate morphir-ir-v3.json file1.json file2.json file3.json
+```
+
+**Fast mode (for large files):**
+
+```bash
+# Prioritize speed over detailed error messages
+jsonschema validate morphir-ir-v3.json morphir-ir.json --fast
+```
+
+**Using Docker:**
+
+```bash
+# Mount current directory and validate
+docker run --rm -v "$PWD:/data" sourcemeta/jsonschema \
+  validate /data/morphir-ir-v3.json /data/morphir-ir.json
+```
+
 ### Quick Structural Check
 
 For a quick check without full validation, you can verify basic structure:
