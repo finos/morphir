@@ -3,7 +3,7 @@ module github.com/finos/morphir/pkg/vfs
 go 1.25.5
 
 require (
-	github.com/bmatcuk/doublestar/v4 v4.9.1
+	github.com/bmatcuk/doublestar/v4 v4.9.2
 	github.com/stretchr/testify v1.11.1
 )
 
