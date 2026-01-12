@@ -179,6 +179,27 @@ jobs:
           coverage-file-name: "coverage.out"
           root-package: "github.com/finos/morphir"
 
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install mise
+        uses: jdx/mise-action@v3
+        with:
+          version: 2025.12.13
+
+      - name: Set up Go workspace
+        run: mise run setup-workspace
+
+      - name: Run morphir-elm integration tests
+        run: mise run test:integration:morphir-elm
+
+      - name: Run all integration tests
+        run: mise run test:integration
+
   test-external-consumption:
     name: Test External Consumption (Release PRs)
     runs-on: ubuntu-latest

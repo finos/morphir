@@ -13,3 +13,44 @@ workspace:
       - Main
       - Api
     config_format: json
+
+# Integration test expectations
+integration:
+  # morphir-elm make should succeed
+  make:
+    succeeds: true
+    produces_ir: true
+    ir_path: morphir-ir.json
+
+  # The IR should contain these modules (format version 3)
+  ir_contents:
+    format_version: 3
+    distribution_type: Library
+    package_name: elm.compat
+    module_count: 2
+    modules:
+      - name: main
+        type_count: 5
+        types:
+          - product.id        # ProductId alias
+          - quantity          # Quantity alias
+          - product           # Product record
+          - order.status      # OrderStatus custom type
+          - customer.order    # CustomerOrder record
+        value_count: 4
+        values:
+          - calculate.total
+          - apply.discount
+          - is.valid.order
+          - order.status.to.string
+      - name: api
+        type_count: 3
+        types:
+          - request           # Request record
+          - response          # Response record
+          - api.error         # ApiError custom type
+        value_count: 3
+        values:
+          - create.order
+          - get.order.status
+          - process.request

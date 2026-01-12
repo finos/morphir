@@ -1,5 +1,8 @@
 {
     "name": "ElmCompat",
     "sourceDirectory": "src",
-    "exposedModules": ["Main", "Api"]
+    "exposedModules": [
+        "Main",
+        "Api"
+    ]
 }
