@@ -1,0 +1,10 @@
+# Elm build artifacts
+elm-stuff/
+
+# Morphir generated files
+morphir-ir.json
+morphir-hashes.json
+
+# Keep .morphir directory but ignore contents except .gitkeep
+.morphir/*
+!.morphir/.gitkeep

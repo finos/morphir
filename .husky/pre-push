@@ -2,60 +2,37 @@
 
 echo "Running pre-push checks..."
 
-# Check formatting
-echo "Checking Go formatting..."
-UNFORMATTED=$(gofmt -s -l .)
-if [ -n "$UNFORMATTED" ]; then
-    echo "The following files are not formatted:"
-    echo "$UNFORMATTED"
-    echo ""
-    echo "Run 'gofmt -s -w .' or 'just fmt' to fix."
+# Ensure mise is available
+if ! command -v mise > /dev/null 2>&1; then
+    echo "Error: mise is not installed."
+    echo "Install mise from: https://mise.jdx.dev/"
+    echo "Or run: curl https://mise.jdx.dev/install.sh | sh"
     exit 1
 fi
+
+# Check formatting using mise task
+echo "Checking Go formatting..."
+mise run fmt-check || {
+    echo ""
+    echo "Run 'mise run fmt' to fix formatting issues."
+    exit 1
+}
 echo "Formatting check passed."
 
-# Run linting for each module (if golangci-lint is available)
-if command -v golangci-lint > /dev/null 2>&1; then
-    echo "Running golangci-lint..."
-    for dir in cmd/morphir pkg/models pkg/tooling pkg/sdk pkg/pipeline; do
-        if [ -d "$dir" ]; then
-            echo "Linting $dir..."
-            (cd "$dir" && golangci-lint run --timeout=5m) || {
-                echo "Linting failed for $dir"
-                exit 1
-            }
-        fi
-    done
-    echo "Linting passed."
-else
-    echo "Warning: golangci-lint not installed, skipping lint check."
-    echo "Install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
-fi
+# Run linting using mise task
+echo "Running linters..."
+mise run lint || {
+    echo "Linting failed."
+    exit 1
+}
+echo "Linting passed."
 
-# Run go vet for each module
-echo "Running go vet..."
-for dir in cmd/morphir pkg/models pkg/tooling pkg/sdk pkg/pipeline tests/bdd; do
-    if [ -d "$dir" ]; then
-        echo "Vetting $dir..."
-        (cd "$dir" && go vet ./...) || {
-            echo "go vet failed for $dir"
-            exit 1
-        }
-    fi
-done
-echo "go vet passed."
-
-# Run tests
+# Run tests using mise task
 echo "Running tests..."
-for dir in cmd/morphir pkg/models pkg/tooling pkg/sdk pkg/pipeline tests/bdd; do
-    if [ -d "$dir" ]; then
-        echo "Testing $dir..."
-        (cd "$dir" && go test ./...) || {
-            echo "Tests failed for $dir"
-            exit 1
-        }
-    fi
-done
+mise run test || {
+    echo "Tests failed."
+    exit 1
+}
 echo "Tests passed."
 
 echo "All pre-push checks passed!"

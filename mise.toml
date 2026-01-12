@@ -65,3 +65,26 @@ run = "python .claude/skills/morphir-developer/scripts/fetch_morphir_ir.py renta
 [tasks."fixtures:fetch:version"]
 description = "Fetch fixtures from a specific morphir-elm version (use MORPHIR_VERSION env var)"
 run = "python .claude/skills/morphir-developer/scripts/fetch_morphir_ir.py --all --version ${MORPHIR_VERSION:-v2.100.0} --output tests/bdd/testdata/morphir-ir"
+
+# =============================================================================
+# Integration Test Tasks
+# =============================================================================
+
+[tasks."test:integration"]
+description = "Run all integration tests (requires Node.js via mise)"
+run = """
+for dir in pkg/toolchain pkg/bindings/morphir-elm; do
+  if [ -d "$dir" ]; then
+    echo "Running integration tests in $dir..."
+    go test -v -run 'TestIntegration' ./$dir/... || exit 1
+  fi
+done
+"""
+
+[tasks."test:integration:morphir-elm"]
+description = "Run morphir-elm toolchain integration tests"
+run = "go test -v -run 'TestIntegration_MorphirElmMake' ./pkg/toolchain/"
+
+[tasks."test:bdd"]
+description = "Run all BDD tests"
+run = "go test -v -run 'TestFeatures' ./tests/bdd/"
