@@ -72,7 +72,14 @@ run = "python .claude/skills/morphir-developer/scripts/fetch_morphir_ir.py --all
 
 [tasks."test:integration"]
 description = "Run all integration tests (requires Node.js via mise)"
-run = "go test -v -run 'TestIntegration' ./pkg/..."
+run = """
+for dir in pkg/toolchain pkg/bindings/morphir-elm; do
+  if [ -d "$dir" ]; then
+    echo "Running integration tests in $dir..."
+    go test -v -run 'TestIntegration' ./$dir/... || exit 1
+  fi
+done
+"""
 
 [tasks."test:integration:morphir-elm"]
 description = "Run morphir-elm toolchain integration tests"
