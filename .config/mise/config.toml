@@ -1,11 +1,8 @@
 # Morphir Development Tools Configuration
-# Tasks are defined as file-based scripts in .mise/tasks/
+# Tasks are defined as file-based scripts in .config/mise/tasks/
 
 [settings]
 experimental = true
-
-[task_config]
-includes = [".mise/tasks"]
 
 [tools]
 # Core tools

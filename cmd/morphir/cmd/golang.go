@@ -350,9 +350,9 @@ func runGolangGen(cmd *cobra.Command, args []string) error {
 
 	// List generated files
 	if golangVerbose {
-		fmt.Fprintln(cmd.OutOrStdout(), "\nGenerated files:")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "\nGenerated files:")
 		for relPath := range output.GeneratedFiles {
-			fmt.Fprintf(cmd.OutOrStdout(), "  - %s\n", relPath)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  - %s\n", relPath)
 		}
 	}
 
@@ -429,7 +429,7 @@ func outputGolangGenJSON(cmd *cobra.Command, output *golangpipeline.GenOutput, r
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(data))
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(data))
 
 	if result.Err != nil {
 		return result.Err
@@ -448,7 +448,7 @@ func outputGolangDiagnostics(cmd *cobra.Command, diagnostics []pipeline.Diagnost
 	infoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("12"))
 	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 
-	fmt.Fprintln(cmd.ErrOrStderr(), "\nDiagnostics:")
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "\nDiagnostics:")
 	for _, d := range diagnostics {
 		var prefix string
 		switch d.Severity {
@@ -914,7 +914,7 @@ func readGolangJSONLInputs(path string) ([]JSONLGolangInput, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to open file: %w", err)
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		file = f
 	}
 

@@ -68,23 +68,23 @@ func runAbout(cmd *cobra.Command, args []string) error {
 		return encoder.Encode(info)
 	}
 
-	// Pretty output
-	fmt.Fprintf(cmd.OutOrStdout(), "Morphir - Functional Data Modeling\n")
-	fmt.Fprintf(cmd.OutOrStdout(), "═══════════════════════════════════\n\n")
-	fmt.Fprintf(cmd.OutOrStdout(), "Version:      %s\n", info.Version)
-	fmt.Fprintf(cmd.OutOrStdout(), "Git Commit:   %s\n", info.GitCommit)
-	fmt.Fprintf(cmd.OutOrStdout(), "Build Date:   %s\n", info.BuildDate)
-	fmt.Fprintf(cmd.OutOrStdout(), "Go Version:   %s\n", info.GoVersion)
-	fmt.Fprintf(cmd.OutOrStdout(), "Platform:     %s\n", info.Platform)
-	fmt.Fprintf(cmd.OutOrStdout(), "\n")
+	// Pretty output (errors intentionally ignored for stdout writes)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Morphir - Functional Data Modeling\n")
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "═══════════════════════════════════\n\n")
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Version:      %s\n", info.Version)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Git Commit:   %s\n", info.GitCommit)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Build Date:   %s\n", info.BuildDate)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Go Version:   %s\n", info.GoVersion)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Platform:     %s\n", info.Platform)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\n")
 
 	if showChangelog {
-		fmt.Fprintf(cmd.OutOrStdout(), "Changelog\n")
-		fmt.Fprintf(cmd.OutOrStdout(), "─────────\n\n")
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Changelog\n")
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "─────────\n\n")
 
 		if noColor {
 			// Plain text output without colors
-			fmt.Fprintf(cmd.OutOrStdout(), "%s\n", changelog)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", changelog)
 		} else {
 			// Render markdown with glamour (colorful by default)
 			rendererOpts := []glamour.TermRendererOption{
@@ -95,23 +95,23 @@ func runAbout(cmd *cobra.Command, args []string) error {
 			r, err := glamour.NewTermRenderer(rendererOpts...)
 			if err != nil {
 				// Fallback to plain text if glamour fails
-				fmt.Fprintf(cmd.OutOrStdout(), "%s\n", changelog)
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", changelog)
 				return nil
 			}
 
 			rendered, err := r.Render(changelog)
 			if err != nil {
-				fmt.Fprintf(cmd.OutOrStdout(), "%s\n", changelog)
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", changelog)
 				return nil
 			}
 
-			fmt.Fprint(cmd.OutOrStdout(), rendered)
+			_, _ = fmt.Fprint(cmd.OutOrStdout(), rendered)
 		}
 	} else {
-		fmt.Fprintf(cmd.OutOrStdout(), "For more information:\n")
-		fmt.Fprintf(cmd.OutOrStdout(), "  Website:    https://morphir.finos.org\n")
-		fmt.Fprintf(cmd.OutOrStdout(), "  Repository: https://github.com/finos/morphir\n")
-		fmt.Fprintf(cmd.OutOrStdout(), "  Changelog:  morphir about --changelog\n")
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "For more information:\n")
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Website:    https://morphir.finos.org\n")
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Repository: https://github.com/finos/morphir\n")
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Changelog:  morphir about --changelog\n")
 	}
 
 	return nil

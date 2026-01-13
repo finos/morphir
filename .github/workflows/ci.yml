@@ -68,7 +68,7 @@ jobs:
       - name: Set up Go workspace (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: .\.mise\scripts\workspace-setup.ps1
+        run: .\.config\mise\scripts\workspace-setup.ps1
 
       - name: Set up Go workspace (Unix)
         if: runner.os != 'Windows'
@@ -77,7 +77,7 @@ jobs:
       - name: Run tests (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: .\.mise\scripts\test.ps1
+        run: .\.config\mise\scripts\test.ps1
 
       - name: Run tests with coverage and JUnit reports (Unix)
         if: runner.os != 'Windows'
@@ -138,7 +138,7 @@ jobs:
       - name: Set up Go workspace (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: .\.mise\scripts\workspace-setup.ps1
+        run: .\.config\mise\scripts\workspace-setup.ps1
 
       - name: Set up Go workspace (Unix)
         if: runner.os != 'Windows'
@@ -149,7 +149,7 @@ jobs:
         shell: pwsh
         env:
           GOARCH: ${{ matrix.arch }}
-        run: .\.mise\scripts\build.ps1
+        run: .\.config\mise\scripts\build.ps1
 
       - name: Build binary (Unix)
         if: runner.os != 'Windows'

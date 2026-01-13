@@ -154,9 +154,9 @@ func outputValidationReport(cmd *cobra.Command, result *validation.Result) error
 		rendered, err := renderer.Render(reportContent, cmd.OutOrStdout())
 		if err != nil {
 			// Fallback to plain markdown on error
-			fmt.Fprint(cmd.OutOrStdout(), reportContent)
+			_, _ = fmt.Fprint(cmd.OutOrStdout(), reportContent)
 		} else {
-			fmt.Fprint(cmd.OutOrStdout(), rendered)
+			_, _ = fmt.Fprint(cmd.OutOrStdout(), rendered)
 		}
 	} else {
 		// Treat as file path - always write plain markdown to files
