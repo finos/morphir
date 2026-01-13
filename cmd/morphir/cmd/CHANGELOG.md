@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-alpha.3] - 2026-01-13
+
+### Added
+- **Structured Logging**: New `pkg/logging` module with zerolog wrapper (#549)
+  - Logger type with functional options pattern (`WithLevel`, `WithFormat`, `WithFile`)
+  - Multi-writer support for simultaneous stderr and file logging
+  - Configurable log levels (trace, debug, info, warn, error, fatal, disabled)
+  - Text format (colored, human-readable) and JSON format for log aggregation
+  - Log files written to `.morphir/logs/` directory
+  - `Noop()` logger for testing and disabled logging scenarios
+
+### Changed
+- Removed `-v` short flag from `--version` command (reserved for future `--verbose` flag)
+- Use `morphir --version` or `morphir version` for version information
+
+### Infrastructure
+- Migrated mise tasks to TypeScript/Python with pinned tool versions (#548)
+  - Tasks now use Bun for TypeScript execution
+  - Improved cross-platform compatibility
+  - Better error handling and output formatting
+
+### Fixed
+- Updated charmbracelet/lipgloss dependency to v2 (#546, #547)
+
 ## [0.4.0-alpha.2] - 2026-01-13
 
 ### Added
@@ -277,7 +301,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Duplicate help command registration in CLI
 
-[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-alpha.2...HEAD
+[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-alpha.3...HEAD
+[0.4.0-alpha.3]: https://github.com/finos/morphir/compare/v0.4.0-alpha.2...v0.4.0-alpha.3
 [0.4.0-alpha.2]: https://github.com/finos/morphir/compare/v0.4.0-alpha.1...v0.4.0-alpha.2
 [0.4.0-alpha.1]: https://github.com/finos/morphir/compare/v0.3.3...v0.4.0-alpha.1
 [0.3.3]: https://github.com/finos/morphir/compare/v0.3.2...v0.3.3
