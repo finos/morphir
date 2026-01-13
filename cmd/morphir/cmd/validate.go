@@ -60,16 +60,21 @@ func init() {
 
 // runValidate executes the validate command using the pipeline runner
 func runValidate(cmd *cobra.Command, args []string) error {
+	log := GetLogger()
 	path := "."
 	if len(args) > 0 {
 		path = args[0]
 	}
 
+	log.Debug().Str("path", path).Msg("starting validation")
+
 	// Find the IR file
 	irPath, err := validation.FindIRFile(path)
 	if err != nil {
+		log.Error().Err(err).Str("path", path).Msg("failed to find IR file")
 		return fmt.Errorf("failed to find IR file: %w", err)
 	}
+	log.Debug().Str("ir_path", irPath).Msg("found IR file")
 
 	// Get absolute path for VFS setup
 	absIRPath, err := filepath.Abs(irPath)
@@ -100,8 +105,9 @@ func runValidate(cmd *cobra.Command, args []string) error {
 		}, nil
 	})
 
-	// Create pipeline context
-	ctx := pipeline.NewContext(workspaceRoot, validateVersion, pipeline.ModeDefault, overlay)
+	// Create pipeline context with logger
+	ctx := pipeline.NewContext(workspaceRoot, validateVersion, pipeline.ModeDefault, overlay).
+		WithLogger(log.Zerolog())
 
 	// Create and run the validation pipeline
 	validateStep := pipeline.NewValidateStep()
@@ -118,6 +124,7 @@ func runValidate(cmd *cobra.Command, args []string) error {
 
 	output, _, err := validationPipeline.Run(ctx, input)
 	if err != nil {
+		log.Error().Err(err).Msg("validation pipeline failed")
 		return fmt.Errorf("validation pipeline failed: %w", err)
 	}
 
@@ -129,6 +136,12 @@ func runValidate(cmd *cobra.Command, args []string) error {
 		Errors:  output.Errors,
 		RawData: output.RawData,
 	}
+
+	log.Info().
+		Bool("valid", result.Valid).
+		Int("version", result.Version).
+		Int("error_count", len(result.Errors)).
+		Msg("validation complete")
 
 	// Output result using existing output functions
 	if validateTUI {

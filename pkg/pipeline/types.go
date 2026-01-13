@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/finos/morphir/pkg/vfs"
+	"github.com/rs/zerolog"
 )
 
 // Mode represents the execution mode for pipeline operations.
@@ -22,9 +23,11 @@ type Context struct {
 	Now           time.Time
 	Mode          Mode
 	VFS           vfs.VFS
+	Logger        zerolog.Logger
 }
 
 // NewContext constructs a new pipeline context.
+// Logger defaults to a disabled (nop) logger if not provided via WithLogger.
 func NewContext(workspaceRoot string, formatVersion int, mode Mode, vfsInstance vfs.VFS) Context {
 	return Context{
 		WorkspaceRoot: workspaceRoot,
@@ -32,7 +35,15 @@ func NewContext(workspaceRoot string, formatVersion int, mode Mode, vfsInstance 
 		Now:           time.Now(),
 		Mode:          mode,
 		VFS:           vfsInstance,
+		Logger:        zerolog.Nop(),
 	}
+}
+
+// WithLogger returns a new Context with the specified logger.
+// The original context is not modified.
+func (c Context) WithLogger(logger zerolog.Logger) Context {
+	c.Logger = logger
+	return c
 }
 
 // Severity indicates the importance level of a diagnostic.
