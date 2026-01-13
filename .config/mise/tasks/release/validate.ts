@@ -238,6 +238,61 @@ async function main() {
     }
   }
 
+  // 8b. Check that mise task hooks exist
+  header("Checking GoReleaser hook scripts exist");
+  if (existsSync(".goreleaser.yaml")) {
+    const content = readFileSync(".goreleaser.yaml", "utf-8");
+    // Match mise run commands in hooks
+    const miseRunPattern = /mise run ([\w:_-]+)/g;
+    const missingTasks: string[] = [];
+    let miseMatch;
+    while ((miseMatch = miseRunPattern.exec(content)) !== null) {
+      const taskName = miseMatch[1];
+      // Convert task name to file path (e.g., release:clean-replace -> release/clean-replace)
+      const taskPath = taskName.replace(/:/g, "/");
+      // Check for TypeScript, Python, shell, or PowerShell script variants
+      const possiblePaths = [
+        `.config/mise/tasks/${taskPath}.ts`,
+        `.config/mise/tasks/${taskPath}.py`,
+        `.config/mise/tasks/${taskPath}.sh`,
+        `.config/mise/tasks/${taskPath}.ps1`,
+        `.config/mise/tasks/${taskPath}`,
+        `.mise/tasks/${taskPath}.ts`,
+        `.mise/tasks/${taskPath}.py`,
+        `.mise/tasks/${taskPath}.sh`,
+        `.mise/tasks/${taskPath}.ps1`,
+        `.mise/tasks/${taskPath}`,
+      ];
+      const taskExists = possiblePaths.some((p) => existsSync(p));
+      if (!taskExists) {
+        missingTasks.push(taskName);
+      }
+    }
+
+    // Also check for direct script references (e.g., scripts/foo.sh or .mise/scripts/foo.sh)
+    // Supports .sh, .ps1, .ts, .py extensions
+    const scriptPattern = /(?:scripts|\.mise\/scripts)\/([\w\/-]+\.(?:sh|ps1|ts|py))/g;
+    const missingScripts: string[] = [];
+    let scriptMatch;
+    while ((scriptMatch = scriptPattern.exec(content)) !== null) {
+      const scriptPath = scriptMatch[0];
+      if (!existsSync(scriptPath)) {
+        missingScripts.push(scriptPath);
+      }
+    }
+
+    if (missingTasks.length > 0 || missingScripts.length > 0) {
+      const allMissing = [...missingTasks.map(t => `mise task: ${t}`), ...missingScripts.map(s => `script: ${s}`)];
+      error(
+        "hook_scripts_exist",
+        `${allMissing.length} hook script(s) referenced in .goreleaser.yaml do not exist`,
+        allMissing.join("\n")
+      );
+    } else {
+      success("hook_scripts_exist", "All hook scripts exist");
+    }
+  }
+
   // 9. Check git status is clean
   header("Checking git status");
   try {
@@ -273,14 +328,50 @@ async function main() {
     }
   }
 
-  // 11. Check module list matches actual modules (check release/tags.ts or release-tags.sh)
-  header("Checking module list");
-  // For now, we'll auto-detect modules instead of checking against a hardcoded list
+  // 11. Check module list matches .goreleaser.yaml go mod tidy entries
+  header("Checking module consistency with .goreleaser.yaml");
   const actualModules = goModFiles
     .map((f) => f.replace("/go.mod", ""))
     .filter((m) => m.startsWith("pkg/") || m.startsWith("cmd/"))
     .sort();
-  success("module_list", `Found ${actualModules.length} Go modules`);
+
+  if (existsSync(".goreleaser.yaml")) {
+    const goreleaserContent = readFileSync(".goreleaser.yaml", "utf-8");
+    // Extract modules from "go mod tidy -C <module>" lines
+    const tidyPattern = /go mod tidy -C ([\w\/-]+)/g;
+    const tidyModules: string[] = [];
+    let match;
+    while ((match = tidyPattern.exec(goreleaserContent)) !== null) {
+      tidyModules.push(match[1]);
+    }
+
+    // Find modules missing from .goreleaser.yaml
+    const missingFromGoreleaser = actualModules.filter(
+      (m) => !tidyModules.includes(m)
+    );
+    // Find modules in .goreleaser.yaml that don't exist
+    const extraInGoreleaser = tidyModules.filter(
+      (m) => !actualModules.includes(m)
+    );
+
+    if (missingFromGoreleaser.length > 0) {
+      error(
+        "module_goreleaser_sync",
+        `${missingFromGoreleaser.length} module(s) missing from .goreleaser.yaml go mod tidy hooks`,
+        `Missing: ${missingFromGoreleaser.join(", ")}\nAdd these lines to .goreleaser.yaml before.hooks:\n${missingFromGoreleaser.map((m) => `    - go mod tidy -C ${m}`).join("\n")}`
+      );
+    } else if (extraInGoreleaser.length > 0) {
+      warn(
+        "module_goreleaser_sync",
+        `${extraInGoreleaser.length} module(s) in .goreleaser.yaml don't exist`,
+        `Extra: ${extraInGoreleaser.join(", ")}`
+      );
+    } else {
+      success("module_goreleaser_sync", `All ${actualModules.length} modules synced with .goreleaser.yaml`);
+    }
+  } else {
+    warn("module_goreleaser_sync", ".goreleaser.yaml not found, skipping module sync check");
+  }
 
   // 12. Check internal module version tags exist
   header("Checking internal module version tags");
