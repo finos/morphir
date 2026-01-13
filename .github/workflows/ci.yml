@@ -64,10 +64,10 @@ jobs:
         with:
           version: 2026.1.1
 
-      # On Windows, call bun directly (mise file tasks don't work on Windows)
+      # On Windows, use inline mise tasks (file-based tasks don't work on Windows)
       - name: Set up Go workspace (Windows)
         if: runner.os == 'Windows'
-        run: bun .config/mise/tasks/workspace/setup.ts
+        run: mise run windows:workspace-setup
 
       - name: Set up Go workspace (Unix)
         if: runner.os != 'Windows'
@@ -75,7 +75,7 @@ jobs:
 
       - name: Run tests (Windows)
         if: runner.os == 'Windows'
-        run: bun .config/mise/tasks/test.ts
+        run: mise run windows:test
 
       - name: Run tests with coverage and JUnit reports (Unix)
         if: runner.os != 'Windows'
@@ -132,10 +132,10 @@ jobs:
         with:
           version: 2026.1.1
 
-      # On Windows, call bun directly (mise file tasks don't work on Windows)
+      # On Windows, use inline mise tasks (file-based tasks don't work on Windows)
       - name: Set up Go workspace (Windows)
         if: runner.os == 'Windows'
-        run: bun .config/mise/tasks/workspace/setup.ts
+        run: mise run windows:workspace-setup
 
       - name: Set up Go workspace (Unix)
         if: runner.os != 'Windows'
@@ -145,7 +145,7 @@ jobs:
         if: runner.os == 'Windows'
         env:
           GOARCH: ${{ matrix.arch }}
-        run: bun .config/mise/tasks/build.ts
+        run: mise run windows:build
 
       - name: Build binary (Unix)
         if: runner.os != 'Windows'

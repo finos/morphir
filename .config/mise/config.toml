@@ -18,3 +18,17 @@ pnpm = "10.28.0" # Provides pnpm dlx
 
 # Development tools
 golangci-lint = "2.8.0"   # Go linter aggregator
+
+# Windows-specific tasks (inline tasks work on Windows, file-based tasks don't)
+# These call bun to execute the TypeScript task implementations
+[tasks."windows:workspace-setup"]
+description = "Set up Go workspace (Windows)"
+run = "bun .config/mise/tasks/workspace/setup.ts"
+
+[tasks."windows:test"]
+description = "Run tests (Windows)"
+run = "bun .config/mise/tasks/test.ts"
+
+[tasks."windows:build"]
+description = "Build morphir binary (Windows)"
+run = "bun .config/mise/tasks/build.ts"
