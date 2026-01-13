@@ -343,10 +343,10 @@ func runGolangGen(cmd *cobra.Command, args []string) error {
 
 	// Success message
 	successStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
-	fmt.Fprintf(cmd.OutOrStdout(), "%s Generated Go code from Morphir IR\n", successStyle.Render("SUCCESS"))
-	fmt.Fprintf(cmd.OutOrStdout(), "  Output directory: %s\n", outputDir)
-	fmt.Fprintf(cmd.OutOrStdout(), "  Module path: %s\n", golangModulePath)
-	fmt.Fprintf(cmd.OutOrStdout(), "  Files generated: %d\n", len(output.GeneratedFiles))
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s Generated Go code from Morphir IR\n", successStyle.Render("SUCCESS"))
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Output directory: %s\n", outputDir)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Module path: %s\n", golangModulePath)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Files generated: %d\n", len(output.GeneratedFiles))
 
 	// List generated files
 	if golangVerbose {
@@ -525,10 +525,10 @@ func runGolangMake(cmd *cobra.Command, args []string) error {
 
 	// Info message about not implemented
 	warnStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Bold(true)
-	fmt.Fprintf(cmd.OutOrStdout(), "%s Go frontend (Go → Morphir IR) is not yet implemented\n", warnStyle.Render("INFO"))
-	fmt.Fprintf(cmd.OutOrStdout(), "  This command is a placeholder for future functionality.\n")
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s Go frontend (Go → Morphir IR) is not yet implemented\n", warnStyle.Render("INFO"))
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  This command is a placeholder for future functionality.\n")
 	if sourcePath != "" {
-		fmt.Fprintf(cmd.OutOrStdout(), "  Source path: %s\n", sourcePath)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Source path: %s\n", sourcePath)
 	}
 
 	return nil
@@ -725,11 +725,11 @@ func runGolangBuild(cmd *cobra.Command, args []string) error {
 
 	// Success message
 	successStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
-	fmt.Fprintf(cmd.OutOrStdout(), "%s Built Go code from Morphir IR\n", successStyle.Render("SUCCESS"))
-	fmt.Fprintf(cmd.OutOrStdout(), "  IR file: %s\n", irPath)
-	fmt.Fprintf(cmd.OutOrStdout(), "  Output directory: %s\n", outputDir)
-	fmt.Fprintf(cmd.OutOrStdout(), "  Module path: %s\n", golangModulePath)
-	fmt.Fprintf(cmd.OutOrStdout(), "  Files generated: %d\n", len(genOutput.GeneratedFiles))
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s Built Go code from Morphir IR\n", successStyle.Render("SUCCESS"))
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  IR file: %s\n", irPath)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Output directory: %s\n", outputDir)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Module path: %s\n", golangModulePath)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Files generated: %d\n", len(genOutput.GeneratedFiles))
 
 	// Note about stub implementation
 	_ = buildOutput // Acknowledge we're not using full build output yet

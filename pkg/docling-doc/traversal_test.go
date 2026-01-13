@@ -17,8 +17,8 @@ func TestWalk(t *testing.T) {
 
 	root = root.WithChild(Ref("section1"))
 	section = section.WithParent(Ref("root")).WithChild(Ref("para1")).WithChild(Ref("para2"))
-	para1.DocItem = para1.DocItem.WithParent(Ref("section1"))
-	para2.DocItem = para2.DocItem.WithParent(Ref("section1"))
+	para1.DocItem = para1.WithParent(Ref("section1"))
+	para2.DocItem = para2.WithParent(Ref("section1"))
 
 	doc = doc.WithItem(root).WithItem(section).WithItem(para1).WithItem(para2)
 
@@ -41,7 +41,7 @@ func TestWalkBody(t *testing.T) {
 	child := NewTextItem(Ref("child1"), "Text")
 
 	root = root.WithChild(Ref("child1"))
-	child.DocItem = child.DocItem.WithParent(Ref("root"))
+	child.DocItem = child.WithParent(Ref("root"))
 
 	doc = doc.WithBody(Ref("root")).WithItem(root).WithItem(child)
 
@@ -136,7 +136,7 @@ func TestMap(t *testing.T) {
 	mapped := Map(doc, func(item Item) Item {
 		switch v := item.(type) {
 		case TextItem:
-			v.DocItem = v.DocItem.WithMetadata("processed", true)
+			v.DocItem = v.WithMetadata("processed", true)
 			return v
 		default:
 			return item
@@ -317,8 +317,8 @@ func TestIterateTree(t *testing.T) {
 	child2 := NewTextItem(Ref("child2"), "Second")
 
 	root = root.WithChild(Ref("child1")).WithChild(Ref("child2"))
-	child1.DocItem = child1.DocItem.WithParent(Ref("root"))
-	child2.DocItem = child2.DocItem.WithParent(Ref("root"))
+	child1.DocItem = child1.WithParent(Ref("root"))
+	child2.DocItem = child2.WithParent(Ref("root"))
 
 	doc = doc.WithItem(root).WithItem(child1).WithItem(child2)
 
@@ -338,7 +338,7 @@ func TestIterateBody(t *testing.T) {
 	child := NewTextItem(Ref("child1"), "Text")
 
 	root = root.WithChild(Ref("child1"))
-	child.DocItem = child.DocItem.WithParent(Ref("root"))
+	child.DocItem = child.WithParent(Ref("root"))
 
 	doc = doc.WithBody(Ref("root")).WithItem(root).WithItem(child)
 
