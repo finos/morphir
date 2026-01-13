@@ -132,7 +132,12 @@ func runDecorationSetup(cmd *cobra.Command, args []string) error {
 		if decorationSetupDisplayName != "" {
 			displayName = decorationSetupDisplayName
 		} else {
-			displayName = strings.Title(decorationID) // Simple title case
+			// Convert decorationID to title case (capitalize first letter)
+			if len(decorationID) > 0 {
+				displayName = strings.ToUpper(decorationID[:1]) + decorationID[1:]
+			} else {
+				displayName = decorationID
+			}
 		}
 	}
 
@@ -173,7 +178,7 @@ func runDecorationSetup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 	projectDir := rootProject.Path()
-	relIRPath := irPath
+	var relIRPath string
 	if !filepath.IsAbs(irPath) {
 		absIRPath := filepath.Join(workDir, irPath)
 		relIRPath, err = filepath.Rel(projectDir, absIRPath)

@@ -11,11 +11,16 @@ if (-not (Get-Command golangci-lint -ErrorAction SilentlyContinue)) {
 
 $modules = @(
     "cmd/morphir",
-    "pkg/bindings/wasm-componentmodel",
+    "pkg/bindings/wit",
+    "pkg/config",
+    "pkg/docling-doc",
     "pkg/models",
+    "pkg/nbformat",
+    "pkg/pipeline",
+    "pkg/task",
     "pkg/tooling",
     "pkg/sdk",
-    "pkg/pipeline"
+    "pkg/vfs"
 )
 
 foreach ($module in $modules) {

@@ -124,10 +124,9 @@ func ValidateEntryPoint(decIR decorationmodels.DecorationIR, entryPoint string) 
 			// Found the type! Validate that it's accessible
 			// (we'll check access control, but for decorations we typically want public types)
 			typeDefAccess := typeDef.Definition()
-			if typeDefAccess.Access() != ir.AccessPublic {
-				// Warn but don't fail - private types can still be used for decorations
-				// in some cases
-			}
+			// Note: We check access but don't enforce it - private types can still be used
+			// for decorations in some cases. This is intentionally permissive.
+			_ = typeDefAccess.Access()
 			// Found the type!
 			return nil
 		}

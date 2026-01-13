@@ -108,7 +108,7 @@ func TestTypeChecker_RecordType(t *testing.T) {
 	// Create a decoration IR with a record type
 	pkgName := ir.PathFromString("My.Decoration")
 	typeName := ir.NameFromParts([]string{"metadata"})
-	
+
 	// Record type: { name: String, value: Int }
 	recordFields := []ir.Field[ir.Unit]{
 		ir.FieldFromParts[ir.Unit](

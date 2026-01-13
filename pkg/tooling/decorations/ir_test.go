@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	ir "github.com/finos/morphir/pkg/models/ir"
-	decorationmodels "github.com/finos/morphir/pkg/models/ir/decorations"
 	jsoncodec "github.com/finos/morphir/pkg/models/ir/codec/json"
+	decorationmodels "github.com/finos/morphir/pkg/models/ir/decorations"
 )
 
 func TestLoadDecorationIR_ValidLibrary(t *testing.T) {

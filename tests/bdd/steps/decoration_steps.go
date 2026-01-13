@@ -250,9 +250,9 @@ func registeredDecorationTypesExist(ctx context.Context) error {
 		"version": "1.0",
 		"types": map[string]interface{}{
 			"testFlag": map[string]interface{}{
-				"id":          "testFlag",
+				"id":           "testFlag",
 				"display_name": "Test Flag",
-				"ir_path":     "test-ir.json",
+				"ir_path":      "test-ir.json",
 				"entry_point":  "Test:Types:Flag",
 				"source":       "workspace",
 			},
