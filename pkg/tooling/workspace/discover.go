@@ -166,12 +166,13 @@ func checkWorkspaceMarkers(dir string) (*Workspace, bool) {
 		}
 
 		// For morphir.toml markers, verify it's a file
-		if marker == "morphir.toml" || marker == ".morphir/morphir.toml" {
+		switch marker {
+		case "morphir.toml", ".morphir/morphir.toml":
 			if !info.IsDir() {
 				ws := NewWorkspace(dir, markerPath)
 				return &ws, true
 			}
-		} else if marker == ".morphir" {
+		case ".morphir":
 			// For .morphir directory marker, verify it's a directory
 			if info.IsDir() {
 				ws := NewWorkspace(dir, markerPath)

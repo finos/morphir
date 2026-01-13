@@ -20,8 +20,8 @@ func TestRenderMarkdown_PlainText(t *testing.T) {
 	content := "# Hello World\n\nThis is **bold** text."
 
 	// Render with NO_COLOR set
-	os.Setenv("NO_COLOR", "1")
-	defer os.Unsetenv("NO_COLOR")
+	_ = os.Setenv("NO_COLOR", "1")
+	defer func() { _ = os.Unsetenv("NO_COLOR") }()
 
 	rendered, err := markdown.RenderMarkdown(content)
 	if err != nil {
@@ -99,8 +99,8 @@ func TestIsTerminal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(file.Name())
-	defer file.Close()
+	defer func() { _ = os.Remove(file.Name()) }()
+	defer func() { _ = file.Close() }()
 
 	if markdown.IsTerminal(file) {
 		t.Error("Regular file should not be detected as terminal")
@@ -109,8 +109,8 @@ func TestIsTerminal(t *testing.T) {
 
 func TestRenderOptions_ForceColor(t *testing.T) {
 	// Set NO_COLOR but override with ForceColor
-	os.Setenv("NO_COLOR", "1")
-	defer os.Unsetenv("NO_COLOR")
+	_ = os.Setenv("NO_COLOR", "1")
+	defer func() { _ = os.Unsetenv("NO_COLOR") }()
 
 	renderer := markdown.NewRenderer(markdown.RenderOptions{
 		ForceColor: true,

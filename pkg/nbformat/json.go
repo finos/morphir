@@ -33,7 +33,7 @@ func ReadFile(path string) (Notebook, error) {
 	if err != nil {
 		return Notebook{}, fmt.Errorf("failed to open notebook file: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	return Read(f)
 }
 
@@ -66,7 +66,7 @@ func WriteFileWithOptions(nb Notebook, path string, opts WriteOptions) error {
 	if err != nil {
 		return fmt.Errorf("failed to create notebook file: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	return WriteWithOptions(nb, f, opts)
 }
 

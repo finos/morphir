@@ -467,9 +467,9 @@ func outputGolangDiagnostics(cmd *cobra.Command, diagnostics []pipeline.Diagnost
 			code = dimStyle.Render(fmt.Sprintf("[%s] ", d.Code))
 		}
 
-		fmt.Fprintf(cmd.ErrOrStderr(), "  %s %s%s\n", prefix, code, d.Message)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  %s %s%s\n", prefix, code, d.Message)
 	}
-	fmt.Fprintln(cmd.ErrOrStderr())
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr())
 }
 
 // runGolangMake executes the golang make command (placeholder)
@@ -589,7 +589,7 @@ func outputGolangMakeJSON(cmd *cobra.Command, sourcePath string, result pipeline
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(data))
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(data))
 
 	return nil
 }
@@ -736,9 +736,9 @@ func runGolangBuild(cmd *cobra.Command, args []string) error {
 
 	// List generated files
 	if golangVerbose {
-		fmt.Fprintln(cmd.OutOrStdout(), "\nGenerated files:")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "\nGenerated files:")
 		for relPath := range genOutput.GeneratedFiles {
-			fmt.Fprintf(cmd.OutOrStdout(), "  - %s\n", relPath)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  - %s\n", relPath)
 		}
 	}
 
