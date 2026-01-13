@@ -97,9 +97,6 @@ jobs:
           git tag -f ${{ github.event.inputs.tag }}
           echo "GORELEASER_CURRENT_TAG=${{ github.event.inputs.tag }}" >> $GITHUB_ENV
 
-      - name: Set up Go workspace
-        run: mise run workspace:setup
-
       - name: Run GoReleaser
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
