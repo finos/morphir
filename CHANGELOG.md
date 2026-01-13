@@ -37,6 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workspace setup now resilient to unpublished module versions
   - `go work sync` failures no longer block workspace setup
   - Enables CI to work with release PRs that bump cross-module versions
+- External consumption test now handles cross-module release changes
+  - Detects release branches and allows expected cross-module dependency failures
+  - Provides clear messaging when code uses unreleased internal module features
 
 ## [0.4.0-alpha.3] - 2026-01-13
 
