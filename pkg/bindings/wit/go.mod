@@ -4,11 +4,11 @@ go 1.25.5
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
-	github.com/finos/morphir/pkg/bindings/typemap v0.4.0-alpha.3
-	github.com/finos/morphir/pkg/models v0.4.0-alpha.3
-	github.com/finos/morphir/pkg/pipeline v0.4.0-alpha.3
-	github.com/finos/morphir/pkg/toolchain v0.4.0-alpha.3
-	github.com/finos/morphir/pkg/vfs v0.4.0-alpha.3
+	github.com/finos/morphir/pkg/bindings/typemap v0.4.0-alpha.4
+	github.com/finos/morphir/pkg/models v0.4.0-alpha.4
+	github.com/finos/morphir/pkg/pipeline v0.4.0-alpha.4
+	github.com/finos/morphir/pkg/toolchain v0.4.0-alpha.4
+	github.com/finos/morphir/pkg/vfs v0.4.0-alpha.4
 	github.com/stretchr/testify v1.11.1
 	go.bytecodealliance.org v0.7.0
 )
