@@ -20,7 +20,7 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
-          version: 2025.12.13
+          version: latest
 
       - name: Check formatting
         run: mise run fmt-check
@@ -35,7 +35,7 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
-          version: 2025.12.13
+          version: latest
 
       - name: Set up Go workspace
         run: mise run workspace:setup
@@ -62,7 +62,7 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
-          version: 2025.12.13
+          version: latest
 
       - name: Set up Go workspace
         run: mise run workspace:setup
@@ -119,7 +119,7 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
-          version: 2025.12.13
+          version: latest
 
       - name: Set up Go workspace
         run: mise run workspace:setup
@@ -145,7 +145,7 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
-          version: 2025.12.13
+          version: latest
 
       - name: Set up Go workspace
         run: mise run workspace:setup
@@ -189,7 +189,7 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
-          version: 2025.12.13
+          version: latest
 
       - name: Set up Go workspace
         run: mise run workspace:setup
@@ -211,7 +211,7 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
-          version: 2025.12.13
+          version: latest
 
       - name: Test cmd/morphir builds without go.work
         run: mise run test-external
