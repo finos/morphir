@@ -12,11 +12,11 @@ before:
   hooks:
     # Safeguard: Remove any replace directives that may have been accidentally committed
     # This ensures go install compatibility
-    - bash ./scripts/remove-replace-directives.sh
+    - bash ./.config/mise/scripts/remove-replace-directives.sh
     # Sync CHANGELOG.md for embedding in about command
     - cp CHANGELOG.md cmd/morphir/cmd/CHANGELOG.md
     # Ensure all modules have their dependencies in order
-    # NOTE: Keep this list in sync with scripts/release-tags.sh MODULES array
+    # NOTE: Modules are auto-detected by .config/mise/tasks/release/tags.ts
     - go mod tidy -C cmd/morphir
     - go mod tidy -C pkg/bindings/golang
     - go mod tidy -C pkg/bindings/morphir-elm

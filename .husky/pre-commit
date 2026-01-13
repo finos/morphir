@@ -14,9 +14,6 @@ if git diff --cached --name-only | grep -q "^go.work$"; then
     exit 1
 fi
 
-# Ensure Codex skills are linked to Claude skills (best effort)
-./scripts/link-codex-skills.sh || true
-
 # Check if .beads is staged for commit
 if git diff --cached --name-only | grep -q "^\.beads$"; then
     # Check if the staged .beads is a symlink (mode 120000)
