@@ -16,11 +16,16 @@ if (-not (Test-Path "go.work")) {
 
 $modules = @(
     "cmd/morphir",
-    "pkg/bindings/wasm-componentmodel",
+    "pkg/bindings/wit",
+    "pkg/config",
+    "pkg/docling-doc",
     "pkg/models",
+    "pkg/nbformat",
+    "pkg/pipeline",
+    "pkg/task",
     "pkg/tooling",
     "pkg/sdk",
-    "pkg/pipeline"
+    "pkg/vfs"
 )
 
 foreach ($module in $modules) {
