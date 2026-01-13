@@ -12,7 +12,7 @@ before:
   hooks:
     # Safeguard: Remove any replace directives that may have been accidentally committed
     # This ensures go install compatibility
-    - bash ./.mise/scripts/remove-replace-directives.sh
+    - mise run release:clean-replace
     # Sync CHANGELOG.md for embedding in about command
     - cp CHANGELOG.md cmd/morphir/cmd/CHANGELOG.md
     # Ensure all modules have their dependencies in order
@@ -24,6 +24,7 @@ before:
     - go mod tidy -C pkg/bindings/wit
     - go mod tidy -C pkg/config
     - go mod tidy -C pkg/docling-doc
+    - go mod tidy -C pkg/logging
     - go mod tidy -C pkg/models
     - go mod tidy -C pkg/nbformat
     - go mod tidy -C pkg/pipeline
