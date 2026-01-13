@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated all imports to `github.com/charmbracelet/lipgloss/v2`
   - Using `compat.AdaptiveColor` for backward-compatible adaptive colors
   - Theme colors now use `lipgloss.Color()` with `color.Color` interface
-- Updated all internal module dependencies to v0.4.0-alpha.4
+- Updated all internal module dependencies to v0.4.0-alpha.3
 
 ### Infrastructure
 - Enhanced release validation with module consistency checks (#554)
