@@ -3,29 +3,29 @@ module github.com/finos/morphir/cmd/morphir
 go 1.25.5
 
 require (
+	github.com/BurntSushi/toml v1.6.0
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/glamour v0.10.0
-	github.com/charmbracelet/lipgloss/v2 v2.0.0-beta.3
-	github.com/charmbracelet/lipgloss/v2 v2.0.0-beta.3
-	github.com/finos/morphir/pkg/bindings/golang v0.4.0-alpha.1
-	github.com/finos/morphir/pkg/bindings/wit v0.4.0-alpha.1
-	github.com/finos/morphir/pkg/config v0.4.0-alpha.1
-	github.com/finos/morphir/pkg/pipeline v0.4.0-alpha.1
-	github.com/finos/morphir/pkg/toolchain v0.4.0-alpha.1
-	github.com/finos/morphir/pkg/tooling v0.4.0-alpha.1
-	github.com/finos/morphir/pkg/vfs v0.4.0-alpha.1
+	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
+	github.com/finos/morphir/pkg/bindings/golang v0.4.0-alpha.2
+	github.com/finos/morphir/pkg/bindings/morphir-elm v0.4.0-alpha.2
+	github.com/finos/morphir/pkg/bindings/wit v0.4.0-alpha.2
+	github.com/finos/morphir/pkg/config v0.4.0-alpha.2
+	github.com/finos/morphir/pkg/models v0.4.0-alpha.2
+	github.com/finos/morphir/pkg/pipeline v0.4.0-alpha.2
+	github.com/finos/morphir/pkg/toolchain v0.4.0-alpha.2
+	github.com/finos/morphir/pkg/tooling v0.4.0-alpha.2
+	github.com/finos/morphir/pkg/vfs v0.4.0-alpha.2
 	github.com/spf13/cobra v1.10.2
 )
 
-
 require (
-	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/alecthomas/chroma/v2 v2.14.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
-	github.com/bmatcuk/doublestar/v4 v4.9.1 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.9.2 // indirect
 	github.com/charmbracelet/colorprofile v0.3.1 // indirect
 	github.com/charmbracelet/x/ansi v0.10.1 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.13 // indirect
@@ -34,8 +34,7 @@ require (
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/dlclark/regexp2 v1.11.0 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
-	github.com/finos/morphir/pkg/bindings/typemap v0.4.0-alpha.1 // indirect
-	github.com/finos/morphir/pkg/models v0.4.0-alpha.1 // indirect
+	github.com/finos/morphir/pkg/bindings/typemap v0.4.0-alpha.2 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
@@ -51,6 +50,7 @@ require (
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/tetratelabs/wazero v1.9.0 // indirect
