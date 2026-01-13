@@ -57,9 +57,88 @@ Each decoration section should include:
     - there is a type in that module that matches the third part of the entry point
 - a storage location that specifies where the decoration data will be saved    
 
-## Using the morphir decoration-setup Command
-The above step can be automated using the `morphir decoration-setup` command from the location containing the decoration IR.
-You can also provide the path to the decoration IR using the `-i` flag
+## Using the morphir decoration Commands
+
+Morphir provides several CLI commands to manage decorations:
+
+### Setting Up Decorations
+
+#### Using a Registered Type (Recommended)
+
+If you have a decoration type registered in the registry, you can use it directly:
+
+```bash
+morphir decoration setup myDecoration --type documentation
+```
+
+This automatically configures the decoration using the registered type's IR path and entry point.
+
+#### Using Direct Paths
+
+You can also set up decorations by specifying the IR file and entry point directly:
+
+```bash
+morphir decoration setup myDecoration \
+  -i decorations/morphir-ir.json \
+  -e "My.Amazing.Decoration:Foo:Shape" \
+  --display-name "My Amazing Decoration" \
+  --storage-location "my-decoration-values.json"
+```
+
+### Registering Decoration Types
+
+Before you can use `--type`, you need to register the decoration type:
+
+```bash
+morphir decoration type register documentation \
+  -i ~/.morphir/decorations/documentation/morphir-ir.json \
+  -e "Documentation.Decoration:Types:Documentation" \
+  --display-name "Documentation" \
+  --description "Add documentation to IR nodes" \
+  --global  # Register globally for all projects
+```
+
+### Managing Decoration Types
+
+```bash
+# List all registered types
+morphir decoration type list
+
+# Show details about a type
+morphir decoration type show documentation
+
+# Unregister a type
+morphir decoration type unregister documentation
+```
+
+### Validating Decorations
+
+```bash
+# Validate all decorations
+morphir decoration validate
+
+# Validate with JSON output
+morphir decoration validate --json
+```
+
+### Querying Decorations
+
+```bash
+# List all decorated nodes
+morphir decoration list
+
+# List nodes with specific decoration type
+morphir decoration list --type documentation
+
+# Get decorations for a specific node
+morphir decoration get "My.Package:Foo:bar"
+
+# Get specific decoration type for a node
+morphir decoration get "My.Package:Foo:bar" --type documentation
+
+# Show decoration statistics
+morphir decoration stats
+```
 
 ## Start adding decorations
 
@@ -81,7 +160,57 @@ If you open the file you should see something like this:
 It's an object with a node id that identifies the part of the model that you put the decoration on, and a value that
 you specified in the UI.
 
-## Consuming Existing Decoration Schemas
-You may also want to use existing decoration schema available in the NPM repository.
-Once you've found and installed the decoration schema, you can run the `morphir decoration-setup` command to set up the decorations.
-Then you can [start adding decorations](#start-adding-decorations)
+## Decoration Type Registry
+
+The decoration type registry allows you to discover and reuse decoration schemas across projects.
+
+### Registering Types
+
+Register a decoration type once, then use it in any project:
+
+```bash
+# Register globally (available to all projects)
+morphir decoration type register documentation \
+  -i ~/.morphir/decorations/documentation/morphir-ir.json \
+  -e "Documentation.Decoration:Types:Documentation" \
+  --display-name "Documentation" \
+  --global
+
+# Register in workspace (project-specific)
+morphir decoration type register myDecoration \
+  -i decorations/morphir-ir.json \
+  -e "My.Decoration:Types:Shape" \
+  --display-name "My Decoration"
+```
+
+### Using Registered Types
+
+Once registered, you can reference decoration types by name:
+
+```bash
+# Set up decoration using registered type
+morphir decoration setup docs --type documentation
+```
+
+This is much simpler than specifying IR paths and entry points manually!
+
+### Registry Locations
+
+- **Workspace**: `.morphir/decorations/registry.json` (project-specific)
+- **Global**: `~/.morphir/decorations/registry.json` (user-wide)
+- **System**: `/etc/morphir/decorations/registry.json` (system-wide)
+
+Workspace registries take precedence over global, which take precedence over system.
+
+## Examples
+
+See the `examples/decorations/` directory for complete working examples:
+
+- `simple-flag/` - A minimal boolean flag decoration
+- `documentation/` - A structured documentation decoration
+
+Each example includes:
+- Elm source code for the decoration schema
+- Configuration files
+- Example decoration value files
+- README with usage instructions

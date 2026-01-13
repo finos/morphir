@@ -1,0 +1,17 @@
+{
+  "My.Package:Foo:bar": {
+    "description": "This is a sample function that does something important",
+    "tags": ["example", "sample"],
+    "links": [
+      {
+        "label": "API Documentation",
+        "url": "https://example.com/api/bar"
+      }
+    ]
+  },
+  "My.Package:Foo:baz": {
+    "description": "Another function with documentation",
+    "tags": ["utility"],
+    "links": []
+  }
+}

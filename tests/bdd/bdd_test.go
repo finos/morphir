@@ -71,6 +71,7 @@ func TestFeatures(t *testing.T) {
 			steps.RegisterPlanSteps(sc)
 			steps.RegisterMorphirElmSteps(sc)
 			steps.RegisterWorkflowSteps(sc)
+			steps.RegisterDecorationSteps(sc)
 		},
 		Options: &godog.Options{
 			Format:   "pretty",
