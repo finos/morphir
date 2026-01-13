@@ -101,7 +101,7 @@ error() {
             echo "  $details"
         fi
     fi
-    ((ERRORS++))
+    ERRORS=$((ERRORS + 1))
 }
 
 warn() {
@@ -115,7 +115,7 @@ warn() {
             echo "  $details"
         fi
     fi
-    ((WARNINGS++))
+    WARNINGS=$((WARNINGS + 1))
 }
 
 success() {
@@ -290,6 +290,96 @@ if [ -f "scripts/release-tags.sh" ]; then
     fi
 else
     warn "module_list" "scripts/release-tags.sh not found"
+fi
+
+# 12. Check internal module version tags exist
+header "Checking internal module version tags"
+
+MISSING_TAGS=""
+while IFS= read -r -d '' gomod; do
+    # Extract internal module references with versions
+    # Look for lines like: github.com/finos/morphir/pkg/models v0.4.0-alpha.2
+    while IFS= read -r line; do
+        # Extract module path and version using grep to match the pattern
+        MOD_PATH=$(echo "$line" | grep -oE "github\.com/finos/morphir/(pkg|cmd)/[a-zA-Z0-9/_-]+" | head -1)
+        MOD_VERSION=$(echo "$line" | grep -oE "v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?" | head -1)
+
+        # Skip if we couldn't extract both
+        if [ -z "$MOD_PATH" ] || [ -z "$MOD_VERSION" ]; then
+            continue
+        fi
+
+        # Skip pseudo-versions (already checked separately)
+        if echo "$MOD_VERSION" | grep -qE "v[0-9]+\.[0-9]+\.[0-9]+-[0-9]{14}-"; then
+            continue
+        fi
+
+        # Determine expected tag (module path relative to repo + version)
+        REL_PATH=$(echo "$MOD_PATH" | sed 's|github.com/finos/morphir/||')
+        EXPECTED_TAG="${REL_PATH}/${MOD_VERSION}"
+
+        # Check if tag exists (local or remote)
+        if ! git rev-parse "$EXPECTED_TAG" >/dev/null 2>&1; then
+            if ! git ls-remote --tags origin "refs/tags/$EXPECTED_TAG" 2>/dev/null | grep -q .; then
+                MISSING_TAGS="$MISSING_TAGS $EXPECTED_TAG"
+            fi
+        fi
+    done < <(grep -E "github\.com/finos/morphir/(pkg|cmd)/" "$gomod" 2>/dev/null | grep -v "^module")
+done < <(find . -name "go.mod" -type f -print0)
+
+if [ -n "$MISSING_TAGS" ]; then
+    # Deduplicate
+    UNIQUE_MISSING=$(echo "$MISSING_TAGS" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+    error "module_tags" "Internal module version tags not found:$UNIQUE_MISSING" "These modules reference versions that don't exist. Update go.mod or create tags."
+else
+    success "module_tags" "All internal module version tags exist"
+fi
+
+# 13. Simulate go mod tidy (without go.work)
+header "Simulating go mod tidy without workspace"
+
+if [ "$QUIET" = false ] && [ "$JSON_OUTPUT" = false ]; then
+    echo "  Testing if go mod tidy would succeed in release environment..."
+fi
+
+# Save current go.work state
+GO_WORK_EXISTS=false
+if [ -f "go.work" ]; then
+    GO_WORK_EXISTS=true
+    mv go.work go.work.backup 2>/dev/null || true
+    mv go.work.sum go.work.sum.backup 2>/dev/null || true
+fi
+
+# Backup go.mod/go.sum that will be modified by go mod tidy
+cp cmd/morphir/go.mod cmd/morphir/go.mod.backup 2>/dev/null || true
+cp cmd/morphir/go.sum cmd/morphir/go.sum.backup 2>/dev/null || true
+
+# Try go mod tidy on cmd/morphir (the main module that imports others)
+MOD_TIDY_ERROR=""
+if [ -f "cmd/morphir/go.mod" ]; then
+    # Use GONOSUMDB to skip checksum verification for our modules
+    MOD_TIDY_OUTPUT=$(GONOSUMDB="github.com/finos/morphir/*" go mod tidy -C cmd/morphir 2>&1) || MOD_TIDY_ERROR="$MOD_TIDY_OUTPUT"
+fi
+
+# Restore go.work
+if [ "$GO_WORK_EXISTS" = true ]; then
+    mv go.work.backup go.work 2>/dev/null || true
+    mv go.work.sum.backup go.work.sum 2>/dev/null || true
+fi
+
+# Restore go.mod/go.sum (simulation should not leave changes behind)
+mv cmd/morphir/go.mod.backup cmd/morphir/go.mod 2>/dev/null || true
+mv cmd/morphir/go.sum.backup cmd/morphir/go.sum 2>/dev/null || true
+
+if [ -n "$MOD_TIDY_ERROR" ]; then
+    # Extract the key error message
+    ERROR_SUMMARY=$(echo "$MOD_TIDY_ERROR" | grep -E "(unknown revision|invalid version|no matching versions)" | head -3 | tr '\n' ' ')
+    if [ -z "$ERROR_SUMMARY" ]; then
+        ERROR_SUMMARY="go mod tidy failed"
+    fi
+    error "mod_tidy_simulation" "go mod tidy would fail in release: $ERROR_SUMMARY"
+else
+    success "mod_tidy_simulation" "go mod tidy simulation passed"
 fi
 
 # Output JSON or summary

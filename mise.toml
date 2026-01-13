@@ -91,3 +91,59 @@ run = "go test -v -run 'TestIntegration_MorphirElmMake' ./pkg/toolchain/"
 [tasks."test:bdd"]
 description = "Run all BDD tests"
 run = "go test -v -run 'TestFeatures' ./tests/bdd/"
+
+# =============================================================================
+# Release Tasks
+# =============================================================================
+
+[tasks."release:validate"]
+description = "Run pre-release validation checks"
+run = "./scripts/release-validate.sh"
+
+[tasks."release:validate:json"]
+description = "Run pre-release validation with JSON output"
+run = "./scripts/release-validate.sh --json"
+
+[tasks."release:verify"]
+description = "Verify a completed release (requires VERSION env var)"
+run = "./scripts/release-verify.sh ${VERSION:-}"
+
+[tasks."release:tags:list"]
+description = "List all tags for a version (requires VERSION env var)"
+run = "./scripts/release-tags.sh list ${VERSION:-}"
+
+[tasks."release:tags:create"]
+description = "Create all module tags locally (requires VERSION env var)"
+run = "./scripts/release-tags.sh create ${VERSION:-}"
+
+[tasks."release:tags:push"]
+description = "Push all module tags to remote (requires VERSION env var)"
+run = "./scripts/release-tags.sh push ${VERSION:-}"
+
+[tasks."release:tags:delete"]
+description = "Delete all module tags (requires VERSION env var)"
+run = "./scripts/release-tags.sh delete ${VERSION:-}"
+
+[tasks."release:snapshot"]
+description = "Build a local snapshot release (for testing)"
+run = "goreleaser release --snapshot --clean"
+
+[tasks."release:check"]
+description = "Validate GoReleaser configuration"
+run = "goreleaser check"
+
+# =============================================================================
+# Workspace Tasks
+# =============================================================================
+
+[tasks."workspace:setup"]
+description = "Set up Go workspace with all modules"
+run = "./scripts/setup-workspace.sh"
+
+[tasks."workspace:doctor"]
+description = "Check workspace health and diagnose issues"
+run = "./scripts/workspace-doctor.sh"
+
+[tasks."workspace:sync"]
+description = "Sync workspace dependencies"
+run = "go work sync"
