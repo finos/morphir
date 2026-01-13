@@ -7,6 +7,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
+
+	"github.com/finos/morphir/pkg/pipeline"
+	"github.com/finos/morphir/pkg/vfs"
 )
 
 // TestIntegration_MorphirElmMake tests the full morphir-elm toolchain integration
@@ -151,6 +155,202 @@ func findExampleProject(t *testing.T, name string) string {
 	}
 
 	return absPath
+}
+
+// TestIntegration_WorkflowExecution tests workflow execution with the built-in morphir-elm toolchain.
+// This verifies that running a build workflow properly invokes morphir-elm tasks.
+func TestIntegration_WorkflowExecution(t *testing.T) {
+	// Skip if running short tests
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	// Check if npx is available
+	if _, err := exec.LookPath("npx"); err != nil {
+		t.Skip("npx not installed - skipping integration test")
+	}
+
+	// Find the morphir-elm-compat example project
+	projectPath := findExampleProject(t, "morphir-elm-compat")
+	t.Logf("Using example project at: %s", projectPath)
+
+	// Clean up any previous build artifacts
+	irPath := filepath.Join(projectPath, "morphir-ir.json")
+	hashesPath := filepath.Join(projectPath, "morphir-hashes.json")
+	morphirOutPath := filepath.Join(projectPath, ".morphir", "out")
+	os.Remove(irPath)
+	os.Remove(hashesPath)
+	os.RemoveAll(morphirOutPath)
+
+	// Create test infrastructure with OS-backed VFS
+	mount := vfs.NewOSMount("workspace", vfs.MountRW, projectPath, vfs.MustVPath("/"))
+	vfsInstance := vfs.NewOverlayVFS([]vfs.Mount{mount})
+	ctx := pipeline.NewContext(projectPath, 3, pipeline.ModeDefault, vfsInstance)
+	outputDir := NewOutputDirStructure(vfs.MustVPath("/.morphir/out"), vfsInstance)
+	registry := NewRegistry()
+
+	// Register the morphir-elm toolchain (inline to avoid import cycle)
+	// This mirrors the definition in pkg/bindings/morphir-elm/toolchain
+	registry.Register(Toolchain{
+		Name:        "morphir-elm",
+		Version:     "2.100.0",
+		Description: "Morphir-elm toolchain for Elm-based IR generation",
+		Type:        ToolchainTypeExternal,
+		Acquire: AcquireConfig{
+			Backend: "npx",
+			Package: "morphir-elm",
+			Version: "2.100.0",
+		},
+		Timeout: 10 * time.Minute,
+		Env: map[string]string{
+			"NODE_OPTIONS": "--max-old-space-size=4096",
+		},
+		Tasks: []TaskDef{
+			{
+				Name:        "make",
+				Description: "Compile Elm sources to Morphir IR",
+				Args:        []string{"make"},
+				Inputs: InputSpec{
+					Files: []string{"elm.json", "src/**/*.elm", "morphir.json"},
+				},
+				Outputs: map[string]OutputSpec{
+					"ir": {Path: "morphir-ir.json", Type: "morphir-ir"},
+				},
+				Fulfills: []string{"make"},
+				Timeout:  10 * time.Minute,
+			},
+		},
+	})
+
+	// Verify toolchain was registered
+	tc, ok := registry.GetToolchain("morphir-elm")
+	if !ok {
+		t.Fatal("morphir-elm toolchain was not registered")
+	}
+	t.Logf("Registered morphir-elm toolchain v%s", tc.Version)
+
+	// Create executor and runner
+	executor := NewExecutor(registry, outputDir, ctx)
+	runner := NewWorkflowRunner(executor, outputDir)
+
+	// Create a simple build workflow
+	makeTask := &PlanTask{
+		Key:       TaskKey{Toolchain: "morphir-elm", Task: "make"},
+		Toolchain: "morphir-elm",
+		Task:      "make",
+	}
+
+	plan := Plan{
+		Workflow: Workflow{
+			Name:        "build",
+			Description: "Build workflow for integration test",
+		},
+		Stages: []PlanStage{
+			{
+				Name:     "compile",
+				Parallel: false,
+				Tasks:    []*PlanTask{makeTask},
+			},
+		},
+		Tasks: map[TaskKey]*PlanTask{
+			makeTask.Key: makeTask,
+		},
+	}
+
+	// Track progress events
+	var events []ProgressEvent
+	opts := DefaultRunOptions()
+	opts.Progress = func(event ProgressEvent) {
+		events = append(events, event)
+		t.Logf("Progress: %s - %s", event.Type, event.Message)
+	}
+
+	// Execute the workflow
+	t.Log("Executing build workflow...")
+	result := runner.Run(plan, opts)
+
+	// Verify workflow execution
+	t.Run("WorkflowSucceeds", func(t *testing.T) {
+		if !result.Success {
+			t.Errorf("workflow failed: %v", result.Error)
+			// Log task results for debugging
+			for key, taskResult := range result.TaskResults {
+				t.Logf("Task %s: success=%v, error=%v", key.String(), taskResult.Metadata.Success, taskResult.Error)
+			}
+		}
+	})
+
+	t.Run("MorphirElmTaskExecuted", func(t *testing.T) {
+		taskResult, ok := result.TaskResults[makeTask.Key]
+		if !ok {
+			t.Fatal("morphir-elm/make task result not found")
+		}
+		if !taskResult.Metadata.Success {
+			t.Errorf("morphir-elm/make task failed: %v", taskResult.Error)
+		}
+		if taskResult.Metadata.ToolchainName != "morphir-elm" {
+			t.Errorf("expected toolchain name 'morphir-elm', got %s", taskResult.Metadata.ToolchainName)
+		}
+		if taskResult.Metadata.TaskName != "make" {
+			t.Errorf("expected task name 'make', got %s", taskResult.Metadata.TaskName)
+		}
+	})
+
+	t.Run("ProgressEventsReceived", func(t *testing.T) {
+		// Should have workflow started, stage started, task started, task completed, stage completed, workflow completed
+		expectedTypes := []ProgressEventType{
+			ProgressWorkflowStarted,
+			ProgressStageStarted,
+			ProgressTaskStarted,
+			ProgressTaskCompleted,
+			ProgressStageCompleted,
+			ProgressWorkflowCompleted,
+		}
+
+		if len(events) < len(expectedTypes) {
+			t.Errorf("expected at least %d events, got %d", len(expectedTypes), len(events))
+		}
+
+		for i, expected := range expectedTypes {
+			if i >= len(events) {
+				break
+			}
+			if events[i].Type != expected {
+				t.Errorf("event %d: expected type %s, got %s", i, expected, events[i].Type)
+			}
+		}
+	})
+
+	t.Run("IROutputCreated", func(t *testing.T) {
+		// Verify morphir-ir.json was created (morphir-elm writes to project root)
+		if _, err := os.Stat(irPath); os.IsNotExist(err) {
+			t.Error("morphir-ir.json was not created")
+		}
+
+		// Read and validate the IR
+		irContent, err := os.ReadFile(irPath)
+		if err != nil {
+			t.Fatalf("failed to read morphir-ir.json: %v", err)
+		}
+
+		var ir MorphirIR
+		if err := json.Unmarshal(irContent, &ir); err != nil {
+			t.Fatalf("failed to parse morphir-ir.json: %v", err)
+		}
+
+		if ir.FormatVersion != 3 {
+			t.Errorf("expected format version 3, got %d", ir.FormatVersion)
+		}
+	})
+
+	// Clean up generated files
+	t.Cleanup(func() {
+		os.Remove(irPath)
+		os.Remove(hashesPath)
+		os.RemoveAll(morphirOutPath)
+		elmStuffPath := filepath.Join(projectPath, "elm-stuff")
+		os.RemoveAll(elmStuffPath)
+	})
 }
 
 // extractModules extracts module names from the IR distribution

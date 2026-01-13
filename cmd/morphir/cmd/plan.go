@@ -11,6 +11,7 @@ import (
 	"time"
 
 	golangtoolchain "github.com/finos/morphir/pkg/bindings/golang/toolchain"
+	morphirelmtoolchain "github.com/finos/morphir/pkg/bindings/morphir-elm/toolchain"
 	wittoolchain "github.com/finos/morphir/pkg/bindings/wit/toolchain"
 	"github.com/finos/morphir/pkg/config"
 	"github.com/finos/morphir/pkg/pipeline"
@@ -296,6 +297,7 @@ func registryFromConfig(cfg config.Config) (*toolchain.Registry, error) {
 
 	wittoolchain.Register(registry)
 	golangtoolchain.Register(registry)
+	morphirelmtoolchain.Register(registry)
 
 	toolchains := cfg.Toolchains()
 	names := toolchains.Names()

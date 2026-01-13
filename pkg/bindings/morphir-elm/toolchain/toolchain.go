@@ -11,7 +11,8 @@ import (
 )
 
 // DefaultVersion is the default morphir-elm version to use.
-const DefaultVersion = "2.90.0"
+// Updated to 2.100.0 as 2.90.0 does not exist on npm.
+const DefaultVersion = "2.100.0"
 
 // DefaultTimeout is the default timeout for morphir-elm tasks.
 const DefaultTimeout = 10 * time.Minute
