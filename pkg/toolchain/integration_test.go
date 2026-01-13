@@ -45,8 +45,8 @@ func TestIntegration_MorphirElmMake(t *testing.T) {
 	// Clean up any previous build artifacts
 	irPath := filepath.Join(projectPath, "morphir-ir.json")
 	hashesPath := filepath.Join(projectPath, "morphir-hashes.json")
-	os.Remove(irPath)
-	os.Remove(hashesPath)
+	_ = os.Remove(irPath)
+	_ = os.Remove(hashesPath)
 
 	// Execute morphir-elm make directly using npx
 	t.Log("Executing npx morphir-elm make...")
@@ -116,11 +116,11 @@ func TestIntegration_MorphirElmMake(t *testing.T) {
 
 	// Clean up generated files
 	t.Cleanup(func() {
-		os.Remove(irPath)
-		os.Remove(hashesPath)
+		_ = os.Remove(irPath)
+		_ = os.Remove(hashesPath)
 		// Clean up elm-stuff if created
 		elmStuffPath := filepath.Join(projectPath, "elm-stuff")
-		os.RemoveAll(elmStuffPath)
+		_ = os.RemoveAll(elmStuffPath)
 	})
 }
 
@@ -178,9 +178,9 @@ func TestIntegration_WorkflowExecution(t *testing.T) {
 	irPath := filepath.Join(projectPath, "morphir-ir.json")
 	hashesPath := filepath.Join(projectPath, "morphir-hashes.json")
 	morphirOutPath := filepath.Join(projectPath, ".morphir", "out")
-	os.Remove(irPath)
-	os.Remove(hashesPath)
-	os.RemoveAll(morphirOutPath)
+	_ = os.Remove(irPath)
+	_ = os.Remove(hashesPath)
+	_ = os.RemoveAll(morphirOutPath)
 
 	// Create test infrastructure with OS-backed VFS
 	mount := vfs.NewOSMount("workspace", vfs.MountRW, projectPath, vfs.MustVPath("/"))
@@ -345,11 +345,11 @@ func TestIntegration_WorkflowExecution(t *testing.T) {
 
 	// Clean up generated files
 	t.Cleanup(func() {
-		os.Remove(irPath)
-		os.Remove(hashesPath)
-		os.RemoveAll(morphirOutPath)
+		_ = os.Remove(irPath)
+		_ = os.Remove(hashesPath)
+		_ = os.RemoveAll(morphirOutPath)
 		elmStuffPath := filepath.Join(projectPath, "elm-stuff")
-		os.RemoveAll(elmStuffPath)
+		_ = os.RemoveAll(elmStuffPath)
 	})
 }
 

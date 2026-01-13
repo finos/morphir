@@ -20,7 +20,7 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
-          version: 2025.12.13
+          version: 2026.1.1
 
       - name: Check formatting
         run: mise run fmt-check
@@ -35,10 +35,10 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
-          version: 2025.12.13
+          version: 2026.1.1
 
       - name: Set up Go workspace
-        run: mise run setup-workspace
+        run: mise run workspace:setup
 
       - name: Install golangci-lint from source
         run: |
@@ -62,12 +62,23 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
-          version: 2025.12.13
+          version: 2026.1.1
 
-      - name: Set up Go workspace
-        run: mise run setup-workspace
+      # On Windows, use inline mise tasks (file-based tasks don't work on Windows)
+      - name: Set up Go workspace (Windows)
+        if: runner.os == 'Windows'
+        run: mise run windows:workspace-setup
 
-      - name: Run tests with coverage and JUnit reports
+      - name: Set up Go workspace (Unix)
+        if: runner.os != 'Windows'
+        run: mise run workspace:setup
+
+      - name: Run tests (Windows)
+        if: runner.os == 'Windows'
+        run: mise run windows:test
+
+      - name: Run tests with coverage and JUnit reports (Unix)
+        if: runner.os != 'Windows'
         run: mise run test-junit
 
       - name: Upload coverage artifact
@@ -79,7 +90,7 @@ jobs:
           retention-days: 7
 
       - name: Upload test results
-        if: always()
+        if: always() && matrix.os != 'windows-latest'
         uses: actions/upload-artifact@v6
         with:
           name: test-results-${{ matrix.os }}
@@ -87,7 +98,7 @@ jobs:
           retention-days: 7
 
       - name: Publish test results
-        if: always()
+        if: always() && matrix.os != 'windows-latest'
         uses: test-summary/action@v2.4
         with:
           paths: "test-results/*.xml"
@@ -119,14 +130,27 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
-          version: 2025.12.13
+          version: 2026.1.1
 
-      - name: Set up Go workspace
-        run: mise run setup-workspace
+      # On Windows, use inline mise tasks (file-based tasks don't work on Windows)
+      - name: Set up Go workspace (Windows)
+        if: runner.os == 'Windows'
+        run: mise run windows:workspace-setup
 
-      - name: Build binary (cross-platform)
+      - name: Set up Go workspace (Unix)
+        if: runner.os != 'Windows'
+        run: mise run workspace:setup
+
+      - name: Build binary (Windows)
+        if: runner.os == 'Windows'
         env:
-          GOOS: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'macos-latest' && 'darwin' || 'windows' }}
+          GOARCH: ${{ matrix.arch }}
+        run: mise run windows:build
+
+      - name: Build binary (Unix)
+        if: runner.os != 'Windows'
+        env:
+          GOOS: ${{ matrix.os == 'ubuntu-latest' && 'linux' || 'darwin' }}
           GOARCH: ${{ matrix.arch }}
         run: mise run build
 
@@ -145,10 +169,10 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
-          version: 2025.12.13
+          version: 2026.1.1
 
       - name: Set up Go workspace
-        run: mise run setup-workspace
+        run: mise run workspace:setup
 
       - name: Verify modules build
         run: mise run verify
@@ -189,13 +213,13 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
-          version: 2025.12.13
+          version: 2026.1.1
 
       - name: Set up Go workspace
-        run: mise run setup-workspace
+        run: mise run workspace:setup
 
       - name: Run morphir-elm integration tests
-        run: mise run test:integration:morphir-elm
+        run: mise run test:integration-morphir-elm
 
       - name: Run all integration tests
         run: mise run test:integration
@@ -211,7 +235,7 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
-          version: 2025.12.13
+          version: 2026.1.1
 
       - name: Test cmd/morphir builds without go.work
         run: mise run test-external

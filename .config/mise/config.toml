@@ -1,0 +1,34 @@
+# Morphir Development Tools Configuration
+# Tasks are defined as file-based scripts in .config/mise/tasks/
+
+[settings]
+experimental = true
+
+[tools]
+# Core tools
+go = "1.25.5"
+python = "3.14.2"
+
+# JavaScript runtimes and package managers (for toolchain backend tests)
+node = "24.13.0" # Provides npm and npx
+bun = "1.3.6"    # Provides bunx - used for TypeScript task execution
+deno = "2.6.4"   # Provides deno run npm:
+yarn = "4.12.0"  # Provides yarn dlx (Yarn Berry)
+pnpm = "10.28.0" # Provides pnpm dlx
+
+# Development tools
+golangci-lint = "2.8.0"   # Go linter aggregator
+
+# Windows-specific tasks (inline tasks work on Windows, file-based tasks don't)
+# These call bun to execute the TypeScript task implementations
+[tasks."windows:workspace-setup"]
+description = "Set up Go workspace (Windows)"
+run = "bun .config/mise/tasks/workspace/setup.ts"
+
+[tasks."windows:test"]
+description = "Run tests (Windows)"
+run = "bun .config/mise/tasks/test.ts"
+
+[tasks."windows:build"]
+description = "Build morphir binary (Windows)"
+run = "bun .config/mise/tasks/build.ts"

@@ -221,7 +221,7 @@ func TestAppendixOrderedCodes(t *testing.T) {
 	}
 
 	// Verify they appear in order E001 < E002 < E007
-	if !(e001Pos < e002Pos && e002Pos < e007Pos) {
+	if e001Pos >= e002Pos || e002Pos >= e007Pos {
 		t.Errorf("Error codes should be ordered: E001(%d) < E002(%d) < E007(%d)", e001Pos, e002Pos, e007Pos)
 	}
 }

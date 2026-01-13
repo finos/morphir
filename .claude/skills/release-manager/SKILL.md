@@ -69,16 +69,30 @@ Three scripts automate the release process:
 ```bash
 # Before release: validate everything
 ./scripts/release-validate.sh v0.4.0
+# Or using mise:
+mise run release:validate          # without version argument
+VERSION=v0.4.0 mise run release:validate  # with version
 
 # Create tags
 ./scripts/release-tags.sh create v0.4.0
 ./scripts/release-tags.sh push v0.4.0
+# Or using mise:
+VERSION=v0.4.0 mise run release:tags:create
+VERSION=v0.4.0 mise run release:tags:push
 
 # If release fails: recreate tags on fixed commit
 ./scripts/release-tags.sh recreate v0.4.0
 
 # After release: verify success
 ./scripts/release-verify.sh v0.4.0
+# Or using mise:
+VERSION=v0.4.0 mise run release:verify
+
+# Test local release build (no actual release)
+mise run release:snapshot
+
+# Validate GoReleaser configuration
+mise run release:check
 ```
 
 ## Release Process
@@ -123,6 +137,8 @@ The validation script checks for:
 - GONOSUMDB is configured
 - Build directory is set correctly
 - No problematic hooks (like go work sync)
+- **Internal module version tags exist** (NEW: catches missing tags for referenced versions)
+- **go mod tidy simulation** (NEW: simulates release environment without go.work)
 
 **Documentation freshness checks:**
 - llms.txt and llms-full.txt are regenerated with latest docs
@@ -857,15 +873,37 @@ just verify
 
 # Test release locally
 just release-snapshot
+# Or using mise:
+mise run release:snapshot
 
-# Prepare release (creates tags)
-just release-prepare vX.Y.Z
+# Validate GoReleaser config
+mise run release:check
 
-# Full release (with confirmation)
-just release vX.Y.Z
+# Pre-release validation
+mise run release:validate                      # basic check
+./scripts/release-validate.sh --json v0.4.0   # JSON output with version
 
-# Manual tag creation
-./scripts/release-prep.sh vX.Y.Z
+# Tag management (using mise, requires VERSION env var)
+VERSION=v0.4.0 mise run release:tags:create  # Create tags locally
+VERSION=v0.4.0 mise run release:tags:list    # List tags for version
+VERSION=v0.4.0 mise run release:tags:push    # Push tags to remote
+VERSION=v0.4.0 mise run release:tags:delete  # Delete tags
+
+# Or using scripts directly
+./scripts/release-tags.sh create v0.4.0
+./scripts/release-tags.sh list v0.4.0
+./scripts/release-tags.sh push v0.4.0
+./scripts/release-tags.sh delete v0.4.0
+./scripts/release-tags.sh recreate v0.4.0
+
+# Post-release verification
+VERSION=v0.4.0 mise run release:verify
+./scripts/release-verify.sh v0.4.0
+
+# Workspace management
+mise run workspace:setup   # Set up Go workspace with all modules
+mise run workspace:doctor  # Check workspace health
+mise run workspace:sync    # Sync workspace dependencies
 
 # Monitor release
 gh run watch

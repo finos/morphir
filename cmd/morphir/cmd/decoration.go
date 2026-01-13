@@ -60,11 +60,11 @@ func runDecorationValidate(cmd *cobra.Command, args []string) error {
 
 	if len(decorationsConfig) == 0 {
 		if decorationValidateJSON {
-			fmt.Fprintf(cmd.OutOrStdout(), `{"valid":true,"errors":[],"message":"no decorations configured"}`)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), `{"valid":true,"errors":[],"message":"no decorations configured"}`)
 			_, _ = fmt.Fprintln(cmd.OutOrStdout())
 			return nil
 		}
-		fmt.Fprintf(cmd.ErrOrStderr(), "No decorations configured in project\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "No decorations configured in project\n")
 		return nil
 	}
 
@@ -164,17 +164,17 @@ func outputDecorationValidateJSON(cmd *cobra.Command, errors []ValidationError) 
 
 func outputDecorationValidateText(cmd *cobra.Command, errors []ValidationError) error {
 	if len(errors) == 0 {
-		fmt.Fprintf(cmd.OutOrStdout(), "✓ All decorations are valid\n")
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "✓ All decorations are valid\n")
 		return nil
 	}
 
-	fmt.Fprintf(cmd.ErrOrStderr(), "✗ Validation failed with %d error(s):\n\n", len(errors))
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "✗ Validation failed with %d error(s):\n\n", len(errors))
 
 	for _, err := range errors {
 		if err.NodePath != "" {
-			fmt.Fprintf(cmd.ErrOrStderr(), "  [%s] %s: %s\n", err.DecorationID, err.NodePath, err.Message)
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  [%s] %s: %s\n", err.DecorationID, err.NodePath, err.Message)
 		} else {
-			fmt.Fprintf(cmd.ErrOrStderr(), "  [%s] %s\n", err.DecorationID, err.Message)
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  [%s] %s\n", err.DecorationID, err.Message)
 		}
 	}
 

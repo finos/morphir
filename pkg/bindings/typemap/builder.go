@@ -76,12 +76,8 @@ func (b *Builder) WithDefaults(provider DefaultsProvider) *Builder {
 	if provider == nil {
 		return b
 	}
-	for _, m := range provider.DefaultPrimitives() {
-		b.primitives = append(b.primitives, m)
-	}
-	for _, c := range provider.DefaultContainers() {
-		b.containers = append(b.containers, c)
-	}
+	b.primitives = append(b.primitives, provider.DefaultPrimitives()...)
+	b.containers = append(b.containers, provider.DefaultContainers()...)
 	return b
 }
 
@@ -106,15 +102,7 @@ func (b *Builder) WithConfig(cfg TypeMappingConfig) *Builder {
 
 	// Apply container overrides
 	for _, override := range cfg.Containers {
-		c := ContainerMapping{
-			ExternalPattern: override.ExternalPattern,
-			MorphirPattern:  override.MorphirPattern,
-			TypeParamCount:  override.TypeParamCount,
-			Bidirectional:   override.Bidirectional,
-			Priority:        override.Priority,
-		}
-
-		b.containers = append(b.containers, c)
+		b.containers = append(b.containers, ContainerMapping(override))
 	}
 
 	return b

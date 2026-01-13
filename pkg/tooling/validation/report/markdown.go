@@ -74,10 +74,10 @@ func (g *MarkdownGenerator) writeOverallSummary(sb *strings.Builder, results []*
 
 	sb.WriteString("| Metric | Value |\n")
 	sb.WriteString("|--------|-------|\n")
-	sb.WriteString(fmt.Sprintf("| Files Validated | %d |\n", len(results)))
-	sb.WriteString(fmt.Sprintf("| Passed | %d |\n", validCount))
-	sb.WriteString(fmt.Sprintf("| Failed | %d |\n", invalidCount))
-	sb.WriteString(fmt.Sprintf("| Total Errors | %d |\n", totalErrors))
+	_, _ = fmt.Fprintf(sb, "| Files Validated | %d |\n", len(results))
+	_, _ = fmt.Fprintf(sb, "| Passed | %d |\n", validCount)
+	_, _ = fmt.Fprintf(sb, "| Failed | %d |\n", invalidCount)
+	_, _ = fmt.Fprintf(sb, "| Total Errors | %d |\n", totalErrors)
 	sb.WriteString("\n")
 
 	// File list with status
@@ -89,16 +89,16 @@ func (g *MarkdownGenerator) writeOverallSummary(sb *strings.Builder, results []*
 		if !r.Valid {
 			status = fmt.Sprintf("❌ %d error(s)", len(r.Errors))
 		}
-		sb.WriteString(fmt.Sprintf("| `%s` | v%d | %s |\n", r.Path, r.Version, status))
+		_, _ = fmt.Fprintf(sb, "| `%s` | v%d | %s |\n", r.Path, r.Version, status)
 	}
 	sb.WriteString("\n")
 }
 
 func (g *MarkdownGenerator) writeFileSection(sb *strings.Builder, result *validation.Result, index, total int, codes usedCodes) {
 	if total > 1 {
-		sb.WriteString(fmt.Sprintf("## File %d of %d: %s\n\n", index, total, result.Path))
+		_, _ = fmt.Fprintf(sb, "## File %d of %d: %s\n\n", index, total, result.Path)
 	} else {
-		sb.WriteString(fmt.Sprintf("## File: %s\n\n", result.Path))
+		_, _ = fmt.Fprintf(sb, "## File: %s\n\n", result.Path)
 	}
 
 	g.writeFileSummary(sb, result)
@@ -114,16 +114,16 @@ func (g *MarkdownGenerator) writeFileSummary(sb *strings.Builder, result *valida
 	sb.WriteString("### Details\n\n")
 	sb.WriteString("| Property | Value |\n")
 	sb.WriteString("|----------|-------|\n")
-	sb.WriteString(fmt.Sprintf("| Path | `%s` |\n", result.Path))
-	sb.WriteString(fmt.Sprintf("| Format Version | %d |\n", result.Version))
-	sb.WriteString(fmt.Sprintf("| Schema | `morphir-ir-v%d.json` |\n", result.Version))
+	_, _ = fmt.Fprintf(sb, "| Path | `%s` |\n", result.Path)
+	_, _ = fmt.Fprintf(sb, "| Format Version | %d |\n", result.Version)
+	_, _ = fmt.Fprintf(sb, "| Schema | `morphir-ir-v%d.json` |\n", result.Version)
 
 	if result.Valid {
 		sb.WriteString("| Status | ✅ Valid |\n")
 		sb.WriteString("| Errors | 0 |\n")
 	} else {
 		sb.WriteString("| Status | ❌ Invalid |\n")
-		sb.WriteString(fmt.Sprintf("| Errors | %d |\n", len(result.Errors)))
+		_, _ = fmt.Fprintf(sb, "| Errors | %d |\n", len(result.Errors))
 	}
 	sb.WriteString("\n")
 }
@@ -145,7 +145,7 @@ func (g *MarkdownGenerator) writeErrorAnalysis(sb *strings.Builder, result *vali
 	sb.WriteString("| Issue Type | Count |\n")
 	sb.WriteString("|------------|-------|\n")
 	for issueType, count := range issueCounts {
-		sb.WriteString(fmt.Sprintf("| %s | %d |\n", issueType, count))
+		_, _ = fmt.Fprintf(sb, "| %s | %d |\n", issueType, count)
 	}
 	sb.WriteString("\n")
 
@@ -182,14 +182,14 @@ func (g *MarkdownGenerator) writeDetailedErrors(sb *strings.Builder, result *val
 	extractor := DefaultContextExtractor()
 
 	for i, errStr := range result.Errors {
-		sb.WriteString(fmt.Sprintf("#### Error %d\n\n", i+1))
+		_, _ = fmt.Fprintf(sb, "#### Error %d\n\n", i+1)
 
 		parsed := parseValidationError(errStr)
 
 		// Show a subset of the most relevant errors
 		maxErrors := 5
 		if len(parsed) > maxErrors {
-			sb.WriteString(fmt.Sprintf("> Showing first %d of %d validation errors\n\n", maxErrors, len(parsed)))
+			_, _ = fmt.Fprintf(sb, "> Showing first %d of %d validation errors\n\n", maxErrors, len(parsed))
 			parsed = parsed[:maxErrors]
 		}
 
@@ -197,21 +197,21 @@ func (g *MarkdownGenerator) writeDetailedErrors(sb *strings.Builder, result *val
 			// Track the error code as used
 			codes[p.Code] = struct{}{}
 
-			sb.WriteString(fmt.Sprintf("**Path:** `%s`\n\n", p.Path))
+			_, _ = fmt.Fprintf(sb, "**Path:** `%s`\n\n", p.Path)
 
 			pathExplanation := explainJSONPath(p.Path)
 			if pathExplanation != p.Path {
-				sb.WriteString(fmt.Sprintf("**Location:** %s\n\n", pathExplanation))
+				_, _ = fmt.Fprintf(sb, "**Location:** %s\n\n", pathExplanation)
 			}
 
 			// Include error code inline with the issue message
-			sb.WriteString(fmt.Sprintf("**Issue:** [%s] %s\n\n", p.Code, p.Message))
+			_, _ = fmt.Fprintf(sb, "**Issue:** [%s] %s\n\n", p.Code, p.Message)
 
 			if p.Expected != "" {
-				sb.WriteString(fmt.Sprintf("- Expected: `%s`\n", p.Expected))
+				_, _ = fmt.Fprintf(sb, "- Expected: `%s`\n", p.Expected)
 			}
 			if p.Actual != "" {
-				sb.WriteString(fmt.Sprintf("- Actual: `%s`\n", p.Actual))
+				_, _ = fmt.Fprintf(sb, "- Actual: `%s`\n", p.Actual)
 			}
 
 			// Extract and show JSON context if we have raw data
@@ -227,27 +227,27 @@ func (g *MarkdownGenerator) writeDetailedErrors(sb *strings.Builder, result *val
 				if parentValue != nil && IsNameArray(parentValue) {
 					friendlyName := FormatMorphirName(parentValue)
 					if friendlyName != "" {
-						sb.WriteString(fmt.Sprintf("\n**Name:** `%s`\n", friendlyName))
+						_, _ = fmt.Fprintf(sb, "\n**Name:** `%s`\n", friendlyName)
 					}
 				} else if parentValue != nil && IsPathArray(parentValue) {
 					// If it's a Path (array of Names), show its friendly representation
 					friendlyPath := FormatMorphirPath(parentValue)
 					if friendlyPath != "" {
-						sb.WriteString(fmt.Sprintf("\n**Full Path:** `%s`\n", friendlyPath))
+						_, _ = fmt.Fprintf(sb, "\n**Full Path:** `%s`\n", friendlyPath)
 					}
 				}
 
 				if parentContext != "" {
 					sb.WriteString("\n**Context:**\n\n")
 					sb.WriteString("```json\n")
-					sb.WriteString(fmt.Sprintf("// At: %s\n", p.Path))
+					_, _ = fmt.Fprintf(sb, "// At: %s\n", p.Path)
 					sb.WriteString(parentContext)
 					sb.WriteString("\n```\n")
 				}
 			}
 
 			if p.Suggestion != "" {
-				sb.WriteString(fmt.Sprintf("\n💡 **Suggestion:** %s\n", p.Suggestion))
+				_, _ = fmt.Fprintf(sb, "\n💡 **Suggestion:** %s\n", p.Suggestion)
 			}
 
 			sb.WriteString("\n---\n\n")
@@ -261,7 +261,7 @@ func (g *MarkdownGenerator) writeRecommendations(sb *strings.Builder, result *va
 	sb.WriteString("Based on the validation errors, consider the following:\n\n")
 
 	sb.WriteString("1. **Check Morphir Version Compatibility**\n")
-	sb.WriteString(fmt.Sprintf("   - Your IR uses format version %d\n", result.Version))
+	_, _ = fmt.Fprintf(sb, "   - Your IR uses format version %d\n", result.Version)
 	sb.WriteString("   - Ensure the IR was generated with a compatible version of morphir-elm\n")
 	sb.WriteString("   - The morphir-go schema may have stricter validation than morphir-elm\n\n")
 
@@ -287,7 +287,7 @@ func (g *MarkdownGenerator) writeAppendix(sb *strings.Builder, codes usedCodes) 
 	for _, code := range orderedCodes {
 		if _, used := codes[code]; used {
 			info := GetErrorCodeInfo(code)
-			sb.WriteString(fmt.Sprintf("### %s: %s\n\n", code, info.Title))
+			_, _ = fmt.Fprintf(sb, "### %s: %s\n\n", code, info.Title)
 			sb.WriteString(info.Description)
 			sb.WriteString("\n\n")
 		}
@@ -296,5 +296,5 @@ func (g *MarkdownGenerator) writeAppendix(sb *strings.Builder, codes usedCodes) 
 
 func (g *MarkdownGenerator) writeFooter(sb *strings.Builder) {
 	sb.WriteString("---\n\n")
-	sb.WriteString(fmt.Sprintf("*Report generated by morphir-go at %s*\n", time.Now().Format(time.RFC3339)))
+	_, _ = fmt.Fprintf(sb, "*Report generated by morphir-go at %s*\n", time.Now().Format(time.RFC3339))
 }

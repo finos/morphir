@@ -154,9 +154,9 @@ func outputValidationReport(cmd *cobra.Command, result *validation.Result) error
 		rendered, err := renderer.Render(reportContent, cmd.OutOrStdout())
 		if err != nil {
 			// Fallback to plain markdown on error
-			fmt.Fprint(cmd.OutOrStdout(), reportContent)
+			_, _ = fmt.Fprint(cmd.OutOrStdout(), reportContent)
 		} else {
-			fmt.Fprint(cmd.OutOrStdout(), rendered)
+			_, _ = fmt.Fprint(cmd.OutOrStdout(), rendered)
 		}
 	} else {
 		// Treat as file path - always write plain markdown to files
@@ -167,7 +167,7 @@ func outputValidationReport(cmd *cobra.Command, result *validation.Result) error
 		if err := os.WriteFile(reportPath, []byte(reportContent), 0644); err != nil {
 			return fmt.Errorf("failed to write report: %w", err)
 		}
-		fmt.Fprintf(cmd.ErrOrStderr(), "Report written to %s\n", reportPath)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Report written to %s\n", reportPath)
 	}
 
 	if !result.Valid {
@@ -187,9 +187,9 @@ func outputValidationJSON(cmd *cobra.Command, result *validation.Result) error {
 		errorsStr = "[" + strings.Join(escaped, ",") + "]"
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), `{"valid":%t,"version":%d,"path":%q,"errors":%s}`,
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), `{"valid":%t,"version":%d,"path":%q,"errors":%s}`,
 		result.Valid, result.Version, result.Path, errorsStr)
-	fmt.Fprintln(cmd.OutOrStdout())
+	_, _ = fmt.Fprintln(cmd.OutOrStdout())
 
 	if !result.Valid {
 		return fmt.Errorf("validation failed")
@@ -204,20 +204,20 @@ func outputValidationText(cmd *cobra.Command, result *validation.Result) error {
 	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 
 	if result.Valid {
-		fmt.Fprintf(cmd.OutOrStdout(), "%s %s %s\n",
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %s %s\n",
 			successStyle.Render("VALID"),
 			pathStyle.Render(result.Path),
 			dimStyle.Render(fmt.Sprintf("(format version %d)", result.Version)))
 		return nil
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "%s %s %s\n",
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %s %s\n",
 		errorStyle.Render("INVALID"),
 		pathStyle.Render(result.Path),
 		dimStyle.Render(fmt.Sprintf("(format version %d)", result.Version)))
 
 	for _, e := range result.Errors {
-		fmt.Fprintf(cmd.OutOrStdout(), "  %s %s\n",
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  %s %s\n",
 			errorStyle.Render("-"),
 			e)
 	}

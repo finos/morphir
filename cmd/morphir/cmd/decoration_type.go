@@ -165,11 +165,11 @@ func runDecorationTypeRegister(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("save registry: %w", err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "✓ Registered decoration type %q\n", typeID)
-	fmt.Fprintf(cmd.OutOrStdout(), "  Display Name: %s\n", decorationTypeRegisterDisplayName)
-	fmt.Fprintf(cmd.OutOrStdout(), "  Entry Point: %s\n", decorationTypeRegisterEntryPoint)
-	fmt.Fprintf(cmd.OutOrStdout(), "  IR File: %s\n", irPath)
-	fmt.Fprintf(cmd.OutOrStdout(), "  Registry: %s\n", registryPath)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "✓ Registered decoration type %q\n", typeID)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Display Name: %s\n", decorationTypeRegisterDisplayName)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Entry Point: %s\n", decorationTypeRegisterEntryPoint)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  IR File: %s\n", irPath)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Registry: %s\n", registryPath)
 
 	return nil
 }
@@ -219,21 +219,21 @@ func outputDecorationTypeListJSON(cmd *cobra.Command, types []decorations.Decora
 
 func outputDecorationTypeListText(cmd *cobra.Command, types []decorations.DecorationType) error {
 	if len(types) == 0 {
-		fmt.Fprintf(cmd.OutOrStdout(), "No decoration types registered.\n")
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No decoration types registered.\n")
 		return nil
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "Registered Decoration Types (%d):\n\n", len(types))
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Registered Decoration Types (%d):\n\n", len(types))
 	for _, decType := range types {
-		fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", decType.ID)
-		fmt.Fprintf(cmd.OutOrStdout(), "    Display Name: %s\n", decType.DisplayName)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", decType.ID)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "    Display Name: %s\n", decType.DisplayName)
 		if decType.Description != "" {
-			fmt.Fprintf(cmd.OutOrStdout(), "    Description: %s\n", decType.Description)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "    Description: %s\n", decType.Description)
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "    Entry Point: %s\n", decType.EntryPoint)
-		fmt.Fprintf(cmd.OutOrStdout(), "    IR File: %s\n", decType.IRPath)
-		fmt.Fprintf(cmd.OutOrStdout(), "    Source: %s\n", decType.Source)
-		fmt.Fprintf(cmd.OutOrStdout(), "\n")
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "    Entry Point: %s\n", decType.EntryPoint)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "    IR File: %s\n", decType.IRPath)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "    Source: %s\n", decType.Source)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\n")
 	}
 
 	return nil
@@ -269,15 +269,15 @@ func runDecorationTypeShow(cmd *cobra.Command, args []string) error {
 		return encoder.Encode(decType)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "Decoration Type: %s\n\n", decType.ID)
-	fmt.Fprintf(cmd.OutOrStdout(), "  Display Name: %s\n", decType.DisplayName)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Decoration Type: %s\n\n", decType.ID)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Display Name: %s\n", decType.DisplayName)
 	if decType.Description != "" {
-		fmt.Fprintf(cmd.OutOrStdout(), "  Description: %s\n", decType.Description)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Description: %s\n", decType.Description)
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "  Entry Point: %s\n", decType.EntryPoint)
-	fmt.Fprintf(cmd.OutOrStdout(), "  IR File: %s\n", decType.IRPath)
-	fmt.Fprintf(cmd.OutOrStdout(), "  Source: %s\n", decType.Source)
-	fmt.Fprintf(cmd.OutOrStdout(), "  Registered At: %s\n", decType.RegisteredAt.Format(time.RFC3339))
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Entry Point: %s\n", decType.EntryPoint)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  IR File: %s\n", decType.IRPath)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Source: %s\n", decType.Source)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Registered At: %s\n", decType.RegisteredAt.Format(time.RFC3339))
 
 	return nil
 }
@@ -322,7 +322,7 @@ func runDecorationTypeUnregister(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("save registry: %w", err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "✓ Unregistered decoration type %q\n", typeID)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "✓ Unregistered decoration type %q\n", typeID)
 
 	return nil
 }

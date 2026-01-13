@@ -66,7 +66,7 @@ func (d DoclingDocument) MarshalJSON() ([]byte, error) {
 		switch v := item.(type) {
 		case TextItem:
 			ji.Type = "text"
-			text := v.DocItem.Text()
+			text := v.Text()
 			ji.Text = &text
 		case DocItem:
 			ji.Type = "doc"
@@ -127,7 +127,7 @@ func (d *DoclingDocument) UnmarshalJSON(data []byte) error {
 		case "text":
 			textItem := NewTextItem(ref, "")
 			if ji.Text != nil {
-				textItem.DocItem = textItem.DocItem.WithText(*ji.Text)
+				textItem.DocItem = textItem.WithText(*ji.Text)
 			}
 			item = textItem
 		case "doc":
@@ -168,18 +168,18 @@ func (d *DoclingDocument) UnmarshalJSON(data []byte) error {
 			parentRef := Ref(*ji.Parent)
 			switch v := item.(type) {
 			case TextItem:
-				v.DocItem = v.DocItem.WithParent(parentRef)
+				v.DocItem = v.WithParent(parentRef)
 				item = v
 			case DocItem:
 				item = v.WithParent(parentRef)
 			case TableItem:
-				v.DocItem = v.DocItem.WithParent(parentRef)
+				v.DocItem = v.WithParent(parentRef)
 				item = v
 			case PictureItem:
-				v.DocItem = v.DocItem.WithParent(parentRef)
+				v.DocItem = v.WithParent(parentRef)
 				item = v
 			case GroupItem:
-				v.NodeItem = v.NodeItem.WithParent(parentRef)
+				v.NodeItem = v.WithParent(parentRef)
 				item = v
 			case NodeItem:
 				item = v.WithParent(parentRef)
@@ -194,18 +194,18 @@ func (d *DoclingDocument) UnmarshalJSON(data []byte) error {
 			}
 			switch v := item.(type) {
 			case TextItem:
-				v.DocItem = v.DocItem.WithChildren(childRefs)
+				v.DocItem = v.WithChildren(childRefs)
 				item = v
 			case DocItem:
 				item = v.WithChildren(childRefs)
 			case TableItem:
-				v.DocItem = v.DocItem.WithChildren(childRefs)
+				v.DocItem = v.WithChildren(childRefs)
 				item = v
 			case PictureItem:
-				v.DocItem = v.DocItem.WithChildren(childRefs)
+				v.DocItem = v.WithChildren(childRefs)
 				item = v
 			case GroupItem:
-				v.NodeItem = v.NodeItem.WithChildren(childRefs)
+				v.NodeItem = v.WithChildren(childRefs)
 				item = v
 			case NodeItem:
 				item = v.WithChildren(childRefs)
@@ -217,18 +217,18 @@ func (d *DoclingDocument) UnmarshalJSON(data []byte) error {
 			for _, prov := range ji.Provenance {
 				switch v := item.(type) {
 				case TextItem:
-					v.DocItem = v.DocItem.WithProvenance(prov)
+					v.DocItem = v.WithProvenance(prov)
 					item = v
 				case DocItem:
 					item = v.WithProvenance(prov)
 				case TableItem:
-					v.DocItem = v.DocItem.WithProvenance(prov)
+					v.DocItem = v.WithProvenance(prov)
 					item = v
 				case PictureItem:
-					v.DocItem = v.DocItem.WithProvenance(prov)
+					v.DocItem = v.WithProvenance(prov)
 					item = v
 				case GroupItem:
-					v.NodeItem = v.NodeItem.WithProvenance(prov)
+					v.NodeItem = v.WithProvenance(prov)
 					item = v
 				case NodeItem:
 					item = v.WithProvenance(prov)
@@ -241,18 +241,18 @@ func (d *DoclingDocument) UnmarshalJSON(data []byte) error {
 			for key, value := range ji.Metadata {
 				switch v := item.(type) {
 				case TextItem:
-					v.DocItem = v.DocItem.WithMetadata(key, value)
+					v.DocItem = v.WithMetadata(key, value)
 					item = v
 				case DocItem:
 					item = v.WithMetadata(key, value)
 				case TableItem:
-					v.DocItem = v.DocItem.WithMetadata(key, value)
+					v.DocItem = v.WithMetadata(key, value)
 					item = v
 				case PictureItem:
-					v.DocItem = v.DocItem.WithMetadata(key, value)
+					v.DocItem = v.WithMetadata(key, value)
 					item = v
 				case GroupItem:
-					v.NodeItem = v.NodeItem.WithMetadata(key, value)
+					v.NodeItem = v.WithMetadata(key, value)
 					item = v
 				case NodeItem:
 					item = v.WithMetadata(key, value)
