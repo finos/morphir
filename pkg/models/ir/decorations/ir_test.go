@@ -3,6 +3,9 @@ package decorations
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	ir "github.com/finos/morphir/pkg/models/ir"
 )
 
@@ -16,23 +19,15 @@ func TestNewDecorationIR(t *testing.T) {
 	irPath := "test-ir.json"
 	decIR := NewDecorationIR(lib, irPath)
 
-	if decIR.IRPath() != irPath {
-		t.Errorf("IRPath: got %q, want %q", decIR.IRPath(), irPath)
-	}
+	assert.Equal(t, irPath, decIR.IRPath())
 
 	dist := decIR.Distribution()
-	if dist == nil {
-		t.Error("expected distribution to be non-nil")
-	}
+	require.NotNil(t, dist, "expected distribution to be non-nil")
 
 	lib2, ok := dist.(ir.Library)
-	if !ok {
-		t.Error("expected distribution to be a Library")
-	}
+	require.True(t, ok, "expected distribution to be a Library")
 
-	if !lib2.PackageName().Equal(ir.PathFromString("Test.Package")) {
-		t.Error("package name mismatch")
-	}
+	assert.True(t, lib2.PackageName().Equal(ir.PathFromString("Test.Package")), "package name mismatch")
 }
 
 func TestDecorationIR_Distribution(t *testing.T) {
@@ -45,15 +40,11 @@ func TestDecorationIR_Distribution(t *testing.T) {
 	decIR := NewDecorationIR(lib, "test.json")
 
 	dist := decIR.Distribution()
-	if dist == nil {
-		t.Error("expected distribution to be non-nil")
-	}
+	require.NotNil(t, dist, "expected distribution to be non-nil")
 
 	// Verify it's the same distribution
 	lib2 := dist.(ir.Library)
-	if !lib2.PackageName().Equal(lib.PackageName()) {
-		t.Error("distribution mismatch")
-	}
+	assert.True(t, lib2.PackageName().Equal(lib.PackageName()), "distribution mismatch")
 }
 
 func TestDecorationIR_IRPath(t *testing.T) {
@@ -72,8 +63,6 @@ func TestDecorationIR_IRPath(t *testing.T) {
 
 	for _, tc := range testCases {
 		decIR := NewDecorationIR(lib, tc)
-		if decIR.IRPath() != tc {
-			t.Errorf("IRPath: got %q, want %q", decIR.IRPath(), tc)
-		}
+		assert.Equal(t, tc, decIR.IRPath())
 	}
 }

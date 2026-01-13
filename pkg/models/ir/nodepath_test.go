@@ -3,6 +3,9 @@ package ir
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNodePathFromFQName(t *testing.T) {
@@ -14,22 +17,12 @@ func TestNodePathFromFQName(t *testing.T) {
 
 	nodePath := NodePathFromFQName(fqName)
 
-	if !nodePath.PackagePath().Equal(PathFromString("My.Package")) {
-		t.Error("package path mismatch")
-	}
-	if !nodePath.ModulePath().Equal(PathFromString("Foo")) {
-		t.Error("module path mismatch")
-	}
+	assert.True(t, nodePath.PackagePath().Equal(PathFromString("My.Package")), "package path mismatch")
+	assert.True(t, nodePath.ModulePath().Equal(PathFromString("Foo")), "module path mismatch")
 	localName := nodePath.LocalName()
-	if localName == nil {
-		t.Error("expected local name to be non-nil")
-	}
-	if !localName.Equal(NameFromParts([]string{"bar"})) {
-		t.Error("local name mismatch")
-	}
-	if len(nodePath.Segments()) != 0 {
-		t.Error("expected no segments")
-	}
+	require.NotNil(t, localName, "expected local name to be non-nil")
+	assert.True(t, localName.Equal(NameFromParts([]string{"bar"})), "local name mismatch")
+	assert.Len(t, nodePath.Segments(), 0, "expected no segments")
 }
 
 func TestNodePathFromQualifiedModuleName(t *testing.T) {
@@ -40,18 +33,10 @@ func TestNodePathFromQualifiedModuleName(t *testing.T) {
 
 	nodePath := NodePathFromQualifiedModuleName(qName)
 
-	if !nodePath.PackagePath().Equal(PathFromString("My.Package")) {
-		t.Error("package path mismatch")
-	}
-	if !nodePath.ModulePath().Equal(PathFromString("Foo")) {
-		t.Error("module path mismatch")
-	}
-	if nodePath.LocalName() != nil {
-		t.Error("expected local name to be nil for module-level path")
-	}
-	if len(nodePath.Segments()) != 0 {
-		t.Error("expected no segments")
-	}
+	assert.True(t, nodePath.PackagePath().Equal(PathFromString("My.Package")), "package path mismatch")
+	assert.True(t, nodePath.ModulePath().Equal(PathFromString("Foo")), "module path mismatch")
+	assert.Nil(t, nodePath.LocalName(), "expected local name to be nil for module-level path")
+	assert.Len(t, nodePath.Segments(), 0, "expected no segments")
 }
 
 func TestNodePathFromParts(t *testing.T) {
@@ -65,20 +50,13 @@ func TestNodePathFromParts(t *testing.T) {
 
 	nodePath := NodePathFromParts(packagePath, modulePath, &localName, segments)
 
-	if !nodePath.PackagePath().Equal(packagePath) {
-		t.Error("package path mismatch")
-	}
-	if !nodePath.ModulePath().Equal(modulePath) {
-		t.Error("module path mismatch")
-	}
+	assert.True(t, nodePath.PackagePath().Equal(packagePath), "package path mismatch")
+	assert.True(t, nodePath.ModulePath().Equal(modulePath), "module path mismatch")
 	gotLocalName := nodePath.LocalName()
-	if gotLocalName == nil || !gotLocalName.Equal(localName) {
-		t.Error("local name mismatch")
-	}
+	require.NotNil(t, gotLocalName, "expected local name to be non-nil")
+	assert.True(t, gotLocalName.Equal(localName), "local name mismatch")
 	gotSegments := nodePath.Segments()
-	if len(gotSegments) != 2 {
-		t.Errorf("segments: got %d, want 2", len(gotSegments))
-	}
+	assert.Len(t, gotSegments, 2, "segments length mismatch")
 }
 
 func TestNodePathFromParts_ModuleLevel(t *testing.T) {
@@ -87,9 +65,7 @@ func TestNodePathFromParts_ModuleLevel(t *testing.T) {
 
 	nodePath := NodePathFromParts(packagePath, modulePath, nil, nil)
 
-	if nodePath.LocalName() != nil {
-		t.Error("expected local name to be nil")
-	}
+	assert.Nil(t, nodePath.LocalName(), "expected local name to be nil")
 }
 
 func TestNodePath_PackagePath(t *testing.T) {
@@ -100,9 +76,7 @@ func TestNodePath_PackagePath(t *testing.T) {
 	))
 
 	path := nodePath.PackagePath()
-	if !path.Equal(PathFromString("Test.Package")) {
-		t.Error("PackagePath mismatch")
-	}
+	assert.True(t, path.Equal(PathFromString("Test.Package")), "PackagePath mismatch")
 }
 
 func TestNodePath_ModulePath(t *testing.T) {
@@ -113,9 +87,7 @@ func TestNodePath_ModulePath(t *testing.T) {
 	))
 
 	path := nodePath.ModulePath()
-	if !path.Equal(PathFromString("Module")) {
-		t.Error("ModulePath mismatch")
-	}
+	assert.True(t, path.Equal(PathFromString("Module")), "ModulePath mismatch")
 }
 
 func TestNodePath_LocalName(t *testing.T) {
@@ -127,18 +99,12 @@ func TestNodePath_LocalName(t *testing.T) {
 	))
 
 	got := nodePath.LocalName()
-	if got == nil {
-		t.Error("expected local name to be non-nil")
-	}
-	if !got.Equal(localName) {
-		t.Error("LocalName mismatch")
-	}
+	require.NotNil(t, got, "expected local name to be non-nil")
+	assert.True(t, got.Equal(localName), "LocalName mismatch")
 
 	// Test defensive copy
 	got2 := nodePath.LocalName()
-	if got == got2 {
-		t.Error("LocalName should return defensive copy")
-	}
+	assert.NotSame(t, got, got2, "LocalName should return defensive copy")
 }
 
 func TestNodePath_LocalName_Nil(t *testing.T) {
@@ -147,9 +113,7 @@ func TestNodePath_LocalName_Nil(t *testing.T) {
 		PathFromString("Module"),
 	))
 
-	if nodePath.LocalName() != nil {
-		t.Error("expected local name to be nil for module-level path")
-	}
+	assert.Nil(t, nodePath.LocalName(), "expected local name to be nil for module-level path")
 }
 
 func TestNodePath_Segments(t *testing.T) {
@@ -165,15 +129,11 @@ func TestNodePath_Segments(t *testing.T) {
 	)
 
 	got := nodePath.Segments()
-	if len(got) != 2 {
-		t.Errorf("Segments: got %d, want 2", len(got))
-	}
+	assert.Len(t, got, 2, "Segments length mismatch")
 
 	// Test defensive copy
 	got2 := nodePath.Segments()
-	if len(got2) != 2 {
-		t.Error("Segments should return defensive copy")
-	}
+	assert.Len(t, got2, 2, "Segments should return defensive copy")
 }
 
 func TestNodePath_Segments_Empty(t *testing.T) {
@@ -184,9 +144,7 @@ func TestNodePath_Segments_Empty(t *testing.T) {
 	))
 
 	segments := nodePath.Segments()
-	if segments != nil {
-		t.Error("expected nil for empty segments")
-	}
+	assert.Nil(t, segments, "expected nil for empty segments")
 }
 
 func TestNodePath_ToFQName(t *testing.T) {
@@ -198,13 +156,9 @@ func TestNodePath_ToFQName(t *testing.T) {
 	nodePath := NodePathFromFQName(fqName)
 
 	got, err := nodePath.ToFQName()
-	if err != nil {
-		t.Fatalf("ToFQName: unexpected error: %v", err)
-	}
+	require.NoError(t, err, "ToFQName: unexpected error")
 
-	if !got.Equal(fqName) {
-		t.Error("ToFQName: result mismatch")
-	}
+	assert.True(t, got.Equal(fqName), "ToFQName: result mismatch")
 }
 
 func TestNodePath_ToFQName_ModuleLevel(t *testing.T) {
@@ -214,9 +168,7 @@ func TestNodePath_ToFQName_ModuleLevel(t *testing.T) {
 	))
 
 	_, err := nodePath.ToFQName()
-	if err == nil {
-		t.Error("expected error for module-level path")
-	}
+	assert.Error(t, err, "expected error for module-level path")
 }
 
 func TestNodePath_ToFQName_WithSegments(t *testing.T) {
@@ -230,9 +182,7 @@ func TestNodePath_ToFQName_WithSegments(t *testing.T) {
 	)
 
 	_, err := nodePath.ToFQName()
-	if err == nil {
-		t.Error("expected error for path with segments")
-	}
+	assert.Error(t, err, "expected error for path with segments")
 }
 
 func TestNodePath_ToQualifiedModuleName(t *testing.T) {
@@ -243,13 +193,9 @@ func TestNodePath_ToQualifiedModuleName(t *testing.T) {
 	nodePath := NodePathFromQualifiedModuleName(qName)
 
 	got, err := nodePath.ToQualifiedModuleName()
-	if err != nil {
-		t.Fatalf("ToQualifiedModuleName: unexpected error: %v", err)
-	}
+	require.NoError(t, err, "ToQualifiedModuleName: unexpected error")
 
-	if !got.Equal(qName) {
-		t.Error("ToQualifiedModuleName: result mismatch")
-	}
+	assert.True(t, got.Equal(qName), "ToQualifiedModuleName: result mismatch")
 }
 
 func TestNodePath_ToQualifiedModuleName_WithLocalName(t *testing.T) {
@@ -260,9 +206,7 @@ func TestNodePath_ToQualifiedModuleName_WithLocalName(t *testing.T) {
 	))
 
 	_, err := nodePath.ToQualifiedModuleName()
-	if err == nil {
-		t.Error("expected error for path with local name")
-	}
+	assert.Error(t, err, "expected error for path with local name")
 }
 
 func TestNodePath_ToQualifiedModuleName_WithSegments(t *testing.T) {
@@ -275,9 +219,7 @@ func TestNodePath_ToQualifiedModuleName_WithSegments(t *testing.T) {
 	)
 
 	_, err := nodePath.ToQualifiedModuleName()
-	if err == nil {
-		t.Error("expected error for path with segments")
-	}
+	assert.Error(t, err, "expected error for path with segments")
 }
 
 func TestNodePath_Equal(t *testing.T) {
@@ -289,9 +231,7 @@ func TestNodePath_Equal(t *testing.T) {
 	np1 := NodePathFromFQName(fqName)
 	np2 := NodePathFromFQName(fqName)
 
-	if !np1.Equal(np2) {
-		t.Error("expected equal NodePaths to be equal")
-	}
+	assert.True(t, np1.Equal(np2), "expected equal NodePaths to be equal")
 
 	np3 := NodePathFromFQName(FQNameFromParts(
 		PathFromString("Other.Package"),
@@ -299,9 +239,7 @@ func TestNodePath_Equal(t *testing.T) {
 		NameFromParts([]string{"bar"}),
 	))
 
-	if np1.Equal(np3) {
-		t.Error("expected different NodePaths to not be equal")
-	}
+	assert.False(t, np1.Equal(np3), "expected different NodePaths to not be equal")
 }
 
 func TestNodePath_Equal_ModuleLevel(t *testing.T) {
@@ -312,9 +250,7 @@ func TestNodePath_Equal_ModuleLevel(t *testing.T) {
 	np1 := NodePathFromQualifiedModuleName(qName)
 	np2 := NodePathFromQualifiedModuleName(qName)
 
-	if !np1.Equal(np2) {
-		t.Error("expected equal module-level NodePaths to be equal")
-	}
+	assert.True(t, np1.Equal(np2), "expected equal module-level NodePaths to be equal")
 }
 
 func TestNodePath_Equal_WithSegments(t *testing.T) {
@@ -333,9 +269,7 @@ func TestNodePath_Equal_WithSegments(t *testing.T) {
 		segments,
 	)
 
-	if !np1.Equal(np2) {
-		t.Error("expected equal NodePaths with segments to be equal")
-	}
+	assert.True(t, np1.Equal(np2), "expected equal NodePaths with segments to be equal")
 }
 
 func TestNodePath_String(t *testing.T) {
@@ -379,9 +313,7 @@ func TestNodePath_String(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			got := tc.nodePath.String()
-			if got != tc.expected {
-				t.Errorf("String: got %q, want %q", got, tc.expected)
-			}
+			assert.Equal(t, tc.expected, got, "String mismatch")
 		})
 	}
 }
@@ -413,15 +345,18 @@ func TestParseNodePath(t *testing.T) {
 		{
 			name:  "Path with segments",
 			input: "My.Package:Foo:bar:seg1:seg2",
-			expected: NodePathFromParts(
-				PathFromString("My.Package"),
-				PathFromString("Foo"),
-				func() *Name { n := NameFromParts([]string{"bar"}); return &n }(),
-				[]Name{
-					NameFromParts([]string{"seg1"}),
-					NameFromParts([]string{"seg2"}),
-				},
-			),
+			expected: func() NodePath {
+				localName := NameFromString("bar")
+				return NodePathFromParts(
+					PathFromString("My.Package"),
+					PathFromString("Foo"),
+					&localName,
+					[]Name{
+						NameFromString("seg1"),
+						NameFromString("seg2"),
+					},
+				)
+			}(),
 		},
 		{
 			name:    "Invalid - too few parts",
@@ -439,17 +374,11 @@ func TestParseNodePath(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := ParseNodePath(tc.input)
 			if tc.wantErr {
-				if err == nil {
-					t.Error("expected error")
-				}
+				assert.Error(t, err, "expected error")
 				return
 			}
-			if err != nil {
-				t.Fatalf("ParseNodePath: unexpected error: %v", err)
-			}
-			if !got.Equal(tc.expected) {
-				t.Errorf("ParseNodePath: got %v, want %v", got, tc.expected)
-			}
+			require.NoError(t, err, "ParseNodePath: unexpected error")
+			assert.True(t, got.Equal(tc.expected), "ParseNodePath: result mismatch (got %q, want %q)", got.String(), tc.expected.String())
 		})
 	}
 }
@@ -462,27 +391,21 @@ func TestNodePath_MarshalJSON(t *testing.T) {
 	))
 
 	data, err := json.Marshal(nodePath)
-	if err != nil {
-		t.Fatalf("MarshalJSON: unexpected error: %v", err)
-	}
+	require.NoError(t, err, "MarshalJSON: unexpected error")
 
 	var s string
-	if err := json.Unmarshal(data, &s); err != nil {
-		t.Fatalf("unmarshal string: unexpected error: %v", err)
-	}
+	err = json.Unmarshal(data, &s)
+	require.NoError(t, err, "unmarshal string: unexpected error")
 
-	if s != "My.Package:Foo:bar" {
-		t.Errorf("MarshalJSON: got %q, want %q", s, "My.Package:Foo:bar")
-	}
+	assert.Equal(t, "My.Package:Foo:bar", s, "MarshalJSON: result mismatch")
 }
 
 func TestNodePath_UnmarshalJSON(t *testing.T) {
 	data := []byte(`"My.Package:Foo:bar"`)
 
 	var nodePath NodePath
-	if err := json.Unmarshal(data, &nodePath); err != nil {
-		t.Fatalf("UnmarshalJSON: unexpected error: %v", err)
-	}
+	err := json.Unmarshal(data, &nodePath)
+	require.NoError(t, err, "UnmarshalJSON: unexpected error")
 
 	expected := NodePathFromFQName(FQNameFromParts(
 		PathFromString("My.Package"),
@@ -490,9 +413,7 @@ func TestNodePath_UnmarshalJSON(t *testing.T) {
 		NameFromParts([]string{"bar"}),
 	))
 
-	if !nodePath.Equal(expected) {
-		t.Error("UnmarshalJSON: result mismatch")
-	}
+	assert.True(t, nodePath.Equal(expected), "UnmarshalJSON: result mismatch")
 }
 
 func TestNodePath_UnmarshalJSON_Invalid(t *testing.T) {
@@ -523,14 +444,10 @@ func TestNodePath_UnmarshalJSON_Invalid(t *testing.T) {
 			var nodePath *NodePath
 			err := nodePath.UnmarshalJSON(tc.data)
 			if tc.wantErr {
-				if err == nil {
-					t.Error("expected error")
-				}
+				assert.Error(t, err, "expected error")
 			} else {
 				// For nil receiver, we expect an error
-				if err == nil {
-					t.Error("expected error for nil receiver")
-				}
+				assert.Error(t, err, "expected error for nil receiver")
 			}
 		})
 	}
@@ -539,7 +456,5 @@ func TestNodePath_UnmarshalJSON_Invalid(t *testing.T) {
 func TestNodePath_UnmarshalJSON_NilReceiver(t *testing.T) {
 	var nodePath *NodePath
 	err := nodePath.UnmarshalJSON([]byte(`"My.Package:Foo:bar"`))
-	if err == nil {
-		t.Error("expected error for nil receiver")
-	}
+	assert.Error(t, err, "expected error for nil receiver")
 }
