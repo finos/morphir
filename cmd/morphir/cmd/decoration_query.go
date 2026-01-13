@@ -383,11 +383,11 @@ func outputDecorationGetJSON(cmd *cobra.Command, nodePath ir.NodePath, decs map[
 
 func outputDecorationGetText(cmd *cobra.Command, nodePath ir.NodePath, decs map[decorationmodels.DecorationID]json.RawMessage) error {
 	if len(decs) == 0 {
-		fmt.Fprintf(cmd.OutOrStdout(), "No decorations found for node %q.\n", nodePath.String())
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No decorations found for node %q.\n", nodePath.String())
 		return nil
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "Decorations for %q:\n\n", nodePath.String())
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Decorations for %q:\n\n", nodePath.String())
 
 	// Sort decoration IDs for consistent output
 	decIDs := make([]string, 0, len(decs))
@@ -398,8 +398,8 @@ func outputDecorationGetText(cmd *cobra.Command, nodePath ir.NodePath, decs map[
 
 	for _, decID := range decIDs {
 		value := decs[decorationmodels.DecorationID(decID)]
-		fmt.Fprintf(cmd.OutOrStdout(), "  [%s]\n", decID)
-		fmt.Fprintf(cmd.OutOrStdout(), "    %s\n\n", string(value))
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  [%s]\n", decID)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "    %s\n\n", string(value))
 	}
 
 	return nil
@@ -412,13 +412,13 @@ func outputDecorationStatsJSON(cmd *cobra.Command, stats DecorationStats) error 
 }
 
 func outputDecorationStatsText(cmd *cobra.Command, stats DecorationStats) error {
-	fmt.Fprintf(cmd.OutOrStdout(), "Decoration Statistics:\n\n")
-	fmt.Fprintf(cmd.OutOrStdout(), "  Total Decorated Nodes: %d\n", stats.TotalNodes)
-	fmt.Fprintf(cmd.OutOrStdout(), "  Total Decorations: %d\n", stats.TotalDecorations)
-	fmt.Fprintf(cmd.OutOrStdout(), "\n  Decoration Types:\n")
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Decoration Statistics:\n\n")
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Total Decorated Nodes: %d\n", stats.TotalNodes)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Total Decorations: %d\n", stats.TotalDecorations)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\n  Decoration Types:\n")
 
 	if len(stats.DecorationTypes) == 0 {
-		fmt.Fprintf(cmd.OutOrStdout(), "    (none)\n")
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "    (none)\n")
 		return nil
 	}
 
@@ -439,7 +439,7 @@ func outputDecorationStatsText(cmd *cobra.Command, stats DecorationStats) error 
 	})
 
 	for _, tc := range counts {
-		fmt.Fprintf(cmd.OutOrStdout(), "    %s: %d node(s)\n", tc.name, tc.count)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "    %s: %d node(s)\n", tc.name, tc.count)
 	}
 
 	return nil

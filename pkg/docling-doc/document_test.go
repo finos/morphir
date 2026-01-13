@@ -162,9 +162,9 @@ func TestDocumentGetSiblings(t *testing.T) {
 	child3 := NewTextItem(Ref("child3"), "Third")
 
 	parent = parent.WithChild(Ref("child1")).WithChild(Ref("child2")).WithChild(Ref("child3"))
-	child1.DocItem = child1.DocItem.WithParent(Ref("parent"))
-	child2.DocItem = child2.DocItem.WithParent(Ref("parent"))
-	child3.DocItem = child3.DocItem.WithParent(Ref("parent"))
+	child1.DocItem = child1.WithParent(Ref("parent"))
+	child2.DocItem = child2.WithParent(Ref("parent"))
+	child3.DocItem = child3.WithParent(Ref("parent"))
 
 	doc = doc.WithItem(parent).WithItem(child1).WithItem(child2).WithItem(child3)
 
@@ -188,8 +188,8 @@ func TestDocumentGetDescendants(t *testing.T) {
 
 	root = root.WithChild(Ref("section1"))
 	section = section.WithParent(Ref("root")).WithChild(Ref("para1")).WithChild(Ref("para2"))
-	para1.DocItem = para1.DocItem.WithParent(Ref("section1"))
-	para2.DocItem = para2.DocItem.WithParent(Ref("section1"))
+	para1.DocItem = para1.WithParent(Ref("section1"))
+	para2.DocItem = para2.WithParent(Ref("section1"))
 
 	doc = doc.WithItem(root).WithItem(section).WithItem(para1).WithItem(para2)
 
@@ -207,7 +207,7 @@ func TestDocumentGetAncestors(t *testing.T) {
 
 	root = root.WithChild(Ref("section1"))
 	section = section.WithParent(Ref("root")).WithChild(Ref("para1"))
-	para.DocItem = para.DocItem.WithParent(Ref("section1"))
+	para.DocItem = para.WithParent(Ref("section1"))
 
 	doc = doc.WithItem(root).WithItem(section).WithItem(para)
 
@@ -231,7 +231,7 @@ func TestDocumentIsAncestorOf(t *testing.T) {
 
 	root = root.WithChild(Ref("section1"))
 	section = section.WithParent(Ref("root")).WithChild(Ref("para1"))
-	para.DocItem = para.DocItem.WithParent(Ref("section1"))
+	para.DocItem = para.WithParent(Ref("section1"))
 
 	doc = doc.WithItem(root).WithItem(section).WithItem(para)
 

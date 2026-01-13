@@ -247,13 +247,13 @@ func runWitMake(cmd *cobra.Command, args []string) error {
 		if err := os.WriteFile(witOutputPath, irJSON, 0644); err != nil {
 			return fmt.Errorf("failed to write IR: %w", err)
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Wrote IR to %s\n", witOutputPath)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Wrote IR to %s\n", witOutputPath)
 	}
 
 	// Success message
 	successStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
-	fmt.Fprintf(cmd.OutOrStdout(), "%s Compiled WIT to Morphir IR\n", successStyle.Render("SUCCESS"))
-	fmt.Fprintf(cmd.OutOrStdout(), "  Types: %d, Values: %d\n",
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s Compiled WIT to Morphir IR\n", successStyle.Render("SUCCESS"))
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Types: %d, Values: %d\n",
 		len(output.Module.Types()), len(output.Module.Values()))
 
 	return nil
@@ -335,8 +335,8 @@ func runWitGen(cmd *cobra.Command, args []string) error {
 
 	// For demonstration, show that gen step exists
 	// Full implementation would parse IR JSON and run the gen step
-	fmt.Fprintf(cmd.ErrOrStderr(), "Note: Full IR JSON parsing not yet implemented.\n")
-	fmt.Fprintf(cmd.ErrOrStderr(), "The gen step exists in pkg/bindings/wit/pipeline/gen.go\n")
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Note: Full IR JSON parsing not yet implemented.\n")
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "The gen step exists in pkg/bindings/wit/pipeline/gen.go\n")
 
 	return fmt.Errorf("IR JSON parsing not yet implemented - use build command for round-trip")
 }
@@ -409,7 +409,7 @@ func runWitBuild(cmd *cobra.Command, args []string) error {
 		if err := os.WriteFile(witOutputPath, []byte(output.Gen.Source), 0644); err != nil {
 			return fmt.Errorf("failed to write WIT: %w", err)
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Wrote WIT to %s\n", witOutputPath)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Wrote WIT to %s\n", witOutputPath)
 	} else {
 		// Print generated WIT to stdout
 		_, _ = fmt.Fprintln(cmd.OutOrStdout(), output.Gen.Source)
@@ -418,10 +418,10 @@ func runWitBuild(cmd *cobra.Command, args []string) error {
 	// Success/validation message
 	if output.RoundTripValid {
 		successStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
-		fmt.Fprintf(cmd.OutOrStdout(), "%s Round-trip validation passed\n", successStyle.Render("VALID"))
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s Round-trip validation passed\n", successStyle.Render("VALID"))
 	} else {
 		warnStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Bold(true)
-		fmt.Fprintf(cmd.OutOrStdout(), "%s Round-trip produced different output (lossy conversion)\n", warnStyle.Render("WARN"))
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s Round-trip produced different output (lossy conversion)\n", warnStyle.Render("WARN"))
 	}
 
 	return nil
@@ -593,7 +593,7 @@ func outputBuildJSON(cmd *cobra.Command, output witpipeline.BuildOutput, result 
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(data))
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(data))
 	return nil
 }
 
@@ -804,6 +804,6 @@ func writeJSONL(cmd *cobra.Command, v any) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSONL: %w", err)
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(data))
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(data))
 	return nil
 }
