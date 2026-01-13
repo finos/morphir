@@ -4,7 +4,11 @@
 
 import { $, Glob } from "bun";
 import { existsSync, mkdirSync, copyFileSync } from "fs";
-import { dirname } from "path";
+import { dirname, resolve } from "path";
+
+// Get absolute path to repo root
+const repoRoot = process.cwd();
+const testResultsDir = resolve(repoRoot, "test-results");
 
 async function syncChangelog() {
   const src = "CHANGELOG.md";
@@ -29,8 +33,8 @@ async function main() {
   await syncChangelog();
 
   // Ensure output directory exists
-  if (!existsSync("test-results")) {
-    mkdirSync("test-results", { recursive: true });
+  if (!existsSync(testResultsDir)) {
+    mkdirSync(testResultsDir, { recursive: true });
   }
 
   console.log("Running tests with JUnit output...");
@@ -46,11 +50,13 @@ async function main() {
     if (!existsSync(dir)) continue;
 
     const safeName = dir.replace(/\//g, "-");
+    const coverageFile = resolve(repoRoot, `coverage-${safeName}.out`);
+    const resultsFile = resolve(testResultsDir, `${safeName}.json`);
     console.log(`Testing ${dir}...`);
 
     try {
-      // Run tests with coverage and save results
-      await $`go test -v -coverprofile=coverage-${safeName}.out -json ./... 2>&1 | tee test-results/${safeName}.json`.cwd(dir);
+      // Run tests with coverage and save results (use absolute paths)
+      await $`go test -v -coverprofile=${coverageFile} -json ./... 2>&1 | tee ${resultsFile}`.cwd(dir);
     } catch (err) {
       console.error(`Tests failed in ${dir}`);
       failed = true;
