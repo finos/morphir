@@ -10,6 +10,9 @@ deno = "latest"  # Provides deno run npm:
 yarn = "4"       # Provides yarn dlx (Yarn Berry)
 pnpm = "latest"  # Provides pnpm dlx
 
+# Development tools
+golangci-lint = "latest"  # Go linter aggregator
+
 # =============================================================================
 # Documentation Tasks
 # =============================================================================

@@ -7,6 +7,44 @@ import (
 	"os"
 )
 
+// DecorationConfig represents a single decoration configuration.
+//
+// Example:
+//
+//	{
+//	    "displayName": "My Amazing Decoration",
+//	    "ir": "decorations/my/morphir-ir.json",
+//	    "entryPoint": "My.Amazing.Decoration:Foo:Shape",
+//	    "storageLocation": "my-decoration-values.json"
+//	}
+type DecorationConfig struct {
+	displayName     string
+	ir              string
+	entryPoint      string
+	storageLocation string
+}
+
+// DisplayName returns the display name of the decoration.
+func (d DecorationConfig) DisplayName() string {
+	return d.displayName
+}
+
+// IR returns the path to the decoration IR file.
+func (d DecorationConfig) IR() string {
+	return d.ir
+}
+
+// EntryPoint returns the fully-qualified name (FQName) of the decoration type.
+// Format: PackageName:ModuleName:TypeName
+func (d DecorationConfig) EntryPoint() string {
+	return d.entryPoint
+}
+
+// StorageLocation returns the path where decoration values are stored.
+func (d DecorationConfig) StorageLocation() string {
+	return d.storageLocation
+}
+
 // MorphirJSON represents the legacy morphir.json configuration format
 // used by finos/morphir-elm.
 //
@@ -15,12 +53,21 @@ import (
 //	{
 //	    "name": "My.Package",
 //	    "sourceDirectory": "src",
-//	    "exposedModules": ["Foo", "Bar"]
+//	    "exposedModules": ["Foo", "Bar"],
+//	    "decorations": {
+//	        "myDecoration": {
+//	            "displayName": "My Amazing Decoration",
+//	            "ir": "decorations/my/morphir-ir.json",
+//	            "entryPoint": "My.Amazing.Decoration:Foo:Shape",
+//	            "storageLocation": "my-decoration-values.json"
+//	        }
+//	    }
 //	}
 type MorphirJSON struct {
 	name            string
 	sourceDirectory string
 	exposedModules  []string
+	decorations     map[string]DecorationConfig
 }
 
 // Name returns the package name.
@@ -44,11 +91,33 @@ func (m MorphirJSON) ExposedModules() []string {
 	return result
 }
 
+// Decorations returns the map of decoration configurations.
+// Returns a defensive copy to preserve immutability.
+func (m MorphirJSON) Decorations() map[string]DecorationConfig {
+	if len(m.decorations) == 0 {
+		return nil
+	}
+	result := make(map[string]DecorationConfig, len(m.decorations))
+	for k, v := range m.decorations {
+		result[k] = v
+	}
+	return result
+}
+
+// decorationConfigRaw is the internal struct for JSON unmarshaling of decoration configs.
+type decorationConfigRaw struct {
+	DisplayName     string `json:"displayName"`
+	IR              string `json:"ir"`
+	EntryPoint      string `json:"entryPoint"`
+	StorageLocation string `json:"storageLocation"`
+}
+
 // morphirJSONRaw is the internal struct for JSON unmarshaling.
 type morphirJSONRaw struct {
-	Name            string   `json:"name"`
-	SourceDirectory string   `json:"sourceDirectory"`
-	ExposedModules  []string `json:"exposedModules"`
+	Name            string                         `json:"name"`
+	SourceDirectory string                         `json:"sourceDirectory"`
+	ExposedModules  []string                       `json:"exposedModules"`
+	Decorations     map[string]decorationConfigRaw `json:"decorations"`
 }
 
 // Validation errors for MorphirJSON.
@@ -93,10 +162,25 @@ func validateAndConvert(raw morphirJSONRaw) (MorphirJSON, error) {
 		copy(modules, raw.ExposedModules)
 	}
 
+	// Copy decorations for immutability
+	var decorations map[string]DecorationConfig
+	if len(raw.Decorations) > 0 {
+		decorations = make(map[string]DecorationConfig, len(raw.Decorations))
+		for k, v := range raw.Decorations {
+			decorations[k] = DecorationConfig{
+				displayName:     v.DisplayName,
+				ir:              v.IR,
+				entryPoint:      v.EntryPoint,
+				storageLocation: v.StorageLocation,
+			}
+		}
+	}
+
 	return MorphirJSON{
 		name:            raw.Name,
 		sourceDirectory: raw.SourceDirectory,
 		exposedModules:  modules,
+		decorations:     decorations,
 	}, nil
 }
 
@@ -110,5 +194,6 @@ func (m MorphirJSON) ToProjectSection() ProjectSection {
 		sourceDirectory: m.sourceDirectory,
 		exposedModules:  m.ExposedModules(), // Use getter for defensive copy
 		modulePrefix:    m.name,             // Elm-style name doubles as prefix
+		decorations:     m.Decorations(),    // Use getter for defensive copy
 	}
 }

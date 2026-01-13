@@ -108,11 +108,12 @@ func (s MorphirSection) Version() string {
 
 // ProjectSection contains project-related settings for single-project configurations.
 type ProjectSection struct {
-	name            string   // Flexible project identifier (required)
-	version         string   // Project version (optional)
-	sourceDirectory string   // Source directory path (required)
-	exposedModules  []string // Modules exposed by this project (required)
-	modulePrefix    string   // Optional module prefix
+	name            string                      // Flexible project identifier (required)
+	version         string                      // Project version (optional)
+	sourceDirectory string                      // Source directory path (required)
+	exposedModules  []string                    // Modules exposed by this project (required)
+	modulePrefix    string                      // Optional module prefix
+	decorations     map[string]DecorationConfig // Decoration configurations (optional)
 }
 
 // Name returns the project identifier.
@@ -144,6 +145,19 @@ func (s ProjectSection) ExposedModules() []string {
 // ModulePrefix returns the optional module prefix.
 func (s ProjectSection) ModulePrefix() string {
 	return s.modulePrefix
+}
+
+// Decorations returns the decoration configurations.
+// Returns a defensive copy to preserve immutability.
+func (s ProjectSection) Decorations() map[string]DecorationConfig {
+	if len(s.decorations) == 0 {
+		return nil
+	}
+	result := make(map[string]DecorationConfig, len(s.decorations))
+	for k, v := range s.decorations {
+		result[k] = v
+	}
+	return result
 }
 
 // WorkspaceSection contains workspace-related settings.
@@ -1129,7 +1143,43 @@ func projectFromMap(m map[string]any, def ProjectSection) ProjectSection {
 	if v, ok := section["module_prefix"].(string); ok {
 		def.modulePrefix = v
 	}
+	def.decorations = decorationsFromMap(section)
 	return def
+}
+
+// decorationsFromMap parses decoration configurations from a map.
+func decorationsFromMap(section map[string]any) map[string]DecorationConfig {
+	decorationsRaw, ok := section["decorations"].(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	decorations := make(map[string]DecorationConfig, len(decorationsRaw))
+	for key, val := range decorationsRaw {
+		decMap, ok := val.(map[string]any)
+		if !ok {
+			continue
+		}
+		dec := DecorationConfig{}
+		if v, ok := decMap["display_name"].(string); ok {
+			dec.displayName = v
+		}
+		if v, ok := decMap["ir"].(string); ok {
+			dec.ir = v
+		}
+		if v, ok := decMap["entry_point"].(string); ok {
+			dec.entryPoint = v
+		}
+		if v, ok := decMap["storage_location"].(string); ok {
+			dec.storageLocation = v
+		}
+		decorations[key] = dec
+	}
+
+	if len(decorations) == 0 {
+		return nil
+	}
+	return decorations
 }
 
 func workspaceFromMap(m map[string]any, def WorkspaceSection) WorkspaceSection {

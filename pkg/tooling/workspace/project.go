@@ -62,6 +62,11 @@ func (p Project) ModulePrefix() string {
 	return p.projectConfig.ModulePrefix()
 }
 
+// Decorations returns the decoration configurations for this project.
+func (p Project) Decorations() map[string]config.DecorationConfig {
+	return p.projectConfig.Decorations()
+}
+
 // Config returns the underlying ProjectSection configuration.
 func (p Project) Config() config.ProjectSection {
 	return p.projectConfig
