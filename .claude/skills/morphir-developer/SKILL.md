@@ -1,6 +1,7 @@
 ---
 name: morphir-developer
 description: Helps with Morphir Go development including workspace setup, go.work management, branch/worktree handling, TDD/BDD workflow, and pre-commit checks. Use when setting up development environment or working on Morphir code.
+user-invocable: true
 ---
 
 # Morphir Developer Skill
