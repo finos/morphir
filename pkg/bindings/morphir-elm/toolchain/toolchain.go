@@ -43,6 +43,10 @@ func MorphirElmToolchainWithVersion(version string) toolchain.Toolchain {
 			makeMakeTask(),
 			makeGenTask(),
 		},
+		AutoEnable: func(ctx toolchain.AutoEnableContext) bool {
+			// Enable morphir-elm if elm.json or morphir.json exists
+			return ctx.HasAnyFile("elm.json", "morphir.json")
+		},
 	}
 }
 

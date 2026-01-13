@@ -14,6 +14,9 @@ func RegisterWorkflowSteps(sc *godog.ScenarioContext) {
 	sc.Step(`^a morphir\.toml using the built-in morphir-elm toolchain:$`, aMorphirTomlUsingBuiltInToolchain)
 	sc.Step(`^a minimal morphir\.toml for build workflow:$`, aMinimalMorphirTomlForBuild)
 	sc.Step(`^a morphir\.toml with make and gen stages:$`, aMorphirTomlWithMakeAndGenStages)
+	sc.Step(`^a morphir\.toml with target resolution:$`, aMorphirTomlWithTargetResolution)
+	sc.Step(`^a morphir\.toml with disabled morphir-elm:$`, aMorphirTomlWithDisabledMorphirElm)
+	sc.Step(`^a morphir\.toml using direct task reference:$`, aMorphirTomlUsingDirectTaskRef)
 }
 
 // aMorphirTomlUsingBuiltInToolchain creates a morphir.toml that uses the built-in morphir-elm toolchain.
@@ -43,6 +46,42 @@ func aMinimalMorphirTomlForBuild(ctx context.Context, content *godog.DocString) 
 
 // aMorphirTomlWithMakeAndGenStages creates a morphir.toml with both make and gen stages.
 func aMorphirTomlWithMakeAndGenStages(ctx context.Context, content *godog.DocString) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	configPath := filepath.Join(ctc.WorkDir, "morphir.toml")
+	return os.WriteFile(configPath, []byte(content.Content), 0644)
+}
+
+// aMorphirTomlWithTargetResolution creates a morphir.toml that uses target resolution (not direct refs).
+// This tests auto-enablement of toolchains based on project context.
+func aMorphirTomlWithTargetResolution(ctx context.Context, content *godog.DocString) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	configPath := filepath.Join(ctc.WorkDir, "morphir.toml")
+	return os.WriteFile(configPath, []byte(content.Content), 0644)
+}
+
+// aMorphirTomlWithDisabledMorphirElm creates a morphir.toml with morphir-elm explicitly disabled.
+// This tests explicit toolchain enablement configuration.
+func aMorphirTomlWithDisabledMorphirElm(ctx context.Context, content *godog.DocString) error {
+	ctc, err := GetCLITestContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	configPath := filepath.Join(ctc.WorkDir, "morphir.toml")
+	return os.WriteFile(configPath, []byte(content.Content), 0644)
+}
+
+// aMorphirTomlUsingDirectTaskRef creates a morphir.toml that uses direct task references.
+// This tests that direct task references (toolchain/task) bypass target resolution.
+func aMorphirTomlUsingDirectTaskRef(ctx context.Context, content *godog.DocString) error {
 	ctc, err := GetCLITestContext(ctx)
 	if err != nil {
 		return err

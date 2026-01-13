@@ -53,6 +53,10 @@ func GolangToolchain() toolchain.Toolchain {
 				},
 			},
 		},
+		AutoEnable: func(ctx toolchain.AutoEnableContext) bool {
+			// Enable golang toolchain if go.mod or go.work exists
+			return ctx.HasAnyFile("go.mod", "go.work")
+		},
 	}
 }
 

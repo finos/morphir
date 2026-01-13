@@ -1,9 +1,14 @@
-@toolchain @workflow @integration @pending
+@toolchain @workflow @integration
 Feature: Workflow Execution with Built-in Toolchains
-  # NOTE: These scenarios are pending implementation of the toolchain enablement design.
-  # See docs/design/toolchain-enablement.md for the design specification.
   The morphir toolchain executes workflows that invoke built-in toolchains
   like morphir-elm to compile source code and generate artifacts.
+
+  Built-in toolchains support auto-enablement based on project detection:
+  - morphir-elm: auto-enables when elm.json or morphir.json exists
+  - golang: auto-enables when go.mod or go.work exists
+  - wit: auto-enables when *.wit files exist
+
+  Toolchains can also be explicitly enabled/disabled in morphir.toml.
 
   Background:
     Given the morphir CLI is available
@@ -89,7 +94,7 @@ Feature: Workflow Execution with Built-in Toolchains
 
   Rule: Workflow failure handling
 
-    Scenario: Ambiguous target produces clear error
+    Scenario: Target with no enabled toolchains produces clear error
       Given I am in a temporary directory
       And a minimal morphir.toml for build workflow:
         """
@@ -102,7 +107,7 @@ Feature: Workflow Execution with Built-in Toolchains
         """
       When I run morphir plan build --run
       Then the command should fail
-      And the output should contain "multiple tasks fulfill target"
+      And the output should contain "no task fulfills target"
 
   Rule: Workflow with multiple stages
 
@@ -129,3 +134,63 @@ Feature: Workflow Execution with Built-in Toolchains
       And the output should contain "generate"
       And the output should contain "morphir-elm/make"
       And the output should contain "morphir-elm/gen"
+
+  Rule: Toolchain auto-enablement
+
+    @slow
+    Scenario: morphir-elm auto-enables when elm.json exists
+      Given I am in the morphir-elm-compat example directory
+      And no morphir-ir.json file exists
+      And a morphir.toml with target resolution:
+        """
+        [workflows.build]
+        description = "Build workflow using target resolution"
+
+        [[workflows.build.stages]]
+        name = "compile"
+        targets = ["make"]
+        """
+      When I run morphir plan build --run
+      Then the command should succeed
+      And the output should contain "morphir-elm/make"
+      And a file should exist at "morphir-ir.json"
+
+  Rule: Explicit toolchain enablement
+
+    Scenario: Explicitly disabled toolchain is not used
+      Given I am in the morphir-elm-compat example directory
+      And a morphir.toml with disabled morphir-elm:
+        """
+        [toolchains.morphir-elm]
+        enabled = false
+
+        [workflows.build]
+        description = "Build workflow"
+
+        [[workflows.build.stages]]
+        name = "compile"
+        targets = ["make"]
+        """
+      When I run morphir plan build --run
+      Then the command should fail
+      And the output should contain "no task fulfills target"
+
+  Rule: Direct task references bypass target resolution
+
+    @slow
+    Scenario: Direct task reference works regardless of auto-enable
+      Given I am in the morphir-elm-compat example directory
+      And no morphir-ir.json file exists
+      And a morphir.toml using direct task reference:
+        """
+        [workflows.build]
+        description = "Build with direct task reference"
+
+        [[workflows.build.stages]]
+        name = "compile"
+        targets = ["morphir-elm/make"]
+        """
+      When I run morphir plan build --run
+      Then the command should succeed
+      And the output should contain "morphir-elm/make"
+      And a file should exist at "morphir-ir.json"
