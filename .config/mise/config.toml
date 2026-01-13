@@ -7,11 +7,11 @@ go = "1.25.5"
 python = "3.14.2"
 
 # JavaScript runtimes and package managers (for toolchain backend tests)
-node = "24"      # Provides npm and npx
-bun = "latest"   # Provides bunx - used for TypeScript task execution
-deno = "latest"  # Provides deno run npm:
-yarn = "4"       # Provides yarn dlx (Yarn Berry)
-pnpm = "latest"  # Provides pnpm dlx
+node = "24.13.0" # Provides npm and npx
+bun = "1.3.6"    # Provides bunx - used for TypeScript task execution
+deno = "2.6.4"   # Provides deno run npm:
+yarn = "4.12.0"  # Provides yarn dlx (Yarn Berry)
+pnpm = "10.28.0" # Provides pnpm dlx
 
 # Development tools
-golangci-lint = "latest"  # Go linter aggregator
+golangci-lint = "2.8.0"   # Go linter aggregator
