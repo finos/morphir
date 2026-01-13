@@ -41,9 +41,15 @@ async function main() {
     }
   }
 
-  // Run go work sync
+  // Run go work sync (skip if versions not yet published - common for release PRs)
   console.log("Syncing workspace...");
-  await $`go work sync`;
+  try {
+    await $`go work sync`;
+  } catch (err) {
+    console.warn("  Warning: go work sync failed (versions may not be published yet)");
+    console.warn("  This is expected for release PRs with cross-module version bumps");
+    console.warn("  Local development will use workspace modules directly");
+  }
 
   console.log("");
   console.log("Workspace setup complete!");
