@@ -61,7 +61,7 @@ func runDecorationValidate(cmd *cobra.Command, args []string) error {
 	if len(decorationsConfig) == 0 {
 		if decorationValidateJSON {
 			fmt.Fprintf(cmd.OutOrStdout(), `{"valid":true,"errors":[],"message":"no decorations configured"}`)
-			fmt.Fprintln(cmd.OutOrStdout())
+			_, _ = fmt.Fprintln(cmd.OutOrStdout())
 			return nil
 		}
 		fmt.Fprintf(cmd.ErrOrStderr(), "No decorations configured in project\n")

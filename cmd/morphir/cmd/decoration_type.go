@@ -79,9 +79,9 @@ func init() {
 	decorationTypeRegisterCmd.Flags().StringVar(&decorationTypeRegisterDisplayName, "display-name", "", "Display name for the decoration (required)")
 	decorationTypeRegisterCmd.Flags().StringVar(&decorationTypeRegisterDescription, "description", "", "Description of the decoration")
 	decorationTypeRegisterCmd.Flags().BoolVar(&decorationTypeRegisterGlobal, "global", false, "Register in global registry instead of workspace")
-	decorationTypeRegisterCmd.MarkFlagRequired("ir")
-	decorationTypeRegisterCmd.MarkFlagRequired("entry-point")
-	decorationTypeRegisterCmd.MarkFlagRequired("display-name")
+	_ = decorationTypeRegisterCmd.MarkFlagRequired("ir")
+	_ = decorationTypeRegisterCmd.MarkFlagRequired("entry-point")
+	_ = decorationTypeRegisterCmd.MarkFlagRequired("display-name")
 
 	decorationTypeCmd.AddCommand(decorationTypeListCmd)
 	decorationTypeListCmd.Flags().BoolVar(&decorationTypeListJSON, "json", false, "Output as JSON")
