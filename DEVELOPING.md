@@ -153,6 +153,61 @@ gh pr create
 
 ## Common Tasks
 
+### Adding a New Go Module
+
+When creating a new Go module in the monorepo (e.g., `pkg/newmodule`), follow this checklist:
+
+**1. Create the module:**
+```bash
+mkdir -p pkg/newmodule
+cd pkg/newmodule
+
+# Initialize the module
+go mod init github.com/finos/morphir/pkg/newmodule
+
+# Create doc.go with package documentation
+cat > doc.go << 'EOF'
+// Package newmodule provides...
+package newmodule
+EOF
+```
+
+**2. Add to the Go workspace (local development):**
+```bash
+cd ../..  # Return to repo root
+go work use ./pkg/newmodule
+```
+
+**3. Add to `.goreleaser.yaml` hooks:**
+
+Edit `.goreleaser.yaml` and add a `go mod tidy` entry in the `before.hooks` section:
+```yaml
+before:
+  hooks:
+    # ... existing hooks ...
+    - go mod tidy -C pkg/newmodule  # Add this line
+```
+
+**4. Validate the setup:**
+```bash
+mise run release:validate
+```
+
+This checks that:
+- All modules are synced with `.goreleaser.yaml`
+- All hook scripts exist
+- Module dependencies are correct
+
+**5. For first release of the module:**
+
+The module needs a tag before other modules can depend on it via published versions:
+```bash
+# Tags are created during release using:
+mise run release:tags create v0.X.Y
+```
+
+Until tagged, use `go.work` for local development - avoid adding pseudo-version dependencies.
+
 ### Adding a New Dependency
 
 ```bash
