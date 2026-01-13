@@ -1,0 +1,4 @@
+{
+  "InvalidFQName": true,
+  "Test.Package:Foo": "not a boolean"
+}

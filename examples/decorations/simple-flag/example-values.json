@@ -1,0 +1,5 @@
+{
+  "My.Package:Foo:bar": true,
+  "My.Package:Foo:baz": false,
+  "My.Package:Bar:qux": true
+}

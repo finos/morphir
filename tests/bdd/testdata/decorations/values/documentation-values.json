@@ -1,0 +1,17 @@
+{
+  "Test.Package:Foo:bar": {
+    "description": "Test function with documentation",
+    "tags": ["test", "example"],
+    "links": [
+      {
+        "label": "Test Link",
+        "url": "https://example.com/test"
+      }
+    ]
+  },
+  "Test.Package:Foo:baz": {
+    "description": "Another test function",
+    "tags": ["utility"],
+    "links": []
+  }
+}

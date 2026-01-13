@@ -1,0 +1,5 @@
+[project]
+name = "Simple.Flag.Decoration"
+version = "1.0.0"
+source_directory = "src"
+exposed_modules = ["Types"]
