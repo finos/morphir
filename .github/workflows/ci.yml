@@ -64,11 +64,10 @@ jobs:
         with:
           version: 2026.1.1
 
-      # On Windows, use PowerShell scripts (mise file tasks don't work on Windows)
+      # On Windows, call bun directly (mise file tasks don't work on Windows)
       - name: Set up Go workspace (Windows)
         if: runner.os == 'Windows'
-        shell: pwsh
-        run: .\.config\mise\scripts\workspace-setup.ps1
+        run: bun .config/mise/tasks/workspace/setup.ts
 
       - name: Set up Go workspace (Unix)
         if: runner.os != 'Windows'
@@ -76,8 +75,7 @@ jobs:
 
       - name: Run tests (Windows)
         if: runner.os == 'Windows'
-        shell: pwsh
-        run: .\.config\mise\scripts\test.ps1
+        run: bun .config/mise/tasks/test.ts
 
       - name: Run tests with coverage and JUnit reports (Unix)
         if: runner.os != 'Windows'
@@ -134,11 +132,10 @@ jobs:
         with:
           version: 2026.1.1
 
-      # On Windows, use PowerShell scripts (mise file tasks don't work on Windows)
+      # On Windows, call bun directly (mise file tasks don't work on Windows)
       - name: Set up Go workspace (Windows)
         if: runner.os == 'Windows'
-        shell: pwsh
-        run: .\.config\mise\scripts\workspace-setup.ps1
+        run: bun .config/mise/tasks/workspace/setup.ts
 
       - name: Set up Go workspace (Unix)
         if: runner.os != 'Windows'
@@ -146,10 +143,9 @@ jobs:
 
       - name: Build binary (Windows)
         if: runner.os == 'Windows'
-        shell: pwsh
         env:
           GOARCH: ${{ matrix.arch }}
-        run: .\.config\mise\scripts\build.ps1
+        run: bun .config/mise/tasks/build.ts
 
       - name: Build binary (Unix)
         if: runner.os != 'Windows'
