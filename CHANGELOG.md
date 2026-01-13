@@ -25,13 +25,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated all imports to `github.com/charmbracelet/lipgloss/v2`
   - Using `compat.AdaptiveColor` for backward-compatible adaptive colors
   - Theme colors now use `lipgloss.Color()` with `color.Color` interface
-- Updated all internal module dependencies to v0.4.0-alpha.3
+- Updated all internal module dependencies to v0.4.0-alpha.4
 
 ### Infrastructure
 - Enhanced release validation with module consistency checks (#554)
   - Validates all modules have corresponding `go mod tidy` entries in `.goreleaser.yaml`
   - Checks that hook scripts referenced in `.goreleaser.yaml` exist
 - Added new Go module checklist documentation in DEVELOPING.md (#554)
+
+### Fixed
+- Workspace setup now resilient to unpublished module versions
+  - `go work sync` failures no longer block workspace setup
+  - Enables CI to work with release PRs that bump cross-module versions
 
 ## [0.4.0-alpha.3] - 2026-01-13
 
