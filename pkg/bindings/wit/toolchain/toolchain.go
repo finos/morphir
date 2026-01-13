@@ -46,6 +46,10 @@ func WITToolchain() toolchain.Toolchain {
 				},
 			},
 		},
+		AutoEnable: func(ctx toolchain.AutoEnableContext) bool {
+			// Enable wit toolchain if any .wit files exist
+			return ctx.HasAnyMatchingFiles("*.wit", "**/*.wit")
+		},
 	}
 }
 

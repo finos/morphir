@@ -7,6 +7,78 @@ import (
 	"github.com/finos/morphir/pkg/vfs"
 )
 
+// AutoEnableContext provides context for toolchain auto-enable detection.
+type AutoEnableContext struct {
+	// VFS is the virtual filesystem for checking file existence
+	VFS vfs.VFS
+
+	// ProjectRoot is the root path of the project in the VFS
+	ProjectRoot vfs.VPath
+}
+
+// FileExists checks if a file exists at the given path relative to ProjectRoot.
+func (ctx AutoEnableContext) FileExists(relativePath string) bool {
+	path, err := ctx.ProjectRoot.Join(relativePath)
+	if err != nil {
+		return false
+	}
+	entry, _, err := ctx.VFS.Resolve(path)
+	if err != nil {
+		return false
+	}
+	return entry.Kind() == vfs.KindFile
+}
+
+// HasAllFiles checks if all the given files exist relative to ProjectRoot.
+func (ctx AutoEnableContext) HasAllFiles(relativePaths ...string) bool {
+	for _, p := range relativePaths {
+		if !ctx.FileExists(p) {
+			return false
+		}
+	}
+	return true
+}
+
+// HasAnyFile checks if any of the given files exist relative to ProjectRoot.
+func (ctx AutoEnableContext) HasAnyFile(relativePaths ...string) bool {
+	for _, p := range relativePaths {
+		if ctx.FileExists(p) {
+			return true
+		}
+	}
+	return false
+}
+
+// HasMatchingFiles checks if any files match the given glob pattern relative to ProjectRoot.
+func (ctx AutoEnableContext) HasMatchingFiles(pattern string) bool {
+	// Construct absolute glob pattern from ProjectRoot
+	fullPattern := ctx.ProjectRoot.String()
+	if fullPattern == "/" {
+		fullPattern = "/" + pattern
+	} else {
+		fullPattern = fullPattern + "/" + pattern
+	}
+	glob, err := vfs.ParseGlob(fullPattern)
+	if err != nil {
+		return false
+	}
+	entries, err := ctx.VFS.Find(glob, vfs.FindOptions{})
+	if err != nil {
+		return false
+	}
+	return len(entries) > 0
+}
+
+// HasAnyMatchingFiles checks if any of the given glob patterns match files.
+func (ctx AutoEnableContext) HasAnyMatchingFiles(patterns ...string) bool {
+	for _, p := range patterns {
+		if ctx.HasMatchingFiles(p) {
+			return true
+		}
+	}
+	return false
+}
+
 // Toolchain represents a tool adapter that provides tasks and capabilities.
 type Toolchain struct {
 	// Name is the unique identifier for this toolchain (e.g., "morphir-elm", "wit")
@@ -35,6 +107,12 @@ type Toolchain struct {
 
 	// Type indicates whether this is a native or external toolchain
 	Type ToolchainType
+
+	// AutoEnable is a predicate that determines if this toolchain should be
+	// auto-enabled based on project context. It receives an AutoEnableContext
+	// with VFS access and returns true if the toolchain should be enabled.
+	// If nil, the toolchain is not auto-enabled (requires explicit configuration).
+	AutoEnable func(ctx AutoEnableContext) bool
 }
 
 // ToolchainType indicates whether a toolchain is native (in-process) or external (process-based).
@@ -279,6 +357,56 @@ func (r *Registry) ListTargets() []string {
 	names := make([]string, 0, len(r.targets))
 	for name := range r.targets {
 		names = append(names, name)
+	}
+	return names
+}
+
+// EnablementConfig specifies which toolchains are explicitly enabled or disabled.
+type EnablementConfig struct {
+	// ExplicitEnabled maps toolchain names to their explicit enabled state.
+	// If a toolchain is not in this map, auto-detection is used.
+	ExplicitEnabled map[string]bool
+
+	// AutoEnableCtx is the context for auto-enable detection.
+	// If nil, auto-enable predicates are not evaluated and only
+	// explicitly enabled toolchains are considered enabled.
+	AutoEnableCtx *AutoEnableContext
+}
+
+// IsEnabled checks if a toolchain is enabled based on enablement config.
+// It first checks explicit config, then falls back to auto-enable predicate.
+func (r *Registry) IsEnabled(name string, cfg EnablementConfig) bool {
+	// Check explicit config first
+	if enabled, ok := cfg.ExplicitEnabled[name]; ok {
+		return enabled
+	}
+
+	// Fall back to auto-enable predicate
+	tc, ok := r.toolchains[name]
+	if !ok {
+		return false
+	}
+
+	if tc.AutoEnable == nil {
+		// No auto-enable predicate, not enabled by default
+		return false
+	}
+
+	if cfg.AutoEnableCtx == nil {
+		// No context for auto-enable, can't evaluate
+		return false
+	}
+
+	return tc.AutoEnable(*cfg.AutoEnableCtx)
+}
+
+// ListEnabledToolchains returns names of toolchains that are enabled.
+func (r *Registry) ListEnabledToolchains(cfg EnablementConfig) []string {
+	var names []string
+	for name := range r.toolchains {
+		if r.IsEnabled(name, cfg) {
+			names = append(names, name)
+		}
 	}
 	return names
 }
