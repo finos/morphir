@@ -1,6 +1,7 @@
 ---
 name: release-manager
 description: Manages Morphir releases including changelog updates, version bumping, module tagging, and release execution. Use when preparing or executing a release.
+user-invocable: true
 ---
 
 # Release Manager Skill

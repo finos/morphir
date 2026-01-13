@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-alpha.2] - 2026-01-13
+
+### Added
+- **Decoration System**: New decoration infrastructure for metadata enrichment
+  - `morphir decorate` CLI command for applying decorations
+  - Type registry for decoration types with validation
+  - BDD tests for decoration workflows
+- **Toolchain Integration Phase 2**: Major expansion of toolchain adapters
+  - **Go Toolchain Adapter**: Complete Go code generation support (#529)
+    - `morphir golang make` command to generate Go modules from IR
+    - `morphir golang build` command for full IR→Go pipeline
+    - IR to Go module/workspace generator (#515)
+    - Comprehensive tests and fixtures (#524)
+  - **WIT Toolchain Adapter**: WebAssembly Interface Types Phase 2 (#526)
+  - **morphir-elm Integration**: NPX backend for morphir-elm tooling (#530)
+    - Integration tests validating morphir-elm interoperability (#534)
+  - **Toolchain Enablement Design**: Framework for toolchain discovery and enablement (#538)
+- **Workflow Planning System**: New workflow orchestration capabilities (#533)
+  - Workflow plans with dependency resolution
+  - Workspace doctor command for environment validation (#531)
+- **Website Improvements**:
+  - Upgrade Docusaurus from 2.4.3 to 3.9.2 (#523)
+  - Contributing companies panel (#514)
+  - Restructured documentation hierarchy for newcomers (#379)
+
+### Fixed
+- Decorations CI issues (#541)
+- Docusaurus config for morphir.finos.org deployment (#517)
+
+### Changed
+- Updated lipgloss dependency to v2 (#512)
+- Updated npm to v19 (#444)
+- Updated TypeScript to ~5.9.0 (#525)
+- Updated doublestar to v4.9.2 (#490)
+
+### Infrastructure
+- Added golangci-lint to mise tools
+- Comprehensive documentation improvements and tooling (#527)
+- Security dependency updates for website
+
 ## [0.4.0-alpha.1] - 2026-01-08
 
 ### Added
@@ -237,7 +277,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Duplicate help command registration in CLI
 
-[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-alpha.1...HEAD
+[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-alpha.2...HEAD
+[0.4.0-alpha.2]: https://github.com/finos/morphir/compare/v0.4.0-alpha.1...v0.4.0-alpha.2
 [0.4.0-alpha.1]: https://github.com/finos/morphir/compare/v0.3.3...v0.4.0-alpha.1
 [0.3.3]: https://github.com/finos/morphir/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/finos/morphir/compare/v0.3.1...v0.3.2

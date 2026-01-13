@@ -1,6 +1,7 @@
 ---
 name: technical-writer
 description: Assists with writing and maintaining Morphir technical documentation. Use when creating, reviewing, or updating documentation including API docs, user guides, tutorials, and content for the Docusaurus site. Also helps ensure documentation quality through link checking, structure validation, and code review for documentation coverage.
+user-invocable: true
 ---
 
 # Technical Writer Skill
