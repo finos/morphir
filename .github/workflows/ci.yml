@@ -37,8 +37,14 @@ jobs:
         shell: pwsh
         run: |
           # Ensure .mise/tasks files are executable for mise to discover them
+          # On Windows, git checkout may not preserve executable permissions
           Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-            git update-index --chmod=+x $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
+            $relativePath = $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
+            git update-index --chmod=+x $relativePath
+          }
+          # Also ensure files are actually executable on the filesystem
+          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
+            icacls $_.FullName /grant "${env:USERNAME}:(F)" /Q 2>&1 | Out-Null
           }
 
       - name: Install mise
@@ -73,8 +79,14 @@ jobs:
         shell: pwsh
         run: |
           # Ensure .mise/tasks files are executable for mise to discover them
+          # On Windows, git checkout may not preserve executable permissions
           Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-            git update-index --chmod=+x $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
+            $relativePath = $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
+            git update-index --chmod=+x $relativePath
+          }
+          # Also ensure files are actually executable on the filesystem
+          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
+            icacls $_.FullName /grant "${env:USERNAME}:(F)" /Q 2>&1 | Out-Null
           }
 
       - name: Install mise
@@ -139,8 +151,14 @@ jobs:
         shell: pwsh
         run: |
           # Ensure .mise/tasks files are executable for mise to discover them
+          # On Windows, git checkout may not preserve executable permissions
           Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-            git update-index --chmod=+x $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
+            $relativePath = $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
+            git update-index --chmod=+x $relativePath
+          }
+          # Also ensure files are actually executable on the filesystem
+          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
+            icacls $_.FullName /grant "${env:USERNAME}:(F)" /Q 2>&1 | Out-Null
           }
 
       - name: Install mise
@@ -174,8 +192,14 @@ jobs:
         shell: pwsh
         run: |
           # Ensure .mise/tasks files are executable for mise to discover them
+          # On Windows, git checkout may not preserve executable permissions
           Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-            git update-index --chmod=+x $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
+            $relativePath = $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
+            git update-index --chmod=+x $relativePath
+          }
+          # Also ensure files are actually executable on the filesystem
+          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
+            icacls $_.FullName /grant "${env:USERNAME}:(F)" /Q 2>&1 | Out-Null
           }
 
       - name: Install mise
@@ -227,8 +251,14 @@ jobs:
         shell: pwsh
         run: |
           # Ensure .mise/tasks files are executable for mise to discover them
+          # On Windows, git checkout may not preserve executable permissions
           Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-            git update-index --chmod=+x $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
+            $relativePath = $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
+            git update-index --chmod=+x $relativePath
+          }
+          # Also ensure files are actually executable on the filesystem
+          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
+            icacls $_.FullName /grant "${env:USERNAME}:(F)" /Q 2>&1 | Out-Null
           }
 
       - name: Install mise
