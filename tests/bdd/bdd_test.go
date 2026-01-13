@@ -70,6 +70,7 @@ func TestFeatures(t *testing.T) {
 			steps.RegisterGolangSteps(sc)
 			steps.RegisterPlanSteps(sc)
 			steps.RegisterMorphirElmSteps(sc)
+			steps.RegisterWorkflowSteps(sc)
 		},
 		Options: &godog.Options{
 			Format:   "pretty",

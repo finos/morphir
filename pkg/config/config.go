@@ -704,6 +704,7 @@ type ToolchainConfig struct {
 	workingDir string
 	timeout    string // Duration string like "5m"
 	tasks      map[string]ToolchainTaskConfig
+	enabled    *bool // nil means "auto" (use AutoEnable predicate), non-nil overrides
 }
 
 // Name returns the toolchain name.
@@ -753,6 +754,16 @@ func (c ToolchainConfig) Tasks() map[string]ToolchainTaskConfig {
 		result[k] = v
 	}
 	return result
+}
+
+// Enabled returns whether the toolchain is explicitly enabled or disabled.
+// Returns (value, isSet) where isSet indicates if an explicit value was configured.
+// If isSet is false, the toolchain should use auto-detection.
+func (c ToolchainConfig) Enabled() (bool, bool) {
+	if c.enabled == nil {
+		return false, false
+	}
+	return *c.enabled, true
 }
 
 // AcquireConfig specifies how to acquire a toolchain.
@@ -1571,6 +1582,11 @@ func toolchainsFromMap(m map[string]any, def ToolchainsSection) ToolchainsSectio
 func toolchainConfigFromMap(name string, m map[string]any) ToolchainConfig {
 	tc := ToolchainConfig{
 		name: name,
+	}
+
+	// Parse enabled flag
+	if v, ok := m["enabled"].(bool); ok {
+		tc.enabled = &v
 	}
 
 	if v, ok := m["version"].(string); ok {

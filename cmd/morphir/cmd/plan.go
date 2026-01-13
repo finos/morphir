@@ -11,6 +11,7 @@ import (
 	"time"
 
 	golangtoolchain "github.com/finos/morphir/pkg/bindings/golang/toolchain"
+	morphirelmtoolchain "github.com/finos/morphir/pkg/bindings/morphir-elm/toolchain"
 	wittoolchain "github.com/finos/morphir/pkg/bindings/wit/toolchain"
 	"github.com/finos/morphir/pkg/config"
 	"github.com/finos/morphir/pkg/pipeline"
@@ -81,7 +82,13 @@ func runPlan(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	builder := toolchain.NewPlanBuilder(registry, workflows)
+	// Build enablement config from toolchain settings
+	enablement, err := buildEnablementConfig(cfg)
+	if err != nil {
+		return err
+	}
+
+	builder := toolchain.NewPlanBuilderWithEnablement(registry, workflows, enablement)
 	plan, err := builder.Build(workflowName)
 	if err != nil {
 		return err
@@ -296,6 +303,7 @@ func registryFromConfig(cfg config.Config) (*toolchain.Registry, error) {
 
 	wittoolchain.Register(registry)
 	golangtoolchain.Register(registry)
+	morphirelmtoolchain.Register(registry)
 
 	toolchains := cfg.Toolchains()
 	names := toolchains.Names()
@@ -361,6 +369,43 @@ func registryFromConfig(cfg config.Config) (*toolchain.Registry, error) {
 	}
 
 	return registry, nil
+}
+
+// buildEnablementConfig creates an EnablementConfig from the config file.
+func buildEnablementConfig(cfg config.Config) (toolchain.EnablementConfig, error) {
+	// Get current working directory
+	workDir, err := os.Getwd()
+	if err != nil {
+		return toolchain.EnablementConfig{}, fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	// Create VFS with OS mount for working directory
+	osMount := vfs.NewOSMount("work", vfs.MountRO, workDir, vfs.MustVPath("/"))
+	overlay := vfs.NewOverlayVFS([]vfs.Mount{osMount})
+
+	// Create auto-enable context
+	autoEnableCtx := &toolchain.AutoEnableContext{
+		VFS:         overlay,
+		ProjectRoot: vfs.MustVPath("/"),
+	}
+
+	// Build explicit enabled map from config
+	explicitEnabled := make(map[string]bool)
+	toolchains := cfg.Toolchains()
+	for _, name := range toolchains.Names() {
+		tcCfg, ok := toolchains.Get(name)
+		if !ok {
+			continue
+		}
+		if enabled, isSet := tcCfg.Enabled(); isSet {
+			explicitEnabled[name] = enabled
+		}
+	}
+
+	return toolchain.EnablementConfig{
+		ExplicitEnabled: explicitEnabled,
+		AutoEnableCtx:   autoEnableCtx,
+	}, nil
 }
 
 func registerTargetFromTask(registry *toolchain.Registry, task toolchain.TaskDef) {
