@@ -102,7 +102,7 @@ func TestTextItem(t *testing.T) {
 	textItem := NewTextItem(Ref("text1"), "Sample text")
 
 	// TextItem embeds DocItem
-	require.Equal(t, "Sample text", textItem.DocItem.Text())
+	require.Equal(t, "Sample text", textItem.Text())
 	require.Equal(t, LabelText, textItem.Label())
 }
 

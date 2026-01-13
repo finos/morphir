@@ -223,16 +223,16 @@ func runDecorationSetup(cmd *cobra.Command, args []string) error {
 		if err := os.WriteFile(valuesPath, data, 0644); err != nil {
 			return fmt.Errorf("failed to create decoration values file: %w", err)
 		}
-		fmt.Fprintf(cmd.ErrOrStderr(), "Created empty decoration values file: %s\n", relStorageLocation)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Created empty decoration values file: %s\n", relStorageLocation)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "✓ Decoration %q configured successfully\n", decorationID)
-	fmt.Fprintf(cmd.OutOrStdout(), "  Display Name: %s\n", displayName)
-	fmt.Fprintf(cmd.OutOrStdout(), "  Entry Point: %s\n", entryPoint)
-	fmt.Fprintf(cmd.OutOrStdout(), "  IR File: %s\n", relIRPath)
-	fmt.Fprintf(cmd.OutOrStdout(), "  Storage: %s\n", relStorageLocation)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "✓ Decoration %q configured successfully\n", decorationID)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Display Name: %s\n", displayName)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Entry Point: %s\n", entryPoint)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  IR File: %s\n", relIRPath)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Storage: %s\n", relStorageLocation)
 	if decorationSetupType != "" {
-		fmt.Fprintf(cmd.OutOrStdout(), "  Type: %s (from registry)\n", decorationSetupType)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Type: %s (from registry)\n", decorationSetupType)
 	}
 
 	return nil

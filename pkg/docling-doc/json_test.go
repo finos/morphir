@@ -16,7 +16,7 @@ func TestJSONRoundTrip(t *testing.T) {
 	text := NewTextItem(Ref("text1"), "Hello, World!")
 
 	root = root.WithChild(Ref("text1"))
-	text.DocItem = text.DocItem.WithParent(Ref("root"))
+	text.DocItem = text.WithParent(Ref("root"))
 
 	doc = doc.WithBody(Ref("root")).WithItem(root).WithItem(text)
 	doc = doc.WithMetadata("author", "Test Author")
@@ -185,7 +185,7 @@ func TestYAMLRoundTrip(t *testing.T) {
 	text := NewTextItem(Ref("text1"), "Hello, YAML!")
 
 	root = root.WithChild(Ref("text1"))
-	text.DocItem = text.DocItem.WithParent(Ref("root"))
+	text.DocItem = text.WithParent(Ref("root"))
 
 	doc = doc.WithBody(Ref("root")).WithItem(root).WithItem(text)
 
@@ -258,9 +258,9 @@ func TestJSONComplexTree(t *testing.T) {
 	root = root.WithChild(Ref("section1")).WithChild(Ref("section2"))
 	section1 = section1.WithParent(Ref("root")).WithChild(Ref("para1")).WithChild(Ref("para2"))
 	section2 = section2.WithParent(Ref("root")).WithChild(Ref("para3"))
-	para1.DocItem = para1.DocItem.WithParent(Ref("section1"))
-	para2.DocItem = para2.DocItem.WithParent(Ref("section1"))
-	para3.DocItem = para3.DocItem.WithParent(Ref("section2"))
+	para1.DocItem = para1.WithParent(Ref("section1"))
+	para2.DocItem = para2.WithParent(Ref("section1"))
+	para3.DocItem = para3.WithParent(Ref("section2"))
 
 	doc = doc.WithBody(Ref("root"))
 	doc = doc.WithItem(root).WithItem(section1).WithItem(section2)
