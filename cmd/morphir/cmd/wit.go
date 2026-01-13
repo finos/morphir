@@ -526,7 +526,7 @@ func outputDiagnostics(cmd *cobra.Command, diagnostics []pipeline.Diagnostic) {
 	infoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("12"))
 	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 
-	fmt.Fprintln(cmd.ErrOrStderr(), "\nDiagnostics:")
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "\nDiagnostics:")
 	for _, d := range diagnostics {
 		var prefix string
 		switch d.Severity {
@@ -545,9 +545,9 @@ func outputDiagnostics(cmd *cobra.Command, diagnostics []pipeline.Diagnostic) {
 			code = dimStyle.Render(fmt.Sprintf("[%s] ", d.Code))
 		}
 
-		fmt.Fprintf(cmd.ErrOrStderr(), "  %s %s%s\n", prefix, code, d.Message)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  %s %s%s\n", prefix, code, d.Message)
 	}
-	fmt.Fprintln(cmd.ErrOrStderr())
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr())
 }
 
 // outputMakeJSON outputs make result as JSON
@@ -567,7 +567,7 @@ func outputMakeJSON(cmd *cobra.Command, output witpipeline.MakeOutput, result pi
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(data))
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(data))
 	return nil
 }
 

@@ -346,9 +346,9 @@ func outputDecorationListText(cmd *cobra.Command, nodePaths []ir.NodePath, attac
 		}
 		sort.Strings(decTypes)
 
-		fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", nodePath.String())
-		fmt.Fprintf(cmd.OutOrStdout(), "    Decorations: %s\n", fmt.Sprintf("%v", decTypes))
-		fmt.Fprintf(cmd.OutOrStdout(), "    Count: %d\n\n", len(decs))
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", nodePath.String())
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "    Decorations: %s\n", fmt.Sprintf("%v", decTypes))
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "    Count: %d\n\n", len(decs))
 	}
 
 	return nil

@@ -118,8 +118,8 @@ func TestDocumentGetChildren(t *testing.T) {
 
 	// Set up parent-child relationships
 	parent = parent.WithChild(Ref("child1")).WithChild(Ref("child2"))
-	child1.DocItem = child1.DocItem.WithParent(Ref("parent"))
-	child2.DocItem = child2.DocItem.WithParent(Ref("parent"))
+	child1.DocItem = child1.WithParent(Ref("parent"))
+	child2.DocItem = child2.WithParent(Ref("parent"))
 
 	doc = doc.WithItem(parent).WithItem(child1).WithItem(child2)
 
@@ -140,7 +140,7 @@ func TestDocumentGetParent(t *testing.T) {
 	child := NewTextItem(Ref("child"), "Text")
 
 	parent = parent.WithChild(Ref("child"))
-	child.DocItem = child.DocItem.WithParent(Ref("parent"))
+	child.DocItem = child.WithParent(Ref("parent"))
 
 	doc = doc.WithItem(parent).WithItem(child)
 
