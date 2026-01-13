@@ -418,23 +418,23 @@ func TestNodePath_UnmarshalJSON(t *testing.T) {
 
 func TestNodePath_UnmarshalJSON_Invalid(t *testing.T) {
 	testCases := []struct {
-		name  string
-		data  []byte
+		name    string
+		data    []byte
 		wantErr bool
 	}{
 		{
-			name:  "Not a string",
-			data:  []byte(`123`),
+			name:    "Not a string",
+			data:    []byte(`123`),
 			wantErr: true,
 		},
 		{
-			name:  "Invalid format",
-			data:  []byte(`"My.Package"`),
+			name:    "Invalid format",
+			data:    []byte(`"My.Package"`),
 			wantErr: true,
 		},
 		{
-			name:  "Nil receiver",
-			data:  []byte(`"My.Package:Foo:bar"`),
+			name:    "Nil receiver",
+			data:    []byte(`"My.Package:Foo:bar"`),
 			wantErr: false, // This is handled by the function
 		},
 	}
