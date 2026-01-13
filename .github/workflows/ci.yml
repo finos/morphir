@@ -32,28 +32,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Fix file permissions on Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          # Ensure .mise/tasks files are executable for mise to discover them
-          # On Windows, git checkout may not preserve executable permissions
-          Write-Host "Current directory: $(Get-Location)"
-          Write-Host "Checking .mise/tasks directory..."
-          if (Test-Path .mise/tasks) {
-            Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-              $fullPath = $_.FullName
-              $relativePath = $fullPath.Replace("$(Get-Location)\", '').Replace('\', '/')
-              Write-Host "Fixing permissions for: $relativePath"
-              git update-index --chmod=+x $relativePath
-            }
-            Write-Host "Verifying permissions..."
-            git ls-files --stage .mise/tasks/ | Select-String -Pattern "^100755" | Measure-Object | ForEach-Object { Write-Host "Found $($_.Count) executable files" }
-          } else {
-            Write-Host "ERROR: .mise/tasks directory not found!"
-            Get-ChildItem -Path . -Directory | Select-Object Name
-          }
-
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
@@ -81,37 +59,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Fix file permissions on Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          # Ensure .mise/tasks files are executable for mise to discover them
-          # On Windows, git checkout may not preserve executable permissions
-          Write-Host "Current directory: $(Get-Location)"
-          Write-Host "Checking .mise/tasks directory..."
-          if (Test-Path .mise/tasks) {
-            Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-              $fullPath = $_.FullName
-              $relativePath = $fullPath.Replace("$(Get-Location)\", '').Replace('\', '/')
-              Write-Host "Fixing permissions for: $relativePath"
-              git update-index --chmod=+x $relativePath
-            }
-            Write-Host "Verifying permissions..."
-            git ls-files --stage .mise/tasks/ | Select-String -Pattern "^100755" | Measure-Object | ForEach-Object { Write-Host "Found $($_.Count) executable files" }
-          } else {
-            Write-Host "ERROR: .mise/tasks directory not found!"
-            Get-ChildItem -Path . -Directory | Select-Object Name
-          }
-
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
           version: 2026.1.1
 
-      - name: Set up Go workspace
+      # On Windows, use PowerShell scripts (mise file tasks don't work on Windows)
+      - name: Set up Go workspace (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\.mise\scripts\workspace-setup.ps1
+
+      - name: Set up Go workspace (Unix)
+        if: runner.os != 'Windows'
         run: mise run workspace:setup
 
-      - name: Run tests with coverage and JUnit reports
+      - name: Run tests (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\.mise\scripts\test.ps1
+
+      - name: Run tests with coverage and JUnit reports (Unix)
+        if: runner.os != 'Windows'
         run: mise run test-junit
 
       - name: Upload coverage artifact
@@ -123,7 +92,7 @@ jobs:
           retention-days: 7
 
       - name: Upload test results
-        if: always()
+        if: always() && matrix.os != 'windows-latest'
         uses: actions/upload-artifact@v6
         with:
           name: test-results-${{ matrix.os }}
@@ -131,7 +100,7 @@ jobs:
           retention-days: 7
 
       - name: Publish test results
-        if: always()
+        if: always() && matrix.os != 'windows-latest'
         uses: test-summary/action@v2.4
         with:
           paths: "test-results/*.xml"
@@ -160,39 +129,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Fix file permissions on Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          # Ensure .mise/tasks files are executable for mise to discover them
-          # On Windows, git checkout may not preserve executable permissions
-          Write-Host "Current directory: $(Get-Location)"
-          Write-Host "Checking .mise/tasks directory..."
-          if (Test-Path .mise/tasks) {
-            Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-              $fullPath = $_.FullName
-              $relativePath = $fullPath.Replace("$(Get-Location)\", '').Replace('\', '/')
-              Write-Host "Fixing permissions for: $relativePath"
-              git update-index --chmod=+x $relativePath
-            }
-            Write-Host "Verifying permissions..."
-            git ls-files --stage .mise/tasks/ | Select-String -Pattern "^100755" | Measure-Object | ForEach-Object { Write-Host "Found $($_.Count) executable files" }
-          } else {
-            Write-Host "ERROR: .mise/tasks directory not found!"
-            Get-ChildItem -Path . -Directory | Select-Object Name
-          }
-
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
           version: 2026.1.1
 
-      - name: Set up Go workspace
+      # On Windows, use PowerShell scripts (mise file tasks don't work on Windows)
+      - name: Set up Go workspace (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\.mise\scripts\workspace-setup.ps1
+
+      - name: Set up Go workspace (Unix)
+        if: runner.os != 'Windows'
         run: mise run workspace:setup
 
-      - name: Build binary (cross-platform)
+      - name: Build binary (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         env:
-          GOOS: ${{ matrix.os == 'ubuntu-latest' && 'linux' || matrix.os == 'macos-latest' && 'darwin' || 'windows' }}
+          GOARCH: ${{ matrix.arch }}
+        run: .\.mise\scripts\build.ps1
+
+      - name: Build binary (Unix)
+        if: runner.os != 'Windows'
+        env:
+          GOOS: ${{ matrix.os == 'ubuntu-latest' && 'linux' || 'darwin' }}
           GOARCH: ${{ matrix.arch }}
         run: mise run build
 
@@ -207,28 +169,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-
-      - name: Fix file permissions on Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          # Ensure .mise/tasks files are executable for mise to discover them
-          # On Windows, git checkout may not preserve executable permissions
-          Write-Host "Current directory: $(Get-Location)"
-          Write-Host "Checking .mise/tasks directory..."
-          if (Test-Path .mise/tasks) {
-            Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-              $fullPath = $_.FullName
-              $relativePath = $fullPath.Replace("$(Get-Location)\", '').Replace('\', '/')
-              Write-Host "Fixing permissions for: $relativePath"
-              git update-index --chmod=+x $relativePath
-            }
-            Write-Host "Verifying permissions..."
-            git ls-files --stage .mise/tasks/ | Select-String -Pattern "^100755" | Measure-Object | ForEach-Object { Write-Host "Found $($_.Count) executable files" }
-          } else {
-            Write-Host "ERROR: .mise/tasks directory not found!"
-            Get-ChildItem -Path . -Directory | Select-Object Name
-          }
 
       - name: Install mise
         uses: jdx/mise-action@v3
@@ -273,28 +213,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-
-      - name: Fix file permissions on Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          # Ensure .mise/tasks files are executable for mise to discover them
-          # On Windows, git checkout may not preserve executable permissions
-          Write-Host "Current directory: $(Get-Location)"
-          Write-Host "Checking .mise/tasks directory..."
-          if (Test-Path .mise/tasks) {
-            Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-              $fullPath = $_.FullName
-              $relativePath = $fullPath.Replace("$(Get-Location)\", '').Replace('\', '/')
-              Write-Host "Fixing permissions for: $relativePath"
-              git update-index --chmod=+x $relativePath
-            }
-            Write-Host "Verifying permissions..."
-            git ls-files --stage .mise/tasks/ | Select-String -Pattern "^100755" | Measure-Object | ForEach-Object { Write-Host "Found $($_.Count) executable files" }
-          } else {
-            Write-Host "ERROR: .mise/tasks directory not found!"
-            Get-ChildItem -Path . -Directory | Select-Object Name
-          }
 
       - name: Install mise
         uses: jdx/mise-action@v3
