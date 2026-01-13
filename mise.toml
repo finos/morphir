@@ -1,9 +1,5 @@
 # Morphir Development Tools Configuration
-# Tasks are defined as file-based scripts in .config/mise/tasks/
-
-[task_config]
-# Explicitly include task directory for cross-platform compatibility (Windows)
-includes = [".config/mise/tasks"]
+# Tasks are defined as file-based scripts in .mise/tasks/
 
 [tools]
 # Core tools
