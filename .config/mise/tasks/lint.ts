@@ -15,6 +15,7 @@ const modules = [
   "pkg/bindings/wit",
   "pkg/config",
   "pkg/docling-doc",
+  "pkg/logging",
   "pkg/models",
   "pkg/nbformat",
   "pkg/pipeline",

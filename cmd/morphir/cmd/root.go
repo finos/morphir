@@ -26,9 +26,8 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:     "morphir",
-	Version: Version,
-	Short:   "Morphir CLI - A tool for working with Morphir IR",
+	Use:   "morphir",
+	Short: "Morphir CLI - A tool for working with Morphir IR",
 	Long: `Morphir is a CLI tool for working with Morphir IR (Intermediate Representation).
 It provides commands for workspace management, model processing, and more.`,
 	RunE: runRoot,
@@ -82,8 +81,8 @@ func init() {
 	// Note: Cobra automatically provides a built-in 'help' command,
 	// so we don't need to register our custom helpCmd
 
-	// Add version flag
-	rootCmd.Flags().BoolP("version", "v", false, "version for morphir")
+	// Add version flag (no short flag - -v reserved for verbose)
+	rootCmd.Flags().Bool("version", false, "version for morphir")
 }
 
 // initConfig loads the configuration from all sources.
