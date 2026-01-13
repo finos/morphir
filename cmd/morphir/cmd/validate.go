@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/finos/morphir/cmd/morphir/internal/tui"
 	"github.com/finos/morphir/cmd/morphir/internal/tui/components"
 	"github.com/finos/morphir/pkg/pipeline"

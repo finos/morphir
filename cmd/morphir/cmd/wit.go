@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 	witpipeline "github.com/finos/morphir/pkg/bindings/wit/pipeline"
 	"github.com/finos/morphir/pkg/pipeline"
 	"github.com/finos/morphir/pkg/vfs"

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 	golangpipeline "github.com/finos/morphir/pkg/bindings/golang/pipeline"
 	"github.com/finos/morphir/pkg/models/ir"
 	"github.com/finos/morphir/pkg/pipeline"
