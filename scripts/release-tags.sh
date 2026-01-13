@@ -229,11 +229,11 @@ create_tags() {
         if git tag -a "$VERSION" -m "Release $VERSION" "$COMMIT" 2>/dev/null; then
             success "Created: $VERSION"
             add_result "$VERSION" "create" "success" "created"
-            ((created++))
+            created=$((created + 1))
         else
             error "Failed to create: $VERSION (may already exist)"
             add_result "$VERSION" "create" "failed" "may already exist"
-            ((failed++))
+            failed=$((failed + 1))
         fi
     fi
 
@@ -248,11 +248,11 @@ create_tags() {
             if git tag -a "$tag" -m "Release ${module} $VERSION" "$COMMIT" 2>/dev/null; then
                 success "Created: $tag"
                 add_result "$tag" "create" "success" "created"
-                ((created++))
+                created=$((created + 1))
             else
                 error "Failed to create: $tag (may already exist)"
                 add_result "$tag" "create" "failed" "may already exist"
-                ((failed++))
+                failed=$((failed + 1))
             fi
         fi
     done
