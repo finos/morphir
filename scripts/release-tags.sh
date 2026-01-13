@@ -38,6 +38,8 @@ NO_VERIFY=true  # Default to --no-verify for release pushes
 
 # Module paths (must match actual modules in repo)
 MODULES=(
+    "pkg/bindings/golang"
+    "pkg/bindings/morphir-elm"
     "pkg/bindings/typemap"
     "pkg/bindings/wit"
     "pkg/config"
@@ -47,6 +49,7 @@ MODULES=(
     "pkg/pipeline"
     "pkg/sdk"
     "pkg/task"
+    "pkg/toolchain"
     "pkg/tooling"
     "pkg/vfs"
     "cmd/morphir"
