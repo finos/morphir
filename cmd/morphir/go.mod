@@ -8,15 +8,15 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/glamour v0.10.0
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
-	github.com/finos/morphir/pkg/bindings/golang v0.4.0-alpha.2
-	github.com/finos/morphir/pkg/bindings/morphir-elm v0.4.0-alpha.2
-	github.com/finos/morphir/pkg/bindings/wit v0.4.0-alpha.2
-	github.com/finos/morphir/pkg/config v0.4.0-alpha.2
-	github.com/finos/morphir/pkg/models v0.4.0-alpha.2
-	github.com/finos/morphir/pkg/pipeline v0.4.0-alpha.2
-	github.com/finos/morphir/pkg/toolchain v0.4.0-alpha.2
-	github.com/finos/morphir/pkg/tooling v0.4.0-alpha.2
-	github.com/finos/morphir/pkg/vfs v0.4.0-alpha.2
+	github.com/finos/morphir/pkg/bindings/golang v0.4.0-alpha.3
+	github.com/finos/morphir/pkg/bindings/morphir-elm v0.4.0-alpha.3
+	github.com/finos/morphir/pkg/bindings/wit v0.4.0-alpha.3
+	github.com/finos/morphir/pkg/config v0.4.0-alpha.3
+	github.com/finos/morphir/pkg/models v0.4.0-alpha.3
+	github.com/finos/morphir/pkg/pipeline v0.4.0-alpha.3
+	github.com/finos/morphir/pkg/toolchain v0.4.0-alpha.3
+	github.com/finos/morphir/pkg/tooling v0.4.0-alpha.3
+	github.com/finos/morphir/pkg/vfs v0.4.0-alpha.3
 	github.com/spf13/cobra v1.10.2
 )
 

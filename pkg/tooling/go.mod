@@ -6,8 +6,8 @@ require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/bmatcuk/doublestar/v4 v4.9.2
 	github.com/charmbracelet/glamour v0.10.0
-	github.com/finos/morphir/pkg/config v0.4.0-alpha.2
-	github.com/finos/morphir/pkg/models v0.4.0-alpha.2
+	github.com/finos/morphir/pkg/config v0.4.0-alpha.3
+	github.com/finos/morphir/pkg/models v0.4.0-alpha.3
 	github.com/mattn/go-isatty v0.0.20
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	sigs.k8s.io/yaml v1.6.0
