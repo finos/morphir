@@ -6,16 +6,22 @@ import { existsSync, renameSync, copyFileSync } from "fs";
 
 // Detect if this is a release branch and get the version
 function detectReleaseBranch(): string | null {
-  try {
-    const branchResult = Bun.spawnSync(["git", "branch", "--show-current"]);
-    const branch = branchResult.stdout.toString().trim();
+  // In GitHub Actions, use GITHUB_HEAD_REF (PR source branch) or GITHUB_REF_NAME
+  const branch =
+    process.env.GITHUB_HEAD_REF ||
+    process.env.GITHUB_REF_NAME ||
+    (() => {
+      try {
+        const result = Bun.spawnSync(["git", "branch", "--show-current"]);
+        return result.stdout.toString().trim();
+      } catch {
+        return "";
+      }
+    })();
 
-    // Match release/vX.Y.Z or release/vX.Y.Z-alpha.N patterns
-    const match = branch.match(/^release\/(v[\d.]+(?:-[a-zA-Z]+\.\d+)?)$/);
-    return match ? match[1] : null;
-  } catch {
-    return null;
-  }
+  // Match release/vX.Y.Z or release/vX.Y.Z-alpha.N patterns
+  const match = branch.match(/^release\/(v[\d.]+(?:-[a-zA-Z]+\.\d+)?)$/);
+  return match ? match[1] : null;
 }
 
 async function main() {
