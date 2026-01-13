@@ -241,18 +241,18 @@ func (d *DoclingDocument) UnmarshalJSON(data []byte) error {
 			for key, value := range ji.Metadata {
 				switch v := item.(type) {
 				case TextItem:
-					v.DocItem = v.DocItem.WithMetadata(key, value)
+					v.DocItem = v.WithMetadata(key, value)
 					item = v
 				case DocItem:
 					item = v.WithMetadata(key, value)
 				case TableItem:
-					v.DocItem = v.DocItem.WithMetadata(key, value)
+					v.DocItem = v.WithMetadata(key, value)
 					item = v
 				case PictureItem:
-					v.DocItem = v.DocItem.WithMetadata(key, value)
+					v.DocItem = v.WithMetadata(key, value)
 					item = v
 				case GroupItem:
-					v.NodeItem = v.NodeItem.WithMetadata(key, value)
+					v.NodeItem = v.WithMetadata(key, value)
 					item = v
 				case NodeItem:
 					item = v.WithMetadata(key, value)

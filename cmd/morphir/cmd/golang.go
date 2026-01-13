@@ -771,7 +771,7 @@ func outputGolangBuildJSON(cmd *cobra.Command, irPath string, output *golangpipe
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(data))
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(data))
 
 	if result.Err != nil {
 		return result.Err

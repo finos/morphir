@@ -187,9 +187,9 @@ func outputValidationJSON(cmd *cobra.Command, result *validation.Result) error {
 		errorsStr = "[" + strings.Join(escaped, ",") + "]"
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), `{"valid":%t,"version":%d,"path":%q,"errors":%s}`,
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), `{"valid":%t,"version":%d,"path":%q,"errors":%s}`,
 		result.Valid, result.Version, result.Path, errorsStr)
-	fmt.Fprintln(cmd.OutOrStdout())
+	_, _ = fmt.Fprintln(cmd.OutOrStdout())
 
 	if !result.Valid {
 		return fmt.Errorf("validation failed")

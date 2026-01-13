@@ -412,7 +412,7 @@ func runWitBuild(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(cmd.OutOrStdout(), "Wrote WIT to %s\n", witOutputPath)
 	} else {
 		// Print generated WIT to stdout
-		fmt.Fprintln(cmd.OutOrStdout(), output.Gen.Source)
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), output.Gen.Source)
 	}
 
 	// Success/validation message

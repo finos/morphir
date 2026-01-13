@@ -174,9 +174,9 @@ func runDecorationSearch(cmd *cobra.Command, args []string) error {
 		return nodePaths[i].String() < nodePaths[j].String()
 	})
 
-	fmt.Fprintf(cmd.OutOrStdout(), "Found %d node(s) with decoration type %q:\n\n", len(nodePaths), decorationSearchType)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Found %d node(s) with decoration type %q:\n\n", len(nodePaths), decorationSearchType)
 	for _, nodePath := range nodePaths {
-		fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", nodePath.String())
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", nodePath.String())
 	}
 
 	return nil
@@ -333,11 +333,11 @@ func outputDecorationListJSON(cmd *cobra.Command, nodePaths []ir.NodePath, attac
 
 func outputDecorationListText(cmd *cobra.Command, nodePaths []ir.NodePath, attached decorations.AttachedDistribution) error {
 	if len(nodePaths) == 0 {
-		fmt.Fprintf(cmd.OutOrStdout(), "No decorated nodes found.\n")
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No decorated nodes found.\n")
 		return nil
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "Decorated Nodes (%d):\n\n", len(nodePaths))
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Decorated Nodes (%d):\n\n", len(nodePaths))
 	for _, nodePath := range nodePaths {
 		decs := attached.GetDecorationsForNode(nodePath)
 		decTypes := make([]string, 0, len(decs))

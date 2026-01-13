@@ -216,11 +216,11 @@ func TestBuilderComplexDocument(t *testing.T) {
 	section1 := NewNodeItem(Ref("section1"), LabelSectionHeader).
 		WithParent(Ref("root"))
 	para1 := NewTextItem(Ref("para1"), "First paragraph")
-	para1.DocItem = para1.DocItem.WithParent(Ref("section1"))
+	para1.DocItem = para1.WithParent(Ref("section1"))
 	para2 := NewTextItem(Ref("para2"), "Second paragraph")
-	para2.DocItem = para2.DocItem.WithParent(Ref("section1"))
+	para2.DocItem = para2.WithParent(Ref("section1"))
 
-	root.NodeItem = root.NodeItem.WithChild(Ref("section1"))
+	root.NodeItem = root.WithChild(Ref("section1"))
 	section1 = section1.WithChild(Ref("para1")).WithChild(Ref("para2"))
 
 	doc := NewBuilder("Complex Document").
