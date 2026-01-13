@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-alpha.4] - 2026-01-13
+
+### Added
+- **CLI Logging Integration**: Structured logging now available throughout CLI (#555)
+  - Global logging flags: `--log-level`, `-v/--verbose`, `-q/--quiet`, `--log-file`
+  - Log level resolution: CLI flags > Environment variables > Config file > Defaults
+  - `GetLogger()` function for commands to access configured logger
+  - `validate` command updated as reference implementation
+- **Pipeline Logging Support**: Logger propagation through pipeline execution (#555)
+  - Added `Logger` field to `pipeline.Context`
+  - `WithLogger()` method for immutable logger propagation
+  - Default noop logger when not configured
+
+### Changed
+- Upgraded charmbracelet/lipgloss to v2.0.0-beta.3 (#556)
+  - Updated all imports to `github.com/charmbracelet/lipgloss/v2`
+  - Using `compat.AdaptiveColor` for backward-compatible adaptive colors
+  - Theme colors now use `lipgloss.Color()` with `color.Color` interface
+- Updated all internal module dependencies to v0.4.0-alpha.3
+
+### Infrastructure
+- Enhanced release validation with module consistency checks (#554)
+  - Validates all modules have corresponding `go mod tidy` entries in `.goreleaser.yaml`
+  - Checks that hook scripts referenced in `.goreleaser.yaml` exist
+- Added new Go module checklist documentation in DEVELOPING.md (#554)
+
 ## [0.4.0-alpha.3] - 2026-01-13
 
 ### Added
@@ -301,7 +327,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Duplicate help command registration in CLI
 
-[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-alpha.3...HEAD
+[Unreleased]: https://github.com/finos/morphir/compare/v0.4.0-alpha.4...HEAD
+[0.4.0-alpha.4]: https://github.com/finos/morphir/compare/v0.4.0-alpha.3...v0.4.0-alpha.4
 [0.4.0-alpha.3]: https://github.com/finos/morphir/compare/v0.4.0-alpha.2...v0.4.0-alpha.3
 [0.4.0-alpha.2]: https://github.com/finos/morphir/compare/v0.4.0-alpha.1...v0.4.0-alpha.2
 [0.4.0-alpha.1]: https://github.com/finos/morphir/compare/v0.3.3...v0.4.0-alpha.1
