@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/lipgloss/table"
+	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/charmbracelet/lipgloss/v2/table"
 	"github.com/finos/morphir/pkg/config"
 	"github.com/finos/morphir/pkg/tooling/workspace"
 	"github.com/spf13/cobra"

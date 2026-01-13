@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/finos/morphir/cmd/morphir/internal/tui/components"
 	"github.com/finos/morphir/cmd/morphir/internal/tui/styles"
 )
