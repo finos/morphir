@@ -32,6 +32,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Fix file permissions on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Ensure .mise/tasks files are executable for mise to discover them
+          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
+            git update-index --chmod=+x $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
+          }
+
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
@@ -58,6 +67,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Fix file permissions on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Ensure .mise/tasks files are executable for mise to discover them
+          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
+            git update-index --chmod=+x $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
+          }
 
       - name: Install mise
         uses: jdx/mise-action@v3
@@ -116,6 +134,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Fix file permissions on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Ensure .mise/tasks files are executable for mise to discover them
+          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
+            git update-index --chmod=+x $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
+          }
+
       - name: Install mise
         uses: jdx/mise-action@v3
         with:
@@ -141,6 +168,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Fix file permissions on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Ensure .mise/tasks files are executable for mise to discover them
+          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
+            git update-index --chmod=+x $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
+          }
 
       - name: Install mise
         uses: jdx/mise-action@v3
@@ -185,6 +221,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Fix file permissions on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Ensure .mise/tasks files are executable for mise to discover them
+          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
+            git update-index --chmod=+x $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
+          }
 
       - name: Install mise
         uses: jdx/mise-action@v3
