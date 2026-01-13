@@ -1,5 +1,5 @@
-github.com/finos/morphir/pkg/bindings/typemap v0.4.0-alpha.1 h1:UlyJV9hxCa4iFyLMrU3okGW7BkQb0jBZdtDjxMTSqyY=
-github.com/finos/morphir/pkg/bindings/typemap v0.4.0-alpha.1/go.mod h1:jFMQJYWS19DsqnIKVnlZyEKslfanFJu5lg9Voyy3j2Y=
+github.com/finos/morphir/pkg/bindings/typemap v0.4.0-alpha.3 h1:IpfyZX93vUvhtlmwqXtmahR0cyjlZJrCSJvIyJuMQJI=
+github.com/finos/morphir/pkg/bindings/typemap v0.4.0-alpha.3/go.mod h1:jFMQJYWS19DsqnIKVnlZyEKslfanFJu5lg9Voyy3j2Y=
 github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
 github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
 github.com/pelletier/go-toml/v2 v2.2.4 h1:mye9XuhQ6gvn5h28+VilKrrPoQVanw5PMw/TB0t5Ec4=
