@@ -38,13 +38,20 @@ jobs:
         run: |
           # Ensure .mise/tasks files are executable for mise to discover them
           # On Windows, git checkout may not preserve executable permissions
-          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-            $relativePath = $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
-            git update-index --chmod=+x $relativePath
-          }
-          # Also ensure files are actually executable on the filesystem
-          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-            icacls $_.FullName /grant "${env:USERNAME}:(F)" /Q 2>&1 | Out-Null
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Checking .mise/tasks directory..."
+          if (Test-Path .mise/tasks) {
+            Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
+              $fullPath = $_.FullName
+              $relativePath = $fullPath.Replace("$(Get-Location)\", '').Replace('\', '/')
+              Write-Host "Fixing permissions for: $relativePath"
+              git update-index --chmod=+x $relativePath
+            }
+            Write-Host "Verifying permissions..."
+            git ls-files --stage .mise/tasks/ | Select-String -Pattern "^100755" | Measure-Object | ForEach-Object { Write-Host "Found $($_.Count) executable files" }
+          } else {
+            Write-Host "ERROR: .mise/tasks directory not found!"
+            Get-ChildItem -Path . -Directory | Select-Object Name
           }
 
       - name: Install mise
@@ -80,13 +87,20 @@ jobs:
         run: |
           # Ensure .mise/tasks files are executable for mise to discover them
           # On Windows, git checkout may not preserve executable permissions
-          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-            $relativePath = $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
-            git update-index --chmod=+x $relativePath
-          }
-          # Also ensure files are actually executable on the filesystem
-          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-            icacls $_.FullName /grant "${env:USERNAME}:(F)" /Q 2>&1 | Out-Null
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Checking .mise/tasks directory..."
+          if (Test-Path .mise/tasks) {
+            Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
+              $fullPath = $_.FullName
+              $relativePath = $fullPath.Replace("$(Get-Location)\", '').Replace('\', '/')
+              Write-Host "Fixing permissions for: $relativePath"
+              git update-index --chmod=+x $relativePath
+            }
+            Write-Host "Verifying permissions..."
+            git ls-files --stage .mise/tasks/ | Select-String -Pattern "^100755" | Measure-Object | ForEach-Object { Write-Host "Found $($_.Count) executable files" }
+          } else {
+            Write-Host "ERROR: .mise/tasks directory not found!"
+            Get-ChildItem -Path . -Directory | Select-Object Name
           }
 
       - name: Install mise
@@ -152,13 +166,20 @@ jobs:
         run: |
           # Ensure .mise/tasks files are executable for mise to discover them
           # On Windows, git checkout may not preserve executable permissions
-          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-            $relativePath = $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
-            git update-index --chmod=+x $relativePath
-          }
-          # Also ensure files are actually executable on the filesystem
-          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-            icacls $_.FullName /grant "${env:USERNAME}:(F)" /Q 2>&1 | Out-Null
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Checking .mise/tasks directory..."
+          if (Test-Path .mise/tasks) {
+            Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
+              $fullPath = $_.FullName
+              $relativePath = $fullPath.Replace("$(Get-Location)\", '').Replace('\', '/')
+              Write-Host "Fixing permissions for: $relativePath"
+              git update-index --chmod=+x $relativePath
+            }
+            Write-Host "Verifying permissions..."
+            git ls-files --stage .mise/tasks/ | Select-String -Pattern "^100755" | Measure-Object | ForEach-Object { Write-Host "Found $($_.Count) executable files" }
+          } else {
+            Write-Host "ERROR: .mise/tasks directory not found!"
+            Get-ChildItem -Path . -Directory | Select-Object Name
           }
 
       - name: Install mise
@@ -193,13 +214,20 @@ jobs:
         run: |
           # Ensure .mise/tasks files are executable for mise to discover them
           # On Windows, git checkout may not preserve executable permissions
-          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-            $relativePath = $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
-            git update-index --chmod=+x $relativePath
-          }
-          # Also ensure files are actually executable on the filesystem
-          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-            icacls $_.FullName /grant "${env:USERNAME}:(F)" /Q 2>&1 | Out-Null
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Checking .mise/tasks directory..."
+          if (Test-Path .mise/tasks) {
+            Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
+              $fullPath = $_.FullName
+              $relativePath = $fullPath.Replace("$(Get-Location)\", '').Replace('\', '/')
+              Write-Host "Fixing permissions for: $relativePath"
+              git update-index --chmod=+x $relativePath
+            }
+            Write-Host "Verifying permissions..."
+            git ls-files --stage .mise/tasks/ | Select-String -Pattern "^100755" | Measure-Object | ForEach-Object { Write-Host "Found $($_.Count) executable files" }
+          } else {
+            Write-Host "ERROR: .mise/tasks directory not found!"
+            Get-ChildItem -Path . -Directory | Select-Object Name
           }
 
       - name: Install mise
@@ -252,13 +280,20 @@ jobs:
         run: |
           # Ensure .mise/tasks files are executable for mise to discover them
           # On Windows, git checkout may not preserve executable permissions
-          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-            $relativePath = $_.FullName.Replace((Get-Location).Path + '\', '').Replace('\', '/')
-            git update-index --chmod=+x $relativePath
-          }
-          # Also ensure files are actually executable on the filesystem
-          Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
-            icacls $_.FullName /grant "${env:USERNAME}:(F)" /Q 2>&1 | Out-Null
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Checking .mise/tasks directory..."
+          if (Test-Path .mise/tasks) {
+            Get-ChildItem -Path .mise/tasks -Recurse -File | ForEach-Object {
+              $fullPath = $_.FullName
+              $relativePath = $fullPath.Replace("$(Get-Location)\", '').Replace('\', '/')
+              Write-Host "Fixing permissions for: $relativePath"
+              git update-index --chmod=+x $relativePath
+            }
+            Write-Host "Verifying permissions..."
+            git ls-files --stage .mise/tasks/ | Select-String -Pattern "^100755" | Measure-Object | ForEach-Object { Write-Host "Found $($_.Count) executable files" }
+          } else {
+            Write-Host "ERROR: .mise/tasks directory not found!"
+            Get-ChildItem -Path . -Directory | Select-Object Name
           }
 
       - name: Install mise

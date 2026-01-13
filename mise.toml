@@ -8,7 +8,8 @@ python = "3.14.2"
 
 # JavaScript runtimes and package managers (for toolchain backend tests)
 node = "24.13.0" # Provides npm and npx
-bun = "1.3.6"    # Provides bunx - used for TypeScript task execution
+# bun = "1.3.6"    # Provides bunx - used for TypeScript task execution
+# Temporarily disabled due to installation issues in CI
 deno = "2.6.4"   # Provides deno run npm:
 yarn = "4.12.0"  # Provides yarn dlx (Yarn Berry)
 pnpm = "10.28.0" # Provides pnpm dlx
