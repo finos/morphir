@@ -1,35 +1,35 @@
 ---
-title: "Morphir IR Specification"
-linkTitle: "Specification"
+title: "Specifications"
+linkTitle: "Specifications"
 weight: 25
-description: "The complete Morphir IR specification and JSON schemas"
+description: "Formal specifications for Morphir configuration and IR"
 ---
 
-# Morphir IR Specification
+# Specifications
 
-This section contains the Morphir IR (Intermediate Representation) specification and related schema files.
+This section contains formal specifications for Morphir configuration and IR formats.
 
 ## Contents
 
-- **[Morphir IR Specification](./morphir-ir-specification/)**: The complete Morphir IR specification document, describing the structure, semantics, and usage of the Morphir IR format.
+- **[morphir.toml](./morphir-toml/morphir-toml-specification/)**: Specification for `morphir.toml` configuration files (projects, workspaces, tasks, workflows, toolchains, bindings).
 
-- **[Morphir TOML Configuration Specification](./morphir-toml-specification/)**: The specification for `morphir.toml` configuration files (projects, workspaces, tasks, workflows, toolchains, bindings).
+- **[morphir.toml merge rules](./morphir-toml/morphir-toml-merge-rules/)**: How multiple configuration sources are merged into an effective configuration (precedence + deep-merge behavior).
 
-- **[Morphir TOML Configuration Merge Rules](./morphir-toml-merge-rules/)**: How multiple configuration sources are merged into an effective configuration (precedence + deep-merge behavior).
+- **[Morphir IR Specification](./ir/morphir-ir-specification/)**: The complete Morphir IR specification document, describing the structure, semantics, and usage of the Morphir IR format.
 
-- **[JSON Schemas](./schemas/)**: JSON schema definitions for all supported format versions of the Morphir IR (available in both YAML and JSON formats):
+- **[Morphir IR JSON Schemas](./ir/schemas/)**: JSON schema definitions for all supported format versions of the Morphir IR (available in both YAML and JSON formats):
   - v3 (Current): [YAML](/schemas/morphir-ir-v3.yaml) | [JSON](/schemas/morphir-ir-v3.json)
   - v2: [YAML](/schemas/morphir-ir-v2.yaml) | [JSON](/schemas/morphir-ir-v2.json)
   - v1: [YAML](/schemas/morphir-ir-v1.yaml) | [JSON](/schemas/morphir-ir-v1.json)
 
 ## Purpose
 
-This specification section serves as the authoritative reference for:
+This specifications section serves as the authoritative reference for:
 
-- **Implementers**: Building tools that generate, consume, or transform Morphir IR
-- **Developers**: Working with Morphir IR in .NET and other platforms
+- **Implementers**: Building tools that generate, consume, or transform Morphir formats
+- **Developers**: Working with Morphir configuration and IR across platforms
 - **LLMs**: Providing context for AI tools working with Morphir
-- **Tooling**: Validating and processing Morphir IR JSON files
+- **Tooling**: Validating configuration and processing Morphir IR JSON files
 
 ## Related Resources
 
