@@ -469,4 +469,4 @@ A successful round-trip indicates the type mapping preserved all semantic inform
 ## See Also
 
 - [WIT Commands](wit-commands) - CLI command reference
-- [Morphir IR Specification](/docs/morphir-ir-specification) - IR format details
+- [Morphir IR Specification](/docs/spec/ir/morphir-ir-specification) - IR format details

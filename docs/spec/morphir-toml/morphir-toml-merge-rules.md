@@ -79,5 +79,5 @@ Key mapping:
 ## Related docs
 
 - `docs/configuration.md` (user-facing configuration guide)
-- `docs/spec/morphir-toml-specification.md` (format/structure specification)
+- `docs/spec/morphir-toml/morphir-toml-specification.md` (format/structure specification)
 

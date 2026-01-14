@@ -36,14 +36,16 @@ Understand the fundamental concepts behind Morphir
 - [Morphir IR](concepts/morphir-ir.md) - The Intermediate Representation structure
 - [Morphir SDK](concepts/morphir-sdk.md) - Standard library and SDK
 
-### [IR Specification](spec/)
-Technical specification of the Morphir Intermediate Representation
-- [Overview](spec/index.md) - IR specification overview
-- [IR Specification](spec/morphir-ir-specification.md) - Detailed IR specification
-- [JSON Schemas](spec/schemas/) - JSON schemas for IR versions
-  - [Version 3 (Current)](spec/schemas/v3/) - Latest IR schema
-  - [Version 2](spec/schemas/v2/) - Previous IR schema
-  - [Version 1](spec/schemas/v1/) - Original IR schema
+### [Specifications](spec/)
+Formal specifications for Morphir configuration and IR formats
+- [Overview](spec/index.md) - Specifications overview
+- [morphir.toml](spec/morphir-toml/morphir-toml-specification.md) - `morphir.toml` format
+- [morphir.json](spec/morphir-json/morphir-json-specification.md) - `morphir.json` format (morphir-elm legacy)
+- [Morphir IR Specification](spec/ir/morphir-ir-specification.md) - Detailed IR specification
+- [Morphir IR JSON Schemas](spec/ir/schemas/) - JSON schemas for IR versions
+  - [Version 3 (Current)](spec/ir/schemas/v3/) - Latest IR schema
+  - [Version 2](spec/ir/schemas/v2/) - Previous IR schema
+  - [Version 1](spec/ir/schemas/v1/) - Original IR schema
 
 ### [User Guides](user-guides/)
 Learn how to model business logic and use Morphir tools
