@@ -3,6 +3,12 @@
   base = "website"
   publish = "build"
   command = "npm run build"
+  # Netlify's "no content change" optimization only checks the base directory by default.
+  # Our Docusaurus docs live outside `website/` (see `website/docusaurus.config.js` -> docs.path = "../docs"),
+  # so docs-only changes would incorrectly skip the build unless we explicitly include `docs/` here.
+  #
+  # Netlify behavior: if this command exits 0, the build is skipped; if it exits non-zero, the build runs.
+  ignore = "bash -lc 'test -n \"$CACHED_COMMIT_REF\" && git diff --quiet \"$CACHED_COMMIT_REF\" \"$COMMIT_REF\" -- \":(top)website\" \":(top)docs\"'"
 
 [build.environment]
   # Use Node.js 24 for builds
