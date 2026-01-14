@@ -128,4 +128,4 @@ The llms.txt files are automatically generated from the documentation source. If
 
 - [llms.txt Specification](https://llmstxt.org/) - The official specification
 - [Morphir Documentation](/) - Full documentation site
-- [JSON Schemas](/docs/spec/schemas/) - Formal IR specifications
+- [JSON Schemas](/docs/spec/ir/schemas/) - Formal IR specifications

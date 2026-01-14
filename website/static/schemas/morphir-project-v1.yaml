@@ -1,0 +1,51 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+$id: "https://morphir.finos.org/schemas/morphir-project-v1.yaml"
+title: "Morphir Project Configuration (morphir.json)"
+description: "JSON Schema for the morphir.json project configuration file format (as used by morphir-elm)."
+type: object
+additionalProperties: true
+
+definitions:
+  decoration:
+    type: object
+    additionalProperties: true
+    properties:
+      displayName: { type: string }
+      ir: { type: string }
+      entryPoint: { type: string }
+      storageLocation: { type: string }
+
+properties:
+  name:
+    type: string
+    description: "Package name / module prefix (Elm module style, e.g. My.Package)."
+  sourceDirectory:
+    type: string
+    description: "Directory containing project source files (relative to project root)."
+  exposedModules:
+    type: array
+    items: { type: string }
+    description: "Modules exposed by the package (without the common package prefix)."
+  dependencies:
+    type: array
+    items:
+      type: string
+      minLength: 1
+    description: "Dependency references. Implemented in morphir-elm CLI2: data: URLs, file: URLs, http/https/ftp URLs, or plain local file paths. Reserved (not yet implemented): git:, github:, npm:."
+  localDependencies:
+    type: array
+    items:
+      type: string
+      minLength: 1
+    description: "Local dependency references (backwards compatibility). In morphir-elm CLI2 these are loaded similarly to dependencies for plain paths."
+  decorations:
+    type: object
+    additionalProperties:
+      $ref: "#/definitions/decoration"
+    description: "Map of decoration id to decoration configuration."
+
+required:
+  - name
+  - sourceDirectory
+  - exposedModules
+

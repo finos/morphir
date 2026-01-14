@@ -20,7 +20,14 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../../.." && pwd)"
+
+# Resolve repository root robustly (repo layouts can vary).
+# Prefer git, then fall back to a relative path that matches this monorepo layout.
+if PROJECT_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)"; then
+    true
+else
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+fi
 WEBSITE_DIR="$PROJECT_ROOT/website"
 DOCS_DIR="$PROJECT_ROOT/docs"
 
@@ -76,12 +83,18 @@ check_markdown_links() {
 
     # Find all markdown files
     while IFS= read -r -d '' file; do
-        ((checked_count++))
+        # Use pre-increment to avoid `set -e` exiting on a 0-valued arithmetic result.
+        ((++checked_count))
 
         # Extract markdown links [text](link)
         while IFS= read -r link; do
-            # Skip external links, anchors, and empty links
-            if [[ "$link" =~ ^https?:// ]] || [[ "$link" =~ ^# ]] || [[ -z "$link" ]]; then
+            # Skip links we can't reliably validate offline:
+            # - external URLs (http/https)
+            # - mailto links
+            # - page anchors
+            # - absolute site routes (Docusaurus routes like /docs/... or /schemas/...)
+            # - empty links
+            if [[ "$link" =~ ^https?:// ]] || [[ "$link" =~ ^mailto: ]] || [[ "$link" =~ ^# ]] || [[ "$link" =~ ^/ ]] || [[ -z "$link" ]]; then
                 continue
             fi
 
@@ -97,13 +110,8 @@ check_markdown_links() {
             local file_dir=$(dirname "$file")
             local target_path
 
-            if [[ "$clean_link" == /* ]]; then
-                # Absolute path from docs root
-                target_path="$DOCS_DIR${clean_link}"
-            else
-                # Relative path
-                target_path="$file_dir/$clean_link"
-            fi
+            # Relative path only (absolute routes are skipped above)
+            target_path="$file_dir/$clean_link"
 
             # Normalize path
             target_path=$(realpath -m "$target_path" 2>/dev/null || echo "$target_path")
@@ -113,7 +121,7 @@ check_markdown_links() {
                 echo -e "${RED}BROKEN:${NC} $file"
                 echo -e "  Link: $link"
                 echo -e "  Expected: $target_path"
-                ((broken_count++))
+                ((++broken_count))
 
                 if $FIX_MODE; then
                     # Try to find a similar file
