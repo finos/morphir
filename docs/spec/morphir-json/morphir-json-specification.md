@@ -57,6 +57,7 @@ Example: if `name = "My.Package"` then `exposedModules = ["Foo"]` refers to Elm 
 
 - **`git:`**
 - **`github:`**
+- **`npm:`**
 
 These are intended to allow referencing dependencies by Git repository/revision, but **they are not implemented in `morphir-elm` or Morphir Go at this time**. Tools may reject these schemes until an implementation exists.
 

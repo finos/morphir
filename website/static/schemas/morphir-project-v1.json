@@ -47,7 +47,7 @@
         "type": "string",
         "minLength": 1
       },
-      "description": "Dependency references. Implemented in morphir-elm CLI2: data: URLs, file: URLs, http/https/ftp URLs, or plain local file paths. Reserved (not yet implemented): git:, github:."
+      "description": "Dependency references. Implemented in morphir-elm CLI2: data: URLs, file: URLs, http/https/ftp URLs, or plain local file paths. Reserved (not yet implemented): git:, github:, npm:."
     },
     "localDependencies": {
       "type": "array",
