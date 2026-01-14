@@ -998,33 +998,142 @@ Be helpful, thorough, and proactive with releases:
 
 You are the automated safety net between development and production. Be thorough and proactive!
 
+## Lessons Learned (v0.4.0-alpha.4)
+
+This section documents lessons from the v0.4.0-alpha.4 release to prevent future issues.
+
+### Cross-Module Dependencies
+
+**Problem**: When cmd/morphir uses a new feature from pkg/pipeline (like `WithLogger()`) that was added in the SAME release:
+1. The go.mod files reference the previous version (e.g., v0.4.0-alpha.3)
+2. The external consumption test downloads that version
+3. The build fails because the old version doesn't have the new feature
+
+**Solution - Two-Stage Releases for New Features**:
+When adding features to `pkg/*` that will be used by `cmd/*`:
+
+1. **First Release**: Add the feature to pkg/* WITHOUT using it in cmd/*
+   - Example: Add `WithLogger()` to pkg/pipeline
+   - Release and publish (e.g., v0.4.0-alpha.3)
+
+2. **Second Release**: Use the feature in cmd/*
+   - Example: Call `WithLogger()` from cmd/morphir
+   - go.mod can now reference the published version
+   - Release and publish (e.g., v0.4.0-alpha.4)
+
+**Alternative - Same Release (More Complex)**:
+If you must release both changes together:
+
+1. Create initial tags and push (publishes modules to Go proxy)
+2. Update go.mod files to reference the new version
+3. Create a fix PR and merge
+4. Recreate tags on the new commit
+5. Retrigger release workflow
+
+### Go.mod Version References
+
+**Rule**: At release time, go.mod files must reference PUBLISHED versions.
+
+**Problem**: During development with go.work, the go.mod versions don't matter (workspace overrides them). But GoReleaser builds WITHOUT go.work, so it downloads from the Go proxy.
+
+**Process**:
+1. **During development**: Keep go.mod at last published version (go.work handles local resolution)
+2. **At release time**: If cross-module features exist, update go.mod to the release version AFTER initial tags are pushed
+3. **For clean releases**: If no cross-module changes, no go.mod updates needed
+
+### Workspace Setup in Release Workflow
+
+**Original Intent**: Create go.work in the release workflow to help with local module resolution.
+
+**Problem**: The workspace setup ran `go work sync`, which modifies go.mod/go.sum files, causing GoReleaser to fail with "dirty git state".
+
+**Current Fix**: Removed workspace setup from release workflow entirely. GoReleaser doesn't need it since it runs `go mod tidy` in its before hooks.
+
+**Better Future Fix**: If workspace setup is needed, modify it to:
+- Create go.work with `use` directives only
+- Skip `go work sync` (or catch/ignore its failures)
+- Ensure no committed files are modified
+
+### External Consumption Test
+
+**Purpose**: Verifies that external consumers (without go.work) can build the CLI.
+
+**Behavior on Release PRs**:
+- For release branches (`release/vX.Y.Z`), cross-module dependency failures are expected
+- The test now detects this and passes with a warning
+- After release is complete and modules are published, the test will fully pass
+
+**Key Point**: This test correctly identifies when the codebase has cross-module dependencies that won't work for external consumers until all modules are published.
+
+### Release Workflow Must Not Modify Committed Files
+
+**Rule**: The release workflow should NEVER modify files that are tracked by git.
+
+**Why**: GoReleaser checks for dirty git state. If any step modifies tracked files, the release fails.
+
+**Problematic Steps**:
+- `go work sync` - modifies go.mod/go.sum
+- Any script that modifies source files
+
+**Safe Steps**:
+- Creating untracked files (like go.work which is in .gitignore)
+- `go mod tidy` in GoReleaser's before hooks (runs after dirty check)
+
+### Release Retry Process
+
+When a release fails and you need to fix and retry:
+
+1. **Diagnose**: Check `gh run view <id> --log-failed`
+2. **Fix**: Create a PR with the fix
+3. **Merge**: Wait for PR to merge
+4. **Update main**: `git checkout main && git fetch origin && git reset --hard origin/main`
+5. **Recreate tags**: `mise run release:tags -- recreate vX.Y.Z`
+6. **Push tags**: `mise run release:tags push vX.Y.Z`
+7. **Trigger**: `gh workflow run release.yml --field tag=vX.Y.Z`
+
+**Important**: Tags must point to the commit with the fix, not the original broken commit.
+
+### Checklist for Cross-Module Releases
+
+Before releasing when cmd/* uses new features from pkg/*:
+
+- [ ] Are the new pkg/* features already published? If not, consider a two-stage release
+- [ ] Do go.mod files reference a version that has the features being used?
+- [ ] Did you run the external consumption test locally?
+- [ ] Is the release workflow clean (no steps that modify tracked files)?
+
 ## Key Principles
 
-1. **Validate First, Tag Last**: NEVER create tags until all local checks pass and PR is merged
+1. **Consult This Runbook First**: Before making ANY changes to the release process or workflow:
+   - Read the relevant sections of this skill document
+   - Check the "Lessons Learned" section for known issues
+   - Understand WHY existing steps exist before removing or modifying them
+   - If unsure, ask rather than experiment during a release
+2. **Validate First, Tag Last**: NEVER create tags until all local checks pass and PR is merged
    - Run `just verify`, `just test`, `just release-snapshot` locally first
    - Tags trigger workflows - validate everything before pushing them
    - Minimize retag cycles by thorough pre-flight checks
-2. **Main is Protected**: Never push directly, always use PRs
+3. **Main is Protected**: Never push directly, always use PRs
    - CHANGELOG updates require PRs
    - go.mod updates require PRs
    - All release preparation goes through PR process
-3. **Tags Follow Merges**: Tags must point to merged commits on main
+4. **Tags Follow Merges**: Tags must point to merged commits on main
    - Never tag on a branch
    - Always fetch main, verify CI passed, then tag
-4. **Batch Fixes**: Include multiple fixes in one PR when possible
+5. **Batch Fixes**: Include multiple fixes in one PR when possible
    - CHANGELOG + go.mod updates in one PR
    - Reduces round trips and merge conflicts
-5. **Auto-Detect**: Always discover modules dynamically
+6. **Auto-Detect**: Always discover modules dynamically
    - Never rely on hardcoded module lists
    - Check for new packages before each release
-6. **Diagnose Fast**: Parse workflow logs to quickly identify issues
+7. **Diagnose Fast**: Parse workflow logs to quickly identify issues
    - When failures occur, analyze before retagging
    - Create fix PRs, don't just retag
-7. **Learn**: Remember common failures and check for them proactively
+8. **Learn**: Remember common failures and check for them proactively
    - Check go.mod for v0.0.0 versions
    - Simulate GoReleaser steps locally
    - Verify script permissions and hooks
-8. **Documentation Freshness**: Ensure docs are current before release
+9. **Documentation Freshness**: Ensure docs are current before release
    - Regenerate llms.txt files (`mise run llms-txt`)
    - Verify schema sync (`mise run schema:verify`)
    - Include changed doc artifacts in release PR
