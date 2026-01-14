@@ -53,6 +53,13 @@ Example: if `name = "My.Package"` then `exposedModules = ["Foo"]` refers to Elm 
 - **Local file path**: a path on disk (relative or absolute)
   - Resolution order in `morphir-elm` CLI2: first relative to the current working directory, then relative to the `morphir.json` directory.
 
+**Planned (reserved schemes):**
+
+- **`git:`**
+- **`github:`**
+
+These are intended to allow referencing dependencies by Git repository/revision, but **they are not implemented in `morphir-elm` or Morphir Go at this time**. Tools may reject these schemes until an implementation exists.
+
 ### `localDependencies` (optional)
 
 - **Type**: array of strings
