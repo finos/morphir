@@ -43,15 +43,22 @@ Example: if `name = "My.Package"` then `exposedModules = ["Foo"]` refers to Elm 
 ### `dependencies` (optional)
 
 - **Type**: array of strings
-- **Meaning (morphir-elm)**: URI references to other Morphir IR files.
-- **Allowed URI schemes (documented)**: `file://`, `http://`, `https://`, `data://`
+- **Meaning (morphir-elm)**: References to other Morphir IR files to load as dependencies.
+
+**Reference forms accepted by morphir-elm (implementation-defined):**
+
+- **Data URL**: RFC2397 form (`data:...`) containing JSON
+- **File URL**: `file:` URL pointing to a local JSON file
+- **Network URL**: `http:`, `https:`, `ftp:` URL returning JSON
+- **Local file path**: a path on disk (relative or absolute)
+  - Resolution order in `morphir-elm` CLI2: first relative to the current working directory, then relative to the `morphir.json` directory.
 
 ### `localDependencies` (optional)
 
 - **Type**: array of strings
-- **Meaning (morphir-elm)**: List of **relative paths** to dependency IRs (kept for backwards compatibility).
+- **Meaning (morphir-elm)**: List of dependency references that are treated as “local” for backwards compatibility.
 
-Example: `"../sibling-folder/morphir-ir.json"`
+In practice, `morphir-elm` CLI2 loads `localDependencies` using the same resolution rules as `dependencies` for plain paths.
 
 ### `decorations` (optional)
 
@@ -99,6 +106,13 @@ Morphir Go currently supports `morphir.json` for **basic project metadata** and 
 - Implemented: `name`, `sourceDirectory`, `exposedModules`, `decorations`
 - Not yet implemented: `dependencies`, `localDependencies`
   - These keys are **ignored** by the current Go parser (unknown JSON fields are ignored during decoding).
+
+## Implementation references (morphir-elm)
+
+The behavior above is derived from the `finos/morphir-elm` implementation:
+
+- `cli2/dependencies.ts` (dependency reference parsing/loading)
+- `cli2/dependencies.test.ts` (protocol and local path tests)
 
 ## Machine-readable schema
 
