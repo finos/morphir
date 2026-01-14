@@ -15,6 +15,8 @@ This section contains formal specifications for Morphir configuration and IR for
 
 - **[morphir.toml merge rules](./morphir-toml/morphir-toml-merge-rules/)**: How multiple configuration sources are merged into an effective configuration (precedence + deep-merge behavior).
 
+- **[morphir.json](./morphir-json/morphir-json-specification/)**: Specification for the legacy `morphir.json` project configuration file used by `morphir-elm` (includes dependency fields).
+
 - **[Morphir IR Specification](./ir/morphir-ir-specification/)**: The complete Morphir IR specification document, describing the structure, semantics, and usage of the Morphir IR format.
 
 - **[Morphir IR JSON Schemas](./ir/schemas/)**: JSON schema definitions for all supported format versions of the Morphir IR (available in both YAML and JSON formats):

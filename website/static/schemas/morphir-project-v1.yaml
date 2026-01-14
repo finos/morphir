@@ -1,0 +1,47 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+$id: "https://morphir.finos.org/schemas/morphir-project-v1.yaml"
+title: "Morphir Project Configuration (morphir.json)"
+description: "JSON Schema for the morphir.json project configuration file format (as used by morphir-elm)."
+type: object
+additionalProperties: true
+
+definitions:
+  decoration:
+    type: object
+    additionalProperties: true
+    properties:
+      displayName: { type: string }
+      ir: { type: string }
+      entryPoint: { type: string }
+      storageLocation: { type: string }
+
+properties:
+  name:
+    type: string
+    description: "Package name / module prefix (Elm module style, e.g. My.Package)."
+  sourceDirectory:
+    type: string
+    description: "Directory containing project source files (relative to project root)."
+  exposedModules:
+    type: array
+    items: { type: string }
+    description: "Modules exposed by the package (without the common package prefix)."
+  dependencies:
+    type: array
+    items: { type: string }
+    description: "URI references to other Morphir IR files (morphir-elm)."
+  localDependencies:
+    type: array
+    items: { type: string }
+    description: "Relative paths to dependency IR files (backwards compatibility)."
+  decorations:
+    type: object
+    additionalProperties:
+      $ref: "#/definitions/decoration"
+    description: "Map of decoration id to decoration configuration."
+
+required:
+  - name
+  - sourceDirectory
+  - exposedModules
+
