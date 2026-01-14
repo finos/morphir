@@ -1,0 +1,324 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+$id: "https://morphir.finos.org/schemas/morphir-config-v1.yaml"
+title: "Morphir Configuration (morphir.toml)"
+description: "JSON Schema for the JSON-equivalent model of morphir.toml configuration files."
+type: object
+additionalProperties: true
+
+definitions:
+  stringMap:
+    type: object
+    additionalProperties:
+      type: string
+
+  taskCommon:
+    type: object
+    additionalProperties: true
+    properties:
+      depends_on:
+        type: array
+        items: { type: string }
+      pre:
+        type: array
+        items: { type: string }
+      post:
+        type: array
+        items: { type: string }
+      inputs:
+        type: array
+        items: { type: string }
+      outputs:
+        type: array
+        items: { type: string }
+      params:
+        type: object
+        additionalProperties: true
+      env:
+        $ref: "#/definitions/stringMap"
+      mounts:
+        $ref: "#/definitions/stringMap"
+
+  intrinsicTask:
+    allOf:
+      - $ref: "#/definitions/taskCommon"
+      - type: object
+        additionalProperties: true
+        properties:
+          kind:
+            type: string
+            enum: ["intrinsic"]
+          action:
+            type: string
+
+  commandTask:
+    allOf:
+      - $ref: "#/definitions/taskCommon"
+      - type: object
+        additionalProperties: true
+        properties:
+          kind:
+            type: string
+            enum: ["command"]
+          cmd:
+            type: array
+            items: { type: string }
+
+  task:
+    description: "Project task definition. kind omitted implies intrinsic."
+    anyOf:
+      - $ref: "#/definitions/commandTask"
+      - $ref: "#/definitions/intrinsicTask"
+      - allOf:
+          - $ref: "#/definitions/taskCommon"
+          - type: object
+            additionalProperties: true
+            properties:
+              action:
+                type: string
+
+  workflowStage:
+    type: object
+    additionalProperties: true
+    properties:
+      name: { type: string }
+      targets:
+        type: array
+        items: { type: string }
+      parallel: { type: boolean }
+      condition: { type: string }
+
+  workflow:
+    type: object
+    additionalProperties: true
+    properties:
+      description: { type: string }
+      extends: { type: string }
+      stages:
+        type: array
+        items:
+          $ref: "#/definitions/workflowStage"
+
+  typeMappingPrimitive:
+    type: object
+    additionalProperties: true
+    properties:
+      external: { type: string }
+      morphir: { type: string }
+      bidirectional: { type: boolean }
+      priority: { type: integer }
+
+  typeMappingContainer:
+    type: object
+    additionalProperties: true
+    properties:
+      external_pattern: { type: string }
+      morphir_pattern: { type: string }
+      type_params: { type: integer }
+      bidirectional: { type: boolean }
+      priority: { type: integer }
+
+  typeMappingConfig:
+    type: object
+    additionalProperties: true
+    properties:
+      primitives:
+        type: array
+        items: { $ref: "#/definitions/typeMappingPrimitive" }
+      containers:
+        type: array
+        items: { $ref: "#/definitions/typeMappingContainer" }
+
+  toolchainAcquire:
+    type: object
+    additionalProperties: true
+    properties:
+      backend: { type: string }
+      package: { type: string }
+      version: { type: string }
+      executable: { type: string }
+
+  toolchainInputs:
+    description: "Inputs may be an array (files) or an object with files/artifacts."
+    anyOf:
+      - type: array
+        items: { type: string }
+      - type: object
+        additionalProperties: true
+        properties:
+          files:
+            type: array
+            items: { type: string }
+          artifacts:
+            type: object
+            additionalProperties: { type: string }
+
+  toolchainOutput:
+    type: object
+    additionalProperties: true
+    properties:
+      path: { type: string }
+      type: { type: string }
+
+  toolchainTask:
+    type: object
+    additionalProperties: true
+    properties:
+      exec: { type: string }
+      args:
+        type: array
+        items: { type: string }
+      inputs:
+        $ref: "#/definitions/toolchainInputs"
+      outputs:
+        type: object
+        additionalProperties:
+          $ref: "#/definitions/toolchainOutput"
+      fulfills:
+        type: array
+        items: { type: string }
+      variants:
+        type: array
+        items: { type: string }
+      env:
+        $ref: "#/definitions/stringMap"
+
+  toolchain:
+    type: object
+    additionalProperties: true
+    properties:
+      enabled: { type: boolean }
+      version: { type: string }
+      working_dir: { type: string }
+      timeout: { type: string }
+      env:
+        $ref: "#/definitions/stringMap"
+      acquire:
+        $ref: "#/definitions/toolchainAcquire"
+      tasks:
+        type: object
+        additionalProperties:
+          $ref: "#/definitions/toolchainTask"
+
+  decoration:
+    type: object
+    additionalProperties: true
+    properties:
+      display_name: { type: string }
+      ir: { type: string }
+      entry_point: { type: string }
+      storage_location: { type: string }
+
+properties:
+  morphir:
+    type: object
+    additionalProperties: true
+    properties:
+      version: { type: string }
+
+  workspace:
+    type: object
+    additionalProperties: true
+    properties:
+      root: { type: string }
+      output_dir: { type: string }
+      members:
+        type: array
+        items: { type: string }
+      exclude:
+        type: array
+        items: { type: string }
+      default_member: { type: string }
+
+  project:
+    type: object
+    additionalProperties: true
+    properties:
+      name: { type: string }
+      version: { type: string }
+      source_directory: { type: string }
+      exposed_modules:
+        type: array
+        items: { type: string }
+      module_prefix: { type: string }
+      decorations:
+        type: object
+        additionalProperties:
+          $ref: "#/definitions/decoration"
+
+  ir:
+    type: object
+    additionalProperties: true
+    properties:
+      format_version:
+        type: integer
+        minimum: 1
+        maximum: 10
+      strict_mode: { type: boolean }
+
+  codegen:
+    type: object
+    additionalProperties: true
+    properties:
+      targets:
+        type: array
+        items: { type: string }
+      template_dir: { type: string }
+      output_format:
+        type: string
+        enum: ["pretty", "compact", "minified"]
+
+  cache:
+    type: object
+    additionalProperties: true
+    properties:
+      enabled: { type: boolean }
+      dir: { type: string }
+      max_size:
+        type: integer
+        minimum: 0
+
+  logging:
+    type: object
+    additionalProperties: true
+    properties:
+      level:
+        type: string
+        enum: ["debug", "info", "warn", "error"]
+      format:
+        type: string
+        enum: ["text", "json"]
+      file: { type: string }
+
+  ui:
+    type: object
+    additionalProperties: true
+    properties:
+      color: { type: boolean }
+      interactive: { type: boolean }
+      theme:
+        type: string
+        enum: ["default", "light", "dark"]
+
+  tasks:
+    type: object
+    additionalProperties:
+      $ref: "#/definitions/task"
+
+  workflows:
+    type: object
+    additionalProperties:
+      $ref: "#/definitions/workflow"
+
+  bindings:
+    type: object
+    additionalProperties: true
+    properties:
+      wit: { $ref: "#/definitions/typeMappingConfig" }
+      protobuf: { $ref: "#/definitions/typeMappingConfig" }
+      json: { $ref: "#/definitions/typeMappingConfig" }
+
+  toolchain:
+    type: object
+    additionalProperties:
+      $ref: "#/definitions/toolchain"
+

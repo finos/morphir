@@ -13,6 +13,10 @@ This section contains the Morphir IR (Intermediate Representation) specification
 
 - **[Morphir IR Specification](./morphir-ir-specification/)**: The complete Morphir IR specification document, describing the structure, semantics, and usage of the Morphir IR format.
 
+- **[Morphir TOML Configuration Specification](./morphir-toml-specification/)**: The specification for `morphir.toml` configuration files (projects, workspaces, tasks, workflows, toolchains, bindings).
+
+- **[Morphir TOML Configuration Merge Rules](./morphir-toml-merge-rules/)**: How multiple configuration sources are merged into an effective configuration (precedence + deep-merge behavior).
+
 - **[JSON Schemas](./schemas/)**: JSON schema definitions for all supported format versions of the Morphir IR (available in both YAML and JSON formats):
   - v3 (Current): [YAML](/schemas/morphir-ir-v3.yaml) | [JSON](/schemas/morphir-ir-v3.json)
   - v2: [YAML](/schemas/morphir-ir-v2.yaml) | [JSON](/schemas/morphir-ir-v2.json)
