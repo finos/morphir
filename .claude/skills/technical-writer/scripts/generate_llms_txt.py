@@ -104,10 +104,9 @@ DOC_SECTIONS = {
 # Key documents to include with full content in llms-full.txt
 KEY_DOCUMENTS = [
     "docs/README.md",
-    "docs/morphir-ir-specification.md",
+    "docs/spec/ir/morphir-ir-specification.md",
     "docs/getting-started/README.md",
     "docs/concepts/README.md",
-    "docs/spec/schemas/index.md",
 ]
 
 
