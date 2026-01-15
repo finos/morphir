@@ -161,6 +161,17 @@ Real-world applications of Morphir
 - [FINOS](https://finos.org)
 - [Slack Channel](https://finos-lf.slack.com/messages/morphir/)
 
+## 🤖 Docs for AI Agents
+
+Morphir provides LLM-friendly documentation following the [llms.txt specification](https://llmstxt.org/):
+
+| File | Description |
+|------|-------------|
+| [/llms.txt](/llms.txt) | Compact version with curated links and descriptions |
+| [/llms-full.txt](/llms-full.txt) | Full version with inline content from key documents |
+
+Use these files to provide Morphir context to AI assistants, chatbots, or code generation tools. See [LLM-Friendly Documentation](community/llms-txt.md) for usage examples.
+
 ---
 
 **Note**: This documentation is organized to help newcomers navigate easily. If you're looking for something specific, use your browser's search function or check the [FAQs](community/faqs.md).

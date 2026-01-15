@@ -32,11 +32,11 @@ analysis, optimization, and cross-platform code generation.
 - [Morphir CLI Preview](https://morphir.finos.org/docs/cli-preview/): :::caution Developer Preview The Morphir CLI Preview features are in active development. APIs and behavior may change. For production use, please use the stable [morphir-elm](../installation.md) to...
 - [v0.4.0-alpha.1 Release Notes](https://morphir.finos.org/docs/cli-preview/release-notes/v0.4.0-alpha.1/): **Release Date**: January 2026
 - [What's New in CLI Preview](https://morphir.finos.org/docs/cli-preview/whats-new/): This page highlights the major new features in the Morphir CLI Preview.
-- [Morphir IR Specification](https://morphir.finos.org/docs/spec/): The complete Morphir IR specification and JSON schemas
-- [Morphir IR Specification](https://morphir.finos.org/docs/spec/morphir-ir-specification/): Complete specification of the Morphir Intermediate Representation (IR)
-- [JSON Schemas](https://morphir.finos.org/docs/spec/schemas/): JSON schema definitions for Morphir IR format versions
-- [Full Schema](https://morphir.finos.org/docs/spec/schemas/v1/full/): Complete Morphir IR JSON Schema for format version 1
-- [Schema Version 1](https://morphir.finos.org/docs/spec/schemas/v1/): Morphir IR JSON Schema for format version 1
+- [Specifications](https://morphir.finos.org/docs/spec/): Formal specifications for Morphir configuration and IR
+- [Morphir IR Specification](https://morphir.finos.org/docs/spec/ir/morphir-ir-specification/): Complete specification of the Morphir Intermediate Representation (IR)
+- [JSON Schemas](https://morphir.finos.org/docs/spec/ir/schemas/): JSON schema definitions for Morphir IR format versions
+- [Full Schema](https://morphir.finos.org/docs/spec/ir/schemas/v1/full/): Complete Morphir IR JSON Schema for format version 1
+- [Schema Version 1](https://morphir.finos.org/docs/spec/ir/schemas/v1/): Morphir IR JSON Schema for format version 1
 - [Reference Documentation](https://morphir.finos.org/docs/reference/): Technical reference documentation for Morphir backends, APIs, and tools.
 - [Morphir-TypeSpec Mapping](https://morphir.finos.org/docs/reference/backends/other-platforms/cadl-doc/): This is a documentation of the mapping strategy from Morphir types to Typespec types. This document describes how types in Morphir Models are represented in Typespec. Below is a quick overview of t...
 - [TypeScript - Morphir API](https://morphir.finos.org/docs/reference/backends/other-platforms/morphir-typescript-api/): The purpose of this documentation is to give a user an understanding of how to use the Morphir API created for Typescript.

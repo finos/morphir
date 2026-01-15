@@ -40,14 +40,16 @@ Understand the fundamental concepts behind Morphir
 - [Morphir IR](concepts/morphir-ir.md) - The Intermediate Representation structure
 - [Morphir SDK](concepts/morphir-sdk.md) - Standard library and SDK
 
-### [IR Specification](spec/)
-Technical specification of the Morphir Intermediate Representation
-- [Overview](spec/index.md) - IR specification overview
-- [IR Specification](spec/morphir-ir-specification.md) - Detailed IR specification
-- [JSON Schemas](spec/schemas/) - JSON schemas for IR versions
-  - [Version 3 (Current)](spec/schemas/v3/) - Latest IR schema
-  - [Version 2](spec/schemas/v2/) - Previous IR schema
-  - [Version 1](spec/schemas/v1/) - Original IR schema
+### [Specifications](spec/)
+Formal specifications for Morphir configuration and IR formats
+- [Overview](spec/index.md) - Specifications overview
+- [morphir.toml](spec/morphir-toml/morphir-toml-specification.md) - `morphir.toml` format
+- [morphir.json](spec/morphir-json/morphir-json-specification.md) - `morphir.json` format (morphir-elm legacy)
+- [Morphir IR Specification](spec/ir/morphir-ir-specification.md) - Detailed IR specification
+- [Morphir IR JSON Schemas](spec/ir/schemas/) - JSON schemas for IR versions
+  - [Version 3 (Current)](spec/ir/schemas/v3/) - Latest IR schema
+  - [Version 2](spec/ir/schemas/v2/) - Previous IR schema
+  - [Version 1](spec/ir/schemas/v1/) - Original IR schema
 
 ### [User Guides](user-guides/)
 Learn how to model business logic and use Morphir tools
@@ -162,6 +164,17 @@ Real-world applications of Morphir
 - [Morphir Website](https://morphir.finos.org)
 - [FINOS](https://finos.org)
 - [Slack Channel](https://finos-lf.slack.com/messages/morphir/)
+
+## 🤖 Docs for AI Agents
+
+Morphir provides LLM-friendly documentation following the [llms.txt specification](https://llmstxt.org/):
+
+| File | Description |
+|------|-------------|
+| [/llms.txt](/llms.txt) | Compact version with curated links and descriptions |
+| [/llms-full.txt](/llms-full.txt) | Full version with inline content from key documents |
+
+Use these files to provide Morphir context to AI assistants, chatbots, or code generation tools. See [LLM-Friendly Documentation](community/llms-txt.md) for usage examples.
 
 ---
 
@@ -1227,216 +1240,6 @@ After understanding these core concepts, you can:
 
 ---
 
-### JSON Schemas
-
-# Morphir IR JSON Schemas
-
-This directory contains formal JSON schema specifications for all supported format versions of the Morphir IR (Intermediate Representation).
-
-## Schema Files
-
-The schemas are available in both YAML and JSON formats at SEO-friendly URLs:
-
-| Version | YAML | JSON |
-|---------|------|------|
-| v3 (Current) | [morphir-ir-v3.yaml](/schemas/morphir-ir-v3.yaml) | [morphir-ir-v3.json](/schemas/morphir-ir-v3.json) |
-| v2 | [morphir-ir-v2.yaml](/schemas/morphir-ir-v2.yaml) | [morphir-ir-v2.json](/schemas/morphir-ir-v2.json) |
-| v1 | [morphir-ir-v1.yaml](/schemas/morphir-ir-v1.yaml) | [morphir-ir-v1.json](/schemas/morphir-ir-v1.json) |
-
-Use YAML for better readability or JSON for maximum tool compatibility.
-
-## Format Version Differences
-
-### Version 1 → Version 2
-
-**Tag Capitalization:**
-- Distribution: `"library"` → `"Library"`
-- Access control: `"public"/"private"` → `"Public"/"Private"`
-- Type tags: `"variable"` → `"Variable"`, `"reference"` → `"Reference"`, etc.
-
-**Structure Changes:**
-- Modules changed from `{"name": ..., "def": ...}` objects to `[modulePath, accessControlled]` arrays
-
-### Version 2 → Version 3
-
-**Tag Capitalization:**
-- Value expression tags: `"apply"` → `"Apply"`, `"lambda"` → `"Lambda"`, etc.
-- Pattern tags: `"as_pattern"` → `"AsPattern"`, `"wildcard_pattern"` → `"WildcardPattern"`, etc.
-- Literal tags: `"bool_literal"` → `"BoolLiteral"`, `"string_literal"` → `"StringLiteral"`, etc.
-
-## Usage
-
-### Validation
-
-The schemas can be used to validate Morphir IR JSON files. Note that due to the complexity and recursive nature of these schemas, validation can be slow with some validators.
-
-#### Using Python jsonschema
-
-```bash
-pip install jsonschema pyyaml requests
-
-python3 << 'EOF'
-
-from jsonschema import validate
-
-# Load schema from URL
-schema = yaml.safe_load(
-    requests.get('https://morphir.finos.org/schemas/morphir-ir-v3.yaml').text
-)
-
-# Load Morphir IR JSON
-with open('morphir-ir.json', 'r') as f:
-    data = json.load(f)
-
-# Validate
-validate(instance=data, schema=schema)
-print("✓ Valid Morphir IR")
-EOF
-```
-
-#### Using Node.js ajv
-
-```bash
-npm install -g ajv-cli ajv-formats
-
-# Download JSON schema directly (no conversion needed)
-curl -o morphir-ir-v3.json https://morphir.finos.org/schemas/morphir-ir-v3.json
-
-# Validate
-ajv validate -s morphir-ir-v3.json -d morphir-ir.json
-```
-
-#### Using sourcemeta jsonschema CLI
-
-The [sourcemeta/jsonschema](https://github.com/sourcemeta/jsonschema) CLI is a fast, cross-platform JSON Schema validator written in C++. It supports all JSON Schema versions and provides excellent error messages.
-
-**Installation:**
-
-```bash
-# Using npm
-npm install -g @sourcemeta/jsonschema
-
-# Using pip
-pip install jsonschema-cli
-
-# Using Homebrew (macOS/Linux)
-brew install sourcemeta/apps/jsonschema
-
-# Using Docker
-docker pull sourcemeta/jsonschema
-```
-
-**Basic validation:**
-
-```bash
-# Download the schema
-curl -o morphir-ir-v3.json https://morphir.finos.org/schemas/morphir-ir-v3.json
-
-# Validate a Morphir IR file
-jsonschema validate morphir-ir-v3.json morphir-ir.json
-```
-
-**Validate with detailed output:**
-
-```bash
-# Verbose mode shows validation progress
-jsonschema validate morphir-ir-v3.json morphir-ir.json --verbose
-
-# JSON output for programmatic processing
-jsonschema validate morphir-ir-v3.json morphir-ir.json --json
-```
-
-**Validate multiple files or directories:**
-
-```bash
-# Validate all JSON files in a directory
-jsonschema validate morphir-ir-v3.json ./output/
-
-# Validate specific files
-jsonschema validate morphir-ir-v3.json file1.json file2.json file3.json
-```
-
-**Fast mode (for large files):**
-
-```bash
-# Prioritize speed over detailed error messages
-jsonschema validate morphir-ir-v3.json morphir-ir.json --fast
-```
-
-**Using Docker:**
-
-```bash
-# Mount current directory and validate
-docker run --rm -v "$PWD:/data" sourcemeta/jsonschema \
-  validate /data/morphir-ir-v3.json /data/morphir-ir.json
-```
-
-### Quick Structural Check
-
-For a quick check without full validation, you can verify basic structure:
-
-```python
-
-def check_morphir_ir(filepath):
-    with open(filepath) as f:
-        data = json.load(f)
-    
-    # Check format version
-    version = data.get('formatVersion')
-    assert version in [1, 2, 3], f"Unknown format version: {version}"
-    
-    # Check distribution structure
-    dist = data['distribution']
-    assert isinstance(dist, list) and len(dist) == 4
-    assert dist[0] in ["library", "Library"], f"Unknown distribution type: {dist[0]}"
-    
-    # Check package definition
-    pkg_def = dist[3]
-    assert 'modules' in pkg_def
-    
-    print(f"✓ Basic structure valid: Format v{version}, {len(pkg_def['modules'])} modules")
-
-check_morphir_ir('morphir-ir.json')
-```
-
-## Integration with Tools
-
-These schemas can be used to:
-
-1. **Generate Code**: Create type definitions and parsers for various programming languages
-2. **IDE Support**: Provide autocomplete and validation in JSON editors
-3. **Testing**: Validate generated IR in test suites
-4. **Documentation**: Generate human-readable documentation from schema definitions
-
-## Schema Format
-
-The schemas are written in YAML format for better readability and include:
-
-- Comprehensive inline documentation
-- Type constraints and patterns
-- Required vs. optional fields
-- Recursive type definitions
-- Enum values for tagged unions
-
-## Contributing
-
-When updating the IR format:
-
-1. Update the appropriate schema file(s) to match the upstream schemas from the [main Morphir repository](https://github.com/finos/morphir/tree/main/docs/schemas)
-2. Update the format version handling in the .NET codec implementation if needed
-3. Add migration logic in the codec files if needed
-4. Update this README with the changes
-5. Test the schema against example IR files
-
-## References
-
-- [Morphir Project](https://morphir.finos.org/)
-- [Morphir Repository](https://github.com/finos/morphir)
-- [JSON Schema Specification](https://json-schema.org/)
-- [YAML Format](https://yaml.org/)
-
----
-
 ## Documentation Index
 
 ### Getting Started
@@ -1497,17 +1300,20 @@ Next-generation command-line interface documentation
 
 Technical specifications including IR format and schemas
 
-- [Morphir IR Specification](https://morphir.finos.org/docs/spec/): The complete Morphir IR specification and JSON schemas
-- [Morphir IR Specification](https://morphir.finos.org/docs/spec/morphir-ir-specification/): Complete specification of the Morphir Intermediate Representation (IR)
-- [JSON Schemas](https://morphir.finos.org/docs/spec/schemas/): JSON schema definitions for Morphir IR format versions
-- [Full Schema](https://morphir.finos.org/docs/spec/schemas/v1/full/): Complete Morphir IR JSON Schema for format version 1
-- [Schema Version 1](https://morphir.finos.org/docs/spec/schemas/v1/): Morphir IR JSON Schema for format version 1
-- [Full Schema](https://morphir.finos.org/docs/spec/schemas/v2/full/): Complete Morphir IR JSON Schema for format version 2
-- [Schema Version 2](https://morphir.finos.org/docs/spec/schemas/v2/): Morphir IR JSON Schema for format version 2
-- [What's New in Version 2](https://morphir.finos.org/docs/spec/schemas/v2/whats-new/): Changes and improvements in Morphir IR schema version 2
-- [Full Schema](https://morphir.finos.org/docs/spec/schemas/v3/full/): Complete Morphir IR JSON Schema for format version 3
-- [Schema Version 3](https://morphir.finos.org/docs/spec/schemas/v3/): Morphir IR JSON Schema for format version 3 (Current)
-- [What's New in Version 3](https://morphir.finos.org/docs/spec/schemas/v3/whats-new/): Changes and improvements in Morphir IR schema version 3
+- [Specifications](https://morphir.finos.org/docs/spec/): Formal specifications for Morphir configuration and IR
+- [Morphir IR Specification](https://morphir.finos.org/docs/spec/ir/morphir-ir-specification/): Complete specification of the Morphir Intermediate Representation (IR)
+- [JSON Schemas](https://morphir.finos.org/docs/spec/ir/schemas/): JSON schema definitions for Morphir IR format versions
+- [Full Schema](https://morphir.finos.org/docs/spec/ir/schemas/v1/full/): Complete Morphir IR JSON Schema for format version 1
+- [Schema Version 1](https://morphir.finos.org/docs/spec/ir/schemas/v1/): Morphir IR JSON Schema for format version 1
+- [Full Schema](https://morphir.finos.org/docs/spec/ir/schemas/v2/full/): Complete Morphir IR JSON Schema for format version 2
+- [Schema Version 2](https://morphir.finos.org/docs/spec/ir/schemas/v2/): Morphir IR JSON Schema for format version 2
+- [What's New in Version 2](https://morphir.finos.org/docs/spec/ir/schemas/v2/whats-new/): Changes and improvements in Morphir IR schema version 2
+- [Full Schema](https://morphir.finos.org/docs/spec/ir/schemas/v3/full/): Complete Morphir IR JSON Schema for format version 3
+- [Schema Version 3](https://morphir.finos.org/docs/spec/ir/schemas/v3/): Morphir IR JSON Schema for format version 3 (Current)
+- [What's New in Version 3](https://morphir.finos.org/docs/spec/ir/schemas/v3/whats-new/): Changes and improvements in Morphir IR schema version 3
+- [Morphir JSON Project Configuration Specification](https://morphir.finos.org/docs/spec/morphir-json/morphir-json-specification/): Formal specification for morphir.json (Morphir Elm project configuration)
+- [Morphir TOML Configuration Merge Rules](https://morphir.finos.org/docs/spec/morphir-toml/morphir-toml-merge-rules/): How Morphir merges morphir.toml configuration sources into an effective configuration
+- [Morphir TOML Configuration Specification](https://morphir.finos.org/docs/spec/morphir-toml/morphir-toml-specification/): Formal specification for morphir.toml configuration files
 
 ### Reference
 
@@ -1531,6 +1337,7 @@ API reference and backend documentation
 - [Spark - Testing Framework](https://morphir.finos.org/docs/reference/backends/spark/spark-testing-framework/): The purpose of this document is to show how someone can use and edit the spark tests.
 - [Migrating Old CLI To New CLI](https://morphir.finos.org/docs/reference/cli/cli-cli2-merging-docs/): This document contains cli commands that were migrated from the old cli, which is `morphir-elm`, into the new  all cli commands supported by the old cli,  and the **current** cli, `morphir`.
 - [ADR for Morphir CLI incremental build approach](https://morphir.finos.org/docs/reference/cli/morphir-cli-incremental-build-approach/): Morphir CLI tool offers a way to convert business models into the **Morphir IR** by parsing source files when a `make` command is run. The tooling performs poorly on very large models with especial...
+- [Decoration CLI Reference](https://morphir.finos.org/docs/reference/decorations/cli-reference/): Complete reference for all decoration-related CLI commands.
 - [Error Append not Supported](https://morphir.finos.org/docs/reference/error-append-not-supported/): The ++ operator assumes a type inferencer that can tell the difference between String and List. These are the only two types that are part of the `appendable` type-class. Until the type inferencer ...
 - [Insight API Guide](https://morphir.finos.org/docs/reference/insight-readme/): The purpose of this document is how we can use Insight API into any UI.
 - [Scala JSON Serialization](https://morphir.finos.org/docs/reference/json-schema/codec-docs/): The purpose of this documentation is to give an explanation on how the JSON Codec Backend works and how to use it. This backend is a feature built on top of the Scala backend, which allows you to r...
@@ -1555,6 +1362,9 @@ Contributing to Morphir development
 - [Governance Policies](https://morphir.finos.org/docs/developers/contributing/): This document describes the contribution process and governance policies of the FINOS Morphir project. The project is also governed by the Linux Foundation Antitrust Policy, and the FINOS IP Policy...
 - [Contributing to Morphir](https://morphir.finos.org/docs/developers/contribution-guide-index/): Morphir contains a few components for different aspects of the development process. These can be organized into the following:
 - [Contribution Guide](https://morphir.finos.org/docs/developers/contribution-guide-readme/): The purpose of this document is to make it easier for new contributors to get up-to-speed on the project.
+- [Decoration Registry Design](https://morphir.finos.org/docs/developers/decoration-registry-design/): A decoration registry provides a catalog of available decoration types and a way to discover and manage decoration values across projects. This improves the developer experience by enabling:
+- [Decorations Implementation Summary](https://morphir.finos.org/docs/developers/decorations-implementation-summary/): This document provides a summary of the decorations feature implementation in Morphir.
+- [Decorators Feature Implementation Plan](https://morphir.finos.org/docs/developers/decorators-implementation-plan/): This document outlines the implementation plan for the decorators feature in Morphir Go. Decorators allow users to attach additional metadata to Morphir IR elements (types, values, modules) that ca...
 - [Explaining Dev Bots](https://morphir.finos.org/docs/developers/dev-bots/): The premise of Dev Bots is that we can and should automate a significant portion of the code that we currently write by hand.
 - [JVM: Executing morphir-cli](https://morphir.finos.org/docs/developers/integrating-morphir-and-jvm-projects/): This document specifies all the necessary steps required to execute morphir-cli commands in a JVM project.
 - [Morphir Developers' Guide](https://morphir.finos.org/docs/developers/morphir-developers-guide/): The purpose of the document is to provide a detailed explanation of how various Morphir code artefacts work. It also documents the standard coding practices adopted for the Morphir project. Finally...
@@ -1576,6 +1386,7 @@ Community resources and guidelines
 - [Community](https://morphir.finos.org/docs/community/): Join the Morphir community and access helpful resources.
 - [Code of Conduct](https://morphir.finos.org/docs/community/code-of-conduct/): In the interest of fostering an open and welcoming environment, we as contributors and maintainers pledge to making participation in our project and our community a harassment-free experience for e...
 - [FAQs](https://morphir.finos.org/docs/community/faqs/): Run the command `morphir scala-gen -s`
+- [LLM-Friendly Documentation](https://morphir.finos.org/docs/community/llms-txt/): Access Morphir documentation in LLM-optimized formats
 - [Media About Morphir](https://morphir.finos.org/docs/community/media/): If you're interested in learning more about the project, [Morphir Resource Centre](https://resources.finos.org/morphir/), has many links.
 - [Morphir Community](https://morphir.finos.org/docs/community/morphir-community/): **Morphir's success will depend on its community.**
 
