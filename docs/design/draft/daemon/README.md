@@ -43,6 +43,7 @@ The daemon provides:
 | [Packages](./packages.md) | Draft | Package format, registry backends, publishing |
 | [Configuration](./configuration.md) | Draft | morphir.toml system overview |
 | [Workspace Config](./workspace-config.md) | Draft | Multi-project workspace configuration |
+| [CLI Interaction](./cli-interaction.md) | Draft | CLI-daemon communication and lifecycle |
 
 ## Architecture
 
@@ -102,9 +103,10 @@ Daemon operations are exposed via JSON-RPC for client communication:
 workspace/create, workspace/open, workspace/close
 workspace/addProject, workspace/removeProject, workspace/listProjects
 workspace/buildAll, workspace/clean, workspace/watch
+daemon/health, daemon/capabilities
 ```
 
-See [IR v4](../ir/README.md) for full protocol and type specifications.
+See [CLI Interaction](./cli-interaction.md) for connection modes, transport options, and CLI-to-daemon communication details. See [IR v4](../ir/README.md) for full protocol and type specifications.
 
 ## CLI Commands
 
