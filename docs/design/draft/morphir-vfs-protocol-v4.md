@@ -193,6 +193,7 @@ The IR type definitions are organized into separate modules for maintainability:
 | **References** | Node references (`$ref`) for deduplication | [vfs-protocol/refs.md](./vfs-protocol/refs.md) |
 | **WASM Components** | WIT interfaces for backend extensions | [vfs-protocol/wasm-component.md](./vfs-protocol/wasm-component.md) |
 | **Workspace** | Multi-project workspace management | [workspace/README.md](./workspace/README.md) |
+| **Configuration** | Configuration system design | [configuration/README.md](./configuration/README.md) |
 
 ### IR Hierarchy Summary
 

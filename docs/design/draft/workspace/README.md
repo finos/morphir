@@ -22,7 +22,7 @@ A **workspace** is a collection of related Morphir projects that can share depen
 
 ```
 workspace-root/
-├── morphir-workspace.toml    # Workspace configuration
+├── morphir.toml    # Workspace configuration
 ├── .morphir/                 # Workspace-level cache and state
 │   ├── deps/                 # Resolved dependencies (shared)
 │   └── cache/                # Build cache
@@ -54,10 +54,12 @@ workspace-root/
 
 | Concept | Scope | Configuration |
 |---------|-------|---------------|
-| **Workspace** | Multiple projects | `morphir-workspace.toml` |
-| **Project** | Single package | `morphir.toml` |
+| **Workspace** | Multiple projects | `morphir.toml` with `[workspace]` section |
+| **Project** | Single package | `morphir.toml` with `[project]` section |
 
-A workspace is optional - single projects can operate independently with just `morphir.toml`.
+Both use the same `morphir.toml` file format. The presence of `[workspace]` section enables workspace mode. A workspace is optional - single projects can operate independently with just `[project]` configuration.
+
+See [Configuration System](../configuration/README.md) for full configuration documentation.
 
 ### Workspace States
 

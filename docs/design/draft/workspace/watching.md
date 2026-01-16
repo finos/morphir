@@ -111,7 +111,7 @@ By default, watches:
 - `*/src/**/*.elm` - Elm source files
 - `*/src/**/*.morphir` - Morphir DSL files
 - `*/morphir.toml` - Project configuration
-- `morphir-workspace.toml` - Workspace configuration
+- `morphir.toml` - Workspace configuration
 
 #### WIT Interface
 
@@ -285,7 +285,7 @@ Debounce:   ─────────────────●────�
 ### Configuration
 
 ```toml
-# morphir-workspace.toml
+# morphir.toml
 [watch]
 debounce-ms = 100        # Debounce interval
 ignore-patterns = [      # Patterns to ignore

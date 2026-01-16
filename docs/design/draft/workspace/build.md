@@ -371,7 +371,7 @@ Parallel (independent):       core ──►─┬► domain ──► api
 ### Configuration
 
 ```toml
-# morphir-workspace.toml
+# morphir.toml
 [build]
 parallel = true         # Enable parallel builds
 max-workers = 4         # Maximum parallel compilations

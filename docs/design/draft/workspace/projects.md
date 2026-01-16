@@ -92,7 +92,7 @@ Adds an existing project directory to the workspace.
 1. Verify project path exists and contains `morphir.toml`
 2. Parse project configuration
 3. Register project in workspace
-4. Update `morphir-workspace.toml`
+4. Update `morphir.toml`
 5. Return project info (state: `Unloaded`)
 
 #### WIT Interface
@@ -157,7 +157,7 @@ Removes a project from the workspace (does not delete files).
 2. Check for dependents (warn if other projects depend on it)
 3. Unload project if loaded
 4. Remove from workspace registry
-5. Update `morphir-workspace.toml`
+5. Update `morphir.toml`
 
 #### WIT Interface
 
@@ -372,7 +372,7 @@ reload-project: func(
 
 When a workspace is opened, projects are discovered by:
 
-1. **Explicit listing** in `morphir-workspace.toml`:
+1. **Explicit listing** in `morphir.toml`:
    ```toml
    [[projects]]
    name = "my-org/core"

@@ -103,7 +103,7 @@ Creates a new workspace at the specified path.
 #### Behavior
 
 1. Verify path does not already contain a workspace
-2. Create `morphir-workspace.toml` with initial configuration
+2. Create `morphir.toml` with initial configuration
 3. Create `.morphir/` directory for cache and state
 4. Transition to `Open` state
 5. Return workspace info
@@ -160,7 +160,7 @@ Opens an existing workspace for operations.
 
 #### Behavior
 
-1. Locate `morphir-workspace.toml` (search upward if needed)
+1. Locate `morphir.toml` (search upward if needed)
 2. Parse workspace configuration
 3. Discover projects in workspace
 4. Load project metadata (not full IR)
@@ -280,7 +280,7 @@ Updates workspace-level configuration.
 
 1. Validate new configuration
 2. Merge with existing configuration
-3. Write updated `morphir-workspace.toml`
+3. Write updated `morphir.toml`
 4. Notify affected projects if needed
 
 #### WIT Interface
@@ -309,30 +309,37 @@ update-workspace-config: func(
 
 ## Configuration
 
-### morphir-workspace.toml
+See [Configuration System](../configuration/README.md) for full configuration documentation.
+
+### morphir.toml
 
 ```toml
-# Workspace metadata
+[morphir]
+version = "^4.0.0"
+
 [workspace]
-name = "my-workspace"
+# Output directory for workspace-level artifacts
+output_dir = ".morphir"
 
-# Default settings for all projects
-[defaults]
-source-dir = "src"
-output-dir = ".morphir-dist"
+# Glob patterns for discovering member projects
+members = ["packages/*"]
 
-# Projects in this workspace
-[[projects]]
-name = "my-org/core"
-path = "packages/core"
+# Patterns to exclude from discovery
+exclude = ["packages/deprecated-*"]
 
-[[projects]]
-name = "my-org/domain"
-path = "packages/domain"
+# Default member when no project specified
+default_member = "packages/core"
 
 # Shared dependencies (resolved once for all projects)
-[dependencies]
+[workspace.dependencies]
 "morphir/sdk" = "3.0.0"
+
+# Default settings inherited by all projects
+[ir]
+format_version = 4
+
+[codegen]
+targets = ["typescript"]
 ```
 
 ## Error Handling
@@ -348,6 +355,6 @@ path = "packages/domain"
 ## Best Practices
 
 1. **Single Active Workspace**: Only one workspace should be open per daemon instance
-2. **Workspace Discovery**: Search upward for `morphir-workspace.toml` to support nested directories
+2. **Workspace Discovery**: Search upward for `morphir.toml` to support nested directories
 3. **Graceful Degradation**: If workspace config is missing, treat directory as single-project workspace
 4. **State Persistence**: Save workspace state to `.morphir/state.json` for session recovery
