@@ -6,7 +6,7 @@ experimental = true
 
 [tools]
 # Core tools
-go = "1.25.5"
+go = "1.25.6"
 python = "3.14.2"
 
 # JavaScript runtimes and package managers (for toolchain backend tests)
