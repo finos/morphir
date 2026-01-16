@@ -349,6 +349,48 @@ Compile specific files (incremental compilation).
 }
 ```
 
+#### compile/module
+
+Compile a single module to IR.
+
+```json
+{
+  "method": "compile/module",
+  "params": {
+    "projectPath": "/path/to/project",
+    "modulePath": "domain/users",
+    "files": ["src/Domain/Users.elm", "src/Domain/Users/Types.elm"],
+    "incremental": true
+  }
+}
+```
+
+Response (success):
+```json
+{
+  "result": {
+    "status": "ok",
+    "module": {
+      "types": { "user": { "..." } },
+      "values": { "get-user": { "..." } }
+    }
+  }
+}
+```
+
+Response (partial):
+```json
+{
+  "result": {
+    "status": "partial",
+    "module": { "..." },
+    "diagnostics": [
+      { "severity": "warning", "code": "W001", "message": "Unused import", "location": { "..." } }
+    ]
+  }
+}
+```
+
 #### compile/fragment
 
 Compile a code fragment (for REPL/editor integration).

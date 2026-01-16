@@ -99,9 +99,14 @@ use document.{document-value};
 
 /// Core naming types
 interface naming {
-    /// Attributes as Document AST (WIT lacks generics, so we use document-value)
-    /// This allows structured metadata on IR nodes without losing type information
-    type attributes = document-value;
+    /// Type-level attributes (optional metadata, no type info needed)
+    /// Types don't carry type annotations on themselves
+    variant type-attributes {
+        /// No attributes
+        none,
+        /// Custom metadata only
+        meta(document-value),
+    }
 
     /// A single name segment in kebab-case
     /// Examples: "user", "order-id", "get-user-by-email"
@@ -149,7 +154,8 @@ interface naming {
 ```wit
 package morphir:ir@0.4.0;
 
-use naming.{attributes, name, fqname, type-variable};
+use document.{document-value};
+use naming.{type-attributes, name, fqname, type-variable};
 
 /// Type system definitions
 interface types {
@@ -165,28 +171,36 @@ interface types {
         args: list<tuple<name, ir-type>>,
     }
 
-    /// Type expression
+    /// Type expression (uses type-attributes: none or metadata)
     variant ir-type {
         /// Type variable: `a`, `comparable`
-        variable(tuple<attributes, type-variable>),
+        variable(tuple<type-attributes, type-variable>),
 
         /// Reference to named type: `String`, `List a`
-        reference(tuple<attributes, fqname, list<ir-type>>),
+        reference(tuple<type-attributes, fqname, list<ir-type>>),
 
         /// Tuple: `(Int, String)`
-        %tuple(tuple<attributes, list<ir-type>>),
+        %tuple(tuple<type-attributes, list<ir-type>>),
 
         /// Record: `{ name: String, age: Int }`
-        record(tuple<attributes, list<field>>),
+        record(tuple<type-attributes, list<field>>),
 
         /// Extensible record: `{ a | name: String }`
-        extensible-record(tuple<attributes, type-variable, list<field>>),
+        extensible-record(tuple<type-attributes, type-variable, list<field>>),
 
         /// Function: `Int -> String`
-        %function(tuple<attributes, ir-type, ir-type>),
+        %function(tuple<type-attributes, ir-type, ir-type>),
 
         /// Unit type: `()`
-        unit(attributes),
+        unit(type-attributes),
+    }
+
+    /// Value-level attributes (expressions carry their type)
+    variant value-attributes {
+        /// Just the inferred/checked type
+        typed(ir-type),
+        /// Type plus custom metadata
+        typed-with-meta(tuple<ir-type, document-value>),
     }
 
     /// Access control
@@ -304,31 +318,34 @@ use literals.{literal};
 
 /// Pattern matching
 interface patterns {
+    use naming.{type-attributes};
+
     /// Pattern for destructuring and matching
+    /// Patterns use type-attributes (no type info, just optional metadata)
     variant pattern {
         /// Wildcard: `_`
-        wildcard-pattern(attributes),
+        wildcard-pattern(type-attributes),
 
         /// As pattern: `x` or `(a, b) as pair`
-        as-pattern(tuple<attributes, pattern, name>),
+        as-pattern(tuple<type-attributes, pattern, name>),
 
         /// Tuple pattern: `(a, b, c)`
-        tuple-pattern(tuple<attributes, list<pattern>>),
+        tuple-pattern(tuple<type-attributes, list<pattern>>),
 
         /// Constructor pattern: `Just x`
-        constructor-pattern(tuple<attributes, fqname, list<pattern>>),
+        constructor-pattern(tuple<type-attributes, fqname, list<pattern>>),
 
         /// Empty list: `[]`
-        empty-list-pattern(attributes),
+        empty-list-pattern(type-attributes),
 
         /// Head :: tail: `x :: xs`
-        head-tail-pattern(tuple<attributes, pattern, pattern>),
+        head-tail-pattern(tuple<type-attributes, pattern, pattern>),
 
         /// Literal match: `42`, `"hello"`
-        literal-pattern(tuple<attributes, literal>),
+        literal-pattern(tuple<type-attributes, literal>),
 
         /// Unit: `()`
-        unit-pattern(attributes),
+        unit-pattern(type-attributes),
     }
 }
 ```
@@ -338,8 +355,8 @@ interface patterns {
 ```wit
 package morphir:ir@0.4.0;
 
-use naming.{attributes, name, fqname};
-use types.{ir-type, hole-reason, incompleteness};
+use naming.{name, fqname};
+use types.{ir-type, value-attributes, hole-reason, incompleteness};
 use literals.{literal};
 use patterns.{pattern};
 
@@ -361,85 +378,86 @@ interface values {
     }
 
     /// Value expression
+    /// Values use value-attributes (carry their type, optionally with metadata)
     variant value {
         // === Literals & Data Construction ===
 
         /// Literal constant
-        %literal(tuple<attributes, literal>),
+        %literal(tuple<value-attributes, literal>),
 
         /// Constructor reference: `Just`
-        %constructor(tuple<attributes, fqname>),
+        %constructor(tuple<value-attributes, fqname>),
 
         /// Tuple: `(1, "hello")`
-        %tuple(tuple<attributes, list<value>>),
+        %tuple(tuple<value-attributes, list<value>>),
 
         /// List: `[1, 2, 3]`
-        %list(tuple<attributes, list<value>>),
+        %list(tuple<value-attributes, list<value>>),
 
         /// Record: `{ name = "Alice" }`
-        %record(tuple<attributes, list<tuple<name, value>>>),
+        %record(tuple<value-attributes, list<tuple<name, value>>>),
 
         /// Unit: `()`
-        %unit(attributes),
+        %unit(value-attributes),
 
         // === References ===
 
         /// Variable: `x`
-        variable(tuple<attributes, name>),
+        variable(tuple<value-attributes, name>),
 
         /// Reference to defined value: `List.map`
-        reference(tuple<attributes, fqname>),
+        reference(tuple<value-attributes, fqname>),
 
         // === Field Access ===
 
         /// Field access: `record.field`
-        field(tuple<attributes, value, name>),
+        field(tuple<value-attributes, value, name>),
 
         /// Field function: `.field`
-        field-function(tuple<attributes, name>),
+        field-function(tuple<value-attributes, name>),
 
         // === Function Application ===
 
         /// Apply: `f x`
-        apply(tuple<attributes, value, value>),
+        apply(tuple<value-attributes, value, value>),
 
         /// Lambda: `\x -> x + 1`
-        lambda(tuple<attributes, pattern, value>),
+        lambda(tuple<value-attributes, pattern, value>),
 
         // === Let Bindings ===
 
         /// Let: `let x = 1 in x + 1`
-        let-definition(tuple<attributes, name, value-definition-body, value>),
+        let-definition(tuple<value-attributes, name, value-definition-body, value>),
 
         /// Recursive let: `let f = ... g ...; g = ... f ... in ...`
-        let-recursion(tuple<attributes, list<tuple<name, value-definition-body>>, value>),
+        let-recursion(tuple<value-attributes, list<tuple<name, value-definition-body>>, value>),
 
         /// Destructure: `let (a, b) = pair in a + b`
-        destructure(tuple<attributes, pattern, value, value>),
+        destructure(tuple<value-attributes, pattern, value, value>),
 
         // === Control Flow ===
 
         /// If-then-else
-        if-then-else(tuple<attributes, value, value, value>),
+        if-then-else(tuple<value-attributes, value, value, value>),
 
         /// Pattern match: `case x of ...`
-        pattern-match(tuple<attributes, value, list<tuple<pattern, value>>>),
+        pattern-match(tuple<value-attributes, value, list<tuple<pattern, value>>>),
 
         // === Record Update ===
 
         /// Update: `{ record | field = new }`
-        update-record(tuple<attributes, value, list<tuple<name, value>>>),
+        update-record(tuple<value-attributes, value, list<tuple<name, value>>>),
 
         // === Special (v4) ===
 
         /// Incomplete/broken reference
-        hole(tuple<attributes, hole-reason, option<ir-type>>),
+        hole(tuple<value-attributes, hole-reason, option<ir-type>>),
 
         /// Native operation
-        native(tuple<attributes, fqname, native-info>),
+        native(tuple<value-attributes, fqname, native-info>),
 
         /// External FFI
-        external(tuple<attributes, string, string>),
+        external(tuple<value-attributes, string, string>),
     }
 
     /// Value definition body
@@ -652,6 +670,8 @@ interface compiler {
         workspace,
         /// Can compile single project
         project,
+        /// Can compile single module
+        module,
         /// Can compile individual files
         file,
         /// Can compile code fragments
@@ -755,6 +775,13 @@ interface compiler {
         failed(list<diagnostic>),
     }
 
+    /// Compilation result for module
+    variant module-result {
+        ok(module-definition),
+        partial(tuple<module-definition, list<diagnostic>>),
+        failed(list<diagnostic>),
+    }
+
     /// Compilation result for fragment
     variant fragment-result {
         /// Compiled to type definition
@@ -789,6 +816,17 @@ interface compiler {
         /// Existing IR to merge with (for incremental)
         existing: option<package-definition>,
     ) -> files-result;
+
+    /// Compile a single module to IR
+    compile-module: func(
+        config: project-config,
+        /// Module path within the project
+        module-path: module-path,
+        /// Source files for this module
+        files: list<source-file>,
+        /// Existing module to merge with (for incremental)
+        existing: option<module-definition>,
+    ) -> module-result;
 
     /// Compile a code fragment (for editor/REPL)
     compile-fragment: func(
