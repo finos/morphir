@@ -273,6 +273,339 @@ morphir extension ping --all
 4. **Add capabilities incrementally**: One interface at a time
 5. **Test each capability**: Verify with CLI before adding more
 
+## Extension Formats
+
+Extensions can be distributed in several formats:
+
+| Format | Extension | Description |
+|--------|-----------|-------------|
+| **WASM Component** | `.wasm` | WebAssembly component (sandboxed) |
+| **Executable** | Platform-specific | JSON-RPC over stdio executable |
+| **Package** | `.morphir-ext.tgz` | Tar gzipped bundle with manifest |
+| **Directory** | `*/extension.toml` | Unpacked extension with manifest |
+
+### WASM Component Extensions
+
+Sandboxed WebAssembly components using the Component Model:
+
+```
+extensions/
+└── spark-codegen.wasm    # Self-contained WASM component
+```
+
+### Executable Extensions (JSON-RPC)
+
+Native executables that communicate via JSON-RPC over stdio:
+
+```
+extensions/
+├── my-backend                    # Unix executable
+├── my-backend.exe                # Windows executable
+└── my-frontend/
+    ├── extension.toml
+    └── bin/
+        ├── frontend-linux-amd64    # Linux
+        ├── frontend-darwin-amd64   # macOS Intel
+        ├── frontend-darwin-arm64   # macOS Apple Silicon
+        └── frontend-windows-amd64.exe
+```
+
+**Platform Resolution:**
+
+The daemon selects the appropriate executable based on OS and architecture:
+
+| OS | Architecture | Search Pattern |
+|----|--------------|----------------|
+| Linux | amd64 | `*-linux-amd64`, `*-linux-x86_64`, `*` |
+| Linux | arm64 | `*-linux-arm64`, `*-linux-aarch64`, `*` |
+| macOS | amd64 | `*-darwin-amd64`, `*-darwin-x86_64`, `*` |
+| macOS | arm64 | `*-darwin-arm64`, `*-darwin-aarch64`, `*` |
+| Windows | amd64 | `*.exe`, `*-windows-amd64.exe` |
+
+**Executable Manifest:**
+```toml
+# extension.toml
+[extension]
+id = "my-backend"
+name = "My Backend"
+version = "1.0.0"
+type = "codegen"
+
+# Executable configuration
+[extension.executable]
+# Platform-specific binaries
+[extension.executable.bin]
+"linux-amd64" = "bin/backend-linux-amd64"
+"linux-arm64" = "bin/backend-linux-arm64"
+"darwin-amd64" = "bin/backend-darwin-amd64"
+"darwin-arm64" = "bin/backend-darwin-arm64"
+"windows-amd64" = "bin/backend-windows-amd64.exe"
+
+# Or single cross-platform binary (e.g., Go, Java)
+# command = "bin/backend"
+
+# Arguments passed to executable
+args = ["--mode", "jsonrpc"]
+
+# Environment variables
+[extension.executable.env]
+LOG_LEVEL = "info"
+```
+
+### Package Format (`.morphir-ext.tgz`)
+
+Distributable tar gzipped packages:
+
+```bash
+# Package structure (when extracted)
+spark-codegen-1.2.0/
+├── extension.toml           # Required: manifest
+├── codegen.wasm             # WASM component
+├── README.md                # Documentation
+├── LICENSE
+└── examples/
+    └── basic.elm
+```
+
+**Creating a Package:**
+```bash
+# Package an extension
+morphir extension pack ./spark-codegen/
+# → spark-codegen-1.2.0.morphir-ext.tgz
+
+# Package with specific output
+morphir extension pack ./spark-codegen/ -o dist/
+```
+
+**Installing a Package:**
+```bash
+# Install from package file
+morphir extension install spark-codegen-1.2.0.morphir-ext.tgz
+# Extracts to: .morphir/extensions/spark-codegen/
+
+# Install from URL
+morphir extension install https://example.com/spark-codegen-1.2.0.morphir-ext.tgz
+```
+
+**Package Manifest:**
+```toml
+# extension.toml in package
+[extension]
+id = "spark-codegen"
+name = "Spark Code Generator"
+version = "1.2.0"
+description = "Generate Apache Spark DataFrame code from Morphir IR"
+author = "Morphir Contributors"
+license = "Apache-2.0"
+homepage = "https://github.com/finos/morphir-spark"
+
+# Component type and file
+type = "codegen"
+component = "codegen.wasm"  # WASM component
+# OR
+# executable = "bin/codegen"  # Native executable
+
+targets = ["spark"]
+
+# Dependencies on other extensions (optional)
+[extension.dependencies]
+morphir-ir = "^4.0.0"
+
+# Configuration schema
+[extension.options]
+spark_version = { type = "string", default = "3.5", description = "Spark version" }
+scala_version = { type = "string", default = "2.13", description = "Scala version" }
+```
+
+## Extension Discovery Locations
+
+Extensions are discovered from multiple locations, in order of precedence:
+
+### Discovery Order
+
+1. **Explicit configuration** (`morphir.toml`)
+2. **Workspace extensions** (`.morphir/extensions/`)
+3. **User extensions** (`$XDG_DATA_HOME/morphir/extensions/`)
+4. **System extensions** (`/usr/share/morphir/extensions/` or platform equivalent)
+
+### Workspace Extensions
+
+```
+my-workspace/
+├── morphir.toml
+├── .morphir/
+│   ├── extensions/                    # Auto-discovered
+│   │   ├── spark-codegen.wasm         # WASM component
+│   │   ├── my-backend                  # Executable (Unix)
+│   │   ├── my-backend.exe              # Executable (Windows)
+│   │   ├── flink-codegen/              # Directory extension
+│   │   │   ├── extension.toml
+│   │   │   └── codegen.wasm
+│   │   └── custom-frontend/            # Executable extension
+│   │       ├── extension.toml
+│   │       └── bin/
+│   │           ├── frontend-linux-amd64
+│   │           └── frontend-darwin-arm64
+│   ├── cache/
+│   └── deps/
+```
+
+### User Extensions (Global)
+
+```bash
+# Linux/macOS
+$XDG_DATA_HOME/morphir/extensions/
+~/.local/share/morphir/extensions/      # Fallback
+
+# macOS alternative
+~/Library/Application Support/morphir/extensions/
+
+# Windows
+%LOCALAPPDATA%\morphir\extensions\
+```
+
+### System Extensions
+
+```bash
+# Linux
+/usr/share/morphir/extensions/
+/usr/local/share/morphir/extensions/
+
+# macOS
+/Library/Application Support/morphir/extensions/
+
+# Windows
+%PROGRAMDATA%\morphir\extensions\
+```
+
+### Explicit Configuration
+
+Override or supplement auto-discovery in `morphir.toml`:
+
+```toml
+[extensions]
+# WASM component (explicit path)
+spark-codegen = { path = "./custom/spark-codegen.wasm" }
+
+# Executable with command
+my-backend = { command = "./bin/my-backend", args = ["--mode", "jsonrpc"] }
+
+# URL (downloaded and cached)
+flink-codegen = { url = "https://extensions.morphir.dev/flink-codegen-1.0.0.morphir-ext.tgz" }
+
+# Disable auto-discovered extension
+legacy-ext = { enabled = false }
+
+# Override options for auto-discovered extension
+[extensions.spark-codegen.config]
+spark_version = "3.4"
+```
+
+### Discovery Resolution
+
+```bash
+# Show where each extension was discovered from
+morphir extension list --show-source
+
+# Output:
+# NAME              VERSION   FORMAT       SOURCE
+# spark-codegen     1.2.0     wasm         .morphir/extensions/spark-codegen.wasm
+# my-backend        1.0.0     executable   .morphir/extensions/my-backend/
+# flink-codegen     1.0.0     package      morphir.toml (url → cached)
+# elm-frontend      0.19.1    wasm         ~/.local/share/morphir/extensions/
+```
+
+### JSON-RPC Extension Info (with Location)
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "info-001",
+  "method": "extension/info",
+  "params": {
+    "extension": "my-backend"
+  }
+}
+```
+
+**Response (Executable Extension):**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "info-001",
+  "result": {
+    "id": "my-backend",
+    "name": "My Backend",
+    "version": "1.0.0",
+    "type": "codegen",
+    "format": "executable",
+    "source": {
+      "type": "workspace",
+      "path": ".morphir/extensions/my-backend/",
+      "manifest": ".morphir/extensions/my-backend/extension.toml"
+    },
+    "executable": {
+      "resolved": ".morphir/extensions/my-backend/bin/backend-darwin-arm64",
+      "platform": "darwin-arm64",
+      "args": ["--mode", "jsonrpc"]
+    },
+    "capabilities": {
+      "codegen/generate": true,
+      "codegen/generate-streaming": true
+    }
+  }
+}
+```
+
+**Response (WASM Extension):**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "info-002",
+  "result": {
+    "id": "spark-codegen",
+    "name": "Spark Code Generator",
+    "version": "1.2.0",
+    "type": "codegen",
+    "format": "wasm",
+    "source": {
+      "type": "workspace",
+      "path": ".morphir/extensions/spark-codegen.wasm"
+    },
+    "component": {
+      "path": ".morphir/extensions/spark-codegen.wasm",
+      "size": 245760
+    },
+    "capabilities": {
+      "codegen/generate": true,
+      "codegen/generate-streaming": true,
+      "codegen/generate-incremental": true
+    }
+  }
+}
+```
+
+### Extension Installation
+
+```bash
+# Install WASM component (to workspace)
+morphir extension install spark-codegen.wasm
+# → .morphir/extensions/spark-codegen.wasm
+
+# Install package (extracts)
+morphir extension install spark-codegen-1.2.0.morphir-ext.tgz
+# → .morphir/extensions/spark-codegen/
+
+# Install globally
+morphir extension install --global spark-codegen.wasm
+# → ~/.local/share/morphir/extensions/spark-codegen.wasm
+
+# Install from URL
+morphir extension install https://releases.example.com/spark-codegen-1.2.0.morphir-ext.tgz
+# Downloads, verifies, extracts to .morphir/extensions/spark-codegen/
+```
+
 ## Extension Types
 
 ### WASM Components
