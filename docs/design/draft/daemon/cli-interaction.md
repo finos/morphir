@@ -244,7 +244,7 @@ morphir codegen --target typescript --expr "\\a b -> a + b"
 
 ### Ad-Hoc Codegen
 
-Generate code from IR or source without a project:
+Generate code from IR or source without a project. The `--target` flag selects the backend:
 
 ```bash
 # Codegen from compiled IR (stdin)
@@ -255,6 +255,28 @@ morphir codegen --target typescript src/Example.elm
 
 # Codegen with inline source
 morphir codegen --target spark --source "module Ex exposing (f)\nf x = x + 1"
+
+# Multiple targets
+morphir codegen --target spark --target typescript src/Example.elm
+```
+
+**Available Targets:**
+
+| Target | Flag | Output Language |
+|--------|------|-----------------|
+| Spark | `--target spark` | Scala (Spark API) |
+| Scala | `--target scala` | Pure Scala |
+| TypeScript | `--target typescript` | TypeScript |
+| JSON Schema | `--target json-schema` | JSON Schema |
+| (Extensions) | `--target <name>` | Via WASM backends |
+
+**Target Options:**
+```bash
+# Pass options to target
+morphir codegen --target spark --option spark_version=3.5
+
+# List available targets
+morphir codegen --list-targets
 ```
 
 **Streaming Ad-Hoc Codegen:**

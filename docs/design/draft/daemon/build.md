@@ -582,6 +582,105 @@ Each recompilation streams its result immediately:
 { "method": "build/moduleCompiled", "params": { "module": ["Domain", "Service"], "trigger": "dependency-change" } }
 ```
 
+## Code Generation
+
+Code generation transforms compiled IR into target language code using backend extensions.
+
+### Target Selection
+
+The `--target` flag selects which backend to use for code generation:
+
+```bash
+# Generate Spark/Scala code
+morphir codegen --target spark
+
+# Generate TypeScript code
+morphir codegen --target typescript
+
+# Generate multiple targets
+morphir codegen --target spark --target typescript
+
+# List available targets
+morphir codegen --list-targets
+```
+
+**Built-in Targets:**
+
+| Target | Flag | Output | Notes |
+|--------|------|--------|-------|
+| Spark | `--target spark` | Scala (Spark DataFrame API) | Default for data pipelines |
+| Scala | `--target scala` | Pure Scala | General-purpose |
+| TypeScript | `--target typescript` | TypeScript | Web/Node.js |
+| JSON Schema | `--target json-schema` | JSON Schema | Type definitions only |
+
+**Extension Targets:**
+
+WASM-based backend extensions register additional targets:
+
+```toml
+# morphir.toml
+[extensions]
+codegen-flink = { path = "./extensions/flink-codegen.wasm" }
+# Registers --target flink
+```
+
+```bash
+# Use extension-provided target
+morphir codegen --target flink
+```
+
+### Target Configuration
+
+Targets can be configured in `morphir.toml`:
+
+```toml
+[codegen.spark]
+spark_version = "3.5"
+scala_version = "2.13"
+output_dir = "src/main/scala"
+
+[codegen.typescript]
+module_system = "esm"
+output_dir = "src/generated"
+```
+
+Or via CLI flags:
+
+```bash
+morphir codegen --target spark --option spark_version=3.5 --output src/main/scala
+```
+
+### JSON-RPC Method
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "codegen-001",
+  "method": "codegen/generate",
+  "params": {
+    "project": "my-org/domain",
+    "target": "spark",
+    "options": {
+      "spark_version": "3.5",
+      "output_dir": "src/main/scala"
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "codegen-001",
+  "result": {
+    "target": "spark",
+    "filesGenerated": 24,
+    "outputDir": "src/main/scala"
+  }
+}
+```
+
 ## Streaming Code Generation
 
 Code generation also supports streaming to avoid generating all output at once.
