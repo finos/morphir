@@ -346,19 +346,75 @@ gh auth login
 export GH_ENTERPRISE_TOKEN=ghp_xxxxxxxxxxxx
 ```
 
+#### Checksums and Bill of Materials
+
+For security and reproducibility, GitHub releases should include checksums and optionally a Software Bill of Materials (SBOM).
+
+**Checksum file** (`CHECKSUMS.txt`):
+
+```
+sha256:abc123def456...  my-org-core-1.0.0.morphir.tgz
+sha256:789xyz012...     my-org-utils-1.0.0.morphir.tgz
+```
+
+**Morphir manifest** (`morphir-manifest.json`):
+
+```json
+{
+  "formatVersion": "4.0.0",
+  "repository": "my-org/morphir-packages",
+  "tag": "v1.0.0",
+  "created": "2026-01-16T12:00:00Z",
+  "packages": [
+    {
+      "name": "my-org/core",
+      "version": "1.0.0",
+      "asset": "my-org-core-1.0.0.morphir.tgz",
+      "checksum": "sha256:abc123def456...",
+      "dependencies": [
+        { "name": "morphir/sdk", "version": "3.0.0" }
+      ]
+    }
+  ]
+}
+```
+
+The CLI verifies checksums when fetching packages:
+
+```toml
+[registry.github]
+# Require checksum verification (default: true)
+verify_checksums = true
+
+# Checksum file name pattern
+checksum_file = "CHECKSUMS.txt"
+
+# Optional manifest file
+manifest_file = "morphir-manifest.json"
+```
+
 #### Publishing to GitHub Releases
 
 ```bash
-# Pack the package
+# Pack the package (generates checksum)
 morphir pack
 
-# Create a GitHub release with the package asset
-gh release create v1.0.0 dist/my-org-core-1.0.0.morphir.tgz \
+# Generate checksums file for all packages
+morphir pack --checksums dist/CHECKSUMS.txt
+
+# Generate manifest
+morphir pack --manifest dist/morphir-manifest.json
+
+# Create a GitHub release with package and checksums
+gh release create v1.0.0 \
+  dist/my-org-core-1.0.0.morphir.tgz \
+  dist/CHECKSUMS.txt \
+  dist/morphir-manifest.json \
   --repo my-org/morphir-packages \
   --title "my-org/core v1.0.0" \
   --notes "Release notes"
 
-# Or use morphir publish
+# Or use morphir publish (generates and uploads checksums automatically)
 morphir publish --backend github --repository my-org/morphir-packages --tag v1.0.0
 ```
 
