@@ -174,7 +174,7 @@ targets = ["typescript", "scala"]  # Overrides workspace default
 
 ## Shared Dependencies
 
-Workspace-level dependencies can be defined for sharing across projects:
+Workspace-level dependencies can be defined for sharing across projects. This ensures consistent dependency versions across all workspace members.
 
 ```toml
 # workspace/morphir.toml
@@ -182,11 +182,15 @@ Workspace-level dependencies can be defined for sharing across projects:
 members = ["packages/*"]
 
 [workspace.dependencies]
-"morphir/sdk" = "^3.0.0"
-"finos/morphir-json" = "^1.0.0"
+# Repository dependencies (recommended)
+"morphir/sdk" = { git = "https://github.com/finos/morphir-sdk.git", tag = "v3.0.0" }
+"finos/morphir-json" = { git = "https://github.com/finos/morphir-json.git", tag = "v1.0.0" }
+
+# Path dependencies for local packages
+"my-org/shared" = { path = "packages/shared" }
 ```
 
-Member projects reference shared dependencies:
+Member projects reference shared dependencies using workspace inheritance:
 
 ```toml
 # workspace/packages/domain/morphir.toml
@@ -194,10 +198,12 @@ Member projects reference shared dependencies:
 name = "my-org/domain"
 
 [dependencies]
-"morphir/sdk" = { workspace = true }        # Use workspace version
-"my-org/core" = { workspace = true }        # Local workspace member
-"external/lib" = "^2.0.0"                   # Project-specific dependency
+"morphir/sdk" = { workspace = true }        # Inherit from workspace
+"my-org/shared" = { workspace = true }      # Local workspace member
+"other/lib" = { path = "../other" }         # Project-specific path dependency
 ```
+
+See [Dependency Management](../workspace/dependencies.md) for full documentation on dependency sources, resolution, and caching.
 
 ## CLI Workspace Awareness
 
