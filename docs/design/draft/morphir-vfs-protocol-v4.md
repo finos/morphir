@@ -192,6 +192,7 @@ The IR type definitions are organized into separate modules for maintainability:
 | **Metadata** | File-level metadata (`$meta`) | [vfs-protocol/meta.md](./vfs-protocol/meta.md) |
 | **References** | Node references (`$ref`) for deduplication | [vfs-protocol/refs.md](./vfs-protocol/refs.md) |
 | **WASM Components** | WIT interfaces for backend extensions | [vfs-protocol/wasm-component.md](./vfs-protocol/wasm-component.md) |
+| **Workspace** | Multi-project workspace management | [workspace/README.md](./workspace/README.md) |
 
 ### IR Hierarchy Summary
 
