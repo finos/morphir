@@ -300,6 +300,89 @@ Sent by the Daemon whenever the IR or Config is updated.
 }
 ```
 
+### Frontend Compiler Methods
+
+#### compile/workspace
+
+Compile an entire workspace (multiple projects) to IR.
+
+```json
+{
+  "method": "compile/workspace",
+  "params": {
+    "root": "/path/to/workspace",
+    "projects": ["project-a", "project-b"]
+  }
+}
+```
+
+#### compile/project
+
+Compile a single project to IR.
+
+```json
+{
+  "method": "compile/project",
+  "params": {
+    "projectPath": "/path/to/project",
+    "config": {
+      "name": "my-org/my-project",
+      "version": "1.0.0",
+      "sourceDir": "src"
+    }
+  }
+}
+```
+
+#### compile/files
+
+Compile specific files (incremental compilation).
+
+```json
+{
+  "method": "compile/files",
+  "params": {
+    "projectPath": "/path/to/project",
+    "files": ["src/Domain/User.elm", "src/Domain/Order.elm"],
+    "incremental": true
+  }
+}
+```
+
+#### compile/fragment
+
+Compile a code fragment (for REPL/editor integration).
+
+```json
+{
+  "method": "compile/fragment",
+  "params": {
+    "source": "\\x -> x + 1",
+    "context": {
+      "modulePath": "my-org/project:domain",
+      "imports": ["morphir/sdk:basics#int"],
+      "locals": [["x", { "Reference": { "fqname": "morphir/sdk:basics#int" } }]]
+    }
+  }
+}
+```
+
+Response (success):
+```json
+{
+  "result": {
+    "kind": "expression",
+    "value": {
+      "Lambda": {
+        "argumentPattern": { "AsPattern": { "x": { "WildcardPattern": {} } } },
+        "body": { "..." }
+      }
+    },
+    "inferredType": { "Function": { "arg": "morphir/sdk:basics#int", "result": "morphir/sdk:basics#int" } }
+  }
+}
+```
+
 ### IR Operations
 
 ```gleam

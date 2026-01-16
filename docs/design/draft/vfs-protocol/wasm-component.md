@@ -11,7 +11,8 @@ This document defines WIT (WebAssembly Interface Types) interfaces for implement
 ## Design Principles
 
 - **Strongly Typed IR**: Full IR types modeled in WIT, not JSON strings
-- **Attributes as JSON**: Since WIT lacks generics, attributes are `string` (JSON)
+- **Attributes as Document**: Since WIT lacks generics, attributes use our `document-value` AST type
+- **Full Pipeline**: Support both frontend (source → IR) and backend (IR → target) flows
 - **Multi-Granularity**: Support operations at distribution, module, and definition levels
 - **Capability-Based**: Components declare which interfaces they implement
 - **Sandboxed**: Components have no implicit access to filesystem or network
@@ -31,14 +32,17 @@ This document defines WIT (WebAssembly Interface Types) interfaces for implement
 ```
 wit/
 ├── morphir-ir/
+│   ├── document.wit       # Document AST (for attributes)
 │   ├── naming.wit         # Name, Path, FQName
 │   ├── types.wit          # Type expressions
 │   ├── values.wit         # Value expressions, literals, patterns
 │   ├── modules.wit        # Module specs and defs
 │   ├── packages.wit       # Package specs and defs
 │   └── distributions.wit  # Distribution types
+├── morphir-frontend/
+│   └── compiler.wit       # Source → IR compilation
 ├── morphir-backend/
-│   ├── generator.wit      # Code generation interface
+│   ├── generator.wit      # IR → target code generation
 │   └── validator.wit      # Validation interface
 ├── morphir-vfs/
 │   ├── reader.wit         # VFS read access
@@ -47,15 +51,57 @@ wit/
     └── worlds.wit         # World definitions
 ```
 
+## Document Type (`document.wit`)
+
+```wit
+package morphir:ir@0.4.0;
+
+/// Document AST for schema-less data and attributes
+interface document {
+    /// Recursive document value (JSON-like AST)
+    variant document-value {
+        /// null
+        doc-null,
+        /// Boolean
+        doc-bool(bool),
+        /// Integer
+        doc-int(s64),
+        /// Float
+        doc-float(float64),
+        /// String
+        doc-string(string),
+        /// Array
+        doc-array(list<document-value>),
+        /// Object (list of key-value pairs)
+        doc-object(list<tuple<string, document-value>>),
+    }
+
+    /// Empty document (convenience)
+    empty: func() -> document-value;
+
+    /// Create object from pairs
+    object: func(pairs: list<tuple<string, document-value>>) -> document-value;
+
+    /// Get field from object
+    get: func(doc: document-value, key: string) -> option<document-value>;
+
+    /// Merge two documents (second wins on conflict)
+    merge: func(base: document-value, overlay: document-value) -> document-value;
+}
+```
+
 ## Naming Types (`naming.wit`)
 
 ```wit
 package morphir:ir@0.4.0;
 
+use document.{document-value};
+
 /// Core naming types
 interface naming {
-    /// Attributes stored as JSON string (WIT lacks generics)
-    type attributes = string;
+    /// Attributes as Document AST (WIT lacks generics, so we use document-value)
+    /// This allows structured metadata on IR nodes without losing type information
+    type attributes = document-value;
 
     /// A single name segment in kebab-case
     /// Examples: "user", "order-id", "get-user-by-email"
@@ -577,6 +623,212 @@ interface distributions {
 }
 ```
 
+## Frontend Compiler Interface (`compiler.wit`)
+
+```wit
+package morphir:frontend@0.4.0;
+
+use morphir:ir@0.4.0.{
+    naming.{name, module-path, package-path, fqname},
+    types.{type-definition},
+    values.{value-definition},
+    modules.{module-definition},
+    packages.{package-definition},
+    distributions.{distribution, semver},
+};
+
+/// Frontend compiler interface (source → IR)
+interface compiler {
+    /// Source language
+    enum source-language {
+        elm,
+        morphir-dsl,
+        custom,
+    }
+
+    /// Compilation granularity capability
+    flags compiler-capabilities {
+        /// Can compile entire workspace
+        workspace,
+        /// Can compile single project
+        project,
+        /// Can compile individual files
+        file,
+        /// Can compile code fragments
+        fragment,
+    }
+
+    /// Compiler metadata
+    record compiler-info {
+        name: string,
+        description: string,
+        version: string,
+        source-language: source-language,
+        custom-language: option<string>,
+        capabilities: compiler-capabilities,
+    }
+
+    /// Source file
+    record source-file {
+        /// File path (relative to project root)
+        path: string,
+        /// File content
+        content: string,
+    }
+
+    /// Project configuration
+    record project-config {
+        /// Project name
+        name: package-path,
+        /// Project version
+        version: semver,
+        /// Source directory
+        source-dir: string,
+        /// Dependencies
+        dependencies: list<tuple<package-path, semver>>,
+        /// Custom configuration as document
+        custom: option<morphir:ir@0.4.0.document.document-value>,
+    }
+
+    /// Workspace configuration
+    record workspace-config {
+        /// Workspace root path
+        root: string,
+        /// Projects in workspace
+        projects: list<project-config>,
+    }
+
+    /// Fragment context (for incremental/editor compilation)
+    record fragment-context {
+        /// Module this fragment belongs to
+        module-path: module-path,
+        /// Imports available in scope
+        imports: list<fqname>,
+        /// Local bindings in scope
+        locals: list<tuple<name, morphir:ir@0.4.0.types.ir-type>>,
+    }
+
+    /// Diagnostic severity
+    enum severity {
+        error,
+        warning,
+        info,
+        hint,
+    }
+
+    /// Source location
+    record source-location {
+        file: string,
+        start-line: u32,
+        start-col: u32,
+        end-line: u32,
+        end-col: u32,
+    }
+
+    /// Compiler diagnostic
+    record diagnostic {
+        severity: severity,
+        code: string,
+        message: string,
+        location: option<source-location>,
+        hints: list<string>,
+    }
+
+    /// Compilation result for workspace
+    variant workspace-result {
+        ok(list<distribution>),
+        partial(tuple<list<distribution>, list<diagnostic>>),
+        failed(list<diagnostic>),
+    }
+
+    /// Compilation result for project
+    variant project-result {
+        ok(distribution),
+        partial(tuple<distribution, list<diagnostic>>),
+        failed(list<diagnostic>),
+    }
+
+    /// Compilation result for files
+    variant files-result {
+        ok(package-definition),
+        partial(tuple<package-definition, list<diagnostic>>),
+        failed(list<diagnostic>),
+    }
+
+    /// Compilation result for fragment
+    variant fragment-result {
+        /// Compiled to type definition
+        type-def(type-definition),
+        /// Compiled to value definition
+        value-def(value-definition),
+        /// Compiled to expression (for REPL)
+        expression(morphir:ir@0.4.0.values.value),
+        /// Failed
+        failed(list<diagnostic>),
+    }
+
+    /// Get compiler metadata
+    info: func() -> compiler-info;
+
+    /// Compile entire workspace to IR
+    compile-workspace: func(
+        config: workspace-config,
+        files: list<source-file>,
+    ) -> workspace-result;
+
+    /// Compile single project to IR
+    compile-project: func(
+        config: project-config,
+        files: list<source-file>,
+    ) -> project-result;
+
+    /// Compile list of files to IR (incremental)
+    compile-files: func(
+        config: project-config,
+        files: list<source-file>,
+        /// Existing IR to merge with (for incremental)
+        existing: option<package-definition>,
+    ) -> files-result;
+
+    /// Compile a code fragment (for editor/REPL)
+    compile-fragment: func(
+        source: string,
+        context: fragment-context,
+    ) -> fragment-result;
+
+    /// Parse without full compilation (for syntax checking)
+    parse-file: func(
+        file: source-file,
+    ) -> result<_, list<diagnostic>>;
+
+    /// Get completions at position (for editor integration)
+    completions: func(
+        file: source-file,
+        line: u32,
+        column: u32,
+        context: fragment-context,
+    ) -> list<completion-item>;
+
+    /// Completion item
+    record completion-item {
+        label: string,
+        kind: completion-kind,
+        detail: option<string>,
+        insert-text: option<string>,
+    }
+
+    /// Completion kind
+    enum completion-kind {
+        %function,
+        variable,
+        %type,
+        %constructor,
+        module,
+        keyword,
+    }
+}
+```
+
 ## Generator Interface (`generator.wit`)
 
 ```wit
@@ -891,8 +1143,28 @@ interface writer {
 ```wit
 package morphir:component@0.4.0;
 
+use morphir:frontend@0.4.0.{compiler};
 use morphir:backend@0.4.0.{generator, validator};
 use morphir:vfs@0.4.0.{reader, writer};
+
+// ============================================================
+// FRONTEND COMPONENTS (Source → IR)
+// ============================================================
+
+/// Frontend compiler component
+world compiler-component {
+    export compiler;
+}
+
+/// Frontend with VFS access (for reading dependencies)
+world compiler-with-vfs-component {
+    import reader;
+    export compiler;
+}
+
+// ============================================================
+// BACKEND COMPONENTS (IR → Target)
+// ============================================================
 
 /// Code generator component
 world generator-component {
@@ -909,6 +1181,10 @@ world backend-component {
     export generator;
     export validator;
 }
+
+// ============================================================
+// TRANSFORMER COMPONENTS (IR → IR)
+// ============================================================
 
 /// Transformer with VFS access
 world transformer-component {
@@ -934,10 +1210,23 @@ world transformer-component {
     };
 }
 
+// ============================================================
+// FULL PIPELINE COMPONENTS
+// ============================================================
+
+/// Full toolchain component (frontend + backend)
+world toolchain-component {
+    import reader;
+    export compiler;
+    export generator;
+    export validator;
+}
+
 /// Full plugin with all capabilities
 world plugin-component {
     import reader;
     import writer;
+    export compiler;
     export generator;
     export validator;
 }
@@ -971,9 +1260,13 @@ world plugin-component {
 
 | World | Imports | Access Level |
 |-------|---------|--------------|
-| `generator-component` | None | Pure function |
+| `compiler-component` | None | Pure function (source → IR) |
+| `compiler-with-vfs-component` | VFS reader | Read-only (for dependencies) |
+| `generator-component` | None | Pure function (IR → target) |
 | `validator-component` | None | Pure function |
+| `backend-component` | None | Pure function |
 | `transformer-component` | VFS reader, writer | Scoped to distribution |
+| `toolchain-component` | VFS reader | Full compilation pipeline |
 | `plugin-component` | Full VFS | Maximum access |
 
 Components are sandboxed:
