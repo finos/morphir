@@ -445,6 +445,219 @@ morphir build --check-only
 }
 ```
 
+## Streaming Builds
+
+Large projects benefit from streaming compilation where results are produced incrementally rather than in one shot. This enables:
+
+- **Early feedback**: Errors appear as soon as they're discovered
+- **Progressive output**: Generated artifacts stream as modules complete
+- **Memory efficiency**: Don't hold entire project in memory
+- **Interruptibility**: Cancel long builds without losing partial progress
+
+### Streaming Model
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Source    │────►│   Compile   │────►│   Stream    │
+│   Files     │     │   Module    │     │   Results   │
+└─────────────┘     └─────────────┘     └─────────────┘
+      │                   │                    │
+      │                   ▼                    ▼
+      │            ┌─────────────┐      ┌─────────────┐
+      └───────────►│   Compile   │─────►│   Stream    │
+                   │   Module    │      │   Results   │
+                   └─────────────┘      └─────────────┘
+```
+
+### Module-Level Streaming
+
+Compilation streams results at the module level:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "build/moduleCompiled",
+  "params": {
+    "project": "my-org/domain",
+    "module": ["Domain", "User"],
+    "status": "ok",
+    "ir": { "...module IR..." },
+    "diagnostics": []
+  }
+}
+```
+
+### Streaming Build Request
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "build-001",
+  "method": "workspace/buildStreaming",
+  "params": {
+    "projects": ["my-org/domain"],
+    "streaming": {
+      "granularity": "module",
+      "includeIR": true,
+      "includeDiagnostics": true
+    }
+  }
+}
+```
+
+**Stream of Notifications:**
+```json
+{ "method": "build/started", "params": { "project": "my-org/domain", "modules": 12 } }
+{ "method": "build/moduleCompiled", "params": { "module": ["Domain", "Types"], "status": "ok", "ir": {...} } }
+{ "method": "build/moduleCompiled", "params": { "module": ["Domain", "User"], "status": "ok", "ir": {...} } }
+{ "method": "build/moduleCompiled", "params": { "module": ["Domain", "Order"], "status": "partial", "diagnostics": [...] } }
+...
+{ "method": "build/completed", "params": { "success": true, "modulesCompiled": 12 } }
+```
+
+**Final Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "build-001",
+  "result": { "success": true, "modulesCompiled": 12, "durationMs": 3421 }
+}
+```
+
+### CLI Streaming Output
+
+```bash
+morphir build --stream
+```
+
+**Output:**
+```
+Building my-org/domain (12 modules)
+  ✓ Domain.Types          [42ms]
+  ✓ Domain.User           [38ms]
+  ⚠ Domain.Order          [51ms] (2 warnings)
+  ✓ Domain.Product        [29ms]
+  ...
+  ✓ Domain.Api            [67ms]
+
+Build complete: 12 modules in 3.4s (2 warnings)
+```
+
+### Incremental Module Compilation
+
+For watch mode and IDE integration, individual modules can be recompiled:
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "compile-001",
+  "method": "compile/module",
+  "params": {
+    "project": "my-org/domain",
+    "module": ["Domain", "User"],
+    "source": "module Domain.User exposing (..)\n\nimport Domain.Types...",
+    "existingIR": { "...previous module IR for merge..." }
+  }
+}
+```
+
+### Dependency-Aware Streaming
+
+When a module changes, dependent modules are recompiled in order:
+
+```
+User.elm changed
+  └─► Recompile Domain.User
+       └─► Recompile Domain.Api (depends on User)
+            └─► Recompile Domain.Service (depends on Api)
+```
+
+Each recompilation streams its result immediately:
+
+```json
+{ "method": "build/moduleCompiled", "params": { "module": ["Domain", "User"], "trigger": "source-change" } }
+{ "method": "build/moduleCompiled", "params": { "module": ["Domain", "Api"], "trigger": "dependency-change" } }
+{ "method": "build/moduleCompiled", "params": { "module": ["Domain", "Service"], "trigger": "dependency-change" } }
+```
+
+## Streaming Code Generation
+
+Code generation also supports streaming to avoid generating all output at once.
+
+### Streaming Codegen Request
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "codegen-001",
+  "method": "codegen/generateStreaming",
+  "params": {
+    "project": "my-org/domain",
+    "target": "spark",
+    "streaming": {
+      "granularity": "module",
+      "writeImmediately": true
+    }
+  }
+}
+```
+
+**Stream of Notifications:**
+```json
+{ "method": "codegen/started", "params": { "target": "spark", "modules": 12 } }
+{ "method": "codegen/moduleGenerated", "params": { "module": ["Domain", "Types"], "files": ["Types.scala"] } }
+{ "method": "codegen/moduleGenerated", "params": { "module": ["Domain", "User"], "files": ["User.scala", "UserCodecs.scala"] } }
+...
+{ "method": "codegen/completed", "params": { "filesGenerated": 24 } }
+```
+
+### Incremental Codegen
+
+Only regenerate code for changed modules:
+
+```bash
+morphir codegen --target spark --incremental
+```
+
+**Behavior:**
+1. Compare module IR hashes against last codegen
+2. Regenerate only changed modules
+3. Stream generated files as they're produced
+
+### Codegen Manifest
+
+Track what was generated for incremental updates:
+
+```json
+{
+  "target": "spark",
+  "generatedAt": "2026-01-16T12:00:00Z",
+  "modules": {
+    "Domain.User": {
+      "irHash": "sha256:abc123...",
+      "files": [
+        { "path": "src/main/scala/domain/User.scala", "hash": "sha256:def456..." }
+      ]
+    }
+  }
+}
+```
+
+### Parallel Codegen
+
+Generate code for independent modules in parallel:
+
+```toml
+# morphir.toml
+[codegen]
+parallel = true
+max-workers = 4
+streaming = true       # Enable streaming output
+```
+
 ## Best Practices
 
 1. **Use Incremental Builds**: Avoid `clean` unless necessary
@@ -452,3 +665,5 @@ morphir build --check-only
 3. **Fail Fast in CI**: Use `--fail-fast` in CI to stop on first error
 4. **Cache Dependencies**: Keep dependency cache for faster rebuilds
 5. **Check Before Push**: Run `morphir build --check-only` before committing
+6. **Stream Large Builds**: Use `--stream` for projects with many modules
+7. **Incremental Codegen**: Use `--incremental` to only regenerate changed modules

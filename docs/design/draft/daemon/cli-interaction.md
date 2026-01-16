@@ -279,18 +279,153 @@ idle_timeout = "30m"       # Stop after idle period (0 = never)
 | CLI Command | JSON-RPC Method | Notes |
 |-------------|-----------------|-------|
 | `morphir build` | `workspace/buildAll` | Builds all projects |
+| `morphir build --stream` | `workspace/buildStreaming` | Streaming build with per-module notifications |
 | `morphir build <project>` | `compile/project` | Builds specific project |
 | `morphir test` | `workspace/test` | Runs tests |
 | `morphir check` | `workspace/check` | Runs linting/validation |
 | `morphir codegen` | `codegen/generate` | Generates code for targets |
+| `morphir codegen --stream` | `codegen/generateStreaming` | Streaming codegen with per-module notifications |
 | `morphir watch` | `workspace/watch` | Enables file watching |
 | `morphir workspace init` | `workspace/create` | Creates new workspace |
 | `morphir workspace add` | `workspace/addProject` | Adds project to workspace |
 | `morphir clean` | `workspace/clean` | Cleans build artifacts |
 
-### Progress and Streaming
+### Streaming Operations
 
-Long-running operations use JSON-RPC notifications for progress:
+Morphir tasks like `build` and `codegen` support streaming to avoid producing all output in one shot. This is critical for large projects where:
+
+- Compilation/generation takes significant time
+- Results should appear progressively
+- Early errors should surface immediately
+- Memory shouldn't hold the entire output
+
+#### Streaming Model
+
+```
+┌─────────┐      ┌─────────┐      ┌─────────────────────────┐
+│   CLI   │─────►│ Request │─────►│        Daemon           │
+│         │      └─────────┘      │                         │
+│         │                       │  ┌─────────────────┐    │
+│         │◄─────────────────────────│ Notification 1  │    │
+│         │                       │  └─────────────────┘    │
+│         │◄─────────────────────────│ Notification 2  │    │
+│         │                       │  └─────────────────┘    │
+│         │◄─────────────────────────│ Notification N  │    │
+│         │                       │  └─────────────────┘    │
+│         │◄─────────────────────────│ Final Response  │    │
+└─────────┘                       └─────────────────────────┘
+```
+
+#### Streaming Build
+
+```bash
+morphir build --stream
+```
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "build-001",
+  "method": "workspace/buildStreaming",
+  "params": {
+    "projects": ["my-org/domain"],
+    "streaming": {
+      "granularity": "module",
+      "includeIR": true
+    }
+  }
+}
+```
+
+**Notifications (streamed as modules compile):**
+```json
+{ "method": "build/started", "params": { "project": "my-org/domain", "modules": 12 } }
+{ "method": "build/moduleCompiled", "params": { "module": ["Domain", "Types"], "status": "ok" } }
+{ "method": "build/moduleCompiled", "params": { "module": ["Domain", "User"], "status": "ok" } }
+{ "method": "build/moduleCompiled", "params": { "module": ["Domain", "Order"], "status": "partial", "diagnostics": [...] } }
+```
+
+**Final Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "build-001",
+  "result": { "success": true, "modulesCompiled": 12, "durationMs": 3421 }
+}
+```
+
+#### Streaming Codegen
+
+```bash
+morphir codegen --target spark --stream
+```
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "codegen-001",
+  "method": "codegen/generateStreaming",
+  "params": {
+    "target": "spark",
+    "streaming": {
+      "granularity": "module",
+      "writeImmediately": true
+    }
+  }
+}
+```
+
+**Notifications (streamed as files are generated):**
+```json
+{ "method": "codegen/started", "params": { "target": "spark", "modules": 12 } }
+{ "method": "codegen/moduleGenerated", "params": { "module": ["Domain", "Types"], "files": ["Types.scala"] } }
+{ "method": "codegen/moduleGenerated", "params": { "module": ["Domain", "User"], "files": ["User.scala"] } }
+{ "method": "codegen/fileWritten", "params": { "path": "src/main/scala/domain/User.scala" } }
+```
+
+#### CLI Streaming Display
+
+The CLI renders streaming notifications in real-time:
+
+```
+Building my-org/domain (12 modules)
+  ✓ Domain.Types          [42ms]
+  ✓ Domain.User           [38ms]
+  ⚠ Domain.Order          [51ms] (2 warnings)
+  ● Domain.Product        [compiling...]
+```
+
+#### Cancellation
+
+Streaming operations can be cancelled mid-flight:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "$/cancelRequest",
+  "params": { "id": "build-001" }
+}
+```
+
+The daemon stops processing and returns partial results:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "build-001",
+  "result": {
+    "cancelled": true,
+    "modulesCompiled": 5,
+    "modulesRemaining": 7
+  }
+}
+```
+
+### Progress Notifications
+
+For non-streaming operations, progress is reported via LSP-style notifications:
 
 ```bash
 morphir build --progress
@@ -314,7 +449,7 @@ morphir build --progress
 
 ### Diagnostic Streaming
 
-Build diagnostics stream as they're discovered:
+Build diagnostics stream as they're discovered (not batched until the end):
 
 ```json
 {
@@ -332,6 +467,8 @@ Build diagnostics stream as they're discovered:
   }
 }
 ```
+
+This allows the CLI to display errors immediately and IDEs to show diagnostics in real-time.
 
 ## Connection Management
 
