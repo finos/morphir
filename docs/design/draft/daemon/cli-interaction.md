@@ -78,6 +78,271 @@ morphir build
 
 **Characteristics:**
 - Shared build cache across team
+
+## Ad-Hoc Compilation Mode
+
+For quick experimentation and integration workloads, Morphir supports ad-hoc compilation without requiring a full project structure. This enables:
+
+- **Quick prototyping**: Try out Morphir without project setup
+- **Piped workflows**: Integration with shell pipelines
+- **Single-file compilation**: Compile individual files directly
+- **Code generation testing**: Generate code from snippets
+
+### Input Language Selection
+
+Ad-hoc compilation requires specifying the input language (frontend) since there's no `morphir.toml` to infer it from:
+
+```bash
+# Explicit language selection
+morphir compile --lang elm snippet.elm
+morphir compile --lang morphir-dsl snippet.morphir
+
+# Inferred from file extension
+morphir compile snippet.elm      # Infers Elm frontend
+morphir compile snippet.morphir  # Infers Morphir DSL frontend
+
+# For stdin, language must be specified
+echo "module Ex exposing (..)" | morphir compile --lang elm -
+```
+
+**Supported Languages:**
+
+| Language | Flag | File Extensions |
+|----------|------|-----------------|
+| Elm | `--lang elm` | `.elm` |
+| Morphir DSL | `--lang morphir-dsl` | `.morphir`, `.mdsl` |
+| (Extension) | `--lang <ext-name>` | Per extension |
+
+### Stdin Input (Piping)
+
+Pipe Morphir source code directly to the CLI:
+
+```bash
+# Compile from stdin (language required)
+echo 'module Example exposing (add)
+
+add : Int -> Int -> Int
+add a b = a + b' | morphir compile --lang elm -
+
+# Codegen from stdin
+cat myfile.elm | morphir codegen --target spark --lang elm -
+
+# Pipe through multiple tools
+morphir compile --lang elm - < snippet.elm | morphir codegen --target typescript -
+```
+
+**JSON-RPC Method:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "compile-001",
+  "method": "compile/snippet",
+  "params": {
+    "language": "elm",
+    "source": "module Example exposing (add)\n\nadd : Int -> Int -> Int\nadd a b = a + b",
+    "options": {
+      "moduleName": "Example"
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "compile-001",
+  "result": {
+    "ir": { "...compiled module IR..." },
+    "diagnostics": []
+  }
+}
+```
+
+### Single File Compilation
+
+Compile a single file without a project:
+
+```bash
+# Compile single file (language inferred from .elm extension)
+morphir compile src/Example.elm
+
+# Explicit language
+morphir compile --lang elm src/Example.elm
+
+# Compile and generate code
+morphir compile src/Example.elm | morphir codegen --target spark
+
+# Compile with inferred module name
+morphir compile Example.elm
+# Module name inferred as "Example" from filename
+```
+
+### Multiple Files (No Project)
+
+Compile a set of files without a `morphir.toml`:
+
+```bash
+# Compile multiple files
+morphir compile src/Types.elm src/Logic.elm src/Api.elm
+
+# Using glob patterns
+morphir compile "src/**/*.elm"
+
+# With explicit output
+morphir compile src/*.elm --output dist/
+```
+
+**JSON-RPC Method:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "compile-002",
+  "method": "compile/files",
+  "params": {
+    "language": "elm",
+    "files": [
+      { "path": "Types.elm", "source": "module Types exposing (..)\n..." },
+      { "path": "Logic.elm", "source": "module Logic exposing (..)\n..." }
+    ],
+    "options": {
+      "packageName": "adhoc"
+    }
+  }
+}
+```
+
+### Inline Expressions
+
+Evaluate or compile inline expressions (useful for REPL-like workflows):
+
+```bash
+# Compile an expression
+morphir eval "List.map (\\x -> x * 2) [1, 2, 3]"
+
+# Type-check an expression
+morphir check --expr "\\x -> x + 1"
+
+# Generate code for an expression
+morphir codegen --target typescript --expr "\\a b -> a + b"
+```
+
+**JSON-RPC Method:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "eval-001",
+  "method": "compile/expression",
+  "params": {
+    "expression": "List.map (\\x -> x * 2) [1, 2, 3]",
+    "context": {
+      "imports": ["List"]
+    }
+  }
+}
+```
+
+### Ad-Hoc Codegen
+
+Generate code from IR or source without a project:
+
+```bash
+# Codegen from compiled IR (stdin)
+morphir compile snippet.elm | morphir codegen --target spark -
+
+# Codegen from source file directly
+morphir codegen --target typescript src/Example.elm
+
+# Codegen with inline source
+morphir codegen --target spark --source "module Ex exposing (f)\nf x = x + 1"
+```
+
+**Streaming Ad-Hoc Codegen:**
+```bash
+# Stream codegen output as it's generated
+morphir compile "src/*.elm" | morphir codegen --target spark --stream -
+```
+
+### Output Formats
+
+Ad-hoc compilation supports multiple output formats:
+
+```bash
+# Output IR as JSON (default)
+morphir compile snippet.elm
+
+# Output IR as compact JSON
+morphir compile snippet.elm --format json-compact
+
+# Output just the types
+morphir compile snippet.elm --format types
+
+# Pretty-print the IR
+morphir compile snippet.elm --format pretty
+```
+
+### Temporary Project Context
+
+For ad-hoc compilation that needs dependencies, specify them inline:
+
+```bash
+# With SDK dependency
+morphir compile snippet.elm --with-dep morphir/sdk
+
+# With custom package name
+morphir compile snippet.elm --package my-org/experiment
+
+# With multiple dependencies
+morphir compile snippet.elm \
+  --with-dep morphir/sdk \
+  --with-dep "acme/utils@1.0.0"
+```
+
+**JSON-RPC Method:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "compile-003",
+  "method": "compile/snippet",
+  "params": {
+    "language": "elm",
+    "source": "module Example exposing (..)\nimport Json.Decode\n...",
+    "options": {
+      "packageName": "my-org/experiment",
+      "dependencies": [
+        { "name": "morphir/sdk", "version": "latest" },
+        { "name": "morphir/json", "version": "1.0.0" }
+      ]
+    }
+  }
+}
+```
+
+### Use Cases
+
+| Use Case | Command |
+|----------|---------|
+| Quick syntax check | `echo "x = 1" \| morphir check -` |
+| Prototype a function | `morphir compile snippet.elm` |
+| Test codegen output | `morphir codegen --target spark snippet.elm` |
+| Shell pipeline | `cat src.elm \| morphir compile - \| morphir codegen --target ts -` |
+| CI validation | `morphir compile --check-only "src/**/*.elm"` |
+| REPL-style eval | `morphir eval "1 + 2"` |
+
+### Limitations
+
+Ad-hoc mode has some limitations compared to project mode:
+
+| Feature | Ad-Hoc | Project |
+|---------|--------|---------|
+| Dependency resolution | Manual (`--with-dep`) | Automatic |
+| Incremental compilation | No | Yes |
+| Caching | No | Yes |
+| Multi-module imports | Limited | Full |
+| Watch mode | No | Yes |
+| IDE integration | No | Yes |
+
+For anything beyond quick prototyping, create a project with `morphir init`.
 - Centralized dependency resolution
 - Requires authentication (see [Security](#security))
 
@@ -289,6 +554,11 @@ idle_timeout = "30m"       # Stop after idle period (0 = never)
 | `morphir workspace init` | `workspace/create` | Creates new workspace |
 | `morphir workspace add` | `workspace/addProject` | Adds project to workspace |
 | `morphir clean` | `workspace/clean` | Cleans build artifacts |
+| `morphir compile -` | `compile/snippet` | Compile from stdin |
+| `morphir compile <file>` | `compile/files` | Compile single file (no project) |
+| `morphir compile <files...>` | `compile/files` | Compile multiple files (no project) |
+| `morphir eval <expr>` | `compile/expression` | Evaluate inline expression |
+| `morphir check --expr <expr>` | `compile/expression` | Type-check inline expression |
 
 ### Streaming Operations
 

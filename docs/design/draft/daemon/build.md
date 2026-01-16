@@ -658,6 +658,155 @@ max-workers = 4
 streaming = true       # Enable streaming output
 ```
 
+## Ad-Hoc Compilation
+
+For quick experimentation and integration workloads, Morphir supports compiling code without a full project setup. This is useful for:
+
+- **Quick prototyping**: Test ideas without creating a project
+- **Shell pipelines**: Integrate with Unix-style workflows
+- **CI validation**: Check snippets in automated tests
+- **Code generation testing**: Validate codegen output
+
+### Snippet Compilation
+
+Compile source code from stdin or inline. The input language must be specified (or inferred from file extension):
+
+```bash
+# From stdin (language required)
+echo 'module Example exposing (add)
+add a b = a + b' | morphir compile --lang elm -
+
+# From a single file (language inferred from .elm extension)
+morphir compile snippet.elm
+
+# Explicit language
+morphir compile --lang elm snippet.elm
+
+# Multiple files
+morphir compile types.elm logic.elm
+```
+
+**Supported Languages:**
+
+| Language | Flag | Extensions | Notes |
+|----------|------|------------|-------|
+| Elm | `--lang elm` | `.elm` | Default frontend |
+| Morphir DSL | `--lang morphir-dsl` | `.morphir`, `.mdsl` | Native DSL |
+| (Extensions) | `--lang <name>` | Per extension | Via WASM frontends |
+
+**JSON-RPC Method:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "snippet-001",
+  "method": "compile/snippet",
+  "params": {
+    "language": "elm",
+    "source": "module Example exposing (add)\nadd a b = a + b",
+    "options": {
+      "moduleName": "Example",
+      "packageName": "adhoc"
+    }
+  }
+}
+```
+
+### Expression Evaluation
+
+Compile or evaluate standalone expressions:
+
+```bash
+# Type-check an expression
+morphir check --expr "\\x -> x + 1"
+
+# Evaluate an expression
+morphir eval "List.map (\\x -> x * 2) [1, 2, 3]"
+```
+
+**JSON-RPC Method:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "expr-001",
+  "method": "compile/expression",
+  "params": {
+    "expression": "\\x -> x + 1",
+    "context": {
+      "imports": []
+    }
+  }
+}
+```
+
+### Ad-Hoc with Dependencies
+
+Specify dependencies inline for snippets that need external packages:
+
+```bash
+morphir compile snippet.elm --with-dep morphir/sdk --with-dep morphir/json
+```
+
+**JSON-RPC:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "snippet-002",
+  "method": "compile/snippet",
+  "params": {
+    "language": "elm",
+    "source": "module Example exposing (..)\nimport Json.Decode...",
+    "options": {
+      "dependencies": [
+        { "name": "morphir/sdk" },
+        { "name": "morphir/json", "version": "1.0.0" }
+      ]
+    }
+  }
+}
+```
+
+### Pipeline Compilation
+
+Chain compilation and codegen in Unix pipelines:
+
+```bash
+# Compile then generate
+cat snippet.elm | morphir compile - | morphir codegen --target spark -
+
+# Compile multiple, stream codegen
+morphir compile "src/*.elm" --stream | morphir codegen --target typescript --stream -
+```
+
+### Fragment Compilation
+
+For IDE integration, compile a code fragment within an existing module context:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "frag-001",
+  "method": "compile/fragment",
+  "params": {
+    "language": "elm",
+    "fragment": "\\x -> x + 1",
+    "context": {
+      "modulePath": ["Domain", "User"],
+      "imports": ["Domain.Types"],
+      "localBindings": {
+        "currentUser": "User"
+      }
+    }
+  }
+}
+```
+
+This enables features like:
+- Hover type information
+- Autocomplete with context
+- Inline error checking
+
+See [CLI Interaction](./cli-interaction.md#ad-hoc-compilation-mode) for complete CLI documentation.
+
 ## Best Practices
 
 1. **Use Incremental Builds**: Avoid `clean` unless necessary
