@@ -1790,23 +1790,99 @@ To minimize payload size:
 - Omit empty arrays `[]`
 - Omit `attributes` when null/empty
 
+### Type and Value Shorthand
+
+For compact, readable IRs, type and value expressions support shorthand forms when attributes are empty/null.
+
+#### Type Shorthand Rules
+
+| Form | Interpretation | Disambiguation |
+|------|----------------|----------------|
+| `"morphir/sdk:basics#int"` | Type.Reference (no args) | Contains `:` and `#` → FQName |
+| `"a"` | Type.Variable | No `:` or `#` → variable name |
+| `["morphir/sdk:list#list", ...]` | Type.Reference with args | Array → parameterized type |
+
+#### Disambiguation Logic
+
+```
+if string contains ":" and "#":
+    → FQName reference (Type.Reference or Value.Reference)
+else if string (no special chars):
+    → Variable name (Type.Variable)
+else if array:
+    → Parameterized type: first element is FQName, rest are type args
+else if object:
+    → Canonical wrapper object format
+```
+
+#### Shorthand Examples
+
+```json
+// Variable
+"a"                                    // shorthand
+{ "Variable": { "name": "a" } }        // canonical
+
+// Simple reference (no type args)
+"morphir/sdk:basics#int"                           // shorthand
+{ "Reference": { "fqname": "morphir/sdk:basics#int" } }  // canonical
+
+// Parameterized type: List Int
+["morphir/sdk:list#list", "morphir/sdk:basics#int"]      // shorthand
+{
+  "Reference": {
+    "fqname": "morphir/sdk:list#list",
+    "args": [{ "Reference": { "fqname": "morphir/sdk:basics#int" } }]
+  }
+}  // canonical
+
+// Parameterized type: Dict String Int
+["morphir/sdk:dict#dict", "morphir/sdk:string#string", "morphir/sdk:basics#int"]
+
+// Nested: List (Maybe Int)
+["morphir/sdk:list#list", ["morphir/sdk:maybe#maybe", "morphir/sdk:basics#int"]]
+
+// Mixed: Result String a (variable as type arg)
+["morphir/sdk:result#result", "morphir/sdk:string#string", "a"]
+```
+
+#### Encoding/Decoding Rules
+
+**Encoding (output):**
+- Use shorthand when attributes are empty/null
+- Prefer shorthand for readability
+- Fall back to canonical for types with attributes
+
+**Decoding (input - permissive):**
+- Accept both shorthand and canonical forms
+- String → check for FQName pattern or variable
+- Array → parameterized type
+- Object → canonical form
+
 ### Type Expression Examples
+
+Examples show both shorthand and canonical forms.
 
 #### Variable
 
 ```json
-{ "Variable": { "name": "a" } }
+"a"                                    // shorthand
+{ "Variable": { "name": "a" } }        // canonical
 ```
 
 #### Reference (no type arguments)
 
 ```json
-{ "Reference": { "fqname": "morphir/sdk:basics#int" } }
+"morphir/sdk:basics#int"                           // shorthand
+{ "Reference": { "fqname": "morphir/sdk:basics#int" } }  // canonical
 ```
 
 #### Reference (with type arguments)
 
 ```json
+// List Int
+["morphir/sdk:list#list", "morphir/sdk:basics#int"]   // shorthand
+
+// canonical
 {
   "Reference": {
     "fqname": "morphir/sdk:list#list",
@@ -1820,6 +1896,14 @@ To minimize payload size:
 #### Tuple
 
 ```json
+// shorthand
+{
+  "Tuple": {
+    "elements": ["morphir/sdk:basics#int", "morphir/sdk:string#string"]
+  }
+}
+
+// canonical
 {
   "Tuple": {
     "elements": [
@@ -1832,9 +1916,20 @@ To minimize payload size:
 
 #### Record
 
-Field names as object keys, values are the field types directly:
+Field names as object keys, values are the field types:
 
 ```json
+// shorthand
+{
+  "Record": {
+    "fields": {
+      "user-name": "morphir/sdk:string#string",
+      "age": "morphir/sdk:basics#int"
+    }
+  }
+}
+
+// canonical
 {
   "Record": {
     "fields": {
@@ -1848,6 +1943,17 @@ Field names as object keys, values are the field types directly:
 #### ExtensibleRecord
 
 ```json
+// shorthand
+{
+  "ExtensibleRecord": {
+    "variable": "a",
+    "fields": {
+      "name": "morphir/sdk:string#string"
+    }
+  }
+}
+
+// canonical
 {
   "ExtensibleRecord": {
     "variable": "a",
@@ -1868,6 +1974,10 @@ Decoding also accepts the legacy array format for backwards compatibility:
 #### Function
 
 ```json
+// shorthand
+{ "Function": { "arg": "morphir/sdk:basics#int", "result": "morphir/sdk:string#string" } }
+
+// canonical
 {
   "Function": {
     "arg": { "Reference": { "fqname": "morphir/sdk:basics#int" } },
@@ -3010,7 +3120,7 @@ The following items require further design discussion:
 7. **Intrinsic Document Type** - First-class JSON-like/tree data structure (similar to Smithy's Document type or Ion's S-expressions) for schema-less data within the IR
 8. **Context Metadata (`@context`)** - Add an `@context` key to VFS JSON files for extensible metadata without polluting the main schema (similar to JSON-LD)
 9. **Node References (`$ref`)** - Support YAML-style anchors/references for deduplicating repeated node trees (e.g., `"$ref": "#/path/to/node"`)
-10. **Type Reference Shorthand** - Allow canonical FQName string as shorthand for `{ "Reference": { "fqname": "..." } }` when attributes are empty/null
+10. ~~**Type Reference Shorthand** - Allow canonical FQName string as shorthand for `{ "Reference": { "fqname": "..." } }` when attributes are empty/null~~ ✓ Done
 11. **Decorators** - Design support for Morphir decorators (@alias, @doc, @deprecated, custom annotations) in the IR
 :::
 
