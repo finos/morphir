@@ -50,18 +50,48 @@ This guide describes the organization of Morphir documentation and where differe
 - Use diagrams where helpful
 - Connect concepts to practical benefits
 
+### design/
+**Purpose:** Design documents for Morphir features and architecture
+
+**Subdirectories:**
+- `draft/` - Work-in-progress designs not yet ready for review
+- `proposals/` - Design proposals open for discussion and feedback
+- `rfcs/` - Formal Request for Comments documents for major changes
+
+**Content Types:**
+- Feature designs
+- Architecture proposals
+- System integration designs
+- Protocol specifications (draft stage)
+
+**Guidelines:**
+- Use draft/ for early-stage exploration
+- Move to proposals/ when ready for community input
+- Use rfcs/ for significant changes requiring formal review process
+- Include problem statement, proposed solution, and alternatives considered
+- Link to related ADRs when decisions are finalized
+
 ### spec/
 **Purpose:** Technical specifications and schemas
+
+**Subdirectories:**
+- `draft/` - Draft specifications not yet finalized
+- `ir/` - Morphir IR specifications and schemas
+- `morphir-json/` - JSON format specifications
+- `morphir-toml/` - TOML configuration specifications
 
 **Content Types:**
 - IR specification
 - JSON schemas for IR versions
 - Format documentation
+- Protocol specifications
 
 **Guidelines:**
 - Be precise and complete
 - Version clearly
 - Include schema examples
+- Use draft/ for specifications under development
+- Move to appropriate subdirectory when finalized
 
 ### user-guides/
 **Purpose:** Practical guides for users

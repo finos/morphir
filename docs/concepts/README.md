@@ -65,6 +65,12 @@ After understanding these core concepts, you can:
 - Apply them in [User Guides](../user-guides/) to model business logic
 - See technical details in [Reference](../reference/) documentation
 - Explore [Use Cases](../use-cases/) for real-world applications
+- Review [Designs](../design/) for architectural decisions and proposals
+  - [Draft Designs](../design/draft/) - Work-in-progress designs
+  - [Proposals](../design/proposals/) - Designs open for discussion
+  - [RFCs](../design/rfcs/) - Formal change requests
+- Check [Specifications](../spec/) for protocol and format definitions
+  - [Draft Specs](../spec/draft/) - Specifications under development
 
 ---
 

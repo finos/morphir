@@ -28,7 +28,8 @@ The Morphir documentation lives in `docs/` and is organized into these sections:
 | `getting-started/` | New user introduction and setup |
 | `cli-preview/` | Next-gen CLI documentation |
 | `concepts/` | Core concepts and theory |
-| `spec/` | Technical specifications |
+| `design/` | Design documents (draft/, proposals/, rfcs/) |
+| `spec/` | Technical specifications (includes draft/) |
 | `user-guides/` | Practical how-to guides |
 | `reference/` | API and technical reference |
 | `developers/` | Contributor guides |
