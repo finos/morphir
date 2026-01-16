@@ -126,11 +126,28 @@ The VFS mode uses **one file per definition**:
 
 | File | Content | Purpose |
 |------|---------|---------|
-| `format.json` | Distribution metadata | Layout version, package name, created timestamp |
+| `format.json` | Distribution metadata | Layout version, distribution type, package name |
 | `module.json` | Module manifest | Lists types and values in the module |
-| `*.type.json` | Single type definition | TypeDefinition with access control |
-| `*.value.json` | Single value definition | ValueDefinition with access control |
+| `*.type.json` | Type definition OR specification | TypeDefinition or TypeSpecification |
+| `*.value.json` | Value definition OR specification | ValueDefinition or ValueSpecification |
 | `session.jsonl` | Transaction journal | Append-only log for crash recovery |
+
+### VFS File Polymorphism
+
+Type and value files use **mutually exclusive keys** to indicate whether they contain a definition or specification:
+
+```json
+// Type file with definition (Library distribution)
+{ "formatVersion": "4.0.0", "name": "user", "def": { "TypeAliasDefinition": { ... } } }
+
+// Type file with specification (Specs distribution or dependency)
+{ "formatVersion": "4.0.0", "name": "user", "spec": { "TypeAliasSpecification": { ... } } }
+```
+
+| Key | Used In | Contains |
+|-----|---------|----------|
+| `def` | Library (pkg/) | Full implementation (TypeDefinition, ValueDefinition) |
+| `spec` | Specs distribution, resolved dependencies | Public interface only (TypeSpecification, ValueSpecification) |
 
 ### Format Versioning
 
@@ -1376,19 +1393,25 @@ pub type PackageDefinition(attributes) {
 
 ### Distribution Structure
 
-A Distribution is the top-level container representing a complete compilation unit with its dependencies. Currently only `Library` is defined; `Application` will be added later.
+A Distribution is the top-level container representing a complete compilation unit with its dependencies.
 
 ```gleam
 // === distribution.gleam ===
 
 /// Distribution variants
 pub type Distribution(attributes) {
-  /// A library distribution - reusable package with dependencies
+  /// A library distribution - reusable package with implementations
   Library(library: LibraryDistribution(attributes))
+
+  /// A specs distribution - specifications only (no implementations)
+  /// Used for native/external dependencies, FFI bindings, SDK primitives
+  Specs(specs: SpecsDistribution(attributes))
+
   // Future: Application(application: ApplicationDistribution(attributes))
 }
 
 /// Library distribution - a package plus its resolved dependencies
+/// Contains full definitions (implementations)
 pub type LibraryDistribution(attributes) {
   LibraryDistribution(
     /// The package being compiled/distributed
@@ -1396,6 +1419,22 @@ pub type LibraryDistribution(attributes) {
     /// Full definition of the local package
     definition: PackageDefinition(attributes),
     /// Resolved dependency specifications (not full definitions)
+    dependencies: Dict(PackagePath, PackageSpecification(attributes)),
+  )
+}
+
+/// Specs distribution - specifications only, no implementations
+/// Used for:
+/// - Native/FFI bindings (types exist but implementations are platform-specific)
+/// - External SDKs (Morphir.SDK basics implemented natively per-platform)
+/// - Third-party packages where only the public API is needed for type-checking
+pub type SpecsDistribution(attributes) {
+  SpecsDistribution(
+    /// The package being described
+    package: PackageInfo,
+    /// Public specifications only (no implementations)
+    specification: PackageSpecification(attributes),
+    /// Other specs this depends on (also specification-only)
     dependencies: Dict(PackagePath, PackageSpecification(attributes)),
   )
 }
@@ -1408,6 +1447,16 @@ pub type PackageInfo {
   )
 }
 ```
+
+#### Distribution Type Comparison
+
+| Aspect | Library | Specs |
+|--------|---------|-------|
+| **Contains** | Definitions (implementations) | Specifications (interfaces only) |
+| **Use case** | Normal Morphir packages | Native bindings, FFI, SDK primitives |
+| **Type files** | TypeDefinition | TypeSpecification |
+| **Value files** | ValueDefinition | ValueSpecification |
+| **Code generation** | Full implementation | Platform-specific stub/binding |
 
 ### Semantic Versioning
 
@@ -1636,19 +1685,23 @@ pub type VfsModuleManifest {
 
 ```
 Distribution
-└── Library(LibraryDistribution)
+├── Library(LibraryDistribution)
+│   ├── package: PackageInfo (name, version)
+│   ├── definition: PackageDefinition
+│   │   └── modules: Dict(ModulePath, AccessControlled(ModuleDefinition))
+│   │       └── ModuleDefinition
+│   │           ├── types: Dict(Name, AccessControlled(Documented(TypeDefinition)))
+│   │           └── values: Dict(Name, AccessControlled(Documented(ValueDefinition)))
+│   └── dependencies: Dict(PackagePath, PackageSpecification)
+│
+└── Specs(SpecsDistribution)
     ├── package: PackageInfo (name, version)
-    ├── definition: PackageDefinition
-    │   └── modules: Dict(ModulePath, AccessControlled(ModuleDefinition))
-    │       └── ModuleDefinition
-    │           ├── types: Dict(Name, AccessControlled(Documented(TypeDefinition)))
-    │           └── values: Dict(Name, AccessControlled(Documented(ValueDefinition)))
+    ├── specification: PackageSpecification
+    │   └── modules: Dict(ModulePath, ModuleSpecification)
+    │       └── ModuleSpecification
+    │           ├── types: Dict(Name, Documented(TypeSpecification))
+    │           └── values: Dict(Name, Documented(ValueSpecification))
     └── dependencies: Dict(PackagePath, PackageSpecification)
-        └── PackageSpecification
-            └── modules: Dict(ModulePath, ModuleSpecification)
-                └── ModuleSpecification
-                    ├── types: Dict(Name, Documented(TypeSpecification))
-                    └── values: Dict(Name, Documented(ValueSpecification))
 ```
 
 ## JSON Serialization
@@ -2061,7 +2114,7 @@ Name becomes the key:
 {
   "LetDefinition": {
     "x": {
-      "definition": {
+      "def": {
         "ExpressionBody": {
           "outputType": { "Reference": { "fqname": "morphir/sdk:basics#int" } },
           "body": { "Literal": { "literal": { "WholeNumberLiteral": { "value": 42 } } } }
@@ -2399,7 +2452,7 @@ Single-blob `morphir-ir.json`:
       "name": "my-org/my-project",
       "version": "1.2.0"
     },
-    "definition": {
+    "def": {
       "modules": {
         "domain/users": {
           "access": "Public",
@@ -2455,7 +2508,7 @@ File: `.morphir-dist/pkg/my-org/domain/types/user.type.json`
 {
   "formatVersion": "4.0.0",
   "name": "user",
-  "definition": {
+  "def": {
     "TypeAliasDefinition": {
       "body": {
         "Record": {
@@ -2479,7 +2532,7 @@ File: `.morphir-dist/pkg/my-org/domain/values/get-user-by-email.value.json`
 {
   "formatVersion": "4.0.0",
   "name": "get-user-by-email",
-  "definition": {
+  "def": {
     "access": "Public",
     "value": {
       "ExpressionBody": {
@@ -2548,16 +2601,72 @@ File: `.morphir-dist/pkg/my-org/domain/module.json`
 }
 ```
 
-#### Format File (Distribution Root)
+#### Format File (Library Distribution)
 
 File: `.morphir-dist/format.json`
 
 ```json
 {
   "formatVersion": "4.0.0",
-  "layout": "vfs",
+  "distribution": "Library",
   "package": "my-org/my-project",
+  "version": "1.2.0",
   "created": "2026-01-15T12:00:00Z"
+}
+```
+
+#### Format File (Specs Distribution)
+
+File: `.morphir-dist/format.json`
+
+```json
+{
+  "formatVersion": "4.0.0",
+  "distribution": "Specs",
+  "package": "morphir/sdk",
+  "version": "3.0.0",
+  "created": "2026-01-15T12:00:00Z"
+}
+```
+
+### VFS Specification File Examples
+
+For Specs distributions (or dependencies), files contain specifications instead of definitions.
+
+#### Type Specification File
+
+File: `.morphir-dist/pkg/morphir/sdk/types/int.type.json`
+
+```json
+{
+  "formatVersion": "4.0.0",
+  "name": "int",
+  "spec": {
+    "doc": "Arbitrary precision integer",
+    "OpaqueTypeSpecification": {}
+  }
+}
+```
+
+#### Value Specification File
+
+File: `.morphir-dist/pkg/morphir/sdk/values/add.value.json`
+
+```json
+{
+  "formatVersion": "4.0.0",
+  "name": "add",
+  "spec": {
+    "doc": [
+      "Add two integers.",
+      "This is a native operation implemented per-platform."
+    ],
+    "inputs": {
+      "a": { "Reference": { "fqname": "morphir/sdk:basics#int" } },
+      "b": { "Reference": { "fqname": "morphir/sdk:basics#int" } }
+    },
+    "output": { "Reference": { "fqname": "morphir/sdk:basics#int" } }
+  }
 }
 ```
 
@@ -2796,8 +2905,8 @@ The following items require further design discussion:
 1. ~~**Value expressions** - Complete the Value type definitions~~ ✓ Done
 2. ~~**Module structure** - Define ModuleSpecification and ModuleDefinition~~ ✓ Done
 3. ~~**Package/Distribution** - Define top-level containers for both modes~~ ✓ Done
-4. **Application Distribution** - Define `ApplicationDistribution` variant for executable distributions
-5. **Reference Library** - Define `ReferenceLibrary` distribution type (specification-only, no definitions) for external/native dependencies
+4. ~~**Specs Distribution** - Define specification-only distribution type~~ ✓ Done
+5. **Application Distribution** - Define `ApplicationDistribution` variant for executable distributions
 6. **WASM Component Model** - Define wit interfaces for backend extensions
 :::
 
