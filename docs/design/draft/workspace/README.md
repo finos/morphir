@@ -45,6 +45,7 @@ workspace-root/
 | [Lifecycle](./lifecycle.md) | Workspace creation, opening, closing, and configuration |
 | [Projects](./projects.md) | Project management within a workspace |
 | [Dependencies](./dependencies.md) | Dependency resolution and management |
+| [Packages](./packages.md) | Package format, registry backends, and publishing |
 | [Watching](./watching.md) | File system watching for incremental builds |
 | [Build](./build.md) | Build orchestration and diagnostics |
 
