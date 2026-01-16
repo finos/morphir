@@ -115,11 +115,15 @@ The VFS mode uses **one file per definition**:
 │           │   └── user.type.json
 │           └── values/
 │               └── login.value.json
-└── deps/                  # Dependency IR (versioned)
-    └── morphir/
-        └── sdk/
-            └── 1.2.0/
-                └── ...
+├── deps/                  # Dependency IR (versioned)
+│   └── morphir/
+│       └── sdk/
+│           └── 1.2.0/
+│               └── ...
+└── deco/                  # Decorations (layered metadata)
+    ├── format.json            # Decoration system metadata
+    ├── schemas/               # Local schema cache
+    └── layers/                # Decoration layers (core, tooling, user)
 ```
 
 ### VFS File Types
@@ -183,6 +187,7 @@ The IR type definitions are organized into separate modules for maintainability:
 | **Modules** | Module structure, documentation, and serialization | [vfs-protocol/modules.md](./vfs-protocol/modules.md) |
 | **Packages** | Package specifications and definitions | [vfs-protocol/packages.md](./vfs-protocol/packages.md) |
 | **Distributions** | Distribution types, semantic versioning, and VFS layout | [vfs-protocol/distributions.md](./vfs-protocol/distributions.md) |
+| **Decorations** | Layered metadata system for IR annotations | [vfs-protocol/decorations.md](./vfs-protocol/decorations.md) |
 
 ### IR Hierarchy Summary
 
@@ -454,7 +459,7 @@ The following items require further design discussion:
 8. **Context Metadata (`@context`)** - Add an `@context` key to VFS JSON files for extensible metadata without polluting the main schema (similar to JSON-LD)
 9. **Node References (`$ref`)** - Support YAML-style anchors/references for deduplicating repeated node trees (e.g., `"$ref": "#/path/to/node"`)
 10. ~~**Type Reference Shorthand** - Allow canonical FQName string as shorthand for `{ "Reference": { "fqname": "..." } }` when attributes are empty/null~~ ✓ Done
-11. **Decorators** - Design support for Morphir decorators (@alias, @doc, @deprecated, custom annotations) in the IR
+11. ~~**Decorators** - Design support for Morphir decorators (@alias, @doc, @deprecated, custom annotations) in the IR~~ ✓ Done
 :::
 
 ## Appendix A: Integrity Status Summary

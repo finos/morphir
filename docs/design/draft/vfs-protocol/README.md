@@ -46,6 +46,7 @@ This specification is organized into the following sections:
 | [Modules](./modules.md) | Module structure, documentation, and serialization |
 | [Packages](./packages.md) | Package specifications and definitions |
 | [Distributions](./distributions.md) | Distribution types, semantic versioning, and VFS layout |
+| [Decorations](./decorations.md) | Layered metadata system for IR annotations |
 
 ## Architecture Overview
 
@@ -128,11 +129,15 @@ The VFS mode uses **one file per definition**:
 │           │   └── user.type.json
 │           └── values/
 │               └── login.value.json
-└── deps/                  # Dependency IR (versioned)
-    └── morphir/
-        └── sdk/
-            └── 1.2.0/
-                └── ...
+├── deps/                  # Dependency IR (versioned)
+│   └── morphir/
+│       └── sdk/
+│           └── 1.2.0/
+│               └── ...
+└── deco/                  # Decorations (layered metadata)
+    ├── format.json            # Decoration system metadata
+    ├── schemas/               # Local schema cache
+    └── layers/                # Decoration layers (core, tooling, user)
 ```
 
 ### VFS File Types
@@ -192,3 +197,4 @@ Example: Path `["Main", "Domain"]` → `pkg/main/domain/`
 - **[Modules Module](./modules.md)** - Module structure and documentation
 - **[Packages Module](./packages.md)** - Package organization
 - **[Distributions Module](./distributions.md)** - Distribution types and VFS layout
+- **[Decorations Module](./decorations.md)** - Layered metadata system for IR annotations
