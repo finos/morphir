@@ -72,7 +72,7 @@ pub type Literal {
   FloatLiteral(value: Float)
   BoolLiteral(value: Bool)
   CharLiteral(value: String)
-  WholeNumberLiteral(value: Int)
+  IntegerLiteral(value: Int)
   DecimalLiteral(value: String)
 
   /// Document literal - schema-less JSON-like tree

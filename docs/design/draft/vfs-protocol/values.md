@@ -26,8 +26,8 @@ pub type Literal {
   /// Text string
   StringLiteral(value: String)
 
-  /// Integer (arbitrary precision in IR)
-  WholeNumberLiteral(value: Int)
+  /// Integer (arbitrary precision in IR, includes negatives)
+  IntegerLiteral(value: Int)
 
   /// Floating-point
   FloatLiteral(value: Float)
@@ -36,6 +36,14 @@ pub type Literal {
   DecimalLiteral(value: String)
 }
 ```
+
+### Migration from v1/v2/v3
+
+| v1/v2/v3 | v4 | Notes |
+|----------|----|----|
+| `IntegerLiteral` | `IntegerLiteral` | Renamed for correctness (whole numbers are non-negative; integers include negatives) |
+
+Decoders should accept both `IntegerLiteral` and `IntegerLiteral` for backwards compatibility. Encoders should output `IntegerLiteral`.
 
 ## Patterns
 
@@ -312,7 +320,7 @@ pub type ValueSpecification(attributes) {
 ```json
 { "BoolLiteral": { "value": true } }
 { "StringLiteral": { "value": "hello world" } }
-{ "WholeNumberLiteral": { "value": 42 } }
+{ "IntegerLiteral": { "value": 42 } }
 { "FloatLiteral": { "value": 3.14159 } }
 { "DecimalLiteral": { "value": "123456789.987654321" } }
 { "CharLiteral": { "value": "A" } }
@@ -380,7 +388,7 @@ Simple variable binding (most common case):
 #### LiteralPattern
 
 ```json
-{ "LiteralPattern": { "literal": { "WholeNumberLiteral": { "value": 42 } } } }
+{ "LiteralPattern": { "literal": { "IntegerLiteral": { "value": 42 } } } }
 ```
 
 ### Value Expression Examples
@@ -390,7 +398,7 @@ Simple variable binding (most common case):
 ```json
 {
   "Literal": {
-    "literal": { "WholeNumberLiteral": { "value": 42 } }
+    "literal": { "IntegerLiteral": { "value": 42 } }
   }
 }
 ```
@@ -419,7 +427,7 @@ Simple variable binding (most common case):
 {
   "Tuple": {
     "elements": [
-      { "Literal": { "literal": { "WholeNumberLiteral": { "value": 1 } } } },
+      { "Literal": { "literal": { "IntegerLiteral": { "value": 1 } } } },
       { "Literal": { "literal": { "StringLiteral": { "value": "hello" } } } }
     ]
   }
@@ -432,8 +440,8 @@ Simple variable binding (most common case):
 {
   "List": {
     "items": [
-      { "Literal": { "literal": { "WholeNumberLiteral": { "value": 1 } } } },
-      { "Literal": { "literal": { "WholeNumberLiteral": { "value": 2 } } } }
+      { "Literal": { "literal": { "IntegerLiteral": { "value": 1 } } } },
+      { "Literal": { "literal": { "IntegerLiteral": { "value": 2 } } } }
     ]
   }
 }
@@ -445,7 +453,7 @@ Simple variable binding (most common case):
 {
   "Record": {
     "fields": {
-      "age": { "Literal": { "literal": { "WholeNumberLiteral": { "value": 30 } } } },
+      "age": { "Literal": { "literal": { "IntegerLiteral": { "value": 30 } } } },
       "name": { "Literal": { "literal": { "StringLiteral": { "value": "Alice" } } } }
     }
   }
@@ -494,7 +502,7 @@ Simple variable binding (most common case):
             "argument": { "Variable": { "name": "x" } }
           }
         },
-        "argument": { "Literal": { "literal": { "WholeNumberLiteral": { "value": 1 } } } }
+        "argument": { "Literal": { "literal": { "IntegerLiteral": { "value": 1 } } } }
       }
     }
   }
@@ -512,7 +520,7 @@ Name becomes the key:
       "def": {
         "ExpressionBody": {
           "outputType": { "Reference": { "fqname": "morphir/sdk:basics#int" } },
-          "body": { "Literal": { "literal": { "WholeNumberLiteral": { "value": 42 } } } }
+          "body": { "Literal": { "literal": { "IntegerLiteral": { "value": 42 } } } }
         }
       },
       "inValue": {
@@ -523,7 +531,7 @@ Name becomes the key:
               "argument": { "Variable": { "name": "x" } }
             }
           },
-          "argument": { "Literal": { "literal": { "WholeNumberLiteral": { "value": 1 } } } }
+          "argument": { "Literal": { "literal": { "IntegerLiteral": { "value": 1 } } } }
         }
       }
     }
@@ -584,7 +592,7 @@ Binding names as keys:
       ],
       [
         { "ConstructorPattern": { "constructor": "morphir/sdk:maybe#nothing" } },
-        { "Literal": { "literal": { "WholeNumberLiteral": { "value": 0 } } } }
+        { "Literal": { "literal": { "IntegerLiteral": { "value": 0 } } } }
       ]
     ]
   }
@@ -598,7 +606,7 @@ Binding names as keys:
   "UpdateRecord": {
     "record": { "Variable": { "name": "user" } },
     "updates": {
-      "age": { "Literal": { "literal": { "WholeNumberLiteral": { "value": 31 } } } }
+      "age": { "Literal": { "literal": { "IntegerLiteral": { "value": 31 } } } }
     }
   }
 }
@@ -652,7 +660,7 @@ Input names as keys:
             "argument": { "Variable": { "name": "x" } }
           }
         },
-        "argument": { "Literal": { "literal": { "WholeNumberLiteral": { "value": 1 } } } }
+        "argument": { "Literal": { "literal": { "IntegerLiteral": { "value": 1 } } } }
       }
     }
   }
