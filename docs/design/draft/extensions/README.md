@@ -37,6 +37,242 @@ Morphir Extensions enable:
 | [WASM Components](./wasm-components.md) | Draft | Component model integration and WIT interfaces |
 | [Tasks](./tasks.md) | Draft | Task system, dependencies, and hooks |
 
+## Getting Started with Extensions
+
+Extension development starts with a minimal "info" extension that verifies connectivity before adding features.
+
+### Minimal Extension (Hello World)
+
+Every extension must implement the `info` interface - this is the only required interface:
+
+```wit
+package morphir:extension@0.4.0;
+
+/// Required interface - all extensions must implement this
+interface info {
+    /// Extension metadata
+    record extension-info {
+        /// Unique identifier (e.g., "spark-codegen")
+        id: string,
+        /// Human-readable name
+        name: string,
+        /// Version (semver)
+        version: string,
+        /// Description
+        description: string,
+        /// Author/maintainer
+        author: option<string>,
+        /// Homepage/repository URL
+        homepage: option<string>,
+        /// License identifier (SPDX)
+        license: option<string>,
+    }
+
+    /// Return extension metadata
+    get-info: func() -> extension-info;
+
+    /// Health check - return true if extension is ready
+    ping: func() -> bool;
+}
+```
+
+**Minimal Extension (Rust):**
+```rust
+use morphir_extension::info::{ExtensionInfo, Info};
+
+struct MyExtension;
+
+impl Info for MyExtension {
+    fn get_info() -> ExtensionInfo {
+        ExtensionInfo {
+            id: "my-extension".to_string(),
+            name: "My First Extension".to_string(),
+            version: "0.1.0".to_string(),
+            description: "A minimal Morphir extension".to_string(),
+            author: Some("My Name".to_string()),
+            homepage: Some("https://github.com/me/my-extension".to_string()),
+            license: Some("Apache-2.0".to_string()),
+        }
+    }
+
+    fn ping() -> bool {
+        true  // Extension is ready
+    }
+}
+```
+
+### Extension Discovery
+
+The CLI can list and inspect all registered extensions:
+
+```bash
+# List all extensions
+morphir extension list
+
+# Output:
+# NAME              VERSION   TYPE      CAPABILITIES
+# spark-codegen     1.2.0     codegen   generate, streaming, incremental
+# elm-frontend      0.19.1    frontend  compile, diagnostics
+# my-extension      0.1.0     unknown   (info only)
+
+# Detailed info about an extension
+morphir extension info spark-codegen
+
+# Output:
+# spark-codegen v1.2.0
+#   Type:         codegen
+#   Description:  Generate Apache Spark DataFrame code from Morphir IR
+#   Author:       Morphir Contributors
+#   Homepage:     https://github.com/finos/morphir-spark
+#   License:      Apache-2.0
+#
+#   Capabilities:
+#     ✓ codegen/generate
+#     ✓ codegen/generate-streaming
+#     ✓ codegen/generate-incremental
+#     ✓ codegen/generate-module
+#     ✓ codegen/options-schema
+#
+#   Targets: spark
+#
+#   Options:
+#     spark_version  string  "3.5"   Spark version to target
+#     scala_version  string  "2.13"  Scala version to target
+
+# Verify extension connectivity
+morphir extension ping spark-codegen
+# spark-codegen: OK (2ms)
+
+# Ping all extensions
+morphir extension ping --all
+# spark-codegen:  OK (2ms)
+# elm-frontend:   OK (1ms)
+# my-extension:   OK (1ms)
+```
+
+### JSON-RPC Methods
+
+**List Extensions:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "list-001",
+  "method": "extension/list",
+  "params": {}
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "list-001",
+  "result": {
+    "extensions": [
+      {
+        "id": "spark-codegen",
+        "name": "Spark Code Generator",
+        "version": "1.2.0",
+        "type": "codegen",
+        "source": { "path": "./extensions/spark-codegen.wasm" },
+        "capabilities": ["generate", "generate-streaming", "generate-incremental"]
+      },
+      {
+        "id": "my-extension",
+        "name": "My First Extension",
+        "version": "0.1.0",
+        "type": null,
+        "source": { "path": "./extensions/my-extension.wasm" },
+        "capabilities": []
+      }
+    ]
+  }
+}
+```
+
+**Get Extension Info:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "info-001",
+  "method": "extension/info",
+  "params": {
+    "extension": "spark-codegen"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "info-001",
+  "result": {
+    "id": "spark-codegen",
+    "name": "Spark Code Generator",
+    "version": "1.2.0",
+    "description": "Generate Apache Spark DataFrame code from Morphir IR",
+    "author": "Morphir Contributors",
+    "homepage": "https://github.com/finos/morphir-spark",
+    "license": "Apache-2.0",
+    "type": "codegen",
+    "capabilities": {
+      "codegen/generate": true,
+      "codegen/generate-streaming": true,
+      "codegen/generate-incremental": true,
+      "codegen/generate-module": true,
+      "codegen/options-schema": true
+    },
+    "targets": ["spark"],
+    "options": {
+      "spark_version": {
+        "type": "string",
+        "default": "3.5",
+        "description": "Spark version to target"
+      },
+      "scala_version": {
+        "type": "string",
+        "default": "2.13",
+        "description": "Scala version to target"
+      }
+    }
+  }
+}
+```
+
+**Ping Extension:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "ping-001",
+  "method": "extension/ping",
+  "params": {
+    "extension": "spark-codegen"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "ping-001",
+  "result": {
+    "extension": "spark-codegen",
+    "status": "ok",
+    "latency_ms": 2
+  }
+}
+```
+
+### Extension Development Workflow
+
+1. **Start minimal**: Implement only `info` interface
+2. **Verify connectivity**: `morphir extension ping my-extension`
+3. **Check registration**: `morphir extension list`
+4. **Add capabilities incrementally**: One interface at a time
+5. **Test each capability**: Verify with CLI before adding more
+
 ## Extension Types
 
 ### WASM Components
