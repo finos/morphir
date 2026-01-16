@@ -50,6 +50,7 @@ This specification is organized into the following sections:
 | [Document](./document.md) | Schema-less JSON-like data type |
 | [Metadata](./meta.md) | File-level metadata (`$meta`) |
 | [References](./refs.md) | Node references (`$ref`) for deduplication |
+| [WASM Components](./wasm-component.md) | WIT interfaces for backend extensions |
 
 ## Architecture Overview
 
@@ -204,3 +205,4 @@ Example: Path `["Main", "Domain"]` → `pkg/main/domain/`
 - **[Document Module](./document.md)** - Schema-less JSON-like data type
 - **[Metadata Module](./meta.md)** - File-level metadata (`$meta`)
 - **[References Module](./refs.md)** - Node references (`$ref`) for deduplication
+- **[WASM Components](./wasm-component.md)** - WIT interfaces for backend extensions

@@ -191,6 +191,7 @@ The IR type definitions are organized into separate modules for maintainability:
 | **Document** | Schema-less JSON-like data type | [vfs-protocol/document.md](./vfs-protocol/document.md) |
 | **Metadata** | File-level metadata (`$meta`) | [vfs-protocol/meta.md](./vfs-protocol/meta.md) |
 | **References** | Node references (`$ref`) for deduplication | [vfs-protocol/refs.md](./vfs-protocol/refs.md) |
+| **WASM Components** | WIT interfaces for backend extensions | [vfs-protocol/wasm-component.md](./vfs-protocol/wasm-component.md) |
 
 ### IR Hierarchy Summary
 
@@ -457,7 +458,7 @@ The following items require further design discussion:
 3. ~~**Package/Distribution** - Define top-level containers for both modes~~ ✓ Done
 4. ~~**Specs Distribution** - Define specification-only distribution type~~ ✓ Done
 5. ~~**Application Distribution** - Define `ApplicationDistribution` variant for executable distributions~~ ✓ Done
-6. **WASM Component Model** - Define wit interfaces for backend extensions
+6. ~~**WASM Component Model** - Define WIT interfaces for backend extensions~~ ✓ Done
 7. ~~**Intrinsic Document Type** - First-class JSON-like/tree data structure (similar to Smithy's Document type or Ion's S-expressions) for schema-less data within the IR~~ ✓ Done
 8. ~~**Context Metadata (`$meta`)** - Add a `$meta` key to VFS JSON files for extensible metadata without polluting the main schema~~ ✓ Done
 9. ~~**Node References (`$ref`)** - Support JSON Schema style references for deduplicating repeated node trees~~ ✓ Done
