@@ -49,6 +49,7 @@ This specification is organized into the following sections:
 | [Decorations](./decorations.md) | Layered metadata system for IR annotations |
 | [Document](./document.md) | Schema-less JSON-like data type |
 | [Metadata](./meta.md) | File-level metadata (`$meta`) |
+| [References](./refs.md) | Node references (`$ref`) for deduplication |
 
 ## Architecture Overview
 
@@ -202,3 +203,4 @@ Example: Path `["Main", "Domain"]` → `pkg/main/domain/`
 - **[Decorations Module](./decorations.md)** - Layered metadata system for IR annotations
 - **[Document Module](./document.md)** - Schema-less JSON-like data type
 - **[Metadata Module](./meta.md)** - File-level metadata (`$meta`)
+- **[References Module](./refs.md)** - Node references (`$ref`) for deduplication

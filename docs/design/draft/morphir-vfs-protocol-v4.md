@@ -190,6 +190,7 @@ The IR type definitions are organized into separate modules for maintainability:
 | **Decorations** | Layered metadata system for IR annotations | [vfs-protocol/decorations.md](./vfs-protocol/decorations.md) |
 | **Document** | Schema-less JSON-like data type | [vfs-protocol/document.md](./vfs-protocol/document.md) |
 | **Metadata** | File-level metadata (`$meta`) | [vfs-protocol/meta.md](./vfs-protocol/meta.md) |
+| **References** | Node references (`$ref`) for deduplication | [vfs-protocol/refs.md](./vfs-protocol/refs.md) |
 
 ### IR Hierarchy Summary
 
@@ -459,7 +460,7 @@ The following items require further design discussion:
 6. **WASM Component Model** - Define wit interfaces for backend extensions
 7. ~~**Intrinsic Document Type** - First-class JSON-like/tree data structure (similar to Smithy's Document type or Ion's S-expressions) for schema-less data within the IR~~ ✓ Done
 8. ~~**Context Metadata (`$meta`)** - Add a `$meta` key to VFS JSON files for extensible metadata without polluting the main schema~~ ✓ Done
-9. **Node References (`$ref`)** - Support YAML-style anchors/references for deduplicating repeated node trees (e.g., `"$ref": "#/path/to/node"`)
+9. ~~**Node References (`$ref`)** - Support JSON Schema style references for deduplicating repeated node trees~~ ✓ Done
 10. ~~**Type Reference Shorthand** - Allow canonical FQName string as shorthand for `{ "Reference": { "fqname": "..." } }` when attributes are empty/null~~ ✓ Done
 11. ~~**Decorators** - Design support for Morphir decorators (@alias, @doc, @deprecated, custom annotations) in the IR~~ ✓ Done
 :::
