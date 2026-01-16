@@ -580,6 +580,21 @@ morphir deps update --branches
 
 ## Resolution Algorithm
 
+The dependency resolution algorithm uses **Minimal Version Selection (MVS)**, similar to Go modules. This provides reproducible builds without a SAT solver.
+
+### Algorithm Overview
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│     Collect     │────►│     Resolve     │────►│     Verify      │
+│  Dependencies   │     │    Versions     │     │   & Lock        │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+        │                       │                       │
+        ▼                       ▼                       ▼
+   Direct deps            Transitive            Lock file
+   from config            resolution            generation
+```
+
 ### 1. Dependency Collection
 
 Gather all dependency specifications from:
@@ -627,24 +642,168 @@ For each dependency in topological order:
 5. Verify `morphir.toml` exists in repository root
 6. Add to resolved graph with cache path
 
-### 5. Conflict Detection
+### 5. Transitive Dependency Resolution
 
-Conflicts can occur when:
-- Same package from different sources (e.g., path vs git)
-- Same package from same git URL but different refs
+Transitive dependencies are resolved recursively. Each resolved package may declare its own dependencies.
+
+**Algorithm:**
 
 ```
-Conflict: morphir/sdk
-  my-org/api requires git@v3.0.0
-  legacy/lib requires git@v2.0.0
+function resolveTransitive(rootDeps):
+    resolved = {}
+    queue = rootDeps
 
-Resolution strategies:
-1. Unify to single version (if compatible)
-2. Update legacy/lib to use v3.0.0
-3. Use path override for local development
+    while queue is not empty:
+        dep = queue.pop()
+
+        if dep.name in resolved:
+            # Already resolved - check for version conflict
+            existing = resolved[dep.name]
+            resolved[dep.name] = selectVersion(existing, dep)
+        else:
+            # New dependency - resolve and add transitives
+            pkg = fetchAndResolve(dep)
+            resolved[dep.name] = pkg
+            queue.addAll(pkg.dependencies)
+
+    return topologicalSort(resolved)
 ```
 
-### 6. Path Overrides
+**Example:**
+
+```
+my-org/api
+├── morphir/sdk@^3.0.0
+├── my-org/domain
+│   ├── morphir/sdk@^3.0.0      (transitive)
+│   └── morphir/json@^1.0.0     (transitive)
+└── acme/utils@^2.0.0
+    └── morphir/sdk@^3.1.0      (transitive - higher minimum)
+
+Resolution:
+  morphir/sdk   → 3.1.0 (highest minimum requested)
+  morphir/json  → 1.0.0
+  acme/utils    → 2.0.0
+  my-org/domain → (path)
+```
+
+### 6. Version Selection (MVS)
+
+Morphir uses **Minimal Version Selection (MVS)**: select the *minimum* version that satisfies all constraints.
+
+**Rules:**
+
+| Scenario | Resolution |
+|----------|------------|
+| Single request | Use requested version |
+| Multiple requests, same constraint type | Use highest minimum |
+| Caret (`^`) constraint | Select minimum in range |
+| Exact version conflict | Error (user must resolve) |
+
+**Example - Caret Constraints:**
+
+```
+A requires morphir/sdk@^3.0.0   → needs ≥3.0.0, <4.0.0
+B requires morphir/sdk@^3.2.0   → needs ≥3.2.0, <4.0.0
+
+MVS selects: 3.2.0 (minimum that satisfies both)
+```
+
+**Example - Incompatible Constraints:**
+
+```
+A requires morphir/sdk@^3.0.0   → needs ≥3.0.0, <4.0.0
+B requires morphir/sdk@^2.0.0   → needs ≥2.0.0, <3.0.0
+
+Error: No version satisfies both constraints
+  morphir/sdk@^3.0.0 (required by A)
+  morphir/sdk@^2.0.0 (required by B)
+
+Resolution: Update B to use ^3.0.0, or use path override
+```
+
+### 7. Diamond Dependency Resolution
+
+Diamond dependencies occur when two packages depend on different versions of the same transitive dependency.
+
+```
+        my-org/api
+        /         \
+       /           \
+   lib-a@1.0     lib-b@1.0
+       \           /
+        \         /
+      morphir/sdk@???
+
+lib-a requires morphir/sdk@^3.0.0
+lib-b requires morphir/sdk@^3.2.0
+```
+
+**Resolution Strategy:**
+
+1. **Compatible ranges**: Select highest minimum (MVS)
+   ```
+   lib-a: ^3.0.0 (≥3.0.0, <4.0.0)
+   lib-b: ^3.2.0 (≥3.2.0, <4.0.0)
+   → Select 3.2.0 (satisfies both)
+   ```
+
+2. **Incompatible ranges**: Report error with upgrade path
+   ```
+   lib-a: ^2.0.0 (≥2.0.0, <3.0.0)
+   lib-b: ^3.0.0 (≥3.0.0, <4.0.0)
+   → Error: Cannot unify versions
+   → Suggestion: Update lib-a to version that supports morphir/sdk@^3.0.0
+   ```
+
+3. **Path override**: User can force a specific version
+   ```toml
+   [dependencies]
+   # Force specific version for development
+   "morphir/sdk" = { path = "../morphir-sdk" }
+   ```
+
+### 8. Conflict Detection and Reporting
+
+Conflicts are detected and reported clearly:
+
+**Source Conflicts:**
+```
+Error: Conflicting sources for morphir/sdk
+  my-org/api requires:      git@github.com/finos/morphir-sdk@v3.0.0
+  legacy/lib requires:      git@github.com/fork/morphir-sdk@v3.0.0
+
+Different repositories for same package name.
+
+Resolution options:
+  1. Update legacy/lib to use official repository
+  2. Rename fork to different package name
+  3. Use path override for local resolution
+```
+
+**Version Conflicts:**
+```
+Error: Incompatible versions for morphir/sdk
+  my-org/api requires:      ^3.0.0 (via direct dependency)
+  legacy/lib requires:      ^2.0.0 (via lib-old@1.0.0)
+
+No version satisfies both constraints.
+
+Resolution options:
+  1. Update legacy/lib to version supporting morphir/sdk@^3.0.0
+  2. Update lib-old to newer version
+  3. Use path override: "morphir/sdk" = { path = "..." }
+```
+
+**Cycle Detection:**
+```
+Error: Dependency cycle detected
+  my-org/api → my-org/domain → my-org/core → my-org/api
+
+Cycles are not allowed. Refactor to break the cycle.
+```
+
+### 10. Path Overrides
 
 For local development, path dependencies can override other sources:
 
