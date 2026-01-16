@@ -2,6 +2,10 @@
 title: File Watching
 sidebar_label: Watching
 sidebar_position: 5
+status: draft
+tracking:
+  beads: [morphir-l75]
+  github_issues: [401]
 ---
 
 # File Watching

@@ -2,6 +2,7 @@
 title: Workspace Lifecycle
 sidebar_label: Lifecycle
 sidebar_position: 2
+status: draft
 ---
 
 # Workspace Lifecycle
@@ -309,7 +310,7 @@ update-workspace-config: func(
 
 ## Configuration
 
-See [Configuration System](../configuration/README.md) for full configuration documentation.
+See [Configuration System](./configuration.md) for full configuration documentation.
 
 ### morphir.toml
 

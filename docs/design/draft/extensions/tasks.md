@@ -1,7 +1,11 @@
 ---
 title: Tasks
 sidebar_label: Tasks
-sidebar_position: 4
+sidebar_position: 2
+status: draft
+tracking:
+  beads: [morphir-go-772]
+  github_issues: [399]
 ---
 
 # Tasks
@@ -64,7 +68,7 @@ morphir run codegen:typescript
 morphir run codegen:scala
 ```
 
-See [WASM Components](../vfs-protocol/wasm-component.md) for how extensions register tasks.
+See [WASM Components](./wasm-component.md) for how extensions register tasks.
 
 ## Task Definition
 
@@ -433,4 +437,4 @@ run = "morphir-elm make"
 4. **Compatibility**: File-based tasks work with any scripting language
 5. **Incremental**: Source/output tracking avoids unnecessary work
 
-For extension points beyond tasks (custom commands, protocol extensions), see [Extensions](../vfs-protocol/wasm-component.md) for the WASM Component Model approach.
+For extension points beyond tasks (custom commands, protocol extensions), see [WASM Components](./wasm-component.md) for the WASM Component Model approach.

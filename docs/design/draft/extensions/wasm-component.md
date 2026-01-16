@@ -1,7 +1,10 @@
 ---
 title: WASM Component Model
 sidebar_label: WASM Components
-sidebar_position: 12
+sidebar_position: 3
+status: draft
+tracking:
+  beads: [morphir-010]
 ---
 
 # WASM Component Model

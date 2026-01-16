@@ -1,7 +1,10 @@
 ---
 title: Package Management
 sidebar_label: Packages
-sidebar_position: 5
+sidebar_position: 7
+status: draft
+tracking:
+  github_discussions: [88]
 ---
 
 # Package Management
@@ -23,7 +26,7 @@ Morphir packages are distributable archives containing compiled IR and metadata.
 
 A Morphir package is a gzipped tarball (`.morphir.tgz`) containing the compiled distribution and metadata. The package format supports both classic (single-file) and VFS (directory tree) distribution modes.
 
-See [Distribution Structure](../vfs-protocol/distributions.md) for the complete IR format specification.
+See [Distribution Structure](../ir/distributions.md) for the complete IR format specification.
 
 ### Package Contents
 

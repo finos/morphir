@@ -1,7 +1,8 @@
 ---
 title: Configuration System
-sidebar_label: Overview
-sidebar_position: 1
+sidebar_label: Configuration
+sidebar_position: 8
+status: draft
 ---
 
 # Configuration System
@@ -167,4 +168,4 @@ See [Merge Rules](./merge-rules.md) for detailed merge semantics.
 
 - [morphir.toml Specification](/docs/spec/morphir-toml/morphir-toml-specification) - Formal spec
 - [Merge Rules](/docs/spec/morphir-toml/morphir-toml-merge-rules) - Merge behavior spec
-- [Workspace Operations](../workspace/README.md) - Runtime workspace management
+- [Workspace Operations](./README.md) - Runtime workspace management

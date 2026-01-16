@@ -1,7 +1,8 @@
 ---
 title: Workspace Mode
-sidebar_label: Workspace Mode
-sidebar_position: 2
+sidebar_label: Workspace Config
+sidebar_position: 9
+status: draft
 ---
 
 # Workspace Mode Configuration
@@ -202,7 +203,7 @@ name = "my-org/domain"
 "other/lib" = { path = "../other" }         # Project-specific path dependency
 ```
 
-See [Dependency Management](../workspace/dependencies.md) for full documentation on dependency sources, resolution, and caching.
+See [Dependency Management](./dependencies.md) for full documentation on dependency sources, resolution, and caching.
 
 ## CLI Workspace Awareness
 

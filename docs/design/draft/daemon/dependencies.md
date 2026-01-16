@@ -2,6 +2,9 @@
 title: Dependency Management
 sidebar_label: Dependencies
 sidebar_position: 4
+status: draft
+tracking:
+  github_discussions: [88]
 ---
 
 # Dependency Management
