@@ -1407,7 +1407,8 @@ pub type Distribution(attributes) {
   /// Used for native/external dependencies, FFI bindings, SDK primitives
   Specs(specs: SpecsDistribution(attributes))
 
-  // Future: Application(application: ApplicationDistribution(attributes))
+  /// An application distribution - executable with named entry points
+  Application(application: ApplicationDistribution(attributes))
 }
 
 /// Library distribution - a package plus its resolved dependencies
@@ -1439,6 +1440,48 @@ pub type SpecsDistribution(attributes) {
   )
 }
 
+/// Application distribution - executable package with named entry points
+/// Like a statically linked binary, contains full definitions for all dependencies
+pub type ApplicationDistribution(attributes) {
+  ApplicationDistribution(
+    /// The application package
+    package: PackageInfo,
+    /// Full definition of the application
+    definition: PackageDefinition(attributes),
+    /// Fully resolved dependencies (complete definitions, not just specs)
+    /// Enables standalone execution without external dependency resolution
+    dependencies: Dict(PackagePath, PackageDefinition(attributes)),
+    /// Named entry points into the application
+    entry_points: Dict(Name, EntryPoint),
+  )
+}
+
+/// An entry point into an application
+pub type EntryPoint {
+  EntryPoint(
+    /// The value to invoke
+    target: FQName,
+    /// What kind of entry point this is
+    kind: EntryPointKind,
+    /// Documentation for this entry point
+    doc: Option(Documentation),
+  )
+}
+
+/// Classification of entry points
+pub type EntryPointKind {
+  /// Default/primary entry point (like main)
+  Main
+  /// CLI subcommand
+  Command
+  /// Service endpoint or message handler
+  Handler
+  /// Batch or scheduled job
+  Job
+  /// Business policy or rule
+  Policy
+}
+
 /// Package metadata
 pub type PackageInfo {
   PackageInfo(
@@ -1450,11 +1493,23 @@ pub type PackageInfo {
 
 #### Distribution Type Comparison
 
-| Aspect | Library | Specs |
-|--------|---------|-------|
-| **Contains** | Definitions (implementations) | Specifications (interfaces only) |
-| **Use case** | Normal Morphir packages | Native bindings, FFI, SDK primitives |
-| **Type files** | TypeDefinition | TypeSpecification |
+| Aspect | Library | Specs | Application |
+|--------|---------|-------|-------------|
+| **Contains** | Definitions | Specifications only | Definitions + entry points |
+| **Dependencies** | PackageSpecification | PackageSpecification | PackageDefinition (full) |
+| **Use case** | Reusable packages | Native bindings, FFI, SDK | Executables, services, CLIs |
+| **Analogy** | Shared library (.so/.dll) | Header files (.h) | Static binary |
+| **Entry points** | None (any public value) | N/A | Named entry points with kind |
+
+#### Entry Point Kinds
+
+| Kind | Description | Example |
+|------|-------------|---------|
+| `Main` | Default/primary entry point | Application startup |
+| `Command` | CLI subcommand | `morphir build`, `morphir test` |
+| `Handler` | Service endpoint or message handler | HTTP route, queue consumer |
+| `Job` | Batch or scheduled job | Nightly report, data sync |
+| `Policy` | Business policy or rule | Validation rule, pricing policy |
 | **Value files** | ValueDefinition | ValueSpecification |
 | **Code generation** | Full implementation | Platform-specific stub/binding |
 
@@ -1689,19 +1744,24 @@ Distribution
 │   ├── package: PackageInfo (name, version)
 │   ├── definition: PackageDefinition
 │   │   └── modules: Dict(ModulePath, AccessControlled(ModuleDefinition))
-│   │       └── ModuleDefinition
-│   │           ├── types: Dict(Name, AccessControlled(Documented(TypeDefinition)))
-│   │           └── values: Dict(Name, AccessControlled(Documented(ValueDefinition)))
 │   └── dependencies: Dict(PackagePath, PackageSpecification)
 │
-└── Specs(SpecsDistribution)
+├── Specs(SpecsDistribution)
+│   ├── package: PackageInfo (name, version)
+│   ├── specification: PackageSpecification
+│   │   └── modules: Dict(ModulePath, ModuleSpecification)
+│   └── dependencies: Dict(PackagePath, PackageSpecification)
+│
+└── Application(ApplicationDistribution)
     ├── package: PackageInfo (name, version)
-    ├── specification: PackageSpecification
-    │   └── modules: Dict(ModulePath, ModuleSpecification)
-    │       └── ModuleSpecification
-    │           ├── types: Dict(Name, Documented(TypeSpecification))
-    │           └── values: Dict(Name, Documented(ValueSpecification))
-    └── dependencies: Dict(PackagePath, PackageSpecification)
+    ├── definition: PackageDefinition
+    │   └── modules: Dict(ModulePath, AccessControlled(ModuleDefinition))
+    ├── dependencies: Dict(PackagePath, PackageDefinition)  ← Full definitions (statically linked)
+    └── entry_points: Dict(Name, EntryPoint)
+        └── EntryPoint
+            ├── target: FQName
+            ├── kind: EntryPointKind (Main|Command|Handler|Job|Policy)
+            └── doc: Option(Documentation)
 ```
 
 ## JSON Serialization
@@ -2629,6 +2689,45 @@ File: `.morphir-dist/format.json`
 }
 ```
 
+#### Format File (Application Distribution)
+
+File: `.morphir-dist/format.json`
+
+```json
+{
+  "formatVersion": "4.0.0",
+  "distribution": "Application",
+  "package": "my-org/my-cli",
+  "version": "2.0.0",
+  "created": "2026-01-15T12:00:00Z",
+  "entryPoints": {
+    "main": {
+      "target": "my-org/my-cli:main#run",
+      "kind": "Main",
+      "doc": "Primary application entry point"
+    },
+    "build": {
+      "target": "my-org/my-cli:commands#build",
+      "kind": "Command",
+      "doc": "Build the project"
+    },
+    "validate": {
+      "target": "my-org/my-cli:commands#validate",
+      "kind": "Command",
+      "doc": "Validate project configuration"
+    },
+    "pricing-policy": {
+      "target": "my-org/my-cli:policies#calculate-price",
+      "kind": "Policy",
+      "doc": [
+        "Calculate product pricing based on rules.",
+        "Applies discounts, taxes, and regional adjustments."
+      ]
+    }
+  }
+}
+```
+
 ### VFS Specification File Examples
 
 For Specs distributions (or dependencies), files contain specifications instead of definitions.
@@ -2906,12 +3005,13 @@ The following items require further design discussion:
 2. ~~**Module structure** - Define ModuleSpecification and ModuleDefinition~~ ✓ Done
 3. ~~**Package/Distribution** - Define top-level containers for both modes~~ ✓ Done
 4. ~~**Specs Distribution** - Define specification-only distribution type~~ ✓ Done
-5. **Application Distribution** - Define `ApplicationDistribution` variant for executable distributions
+5. ~~**Application Distribution** - Define `ApplicationDistribution` variant for executable distributions~~ ✓ Done
 6. **WASM Component Model** - Define wit interfaces for backend extensions
 7. **Intrinsic Document Type** - First-class JSON-like/tree data structure (similar to Smithy's Document type or Ion's S-expressions) for schema-less data within the IR
 8. **Context Metadata (`@context`)** - Add an `@context` key to VFS JSON files for extensible metadata without polluting the main schema (similar to JSON-LD)
 9. **Node References (`$ref`)** - Support YAML-style anchors/references for deduplicating repeated node trees (e.g., `"$ref": "#/path/to/node"`)
 10. **Type Reference Shorthand** - Allow canonical FQName string as shorthand for `{ "Reference": { "fqname": "..." } }` when attributes are empty/null
+11. **Decorators** - Design support for Morphir decorators (@alias, @doc, @deprecated, custom annotations) in the IR
 :::
 
 ## Appendix A: Integrity Status Summary
