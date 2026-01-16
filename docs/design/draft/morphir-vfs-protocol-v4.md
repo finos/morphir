@@ -300,6 +300,342 @@ Sent by the Daemon whenever the IR or Config is updated.
 }
 ```
 
+### Workspace Management Methods
+
+#### workspace/create
+
+Create a new workspace.
+
+```json
+{
+  "method": "workspace/create",
+  "params": {
+    "root": "/path/to/workspace",
+    "config": {
+      "name": "my-workspace"
+    }
+  }
+}
+```
+
+Response:
+```json
+{
+  "result": {
+    "root": "/path/to/workspace",
+    "name": "my-workspace",
+    "state": "open",
+    "projects": []
+  }
+}
+```
+
+#### workspace/open
+
+Open an existing workspace.
+
+```json
+{
+  "method": "workspace/open",
+  "params": {
+    "root": "/path/to/workspace"
+  }
+}
+```
+
+Response:
+```json
+{
+  "result": {
+    "root": "/path/to/workspace",
+    "name": "my-workspace",
+    "state": "open",
+    "projects": [
+      {
+        "name": "my-org/project-a",
+        "version": "1.0.0",
+        "path": "packages/project-a",
+        "state": "ready",
+        "sourceDir": "src"
+      }
+    ]
+  }
+}
+```
+
+#### workspace/close
+
+Close the current workspace.
+
+```json
+{
+  "method": "workspace/close",
+  "params": {}
+}
+```
+
+#### workspace/info
+
+Get current workspace info.
+
+```json
+{
+  "method": "workspace/info",
+  "params": {}
+}
+```
+
+#### workspace/addProject
+
+Add a project to the workspace.
+
+```json
+{
+  "method": "workspace/addProject",
+  "params": {
+    "name": "my-org/new-project",
+    "path": "packages/new-project",
+    "version": "0.1.0",
+    "sourceDir": "src"
+  }
+}
+```
+
+#### workspace/removeProject
+
+Remove a project from the workspace.
+
+```json
+{
+  "method": "workspace/removeProject",
+  "params": {
+    "name": "my-org/old-project"
+  }
+}
+```
+
+#### workspace/listProjects
+
+List all projects in the workspace.
+
+```json
+{
+  "method": "workspace/listProjects",
+  "params": {}
+}
+```
+
+Response:
+```json
+{
+  "result": [
+    {
+      "name": "my-org/project-a",
+      "version": "1.0.0",
+      "path": "packages/project-a",
+      "state": "ready",
+      "sourceDir": "src",
+      "dependencies": [
+        { "name": "morphir/sdk", "version": "3.0.0", "resolved": true }
+      ]
+    },
+    {
+      "name": "my-org/project-b",
+      "version": "2.0.0",
+      "path": "packages/project-b",
+      "state": "stale",
+      "sourceDir": "src",
+      "dependencies": []
+    }
+  ]
+}
+```
+
+#### workspace/loadProject
+
+Load (compile) a specific project.
+
+```json
+{
+  "method": "workspace/loadProject",
+  "params": {
+    "name": "my-org/project-a"
+  }
+}
+```
+
+Response:
+```json
+{
+  "result": {
+    "distribution": { "..." },
+    "diagnostics": []
+  }
+}
+```
+
+#### workspace/reloadProject
+
+Reload (recompile) a specific project.
+
+```json
+{
+  "method": "workspace/reloadProject",
+  "params": {
+    "name": "my-org/project-a"
+  }
+}
+```
+
+#### workspace/addDependency
+
+Add a dependency to a project.
+
+```json
+{
+  "method": "workspace/addDependency",
+  "params": {
+    "project": "my-org/project-a",
+    "dependency": "morphir/sdk",
+    "version": "3.0.0"
+  }
+}
+```
+
+#### workspace/removeDependency
+
+Remove a dependency from a project.
+
+```json
+{
+  "method": "workspace/removeDependency",
+  "params": {
+    "project": "my-org/project-a",
+    "dependency": "some/unused-dep"
+  }
+}
+```
+
+#### workspace/resolveDependencies
+
+Resolve dependencies for a project or entire workspace.
+
+```json
+{
+  "method": "workspace/resolveDependencies",
+  "params": {
+    "project": "my-org/project-a"
+  }
+}
+```
+
+Response:
+```json
+{
+  "result": [
+    { "name": "morphir/sdk", "version": "3.0.0", "resolved": true },
+    { "name": "some/lib", "version": "1.2.0", "resolved": true }
+  ]
+}
+```
+
+#### workspace/buildAll
+
+Build all projects in the workspace.
+
+```json
+{
+  "method": "workspace/buildAll",
+  "params": {}
+}
+```
+
+Response:
+```json
+{
+  "result": [
+    { "project": "my-org/project-a", "status": "ok", "distribution": { "..." } },
+    { "project": "my-org/project-b", "status": "partial", "distribution": { "..." }, "diagnostics": [...] }
+  ]
+}
+```
+
+#### workspace/clean
+
+Clean build artifacts.
+
+```json
+{
+  "method": "workspace/clean",
+  "params": {
+    "project": "my-org/project-a"
+  }
+}
+```
+
+Or clean all:
+```json
+{
+  "method": "workspace/clean",
+  "params": {}
+}
+```
+
+#### workspace/watch
+
+Start/stop watching for file changes.
+
+```json
+{
+  "method": "workspace/watch",
+  "params": {
+    "enabled": true
+  }
+}
+```
+
+#### workspace/onFileChanged (Notification)
+
+Sent by the Daemon when watched files change.
+
+```json
+{
+  "method": "workspace/onFileChanged",
+  "params": {
+    "events": [
+      {
+        "eventType": "modified",
+        "path": "packages/project-a/src/Domain/User.elm",
+        "project": "my-org/project-a"
+      }
+    ]
+  }
+}
+```
+
+#### workspace/getDiagnostics
+
+Get workspace-wide diagnostics.
+
+```json
+{
+  "method": "workspace/getDiagnostics",
+  "params": {}
+}
+```
+
+Response:
+```json
+{
+  "result": {
+    "my-org/project-a": [],
+    "my-org/project-b": [
+      { "severity": "error", "code": "E001", "message": "Type mismatch", "location": { "..." } }
+    ]
+  }
+}
+```
+
 ### Frontend Compiler Methods
 
 #### compile/workspace

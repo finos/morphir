@@ -46,7 +46,8 @@ wit/
 │   └── validator.wit      # Validation interface
 ├── morphir-vfs/
 │   ├── reader.wit         # VFS read access
-│   └── writer.wit         # VFS write access
+│   ├── writer.wit         # VFS write access
+│   └── workspace.wit      # Workspace management
 └── morphir-component/
     └── worlds.wit         # World definitions
 ```
@@ -1174,6 +1175,254 @@ interface writer {
         new-fqn: fqname,
     ) -> result<_, write-error>;
 }
+
+/// Workspace management
+interface workspace {
+    use morphir:ir@0.4.0.{
+        naming.{package-path},
+        distributions.{semver, distribution},
+        document.{document-value},
+    };
+
+    // ============================================================
+    // Types
+    // ============================================================
+
+    /// Workspace state
+    enum workspace-state {
+        /// Workspace is closed
+        closed,
+        /// Workspace is open and ready
+        open,
+        /// Workspace is being initialized
+        initializing,
+        /// Workspace has errors
+        error,
+    }
+
+    /// Project state within workspace
+    enum project-state {
+        /// Project not yet loaded
+        unloaded,
+        /// Project is loading
+        loading,
+        /// Project is loaded and ready
+        ready,
+        /// Project has compilation errors
+        error,
+        /// Project is stale (needs recompilation)
+        stale,
+    }
+
+    /// Workspace info
+    record workspace-info {
+        /// Workspace root path
+        root: string,
+        /// Workspace name (derived from root or config)
+        name: string,
+        /// Current state
+        state: workspace-state,
+        /// Projects in workspace
+        projects: list<project-info>,
+        /// Workspace-level configuration
+        config: option<document-value>,
+    }
+
+    /// Project info
+    record project-info {
+        /// Project name (package path)
+        name: package-path,
+        /// Project version
+        version: semver,
+        /// Project root path (relative to workspace)
+        path: string,
+        /// Current state
+        state: project-state,
+        /// Source directory
+        source-dir: string,
+        /// Dependencies
+        dependencies: list<dependency-info>,
+    }
+
+    /// Dependency info
+    record dependency-info {
+        /// Dependency name
+        name: package-path,
+        /// Required version
+        version: semver,
+        /// Whether dependency is resolved
+        resolved: bool,
+    }
+
+    /// Workspace error
+    variant workspace-error {
+        /// Workspace not found
+        not-found(string),
+        /// Workspace already exists
+        already-exists(string),
+        /// Workspace is not open
+        not-open,
+        /// Project not found
+        project-not-found(string),
+        /// Project already exists
+        project-already-exists(string),
+        /// Invalid configuration
+        invalid-config(string),
+        /// IO error
+        io-error(string),
+    }
+
+    /// Watch event type
+    enum watch-event-type {
+        /// File created
+        created,
+        /// File modified
+        modified,
+        /// File deleted
+        deleted,
+        /// File renamed
+        renamed,
+    }
+
+    /// Watch event
+    record watch-event {
+        /// Event type
+        event-type: watch-event-type,
+        /// Affected path
+        path: string,
+        /// New path (for rename events)
+        new-path: option<string>,
+        /// Affected project (if determinable)
+        project: option<package-path>,
+    }
+
+    // ============================================================
+    // Workspace Lifecycle
+    // ============================================================
+
+    /// Create a new workspace
+    create-workspace: func(
+        /// Workspace root path
+        root: string,
+        /// Initial configuration
+        config: option<document-value>,
+    ) -> result<workspace-info, workspace-error>;
+
+    /// Open an existing workspace
+    open-workspace: func(
+        /// Workspace root path
+        root: string,
+    ) -> result<workspace-info, workspace-error>;
+
+    /// Close the current workspace
+    close-workspace: func() -> result<_, workspace-error>;
+
+    /// Get current workspace info
+    get-workspace-info: func() -> result<workspace-info, workspace-error>;
+
+    /// Update workspace configuration
+    update-workspace-config: func(
+        config: document-value,
+    ) -> result<_, workspace-error>;
+
+    // ============================================================
+    // Project Management
+    // ============================================================
+
+    /// Add a project to the workspace
+    add-project: func(
+        /// Project name
+        name: package-path,
+        /// Project path (relative to workspace root)
+        path: string,
+        /// Initial version
+        version: semver,
+        /// Source directory
+        source-dir: string,
+    ) -> result<project-info, workspace-error>;
+
+    /// Remove a project from the workspace
+    remove-project: func(
+        name: package-path,
+    ) -> result<_, workspace-error>;
+
+    /// Get project info
+    get-project-info: func(
+        name: package-path,
+    ) -> result<project-info, workspace-error>;
+
+    /// List all projects
+    list-projects: func() -> result<list<project-info>, workspace-error>;
+
+    /// Load a project (parse and compile)
+    load-project: func(
+        name: package-path,
+    ) -> result<distribution, workspace-error>;
+
+    /// Unload a project (free resources)
+    unload-project: func(
+        name: package-path,
+    ) -> result<_, workspace-error>;
+
+    /// Reload a project (recompile)
+    reload-project: func(
+        name: package-path,
+    ) -> result<distribution, workspace-error>;
+
+    // ============================================================
+    // Dependency Management
+    // ============================================================
+
+    /// Add a dependency to a project
+    add-dependency: func(
+        project: package-path,
+        dependency: package-path,
+        version: semver,
+    ) -> result<_, workspace-error>;
+
+    /// Remove a dependency from a project
+    remove-dependency: func(
+        project: package-path,
+        dependency: package-path,
+    ) -> result<_, workspace-error>;
+
+    /// Resolve all dependencies for a project
+    resolve-dependencies: func(
+        project: package-path,
+    ) -> result<list<dependency-info>, workspace-error>;
+
+    /// Resolve all dependencies for entire workspace
+    resolve-all-dependencies: func() -> result<list<tuple<package-path, list<dependency-info>>>, workspace-error>;
+
+    // ============================================================
+    // File Watching
+    // ============================================================
+
+    /// Start watching workspace for changes
+    start-watching: func() -> result<_, workspace-error>;
+
+    /// Stop watching workspace
+    stop-watching: func() -> result<_, workspace-error>;
+
+    /// Poll for watch events (non-blocking)
+    poll-events: func() -> list<watch-event>;
+
+    // ============================================================
+    // Workspace Operations
+    // ============================================================
+
+    /// Build all projects in workspace
+    build-all: func() -> result<list<tuple<package-path, distribution>>, workspace-error>;
+
+    /// Clean build artifacts
+    clean: func(
+        /// Specific project, or all if none
+        project: option<package-path>,
+    ) -> result<_, workspace-error>;
+
+    /// Get workspace-wide diagnostics
+    get-diagnostics: func() -> list<tuple<package-path, list<morphir:frontend@0.4.0.compiler.diagnostic>>>;
+}
 ```
 
 ## World Definitions (`worlds.wit`)
@@ -1183,7 +1432,7 @@ package morphir:component@0.4.0;
 
 use morphir:frontend@0.4.0.{compiler};
 use morphir:backend@0.4.0.{generator, validator};
-use morphir:vfs@0.4.0.{reader, writer};
+use morphir:vfs@0.4.0.{reader, writer, workspace};
 
 // ============================================================
 // FRONTEND COMPONENTS (Source → IR)
@@ -1249,6 +1498,22 @@ world transformer-component {
 }
 
 // ============================================================
+// WORKSPACE COMPONENTS
+// ============================================================
+
+/// Workspace management component (daemon-side)
+world workspace-manager-component {
+    export workspace;
+}
+
+/// Workspace-aware compiler
+world workspace-compiler-component {
+    import workspace;
+    import reader;
+    export compiler;
+}
+
+// ============================================================
 // FULL PIPELINE COMPONENTS
 // ============================================================
 
@@ -1260,10 +1525,21 @@ world toolchain-component {
     export validator;
 }
 
+/// Toolchain with workspace support
+world workspace-toolchain-component {
+    import workspace;
+    import reader;
+    import writer;
+    export compiler;
+    export generator;
+    export validator;
+}
+
 /// Full plugin with all capabilities
 world plugin-component {
     import reader;
     import writer;
+    import workspace;
     export compiler;
     export generator;
     export validator;
@@ -1304,8 +1580,11 @@ world plugin-component {
 | `validator-component` | None | Pure function |
 | `backend-component` | None | Pure function |
 | `transformer-component` | VFS reader, writer | Scoped to distribution |
+| `workspace-manager-component` | None (exports only) | Workspace lifecycle management |
+| `workspace-compiler-component` | Workspace, VFS reader | Workspace-aware compilation |
 | `toolchain-component` | VFS reader | Full compilation pipeline |
-| `plugin-component` | Full VFS | Maximum access |
+| `workspace-toolchain-component` | Workspace, VFS r/w | Full pipeline with workspace |
+| `plugin-component` | Full VFS + workspace | Maximum access |
 
 Components are sandboxed:
 - No filesystem access outside VFS
