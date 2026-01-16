@@ -885,6 +885,198 @@ Recommended order for implementing extension capabilities:
 4. `generate-incremental` - Efficient rebuilds
 5. `generate-streaming` - Large project support
 
+## Future: Alternative Extension Runtimes
+
+Beyond WASM components and native executables, several alternative extension runtimes are worth exploring for different trade-offs in performance, ease of authoring, and sandboxing.
+
+### QuickJS
+
+[QuickJS](https://bellard.org/quickjs/) is a small, embeddable JavaScript engine that could enable JavaScript/TypeScript extensions without WASM compilation.
+
+**Potential Benefits:**
+- Familiar language for web developers
+- No compilation step (interpret directly)
+- Small runtime footprint (~210KB)
+- ES2020 support
+
+**Example:**
+```javascript
+// extensions/my-codegen.js
+export function getInfo() {
+  return {
+    id: "my-codegen",
+    name: "My Code Generator",
+    version: "1.0.0",
+    type: "codegen"
+  };
+}
+
+export function generate(ir, options) {
+  // Transform IR to target code
+  return {
+    files: [
+      { path: "output.ts", content: generateTypeScript(ir) }
+    ]
+  };
+}
+```
+
+**Discovery:**
+```
+.morphir/extensions/
+└── my-codegen.js    # Detected as QuickJS extension
+```
+
+### Javy (JavaScript → WASM)
+
+[Javy](https://github.com/bytecodealliance/javy) compiles JavaScript to WASM, combining JavaScript's ease of authoring with WASM's sandboxing.
+
+**Potential Benefits:**
+- Write in JavaScript, run as sandboxed WASM
+- Leverage existing JS ecosystem
+- Same security model as WASM components
+- AOT compilation for better performance than interpretation
+
+**Workflow:**
+```bash
+# Author in JavaScript
+cat > my-extension.js << 'EOF'
+export function generate(ir) { ... }
+EOF
+
+# Compile to WASM
+javy compile my-extension.js -o my-extension.wasm
+
+# Install as normal WASM extension
+morphir extension install my-extension.wasm
+```
+
+### Lua
+
+[Lua](https://www.lua.org/) is a lightweight, embeddable scripting language often used for game scripting and configuration.
+
+**Potential Benefits:**
+- Extremely lightweight (~300KB)
+- Fast startup time
+- Simple, learnable syntax
+- Battle-tested embedding API
+- Good for simple transformations
+
+**Example:**
+```lua
+-- extensions/my-transform.lua
+function get_info()
+  return {
+    id = "my-transform",
+    name = "My Transform",
+    version = "1.0.0",
+    type = "validator"
+  }
+end
+
+function validate(ir)
+  -- Check IR constraints
+  local errors = {}
+  for _, module in ipairs(ir.modules) do
+    if not module.doc then
+      table.insert(errors, {
+        module = module.path,
+        message = "Missing module documentation"
+      })
+    end
+  end
+  return { valid = #errors == 0, errors = errors }
+end
+```
+
+### Morphir IR Extensions (Self-Hosting)
+
+The most interesting possibility: **extensions written in Morphir itself**, compiled to IR, and interpreted or compiled by the daemon.
+
+**Potential Benefits:**
+- Dogfooding: Use Morphir to extend Morphir
+- Type-safe extension authoring
+- Extensions benefit from Morphir's guarantees
+- Can generate extensions to multiple targets
+- Ultimate validation of Morphir's expressiveness
+
+**Example:**
+```elm
+-- extensions/MyCodegen.elm
+module MyCodegen exposing (generate)
+
+import Morphir.IR.Distribution exposing (Distribution)
+import Morphir.Extension exposing (GeneratedFile)
+
+generate : Distribution -> List GeneratedFile
+generate distribution =
+    distribution.modules
+        |> List.concatMap generateModule
+
+generateModule : Module -> List GeneratedFile
+generateModule mod =
+    [ { path = modulePath mod ++ ".scala"
+      , content = moduleToScala mod
+      }
+    ]
+```
+
+**Compilation:**
+```bash
+# Compile extension to IR
+morphir build extensions/my-codegen/
+
+# The IR itself becomes the extension
+# Daemon interprets or JIT-compiles the IR
+```
+
+**Architecture:**
+```
+┌─────────────────────────────────────────────────────┐
+│                   Morphir Daemon                     │
+├─────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │
+│  │ WASM Runtime│  │ IR Interp.  │  │   Native    │ │
+│  │ (wasmtime)  │  │ (Morphir IR)│  │   (exec)    │ │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘ │
+│         │                │                │        │
+│    ┌────┴────┐      ┌────┴────┐      ┌────┴────┐   │
+│    │  .wasm  │      │  .mir   │      │  bin/*  │   │
+│    │ codegen │      │ codegen │      │ codegen │   │
+│    └─────────┘      └─────────┘      └─────────┘   │
+└─────────────────────────────────────────────────────┘
+```
+
+**Considerations:**
+- Requires IR interpreter or JIT in the daemon
+- Bootstrap problem: need initial extensions to build Morphir extensions
+- Performance may vary (interpreted vs compiled)
+- Could compile IR extensions to WASM for production
+
+### Runtime Comparison
+
+| Runtime | Sandboxed | Startup | Authoring | Performance | Size |
+|---------|-----------|---------|-----------|-------------|------|
+| **WASM Component** | ✓ Strong | Medium | Rust/Go/C | High | Medium |
+| **Native Executable** | ✗ Process | Fast | Any | Highest | Varies |
+| **QuickJS** | ✓ Embedded | Fast | JS/TS | Medium | Small |
+| **Javy** | ✓ WASM | Medium | JS/TS | Medium-High | Medium |
+| **Lua** | ✓ Embedded | Fastest | Lua | Medium | Tiny |
+| **Morphir IR** | ✓ Semantic | Varies | Morphir | Varies | Small |
+
+### Exploration Status
+
+| Runtime | Status | Priority |
+|---------|--------|----------|
+| WASM Component | **Supported** | Primary |
+| Native Executable | **Supported** | Primary |
+| QuickJS | Future | Medium |
+| Javy | Future | Medium |
+| Lua | Future | Low |
+| Morphir IR | Future | **High** (dogfooding) |
+
+> **Note:** Alternative runtimes are documented for future exploration. The current implementation focuses on WASM components and native executables. Morphir IR extensions are particularly interesting as they would validate Morphir's expressiveness and enable self-hosting.
+
 ## Related
 
 - **[IR v4](../ir/README.md)** - Intermediate representation format
