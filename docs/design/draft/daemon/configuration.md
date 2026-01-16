@@ -68,6 +68,66 @@ name = "my-org/my-project"
 version = "1.0.0"
 source_directory = "src"
 exposed_modules = ["Domain.User", "Domain.Order"]
+
+# Frontend/language configuration
+[frontend]
+language = "elm"             # Default: "elm", also "morphir-dsl", or extension-provided
+```
+
+### Frontend Configuration
+
+The `[frontend]` section specifies the input language and parser:
+
+```toml
+[frontend]
+language = "elm"             # Source language
+
+# Language-specific options
+[frontend.elm]
+elm_version = "0.19"
+
+[frontend.morphir-dsl]
+strict_mode = true
+```
+
+**Automatic Language Detection:**
+
+When `language` is not specified, Morphir infers it from file extensions:
+
+| Extension | Language |
+|-----------|----------|
+| `.elm` | Elm |
+| `.morphir`, `.mdsl` | Morphir DSL |
+| (Extension-defined) | Per extension |
+
+**Extension-Provided Frontends:**
+
+```toml
+[extensions]
+frontend-ocaml = { path = "./extensions/ocaml-frontend.wasm" }
+
+[frontend]
+language = "ocaml"           # Now available via extension
+
+[frontend.ocaml]
+ocaml_version = "5.0"
+```
+
+**Pattern-Based Language Selection:**
+
+For projects with multiple source languages:
+
+```toml
+[frontend]
+language = "elm"             # Default
+
+[[frontend.rules]]
+pattern = "src/legacy/**/*.morphir"
+language = "morphir-dsl"
+
+[[frontend.rules]]
+pattern = "src/experimental/**/*.ml"
+language = "ocaml"
 ```
 
 ### Workspace Configuration

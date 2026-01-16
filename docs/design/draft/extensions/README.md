@@ -172,18 +172,149 @@ spark_version = "3.5"
 
 ### Extension Capabilities
 
-Extensions declare required capabilities:
+Extensions are **capability-based** - they declare which features they implement, allowing incremental development. An extension doesn't need to implement everything; it exports only what it supports.
 
 ```wit
 world codegen-extension {
-    // Required imports
+    // Required imports (what the extension needs)
     import morphir:ir/types;
     import morphir:ir/values;
 
-    // Provided exports
+    // Provided exports (what the extension offers)
     export morphir:extension/codegen;
+
+    // Optional exports (implement incrementally)
+    // export morphir:extension/codegen-streaming;
+    // export morphir:extension/codegen-incremental;
 }
 ```
+
+## Capability-Based Design
+
+Extensions implement features incrementally through optional interfaces:
+
+### Frontend Capabilities
+
+| Capability | Interface | Description |
+|------------|-----------|-------------|
+| **Basic** | `frontend/compile` | Compile source to IR (required) |
+| **Streaming** | `frontend/compile-streaming` | Stream module-by-module results |
+| **Incremental** | `frontend/compile-incremental` | Recompile only changed files |
+| **Fragment** | `frontend/compile-fragment` | Compile code fragments (IDE) |
+| **Diagnostics** | `frontend/diagnostics` | Rich error messages with fixes |
+
+**Minimal Frontend:**
+```wit
+world minimal-frontend {
+    import morphir:ir/types;
+    export frontend/compile;  // Only basic compilation
+}
+```
+
+**Full-Featured Frontend:**
+```wit
+world full-frontend {
+    import morphir:ir/types;
+    export frontend/compile;
+    export frontend/compile-streaming;
+    export frontend/compile-incremental;
+    export frontend/compile-fragment;
+    export frontend/diagnostics;
+}
+```
+
+### Backend/Codegen Capabilities
+
+| Capability | Interface | Description |
+|------------|-----------|-------------|
+| **Basic** | `codegen/generate` | Generate code for target (required) |
+| **Streaming** | `codegen/generate-streaming` | Stream file-by-file output |
+| **Incremental** | `codegen/generate-incremental` | Regenerate only changed modules |
+| **Module-level** | `codegen/generate-module` | Generate single module |
+| **Options** | `codegen/options-schema` | Declare configurable options |
+
+**Minimal Backend:**
+```wit
+world minimal-backend {
+    import morphir:ir/distributions;
+    export codegen/generate;  // Only basic generation
+}
+```
+
+### Capability Negotiation
+
+The daemon queries extension capabilities at load time:
+
+**JSON-RPC:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "caps-001",
+  "method": "extension/capabilities",
+  "params": {
+    "extension": "codegen-spark"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "caps-001",
+  "result": {
+    "extension": "codegen-spark",
+    "type": "codegen",
+    "capabilities": {
+      "codegen/generate": true,
+      "codegen/generate-streaming": true,
+      "codegen/generate-incremental": true,
+      "codegen/generate-module": true,
+      "codegen/options-schema": true
+    },
+    "targets": ["spark"],
+    "options": {
+      "spark_version": { "type": "string", "default": "3.5" },
+      "scala_version": { "type": "string", "default": "2.13" }
+    }
+  }
+}
+```
+
+### Graceful Degradation
+
+When an extension lacks a capability, Morphir falls back gracefully:
+
+| Missing Capability | Fallback Behavior |
+|-------------------|-------------------|
+| `compile-streaming` | Compile all at once, return single result |
+| `compile-incremental` | Full recompilation on every change |
+| `generate-streaming` | Generate all files, return at end |
+| `generate-module` | Generate full distribution |
+
+**CLI Feedback:**
+```bash
+$ morphir codegen --target spark --stream
+Warning: spark-codegen does not support streaming, generating all at once...
+```
+
+### Incremental Implementation Path
+
+Recommended order for implementing extension capabilities:
+
+**Frontend:**
+1. `compile` - Basic compilation (MVP)
+2. `diagnostics` - Better error messages
+3. `compile-incremental` - Watch mode support
+4. `compile-streaming` - Large project support
+5. `compile-fragment` - IDE integration
+
+**Backend:**
+1. `generate` - Basic codegen (MVP)
+2. `options-schema` - Configurable output
+3. `generate-module` - Granular generation
+4. `generate-incremental` - Efficient rebuilds
+5. `generate-streaming` - Large project support
 
 ## Related
 

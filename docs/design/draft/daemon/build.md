@@ -650,6 +650,147 @@ Or via CLI flags:
 morphir codegen --target spark --option spark_version=3.5 --output src/main/scala
 ```
 
+### Automatic Target Association
+
+Projects can configure default targets that run automatically on build:
+
+```toml
+# morphir.toml
+[project]
+name = "my-org/domain"
+
+# Default targets for this project
+[codegen]
+targets = ["spark", "typescript"]
+
+# Target-specific configuration
+[codegen.spark]
+output_dir = "src/main/scala"
+
+[codegen.typescript]
+output_dir = "src/generated/ts"
+```
+
+With this configuration, `morphir build` automatically generates code for all configured targets:
+
+```bash
+# Builds IR and generates code for spark and typescript
+morphir build
+
+# Skip codegen
+morphir build --no-codegen
+
+# Override targets
+morphir build --codegen-targets spark
+```
+
+### Module-Level Target Association
+
+Associate specific modules with specific targets:
+
+```toml
+# morphir.toml
+[codegen]
+# Default targets for all modules
+targets = ["spark"]
+
+# Override for specific modules
+[codegen.modules."Domain.Api"]
+targets = ["typescript", "json-schema"]
+
+[codegen.modules."Domain.Internal"]
+targets = []  # No codegen for internal modules
+```
+
+### Pattern-Based Target Association
+
+Use glob patterns for target association:
+
+```toml
+[codegen]
+targets = ["spark"]
+
+# All Api modules get TypeScript
+[[codegen.rules]]
+pattern = "**/Api/**"
+targets = ["typescript"]
+
+# Test modules don't get codegen
+[[codegen.rules]]
+pattern = "**/Test/**"
+targets = []
+```
+
+### Extension-Declared Targets
+
+Extensions can declare which targets they provide and their capabilities:
+
+```wit
+// In extension's WIT interface
+world spark-codegen {
+    export codegen-target {
+        // Target metadata
+        name: func() -> string;              // "spark"
+        description: func() -> string;       // "Apache Spark DataFrame API"
+        file-extension: func() -> string;    // ".scala"
+
+        // Capability flags
+        supports-streaming: func() -> bool;
+        supports-incremental: func() -> bool;
+    }
+
+    export morphir:extension/codegen;
+}
+```
+
+**Extension Registration:**
+```toml
+# morphir.toml
+[extensions]
+codegen-spark = { path = "./extensions/spark-codegen.wasm" }
+
+# Extension automatically registers its target
+# Now --target spark is available
+```
+
+**Querying Available Targets:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "targets-001",
+  "method": "codegen/listTargets",
+  "params": {}
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "targets-001",
+  "result": {
+    "targets": [
+      {
+        "name": "spark",
+        "description": "Apache Spark DataFrame API",
+        "fileExtension": ".scala",
+        "source": "builtin",
+        "supportsStreaming": true,
+        "supportsIncremental": true
+      },
+      {
+        "name": "flink",
+        "description": "Apache Flink DataStream API",
+        "fileExtension": ".scala",
+        "source": "extension:codegen-flink",
+        "supportsStreaming": true,
+        "supportsIncremental": false
+      }
+    ]
+  }
+}
+```
+
 ### JSON-RPC Method
 
 ```json
