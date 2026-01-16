@@ -169,8 +169,7 @@ targets = ["typescript", "scala"]  # Overrides workspace default
 | `[codegen]` | Merged (project overrides workspace) |
 | `[cache]` | Merged |
 | `[logging]` | Merged |
-| `[toolchain.*]` | Merged (project can add/override) |
-| `[tasks.*]` | Merged (project can add/override) |
+| `[tasks]` | Merged (project can add/override) |
 
 ## Shared Dependencies
 
@@ -277,7 +276,7 @@ exclude = ["packages/experimental-*"]
 default_member = "packages/core"
 
 [workspace.dependencies]
-"morphir/sdk" = "^3.0.0"
+"morphir/sdk" = { git = "https://github.com/finos/morphir-sdk.git", tag = "v3.0.0" }
 
 [ir]
 format_version = 4
@@ -295,12 +294,19 @@ dir = ".morphir/cache"
 level = "info"
 format = "text"
 
-[toolchain.morphir-elm]
-enabled = true
+# Built-in tasks (build, test, check, etc.) work automatically
+# Only define custom tasks or hooks
 
-[toolchain.morphir-elm.tasks.make]
-exec = "morphir-elm"
-args = ["make", "-o", "{output_dir}"]
+[tasks.ci]
+description = "Run CI pipeline"
+depends = ["check", "test", "build", "pack"]
+run = "echo 'CI passed'"
+
+[tasks."post:build"]
+run = "prettier --write .morphir-dist/"
+
+[tasks."post:codegen"]
+run = "prettier --write generated/"
 ```
 
 ## Best Practices

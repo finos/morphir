@@ -50,6 +50,7 @@ The presence of specific sections determines the mode:
 |--------|-------------|
 | [morphir.toml](./morphir-toml.md) | Configuration file structure and sections |
 | [Workspace Mode](./workspace-mode.md) | Workspace-specific configuration and discovery |
+| [Tasks](./tasks.md) | Task definitions and pre/post hooks |
 | [Merge Rules](./merge-rules.md) | Configuration inheritance and merge behavior |
 | [Environment](./environment.md) | Environment variables and runtime overrides |
 
@@ -90,17 +91,26 @@ targets = ["typescript", "scala"]
 output_format = "pretty"
 ```
 
-### Toolchain Integration
+### Tasks
+
+Built-in tasks (`build`, `test`, `check`, `codegen`, `pack`, `publish`) work automatically. Users define custom tasks or hooks:
 
 ```toml
-[toolchain.morphir-elm]
-enabled = true
-version = "0.12.0"
+[tasks]
+# Custom task
+integration = "./scripts/integration-tests.sh"
 
-[toolchain.morphir-elm.tasks.make]
-exec = "morphir-elm"
-args = ["make"]
+# CI pipeline using built-in tasks
+[tasks.ci]
+description = "Run CI pipeline"
+depends = ["check", "test", "build"]
+
+# Pre/post hooks extend built-in tasks
+[tasks."post:build"]
+run = "prettier --write .morphir-dist/"
 ```
+
+See [Tasks](./tasks.md) for full documentation.
 
 ## Configuration Locations
 
@@ -150,7 +160,7 @@ See [Merge Rules](./merge-rules.md) for detailed merge semantics.
 2. **Explicit Over Implicit**: Workspace mode requires explicit `[workspace]` section
 3. **Inheritance**: Child projects inherit from parent workspace config
 4. **Override**: More specific config overrides less specific
-5. **Composable**: Toolchains and tasks are composable units
+5. **Simple Tasks**: Tasks are shell commands, not a DSL; pre/post hooks extend built-in commands
 6. **Separation of Concerns**: Committed config vs local overrides (`.config/`)
 
 ## Related Documents
