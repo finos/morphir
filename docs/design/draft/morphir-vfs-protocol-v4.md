@@ -1186,13 +1186,81 @@ Modules are containers for types and values within a package. They follow the sp
 ```gleam
 // === module.gleam ===
 
+// ============================================================
+// DOCUMENTATION TYPE
+// ============================================================
+
+/// Opaque documentation type supporting single or multi-line content
+/// Stored internally as normalized lines (no trailing \r)
+pub opaque type Documentation {
+  Documentation(lines: List(String))
+}
+
+/// Create documentation from a single string
+/// Handles both Unix (\n) and Windows (\r\n) line endings
+pub fn doc_from_string(s: String) -> Documentation {
+  s
+  |> string.split("\n")
+  |> list.map(fn(line) { string.trim_end(line, "\r") })
+  |> Documentation
+}
+
+/// Create documentation from a list of lines
+/// Normalizes any trailing \r from each line
+pub fn doc_from_lines(lines: List(String)) -> Documentation {
+  lines
+  |> list.map(fn(line) { string.trim_end(line, "\r") })
+  |> Documentation
+}
+
+/// Get documentation as a single string (joins with newlines)
+pub fn doc_to_string(d: Documentation) -> String {
+  let Documentation(lines) = d
+  string.join(lines, "\n")
+}
+
+/// Get documentation as individual lines
+pub fn doc_to_lines(d: Documentation) -> List(String) {
+  let Documentation(lines) = d
+  lines
+}
+
+/// Check if documentation is single-line
+pub fn doc_is_single_line(d: Documentation) -> Bool {
+  let Documentation(lines) = d
+  list.length(lines) <= 1
+}
+
+// ============================================================
+// DOCUMENTED WRAPPER
+// ============================================================
+
 /// Generic documentation wrapper
 pub type Documented(a) {
   Documented(
-    doc: Option(String),
+    doc: Option(Documentation),
     value: a,
   )
 }
+
+/// Create a documented value with no documentation
+pub fn undocumented(value: a) -> Documented(a) {
+  Documented(doc: None, value: value)
+}
+
+/// Create a documented value with a doc string
+pub fn with_doc(value: a, doc: String) -> Documented(a) {
+  Documented(doc: Some(doc_from_string(doc)), value: value)
+}
+
+/// Create a documented value with multi-line docs
+pub fn with_doc_lines(value: a, lines: List(String)) -> Documented(a) {
+  Documented(doc: Some(doc_from_lines(lines)), value: value)
+}
+
+// ============================================================
+// MODULE TYPES
+// ============================================================
 
 /// Module specification - the public interface exposed to consumers
 /// Contains only public types and value signatures (no implementations)
@@ -1218,7 +1286,8 @@ pub type ModuleDefinition(attributes) {
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | Storage structure | `Dict(Name, ...)` | O(1) lookup by name, canonical key ordering |
-| Documentation | Generic `Documented(a)` wrapper | Reusable across specs and defs |
+| Documentation | Opaque `Documentation` type | Multi-line support, cross-platform line endings |
+| Doc wrapper | Generic `Documented(a)` | Reusable across specs and defs |
 | Access control | On definitions only | Specs are always public by definition |
 
 #### Deriving Specification from Definition
@@ -2181,9 +2250,48 @@ The `Documented` and `AccessControlled` wrappers are flattened in JSON for conci
 
 | Gleam Type | JSON Representation |
 |------------|---------------------|
-| `Documented(a)` | `{ "doc": "...", ...a }` (doc inlined, omit if null) |
+| `Documentation` | String or array of strings (see below) |
+| `Documented(a)` | `{ "doc": "...", ...a }` (doc inlined, omit if None) |
 | `AccessControlled(a)` | `{ "access": "Public", ...a }` (access inlined) |
 | `AccessControlled(Documented(a))` | `{ "access": "Public", "doc": "...", ...a }` |
+
+#### Documentation Serialization
+
+The `doc` field accepts two JSON formats:
+
+| Format | Example | Internal Representation |
+|--------|---------|-------------------------|
+| String | `"Line 1\nLine 2"` | `["Line 1", "Line 2"]` (split on newlines) |
+| Array | `["Line 1", "Line 2"]` | `["Line 1", "Line 2"]` (normalized) |
+
+Both formats produce the same internal `Documentation` value.
+
+**Line ending normalization:**
+- Strings are split on `\n` (Unix line ending)
+- Any trailing `\r` is trimmed from each line (handles Windows `\r\n`)
+- This ensures consistent comparison regardless of source OS
+
+```json
+// String format - embedded newlines are split into lines
+{ "doc": "First line.\nSecond line.\nThird line." }
+
+// Array format - explicit line-by-line (preferred for multi-line)
+{ "doc": ["First line.", "Second line.", "Third line."] }
+
+// Simple doc (no newlines)
+{ "doc": "A brief description" }
+```
+
+**Encoding rules:**
+- No newlines in content → output as string
+- Contains newlines → output as array (preserves readability)
+- Empty/None → omit the `doc` field entirely
+- Always output with `\n` line endings (Unix-style)
+
+**Decoding rules (permissive):**
+- String → split on `\n`, trim trailing `\r` from each line
+- Array → normalize each line (trim trailing `\r`)
+- Missing field → `None`
 
 #### ModuleSpecification
 
@@ -2193,7 +2301,10 @@ Public interface of a module (used in dependencies):
 {
   "types": {
     "user": {
-      "doc": "A user in the system",
+      "doc": [
+        "Represents a user in the system.",
+        "Contains identity and contact information."
+      ],
       "TypeAliasSpecification": {
         "body": {
           "Record": {
