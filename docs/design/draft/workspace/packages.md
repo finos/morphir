@@ -21,16 +21,51 @@ Morphir packages are distributable archives containing compiled IR and metadata.
 
 ## Package Format
 
-A Morphir package is a gzipped tarball (`.morphir.tgz`) containing:
+A Morphir package is a gzipped tarball (`.morphir.tgz`) containing the compiled distribution and metadata. The package format supports both classic (single-file) and VFS (directory tree) distribution modes.
+
+See [Distribution Structure](../vfs-protocol/distributions.md) for the complete IR format specification.
+
+### Package Contents
 
 ```
 my-org-core-1.0.0.morphir.tgz
 ├── morphir.toml              # Package metadata
-├── morphir-ir.json           # Compiled IR (distribution format)
+├── .morphir-dist/            # Distribution (VFS mode, recommended)
+│   ├── format.json           # Distribution manifest
+│   ├── pkg/
+│   │   └── my-org/
+│   │       └── core/
+│   │           ├── module.json
+│   │           ├── types/
+│   │           │   └── *.type.json
+│   │           └── values/
+│   │               └── *.value.json
+│   └── deps/                 # Dependency specifications
+│       └── ...
 ├── src/                      # Source files (optional, configurable)
 │   └── ...
 └── CHANGELOG.md              # Changelog (optional)
 ```
+
+For simpler packages or backwards compatibility, classic mode is also supported:
+
+```
+my-org-core-1.0.0.morphir.tgz
+├── morphir.toml              # Package metadata
+├── morphir-ir.json           # Single-file distribution (classic mode)
+├── src/                      # Source files (optional)
+└── CHANGELOG.md              # Changelog (optional)
+```
+
+### Distribution Types
+
+Packages contain one of three distribution types:
+
+| Type | Description | Use Case |
+|------|-------------|----------|
+| **Library** | Package with full definitions | Reusable domain packages |
+| **Specs** | Specifications only (no implementations) | SDK bindings, FFI, native types |
+| **Application** | Definitions with named entry points | Executables, services, CLIs |
 
 ### Package Metadata
 
@@ -55,21 +90,41 @@ keywords = ["domain", "finance", "morphir"]
 "morphir/sdk" = { git = "https://github.com/finos/morphir-sdk.git", tag = "v3.0.0" }
 ```
 
-### IR Distribution Format
+### Distribution Manifest
 
-The `morphir-ir.json` contains the compiled IR in a stable distribution format:
+The `.morphir-dist/format.json` identifies the distribution:
 
 ```json
 {
-  "formatVersion": 4,
-  "package": {
-    "name": ["my-org", "core"],
-    "version": "1.0.0"
-  },
-  "modules": { ... },
-  "dependencies": [
-    { "name": ["morphir", "sdk"], "version": "3.0.0" }
-  ]
+  "formatVersion": "4.0.0",
+  "distribution": "Library",
+  "package": "my-org/core",
+  "version": "1.0.0",
+  "created": "2026-01-16T12:00:00Z"
+}
+```
+
+**Format Version**: The `formatVersion` follows semantic versioning and corresponds to the Morphir IR specification version. Tools should check compatibility before processing.
+
+### Classic Mode (Single-File)
+
+For backwards compatibility or simpler packages, a single `morphir-ir.json` can be used:
+
+```json
+{
+  "formatVersion": "4.0.0",
+  "Library": {
+    "package": {
+      "name": "my-org/core",
+      "version": "1.0.0"
+    },
+    "def": {
+      "modules": { "...": "..." }
+    },
+    "dependencies": {
+      "morphir/sdk": { "...": "..." }
+    }
+  }
 }
 ```
 
@@ -80,21 +135,29 @@ Morphir supports pluggable registry backends, allowing packages to be stored in 
 ### Backend Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Morphir CLI                          │
-├─────────────────────────────────────────────────────────┤
-│                  Registry Interface                      │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │
-│  │ npm Backend │  │Maven Backend│  │  (future)   │     │
-│  └──────┬──────┘  └──────┬──────┘  └─────────────┘     │
-└─────────┼────────────────┼──────────────────────────────┘
-          │                │
-          ▼                ▼
-    ┌───────────┐    ┌───────────┐
-    │npm Registry│   │Maven Repo │
-    │ (npmjs.org)│   │ (Central) │
-    └───────────┘    └───────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                           Morphir CLI                                 │
+├──────────────────────────────────────────────────────────────────────┤
+│                        Registry Interface                             │
+│  ┌─────────────┐  ┌───────────────┐  ┌─────────────┐  ┌──────────┐  │
+│  │ npm Backend │  │GitHub Releases│  │Maven Backend│  │ (future) │  │
+│  └──────┬──────┘  └───────┬───────┘  └──────┬──────┘  └──────────┘  │
+└─────────┼─────────────────┼─────────────────┼────────────────────────┘
+          │                 │                 │
+          ▼                 ▼                 ▼
+    ┌───────────┐    ┌───────────┐     ┌───────────┐
+    │npm Registry│   │  GitHub   │     │Maven Repo │
+    │ (npmjs.org)│   │ Releases  │     │ (Central) │
+    └───────────┘    └───────────┘     └───────────┘
 ```
+
+### Backend Comparison
+
+| Backend | Package Format | Infrastructure | Best For |
+|---------|---------------|----------------|----------|
+| **npm** | tar.gz | Central registry | JavaScript ecosystem, public packages |
+| **GitHub Releases** | .morphir.tgz | Per-repository | Open source, no extra infrastructure |
+| **Maven** | JAR | Central repository | JVM ecosystem, enterprise |
 
 ### Registry Interface
 
@@ -196,6 +259,120 @@ npm config set //registry.npmjs.org/:_authToken=${NPM_TOKEN}
 ```
 
 The Morphir CLI respects `.npmrc` for authentication.
+
+### GitHub Releases Backend
+
+The GitHub Releases backend fetches Morphir packages from GitHub release assets. This is ideal for open source projects and organizations that want to distribute packages directly from their repositories without additional infrastructure.
+
+Unlike npm or Maven backends which use a central registry, GitHub Releases packages are fetched directly from individual repositories. Each package specifies its source repository.
+
+#### Package Discovery
+
+Packages are discovered from release assets matching the Morphir package naming convention:
+
+| Release Asset | Morphir Package |
+|---------------|-----------------|
+| `morphir-sdk-3.0.0.morphir.tgz` | `morphir/sdk@3.0.0` |
+| `my-org-core-1.0.0.morphir.tgz` | `my-org/core@1.0.0` |
+
+#### Dependency Declaration
+
+Each GitHub dependency specifies its source repository:
+
+```toml
+[dependencies]
+# Package from finos/morphir repository
+"morphir/sdk" = { github = "finos/morphir", tag = "sdk-v3.0.0" }
+
+# Package from a different organization's repository
+"acme/domain" = { github = "acme-corp/morphir-domain", tag = "v1.0.0" }
+
+# Package from a monorepo with package-specific tags
+"my-org/core" = { github = "my-org/morphir-packages", tag = "core-v1.0.0" }
+"my-org/utils" = { github = "my-org/morphir-packages", tag = "utils-v2.0.0" }
+
+# Private repository (requires authentication)
+"internal/models" = { github = "my-org/internal-models", tag = "v1.5.0" }
+```
+
+#### Workspace-Level Configuration
+
+Common settings can be configured at the workspace level:
+
+```toml
+# morphir.toml
+[registry.github]
+# GitHub API URL (for GitHub Enterprise)
+api_url = "https://api.github.com"  # default, or https://github.mycompany.com/api/v3
+
+# Asset naming pattern (default shown)
+asset_pattern = "{name}-{version}.morphir.tgz"
+
+# Default organization for unqualified references
+default_owner = "my-org"
+```
+
+#### Workspace Dependencies with GitHub
+
+```toml
+# workspace/morphir.toml
+[workspace]
+members = ["packages/*"]
+
+[workspace.dependencies]
+# Shared GitHub dependencies
+"morphir/sdk" = { github = "finos/morphir", tag = "sdk-v3.0.0" }
+"finos/morphir-json" = { github = "finos/morphir-json", tag = "v1.0.0" }
+```
+
+```toml
+# workspace/packages/domain/morphir.toml
+[dependencies]
+"morphir/sdk" = { workspace = true }  # Inherits github source from workspace
+```
+
+#### Authentication
+
+For private repositories, GitHub authentication uses standard methods:
+
+```bash
+# Via environment variable
+export GITHUB_TOKEN=ghp_xxxxxxxxxxxx
+
+# Or via gh CLI authentication
+gh auth login
+
+# For GitHub Enterprise
+export GH_ENTERPRISE_TOKEN=ghp_xxxxxxxxxxxx
+```
+
+#### Publishing to GitHub Releases
+
+```bash
+# Pack the package
+morphir pack
+
+# Create a GitHub release with the package asset
+gh release create v1.0.0 dist/my-org-core-1.0.0.morphir.tgz \
+  --repo my-org/morphir-packages \
+  --title "my-org/core v1.0.0" \
+  --notes "Release notes"
+
+# Or use morphir publish
+morphir publish --backend github --repository my-org/morphir-packages --tag v1.0.0
+```
+
+#### Comparison with Git Repository Dependencies
+
+| Aspect | Git Repository | GitHub Releases |
+|--------|---------------|-----------------|
+| Source | Full repository clone | Release asset only |
+| Size | Entire repo history | Single package archive |
+| Speed | Slower (clone) | Faster (direct download) |
+| Versioning | Any git ref | Release tags only |
+| Use case | Development, pre-release | Published releases |
+
+For development and pre-release packages, use git repository dependencies. For published, stable releases, GitHub Releases provides a more efficient distribution mechanism.
 
 ### Maven Backend
 
@@ -421,6 +598,7 @@ record registry-config {
 /// Backend types
 enum registry-backend-type {
     npm,
+    github,
     maven,
 }
 
@@ -595,7 +773,7 @@ Additional backends may be supported in the future:
 
 | Backend | Format | Use Case |
 |---------|--------|----------|
-| OCI Registry | Container image layers | Cloud-native deployments |
-| Git LFS | Large file storage | Git-integrated workflows |
-| S3/GCS | Object storage | Private infrastructure |
-| Morphir Registry | Native format | Dedicated Morphir ecosystem |
+| **OCI Registry** | Container image layers | Cloud-native deployments, artifact registries |
+| **S3/GCS** | Object storage | Private infrastructure, air-gapped environments |
+| **Artifactory** | Universal | Enterprise artifact management |
+| **Morphir Registry** | Native format | Dedicated Morphir ecosystem (planned) |
