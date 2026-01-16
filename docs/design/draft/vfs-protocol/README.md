@@ -48,6 +48,7 @@ This specification is organized into the following sections:
 | [Distributions](./distributions.md) | Distribution types, semantic versioning, and VFS layout |
 | [Decorations](./decorations.md) | Layered metadata system for IR annotations |
 | [Document](./document.md) | Schema-less JSON-like data type |
+| [Metadata](./meta.md) | File-level metadata (`$meta`) |
 
 ## Architecture Overview
 
@@ -200,3 +201,4 @@ Example: Path `["Main", "Domain"]` → `pkg/main/domain/`
 - **[Distributions Module](./distributions.md)** - Distribution types and VFS layout
 - **[Decorations Module](./decorations.md)** - Layered metadata system for IR annotations
 - **[Document Module](./document.md)** - Schema-less JSON-like data type
+- **[Metadata Module](./meta.md)** - File-level metadata (`$meta`)
