@@ -1179,6 +1179,409 @@ pub type ValueSpecification(attributes) {
 }
 ```
 
+### Module Structure
+
+Modules are containers for types and values within a package. They follow the specification/definition split pattern.
+
+```gleam
+// === module.gleam ===
+
+/// Generic documentation wrapper
+pub type Documented(a) {
+  Documented(
+    doc: Option(String),
+    value: a,
+  )
+}
+
+/// Module specification - the public interface exposed to consumers
+/// Contains only public types and value signatures (no implementations)
+pub type ModuleSpecification(attributes) {
+  ModuleSpecification(
+    types: Dict(Name, Documented(TypeSpecification(attributes))),
+    values: Dict(Name, Documented(ValueSpecification(attributes))),
+  )
+}
+
+/// Module definition - the full implementation
+/// Contains all types and values including private ones
+pub type ModuleDefinition(attributes) {
+  ModuleDefinition(
+    types: Dict(Name, AccessControlled(Documented(TypeDefinition(attributes)))),
+    values: Dict(Name, AccessControlled(Documented(ValueDefinition(attributes)))),
+  )
+}
+```
+
+#### Module Design Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Storage structure | `Dict(Name, ...)` | O(1) lookup by name, canonical key ordering |
+| Documentation | Generic `Documented(a)` wrapper | Reusable across specs and defs |
+| Access control | On definitions only | Specs are always public by definition |
+
+#### Deriving Specification from Definition
+
+A module specification can be derived from a definition by filtering to public items:
+
+```gleam
+/// Extract the public specification from a module definition
+pub fn to_specification(
+  def: ModuleDefinition(attributes),
+) -> ModuleSpecification(attributes) {
+  ModuleSpecification(
+    types: def.types
+      |> dict.filter(fn(_, ac) { ac.access == Public })
+      |> dict.map(fn(_, ac) { to_type_spec(ac.value) }),
+    values: def.values
+      |> dict.filter(fn(_, ac) { ac.access == Public })
+      |> dict.map(fn(_, ac) { to_value_spec(ac.value) }),
+  )
+}
+
+/// Convert a TypeDefinition to its TypeSpecification
+fn to_type_spec(
+  documented: Documented(TypeDefinition(attributes)),
+) -> Documented(TypeSpecification(attributes)) {
+  Documented(
+    doc: documented.doc,
+    value: case documented.value {
+      CustomTypeDefinition(params, constructors) ->
+        CustomTypeSpecification(params, constructors.value)
+      TypeAliasDefinition(params, body) ->
+        TypeAliasSpecification(params, body)
+      IncompleteTypeDefinition(params, _, _) ->
+        // Incomplete types expose as opaque
+        OpaqueTypeSpecification(params)
+    },
+  )
+}
+
+/// Convert a ValueDefinition to its ValueSpecification
+fn to_value_spec(
+  documented: Documented(ValueDefinition(attributes)),
+) -> Documented(ValueSpecification(attributes)) {
+  let body = documented.value.body.value
+  Documented(
+    doc: documented.doc,
+    value: ValueSpecification(
+      inputs: get_input_types(body),
+      output: get_output_type(body),
+    ),
+  )
+}
+```
+
+### Package Structure
+
+Packages are versioned collections of modules that form a distributable unit.
+
+```gleam
+// === package.gleam ===
+
+/// Package specification - public interface for dependency resolution
+/// Used when this package is a dependency of another
+pub type PackageSpecification(attributes) {
+  PackageSpecification(
+    modules: Dict(ModulePath, ModuleSpecification(attributes)),
+  )
+}
+
+/// Package definition - complete implementation
+/// Used for the local project being compiled
+pub type PackageDefinition(attributes) {
+  PackageDefinition(
+    modules: Dict(ModulePath, AccessControlled(ModuleDefinition(attributes))),
+  )
+}
+```
+
+#### Package Design Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Module access | AccessControlled on definitions | Modules can be package-private |
+| No module docs | Docs at type/value level | Module-level docs in separate metadata |
+| Path as key | `Dict(ModulePath, ...)` | Hierarchical organization preserved |
+
+### Distribution Structure
+
+A Distribution is the top-level container representing a complete compilation unit with its dependencies. Currently only `Library` is defined; `Application` will be added later.
+
+```gleam
+// === distribution.gleam ===
+
+/// Distribution variants
+pub type Distribution(attributes) {
+  /// A library distribution - reusable package with dependencies
+  Library(library: LibraryDistribution(attributes))
+  // Future: Application(application: ApplicationDistribution(attributes))
+}
+
+/// Library distribution - a package plus its resolved dependencies
+pub type LibraryDistribution(attributes) {
+  LibraryDistribution(
+    /// The package being compiled/distributed
+    package: PackageInfo,
+    /// Full definition of the local package
+    definition: PackageDefinition(attributes),
+    /// Resolved dependency specifications (not full definitions)
+    dependencies: Dict(PackagePath, PackageSpecification(attributes)),
+  )
+}
+
+/// Package metadata
+pub type PackageInfo {
+  PackageInfo(
+    name: PackagePath,
+    version: SemanticVersion,
+  )
+}
+```
+
+### Semantic Versioning
+
+Full semantic version support per the [SemVer 2.0.0 specification](https://semver.org/).
+
+```gleam
+// === semver.gleam ===
+
+/// Semantic version with full pre-release and build metadata support
+/// Format: MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
+pub type SemanticVersion {
+  SemanticVersion(
+    major: Int,
+    minor: Int,
+    patch: Int,
+    pre_release: Option(PreRelease),
+    build_metadata: Option(BuildMetadata),
+  )
+}
+
+/// Pre-release version identifiers
+/// Examples: alpha, alpha.1, 0.3.7, x.7.z.92
+pub type PreRelease {
+  PreRelease(identifiers: List(PreReleaseIdentifier))
+}
+
+/// A pre-release identifier is either numeric or alphanumeric
+pub type PreReleaseIdentifier {
+  NumericIdentifier(value: Int)
+  AlphanumericIdentifier(value: String)
+}
+
+/// Build metadata (ignored in version precedence)
+/// Examples: 001, 20130313144700, exp.sha.5114f85
+pub type BuildMetadata {
+  BuildMetadata(identifiers: List(String))
+}
+
+/// Parse a semantic version string
+pub fn semver_from_string(s: String) -> Result(SemanticVersion, String) {
+  // Split off build metadata first (after +)
+  let #(version_pre, build) = case string.split(s, "+") {
+    [vp, b] -> #(vp, Some(parse_build_metadata(b)))
+    [vp] -> #(vp, None)
+    _ -> #(s, None)
+  }
+
+  // Split off pre-release (after -)
+  let #(version, pre) = case string.split_once(version_pre, "-") {
+    Ok(#(v, p)) -> #(v, Some(parse_pre_release(p)))
+    Error(_) -> #(version_pre, None)
+  }
+
+  // Parse core version
+  case string.split(version, ".") {
+    [maj, min, pat] -> {
+      use major <- result.try(int.parse(maj) |> result.map_error(fn(_) { "Invalid major" }))
+      use minor <- result.try(int.parse(min) |> result.map_error(fn(_) { "Invalid minor" }))
+      use patch <- result.try(int.parse(pat) |> result.map_error(fn(_) { "Invalid patch" }))
+      Ok(SemanticVersion(major, minor, patch, pre, build))
+    }
+    _ -> Error("Invalid version format: expected MAJOR.MINOR.PATCH")
+  }
+}
+
+/// Render semantic version to canonical string
+pub fn semver_to_string(v: SemanticVersion) -> String {
+  let core = int.to_string(v.major) <> "." <>
+             int.to_string(v.minor) <> "." <>
+             int.to_string(v.patch)
+
+  let with_pre = case v.pre_release {
+    Some(pre) -> core <> "-" <> pre_release_to_string(pre)
+    None -> core
+  }
+
+  case v.build_metadata {
+    Some(build) -> with_pre <> "+" <> build_metadata_to_string(build)
+    None -> with_pre
+  }
+}
+
+fn pre_release_to_string(pre: PreRelease) -> String {
+  pre.identifiers
+  |> list.map(fn(id) {
+    case id {
+      NumericIdentifier(n) -> int.to_string(n)
+      AlphanumericIdentifier(s) -> s
+    }
+  })
+  |> string.join(".")
+}
+
+fn build_metadata_to_string(build: BuildMetadata) -> String {
+  string.join(build.identifiers, ".")
+}
+
+fn parse_pre_release(s: String) -> PreRelease {
+  PreRelease(
+    identifiers: s
+      |> string.split(".")
+      |> list.map(fn(part) {
+        case int.parse(part) {
+          Ok(n) -> NumericIdentifier(n)
+          Error(_) -> AlphanumericIdentifier(part)
+        }
+      }),
+  )
+}
+
+fn parse_build_metadata(s: String) -> BuildMetadata {
+  BuildMetadata(identifiers: string.split(s, "."))
+}
+
+/// Compare two semantic versions for precedence
+/// Build metadata is ignored per SemVer spec
+pub fn semver_compare(a: SemanticVersion, b: SemanticVersion) -> Order {
+  // Compare core version first
+  case int.compare(a.major, b.major) {
+    Eq -> case int.compare(a.minor, b.minor) {
+      Eq -> case int.compare(a.patch, b.patch) {
+        Eq -> compare_pre_release(a.pre_release, b.pre_release)
+        other -> other
+      }
+      other -> other
+    }
+    other -> other
+  }
+}
+
+/// Pre-release versions have lower precedence than normal
+fn compare_pre_release(a: Option(PreRelease), b: Option(PreRelease)) -> Order {
+  case a, b {
+    None, None -> Eq
+    Some(_), None -> Lt  // Pre-release < release
+    None, Some(_) -> Gt  // Release > pre-release
+    Some(pa), Some(pb) -> compare_pre_release_identifiers(pa.identifiers, pb.identifiers)
+  }
+}
+
+fn compare_pre_release_identifiers(
+  a: List(PreReleaseIdentifier),
+  b: List(PreReleaseIdentifier),
+) -> Order {
+  case a, b {
+    [], [] -> Eq
+    [], _ -> Lt   // Fewer fields = lower precedence
+    _, [] -> Gt
+    [ha, ..ta], [hb, ..tb] -> {
+      case compare_identifier(ha, hb) {
+        Eq -> compare_pre_release_identifiers(ta, tb)
+        other -> other
+      }
+    }
+  }
+}
+
+fn compare_identifier(a: PreReleaseIdentifier, b: PreReleaseIdentifier) -> Order {
+  case a, b {
+    NumericIdentifier(na), NumericIdentifier(nb) -> int.compare(na, nb)
+    AlphanumericIdentifier(sa), AlphanumericIdentifier(sb) -> string.compare(sa, sb)
+    NumericIdentifier(_), AlphanumericIdentifier(_) -> Lt  // Numeric < alpha
+    AlphanumericIdentifier(_), NumericIdentifier(_) -> Gt
+  }
+}
+```
+
+#### Semantic Version Examples
+
+| Version String | Parsed |
+|----------------|--------|
+| `1.0.0` | `SemanticVersion(1, 0, 0, None, None)` |
+| `1.0.0-alpha` | `SemanticVersion(1, 0, 0, Some(PreRelease([Alpha("alpha")])), None)` |
+| `1.0.0-alpha.1` | `SemanticVersion(1, 0, 0, Some(PreRelease([Alpha("alpha"), Num(1)])), None)` |
+| `1.0.0-0.3.7` | `SemanticVersion(1, 0, 0, Some(PreRelease([Num(0), Num(3), Num(7)])), None)` |
+| `1.0.0+20130313` | `SemanticVersion(1, 0, 0, None, Some(BuildMetadata(["20130313"])))` |
+| `1.0.0-beta+exp.sha.5114f85` | Full version with pre-release and build metadata |
+
+#### Version Precedence (lowest to highest)
+
+```
+1.0.0-alpha < 1.0.0-alpha.1 < 1.0.0-alpha.beta < 1.0.0-beta
+< 1.0.0-beta.2 < 1.0.0-beta.11 < 1.0.0-rc.1 < 1.0.0
+```
+
+### Distribution Modes
+
+```gleam
+/// Distribution layout mode
+pub type DistributionMode {
+  /// Single JSON blob containing entire IR
+  ClassicMode
+  /// Directory tree with individual files per definition
+  VfsMode
+}
+
+/// VFS distribution manifest (format.json)
+pub type VfsManifest {
+  VfsManifest(
+    format_version: String,
+    layout: DistributionMode,
+    package: PackagePath,
+    created: String,  // ISO 8601 timestamp
+  )
+}
+
+/// VFS module manifest (module.json)
+pub type VfsModuleManifest {
+  VfsModuleManifest(
+    format_version: String,
+    path: ModulePath,
+    types: List(Name),
+    values: List(Name),
+  )
+}
+```
+
+#### Distribution Modes Comparison
+
+| Mode | Structure | Use Case |
+|------|-----------|----------|
+| **Classic** | Single `morphir-ir.json` blob | Simple projects, backwards compatibility |
+| **VFS** | `.morphir-dist/` directory tree | Large projects, incremental updates, shell tools |
+
+#### IR Hierarchy Summary
+
+```
+Distribution
+└── Library(LibraryDistribution)
+    ├── package: PackageInfo (name, version)
+    ├── definition: PackageDefinition
+    │   └── modules: Dict(ModulePath, AccessControlled(ModuleDefinition))
+    │       └── ModuleDefinition
+    │           ├── types: Dict(Name, AccessControlled(Documented(TypeDefinition)))
+    │           └── values: Dict(Name, AccessControlled(Documented(ValueDefinition)))
+    └── dependencies: Dict(PackagePath, PackageSpecification)
+        └── PackageSpecification
+            └── modules: Dict(ModulePath, ModuleSpecification)
+                └── ModuleSpecification
+                    ├── types: Dict(Name, Documented(TypeSpecification))
+                    └── values: Dict(Name, Documented(ValueSpecification))
+```
+
 ## JSON Serialization
 
 ### Design Decisions
@@ -1770,6 +2173,154 @@ Input names as keys:
 }
 ```
 
+### Module Serialization Examples
+
+#### JSON Flattening Rules
+
+The `Documented` and `AccessControlled` wrappers are flattened in JSON for conciseness:
+
+| Gleam Type | JSON Representation |
+|------------|---------------------|
+| `Documented(a)` | `{ "doc": "...", ...a }` (doc inlined, omit if null) |
+| `AccessControlled(a)` | `{ "access": "Public", ...a }` (access inlined) |
+| `AccessControlled(Documented(a))` | `{ "access": "Public", "doc": "...", ...a }` |
+
+#### ModuleSpecification
+
+Public interface of a module (used in dependencies):
+
+```json
+{
+  "types": {
+    "user": {
+      "doc": "A user in the system",
+      "TypeAliasSpecification": {
+        "body": {
+          "Record": {
+            "fields": {
+              "email": { "Reference": { "fqname": "morphir/sdk:string#string" } },
+              "user-(id)": { "Reference": { "fqname": "my-org/domain:types#user-(id)" } }
+            }
+          }
+        }
+      }
+    },
+    "user-(id)": {
+      "OpaqueTypeSpecification": {}
+    }
+  },
+  "values": {
+    "validate-email": {
+      "doc": "Check if an email address is valid",
+      "inputs": {
+        "email": { "Reference": { "fqname": "morphir/sdk:string#string" } }
+      },
+      "output": { "Reference": { "fqname": "morphir/sdk:basics#bool" } }
+    }
+  }
+}
+```
+
+#### ModuleDefinition
+
+Full implementation of a module:
+
+```json
+{
+  "types": {
+    "user": {
+      "access": "Public",
+      "doc": "A user in the system",
+      "TypeAliasDefinition": {
+        "body": {
+          "Record": {
+            "fields": {
+              "email": { "Reference": { "fqname": "morphir/sdk:string#string" } },
+              "user-(id)": { "Reference": { "fqname": "my-org/domain:types#user-(id)" } }
+            }
+          }
+        }
+      }
+    },
+    "internal-cache": {
+      "access": "Private",
+      "doc": "Internal cache structure",
+      "TypeAliasDefinition": {
+        "body": {
+          "Reference": {
+            "fqname": "morphir/sdk:dict#dict",
+            "args": [
+              { "Reference": { "fqname": "morphir/sdk:string#string" } },
+              { "Reference": { "fqname": "my-org/domain:types#user" } }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "values": {
+    "validate-email": {
+      "access": "Public",
+      "doc": "Check if an email address is valid",
+      "ExpressionBody": {
+        "inputTypes": {
+          "email": { "Reference": { "fqname": "morphir/sdk:string#string" } }
+        },
+        "outputType": { "Reference": { "fqname": "morphir/sdk:basics#bool" } },
+        "body": { "Variable": { "name": "..." } }
+      }
+    }
+  }
+}
+```
+
+### Distribution Serialization Examples
+
+#### Library Distribution (Classic Mode)
+
+Single-blob `morphir-ir.json`:
+
+```json
+{
+  "formatVersion": "4.0.0",
+  "Library": {
+    "package": {
+      "name": "my-org/my-project",
+      "version": "1.2.0"
+    },
+    "definition": {
+      "modules": {
+        "domain/users": {
+          "access": "Public",
+          "types": { "...": "..." },
+          "values": { "...": "..." }
+        }
+      }
+    },
+    "dependencies": {
+      "morphir/sdk": {
+        "modules": {
+          "basics": { "types": { "...": "..." }, "values": { "...": "..." } },
+          "string": { "types": { "...": "..." }, "values": { "...": "..." } },
+          "list": { "types": { "...": "..." }, "values": { "...": "..." } }
+        }
+      }
+    }
+  }
+}
+```
+
+#### Semantic Version Serialization
+
+Versions are serialized as canonical strings:
+
+```json
+"1.0.0"
+"2.1.0-alpha.1"
+"3.0.0-rc.2+build.456"
+"1.0.0+20130313144700"
+```
+
 ### VFS File Format Version
 
 All VFS node files include a `formatVersion` field using semantic versioning:
@@ -2131,10 +2682,12 @@ pub type BackendRegistration {
 :::note
 The following items require further design discussion:
 
-1. **Value expressions** - Complete the Value type definitions
-2. **Module structure** - Define ModuleSpecification and ModuleDefinition
-3. **Package/Distribution** - Define top-level containers for both modes
-4. **WASM Component Model** - Define wit interfaces for backend extensions
+1. ~~**Value expressions** - Complete the Value type definitions~~ ✓ Done
+2. ~~**Module structure** - Define ModuleSpecification and ModuleDefinition~~ ✓ Done
+3. ~~**Package/Distribution** - Define top-level containers for both modes~~ ✓ Done
+4. **Application Distribution** - Define `ApplicationDistribution` variant for executable distributions
+5. **Reference Library** - Define `ReferenceLibrary` distribution type (specification-only, no definitions) for external/native dependencies
+6. **WASM Component Model** - Define wit interfaces for backend extensions
 :::
 
 ## Appendix A: Integrity Status Summary
