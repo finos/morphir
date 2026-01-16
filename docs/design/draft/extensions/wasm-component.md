@@ -42,11 +42,20 @@ wit/
 │   ├── modules.wit        # Module specs and defs
 │   ├── packages.wit       # Package specs and defs
 │   └── distributions.wit  # Distribution types
+├── morphir-extension/
+│   ├── info.wit           # Required info interface (all extensions)
+│   └── capabilities.wit   # Capability query interface
 ├── morphir-frontend/
-│   └── compiler.wit       # Source → IR compilation
+│   ├── compiler.wit       # Source → IR compilation (basic)
+│   ├── streaming.wit      # Streaming compilation capability
+│   ├── incremental.wit    # Incremental compilation capability
+│   └── fragment.wit       # Fragment/REPL compilation capability
 ├── morphir-backend/
-│   ├── generator.wit      # IR → target code generation
-│   └── validator.wit      # Validation interface
+│   ├── generator.wit      # IR → target code generation (basic)
+│   ├── streaming.wit      # Streaming generation capability
+│   ├── incremental.wit    # Incremental generation capability
+│   ├── validator.wit      # Validation interface
+│   └── transform.wit      # IR → IR transformation interface
 ├── morphir-vfs/
 │   ├── reader.wit         # VFS read access
 │   ├── writer.wit         # VFS write access
@@ -645,6 +654,114 @@ interface distributions {
 }
 ```
 
+## Extension Info Interface (`info.wit`)
+
+Every extension must implement this interface - it's the only required interface:
+
+```wit
+package morphir:extension@0.4.0;
+
+/// Required interface - all extensions must implement this
+interface info {
+    /// Extension type classification
+    enum extension-type {
+        /// Frontend/compiler (source → IR)
+        frontend,
+        /// Backend/code generator (IR → target)
+        codegen,
+        /// Validator/analyzer
+        validator,
+        /// IR transformer (IR → IR)
+        transformer,
+        /// General purpose
+        general,
+    }
+
+    /// Extension metadata
+    record extension-info {
+        /// Unique identifier (e.g., "spark-codegen")
+        id: string,
+        /// Human-readable name
+        name: string,
+        /// Version (semver)
+        version: string,
+        /// Description
+        description: string,
+        /// Author/maintainer
+        author: option<string>,
+        /// Homepage/repository URL
+        homepage: option<string>,
+        /// License identifier (SPDX)
+        license: option<string>,
+        /// Extension types (can fulfill multiple roles)
+        types: list<extension-type>,
+    }
+
+    /// Return extension metadata
+    get-info: func() -> extension-info;
+
+    /// Health check - return true if extension is ready
+    ping: func() -> bool;
+}
+
+/// Capability discovery interface
+interface capabilities {
+    use info.{extension-type};
+
+    /// Capability identifier (e.g., "codegen/generate-streaming")
+    type capability-id = string;
+
+    /// Capability info
+    record capability-info {
+        /// Capability identifier
+        id: capability-id,
+        /// Human-readable description
+        description: string,
+        /// Whether this capability is available
+        available: bool,
+    }
+
+    /// Options schema for configurable extensions
+    record option-schema {
+        /// Option name
+        name: string,
+        /// Option type
+        option-type: option-type,
+        /// Default value (as JSON string)
+        default-value: option<string>,
+        /// Description
+        description: string,
+        /// Whether this option is required
+        required: bool,
+    }
+
+    /// Option type
+    enum option-type {
+        %string,
+        integer,
+        float,
+        boolean,
+        array,
+        object,
+    }
+
+    /// Query all capabilities this extension provides
+    list-capabilities: func() -> list<capability-info>;
+
+    /// Check if a specific capability is available
+    has-capability: func(id: capability-id) -> bool;
+
+    /// Get targets this extension supports (for codegen)
+    get-targets: func() -> list<string>;
+
+    /// Get languages this extension supports (for frontend)
+    get-languages: func() -> list<string>;
+
+    /// Get configurable options schema
+    get-options-schema: func() -> list<option-schema>;
+}
+```
+
 ## Frontend Compiler Interface (`compiler.wit`)
 
 ```wit
@@ -1078,6 +1195,279 @@ interface validator {
 }
 ```
 
+## Frontend Streaming Interface (`frontend/streaming.wit`)
+
+Optional capability for streaming compilation results:
+
+```wit
+package morphir:frontend@0.4.0;
+
+use compiler.{source-file, project-config, diagnostic};
+use morphir:ir@0.4.0.modules.{module-definition};
+use morphir:ir@0.4.0.naming.{module-path};
+
+/// Streaming compilation interface (optional capability)
+interface streaming {
+    /// Streaming module result
+    record module-compile-result {
+        /// Module path
+        path: module-path,
+        /// Compiled module (if successful)
+        module: option<module-definition>,
+        /// Diagnostics for this module
+        diagnostics: list<diagnostic>,
+    }
+
+    /// Compile project with streaming results
+    /// Returns a stream handle for polling results
+    compile-streaming: func(
+        config: project-config,
+        files: list<source-file>,
+    ) -> stream-handle;
+
+    /// Stream handle for polling results
+    type stream-handle = u64;
+
+    /// Poll for next result (non-blocking)
+    /// Returns none when stream is complete
+    poll-result: func(handle: stream-handle) -> option<module-compile-result>;
+
+    /// Check if stream is complete
+    is-complete: func(handle: stream-handle) -> bool;
+
+    /// Cancel streaming compilation
+    cancel: func(handle: stream-handle);
+}
+```
+
+## Frontend Incremental Interface (`frontend/incremental.wit`)
+
+Optional capability for incremental compilation:
+
+```wit
+package morphir:frontend@0.4.0;
+
+use compiler.{source-file, project-config, diagnostic};
+use morphir:ir@0.4.0.packages.{package-definition};
+use morphir:ir@0.4.0.naming.{module-path};
+
+/// Incremental compilation interface (optional capability)
+interface incremental {
+    /// File change event
+    variant file-change {
+        /// File was created
+        created(source-file),
+        /// File was modified
+        modified(source-file),
+        /// File was deleted
+        deleted(string),
+        /// File was renamed
+        renamed(tuple<string, string>),
+    }
+
+    /// Incremental compilation result
+    record incremental-result {
+        /// Updated package definition
+        package: package-definition,
+        /// Modules that were recompiled
+        recompiled-modules: list<module-path>,
+        /// Modules that were invalidated (dependents)
+        invalidated-modules: list<module-path>,
+        /// Diagnostics from recompilation
+        diagnostics: list<diagnostic>,
+    }
+
+    /// Apply incremental changes to existing IR
+    compile-incremental: func(
+        config: project-config,
+        /// Existing compiled IR
+        existing: package-definition,
+        /// File changes since last compilation
+        changes: list<file-change>,
+    ) -> incremental-result;
+
+    /// Get dependency graph for invalidation analysis
+    get-module-dependencies: func(
+        existing: package-definition,
+    ) -> list<tuple<module-path, list<module-path>>>;
+}
+```
+
+## Backend Streaming Interface (`backend/streaming.wit`)
+
+Optional capability for streaming code generation:
+
+```wit
+package morphir:backend@0.4.0;
+
+use generator.{generation-options, artifact, diagnostic};
+use morphir:ir@0.4.0.distributions.{distribution};
+use morphir:ir@0.4.0.naming.{module-path};
+
+/// Streaming generation interface (optional capability)
+interface streaming {
+    /// Module generation result
+    record module-generation-result {
+        /// Module path that was generated
+        module-path: module-path,
+        /// Generated artifacts for this module
+        artifacts: list<artifact>,
+        /// Diagnostics for this module
+        diagnostics: list<diagnostic>,
+    }
+
+    /// Generate with streaming results
+    generate-streaming: func(
+        dist: distribution,
+        options: generation-options,
+    ) -> stream-handle;
+
+    /// Stream handle for polling results
+    type stream-handle = u64;
+
+    /// Poll for next result (non-blocking)
+    poll-result: func(handle: stream-handle) -> option<module-generation-result>;
+
+    /// Check if stream is complete
+    is-complete: func(handle: stream-handle) -> bool;
+
+    /// Cancel streaming generation
+    cancel: func(handle: stream-handle);
+}
+```
+
+## Backend Incremental Interface (`backend/incremental.wit`)
+
+Optional capability for incremental code generation:
+
+```wit
+package morphir:backend@0.4.0;
+
+use generator.{generation-options, artifact, diagnostic};
+use morphir:ir@0.4.0.distributions.{distribution};
+use morphir:ir@0.4.0.naming.{module-path};
+
+/// Incremental generation interface (optional capability)
+interface incremental {
+    /// Module change notification
+    record module-change {
+        /// Module path that changed
+        path: module-path,
+        /// Type of change
+        change-type: change-type,
+    }
+
+    /// Change type
+    enum change-type {
+        /// Module was added
+        added,
+        /// Module was modified
+        modified,
+        /// Module was removed
+        removed,
+    }
+
+    /// Incremental generation result
+    record incremental-generation-result {
+        /// Generated/updated artifacts
+        artifacts: list<artifact>,
+        /// Artifacts to delete (paths)
+        deleted-artifacts: list<string>,
+        /// Diagnostics
+        diagnostics: list<diagnostic>,
+    }
+
+    /// Generate incrementally for changed modules only
+    generate-incremental: func(
+        dist: distribution,
+        changed-modules: list<module-change>,
+        options: generation-options,
+    ) -> incremental-generation-result;
+}
+```
+
+## Transform Interface (`backend/transform.wit`)
+
+Standalone interface for IR-to-IR transformations:
+
+```wit
+package morphir:backend@0.4.0;
+
+use generator.{diagnostic};
+use morphir:ir@0.4.0.{
+    naming.{fqname, module-path},
+    types.{type-definition},
+    values.{value-definition},
+    modules.{module-definition},
+    packages.{package-definition},
+    distributions.{distribution},
+    document.{document-value},
+};
+
+/// IR transformation interface
+interface transform {
+    /// Transformation metadata
+    record transform-info {
+        /// Transform name
+        name: string,
+        /// Description
+        description: string,
+        /// Version
+        version: string,
+        /// Whether transform preserves semantics
+        semantic-preserving: bool,
+    }
+
+    /// Transformation options
+    record transform-options {
+        /// Dry run (report changes without applying)
+        dry-run: bool,
+        /// Custom options (JSON-like)
+        custom: option<document-value>,
+    }
+
+    /// Transformation result
+    record transform-result {
+        /// Whether transformation succeeded
+        success: bool,
+        /// Number of definitions modified
+        definitions-modified: u32,
+        /// Diagnostics (warnings, info)
+        diagnostics: list<diagnostic>,
+    }
+
+    /// Get transform metadata
+    info: func() -> transform-info;
+
+    /// Transform entire distribution
+    transform-distribution: func(
+        dist: distribution,
+        options: transform-options,
+    ) -> tuple<distribution, transform-result>;
+
+    /// Transform a single module
+    transform-module: func(
+        path: module-path,
+        module: module-definition,
+        options: transform-options,
+    ) -> tuple<module-definition, transform-result>;
+
+    /// Transform a single type definition
+    transform-type: func(
+        fqn: fqname,
+        def: type-definition,
+        options: transform-options,
+    ) -> tuple<type-definition, transform-result>;
+
+    /// Transform a single value definition
+    transform-value: func(
+        fqn: fqname,
+        def: value-definition,
+        options: transform-options,
+    ) -> tuple<value-definition, transform-result>;
+}
+```
+
 ## VFS Interfaces (`reader.wit` / `writer.wit`)
 
 ```wit
@@ -1433,41 +1823,132 @@ interface workspace {
 ```wit
 package morphir:component@0.4.0;
 
+use morphir:extension@0.4.0.{info, capabilities};
 use morphir:frontend@0.4.0.{compiler};
-use morphir:backend@0.4.0.{generator, validator};
+use morphir:frontend@0.4.0 as frontend;
+use morphir:backend@0.4.0.{generator, validator, transform};
+use morphir:backend@0.4.0 as backend;
 use morphir:vfs@0.4.0.{reader, writer, workspace};
+
+// ============================================================
+// MINIMAL EXTENSION (Info Only)
+// ============================================================
+
+/// Minimal extension - just provides info and health check
+/// All extensions should start here before adding capabilities
+world info-component {
+    export info;
+}
+
+/// Extension with capability discovery
+world discoverable-component {
+    export info;
+    export capabilities;
+}
 
 // ============================================================
 // FRONTEND COMPONENTS (Source → IR)
 // ============================================================
 
-/// Frontend compiler component
+/// Minimal frontend compiler component (basic compilation only)
+world minimal-compiler-component {
+    export info;
+    export compiler;
+}
+
+/// Frontend compiler component with capability discovery
 world compiler-component {
+    export info;
+    export capabilities;
     export compiler;
 }
 
 /// Frontend with VFS access (for reading dependencies)
 world compiler-with-vfs-component {
     import reader;
+    export info;
     export compiler;
+}
+
+/// Frontend with streaming support
+world streaming-compiler-component {
+    export info;
+    export capabilities;
+    export compiler;
+    export frontend:streaming;
+}
+
+/// Frontend with incremental support
+world incremental-compiler-component {
+    import reader;
+    export info;
+    export capabilities;
+    export compiler;
+    export frontend:incremental;
+}
+
+/// Full-featured frontend (all capabilities)
+world full-compiler-component {
+    import reader;
+    export info;
+    export capabilities;
+    export compiler;
+    export frontend:streaming;
+    export frontend:incremental;
 }
 
 // ============================================================
 // BACKEND COMPONENTS (IR → Target)
 // ============================================================
 
-/// Code generator component
-world generator-component {
+/// Minimal code generator component
+world minimal-generator-component {
+    export info;
     export generator;
+}
+
+/// Code generator component with capability discovery
+world generator-component {
+    export info;
+    export capabilities;
+    export generator;
+}
+
+/// Generator with streaming support
+world streaming-generator-component {
+    export info;
+    export capabilities;
+    export generator;
+    export backend:streaming;
+}
+
+/// Generator with incremental support
+world incremental-generator-component {
+    export info;
+    export capabilities;
+    export generator;
+    export backend:incremental;
+}
+
+/// Full-featured generator (all capabilities)
+world full-generator-component {
+    export info;
+    export capabilities;
+    export generator;
+    export backend:streaming;
+    export backend:incremental;
 }
 
 /// Validator component
 world validator-component {
+    export info;
     export validator;
 }
 
 /// Full backend (generator + validator)
 world backend-component {
+    export info;
+    export capabilities;
     export generator;
     export validator;
 }
@@ -1476,28 +1957,19 @@ world backend-component {
 // TRANSFORMER COMPONENTS (IR → IR)
 // ============================================================
 
+/// Standalone transformer (pure IR transformation)
+world transform-component {
+    export info;
+    export transform;
+}
+
 /// Transformer with VFS access
 world transformer-component {
     import reader;
     import writer;
-
-    /// Transformation interface
-    export transform: interface {
-        use morphir:backend@0.4.0.generator.{diagnostic};
-
-        record transform-options {
-            dry-run: bool,
-            custom: option<string>,
-        }
-
-        record transform-result {
-            success: bool,
-            files-modified: u32,
-            diagnostics: list<diagnostic>,
-        }
-
-        run: func(options: transform-options) -> transform-result;
-    };
+    export info;
+    export capabilities;
+    export transform;
 }
 
 // ============================================================
@@ -1506,6 +1978,7 @@ world transformer-component {
 
 /// Workspace management component (daemon-side)
 world workspace-manager-component {
+    export info;
     export workspace;
 }
 
@@ -1513,6 +1986,8 @@ world workspace-manager-component {
 world workspace-compiler-component {
     import workspace;
     import reader;
+    export info;
+    export capabilities;
     export compiler;
 }
 
@@ -1523,6 +1998,8 @@ world workspace-compiler-component {
 /// Full toolchain component (frontend + backend)
 world toolchain-component {
     import reader;
+    export info;
+    export capabilities;
     export compiler;
     export generator;
     export validator;
@@ -1533,6 +2010,8 @@ world workspace-toolchain-component {
     import workspace;
     import reader;
     import writer;
+    export info;
+    export capabilities;
     export compiler;
     export generator;
     export validator;
@@ -1543,9 +2022,16 @@ world plugin-component {
     import reader;
     import writer;
     import workspace;
+    export info;
+    export capabilities;
     export compiler;
     export generator;
     export validator;
+    export transform;
+    export frontend:streaming;
+    export frontend:incremental;
+    export backend:streaming;
+    export backend:incremental;
 }
 ```
 
@@ -1577,17 +2063,28 @@ world plugin-component {
 
 | World | Imports | Access Level |
 |-------|---------|--------------|
-| `compiler-component` | None | Pure function (source → IR) |
+| `info-component` | None | Metadata only (minimal) |
+| `discoverable-component` | None | Metadata + capability query |
+| `minimal-compiler-component` | None | Pure function (source → IR) |
+| `compiler-component` | None | Pure function with capabilities |
 | `compiler-with-vfs-component` | VFS reader | Read-only (for dependencies) |
-| `generator-component` | None | Pure function (IR → target) |
+| `streaming-compiler-component` | None | Streaming compilation |
+| `incremental-compiler-component` | VFS reader | Incremental with dependency graph |
+| `full-compiler-component` | VFS reader | All frontend capabilities |
+| `minimal-generator-component` | None | Pure function (IR → target) |
+| `generator-component` | None | Pure function with capabilities |
+| `streaming-generator-component` | None | Streaming generation |
+| `incremental-generator-component` | None | Incremental generation |
+| `full-generator-component` | None | All codegen capabilities |
 | `validator-component` | None | Pure function |
-| `backend-component` | None | Pure function |
+| `backend-component` | None | Generator + validator |
+| `transform-component` | None | Pure IR transformation |
 | `transformer-component` | VFS reader, writer | Scoped to distribution |
 | `workspace-manager-component` | None (exports only) | Workspace lifecycle management |
 | `workspace-compiler-component` | Workspace, VFS reader | Workspace-aware compilation |
 | `toolchain-component` | VFS reader | Full compilation pipeline |
 | `workspace-toolchain-component` | Workspace, VFS r/w | Full pipeline with workspace |
-| `plugin-component` | Full VFS + workspace | Maximum access |
+| `plugin-component` | Full VFS + workspace | Maximum access (all capabilities) |
 
 Components are sandboxed:
 - No filesystem access outside VFS

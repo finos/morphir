@@ -34,7 +34,7 @@ Morphir Extensions enable:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [WASM Components](./wasm-components.md) | Draft | Component model integration and WIT interfaces |
+| [WASM Components](./wasm-component.md) | Draft | Component model integration and WIT interfaces |
 | [Tasks](./tasks.md) | Draft | Task system, dependencies, and hooks |
 
 ## Getting Started with Extensions
@@ -884,6 +884,324 @@ Recommended order for implementing extension capabilities:
 3. `generate-module` - Granular generation
 4. `generate-incremental` - Efficient rebuilds
 5. `generate-streaming` - Large project support
+
+## Extension Development Playbook
+
+A step-by-step guide for building Morphir extensions from scratch.
+
+### Phase 1: Hello World (Day 1)
+
+**Goal:** Verify your development setup and basic connectivity.
+
+1. **Create project structure:**
+```bash
+mkdir my-morphir-extension && cd my-morphir-extension
+# For Rust:
+cargo new --lib . && cargo add wit-bindgen
+# For Go:
+go mod init my-morphir-extension && go get github.com/bytecodealliance/wasm-tools-go
+```
+
+2. **Implement minimal info interface:**
+```rust
+// src/lib.rs (Rust)
+use morphir_extension::info::{ExtensionInfo, Info};
+
+struct MyExtension;
+
+impl Info for MyExtension {
+    fn get_info() -> ExtensionInfo {
+        ExtensionInfo {
+            id: "my-extension".into(),
+            name: "My Extension".into(),
+            version: "0.1.0".into(),
+            description: "My first Morphir extension".into(),
+            author: Some("My Name".into()),
+            homepage: None,
+            license: Some("Apache-2.0".into()),
+            types: vec![], // Will add later
+        }
+    }
+
+    fn ping() -> bool { true }
+}
+```
+
+3. **Build and install:**
+```bash
+# Build WASM component
+cargo build --target wasm32-unknown-unknown --release
+wasm-tools component new target/wasm32-unknown-unknown/release/my_extension.wasm -o my-extension.wasm
+
+# Install to workspace
+cp my-extension.wasm /path/to/workspace/.morphir/extensions/
+```
+
+4. **Verify installation:**
+```bash
+morphir extension list
+# Should show: my-extension  0.1.0  unknown  (info only)
+
+morphir extension ping my-extension
+# Should show: my-extension: OK (Xms)
+
+morphir extension info my-extension
+# Should show full extension metadata
+```
+
+**Checkpoint:** Extension appears in list, responds to ping.
+
+### Phase 2: Basic Functionality (Week 1)
+
+**Goal:** Implement core functionality (compile or generate).
+
+**For a Backend (Code Generator):**
+
+1. **Add generator interface:**
+```rust
+use morphir_backend::generator::{Generator, GeneratorInfo, GenerationResult, Artifact};
+
+impl Generator for MyExtension {
+    fn info() -> GeneratorInfo {
+        GeneratorInfo {
+            name: "my-generator".into(),
+            description: "Generates MyLang from Morphir IR".into(),
+            version: "0.1.0".into(),
+            target: TargetLanguage::Custom,
+            custom_target: Some("mylang".into()),
+            supported_granularities: vec![Granularity::Distribution],
+        }
+    }
+
+    fn generate_distribution(dist: Distribution, options: GenerationOptions) -> GenerationResult {
+        let artifacts = vec![
+            Artifact {
+                path: "output.mylang".into(),
+                content: transform_to_mylang(&dist),
+                source_map: None,
+            }
+        ];
+        GenerationResult::Ok(artifacts)
+    }
+}
+```
+
+2. **Update extension type:**
+```rust
+fn get_info() -> ExtensionInfo {
+    ExtensionInfo {
+        // ... other fields
+        types: vec![ExtensionType::Codegen],
+    }
+}
+```
+
+3. **Test with real IR:**
+```bash
+# Create test IR
+morphir build /path/to/test-project
+
+# Run your generator
+morphir codegen --target mylang
+
+# Check output
+ls .morphir-dist/
+```
+
+**Checkpoint:** Generator produces valid output files.
+
+### Phase 3: Production Quality (Month 1)
+
+**Goal:** Add robustness features.
+
+1. **Add capability discovery:**
+```rust
+impl Capabilities for MyExtension {
+    fn list_capabilities() -> Vec<CapabilityInfo> {
+        vec![
+            CapabilityInfo {
+                id: "codegen/generate".into(),
+                description: "Basic code generation".into(),
+                available: true,
+            },
+            CapabilityInfo {
+                id: "codegen/options-schema".into(),
+                description: "Configurable options".into(),
+                available: true,
+            },
+        ]
+    }
+
+    fn get_targets() -> Vec<String> {
+        vec!["mylang".into()]
+    }
+
+    fn get_options_schema() -> Vec<OptionSchema> {
+        vec![
+            OptionSchema {
+                name: "indent".into(),
+                option_type: OptionType::String,
+                default_value: Some("\"  \"".into()),
+                description: "Indentation string".into(),
+                required: false,
+            },
+        ]
+    }
+}
+```
+
+2. **Add error handling:**
+```rust
+fn generate_distribution(dist: Distribution, options: GenerationOptions) -> GenerationResult {
+    match try_generate(&dist, &options) {
+        Ok(artifacts) => GenerationResult::Ok(artifacts),
+        Err(e) => GenerationResult::Failed(vec![
+            Diagnostic {
+                severity: Severity::Error,
+                code: "GEN001".into(),
+                message: format!("Generation failed: {}", e),
+                location: None,
+            }
+        ]),
+    }
+}
+```
+
+3. **Add module-level generation:**
+```rust
+fn generate_module(path: ModulePath, module: ModuleDefinition, ...) -> GenerationResult {
+    // Generate for single module
+}
+```
+
+**Checkpoint:** Extension handles errors gracefully, shows in `morphir extension info`.
+
+### Phase 4: Advanced Features (Month 2+)
+
+**Goal:** Add streaming and incremental support.
+
+1. **Add streaming generation:**
+```rust
+impl backend::Streaming for MyExtension {
+    fn generate_streaming(dist: Distribution, options: GenerationOptions) -> StreamHandle {
+        // Start background generation
+        let handle = start_generation_thread(dist, options);
+        handle.id
+    }
+
+    fn poll_result(handle: StreamHandle) -> Option<ModuleGenerationResult> {
+        // Return next completed module or None
+    }
+}
+```
+
+2. **Add incremental generation:**
+```rust
+impl backend::Incremental for MyExtension {
+    fn generate_incremental(
+        dist: Distribution,
+        changed_modules: Vec<ModuleChange>,
+        options: GenerationOptions,
+    ) -> IncrementalGenerationResult {
+        // Only regenerate affected modules
+    }
+}
+```
+
+3. **Update capabilities:**
+```rust
+fn list_capabilities() -> Vec<CapabilityInfo> {
+    vec![
+        // ... existing
+        CapabilityInfo {
+            id: "codegen/generate-streaming".into(),
+            description: "Stream results as modules complete".into(),
+            available: true,
+        },
+        CapabilityInfo {
+            id: "codegen/generate-incremental".into(),
+            description: "Regenerate only changed modules".into(),
+            available: true,
+        },
+    ]
+}
+```
+
+**Checkpoint:** `morphir codegen --target mylang --stream` shows incremental progress.
+
+### Phase 5: Distribution (Month 3+)
+
+**Goal:** Package and distribute your extension.
+
+1. **Create package manifest:**
+```toml
+# extension.toml
+[extension]
+id = "my-extension"
+name = "My Extension"
+version = "1.0.0"
+description = "Generate MyLang from Morphir IR"
+author = "My Name"
+license = "Apache-2.0"
+homepage = "https://github.com/me/my-extension"
+
+type = "codegen"
+component = "my-extension.wasm"
+
+targets = ["mylang"]
+
+[extension.options]
+indent = { type = "string", default = "  ", description = "Indentation" }
+```
+
+2. **Create distributable package:**
+```bash
+morphir extension pack ./
+# Creates: my-extension-1.0.0.morphir-ext.tgz
+```
+
+3. **Test installation:**
+```bash
+# In a new workspace
+morphir extension install my-extension-1.0.0.morphir-ext.tgz
+morphir extension list
+morphir codegen --target mylang
+```
+
+**Checkpoint:** Package installs cleanly on other machines.
+
+### Development Tips
+
+| Tip | Description |
+|-----|-------------|
+| **Start minimal** | Get `info` working before adding features |
+| **Test early** | Use `morphir extension ping` after each change |
+| **Check capabilities** | `morphir extension info <name>` shows what's detected |
+| **Watch logs** | `morphir daemon logs` shows extension loading |
+| **Iterate fast** | Hot-reload works with WASM components |
+
+### Common Issues
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| Extension not found | Wrong location | Check `.morphir/extensions/` |
+| Ping fails | Missing info impl | Implement `info` interface |
+| No capabilities | Not exported | Export `capabilities` interface |
+| Codegen not triggered | Wrong target | Check `get_targets()` returns correct value |
+| Missing options | No schema | Implement `get_options_schema()` |
+
+### Testing Checklist
+
+- [ ] `morphir extension list` shows your extension
+- [ ] `morphir extension ping <name>` returns OK
+- [ ] `morphir extension info <name>` shows correct metadata
+- [ ] Capabilities appear in info output
+- [ ] Target/language appears in info output
+- [ ] Options schema appears in info output
+- [ ] Basic generation produces valid output
+- [ ] Errors produce helpful diagnostics
+- [ ] Streaming shows incremental progress (if implemented)
+- [ ] Incremental skips unchanged modules (if implemented)
 
 ## Future: Alternative Extension Runtimes
 

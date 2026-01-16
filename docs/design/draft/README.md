@@ -43,7 +43,7 @@ The extension architecture for adding capabilities to Morphir.
 **Scope:** WASM Component Model integration, task system, pre/post hooks, custom code generators.
 
 **Key Documents:**
-- [WASM Components](./extensions/wasm-components.md) - Plugin architecture
+- [WASM Components](./extensions/wasm-component.md) - Plugin architecture
 - [Tasks](./extensions/tasks.md) - Build automation and hooks
 
 ---
