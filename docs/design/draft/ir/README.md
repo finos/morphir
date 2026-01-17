@@ -1,16 +1,29 @@
 ---
-title: Morphir-VFS & Polyglot Protocol Design (v4)
-sidebar_label: VFS Protocol v4
+title: IR v4 Format
+sidebar_label: Overview
 sidebar_position: 1
+status: partial
+tracking:
+  beads: [morphir-8fx, morphir-cyn]
+  github_issues: [398]
+  github_discussions: [52, 53, 55, 94]
 ---
 
-# Morphir-VFS & Polyglot Protocol Design (v4)
+# IR v4 Format
 
 | | |
 |---|---|
 | **Version** | 0.1.0-draft |
 | **Date** | 2026-01-15 |
-| **Status** | DRAFT |
+| **Status** | Partial Implementation |
+
+## Tracking
+
+| Type | References |
+|------|------------|
+| **Beads** | morphir-8fx (VFS error types), morphir-cyn (emission strategies) |
+| **GitHub Issues** | [#398](https://github.com/finos/morphir/issues/398) (VFS core types) |
+| **Discussions** | [#52](https://github.com/finos/morphir/discussions/52) (node IDs), [#53](https://github.com/finos/morphir/discussions/53) (type encoding), [#55](https://github.com/finos/morphir/discussions/55) (distributions), [#94](https://github.com/finos/morphir/discussions/94) (recursive types) |
 
 :::caution
 This is a **DRAFT** design document. All types and protocols are subject to change.
@@ -38,19 +51,20 @@ All type definitions in this document use **Gleam** syntax as the canonical refe
 
 This specification is organized into the following sections:
 
-| Document | Description |
-|----------|-------------|
-| [Naming](./naming.md) | Name, Path, QName, FQName types and canonical string format |
-| [Types](./types.md) | Type expressions, specifications, and definitions |
-| [Values](./values.md) | Literals, patterns, value expressions, and definitions |
-| [Modules](./modules.md) | Module structure, documentation, and serialization |
-| [Packages](./packages.md) | Package specifications and definitions |
-| [Distributions](./distributions.md) | Distribution types, semantic versioning, and VFS layout |
-| [Decorations](./decorations.md) | Layered metadata system for IR annotations |
-| [Document](./document.md) | Schema-less JSON-like data type |
-| [Metadata](./meta.md) | File-level metadata (`$meta`) |
-| [References](./refs.md) | Node references (`$ref`) for deduplication |
-| [WASM Components](./wasm-component.md) | WIT interfaces for backend extensions |
+| Document | Status | Description |
+|----------|--------|-------------|
+| [Naming](./naming.md) | Partial | Name, Path, QName, FQName types and canonical string format |
+| [Types](./types.md) | POC | Type expressions, specifications, and definitions |
+| [Values](./values.md) | POC | Literals, patterns, value expressions, and definitions |
+| [Modules](./modules.md) | Draft | Module structure, documentation, and serialization |
+| [Packages](./packages.md) | Draft | Package specifications and definitions |
+| [Distributions](./distributions.md) | Draft | Distribution types, semantic versioning, and VFS layout |
+| [Decorations](./decorations.md) | Partial | Layered metadata system for IR annotations |
+| [Document](./document.md) | Draft | Schema-less JSON-like data type |
+| [Metadata](./meta.md) | Draft | File-level metadata (`$meta`) |
+| [References](./refs.md) | Draft | Node references (`$ref`) for deduplication |
+
+For extension mechanisms (WASM Components, WIT interfaces), see [Extensions](../extensions/README.mdx).
 
 ## Architecture Overview
 
@@ -195,14 +209,18 @@ Example: Path `["Main", "Domain"]` → `pkg/main/domain/`
 
 ## Quick Links
 
-- **[Naming Module](./naming.md)** - Canonical string formats for names and paths
-- **[Types Module](./types.md)** - Type system definitions
-- **[Values Module](./values.md)** - Value expressions and patterns
-- **[Modules Module](./modules.md)** - Module structure and documentation
-- **[Packages Module](./packages.md)** - Package organization
-- **[Distributions Module](./distributions.md)** - Distribution types and VFS layout
-- **[Decorations Module](./decorations.md)** - Layered metadata system for IR annotations
-- **[Document Module](./document.md)** - Schema-less JSON-like data type
-- **[Metadata Module](./meta.md)** - File-level metadata (`$meta`)
-- **[References Module](./refs.md)** - Node references (`$ref`) for deduplication
-- **[WASM Components](./wasm-component.md)** - WIT interfaces for backend extensions
+- **[Naming](./naming.md)** - Canonical string formats for names and paths
+- **[Types](./types.md)** - Type system definitions
+- **[Values](./values.md)** - Value expressions and patterns
+- **[Modules](./modules.md)** - Module structure and documentation
+- **[Packages](./packages.md)** - Package organization
+- **[Distributions](./distributions.md)** - Distribution types and VFS layout
+- **[Decorations](./decorations.md)** - Layered metadata system for IR annotations
+- **[Document](./document.md)** - Schema-less JSON-like data type
+- **[Metadata](./meta.md)** - File-level metadata (`$meta`)
+- **[References](./refs.md)** - Node references (`$ref`) for deduplication
+
+## Related
+
+- **[Morphir Daemon](../daemon/README.md)** - Workspace management and build orchestration
+- **[Extensions](../extensions/README.mdx)** - WASM components and task system

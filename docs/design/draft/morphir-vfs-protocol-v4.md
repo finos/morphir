@@ -181,17 +181,19 @@ The IR type definitions are organized into separate modules for maintainability:
 
 | Module | Description | Documentation |
 |--------|-------------|---------------|
-| **Naming** | Name, Path, QName, FQName types and canonical string format | [vfs-protocol/naming.md](./vfs-protocol/naming.md) |
-| **Types** | Type expressions, specifications, and definitions | [vfs-protocol/types.md](./vfs-protocol/types.md) |
-| **Values** | Literals, patterns, value expressions, and definitions | [vfs-protocol/values.md](./vfs-protocol/values.md) |
-| **Modules** | Module structure, documentation, and serialization | [vfs-protocol/modules.md](./vfs-protocol/modules.md) |
-| **Packages** | Package specifications and definitions | [vfs-protocol/packages.md](./vfs-protocol/packages.md) |
-| **Distributions** | Distribution types, semantic versioning, and VFS layout | [vfs-protocol/distributions.md](./vfs-protocol/distributions.md) |
-| **Decorations** | Layered metadata system for IR annotations | [vfs-protocol/decorations.md](./vfs-protocol/decorations.md) |
-| **Document** | Schema-less JSON-like data type | [vfs-protocol/document.md](./vfs-protocol/document.md) |
-| **Metadata** | File-level metadata (`$meta`) | [vfs-protocol/meta.md](./vfs-protocol/meta.md) |
-| **References** | Node references (`$ref`) for deduplication | [vfs-protocol/refs.md](./vfs-protocol/refs.md) |
-| **WASM Components** | WIT interfaces for backend extensions | [vfs-protocol/wasm-component.md](./vfs-protocol/wasm-component.md) |
+| **Naming** | Name, Path, QName, FQName types and canonical string format | [ir/naming.md](./ir/naming.md) |
+| **Types** | Type expressions, specifications, and definitions | [ir/types.md](./ir/types.md) |
+| **Values** | Literals, patterns, value expressions, and definitions | [ir/values.md](./ir/values.md) |
+| **Modules** | Module structure, documentation, and serialization | [ir/modules.md](./ir/modules.md) |
+| **Packages** | Package specifications and definitions | [ir/packages.md](./ir/packages.md) |
+| **Distributions** | Distribution types, semantic versioning, and VFS layout | [ir/distributions.md](./ir/distributions.md) |
+| **Decorations** | Layered metadata system for IR annotations | [ir/decorations.md](./ir/decorations.md) |
+| **Document** | Schema-less JSON-like data type | [ir/document.md](./ir/document.md) |
+| **Metadata** | File-level metadata (`$meta`) | [ir/meta.md](./ir/meta.md) |
+| **References** | Node references (`$ref`) for deduplication | [ir/refs.md](./ir/refs.md) |
+| **WASM Components** | WIT interfaces for backend extensions | [extensions/wasm-component.md](./extensions/wasm-component.md) |
+| **Workspace** | Multi-project workspace management | [daemon/README.md](./daemon/README.md) |
+| **Configuration** | Configuration system design | [daemon/configuration.md](./daemon/configuration.md) |
 
 ### IR Hierarchy Summary
 
