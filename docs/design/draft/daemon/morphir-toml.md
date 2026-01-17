@@ -56,8 +56,8 @@ min_cli_version = "4.0.0"
 | Syntax | Meaning | Example |
 |--------|---------|---------|
 | `"4.0.0"` | Exact version | Only 4.0.0 |
-| `"^4.0.0"` | Compatible (major) | >=4.0.0 <5.0.0 |
-| `"~4.1.0"` | Compatible (minor) | >=4.1.0 <4.2.0 |
+| `"^4.0.0"` | Compatible (major) | `>=4.0.0, <5.0.0` |
+| `"~4.1.0"` | Compatible (minor) | `>=4.1.0, <4.2.0` |
 | `">=4.0.0"` | Minimum version | 4.0.0 or higher |
 | `">=4.0.0, <5.0.0"` | Range | Between 4.0.0 and 5.0.0 |
 

@@ -156,11 +156,11 @@ Version constraints apply to git tags and future registry dependencies:
 | Syntax | Meaning | Example |
 |--------|---------|---------|
 | `"1.2.3"` | Exact version | Only 1.2.3 |
-| `"^1.2.3"` | Compatible (caret) | ≥1.2.3, <2.0.0 |
-| `"~1.2.3"` | Approximately (tilde) | ≥1.2.3, <1.3.0 |
-| `">=1.2.0"` | Greater than or equal | ≥1.2.0 |
-| `"<2.0.0"` | Less than | <2.0.0 |
-| `">=1.0.0, <2.0.0"` | Range | ≥1.0.0 and <2.0.0 |
+| `"^1.2.3"` | Compatible (caret) | `>=1.2.3, <2.0.0` |
+| `"~1.2.3"` | Approximately (tilde) | `>=1.2.3, <1.3.0` |
+| `">=1.2.0"` | Greater than or equal | `>=1.2.0` |
+| `"<2.0.0"` | Less than | `<2.0.0` |
+| `">=1.0.0, <2.0.0"` | Range | `>=1.0.0, <2.0.0` |
 
 **Notes:**
 - Path dependencies ignore version constraints

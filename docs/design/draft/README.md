@@ -36,7 +36,7 @@ The long-running service for workspace management, builds, and IDE integration.
 
 ---
 
-### [Extensions](./extensions/README.md)
+### [Extensions](./extensions/README.mdx)
 
 The extension architecture for adding capabilities to Morphir.
 
