@@ -1,0 +1,67 @@
+package morphir:vfs@0.4.0;
+
+use morphir:ir/naming@0.4.0;
+use morphir:ir/types@0.4.0;
+use morphir:ir/values@0.4.0;
+use morphir:backend/generator@0.4.0;
+
+/// VFS write access
+interface writer {
+    use naming.{fqname};
+    use types.{type-definition};
+    use values.{value-definition};
+    use generator.{diagnostic};
+
+    /// Write error
+    variant write-error {
+        permission-denied(string),
+        validation-failed(list<diagnostic>),
+        conflict(string),
+    }
+
+    /// Transaction handle
+    type transaction = u64;
+
+    /// Begin transaction
+    begin-transaction: func() -> transaction;
+
+    /// Commit transaction
+    commit: func(tx: transaction) -> result<_, write-error>;
+
+    /// Rollback transaction
+    rollback: func(tx: transaction) -> result<_, write-error>;
+
+    /// Write a type definition
+    write-type: func(
+        tx: transaction,
+        fqn: fqname,
+        def: type-definition,
+    ) -> result<_, write-error>;
+
+    /// Write a value definition
+    write-value: func(
+        tx: transaction,
+        fqn: fqname,
+        def: value-definition,
+    ) -> result<_, write-error>;
+
+    /// Delete a type
+    delete-type: func(tx: transaction, fqn: fqname) -> result<_, write-error>;
+
+    /// Delete a value
+    delete-value: func(tx: transaction, fqn: fqname) -> result<_, write-error>;
+
+    /// Rename a type
+    rename-type: func(
+        tx: transaction,
+        old-fqn: fqname,
+        new-fqn: fqname,
+    ) -> result<_, write-error>;
+
+    /// Rename a value
+    rename-value: func(
+        tx: transaction,
+        old-fqn: fqname,
+        new-fqn: fqname,
+    ) -> result<_, write-error>;
+}

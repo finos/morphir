@@ -8,6 +8,7 @@ experimental = true
 # Core tools
 go = "1.25.6"
 python = "3.14.2"
+rust = "1.92.0"  # For wasm-tools WIT verification
 
 # JavaScript runtimes and package managers (for toolchain backend tests)
 node = "24.13.0" # Provides npm and npx
@@ -18,6 +19,13 @@ pnpm = "10.28.0" # Provides pnpm dlx
 
 # Development tools
 golangci-lint = "2.8.0"   # Go linter aggregator
+
+# Task dependencies (augments file-based tasks)
+[tasks.typecheck]
+depends = ["wit:verify"]
+
+[tasks.check]
+depends = ["fmt-check", "lint", "typecheck"]
 
 # Windows-specific tasks (inline tasks work on Windows, file-based tasks don't)
 # These call bun to execute the TypeScript task implementations

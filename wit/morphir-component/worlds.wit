@@ -1,0 +1,205 @@
+package morphir:component@0.4.0;
+
+// ============================================================
+// MINIMAL EXTENSION (Info Only)
+// ============================================================
+
+/// Minimal extension - just provides info and health check
+/// All extensions should start here before adding capabilities
+world info-component {
+    export morphir:extension/info@0.4.0;
+}
+
+/// Extension with capability discovery
+world discoverable-component {
+    export morphir:extension/info@0.4.0;
+    export morphir:extension/capabilities@0.4.0;
+}
+
+// ============================================================
+// FRONTEND COMPONENTS (Source → IR)
+// ============================================================
+
+/// Minimal frontend compiler component (basic compilation only)
+world minimal-compiler-component {
+    export morphir:extension/info@0.4.0;
+    export morphir:frontend/compiler@0.4.0;
+}
+
+/// Frontend compiler component with capability discovery
+world compiler-component {
+    export morphir:extension/info@0.4.0;
+    export morphir:extension/capabilities@0.4.0;
+    export morphir:frontend/compiler@0.4.0;
+}
+
+/// Frontend with VFS access (for reading dependencies)
+world compiler-with-vfs-component {
+    import morphir:vfs/reader@0.4.0;
+    export morphir:extension/info@0.4.0;
+    export morphir:frontend/compiler@0.4.0;
+}
+
+/// Frontend with streaming support
+world streaming-compiler-component {
+    export morphir:extension/info@0.4.0;
+    export morphir:extension/capabilities@0.4.0;
+    export morphir:frontend/compiler@0.4.0;
+    export morphir:frontend/streaming@0.4.0;
+}
+
+/// Frontend with incremental support
+world incremental-compiler-component {
+    import morphir:vfs/reader@0.4.0;
+    export morphir:extension/info@0.4.0;
+    export morphir:extension/capabilities@0.4.0;
+    export morphir:frontend/compiler@0.4.0;
+    export morphir:frontend/incremental@0.4.0;
+}
+
+/// Full-featured frontend (all capabilities)
+world full-compiler-component {
+    import morphir:vfs/reader@0.4.0;
+    export morphir:extension/info@0.4.0;
+    export morphir:extension/capabilities@0.4.0;
+    export morphir:frontend/compiler@0.4.0;
+    export morphir:frontend/streaming@0.4.0;
+    export morphir:frontend/incremental@0.4.0;
+}
+
+// ============================================================
+// BACKEND COMPONENTS (IR → Target)
+// ============================================================
+
+/// Minimal code generator component
+world minimal-generator-component {
+    export morphir:extension/info@0.4.0;
+    export morphir:backend/generator@0.4.0;
+}
+
+/// Code generator component with capability discovery
+world generator-component {
+    export morphir:extension/info@0.4.0;
+    export morphir:extension/capabilities@0.4.0;
+    export morphir:backend/generator@0.4.0;
+}
+
+/// Generator with streaming support
+world streaming-generator-component {
+    export morphir:extension/info@0.4.0;
+    export morphir:extension/capabilities@0.4.0;
+    export morphir:backend/generator@0.4.0;
+    export morphir:backend/streaming@0.4.0;
+}
+
+/// Generator with incremental support
+world incremental-generator-component {
+    export morphir:extension/info@0.4.0;
+    export morphir:extension/capabilities@0.4.0;
+    export morphir:backend/generator@0.4.0;
+    export morphir:backend/incremental@0.4.0;
+}
+
+/// Full-featured generator (all capabilities)
+world full-generator-component {
+    export morphir:extension/info@0.4.0;
+    export morphir:extension/capabilities@0.4.0;
+    export morphir:backend/generator@0.4.0;
+    export morphir:backend/streaming@0.4.0;
+    export morphir:backend/incremental@0.4.0;
+}
+
+/// Validator component
+world validator-component {
+    export morphir:extension/info@0.4.0;
+    export morphir:backend/validator@0.4.0;
+}
+
+/// Full backend (generator + validator)
+world backend-component {
+    export morphir:extension/info@0.4.0;
+    export morphir:extension/capabilities@0.4.0;
+    export morphir:backend/generator@0.4.0;
+    export morphir:backend/validator@0.4.0;
+}
+
+// ============================================================
+// TRANSFORMER COMPONENTS (IR → IR)
+// ============================================================
+
+/// Standalone transformer (pure IR transformation)
+world transform-component {
+    export morphir:extension/info@0.4.0;
+    export morphir:backend/transform@0.4.0;
+}
+
+/// Transformer with VFS access
+world transformer-component {
+    import morphir:vfs/reader@0.4.0;
+    import morphir:vfs/writer@0.4.0;
+    export morphir:extension/info@0.4.0;
+    export morphir:extension/capabilities@0.4.0;
+    export morphir:backend/transform@0.4.0;
+}
+
+// ============================================================
+// WORKSPACE COMPONENTS
+// ============================================================
+
+/// Workspace management component (daemon-side)
+world workspace-manager-component {
+    export morphir:extension/info@0.4.0;
+    export morphir:vfs/workspace@0.4.0;
+}
+
+/// Workspace-aware compiler
+world workspace-compiler-component {
+    import morphir:vfs/workspace@0.4.0;
+    import morphir:vfs/reader@0.4.0;
+    export morphir:extension/info@0.4.0;
+    export morphir:extension/capabilities@0.4.0;
+    export morphir:frontend/compiler@0.4.0;
+}
+
+// ============================================================
+// FULL PIPELINE COMPONENTS
+// ============================================================
+
+/// Full toolchain component (frontend + backend)
+world toolchain-component {
+    import morphir:vfs/reader@0.4.0;
+    export morphir:extension/info@0.4.0;
+    export morphir:extension/capabilities@0.4.0;
+    export morphir:frontend/compiler@0.4.0;
+    export morphir:backend/generator@0.4.0;
+    export morphir:backend/validator@0.4.0;
+}
+
+/// Toolchain with workspace support
+world workspace-toolchain-component {
+    import morphir:vfs/workspace@0.4.0;
+    import morphir:vfs/reader@0.4.0;
+    import morphir:vfs/writer@0.4.0;
+    export morphir:extension/info@0.4.0;
+    export morphir:extension/capabilities@0.4.0;
+    export morphir:frontend/compiler@0.4.0;
+    export morphir:backend/generator@0.4.0;
+    export morphir:backend/validator@0.4.0;
+}
+
+/// Full plugin with all capabilities
+world plugin-component {
+    import morphir:vfs/reader@0.4.0;
+    import morphir:vfs/writer@0.4.0;
+    import morphir:vfs/workspace@0.4.0;
+    export morphir:extension/info@0.4.0;
+    export morphir:extension/capabilities@0.4.0;
+    export morphir:frontend/compiler@0.4.0;
+    export morphir:backend/generator@0.4.0;
+    export morphir:backend/validator@0.4.0;
+    export morphir:backend/transform@0.4.0;
+    export morphir:frontend/streaming@0.4.0;
+    export morphir:frontend/incremental@0.4.0;
+    export morphir:backend/streaming@0.4.0;
+    export morphir:backend/incremental@0.4.0;
+}

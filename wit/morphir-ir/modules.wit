@@ -1,0 +1,52 @@
+package morphir:ir@0.4.0;
+
+/// Module definitions
+interface modules {
+    use naming.{name, module-path};
+    use types.{type-specification, type-definition, access};
+    use values.{value-specification, value-definition};
+
+    /// Documentation (opaque string or list of strings)
+    variant documentation {
+        single-line(string),
+        multi-line(list<string>),
+    }
+
+    /// Documented wrapper
+    record documented-type-spec {
+        doc: option<documentation>,
+        value: type-specification,
+    }
+
+    /// Module specification (public interface)
+    record module-specification {
+        types: list<tuple<name, documented-type-spec>>,
+        values: list<tuple<name, value-specification>>,
+    }
+
+    /// Documented type definition with access
+    record access-controlled-documented-type-def {
+        access: access,
+        doc: option<documentation>,
+        definition: type-definition,
+    }
+
+    /// Documented value definition with access
+    record access-controlled-documented-value-def {
+        access: access,
+        doc: option<documentation>,
+        definition: value-definition,
+    }
+
+    /// Module definition (implementation)
+    record module-definition {
+        types: list<tuple<name, access-controlled-documented-type-def>>,
+        values: list<tuple<name, access-controlled-documented-value-def>>,
+    }
+
+    /// Access-controlled module definition
+    record access-controlled-module-definition {
+        access: access,
+        definition: module-definition,
+    }
+}

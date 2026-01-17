@@ -1,0 +1,58 @@
+package morphir:extension@0.4.0;
+
+/// Capability discovery interface
+interface capabilities {
+    use info.{extension-type};
+
+    /// Capability identifier (e.g., "codegen/generate-streaming")
+    type capability-id = string;
+
+    /// Capability info
+    record capability-info {
+        /// Capability identifier
+        id: capability-id,
+        /// Human-readable description
+        description: string,
+        /// Whether this capability is available
+        available: bool,
+    }
+
+    /// Options schema for configurable extensions
+    record option-schema {
+        /// Option name
+        name: string,
+        /// Option type
+        option-type: option-type,
+        /// Default value (as JSON string)
+        default-value: option<string>,
+        /// Description
+        description: string,
+        /// Whether this option is required
+        required: bool,
+    }
+
+    /// Option type
+    enum option-type {
+        %string,
+        integer,
+        float,
+        boolean,
+        array,
+        object,
+    }
+
+    /// Query all capabilities this extension provides
+    list-capabilities: func() -> list<capability-info>;
+
+    /// Check if a specific capability is available
+    has-capability: func(id: capability-id) -> bool;
+
+    /// Get targets this extension supports (for codegen)
+    get-targets: func() -> list<string>;
+
+    /// Get languages this extension supports (for frontend)
+    get-languages: func() -> list<string>;
+
+    /// Get configurable options schema
+    get-options-schema: func() -> list<option-schema>;
+}

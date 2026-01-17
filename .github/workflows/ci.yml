@@ -49,6 +49,29 @@ jobs:
       - name: Run linters
         run: mise run lint
 
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install mise
+        uses: jdx/mise-action@v3
+        with:
+          version: 2026.1.1
+
+      - name: Run type checks
+        run: mise run typecheck
+
+  check:
+    name: All Checks
+    runs-on: ubuntu-latest
+    needs: [format-check, lint, typecheck]
+    steps:
+      - name: All checks passed
+        run: echo "All checks passed!"
+
   test:
     name: Test
     runs-on: ${{ matrix.os }}
@@ -174,8 +197,8 @@ jobs:
       - name: Set up Go workspace
         run: mise run workspace:setup
 
-      - name: Verify modules build
-        run: mise run verify
+      - name: Verify Go modules build
+        run: mise run verify:modules
 
   coverage-report:
     name: Coverage Report

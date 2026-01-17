@@ -1,0 +1,17 @@
+package morphir:ir@0.4.0;
+
+/// Package definitions
+interface packages {
+    use naming.{module-path};
+    use modules.{module-specification, access-controlled-module-definition};
+
+    /// Package specification (public interface)
+    record package-specification {
+        modules: list<tuple<module-path, module-specification>>,
+    }
+
+    /// Package definition (implementation)
+    record package-definition {
+        modules: list<tuple<module-path, access-controlled-module-definition>>,
+    }
+}

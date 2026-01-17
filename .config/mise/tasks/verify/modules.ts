@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
-// #MISE description="Verify all modules build successfully"
-// #MISE alias="v"
+// #MISE description="Verify all Go modules build successfully"
+// #MISE alias="vm"
 // #MISE depends=["workspace:setup"]
 
 import { $, Glob } from "bun";
@@ -45,7 +45,7 @@ async function main() {
     }
   }
 
-  console.log("Verifying all modules build...");
+  console.log("Verifying all Go modules build...");
 
   // Find all Go modules
   const modules = await findGoModules();
@@ -68,7 +68,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("All modules build successfully!");
+  console.log("All Go modules build successfully!");
 }
 
 main().catch((err) => {

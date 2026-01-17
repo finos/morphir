@@ -1,0 +1,348 @@
+package morphir:ir@0.4.0;
+
+/// Literal values
+interface literals {
+    use document.{document-value};
+
+    /// Literal constant values
+    variant literal {
+        /// Boolean: true, false
+        bool-literal(bool),
+
+        /// Single character
+        char-literal(string),
+
+        /// Text string
+        string-literal(string),
+
+        /// Integer (includes negatives)
+        integer-literal(s64),
+
+        /// Floating-point
+        float-literal(f64),
+
+        /// Arbitrary-precision decimal (stored as string)
+        decimal-literal(string),
+
+        /// Document literal (schema-less JSON-like)
+        document-literal(document-value),
+    }
+}
+
+/// Pattern matching
+interface patterns {
+    use naming.{name, fqname, type-attributes};
+    use literals.{literal};
+    use types.{encoded-ast};
+
+    /// Pattern - encoded recursive structure
+    /// Use constructor/accessor functions to work with patterns
+    type pattern = encoded-ast;
+
+    /// Kind enumeration for pattern matching
+    enum pattern-kind {
+        wildcard-pattern,
+        as-pattern,
+        tuple-pattern,
+        constructor-pattern,
+        empty-list-pattern,
+        head-tail-pattern,
+        literal-pattern,
+        unit-pattern,
+    }
+
+    /// Get the kind of a pattern
+    get-pattern-kind: func(p: pattern) -> pattern-kind;
+
+    // === Pattern Constructors ===
+
+    /// Construct a wildcard pattern: `_`
+    make-wildcard-pattern: func(attrs: type-attributes) -> pattern;
+
+    /// Construct an as pattern: `x` or `(a, b) as pair`
+    make-as-pattern: func(attrs: type-attributes, inner: pattern, binding: name) -> pattern;
+
+    /// Construct a tuple pattern: `(a, b, c)`
+    make-tuple-pattern: func(attrs: type-attributes, elements: list<pattern>) -> pattern;
+
+    /// Construct a constructor pattern: `Just x`
+    make-constructor-pattern: func(attrs: type-attributes, ctor: fqname, args: list<pattern>) -> pattern;
+
+    /// Construct an empty list pattern: `[]`
+    make-empty-list-pattern: func(attrs: type-attributes) -> pattern;
+
+    /// Construct a head-tail pattern: `x :: xs`
+    make-head-tail-pattern: func(attrs: type-attributes, head: pattern, tail: pattern) -> pattern;
+
+    /// Construct a literal pattern: `42`, `"hello"`
+    make-literal-pattern: func(attrs: type-attributes, lit: literal) -> pattern;
+
+    /// Construct a unit pattern: `()`
+    make-unit-pattern: func(attrs: type-attributes) -> pattern;
+
+    // === Pattern Accessors ===
+
+    /// Extract pattern attributes from any pattern
+    get-pattern-attributes: func(p: pattern) -> type-attributes;
+
+    /// Extract as-pattern info (only valid for as-pattern)
+    get-as-pattern-info: func(p: pattern) -> option<tuple<pattern, name>>;
+
+    /// Extract tuple pattern elements (only valid for tuple-pattern)
+    get-tuple-pattern-elements: func(p: pattern) -> option<list<pattern>>;
+
+    /// Extract constructor pattern info (only valid for constructor-pattern)
+    get-constructor-pattern-info: func(p: pattern) -> option<tuple<fqname, list<pattern>>>;
+
+    /// Extract head-tail pattern info (only valid for head-tail-pattern)
+    get-head-tail-pattern-info: func(p: pattern) -> option<tuple<pattern, pattern>>;
+
+    /// Extract literal pattern value (only valid for literal-pattern)
+    get-literal-pattern-value: func(p: pattern) -> option<literal>;
+}
+
+/// Value expressions
+interface values {
+    use naming.{name, fqname};
+    use types.{encoded-ast, ir-type, value-attributes, access, hole-reason, incompleteness};
+    use patterns.{pattern};
+    use literals.{literal};
+
+    /// Native operation hint
+    variant native-hint {
+        arithmetic,
+        comparison,
+        string-op,
+        collection-op,
+        platform-specific(string),
+    }
+
+    /// Native operation info
+    record native-info {
+        hint: native-hint,
+        description: option<string>,
+    }
+
+    /// Value expression - encoded recursive structure
+    /// Use constructor/accessor functions to work with values
+    type value = encoded-ast;
+
+    /// Kind enumeration for pattern matching on value
+    enum value-kind {
+        %literal,
+        %constructor,
+        %tuple,
+        %list,
+        %record,
+        %unit,
+        variable,
+        reference,
+        field,
+        field-function,
+        apply,
+        lambda,
+        let-definition,
+        let-recursion,
+        destructure,
+        if-then-else,
+        pattern-match,
+        update-record,
+        hole,
+        native,
+        external,
+    }
+
+    /// Get the kind of a value
+    get-value-kind: func(v: value) -> value-kind;
+
+    // === Value Constructors ===
+
+    /// Construct a literal value
+    make-literal-value: func(attrs: value-attributes, lit: literal) -> value;
+
+    /// Construct a constructor reference: `Just`
+    make-constructor-value: func(attrs: value-attributes, fqn: fqname) -> value;
+
+    /// Construct a tuple: `(1, "hello")`
+    make-tuple-value: func(attrs: value-attributes, elements: list<value>) -> value;
+
+    /// Construct a list: `[1, 2, 3]`
+    make-list-value: func(attrs: value-attributes, items: list<value>) -> value;
+
+    /// Construct a record: `{ name = "Alice" }`
+    make-record-value: func(attrs: value-attributes, fields: list<tuple<name, value>>) -> value;
+
+    /// Construct a unit: `()`
+    make-unit-value: func(attrs: value-attributes) -> value;
+
+    /// Construct a variable: `x`
+    make-variable-value: func(attrs: value-attributes, var-name: name) -> value;
+
+    /// Construct a reference: `List.map`
+    make-reference-value: func(attrs: value-attributes, fqn: fqname) -> value;
+
+    /// Construct a field access: `record.field`
+    make-field-value: func(attrs: value-attributes, target: value, field-name: name) -> value;
+
+    /// Construct a field function: `.field`
+    make-field-function-value: func(attrs: value-attributes, field-name: name) -> value;
+
+    /// Construct an apply: `f x`
+    make-apply-value: func(attrs: value-attributes, func-val: value, arg: value) -> value;
+
+    /// Construct a lambda: `\x -> x + 1`
+    make-lambda-value: func(attrs: value-attributes, param: pattern, body: value) -> value;
+
+    /// Construct a let: `let x = 1 in x + 1`
+    make-let-definition-value: func(attrs: value-attributes, binding: name, def: value-definition-body, in-expr: value) -> value;
+
+    /// Construct a recursive let: `let f = ... g ...; g = ... f ... in ...`
+    make-let-recursion-value: func(attrs: value-attributes, defs: list<tuple<name, value-definition-body>>, in-expr: value) -> value;
+
+    /// Construct a destructure: `let (a, b) = pair in a + b`
+    make-destructure-value: func(attrs: value-attributes, pat: pattern, target: value, in-expr: value) -> value;
+
+    /// Construct an if-then-else
+    make-if-then-else-value: func(attrs: value-attributes, cond: value, then-val: value, else-val: value) -> value;
+
+    /// Construct a pattern match: `case x of ...`
+    make-pattern-match-value: func(attrs: value-attributes, target: value, cases: list<tuple<pattern, value>>) -> value;
+
+    /// Construct a record update: `{ record | field = new }`
+    make-update-record-value: func(attrs: value-attributes, target: value, updates: list<tuple<name, value>>) -> value;
+
+    /// Construct a hole (incomplete/broken reference)
+    make-hole-value: func(attrs: value-attributes, reason: hole-reason, expected-type: option<ir-type>) -> value;
+
+    /// Construct a native operation
+    make-native-value: func(attrs: value-attributes, fqn: fqname, info: native-info) -> value;
+
+    /// Construct an external FFI
+    make-external-value: func(attrs: value-attributes, module-name: string, function-name: string) -> value;
+
+    // === Value Accessors ===
+
+    /// Extract value attributes from any value
+    get-value-attributes: func(v: value) -> value-attributes;
+
+    /// Extract literal value (only valid for literal)
+    get-literal-value: func(v: value) -> option<literal>;
+
+    /// Extract constructor fqname (only valid for constructor)
+    get-constructor-fqname: func(v: value) -> option<fqname>;
+
+    /// Extract tuple elements (only valid for tuple)
+    get-tuple-value-elements: func(v: value) -> option<list<value>>;
+
+    /// Extract list items (only valid for list)
+    get-list-value-items: func(v: value) -> option<list<value>>;
+
+    /// Extract record fields (only valid for record)
+    get-record-value-fields: func(v: value) -> option<list<tuple<name, value>>>;
+
+    /// Extract variable name (only valid for variable)
+    get-variable-value-name: func(v: value) -> option<name>;
+
+    /// Extract reference fqname (only valid for reference)
+    get-reference-value-fqname: func(v: value) -> option<fqname>;
+
+    /// Extract field info (only valid for field)
+    get-field-value-info: func(v: value) -> option<tuple<value, name>>;
+
+    /// Extract field function name (only valid for field-function)
+    get-field-function-name: func(v: value) -> option<name>;
+
+    /// Extract apply info (only valid for apply)
+    get-apply-info: func(v: value) -> option<tuple<value, value>>;
+
+    /// Extract lambda info (only valid for lambda)
+    get-lambda-info: func(v: value) -> option<tuple<pattern, value>>;
+
+    /// Extract let-definition info (only valid for let-definition)
+    get-let-definition-info: func(v: value) -> option<tuple<name, value-definition-body, value>>;
+
+    /// Extract let-recursion info (only valid for let-recursion)
+    get-let-recursion-info: func(v: value) -> option<tuple<list<tuple<name, value-definition-body>>, value>>;
+
+    /// Extract destructure info (only valid for destructure)
+    get-destructure-info: func(v: value) -> option<tuple<pattern, value, value>>;
+
+    /// Extract if-then-else info (only valid for if-then-else)
+    get-if-then-else-info: func(v: value) -> option<tuple<value, value, value>>;
+
+    /// Extract pattern-match info (only valid for pattern-match)
+    get-pattern-match-info: func(v: value) -> option<tuple<value, list<tuple<pattern, value>>>>;
+
+    /// Extract update-record info (only valid for update-record)
+    get-update-record-info: func(v: value) -> option<tuple<value, list<tuple<name, value>>>>;
+
+    /// Extract hole info (only valid for hole)
+    get-hole-info: func(v: value) -> option<tuple<hole-reason, option<ir-type>>>;
+
+    /// Extract native info (only valid for native)
+    get-native-info: func(v: value) -> option<tuple<fqname, native-info>>;
+
+    /// Extract external info (only valid for external)
+    get-external-info: func(v: value) -> option<tuple<string, string>>;
+
+    /// Value definition body - encoded recursive structure
+    /// Use constructor/accessor functions to work with value definition bodies
+    type value-definition-body = encoded-ast;
+
+    /// Kind enumeration for value-definition-body
+    enum value-definition-body-kind {
+        expression-body,
+        native-body,
+        external-body,
+        incomplete-body,
+    }
+
+    /// Get the kind of a value-definition-body
+    get-value-definition-body-kind: func(b: value-definition-body) -> value-definition-body-kind;
+
+    // === Value Definition Body Constructors ===
+
+    /// Construct an expression body
+    make-expression-body: func(params: list<tuple<name, ir-type>>, return-type: ir-type, body: value) -> value-definition-body;
+
+    /// Construct a native body
+    make-native-body: func(params: list<tuple<name, ir-type>>, return-type: ir-type, info: native-info) -> value-definition-body;
+
+    /// Construct an external body
+    make-external-body: func(params: list<tuple<name, ir-type>>, return-type: ir-type, module-name: string, function-name: string) -> value-definition-body;
+
+    /// Construct an incomplete body (v4)
+    make-incomplete-body: func(params: list<tuple<name, ir-type>>, return-type: option<ir-type>, incomplete: incompleteness, partial-body: option<value>) -> value-definition-body;
+
+    // === Value Definition Body Accessors ===
+
+    /// Extract params from any value-definition-body
+    get-body-params: func(b: value-definition-body) -> list<tuple<name, ir-type>>;
+
+    /// Extract return type from any value-definition-body (None for incomplete without return type)
+    get-body-return-type: func(b: value-definition-body) -> option<ir-type>;
+
+    /// Extract expression body value (only valid for expression-body)
+    get-expression-body-value: func(b: value-definition-body) -> option<value>;
+
+    /// Extract native body info (only valid for native-body)
+    get-native-body-info: func(b: value-definition-body) -> option<native-info>;
+
+    /// Extract external body info (only valid for external-body)
+    get-external-body-info: func(b: value-definition-body) -> option<tuple<string, string>>;
+
+    /// Extract incomplete body info (only valid for incomplete-body)
+    get-incomplete-body-info: func(b: value-definition-body) -> option<tuple<incompleteness, option<value>>>;
+
+    /// Value specification (signature only)
+    record value-specification {
+        inputs: list<tuple<name, ir-type>>,
+        output: ir-type,
+    }
+
+    /// Access-controlled value definition
+    record value-definition {
+        access: access,
+        body: value-definition-body,
+    }
+}

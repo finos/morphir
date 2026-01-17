@@ -1,0 +1,44 @@
+package morphir:vfs@0.4.0;
+
+use morphir:ir/naming@0.4.0;
+use morphir:ir/types@0.4.0;
+use morphir:ir/values@0.4.0;
+use morphir:ir/modules@0.4.0;
+use morphir:ir/distributions@0.4.0;
+
+/// VFS read-only access
+interface reader {
+    use naming.{fqname, module-path, package-path};
+    use types.{type-definition};
+    use values.{value-definition};
+    use modules.{module-definition};
+    use distributions.{distribution};
+
+    /// Read error
+    variant read-error {
+        not-found(string),
+        permission-denied(string),
+        parse-error(string),
+    }
+
+    /// Read a type definition
+    read-type: func(fqn: fqname) -> result<type-definition, read-error>;
+
+    /// Read a value definition
+    read-value: func(fqn: fqname) -> result<value-definition, read-error>;
+
+    /// Read a module definition
+    read-module: func(path: module-path) -> result<module-definition, read-error>;
+
+    /// Read entire distribution
+    read-distribution: func() -> result<distribution, read-error>;
+
+    /// List modules in a package
+    list-modules: func(pkg: package-path) -> result<list<module-path>, read-error>;
+
+    /// List types in a module
+    list-types: func(path: module-path) -> result<list<fqname>, read-error>;
+
+    /// List values in a module
+    list-values: func(path: module-path) -> result<list<fqname>, read-error>;
+}

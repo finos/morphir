@@ -1,0 +1,130 @@
+package morphir:backend@0.4.0;
+
+use morphir:ir/naming@0.4.0;
+use morphir:ir/types@0.4.0;
+use morphir:ir/values@0.4.0;
+use morphir:ir/modules@0.4.0;
+use morphir:ir/packages@0.4.0;
+use morphir:ir/distributions@0.4.0;
+
+/// Code generation interface
+interface generator {
+    use naming.{fqname, module-path};
+    use types.{type-definition};
+    use values.{value-definition};
+    use modules.{module-definition};
+    use packages.{package-specification};
+    use distributions.{distribution};
+
+    /// Target language
+    enum target-language {
+        typescript,
+        scala,
+        java,
+        go,
+        python,
+        rust,
+        elm,
+        custom,
+    }
+
+    /// Granularity level
+    enum granularity {
+        distribution,
+        module,
+        definition,
+    }
+
+    /// Generator metadata
+    record generator-info {
+        name: string,
+        description: string,
+        version: string,
+        target: target-language,
+        custom-target: option<string>,
+        supported-granularities: list<granularity>,
+    }
+
+    /// Generation options
+    record generation-options {
+        output-dir: string,
+        indent: option<string>,
+        source-maps: bool,
+        custom: option<string>,
+    }
+
+    /// Generated artifact
+    record artifact {
+        path: string,
+        content: string,
+        source-map: option<string>,
+    }
+
+    /// Diagnostic severity
+    enum severity {
+        error,
+        warning,
+        info,
+        hint,
+    }
+
+    /// Source location
+    record source-location {
+        uri: string,
+        start-line: u32,
+        start-col: u32,
+        end-line: u32,
+        end-col: u32,
+    }
+
+    /// Diagnostic message
+    record diagnostic {
+        severity: severity,
+        code: string,
+        message: string,
+        location: option<source-location>,
+    }
+
+    /// Generation result
+    variant generation-result {
+        /// Success
+        ok(list<artifact>),
+        /// Partial success with warnings
+        degraded(tuple<list<artifact>, list<diagnostic>>),
+        /// Failure
+        failed(list<diagnostic>),
+    }
+
+    /// Get generator metadata
+    info: func() -> generator-info;
+
+    /// Generate code for entire distribution
+    generate-distribution: func(
+        dist: distribution,
+        options: generation-options,
+    ) -> generation-result;
+
+    /// Generate code for a single module
+    generate-module: func(
+        path: module-path,
+        module: module-definition,
+        deps: package-specification,
+        options: generation-options,
+    ) -> generation-result;
+
+    /// Generate code for a single type
+    generate-type: func(
+        fqn: fqname,
+        def: type-definition,
+        deps: package-specification,
+        options: generation-options,
+    ) -> generation-result;
+
+    /// Generate code for a single value
+    generate-value: func(
+        fqn: fqname,
+        def: value-definition,
+        deps: package-specification,
+        options: generation-options,
+    ) -> generation-result;
+}

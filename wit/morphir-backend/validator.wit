@@ -1,0 +1,77 @@
+package morphir:backend@0.4.0;
+
+use morphir:ir/naming@0.4.0;
+use morphir:ir/types@0.4.0;
+use morphir:ir/values@0.4.0;
+use morphir:ir/modules@0.4.0;
+use morphir:ir/packages@0.4.0;
+use morphir:ir/distributions@0.4.0;
+
+/// Validation interface
+interface validator {
+    use naming.{fqname, module-path};
+    use types.{type-definition};
+    use values.{value-definition};
+    use modules.{module-definition};
+    use packages.{package-specification};
+    use distributions.{distribution};
+    use generator.{severity, diagnostic, granularity};
+
+    /// Validator metadata
+    record validator-info {
+        name: string,
+        description: string,
+        version: string,
+        categories: list<string>,
+        supported-granularities: list<granularity>,
+    }
+
+    /// Validation options
+    record validation-options {
+        min-severity: option<severity>,
+        enabled-rules: list<string>,
+        disabled-rules: list<string>,
+        custom: option<string>,
+    }
+
+    /// Validation result
+    record validation-result {
+        diagnostics: list<diagnostic>,
+        passed: bool,
+        error-count: u32,
+        warning-count: u32,
+    }
+
+    /// Get validator metadata
+    info: func() -> validator-info;
+
+    /// Validate entire distribution
+    validate-distribution: func(
+        dist: distribution,
+        options: validation-options,
+    ) -> validation-result;
+
+    /// Validate a single module
+    validate-module: func(
+        path: module-path,
+        module: module-definition,
+        deps: package-specification,
+        options: validation-options,
+    ) -> validation-result;
+
+    /// Validate a single type
+    validate-type: func(
+        fqn: fqname,
+        def: type-definition,
+        deps: package-specification,
+        options: validation-options,
+    ) -> validation-result;
+
+    /// Validate a single value
+    validate-value: func(
+        fqn: fqname,
+        def: value-definition,
+        deps: package-specification,
+        options: validation-options,
+    ) -> validation-result;
+}
