@@ -51,7 +51,7 @@ The presence of specific sections determines the mode:
 |--------|-------------|
 | [morphir.toml](./morphir-toml.md) | Configuration file structure and sections |
 | [Workspace Mode](./workspace-mode.md) | Workspace-specific configuration and discovery |
-| [Tasks](./tasks.md) | Task definitions and pre/post hooks |
+| [Tasks](../extensions/tasks.md) | Task definitions and pre/post hooks |
 | [Merge Rules](./merge-rules.md) | Configuration inheritance and merge behavior |
 | [Environment](./environment.md) | Environment variables and runtime overrides |
 
