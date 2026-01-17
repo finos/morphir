@@ -1,0 +1,38 @@
+package morphir:frontend@0.4.0;
+
+use compiler.{source-file, project-config, diagnostic};
+use morphir:ir@0.4.0.modules.{module-definition};
+use morphir:ir@0.4.0.naming.{module-path};
+
+/// Streaming compilation interface (optional capability)
+interface streaming {
+    /// Streaming module result
+    record module-compile-result {
+        /// Module path
+        path: module-path,
+        /// Compiled module (if successful)
+        module: option<module-definition>,
+        /// Diagnostics for this module
+        diagnostics: list<diagnostic>,
+    }
+
+    /// Compile project with streaming results
+    /// Returns a stream handle for polling results
+    compile-streaming: func(
+        config: project-config,
+        files: list<source-file>,
+    ) -> stream-handle;
+
+    /// Stream handle for polling results
+    type stream-handle = u64;
+
+    /// Poll for next result (non-blocking)
+    /// Returns none when stream is complete
+    poll-result: func(handle: stream-handle) -> option<module-compile-result>;
+
+    /// Check if stream is complete
+    is-complete: func(handle: stream-handle) -> bool;
+
+    /// Cancel streaming compilation
+    cancel: func(handle: stream-handle);
+}

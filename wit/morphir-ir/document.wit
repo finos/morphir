@@ -1,0 +1,45 @@
+package morphir:ir@0.4.0;
+
+/// Document AST for schema-less data and attributes
+interface document {
+    /// Document value - opaque JSON-like data
+    /// Represented as JSON string for cross-component compatibility
+    /// This avoids WIT's recursive type limitation
+    type document-value = string;
+
+    /// Parse JSON string to document
+    parse: func(json: string) -> result<document-value, string>;
+
+    /// Serialize document to JSON string
+    stringify: func(doc: document-value) -> string;
+
+    /// Create null document
+    null-value: func() -> document-value;
+
+    /// Create boolean document
+    bool-value: func(v: bool) -> document-value;
+
+    /// Create integer document
+    int-value: func(v: s64) -> document-value;
+
+    /// Create float document
+    float-value: func(v: f64) -> document-value;
+
+    /// Create string document
+    string-value: func(v: string) -> document-value;
+
+    /// Create array document
+    array-value: func(items: list<document-value>) -> document-value;
+
+    /// Create object document from key-value pairs
+    object-value: func(pairs: list<tuple<string, document-value>>) -> document-value;
+
+    /// Get field from object document
+    get-field: func(doc: document-value, key: string) -> option<document-value>;
+
+    /// Check if document is null
+    is-null: func(doc: document-value) -> bool;
+
+    /// Merge two documents (second wins on conflict)
+    merge: func(base: document-value, overlay: document-value) -> document-value;
+}

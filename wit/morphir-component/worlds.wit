@@ -1,0 +1,212 @@
+package morphir:component@0.4.0;
+
+use morphir:extension@0.4.0.{info, capabilities};
+use morphir:frontend@0.4.0.{compiler};
+use morphir:frontend@0.4.0 as frontend;
+use morphir:backend@0.4.0.{generator, validator, transform};
+use morphir:backend@0.4.0 as backend;
+use morphir:vfs@0.4.0.{reader, writer, workspace};
+
+// ============================================================
+// MINIMAL EXTENSION (Info Only)
+// ============================================================
+
+/// Minimal extension - just provides info and health check
+/// All extensions should start here before adding capabilities
+world info-component {
+    export info;
+}
+
+/// Extension with capability discovery
+world discoverable-component {
+    export info;
+    export capabilities;
+}
+
+// ============================================================
+// FRONTEND COMPONENTS (Source → IR)
+// ============================================================
+
+/// Minimal frontend compiler component (basic compilation only)
+world minimal-compiler-component {
+    export info;
+    export compiler;
+}
+
+/// Frontend compiler component with capability discovery
+world compiler-component {
+    export info;
+    export capabilities;
+    export compiler;
+}
+
+/// Frontend with VFS access (for reading dependencies)
+world compiler-with-vfs-component {
+    import reader;
+    export info;
+    export compiler;
+}
+
+/// Frontend with streaming support
+world streaming-compiler-component {
+    export info;
+    export capabilities;
+    export compiler;
+    export frontend:streaming;
+}
+
+/// Frontend with incremental support
+world incremental-compiler-component {
+    import reader;
+    export info;
+    export capabilities;
+    export compiler;
+    export frontend:incremental;
+}
+
+/// Full-featured frontend (all capabilities)
+world full-compiler-component {
+    import reader;
+    export info;
+    export capabilities;
+    export compiler;
+    export frontend:streaming;
+    export frontend:incremental;
+}
+
+// ============================================================
+// BACKEND COMPONENTS (IR → Target)
+// ============================================================
+
+/// Minimal code generator component
+world minimal-generator-component {
+    export info;
+    export generator;
+}
+
+/// Code generator component with capability discovery
+world generator-component {
+    export info;
+    export capabilities;
+    export generator;
+}
+
+/// Generator with streaming support
+world streaming-generator-component {
+    export info;
+    export capabilities;
+    export generator;
+    export backend:streaming;
+}
+
+/// Generator with incremental support
+world incremental-generator-component {
+    export info;
+    export capabilities;
+    export generator;
+    export backend:incremental;
+}
+
+/// Full-featured generator (all capabilities)
+world full-generator-component {
+    export info;
+    export capabilities;
+    export generator;
+    export backend:streaming;
+    export backend:incremental;
+}
+
+/// Validator component
+world validator-component {
+    export info;
+    export validator;
+}
+
+/// Full backend (generator + validator)
+world backend-component {
+    export info;
+    export capabilities;
+    export generator;
+    export validator;
+}
+
+// ============================================================
+// TRANSFORMER COMPONENTS (IR → IR)
+// ============================================================
+
+/// Standalone transformer (pure IR transformation)
+world transform-component {
+    export info;
+    export transform;
+}
+
+/// Transformer with VFS access
+world transformer-component {
+    import reader;
+    import writer;
+    export info;
+    export capabilities;
+    export transform;
+}
+
+// ============================================================
+// WORKSPACE COMPONENTS
+// ============================================================
+
+/// Workspace management component (daemon-side)
+world workspace-manager-component {
+    export info;
+    export workspace;
+}
+
+/// Workspace-aware compiler
+world workspace-compiler-component {
+    import workspace;
+    import reader;
+    export info;
+    export capabilities;
+    export compiler;
+}
+
+// ============================================================
+// FULL PIPELINE COMPONENTS
+// ============================================================
+
+/// Full toolchain component (frontend + backend)
+world toolchain-component {
+    import reader;
+    export info;
+    export capabilities;
+    export compiler;
+    export generator;
+    export validator;
+}
+
+/// Toolchain with workspace support
+world workspace-toolchain-component {
+    import workspace;
+    import reader;
+    import writer;
+    export info;
+    export capabilities;
+    export compiler;
+    export generator;
+    export validator;
+}
+
+/// Full plugin with all capabilities
+world plugin-component {
+    import reader;
+    import writer;
+    import workspace;
+    export info;
+    export capabilities;
+    export compiler;
+    export generator;
+    export validator;
+    export transform;
+    export frontend:streaming;
+    export frontend:incremental;
+    export backend:streaming;
+    export backend:incremental;
+}

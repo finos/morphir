@@ -1,0 +1,36 @@
+package morphir:backend@0.4.0;
+
+use generator.{generation-options, artifact, diagnostic};
+use morphir:ir@0.4.0.distributions.{distribution};
+use morphir:ir@0.4.0.naming.{module-path};
+
+/// Streaming generation interface (optional capability)
+interface streaming {
+    /// Module generation result
+    record module-generation-result {
+        /// Module path that was generated
+        module-path: module-path,
+        /// Generated artifacts for this module
+        artifacts: list<artifact>,
+        /// Diagnostics for this module
+        diagnostics: list<diagnostic>,
+    }
+
+    /// Generate with streaming results
+    generate-streaming: func(
+        dist: distribution,
+        options: generation-options,
+    ) -> stream-handle;
+
+    /// Stream handle for polling results
+    type stream-handle = u64;
+
+    /// Poll for next result (non-blocking)
+    poll-result: func(handle: stream-handle) -> option<module-generation-result>;
+
+    /// Check if stream is complete
+    is-complete: func(handle: stream-handle) -> bool;
+
+    /// Cancel streaming generation
+    cancel: func(handle: stream-handle);
+}

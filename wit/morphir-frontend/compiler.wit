@@ -1,0 +1,221 @@
+package morphir:frontend@0.4.0;
+
+use morphir:ir@0.4.0.{
+    naming.{name, module-path, package-path, fqname},
+    types.{type-definition},
+    values.{value-definition},
+    modules.{module-definition},
+    packages.{package-definition},
+    distributions.{distribution, semver},
+};
+
+/// Frontend compiler interface (source → IR)
+interface compiler {
+    /// Source language
+    enum source-language {
+        elm,
+        morphir-dsl,
+        custom,
+    }
+
+    /// Compilation granularity capability
+    flags compiler-capabilities {
+        /// Can compile entire workspace
+        workspace,
+        /// Can compile single project
+        project,
+        /// Can compile single module
+        module,
+        /// Can compile individual files
+        file,
+        /// Can compile code fragments
+        fragment,
+    }
+
+    /// Compiler metadata
+    record compiler-info {
+        name: string,
+        description: string,
+        version: string,
+        source-language: source-language,
+        custom-language: option<string>,
+        capabilities: compiler-capabilities,
+    }
+
+    /// Source file
+    record source-file {
+        /// File path (relative to project root)
+        path: string,
+        /// File content
+        content: string,
+    }
+
+    /// Project configuration
+    record project-config {
+        /// Project name
+        name: package-path,
+        /// Project version
+        version: semver,
+        /// Source directory
+        source-dir: string,
+        /// Dependencies
+        dependencies: list<tuple<package-path, semver>>,
+        /// Custom configuration as document
+        custom: option<morphir:ir@0.4.0.document.document-value>,
+    }
+
+    /// Workspace configuration
+    record workspace-config {
+        /// Workspace root path
+        root: string,
+        /// Projects in workspace
+        projects: list<project-config>,
+    }
+
+    /// Fragment context (for incremental/editor compilation)
+    record fragment-context {
+        /// Module this fragment belongs to
+        module-path: module-path,
+        /// Imports available in scope
+        imports: list<fqname>,
+        /// Local bindings in scope
+        locals: list<tuple<name, morphir:ir@0.4.0.types.ir-type>>,
+    }
+
+    /// Diagnostic severity
+    enum severity {
+        error,
+        warning,
+        info,
+        hint,
+    }
+
+    /// Source location
+    record source-location {
+        file: string,
+        start-line: u32,
+        start-col: u32,
+        end-line: u32,
+        end-col: u32,
+    }
+
+    /// Compiler diagnostic
+    record diagnostic {
+        severity: severity,
+        code: string,
+        message: string,
+        location: option<source-location>,
+        hints: list<string>,
+    }
+
+    /// Compilation result for workspace
+    variant workspace-result {
+        ok(list<distribution>),
+        partial(tuple<list<distribution>, list<diagnostic>>),
+        failed(list<diagnostic>),
+    }
+
+    /// Compilation result for project
+    variant project-result {
+        ok(distribution),
+        partial(tuple<distribution, list<diagnostic>>),
+        failed(list<diagnostic>),
+    }
+
+    /// Compilation result for files
+    variant files-result {
+        ok(package-definition),
+        partial(tuple<package-definition, list<diagnostic>>),
+        failed(list<diagnostic>),
+    }
+
+    /// Compilation result for module
+    variant module-result {
+        ok(module-definition),
+        partial(tuple<module-definition, list<diagnostic>>),
+        failed(list<diagnostic>),
+    }
+
+    /// Compilation result for fragment
+    variant fragment-result {
+        /// Compiled to type definition
+        type-def(type-definition),
+        /// Compiled to value definition
+        value-def(value-definition),
+        /// Compiled to expression (for REPL)
+        expression(morphir:ir@0.4.0.values.value),
+        /// Failed
+        failed(list<diagnostic>),
+    }
+
+    /// Get compiler metadata
+    info: func() -> compiler-info;
+
+    /// Compile entire workspace to IR
+    compile-workspace: func(
+        config: workspace-config,
+        files: list<source-file>,
+    ) -> workspace-result;
+
+    /// Compile single project to IR
+    compile-project: func(
+        config: project-config,
+        files: list<source-file>,
+    ) -> project-result;
+
+    /// Compile list of files to IR (incremental)
+    compile-files: func(
+        config: project-config,
+        files: list<source-file>,
+        /// Existing IR to merge with (for incremental)
+        existing: option<package-definition>,
+    ) -> files-result;
+
+    /// Compile a single module to IR
+    compile-module: func(
+        config: project-config,
+        /// Module path within the project
+        module-path: module-path,
+        /// Source files for this module
+        files: list<source-file>,
+        /// Existing module to merge with (for incremental)
+        existing: option<module-definition>,
+    ) -> module-result;
+
+    /// Compile a code fragment (for editor/REPL)
+    compile-fragment: func(
+        source: string,
+        context: fragment-context,
+    ) -> fragment-result;
+
+    /// Parse without full compilation (for syntax checking)
+    parse-file: func(
+        file: source-file,
+    ) -> result<_, list<diagnostic>>;
+
+    /// Get completions at position (for editor integration)
+    completions: func(
+        file: source-file,
+        line: u32,
+        column: u32,
+        context: fragment-context,
+    ) -> list<completion-item>;
+
+    /// Completion item
+    record completion-item {
+        label: string,
+        kind: completion-kind,
+        detail: option<string>,
+        insert-text: option<string>,
+    }
+
+    /// Completion kind
+    enum completion-kind {
+        %function,
+        variable,
+        %type,
+        %constructor,
+        module,
+        keyword,
+    }
+}

@@ -1,0 +1,43 @@
+package morphir:backend@0.4.0;
+
+use generator.{generation-options, artifact, diagnostic};
+use morphir:ir@0.4.0.distributions.{distribution};
+use morphir:ir@0.4.0.naming.{module-path};
+
+/// Incremental generation interface (optional capability)
+interface incremental {
+    /// Module change notification
+    record module-change {
+        /// Module path that changed
+        path: module-path,
+        /// Type of change
+        change-type: change-type,
+    }
+
+    /// Change type
+    enum change-type {
+        /// Module was added
+        added,
+        /// Module was modified
+        modified,
+        /// Module was removed
+        removed,
+    }
+
+    /// Incremental generation result
+    record incremental-generation-result {
+        /// Generated/updated artifacts
+        artifacts: list<artifact>,
+        /// Artifacts to delete (paths)
+        deleted-artifacts: list<string>,
+        /// Diagnostics
+        diagnostics: list<diagnostic>,
+    }
+
+    /// Generate incrementally for changed modules only
+    generate-incremental: func(
+        dist: distribution,
+        changed-modules: list<module-change>,
+        options: generation-options,
+    ) -> incremental-generation-result;
+}

@@ -1,0 +1,54 @@
+package morphir:ir@0.4.0;
+
+/// Core naming types
+interface naming {
+    use document.{document-value};
+
+    /// Type-level attributes (optional metadata, no type info needed)
+    /// Types don't carry type annotations on themselves
+    variant type-attributes {
+        /// No attributes
+        none,
+        /// Custom metadata only
+        meta(document-value),
+    }
+
+    /// A single name segment in kebab-case
+    /// Examples: "user", "order-id", "get-user-by-email"
+    type name = string;
+
+    /// A path is a list of names representing hierarchy
+    /// Serialized as slash-separated: "main/domain/users"
+    type path = string;
+
+    /// Module path within a package
+    type module-path = string;
+
+    /// Package path (organization/project)
+    type package-path = string;
+
+    /// Qualified name: module path + local name
+    /// Format: "module/path#local-name"
+    record qname {
+        module-path: module-path,
+        local-name: name,
+    }
+
+    /// Fully qualified name: package + module + local name
+    /// Format: "package:module#name"
+    record fqname {
+        package-path: package-path,
+        module-path: module-path,
+        local-name: name,
+    }
+
+    /// Type variable name
+    type type-variable = string;
+
+    /// Parse FQName from canonical string
+    /// "my-org/project:domain/users#user" -> FQName
+    fqname-from-string: func(s: string) -> option<fqname>;
+
+    /// Render FQName to canonical string
+    fqname-to-string: func(fqn: fqname) -> string;
+}

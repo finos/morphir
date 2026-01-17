@@ -1,0 +1,44 @@
+package morphir:extension@0.4.0;
+
+/// Required interface - all extensions must implement this
+interface info {
+    /// Extension type classification
+    enum extension-type {
+        /// Frontend/compiler (source → IR)
+        frontend,
+        /// Backend/code generator (IR → target)
+        codegen,
+        /// Validator/analyzer
+        validator,
+        /// IR transformer (IR → IR)
+        transformer,
+        /// General purpose
+        general,
+    }
+
+    /// Extension metadata
+    record extension-info {
+        /// Unique identifier (e.g., "spark-codegen")
+        id: string,
+        /// Human-readable name
+        name: string,
+        /// Version (semver)
+        version: string,
+        /// Description
+        description: string,
+        /// Author/maintainer
+        author: option<string>,
+        /// Homepage/repository URL
+        homepage: option<string>,
+        /// License identifier (SPDX)
+        license: option<string>,
+        /// Extension types (can fulfill multiple roles)
+        types: list<extension-type>,
+    }
+
+    /// Return extension metadata
+    get-info: func() -> extension-info;
+
+    /// Health check - return true if extension is ready
+    ping: func() -> bool;
+}

@@ -1,0 +1,46 @@
+package morphir:frontend@0.4.0;
+
+use compiler.{source-file, project-config, diagnostic};
+use morphir:ir@0.4.0.packages.{package-definition};
+use morphir:ir@0.4.0.naming.{module-path};
+
+/// Incremental compilation interface (optional capability)
+interface incremental {
+    /// File change event
+    variant file-change {
+        /// File was created
+        created(source-file),
+        /// File was modified
+        modified(source-file),
+        /// File was deleted
+        deleted(string),
+        /// File was renamed
+        renamed(tuple<string, string>),
+    }
+
+    /// Incremental compilation result
+    record incremental-result {
+        /// Updated package definition
+        package: package-definition,
+        /// Modules that were recompiled
+        recompiled-modules: list<module-path>,
+        /// Modules that were invalidated (dependents)
+        invalidated-modules: list<module-path>,
+        /// Diagnostics from recompilation
+        diagnostics: list<diagnostic>,
+    }
+
+    /// Apply incremental changes to existing IR
+    compile-incremental: func(
+        config: project-config,
+        /// Existing compiled IR
+        existing: package-definition,
+        /// File changes since last compilation
+        changes: list<file-change>,
+    ) -> incremental-result;
+
+    /// Get dependency graph for invalidation analysis
+    get-module-dependencies: func(
+        existing: package-definition,
+    ) -> list<tuple<module-path, list<module-path>>>;
+}

@@ -1,0 +1,75 @@
+package morphir:backend@0.4.0;
+
+use generator.{diagnostic};
+use morphir:ir@0.4.0.{
+    naming.{fqname, module-path},
+    types.{type-definition},
+    values.{value-definition},
+    modules.{module-definition},
+    packages.{package-definition},
+    distributions.{distribution},
+    document.{document-value},
+};
+
+/// IR transformation interface
+interface transform {
+    /// Transformation metadata
+    record transform-info {
+        /// Transform name
+        name: string,
+        /// Description
+        description: string,
+        /// Version
+        version: string,
+        /// Whether transform preserves semantics
+        semantic-preserving: bool,
+    }
+
+    /// Transformation options
+    record transform-options {
+        /// Dry run (report changes without applying)
+        dry-run: bool,
+        /// Custom options (JSON-like)
+        custom: option<document-value>,
+    }
+
+    /// Transformation result
+    record transform-result {
+        /// Whether transformation succeeded
+        success: bool,
+        /// Number of definitions modified
+        definitions-modified: u32,
+        /// Diagnostics (warnings, info)
+        diagnostics: list<diagnostic>,
+    }
+
+    /// Get transform metadata
+    info: func() -> transform-info;
+
+    /// Transform entire distribution
+    transform-distribution: func(
+        dist: distribution,
+        options: transform-options,
+    ) -> tuple<distribution, transform-result>;
+
+    /// Transform a single module
+    transform-module: func(
+        path: module-path,
+        module: module-definition,
+        options: transform-options,
+    ) -> tuple<module-definition, transform-result>;
+
+    /// Transform a single type definition
+    transform-type: func(
+        fqn: fqname,
+        def: type-definition,
+        options: transform-options,
+    ) -> tuple<type-definition, transform-result>;
+
+    /// Transform a single value definition
+    transform-value: func(
+        fqn: fqname,
+        def: value-definition,
+        options: transform-options,
+    ) -> tuple<value-definition, transform-result>;
+}

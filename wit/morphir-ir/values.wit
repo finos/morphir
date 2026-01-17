@@ -1,0 +1,197 @@
+package morphir:ir@0.4.0;
+
+/// Literal values
+interface literals {
+    use document.{document-value};
+
+    /// Literal constant values
+    variant literal {
+        /// Boolean: true, false
+        bool-literal(bool),
+
+        /// Single character
+        char-literal(string),
+
+        /// Text string
+        string-literal(string),
+
+        /// Integer (includes negatives)
+        integer-literal(s64),
+
+        /// Floating-point
+        float-literal(f64),
+
+        /// Arbitrary-precision decimal (stored as string)
+        decimal-literal(string),
+
+        /// Document literal (schema-less JSON-like)
+        document-literal(document-value),
+    }
+}
+
+/// Pattern matching
+interface patterns {
+    use naming.{name, fqname, type-attributes};
+    use literals.{literal};
+
+    /// Pattern for destructuring and matching
+    /// Patterns use type-attributes (no type info, just optional metadata)
+    variant pattern {
+        /// Wildcard: `_`
+        wildcard-pattern(type-attributes),
+
+        /// As pattern: `x` or `(a, b) as pair`
+        as-pattern(tuple<type-attributes, pattern, name>),
+
+        /// Tuple pattern: `(a, b, c)`
+        tuple-pattern(tuple<type-attributes, list<pattern>>),
+
+        /// Constructor pattern: `Just x`
+        constructor-pattern(tuple<type-attributes, fqname, list<pattern>>),
+
+        /// Empty list: `[]`
+        empty-list-pattern(type-attributes),
+
+        /// Head :: tail: `x :: xs`
+        head-tail-pattern(tuple<type-attributes, pattern, pattern>),
+
+        /// Literal match: `42`, `"hello"`
+        literal-pattern(tuple<type-attributes, literal>),
+
+        /// Unit: `()`
+        unit-pattern(type-attributes),
+    }
+}
+
+/// Value expressions
+interface values {
+    use naming.{name, fqname};
+    use types.{ir-type, value-attributes, access, hole-reason, incompleteness};
+    use patterns.{pattern};
+    use literals.{literal};
+
+    /// Native operation hint
+    variant native-hint {
+        arithmetic,
+        comparison,
+        string-op,
+        collection-op,
+        platform-specific(string),
+    }
+
+    /// Native operation info
+    record native-info {
+        hint: native-hint,
+        description: option<string>,
+    }
+
+    /// Value expression
+    /// Values use value-attributes (carry their type, optionally with metadata)
+    variant value {
+        // === Literals & Data Construction ===
+
+        /// Literal constant
+        %literal(tuple<value-attributes, literal>),
+
+        /// Constructor reference: `Just`
+        %constructor(tuple<value-attributes, fqname>),
+
+        /// Tuple: `(1, "hello")`
+        %tuple(tuple<value-attributes, list<value>>),
+
+        /// List: `[1, 2, 3]`
+        %list(tuple<value-attributes, list<value>>),
+
+        /// Record: `{ name = "Alice" }`
+        %record(tuple<value-attributes, list<tuple<name, value>>>),
+
+        /// Unit: `()`
+        %unit(value-attributes),
+
+        // === References ===
+
+        /// Variable: `x`
+        variable(tuple<value-attributes, name>),
+
+        /// Reference to defined value: `List.map`
+        reference(tuple<value-attributes, fqname>),
+
+        // === Field Access ===
+
+        /// Field access: `record.field`
+        field(tuple<value-attributes, value, name>),
+
+        /// Field function: `.field`
+        field-function(tuple<value-attributes, name>),
+
+        // === Function Application ===
+
+        /// Apply: `f x`
+        apply(tuple<value-attributes, value, value>),
+
+        /// Lambda: `\x -> x + 1`
+        lambda(tuple<value-attributes, pattern, value>),
+
+        // === Let Bindings ===
+
+        /// Let: `let x = 1 in x + 1`
+        let-definition(tuple<value-attributes, name, value-definition-body, value>),
+
+        /// Recursive let: `let f = ... g ...; g = ... f ... in ...`
+        let-recursion(tuple<value-attributes, list<tuple<name, value-definition-body>>, value>),
+
+        /// Destructure: `let (a, b) = pair in a + b`
+        destructure(tuple<value-attributes, pattern, value, value>),
+
+        // === Control Flow ===
+
+        /// If-then-else
+        if-then-else(tuple<value-attributes, value, value, value>),
+
+        /// Pattern match: `case x of ...`
+        pattern-match(tuple<value-attributes, value, list<tuple<pattern, value>>>),
+
+        // === Record Update ===
+
+        /// Update: `{ record | field = new }`
+        update-record(tuple<value-attributes, value, list<tuple<name, value>>>),
+
+        // === Special (v4) ===
+
+        /// Incomplete/broken reference
+        hole(tuple<value-attributes, hole-reason, option<ir-type>>),
+
+        /// Native operation
+        native(tuple<value-attributes, fqname, native-info>),
+
+        /// External FFI
+        external(tuple<value-attributes, string, string>),
+    }
+
+    /// Value definition body
+    variant value-definition-body {
+        /// Expression body
+        expression-body(tuple<list<tuple<name, ir-type>>, ir-type, value>),
+
+        /// Native body
+        native-body(tuple<list<tuple<name, ir-type>>, ir-type, native-info>),
+
+        /// External body
+        external-body(tuple<list<tuple<name, ir-type>>, ir-type, string, string>),
+
+        /// Incomplete body (v4)
+        incomplete-body(tuple<list<tuple<name, ir-type>>, option<ir-type>, incompleteness, option<value>>),
+    }
+
+    /// Value specification (signature only)
+    record value-specification {
+        inputs: list<tuple<name, ir-type>>,
+        output: ir-type,
+    }
+
+    /// Access-controlled value definition
+    record value-definition {
+        access: access,
+        body: value-definition-body,
+    }
+}

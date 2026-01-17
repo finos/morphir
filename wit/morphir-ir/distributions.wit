@@ -1,0 +1,68 @@
+package morphir:ir@0.4.0;
+
+/// Distribution types
+interface distributions {
+    use naming.{name, fqname, package-path};
+    use modules.{documentation};
+    use packages.{package-specification, package-definition};
+
+    /// Semantic version
+    record semver {
+        major: u32,
+        minor: u32,
+        patch: u32,
+        pre-release: option<string>,
+        build-metadata: option<string>,
+    }
+
+    /// Package info
+    record package-info {
+        name: package-path,
+        version: semver,
+    }
+
+    /// Entry point kind
+    enum entry-point-kind {
+        main,
+        command,
+        handler,
+        job,
+        policy,
+    }
+
+    /// Entry point
+    record entry-point {
+        target: fqname,
+        kind: entry-point-kind,
+        doc: option<documentation>,
+    }
+
+    /// Library distribution
+    record library-distribution {
+        pkg-info: package-info,
+        definition: package-definition,
+        dependencies: list<tuple<package-path, package-specification>>,
+    }
+
+    /// Specs distribution
+    record specs-distribution {
+        pkg-info: package-info,
+        specification: package-specification,
+        dependencies: list<tuple<package-path, package-specification>>,
+    }
+
+    /// Application distribution
+    record application-distribution {
+        pkg-info: package-info,
+        definition: package-definition,
+        dependencies: list<tuple<package-path, package-definition>>,
+        entry-points: list<tuple<name, entry-point>>,
+    }
+
+    /// Distribution variant
+    variant distribution {
+        library(library-distribution),
+        specs(specs-distribution),
+        application(application-distribution),
+    }
+}
