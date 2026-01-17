@@ -1,12 +1,16 @@
 package morphir:vfs@0.4.0;
 
+use morphir:ir/naming@0.4.0;
+use morphir:ir/distributions@0.4.0;
+use morphir:ir/document@0.4.0;
+use morphir:frontend/compiler@0.4.0;
+
 /// Workspace management
 interface workspace {
-    use morphir:ir@0.4.0.{
-        naming.{package-path},
-        distributions.{semver, distribution},
-        document.{document-value},
-    };
+    use naming.{package-path};
+    use distributions.{semver, distribution};
+    use document.{document-value};
+    use compiler.{diagnostic};
 
     // ============================================================
     // Types
@@ -245,5 +249,5 @@ interface workspace {
     ) -> result<_, workspace-error>;
 
     /// Get workspace-wide diagnostics
-    get-diagnostics: func() -> list<tuple<package-path, list<morphir:frontend@0.4.0.compiler.diagnostic>>>;
+    get-diagnostics: func() -> list<tuple<package-path, list<diagnostic>>>;
 }

@@ -1,11 +1,14 @@
 package morphir:frontend@0.4.0;
 
-use compiler.{source-file, project-config, diagnostic};
-use morphir:ir@0.4.0.packages.{package-definition};
-use morphir:ir@0.4.0.naming.{module-path};
+use morphir:ir/packages@0.4.0;
+use morphir:ir/naming@0.4.0;
 
 /// Incremental compilation interface (optional capability)
 interface incremental {
+    use compiler.{source-file, project-config, diagnostic};
+    use packages.{package-definition};
+    use naming.{module-path};
+
     /// File change event
     variant file-change {
         /// File was created
@@ -21,7 +24,7 @@ interface incremental {
     /// Incremental compilation result
     record incremental-result {
         /// Updated package definition
-        package: package-definition,
+        pkg: package-definition,
         /// Modules that were recompiled
         recompiled-modules: list<module-path>,
         /// Modules that were invalidated (dependents)

@@ -5,40 +5,91 @@ interface types {
     use document.{document-value};
     use naming.{type-attributes, name, fqname, type-variable};
 
-    /// Record field
-    record field {
+    /// Encoded recursive AST - format-agnostic representation
+    /// Supports JSON, CBOR, MessagePack, or any future format
+    record encoded-ast {
+        /// MIME type: "application/json", "application/cbor", etc.
+        content-type: string,
+        /// Encoded data bytes
+        data: list<u8>,
+    }
+
+    /// Type expression - encoded recursive structure
+    /// Use constructor/accessor functions to work with types
+    type ir-type = encoded-ast;
+
+    /// Kind enumeration for pattern matching on ir-type
+    enum ir-type-kind {
+        variable,
+        reference,
+        %tuple,
+        %record,
+        extensible-record,
+        %function,
+        unit,
+    }
+
+    /// Get the kind of an ir-type
+    get-ir-type-kind: func(t: ir-type) -> ir-type-kind;
+
+    /// Field record for record types
+    record ir-field {
         field-name: name,
         field-type: ir-type,
     }
 
+    // === Type Constructors ===
+
+    /// Construct a variable type: `a`, `comparable`
+    make-variable-type: func(attrs: type-attributes, var-name: type-variable) -> ir-type;
+
+    /// Construct a reference type: `String`, `List a`
+    make-reference-type: func(attrs: type-attributes, fqn: fqname, type-args: list<ir-type>) -> ir-type;
+
+    /// Construct a tuple type: `(Int, String)`
+    make-tuple-type: func(attrs: type-attributes, elements: list<ir-type>) -> ir-type;
+
+    /// Construct a record type: `{ name: String, age: Int }`
+    make-record-type: func(attrs: type-attributes, fields: list<ir-field>) -> ir-type;
+
+    /// Construct an extensible record type: `{ a | name: String }`
+    make-extensible-record-type: func(attrs: type-attributes, var-name: type-variable, fields: list<ir-field>) -> ir-type;
+
+    /// Construct a function type: `Int -> String`
+    make-function-type: func(attrs: type-attributes, arg: ir-type, ret: ir-type) -> ir-type;
+
+    /// Construct a unit type: `()`
+    make-unit-type: func(attrs: type-attributes) -> ir-type;
+
+    // === Type Accessors ===
+
+    /// Extract type attributes from any ir-type
+    get-type-attributes: func(t: ir-type) -> type-attributes;
+
+    /// Extract variable name (only valid for variable types)
+    get-variable-name: func(t: ir-type) -> option<type-variable>;
+
+    /// Extract reference info (only valid for reference types)
+    get-reference-info: func(t: ir-type) -> option<tuple<fqname, list<ir-type>>>;
+
+    /// Extract tuple elements (only valid for tuple types)
+    get-tuple-elements: func(t: ir-type) -> option<list<ir-type>>;
+
+    /// Extract record fields (only valid for record types)
+    get-record-fields: func(t: ir-type) -> option<list<ir-field>>;
+
+    /// Extract extensible record info (only valid for extensible-record types)
+    get-extensible-record-info: func(t: ir-type) -> option<tuple<type-variable, list<ir-field>>>;
+
+    /// Extract function arg and return types (only valid for function types)
+    get-function-types: func(t: ir-type) -> option<tuple<ir-type, ir-type>>;
+
+    // === Existing Non-Recursive Types ===
+
     /// Constructor for custom types
     record type-ctor {
         ctor-name: name,
-        args: list<tuple<name, ir-type>>,
-    }
-
-    /// Type expression (uses type-attributes: none or metadata)
-    variant ir-type {
-        /// Type variable: `a`, `comparable`
-        variable(tuple<type-attributes, type-variable>),
-
-        /// Reference to named type: `String`, `List a`
-        reference(tuple<type-attributes, fqname, list<ir-type>>),
-
-        /// Tuple: `(Int, String)`
-        %tuple(tuple<type-attributes, list<ir-type>>),
-
-        /// Record: `{ name: String, age: Int }`
-        %record(tuple<type-attributes, list<field>>),
-
-        /// Extensible record: `{ a | name: String }`
-        extensible-record(tuple<type-attributes, type-variable, list<field>>),
-
-        /// Function: `Int -> String`
-        %function(tuple<type-attributes, ir-type, ir-type>),
-
-        /// Unit type: `()`
-        unit(type-attributes),
+        ctor-args: list<tuple<name, ir-type>>,
     }
 
     /// Value-level attributes (expressions carry their type)

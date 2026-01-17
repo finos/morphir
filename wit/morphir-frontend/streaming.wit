@@ -1,11 +1,14 @@
 package morphir:frontend@0.4.0;
 
-use compiler.{source-file, project-config, diagnostic};
-use morphir:ir@0.4.0.modules.{module-definition};
-use morphir:ir@0.4.0.naming.{module-path};
+use morphir:ir/modules@0.4.0;
+use morphir:ir/naming@0.4.0;
 
 /// Streaming compilation interface (optional capability)
 interface streaming {
+    use compiler.{source-file, project-config, diagnostic};
+    use modules.{module-definition};
+    use naming.{module-path};
+
     /// Streaming module result
     record module-compile-result {
         /// Module path

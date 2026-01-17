@@ -20,6 +20,13 @@ pnpm = "10.28.0" # Provides pnpm dlx
 # Development tools
 golangci-lint = "2.8.0"   # Go linter aggregator
 
+# Task dependencies (augments file-based tasks)
+[tasks.typecheck]
+depends = ["wit:verify"]
+
+[tasks.check]
+depends = ["fmt-check", "lint", "typecheck"]
+
 # Windows-specific tasks (inline tasks work on Windows, file-based tasks don't)
 # These call bun to execute the TypeScript task implementations
 [tasks."windows:workspace-setup"]

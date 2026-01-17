@@ -1,15 +1,19 @@
 package morphir:vfs@0.4.0;
 
-use morphir:ir@0.4.0.{
-    naming.{fqname, module-path, package-path},
-    types.{type-definition},
-    values.{value-definition},
-    modules.{module-definition},
-    distributions.{distribution},
-};
+use morphir:ir/naming@0.4.0;
+use morphir:ir/types@0.4.0;
+use morphir:ir/values@0.4.0;
+use morphir:ir/modules@0.4.0;
+use morphir:ir/distributions@0.4.0;
 
 /// VFS read-only access
 interface reader {
+    use naming.{fqname, module-path, package-path};
+    use types.{type-definition};
+    use values.{value-definition};
+    use modules.{module-definition};
+    use distributions.{distribution};
+
     /// Read error
     variant read-error {
         not-found(string),

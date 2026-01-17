@@ -1,14 +1,17 @@
 package morphir:vfs@0.4.0;
 
-use morphir:ir@0.4.0.{
-    naming.{fqname},
-    types.{type-definition},
-    values.{value-definition},
-};
-use morphir:backend@0.4.0.generator.{diagnostic};
+use morphir:ir/naming@0.4.0;
+use morphir:ir/types@0.4.0;
+use morphir:ir/values@0.4.0;
+use morphir:backend/generator@0.4.0;
 
 /// VFS write access
 interface writer {
+    use naming.{fqname};
+    use types.{type-definition};
+    use values.{value-definition};
+    use generator.{diagnostic};
+
     /// Write error
     variant write-error {
         permission-denied(string),

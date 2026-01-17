@@ -1,11 +1,14 @@
 package morphir:backend@0.4.0;
 
-use generator.{generation-options, artifact, diagnostic};
-use morphir:ir@0.4.0.distributions.{distribution};
-use morphir:ir@0.4.0.naming.{module-path};
+use morphir:ir/distributions@0.4.0;
+use morphir:ir/naming@0.4.0;
 
 /// Streaming generation interface (optional capability)
 interface streaming {
+    use generator.{generation-options, artifact, diagnostic};
+    use distributions.{distribution};
+    use naming.{module-path};
+
     /// Module generation result
     record module-generation-result {
         /// Module path that was generated

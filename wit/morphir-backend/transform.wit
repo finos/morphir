@@ -1,18 +1,24 @@
 package morphir:backend@0.4.0;
 
-use generator.{diagnostic};
-use morphir:ir@0.4.0.{
-    naming.{fqname, module-path},
-    types.{type-definition},
-    values.{value-definition},
-    modules.{module-definition},
-    packages.{package-definition},
-    distributions.{distribution},
-    document.{document-value},
-};
+use morphir:ir/naming@0.4.0;
+use morphir:ir/types@0.4.0;
+use morphir:ir/values@0.4.0;
+use morphir:ir/modules@0.4.0;
+use morphir:ir/packages@0.4.0;
+use morphir:ir/distributions@0.4.0;
+use morphir:ir/document@0.4.0;
 
 /// IR transformation interface
 interface transform {
+    use naming.{fqname, module-path};
+    use types.{type-definition};
+    use values.{value-definition};
+    use modules.{module-definition};
+    use packages.{package-definition};
+    use distributions.{distribution};
+    use document.{document-value};
+    use generator.{diagnostic};
+
     /// Transformation metadata
     record transform-info {
         /// Transform name
