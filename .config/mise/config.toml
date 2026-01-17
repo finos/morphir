@@ -8,6 +8,7 @@ experimental = true
 # Core tools
 go = "1.25.6"
 python = "3.14.2"
+rust = "1.92.0"  # For wasm-tools WIT verification
 
 # JavaScript runtimes and package managers (for toolchain backend tests)
 node = "24.13.0" # Provides npm and npx

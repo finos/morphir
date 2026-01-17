@@ -69,6 +69,15 @@ async function main() {
   }
 
   console.log("All modules build successfully!");
+
+  // Verify WIT files
+  console.log("\nRunning WIT verification...");
+  try {
+    await $`mise run wit:verify`;
+  } catch (err) {
+    console.error("WIT verification failed");
+    process.exit(1);
+  }
 }
 
 main().catch((err) => {
