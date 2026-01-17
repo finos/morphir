@@ -9,6 +9,9 @@ tracking:
   github_discussions: []
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Morphir Extensions
 
 The extension architecture for adding capabilities to Morphir via WASM components and the task system.
@@ -76,7 +79,11 @@ interface info {
 }
 ```
 
-**Minimal Extension (Rust):**
+**Minimal Extension Implementation:**
+
+<Tabs groupId="language">
+  <TabItem value="rust" label="Rust" default>
+
 ```rust
 use morphir_extension::info::{ExtensionInfo, Info};
 
@@ -100,6 +107,65 @@ impl Info for MyExtension {
     }
 }
 ```
+
+  </TabItem>
+  <TabItem value="go" label="Go">
+
+```go
+package main
+
+import "github.com/morphir/extension"
+
+type MyExtension struct{}
+
+func (e *MyExtension) GetInfo() extension.ExtensionInfo {
+    return extension.ExtensionInfo{
+        ID:          "my-extension",
+        Name:        "My First Extension",
+        Version:     "0.1.0",
+        Description: "A minimal Morphir extension",
+        Author:      stringPtr("My Name"),
+        Homepage:    stringPtr("https://github.com/me/my-extension"),
+        License:     stringPtr("Apache-2.0"),
+    }
+}
+
+func (e *MyExtension) Ping() bool {
+    return true // Extension is ready
+}
+
+func stringPtr(s string) *string { return &s }
+```
+
+  </TabItem>
+  <TabItem value="typescript" label="TypeScript">
+
+```typescript
+import { ExtensionInfo, Info } from "@morphir/extension";
+
+class MyExtension implements Info {
+  getInfo(): ExtensionInfo {
+    return {
+      id: "my-extension",
+      name: "My First Extension",
+      version: "0.1.0",
+      description: "A minimal Morphir extension",
+      author: "My Name",
+      homepage: "https://github.com/me/my-extension",
+      license: "Apache-2.0",
+    };
+  }
+
+  ping(): boolean {
+    return true; // Extension is ready
+  }
+}
+
+export default new MyExtension();
+```
+
+  </TabItem>
+</Tabs>
 
 ### Extension Discovery
 
@@ -894,17 +960,45 @@ A step-by-step guide for building Morphir extensions from scratch.
 **Goal:** Verify your development setup and basic connectivity.
 
 1. **Create project structure:**
+
+<Tabs groupId="language">
+  <TabItem value="rust" label="Rust" default>
+
 ```bash
 mkdir my-morphir-extension && cd my-morphir-extension
-# For Rust:
-cargo new --lib . && cargo add wit-bindgen
-# For Go:
-go mod init my-morphir-extension && go get github.com/bytecodealliance/wasm-tools-go
+cargo new --lib .
+cargo add wit-bindgen
 ```
 
+  </TabItem>
+  <TabItem value="go" label="Go">
+
+```bash
+mkdir my-morphir-extension && cd my-morphir-extension
+go mod init my-morphir-extension
+go get github.com/bytecodealliance/wasm-tools-go
+```
+
+  </TabItem>
+  <TabItem value="typescript" label="TypeScript">
+
+```bash
+mkdir my-morphir-extension && cd my-morphir-extension
+npm init -y
+npm install @morphir/extension-sdk
+npm install -D typescript @aspect-build/component
+```
+
+  </TabItem>
+</Tabs>
+
 2. **Implement minimal info interface:**
+
+<Tabs groupId="language">
+  <TabItem value="rust" label="Rust" default>
+
 ```rust
-// src/lib.rs (Rust)
+// src/lib.rs
 use morphir_extension::info::{ExtensionInfo, Info};
 
 struct MyExtension;
@@ -927,15 +1021,107 @@ impl Info for MyExtension {
 }
 ```
 
+  </TabItem>
+  <TabItem value="go" label="Go">
+
+```go
+// main.go
+package main
+
+import "github.com/morphir/extension"
+
+type MyExtension struct{}
+
+func (e *MyExtension) GetInfo() extension.ExtensionInfo {
+    return extension.ExtensionInfo{
+        ID:          "my-extension",
+        Name:        "My Extension",
+        Version:     "0.1.0",
+        Description: "My first Morphir extension",
+        Author:      stringPtr("My Name"),
+        Homepage:    nil,
+        License:     stringPtr("Apache-2.0"),
+        Types:       []extension.ExtensionType{}, // Will add later
+    }
+}
+
+func (e *MyExtension) Ping() bool { return true }
+
+func stringPtr(s string) *string { return &s }
+```
+
+  </TabItem>
+  <TabItem value="typescript" label="TypeScript">
+
+```typescript
+// src/index.ts
+import { ExtensionInfo, Info, ExtensionType } from "@morphir/extension-sdk";
+
+class MyExtension implements Info {
+  getInfo(): ExtensionInfo {
+    return {
+      id: "my-extension",
+      name: "My Extension",
+      version: "0.1.0",
+      description: "My first Morphir extension",
+      author: "My Name",
+      homepage: undefined,
+      license: "Apache-2.0",
+      types: [], // Will add later
+    };
+  }
+
+  ping(): boolean {
+    return true;
+  }
+}
+
+export default new MyExtension();
+```
+
+  </TabItem>
+</Tabs>
+
 3. **Build and install:**
+
+<Tabs groupId="language">
+  <TabItem value="rust" label="Rust" default>
+
 ```bash
 # Build WASM component
 cargo build --target wasm32-unknown-unknown --release
-wasm-tools component new target/wasm32-unknown-unknown/release/my_extension.wasm -o my-extension.wasm
+wasm-tools component new target/wasm32-unknown-unknown/release/my_extension.wasm \
+  -o my-extension.wasm
 
 # Install to workspace
 cp my-extension.wasm /path/to/workspace/.morphir/extensions/
 ```
+
+  </TabItem>
+  <TabItem value="go" label="Go">
+
+```bash
+# Build WASM component
+GOOS=wasip1 GOARCH=wasm go build -o my-extension.wasm .
+
+# Install to workspace
+cp my-extension.wasm /path/to/workspace/.morphir/extensions/
+```
+
+  </TabItem>
+  <TabItem value="typescript" label="TypeScript">
+
+```bash
+# Build WASM component
+npx tsc
+npx componentize -o my-extension.wasm dist/index.js
+
+# Install to workspace
+cp my-extension.wasm /path/to/workspace/.morphir/extensions/
+```
+
+  </TabItem>
+</Tabs>
 
 4. **Verify installation:**
 ```bash
@@ -958,6 +1144,10 @@ morphir extension info my-extension
 **For a Backend (Code Generator):**
 
 1. **Add generator interface:**
+
+<Tabs groupId="language">
+  <TabItem value="rust" label="Rust" default>
+
 ```rust
 use morphir_backend::generator::{Generator, GeneratorInfo, GenerationResult, Artifact};
 
@@ -986,7 +1176,72 @@ impl Generator for MyExtension {
 }
 ```
 
+  </TabItem>
+  <TabItem value="go" label="Go">
+
+```go
+func (e *MyExtension) GeneratorInfo() generator.GeneratorInfo {
+    return generator.GeneratorInfo{
+        Name:                   "my-generator",
+        Description:            "Generates MyLang from Morphir IR",
+        Version:                "0.1.0",
+        Target:                 generator.TargetLanguageCustom,
+        CustomTarget:           stringPtr("mylang"),
+        SupportedGranularities: []generator.Granularity{generator.GranularityDistribution},
+    }
+}
+
+func (e *MyExtension) GenerateDistribution(dist ir.Distribution, opts generator.GenerationOptions) generator.GenerationResult {
+    artifacts := []generator.Artifact{
+        {
+            Path:      "output.mylang",
+            Content:   transformToMyLang(dist),
+            SourceMap: nil,
+        },
+    }
+    return generator.GenerationResultOk(artifacts)
+}
+```
+
+  </TabItem>
+  <TabItem value="typescript" label="TypeScript">
+
+```typescript
+import { Generator, GeneratorInfo, GenerationResult, Artifact } from "@morphir/extension-sdk";
+
+class MyExtension implements Generator {
+  generatorInfo(): GeneratorInfo {
+    return {
+      name: "my-generator",
+      description: "Generates MyLang from Morphir IR",
+      version: "0.1.0",
+      target: "custom",
+      customTarget: "mylang",
+      supportedGranularities: ["distribution"],
+    };
+  }
+
+  generateDistribution(dist: Distribution, options: GenerationOptions): GenerationResult {
+    const artifacts: Artifact[] = [
+      {
+        path: "output.mylang",
+        content: transformToMyLang(dist),
+        sourceMap: undefined,
+      },
+    ];
+    return { ok: artifacts };
+  }
+}
+```
+
+  </TabItem>
+</Tabs>
+
 2. **Update extension type:**
+
+<Tabs groupId="language">
+  <TabItem value="rust" label="Rust" default>
+
 ```rust
 fn get_info() -> ExtensionInfo {
     ExtensionInfo {
@@ -995,6 +1250,33 @@ fn get_info() -> ExtensionInfo {
     }
 }
 ```
+
+  </TabItem>
+  <TabItem value="go" label="Go">
+
+```go
+func (e *MyExtension) GetInfo() extension.ExtensionInfo {
+    return extension.ExtensionInfo{
+        // ... other fields
+        Types: []extension.ExtensionType{extension.ExtensionTypeCodegen},
+    }
+}
+```
+
+  </TabItem>
+  <TabItem value="typescript" label="TypeScript">
+
+```typescript
+getInfo(): ExtensionInfo {
+  return {
+    // ... other fields
+    types: ["codegen"],
+  };
+}
+```
+
+  </TabItem>
+</Tabs>
 
 3. **Test with real IR:**
 ```bash
@@ -1015,6 +1297,10 @@ ls .morphir-dist/
 **Goal:** Add robustness features.
 
 1. **Add capability discovery:**
+
+<Tabs groupId="language">
+  <TabItem value="rust" label="Rust" default>
+
 ```rust
 impl Capabilities for MyExtension {
     fn list_capabilities() -> Vec<CapabilityInfo> {
@@ -1050,7 +1336,86 @@ impl Capabilities for MyExtension {
 }
 ```
 
+  </TabItem>
+  <TabItem value="go" label="Go">
+
+```go
+func (e *MyExtension) ListCapabilities() []extension.CapabilityInfo {
+    return []extension.CapabilityInfo{
+        {
+            ID:          "codegen/generate",
+            Description: "Basic code generation",
+            Available:   true,
+        },
+        {
+            ID:          "codegen/options-schema",
+            Description: "Configurable options",
+            Available:   true,
+        },
+    }
+}
+
+func (e *MyExtension) GetTargets() []string {
+    return []string{"mylang"}
+}
+
+func (e *MyExtension) GetOptionsSchema() []extension.OptionSchema {
+    return []extension.OptionSchema{
+        {
+            Name:         "indent",
+            OptionType:   extension.OptionTypeString,
+            DefaultValue: stringPtr("  "),
+            Description:  "Indentation string",
+            Required:     false,
+        },
+    }
+}
+```
+
+  </TabItem>
+  <TabItem value="typescript" label="TypeScript">
+
+```typescript
+listCapabilities(): CapabilityInfo[] {
+  return [
+    {
+      id: "codegen/generate",
+      description: "Basic code generation",
+      available: true,
+    },
+    {
+      id: "codegen/options-schema",
+      description: "Configurable options",
+      available: true,
+    },
+  ];
+}
+
+getTargets(): string[] {
+  return ["mylang"];
+}
+
+getOptionsSchema(): OptionSchema[] {
+  return [
+    {
+      name: "indent",
+      optionType: "string",
+      defaultValue: "  ",
+      description: "Indentation string",
+      required: false,
+    },
+  ];
+}
+```
+
+  </TabItem>
+</Tabs>
+
 2. **Add error handling:**
+
+<Tabs groupId="language">
+  <TabItem value="rust" label="Rust" default>
+
 ```rust
 fn generate_distribution(dist: Distribution, options: GenerationOptions) -> GenerationResult {
     match try_generate(&dist, &options) {
@@ -1067,12 +1432,83 @@ fn generate_distribution(dist: Distribution, options: GenerationOptions) -> Gene
 }
 ```
 
+  </TabItem>
+  <TabItem value="go" label="Go">
+
+```go
+func (e *MyExtension) GenerateDistribution(dist ir.Distribution, opts generator.Options) generator.Result {
+    artifacts, err := tryGenerate(dist, opts)
+    if err != nil {
+        return generator.ResultFailed([]generator.Diagnostic{
+            {
+                Severity: generator.SeverityError,
+                Code:     "GEN001",
+                Message:  fmt.Sprintf("Generation failed: %v", err),
+                Location: nil,
+            },
+        })
+    }
+    return generator.ResultOk(artifacts)
+}
+```
+
+  </TabItem>
+  <TabItem value="typescript" label="TypeScript">
+
+```typescript
+generateDistribution(dist: Distribution, options: GenerationOptions): GenerationResult {
+  try {
+    const artifacts = this.tryGenerate(dist, options);
+    return { ok: artifacts };
+  } catch (e) {
+    return {
+      failed: [
+        {
+          severity: "error",
+          code: "GEN001",
+          message: `Generation failed: ${e}`,
+          location: undefined,
+        },
+      ],
+    };
+  }
+}
+```
+
+  </TabItem>
+</Tabs>
+
 3. **Add module-level generation:**
+
+<Tabs groupId="language">
+  <TabItem value="rust" label="Rust" default>
+
 ```rust
 fn generate_module(path: ModulePath, module: ModuleDefinition, ...) -> GenerationResult {
     // Generate for single module
 }
 ```
+
+  </TabItem>
+  <TabItem value="go" label="Go">
+
+```go
+func (e *MyExtension) GenerateModule(path naming.ModulePath, module modules.Definition, ...) generator.Result {
+    // Generate for single module
+}
+```
+
+  </TabItem>
+  <TabItem value="typescript" label="TypeScript">
+
+```typescript
+generateModule(path: ModulePath, module: ModuleDefinition, ...): GenerationResult {
+  // Generate for single module
+}
+```
+
+  </TabItem>
+</Tabs>
 
 **Checkpoint:** Extension handles errors gracefully, shows in `morphir extension info`.
 
