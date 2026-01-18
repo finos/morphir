@@ -1,0 +1,1512 @@
+---
+title: WebAssembly Backend
+sidebar_label: Wasm Backend
+sidebar_position: 10
+status: draft
+tracking:
+  beads: [morphir-n46]
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# WebAssembly Backend Design
+
+This document defines the design for a Morphir backend that compiles Morphir IR to WebAssembly, with full support for the Component Model and Canonical ABI.
+
+## Related Documents
+
+- [WIT Frontend](./wit-frontend.mdx) — Parse WIT interfaces into Morphir IR
+- [WAT Code Generation](./wat-codegen.mdx) — Emit human-readable WAT text format
+- [Attributes System](./attributes.mdx) — Type constraints and boundary extensions
+
+## Overview
+
+The Wasm backend transforms Morphir IR into WebAssembly modules that can:
+1. Run standalone as core Wasm modules
+2. Interoperate with other components via the Component Model
+3. Be embedded in browsers, edge runtimes, or server environments
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Morphir IR    │────►│  Wasm Backend   │────►│   .wasm file    │
+│  (Distribution) │     │                 │     │  (Component)    │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+                               │
+                               ├── Type lowering
+                               ├── Value codegen
+                               ├── ABI generation
+                               └── Memory management
+```
+
+## Architecture
+
+### Backend Phases
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                        Wasm Backend                              │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Phase 1: Analysis                                               │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │ Boundary    │  │ Type        │  │ Closure     │              │
+│  │ Detection   │  │ Analysis    │  │ Analysis    │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+│                                                                  │
+│  Phase 2: Lowering                                               │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │ Type        │  │ ABI         │  │ Memory      │              │
+│  │ Lowering    │  │ Generation  │  │ Layout      │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+│                                                                  │
+│  Phase 3: Code Generation                                        │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │ Function    │  │ Lifting/    │  │ Runtime     │              │
+│  │ Codegen     │  │ Lowering    │  │ Support     │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+│                                                                  │
+│  Phase 4: Emission                                               │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │ Wasm        │  │ Component   │  │ WIT         │              │
+│  │ Module      │  │ Wrapper     │  │ Generation  │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Core Data Structures
+
+<Tabs groupId="language">
+  <TabItem value="scala" label="Scala 3" default>
+
+```scala
+// Backend configuration
+case class WasmBackendConfig(
+  // Boundary handling
+  arbitraryIntHandling: ArbitraryIntHandling = ArbitraryIntHandling.Error,
+  arbitraryFloatHandling: ArbitraryFloatHandling = ArbitraryFloatHandling.F64,
+
+  // Validation
+  validateInboundStrings: Boolean = true,
+  validateOutboundStrings: Boolean = false,
+  invalidUtf8Handling: InvalidUtf8Handling = InvalidUtf8Handling.Trap,
+
+  // Output
+  emitComponentWrapper: Boolean = true,
+  emitWitInterface: Boolean = true,
+  optimizationLevel: OptimizationLevel = OptimizationLevel.Default,
+)
+
+enum ArbitraryIntHandling:
+  case Error
+  case Warn
+  case DefaultI32
+  case DefaultI64
+
+enum ArbitraryFloatHandling:
+  case Error
+  case Warn
+  case F64
+
+enum InvalidUtf8Handling:
+  case Trap
+  case Replace
+  case Skip
+
+enum OptimizationLevel:
+  case None
+  case Default
+  case Aggressive
+```
+
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+
+```rust
+/// Backend configuration
+#[derive(Debug, Clone)]
+pub struct WasmBackendConfig {
+    // Boundary handling
+    pub arbitrary_int_handling: ArbitraryIntHandling,
+    pub arbitrary_float_handling: ArbitraryFloatHandling,
+
+    // Validation
+    pub validate_inbound_strings: bool,
+    pub validate_outbound_strings: bool,
+    pub invalid_utf8_handling: InvalidUtf8Handling,
+
+    // Output
+    pub emit_component_wrapper: bool,
+    pub emit_wit_interface: bool,
+    pub optimization_level: OptimizationLevel,
+}
+
+impl Default for WasmBackendConfig {
+    fn default() -> Self {
+        Self {
+            arbitrary_int_handling: ArbitraryIntHandling::Error,
+            arbitrary_float_handling: ArbitraryFloatHandling::F64,
+            validate_inbound_strings: true,
+            validate_outbound_strings: false,
+            invalid_utf8_handling: InvalidUtf8Handling::Trap,
+            emit_component_wrapper: true,
+            emit_wit_interface: true,
+            optimization_level: OptimizationLevel::Default,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ArbitraryIntHandling {
+    Error,
+    Warn,
+    DefaultI32,
+    DefaultI64,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ArbitraryFloatHandling {
+    Error,
+    Warn,
+    F64,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum InvalidUtf8Handling {
+    Trap,
+    Replace,
+    Skip,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum OptimizationLevel {
+    None,
+    Default,
+    Aggressive,
+}
+```
+
+  </TabItem>
+</Tabs>
+
+## Phase 1: Analysis
+
+### Boundary Detection
+
+Identify functions that cross component boundaries by checking for boundary extensions in the IR.
+
+<Tabs groupId="language">
+  <TabItem value="scala" label="Scala 3" default>
+
+```scala
+case class BoundaryInfo(
+  direction: BoundaryDirection,
+  fqName: FQName,
+  wasmName: String,
+  inputTypes: List[(Name, Type)],
+  outputType: Type,
+)
+
+enum BoundaryDirection:
+  case Export
+  case Import(source: String)
+
+def detectBoundaries(module: ModuleDefinition): List[BoundaryInfo] =
+  module.values.collect {
+    case (name, valueDef) if hasBoundaryExtension(valueDef) =>
+      BoundaryInfo(
+        direction = extractDirection(valueDef),
+        fqName = module.fqName / name,
+        wasmName = toWasmName(name),
+        inputTypes = extractInputTypes(valueDef),
+        outputType = extractOutputType(valueDef),
+      )
+  }
+
+private def hasBoundaryExtension(valueDef: ValueDefinition): Boolean =
+  val extensions = valueDef.attributes.extensions
+  extensions.contains(FQName.parse("morphir/wasm:boundary#export")) ||
+  extensions.contains(FQName.parse("morphir/wasm:boundary#import"))
+```
+
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+
+```rust
+#[derive(Debug, Clone)]
+pub struct BoundaryInfo {
+    pub direction: BoundaryDirection,
+    pub fq_name: FQName,
+    pub wasm_name: String,
+    pub input_types: Vec<(Name, Type)>,
+    pub output_type: Type,
+}
+
+#[derive(Debug, Clone)]
+pub enum BoundaryDirection {
+    Export,
+    Import { source: String },
+}
+
+pub fn detect_boundaries(module: &ModuleDefinition) -> Vec<BoundaryInfo> {
+    module
+        .values
+        .iter()
+        .filter_map(|(name, value_def)| {
+            if has_boundary_extension(value_def) {
+                Some(BoundaryInfo {
+                    direction: extract_direction(value_def),
+                    fq_name: module.fq_name.child(name.clone()),
+                    wasm_name: to_wasm_name(name),
+                    input_types: extract_input_types(value_def),
+                    output_type: extract_output_type(value_def),
+                })
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+fn has_boundary_extension(value_def: &ValueDefinition) -> bool {
+    let extensions = &value_def.attributes.extensions;
+    extensions.contains_key(&FQName::parse("morphir/wasm:boundary#export"))
+        || extensions.contains_key(&FQName::parse("morphir/wasm:boundary#import"))
+}
+```
+
+  </TabItem>
+</Tabs>
+
+### Type Analysis
+
+Analyze types for boundary compatibility and compute memory layouts.
+
+<Tabs groupId="language">
+  <TabItem value="scala" label="Scala 3" default>
+
+```scala
+enum TypeCompatibility:
+  case Compatible(abiType: AbiType)
+  case Incompatible(reason: String)
+
+enum AbiType:
+  case I32
+  case I64
+  case F32
+  case F64
+  case Pointer  // i32 pointing to memory
+  case Composite(layout: MemoryLayout)
+
+case class MemoryLayout(
+  size: Int,
+  alignment: Int,
+  fields: List[LayoutField],
+)
+
+case class LayoutField(
+  name: Name,
+  offset: Int,
+  abiType: AbiType,
+)
+
+def analyzeType(typ: Type, config: WasmBackendConfig): TypeCompatibility =
+  typ match
+    case Type.Reference(_, fqn, args) =>
+      fqn match
+        case FQName.sdk("Basics", "Bool") =>
+          Compatible(AbiType.I32)
+
+        case FQName.sdk("Basics", "Int") =>
+          config.arbitraryIntHandling match
+            case ArbitraryIntHandling.Error =>
+              Incompatible("Arbitrary-precision Int not allowed at boundary")
+            case ArbitraryIntHandling.DefaultI32 =>
+              Compatible(AbiType.I32)
+            case ArbitraryIntHandling.DefaultI64 | ArbitraryIntHandling.Warn =>
+              Compatible(AbiType.I64)
+
+        case FQName.sdk("Int", "Int32") =>
+          Compatible(AbiType.I32)
+
+        case FQName.sdk("Int", "Int64") =>
+          Compatible(AbiType.I64)
+
+        case FQName.sdk("Basics", "Float") =>
+          Compatible(AbiType.F64)
+
+        case FQName.sdk("String", "String") =>
+          Compatible(AbiType.Composite(stringLayout))
+
+        case FQName.sdk("Maybe", "Maybe") =>
+          analyzeOptionType(args.head, config)
+
+        case FQName.sdk("List", "List") =>
+          analyzeListType(args.head, config)
+
+        case _ =>
+          analyzeCustomType(fqn, args, config)
+
+    case Type.Record(_, fields) =>
+      analyzeRecordType(fields, config)
+
+    case Type.Tuple(_, elements) =>
+      analyzeTupleType(elements, config)
+
+    case Type.Variable(_, _) =>
+      Incompatible("Type variables not allowed at boundary")
+
+    case Type.ExtensibleRecord(_, _, _) =>
+      Incompatible("Extensible records not allowed at boundary")
+
+    case Type.Function(_, _, _) =>
+      Incompatible("Higher-order functions require resource pattern")
+
+    case Type.Unit(_) =>
+      Compatible(AbiType.I32) // Unit maps to no value, but we use i32(0)
+
+private val stringLayout = MemoryLayout(
+  size = 8,
+  alignment = 4,
+  fields = List(
+    LayoutField(Name("ptr"), offset = 0, AbiType.I32),
+    LayoutField(Name("len"), offset = 4, AbiType.I32),
+  ),
+)
+```
+
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+
+```rust
+#[derive(Debug, Clone)]
+pub enum TypeCompatibility {
+    Compatible(AbiType),
+    Incompatible(String),
+}
+
+#[derive(Debug, Clone)]
+pub enum AbiType {
+    I32,
+    I64,
+    F32,
+    F64,
+    Pointer,  // i32 pointing to memory
+    Composite(MemoryLayout),
+}
+
+#[derive(Debug, Clone)]
+pub struct MemoryLayout {
+    pub size: u32,
+    pub alignment: u32,
+    pub fields: Vec<LayoutField>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LayoutField {
+    pub name: Name,
+    pub offset: u32,
+    pub abi_type: AbiType,
+}
+
+pub fn analyze_type(typ: &Type, config: &WasmBackendConfig) -> TypeCompatibility {
+    match typ {
+        Type::Reference { fqname, args, .. } => {
+            match fqname.as_str() {
+                "morphir/sdk:basics#bool" => {
+                    TypeCompatibility::Compatible(AbiType::I32)
+                }
+
+                "morphir/sdk:basics#int" => {
+                    match config.arbitrary_int_handling {
+                        ArbitraryIntHandling::Error => {
+                            TypeCompatibility::Incompatible(
+                                "Arbitrary-precision Int not allowed at boundary".into()
+                            )
+                        }
+                        ArbitraryIntHandling::DefaultI32 => {
+                            TypeCompatibility::Compatible(AbiType::I32)
+                        }
+                        ArbitraryIntHandling::DefaultI64 | ArbitraryIntHandling::Warn => {
+                            TypeCompatibility::Compatible(AbiType::I64)
+                        }
+                    }
+                }
+
+                "morphir/sdk:int#int32" => {
+                    TypeCompatibility::Compatible(AbiType::I32)
+                }
+
+                "morphir/sdk:int#int64" => {
+                    TypeCompatibility::Compatible(AbiType::I64)
+                }
+
+                "morphir/sdk:basics#float" => {
+                    TypeCompatibility::Compatible(AbiType::F64)
+                }
+
+                "morphir/sdk:string#string" => {
+                    TypeCompatibility::Compatible(AbiType::Composite(string_layout()))
+                }
+
+                "morphir/sdk:maybe#maybe" => {
+                    analyze_option_type(&args[0], config)
+                }
+
+                "morphir/sdk:list#list" => {
+                    analyze_list_type(&args[0], config)
+                }
+
+                _ => analyze_custom_type(fqname, args, config),
+            }
+        }
+
+        Type::Record { fields, .. } => {
+            analyze_record_type(fields, config)
+        }
+
+        Type::Tuple { elements, .. } => {
+            analyze_tuple_type(elements, config)
+        }
+
+        Type::Variable { .. } => {
+            TypeCompatibility::Incompatible(
+                "Type variables not allowed at boundary".into()
+            )
+        }
+
+        Type::ExtensibleRecord { .. } => {
+            TypeCompatibility::Incompatible(
+                "Extensible records not allowed at boundary".into()
+            )
+        }
+
+        Type::Function { .. } => {
+            TypeCompatibility::Incompatible(
+                "Higher-order functions require resource pattern".into()
+            )
+        }
+
+        Type::Unit { .. } => {
+            TypeCompatibility::Compatible(AbiType::I32)
+        }
+    }
+}
+
+fn string_layout() -> MemoryLayout {
+    MemoryLayout {
+        size: 8,
+        alignment: 4,
+        fields: vec![
+            LayoutField {
+                name: Name::new("ptr"),
+                offset: 0,
+                abi_type: AbiType::I32,
+            },
+            LayoutField {
+                name: Name::new("len"),
+                offset: 4,
+                abi_type: AbiType::I32,
+            },
+        ],
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+## Phase 2: Lowering
+
+### ABI Signature Generation
+
+Generate the Canonical ABI signature for boundary functions.
+
+<Tabs groupId="language">
+  <TabItem value="scala" label="Scala 3" default>
+
+```scala
+case class AbiSignature(
+  params: List[AbiParam],
+  results: List[AbiResult],
+  needsRealloc: Boolean,
+)
+
+case class AbiParam(
+  name: String,
+  abiType: AbiType,
+  original: Type,
+)
+
+case class AbiResult(
+  abiType: AbiType,
+  original: Type,
+)
+
+def generateAbiSignature(boundary: BoundaryInfo, config: WasmBackendConfig): Either[String, AbiSignature] =
+  for
+    params <- boundary.inputTypes.traverse { (name, typ) =>
+      analyzeType(typ, config) match
+        case TypeCompatibility.Compatible(abiType) =>
+          Right(flattenToParams(name, abiType))
+        case TypeCompatibility.Incompatible(reason) =>
+          Left(s"Parameter '$name': $reason")
+    }.map(_.flatten)
+
+    results <- analyzeType(boundary.outputType, config) match
+      case TypeCompatibility.Compatible(abiType) =>
+        Right(flattenToResults(abiType))
+      case TypeCompatibility.Incompatible(reason) =>
+        Left(s"Return type: $reason")
+  yield
+    AbiSignature(
+      params = params,
+      results = results,
+      needsRealloc = params.exists(_.abiType.needsMemory) ||
+                     results.exists(_.abiType.needsMemory),
+    )
+
+// Flatten composite types into multiple params (Canonical ABI flattening)
+private def flattenToParams(name: Name, abiType: AbiType): List[AbiParam] =
+  abiType match
+    case AbiType.Composite(layout) if layout.fields.size <= 16 =>
+      // Flatten small composites
+      layout.fields.map { field =>
+        AbiParam(s"${name}_${field.name}", field.abiType, ???)
+      }
+    case _ =>
+      // Pass as single value (or pointer for large composites)
+      List(AbiParam(name.toString, abiType, ???))
+```
+
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+
+```rust
+#[derive(Debug, Clone)]
+pub struct AbiSignature {
+    pub params: Vec<AbiParam>,
+    pub results: Vec<AbiResult>,
+    pub needs_realloc: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct AbiParam {
+    pub name: String,
+    pub abi_type: AbiType,
+    pub original: Type,
+}
+
+#[derive(Debug, Clone)]
+pub struct AbiResult {
+    pub abi_type: AbiType,
+    pub original: Type,
+}
+
+pub fn generate_abi_signature(
+    boundary: &BoundaryInfo,
+    config: &WasmBackendConfig,
+) -> Result<AbiSignature, String> {
+    let mut params = Vec::new();
+
+    for (name, typ) in &boundary.input_types {
+        match analyze_type(typ, config) {
+            TypeCompatibility::Compatible(abi_type) => {
+                params.extend(flatten_to_params(name, &abi_type));
+            }
+            TypeCompatibility::Incompatible(reason) => {
+                return Err(format!("Parameter '{}': {}", name, reason));
+            }
+        }
+    }
+
+    let results = match analyze_type(&boundary.output_type, config) {
+        TypeCompatibility::Compatible(abi_type) => {
+            flatten_to_results(&abi_type)
+        }
+        TypeCompatibility::Incompatible(reason) => {
+            return Err(format!("Return type: {}", reason));
+        }
+    };
+
+    let needs_realloc = params.iter().any(|p| p.abi_type.needs_memory())
+        || results.iter().any(|r| r.abi_type.needs_memory());
+
+    Ok(AbiSignature {
+        params,
+        results,
+        needs_realloc,
+    })
+}
+
+fn flatten_to_params(name: &Name, abi_type: &AbiType) -> Vec<AbiParam> {
+    match abi_type {
+        AbiType::Composite(layout) if layout.fields.len() <= 16 => {
+            // Flatten small composites
+            layout
+                .fields
+                .iter()
+                .map(|field| AbiParam {
+                    name: format!("{}_{}", name, field.name),
+                    abi_type: field.abi_type.clone(),
+                    original: Type::Unit(TypeAttributes::empty()), // placeholder
+                })
+                .collect()
+        }
+        _ => {
+            // Pass as single value
+            vec![AbiParam {
+                name: name.to_string(),
+                abi_type: abi_type.clone(),
+                original: Type::Unit(TypeAttributes::empty()),
+            }]
+        }
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+## Phase 3: Code Generation
+
+### Value Expression Compilation
+
+Compile Morphir IR value expressions to Wasm instructions.
+
+<Tabs groupId="language">
+  <TabItem value="scala" label="Scala 3" default>
+
+```scala
+// Wasm instruction representation
+enum WasmInstr:
+  // Constants
+  case I32Const(value: Int)
+  case I64Const(value: Long)
+  case F32Const(value: Float)
+  case F64Const(value: Double)
+
+  // Local variables
+  case LocalGet(index: Int)
+  case LocalSet(index: Int)
+  case LocalTee(index: Int)
+
+  // Globals
+  case GlobalGet(name: String)
+  case GlobalSet(name: String)
+
+  // Memory
+  case I32Load(offset: Int, align: Int)
+  case I32Store(offset: Int, align: Int)
+  case I64Load(offset: Int, align: Int)
+  case I64Store(offset: Int, align: Int)
+
+  // Arithmetic
+  case I32Add, I32Sub, I32Mul, I32DivS, I32DivU
+  case I64Add, I64Sub, I64Mul, I64DivS, I64DivU
+  case F64Add, F64Sub, F64Mul, F64Div
+
+  // Comparison
+  case I32Eq, I32Ne, I32LtS, I32GtS, I32LeS, I32GeS
+  case I64Eq, I64Ne, I64LtS, I64GtS
+  case F64Eq, F64Ne, F64Lt, F64Gt, F64Le, F64Ge
+
+  // Control flow
+  case Block(label: String, body: List[WasmInstr])
+  case Loop(label: String, body: List[WasmInstr])
+  case If(thenBranch: List[WasmInstr], elseBranch: List[WasmInstr])
+  case Br(label: String)
+  case BrIf(label: String)
+  case Return
+
+  // Calls
+  case Call(name: String)
+  case CallIndirect(typeIndex: Int)
+
+  // Misc
+  case Drop
+  case Unreachable
+
+class CodeGenerator(config: WasmBackendConfig):
+  private var localIndex = 0
+  private val locals = mutable.Map[Name, Int]()
+
+  def compileValue(value: Value): List[WasmInstr] =
+    value match
+      case Value.Literal(_, lit) =>
+        compileLiteral(lit)
+
+      case Value.Variable(_, name) =>
+        List(WasmInstr.LocalGet(locals(name)))
+
+      case Value.Reference(_, fqName) =>
+        // Function reference - will be resolved at link time
+        List(WasmInstr.Call(toWasmName(fqName)))
+
+      case Value.Apply(_, func, arg) =>
+        compileApply(func, arg)
+
+      case Value.Lambda(_, pattern, body) =>
+        compileLambda(pattern, body)
+
+      case Value.IfThenElse(_, cond, thenBranch, elseBranch) =>
+        compileValue(cond) ++
+        List(WasmInstr.If(
+          compileValue(thenBranch),
+          compileValue(elseBranch)
+        ))
+
+      case Value.PatternMatch(_, subject, cases) =>
+        compilePatternMatch(subject, cases)
+
+      case Value.Tuple(_, elements) =>
+        compileTuple(elements)
+
+      case Value.Record(_, fields) =>
+        compileRecord(fields)
+
+      case Value.List(_, items) =>
+        compileList(items)
+
+      case _ =>
+        throw new UnsupportedOperationException(s"Unsupported value: $value")
+
+  private def compileLiteral(lit: Literal): List[WasmInstr] =
+    lit match
+      case Literal.BoolLiteral(b) =>
+        List(WasmInstr.I32Const(if b then 1 else 0))
+      case Literal.IntegerLiteral(n) =>
+        if n.isValidInt then List(WasmInstr.I32Const(n.toInt))
+        else List(WasmInstr.I64Const(n.toLong))
+      case Literal.FloatLiteral(f) =>
+        List(WasmInstr.F64Const(f))
+      case Literal.StringLiteral(s) =>
+        compileStringLiteral(s)
+      case _ =>
+        throw new UnsupportedOperationException(s"Unsupported literal: $lit")
+```
+
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+
+```rust
+/// Wasm instruction representation
+#[derive(Debug, Clone)]
+pub enum WasmInstr {
+    // Constants
+    I32Const(i32),
+    I64Const(i64),
+    F32Const(f32),
+    F64Const(f64),
+
+    // Local variables
+    LocalGet(u32),
+    LocalSet(u32),
+    LocalTee(u32),
+
+    // Globals
+    GlobalGet(String),
+    GlobalSet(String),
+
+    // Memory
+    I32Load { offset: u32, align: u32 },
+    I32Store { offset: u32, align: u32 },
+    I64Load { offset: u32, align: u32 },
+    I64Store { offset: u32, align: u32 },
+
+    // Arithmetic
+    I32Add, I32Sub, I32Mul, I32DivS, I32DivU,
+    I64Add, I64Sub, I64Mul, I64DivS, I64DivU,
+    F64Add, F64Sub, F64Mul, F64Div,
+
+    // Comparison
+    I32Eq, I32Ne, I32LtS, I32GtS, I32LeS, I32GeS,
+    I64Eq, I64Ne, I64LtS, I64GtS,
+    F64Eq, F64Ne, F64Lt, F64Gt, F64Le, F64Ge,
+
+    // Control flow
+    Block { label: String, body: Vec<WasmInstr> },
+    Loop { label: String, body: Vec<WasmInstr> },
+    If { then_branch: Vec<WasmInstr>, else_branch: Vec<WasmInstr> },
+    Br(String),
+    BrIf(String),
+    Return,
+
+    // Calls
+    Call(String),
+    CallIndirect(u32),
+
+    // Misc
+    Drop,
+    Unreachable,
+}
+
+pub struct CodeGenerator {
+    config: WasmBackendConfig,
+    local_index: u32,
+    locals: HashMap<Name, u32>,
+}
+
+impl CodeGenerator {
+    pub fn new(config: WasmBackendConfig) -> Self {
+        Self {
+            config,
+            local_index: 0,
+            locals: HashMap::new(),
+        }
+    }
+
+    pub fn compile_value(&mut self, value: &Value) -> Vec<WasmInstr> {
+        match value {
+            Value::Literal { literal, .. } => {
+                self.compile_literal(literal)
+            }
+
+            Value::Variable { name, .. } => {
+                vec![WasmInstr::LocalGet(self.locals[name])]
+            }
+
+            Value::Reference { fqname, .. } => {
+                vec![WasmInstr::Call(to_wasm_name(fqname))]
+            }
+
+            Value::Apply { function, argument, .. } => {
+                self.compile_apply(function, argument)
+            }
+
+            Value::Lambda { argument_pattern, body, .. } => {
+                self.compile_lambda(argument_pattern, body)
+            }
+
+            Value::IfThenElse { condition, then_branch, else_branch, .. } => {
+                let mut instrs = self.compile_value(condition);
+                instrs.push(WasmInstr::If {
+                    then_branch: self.compile_value(then_branch),
+                    else_branch: self.compile_value(else_branch),
+                });
+                instrs
+            }
+
+            Value::PatternMatch { subject, cases, .. } => {
+                self.compile_pattern_match(subject, cases)
+            }
+
+            Value::Tuple { elements, .. } => {
+                self.compile_tuple(elements)
+            }
+
+            Value::Record { fields, .. } => {
+                self.compile_record(fields)
+            }
+
+            Value::List { items, .. } => {
+                self.compile_list(items)
+            }
+
+            _ => {
+                panic!("Unsupported value: {:?}", value)
+            }
+        }
+    }
+
+    fn compile_literal(&self, lit: &Literal) -> Vec<WasmInstr> {
+        match lit {
+            Literal::BoolLiteral(b) => {
+                vec![WasmInstr::I32Const(if *b { 1 } else { 0 })]
+            }
+            Literal::IntegerLiteral(n) => {
+                if let Ok(i) = i32::try_from(*n) {
+                    vec![WasmInstr::I32Const(i)]
+                } else {
+                    vec![WasmInstr::I64Const(*n as i64)]
+                }
+            }
+            Literal::FloatLiteral(f) => {
+                vec![WasmInstr::F64Const(*f)]
+            }
+            Literal::StringLiteral(s) => {
+                self.compile_string_literal(s)
+            }
+            _ => {
+                panic!("Unsupported literal: {:?}", lit)
+            }
+        }
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+### Lifting and Lowering Stubs
+
+Generate wrapper functions for boundary crossing.
+
+<Tabs groupId="language">
+  <TabItem value="scala" label="Scala 3" default>
+
+```scala
+case class LiftLowerStubs(
+  lowerStub: WasmFunction,  // High-level -> Core Wasm (for exports)
+  liftStub: WasmFunction,   // Core Wasm -> High-level (for imports)
+)
+
+def generateStringLowerStub(): List[WasmInstr] =
+  // Input: string value on stack (internal representation)
+  // Output: (ptr: i32, len: i32) on stack
+  List(
+    // Assume string is already in memory as (ptr, len) struct
+    // Load ptr
+    WasmInstr.LocalGet(0),  // string struct ptr
+    WasmInstr.I32Load(0, 4),
+    // Load len
+    WasmInstr.LocalGet(0),
+    WasmInstr.I32Load(4, 4),
+  )
+
+def generateStringLiftStub(): List[WasmInstr] =
+  // Input: (ptr: i32, len: i32) on stack
+  // Output: string value on stack (internal representation)
+  List(
+    // Allocate string struct
+    WasmInstr.I32Const(8),  // size of (ptr, len)
+    WasmInstr.Call("malloc"),
+    WasmInstr.LocalTee(2),  // struct ptr
+
+    // Store ptr
+    WasmInstr.LocalGet(0),  // input ptr
+    WasmInstr.I32Store(0, 4),
+
+    // Store len
+    WasmInstr.LocalGet(2),
+    WasmInstr.LocalGet(1),  // input len
+    WasmInstr.I32Store(4, 4),
+
+    // Return struct ptr
+    WasmInstr.LocalGet(2),
+  )
+
+def generateRecordLowerStub(layout: MemoryLayout): List[WasmInstr] =
+  // Flatten record fields to stack values
+  layout.fields.flatMap { field =>
+    List(
+      WasmInstr.LocalGet(0),  // record ptr
+      field.abiType match
+        case AbiType.I32 => WasmInstr.I32Load(field.offset, 4)
+        case AbiType.I64 => WasmInstr.I64Load(field.offset, 8)
+        case AbiType.F64 => WasmInstr.F64Load(field.offset, 8)
+        case _ => throw new UnsupportedOperationException
+    )
+  }
+```
+
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+
+```rust
+pub struct LiftLowerStubs {
+    pub lower_stub: WasmFunction,  // High-level -> Core Wasm (for exports)
+    pub lift_stub: WasmFunction,   // Core Wasm -> High-level (for imports)
+}
+
+pub fn generate_string_lower_stub() -> Vec<WasmInstr> {
+    // Input: string value on stack (internal representation)
+    // Output: (ptr: i32, len: i32) on stack
+    vec![
+        // Assume string is already in memory as (ptr, len) struct
+        // Load ptr
+        WasmInstr::LocalGet(0),  // string struct ptr
+        WasmInstr::I32Load { offset: 0, align: 4 },
+        // Load len
+        WasmInstr::LocalGet(0),
+        WasmInstr::I32Load { offset: 4, align: 4 },
+    ]
+}
+
+pub fn generate_string_lift_stub() -> Vec<WasmInstr> {
+    // Input: (ptr: i32, len: i32) on stack
+    // Output: string value on stack (internal representation)
+    vec![
+        // Allocate string struct
+        WasmInstr::I32Const(8),  // size of (ptr, len)
+        WasmInstr::Call("malloc".into()),
+        WasmInstr::LocalTee(2),  // struct ptr
+
+        // Store ptr
+        WasmInstr::LocalGet(0),  // input ptr
+        WasmInstr::I32Store { offset: 0, align: 4 },
+
+        // Store len
+        WasmInstr::LocalGet(2),
+        WasmInstr::LocalGet(1),  // input len
+        WasmInstr::I32Store { offset: 4, align: 4 },
+
+        // Return struct ptr
+        WasmInstr::LocalGet(2),
+    ]
+}
+
+pub fn generate_record_lower_stub(layout: &MemoryLayout) -> Vec<WasmInstr> {
+    // Flatten record fields to stack values
+    layout.fields.iter().flat_map(|field| {
+        let load_instr = match field.abi_type {
+            AbiType::I32 => WasmInstr::I32Load { offset: field.offset, align: 4 },
+            AbiType::I64 => WasmInstr::I64Load { offset: field.offset, align: 8 },
+            AbiType::F64 => WasmInstr::F64Load { offset: field.offset, align: 8 },
+            _ => panic!("Unsupported ABI type in record"),
+        };
+        vec![
+            WasmInstr::LocalGet(0),  // record ptr
+            load_instr,
+        ]
+    }).collect()
+}
+```
+
+  </TabItem>
+</Tabs>
+
+## Phase 4: Emission
+
+### Module Assembly
+
+Assemble the complete Wasm module from generated functions.
+
+<Tabs groupId="language">
+  <TabItem value="scala" label="Scala 3" default>
+
+```scala
+case class WasmModule(
+  types: List[WasmFuncType],
+  imports: List[WasmImport],
+  functions: List[WasmFunction],
+  tables: List[WasmTable],
+  memories: List[WasmMemory],
+  globals: List[WasmGlobal],
+  exports: List[WasmExport],
+  start: Option[Int],
+  elements: List[WasmElement],
+  data: List[WasmData],
+)
+
+case class WasmFunction(
+  name: String,
+  typeIndex: Int,
+  locals: List[WasmValType],
+  body: List[WasmInstr],
+)
+
+case class WasmExport(
+  name: String,
+  kind: ExportKind,
+  index: Int,
+)
+
+enum ExportKind:
+  case Func, Table, Memory, Global
+
+class ModuleBuilder:
+  private val types = mutable.ListBuffer[WasmFuncType]()
+  private val imports = mutable.ListBuffer[WasmImport]()
+  private val functions = mutable.ListBuffer[WasmFunction]()
+  private val exports = mutable.ListBuffer[WasmExport]()
+  private val data = mutable.ListBuffer[WasmData]()
+
+  def addFunction(func: WasmFunction, export: Boolean = false): Int =
+    val index = functions.size
+    functions += func
+    if export then
+      exports += WasmExport(func.name, ExportKind.Func, index)
+    index
+
+  def addStringConstant(s: String): Int =
+    val bytes = s.getBytes(StandardCharsets.UTF_8)
+    val offset = data.map(_.bytes.length).sum
+    data += WasmData(offset, bytes.toList)
+    offset
+
+  def build(): WasmModule =
+    WasmModule(
+      types = types.toList,
+      imports = imports.toList,
+      functions = functions.toList,
+      tables = List(WasmTable(WasmTableType.FuncRef, 0, None)),
+      memories = List(WasmMemory(1, None)),  // 1 page = 64KB
+      globals = List.empty,
+      exports = exports.toList,
+      start = None,
+      elements = List.empty,
+      data = data.toList,
+    )
+
+  def emitBinary(): Array[Byte] =
+    WasmBinaryWriter.write(build())
+```
+
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+
+```rust
+#[derive(Debug)]
+pub struct WasmModule {
+    pub types: Vec<WasmFuncType>,
+    pub imports: Vec<WasmImport>,
+    pub functions: Vec<WasmFunction>,
+    pub tables: Vec<WasmTable>,
+    pub memories: Vec<WasmMemory>,
+    pub globals: Vec<WasmGlobal>,
+    pub exports: Vec<WasmExport>,
+    pub start: Option<u32>,
+    pub elements: Vec<WasmElement>,
+    pub data: Vec<WasmData>,
+}
+
+#[derive(Debug)]
+pub struct WasmFunction {
+    pub name: String,
+    pub type_index: u32,
+    pub locals: Vec<WasmValType>,
+    pub body: Vec<WasmInstr>,
+}
+
+#[derive(Debug)]
+pub struct WasmExport {
+    pub name: String,
+    pub kind: ExportKind,
+    pub index: u32,
+}
+
+#[derive(Debug)]
+pub enum ExportKind {
+    Func,
+    Table,
+    Memory,
+    Global,
+}
+
+pub struct ModuleBuilder {
+    types: Vec<WasmFuncType>,
+    imports: Vec<WasmImport>,
+    functions: Vec<WasmFunction>,
+    exports: Vec<WasmExport>,
+    data: Vec<WasmData>,
+}
+
+impl ModuleBuilder {
+    pub fn new() -> Self {
+        Self {
+            types: Vec::new(),
+            imports: Vec::new(),
+            functions: Vec::new(),
+            exports: Vec::new(),
+            data: Vec::new(),
+        }
+    }
+
+    pub fn add_function(&mut self, func: WasmFunction, export: bool) -> u32 {
+        let index = self.functions.len() as u32;
+        let name = func.name.clone();
+        self.functions.push(func);
+        if export {
+            self.exports.push(WasmExport {
+                name,
+                kind: ExportKind::Func,
+                index,
+            });
+        }
+        index
+    }
+
+    pub fn add_string_constant(&mut self, s: &str) -> u32 {
+        let bytes = s.as_bytes().to_vec();
+        let offset: u32 = self.data.iter().map(|d| d.bytes.len() as u32).sum();
+        self.data.push(WasmData { offset, bytes });
+        offset
+    }
+
+    pub fn build(self) -> WasmModule {
+        WasmModule {
+            types: self.types,
+            imports: self.imports,
+            functions: self.functions,
+            tables: vec![WasmTable::new(WasmTableType::FuncRef, 0, None)],
+            memories: vec![WasmMemory::new(1, None)],  // 1 page = 64KB
+            globals: Vec::new(),
+            exports: self.exports,
+            start: None,
+            elements: Vec::new(),
+            data: self.data,
+        }
+    }
+
+    pub fn emit_binary(&self) -> Vec<u8> {
+        WasmBinaryWriter::write(&self.build())
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+## Runtime Support
+
+The Wasm backend requires a small runtime for memory management and common operations.
+
+### Memory Allocator
+
+<Tabs groupId="language">
+  <TabItem value="scala" label="Scala 3" default>
+
+```scala
+// Runtime functions that must be linked into every module
+val runtimeFunctions: List[WasmFunction] = List(
+  // malloc: allocate memory
+  WasmFunction(
+    name = "malloc",
+    typeIndex = 0,  // (i32) -> i32
+    locals = List(WasmValType.I32),
+    body = List(
+      // Simple bump allocator
+      WasmInstr.GlobalGet("heap_ptr"),
+      WasmInstr.LocalTee(1),
+      WasmInstr.LocalGet(0),  // size
+      WasmInstr.I32Add,
+      WasmInstr.GlobalSet("heap_ptr"),
+      WasmInstr.LocalGet(1),  // return old heap_ptr
+    ),
+  ),
+
+  // realloc: reallocate memory (Component Model requirement)
+  WasmFunction(
+    name = "cabi_realloc",
+    typeIndex = 1,  // (i32, i32, i32, i32) -> i32
+    locals = List.empty,
+    body = List(
+      // old_ptr, old_size, align, new_size
+      // For now, just allocate new and ignore old
+      WasmInstr.LocalGet(3),  // new_size
+      WasmInstr.Call("malloc"),
+    ),
+  ),
+)
+```
+
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+
+```rust
+/// Runtime functions that must be linked into every module
+pub fn runtime_functions() -> Vec<WasmFunction> {
+    vec![
+        // malloc: allocate memory
+        WasmFunction {
+            name: "malloc".into(),
+            type_index: 0,  // (i32) -> i32
+            locals: vec![WasmValType::I32],
+            body: vec![
+                // Simple bump allocator
+                WasmInstr::GlobalGet("heap_ptr".into()),
+                WasmInstr::LocalTee(1),
+                WasmInstr::LocalGet(0),  // size
+                WasmInstr::I32Add,
+                WasmInstr::GlobalSet("heap_ptr".into()),
+                WasmInstr::LocalGet(1),  // return old heap_ptr
+            ],
+        },
+
+        // realloc: reallocate memory (Component Model requirement)
+        WasmFunction {
+            name: "cabi_realloc".into(),
+            type_index: 1,  // (i32, i32, i32, i32) -> i32
+            locals: vec![],
+            body: vec![
+                // old_ptr, old_size, align, new_size
+                // For now, just allocate new and ignore old
+                WasmInstr::LocalGet(3),  // new_size
+                WasmInstr::Call("malloc".into()),
+            ],
+        },
+    ]
+}
+```
+
+  </TabItem>
+</Tabs>
+
+## WIT Interface Generation
+
+For Component Model interop, generate WIT interface definitions from Morphir modules.
+
+<Tabs groupId="language">
+  <TabItem value="scala" label="Scala 3" default>
+
+```scala
+def generateWit(module: ModuleDefinition, boundaries: List[BoundaryInfo]): String =
+  val sb = StringBuilder()
+
+  sb.append(s"package ${toWitPackage(module.fqName)};\n\n")
+  sb.append(s"interface ${toWitInterface(module.fqName)} {\n")
+
+  // Generate type definitions
+  for (name, typeDef) <- module.types do
+    sb.append(s"  ${generateWitType(name, typeDef)}\n")
+
+  // Generate function signatures for exports
+  for boundary <- boundaries.filter(_.direction == BoundaryDirection.Export) do
+    sb.append(s"  ${generateWitFunction(boundary)}\n")
+
+  sb.append("}\n")
+  sb.toString
+
+private def generateWitFunction(boundary: BoundaryInfo): String =
+  val params = boundary.inputTypes.map { (name, typ) =>
+    s"${toWitName(name)}: ${toWitType(typ)}"
+  }.mkString(", ")
+
+  val result = toWitType(boundary.outputType)
+
+  s"${toWitName(boundary.fqName.localName)}: func($params) -> $result;"
+
+private def toWitType(typ: Type): String =
+  typ match
+    case Type.Reference(_, fqn, _) =>
+      fqn match
+        case FQName.sdk("Basics", "Bool") => "bool"
+        case FQName.sdk("Basics", "Int") => "s64"
+        case FQName.sdk("Int", "Int32") => "s32"
+        case FQName.sdk("Int", "Int64") => "s64"
+        case FQName.sdk("UInt", "UInt32") => "u32"
+        case FQName.sdk("UInt", "UInt64") => "u64"
+        case FQName.sdk("Basics", "Float") => "float64"
+        case FQName.sdk("String", "String") => "string"
+        case FQName.sdk("List", "List") => s"list<${toWitType(typ.args.head)}>"
+        case FQName.sdk("Maybe", "Maybe") => s"option<${toWitType(typ.args.head)}>"
+        case _ => toWitName(fqn.localName)
+    case Type.Record(_, fields) =>
+      val fieldStrs = fields.map(f => s"${toWitName(f.name)}: ${toWitType(f.fieldType)}")
+      s"record { ${fieldStrs.mkString(", ")} }"
+    case Type.Tuple(_, elems) =>
+      s"tuple<${elems.map(toWitType).mkString(", ")}>"
+    case _ =>
+      throw new UnsupportedOperationException(s"Cannot convert to WIT: $typ")
+```
+
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+
+```rust
+pub fn generate_wit(module: &ModuleDefinition, boundaries: &[BoundaryInfo]) -> String {
+    let mut output = String::new();
+
+    output.push_str(&format!("package {};\n\n", to_wit_package(&module.fq_name)));
+    output.push_str(&format!("interface {} {{\n", to_wit_interface(&module.fq_name)));
+
+    // Generate type definitions
+    for (name, type_def) in &module.types {
+        output.push_str(&format!("  {}\n", generate_wit_type(name, type_def)));
+    }
+
+    // Generate function signatures for exports
+    for boundary in boundaries.iter().filter(|b| matches!(b.direction, BoundaryDirection::Export)) {
+        output.push_str(&format!("  {}\n", generate_wit_function(boundary)));
+    }
+
+    output.push_str("}\n");
+    output
+}
+
+fn generate_wit_function(boundary: &BoundaryInfo) -> String {
+    let params: Vec<String> = boundary.input_types.iter()
+        .map(|(name, typ)| format!("{}: {}", to_wit_name(name), to_wit_type(typ)))
+        .collect();
+
+    let result = to_wit_type(&boundary.output_type);
+
+    format!(
+        "{}: func({}) -> {};",
+        to_wit_name(&boundary.fq_name.local_name),
+        params.join(", "),
+        result
+    )
+}
+
+fn to_wit_type(typ: &Type) -> String {
+    match typ {
+        Type::Reference { fqname, args, .. } => {
+            match fqname.as_str() {
+                "morphir/sdk:basics#bool" => "bool".into(),
+                "morphir/sdk:basics#int" => "s64".into(),
+                "morphir/sdk:int#int32" => "s32".into(),
+                "morphir/sdk:int#int64" => "s64".into(),
+                "morphir/sdk:uint#uint32" => "u32".into(),
+                "morphir/sdk:uint#uint64" => "u64".into(),
+                "morphir/sdk:basics#float" => "float64".into(),
+                "morphir/sdk:string#string" => "string".into(),
+                "morphir/sdk:list#list" => {
+                    format!("list<{}>", to_wit_type(&args[0]))
+                }
+                "morphir/sdk:maybe#maybe" => {
+                    format!("option<{}>", to_wit_type(&args[0]))
+                }
+                _ => to_wit_name(&fqname.local_name()),
+            }
+        }
+        Type::Record { fields, .. } => {
+            let field_strs: Vec<String> = fields.iter()
+                .map(|f| format!("{}: {}", to_wit_name(&f.name), to_wit_type(&f.field_type)))
+                .collect();
+            format!("record {{ {} }}", field_strs.join(", "))
+        }
+        Type::Tuple { elements, .. } => {
+            let elem_strs: Vec<String> = elements.iter().map(to_wit_type).collect();
+            format!("tuple<{}>", elem_strs.join(", "))
+        }
+        _ => panic!("Cannot convert to WIT: {:?}", typ),
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+## Configuration
+
+Backend configuration in `morphir.toml`:
+
+```toml
+[backend.wasm]
+# Boundary handling
+arbitrary_int = "error"       # "error" | "warn" | "i32" | "i64"
+arbitrary_float = "f64"       # "error" | "warn" | "f64"
+
+# String handling
+validate_inbound_strings = true
+validate_outbound_strings = false
+invalid_utf8 = "trap"         # "trap" | "replace" | "skip"
+
+# Output
+emit_component = true         # Wrap in Component Model
+emit_wit = true               # Generate WIT interface file
+optimization = "default"      # "none" | "default" | "aggressive"
+
+# Memory
+initial_memory_pages = 1      # Initial memory size (64KB per page)
+max_memory_pages = 256        # Maximum memory size
+
+# Debug
+emit_names = true             # Include function names in output
+emit_source_map = false       # Emit DWARF debug info
+```
+
+## Open Questions
+
+1. **Garbage Collection**: Should we target Wasm GC proposal or use manual memory management?
+
+2. **Tail Calls**: Morphir's functional style benefits from tail call optimization. Target the tail-call proposal?
+
+3. **Exception Handling**: Use Wasm exceptions proposal or encode errors in return values?
+
+4. **SIMD**: Should we detect and use SIMD operations for list processing?
+
+5. **Threading**: Support for shared memory and atomics for concurrent Morphir programs?

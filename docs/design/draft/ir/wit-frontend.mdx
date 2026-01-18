@@ -1,0 +1,863 @@
+---
+title: WIT Frontend
+sidebar_label: WIT Frontend
+sidebar_position: 11
+status: draft
+tracking:
+  beads: [morphir-n46, morphir-szb]
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# WIT Frontend Design
+
+This document defines the design for a frontend that parses WIT (WebAssembly Interface Types) files and produces Morphir IR v4.
+
+## Overview
+
+The WIT frontend enables Morphir to consume existing Component Model interfaces, generating type-safe Morphir bindings.
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   .wit files    │────►│  WIT Frontend   │────►│   Morphir IR    │
+│  (interfaces)   │     │                 │     │  (Distribution) │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+                               │
+                               ├── Parse WIT
+                               ├── Resolve imports
+                               ├── Map types
+                               └── Generate modules
+```
+
+## Use Cases
+
+1. **Import Component Interfaces**: Generate Morphir types from WIT interfaces to call external components
+2. **Validate Exports**: Check that Morphir exports match a WIT contract
+3. **Polyglot Interop**: Share type definitions between Morphir and other Component Model languages
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                        WIT Frontend                              │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Phase 1: Parsing                                                │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │ Lexer       │  │ Parser      │  │ AST         │              │
+│  │             │──►│             │──►│ Builder     │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+│                                                                  │
+│  Phase 2: Resolution                                             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │ Import      │  │ Type        │  │ World       │              │
+│  │ Resolution  │  │ Resolution  │  │ Expansion   │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+│                                                                  │
+│  Phase 3: IR Generation                                          │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │ Type        │  │ Function    │  │ Module      │              │
+│  │ Mapping     │  │ Mapping     │  │ Generation  │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+## WIT to Morphir IR Type Mapping
+
+### Primitive Types
+
+| WIT Type | Morphir IR Type | Constraints |
+|----------|-----------------|-------------|
+| `bool` | `morphir/sdk:basics#bool` | — |
+| `s8` | `morphir/sdk:int#int8` | `Signed { bits: 8 }` |
+| `s16` | `morphir/sdk:int#int16` | `Signed { bits: 16 }` |
+| `s32` | `morphir/sdk:int#int32` | `Signed { bits: 32 }` |
+| `s64` | `morphir/sdk:int#int64` | `Signed { bits: 64 }` |
+| `u8` | `morphir/sdk:uint#uint8` | `Unsigned { bits: 8 }` |
+| `u16` | `morphir/sdk:uint#uint16` | `Unsigned { bits: 16 }` |
+| `u32` | `morphir/sdk:uint#uint32` | `Unsigned { bits: 32 }` |
+| `u64` | `morphir/sdk:uint#uint64` | `Unsigned { bits: 64 }` |
+| `f32` | `morphir/sdk:float#float32` | `FloatingPoint { bits: 32 }` |
+| `f64` | `morphir/sdk:basics#float` | `FloatingPoint { bits: 64 }` |
+| `char` | `morphir/sdk:char#char` | Unicode Scalar Value |
+| `string` | `morphir/sdk:string#string` | `StringConstraint { encoding: UTF8 }` |
+
+### Compound Types
+
+| WIT Type | Morphir IR Type |
+|----------|-----------------|
+| `list<T>` | `Type.Reference("morphir/sdk:list#list", [T'])` |
+| `option<T>` | `Type.Reference("morphir/sdk:maybe#maybe", [T'])` |
+| `result<T, E>` | `Type.Reference("morphir/sdk:result#result", [E', T'])` |
+| `tuple<T1, T2, ...>` | `Type.Tuple([T1', T2', ...])` |
+| `record { ... }` | `Type.Record([...])` |
+| `variant { ... }` | Custom type definition |
+| `enum { ... }` | Custom type (unit constructors) |
+| `flags { ... }` | Custom type or record of bools |
+
+### Example: Record Mapping
+
+**WIT:**
+```wit
+record person {
+    name: string,
+    age: u32,
+    active: bool,
+}
+```
+
+**Morphir IR:**
+```json
+{
+  "Record": {
+    "attributes": {},
+    "fields": {
+      "name": {
+        "Reference": {
+          "attributes": {
+            "constraints": { "string": { "encoding": "UTF8" } }
+          },
+          "fqname": "morphir/sdk:string#string"
+        }
+      },
+      "age": {
+        "Reference": {
+          "attributes": {
+            "constraints": { "numeric": { "Unsigned": { "bits": 32 } } }
+          },
+          "fqname": "morphir/sdk:uint#uint32"
+        }
+      },
+      "active": {
+        "Reference": { "fqname": "morphir/sdk:basics#bool" }
+      }
+    }
+  }
+}
+```
+
+### Example: Variant Mapping
+
+**WIT:**
+```wit
+variant shape {
+    circle(f64),
+    rectangle(f64, f64),
+    point,
+}
+```
+
+**Morphir IR (Custom Type Definition):**
+```json
+{
+  "CustomTypeDefinition": {
+    "params": [],
+    "access": {
+      "access": "Public",
+      "value": [
+        {
+          "name": "circle",
+          "args": [["radius", { "Reference": { "fqname": "morphir/sdk:basics#float" } }]]
+        },
+        {
+          "name": "rectangle",
+          "args": [
+            ["width", { "Reference": { "fqname": "morphir/sdk:basics#float" } }],
+            ["height", { "Reference": { "fqname": "morphir/sdk:basics#float" } }]
+          ]
+        },
+        {
+          "name": "point",
+          "args": []
+        }
+      ]
+    }
+  }
+}
+```
+
+## Interface and World Mapping
+
+### WIT Interface → Morphir Module
+
+Each WIT interface becomes a Morphir module with:
+- Type definitions for all defined types
+- Value specifications for all functions
+
+**WIT:**
+```wit
+interface calculator {
+    add: func(a: s32, b: s32) -> s32;
+    subtract: func(a: s32, b: s32) -> s32;
+}
+```
+
+**Morphir Module Specification:**
+```json
+{
+  "ModuleSpecification": {
+    "types": {},
+    "values": {
+      "add": {
+        "ValueSpecification": {
+          "inputs": {
+            "a": { "Reference": { "fqname": "morphir/sdk:int#int32" } },
+            "b": { "Reference": { "fqname": "morphir/sdk:int#int32" } }
+          },
+          "output": { "Reference": { "fqname": "morphir/sdk:int#int32" } }
+        }
+      },
+      "subtract": {
+        "ValueSpecification": {
+          "inputs": {
+            "a": { "Reference": { "fqname": "morphir/sdk:int#int32" } },
+            "b": { "Reference": { "fqname": "morphir/sdk:int#int32" } }
+          },
+          "output": { "Reference": { "fqname": "morphir/sdk:int#int32" } }
+        }
+      }
+    }
+  }
+}
+```
+
+### WIT World → Morphir Package
+
+A WIT world defines imports and exports. This maps to:
+- **Imports**: Module specifications (contracts to be fulfilled by external components)
+- **Exports**: Module definitions (implementations provided by this component)
+
+**WIT:**
+```wit
+world my-component {
+    import logging;
+    export calculator;
+}
+```
+
+**Morphir Package Structure:**
+```
+my-component/
+├── imports/
+│   └── Logging.morphir     # Module specification only
+└── exports/
+    └── Calculator.morphir  # Module definition (implementation)
+```
+
+## Implementation
+
+### WIT AST Types
+
+<Tabs groupId="language">
+  <TabItem value="scala" label="Scala 3" default>
+
+```scala
+// WIT AST representation
+enum WitType:
+  case Bool
+  case S8, S16, S32, S64
+  case U8, U16, U32, U64
+  case F32, F64
+  case Char
+  case String
+  case List(elem: WitType)
+  case Option(inner: WitType)
+  case Result(ok: Option[WitType], err: Option[WitType])
+  case Tuple(elems: List[WitType])
+  case Record(fields: List[WitField])
+  case Variant(cases: List[WitCase])
+  case Enum(cases: List[String])
+  case Flags(flags: List[String])
+  case Own(resource: String)
+  case Borrow(resource: String)
+  case Named(name: String)
+
+case class WitField(name: String, typ: WitType)
+case class WitCase(name: String, payload: Option[WitType])
+
+case class WitFunction(
+  name: String,
+  params: List[(String, WitType)],
+  results: WitResults,
+)
+
+enum WitResults:
+  case Named(results: List[(String, WitType)])
+  case Anon(typ: WitType)
+  case Empty
+
+case class WitInterface(
+  name: String,
+  types: Map[String, WitTypeDef],
+  functions: List[WitFunction],
+  resources: List[WitResource],
+)
+
+case class WitTypeDef(
+  name: String,
+  typ: WitType,
+)
+
+case class WitResource(
+  name: String,
+  methods: List[WitFunction],
+)
+
+case class WitWorld(
+  name: String,
+  imports: List[WitWorldItem],
+  exports: List[WitWorldItem],
+)
+
+enum WitWorldItem:
+  case Interface(name: String)
+  case Function(func: WitFunction)
+  case Type(typedef: WitTypeDef)
+```
+
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+
+```rust
+/// WIT AST representation
+#[derive(Debug, Clone)]
+pub enum WitType {
+    Bool,
+    S8, S16, S32, S64,
+    U8, U16, U32, U64,
+    F32, F64,
+    Char,
+    String,
+    List(Box<WitType>),
+    Option(Box<WitType>),
+    Result { ok: Option<Box<WitType>>, err: Option<Box<WitType>> },
+    Tuple(Vec<WitType>),
+    Record(Vec<WitField>),
+    Variant(Vec<WitCase>),
+    Enum(Vec<String>),
+    Flags(Vec<String>),
+    Own(String),
+    Borrow(String),
+    Named(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct WitField {
+    pub name: String,
+    pub typ: WitType,
+}
+
+#[derive(Debug, Clone)]
+pub struct WitCase {
+    pub name: String,
+    pub payload: Option<WitType>,
+}
+
+#[derive(Debug, Clone)]
+pub struct WitFunction {
+    pub name: String,
+    pub params: Vec<(String, WitType)>,
+    pub results: WitResults,
+}
+
+#[derive(Debug, Clone)]
+pub enum WitResults {
+    Named(Vec<(String, WitType)>),
+    Anon(WitType),
+    Empty,
+}
+
+#[derive(Debug, Clone)]
+pub struct WitInterface {
+    pub name: String,
+    pub types: HashMap<String, WitTypeDef>,
+    pub functions: Vec<WitFunction>,
+    pub resources: Vec<WitResource>,
+}
+
+#[derive(Debug, Clone)]
+pub struct WitTypeDef {
+    pub name: String,
+    pub typ: WitType,
+}
+
+#[derive(Debug, Clone)]
+pub struct WitResource {
+    pub name: String,
+    pub methods: Vec<WitFunction>,
+}
+
+#[derive(Debug, Clone)]
+pub struct WitWorld {
+    pub name: String,
+    pub imports: Vec<WitWorldItem>,
+    pub exports: Vec<WitWorldItem>,
+}
+
+#[derive(Debug, Clone)]
+pub enum WitWorldItem {
+    Interface(String),
+    Function(WitFunction),
+    Type(WitTypeDef),
+}
+```
+
+  </TabItem>
+</Tabs>
+
+### Type Mapping Implementation
+
+<Tabs groupId="language">
+  <TabItem value="scala" label="Scala 3" default>
+
+```scala
+class WitToMorphirMapper(packageName: PackageName):
+
+  def mapType(wit: WitType): Type =
+    wit match
+      case WitType.Bool =>
+        Type.Reference(
+          TypeAttributes.empty,
+          FQName.sdk("Basics", "Bool"),
+          List.empty,
+        )
+
+      case WitType.S8 =>
+        Type.Reference(
+          TypeAttributes(constraints = Some(TypeConstraints(
+            numeric = Some(NumericConstraint.Signed(IntWidth.I8))
+          ))),
+          FQName.sdk("Int", "Int8"),
+          List.empty,
+        )
+
+      case WitType.S16 =>
+        Type.Reference(
+          TypeAttributes(constraints = Some(TypeConstraints(
+            numeric = Some(NumericConstraint.Signed(IntWidth.I16))
+          ))),
+          FQName.sdk("Int", "Int16"),
+          List.empty,
+        )
+
+      case WitType.S32 =>
+        Type.Reference(
+          TypeAttributes(constraints = Some(TypeConstraints(
+            numeric = Some(NumericConstraint.Signed(IntWidth.I32))
+          ))),
+          FQName.sdk("Int", "Int32"),
+          List.empty,
+        )
+
+      case WitType.S64 =>
+        Type.Reference(
+          TypeAttributes(constraints = Some(TypeConstraints(
+            numeric = Some(NumericConstraint.Signed(IntWidth.I64))
+          ))),
+          FQName.sdk("Int", "Int64"),
+          List.empty,
+        )
+
+      case WitType.U8 =>
+        Type.Reference(
+          TypeAttributes(constraints = Some(TypeConstraints(
+            numeric = Some(NumericConstraint.Unsigned(IntWidth.I8))
+          ))),
+          FQName.sdk("UInt", "UInt8"),
+          List.empty,
+        )
+
+      // ... similar for U16, U32, U64
+
+      case WitType.F32 =>
+        Type.Reference(
+          TypeAttributes(constraints = Some(TypeConstraints(
+            numeric = Some(NumericConstraint.FloatingPoint(FloatWidth.F32))
+          ))),
+          FQName.sdk("Float", "Float32"),
+          List.empty,
+        )
+
+      case WitType.F64 =>
+        Type.Reference(
+          TypeAttributes(constraints = Some(TypeConstraints(
+            numeric = Some(NumericConstraint.FloatingPoint(FloatWidth.F64))
+          ))),
+          FQName.sdk("Basics", "Float"),
+          List.empty,
+        )
+
+      case WitType.String =>
+        Type.Reference(
+          TypeAttributes(constraints = Some(TypeConstraints(
+            string = Some(StringConstraint(encoding = Some(StringEncoding.UTF8)))
+          ))),
+          FQName.sdk("String", "String"),
+          List.empty,
+        )
+
+      case WitType.Char =>
+        Type.Reference(
+          TypeAttributes.empty,
+          FQName.sdk("Char", "Char"),
+          List.empty,
+        )
+
+      case WitType.List(elem) =>
+        Type.Reference(
+          TypeAttributes.empty,
+          FQName.sdk("List", "List"),
+          List(mapType(elem)),
+        )
+
+      case WitType.Option(inner) =>
+        Type.Reference(
+          TypeAttributes.empty,
+          FQName.sdk("Maybe", "Maybe"),
+          List(mapType(inner)),
+        )
+
+      case WitType.Result(ok, err) =>
+        Type.Reference(
+          TypeAttributes.empty,
+          FQName.sdk("Result", "Result"),
+          List(
+            err.map(mapType).getOrElse(Type.Unit(TypeAttributes.empty)),
+            ok.map(mapType).getOrElse(Type.Unit(TypeAttributes.empty)),
+          ),
+        )
+
+      case WitType.Tuple(elems) =>
+        Type.Tuple(
+          TypeAttributes.empty,
+          elems.map(mapType),
+        )
+
+      case WitType.Record(fields) =>
+        Type.Record(
+          TypeAttributes.empty,
+          fields.map(f => Field(Name(f.name), mapType(f.typ))),
+        )
+
+      case WitType.Named(name) =>
+        Type.Reference(
+          TypeAttributes.empty,
+          FQName(packageName, ModuleName.empty, Name(name)),
+          List.empty,
+        )
+
+      case WitType.Variant(cases) =>
+        // Variants become references to generated custom types
+        throw new UnsupportedOperationException(
+          "Variants must be processed as type definitions, not inline"
+        )
+
+  def mapFunction(func: WitFunction): ValueSpecification =
+    val inputs = func.params.map { (name, typ) =>
+      (Name(name), mapType(typ))
+    }
+
+    val output = func.results match
+      case WitResults.Empty =>
+        Type.Unit(TypeAttributes.empty)
+      case WitResults.Anon(typ) =>
+        mapType(typ)
+      case WitResults.Named(results) if results.size == 1 =>
+        mapType(results.head._2)
+      case WitResults.Named(results) =>
+        Type.Record(
+          TypeAttributes.empty,
+          results.map((n, t) => Field(Name(n), mapType(t))),
+        )
+
+    ValueSpecification(inputs, output)
+
+  def mapInterface(iface: WitInterface): ModuleSpecification =
+    val types = iface.types.map { (name, typedef) =>
+      (Name(name), mapTypeDefinition(typedef))
+    }
+
+    val values = iface.functions.map { func =>
+      (Name(func.name), mapFunction(func))
+    }.toMap
+
+    ModuleSpecification(types, values)
+```
+
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+
+```rust
+pub struct WitToMorphirMapper {
+    package_name: PackageName,
+}
+
+impl WitToMorphirMapper {
+    pub fn new(package_name: PackageName) -> Self {
+        Self { package_name }
+    }
+
+    pub fn map_type(&self, wit: &WitType) -> Type {
+        match wit {
+            WitType::Bool => Type::Reference {
+                attributes: TypeAttributes::empty(),
+                fqname: FQName::sdk("Basics", "Bool"),
+                args: vec![],
+            },
+
+            WitType::S8 => Type::Reference {
+                attributes: TypeAttributes {
+                    constraints: Some(TypeConstraints {
+                        numeric: Some(NumericConstraint::Signed { bits: 8 }),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                fqname: FQName::sdk("Int", "Int8"),
+                args: vec![],
+            },
+
+            WitType::S16 => Type::Reference {
+                attributes: TypeAttributes {
+                    constraints: Some(TypeConstraints {
+                        numeric: Some(NumericConstraint::Signed { bits: 16 }),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                fqname: FQName::sdk("Int", "Int16"),
+                args: vec![],
+            },
+
+            WitType::S32 => Type::Reference {
+                attributes: TypeAttributes {
+                    constraints: Some(TypeConstraints {
+                        numeric: Some(NumericConstraint::Signed { bits: 32 }),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                fqname: FQName::sdk("Int", "Int32"),
+                args: vec![],
+            },
+
+            WitType::S64 => Type::Reference {
+                attributes: TypeAttributes {
+                    constraints: Some(TypeConstraints {
+                        numeric: Some(NumericConstraint::Signed { bits: 64 }),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                fqname: FQName::sdk("Int", "Int64"),
+                args: vec![],
+            },
+
+            // ... similar for unsigned types
+
+            WitType::String => Type::Reference {
+                attributes: TypeAttributes {
+                    constraints: Some(TypeConstraints {
+                        string: Some(StringConstraint {
+                            encoding: Some(StringEncoding::UTF8),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                fqname: FQName::sdk("String", "String"),
+                args: vec![],
+            },
+
+            WitType::List(elem) => Type::Reference {
+                attributes: TypeAttributes::empty(),
+                fqname: FQName::sdk("List", "List"),
+                args: vec![self.map_type(elem)],
+            },
+
+            WitType::Option(inner) => Type::Reference {
+                attributes: TypeAttributes::empty(),
+                fqname: FQName::sdk("Maybe", "Maybe"),
+                args: vec![self.map_type(inner)],
+            },
+
+            WitType::Result { ok, err } => Type::Reference {
+                attributes: TypeAttributes::empty(),
+                fqname: FQName::sdk("Result", "Result"),
+                args: vec![
+                    err.as_ref()
+                        .map(|t| self.map_type(t))
+                        .unwrap_or_else(|| Type::Unit {
+                            attributes: TypeAttributes::empty()
+                        }),
+                    ok.as_ref()
+                        .map(|t| self.map_type(t))
+                        .unwrap_or_else(|| Type::Unit {
+                            attributes: TypeAttributes::empty()
+                        }),
+                ],
+            },
+
+            WitType::Tuple(elems) => Type::Tuple {
+                attributes: TypeAttributes::empty(),
+                elements: elems.iter().map(|e| self.map_type(e)).collect(),
+            },
+
+            WitType::Record(fields) => Type::Record {
+                attributes: TypeAttributes::empty(),
+                fields: fields
+                    .iter()
+                    .map(|f| Field {
+                        name: Name::new(&f.name),
+                        field_type: self.map_type(&f.typ),
+                    })
+                    .collect(),
+            },
+
+            WitType::Named(name) => Type::Reference {
+                attributes: TypeAttributes::empty(),
+                fqname: FQName::new(
+                    self.package_name.clone(),
+                    ModuleName::empty(),
+                    Name::new(name),
+                ),
+                args: vec![],
+            },
+
+            _ => panic!("Unsupported WIT type: {:?}", wit),
+        }
+    }
+
+    pub fn map_function(&self, func: &WitFunction) -> ValueSpecification {
+        let inputs: Vec<(Name, Type)> = func
+            .params
+            .iter()
+            .map(|(name, typ)| (Name::new(name), self.map_type(typ)))
+            .collect();
+
+        let output = match &func.results {
+            WitResults::Empty => Type::Unit {
+                attributes: TypeAttributes::empty(),
+            },
+            WitResults::Anon(typ) => self.map_type(typ),
+            WitResults::Named(results) if results.len() == 1 => {
+                self.map_type(&results[0].1)
+            }
+            WitResults::Named(results) => Type::Record {
+                attributes: TypeAttributes::empty(),
+                fields: results
+                    .iter()
+                    .map(|(n, t)| Field {
+                        name: Name::new(n),
+                        field_type: self.map_type(t),
+                    })
+                    .collect(),
+            },
+        };
+
+        ValueSpecification { inputs, output }
+    }
+
+    pub fn map_interface(&self, iface: &WitInterface) -> ModuleSpecification {
+        let types: HashMap<Name, TypeSpecification> = iface
+            .types
+            .iter()
+            .map(|(name, typedef)| {
+                (Name::new(name), self.map_type_definition(typedef))
+            })
+            .collect();
+
+        let values: HashMap<Name, ValueSpecification> = iface
+            .functions
+            .iter()
+            .map(|func| (Name::new(&func.name), self.map_function(func)))
+            .collect();
+
+        ModuleSpecification { types, values }
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+## Resource Handling
+
+WIT resources map to Morphir's opaque types with associated functions:
+
+**WIT:**
+```wit
+resource file-handle {
+    constructor(path: string);
+    read: func(size: u32) -> list<u8>;
+    write: func(data: list<u8>) -> result<u32, string>;
+    close: func();
+}
+```
+
+**Morphir IR:**
+```scala
+// Opaque type for the resource
+OpaqueTypeSpecification(params = List.empty)
+
+// Constructor as function
+ValueSpecification(
+  inputs = List(("path", StringType)),
+  output = FileHandleType,
+)
+
+// Methods as functions taking resource as first arg
+ValueSpecification(
+  inputs = List(("self", FileHandleType), ("size", UInt32Type)),
+  output = ListType(UInt8Type),
+)
+```
+
+Resources are marked in extensions to indicate ownership semantics:
+
+```json
+{
+  "Reference": {
+    "attributes": {
+      "extensions": {
+        "morphir/wasm:resource#ownership": {
+          "Literal": { "literal": { "StringLiteral": { "value": "own" } } }
+        }
+      }
+    },
+    "fqname": "my-package:files#file-handle"
+  }
+}
+```
+
+## Configuration
+
+```toml
+[frontend.wit]
+# Package naming
+package_prefix = "wit-imports"
+
+# Type mapping preferences
+use_sdk_types = true          # Use Morphir.SDK types vs custom
+generate_constraints = true    # Add numeric/string constraints
+
+# Module organization
+flatten_interfaces = false     # Put all interfaces in one module
+resource_style = "methods"     # "methods" | "functions"
+
+# Validation
+strict_mode = true             # Error on unsupported features
+```
+
+## Open Questions
+
+1. **Resource Lifecycle**: How should Morphir handle resource ownership (own vs borrow)?
+
+2. **Async Functions**: WIT supports `async` functions. How should these map to Morphir?
+
+3. **Flags Type**: Should WIT flags become a record of bools or a custom set type?
+
+4. **Package Versioning**: How to handle WIT package versions in Morphir FQNames?
