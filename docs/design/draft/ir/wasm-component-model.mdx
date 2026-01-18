@@ -1,0 +1,935 @@
+---
+title: Morphir and the WebAssembly Component Model
+sidebar_label: Wasm Component Model
+sidebar_position: 1
+status: draft
+tracking_issue: morphir-n46
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Morphir and the WebAssembly Component Model
+
+This document is a comprehensive guide to integrating Morphir with the WebAssembly Component Model ecosystem. It explains the Canonical ABI, type mappings, and how Morphir IR can serve as a rich intermediate representation for Wasm component development.
+
+## Related Documents
+
+- [Attributes System](./attributes.mdx) — Type constraints and boundary extensions
+- [Wasm Backend Design](./wasm-backend.mdx) — Compiler architecture for Wasm targets
+- [WIT Frontend](./wit-frontend.mdx) — Parsing WIT interfaces into Morphir IR
+- [WAT Code Generation](./wat-codegen.mdx) — Emitting human-readable WAT
+
+## Executive Summary
+
+The WebAssembly Component Model defines how Wasm modules interoperate through well-defined interfaces. Morphir IR can:
+
+1. **Represent all WIT constructs** — Full coverage of Component Model types
+2. **Add compile-time validation** — Catch boundary errors before runtime
+3. **Enable richer tooling** — Automated ABI generation, breaking-change detection
+4. **Preserve semantic information** — Constraints, documentation, and metadata
+
+**Relationship**: WIT ⊂ Morphir IR for Component Model interfaces.
+
+---
+
+## Part 1: Core Concepts
+
+### 1.1 The Wasm Type Boundary Problem
+
+WebAssembly core modules only support four value types at function boundaries:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Core Wasm Value Types (MVP + Extensions)                   │
+│                                                             │
+│    i32    32-bit integer (signedness determined by ops)     │
+│    i64    64-bit integer                                    │
+│    f32    32-bit IEEE 754 float                             │
+│    f64    64-bit IEEE 754 float                             │
+│                                                             │
+│  That's it. No strings, no structs, no lists, no variants.  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+The **Component Model** and **Canonical ABI** solve this by defining:
+- How high-level types map to core Wasm types
+- Memory layout conventions for compound types
+- Lifting (core → high-level) and lowering (high-level → core) procedures
+
+### 1.2 Lifting and Lowering
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Canonical ABI Operations                                   │
+│                                                             │
+│  LIFTING: Core Wasm → High-Level                            │
+│    (i32, i32) → String                                      │
+│    Read ptr and len, decode UTF-8 from linear memory        │
+│                                                             │
+│  LOWERING: High-Level → Core Wasm                           │
+│    String → (i32, i32)                                      │
+│    Encode UTF-8, allocate in linear memory, return ptr+len  │
+│                                                             │
+│  Every boundary crossing requires lift/lower operations     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 1.3 Morphir's Role
+
+Morphir IR captures semantic information that enables:
+
+| Capability | WIT Alone | Morphir IR |
+|------------|-----------|------------|
+| Type definitions | ✓ | ✓ |
+| Boundary validation | Runtime | Compile-time |
+| Numeric constraints | No | Signed/Unsigned/Bounded |
+| String constraints | No | Encoding/Length/Pattern |
+| Breaking change detection | Manual | Automated |
+| ABI generation | External tooling | Integrated |
+
+---
+
+## Part 2: Type Mappings
+
+### 2.1 Primitive Types
+
+| Morphir Type | WIT Type | Core Wasm | Notes |
+|--------------|----------|-----------|-------|
+| `Int` (arbitrary) | — | Requires constraint | Default: error at boundary |
+| `Int` + `Signed(32)` | `s32` | `i32` | Signed 32-bit |
+| `Int` + `Unsigned(32)` | `u32` | `i32` | Unsigned 32-bit |
+| `Int` + `Signed(64)` | `s64` | `i64` | Signed 64-bit |
+| `Float` | `f64` | `f64` | IEEE 754 double |
+| `Float` + `FloatingPoint(32)` | `f32` | `f32` | IEEE 754 single |
+| `Bool` | `bool` | `i32` | 0 = false, 1 = true |
+| `Char` | `char` | `i32` | Unicode scalar value |
+
+### 2.2 Strings
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  String Representation                                      │
+│                                                             │
+│  Morphir: String (abstract)                                 │
+│  WIT:     string                                            │
+│  Memory:  UTF-8 encoded bytes                               │
+│  ABI:     (ptr: i32, len: i32)                              │
+│                                                             │
+│  ┌────────────────────────────────────┐                     │
+│  │ h │ e │ l │ l │ o │                │  Memory at ptr      │
+│  └────────────────────────────────────┘                     │
+│    ↑                                                        │
+│    ptr = 0x1000, len = 5                                    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Morphir can add constraints via `StringConstraint`:
+
+<Tabs groupId="language">
+  <TabItem value="gleam" label="Gleam" default>
+
+```gleam
+pub type StringConstraint {
+  Unconstrained
+  Encoding(encoding: StringEncoding)
+  LengthBounded(min: Option(Int), max: Option(Int))
+  Pattern(regex: String)
+}
+
+pub type StringEncoding {
+  Utf8
+  Utf16
+  Latin1
+}
+```
+
+  </TabItem>
+  <TabItem value="scala" label="Scala 3">
+
+```scala
+enum StringConstraint:
+  case Unconstrained
+  case Encoding(encoding: StringEncoding)
+  case LengthBounded(min: Option[Int], max: Option[Int])
+  case Pattern(regex: String)
+
+enum StringEncoding:
+  case Utf8, Utf16, Latin1
+```
+
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+
+```rust
+pub enum StringConstraint {
+    Unconstrained,
+    Encoding(StringEncoding),
+    LengthBounded { min: Option<u32>, max: Option<u32> },
+    Pattern(String),
+}
+
+pub enum StringEncoding {
+    Utf8,
+    Utf16,
+    Latin1,
+}
+```
+
+  </TabItem>
+</Tabs>
+
+### 2.3 Lists and Arrays
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  List Memory Layout                                         │
+│                                                             │
+│  list<T> → (ptr: i32, len: i32)                             │
+│                                                             │
+│  Memory at ptr:                                             │
+│  ┌──────────┬──────────┬──────────┬──────────┐              │
+│  │ elem[0]  │ elem[1]  │ elem[2]  │   ...    │              │
+│  └──────────┴──────────┴──────────┴──────────┘              │
+│                                                             │
+│  Element stride = align_to(sizeof(T), alignment(T))         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 2.4 Records (Structs)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Record Memory Layout                                       │
+│                                                             │
+│  record point { x: f32, y: f32 }                            │
+│                                                             │
+│  ┌─────────────┬─────────────┐                              │
+│  │   x: f32    │   y: f32    │                              │
+│  │  (4 bytes)  │  (4 bytes)  │                              │
+│  └─────────────┴─────────────┘                              │
+│  Total: 8 bytes, alignment: 4                               │
+│                                                             │
+│  At boundary: pass as pointer (i32) to this layout          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 2.5 Variants (Enums and Tagged Unions)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Variant Memory Layout                                      │
+│                                                             │
+│  variant shape { circle(f32), rect(f32, f32) }              │
+│                                                             │
+│  ┌──────┬────────────────────────────────────┐              │
+│  │ tag  │  payload (max size of variants)    │              │
+│  │ i32  │  [f32, f32] = 8 bytes              │              │
+│  └──────┴────────────────────────────────────┘              │
+│                                                             │
+│  tag=0 (circle): payload = [radius, padding]                │
+│  tag=1 (rect):   payload = [width, height]                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 2.6 Option and Result
+
+Both are special cases of variants with optimized representations:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Option Flattening                                          │
+│                                                             │
+│  option<T> where T is non-nullable:                         │
+│    Some(v) → (1, v)                                         │
+│    None    → (0, _)                                         │
+│                                                             │
+│  option<option<T>> cannot be flattened (nested)             │
+│                                                             │
+│  Result Flattening                                          │
+│                                                             │
+│  result<T, E>:                                              │
+│    Ok(v)  → (0, v_or_padding)                               │
+│    Err(e) → (1, e_or_padding)                               │
+│                                                             │
+│  Payload size = max(sizeof(T), sizeof(E))                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 2.7 Functions
+
+Morphir functions are curried; Canonical ABI expects uncurried:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Function Lowering                                          │
+│                                                             │
+│  Morphir:   add : Int → Int → Int                           │
+│                    ↓ uncurry                                │
+│  Flattened: add : (Int, Int) → Int                          │
+│                    ↓ lower types                            │
+│  Core Wasm: (func $add (param i32 i32) (result i32))        │
+│                                                             │
+│  Parameter flattening limit: ~16 scalars                    │
+│  Beyond limit: pass via pointer                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 2.8 Resources (Handles)
+
+Resources represent opaque, stateful objects:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Resource Representation                                    │
+│                                                             │
+│  resource file { read, write, close }                       │
+│                                                             │
+│  At boundary: i32 handle index into resource table          │
+│                                                             │
+│  own<file>    Transfer ownership (receiver must drop)       │
+│  borrow<file> Temporary access (caller retains ownership)   │
+│                                                             │
+│  Morphir: opaque type + extension attributes                │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Part 3: Morphir IR Extensions
+
+### 3.1 Type Constraints
+
+Morphir IR v4 introduces `TypeConstraints` to capture boundary-relevant information:
+
+<Tabs groupId="language">
+  <TabItem value="gleam" label="Gleam" default>
+
+```gleam
+pub type NumericConstraint {
+  /// Arbitrary precision (Morphir default)
+  Arbitrary
+  /// Signed fixed-width integer
+  Signed(bits: IntWidth)
+  /// Unsigned fixed-width integer
+  Unsigned(bits: IntWidth)
+  /// IEEE 754 floating point
+  FloatingPoint(bits: FloatWidth)
+  /// Bounded range (any underlying representation)
+  Bounded(min: Option(BigInt), max: Option(BigInt))
+  /// Fixed-point decimal
+  Decimal(precision: Int, scale: Int)
+}
+
+pub type IntWidth {
+  Bits8
+  Bits16
+  Bits32
+  Bits64
+}
+```
+
+  </TabItem>
+  <TabItem value="scala" label="Scala 3">
+
+```scala
+enum NumericConstraint:
+  case Arbitrary
+  case Signed(bits: IntWidth)
+  case Unsigned(bits: IntWidth)
+  case FloatingPoint(bits: FloatWidth)
+  case Bounded(min: Option[BigInt], max: Option[BigInt])
+  case Decimal(precision: Int, scale: Int)
+
+enum IntWidth:
+  case Bits8, Bits16, Bits32, Bits64
+```
+
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+
+```rust
+pub enum NumericConstraint {
+    Arbitrary,
+    Signed { bits: IntWidth },
+    Unsigned { bits: IntWidth },
+    FloatingPoint { bits: FloatWidth },
+    Bounded { min: Option<BigInt>, max: Option<BigInt> },
+    Decimal { precision: u32, scale: u32 },
+}
+
+pub enum IntWidth {
+    Bits8,
+    Bits16,
+    Bits32,
+    Bits64,
+}
+```
+
+  </TabItem>
+</Tabs>
+
+### 3.2 Boundary Extensions
+
+Functions crossing component boundaries carry ABI metadata:
+
+```json
+{
+  "ValueDefinition": {
+    "name": "calculatePremium",
+    "attributes": {
+      "extensions": {
+        "morphir/wasm:boundary#export": { "BoolLiteral": true },
+        "morphir/wasm:boundary#abi-signature": {
+          "params": [
+            { "name": "policy_ptr", "type": "i32" },
+            { "name": "risk_ptr", "type": "i32" }
+          ],
+          "results": [{ "type": "i32" }]
+        }
+      }
+    }
+  }
+}
+```
+
+### 3.3 Resource Extensions
+
+Resources leverage Morphir's opaque type system:
+
+```json
+{
+  "TypeDefinition": {
+    "name": "File",
+    "definition": { "OpaqueType": {} },
+    "attributes": {
+      "extensions": {
+        "morphir/wasm:resource#definition": {
+          "constructor": "file_open",
+          "destructor": "file_close",
+          "methods": {
+            "read": { "receiver": "borrow" },
+            "write": { "receiver": "borrow" }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+---
+
+## Part 4: Implementation Architecture
+
+### 4.1 Compilation Pipeline
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Morphir → Wasm Pipeline                                    │
+│                                                             │
+│  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌────────┐ │
+│  │ Morphir  │───>│ Analysis │───>│ Lowering │───>│ Codegen│ │
+│  │   IR     │    │  Phase   │    │  Phase   │    │ Phase  │ │
+│  └──────────┘    └──────────┘    └──────────┘    └────────┘ │
+│       │              │                │              │      │
+│       v              v                v              v      │
+│  Source types   Boundary info    Wasm types      .wasm     │
+│  + constraints  + ABI sigs       + layouts       binary    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 4.2 Analysis Phase
+
+<Tabs groupId="language">
+  <TabItem value="gleam" label="Gleam" default>
+
+```gleam
+pub type BoundaryInfo {
+  BoundaryInfo(
+    direction: BoundaryDirection,
+    morphir_type: Type,
+    abi_signature: AbiSignature,
+    memory_layouts: Dict(FQName, MemoryLayout),
+  )
+}
+
+pub fn analyze_boundary(
+  func: ValueDefinition,
+  config: WasmConfig,
+) -> Result(BoundaryInfo, BoundaryError) {
+  // 1. Check for generic types (not allowed at boundaries)
+  use _ <- result.try(reject_type_variables(func.input_types))
+
+  // 2. Resolve all type constraints
+  use constraints <- result.try(resolve_constraints(func))
+
+  // 3. Compute ABI signature
+  use abi <- result.try(compute_abi_signature(func, constraints))
+
+  // 4. Compute memory layouts
+  let layouts = compute_layouts(func.input_types ++ [func.output_type])
+
+  Ok(BoundaryInfo(
+    direction: get_direction(func),
+    morphir_type: func.signature,
+    abi_signature: abi,
+    memory_layouts: layouts,
+  ))
+}
+```
+
+  </TabItem>
+  <TabItem value="scala" label="Scala 3">
+
+```scala
+case class BoundaryInfo(
+  direction: BoundaryDirection,
+  morphirType: Type,
+  abiSignature: AbiSignature,
+  memoryLayouts: Map[FQName, MemoryLayout]
+)
+
+def analyzeBoundary(
+  func: ValueDefinition,
+  config: WasmConfig
+): Either[BoundaryError, BoundaryInfo] =
+  for
+    _ <- rejectTypeVariables(func.inputTypes)
+    constraints <- resolveConstraints(func)
+    abi <- computeAbiSignature(func, constraints)
+    layouts = computeLayouts(func.inputTypes :+ func.outputType)
+  yield BoundaryInfo(
+    direction = getDirection(func),
+    morphirType = func.signature,
+    abiSignature = abi,
+    memoryLayouts = layouts
+  )
+```
+
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+
+```rust
+pub struct BoundaryInfo {
+    pub direction: BoundaryDirection,
+    pub morphir_type: Type,
+    pub abi_signature: AbiSignature,
+    pub memory_layouts: HashMap<FQName, MemoryLayout>,
+}
+
+pub fn analyze_boundary(
+    func: &ValueDefinition,
+    config: &WasmConfig,
+) -> Result<BoundaryInfo, BoundaryError> {
+    // 1. Check for generic types
+    reject_type_variables(&func.input_types)?;
+
+    // 2. Resolve all type constraints
+    let constraints = resolve_constraints(func)?;
+
+    // 3. Compute ABI signature
+    let abi = compute_abi_signature(func, &constraints)?;
+
+    // 4. Compute memory layouts
+    let mut all_types = func.input_types.clone();
+    all_types.push(func.output_type.clone());
+    let layouts = compute_layouts(&all_types);
+
+    Ok(BoundaryInfo {
+        direction: get_direction(func),
+        morphir_type: func.signature.clone(),
+        abi_signature: abi,
+        memory_layouts: layouts,
+    })
+}
+```
+
+  </TabItem>
+</Tabs>
+
+### 4.3 Lowering Phase
+
+The lowering phase transforms Morphir IR into Wasm-compatible representations:
+
+<Tabs groupId="language">
+  <TabItem value="gleam" label="Gleam" default>
+
+```gleam
+pub type WasmIR {
+  WasmIR(
+    functions: List(WasmFunction),
+    tables: List(WasmTable),
+    memories: List(WasmMemory),
+    globals: List(WasmGlobal),
+    exports: List(WasmExport),
+    imports: List(WasmImport),
+  )
+}
+
+pub fn lower_module(
+  module: ModuleDefinition,
+  boundaries: Dict(FQName, BoundaryInfo),
+) -> WasmIR {
+  let functions =
+    module.values
+    |> dict.to_list
+    |> list.map(fn(pair) {
+      let #(name, def) = pair
+      case dict.get(boundaries, name) {
+        Ok(boundary) -> lower_boundary_function(def, boundary)
+        Error(_) -> lower_internal_function(def)
+      }
+    })
+
+  WasmIR(
+    functions: functions,
+    tables: generate_tables(module),
+    memories: [WasmMemory(min_pages: 1, max_pages: None)],
+    globals: generate_globals(module),
+    exports: generate_exports(boundaries),
+    imports: generate_imports(boundaries),
+  )
+}
+```
+
+  </TabItem>
+  <TabItem value="scala" label="Scala 3">
+
+```scala
+case class WasmIR(
+  functions: List[WasmFunction],
+  tables: List[WasmTable],
+  memories: List[WasmMemory],
+  globals: List[WasmGlobal],
+  exports: List[WasmExport],
+  imports: List[WasmImport]
+)
+
+def lowerModule(
+  module: ModuleDefinition,
+  boundaries: Map[FQName, BoundaryInfo]
+): WasmIR =
+  val functions = module.values.toList.map { (name, defn) =>
+    boundaries.get(name) match
+      case Some(boundary) => lowerBoundaryFunction(defn, boundary)
+      case None => lowerInternalFunction(defn)
+  }
+
+  WasmIR(
+    functions = functions,
+    tables = generateTables(module),
+    memories = List(WasmMemory(minPages = 1, maxPages = None)),
+    globals = generateGlobals(module),
+    exports = generateExports(boundaries),
+    imports = generateImports(boundaries)
+  )
+```
+
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+
+```rust
+pub struct WasmIR {
+    pub functions: Vec<WasmFunction>,
+    pub tables: Vec<WasmTable>,
+    pub memories: Vec<WasmMemory>,
+    pub globals: Vec<WasmGlobal>,
+    pub exports: Vec<WasmExport>,
+    pub imports: Vec<WasmImport>,
+}
+
+pub fn lower_module(
+    module: &ModuleDefinition,
+    boundaries: &HashMap<FQName, BoundaryInfo>,
+) -> WasmIR {
+    let functions: Vec<_> = module
+        .values
+        .iter()
+        .map(|(name, defn)| {
+            match boundaries.get(name) {
+                Some(boundary) => lower_boundary_function(defn, boundary),
+                None => lower_internal_function(defn),
+            }
+        })
+        .collect();
+
+    WasmIR {
+        functions,
+        tables: generate_tables(module),
+        memories: vec![WasmMemory { min_pages: 1, max_pages: None }],
+        globals: generate_globals(module),
+        exports: generate_exports(boundaries),
+        imports: generate_imports(boundaries),
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## Part 5: Error Handling
+
+### 5.1 Result Types
+
+Morphir's `Result e a` maps directly to WIT's `result<a, e>`:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Result Lowering                                            │
+│                                                             │
+│  Morphir: Result ValidationError Int                        │
+│  WIT:     result<s32, validation-error>                     │
+│                                                             │
+│  Memory layout:                                             │
+│  ┌──────┬───────────────────────────────────┐               │
+│  │ tag  │  payload                          │               │
+│  │ i32  │  max(sizeof(ok), sizeof(err))     │               │
+│  └──────┴───────────────────────────────────┘               │
+│                                                             │
+│  tag = 0: Ok,  payload contains success value               │
+│  tag = 1: Err, payload contains error value                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 5.2 Traps vs Results
+
+| Approach | Use Case | Recoverability |
+|----------|----------|----------------|
+| `Result` type | Domain errors, validation | Caller handles |
+| Wasm trap | Programmer errors, invariant violations | Unrecoverable |
+
+Morphir prefers explicit `Result` types for all domain errors.
+
+---
+
+## Part 6: Versioning and Evolution
+
+### 6.1 Compatible Changes
+
+| Change Type | Compatibility | Version Bump |
+|-------------|---------------|--------------|
+| Add new function | ✅ Compatible | Minor |
+| Add optional record field | ✅ Compatible | Minor |
+| Add new variant case | ⚠️ May break exhaustive matches | Minor |
+| Remove function | ❌ Breaking | Major |
+| Change function signature | ❌ Breaking | Major |
+| Rename anything | ❌ Breaking | Major |
+
+### 6.2 Morphir Advantage: Automated Detection
+
+Morphir can compare IR versions structurally:
+
+<Tabs groupId="language">
+  <TabItem value="gleam" label="Gleam" default>
+
+```gleam
+pub type CompatibilityResult {
+  Compatible(adapters: List(Adapter))
+  Breaking(changes: List(BreakingChange))
+}
+
+pub fn check_compatibility(
+  old_ir: Distribution,
+  new_ir: Distribution,
+) -> CompatibilityResult {
+  let type_changes = diff_types(old_ir.types, new_ir.types)
+  let func_changes = diff_functions(old_ir.values, new_ir.values)
+
+  let breaking =
+    list.filter(type_changes, is_breaking) ++
+    list.filter(func_changes, is_breaking)
+
+  case breaking {
+    [] -> Compatible(generate_adapters(type_changes, func_changes))
+    _ -> Breaking(breaking)
+  }
+}
+```
+
+  </TabItem>
+  <TabItem value="scala" label="Scala 3">
+
+```scala
+enum CompatibilityResult:
+  case Compatible(adapters: List[Adapter])
+  case Breaking(changes: List[BreakingChange])
+
+def checkCompatibility(
+  oldIR: Distribution,
+  newIR: Distribution
+): CompatibilityResult =
+  val typeChanges = diffTypes(oldIR.types, newIR.types)
+  val funcChanges = diffFunctions(oldIR.values, newIR.values)
+
+  val breaking = typeChanges.filter(isBreaking) ++ funcChanges.filter(isBreaking)
+
+  if breaking.isEmpty then
+    CompatibilityResult.Compatible(generateAdapters(typeChanges, funcChanges))
+  else
+    CompatibilityResult.Breaking(breaking)
+```
+
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+
+```rust
+pub enum CompatibilityResult {
+    Compatible { adapters: Vec<Adapter> },
+    Breaking { changes: Vec<BreakingChange> },
+}
+
+pub fn check_compatibility(
+    old_ir: &Distribution,
+    new_ir: &Distribution,
+) -> CompatibilityResult {
+    let type_changes = diff_types(&old_ir.types, &new_ir.types);
+    let func_changes = diff_functions(&old_ir.values, &new_ir.values);
+
+    let breaking: Vec<_> = type_changes
+        .iter()
+        .chain(func_changes.iter())
+        .filter(|c| is_breaking(c))
+        .cloned()
+        .collect();
+
+    if breaking.is_empty() {
+        CompatibilityResult::Compatible {
+            adapters: generate_adapters(&type_changes, &func_changes),
+        }
+    } else {
+        CompatibilityResult::Breaking { changes: breaking }
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## Part 7: Performance Considerations
+
+### 7.1 Boundary Crossing Costs
+
+| Type | Approximate Cost | Strategy |
+|------|------------------|----------|
+| Scalar (i32, f64) | ~0 | Direct register |
+| String | O(n) | Copy UTF-8 bytes |
+| List | O(n × elem) | Allocate + copy |
+| Record | O(fields) | Allocate + copy |
+
+### 7.2 Optimization Strategies
+
+1. **Batch operations** — Single boundary call with multiple items
+2. **Coarse-grained interfaces** — Return whole records, not field-by-field
+3. **Preallocate memory** — Analyze functions to predict allocation needs
+4. **Inline pure functions** — Small functions that don't cross boundaries
+
+### 7.3 Performance Hints
+
+Morphir IR can carry optimization hints:
+
+```json
+{
+  "attributes": {
+    "extensions": {
+      "morphir/wasm:perf#inline": "always",
+      "morphir/wasm:perf#allocation-hint": 1024,
+      "morphir/wasm:perf#pure": true
+    }
+  }
+}
+```
+
+---
+
+## Part 8: Summary — Can Morphir IR Replace WIT?
+
+### Coverage Assessment
+
+| Module | WIT Feature | Morphir IR | Status |
+|--------|-------------|------------|--------|
+| Scalars | s8-s64, u8-u64, f32, f64 | Via NumericConstraint | ✅ Full |
+| Strings | string | String + StringConstraint | ✅ Full |
+| Lists | list\<T\> | List a | ✅ Full |
+| Records | record { } | Record type | ✅ Full |
+| Variants | variant { } | Custom types | ✅ Full |
+| Enums | enum { } | Enum variants | ✅ Full |
+| Options | option\<T\> | Maybe a | ✅ Full |
+| Results | result\<T, E\> | Result e a | ✅ Full |
+| Functions | func(...) -> ... | Function type | ✅ Full |
+| Resources | resource { } | Opaque + extensions | ✅ Full |
+| Flags | flags { } | Custom type | ✅ Full |
+
+### Morphir Advantages
+
+1. **Compile-time boundary validation** — Catch errors before runtime
+2. **Richer constraints** — Numeric bounds, string patterns, custom validators
+3. **Automated ABI generation** — No manual signature maintenance
+4. **Breaking change detection** — Structural IR comparison
+5. **Semantic preservation** — Documentation, constraints, and metadata in IR
+
+### Relationship
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│     WIT  ⊂  Morphir IR (for Component Model interfaces)     │
+│                                                             │
+│  WIT describes what crosses the boundary.                   │
+│  Morphir IR describes that AND internal semantics.          │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Appendix A: Configuration
+
+### morphir.toml Settings
+
+```toml
+[wasm]
+# Target output format
+output = "component"  # "component" | "core" | "wat"
+
+[wasm.boundary]
+# How to handle arbitrary-precision Int at boundaries
+arbitrary_int = "error"    # "error" | "warn" | "i64" | "i32"
+arbitrary_float = "f64"    # "error" | "warn" | "f64"
+
+[wasm.memory]
+# Initial memory configuration
+initial_pages = 1
+maximum_pages = 256
+
+[wasm.optimization]
+# Optimization level
+level = "size"  # "none" | "speed" | "size"
+inline_threshold = 50
+```
+
+---
+
+## Appendix B: Glossary
+
+| Term | Definition |
+|------|------------|
+| **Canonical ABI** | The standard calling convention for Component Model interfaces |
+| **Lifting** | Converting core Wasm values to high-level types |
+| **Lowering** | Converting high-level types to core Wasm values |
+| **Component** | A Wasm module with typed imports/exports per Component Model |
+| **Resource** | An opaque handle type with lifecycle management |
+| **WIT** | WebAssembly Interface Types — IDL for Component Model |
+
+---
+
+## Appendix C: References
+
+- [WebAssembly Component Model](https://component-model.bytecodealliance.org/)
+- [Canonical ABI Specification](https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md)
+- [WIT Specification](https://component-model.bytecodealliance.org/design/wit.html)
+- [Morphir IR v4 Attributes](./attributes.mdx)

@@ -1,0 +1,791 @@
+---
+title: Attributes System
+sidebar_label: Attributes
+sidebar_position: 2.5
+status: draft
+tracking:
+  beads: [morphir-n46]
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Attributes System
+
+This document defines the attributes system for Morphir IR v4, replacing the generic type parameter approach with structured, semantic attributes.
+
+## Overview
+
+### Problem
+
+In IR v3, types and values are parameterized by a generic attribute type:
+
+```gleam
+// v3 approach
+pub type Type(a) {
+  Variable(attributes: a, name: TypeVariable)
+  Reference(attributes: a, fqname: FQName, args: List(Type(a)))
+  // ...
+}
+```
+
+This has limitations:
+- No standard structure for common metadata (source locations, constraints)
+- Backends must pattern-match on arbitrary attribute types
+- No way to express semantic constraints (numeric bounds, encodings)
+- Extension points are ad-hoc
+
+### Solution
+
+Replace the generic parameter with structured attribute types that have:
+1. **Well-known fields** for common concerns (source location, constraints)
+2. **Extension map** for user-defined metadata (RDF-like triples)
+3. **Separate types for Type vs. Value attributes** (different semantic needs)
+
+## Design
+
+### TypeAttributes
+
+Attributes attached to type expressions.
+
+<Tabs groupId="language">
+  <TabItem value="gleam" label="Gleam" default>
+
+```gleam
+pub type TypeAttributes {
+  TypeAttributes(
+    /// Source location for error reporting
+    source: Option(SourceLocation),
+    /// Semantic constraints on values of this type
+    constraints: Option(TypeConstraints),
+    /// User-defined extensions (predicate -> value)
+    extensions: Dict(FQName, Value),
+  )
+}
+
+/// Empty attributes (replaces unit `()` from v3)
+pub const empty_type_attributes = TypeAttributes(
+  source: None,
+  constraints: None,
+  extensions: dict.new(),
+)
+```
+
+  </TabItem>
+  <TabItem value="python" label="Python">
+
+```python
+from dataclasses import dataclass, field
+from typing import Optional
+
+@dataclass(frozen=True)
+class TypeAttributes:
+    """Attributes attached to type expressions."""
+    source: Optional[SourceLocation] = None
+    constraints: Optional[TypeConstraints] = None
+    extensions: dict[FQName, Value] = field(default_factory=dict)
+
+# Empty attributes
+EMPTY_TYPE_ATTRIBUTES = TypeAttributes()
+```
+
+  </TabItem>
+  <TabItem value="java" label="Java 21+">
+
+```java
+public record TypeAttributes(
+    Optional<SourceLocation> source,
+    Optional<TypeConstraints> constraints,
+    Map<FQName, Value> extensions
+) {
+    public static final TypeAttributes EMPTY = new TypeAttributes(
+        Optional.empty(),
+        Optional.empty(),
+        Map.of()
+    );
+}
+```
+
+  </TabItem>
+</Tabs>
+
+### ValueAttributes
+
+Attributes attached to value expressions.
+
+<Tabs groupId="language">
+  <TabItem value="gleam" label="Gleam" default>
+
+```gleam
+pub type ValueAttributes {
+  ValueAttributes(
+    /// Source location for error reporting
+    source: Option(SourceLocation),
+    /// Inferred or annotated type
+    inferred_type: Option(Type),
+    /// Value-level constraints/properties
+    properties: Option(ValueProperties),
+    /// User-defined extensions
+    extensions: Dict(FQName, Value),
+  )
+}
+
+pub type ValueProperties {
+  ValueProperties(
+    /// Is this a compile-time constant?
+    is_constant: Bool,
+    /// Purity: does this have side effects?
+    purity: Purity,
+  )
+}
+
+pub type Purity {
+  Pure           // No side effects
+  Effectful      // Has effects (IO, state, etc.)
+  Unknown        // Not yet analyzed
+}
+
+pub const empty_value_attributes = ValueAttributes(
+  source: None,
+  inferred_type: None,
+  properties: None,
+  extensions: dict.new(),
+)
+```
+
+  </TabItem>
+  <TabItem value="python" label="Python">
+
+```python
+from dataclasses import dataclass, field
+from typing import Optional
+from enum import Enum, auto
+
+class Purity(Enum):
+    PURE = auto()
+    EFFECTFUL = auto()
+    UNKNOWN = auto()
+
+@dataclass(frozen=True)
+class ValueProperties:
+    """Value-level constraints and properties."""
+    is_constant: bool = False
+    purity: Purity = Purity.UNKNOWN
+
+@dataclass(frozen=True)
+class ValueAttributes:
+    """Attributes attached to value expressions."""
+    source: Optional[SourceLocation] = None
+    inferred_type: Optional["Type"] = None
+    properties: Optional[ValueProperties] = None
+    extensions: dict[FQName, Value] = field(default_factory=dict)
+
+EMPTY_VALUE_ATTRIBUTES = ValueAttributes()
+```
+
+  </TabItem>
+  <TabItem value="java" label="Java 21+">
+
+```java
+public enum Purity { PURE, EFFECTFUL, UNKNOWN }
+
+public record ValueProperties(
+    boolean isConstant,
+    Purity purity
+) {
+    public static final ValueProperties DEFAULT =
+        new ValueProperties(false, Purity.UNKNOWN);
+}
+
+public record ValueAttributes(
+    Optional<SourceLocation> source,
+    Optional<Type> inferredType,
+    Optional<ValueProperties> properties,
+    Map<FQName, Value> extensions
+) {
+    public static final ValueAttributes EMPTY = new ValueAttributes(
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Map.of()
+    );
+}
+```
+
+  </TabItem>
+</Tabs>
+
+### TypeConstraints
+
+Semantic constraints on types, particularly for numeric and string types.
+
+<Tabs groupId="language">
+  <TabItem value="gleam" label="Gleam" default>
+
+```gleam
+pub type TypeConstraints {
+  TypeConstraints(
+    numeric: Option(NumericConstraint),
+    string: Option(StringConstraint),
+    collection: Option(CollectionConstraint),
+    custom: List(CustomConstraint),
+  )
+}
+
+pub type NumericConstraint {
+  /// Arbitrary precision (default for Int)
+  Arbitrary
+  /// Fixed-width signed integer
+  Signed(bits: IntWidth)
+  /// Fixed-width unsigned integer
+  Unsigned(bits: IntWidth)
+  /// Floating point
+  FloatingPoint(bits: FloatWidth)
+  /// Bounded range (JSON Schema style)
+  Bounded(min: Option(BigInt), max: Option(BigInt))
+  /// Fixed-point decimal
+  Decimal(precision: Int, scale: Int)
+}
+
+pub type IntWidth {
+  I8
+  I16
+  I32
+  I64
+}
+
+pub type FloatWidth {
+  F32
+  F64
+}
+
+pub type StringConstraint {
+  StringConstraint(
+    encoding: Option(StringEncoding),
+    min_length: Option(Int),
+    max_length: Option(Int),
+    pattern: Option(String),  // Regex pattern
+  )
+}
+
+pub type StringEncoding {
+  UTF8
+  UTF16
+  ASCII
+  Latin1
+}
+
+pub type CollectionConstraint {
+  CollectionConstraint(
+    min_length: Option(Int),
+    max_length: Option(Int),
+    unique_items: Bool,
+  )
+}
+
+pub type CustomConstraint {
+  CustomConstraint(
+    predicate: FQName,
+    arguments: List(Value),
+  )
+}
+```
+
+  </TabItem>
+  <TabItem value="python" label="Python">
+
+```python
+from dataclasses import dataclass
+from typing import Optional, Literal
+from enum import Enum, auto
+
+IntWidth = Literal[8, 16, 32, 64]
+FloatWidth = Literal[32, 64]
+
+@dataclass(frozen=True)
+class Signed:
+    bits: IntWidth
+
+@dataclass(frozen=True)
+class Unsigned:
+    bits: IntWidth
+
+@dataclass(frozen=True)
+class FloatingPoint:
+    bits: FloatWidth
+
+@dataclass(frozen=True)
+class Bounded:
+    min: Optional[int] = None
+    max: Optional[int] = None
+
+@dataclass(frozen=True)
+class Decimal:
+    precision: int
+    scale: int
+
+# Union type for NumericConstraint
+# None represents Arbitrary
+NumericConstraint = None | Signed | Unsigned | FloatingPoint | Bounded | Decimal
+
+class StringEncoding(Enum):
+    UTF8 = auto()
+    UTF16 = auto()
+    ASCII = auto()
+    LATIN1 = auto()
+
+@dataclass(frozen=True)
+class StringConstraint:
+    encoding: Optional[StringEncoding] = None
+    min_length: Optional[int] = None
+    max_length: Optional[int] = None
+    pattern: Optional[str] = None
+
+@dataclass(frozen=True)
+class CollectionConstraint:
+    min_length: Optional[int] = None
+    max_length: Optional[int] = None
+    unique_items: bool = False
+
+@dataclass(frozen=True)
+class CustomConstraint:
+    predicate: FQName
+    arguments: list[Value]
+
+@dataclass(frozen=True)
+class TypeConstraints:
+    numeric: Optional[NumericConstraint] = None
+    string: Optional[StringConstraint] = None
+    collection: Optional[CollectionConstraint] = None
+    custom: list[CustomConstraint] = None
+```
+
+  </TabItem>
+  <TabItem value="java" label="Java 21+">
+
+```java
+public sealed interface NumericConstraint {
+    record Arbitrary() implements NumericConstraint {}
+    record Signed(int bits) implements NumericConstraint {
+        public Signed {
+            if (bits != 8 && bits != 16 && bits != 32 && bits != 64)
+                throw new IllegalArgumentException("bits must be 8, 16, 32, or 64");
+        }
+    }
+    record Unsigned(int bits) implements NumericConstraint {
+        public Unsigned {
+            if (bits != 8 && bits != 16 && bits != 32 && bits != 64)
+                throw new IllegalArgumentException("bits must be 8, 16, 32, or 64");
+        }
+    }
+    record FloatingPoint(int bits) implements NumericConstraint {
+        public FloatingPoint {
+            if (bits != 32 && bits != 64)
+                throw new IllegalArgumentException("bits must be 32 or 64");
+        }
+    }
+    record Bounded(Optional<BigInteger> min, Optional<BigInteger> max)
+        implements NumericConstraint {}
+    record Decimal(int precision, int scale) implements NumericConstraint {}
+}
+
+public enum StringEncoding { UTF8, UTF16, ASCII, LATIN1 }
+
+public record StringConstraint(
+    Optional<StringEncoding> encoding,
+    OptionalInt minLength,
+    OptionalInt maxLength,
+    Optional<String> pattern
+) {}
+
+public record CollectionConstraint(
+    OptionalInt minLength,
+    OptionalInt maxLength,
+    boolean uniqueItems
+) {}
+
+public record CustomConstraint(FQName predicate, List<Value> arguments) {}
+
+public record TypeConstraints(
+    Optional<NumericConstraint> numeric,
+    Optional<StringConstraint> string,
+    Optional<CollectionConstraint> collection,
+    List<CustomConstraint> custom
+) {
+    public static final TypeConstraints EMPTY = new TypeConstraints(
+        Optional.empty(), Optional.empty(), Optional.empty(), List.of()
+    );
+}
+```
+
+  </TabItem>
+</Tabs>
+
+## Updated Type Definition
+
+With attributes, the Type definition becomes non-generic:
+
+<Tabs groupId="language">
+  <TabItem value="gleam" label="Gleam" default>
+
+```gleam
+// v4 approach (no generic parameter)
+pub type Type {
+  Variable(attributes: TypeAttributes, name: TypeVariable)
+  Reference(attributes: TypeAttributes, fqname: FQName, args: List(Type))
+  Tuple(attributes: TypeAttributes, elements: List(Type))
+  Record(attributes: TypeAttributes, fields: List(Field))
+  ExtensibleRecord(attributes: TypeAttributes, variable: TypeVariable, fields: List(Field))
+  Function(attributes: TypeAttributes, arg: Type, result: Type)
+  Unit(attributes: TypeAttributes)
+}
+
+pub type Field {
+  Field(name: Name, field_type: Type)
+}
+```
+
+  </TabItem>
+  <TabItem value="python" label="Python">
+
+```python
+@dataclass(frozen=True)
+class Variable:
+    attributes: TypeAttributes
+    name: TypeVariable
+
+@dataclass(frozen=True)
+class Reference:
+    attributes: TypeAttributes
+    fqname: FQName
+    args: list["Type"]
+
+@dataclass(frozen=True)
+class Tuple:
+    attributes: TypeAttributes
+    elements: list["Type"]
+
+@dataclass(frozen=True)
+class Record:
+    attributes: TypeAttributes
+    fields: list[Field]
+
+@dataclass(frozen=True)
+class ExtensibleRecord:
+    attributes: TypeAttributes
+    variable: TypeVariable
+    fields: list[Field]
+
+@dataclass(frozen=True)
+class Function:
+    attributes: TypeAttributes
+    arg: "Type"
+    result: "Type"
+
+@dataclass(frozen=True)
+class Unit:
+    attributes: TypeAttributes
+
+Type = Variable | Reference | Tuple | Record | ExtensibleRecord | Function | Unit
+```
+
+  </TabItem>
+  <TabItem value="java" label="Java 21+">
+
+```java
+public sealed interface Type {
+    TypeAttributes attributes();
+
+    record Variable(TypeAttributes attributes, TypeVariable name) implements Type {}
+    record Reference(TypeAttributes attributes, FQName fqname, List<Type> args) implements Type {}
+    record Tuple(TypeAttributes attributes, List<Type> elements) implements Type {}
+    record Record(TypeAttributes attributes, List<Field> fields) implements Type {}
+    record ExtensibleRecord(TypeAttributes attributes, TypeVariable variable, List<Field> fields) implements Type {}
+    record Function(TypeAttributes attributes, Type arg, Type result) implements Type {}
+    record Unit(TypeAttributes attributes) implements Type {}
+}
+```
+
+  </TabItem>
+</Tabs>
+
+## Extensions as RDF-like Triples
+
+The `extensions` field in attributes acts as an RDF-like graph where:
+- **Subject**: The IR node being annotated (implicit)
+- **Predicate**: The `FQName` key
+- **Object**: The `Value`
+
+This enables:
+- User-defined decorators stored in IR
+- Tool-specific metadata
+- Custom linting/analysis rules
+
+Example:
+
+```json
+{
+  "Reference": {
+    "attributes": {
+      "extensions": {
+        "my-org/decorators:deprecated#reason": {
+          "Literal": { "literal": { "StringLiteral": { "value": "Use NewType instead" } } }
+        },
+        "my-org/decorators:since#version": {
+          "Literal": { "literal": { "StringLiteral": { "value": "2.0.0" } } }
+        }
+      }
+    },
+    "fqname": "my-org/domain:types#old-type"
+  }
+}
+```
+
+## Constraint Entailment (Subtyping)
+
+Constraints form a partial order for subtype checking:
+
+```
+Signed { bits: 8 }  ⊑  Signed { bits: 16 }  ⊑  Signed { bits: 32 }  ⊑  Signed { bits: 64 }  ⊑  Arbitrary
+Unsigned { bits: 8 }  ⊑  Unsigned { bits: 16 }  ⊑  ...  ⊑  Arbitrary
+
+Bounded { min: a, max: b }  ⊑  Signed { bits: n }   when a >= -(2^(n-1)) && b < 2^(n-1)
+Bounded { min: a, max: b }  ⊑  Unsigned { bits: n } when a >= 0 && b < 2^n
+```
+
+This enables:
+- **Implicit widening**: `Int32` value assigned to `Int` variable
+- **Explicit narrowing**: `Int` to `Int32` requires conversion function with `Maybe` result
+
+## JSON Serialization
+
+Attributes are serialized with omission of empty/None fields for compactness:
+
+```json
+// Minimal (all defaults)
+{ "Reference": { "fqname": "morphir/sdk:basics#int" } }
+
+// With source location only
+{
+  "Reference": {
+    "attributes": { "source": { "file": "src/Domain.elm", "line": 42, "col": 5 } },
+    "fqname": "morphir/sdk:basics#int"
+  }
+}
+
+// With numeric constraint
+{
+  "Reference": {
+    "attributes": {
+      "constraints": {
+        "numeric": { "Signed": { "bits": 32 } }
+      }
+    },
+    "fqname": "morphir/sdk:int#int32"
+  }
+}
+
+// With bounded constraint (JSON Schema style)
+{
+  "Reference": {
+    "attributes": {
+      "constraints": {
+        "numeric": { "Bounded": { "min": 0, "max": 100 } }
+      }
+    },
+    "fqname": "morphir/sdk:basics#int"
+  }
+}
+```
+
+## Migration from v3
+
+### Backward Compatibility
+
+- Decoders accept `Type(a)` format (v3) and convert to `Type` with `TypeAttributes.empty`
+- The `attributes` field is optional in JSON; missing = empty
+
+### Forward Path
+
+1. **Phase 1**: Add attributes types, keep generic parameter
+2. **Phase 2**: Default generic parameter to `TypeAttributes`/`ValueAttributes`
+3. **Phase 3**: Remove generic parameter, use concrete attribute types
+
+## Boundary Extensions
+
+For functions that cross component boundaries (Wasm imports/exports), the frontend inserts boundary metadata into the `extensions` field. This enables backends to generate appropriate ABI code.
+
+### Well-Known Boundary Extension Keys
+
+| Extension FQName | Purpose |
+|------------------|---------|
+| `morphir/wasm:boundary#export` | Mark function as Wasm export |
+| `morphir/wasm:boundary#import` | Mark function as Wasm import |
+| `morphir/wasm:boundary#abi-signature` | Computed Canonical ABI signature |
+| `morphir/wasm:boundary#memory-layouts` | Memory layouts for complex types |
+
+### Export Example
+
+<Tabs groupId="language">
+  <TabItem value="gleam" label="Gleam" default>
+
+```gleam
+// Source (with attribute)
+@wasm_export
+pub fn calculate_premium(policy: Policy, risk: Risk) -> Premium {
+  // ...
+}
+```
+
+  </TabItem>
+  <TabItem value="scala" label="Scala 3">
+
+```scala
+// Source (with annotation)
+@wasmExport
+def calculatePremium(policy: Policy, risk: Risk): Premium =
+  // ...
+```
+
+  </TabItem>
+  <TabItem value="python" label="Python">
+
+```python
+# Source (with decorator)
+@wasm_export
+def calculate_premium(policy: Policy, risk: Risk) -> Premium:
+    ...
+```
+
+  </TabItem>
+  <TabItem value="java" label="Java 21+">
+
+```java
+// Source (with annotation)
+@WasmExport
+public Premium calculatePremium(Policy policy, Risk risk) {
+    // ...
+}
+```
+
+  </TabItem>
+</Tabs>
+
+**IR representation:**
+
+```json
+{
+  "ValueDefinition": {
+    "attributes": {
+      "extensions": {
+        "morphir/wasm:boundary#export": {
+          "Literal": { "literal": { "BoolLiteral": { "value": true } } }
+        },
+        "morphir/wasm:boundary#abi-signature": {
+          "Record": {
+            "fields": {
+              "params": { "List": { "items": [
+                { "Record": { "fields": { "name": "policy_ptr", "type": "i32" } } },
+                { "Record": { "fields": { "name": "risk_ptr", "type": "i32" } } }
+              ] } },
+              "results": { "List": { "items": [
+                { "Record": { "fields": { "type": "i32" } } }
+              ] } }
+            }
+          }
+        }
+      }
+    },
+    "body": { "..." : "..." }
+  }
+}
+```
+
+### Import Example
+
+<Tabs groupId="language">
+  <TabItem value="gleam" label="Gleam" default>
+
+```gleam
+// Source (with attribute)
+@wasm_import("pricing-engine")
+pub fn get_base_rate(product_code: ProductCode) -> Rate
+```
+
+  </TabItem>
+  <TabItem value="scala" label="Scala 3">
+
+```scala
+// Source (with annotation)
+@wasmImport("pricing-engine")
+def getBaseRate(productCode: ProductCode): Rate
+```
+
+  </TabItem>
+  <TabItem value="python" label="Python">
+
+```python
+# Source (with decorator)
+@wasm_import("pricing-engine")
+def get_base_rate(product_code: ProductCode) -> Rate:
+    ...
+```
+
+  </TabItem>
+  <TabItem value="java" label="Java 21+">
+
+```java
+// Source (with annotation)
+@WasmImport("pricing-engine")
+public native Rate getBaseRate(ProductCode productCode);
+```
+
+  </TabItem>
+</Tabs>
+
+**IR representation:**
+
+```json
+{
+  "ValueDefinition": {
+    "attributes": {
+      "extensions": {
+        "morphir/wasm:boundary#import": {
+          "Literal": { "literal": { "StringLiteral": { "value": "pricing-engine" } } }
+        }
+      }
+    },
+    "body": { "..." : "..." }
+  }
+}
+```
+
+### Boundary Validation Rules
+
+Functions marked as boundary functions are validated:
+
+1. **No type variables** — generics cannot cross boundaries
+2. **No extensible records** — row polymorphism not allowed
+3. **All types must be boundary-compatible** — must map to Canonical ABI
+4. **Arbitrary-precision Int handling** — configurable (error/warn/default to i64)
+
+Validation behavior is configured in `morphir.toml`:
+
+```toml
+[wasm.boundary]
+arbitrary_int = "error"    # "error" | "warn" | "i64" | "i32"
+arbitrary_float = "f64"    # "error" | "warn" | "f64"
+```
+
+## Open Questions
+
+1. **Constraint inference**: Should frontends infer constraints from type aliases?
+
+2. **Constraint composition**: How do constraints combine when multiple apply?
+
+3. **Custom constraint validation**: How are `CustomConstraint` predicates evaluated?
+
+4. **Boundary ABI storage**: Should computed ABI signatures be:
+   - Stored in IR extensions (current approach)
+   - Computed on-demand by backends
+   - Stored in a separate artifact (`.abi.json`)

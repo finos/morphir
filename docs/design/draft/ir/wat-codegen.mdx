@@ -1,0 +1,835 @@
+---
+title: WAT Code Generation
+sidebar_label: WAT Codegen
+sidebar_position: 12
+status: draft
+tracking:
+  beads: [morphir-n46, morphir-vsp]
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# WAT Code Generation Design
+
+This document defines the design for generating WAT (WebAssembly Text Format) from the Wasm backend's internal representation.
+
+## Overview
+
+WAT provides a human-readable text format for WebAssembly, useful for:
+- **Debugging**: Inspect generated code
+- **Diffing**: Version control friendly
+- **Learning**: Understand compilation output
+- **Testing**: Validate specific instructions
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Wasm Backend   │────►│  WAT Emitter    │────►│   .wat file     │
+│  (WasmModule)   │     │                 │     │   (text)        │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+                               │
+                               ├── Format instructions
+                               ├── Add comments
+                               ├── Name functions
+                               └── Pretty print
+```
+
+## WAT Format Overview
+
+WAT uses S-expressions:
+
+```wat
+(module
+  ;; Type declarations
+  (type $add_type (func (param i32 i32) (result i32)))
+
+  ;; Function definitions
+  (func $add (type $add_type) (param $a i32) (param $b i32) (result i32)
+    local.get $a
+    local.get $b
+    i32.add
+  )
+
+  ;; Exports
+  (export "add" (func $add))
+)
+```
+
+## Architecture
+
+### WAT Emitter Components
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                        WAT Emitter                               │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │ Module      │  │ Function    │  │ Instruction │              │
+│  │ Emitter     │  │ Emitter     │  │ Emitter     │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+│                                                                  │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │ Type        │  │ Comment     │  │ Formatter   │              │
+│  │ Emitter     │  │ Generator   │  │             │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+## Implementation
+
+### Core WAT Writer
+
+<Tabs groupId="language">
+  <TabItem value="scala" label="Scala 3" default>
+
+```scala
+class WatEmitter(config: WatEmitConfig):
+  private val sb = StringBuilder()
+  private var indent = 0
+
+  def emit(module: WasmModule): String =
+    emitModule(module)
+    sb.toString
+
+  private def emitModule(module: WasmModule): Unit =
+    line("(module")
+    indent += 1
+
+    // Emit module name if present
+    if config.emitNames then
+      line(s";; Generated from Morphir IR")
+      line(s";; ${java.time.Instant.now}")
+      line("")
+
+    // Types section
+    if module.types.nonEmpty then
+      line(";; Type declarations")
+      module.types.zipWithIndex.foreach { (typ, i) =>
+        emitType(typ, i)
+      }
+      line("")
+
+    // Imports section
+    if module.imports.nonEmpty then
+      line(";; Imports")
+      module.imports.foreach(emitImport)
+      line("")
+
+    // Function declarations (for forward references)
+    if module.functions.nonEmpty then
+      line(";; Functions")
+      module.functions.foreach(emitFunction)
+      line("")
+
+    // Memory section
+    if module.memories.nonEmpty then
+      line(";; Memory")
+      module.memories.zipWithIndex.foreach { (mem, i) =>
+        emitMemory(mem, i)
+      }
+      line("")
+
+    // Globals section
+    if module.globals.nonEmpty then
+      line(";; Globals")
+      module.globals.foreach(emitGlobal)
+      line("")
+
+    // Exports section
+    if module.exports.nonEmpty then
+      line(";; Exports")
+      module.exports.foreach(emitExport)
+      line("")
+
+    // Data section
+    if module.data.nonEmpty then
+      line(";; Data")
+      module.data.foreach(emitData)
+
+    indent -= 1
+    line(")")
+
+  private def emitType(typ: WasmFuncType, index: Int): Unit =
+    val name = if config.emitNames then s"$$type_$index" else ""
+    val params = typ.params.map(p => s"(param ${valType(p)})").mkString(" ")
+    val results = typ.results.map(r => s"(result ${valType(r)})").mkString(" ")
+    line(s"(type $name (func $params $results))")
+
+  private def emitFunction(func: WasmFunction): Unit =
+    val name = if config.emitNames then s"$$${func.name}" else ""
+
+    // Function signature
+    val params = func.params.zipWithIndex.map { (typ, i) =>
+      val paramName = if config.emitNames then s"$$p$i" else ""
+      s"(param $paramName ${valType(typ)})"
+    }.mkString(" ")
+
+    val results = func.results.map(r => s"(result ${valType(r)})").mkString(" ")
+
+    val locals = func.locals.zipWithIndex.map { (typ, i) =>
+      s"(local $$l$i ${valType(typ)})"
+    }.mkString(" ")
+
+    line(s"(func $name $params $results")
+    indent += 1
+
+    if locals.nonEmpty then
+      line(locals)
+
+    // Emit function body with comments
+    if config.emitSourceComments && func.sourceLocation.isDefined then
+      line(s";; Source: ${func.sourceLocation.get}")
+
+    emitInstructions(func.body)
+
+    indent -= 1
+    line(")")
+
+  private def emitInstructions(instrs: List[WasmInstr]): Unit =
+    instrs.foreach(emitInstruction)
+
+  private def emitInstruction(instr: WasmInstr): Unit =
+    instr match
+      // Constants
+      case WasmInstr.I32Const(v) => line(s"i32.const $v")
+      case WasmInstr.I64Const(v) => line(s"i64.const $v")
+      case WasmInstr.F32Const(v) => line(s"f32.const $v")
+      case WasmInstr.F64Const(v) => line(s"f64.const $v")
+
+      // Local variables
+      case WasmInstr.LocalGet(i) =>
+        val name = if config.emitNames then s"$$l$i" else i.toString
+        line(s"local.get $name")
+      case WasmInstr.LocalSet(i) =>
+        val name = if config.emitNames then s"$$l$i" else i.toString
+        line(s"local.set $name")
+      case WasmInstr.LocalTee(i) =>
+        val name = if config.emitNames then s"$$l$i" else i.toString
+        line(s"local.tee $name")
+
+      // Globals
+      case WasmInstr.GlobalGet(name) => line(s"global.get $$$name")
+      case WasmInstr.GlobalSet(name) => line(s"global.set $$$name")
+
+      // Memory operations
+      case WasmInstr.I32Load(offset, align) =>
+        line(s"i32.load offset=$offset align=$align")
+      case WasmInstr.I32Store(offset, align) =>
+        line(s"i32.store offset=$offset align=$align")
+      case WasmInstr.I64Load(offset, align) =>
+        line(s"i64.load offset=$offset align=$align")
+      case WasmInstr.I64Store(offset, align) =>
+        line(s"i64.store offset=$offset align=$align")
+
+      // Arithmetic
+      case WasmInstr.I32Add => line("i32.add")
+      case WasmInstr.I32Sub => line("i32.sub")
+      case WasmInstr.I32Mul => line("i32.mul")
+      case WasmInstr.I32DivS => line("i32.div_s")
+      case WasmInstr.I32DivU => line("i32.div_u")
+      case WasmInstr.I64Add => line("i64.add")
+      case WasmInstr.I64Sub => line("i64.sub")
+      case WasmInstr.I64Mul => line("i64.mul")
+      case WasmInstr.F64Add => line("f64.add")
+      case WasmInstr.F64Sub => line("f64.sub")
+      case WasmInstr.F64Mul => line("f64.mul")
+      case WasmInstr.F64Div => line("f64.div")
+
+      // Comparisons
+      case WasmInstr.I32Eq => line("i32.eq")
+      case WasmInstr.I32Ne => line("i32.ne")
+      case WasmInstr.I32LtS => line("i32.lt_s")
+      case WasmInstr.I32GtS => line("i32.gt_s")
+      case WasmInstr.I32LeS => line("i32.le_s")
+      case WasmInstr.I32GeS => line("i32.ge_s")
+
+      // Control flow
+      case WasmInstr.Block(label, body) =>
+        line(s"(block $$$label")
+        indent += 1
+        emitInstructions(body)
+        indent -= 1
+        line(")")
+
+      case WasmInstr.Loop(label, body) =>
+        line(s"(loop $$$label")
+        indent += 1
+        emitInstructions(body)
+        indent -= 1
+        line(")")
+
+      case WasmInstr.If(thenBranch, elseBranch) =>
+        line("(if")
+        indent += 1
+        line("(then")
+        indent += 1
+        emitInstructions(thenBranch)
+        indent -= 1
+        line(")")
+        if elseBranch.nonEmpty then
+          line("(else")
+          indent += 1
+          emitInstructions(elseBranch)
+          indent -= 1
+          line(")")
+        indent -= 1
+        line(")")
+
+      case WasmInstr.Br(label) => line(s"br $$$label")
+      case WasmInstr.BrIf(label) => line(s"br_if $$$label")
+      case WasmInstr.Return => line("return")
+
+      // Calls
+      case WasmInstr.Call(name) => line(s"call $$$name")
+      case WasmInstr.CallIndirect(typeIdx) =>
+        line(s"call_indirect (type $typeIdx)")
+
+      // Misc
+      case WasmInstr.Drop => line("drop")
+      case WasmInstr.Unreachable => line("unreachable")
+
+  private def emitExport(exp: WasmExport): Unit =
+    val kind = exp.kind match
+      case ExportKind.Func => "func"
+      case ExportKind.Table => "table"
+      case ExportKind.Memory => "memory"
+      case ExportKind.Global => "global"
+    line(s"""(export "${exp.name}" ($kind $$${exp.internalName}))""")
+
+  private def emitImport(imp: WasmImport): Unit =
+    imp match
+      case WasmImport.Func(module, name, typeIdx) =>
+        line(s"""(import "$module" "$name" (func $$${name} (type $typeIdx)))""")
+      case WasmImport.Memory(module, name, min, max) =>
+        val maxStr = max.map(m => s" $m").getOrElse("")
+        line(s"""(import "$module" "$name" (memory $min$maxStr))""")
+
+  private def emitMemory(mem: WasmMemory, index: Int): Unit =
+    val name = if config.emitNames then s"$$memory_$index" else ""
+    val maxStr = mem.max.map(m => s" $m").getOrElse("")
+    line(s"(memory $name ${mem.min}$maxStr)")
+
+  private def emitGlobal(glob: WasmGlobal): Unit =
+    val mutability = if glob.mutable then "mut" else ""
+    val typ = valType(glob.typ)
+    val init = glob.init match
+      case WasmInstr.I32Const(v) => s"i32.const $v"
+      case WasmInstr.I64Const(v) => s"i64.const $v"
+      case WasmInstr.F64Const(v) => s"f64.const $v"
+      case _ => throw new IllegalArgumentException("Invalid global init")
+    line(s"(global $$${glob.name} ($mutability $typ) ($init))")
+
+  private def emitData(data: WasmData): Unit =
+    val bytes = data.bytes.map(b => f"\\$b%02x").mkString
+    line(s"""(data (i32.const ${data.offset}) "$bytes")""")
+
+  private def valType(t: WasmValType): String =
+    t match
+      case WasmValType.I32 => "i32"
+      case WasmValType.I64 => "i64"
+      case WasmValType.F32 => "f32"
+      case WasmValType.F64 => "f64"
+
+  private def line(s: String): Unit =
+    sb.append("  " * indent)
+    sb.append(s)
+    sb.append("\n")
+```
+
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+
+```rust
+pub struct WatEmitter {
+    config: WatEmitConfig,
+    output: String,
+    indent: usize,
+}
+
+impl WatEmitter {
+    pub fn new(config: WatEmitConfig) -> Self {
+        Self {
+            config,
+            output: String::new(),
+            indent: 0,
+        }
+    }
+
+    pub fn emit(&mut self, module: &WasmModule) -> String {
+        self.emit_module(module);
+        std::mem::take(&mut self.output)
+    }
+
+    fn emit_module(&mut self, module: &WasmModule) {
+        self.line("(module");
+        self.indent += 1;
+
+        if self.config.emit_names {
+            self.line(";; Generated from Morphir IR");
+            self.line(&format!(";; {}", chrono::Utc::now()));
+            self.line("");
+        }
+
+        // Types section
+        if !module.types.is_empty() {
+            self.line(";; Type declarations");
+            for (i, typ) in module.types.iter().enumerate() {
+                self.emit_type(typ, i);
+            }
+            self.line("");
+        }
+
+        // Imports section
+        if !module.imports.is_empty() {
+            self.line(";; Imports");
+            for imp in &module.imports {
+                self.emit_import(imp);
+            }
+            self.line("");
+        }
+
+        // Functions
+        if !module.functions.is_empty() {
+            self.line(";; Functions");
+            for func in &module.functions {
+                self.emit_function(func);
+            }
+            self.line("");
+        }
+
+        // Memory
+        if !module.memories.is_empty() {
+            self.line(";; Memory");
+            for (i, mem) in module.memories.iter().enumerate() {
+                self.emit_memory(mem, i);
+            }
+            self.line("");
+        }
+
+        // Globals
+        if !module.globals.is_empty() {
+            self.line(";; Globals");
+            for glob in &module.globals {
+                self.emit_global(glob);
+            }
+            self.line("");
+        }
+
+        // Exports
+        if !module.exports.is_empty() {
+            self.line(";; Exports");
+            for exp in &module.exports {
+                self.emit_export(exp);
+            }
+            self.line("");
+        }
+
+        // Data
+        if !module.data.is_empty() {
+            self.line(";; Data");
+            for data in &module.data {
+                self.emit_data(data);
+            }
+        }
+
+        self.indent -= 1;
+        self.line(")");
+    }
+
+    fn emit_type(&mut self, typ: &WasmFuncType, index: usize) {
+        let name = if self.config.emit_names {
+            format!("$type_{}", index)
+        } else {
+            String::new()
+        };
+
+        let params: String = typ.params.iter()
+            .map(|p| format!("(param {})", self.val_type(p)))
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        let results: String = typ.results.iter()
+            .map(|r| format!("(result {})", self.val_type(r)))
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        self.line(&format!("(type {} (func {} {}))", name, params, results));
+    }
+
+    fn emit_function(&mut self, func: &WasmFunction) {
+        let name = if self.config.emit_names {
+            format!("${}", func.name)
+        } else {
+            String::new()
+        };
+
+        let params: String = func.params.iter().enumerate()
+            .map(|(i, typ)| {
+                let param_name = if self.config.emit_names {
+                    format!("$p{}", i)
+                } else {
+                    String::new()
+                };
+                format!("(param {} {})", param_name, self.val_type(typ))
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        let results: String = func.results.iter()
+            .map(|r| format!("(result {})", self.val_type(r)))
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        self.line(&format!("(func {} {} {}", name, params, results));
+        self.indent += 1;
+
+        // Locals
+        if !func.locals.is_empty() {
+            let locals: String = func.locals.iter().enumerate()
+                .map(|(i, typ)| format!("(local $l{} {})", i, self.val_type(typ)))
+                .collect::<Vec<_>>()
+                .join(" ");
+            self.line(&locals);
+        }
+
+        // Source comment
+        if self.config.emit_source_comments {
+            if let Some(ref loc) = func.source_location {
+                self.line(&format!(";; Source: {}", loc));
+            }
+        }
+
+        // Body
+        self.emit_instructions(&func.body);
+
+        self.indent -= 1;
+        self.line(")");
+    }
+
+    fn emit_instructions(&mut self, instrs: &[WasmInstr]) {
+        for instr in instrs {
+            self.emit_instruction(instr);
+        }
+    }
+
+    fn emit_instruction(&mut self, instr: &WasmInstr) {
+        match instr {
+            // Constants
+            WasmInstr::I32Const(v) => self.line(&format!("i32.const {}", v)),
+            WasmInstr::I64Const(v) => self.line(&format!("i64.const {}", v)),
+            WasmInstr::F32Const(v) => self.line(&format!("f32.const {}", v)),
+            WasmInstr::F64Const(v) => self.line(&format!("f64.const {}", v)),
+
+            // Locals
+            WasmInstr::LocalGet(i) => {
+                let name = if self.config.emit_names {
+                    format!("$l{}", i)
+                } else {
+                    i.to_string()
+                };
+                self.line(&format!("local.get {}", name));
+            }
+            WasmInstr::LocalSet(i) => {
+                let name = if self.config.emit_names {
+                    format!("$l{}", i)
+                } else {
+                    i.to_string()
+                };
+                self.line(&format!("local.set {}", name));
+            }
+            WasmInstr::LocalTee(i) => {
+                let name = if self.config.emit_names {
+                    format!("$l{}", i)
+                } else {
+                    i.to_string()
+                };
+                self.line(&format!("local.tee {}", name));
+            }
+
+            // Globals
+            WasmInstr::GlobalGet(name) => self.line(&format!("global.get ${}", name)),
+            WasmInstr::GlobalSet(name) => self.line(&format!("global.set ${}", name)),
+
+            // Memory
+            WasmInstr::I32Load { offset, align } => {
+                self.line(&format!("i32.load offset={} align={}", offset, align));
+            }
+            WasmInstr::I32Store { offset, align } => {
+                self.line(&format!("i32.store offset={} align={}", offset, align));
+            }
+
+            // Arithmetic
+            WasmInstr::I32Add => self.line("i32.add"),
+            WasmInstr::I32Sub => self.line("i32.sub"),
+            WasmInstr::I32Mul => self.line("i32.mul"),
+            WasmInstr::I32DivS => self.line("i32.div_s"),
+            WasmInstr::I64Add => self.line("i64.add"),
+            WasmInstr::F64Add => self.line("f64.add"),
+            WasmInstr::F64Sub => self.line("f64.sub"),
+            WasmInstr::F64Mul => self.line("f64.mul"),
+            WasmInstr::F64Div => self.line("f64.div"),
+
+            // Comparisons
+            WasmInstr::I32Eq => self.line("i32.eq"),
+            WasmInstr::I32Ne => self.line("i32.ne"),
+            WasmInstr::I32LtS => self.line("i32.lt_s"),
+            WasmInstr::I32GtS => self.line("i32.gt_s"),
+
+            // Control flow
+            WasmInstr::Block { label, body } => {
+                self.line(&format!("(block ${}", label));
+                self.indent += 1;
+                self.emit_instructions(body);
+                self.indent -= 1;
+                self.line(")");
+            }
+
+            WasmInstr::Loop { label, body } => {
+                self.line(&format!("(loop ${}", label));
+                self.indent += 1;
+                self.emit_instructions(body);
+                self.indent -= 1;
+                self.line(")");
+            }
+
+            WasmInstr::If { then_branch, else_branch } => {
+                self.line("(if");
+                self.indent += 1;
+                self.line("(then");
+                self.indent += 1;
+                self.emit_instructions(then_branch);
+                self.indent -= 1;
+                self.line(")");
+                if !else_branch.is_empty() {
+                    self.line("(else");
+                    self.indent += 1;
+                    self.emit_instructions(else_branch);
+                    self.indent -= 1;
+                    self.line(")");
+                }
+                self.indent -= 1;
+                self.line(")");
+            }
+
+            WasmInstr::Br(label) => self.line(&format!("br ${}", label)),
+            WasmInstr::BrIf(label) => self.line(&format!("br_if ${}", label)),
+            WasmInstr::Return => self.line("return"),
+
+            // Calls
+            WasmInstr::Call(name) => self.line(&format!("call ${}", name)),
+            WasmInstr::CallIndirect(type_idx) => {
+                self.line(&format!("call_indirect (type {})", type_idx));
+            }
+
+            // Misc
+            WasmInstr::Drop => self.line("drop"),
+            WasmInstr::Unreachable => self.line("unreachable"),
+
+            _ => self.line(&format!(";; TODO: {:?}", instr)),
+        }
+    }
+
+    fn emit_export(&mut self, exp: &WasmExport) {
+        let kind = match exp.kind {
+            ExportKind::Func => "func",
+            ExportKind::Table => "table",
+            ExportKind::Memory => "memory",
+            ExportKind::Global => "global",
+        };
+        self.line(&format!(
+            "(export \"{}\" ({} ${}))",
+            exp.name, kind, exp.internal_name
+        ));
+    }
+
+    fn emit_memory(&mut self, mem: &WasmMemory, index: usize) {
+        let name = if self.config.emit_names {
+            format!("$memory_{}", index)
+        } else {
+            String::new()
+        };
+        let max_str = mem.max.map(|m| format!(" {}", m)).unwrap_or_default();
+        self.line(&format!("(memory {} {}{})", name, mem.min, max_str));
+    }
+
+    fn emit_data(&mut self, data: &WasmData) {
+        let bytes: String = data.bytes.iter()
+            .map(|b| format!("\\{:02x}", b))
+            .collect();
+        self.line(&format!(
+            "(data (i32.const {}) \"{}\")",
+            data.offset, bytes
+        ));
+    }
+
+    fn val_type(&self, t: &WasmValType) -> &'static str {
+        match t {
+            WasmValType::I32 => "i32",
+            WasmValType::I64 => "i64",
+            WasmValType::F32 => "f32",
+            WasmValType::F64 => "f64",
+        }
+    }
+
+    fn line(&mut self, s: &str) {
+        for _ in 0..self.indent {
+            self.output.push_str("  ");
+        }
+        self.output.push_str(s);
+        self.output.push('\n');
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+## Example Output
+
+### Input: Simple Addition Function
+
+```elm
+add : Int32 -> Int32 -> Int32
+add a b = a + b
+```
+
+### Generated WAT
+
+```wat
+(module
+  ;; Generated from Morphir IR
+  ;; 2026-01-17T07:30:00Z
+
+  ;; Type declarations
+  (type $type_0 (func (param i32) (param i32) (result i32)))
+
+  ;; Functions
+  (func $add (type $type_0) (param $p0 i32) (param $p1 i32) (result i32)
+    ;; Source: MyModule.elm:5:1
+    local.get $p0
+    local.get $p1
+    i32.add
+  )
+
+  ;; Exports
+  (export "add" (func $add))
+)
+```
+
+### Input: String Function
+
+```elm
+greet : String -> String
+greet name = "Hello, " ++ name ++ "!"
+```
+
+### Generated WAT
+
+```wat
+(module
+  ;; Type declarations
+  (type $type_0 (func (param i32 i32) (result i32 i32)))
+
+  ;; Memory
+  (memory $memory_0 1)
+
+  ;; Globals
+  (global $heap_ptr (mut i32) (i32.const 1024))
+
+  ;; Functions
+  (func $greet (type $type_0) (param $name_ptr i32) (param $name_len i32) (result i32 i32)
+    ;; Source: MyModule.elm:8:1
+    (local $result_ptr i32)
+    (local $result_len i32)
+    (local $prefix_ptr i32)
+    (local $suffix_ptr i32)
+
+    ;; Allocate result buffer
+    ;; ... string concatenation logic ...
+
+    local.get $result_ptr
+    local.get $result_len
+  )
+
+  (func $malloc (param $size i32) (result i32)
+    global.get $heap_ptr
+    local.tee 0
+    local.get $size
+    i32.add
+    global.set $heap_ptr
+  )
+
+  ;; Data
+  (data (i32.const 0) "Hello, ")
+  (data (i32.const 7) "!")
+
+  ;; Exports
+  (export "greet" (func $greet))
+)
+```
+
+## Configuration
+
+```scala
+case class WatEmitConfig(
+  // Naming
+  emitNames: Boolean = true,           // Use symbolic names ($func_name)
+  emitSourceComments: Boolean = true,   // Add source location comments
+
+  // Formatting
+  indentSize: Int = 2,
+  maxLineWidth: Int = 100,
+
+  // Sections
+  emitTypeSection: Boolean = true,
+  groupBySection: Boolean = true,      // Group imports, exports, etc.
+
+  // Debug
+  emitDebugComments: Boolean = false,  // Verbose debug info
+)
+```
+
+```toml
+# morphir.toml
+[backend.wat]
+emit_names = true
+emit_source_comments = true
+indent_size = 2
+```
+
+## Integration with Binary Emission
+
+WAT can be converted to binary Wasm using `wat2wasm`:
+
+```scala
+def emitBinaryViaWat(module: WasmModule, config: WatEmitConfig): Array[Byte] =
+  val wat = WatEmitter(config).emit(module)
+
+  // Option 1: Shell out to wat2wasm
+  val process = ProcessBuilder("wat2wasm", "-", "-o", "-")
+    .redirectInput(ProcessBuilder.Redirect.PIPE)
+    .redirectOutput(ProcessBuilder.Redirect.PIPE)
+    .start()
+
+  process.getOutputStream.write(wat.getBytes)
+  process.getOutputStream.close()
+
+  val binary = process.getInputStream.readAllBytes()
+  process.waitFor()
+  binary
+
+  // Option 2: Use wasmparser/wasm-tools library
+  // wasmparser.parse(wat)
+```
+
+## Open Questions
+
+1. **Folded vs. Flat Format**: Should we emit folded S-expressions or flat instruction sequences?
+
+2. **Custom Sections**: Should we emit Morphir-specific debug info in custom sections?
+
+3. **Source Maps**: Generate DWARF-style debug info for source-level debugging?
+
+4. **Optimization Annotations**: Emit hints for `wasm-opt` or other optimizers?
