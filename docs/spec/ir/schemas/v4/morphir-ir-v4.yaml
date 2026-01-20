@@ -1,0 +1,658 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+$id: "https://morphir.finos.org/schemas/morphir-ir-v4.yaml"
+title: "Morphir IR Distribution"
+description: "Morphir IR format version 4"
+
+type: object
+required:
+  - formatVersion
+  - distribution
+properties:
+  formatVersion:
+    type: integer
+    const: 4
+  
+  distribution:
+    type: array
+    minItems: 4
+    maxItems: 4
+    items:
+      - const: "Library"
+      - $ref: "#/definitions/PackageName"
+      - $ref: "#/definitions/Dependencies"
+      - $ref: "#/definitions/PackageDefinition"
+
+definitions:
+  # Basic Types
+  Name:
+    oneOf:
+      - type: string
+        pattern: "^[a-z0-9]+(-[a-z0-9]+|-(\\([a-z]+\\)))*$"
+        description: "Canonical string representation (e.g. 'my-name', 'value-in-(usd)')"
+      - type: array
+        items:
+          type: string
+          pattern: "^[a-z][a-z0-9]*$"
+        minItems: 1
+        description: "Legacy array representation"
+
+  Path:
+    oneOf:
+      - type: string
+        pattern: "^[a-z0-9-()]+(/[a-z0-9-()]+)*$"
+        description: "Canonical string representation (e.g. 'morphir/sdk')"
+      - type: array
+        items: { $ref: "#/definitions/Name" }
+        minItems: 1
+        description: "Legacy array representation"
+
+  PackageName: { $ref: "#/definitions/Path" }
+  ModuleName: { $ref: "#/definitions/Path" }
+
+  FQName:
+    oneOf:
+      - type: string
+        pattern: "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+$"
+        description: "Canonical string representation (e.g. 'morphir/sdk:list#map')"
+      - type: array
+        minItems: 3
+        maxItems: 3
+        items:
+          - $ref: "#/definitions/PackageName"
+          - $ref: "#/definitions/ModuleName"
+          - $ref: "#/definitions/Name"
+        description: "Legacy array representation"
+
+  # Attributes
+  SourceLocation:
+    type: object
+    required: ["startLine", "startColumn", "endLine", "endColumn"]
+    properties:
+      startLine: { type: integer }
+      startColumn: { type: integer }
+      endLine: { type: integer }
+      endColumn: { type: integer }
+
+  TypeAttributes:
+    type: object
+    properties:
+      source: { $ref: "#/definitions/SourceLocation" }
+      constraints: { type: object } # Placeholder for TypeConstraints
+      extensions: { type: object }
+
+  ValueAttributes:
+    type: object
+    properties:
+      source: { $ref: "#/definitions/SourceLocation" }
+      inferredType: { $ref: "#/definitions/Type" }
+      extensions: { type: object }
+
+  # Access Control
+  AccessControlled:
+    type: object
+    required: ["access", "value"]
+    properties:
+      access:
+        enum: ["Public", "Private"]
+      value: {}
+
+  # Packages
+  Dependencies:
+    type: array
+    items:
+      type: array
+      items:
+        - $ref: "#/definitions/PackageName"
+        - $ref: "#/definitions/PackageSpecification"
+
+  PackageDefinition:
+    type: object
+    required: ["modules"]
+    properties:
+      modules:
+        type: array
+        items:
+          type: array
+          items:
+            - $ref: "#/definitions/ModuleName"
+            - allOf:
+                - $ref: "#/definitions/AccessControlled"
+                - properties:
+                    value: { $ref: "#/definitions/ModuleDefinition" }
+
+  PackageSpecification:
+    type: object
+    required: ["modules"]
+    properties:
+      modules:
+        type: array
+        items:
+          type: array
+          items:
+            - $ref: "#/definitions/ModuleName"
+            - $ref: "#/definitions/ModuleSpecification"
+
+  # Modules
+  ModuleDefinition:
+    type: object
+    required: ["types", "values"]
+    properties:
+      types:
+        type: array
+        items:
+          type: array
+          items:
+            - $ref: "#/definitions/Name"
+            - allOf:
+                - $ref: "#/definitions/AccessControlled"
+                - properties:
+                    value:
+                      oneOf:
+                        - { type: object, required: ["doc", "value"], properties: { doc: { type: string }, value: { $ref: "#/definitions/TypeDefinition" } } }
+                        - { $ref: "#/definitions/TypeDefinition" }
+      values:
+        type: array
+        items:
+          type: array
+          items:
+            - $ref: "#/definitions/Name"
+            - allOf:
+                - $ref: "#/definitions/AccessControlled"
+                - properties:
+                    value:
+                      oneOf:
+                        - { type: object, required: ["doc", "value"], properties: { doc: { type: string }, value: { $ref: "#/definitions/ValueDefinition" } } }
+                        - { $ref: "#/definitions/ValueDefinition" }
+      doc: { type: string }
+
+  ModuleSpecification:
+    type: object
+    required: ["types", "values"]
+    properties:
+      types:
+        type: array
+        items:
+          type: array
+          items:
+            - $ref: "#/definitions/Name"
+            - oneOf:
+                - { type: object, required: ["doc", "value"], properties: { doc: { type: string }, value: { $ref: "#/definitions/TypeSpecification" } } }
+                - { $ref: "#/definitions/TypeSpecification" }
+      values:
+        type: array
+        items:
+          type: array
+          items:
+            - $ref: "#/definitions/Name"
+            - oneOf:
+                - { type: object, required: ["doc", "value"], properties: { doc: { type: string }, value: { $ref: "#/definitions/ValueSpecification" } } }
+                - { $ref: "#/definitions/ValueSpecification" }
+      doc: { type: string }
+
+  # Type System
+  Type:
+    oneOf:
+      - $ref: "#/definitions/VariableType"
+      - $ref: "#/definitions/ReferenceType"
+      - $ref: "#/definitions/TupleType"
+      - $ref: "#/definitions/RecordType"
+      - $ref: "#/definitions/ExtensibleRecordType"
+      - $ref: "#/definitions/FunctionType"
+      - $ref: "#/definitions/UnitType"
+
+  VariableType:
+    type: array
+    items:
+      - const: "Variable"
+      - $ref: "#/definitions/TypeAttributes"
+      - $ref: "#/definitions/Name"
+
+  ReferenceType:
+    type: array
+    items:
+      - const: "Reference"
+      - $ref: "#/definitions/TypeAttributes"
+      - $ref: "#/definitions/FQName"
+      - type: array
+        items: { $ref: "#/definitions/Type" }
+
+  TupleType:
+    type: array
+    items:
+      - const: "Tuple"
+      - $ref: "#/definitions/TypeAttributes"
+      - type: array
+        items: { $ref: "#/definitions/Type" }
+
+  RecordType:
+    type: array
+    items:
+      - const: "Record"
+      - $ref: "#/definitions/TypeAttributes"
+      - type: array
+        items: { $ref: "#/definitions/Field" }
+
+  ExtensibleRecordType:
+    type: array
+    items:
+      - const: "ExtensibleRecord"
+      - $ref: "#/definitions/TypeAttributes"
+      - $ref: "#/definitions/Name"
+      - type: array
+        items: { $ref: "#/definitions/Field" }
+
+  FunctionType:
+    type: array
+    items:
+      - const: "Function"
+      - $ref: "#/definitions/TypeAttributes"
+      - $ref: "#/definitions/Type"
+      - $ref: "#/definitions/Type"
+
+  UnitType:
+    type: array
+    items:
+      - const: "Unit"
+      - $ref: "#/definitions/TypeAttributes"
+
+  Field:
+    type: object
+    required: ["name", "tpe"]
+    properties:
+      name: { $ref: "#/definitions/Name" }
+      tpe: { $ref: "#/definitions/Type" }
+
+  # Type Specs & Defs
+  TypeSpecification:
+    oneOf:
+      - $ref: "#/definitions/TypeAliasSpecification"
+      - $ref: "#/definitions/OpaqueTypeSpecification"
+      - $ref: "#/definitions/CustomTypeSpecification"
+      - $ref: "#/definitions/DerivedTypeSpecification"
+
+  TypeAliasSpecification:
+    type: array
+    items:
+      - const: "TypeAliasSpecification"
+      - type: array
+        items: { $ref: "#/definitions/Name" }
+      - $ref: "#/definitions/Type"
+
+  OpaqueTypeSpecification:
+    type: array
+    items:
+      - const: "OpaqueTypeSpecification"
+      - type: array
+        items: { $ref: "#/definitions/Name" }
+
+  CustomTypeSpecification:
+    type: array
+    items:
+      - const: "CustomTypeSpecification"
+      - type: array
+        items: { $ref: "#/definitions/Name" }
+      - $ref: "#/definitions/Constructors"
+
+  DerivedTypeSpecification:
+    type: array
+    items:
+      - const: "DerivedTypeSpecification"
+      - type: array
+        items: { $ref: "#/definitions/Name" }
+      - type: object
+        required: ["baseType", "fromBaseType", "toBaseType"]
+        properties:
+          baseType: { $ref: "#/definitions/Type" }
+          fromBaseType: { $ref: "#/definitions/FQName" }
+          toBaseType: { $ref: "#/definitions/FQName" }
+
+  TypeDefinition:
+    oneOf:
+      - $ref: "#/definitions/TypeAliasDefinition"
+      - $ref: "#/definitions/CustomTypeDefinition"
+
+  TypeAliasDefinition:
+    type: array
+    items:
+      - const: "TypeAliasDefinition"
+      - type: array
+        items: { $ref: "#/definitions/Name" }
+      - $ref: "#/definitions/Type"
+
+  CustomTypeDefinition:
+    type: array
+    items:
+      - const: "CustomTypeDefinition"
+      - type: array
+        items: { $ref: "#/definitions/Name" }
+      - allOf:
+          - $ref: "#/definitions/AccessControlled"
+          - properties:
+              value: { $ref: "#/definitions/Constructors" }
+
+  Constructors:
+    type: array
+    items:
+      type: array
+      items:
+        - $ref: "#/definitions/Name"
+        - type: array
+          items:
+            type: array
+            items:
+              - $ref: "#/definitions/Name"
+              - $ref: "#/definitions/Type"
+
+  # Value System
+  Value:
+    oneOf:
+      - $ref: "#/definitions/LiteralValue"
+      - $ref: "#/definitions/ConstructorValue"
+      - $ref: "#/definitions/TupleValue"
+      - $ref: "#/definitions/ListValue"
+      - $ref: "#/definitions/RecordValue"
+      - $ref: "#/definitions/VariableValue"
+      - $ref: "#/definitions/ReferenceValue"
+      - $ref: "#/definitions/FieldValue"
+      - $ref: "#/definitions/FieldFunctionValue"
+      - $ref: "#/definitions/ApplyValue"
+      - $ref: "#/definitions/LambdaValue"
+      - $ref: "#/definitions/LetDefinitionValue"
+      - $ref: "#/definitions/LetRecursionValue"
+      - $ref: "#/definitions/DestructureValue"
+      - $ref: "#/definitions/IfThenElseValue"
+      - $ref: "#/definitions/PatternMatchValue"
+      - $ref: "#/definitions/UpdateRecordValue"
+      - $ref: "#/definitions/UnitValue"
+
+  LiteralValue:
+    type: array
+    items:
+      - const: "Literal"
+      - $ref: "#/definitions/ValueAttributes"
+      - $ref: "#/definitions/Literal"
+
+  ConstructorValue:
+    type: array
+    items:
+      - const: "Constructor"
+      - $ref: "#/definitions/ValueAttributes"
+      - $ref: "#/definitions/FQName"
+
+  TupleValue:
+    type: array
+    items:
+      - const: "Tuple"
+      - $ref: "#/definitions/ValueAttributes"
+      - type: array
+        items: { $ref: "#/definitions/Value" }
+
+  ListValue:
+    type: array
+    items:
+      - const: "List"
+      - $ref: "#/definitions/ValueAttributes"
+      - type: array
+        items: { $ref: "#/definitions/Value" }
+
+  RecordValue:
+    type: array
+    items:
+      - const: "Record"
+      - $ref: "#/definitions/ValueAttributes"
+      - type: array
+        items:
+          type: array
+          items:
+            - $ref: "#/definitions/Name"
+            - $ref: "#/definitions/Value"
+
+  VariableValue:
+    type: array
+    items:
+      - const: "Variable"
+      - $ref: "#/definitions/ValueAttributes"
+      - $ref: "#/definitions/Name"
+
+  ReferenceValue:
+    type: array
+    items:
+      - const: "Reference"
+      - $ref: "#/definitions/ValueAttributes"
+      - $ref: "#/definitions/FQName"
+
+  FieldValue:
+    type: array
+    items:
+      - const: "Field"
+      - $ref: "#/definitions/ValueAttributes"
+      - $ref: "#/definitions/Value"
+      - $ref: "#/definitions/Name"
+
+  FieldFunctionValue:
+    type: array
+    items:
+      - const: "FieldFunction"
+      - $ref: "#/definitions/ValueAttributes"
+      - $ref: "#/definitions/Name"
+
+  ApplyValue:
+    type: array
+    items:
+      - const: "Apply"
+      - $ref: "#/definitions/ValueAttributes"
+      - $ref: "#/definitions/Value"
+      - $ref: "#/definitions/Value"
+
+  LambdaValue:
+    type: array
+    items:
+      - const: "Lambda"
+      - $ref: "#/definitions/ValueAttributes"
+      - $ref: "#/definitions/Pattern"
+      - $ref: "#/definitions/Value"
+
+  LetDefinitionValue:
+    type: array
+    items:
+      - const: "LetDefinition"
+      - $ref: "#/definitions/ValueAttributes"
+      - $ref: "#/definitions/Name"
+      - $ref: "#/definitions/ValueDefinition"
+      - $ref: "#/definitions/Value"
+
+  LetRecursionValue:
+    type: array
+    items:
+      - const: "LetRecursion"
+      - $ref: "#/definitions/ValueAttributes"
+      - type: array
+        items:
+          type: array
+          items:
+            - $ref: "#/definitions/Name"
+            - $ref: "#/definitions/ValueDefinition"
+      - $ref: "#/definitions/Value"
+
+  DestructureValue:
+    type: array
+    items:
+      - const: "Destructure"
+      - $ref: "#/definitions/ValueAttributes"
+      - $ref: "#/definitions/Pattern"
+      - $ref: "#/definitions/Value"
+      - $ref: "#/definitions/Value"
+
+  IfThenElseValue:
+    type: array
+    items:
+      - const: "IfThenElse"
+      - $ref: "#/definitions/ValueAttributes"
+      - $ref: "#/definitions/Value"
+      - $ref: "#/definitions/Value"
+      - $ref: "#/definitions/Value"
+
+  PatternMatchValue:
+    type: array
+    items:
+      - const: "PatternMatch"
+      - $ref: "#/definitions/ValueAttributes"
+      - $ref: "#/definitions/Value"
+      - type: array
+        items:
+          type: array
+          items:
+            - $ref: "#/definitions/Pattern"
+            - $ref: "#/definitions/Value"
+
+  UpdateRecordValue:
+    type: array
+    items:
+      - const: "UpdateRecord"
+      - $ref: "#/definitions/ValueAttributes"
+      - $ref: "#/definitions/Value"
+      - type: array
+        items:
+          type: array
+          items:
+            - $ref: "#/definitions/Name"
+            - $ref: "#/definitions/Value"
+
+  UnitValue:
+    type: array
+    items:
+      - const: "Unit"
+      - $ref: "#/definitions/ValueAttributes"
+
+  # Pattern
+  Pattern:
+    oneOf:
+      - $ref: "#/definitions/WildcardPattern"
+      - $ref: "#/definitions/AsPattern"
+      - $ref: "#/definitions/TuplePattern"
+      - $ref: "#/definitions/ConstructorPattern"
+      - $ref: "#/definitions/EmptyListPattern"
+      - $ref: "#/definitions/HeadTailPattern"
+      - $ref: "#/definitions/LiteralPattern"
+      - $ref: "#/definitions/UnitPattern"
+
+  WildcardPattern:
+    type: array
+    items:
+      - const: "WildcardPattern"
+      - $ref: "#/definitions/ValueAttributes"
+
+  AsPattern:
+    type: array
+    items:
+      - const: "AsPattern"
+      - $ref: "#/definitions/ValueAttributes"
+      - $ref: "#/definitions/Pattern"
+      - $ref: "#/definitions/Name"
+
+  TuplePattern:
+    type: array
+    items:
+      - const: "TuplePattern"
+      - $ref: "#/definitions/ValueAttributes"
+      - type: array
+        items: { $ref: "#/definitions/Pattern" }
+
+  ConstructorPattern:
+    type: array
+    items:
+      - const: "ConstructorPattern"
+      - $ref: "#/definitions/ValueAttributes"
+      - $ref: "#/definitions/FQName"
+      - type: array
+        items: { $ref: "#/definitions/Pattern" }
+
+  EmptyListPattern:
+    type: array
+    items:
+      - const: "EmptyListPattern"
+      - $ref: "#/definitions/ValueAttributes"
+
+  HeadTailPattern:
+    type: array
+    items:
+      - const: "HeadTailPattern"
+      - $ref: "#/definitions/ValueAttributes"
+      - $ref: "#/definitions/Pattern"
+      - $ref: "#/definitions/Pattern"
+
+  LiteralPattern:
+    type: array
+    items:
+      - const: "LiteralPattern"
+      - $ref: "#/definitions/ValueAttributes"
+      - $ref: "#/definitions/Literal"
+
+  UnitPattern:
+    type: array
+    items:
+      - const: "UnitPattern"
+      - $ref: "#/definitions/ValueAttributes"
+
+  # Specs & Defs
+  ValueSpecification:
+    type: object
+    required: ["inputs", "output"]
+    properties:
+      inputs:
+        type: array
+        items:
+          type: array
+          items:
+            - $ref: "#/definitions/Name"
+            - $ref: "#/definitions/Type"
+      output: { $ref: "#/definitions/Type" }
+
+  ValueDefinition:
+    type: object
+    required: ["inputTypes", "outputType", "body"]
+    properties:
+      inputTypes:
+        type: array
+        items:
+          type: array
+          items:
+            - $ref: "#/definitions/Name"
+            - $ref: "#/definitions/TypeAttributes" # Originally va, probably TypeAttributes of the argument? or ValueAttributes? The spec says 'va' but type is Type. It's likely value attributes for the parameter binding.
+            - $ref: "#/definitions/Type"
+      outputType: { $ref: "#/definitions/Type" }
+      body: { $ref: "#/definitions/Value" }
+
+  # Literals
+  Literal:
+    oneOf:
+      - $ref: "#/definitions/BoolLiteral"
+      - $ref: "#/definitions/CharLiteral"
+      - $ref: "#/definitions/StringLiteral"
+      - $ref: "#/definitions/WholeNumberLiteral"
+      - $ref: "#/definitions/FloatLiteral"
+      - $ref: "#/definitions/DecimalLiteral"
+  
+  BoolLiteral:
+    type: array
+    items: [ { const: "BoolLiteral" }, { type: "boolean" } ]
+  
+  CharLiteral:
+    type: array
+    items: [ { const: "CharLiteral" }, { type: "string", maxLength: 1, minLength: 1 } ] # simplified
+  
+  StringLiteral:
+    type: array
+    items: [ { const: "StringLiteral" }, { type: "string" } ]
+  
+  WholeNumberLiteral:
+    type: array
+    items: [ { const: "WholeNumberLiteral" }, { type: "integer" } ]
+  
+  FloatLiteral:
+    type: array
+    items: [ { const: "FloatLiteral" }, { type: "number" } ]
+  
+  DecimalLiteral:
+    type: array
+    items: [ { const: "DecimalLiteral" }, { type: "string" } ] # Decimals often represented as strings

@@ -23,6 +23,17 @@ The intermediate representation format and data model.
 
 ---
 
+### [Document Tree Protocol](./document-tree-protocol/README.md)
+
+The specification for the Document Tree IR layout and the JSON-RPC protocol.
+
+**Scope:** Document Tree layout, Granular vs Hybrid modules, JSON-RPC 2.0 API.
+
+**Key Documents:**
+- [Protocol Design](./document-tree-protocol/README.md) - Core protocol spec
+
+---
+
 ### [Morphir Daemon](./daemon/README.md)
 
 The long-running service for workspace management, builds, and IDE integration.

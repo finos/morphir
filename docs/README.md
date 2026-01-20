@@ -28,6 +28,12 @@ The next-generation Morphir CLI built in Go
 - [Commands](cli-preview/commands/) - CLI command reference
 - [Release Notes](cli-preview/release-notes/) - Version history and changelogs
 
+### [Design](design/draft/README.md)
+Draft design documents and specifications for upcoming features
+- [IR v4](design/draft/README.md#ir-v4) - Next-generation IR design
+- [Document Tree Protocol](design/draft/README.md#document-tree-protocol) - Document Tree layout and protocol
+- [Morphir Daemon](design/draft/README.md#morphir-daemon) - Workspace management design
+
 ### [Core Concepts](concepts/)
 Understand the fundamental concepts behind Morphir
 - [Introduction to Morphir](concepts/introduction-to-morphir.md) - Overview of Morphir

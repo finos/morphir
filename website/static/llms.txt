@@ -32,11 +32,11 @@ analysis, optimization, and cross-platform code generation.
 - [Morphir CLI Preview](https://morphir.finos.org/docs/cli-preview/): :::caution Developer Preview The Morphir CLI Preview features are in active development. APIs and behavior may change. For production use, please use the stable [morphir-elm](../installation.md) to...
 - [v0.4.0-alpha.1 Release Notes](https://morphir.finos.org/docs/cli-preview/release-notes/v0.4.0-alpha.1/): **Release Date**: January 2026
 - [What's New in CLI Preview](https://morphir.finos.org/docs/cli-preview/whats-new/): This page highlights the major new features in the Morphir CLI Preview.
-- [Specifications](https://morphir.finos.org/docs/spec/): Formal specifications for Morphir configuration and IR
-- [Morphir IR Specification](https://morphir.finos.org/docs/spec/ir/morphir-ir-specification/): Complete specification of the Morphir Intermediate Representation (IR)
-- [JSON Schemas](https://morphir.finos.org/docs/spec/ir/schemas/): JSON schema definitions for Morphir IR format versions
-- [Full Schema](https://morphir.finos.org/docs/spec/ir/schemas/v1/full/): Complete Morphir IR JSON Schema for format version 1
-- [Schema Version 1](https://morphir.finos.org/docs/spec/ir/schemas/v1/): Morphir IR JSON Schema for format version 1
+- [Attributes](https://morphir.finos.org/docs/spec/draft/attributes/): Specification for Attributes in Morphir IR v4
+- [Distribution](https://morphir.finos.org/docs/spec/draft/distribution/): Specification for Morphir IR v4 Distributions
+- [Draft Specifications](https://morphir.finos.org/docs/spec/draft/): This section contains the draft specifications for Morphir IR Version 4.
+- [Modules](https://morphir.finos.org/docs/spec/draft/modules/): Specification for Modules in IR v4
+- [Naming](https://morphir.finos.org/docs/spec/draft/names/): Specification for names and paths in Morphir IR v4
 - [Reference Documentation](https://morphir.finos.org/docs/reference/): Technical reference documentation for Morphir backends, APIs, and tools.
 - [Morphir-TypeSpec Mapping](https://morphir.finos.org/docs/reference/backends/other-platforms/cadl-doc/): This is a documentation of the mapping strategy from Morphir types to Typespec types. This document describes how types in Morphir Models are represented in Typespec. Below is a quick overview of t...
 - [TypeScript - Morphir API](https://morphir.finos.org/docs/reference/backends/other-platforms/morphir-typescript-api/): The purpose of this documentation is to give a user an understanding of how to use the Morphir API created for Typescript.
@@ -57,7 +57,6 @@ analysis, optimization, and cross-platform code generation.
 - [Contributing to Morphir](https://morphir.finos.org/docs/developers/contribution-guide-index/): Morphir contains a few components for different aspects of the development process. These can be organized into the following:
 - [ADR-0001: Representing Morphir IR Sum Types (Discriminated Unions) in Go](https://morphir.finos.org/docs/adr/ADR-0001-morphir-ir-sum-types-in-go/): - Status: Accepted - Date: 2026-01-01 - Deciders: Morphir Maintainers - Technical Story: Port Morphir IR from DU-first languages (F#/Elm) to Go with multi-version JSON schema support.
 - [ADR-0002: Processing Pipeline Architecture](https://morphir.finos.org/docs/adr/ADR-0002-processing-pipeline/): - Status: Proposed - Date: 2026-01-01 - Deciders: Morphir Maintainers - Technical Story: Define a functional processing pipeline for Morphir Go.
-- [ADR-0003: Toolchain Integration Framework](https://morphir.finos.org/docs/adr/ADR-0003-toolchain-integration/): **Status:** Proposed **Date:** 2026-01-08 **Authors:** Morphir Team
 - [Community](https://morphir.finos.org/docs/community/): Join the Morphir community and access helpful resources.
 - [Code of Conduct](https://morphir.finos.org/docs/community/code-of-conduct/): In the interest of fostering an open and welcoming environment, we as contributors and maintainers pledge to making participation in our project and our community a harassment-free experience for e...
 - [FAQs](https://morphir.finos.org/docs/community/faqs/): Run the command `morphir scala-gen -s`

@@ -4,18 +4,26 @@ sidebar_label: Overview
 sidebar_position: 1
 ---
 
-# Draft Specifications
+# Draft Specifications (IR v4)
 
-This section contains draft specifications that are under development.
+This section contains the draft specifications for Morphir IR Version 4.
 
-## Status
+For the rationale behind these specifications, please see the [Draft Design Documentation](../../design/draft/README.md).
 
-No draft specifications at this time. Active specifications can be found in the parent Specifications section.
+## Modules
 
-## Contributing
+- [What's New](./whats-new.md)
+- [Naming](./names.md)
+- [Attributes](./attributes.md)
+- [Type System](./types.md)
+- [Value System](./values.md)
+- [Modules](./modules.md)
+- [Package System](./packages.md)
+- [Distribution System](./distribution.md)
+- [Schema Architecture](./schemas.md)
 
-To submit a draft specification:
+## Key Changes in v4
 
-1. Create a new markdown file in this directory
-2. Follow the specification format guidelines
-3. Submit a pull request for review
+- **No Generic Parameters**: Types and Values no longer carry a generic attribute parameter `a`. Instead, they contain specific `TypeAttributes` and `ValueAttributes` structures.
+- **Explicit Attributes**: Attributes include source location, constraints (for types), and inferred types (for values).
+- **Module.json**: First-class support for `module.json` files containing full module definitions.

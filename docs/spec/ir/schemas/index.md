@@ -15,6 +15,7 @@ The schemas are available in both YAML and JSON formats at SEO-friendly URLs:
 
 | Version | YAML | JSON |
 |---------|------|------|
+| v4 (Draft) | [morphir-ir-v4.yaml](/schemas/morphir-ir-v4.yaml) | [morphir-ir-v4.json](/schemas/morphir-ir-v4.json) |
 | v3 (Current) | [morphir-ir-v3.yaml](/schemas/morphir-ir-v3.yaml) | [morphir-ir-v3.json](/schemas/morphir-ir-v3.json) |
 | v2 | [morphir-ir-v2.yaml](/schemas/morphir-ir-v2.yaml) | [morphir-ir-v2.json](/schemas/morphir-ir-v2.json) |
 | v1 | [morphir-ir-v1.yaml](/schemas/morphir-ir-v1.yaml) | [morphir-ir-v1.json](/schemas/morphir-ir-v1.json) |
