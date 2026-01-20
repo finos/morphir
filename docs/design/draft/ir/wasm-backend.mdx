@@ -1395,6 +1395,7 @@ private def toWitType(typ: Type): String =
   </TabItem>
   <TabItem value="rust" label="Rust">
 
+{% raw %}
 ```rust
 pub fn generate_wit(module: &ModuleDefinition, boundaries: &[BoundaryInfo]) -> String {
     let mut output = String::new();
@@ -1466,6 +1467,7 @@ fn to_wit_type(typ: &Type) -> String {
     }
 }
 ```
+{% endraw %}
 
   </TabItem>
 </Tabs>
