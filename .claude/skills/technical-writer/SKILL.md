@@ -18,6 +18,7 @@ You are a technical writing assistant specialized in Morphir documentation. You 
 6. **Create Tutorials** - Build well-structured, effective tutorials
 7. **Manage JSON Schemas** - Convert YAML schemas to JSON and detect drift
 8. **Generate llms.txt** - Create LLM-friendly documentation files
+9. **Spec/Design Consistency** - Verify specification docs match design docs
 
 ## Documentation Structure
 
@@ -110,6 +111,49 @@ Key items:
 - [ ] Breaking changes have migration guides
 - [ ] Tutorials are complete and tested
 - [ ] Links work and formatting is correct
+
+### Spec/Design Consistency Review
+
+When specification documents (`docs/spec/`) need to match design documents (`docs/design/`), use the consistency checklist at [spec-design-consistency.md](references/spec-design-consistency.md).
+
+**Key consistency checks:**
+
+1. **Naming Format Validation**
+   - FQName format: `package/path:module/path#local-name`
+   - Path format: `segment/segment` (no `:` or `#`)
+   - Name format: `kebab-case` with `(abbreviations)` for letter sequences
+   - Validate all examples parse correctly
+
+2. **Node Coverage**
+   - All type nodes from design are in spec
+   - All value nodes from design are in spec
+   - v4-specific additions marked with `(v4)`
+
+3. **JSON Example Validation**
+   - Examples use correct wrapper object format
+   - Field names match design
+   - Examples are valid JSON
+
+4. **Directory Structure Validation**
+   - Directory tree examples match actual/expected structure
+   - File name patterns are consistent (e.g., `.type.json`, `.value.json`, `module.json`)
+   - Path separators and naming conventions align with canonical format
+
+5. **Terminology Alignment**
+   - Specs and definitions explained consistently
+   - Same terms used in both design and spec
+
+**Workflow for consistency review:**
+
+```bash
+# 1. Open design and spec side-by-side
+# 2. Walk through each section
+# 3. Validate JSON examples
+# 4. Verify directory structure examples
+# 5. Fix discrepancies
+# 6. Regenerate llms.txt
+python .claude/skills/technical-writer/scripts/generate_llms_txt.py
+```
 
 ## Writing Guidelines
 
