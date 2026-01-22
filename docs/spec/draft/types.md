@@ -40,8 +40,10 @@ A reference to another type or type alias.
   - fqName: Fully-qualified name of the referenced type (`FQName`)
   - args: List of type arguments (`List Type`)
 - **Examples**:
-  - `String` → `Reference attrs (["morphir"], ["s", "d", "k"], ["string"]) []`
-  - `List Int` → `Reference attrs (["morphir"], ["s", "d", "k"], ["list"]) [intType]`
+  - `String` → FQName: `morphir/(sdk):string#string`
+  - `List Int` → FQName: `morphir/(sdk):list#list` with type argument `morphir/(sdk):basics#int`
+  - `Dict String Int` → FQName: `morphir/(sdk):dict#dict` with type arguments
+- **Legacy format**: `[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]]` (package, module, local name arrays)
 
 ### Tuple
 
@@ -93,7 +95,17 @@ The type with exactly one value.
 
 ## Type Specifications
 
-A **Type Specification** defines the interface of a type without implementation details.
+A **Type Specification** defines the public interface of a type—the contract exposed to consumers of a module. Specifications contain no implementation details and are always public.
+
+**Purpose**: When module A depends on module B, module A only sees module B's specifications, not its definitions. This enables:
+- Separate compilation (consumers don't need implementation details)
+- API stability (internal changes don't affect dependents)
+- Information hiding (private types appear as opaque)
+
+**Deriving specifications**: A specification can always be derived from its corresponding definition:
+- `TypeAliasDefinition` → `TypeAliasSpecification`
+- `CustomTypeDefinition` → `CustomTypeSpecification` (public constructors only)
+- `IncompleteTypeDefinition` → `OpaqueTypeSpecification` (hides internal brokenness)
 
 ### TypeAliasSpecification
 
@@ -133,7 +145,16 @@ A type with platform-specific representation but known serialization.
 
 ## Type Definitions
 
-A **Type Definition** provides the complete implementation of a type.
+A **Type Definition** provides the complete implementation of a type, owned by the defining module. Unlike specifications, definitions can be public or private (controlled via `AccessControlled` wrapper).
+
+**Purpose**: Definitions contain everything needed to:
+- Generate code for the type
+- Perform type checking within the module
+- Derive the public specification for dependents
+
+**Access control**: Definitions are wrapped with `AccessControlled` to indicate visibility:
+- `Public`: Exposed in the module's specification
+- `Private`: Internal to the module, not visible to dependents
 
 ### TypeAliasDefinition
 
@@ -149,3 +170,62 @@ Complete definition of a custom type.
 - **Components**:
   - typeParams: List of type parameters (`List Name`)
   - constructors: Access-controlled constructors (`AccessControlled Constructors`)
+
+### IncompleteTypeDefinition (v4)
+
+A type definition that is incomplete or broken. This enables best-effort compilation and incremental development.
+
+- **Structure**: `IncompleteTypeDefinition typeParams incompleteness partialBody`
+- **Components**:
+  - typeParams: List of type parameters (`List Name`)
+  - incompleteness: The reason for incompleteness (`Incompleteness`)
+  - partialBody: Optional partial type body (`Option Type`)
+
+## Incompleteness (v4)
+
+Describes why a type or value definition is incomplete.
+
+### Hole
+
+Represents a reference to something that was deleted, renamed, or otherwise broken.
+
+- **Structure**: `Hole reason`
+- **Components**:
+  - reason: Specific reason for the hole (`HoleReason`)
+
+### Draft
+
+Represents author-marked work-in-progress.
+
+- **Structure**: `Draft notes`
+- **Components**:
+  - notes: Optional notes about the draft (`Option String`)
+
+## HoleReason (v4)
+
+Specific reasons why a Hole exists.
+
+### UnresolvedReference
+
+A reference to a type or value that cannot be resolved.
+
+- **Structure**: `UnresolvedReference target`
+- **Components**:
+  - target: The fully-qualified name that cannot be resolved (`FQName`)
+
+### DeletedDuringRefactor
+
+A reference that was deleted during a refactoring operation.
+
+- **Structure**: `DeletedDuringRefactor txId`
+- **Components**:
+  - txId: Transaction ID of the refactoring operation (`String`)
+
+### TypeMismatch
+
+A type that doesn't match expectations.
+
+- **Structure**: `TypeMismatch expected found`
+- **Components**:
+  - expected: Description of expected type (`String`)
+  - found: Description of found type (`String`)

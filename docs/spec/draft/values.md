@@ -16,6 +16,17 @@ In IR v4, values no longer use a generic attribute parameter. Each value node co
 - **inferredType**: Optional inferred type of the value
 - **extensions**: A dictionary of extension data
 
+## Literals
+
+Literal constant values used in value expressions.
+
+- **BoolLiteral**: Boolean value (`true`, `false`)
+- **CharLiteral**: Single character
+- **StringLiteral**: Text string
+- **IntegerLiteral**: Integer (arbitrary precision, includes negatives)
+- **FloatLiteral**: Floating-point number
+- **DecimalLiteral**: Arbitrary-precision decimal (stored as string for precision)
+
 ## Value Expressions
 
 ### Literal
@@ -47,6 +58,10 @@ A list of values.
 A record value with named fields.
 
 - **Structure**: `Record attributes fields`
+- **Components**:
+  - attributes: `ValueAttributes`
+  - fields: Dictionary of field names to values (`Dict Name Value`)
+- **Note**: Field order does not affect equality—two records with the same fields in different orders are considered equal
 
 ### Variable
 
@@ -82,7 +97,11 @@ Function application.
 
 Anonymous function (lambda abstraction).
 
-- **Structure**: `Lambda attributes pattern body`
+- **Structure**: `Lambda attributes argumentPattern body`
+- **Components**:
+  - attributes: `ValueAttributes`
+  - argumentPattern: Pattern for the function argument (`Pattern`)
+  - body: The function body expression (`Value`)
 
 ### LetDefinition
 
@@ -119,12 +138,70 @@ Pattern matching with multiple cases.
 Record update expression.
 
 - **Structure**: `UpdateRecord attributes recordToUpdate fieldsToUpdate`
+- **Components**:
+  - attributes: `ValueAttributes`
+  - recordToUpdate: The record being updated (`Value`)
+  - fieldsToUpdate: Dictionary of field names to new values (`Dict Name Value`)
+- **Note**: Field order in updates does not affect equality
 
 ### Unit
 
 The unit value.
 
 - **Structure**: `Unit attributes`
+
+### Hole (v4)
+
+An incomplete or broken reference, enabling best-effort compilation.
+
+- **Structure**: `Hole attributes reason expectedType`
+- **Components**:
+  - attributes: `ValueAttributes`
+  - reason: Why this hole exists (`HoleReason`)
+  - expectedType: Optional expected type (`Option Type`)
+- **Use cases**:
+  - Reference to a deleted/renamed function
+  - Placeholder during incremental development
+  - Representing compilation errors without failing the entire build
+
+### Native (v4)
+
+A native platform operation with no IR body.
+
+- **Structure**: `Native attributes fqName nativeInfo`
+- **Components**:
+  - attributes: `ValueAttributes`
+  - fqName: Fully-qualified name of the native operation (`FQName`)
+  - nativeInfo: Information about the native operation (`NativeInfo`)
+
+### External (v4)
+
+An external FFI (Foreign Function Interface) call.
+
+- **Structure**: `External attributes externalName targetPlatform`
+- **Components**:
+  - attributes: `ValueAttributes`
+  - externalName: Name of the external function (`String`)
+  - targetPlatform: Target platform identifier (`String`)
+
+## NativeInfo (v4)
+
+Information about native operations.
+
+- **Structure**: `NativeInfo hint description`
+- **Components**:
+  - hint: Category of native operation (`NativeHint`)
+  - description: Optional human-readable description (`Option String`)
+
+## NativeHint (v4)
+
+Categories of native operations:
+
+- **Arithmetic**: Basic arithmetic/logic operation
+- **Comparison**: Comparison operation
+- **StringOp**: String operation
+- **CollectionOp**: Collection operation (map, filter, fold, etc.)
+- **PlatformSpecific**: Platform-specific operation (includes platform identifier)
 
 ## Patterns
 
@@ -141,9 +218,77 @@ Patterns are used for destructuring and filtering values.
 
 ## Value Definitions
 
-A **Value Definition** provides the complete implementation of a value or function.
+A **Value Definition** provides the complete implementation of a value or function, owned by the defining module. Like type definitions, value definitions can be public or private (controlled via `AccessControlled` wrapper).
 
-- **Structure**:
-  - `inputTypes`: List of parameters with their attributes and types
-  - `outputType`: Return type
-  - `body`: The value expression implementing the logic
+**Purpose**: Definitions contain everything needed to:
+- Generate executable code
+- Perform type checking and inference
+- Derive the public specification for dependents
+
+**Access control**: Definitions are wrapped with `AccessControlled` to indicate visibility:
+- `Public`: Exposed in the module's specification, callable by dependents
+- `Private`: Internal to the module, not visible to dependents
+
+### ValueDefinitionBody
+
+A `ValueDefinition` wraps a `ValueDefinitionBody` with access control. The body can take several forms, supporting different implementation strategies:
+
+#### ExpressionBody
+
+A normal IR expression body.
+
+- **Structure**: `ExpressionBody inputTypes outputType body`
+- **Components**:
+  - inputTypes: List of parameter names and types (`List (Name, Type)`)
+  - outputType: Return type (`Type`)
+  - body: The value expression implementing the logic (`Value`)
+
+#### NativeBody (v4)
+
+A native/builtin operation with no IR body.
+
+- **Structure**: `NativeBody inputTypes outputType nativeInfo`
+- **Components**:
+  - inputTypes: List of parameter names and types (`List (Name, Type)`)
+  - outputType: Return type (`Type`)
+  - nativeInfo: Information about the native operation (`NativeInfo`)
+
+#### ExternalBody (v4)
+
+An external FFI operation with no IR body.
+
+- **Structure**: `ExternalBody inputTypes outputType externalName targetPlatform`
+- **Components**:
+  - inputTypes: List of parameter names and types (`List (Name, Type)`)
+  - outputType: Return type (`Type`)
+  - externalName: Name of the external function (`String`)
+  - targetPlatform: Target platform identifier (`String`)
+
+#### IncompleteBody (v4)
+
+An incomplete definition for best-effort support.
+
+- **Structure**: `IncompleteBody inputTypes outputType incompleteness partialBody`
+- **Components**:
+  - inputTypes: List of parameter names and types (`List (Name, Type)`)
+  - outputType: Optional return type (`Option Type`)
+  - incompleteness: Reason for incompleteness (`Incompleteness`)
+  - partialBody: Optional partial implementation (`Option Value`)
+
+## Value Specifications
+
+A **Value Specification** defines the public interface of a value—the function signature exposed to consumers. Specifications contain only the type signature, never the implementation.
+
+**Purpose**: When module A depends on module B, module A only sees module B's value specifications. This enables:
+- Type checking at module boundaries without implementation details
+- API documentation generation from signatures
+- Separate compilation of dependent modules
+
+**Deriving specifications**: A specification is derived from any `ValueDefinitionBody` by extracting the input types and output type. The implementation details (`body`, `nativeInfo`, `externalName`, etc.) are discarded.
+
+- **Structure**: `ValueSpecification inputs output`
+- **Components**:
+  - inputs: List of parameter names and types (`List (Name, Type)`)
+  - output: Return type (`Type`)
+
+**Note**: All `ValueDefinitionBody` variants (`ExpressionBody`, `NativeBody`, `ExternalBody`, `IncompleteBody`) produce the same `ValueSpecification` structure—consumers cannot distinguish how a value is implemented.
