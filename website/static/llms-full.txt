@@ -12,173 +12,179 @@
 
 Welcome to the Morphir documentation! This guide will help you understand, install, and use Morphir effectively.
 
-## 📚 Documentation Structure
+## Documentation Structure
 
-### [Getting Started](getting-started/)
+### [Getting Started](https://morphir.finos.org/docs/getting-started//)
 Start here if you're new to Morphir!
-- [Introduction](getting-started/intro.md) - What is Morphir and why use it?
-- [Installation](getting-started/installation.md) - Install Morphir tools
-- [Installation and Usage](getting-started/installation-and-usage.md) - Detailed installation and basic usage
-- [Quick Start Tutorial](getting-started/tutorials.md) - Get up and running quickly
-- [Editor Setup](getting-started/editor-setup.md) - Configure your development environment
-- [Morphir Web UI](getting-started/Morphir%20Web%20UI.md) - Browse and visualize Morphir models
-- [Morphir Go Preview](getting-started/morphir-go-preview.md) - Preview of the new Go-based Morphir CLI
+- [Introduction](https://morphir.finos.org/docs/getting-started/intro/) - What is Morphir and why use it?
+- [Installation](https://morphir.finos.org/docs/getting-started/installation/) - Install Morphir tools
+- [Installation and Usage](https://morphir.finos.org/docs/getting-started/installation-and-usage/) - Detailed installation and basic usage
+- [Quick Start Tutorial](https://morphir.finos.org/docs/getting-started/tutorials/) - Get up and running quickly
+- [Editor Setup](https://morphir.finos.org/docs/getting-started/editor-setup/) - Configure your development environment
+- [Morphir Web UI](https://morphir.finos.org/docs/getting-started/Morphir%20Web%20UI/) - Browse and visualize Morphir models
+- [Morphir Go Preview](https://morphir.finos.org/docs/getting-started/morphir-go-preview/) - Preview of the new Go-based Morphir CLI
 
-### [CLI Preview](cli-preview/)
+### [CLI Preview](https://morphir.finos.org/docs/cli-preview//)
 The next-generation Morphir CLI built in Go
-- [Overview](cli-preview/index.md) - Introduction to the new CLI
-- [Getting Started](cli-preview/getting-started.md) - Quick start with the new CLI
-- [What's New](cli-preview/whats-new.md) - Latest features and improvements
-- [Commands](cli-preview/commands/) - CLI command reference
-- [Release Notes](cli-preview/release-notes/) - Version history and changelogs
+- [Overview](https://morphir.finos.org/docs/cli-preview/index/) - Introduction to the new CLI
+- [Getting Started](https://morphir.finos.org/docs/cli-preview/getting-started/) - Quick start with the new CLI
+- [What's New](https://morphir.finos.org/docs/cli-preview/whats-new/) - Latest features and improvements
+- [Commands](https://morphir.finos.org/docs/cli-preview/commands//) - CLI command reference
+- [Release Notes](https://morphir.finos.org/docs/cli-preview/release-notes//) - Version history and changelogs
 
-### [Core Concepts](concepts/)
+### [Design](https://morphir.finos.org/docs/design/draft/README/)
+Draft design documents and specifications for upcoming features
+- [IR v4](https://morphir.finos.org/docs/design/draft/README.md#ir-v4/) - Next-generation IR design
+- [Document Tree Protocol](https://morphir.finos.org/docs/design/draft/README.md#document-tree-protocol/) - Document Tree layout and protocol
+- [Morphir Daemon](https://morphir.finos.org/docs/design/draft/README.md#morphir-daemon/) - Workspace management design
+
+### [Core Concepts](https://morphir.finos.org/docs/concepts//)
 Understand the fundamental concepts behind Morphir
-- [Introduction to Morphir](concepts/introduction-to-morphir.md) - Overview of Morphir
-- [What's It About?](concepts/whats-it-about.md) - Business logic and application focus
-- [Why Functional Programming?](concepts/why-functional-programming.md) - The FP paradigm in Morphir
-- [Morphir IR](concepts/morphir-ir.md) - The Intermediate Representation structure
-- [Morphir SDK](concepts/morphir-sdk.md) - Standard library and SDK
+- [Introduction to Morphir](https://morphir.finos.org/docs/concepts/introduction-to-morphir/) - Overview of Morphir
+- [What's It About?](https://morphir.finos.org/docs/concepts/whats-it-about/) - Business logic and application focus
+- [Why Functional Programming?](https://morphir.finos.org/docs/concepts/why-functional-programming/) - The FP paradigm in Morphir
+- [Morphir IR](https://morphir.finos.org/docs/concepts/morphir-ir/) - The Intermediate Representation structure
+- [Morphir SDK](https://morphir.finos.org/docs/concepts/morphir-sdk/) - Standard library and SDK
 
-### [Specifications](spec/)
+### [Specifications](https://morphir.finos.org/docs/spec//)
 Formal specifications for Morphir configuration and IR formats
-- [Overview](spec/index.md) - Specifications overview
-- [morphir.toml](spec/morphir-toml/morphir-toml-specification.md) - `morphir.toml` format
-- [morphir.json](spec/morphir-json/morphir-json-specification.md) - `morphir.json` format (morphir-elm legacy)
-- [Morphir IR Specification](spec/ir/morphir-ir-specification.md) - Detailed IR specification
-- [Morphir IR JSON Schemas](spec/ir/schemas/) - JSON schemas for IR versions
-  - [Version 3 (Current)](spec/ir/schemas/v3/) - Latest IR schema
-  - [Version 2](spec/ir/schemas/v2/) - Previous IR schema
-  - [Version 1](spec/ir/schemas/v1/) - Original IR schema
+- [Overview](https://morphir.finos.org/docs/spec/index/) - Specifications overview
+- [morphir.toml](https://morphir.finos.org/docs/spec/morphir-toml/morphir-toml-specification/) - `morphir.toml` format
+- [morphir.json](https://morphir.finos.org/docs/spec/morphir-json/morphir-json-specification/) - `morphir.json` format (morphir-elm legacy)
+- [Morphir IR Specification](https://morphir.finos.org/docs/spec/ir/morphir-ir-specification/) - Detailed IR specification
+- [Morphir IR JSON Schemas](https://morphir.finos.org/docs/spec/ir/schemas//) - JSON schemas for IR versions
+  - [Version 3 (Current)](https://morphir.finos.org/docs/spec/ir/schemas/v3//) - Latest IR schema
+  - [Version 2](https://morphir.finos.org/docs/spec/ir/schemas/v2//) - Previous IR schema
+  - [Version 1](https://morphir.finos.org/docs/spec/ir/schemas/v1//) - Original IR schema
 
-### [User Guides](user-guides/)
+### [User Guides](https://morphir.finos.org/docs/user-guides//)
 Learn how to model business logic and use Morphir tools
 
-#### [Modeling Guides](user-guides/modeling-guides/)
-- [Application Modeling](user-guides/modeling-guides/application-modeling.md)
-- [Modeling Overview](user-guides/modeling-guides/modeling-overview.md)
-- [What Makes a Good Domain Model](user-guides/modeling-guides/what-makes-a-good-domain-model.md)
-- [Modeling for Database Developers](user-guides/modeling-guides/modeling-for-database-developers.md)
-- [Modeling in Finance](user-guides/modeling-guides/modeling-finance.md)
-- [Modeling and Testing](user-guides/modeling-guides/modelling-testing.md)
-- [Soul of Your Application](user-guides/modeling-guides/soul-of-your-application.md)
+#### [Modeling Guides](https://morphir.finos.org/docs/user-guides/modeling-guides//)
+- [Application Modeling](https://morphir.finos.org/docs/user-guides/modeling-guides/application-modeling/)
+- [Modeling Overview](https://morphir.finos.org/docs/user-guides/modeling-guides/modeling-overview/)
+- [What Makes a Good Domain Model](https://morphir.finos.org/docs/user-guides/modeling-guides/what-makes-a-good-domain-model/)
+- [Modeling for Database Developers](https://morphir.finos.org/docs/user-guides/modeling-guides/modeling-for-database-developers/)
+- [Modeling in Finance](https://morphir.finos.org/docs/user-guides/modeling-guides/modeling-finance/)
+- [Modeling and Testing](https://morphir.finos.org/docs/user-guides/modeling-guides/modelling-testing/)
+- [Soul of Your Application](https://morphir.finos.org/docs/user-guides/modeling-guides/soul-of-your-application/)
 
-#### [Command-Line Tools](user-guides/cli-tools/)
-- [Command-Line Tools](user-guides/cli-tools/command-line-tools.md)
-- [Morphir Commands Processing](user-guides/cli-tools/morphir-commands-processing.md)
-- [Morphir-Elm Commands](user-guides/cli-tools/morphir-elm-commands-processing.md)
+#### [Command-Line Tools](https://morphir.finos.org/docs/user-guides/cli-tools//)
+- [Command-Line Tools](https://morphir.finos.org/docs/user-guides/cli-tools/command-line-tools/)
+- [Morphir Commands Processing](https://morphir.finos.org/docs/user-guides/cli-tools/morphir-commands-processing/)
+- [Morphir-Elm Commands](https://morphir.finos.org/docs/user-guides/cli-tools/morphir-elm-commands-processing/)
 
-#### [Development Techniques](user-guides/development-guides/)
-- [Working with Results in Elm](user-guides/development-guides/working-with-results-in-elm.md)
-- [Decorators User Guide](user-guides/development-guides/decorators-users-guide.md)
+#### [Development Techniques](https://morphir.finos.org/docs/user-guides/development-guides//)
+- [Working with Results in Elm](https://morphir.finos.org/docs/user-guides/development-guides/working-with-results-in-elm/)
+- [Decorators User Guide](https://morphir.finos.org/docs/user-guides/development-guides/decorators-users-guide/)
 
-### [Reference](reference/)
+### [Reference](https://morphir.finos.org/docs/reference//)
 Technical reference documentation for backends, APIs, and tools
 
-#### [Backends](reference/backends/)
+#### [Backends](https://morphir.finos.org/docs/reference/backends//)
 
-##### [Scala](reference/backends/scala/)
-- [Scala Backend](reference/backends/scala/scala-backend.md)
-- [Scala API Usage](reference/backends/scala/scala-api-usage-docs.md)
-- [Scala JSON Codecs Backend](reference/backends/scala/scala-json-codecs-backend.md)
-- [Morphir Scala Code Generation](reference/backends/scala/morphir-scala-gen.md)
+##### [Scala](https://morphir.finos.org/docs/reference/backends/scala//)
+- [Scala Backend](https://morphir.finos.org/docs/reference/backends/scala/scala-backend/)
+- [Scala API Usage](https://morphir.finos.org/docs/reference/backends/scala/scala-api-usage-docs/)
+- [Scala JSON Codecs Backend](https://morphir.finos.org/docs/reference/backends/scala/scala-json-codecs-backend/)
+- [Morphir Scala Code Generation](https://morphir.finos.org/docs/reference/backends/scala/morphir-scala-gen/)
 
-##### [Spark](reference/backends/spark/)
-- [Spark Backend Design](reference/backends/spark/spark-backend-design.md)
-- [Spark Backend API](reference/backends/spark/spark-backend-api-documentation.md)
-- [Spark Backend Joins](reference/backends/spark/spark-backend-joins.md)
-- [Spark Backend Optional Values](reference/backends/spark/spark-backend-optional-values.md)
-- [Spark as Relational Backend](reference/backends/spark/spark-backend-as-a-special-case-of-a-relational-backend.md)
-- [Spark Testing Framework](reference/backends/spark/spark-testing-framework.md)
+##### [Spark](https://morphir.finos.org/docs/reference/backends/spark//)
+- [Spark Backend Design](https://morphir.finos.org/docs/reference/backends/spark/spark-backend-design/)
+- [Spark Backend API](https://morphir.finos.org/docs/reference/backends/spark/spark-backend-api-documentation/)
+- [Spark Backend Joins](https://morphir.finos.org/docs/reference/backends/spark/spark-backend-joins/)
+- [Spark Backend Optional Values](https://morphir.finos.org/docs/reference/backends/spark/spark-backend-optional-values/)
+- [Spark as Relational Backend](https://morphir.finos.org/docs/reference/backends/spark/spark-backend-as-a-special-case-of-a-relational-backend/)
+- [Spark Testing Framework](https://morphir.finos.org/docs/reference/backends/spark/spark-testing-framework/)
 
-##### [Other Platforms](reference/backends/other-platforms/)
-- [Relational Backend](reference/backends/other-platforms/relational-backend.md)
-- [TypeScript](reference/backends/other-platforms/typescript.md)
-- [TypeScript API](reference/backends/other-platforms/morphir-typescript-api.md)
-- [CADL/TypeSpec](reference/backends/other-platforms/cadl-doc.md)
-- [Spring Boot](reference/backends/other-platforms/spring-boot-readme.md)
+##### [Other Platforms](https://morphir.finos.org/docs/reference/backends/other-platforms//)
+- [Relational Backend](https://morphir.finos.org/docs/reference/backends/other-platforms/relational-backend/)
+- [TypeScript](https://morphir.finos.org/docs/reference/backends/other-platforms/typescript/)
+- [TypeScript API](https://morphir.finos.org/docs/reference/backends/other-platforms/morphir-typescript-api/)
+- [CADL/TypeSpec](https://morphir.finos.org/docs/reference/backends/other-platforms/cadl-doc/)
+- [Spring Boot](https://morphir.finos.org/docs/reference/backends/other-platforms/spring-boot-readme/)
 
-#### [JSON Schema](reference/json-schema/)
-- [JSON Codecs Documentation](reference/json-schema/json-codecs-doc.md)
-- [Generating JSON Schema](reference/json-schema/generating-json-schema.md)
-- [JSON Schema Configuration](reference/json-schema/json-schema-config.md)
-- [JSON Schema Mappings](reference/json-schema/json-schema-mappings.md)
-- [JSON Schema Sample](reference/json-schema/json-schema-sample.md)
-- [JSON Schema Developers Guide](reference/json-schema/json-schema-enabled%20developers%20guide.md)
-- [JSON Schema Backend Test Plan](reference/json-schema/json-schema-backend-testplan.md)
-- [JSON Schema Backend Config Test Plan](reference/json-schema/json-schema-backend-config-test-plan.md)
-- [Codec Documentation](reference/json-schema/codec-docs.md)
+#### [JSON Schema](https://morphir.finos.org/docs/reference/json-schema//)
+- [JSON Codecs Documentation](https://morphir.finos.org/docs/reference/json-schema/json-codecs-doc/)
+- [Generating JSON Schema](https://morphir.finos.org/docs/reference/json-schema/generating-json-schema/)
+- [JSON Schema Configuration](https://morphir.finos.org/docs/reference/json-schema/json-schema-config/)
+- [JSON Schema Mappings](https://morphir.finos.org/docs/reference/json-schema/json-schema-mappings/)
+- [JSON Schema Sample](https://morphir.finos.org/docs/reference/json-schema/json-schema-sample/)
+- [JSON Schema Developers Guide](https://morphir.finos.org/docs/reference/json-schema/json-schema-enabled%20developers%20guide/)
+- [JSON Schema Backend Test Plan](https://morphir.finos.org/docs/reference/json-schema/json-schema-backend-testplan/)
+- [JSON Schema Backend Config Test Plan](https://morphir.finos.org/docs/reference/json-schema/json-schema-backend-config-test-plan/)
+- [Codec Documentation](https://morphir.finos.org/docs/reference/json-schema/codec-docs/)
 
-#### [CLI Reference](reference/cli/)
-- [CLI Incremental Build](reference/cli/morphir-cli-incremental-build-approach.md)
-- [CLI Merging Documentation](reference/cli/cli-cli2-merging-docs.md)
+#### [CLI Reference](https://morphir.finos.org/docs/reference/cli//)
+- [CLI Incremental Build](https://morphir.finos.org/docs/reference/cli/morphir-cli-incremental-build-approach/)
+- [CLI Merging Documentation](https://morphir.finos.org/docs/reference/cli/cli-cli2-merging-docs/)
 
 #### Other Reference
-- [Testing Framework](reference/testing-framework-readme.md)
-- [Insight](reference/insight-readme.md)
-- [User Guide](reference/user-guide-readme.md)
-- [Error: Append Not Supported](reference/error-append-not-supported.md)
-- [Table Template](reference/table-template.md)
-- [Versioning](reference/versioning.md)
+- [Testing Framework](https://morphir.finos.org/docs/reference/testing-framework-readme/)
+- [Insight](https://morphir.finos.org/docs/reference/insight-readme/)
+- [User Guide](https://morphir.finos.org/docs/reference/user-guide-readme/)
+- [Error: Append Not Supported](https://morphir.finos.org/docs/reference/error-append-not-supported/)
+- [Table Template](https://morphir.finos.org/docs/reference/table-template/)
+- [Versioning](https://morphir.finos.org/docs/reference/versioning/)
 
-### [Developer Guides](developers/)
+### [Developer Guides](https://morphir.finos.org/docs/developers//)
 Contributing to Morphir and advanced development topics
-- [Contributing Guide](developers/contributing.md) - How to contribute to Morphir
-- [Contribution Guide Index](developers/contribution-guide-index.md)
-- [Contribution Guide README](developers/contribution-guide-readme.md)
-- [Morphir Developers Guide](developers/morphir-developers-guide.md)
-- [Development Bots](developers/dev-bots.md)
-- [Integrating Morphir with JVM Projects](developers/integrating-morphir-and-jvm-projects.md)
-- [Publishing](developers/publishing.md)
-- [Release Retrospective v0.4.0-alpha.1](developers/release-retrospective-v0.4.0-alpha.1.md) - Lessons learned from v0.4.0-alpha.1 release
+- [Contributing Guide](https://morphir.finos.org/docs/developers/contributing/) - How to contribute to Morphir
+- [Contribution Guide Index](https://morphir.finos.org/docs/developers/contribution-guide-index/)
+- [Contribution Guide README](https://morphir.finos.org/docs/developers/contribution-guide-readme/)
+- [Morphir Developers Guide](https://morphir.finos.org/docs/developers/morphir-developers-guide/)
+- [Development Bots](https://morphir.finos.org/docs/developers/dev-bots/)
+- [Integrating Morphir with JVM Projects](https://morphir.finos.org/docs/developers/integrating-morphir-and-jvm-projects/)
+- [Publishing](https://morphir.finos.org/docs/developers/publishing/)
+- [Release Retrospective v0.4.0-alpha.1](https://morphir.finos.org/docs/developers/release-retrospective-v0.4.0-alpha.1/) - Lessons learned from v0.4.0-alpha.1 release
 
-### [Community](community/)
+### [Community](https://morphir.finos.org/docs/community//)
 Join the Morphir community
-- [Morphir Community](community/morphir-community.md) - Community resources and how to get involved
-- [Media](community/media.md) - Presentations, videos, and media resources
-- [Code of Conduct](community/code-of-conduct.md)
-- [FAQs](community/faqs.md) - Frequently Asked Questions
+- [Morphir Community](https://morphir.finos.org/docs/community/morphir-community/) - Community resources and how to get involved
+- [Media](https://morphir.finos.org/docs/community/media/) - Presentations, videos, and media resources
+- [Code of Conduct](https://morphir.finos.org/docs/community/code-of-conduct/)
+- [FAQs](https://morphir.finos.org/docs/community/faqs/) - Frequently Asked Questions
 
-### [Use Cases](use-cases/)
+### [Use Cases](https://morphir.finos.org/docs/use-cases//)
 Real-world applications of Morphir
-- [The Morphir Background Story](use-cases/background.md)
-- [Regulatory Technology Modeling](use-cases/regtech-modeling.md)
+- [The Morphir Background Story](https://morphir.finos.org/docs/use-cases/background/)
+- [Regulatory Technology Modeling](https://morphir.finos.org/docs/use-cases/regtech-modeling/)
 
-## 🚀 Quick Links
+## Quick Links
 
-- **New to Morphir?** Start with [Introduction](getting-started/intro.md)
-- **Want to install?** See [Installation](getting-started/installation.md)
-- **Need to model business logic?** Check out [Application Modeling](user-guides/modeling-guides/application-modeling.md)
-- **Looking for API docs?** Browse the [Reference](reference/) section
-- **Want to contribute?** Read the [Contributing Guide](developers/contributing.md)
-- **Have questions?** Check the [FAQs](community/faqs.md) or join the [Community](community/morphir-community.md)
+- **New to Morphir?** Start with [Introduction](https://morphir.finos.org/docs/getting-started/intro/)
+- **Want to install?** See [Installation](https://morphir.finos.org/docs/getting-started/installation/)
+- **Need to model business logic?** Check out [Application Modeling](https://morphir.finos.org/docs/user-guides/modeling-guides/application-modeling/)
+- **Looking for API docs?** Browse the [Reference](https://morphir.finos.org/docs/reference//) section
+- **Want to contribute?** Read the [Contributing Guide](https://morphir.finos.org/docs/developers/contributing/)
+- **Have questions?** Check the [FAQs](https://morphir.finos.org/docs/community/faqs/) or join the [Community](https://morphir.finos.org/docs/community/morphir-community/)
 
-## 📖 Additional Resources
+## Additional Resources
 
-- **Examples**: See the [examples](examples/) folder for practical examples
-- **Presentations**: Check [presentations](presentations/) for talks and slides
+- **Examples**: See the [examples](https://morphir.finos.org/docs/examples//) folder for practical examples
+- **Presentations**: Check [presentations](https://morphir.finos.org/docs/presentations//) for talks and slides
 
-## 🔗 External Links
+## External Links
 
 - [Main Repository](https://github.com/finos/morphir)
 - [Morphir Website](https://morphir.finos.org)
 - [FINOS](https://finos.org)
 - [Slack Channel](https://finos-lf.slack.com/messages/morphir/)
 
-## 🤖 Docs for AI Agents
+## Docs for AI Agents
 
 Morphir provides LLM-friendly documentation following the [llms.txt specification](https://llmstxt.org/):
 
 | File | Description |
 |------|-------------|
-| [/llms.txt](/llms.txt) | Compact version with curated links and descriptions |
-| [/llms-full.txt](/llms-full.txt) | Full version with inline content from key documents |
+| [/llms.txt](https://morphir.finos.org/docs/llms.txt/) | Compact version with curated links and descriptions |
+| [/llms-full.txt](https://morphir.finos.org/docs/llms-full.txt/) | Full version with inline content from key documents |
 
-Use these files to provide Morphir context to AI assistants, chatbots, or code generation tools. See [LLM-Friendly Documentation](community/llms-txt.md) for usage examples.
+Use these files to provide Morphir context to AI assistants, chatbots, or code generation tools. See [LLM-Friendly Documentation](https://morphir.finos.org/docs/community/llms-txt/) for usage examples.
 
 ---
 
-**Note**: This documentation is organized to help newcomers navigate easily. If you're looking for something specific, use your browser's search function or check the [FAQs](community/faqs.md).
+**Note**: This documentation is organized to help newcomers navigate easily. If you're looking for something specific, use your browser's search function or check the [FAQs](https://morphir.finos.org/docs/community/faqs/).
 
 ---
 
@@ -1045,11 +1051,11 @@ To support tooling, validation, and interoperability, formal JSON schemas are pr
 
 ### Available Schemas
 
-- **[Format Version 3 (Current)](/schemas/morphir-ir-v3.yaml)**: The latest format version, which uses capitalized constructor tags (e.g., `"Library"`, `"Public"`, `"Variable"`).
+- **[Format Version 3 (Current)](https://morphir.finos.org/docs/schemas/morphir-ir-v3.yaml/)**: The latest format version, which uses capitalized constructor tags (e.g., `"Library"`, `"Public"`, `"Variable"`).
 
-- **[Format Version 2](/schemas/morphir-ir-v2.yaml)**: Uses capitalized distribution and type tags (e.g., `"Library"`, `"Public"`, `"Variable"`) but lowercase value and pattern tags (e.g., `"apply"`, `"lambda"`, `"as_pattern"`).
+- **[Format Version 2](https://morphir.finos.org/docs/schemas/morphir-ir-v2.yaml/)**: Uses capitalized distribution and type tags (e.g., `"Library"`, `"Public"`, `"Variable"`) but lowercase value and pattern tags (e.g., `"apply"`, `"lambda"`, `"as_pattern"`).
 
-- **[Format Version 1](/schemas/morphir-ir-v1.yaml)**: The original format version, which uses lowercase tags throughout (e.g., `"library"`, `"public"`) and a different module structure where modules have `name` and `def` fields.
+- **[Format Version 1](https://morphir.finos.org/docs/schemas/morphir-ir-v1.yaml/)**: The original format version, which uses lowercase tags throughout (e.g., `"library"`, `"public"`) and a different module structure where modules have `name` and `def` fields.
 
 ### Key Differences Between Versions
 
@@ -1132,40 +1138,40 @@ This specification defines the structure and semantics necessary for building a 
 
 Welcome! This section will help you get started with Morphir quickly.
 
-## 📋 Contents
+## Contents
 
-1. **[Introduction](intro.md)** - Understand what Morphir is and why it's useful
-2. **[Installation](installation.md)** - Install Morphir tools on your system
-3. **[Installation and Usage](installation-and-usage.md)** - Detailed installation guide and basic usage
-4. **[Quick Start Tutorial](tutorials.md)** - Follow along with a tutorial to build your first Morphir application
-5. **[Editor Setup](editor-setup.md)** - Configure your IDE or editor for Morphir development
+1. **[Introduction](https://morphir.finos.org/docs/intro/)** - Understand what Morphir is and why it's useful
+2. **[Installation](https://morphir.finos.org/docs/installation/)** - Install Morphir tools on your system
+3. **[Installation and Usage](https://morphir.finos.org/docs/installation-and-usage/)** - Detailed installation guide and basic usage
+4. **[Quick Start Tutorial](https://morphir.finos.org/docs/tutorials/)** - Follow along with a tutorial to build your first Morphir application
+5. **[Editor Setup](https://morphir.finos.org/docs/editor-setup/)** - Configure your IDE or editor for Morphir development
 
-## 🎯 Recommended Path for Beginners
+## Recommended Path for Beginners
 
 If you're completely new to Morphir, we recommend following this path:
 
-1. **Read the Introduction** ([intro.md](intro.md)) to understand Morphir's purpose
-2. **Install Morphir** ([installation.md](installation.md)) on your machine
-3. **Complete the Tutorial** ([tutorials.md](tutorials.md)) to build your first model
-4. **Configure Your Editor** ([editor-setup.md](editor-setup.md)) for a better development experience
+1. **Read the Introduction** ([intro.md](https://morphir.finos.org/docs/intro/)) to understand Morphir's purpose
+2. **Install Morphir** ([installation.md](https://morphir.finos.org/docs/installation/)) on your machine
+3. **Complete the Tutorial** ([tutorials.md](https://morphir.finos.org/docs/tutorials/)) to build your first model
+4. **Configure Your Editor** ([editor-setup.md](https://morphir.finos.org/docs/editor-setup/)) for a better development experience
 
-## 🔄 Next Steps
+## Next Steps
 
 After completing the getting started guide, you should:
 
-- Explore [Core Concepts](../concepts/) to understand Morphir's architecture
-- Read [User Guides](../user-guides/) to learn modeling best practices
-- Check out [Examples](../examples/) for real-world applications
+- Explore [Core Concepts](https://morphir.finos.org/docs/concepts//) to understand Morphir's architecture
+- Read [User Guides](https://morphir.finos.org/docs/user-guides//) to learn modeling best practices
+- Check out [Examples](https://morphir.finos.org/docs/examples//) for real-world applications
 
-## 💡 Quick Tips
+## Quick Tips
 
-- Morphir uses functional programming principles - if you're new to FP, read [Why Functional Programming?](../concepts/why-functional-programming.md)
-- The Morphir IR (Intermediate Representation) is at the heart of the system - learn about it in [Concepts](../concepts/)
-- Join the [Community](../community/) to get help and share your experiences
+- Morphir uses functional programming principles - if you're new to FP, read [Why Functional Programming?](https://morphir.finos.org/docs/concepts/why-functional-programming/)
+- The Morphir IR (Intermediate Representation) is at the heart of the system - learn about it in [Concepts](https://morphir.finos.org/docs/concepts//)
+- Join the [Community](https://morphir.finos.org/docs/community//) to get help and share your experiences
 
 ---
 
-[← Back to Documentation Home](../README.md)
+[← Back to Documentation Home](https://morphir.finos.org/docs/README/)
 
 ---
 
@@ -1175,18 +1181,18 @@ After completing the getting started guide, you should:
 
 This section explains the fundamental concepts behind Morphir and how it works.
 
-## 📋 Contents
+## Contents
 
 ### Overview & Philosophy
-- **[Introduction to Morphir](introduction-to-morphir.md)** - Complete introduction to the Morphir framework
-- **[What's It About?](whats-it-about.md)** - Understanding business logic as the core focus
-- **[Why Functional Programming?](why-functional-programming.md)** - The role of FP in Morphir
+- **[Introduction to Morphir](https://morphir.finos.org/docs/introduction-to-morphir/)** - Complete introduction to the Morphir framework
+- **[What's It About?](https://morphir.finos.org/docs/whats-it-about/)** - Understanding business logic as the core focus
+- **[Why Functional Programming?](https://morphir.finos.org/docs/why-functional-programming/)** - The role of FP in Morphir
 
 ### Technical Architecture
-- **[Morphir IR](morphir-ir.md)** - The Intermediate Representation structure (Distribution → Package → Module → Types/Values)
-- **[Morphir SDK](morphir-sdk.md)** - Standard library and built-in functions
+- **[Morphir IR](https://morphir.finos.org/docs/morphir-ir/)** - The Intermediate Representation structure (Distribution → Package → Module → Types/Values)
+- **[Morphir SDK](https://morphir.finos.org/docs/morphir-sdk/)** - Standard library and built-in functions
 
-## 🔑 Key Concepts
+## Key Concepts
 
 ### The Morphir IR Hierarchy
 
@@ -1217,7 +1223,7 @@ Morphir uses a naming-agnostic approach where names are stored as lists of lower
 
 This allows the same IR to be rendered in different conventions (camelCase, snake_case, etc.) for different platforms.
 
-## 🎯 Why These Concepts Matter
+## Why These Concepts Matter
 
 Understanding these concepts is crucial because:
 
@@ -1226,23 +1232,23 @@ Understanding these concepts is crucial because:
 3. **Clarity**: Naming-agnostic representation works across platforms
 4. **Separation of Concerns**: Business logic is separate from implementation details
 
-## 📚 Learn More
+## Learn More
 
 After understanding these core concepts, you can:
 
-- Apply them in [User Guides](../user-guides/) to model business logic
-- See technical details in [Reference](../reference/) documentation
-- Explore [Use Cases](../use-cases/) for real-world applications
-- Review [Designs](../design/) for architectural decisions and proposals
-  - [Draft Designs](../design/draft/) - Work-in-progress designs
-  - [Proposals](../design/proposals/) - Designs open for discussion
-  - [RFCs](../design/rfcs/) - Formal change requests
-- Check [Specifications](../spec/) for protocol and format definitions
-  - [Draft Specs](../spec/draft/) - Specifications under development
+- Apply them in [User Guides](https://morphir.finos.org/docs/user-guides//) to model business logic
+- See technical details in [Reference](https://morphir.finos.org/docs/reference//) documentation
+- Explore [Use Cases](https://morphir.finos.org/docs/use-cases//) for real-world applications
+- Review [Designs](https://morphir.finos.org/docs/design//) for architectural decisions and proposals
+  - [Draft Designs](https://morphir.finos.org/docs/design/draft//) - Work-in-progress designs
+  - [Proposals](https://morphir.finos.org/docs/design/proposals//) - Designs open for discussion
+  - [RFCs](https://morphir.finos.org/docs/design/rfcs//) - Formal change requests
+- Check [Specifications](https://morphir.finos.org/docs/spec//) for protocol and format definitions
+  - [Draft Specs](https://morphir.finos.org/docs/spec/draft//) - Specifications under development
 
 ---
 
-[← Back to Documentation Home](../README.md)
+[← Back to Documentation Home](https://morphir.finos.org/docs/README/)
 
 ---
 
@@ -1252,54 +1258,53 @@ After understanding these core concepts, you can:
 
 Installation and first steps with Morphir
 
-- [Morphir Web UI](https://morphir.finos.org/docs/getting-started/Morphir Web UI/): This document details the purpose of the various functions of the Morphir UI, and how to use them and navigate between them.
+- [Morphir Web UI](https://morphir.finos.org/docs/getting-started/Morphir%20Web%20UI/): This document details the purpose of the various functions of the Morphir UI, and how to use them and navigate between them.
 - [Getting Started with Morphir](https://morphir.finos.org/docs/getting-started/): Welcome! This section will help you get started with Morphir quickly.
 - [Editor Setup](https://morphir.finos.org/docs/getting-started/editor-setup/): Morphir is designed to allow users to write business logic in multiple ways. That currently includes the following:
-- [Untitled](https://morphir.finos.org/docs/getting-started/installation-and-usage/): Morphir is provided as a set of command-line tools that are distribution through the NPM packaging system. The current version is:
-- [Installation](https://morphir.finos.org/docs/getting-started/installation/): Morphir provides command line tools for executing morphir tasks. These tools are delivered by the ```npm``` package management system. Therefore, installation requires that ```Node.js``` and ```npm...
-- [Introduction to Morphir](https://morphir.finos.org/docs/getting-started/intro/): :::tip **Data and rules reign supreme. The rest is implementation detail.** :::
-- [Morphir Go (Preview)](https://morphir.finos.org/docs/getting-started/morphir-go-preview/): :::caution Insider Feature Morphir Go is currently in **developer preview**. For production use, please use the stable [morphir-elm](installation.md) tools. :::
-- [Morphir Quick Start](https://morphir.finos.org/docs/getting-started/tutorials/): The first step to using Morphir is installing. For this example we'll use the Elm front end for our modeling and generator into the JSON representation of the Morphir IR. So the first step is to in...
+- [Installation And Usage](https://morphir.finos.org/docs/getting-started/installation-and-usage/): Morphir is provided as a set of command-line tools that are distribution through the NPM packaging system. The current version is:
+- [Installation](https://morphir.finos.org/docs/getting-started/installation/): Morphir provides command line tools for executing morphir tasks. These tools are delivered by the ``npm` package management system.
+- [Introduction to Morphir](https://morphir.finos.org/docs/getting-started/intro/): Data and rules reign supreme. The rest is implementation detail.
+- [Morphir Go (Preview)](https://morphir.finos.org/docs/getting-started/morphir-go-preview/): Morphir Go is currently in developer preview. For production use, please use the stable morphir-elm tools.
+- [Morphir Quick Start](https://morphir.finos.org/docs/getting-started/tutorials/): The first step to using Morphir is installing. For this example we'll use the Elm front end for our modeling and generator into the JSON representation of the Morphir IR.
 
 ### Core Concepts
 
 Fundamental concepts and theory behind Morphir
 
 - [Core Concepts](https://morphir.finos.org/docs/concepts/): This section explains the fundamental concepts behind Morphir and how it works.
-- [Introducing Morphir](https://morphir.finos.org/docs/concepts/introduction-to-morphir/): [![FINOS - Incubating](https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-incubating.svg)](https://finosfoundation.atlassian.net/wiki/display/FINOS/Incubating) [![CII Best Practi...
-- [The Morphir IR](https://morphir.finos.org/docs/concepts/morphir-ir/): The `Morphir.IR` module defines a type-safe API to work with Morphir's intermediate representation. The module structure follows the structure of the IR. Here's a list of concepts in a top-down app...
-- [The Morphir SDK](https://morphir.finos.org/docs/concepts/morphir-sdk/): The goal of the `Morphir.SDK` module is to provide you the basic building blocks to build your domain model and business logic. It also serves as a specification for backend developers that describ...
-- [I Have an Application](https://morphir.finos.org/docs/concepts/whats-it-about/): - It tracks product inventories and decides how much to grant an order request based on the product's availability. - It is deployed as a set of microservices. - We're thinking about moving the mic...
-- [Why Functional Programming?](https://morphir.finos.org/docs/concepts/why-functional-programming/): The core of Morphir is the idea your business concepts (data and logic) are valuable assets that deserve to be stored independently. Morphir needs to understand the intent of your application, whic...
+- [Introducing Morphir](https://morphir.finos.org/docs/concepts/introduction-to-morphir/): Morphir is a library of tools that works to capture business logic as data.
+- [The Morphir IR](https://morphir.finos.org/docs/concepts/morphir-ir/): The Morphir.IR module defines a type-safe API to work with Morphir's intermediate representation. The module structure follows the structure of the IR.
+- [The Morphir SDK](https://morphir.finos.org/docs/concepts/morphir-sdk/): The goal of the Morphir.SDK module is to provide you the basic building blocks to build your domain model and business logic.
+- [I Have an Application](https://morphir.finos.org/docs/concepts/whats-it-about/): As you're reading this, what do you consider to be the most important information in my description? Is it the Kafka stream processing? The standard microservices architecture? Or the fact that we're...
+- [Why Functional Programming?](https://morphir.finos.org/docs/concepts/why-functional-programming/): The core of Morphir is the idea your business concepts (data and logic) are valuable assets that deserve to be stored independently.
 
 ### User Guides
 
 Practical guides for using Morphir
 
 - [User Guides](https://morphir.finos.org/docs/user-guides/): Learn how to use Morphir to model business logic and build applications.
-- [Morphir Command Line Tools](https://morphir.finos.org/docs/user-guides/cli-tools/command-line-tools/): At the moment, Morphir provides two CLI programs that provide the tools that morphir offers, `morphir-elm` and `morphir`. `morphir-elm` is the first program created and may be deprecated in the fut...
+- [Morphir Command Line Tools](https://morphir.finos.org/docs/user-guides/cli-tools/command-line-tools/): At the moment, Morphir provides two CLI programs that provide the tools that morphir offers, morphir-elm and morphir.
 - [Morphir-elm Commands Processing](https://morphir.finos.org/docs/user-guides/cli-tools/morphir-commands-processing/): The purpose of the document is to explain what happens when morphir-elm commands are run. This documents also describes each morphir-elm command, options and output/result of the command.
-- [Morphir-elm Commands Processing](https://morphir.finos.org/docs/user-guides/cli-tools/morphir-elm-commands-processing/): The purpose of the document is to explain what happens when morphir-elm commands are run. This documents also describes each morphir-elm command, options and output/result of the command.
-- [WIT Commands](https://morphir.finos.org/docs/user-guides/cli-tools/wit-commands/): Morphir provides native support for WebAssembly Interface Types (WIT) through the `morphir wit` command family. These commands allow you to compile WIT source files to Morphir IR and generate WIT s...
+- [WIT Commands](https://morphir.finos.org/docs/user-guides/cli-tools/wit-commands/): Morphir provides native support for WebAssembly Interface Types (WIT) through the morphir wit command family.
 - [WIT Type Mapping](https://morphir.finos.org/docs/user-guides/cli-tools/wit-type-mapping/): This document describes how WebAssembly Interface Types (WIT) map to and from Morphir's Intermediate Representation (IR).
-- [Decorations User Guide](https://morphir.finos.org/docs/user-guides/development-guides/decorators-users-guide/): The Morphir IR contains all the domain models and business logic that you defined in your model but sometimes you want to add more information that cannot be captured in the language. Decorations p...
+- [Decorations User Guide](https://morphir.finos.org/docs/user-guides/development-guides/decorators-users-guide/): The Morphir IR contains all the domain models and business logic that you defined in your model but sometimes you want to add more information that cannot be captured in the language.
 - [Working With Results in Elm](https://morphir.finos.org/docs/user-guides/development-guides/working-with-results-in-elm/): This post explains the Result type in the Elm Programming Language and use cases in Morphir.
 - [Modeling Entire Application](https://morphir.finos.org/docs/user-guides/modeling-guides/application-modeling/): Morphir Application Modeling imagines an evolution of programming as:
-- [Modeling Financial Concepts](https://morphir.finos.org/docs/user-guides/modeling-guides/modeling-finance/): Functional Domain Modeling (FDM) is all about capturing business concepts in a precise, unambiguous, and processable manner. Those coming from a coding background will be comfortable with its use o...
-- [Databases Modeling](https://morphir.finos.org/docs/user-guides/modeling-guides/modeling-for-database-developers/): As a database developer you will find it very easy and enjoyable to learn Elm because it's basically an extended version of SQL. Being a functional programming language, Elm is based on the same st...
+- [Modeling Financial Concepts](https://morphir.finos.org/docs/user-guides/modeling-guides/modeling-finance/): Functional Domain Modeling (FDM) is all about capturing business concepts in a precise, unambiguous, and processable manner.
+- [Databases Modeling](https://morphir.finos.org/docs/user-guides/modeling-guides/modeling-for-database-developers/): As a database developer you will find it very easy and enjoyable to learn Elm because it's basically an extended version of SQL.
 - [What Does Using Morphir Entail?](https://morphir.finos.org/docs/user-guides/modeling-guides/modeling-overview/): So, you're thinking about using Morphir for your project. What does that mean exactly and what are you in for if you do?
 - [Morphir Testing Setup](https://morphir.finos.org/docs/user-guides/modeling-guides/modelling-testing/): Elm's standard testing library is elm-test. You can install it by running the following command \ in your project. It will ask questions, just say yes to everything:
 - [Soul of your Application](https://morphir.finos.org/docs/user-guides/modeling-guides/soul-of-your-application/): Morphir approaches application development from the perspective that the application's business knowledge should be enshrined. Adopting this knowledge-first has brought us great benefits, including:
-- [What Makes a Good Model?](https://morphir.finos.org/docs/user-guides/modeling-guides/what-makes-a-good-domain-model/): We all strive to build high-quality software and that begins with a clean and well-defined domain model. But what do we mean when we say "clean" or "well-defined"? It is difficult to decide whether...
+- [What Makes a Good Model?](https://morphir.finos.org/docs/user-guides/modeling-guides/what-makes-a-good-domain-model/): We all strive to build high-quality software and that begins with a clean and well-defined domain model.
 
 ### CLI Preview
 
 Next-generation command-line interface documentation
 
-- [morphir wit Command Reference](https://morphir.finos.org/docs/cli-preview/commands/wit/): The `morphir wit` command group provides tools for working with WebAssembly Interface Types (WIT).
+- [morphir wit Command Reference](https://morphir.finos.org/docs/cli-preview/commands/wit/): The morphir wit command group provides tools for working with WebAssembly Interface Types (WIT).
 - [Getting Started with CLI Preview](https://morphir.finos.org/docs/cli-preview/getting-started/): This guide will help you get started with the Morphir CLI Preview features, including WIT support and JSONL batch processing.
-- [Morphir CLI Preview](https://morphir.finos.org/docs/cli-preview/): :::caution Developer Preview The Morphir CLI Preview features are in active development. APIs and behavior may change. For production use, please use the stable [morphir-elm](../installation.md) to...
-- [v0.4.0-alpha.1 Release Notes](https://morphir.finos.org/docs/cli-preview/release-notes/v0.4.0-alpha.1/): **Release Date**: January 2026
+- [Morphir CLI Preview](https://morphir.finos.org/docs/cli-preview/): The Morphir CLI Preview features are in active development. APIs and behavior may change. For production use, please use the stable morphir-elm tools.
+- [v0.4.0-alpha.1 Release Notes](https://morphir.finos.org/docs/cli-preview/release-notes/v0.4.0-alpha.1/): Release Date: January 2026
 - [What's New in CLI Preview](https://morphir.finos.org/docs/cli-preview/whats-new/): This page highlights the major new features in the Morphir CLI Preview.
 
 ### Specifications
@@ -1319,12 +1324,11 @@ Technical specifications including IR format and schemas
 - [Specifications](https://morphir.finos.org/docs/spec/): Formal specifications for Morphir configuration and IR
 - [Morphir IR Specification](https://morphir.finos.org/docs/spec/ir/morphir-ir-specification/): Complete specification of the Morphir Intermediate Representation (IR)
 - [JSON Schemas](https://morphir.finos.org/docs/spec/ir/schemas/): JSON schema definitions for Morphir IR format versions
+- [IR Version Migration Guide](https://morphir.finos.org/docs/spec/ir/schemas/migration-guide/): Complete guide for migrating between Morphir IR schema versions
 - [Full Schema](https://morphir.finos.org/docs/spec/ir/schemas/v1/full/): Complete Morphir IR JSON Schema for format version 1
 - [Schema Version 1](https://morphir.finos.org/docs/spec/ir/schemas/v1/): Morphir IR JSON Schema for format version 1
-- [Full Schema](https://morphir.finos.org/docs/spec/ir/schemas/v2/full/): Complete Morphir IR JSON Schema for format version 2
 - [Schema Version 2](https://morphir.finos.org/docs/spec/ir/schemas/v2/): Morphir IR JSON Schema for format version 2
 - [What's New in Version 2](https://morphir.finos.org/docs/spec/ir/schemas/v2/whats-new/): Changes and improvements in Morphir IR schema version 2
-- [Full Schema](https://morphir.finos.org/docs/spec/ir/schemas/v3/full/): Complete Morphir IR JSON Schema for format version 3
 - [Schema Version 3](https://morphir.finos.org/docs/spec/ir/schemas/v3/): Morphir IR JSON Schema for format version 3 (Current)
 - [What's New in Version 3](https://morphir.finos.org/docs/spec/ir/schemas/v3/whats-new/): Changes and improvements in Morphir IR schema version 3
 - [Schema Version 4](https://morphir.finos.org/docs/spec/ir/schemas/v4/): Morphir IR JSON Schema for format version 4 (Draft)
@@ -1332,43 +1336,86 @@ Technical specifications including IR format and schemas
 - [Morphir TOML Configuration Merge Rules](https://morphir.finos.org/docs/spec/morphir-toml/morphir-toml-merge-rules/): How Morphir merges morphir.toml configuration sources into an effective configuration
 - [Morphir TOML Configuration Specification](https://morphir.finos.org/docs/spec/morphir-toml/morphir-toml-specification/): Formal specification for morphir.toml configuration files
 
+### Design Documents
+
+Design documents, proposals, and RFCs for Morphir features
+
+- [ADR-0003: Toolchain Integration Framework](https://morphir.finos.org/docs/design/deprecated/ADR-0003-toolchain-integration/): Status: Proposed Date: 2026-01-08 Authors: Morphir Team
+- [Deprecated Designs](https://morphir.finos.org/docs/design/deprecated/): This folder contains design documents for approaches that have been superseded or abandoned. These documents are preserved for historical reference and to document decision-making rationale.
+- [Design Pivot: Toolchain to Tasks](https://morphir.finos.org/docs/design/deprecated/design-pivot-toolchain-to-tasks/): Date: 2026-01-16 Status: Active Affects: Toolchain framework, workflow configuration, tool acquisition
+- [Toolchain Enablement and Target Resolution Design](https://morphir.finos.org/docs/design/deprecated/toolchain-enablement/): This document captures the design decisions for how toolchains are enabled and how targets are resolved to tasks in workflows.
+- [Toolchain Integration Framework Design](https://morphir.finos.org/docs/design/deprecated/toolchain-integration-design/): Status: Draft Authors: Morphir Team Created: 2026-01-08 Epic: morphir-pfi
+- [Design Drafts](https://morphir.finos.org/docs/design/draft/): This section contains the design documents for Morphir v4, organized into three primary themes.
+- [Morphir Daemon](https://morphir.finos.org/docs/design/draft/daemon/): The Morphir Daemon is a long-running service that manages workspaces, projects, builds, and provides IDE integration.
+- [Build Operations](https://morphir.finos.org/docs/design/draft/daemon/build/): This document defines build orchestration, cleaning, and diagnostic operations for Morphir workspaces.
+- [CLI-Daemon Interaction](https://morphir.finos.org/docs/design/draft/daemon/cli-interaction/): This document defines how the Morphir CLI communicates with the Morphir Daemon, including connection modes, transport protocols, and lifecycle management.
+- [Configuration System](https://morphir.finos.org/docs/design/draft/daemon/configuration/): This module describes the Morphir configuration system design, covering project configuration, workspace configuration, and the merge/resolution rules.
+- [Dependency Management](https://morphir.finos.org/docs/design/draft/daemon/dependencies/): This document defines dependency resolution and management for Morphir workspaces.
+- [Environment Variables](https://morphir.finos.org/docs/design/draft/daemon/environment/): This document specifies all environment variables recognized by Morphir.
+- [Workspace Lifecycle](https://morphir.finos.org/docs/design/draft/daemon/lifecycle/): This document defines the lifecycle operations for Morphir workspaces: creation, opening, closing, and configuration management.
+- [Configuration Merge Rules](https://morphir.finos.org/docs/design/draft/daemon/merge-rules/): This document specifies how configuration from multiple sources is merged and resolved.
+- [morphir.toml Specification](https://morphir.finos.org/docs/design/draft/daemon/morphir-toml/): This document provides the complete specification for the morphir.toml configuration file format.
+- [Package Management](https://morphir.finos.org/docs/design/draft/daemon/packages/): This document defines the package format, registry backends, and publishing workflow for Morphir packages.
+- [Project Management](https://morphir.finos.org/docs/design/draft/daemon/projects/): This document defines operations for managing projects within a Morphir workspace.
+- [File Watching](https://morphir.finos.org/docs/design/draft/daemon/watching/): This document defines the file watching system for Morphir workspaces, enabling automatic recompilation on source changes.
+- [Workspace Mode](https://morphir.finos.org/docs/design/draft/daemon/workspace-config/): This document describes workspace-specific configuration in morphir.toml.
+- [Document Tree Protocol Design (v4)](https://morphir.finos.org/docs/design/draft/document-tree-protocol/): This is a DRAFT design document. All types and protocols are subject to change.
+- [Document Tree Protocol (JSON-RPC 2.0)](https://morphir.finos.org/docs/design/draft/document-tree-protocol/protocol/): This document details the JSON-RPC 2.0 methods and notifications used by the Morphir Core Daemon to manage the Document Tree and coordinate with backends.
+- [Workflows](https://morphir.finos.org/docs/design/draft/document-tree-protocol/workflows/): (TODO: This document will describe common workflows for Document Tree Protocol.)
+- [Tasks](https://morphir.finos.org/docs/design/draft/extensions/tasks/): This document defines the task system for Morphir, modeled after mise tasks.
+- [WASM Component Model](https://morphir.finos.org/docs/design/draft/extensions/wasm-component/): This document defines WIT (WebAssembly Interface Types) interfaces for implementing Morphir backends and extensions as portable, sandboxed WASM components.
+- [Design Agent Guidelines](https://morphir.finos.org/docs/design/draft/ir/AGENTS/): Working agreement for AI agents and contributors working on Morphir v4 IR design documents.
+- [IR v4 Format](https://morphir.finos.org/docs/design/draft/ir/): This is a DRAFT design document. All types and protocols are subject to change.
+- [Decorations](https://morphir.finos.org/docs/design/draft/ir/decorations/): Decorations provide a way to attach additional metadata to IR nodes without modifying the core IR structure. They are stored separately from the IR in a layered, composable system.
+- [Distribution Structure](https://morphir.finos.org/docs/design/draft/ir/distributions/): A Distribution is the top-level container representing a complete compilation unit with its dependencies.
+- [Document Type](https://morphir.finos.org/docs/design/draft/ir/document/): The Document type provides a first-class, schema-less JSON-like data structure within the Morphir IR for representing untyped or dynamically-typed data.
+- [File Metadata ($meta)](https://morphir.finos.org/docs/design/draft/ir/meta/): The $meta key provides a standard location for file-level metadata in VFS JSON files without polluting the main schema.
+- [Module Structure](https://morphir.finos.org/docs/design/draft/ir/modules/): Modules are containers for types and values within a package. They follow the specification/definition split pattern.
+- [Naming Module](https://morphir.finos.org/docs/design/draft/ir/naming/): The naming module uses newtype wrappers for type safety, smart constructors for validation, and a canonical string format for serialization.
+- [Package Structure](https://morphir.finos.org/docs/design/draft/ir/packages/): Packages are versioned collections of modules that form a distributable unit.
+- [Node References ($ref)](https://morphir.finos.org/docs/design/draft/ir/refs/): The $ref mechanism provides structural deduplication within VFS JSON files, reducing repetition of common node patterns.
+- [Types Module](https://morphir.finos.org/docs/design/draft/ir/types/): This module defines the type system for Morphir IR, including type expressions, specifications, and definitions.
+- [Values Module](https://morphir.finos.org/docs/design/draft/ir/values/): This module defines the value expressions, literals, patterns, and value definitions for Morphir IR.
+- [Proposals](https://morphir.finos.org/docs/design/proposals/): This section contains design proposals for new Morphir features and capabilities.
+- [RFCs](https://morphir.finos.org/docs/design/rfcs/): This section contains RFCs for significant Morphir changes requiring community input.
+
 ### Reference
 
 API reference and backend documentation
 
 - [Reference Documentation](https://morphir.finos.org/docs/reference/): Technical reference documentation for Morphir backends, APIs, and tools.
-- [Morphir-TypeSpec Mapping](https://morphir.finos.org/docs/reference/backends/other-platforms/cadl-doc/): This is a documentation of the mapping strategy from Morphir types to Typespec types. This document describes how types in Morphir Models are represented in Typespec. Below is a quick overview of t...
+- [Morphir-TypeSpec Mapping](https://morphir.finos.org/docs/reference/backends/other-platforms/cadl-doc/): This is a documentation of the mapping strategy from Morphir types to Typespec types. This document describes how types in Morphir Models are represented in Typespec.
 - [TypeScript - Morphir API](https://morphir.finos.org/docs/reference/backends/other-platforms/morphir-typescript-api/): The purpose of this documentation is to give a user an understanding of how to use the Morphir API created for Typescript.
-- [Relational Backend](https://morphir.finos.org/docs/reference/backends/other-platforms/relational-backend/): The purpose of joins is to look up extra information for each record in some relation and then use it to enrich or filter the original relation. While their semantics fit into relational algebra di...
-- [SpringBoot Generator](https://morphir.finos.org/docs/reference/backends/other-platforms/spring-boot-readme/): [Morphir](https://github.com/finos/morphir) is a multi-language system built on a data format that captures an application's domain model and business logic in a technology agnostic manner. This do...
-- [TypeScript API](https://morphir.finos.org/docs/reference/backends/other-platforms/typescript/): The purpose of this document is describing the TypeScript API generated for Morphir models by running `morphir-elm gen --target=TypeScript`.
-- [Scala Test Cases Generation](https://morphir.finos.org/docs/reference/backends/scala/morphir-scala-gen/): > > **Since: 2.74.0**
-- [Scala API Guide](https://morphir.finos.org/docs/reference/backends/scala/scala-api-usage-docs/): This document explains what the Scala API is, how to import it and example usages. The API exposes the internals of an IR to a developer to be able to build tools in scala. The API consist of mainl...
-- [Scala Backend](https://morphir.finos.org/docs/reference/backends/scala/scala-backend/): The Scala backend takes the Morphir IR as the input and returns an in-memory representation of files generated - FileMap The consumer is responsible for getting the input IR and saving the output t...
-- [Scala Json Codecs Backend](https://morphir.finos.org/docs/reference/backends/scala/scala-json-codecs-backend/): This document provides a description of the JSON codecs backend. The Json Codecs Backend for Scala contains functions to generate Codecs from types in the IR.\ [Circe](https://circe.github.io/circe...
+- [Relational Backend](https://morphir.finos.org/docs/reference/backends/other-platforms/relational-backend/): The purpose of joins is to look up extra information for each record in some relation and then use it to enrich or filter the original relation.
+- [SpringBoot Generator](https://morphir.finos.org/docs/reference/backends/other-platforms/spring-boot-readme/): Morphir is a multi-language system built on a data format that captures an application's domain model and business logic in a technology agnostic manner.
+- [TypeScript API](https://morphir.finos.org/docs/reference/backends/other-platforms/typescript/): The purpose of this document is describing the TypeScript API generated for Morphir models by running morphir-elm gen --target=TypeScript.
+- [Scala Test Cases Generation](https://morphir.finos.org/docs/reference/backends/scala/morphir-scala-gen/): This document explains how to generate test cases in scala from saved morphir tests.
+- [Scala API Guide](https://morphir.finos.org/docs/reference/backends/scala/scala-api-usage-docs/): This document explains what the Scala API is, how to import it and example usages. The API exposes the internals of an IR to a developer to be able to build tools in scala. The API consist of mainly :
+- [Scala Backend](https://morphir.finos.org/docs/reference/backends/scala/scala-backend/): The Scala backend takes the Morphir IR as the input and returns an in-memory representation of files generated - FileMap The consumer is responsible for getting the input IR and saving the output to...
+- [Scala Json Codecs Backend](https://morphir.finos.org/docs/reference/backends/scala/scala-json-codecs-backend/): This document provides a description of the JSON codecs backend. The Json Codecs Backend for Scala contains functions to generate Codecs from types in the IR.\ Circe is used as the base JSON library.
 - [Spark API Documentation](https://morphir.finos.org/docs/reference/backends/spark/spark-backend-api-documentation/): This is the entry point for the Spark Backend.
 - [Spark Relational](https://morphir.finos.org/docs/reference/backends/spark/spark-backend-as-a-special-case-of-a-relational-backend/): Given that Apache Spark's data model is an extended relational data model and most of the complexity in the backend will likely be related to the differences between the FP and the relational model...
-- [Mapping Morphir to Spark](https://morphir.finos.org/docs/reference/backends/spark/spark-backend-design/): To understand how the Morphir to Apache Spark mapping works let's begin with an example Morphir domain model and business logic that we might want to transpile to Spark. We present the Morphir logi...
+- [Mapping Morphir to Spark](https://morphir.finos.org/docs/reference/backends/spark/spark-backend-design/): To understand how the Morphir to Apache Spark mapping works let's begin with an example Morphir domain model and business logic that we might want to transpile to Spark.
 - [Backend Joins](https://morphir.finos.org/docs/reference/backends/spark/spark-backend-joins/): Let's start by defining an example model that does some joins:
-- [Spark - Handling Optional Values](https://morphir.finos.org/docs/reference/backends/spark/spark-backend-optional-values/): Optional values are handled differently in SQL and Morphir. In SQL every value can potentially be `NULL` and there are implicit rules about how each operator should behave when `NULL`s are passed t...
+- [Spark - Handling Optional Values](https://morphir.finos.org/docs/reference/backends/spark/spark-backend-optional-values/): Optional values are handled differently in SQL and Morphir. In SQL every value can potentially be NULL and there are implicit rules about how each operator should behave when NULLs are passed to...
 - [Spark - Testing Framework](https://morphir.finos.org/docs/reference/backends/spark/spark-testing-framework/): The purpose of this document is to show how someone can use and edit the spark tests.
-- [Migrating Old CLI To New CLI](https://morphir.finos.org/docs/reference/cli/cli-cli2-merging-docs/): This document contains cli commands that were migrated from the old cli, which is `morphir-elm`, into the new  all cli commands supported by the old cli,  and the **current** cli, `morphir`.
-- [ADR for Morphir CLI incremental build approach](https://morphir.finos.org/docs/reference/cli/morphir-cli-incremental-build-approach/): Morphir CLI tool offers a way to convert business models into the **Morphir IR** by parsing source files when a `make` command is run. The tooling performs poorly on very large models with especial...
+- [Migrating Old CLI To New CLI](https://morphir.finos.org/docs/reference/cli/cli-cli2-merging-docs/): This document contains cli commands that were migrated from the old cli, which is morphir-elm, into the new all cli commands supported by the old cli, and the current cli, morphir.
+- [ADR for Morphir CLI incremental build approach](https://morphir.finos.org/docs/reference/cli/morphir-cli-incremental-build-approach/): Morphir CLI tool offers a way to convert business models into the Morphir IR by parsing source files when a make command is run.
 - [Decoration CLI Reference](https://morphir.finos.org/docs/reference/decorations/cli-reference/): Complete reference for all decoration-related CLI commands.
-- [Error Append not Supported](https://morphir.finos.org/docs/reference/error-append-not-supported/): The ++ operator assumes a type inferencer that can tell the difference between String and List. These are the only two types that are part of the `appendable` type-class. Until the type inferencer ...
+- [Error Append not Supported](https://morphir.finos.org/docs/reference/error-append-not-supported/): The ++ operator assumes a type inferencer that can tell the difference between String and List. These are the only two types that are part of the appendable type-class.
 - [Insight API Guide](https://morphir.finos.org/docs/reference/insight-readme/): The purpose of this document is how we can use Insight API into any UI.
-- [Scala JSON Serialization](https://morphir.finos.org/docs/reference/json-schema/codec-docs/): The purpose of this documentation is to give an explanation on how the JSON Codec Backend works and how to use it. This backend is a feature built on top of the Scala backend, which allows you to r...
-- [Generating a JSON Schema](https://morphir.finos.org/docs/reference/json-schema/generating-json-schema/): This document explains how to generate a JSON Schema. It covers how to specify code generation parameters via commandline, configuration file and the Develop UI. **Note**: To generate a Json Schema...
-- [Json Codec Backend](https://morphir.finos.org/docs/reference/json-schema/json-codecs-doc/): The purpose of this documentation is to give an explanation of how the Json Codec Backend works and how to use it. The Json Codec backend is a tool that generates encoders and decoders from a Morph...
+- [Scala JSON Serialization](https://morphir.finos.org/docs/reference/json-schema/codec-docs/): The purpose of this documentation is to give an explanation on how the JSON Codec Backend works and how to use it.
+- [Generating a JSON Schema](https://morphir.finos.org/docs/reference/json-schema/generating-json-schema/): This document explains how to generate a JSON Schema. It covers how to specify code generation parameters via commandline, configuration file and the Develop UI.
+- [Json Codec Backend](https://morphir.finos.org/docs/reference/json-schema/json-codecs-doc/): The purpose of this documentation is to give an explanation of how the Json Codec Backend works and how to use it.
 - [Json SChema Backend Config Test Plan](https://morphir.finos.org/docs/reference/json-schema/json-schema-backend-config-test-plan/): This document outlines the test plan for the Json Schema backend initial configuration processing.
 - [Backend Test Specification](https://morphir.finos.org/docs/reference/json-schema/json-schema-backend-testplan/): This document speficies the testing strategy for the Json Schema backend.
 - [Json Schema Config Algorithm](https://morphir.finos.org/docs/reference/json-schema/json-schema-config/): This a basic program execution flow algorithm that runs (for json-schema backend configuration) when a code generation command is issued:
-- [json-schema-enabled Decorator](https://morphir.finos.org/docs/reference/json-schema/json-schema-enabled developers guide/): This is a developer's guide on how the json-schema-enabled decorator works and how it is applied to: * types * modules
-- [Json Schema Mappings](https://morphir.finos.org/docs/reference/json-schema/json-schema-mappings/): This is a documentation of the mapping strategy from Morphir types to Json Schema. This document describes how Morphir Models maps to Json Schema. Json Schema Reference can be found [here](http://j...
-- [Json Schema Sample](https://morphir.finos.org/docs/reference/json-schema/json-schema-sample/): { "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://example.com/types.schema.json", "$defs": { "Morphir.Reference.Model.Types.Quantity": { "type": "integer" }, "Cart": { "t...
-- [Table Template](https://morphir.finos.org/docs/reference/table-template/): 
+- [json-schema-enabled Decorator](https://morphir.finos.org/docs/reference/json-schema/json-schema-enabled%20developers%20guide/): This is a developer's guide on how the json-schema-enabled decorator works and how it is applied to:
+- [Json Schema Mappings](https://morphir.finos.org/docs/reference/json-schema/json-schema-mappings/): This is a documentation of the mapping strategy from Morphir types to Json Schema. This document describes how Morphir Models maps to Json Schema. Json Schema Reference can be found here
+- [Json Schema Sample](https://morphir.finos.org/docs/reference/json-schema/json-schema-sample/): Documentation for this topic.
+- [Table Template](https://morphir.finos.org/docs/reference/table-template/): Documentation for this topic.
 - [Testing Framework Guide](https://morphir.finos.org/docs/reference/testing-framework-readme/): The purpose of this document is how we can use Testing Framework within developer server.
-- [Morphir Users' Guide](https://morphir.finos.org/docs/reference/user-guide-readme/): Morphir's core purpose is to collect and store the vital business logic of an application. To fulfill that goal, Morphir provides tools to write business logic, visualize and interact with it, and ...
+- [Morphir Users' Guide](https://morphir.finos.org/docs/reference/user-guide-readme/): Morphir's core purpose is to collect and store the vital business logic of an application. To fulfill that goal, Morphir provides tools to write business logic, visualize and interact with it, and...
 - [Model Versioning](https://morphir.finos.org/docs/reference/versioning/): Model versioning in Morphir is very similar to library versioning in any other programming language but thanks to the declarative nature of the language it is much more automated and convenient for...
 
 ### Developer Guide
@@ -1376,43 +1423,43 @@ API reference and backend documentation
 Contributing to Morphir development
 
 - [Developer Guides](https://morphir.finos.org/docs/developers/): Documentation for contributing to Morphir and advanced development topics.
-- [Governance Policies](https://morphir.finos.org/docs/developers/contributing/): This document describes the contribution process and governance policies of the FINOS Morphir project. The project is also governed by the Linux Foundation Antitrust Policy, and the FINOS IP Policy...
+- [Governance Policies](https://morphir.finos.org/docs/developers/contributing/): This document describes the contribution process and governance policies of the FINOS Morphir project.
 - [Contributing to Morphir](https://morphir.finos.org/docs/developers/contribution-guide-index/): Morphir contains a few components for different aspects of the development process. These can be organized into the following:
 - [Contribution Guide](https://morphir.finos.org/docs/developers/contribution-guide-readme/): The purpose of this document is to make it easier for new contributors to get up-to-speed on the project.
 - [Decoration Registry Design](https://morphir.finos.org/docs/developers/decoration-registry-design/): A decoration registry provides a catalog of available decoration types and a way to discover and manage decoration values across projects. This improves the developer experience by enabling:
 - [Decorations Implementation Summary](https://morphir.finos.org/docs/developers/decorations-implementation-summary/): This document provides a summary of the decorations feature implementation in Morphir.
-- [Decorators Feature Implementation Plan](https://morphir.finos.org/docs/developers/decorators-implementation-plan/): This document outlines the implementation plan for the decorators feature in Morphir Go. Decorators allow users to attach additional metadata to Morphir IR elements (types, values, modules) that ca...
+- [Decorators Feature Implementation Plan](https://morphir.finos.org/docs/developers/decorators-implementation-plan/): This document outlines the implementation plan for the decorators feature in Morphir Go. Decorators allow users to attach additional metadata to Morphir IR elements (types, values, modules) that...
 - [Explaining Dev Bots](https://morphir.finos.org/docs/developers/dev-bots/): The premise of Dev Bots is that we can and should automate a significant portion of the code that we currently write by hand.
 - [JVM: Executing morphir-cli](https://morphir.finos.org/docs/developers/integrating-morphir-and-jvm-projects/): This document specifies all the necessary steps required to execute morphir-cli commands in a JVM project.
-- [Morphir Developers' Guide](https://morphir.finos.org/docs/developers/morphir-developers-guide/): The purpose of the document is to provide a detailed explanation of how various Morphir code artefacts work. It also documents the standard coding practices adopted for the Morphir project. Finally...
-- [Publishing the Elm package](https://morphir.finos.org/docs/developers/publishing/): This document describes how maintainers can push new releases of `morphir-elm` into NPM and the Elm package repo.
-- [Release Retrospective: v0.4.0-alpha.1](https://morphir.finos.org/docs/developers/release-retrospective-v0.4.0-alpha.1/): Release v0.4.0-alpha.1 was successfully published on 2026-01-08, but required multiple iterations (8+ workflow runs) due to various configuration issues. This document captures the issues encounter...
+- [Morphir Developers' Guide](https://morphir.finos.org/docs/developers/morphir-developers-guide/): The purpose of the document is to provide a detailed explanation of how various Morphir code artefacts work. It also documents the standard coding practices adopted for the Morphir project.
+- [Publishing the Elm package](https://morphir.finos.org/docs/developers/publishing/): This document describes how maintainers can push new releases of morphir-elm into NPM and the Elm package repo.
+- [Release Retrospective: v0.4.0-alpha.1](https://morphir.finos.org/docs/developers/release-retrospective-v0.4.0-alpha.1/): Release v0.4.0-alpha.1 was successfully published on 2026-01-08, but required multiple iterations (8+ workflow runs) due to various configuration issues.
 
 ### Architecture Decisions
 
 Architecture Decision Records (ADRs)
 
-- [ADR-0001: Representing Morphir IR Sum Types (Discriminated Unions) in Go](https://morphir.finos.org/docs/adr/ADR-0001-morphir-ir-sum-types-in-go/): - Status: Accepted - Date: 2026-01-01 - Deciders: Morphir Maintainers - Technical Story: Port Morphir IR from DU-first languages (F#/Elm) to Go with multi-version JSON schema support.
-- [ADR-0002: Processing Pipeline Architecture](https://morphir.finos.org/docs/adr/ADR-0002-processing-pipeline/): - Status: Proposed - Date: 2026-01-01 - Deciders: Morphir Maintainers - Technical Story: Define a functional processing pipeline for Morphir Go.
+- [ADR-0001: Representing Morphir IR Sum Types (Discriminated Unions) in Go](https://morphir.finos.org/docs/adr/ADR-0001-morphir-ir-sum-types-in-go/): Morphir IR (as used across implementations such as finos/morphir-elm and the Morphir .NET docs/spec) is heavily based on discriminated unions (sum types) and recursive tree structures.
+- [ADR-0002: Processing Pipeline Architecture](https://morphir.finos.org/docs/adr/ADR-0002-processing-pipeline/): Morphir Go needs a consistent way to process IR across commands such as validate, build, analyze, and generate. The Morphir IR is the central AST, with decorators as extensible sidecar metadata.
 
 ### Community
 
 Community resources and guidelines
 
 - [Community](https://morphir.finos.org/docs/community/): Join the Morphir community and access helpful resources.
-- [Code of Conduct](https://morphir.finos.org/docs/community/code-of-conduct/): In the interest of fostering an open and welcoming environment, we as contributors and maintainers pledge to making participation in our project and our community a harassment-free experience for e...
-- [FAQs](https://morphir.finos.org/docs/community/faqs/): Run the command `morphir scala-gen -s`
+- [Code of Conduct](https://morphir.finos.org/docs/community/code-of-conduct/): In the interest of fostering an open and welcoming environment, we as contributors and maintainers pledge to making participation in our project and our community a harassment-free experience for...
+- [FAQs](https://morphir.finos.org/docs/community/faqs/): Documentation for this topic.
 - [LLM-Friendly Documentation](https://morphir.finos.org/docs/community/llms-txt/): Access Morphir documentation in LLM-optimized formats
-- [Media About Morphir](https://morphir.finos.org/docs/community/media/): If you're interested in learning more about the project, [Morphir Resource Centre](https://resources.finos.org/morphir/), has many links.
-- [Morphir Community](https://morphir.finos.org/docs/community/morphir-community/): **Morphir's success will depend on its community.**
+- [Media About Morphir](https://morphir.finos.org/docs/community/media/): If you're interested in learning more about the project, Morphir Resource Centre, has many links.
+- [Morphir Community](https://morphir.finos.org/docs/community/morphir-community/): Morphir's success will depend on its community.
 
 ### Use Cases
 
 Real-world examples and applications
 
 - [Use Cases](https://morphir.finos.org/docs/use-cases/): Real-world applications and domain-specific examples of Morphir.
-- [The Morphir Background Story](https://morphir.finos.org/docs/use-cases/background/): Morphir evolved from years of frustration trying to work around technical limitations to adequately model business concepts. Then after so much effort and pain, we inevitably have to start over to ...
-- [Automating RegTech](https://morphir.finos.org/docs/use-cases/regtech-modeling/): There are a number of highly regulated industries that must adhere to complex regulations from various regulatory bodies. These often come in the form of lengthy documents that can be arcane, ambig...
+- [The Morphir Background Story](https://morphir.finos.org/docs/use-cases/background/): Morphir evolved from years of frustration trying to work around technical limitations to adequately model business concepts.
+- [Automating RegTech](https://morphir.finos.org/docs/use-cases/regtech-modeling/): There are a number of highly regulated industries that must adhere to complex regulations from various regulatory bodies.
 
 ## JSON Schema Specifications
 
