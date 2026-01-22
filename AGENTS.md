@@ -16,6 +16,9 @@ When implementing features, refer to these existing Morphir implementations for 
 - **finos/morphir-scala** - Scala implementation
 - **finos/morphir-dotnet** - .NET implementation (contains IR spec and JSON schemas in documentation)
 - **finos/morphir-rust** - Early-stage Rust tooling
+- **finos/morphir-python** - Early-stage Python tooling
+- **finos/morphir-go** - Early-stage Golang implementation/tooling
+- **finos/morphir-gleam** - Early-stage Gleam implementation/tooling
 
 ### Morphir IR Specification
 
@@ -528,6 +531,22 @@ Skills are automatically available to Claude Code. Each skill contains:
 - `scripts/` - Automation scripts (Python/Shell)
 - `references/` - Supporting documentation
 - `assets/` - Templates and resources
+
+### Documentation Review Requirements
+
+**Any changes to the `docs/` or `website/` folders MUST include a code review using the `technical-writer` skill.**
+
+The technical-writer skill provides:
+- Spec/design consistency checks (verify spec documents match design documents)
+- Link validation and structure verification
+- Terminology and naming convention review
+- llms.txt regeneration when needed
+
+**Before submitting a PR that modifies documentation:**
+1. Invoke the technical-writer skill for review
+2. Run consistency checks if spec documents are modified
+3. Regenerate llms.txt files if significant content changed
+4. Verify all links resolve correctly
 
 ### Key Skill Scripts
 

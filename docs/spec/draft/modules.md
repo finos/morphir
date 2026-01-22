@@ -10,10 +10,36 @@ A **Module** serves as a container for related types and values. In IR v4, the p
 ## Module Structure
 
 Conceptually, a module consists of:
-- **Name**: The `Path` identifying the module (e.g., `Main/Domain`).
+- **Name**: The `Path` identifying the module (e.g., `main/domain`).
 - **Types**: A collection of named type definitions or specifications.
 - **Values**: A collection of named value definitions or specifications.
-- **Documentation**: Optional module-level docstring.
+- **Documentation**: Optional module-level documentation.
+
+## Documentation
+
+The **Documentation** type provides multi-line documentation support with cross-platform line ending handling.
+
+- **Structure**: Opaque type containing a list of lines
+- **Input formats**: Accepts both single strings (split on `\n`) and arrays of strings
+- **Normalization**: Trailing `\r` characters are trimmed for cross-platform consistency
+- **JSON serialization**:
+  - Single-line: `"doc": "Brief description"`
+  - Multi-line: `"doc": ["Line 1", "Line 2", "Line 3"]`
+
+## Documented Wrapper
+
+The **Documented** wrapper attaches optional documentation to any definition or specification.
+
+- **Structure**: `Documented(doc: Option(Documentation), value: a)`
+- **JSON flattening**: The wrapper is flattened in JSON—`doc` field is inlined alongside the value's fields
+- **Omission**: If documentation is `None`, the `doc` field is omitted entirely
+
+```json
+{
+  "doc": "A user in the system",
+  "TypeAliasDefinition": { ... }
+}
+```
 
 ## Physical Representation
 
@@ -24,7 +50,7 @@ In the single-blob distribution, a module is a JSON object nesting all its types
 {
   "types": { ... },
   "values": { ... },
-  "doc": "..."
+  "doc": "Module documentation"
 }
 ```
 
@@ -36,20 +62,26 @@ The `module.json` contains metadata, and definitions reside in separate files.
 
 **Directory Structure**:
 ```
-pkg/main/domain/
+pkg/my-org/my-project/orders/
 ├── module.json
-├── types/
-│   └── user.type.json
-└── values/
-    └── login.value.json
+├── order.type.json
+├── line-item.type.json
+├── create-order.value.json
+├── calculate-total.value.json
+└── shipping/
+    ├── module.json
+    ├── address.type.json
+    └── calculate-cost.value.json
 ```
+
+Definition files (`.type.json`, `.value.json`) reside directly in the module directory. The suffixes distinguish types from values.
 
 **module.json**:
 ```json
 {
   "formatVersion": 4,
-  "module": "Main/Domain",
-  "doc": "..."
+  "module": "main/domain",
+  "doc": "Domain model for main application"
 }
 ```
 
@@ -60,13 +92,15 @@ The `module.json` contains the definitions directly, similar to Classic mode. Th
 ```json
 {
   "formatVersion": 4,
-  "module": "Main/Domain",
-  "doc": "...",
+  "module": "main/domain",
+  "doc": "Domain model for main application",
   "types": {
-    "User": { "def": { ... } }
+    "user": { "def": { ... } },
+    "account": { "def": { ... } }
   },
   "values": {
-    "login": { "def": { ... } }
+    "login": { "def": { ... } },
+    "validate-email": { "def": { ... } }
   }
 }
 ```
@@ -74,6 +108,46 @@ The `module.json` contains the definitions directly, similar to Classic mode. Th
 ## Granular Definitions
 
 When using the Granular style, the Document Tree mode enforces a "one file per definition" rule:
-- **Separation**: Types and Values are stored separately.
-- **Naming**: File names correspond to the type or value name (plus suffix).
-- **Polymorphism**: The content of the file can be a *Definition* (implementation) or a *Specification* (interface), indicated by the root key (`def` vs `spec`).
+- **Naming**: File names use canonical name format (kebab-case) plus suffix (`.type.json` or `.value.json`)
+- **Location**: Files reside directly in the module directory
+- **Polymorphism**: The content of the file can be a *Definition* (implementation) or a *Specification* (interface), indicated by the root key (`def` vs `spec`)
+
+### Example: user.type.json (Definition)
+
+```json
+{
+  "doc": "Represents a user in the system",
+  "def": {
+    "TypeAliasDefinition": {
+      "body": {
+        "Record": {
+          "fields": {
+            "user-id": "morphir/(sdk):string#string",
+            "email": "morphir/(sdk):string#string"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Example: user.type.json (Specification)
+
+```json
+{
+  "doc": "Represents a user in the system",
+  "spec": {
+    "OpaqueTypeSpecification": {}
+  }
+}
+```
+
+## Module Specifications vs Definitions
+
+Like types and values, modules have both specifications and definitions:
+
+- **ModuleSpecification**: The public interface exposed to consumers. Contains only public types (as specifications) and value signatures.
+- **ModuleDefinition**: The full implementation. Contains all types and values (both public and private) with their complete definitions.
+
+Access control is applied at the definition level—specifications are always derived from the public subset of definitions.
