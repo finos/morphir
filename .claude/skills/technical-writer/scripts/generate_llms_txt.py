@@ -31,7 +31,8 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Set
+from urllib.parse import quote
 
 # Try to import yaml for frontmatter parsing
 try:
@@ -72,6 +73,11 @@ DOC_SECTIONS = {
     "spec": {
         "title": "Specifications",
         "description": "Technical specifications including IR format and schemas",
+        "priority": 2,
+    },
+    "design": {
+        "title": "Design Documents",
+        "description": "Design documents, proposals, and RFCs for Morphir features",
         "priority": 2,
     },
     "reference": {
@@ -162,35 +168,128 @@ def extract_title(content: str, frontmatter: Dict) -> str:
     return "Untitled"
 
 
+def clean_description(text: str) -> str:
+    """Clean a description string of markdown artifacts and special syntax."""
+    if not text:
+        return ""
+
+    # Remove Docusaurus admonitions (:::tip, :::caution, etc.)
+    text = re.sub(r':::\w+\s*', '', text)
+    text = re.sub(r':::', '', text)
+
+    # Remove markdown badges [![...](...)(...)]
+    text = re.sub(r'\[!\[([^\]]*)\]\([^\)]*\)\]\([^\)]*\)', '', text)
+    # Remove standalone badge images ![...](...)
+    text = re.sub(r'!\[[^\]]*\]\([^\)]*\)', '', text)
+
+    # Remove HTML tags
+    text = re.sub(r'<[^>]+>', '', text)
+
+    # Remove markdown links but keep text: [text](url) -> text
+    text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
+
+    # Remove inline code backticks but keep content
+    text = re.sub(r'`([^`]+)`', r'\1', text)
+
+    # Remove bold/italic markers
+    text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)
+    text = re.sub(r'\*([^*]+)\*', r'\1', text)
+    text = re.sub(r'__([^_]+)__', r'\1', text)
+    text = re.sub(r'_([^_]+)_', r'\1', text)
+
+    # Remove bullet points at start
+    text = re.sub(r'^[-*]\s+', '', text)
+
+    # Collapse multiple spaces
+    text = re.sub(r'\s+', ' ', text)
+
+    return text.strip()
+
+
 def extract_description(content: str, frontmatter: Dict, max_length: int = 200) -> str:
-    """Extract description from frontmatter or first paragraph."""
+    """Extract description from frontmatter or first meaningful paragraph."""
     if 'description' in frontmatter:
-        return frontmatter['description']
+        return clean_description(frontmatter['description'])
 
     # Remove frontmatter and find first paragraph
     _, body = extract_frontmatter(content)
 
-    # Skip headings and find first paragraph
+    # Skip headings, code blocks, tables, and special syntax
     lines = body.strip().split('\n')
     paragraph_lines = []
     in_paragraph = False
+    in_code_block = False
 
     for line in lines:
-        line = line.strip()
-        if not line:
-            if in_paragraph:
-                break
-            continue
-        if line.startswith('#') or line.startswith('```') or line.startswith('|'):
-            if in_paragraph:
-                break
-            continue
-        in_paragraph = True
-        paragraph_lines.append(line)
+        stripped = line.strip()
 
-    description = ' '.join(paragraph_lines)
+        # Track code blocks
+        if stripped.startswith('```'):
+            in_code_block = not in_code_block
+            continue
+        if in_code_block:
+            continue
+
+        # Skip empty lines
+        if not stripped:
+            if in_paragraph:
+                break
+            continue
+
+        # Skip various non-content lines
+        skip_patterns = [
+            stripped.startswith('#'),           # Headings
+            stripped.startswith('|'),           # Tables
+            stripped.startswith(':::'),         # Docusaurus admonitions
+            stripped.startswith('import '),     # MDX imports
+            stripped.startswith('!['),          # Images
+            stripped.startswith('[!['),         # Badge images
+            stripped.startswith('<!--'),        # HTML comments
+            stripped.startswith('>'),           # Blockquotes (often used for notes)
+            stripped.startswith('- '),          # Bullet lists (usually not good descriptions)
+            stripped.startswith('* '),          # Alt bullet lists
+            stripped.startswith('1. '),         # Numbered lists
+            re.match(r'^-{3,}$', stripped),     # Horizontal rules
+            re.match(r'^={3,}$', stripped),     # Alt horizontal rules
+            re.match(r'^\d+\.\s', stripped),    # Other numbered list items
+        ]
+
+        if any(skip_patterns):
+            if in_paragraph:
+                break
+            continue
+
+        # Skip lines that are mostly badges or special content
+        if '[![' in stripped and stripped.count('[![') > stripped.count(' '):
+            continue
+
+        in_paragraph = True
+        paragraph_lines.append(stripped)
+
+        # Stop after collecting enough for a good description
+        if len(' '.join(paragraph_lines)) > max_length + 50:
+            break
+
+    description = clean_description(' '.join(paragraph_lines))
+
+    # Ensure we have meaningful content
+    if len(description) < 10:
+        return "Documentation for this topic."
+
+    # Detect if the description looks like it's an answer to a question (starts with action verb)
+    # This often happens with FAQ pages where the first paragraph is an answer
+    action_starts = ('run ', 'use ', 'see ', 'go to ', 'click ', 'open ', 'check ')
+    if description.lower().startswith(action_starts):
+        return "Documentation for this topic."
+
     if len(description) > max_length:
-        description = description[:max_length-3] + "..."
+        # Try to break at a sentence boundary
+        truncated = description[:max_length]
+        last_period = truncated.rfind('. ')
+        if last_period > max_length // 2:
+            description = truncated[:last_period + 1]
+        else:
+            description = truncated.rsplit(' ', 1)[0] + "..."
 
     return description
 
@@ -206,10 +305,48 @@ def clean_content_for_llm(content: str) -> str:
     # Remove import statements (MDX)
     body = re.sub(r'^import\s+.*$', '', body, flags=re.MULTILINE)
 
+    # Remove Docusaurus admonitions syntax but keep content
+    # :::tip Title -> **Tip: Title**
+    body = re.sub(r':::(\w+)\s*([^\n]*)\n', r'**\1\2**\n', body, flags=re.IGNORECASE)
+    body = re.sub(r':::', '', body)
+
+    # Remove badge images (common at start of README files)
+    body = re.sub(r'\[!\[[^\]]*\]\([^\)]*\)\]\([^\)]*\)\s*', '', body)
+    body = re.sub(r'!\[[^\]]*\]\([^\)]*\)\s*', '', body)
+
+    # Convert emojis used as bullets to plain bullets (📚 -> -)
+    body = re.sub(r'^[\U0001F300-\U0001F9FF]\s*', '- ', body, flags=re.MULTILINE)
+
+    # Remove standalone emoji headers but keep text
+    body = re.sub(r'^(#+\s*)[\U0001F300-\U0001F9FF]+\s*', r'\1', body, flags=re.MULTILINE)
+
+    # Convert relative links to absolute where possible
+    # [text](./path) or [text](path) -> [text](https://morphir.finos.org/docs/path)
+    def convert_relative_link(match):
+        text = match.group(1)
+        path = match.group(2)
+        # Skip external links, anchors, and already absolute links
+        if path.startswith(('http://', 'https://', '#', 'mailto:')):
+            return match.group(0)
+        # Clean up the path
+        clean_path = path.lstrip('./')
+        if clean_path.endswith('.md'):
+            clean_path = clean_path[:-3]
+        return f'[{text}]({BASE_URL}/docs/{clean_path}/)'
+
+    body = re.sub(r'\[([^\]]+)\]\(([^\)]+)\)', convert_relative_link, body)
+
     # Remove excessive blank lines
     body = re.sub(r'\n{3,}', '\n\n', body)
 
     return body.strip()
+
+
+def encode_url_path(path: str) -> str:
+    """Encode URL path segments that contain spaces or special characters."""
+    segments = path.split('/')
+    encoded = [quote(seg, safe='') if ' ' in seg or '%' in seg else seg for seg in segments]
+    return '/'.join(encoded)
 
 
 def scan_docs(docs_dir: Path) -> Dict[str, List[Dict]]:
@@ -222,6 +359,8 @@ def scan_docs(docs_dir: Path) -> Dict[str, List[Dict]]:
             continue
 
         docs = []
+        seen_titles: Set[str] = set()  # Track titles for deduplication
+
         for md_file in sorted(section_path.rglob('*.md')):
             # Skip files in hidden directories
             if any(part.startswith('.') for part in md_file.parts):
@@ -236,11 +375,28 @@ def scan_docs(docs_dir: Path) -> Dict[str, List[Dict]]:
             title = extract_title(content, frontmatter)
             description = extract_description(content, frontmatter)
 
-            # Build URL path
+            # Skip entries with invalid or placeholder titles
+            if title == "Untitled" or not title.strip():
+                # Try to derive title from filename
+                stem = md_file.stem
+                if stem.lower() in ('readme', 'index'):
+                    stem = md_file.parent.name
+                title = stem.replace('-', ' ').replace('_', ' ').title()
+
+            # Deduplicate by title (keep first occurrence)
+            title_key = title.lower().strip()
+            if title_key in seen_titles:
+                continue
+            seen_titles.add(title_key)
+
+            # Build URL path with proper encoding
             rel_path = md_file.relative_to(docs_dir)
             url_path = str(rel_path).replace('.md', '').replace('/README', '')
             if url_path.endswith('/index'):
                 url_path = url_path[:-6]
+
+            # Encode spaces and special characters in URL
+            url_path = encode_url_path(url_path)
 
             docs.append({
                 'title': title,
