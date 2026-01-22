@@ -57,13 +57,21 @@ Use this checklist when reviewing specification documents (`docs/spec/`) against
 - [ ] Path separators are forward slashes `/`
 
 ### Expected Directory Structure
+
+Package and module paths expand to fully split directories. Definition files (`.type.json`, `.value.json`) reside directly in the module directory—the suffixes distinguish types from values.
+
 ```
-pkg/{package-path}/{module-path}/
-├── module.json
-├── types/
-│   └── {type-name}.type.json
-└── values/
-    └── {value-name}.value.json
+pkg/my-org/my-project/
+└── orders/
+    ├── module.json
+    ├── order.type.json
+    ├── line-item.type.json
+    ├── create-order.value.json
+    ├── calculate-total.value.json
+    └── shipping/
+        ├── module.json
+        ├── address.type.json
+        └── calculate-cost.value.json
 ```
 
 ### Common Directory Structure Errors
@@ -71,7 +79,8 @@ pkg/{package-path}/{module-path}/
 |-------|---------|---------|
 | Wrong suffix | `user.json` | `user.type.json` |
 | CamelCase in path | `pkg/Main/Domain/` | `pkg/main/domain/` |
-| Missing module.json | Direct type files in module dir | Add `module.json` manifest |
+| Collapsed path segments | `pkg/my-org-my-project/` | `pkg/my-org/my-project/` |
+| Unnecessary subfolders | `types/user.type.json` | `user.type.json` (directly in module) |
 | Inconsistent separators | `pkg\main\domain` | `pkg/main/domain` |
 
 ## Cross-Reference Validation
