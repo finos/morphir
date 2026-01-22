@@ -60,29 +60,21 @@ In the hierarchical layout, a module is represented by a `module.json` file, whi
 #### 1. Manifest Style (Granular)
 The `module.json` contains metadata, and definitions reside in separate files.
 
-**Directory Structure** (with optional subdirectories):
+**Directory Structure**:
 ```
-pkg/main/domain/
+pkg/my-org/my-project/orders/
 ├── module.json
-├── user.type.json
-├── account.type.json
-├── login.value.json
-└── validate-email.value.json
+├── order.type.json
+├── line-item.type.json
+├── create-order.value.json
+├── calculate-total.value.json
+└── shipping/
+    ├── module.json
+    ├── address.type.json
+    └── calculate-cost.value.json
 ```
 
-**Alternative with subdirectories** (for organization):
-```
-pkg/main/domain/
-├── module.json
-├── types/
-│   ├── user.type.json
-│   └── account.type.json
-└── values/
-    ├── login.value.json
-    └── validate-email.value.json
-```
-
-**Note**: The `types/` and `values/` subdirectories are optional organizational conventions. Definition files (`.type.json`, `.value.json`) can reside directly in the module directory or in subdirectories.
+Definition files (`.type.json`, `.value.json`) reside directly in the module directory. The suffixes distinguish types from values.
 
 **module.json**:
 ```json
@@ -117,7 +109,7 @@ The `module.json` contains the definitions directly, similar to Classic mode. Th
 
 When using the Granular style, the Document Tree mode enforces a "one file per definition" rule:
 - **Naming**: File names use canonical name format (kebab-case) plus suffix (`.type.json` or `.value.json`)
-- **Location**: Files can be placed directly in the module directory or organized into subdirectories
+- **Location**: Files reside directly in the module directory
 - **Polymorphism**: The content of the file can be a *Definition* (implementation) or a *Specification* (interface), indicated by the root key (`def` vs `spec`)
 
 ### Example: user.type.json (Definition)
