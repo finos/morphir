@@ -262,7 +262,6 @@ resource file {
 ```
 
 **Morphir Domain:**
-{% raw %}
 ```go
 TypeDef{
     Name: "file",
@@ -277,7 +276,6 @@ TypeDef{
     },
 }
 ```
-{% endraw %}
 
 ### Handle Types
 
