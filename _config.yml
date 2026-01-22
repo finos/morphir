@@ -1,0 +1,16 @@
+# Jekyll configuration for GitHub Pages
+#
+# The main documentation site is built by Docusaurus and deployed via Netlify.
+# GitHub Pages with Jekyll processes the raw repository for direct browsing.
+#
+# We exclude directories containing Docusaurus/MDX content that is incompatible
+# with Jekyll's Liquid template processing (e.g., JSX-style {{}} syntax).
+
+exclude:
+  - docs/
+  - website/
+  - node_modules/
+  - vendor/
+  - Gemfile
+  - Gemfile.lock
+  - "*.mdx"
