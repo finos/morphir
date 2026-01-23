@@ -268,6 +268,27 @@ distribution:
 
 > **Note on Entry Points:** The `entryPoints` object uses keys (e.g., `"startup"`, `"build"`, `"api-handler"`) as arbitrary identifiers chosen by developers. Each entry point has a `kind` field (e.g., `"main"`, `"command"`, `"handler"`) that categorizes it semantically. The name and kind can differ - for example, an entry point named `"startup"` can have `kind: "main"`, or `"api-handler"` can have `kind: "handler"`. The name is for identification, while the kind is for semantic categorization used by tooling and runtime.
 
+## Document Tree File Formats
+
+V4 supports VFS (Virtual File System) mode where distributions are stored as directory trees with individual files for each definition.
+
+**File Formats**:
+- `manifest.json` - Distribution metadata
+- `module.json` - Module manifest (with optional inline definitions)
+- `*.type.json` - Type definition/specification files
+- `*.value.json` - Value definition/specification files
+
+**Complete Documentation**: See [Document Tree File Formats](document-tree-files.md) for:
+- Complete file format specifications with detailed examples
+- Required and optional fields for each file type
+- Encoding styles (manifest vs inline)
+- Directory structure examples
+- Field details and validation rules
+- Error handling and common validation errors
+- Advanced examples (incomplete types, external values, complex expressions)
+
+**Formal Schemas**: See [morphir-ir-v4-document-tree-files.yaml](/schemas/morphir-ir-v4-document-tree-files.yaml) for JSON schemas validating all document tree file formats.
+
 ## Complete Example
 
 A complete Library distribution example showing the full structure:
