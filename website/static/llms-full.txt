@@ -1331,7 +1331,6 @@ Technical specifications including IR format and schemas
 - [What's New in Version 2](https://morphir.finos.org/docs/spec/ir/schemas/v2/whats-new/): Changes and improvements in Morphir IR schema version 2
 - [Schema Version 3](https://morphir.finos.org/docs/spec/ir/schemas/v3/): Morphir IR JSON Schema for format version 3 (Current)
 - [What's New in Version 3](https://morphir.finos.org/docs/spec/ir/schemas/v3/whats-new/): Changes and improvements in Morphir IR schema version 3
-- [V4 Distribution Schema Review](https://morphir.finos.org/docs/spec/ir/schemas/v4/REVIEW/): Date: 2026-01-23 Reviewer: Technical Writer Skill Scope: Distribution structure changes for Morphir IR V4
 - [Schema Version 4](https://morphir.finos.org/docs/spec/ir/schemas/v4/): Morphir IR JSON Schema for format version 4 (Draft)
 - [Morphir JSON Project Configuration Specification](https://morphir.finos.org/docs/spec/morphir-json/morphir-json-specification/): Formal specification for morphir.json (Morphir Elm project configuration)
 - [Morphir TOML Configuration Merge Rules](https://morphir.finos.org/docs/spec/morphir-toml/morphir-toml-merge-rules/): How Morphir merges morphir.toml configuration sources into an effective configuration
