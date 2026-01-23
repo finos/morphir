@@ -6,6 +6,7 @@
 		"node": ">=18.0"
 	},
 	"scripts": {
+		"postinstall": "node scripts/setup-gleam-prism.js",
 		"docusaurus": "docusaurus",
 		"start": "docusaurus start",
 		"build": "docusaurus build",
