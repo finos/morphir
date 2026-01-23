@@ -2,6 +2,8 @@
 // Note: type annotations allow type checking and IDEs autocompletion
 
 const {themes: prismThemes} = require('prism-react-renderer');
+// Load PrismJS and register Gleam language
+const Prism = require('prismjs');
 require('prismjs-gleam');
 
 /** @type {import('@docusaurus/types').Config} */
