@@ -49,6 +49,27 @@ Use this checklist when reviewing specification documents (`docs/spec/`) against
 - [ ] Required vs optional fields match design
 - [ ] Default values documented where applicable
 
+### Schema Alignment
+- [ ] JSON Schema YAML (`docs/spec/ir/schemas/v4/morphir-ir-v4.yaml`) matches design doc examples
+- [ ] Distribution variants match: Library, Specs, Application all present
+- [ ] Distribution uses wrapper object format: `{ "Library": { ... } }` not array format
+- [ ] Field names match design: `"def"` not `"packageDefinition"`, `"spec"` not `"packageSpecification"`
+- [ ] Dependencies use object/dict format, not array of tuples
+- [ ] Entry point kinds use lowercase: `"main"`, `"command"`, etc. (not capitalized)
+- [ ] Format version accepts semver string with integer fallback for backwards compatibility
+
+### Schema Documentation and Examples
+- [ ] All schema definitions have clear, descriptive `description` fields
+- [ ] Key definitions include `examples` arrays with realistic, valid JSON examples
+- [ ] Examples demonstrate V4 wrapper object format where applicable
+- [ ] Examples show both canonical and shorthand formats when supported
+- [ ] Complex structures (distributions, modules, value bodies) have complete examples
+- [ ] Examples are consistent with design document examples
+- [ ] Top-level schema has overview description explaining V4 improvements
+- [ ] Field-level descriptions explain purpose and format (e.g., "Dictionary mapping X to Y")
+- [ ] V4-specific features (NativeInfo, Incompleteness, etc.) have examples
+- [ ] Examples use realistic data (e.g., actual package/module names, not placeholders)
+
 ## Directory Structure Consistency
 
 ### File Naming Patterns
@@ -139,9 +160,18 @@ For each design document in `docs/design/draft/ir/`:
 1. **Open both documents side-by-side** - spec and corresponding design
 2. **Walk through design section by section** - verify each concept in spec
 3. **Validate all examples** - copy-paste and check they parse
-4. **Check cross-references** - ensure links resolve correctly
-5. **Note discrepancies** - create issues or fix directly
-6. **Update llms.txt** - regenerate after fixes
+4. **Check schema documentation** - ensure schemas have descriptions and examples
+   - Verify all key definitions have `description` fields
+   - Check that complex structures have `examples` arrays
+   - Ensure examples demonstrate V4 wrapper object format
+   - Validate examples are consistent with design doc examples
+5. **Check cross-references** - ensure links resolve correctly
+6. **Note discrepancies** - create issues or fix directly
+7. **Generate review document (optional)** - save to `.morphir/out/` for local reference
+   - Review documents should NOT be committed to git
+   - Use `.morphir/out/` directory (gitignored) for review outputs
+   - Review documents are for tracking progress and findings locally
+8. **Update llms.txt** - regenerate after fixes
 
 ## Automated Checks (TODO)
 
@@ -150,3 +180,6 @@ Future script `check_spec_design_consistency.py` should:
 - Extract canonical name examples and validate format
 - Cross-reference type/value node lists
 - Report missing v4 features
+- Validate schema documentation completeness (check for missing descriptions/examples)
+- Verify schema examples match design doc examples
+- Check that all complex structures have examples

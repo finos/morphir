@@ -1,0 +1,114 @@
+{
+  "formatVersion": "4.0.0",
+  "distribution": {
+    "Library": {
+      "packageName": "regulation",
+      "dependencies": {
+        "morphir/sdk": {
+          "modules": {
+            "basics": {
+              "types": {
+                "int": {
+                  "OpaqueTypeSpecification": {}
+                },
+                "float": {
+                  "OpaqueTypeSpecification": {}
+                },
+                "bool": {
+                  "OpaqueTypeSpecification": {}
+                }
+              },
+              "values": {
+                "add": {
+                  "inputs": {
+                    "a": "morphir/sdk:basics#int",
+                    "b": "morphir/sdk:basics#int"
+                  },
+                  "output": "morphir/sdk:basics#int"
+                }
+              }
+            },
+            "list": {
+              "types": {
+                "list": {
+                  "TypeAliasSpecification": {
+                    "typeParams": ["a"],
+                    "typeExp": ["morphir/sdk:list#list", "a"]
+                  }
+                }
+              },
+              "values": {
+                "map": {
+                  "inputs": {
+                    "f": ["Function", {}, "a", "b"],
+                    "list": ["morphir/sdk:list#list", "a"]
+                  },
+                  "output": ["morphir/sdk:list#list", "b"]
+                }
+              }
+            }
+          }
+        }
+      },
+      "def": {
+        "modules": {
+          "u-s/f-r-2052-a/data-tables": {
+            "access": "Public",
+            "value": {
+              "types": {
+                "data-tables": {
+                  "access": "Public",
+                  "TypeAliasDefinition": {
+                    "typeParams": [],
+                    "typeExp": {
+                      "Record": {
+                        "fields": {
+                          "inflows": "regulation:u-s/f-r-2052-a/data-tables#inflows",
+                          "outflows": "regulation:u-s/f-r-2052-a/data-tables#outflows",
+                          "supplemental": "regulation:u-s/f-r-2052-a/data-tables#supplemental"
+                        }
+                      }
+                    }
+                  }
+                },
+                "inflows": {
+                  "access": "Public",
+                  "TypeAliasDefinition": {
+                    "typeParams": [],
+                    "typeExp": {
+                      "Record": {
+                        "fields": {
+                          "assets": ["morphir/sdk:list#list", "regulation:u-s/f-r-2052-a/data-tables/inflows#assets"]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "values": {
+                "calculate-total": {
+                  "access": "Public",
+                  "ExpressionBody": {
+                    "inputTypes": {
+                      "tables": "regulation:u-s/f-r-2052-a/data-tables#data-tables"
+                    },
+                    "outputType": "morphir/sdk:basics#float",
+                    "body": {
+                      "Literal": {
+                        "attributes": {},
+                        "literal": {
+                          "FloatLiteral": 0.0
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "doc": "Data tables module for regulatory reporting"
+            }
+          }
+        }
+      }
+    }
+  }
+}
