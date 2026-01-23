@@ -76,12 +76,18 @@ pub type EntryPoint {
   EntryPoint(
     /// The value to invoke
     target: FQName,
-    /// What kind of entry point this is
+    /// What kind of entry point this is (main, command, handler, job, policy)
     kind: EntryPointKind,
     /// Documentation for this entry point
     doc: Option(Documentation),
   )
 }
+
+> **Note:** Entry points are stored as `Dict(Name, EntryPoint)` where:
+> - The **key** (Name) is an arbitrary identifier chosen by the developer (e.g., `"startup"`, `"api-handler"`, `"build"`)
+> - The **`kind`** field categorizes the entry point semantically (one of: `main`, `command`, `handler`, `job`, `policy`)
+>
+> The key and kind can differ. For example, you might name an entry point `"startup"` but mark it as `kind: "main"`, or name it `"api"` but mark it as `kind: "handler"`.
 
 /// Classification of entry points
 pub type EntryPointKind {
@@ -117,6 +123,13 @@ pub type PackageInfo {
 | **Entry points** | None (any public value) | N/A | Named entry points with kind |
 
 ## Entry Point Kinds
+
+> **Note:** Entry point kinds categorize entry points semantically. The **entry point name** (the dictionary key) and the **kind** serve different purposes:
+>
+> - **Name** (key): Arbitrary identifier chosen by developers (e.g., `"startup"`, `"build"`, `"api-handler"`)
+> - **Kind**: Semantic category from a fixed set (see table below)
+>
+> The name and kind can differ. For example, you might name an entry point `"startup"` but mark it as `kind: "main"`, or name it `"api"` but mark it as `kind: "handler"`.
 
 | Kind | Description | Example |
 |------|-------------|---------|
@@ -303,9 +316,10 @@ Distribution
     │   └── modules: Dict(ModulePath, AccessControlled(ModuleDefinition))
     ├── dependencies: Dict(PackagePath, PackageDefinition)  ← Full definitions (statically linked)
     └── entry_points: Dict(Name, EntryPoint)
+        │   └── Key: Name (arbitrary identifier, e.g., "startup", "build", "api-handler")
         └── EntryPoint
             ├── target: FQName
-            ├── kind: EntryPointKind (Main|Command|Handler|Job|Policy)
+            ├── kind: EntryPointKind (main|command|handler|job|policy)  ← Semantic category (can differ from key)
             └── doc: Option(Documentation)
 ```
 
@@ -318,26 +332,27 @@ Single-blob `morphir-ir.json`:
 ```json
 {
   "formatVersion": "4.0.0",
-  "Library": {
-    "package": {
-      "name": "my-org/my-project",
-      "version": "1.2.0"
-    },
-    "def": {
-      "modules": {
-        "domain/users": {
-          "access": "Public",
-          "types": { "...": "..." },
-          "values": { "...": "..." }
+  "distribution": {
+    "Library": {
+      "packageName": "my-org/my-project",
+      "dependencies": {
+        "morphir/sdk": {
+          "modules": {
+            "basics": { "types": { "...": "..." }, "values": { "...": "..." } },
+            "string": { "types": { "...": "..." }, "values": { "...": "..." } },
+            "list": { "types": { "...": "..." }, "values": { "...": "..." } }
+          }
         }
-      }
-    },
-    "dependencies": {
-      "morphir/sdk": {
+      },
+      "def": {
         "modules": {
-          "basics": { "types": { "...": "..." }, "values": { "...": "..." } },
-          "string": { "types": { "...": "..." }, "values": { "...": "..." } },
-          "list": { "types": { "...": "..." }, "values": { "...": "..." } }
+          "domain/users": {
+            "access": "Public",
+            "value": {
+              "types": { "...": "..." },
+              "values": { "...": "..." }
+            }
+          }
         }
       }
     }
@@ -482,30 +497,55 @@ File: `.morphir-dist/format.json`
   "version": "2.0.0",
   "created": "2026-01-15T12:00:00Z",
   "entryPoints": {
-    "main": {
+    "startup": {
       "target": "my-org/my-cli:main#run",
-      "kind": "Main",
+      "kind": "main",
       "doc": "Primary application entry point"
     },
     "build": {
       "target": "my-org/my-cli:commands#build",
-      "kind": "Command",
+      "kind": "command",
       "doc": "Build the project"
     },
     "validate": {
       "target": "my-org/my-cli:commands#validate",
-      "kind": "Command",
+      "kind": "command",
       "doc": "Validate project configuration"
+    },
+    "api-handler": {
+      "target": "my-org/my-cli:api#handle-request",
+      "kind": "handler",
+      "doc": "HTTP API request handler"
+    },
+    "nightly-report": {
+      "target": "my-org/my-cli:jobs#generate-report",
+      "kind": "job",
+      "doc": "Scheduled nightly report generation"
     },
     "pricing-policy": {
       "target": "my-org/my-cli:policies#calculate-price",
-      "kind": "Policy",
+      "kind": "policy",
       "doc": [
         "Calculate product pricing based on rules.",
         "Applies discounts, taxes, and regional adjustments."
       ]
     }
   }
+```
+
+> **Note on Entry Point Names vs Kinds:**
+>
+> The entry point structure uses a dictionary where:
+> - **Keys** (e.g., `"startup"`, `"build"`, `"api-handler"`) are arbitrary identifiers chosen by developers
+> - **`kind` values** (e.g., `"main"`, `"command"`, `"handler"`) are semantic categories from a fixed set
+>
+> Examples showing the distinction:
+> - `"startup"` with `kind: "main"` - The name differs from the kind
+> - `"build"` with `kind: "command"` - The name matches the kind (common but not required)
+> - `"api-handler"` with `kind: "handler"` - Descriptive name, semantic kind
+> - `"nightly-report"` with `kind: "job"` - Job name, job kind
+>
+> This allows flexible naming while maintaining semantic categorization for tooling and runtime behavior.
 }
 ```
 

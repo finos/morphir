@@ -134,7 +134,16 @@ When specification documents (`docs/spec/`) need to match design documents (`doc
    - Field names match design
    - Examples are valid JSON
 
-4. **Directory Structure Validation**
+4. **Schema Documentation and Examples**
+   - All schema definitions have clear `description` fields
+   - Key definitions include `examples` arrays with realistic JSON
+   - Examples demonstrate V4 wrapper object format
+   - Complex structures have complete examples
+   - Examples are consistent with design document examples
+   - Top-level schema has overview explaining V4 improvements
+   - See [spec-design-consistency.md](references/spec-design-consistency.md) for full checklist
+
+5. **Directory Structure Validation**
    - Directory tree examples match actual/expected structure
    - File name patterns are consistent (e.g., `.type.json`, `.value.json`, `module.json`)
    - Path separators and naming conventions align with canonical format

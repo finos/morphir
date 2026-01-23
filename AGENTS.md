@@ -545,8 +545,15 @@ The technical-writer skill provides:
 **Before submitting a PR that modifies documentation:**
 1. Invoke the technical-writer skill for review
 2. Run consistency checks if spec documents are modified
-3. Regenerate llms.txt files if significant content changed
-4. Verify all links resolve correctly
+3. Check schema documentation and examples (if schemas changed)
+4. Regenerate llms.txt files if significant content changed
+5. Verify all links resolve correctly
+6. Ensure examples are complete and accurate
+
+**Before creating any PR:**
+- Complete the "Landing the Plane" workflow (includes documentation review)
+- Ensure all quality gates pass
+- Update CHANGELOG.md if changes are user-facing
 
 ### Key Skill Scripts
 
@@ -892,23 +899,56 @@ When in doubt:
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
 2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
+3. **Review documentation** - If documentation was changed or added:
+   - Use the technical-writer skill to review changes
+   - Check schema documentation and examples (if schemas changed)
+   - Verify spec/design consistency (if spec or design docs changed)
+   - Validate links and structure
+   - Ensure examples are complete and accurate
+   - See `.claude/skills/technical-writer/references/spec-design-consistency.md` for full checklist
+4. **Update issue status** - Close finished work, update in-progress items
+5. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
    bd sync
    git push
    git status  # MUST show "up to date with origin"
    ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
+6. **Clean up** - Clear stashes, prune remote branches
+7. **Verify** - All changes committed AND pushed
+8. **Hand off** - Provide context for next session
 
 **CRITICAL RULES:**
 - Work is NOT complete until `git push` succeeds
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
+
+## Creating Pull Requests
+
+**Before creating a PR**, ensure you've completed the following:
+
+1. **Complete the Landing the Plane workflow** - All changes must be pushed
+2. **Review documentation** - If PR includes documentation changes:
+   - Use the technical-writer skill to review changes
+   - Check schema documentation and examples (if schemas changed)
+   - Verify spec/design consistency (if spec or design docs changed)
+   - Validate links and structure
+   - Ensure examples are complete and accurate
+   - See `.claude/skills/technical-writer/references/spec-design-consistency.md` for full checklist
+3. **Run quality gates** - Tests, linters, builds must pass
+4. **Update CHANGELOG.md** - If changes are user-facing or notable
+5. **Write clear PR description** - Include:
+   - What changed and why
+   - How to test/verify
+   - Any breaking changes
+   - Related issues
+
+**Documentation Review Requirements:**
+- Any changes to `docs/` or `website/` folders MUST include documentation review
+- Schema changes require schema documentation and examples review
+- Spec/design changes require consistency review
+- Use the technical-writer skill for comprehensive review
 
 <!-- bv-agent-instructions-v1 -->
 

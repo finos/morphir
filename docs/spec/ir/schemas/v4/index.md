@@ -191,23 +191,179 @@ AccessControlled:
 
 ### Distribution
 
-Same structure as V3, but with V4 attributes:
+V4 uses wrapper object format (key-based tagging) instead of tagged arrays:
 
 ```yaml
 distribution:
-  type: array
-  minItems: 4
-  maxItems: 4
-  items:
-    - const: "Library"
-    - $ref: "#/definitions/PackageName"
-    - $ref: "#/definitions/Dependencies"
-    - $ref: "#/definitions/PackageDefinition"
+  oneOf:
+    - $ref: "#/definitions/LibraryDistribution"
+    - $ref: "#/definitions/SpecsDistribution"
+    - $ref: "#/definitions/ApplicationDistribution"
 ```
+
+**Library Distribution:**
+```json
+{
+  "formatVersion": "4.0.0",
+  "distribution": {
+    "Library": {
+      "packageName": "my-org/my-project",
+      "dependencies": {
+        "morphir/sdk": { "modules": [...] }
+      },
+      "def": { "modules": [...] }
+    }
+  }
+}
+```
+
+**Specs Distribution:**
+```json
+{
+  "formatVersion": "4.0.0",
+  "distribution": {
+    "Specs": {
+      "packageName": "morphir/sdk",
+      "dependencies": {
+        "other/pkg": { "modules": [...] }
+      },
+      "spec": { "modules": [...] }
+    }
+  }
+}
+```
+
+**Application Distribution:**
+```json
+{
+  "formatVersion": "4.0.0",
+  "distribution": {
+    "Application": {
+      "packageName": "my-org/my-app",
+      "dependencies": {
+        "morphir/sdk": { "modules": [...] }
+      },
+      "def": { "modules": [...] },
+      "entryPoints": {
+        "startup": {
+          "target": "my-org/my-app:main#run",
+          "kind": "main",
+          "doc": "Application entry point"
+        },
+        "build": {
+          "target": "my-org/my-app:cli#build",
+          "kind": "command",
+          "doc": "Build command"
+        },
+        "api-handler": {
+          "target": "my-org/my-app:api#handle",
+          "kind": "handler",
+          "doc": "HTTP API handler"
+        }
+      }
+    }
+  }
+}
+```
+
+> **Note on Entry Points:** The `entryPoints` object uses keys (e.g., `"startup"`, `"build"`, `"api-handler"`) as arbitrary identifiers chosen by developers. Each entry point has a `kind` field (e.g., `"main"`, `"command"`, `"handler"`) that categorizes it semantically. The name and kind can differ - for example, an entry point named `"startup"` can have `kind: "main"`, or `"api-handler"` can have `kind: "handler"`. The name is for identification, while the kind is for semantic categorization used by tooling and runtime.
+
+## Complete Example
+
+A complete Library distribution example showing the full structure:
+
+```json
+{
+  "formatVersion": "4.0.0",
+  "distribution": {
+    "Library": {
+      "packageName": "regulation",
+      "dependencies": {
+        "morphir/sdk": {
+          "modules": {
+            "basics": {
+              "types": {
+                "int": { "OpaqueTypeSpecification": {} },
+                "float": { "OpaqueTypeSpecification": {} },
+                "bool": { "OpaqueTypeSpecification": {} }
+              },
+              "values": {
+                "add": {
+                  "inputs": {
+                    "a": "morphir/sdk:basics#int",
+                    "b": "morphir/sdk:basics#int"
+                  },
+                  "output": "morphir/sdk:basics#int"
+                }
+              }
+            }
+          }
+        }
+      },
+      "def": {
+        "modules": {
+          "u-s/f-r-2052-a/data-tables": {
+            "access": "Public",
+            "value": {
+              "types": {
+                "data-tables": {
+                  "access": "Public",
+                  "TypeAliasDefinition": {
+                    "typeParams": [],
+                    "typeExp": {
+                      "Record": {
+                        "fields": {
+                          "inflows": "regulation:u-s/f-r-2052-a/data-tables#inflows",
+                          "outflows": "regulation:u-s/f-r-2052-a/data-tables#outflows",
+                          "supplemental": "regulation:u-s/f-r-2052-a/data-tables#supplemental"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "values": {
+                "calculate-total": {
+                  "access": "Public",
+                  "ExpressionBody": {
+                    "inputTypes": {
+                      "tables": {
+                        "typeAttributes": {},
+                        "type": "regulation:u-s/f-r-2052-a/data-tables#data-tables"
+                      }
+                    },
+                    "outputType": "morphir/sdk:basics#float",
+                    "body": {
+                      "Literal": {
+                        "attributes": {},
+                        "literal": {
+                          "FloatLiteral": 0.0
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "doc": "Data tables module for regulatory reporting"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+> **Note:** This example demonstrates the V4 wrapper object format throughout:
+> - Distribution uses `{ "Library": { ... } }` wrapper
+> - Modules are objects keyed by module path: `{ "module/path": {...} }`
+> - Types and values within modules are objects keyed by name: `{ "type-name": {...} }`
+> - Record fields are objects keyed by field name: `{ "field-name": type }`
+> - Dependencies are objects keyed by package name: `{ "package/name": spec }`
 
 ### Module Definition
 
-Enhanced with optional documentation:
+Enhanced with optional documentation and object-based structure:
 
 ```yaml
 ModuleDefinition:
@@ -215,24 +371,39 @@ ModuleDefinition:
   required: ["types", "values"]
   properties:
     types:
-      type: array
-      items:
-        - $ref: "#/definitions/Name"
-        - allOf:
-            - $ref: "#/definitions/AccessControlled"
-            - properties:
-                value:
-                  oneOf:
-                    - type: object
-                      required: ["doc", "value"]
-                      properties:
-                        doc: { type: string }
-                        value: { $ref: "#/definitions/TypeDefinition" }
-                    - $ref: "#/definitions/TypeDefinition"
+      type: object
+      additionalProperties:
+        allOf:
+          - $ref: "#/definitions/AccessControlled"
+          - properties:
+              value:
+                oneOf:
+                  - type: object
+                    required: ["doc", "value"]
+                    properties:
+                      doc: { type: string }
+                      value: { $ref: "#/definitions/TypeDefinition" }
+                  - $ref: "#/definitions/TypeDefinition"
+      description: "Dictionary mapping type names to access-controlled type definitions"
     values:
-      # Similar structure with doc support
+      type: object
+      additionalProperties:
+        allOf:
+          - $ref: "#/definitions/AccessControlled"
+          - properties:
+              value:
+                oneOf:
+                  - type: object
+                    required: ["doc", "value"]
+                    properties:
+                      doc: { type: string }
+                      value: { $ref: "#/definitions/ValueDefinition" }
+                  - $ref: "#/definitions/ValueDefinition"
+      description: "Dictionary mapping value names to access-controlled value definitions"
     doc: { type: string }
 ```
+
+> **Note:** V4 uses object/dict format for modules, types, and values (keyed by name/path) instead of arrays. This provides O(1) lookup and maintains canonical key ordering.
 
 ## Type System
 
