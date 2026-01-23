@@ -160,9 +160,16 @@ When specification documents (`docs/spec/`) need to match design documents (`doc
 # 3. Validate JSON examples
 # 4. Verify directory structure examples
 # 5. Fix discrepancies
-# 6. Regenerate llms.txt
+# 6. Generate review document (optional, saved to .morphir/out/)
+# 7. Regenerate llms.txt
 python .claude/skills/technical-writer/scripts/generate_llms_txt.py
 ```
+
+**Review Documents:**
+- Review documents (like REVIEW.md) should be generated in `.morphir/out/` directory
+- This directory is gitignored and should not be committed
+- Review documents are for local reference and analysis only
+- Use them to track review progress and findings, but don't commit them
 
 ## Writing Guidelines
 

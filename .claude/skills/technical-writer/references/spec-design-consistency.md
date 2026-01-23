@@ -167,7 +167,11 @@ For each design document in `docs/design/draft/ir/`:
    - Validate examples are consistent with design doc examples
 5. **Check cross-references** - ensure links resolve correctly
 6. **Note discrepancies** - create issues or fix directly
-7. **Update llms.txt** - regenerate after fixes
+7. **Generate review document (optional)** - save to `.morphir/out/` for local reference
+   - Review documents should NOT be committed to git
+   - Use `.morphir/out/` directory (gitignored) for review outputs
+   - Review documents are for tracking progress and findings locally
+8. **Update llms.txt** - regenerate after fixes
 
 ## Automated Checks (TODO)
 
