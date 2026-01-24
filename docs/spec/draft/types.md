@@ -29,6 +29,7 @@ Represents a type variable.
   - attributes: `TypeAttributes`
   - name: The variable name (`Name`)
 - **Example**: The `a` in `List a`
+- **JSON (compact)**: `"a"` — bare name string (distinguishable from FQName by lack of `:` and `#`)
 
 ### Reference
 
@@ -40,9 +41,11 @@ A reference to another type or type alias.
   - fqName: Fully-qualified name of the referenced type (`FQName`)
   - args: List of type arguments (`List Type`)
 - **Examples**:
-  - `String` → FQName: `morphir/(sdk):string#string`
-  - `List Int` → FQName: `morphir/(sdk):list#list` with type argument `morphir/(sdk):basics#int`
-  - `Dict String Int` → FQName: `morphir/(sdk):dict#dict` with type arguments
+  - `String` → FQName: `morphir/sdk:string#string`
+  - `List Int` → FQName: `morphir/sdk:list#list` with type argument `morphir/sdk:basics#int`
+  - `Dict String Int` → FQName: `morphir/sdk:dict#dict` with type arguments
+- **JSON (no type args)**: `"morphir/sdk:string#string"` — bare FQName string
+- **JSON (with type args)**: `{"Reference": {"fqname": "morphir/sdk:list#list", "args": ["a"]}}`
 - **Legacy format**: `[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]]` (package, module, local name arrays)
 
 ### Tuple
@@ -53,6 +56,7 @@ A composition of multiple types in a fixed order.
 - **Components**:
   - attributes: `TypeAttributes`
   - elements: Element types in order (`List Type`)
+- **JSON**: `{"Tuple": {"elements": ["morphir/sdk:int#int", "morphir/sdk:string#string"]}}`
 
 ### Record
 
@@ -61,9 +65,10 @@ A composition of named fields with their types.
 - **Structure**: `Record attributes fields`
 - **Components**:
   - attributes: `TypeAttributes`
-  - fields: List of field definitions (`List Field`)
-
-**Field**: `{ name: Name, tpe: Type }`
+  - fields: Dictionary of field names to types
+- **JSON (compact)**: `{"Record": {"field-name": "morphir/sdk:string#string", "age": "morphir/sdk:int#int"}}`
+  - Fields are stored directly under `Record` without a wrapper
+  - Field names use kebab-case
 
 ### ExtensibleRecord
 
@@ -73,7 +78,8 @@ A record type that can be extended with additional fields.
 - **Components**:
   - attributes: `TypeAttributes`
   - variable: Type variable representing the extension (`Name`)
-  - fields: Known fields (`List Field`)
+  - fields: Known fields (dictionary of names to types)
+- **JSON**: `{"ExtensibleRecord": {"variable": "a", "fields": {"name": "morphir/sdk:string#string"}}}`
 
 ### Function
 
@@ -84,6 +90,7 @@ Represents a function type.
   - attributes: `TypeAttributes`
   - argumentType: Argument type (`Type`)
   - returnType: Return type (`Type`)
+- **JSON**: `{"Function": {"argumentType": "morphir/sdk:int#int", "returnType": "morphir/sdk:string#string"}}`
 
 ### Unit
 
@@ -92,6 +99,25 @@ The type with exactly one value.
 - **Structure**: `Unit attributes`
 - **Components**:
   - attributes: `TypeAttributes`
+- **JSON**: `{"Unit": {}}`
+
+## JSON Serialization Summary
+
+Type expressions use maximally compact forms where context is unambiguous:
+
+| Type Expression | JSON Format | Example |
+|-----------------|-------------|---------|
+| Variable | Bare name string | `"a"` |
+| Reference (no args) | Bare FQName string | `"morphir/sdk:int#int"` |
+| Reference (with args) | Object with fqname and args | `{"Reference": {"fqname": "morphir/sdk:list#list", "args": ["a"]}}` |
+| Record | Object with field map | `{"Record": {"name": "morphir/sdk:string#string"}}` |
+| Tuple | Object with elements | `{"Tuple": {"elements": [...]}}` |
+| Function | Object with argument and return | `{"Function": {"argumentType": ..., "returnType": ...}}` |
+| Unit | Empty object | `{"Unit": {}}` |
+
+**Disambiguation**: Variables and References without args are both strings, but can be distinguished:
+- Variables: simple name without special characters (e.g., `"a"`, `"comparable"`)
+- References: FQName format with `:` and `#` (e.g., `"morphir/sdk:int#int"`)
 
 ## Type Specifications
 
