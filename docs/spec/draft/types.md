@@ -45,7 +45,7 @@ A reference to another type or type alias.
   - `List Int` → FQName: `morphir/sdk:list#list` with type argument `morphir/sdk:basics#int`
   - `Dict String Int` → FQName: `morphir/sdk:dict#dict` with type arguments
 - **JSON (no type args)**: `"morphir/sdk:string#string"` — bare FQName string
-- **JSON (with type args)**: `{"Reference": {"fqname": "morphir/sdk:list#list", "args": ["a"]}}`
+- **JSON (with type args)**: `{"Reference": ["morphir/sdk:list#list", "a"]}` — array with FQName first, followed by type args
 - **Legacy format**: `[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]]` (package, module, local name arrays)
 
 ### Tuple
@@ -109,7 +109,7 @@ Type expressions use maximally compact forms where context is unambiguous:
 |-----------------|-------------|---------|
 | Variable | Bare name string | `"a"` |
 | Reference (no args) | Bare FQName string | `"morphir/sdk:int#int"` |
-| Reference (with args) | Object with fqname and args | `{"Reference": {"fqname": "morphir/sdk:list#list", "args": ["a"]}}` |
+| Reference (with args) | Array with fqname + args | `{"Reference": ["morphir/sdk:list#list", "a"]}` |
 | Record | Object with field map | `{"Record": {"name": "morphir/sdk:string#string"}}` |
 | Tuple | Object with elements | `{"Tuple": {"elements": [...]}}` |
 | Function | Object with argument and return | `{"Function": {"argumentType": ..., "returnType": ...}}` |

@@ -449,24 +449,21 @@ definitions:
         required: ["Reference"]
         properties:
           Reference:
-            type: object
-            required: ["fqname", "args"]
-            properties:
-              fqname: { $ref: "#/definitions/FQName" }
-              args:
-                type: array
-                items: { $ref: "#/definitions/Type" }
+            type: array
+            minItems: 2
+            description: |
+              Array where first element is FQName, rest are type arguments.
         description: |
-          Object format for Reference with type arguments.
+          Array format for Reference with type arguments.
     description: |
       Reference to a named type, optionally with type arguments.
       Compact: "morphir/sdk:int#int" (no args)
-      Full: {"Reference": {"fqname": "morphir/sdk:list#list", "args": ["a"]}}
+      Array: {"Reference": ["morphir/sdk:list#list", "a"]}
     examples:
       - "morphir/sdk:basics#int"
       - "morphir/sdk:string#string"
-      - { "Reference": { "fqname": "morphir/sdk:list#list", "args": ["a"] } }
-      - { "Reference": { "fqname": "morphir/sdk:dict#dict", "args": ["morphir/sdk:string#string", "morphir/sdk:int#int"] } }
+      - { "Reference": ["morphir/sdk:list#list", "a"] }
+      - { "Reference": ["morphir/sdk:dict#dict", "morphir/sdk:string#string", "morphir/sdk:int#int"] }
 
   TupleType:
     type: object
