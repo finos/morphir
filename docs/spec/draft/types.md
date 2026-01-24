@@ -30,6 +30,7 @@ Represents a type variable.
   - name: The variable name (`Name`)
 - **Example**: The `a` in `List a`
 - **JSON (compact)**: `"a"` — bare name string (distinguishable from FQName by lack of `:` and `#`)
+- **JSON (expanded)**: `{"Variable": {"name": "a"}}` — object wrapper with name key
 
 ### Reference
 
@@ -44,8 +45,9 @@ A reference to another type or type alias.
   - `String` → FQName: `morphir/sdk:string#string`
   - `List Int` → FQName: `morphir/sdk:list#list` with type argument `morphir/sdk:basics#int`
   - `Dict String Int` → FQName: `morphir/sdk:dict#dict` with type arguments
-- **JSON (no type args)**: `"morphir/sdk:string#string"` — bare FQName string
-- **JSON (with type args)**: `{"Reference": ["morphir/sdk:list#list", "a"]}` — array with FQName first, followed by type args
+- **JSON (compact, no type args)**: `"morphir/sdk:string#string"` — bare FQName string
+- **JSON (compact, with type args)**: `{"Reference": ["morphir/sdk:list#list", "a"]}` — array with FQName first, followed by type args
+- **JSON (expanded)**: `{"Reference": {"fqname": "morphir/sdk:list#list", "args": [...]}}` — object with fqname and args keys
 - **Legacy format**: `[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]]` (package, module, local name arrays)
 
 ### Tuple
@@ -103,6 +105,10 @@ The type with exactly one value.
 
 ## JSON Serialization Summary
 
+IR v4 supports two serialization modes:
+
+### Compact Format (default)
+
 Type expressions use maximally compact forms where context is unambiguous:
 
 | Type Expression | JSON Format | Example |
@@ -118,6 +124,21 @@ Type expressions use maximally compact forms where context is unambiguous:
 **Disambiguation**: Variables and References without args are both strings, but can be distinguished:
 - Variables: simple name without special characters (e.g., `"a"`, `"comparable"`)
 - References: FQName format with `:` and `#` (e.g., `"morphir/sdk:int#int"`)
+
+### Expanded Format
+
+For tooling that prefers explicit structure, an expanded format is available:
+
+| Type Expression | JSON Format | Example |
+|-----------------|-------------|---------|
+| Variable | Object with name key | `{"Variable": {"name": "a"}}` |
+| Reference | Object with fqname and args | `{"Reference": {"fqname": "morphir/sdk:list#list", "args": ["a"]}}` |
+| Record | Object with field map | `{"Record": {"name": "morphir/sdk:string#string"}}` |
+| Tuple | Object with elements | `{"Tuple": {"elements": [...]}}` |
+| Function | Object with argument and return | `{"Function": {"argumentType": ..., "returnType": ...}}` |
+| Unit | Empty object | `{"Unit": {}}` |
+
+**Note**: The expanded format is identical to compact for Record, Tuple, Function, and Unit types. Use `morphir ir migrate --expanded` to produce expanded format output.
 
 ## Type Specifications
 
