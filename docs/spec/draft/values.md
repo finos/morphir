@@ -29,29 +29,35 @@ Literal constant values used in value expressions.
 
 ## Value Expressions
 
+Value expressions use object wrappers to distinguish expression types, with compact inner values where possible.
+
 ### Literal
 
 A literal constant value.
 
 - **Structure**: `Literal attributes literal`
+- **JSON**: `{"Literal": {"IntLiteral": 42}}` or `{"Literal": {"StringLiteral": "hello"}}`
 
 ### Constructor
 
 Reference to a custom type constructor.
 
 - **Structure**: `Constructor attributes fqName`
+- **JSON**: `{"Constructor": "morphir/sdk:maybe#just"}`
 
 ### Tuple
 
 A tuple value with multiple elements.
 
 - **Structure**: `Tuple attributes elements`
+- **JSON**: `{"Tuple": {"elements": [{"Variable": "x"}, {"Literal": {"IntLiteral": 1}}]}}`
 
 ### List
 
 A list of values.
 
 - **Structure**: `List attributes elements`
+- **JSON**: `{"List": {"items": [{"Literal": {"IntLiteral": 1}}, {"Literal": {"IntLiteral": 2}}]}}`
 
 ### Record
 
@@ -62,36 +68,44 @@ A record value with named fields.
   - attributes: `ValueAttributes`
   - fields: Dictionary of field names to values (`Dict Name Value`)
 - **Note**: Field order does not affect equality—two records with the same fields in different orders are considered equal
+- **JSON (compact)**: `{"Record": {"name": {"Variable": "x"}, "age": {"Literal": {"IntLiteral": 25}}}}`
+  - Fields stored directly under `Record` without a wrapper
+  - Field names use kebab-case
 
 ### Variable
 
 Reference to a variable in scope.
 
 - **Structure**: `Variable attributes name`
+- **JSON**: `{"Variable": "x"}` — name directly under Variable
 
 ### Reference
 
 Reference to a defined value (function or constant).
 
 - **Structure**: `Reference attributes fqName`
+- **JSON**: `{"Reference": "morphir/sdk:basics#add"}` — FQName directly under Reference
 
 ### Field
 
 Field access on a record.
 
 - **Structure**: `Field attributes recordExpression fieldName`
+- **JSON**: `{"Field": {"target": {"Variable": "record"}, "name": "field-name"}}`
 
 ### FieldFunction
 
 A function that extracts a field.
 
 - **Structure**: `FieldFunction attributes fieldName`
+- **JSON**: `{"FieldFunction": "field-name"}`
 
 ### Apply
 
 Function application.
 
 - **Structure**: `Apply attributes function argument`
+- **JSON**: `{"Apply": {"function": {"Reference": "morphir/sdk:basics#add"}, "argument": {"Literal": {"IntLiteral": 1}}}}`
 
 ### Lambda
 
@@ -102,36 +116,42 @@ Anonymous function (lambda abstraction).
   - attributes: `ValueAttributes`
   - argumentPattern: Pattern for the function argument (`Pattern`)
   - body: The function body expression (`Value`)
+- **JSON**: `{"Lambda": {"pattern": {"AsPattern": {...}}, "body": {"Variable": "x"}}}`
 
 ### LetDefinition
 
 A let binding introducing a single value.
 
 - **Structure**: `LetDefinition attributes name definition body`
+- **JSON**: `{"LetDefinition": {"name": "x", "definition": {...}, "in": {...}}}`
 
 ### LetRecursion
 
 Mutually recursive let bindings.
 
 - **Structure**: `LetRecursion attributes bindings body`
+- **JSON**: `{"LetRecursion": {"definitions": {"f": {...}, "g": {...}}, "in": {...}}}`
 
 ### Destructure
 
 Pattern-based destructuring.
 
 - **Structure**: `Destructure attributes pattern valueToDestructure body`
+- **JSON**: `{"Destructure": {"pattern": {...}, "value": {...}, "in": {...}}}`
 
 ### IfThenElse
 
 Conditional expression.
 
 - **Structure**: `IfThenElse attributes condition thenBranch elseBranch`
+- **JSON**: `{"IfThenElse": {"condition": {...}, "then": {...}, "else": {...}}}`
 
 ### PatternMatch
 
 Pattern matching with multiple cases.
 
 - **Structure**: `PatternMatch attributes valueToMatch cases`
+- **JSON**: `{"PatternMatch": {"value": {...}, "cases": [{...}, {...}]}}`
 
 ### UpdateRecord
 
@@ -143,12 +163,33 @@ Record update expression.
   - recordToUpdate: The record being updated (`Value`)
   - fieldsToUpdate: Dictionary of field names to new values (`Dict Name Value`)
 - **Note**: Field order in updates does not affect equality
+- **JSON**: `{"UpdateRecord": {"target": {"Variable": "record"}, "fields": {"name": {"Literal": {"StringLiteral": "new"}}}}}`
 
 ### Unit
 
 The unit value.
 
 - **Structure**: `Unit attributes`
+- **JSON**: `{"Unit": {}}`
+
+## JSON Serialization Summary
+
+Value expressions use object wrappers to distinguish expression types:
+
+| Value Expression | JSON Format | Example |
+|------------------|-------------|---------|
+| Variable | `{"Variable": name}` | `{"Variable": "x"}` |
+| Reference | `{"Reference": fqname}` | `{"Reference": "morphir/sdk:basics#add"}` |
+| Literal | `{"Literal": {...}}` | `{"Literal": {"IntLiteral": 42}}` |
+| Constructor | `{"Constructor": fqname}` | `{"Constructor": "morphir/sdk:maybe#just"}` |
+| Record | `{"Record": {fields}}` | `{"Record": {"name": {...}}}` |
+| Apply | `{"Apply": {...}}` | `{"Apply": {"function": {...}, "argument": {...}}}` |
+| Unit | `{"Unit": {}}` | `{"Unit": {}}` |
+
+**Key differences from Type expressions**:
+- Value expressions always use object wrappers (e.g., `{"Variable": "x"}`)
+- Type expressions can use bare strings for Variables and References without args
+- This distinction allows parsers to unambiguously identify expression types in any context
 
 ### Hole (v4)
 
