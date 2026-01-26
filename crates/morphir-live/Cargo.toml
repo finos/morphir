@@ -1,0 +1,26 @@
+[package]
+name = "morphir-live"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Morphir live application provides visualization and interactive experience for the management of the Morphir IR and projects"
+
+[[bin]]
+name = "morphir-live"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true, features = ["color"] }
+dioxus = { workspace = true }
+
+[features]
+default = ["web"]
+web = ["dioxus/web"]
+desktop = ["dioxus/desktop"]
+mobile = ["dioxus/mobile"]
