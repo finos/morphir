@@ -2785,7 +2785,9 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "dioxus",
+ "gloo-timers",
  "serde",
+ "serde_json",
  "toml",
 ]
 

@@ -1,8 +1,9 @@
-//! TOML editor tab for direct configuration editing.
+//! TOML editor tab for direct configuration editing with Monaco Editor.
 
 use dioxus::prelude::*;
+use super::monaco_editor::MonacoEditor;
 
-/// TOML editor using a textarea (Monaco can be integrated later)
+/// TOML editor using Monaco Editor for syntax highlighting
 #[component]
 pub fn SettingsTomlTab(
     content: String,
@@ -14,12 +15,11 @@ pub fn SettingsTomlTab(
                 span { class: "toml-editor-title", "morphir.toml" }
                 span { class: "toml-editor-hint", "Edit configuration directly in TOML format" }
             }
-            div { class: "toml-editor-container",
-                textarea {
-                    class: "toml-editor",
-                    value: "{content}",
-                    spellcheck: false,
-                    oninput: move |e| on_change.call(e.value())
+            div { class: "toml-editor-wrapper",
+                MonacoEditor {
+                    container_id: "monaco-toml-editor".to_string(),
+                    content: content,
+                    on_change: on_change,
                 }
             }
         }

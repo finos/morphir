@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Morphir Live</title>
+    <!-- Monaco Editor Loader -->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+  </head>
+  <body>
+    <div id="main"></div>
+    <script>
+      // Monaco Editor initialization and bridge for Dioxus
+
+      // Store editor instances by container ID
+      window.monacoEditors = {};
+
+      // Initialize Monaco Editor in a container
+      window.initMonacoEditor = function(containerId, initialContent, language) {
+          // Check if Monaco is loaded
+          if (typeof monaco === 'undefined') {
+              console.error('Monaco Editor not loaded yet');
+              return null;
+          }
+
+          // Get the container element
+          const container = document.getElementById(containerId);
+          if (!container) {
+              console.error('Container not found:', containerId);
+              return null;
+          }
+
+          // Dispose existing editor if any
+          if (window.monacoEditors[containerId]) {
+              window.monacoEditors[containerId].dispose();
+          }
+
+          // Create the editor
+          const editor = monaco.editor.create(container, {
+              value: initialContent || '',
+              language: language || 'toml',
+              theme: 'morphir-dark',
+              automaticLayout: true,
+              minimap: { enabled: false },
+              fontSize: 14,
+              fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
+              lineNumbers: 'on',
+              renderWhitespace: 'selection',
+              scrollBeyondLastLine: false,
+              wordWrap: 'on',
+              tabSize: 2,
+              insertSpaces: true,
+              padding: { top: 12, bottom: 12 },
+              scrollbar: {
+                  verticalScrollbarSize: 8,
+                  horizontalScrollbarSize: 8,
+              },
+          });
+
+          // Store the editor instance
+          window.monacoEditors[containerId] = editor;
+
+          return editor;
+      };
+
+      // Get editor content
+      window.getMonacoContent = function(containerId) {
+          const editor = window.monacoEditors[containerId];
+          if (editor) {
+              return editor.getValue();
+          }
+          return '';
+      };
+
+      // Set editor content
+      window.setMonacoContent = function(containerId, content) {
+          const editor = window.monacoEditors[containerId];
+          if (editor) {
+              editor.setValue(content);
+          }
+      };
+
+      // Set up change listener that calls back to Dioxus
+      window.onMonacoChange = function(containerId, callback) {
+          const editor = window.monacoEditors[containerId];
+          if (editor) {
+              editor.onDidChangeModelContent(() => {
+                  const content = editor.getValue();
+                  callback(content);
+              });
+          }
+      };
+
+      // Dispose editor
+      window.disposeMonacoEditor = function(containerId) {
+          const editor = window.monacoEditors[containerId];
+          if (editor) {
+              editor.dispose();
+              delete window.monacoEditors[containerId];
+          }
+      };
+
+      // Define custom dark theme matching morphir-live
+      window.defineMonacoTheme = function() {
+          if (typeof monaco === 'undefined') return;
+
+          monaco.editor.defineTheme('morphir-dark', {
+              base: 'vs-dark',
+              inherit: true,
+              rules: [
+                  { token: 'comment', foreground: '6b6879' },
+                  { token: 'string', foreground: '98c379' },
+                  { token: 'number', foreground: 'd19a66' },
+                  { token: 'keyword', foreground: 'c678dd' },
+                  { token: 'type', foreground: 'e5c07b' },
+                  { token: 'variable', foreground: 'e06c75' },
+                  { token: 'delimiter', foreground: 'abb2bf' },
+              ],
+              colors: {
+                  'editor.background': '#252233',
+                  'editor.foreground': '#d1d0d5',
+                  'editor.lineHighlightBackground': '#2d2a3d',
+                  'editor.selectionBackground': '#3b5998',
+                  'editorCursor.foreground': '#3b82f6',
+                  'editorLineNumber.foreground': '#6b6879',
+                  'editorLineNumber.activeForeground': '#d1d0d5',
+                  'editor.inactiveSelectionBackground': '#3d3a4d',
+                  'editorIndentGuide.background': '#3d3a4d',
+                  'editorIndentGuide.activeBackground': '#4d4a5d',
+                  'scrollbarSlider.background': '#3d3a4d80',
+                  'scrollbarSlider.hoverBackground': '#4d4a5d80',
+                  'scrollbarSlider.activeBackground': '#5d5a6d80',
+              }
+          });
+      };
+
+      // Register TOML language if not already registered
+      window.registerTomlLanguage = function() {
+          if (typeof monaco === 'undefined') return;
+
+          // Check if TOML is already registered
+          const languages = monaco.languages.getLanguages();
+          if (languages.some(lang => lang.id === 'toml')) {
+              return;
+          }
+
+          // Register TOML language
+          monaco.languages.register({ id: 'toml' });
+
+          // Set TOML language tokens
+          monaco.languages.setMonarchTokensProvider('toml', {
+              tokenizer: {
+                  root: [
+                      // Comments
+                      [/#.*$/, 'comment'],
+
+                      // Section headers
+                      [/\[\[?[^\]]*\]\]?/, 'keyword'],
+
+                      // Keys
+                      [/[a-zA-Z_][a-zA-Z0-9_-]*(?=\s*=)/, 'variable'],
+
+                      // Strings
+                      [/"""/, 'string', '@multilineString'],
+                      [/"([^"\\]|\\.)*"/, 'string'],
+                      [/'[^']*'/, 'string'],
+
+                      // Numbers
+                      [/-?\d+(\.\d+)?([eE][+-]?\d+)?/, 'number'],
+                      [/0x[0-9a-fA-F]+/, 'number'],
+                      [/0o[0-7]+/, 'number'],
+                      [/0b[01]+/, 'number'],
+
+                      // Booleans
+                      [/\b(true|false)\b/, 'keyword'],
+
+                      // Dates
+                      [/\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?/, 'number'],
+
+                      // Operators
+                      [/[=,\[\]{}]/, 'delimiter'],
+                  ],
+                  multilineString: [
+                      [/[^"]+/, 'string'],
+                      [/"""/, 'string', '@pop'],
+                      [/"/, 'string'],
+                  ],
+              }
+          });
+      };
+
+      // Initialize Monaco when the loader is ready
+      window.initMonacoLoader = function() {
+          require.config({
+              paths: {
+                  'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs'
+              }
+          });
+
+          require(['vs/editor/editor.main'], function() {
+              console.log('Monaco Editor loaded');
+              window.defineMonacoTheme();
+              window.registerTomlLanguage();
+              // Dispatch event to notify that Monaco is ready
+              window.dispatchEvent(new CustomEvent('monaco-ready'));
+          });
+      };
+
+      // Initialize Monaco loader once the page is ready
+      document.addEventListener('DOMContentLoaded', function() {
+          window.initMonacoLoader();
+      });
+    </script>
+  </body>
+</html>
