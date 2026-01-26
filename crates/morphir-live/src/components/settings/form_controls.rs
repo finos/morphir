@@ -166,7 +166,7 @@ pub fn SettingsTagInput(
                                 class: "settings-tag-remove",
                                 onclick: {
                                     let tags = tags.clone();
-                                    let on_change = on_change.clone();
+                                    let on_change = on_change;
                                     move |_| {
                                         let mut new_tags = tags.clone();
                                         new_tags.remove(idx);

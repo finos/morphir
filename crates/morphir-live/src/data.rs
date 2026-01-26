@@ -45,7 +45,8 @@ pub fn sample_projects(workspace_id: &str) -> Vec<Project> {
             Project {
                 id: "proj-1".to_string(),
                 name: "Account Management".to_string(),
-                description: "Core account types and operations for managing financial accounts.".to_string(),
+                description: "Core account types and operations for managing financial accounts."
+                    .to_string(),
                 workspace_id: "ws-1".to_string(),
                 model_count: 12,
                 is_active: true,
@@ -53,7 +54,8 @@ pub fn sample_projects(workspace_id: &str) -> Vec<Project> {
             Project {
                 id: "proj-2".to_string(),
                 name: "Transaction Processing".to_string(),
-                description: "Models for financial transactions, transfers, and settlements.".to_string(),
+                description: "Models for financial transactions, transfers, and settlements."
+                    .to_string(),
                 workspace_id: "ws-1".to_string(),
                 model_count: 8,
                 is_active: true,

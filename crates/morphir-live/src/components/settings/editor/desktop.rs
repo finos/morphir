@@ -6,16 +6,11 @@ use dioxus::prelude::*;
 /// Custom TOML editor for desktop platform.
 /// Uses overlay technique for real-time syntax highlighting while typing.
 #[component]
-pub fn TomlEditor(
-    content: String,
-    on_change: EventHandler<String>,
-) -> Element {
+pub fn TomlEditor(content: String, on_change: EventHandler<String>) -> Element {
     let mut local_content = use_signal(|| content.clone());
 
     // Generate highlighted HTML from the current content
-    let highlighted_html = use_memo(move || {
-        highlight_toml_with_lines(&local_content.read())
-    });
+    let highlighted_html = use_memo(move || highlight_toml_with_lines(&local_content.read()));
 
     rsx! {
         div { class: "toml-overlay-editor",
@@ -59,7 +54,10 @@ fn generate_line_numbers(code: &str) -> String {
 
     // Add extra line if content ends with newline
     if code.ends_with('\n') {
-        html.push_str(&format!("<div class=\"line-number\">{}</div>", line_count + 1));
+        html.push_str(&format!(
+            "<div class=\"line-number\">{}</div>",
+            line_count + 1
+        ));
     }
 
     html
@@ -133,16 +131,20 @@ fn highlight_toml_line(line: &str) -> String {
         let highlighted_value = highlight_toml_value(value_part.trim());
 
         // Handle inline comment after value
-        let (value_html, comment_html) = if let Some(comment_start) = find_comment_in_value(value_part) {
-            let val = &value_part[..comment_start];
-            let comment = &value_part[comment_start..];
-            (
-                highlight_toml_value(val.trim()),
-                format!(" <span style=\"color: #65737e;\">{}</span>", escape_html(comment.trim()))
-            )
-        } else {
-            (highlighted_value, String::new())
-        };
+        let (value_html, comment_html) =
+            if let Some(comment_start) = find_comment_in_value(value_part) {
+                let val = &value_part[..comment_start];
+                let comment = &value_part[comment_start..];
+                (
+                    highlight_toml_value(val.trim()),
+                    format!(
+                        " <span style=\"color: #65737e;\">{}</span>",
+                        escape_html(comment.trim())
+                    ),
+                )
+            } else {
+                (highlighted_value, String::new())
+            };
 
         return format!(
             "{}<span style=\"color: #bf616a;\">{}</span><span style=\"color: #c0c5ce;\"> = </span>{}{}",
@@ -168,15 +170,22 @@ fn highlight_toml_value(value: &str) -> String {
 
     // Number (integer or float)
     if is_toml_number(trimmed) {
-        return format!("<span style=\"color: #d08770;\">{}</span>", escape_html(trimmed));
+        return format!(
+            "<span style=\"color: #d08770;\">{}</span>",
+            escape_html(trimmed)
+        );
     }
 
     // String (basic "" or literal '')
-    if (trimmed.starts_with('"') && trimmed.ends_with('"')) ||
-       (trimmed.starts_with('\'') && trimmed.ends_with('\'')) ||
-       (trimmed.starts_with("\"\"\"")) ||
-       (trimmed.starts_with("'''")) {
-        return format!("<span style=\"color: #a3be8c;\">{}</span>", escape_html(trimmed));
+    if (trimmed.starts_with('"') && trimmed.ends_with('"'))
+        || (trimmed.starts_with('\'') && trimmed.ends_with('\''))
+        || (trimmed.starts_with("\"\"\""))
+        || (trimmed.starts_with("'''"))
+    {
+        return format!(
+            "<span style=\"color: #a3be8c;\">{}</span>",
+            escape_html(trimmed)
+        );
     }
 
     // Array
@@ -186,7 +195,10 @@ fn highlight_toml_value(value: &str) -> String {
 
     // Inline table
     if trimmed.starts_with('{') && trimmed.ends_with('}') {
-        return format!("<span style=\"color: #c0c5ce;\">{}</span>", escape_html(trimmed));
+        return format!(
+            "<span style=\"color: #c0c5ce;\">{}</span>",
+            escape_html(trimmed)
+        );
     }
 
     // Default
@@ -206,7 +218,10 @@ fn highlight_toml_array(arr: &str) -> String {
             current_token.push(ch);
             if ch == string_char {
                 // End of string
-                result.push_str(&format!("<span style=\"color: #a3be8c;\">{}</span>", escape_html(&current_token)));
+                result.push_str(&format!(
+                    "<span style=\"color: #a3be8c;\">{}</span>",
+                    escape_html(&current_token)
+                ));
                 current_token.clear();
                 in_string = false;
             }
@@ -247,7 +262,10 @@ fn highlight_toml_array(arr: &str) -> String {
     // Flush remaining token
     if !current_token.is_empty() {
         if in_string {
-            result.push_str(&format!("<span style=\"color: #a3be8c;\">{}</span>", escape_html(&current_token)));
+            result.push_str(&format!(
+                "<span style=\"color: #a3be8c;\">{}</span>",
+                escape_html(&current_token)
+            ));
         } else {
             result.push_str(&highlight_array_token(&current_token));
         }
@@ -268,7 +286,10 @@ fn highlight_array_token(token: &str) -> String {
     }
 
     if is_toml_number(trimmed) {
-        return format!("<span style=\"color: #d08770;\">{}</span>", escape_html(trimmed));
+        return format!(
+            "<span style=\"color: #d08770;\">{}</span>",
+            escape_html(trimmed)
+        );
     }
 
     escape_html(token)

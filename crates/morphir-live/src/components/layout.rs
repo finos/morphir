@@ -73,9 +73,8 @@ pub fn MainLayout() -> Element {
         .collect();
 
     // Helper to find workspace by id
-    let find_workspace = |id: &str| -> Option<Workspace> {
-        all_workspaces.iter().find(|w| w.id == id).cloned()
-    };
+    let find_workspace =
+        |id: &str| -> Option<Workspace> { all_workspaces.iter().find(|w| w.id == id).cloned() };
 
     // Check if we're in settings view
     let is_settings_view = matches!(*view_state.read(), ViewState::Settings(_));

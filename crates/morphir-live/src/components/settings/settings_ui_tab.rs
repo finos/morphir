@@ -13,10 +13,7 @@ use super::form_controls::{
 use super::settings_section::SettingsSection;
 
 #[component]
-pub fn SettingsUITab(
-    config: MorphirConfig,
-    on_change: EventHandler<MorphirConfig>,
-) -> Element {
+pub fn SettingsUITab(config: MorphirConfig, on_change: EventHandler<MorphirConfig>) -> Element {
     rsx! {
         div { class: "settings-ui-tab",
             // Project Section
@@ -158,10 +155,7 @@ pub fn SettingsUITab(
 // Individual section field components
 
 #[component]
-fn ProjectSettingsFields(
-    config: ProjectConfig,
-    on_change: EventHandler<ProjectConfig>,
-) -> Element {
+fn ProjectSettingsFields(config: ProjectConfig, on_change: EventHandler<ProjectConfig>) -> Element {
     rsx! {
         SettingsTextInput {
             label: "Name",
@@ -280,10 +274,7 @@ fn WorkspaceSettingsFields(
 }
 
 #[component]
-fn CodegenSettingsFields(
-    config: CodegenConfig,
-    on_change: EventHandler<CodegenConfig>,
-) -> Element {
+fn CodegenSettingsFields(config: CodegenConfig, on_change: EventHandler<CodegenConfig>) -> Element {
     let output_format_value = match config.output_format {
         OutputFormat::Pretty => "pretty",
         OutputFormat::Compact => "compact",
@@ -408,10 +399,7 @@ fn CacheSettingsFields(config: CacheConfig, on_change: EventHandler<CacheConfig>
 }
 
 #[component]
-fn LoggingSettingsFields(
-    config: LoggingConfig,
-    on_change: EventHandler<LoggingConfig>,
-) -> Element {
+fn LoggingSettingsFields(config: LoggingConfig, on_change: EventHandler<LoggingConfig>) -> Element {
     let level_value = match config.level {
         LogLevel::Debug => "debug",
         LogLevel::Info => "info",

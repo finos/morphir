@@ -1,15 +1,12 @@
 //! Monaco Editor component for web platform with TOML syntax highlighting.
 
-use dioxus::prelude::*;
 use crate::monaco;
+use dioxus::prelude::*;
 
 /// Monaco-based TOML editor for web platform.
 /// Provides full syntax highlighting, line numbers, and code editing features.
 #[component]
-pub fn TomlEditor(
-    content: String,
-    on_change: EventHandler<String>,
-) -> Element {
+pub fn TomlEditor(content: String, on_change: EventHandler<String>) -> Element {
     let mut editor_initialized = use_signal(|| false);
     let mut pending_content = use_signal(|| content.clone());
 
@@ -52,7 +49,8 @@ pub fn TomlEditor(
                     return false;
                 }})()
                 "#,
-                content_json = serde_json::to_string(&content).unwrap_or_else(|_| "\"\"".to_string()),
+                content_json =
+                    serde_json::to_string(&content).unwrap_or_else(|_| "\"\"".to_string()),
             );
 
             let result = document::eval(&init_script);

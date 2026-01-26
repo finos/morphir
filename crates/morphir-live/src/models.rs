@@ -7,9 +7,10 @@ use serde::{Deserialize, Serialize};
 // ============================================================================
 
 /// Represents the current view state of the application
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Default)]
 pub enum ViewState {
     /// List of all workspaces
+    #[default]
     WorkspaceList,
     /// Detail view for a specific workspace
     WorkspaceDetail(String),
@@ -23,12 +24,6 @@ pub enum ViewState {
     ModelDetail(String),
     /// Settings view for a workspace or project
     Settings(SettingsContext),
-}
-
-impl Default for ViewState {
-    fn default() -> Self {
-        Self::WorkspaceList
-    }
 }
 
 /// Context for the settings view - what entity is being configured
