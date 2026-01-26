@@ -1,46 +1,264 @@
 /* App-wide styling */
+* {
+    box-sizing: border-box;
+}
+
 body {
-    background-color: #0f1116;
+    background-color: #1a1625;
     color: #ffffff;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    margin: 20px;
-}
-
-#hero {
     margin: 0;
+    padding: 0;
+}
+
+/* Layout */
+.layout {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 260px;
+    min-width: 260px;
+    background: #1a1625;
+    padding: 1rem;
+    border-right: 1px solid #3d3a4d;
+    overflow-y: auto;
+}
+
+.sidebar-section {
+    margin-bottom: 1.5rem;
+}
+
+.section-header {
+    color: #8b8798;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+    padding-left: 0.75rem;
+}
+
+/* Nav Items */
+.nav-item {
+    display: flex;
     align-items: center;
-}
-
-#links {
-    width: 400px;
-    text-align: left;
-    font-size: x-large;
-    color: white;
-    display: flex;
-    flex-direction: column;
-}
-
-#links a {
-    color: white;
-    text-decoration: none;
-    margin-top: 20px;
-    margin: 10px 0px;
-    border: white 1px solid;
-    border-radius: 5px;
-    padding: 10px;
-}
-
-#links a:hover {
-    background-color: #1f1f1f;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.5rem;
+    color: #ffffff;
     cursor: pointer;
+    transition: background-color 0.15s ease;
+    user-select: none;
 }
 
-#header {
-    max-width: 1200px;
+.nav-item:hover {
+    background: #252233;
 }
 
+.nav-item.active {
+    background: #3b5998;
+}
 
+.nav-icon {
+    font-size: 1.1rem;
+    width: 1.25rem;
+    text-align: center;
+}
 
+.nav-label {
+    font-size: 0.9375rem;
+}
+
+/* Content Area */
+.content-area {
+    flex: 1;
+    background: #1a1625;
+    padding: 1rem 1.5rem;
+    overflow-y: auto;
+}
+
+.content-header {
+    margin-bottom: 1rem;
+}
+
+.content-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0;
+}
+
+/* Item Cards */
+.item-card {
+    background: #252233;
+    border: 1px solid #3d3a4d;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    transition: border-color 0.15s ease;
+}
+
+.item-card:hover {
+    border-color: #4d4a5d;
+}
+
+.card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.card-avatar {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    border-radius: 0.5rem;
+    background: linear-gradient(135deg, #3d3a4d 0%, #2d2a3d 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.card-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.card-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #ffffff;
+    margin: 0;
+}
+
+.card-subtitle {
+    color: #8b8798;
+    font-size: 0.875rem;
+    margin-top: 0.125rem;
+}
+
+.card-description {
+    color: #d1d0d5;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    margin: 0.75rem 0;
+}
+
+.card-description a {
+    color: #60a5fa;
+    text-decoration: none;
+}
+
+.card-description a:hover {
+    text-decoration: underline;
+}
+
+.card-stats {
+    display: flex;
+    gap: 1.5rem;
+    color: #8b8798;
+    font-size: 0.875rem;
+    margin-top: 0.75rem;
+}
+
+.stat-value {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.stat-label {
+    color: #8b8798;
+    margin-left: 0.25rem;
+}
+
+.card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    justify-content: flex-end;
+}
+
+/* Buttons */
+.btn-primary {
+    background: #3b82f6;
+    color: #ffffff;
+    padding: 0.375rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.btn-primary:hover {
+    background: #2563eb;
+}
+
+.btn-icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: #3d3a4d;
+    color: #8b8798;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-icon:hover {
+    background: #4d4a5d;
+    color: #ffffff;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #8b8798;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state-text {
+    font-size: 1rem;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1a1625;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #3d3a4d;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #4d4a5d;
+}
