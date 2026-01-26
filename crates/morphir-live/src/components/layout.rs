@@ -8,7 +8,7 @@ use crate::components::nav_item::NavItem;
 use crate::components::selected_item::SelectedItem;
 use crate::components::settings::SettingsView;
 use crate::components::sidebar::SidebarSection;
-use crate::components::toolbar::Toolbar;
+use crate::components::toolbar::{BreadcrumbItem, Toolbar};
 use crate::data::{sample_models, sample_projects, sample_workspaces};
 use crate::models::{
     Model, ModelFilter, ModelType, MorphirConfig, Project, ProjectFilter, SettingsContext,
@@ -96,45 +96,48 @@ pub fn MainLayout() -> Element {
                                     move |_| {
                                         view_state.set(ViewState::WorkspaceDetail(ws_id.clone()));
                                     }
-                                }
+                                },
                             }
                         }
 
                         NavItem {
                             icon: "📁",
                             label: "All Workspaces",
-                            active: matches!(*view_state.read(), ViewState::WorkspaceList) && matches!(*workspace_filter.read(), WorkspaceFilter::All),
+                            active: matches!(*view_state.read(), ViewState::WorkspaceList)
+                                && matches!(*workspace_filter.read(), WorkspaceFilter::All),
                             on_click: move |_| {
                                 workspace_filter.set(WorkspaceFilter::All);
                                 selected_workspace.set(None);
                                 selected_project.set(None);
                                 selected_model.set(None);
                                 view_state.set(ViewState::WorkspaceList);
-                            }
+                            },
                         }
                         NavItem {
                             icon: "🕐",
                             label: "Recent",
-                            active: matches!(*view_state.read(), ViewState::WorkspaceList) && matches!(*workspace_filter.read(), WorkspaceFilter::Recent),
+                            active: matches!(*view_state.read(), ViewState::WorkspaceList)
+                                && matches!(*workspace_filter.read(), WorkspaceFilter::Recent),
                             on_click: move |_| {
                                 workspace_filter.set(WorkspaceFilter::Recent);
                                 selected_workspace.set(None);
                                 selected_project.set(None);
                                 selected_model.set(None);
                                 view_state.set(ViewState::WorkspaceList);
-                            }
+                            },
                         }
                         NavItem {
                             icon: "⭐",
                             label: "Favorites",
-                            active: matches!(*view_state.read(), ViewState::WorkspaceList) && matches!(*workspace_filter.read(), WorkspaceFilter::Favorites),
+                            active: matches!(*view_state.read(), ViewState::WorkspaceList)
+                                && matches!(*workspace_filter.read(), WorkspaceFilter::Favorites),
                             on_click: move |_| {
                                 workspace_filter.set(WorkspaceFilter::Favorites);
                                 selected_workspace.set(None);
                                 selected_project.set(None);
                                 selected_model.set(None);
                                 view_state.set(ViewState::WorkspaceList);
-                            }
+                            },
                         }
                     }
 
@@ -151,42 +154,45 @@ pub fn MainLayout() -> Element {
                                         move |_| {
                                             view_state.set(ViewState::ProjectDetail(proj_id.clone()));
                                         }
-                                    }
+                                    },
                                 }
                             }
 
                             NavItem {
                                 icon: "📂",
                                 label: "All Projects",
-                                active: matches!(*view_state.read(), ViewState::ProjectList) && matches!(*project_filter.read(), ProjectFilter::All),
+                                active: matches!(*view_state.read(), ViewState::ProjectList)
+                                    && matches!(*project_filter.read(), ProjectFilter::All),
                                 on_click: move |_| {
                                     project_filter.set(ProjectFilter::All);
                                     selected_project.set(None);
                                     selected_model.set(None);
                                     view_state.set(ViewState::ProjectList);
-                                }
+                                },
                             }
                             NavItem {
                                 icon: "▶️",
                                 label: "Active",
-                                active: matches!(*view_state.read(), ViewState::ProjectList) && matches!(*project_filter.read(), ProjectFilter::Active),
+                                active: matches!(*view_state.read(), ViewState::ProjectList)
+                                    && matches!(*project_filter.read(), ProjectFilter::Active),
                                 on_click: move |_| {
                                     project_filter.set(ProjectFilter::Active);
                                     selected_project.set(None);
                                     selected_model.set(None);
                                     view_state.set(ViewState::ProjectList);
-                                }
+                                },
                             }
                             NavItem {
                                 icon: "📦",
                                 label: "Archived",
-                                active: matches!(*view_state.read(), ViewState::ProjectList) && matches!(*project_filter.read(), ProjectFilter::Archived),
+                                active: matches!(*view_state.read(), ViewState::ProjectList)
+                                    && matches!(*project_filter.read(), ProjectFilter::Archived),
                                 on_click: move |_| {
                                     project_filter.set(ProjectFilter::Archived);
                                     selected_project.set(None);
                                     selected_model.set(None);
                                     view_state.set(ViewState::ProjectList);
-                                }
+                                },
                             }
                         }
                     }
@@ -197,32 +203,35 @@ pub fn MainLayout() -> Element {
                             NavItem {
                                 icon: "🧊",
                                 label: "All Models",
-                                active: matches!(*view_state.read(), ViewState::ModelList) && matches!(*model_filter.read(), ModelFilter::All),
+                                active: matches!(*view_state.read(), ViewState::ModelList)
+                                    && matches!(*model_filter.read(), ModelFilter::All),
                                 on_click: move |_| {
                                     model_filter.set(ModelFilter::All);
                                     selected_model.set(None);
                                     view_state.set(ViewState::ModelList);
-                                }
+                                },
                             }
                             NavItem {
                                 icon: "📐",
                                 label: "Types",
-                                active: matches!(*view_state.read(), ViewState::ModelList) && matches!(*model_filter.read(), ModelFilter::Types),
+                                active: matches!(*view_state.read(), ViewState::ModelList)
+                                    && matches!(*model_filter.read(), ModelFilter::Types),
                                 on_click: move |_| {
                                     model_filter.set(ModelFilter::Types);
                                     selected_model.set(None);
                                     view_state.set(ViewState::ModelList);
-                                }
+                                },
                             }
                             NavItem {
                                 icon: "⚡",
                                 label: "Functions",
-                                active: matches!(*view_state.read(), ViewState::ModelList) && matches!(*model_filter.read(), ModelFilter::Functions),
+                                active: matches!(*view_state.read(), ViewState::ModelList)
+                                    && matches!(*model_filter.read(), ModelFilter::Functions),
                                 on_click: move |_| {
                                     model_filter.set(ModelFilter::Functions);
                                     selected_model.set(None);
                                     view_state.set(ViewState::ModelList);
-                                }
+                                },
                             }
                         }
                     }
@@ -235,8 +244,8 @@ pub fn MainLayout() -> Element {
                     ViewState::WorkspaceList => rsx! {
                         Toolbar {
                             title: "Workspaces".to_string(),
-                            subtitle: None,
-                            on_config: move |_| {}
+                            breadcrumbs: vec![BreadcrumbItem::current("Workspaces")],
+                            on_config: move |_| {},
                         }
                         div { class: "content-body",
                             for workspace in filtered_workspaces {
@@ -249,7 +258,7 @@ pub fn MainLayout() -> Element {
                                             selected_workspace.set(Some(ws.clone()));
                                             view_state.set(ViewState::WorkspaceDetail(ws.id.clone()));
                                         }
-                                    }
+                                    },
                                 }
                             }
                         }
@@ -260,13 +269,16 @@ pub fn MainLayout() -> Element {
                             rsx! {
                                 Toolbar {
                                     title: ws.name.clone(),
-                                    subtitle: Some("Workspace".to_string()),
+
+                                    // TODO: Actually save the config
+                                    breadcrumbs: vec![BreadcrumbItem::current(&ws.name)],
                                     on_config: {
                                         let ws_id = ws_id.clone();
                                         move |_| {
-                                            view_state.set(ViewState::Settings(SettingsContext::Workspace(ws_id.clone())));
+                                            view_state
+                                                .set(ViewState::Settings(SettingsContext::Workspace(ws_id.clone())));
                                         }
-                                    }
+                                    },
                                 }
                                 div { class: "content-body",
                                     WorkspaceDetailView {
@@ -282,23 +294,29 @@ pub fn MainLayout() -> Element {
                                         on_configure: {
                                             let ws_id = ws_id.clone();
                                             move |_| {
-                                                view_state.set(ViewState::Settings(SettingsContext::Workspace(ws_id.clone())));
+                                                view_state
+                                                    .set(ViewState::Settings(SettingsContext::Workspace(ws_id.clone())));
                                             }
-                                        }
+                                        },
                                     }
                                 }
                             }
                         } else {
-                            rsx! { div { "Workspace not found" } }
+                            rsx! {
+                                div { "Workspace not found" }
+                            }
                         }
-                    },
-
+                    }
                     ViewState::ProjectList => {
-                        let ws_name = selected_workspace.read().as_ref().map(|w| w.name.clone()).unwrap_or_default();
+                        let ws_name = selected_workspace
+                            .read()
+                            .as_ref()
+                            .map(|w| w.name.clone())
+                            .unwrap_or_default();
                         rsx! {
                             Toolbar {
                                 title: "Projects".to_string(),
-                                subtitle: Some(ws_name),
+                                breadcrumbs: vec![BreadcrumbItem::current(&ws_name), BreadcrumbItem::current("Projects")],
                                 on_config: {
                                     let ws_id = selected_workspace.read().as_ref().map(|w| w.id.clone());
                                     move |_| {
@@ -306,7 +324,7 @@ pub fn MainLayout() -> Element {
                                             view_state.set(ViewState::Settings(SettingsContext::Workspace(id)));
                                         }
                                     }
-                                }
+                                },
                             }
                             div { class: "content-body",
                                 for project in projects.clone() {
@@ -319,26 +337,35 @@ pub fn MainLayout() -> Element {
                                                 selected_project.set(Some(proj.clone()));
                                                 view_state.set(ViewState::ProjectDetail(proj.id.clone()));
                                             }
-                                        }
+                                        },
                                     }
                                 }
                             }
                         }
-                    },
-
+                    }
                     ViewState::ProjectDetail(proj_id) => {
                         let proj = projects.iter().find(|p| p.id == proj_id).cloned();
+                        let ws_name = selected_workspace
+                            .read()
+                            .as_ref()
+                            .map(|w| w.name.clone())
+                            .unwrap_or_default();
                         if let Some(proj) = proj {
                             rsx! {
                                 Toolbar {
                                     title: proj.name.clone(),
-                                    subtitle: Some("Project".to_string()),
+                                    breadcrumbs: vec![
+                                        BreadcrumbItem::current(&ws_name),
+                                        BreadcrumbItem::current("Projects"),
+                                        BreadcrumbItem::current(&proj.name),
+                                    ],
                                     on_config: {
                                         let proj_id = proj_id.clone();
                                         move |_| {
-                                            view_state.set(ViewState::Settings(SettingsContext::Project(proj_id.clone())));
+                                            view_state
+                                                .set(ViewState::Settings(SettingsContext::Project(proj_id.clone())));
                                         }
-                                    }
+                                    },
                                 }
                                 div { class: "content-body",
                                     ProjectDetailView {
@@ -354,23 +381,39 @@ pub fn MainLayout() -> Element {
                                         on_configure: {
                                             let proj_id = proj_id.clone();
                                             move |_| {
-                                                view_state.set(ViewState::Settings(SettingsContext::Project(proj_id.clone())));
+                                                view_state
+                                                    .set(ViewState::Settings(SettingsContext::Project(proj_id.clone())));
                                             }
-                                        }
+                                        },
                                     }
                                 }
                             }
                         } else {
-                            rsx! { div { "Project not found" } }
+                            rsx! {
+                                div { "Project not found" }
+                            }
                         }
-                    },
-
+                    }
                     ViewState::ModelList => {
-                        let proj_name = selected_project.read().as_ref().map(|p| p.name.clone()).unwrap_or_default();
+                        let ws_name = selected_workspace
+                            .read()
+                            .as_ref()
+                            .map(|w| w.name.clone())
+                            .unwrap_or_default();
+                        let proj_name = selected_project
+                            .read()
+                            .as_ref()
+                            .map(|p| p.name.clone())
+                            .unwrap_or_default();
                         rsx! {
                             Toolbar {
                                 title: "Models".to_string(),
-                                subtitle: Some(proj_name),
+                                breadcrumbs: vec![
+                                    BreadcrumbItem::current(&ws_name),
+                                    BreadcrumbItem::current("Projects"),
+                                    BreadcrumbItem::current(&proj_name),
+                                    BreadcrumbItem::current("Models"),
+                                ],
                                 on_config: {
                                     let proj_id = selected_project.read().as_ref().map(|p| p.id.clone());
                                     move |_| {
@@ -378,7 +421,7 @@ pub fn MainLayout() -> Element {
                                             view_state.set(ViewState::Settings(SettingsContext::Project(id)));
                                         }
                                     }
-                                }
+                                },
                             }
                             div { class: "content-body",
                                 for model in models.clone() {
@@ -391,33 +434,47 @@ pub fn MainLayout() -> Element {
                                                 selected_model.set(Some(m.clone()));
                                                 view_state.set(ViewState::ModelDetail(m.id.clone()));
                                             }
-                                        }
+                                        },
                                     }
                                 }
                             }
                         }
-                    },
-
+                    }
                     ViewState::ModelDetail(model_id) => {
+                        let ws_name = selected_workspace
+                            .read()
+                            .as_ref()
+                            .map(|w| w.name.clone())
+                            .unwrap_or_default();
+                        let proj_name = selected_project
+                            .read()
+                            .as_ref()
+                            .map(|p| p.name.clone())
+                            .unwrap_or_default();
                         let model = models.iter().find(|m| m.id == model_id).cloned();
                         if let Some(model) = model {
                             rsx! {
                                 Toolbar {
                                     title: model.name.clone(),
-                                    subtitle: Some("Model".to_string()),
-                                    on_config: move |_| {}
+                                    breadcrumbs: vec![
+                                        BreadcrumbItem::current(&ws_name),
+                                        BreadcrumbItem::current("Projects"),
+                                        BreadcrumbItem::current(&proj_name),
+                                        BreadcrumbItem::current("Models"),
+                                        BreadcrumbItem::current(&model.name),
+                                    ],
+                                    on_config: move |_| {},
                                 }
                                 div { class: "content-body",
-                                    ModelDetailView {
-                                        model: model.clone()
-                                    }
+                                    ModelDetailView { model: model.clone() }
                                 }
                             }
                         } else {
-                            rsx! { div { "Model not found" } }
+                            rsx! {
+                                div { "Model not found" }
+                            }
                         }
-                    },
-
+                    }
                     ViewState::Settings(context) => {
                         let prev_view = match &context {
                             SettingsContext::Workspace(id) => ViewState::WorkspaceDetail(id.clone()),
@@ -435,13 +492,12 @@ pub fn MainLayout() -> Element {
                                 on_save: {
                                     let prev_view = prev_view.clone();
                                     move |_config: MorphirConfig| {
-                                        // TODO: Actually save the config
                                         view_state.set(prev_view.clone());
                                     }
-                                }
+                                },
                             }
                         }
-                    },
+                    }
                 }
             }
         }

@@ -155,6 +155,39 @@ body {
     font-weight: 400;
 }
 
+/* Breadcrumb Navigation */
+.toolbar-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8125rem;
+    color: #8b8798;
+    margin-left: 0.75rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid #3d3a4d;
+}
+
+.breadcrumb-separator {
+    color: #6b6879;
+    margin: 0 0.25rem;
+}
+
+.breadcrumb-link {
+    color: #8b8798;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.breadcrumb-link:hover {
+    color: #60a5fa;
+    text-decoration: underline;
+}
+
+.breadcrumb-current {
+    color: #d1d0d5;
+    font-weight: 500;
+}
+
 .toolbar-actions {
     display: flex;
     align-items: center;

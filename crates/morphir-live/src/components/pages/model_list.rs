@@ -3,8 +3,8 @@
 use dioxus::prelude::*;
 
 use crate::components::cards::ModelCard;
-use crate::components::toolbar::Toolbar;
-use crate::data::{sample_models, sample_projects};
+use crate::components::toolbar::{BreadcrumbItem, Toolbar};
+use crate::data::{sample_models, sample_projects, sample_workspaces};
 use crate::models::{Model, ModelFilter, ModelType};
 use crate::Route;
 
@@ -12,6 +12,13 @@ use crate::Route;
 pub fn ModelList(workspace_id: String, project_id: String) -> Element {
     let nav = navigator();
     let model_filter = use_signal(ModelFilter::default);
+
+    let all_workspaces = sample_workspaces();
+    let workspace = all_workspaces
+        .iter()
+        .find(|w| w.id == workspace_id)
+        .cloned();
+    let ws_name = workspace.as_ref().map(|w| w.name.clone()).unwrap_or_default();
 
     let projects = sample_projects(&workspace_id);
     let project = projects.iter().find(|p| p.id == project_id).cloned();
@@ -29,10 +36,29 @@ pub fn ModelList(workspace_id: String, project_id: String) -> Element {
     let ws_id = workspace_id.clone();
     let proj_id = project_id.clone();
 
+    let breadcrumbs = vec![
+        BreadcrumbItem::new("Workspaces", Route::Home {}),
+        BreadcrumbItem::new(&ws_name, Route::WorkspaceDetail { id: ws_id.clone() }),
+        BreadcrumbItem::new(
+            "Projects",
+            Route::ProjectList {
+                workspace_id: ws_id.clone(),
+            },
+        ),
+        BreadcrumbItem::new(
+            &proj_name,
+            Route::ProjectDetail {
+                workspace_id: ws_id.clone(),
+                id: proj_id.clone(),
+            },
+        ),
+        BreadcrumbItem::current("Models"),
+    ];
+
     rsx! {
         Toolbar {
             title: "Models".to_string(),
-            subtitle: Some(proj_name),
+            breadcrumbs,
             on_config: {
                 let ws_id = ws_id.clone();
                 let proj_id = proj_id.clone();
@@ -44,16 +70,18 @@ pub fn ModelList(workspace_id: String, project_id: String) -> Element {
                 }
             },
             show_back: true,
-            on_back: Some(EventHandler::new({
-                let ws_id = ws_id.clone();
-                let proj_id = proj_id.clone();
-                move |_| {
-                    nav.push(Route::ProjectDetail {
-                        workspace_id: ws_id.clone(),
-                        id: proj_id.clone(),
-                    });
-                }
-            }))
+            on_back: Some(
+                EventHandler::new({
+                    let ws_id = ws_id.clone();
+                    let proj_id = proj_id.clone();
+                    move |_| {
+                        nav.push(Route::ProjectDetail {
+                            workspace_id: ws_id.clone(),
+                            id: proj_id.clone(),
+                        });
+                    }
+                }),
+            ),
         }
         div { class: "content-body",
             for model in models {
@@ -71,7 +99,7 @@ pub fn ModelList(workspace_id: String, project_id: String) -> Element {
                                 id: model_id.clone(),
                             });
                         }
-                    }
+                    },
                 }
             }
         }

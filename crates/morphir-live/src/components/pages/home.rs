@@ -3,7 +3,7 @@
 use dioxus::prelude::*;
 
 use crate::components::cards::WorkspaceCard;
-use crate::components::toolbar::Toolbar;
+use crate::components::toolbar::{BreadcrumbItem, Toolbar};
 use crate::data::sample_workspaces;
 use crate::models::{Workspace, WorkspaceFilter};
 use crate::Route;
@@ -24,13 +24,15 @@ pub fn Home() -> Element {
         })
         .collect();
 
+    let breadcrumbs = vec![BreadcrumbItem::current("Workspaces")];
+
     rsx! {
         Toolbar {
             title: "Workspaces".to_string(),
-            subtitle: None,
+            breadcrumbs,
             on_config: move |_| {},
             show_back: false,
-            on_back: None
+            on_back: None,
         }
         div { class: "content-body",
             for workspace in filtered_workspaces {
@@ -40,9 +42,11 @@ pub fn Home() -> Element {
                     on_open: {
                         let ws_id = workspace.id.clone();
                         move |_: Workspace| {
-                            nav.push(Route::WorkspaceDetail { id: ws_id.clone() });
+                            nav.push(Route::WorkspaceDetail {
+                                id: ws_id.clone(),
+                            });
                         }
-                    }
+                    },
                 }
             }
         }

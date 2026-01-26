@@ -3,13 +3,20 @@
 use dioxus::prelude::*;
 
 use crate::components::detail_views::ProjectDetailView;
-use crate::components::toolbar::Toolbar;
-use crate::data::sample_projects;
+use crate::components::toolbar::{BreadcrumbItem, Toolbar};
+use crate::data::{sample_projects, sample_workspaces};
 use crate::Route;
 
 #[component]
 pub fn ProjectDetail(workspace_id: String, id: String) -> Element {
     let nav = navigator();
+
+    let all_workspaces = sample_workspaces();
+    let workspace = all_workspaces
+        .iter()
+        .find(|w| w.id == workspace_id)
+        .cloned();
+    let ws_name = workspace.as_ref().map(|w| w.name.clone()).unwrap_or_default();
 
     let projects = sample_projects(&workspace_id);
     let project = projects.iter().find(|p| p.id == id).cloned();
@@ -19,10 +26,22 @@ pub fn ProjectDetail(workspace_id: String, id: String) -> Element {
         let proj_id = proj.id.clone();
         let ws_id = workspace_id.clone();
 
+        let breadcrumbs = vec![
+            BreadcrumbItem::new("Workspaces", Route::Home {}),
+            BreadcrumbItem::new(&ws_name, Route::WorkspaceDetail { id: ws_id.clone() }),
+            BreadcrumbItem::new(
+                "Projects",
+                Route::ProjectList {
+                    workspace_id: ws_id.clone(),
+                },
+            ),
+            BreadcrumbItem::current(&proj_name),
+        ];
+
         rsx! {
             Toolbar {
                 title: proj_name,
-                subtitle: Some("Project".to_string()),
+                breadcrumbs,
                 on_config: {
                     let ws_id = ws_id.clone();
                     let proj_id = proj_id.clone();
@@ -34,12 +53,16 @@ pub fn ProjectDetail(workspace_id: String, id: String) -> Element {
                     }
                 },
                 show_back: true,
-                on_back: Some(EventHandler::new({
-                    let ws_id = ws_id.clone();
-                    move |_| {
-                        nav.push(Route::ProjectList { workspace_id: ws_id.clone() });
-                    }
-                }))
+                on_back: Some(
+                    EventHandler::new({
+                        let ws_id = ws_id.clone();
+                        move |_| {
+                            nav.push(Route::ProjectList {
+                                workspace_id: ws_id.clone(),
+                            });
+                        }
+                    }),
+                ),
             }
             div { class: "content-body",
                 ProjectDetailView {
@@ -63,7 +86,7 @@ pub fn ProjectDetail(workspace_id: String, id: String) -> Element {
                                 id: proj_id.clone(),
                             });
                         }
-                    }
+                    },
                 }
             }
         }
