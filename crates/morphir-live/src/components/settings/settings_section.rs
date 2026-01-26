@@ -22,7 +22,11 @@ pub fn SettingsSection(
                 },
 
                 span { class: "settings-section-expand",
-                    if *expanded.read() { "▼" } else { "▶" }
+                    if *expanded.read() {
+                        "▼"
+                    } else {
+                        "▶"
+                    }
                 }
                 span { class: "settings-section-icon", "{icon}" }
                 div { class: "settings-section-title-group",
@@ -33,9 +37,7 @@ pub fn SettingsSection(
                 }
             }
             if *expanded.read() {
-                div { class: "settings-section-body",
-                    {children}
-                }
+                div { class: "settings-section-body", {children} }
             }
         }
     }

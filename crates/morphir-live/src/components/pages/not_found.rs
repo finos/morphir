@@ -17,7 +17,9 @@ pub fn NotFound(route: Vec<String>) -> Element {
                 p { class: "not-found-path", "Path: /{route.join(\"/\")}" }
                 button {
                     class: "btn btn-primary",
-                    onclick: move |_| { nav.push(Route::Home {}); },
+                    onclick: move |_| {
+                        nav.push(Route::Home {});
+                    },
                     "Go Home"
                 }
             }

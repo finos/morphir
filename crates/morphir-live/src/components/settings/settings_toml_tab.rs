@@ -16,10 +16,7 @@ pub fn SettingsTomlTab(content: String, on_change: EventHandler<String>) -> Elem
                 span { class: "toml-editor-hint", "Edit configuration directly in TOML format" }
             }
             div { class: "toml-editor-wrapper",
-                TomlEditor {
-                    content: content,
-                    on_change: on_change,
-                }
+                TomlEditor { content, on_change }
             }
         }
     }

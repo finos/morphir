@@ -7,9 +7,7 @@ use dioxus::prelude::*;
 #[component]
 pub fn SelectedItem(icon: String, name: String, on_click: EventHandler<()>) -> Element {
     rsx! {
-        div {
-            class: "selected-item",
-            onclick: move |_| on_click.call(()),
+        div { class: "selected-item", onclick: move |_| on_click.call(()),
 
             span { class: "selected-item-indicator", "▸" }
             span { class: "selected-item-icon", "{icon}" }

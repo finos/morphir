@@ -68,9 +68,11 @@ pub fn AppLayout() -> Element {
                                 on_click: {
                                     let ws_id = ws.id.clone();
                                     move |_| {
-                                        nav.push(Route::WorkspaceDetail { id: ws_id.clone() });
+                                        nav.push(Route::WorkspaceDetail {
+                                            id: ws_id.clone(),
+                                        });
                                     }
-                                }
+                                },
                             }
                         }
 
@@ -80,7 +82,7 @@ pub fn AppLayout() -> Element {
                             active: matches!(route, Route::Home {}),
                             on_click: move |_| {
                                 nav.push(Route::Home {});
-                            }
+                            },
                         }
                     }
 
@@ -101,7 +103,7 @@ pub fn AppLayout() -> Element {
                                                 id: proj_id.clone(),
                                             });
                                         }
-                                    }
+                                    },
                                 }
                             }
 
@@ -112,9 +114,11 @@ pub fn AppLayout() -> Element {
                                 on_click: {
                                     let ws_id = current_workspace_id.clone().unwrap_or_default();
                                     move |_| {
-                                        nav.push(Route::ProjectList { workspace_id: ws_id.clone() });
+                                        nav.push(Route::ProjectList {
+                                            workspace_id: ws_id.clone(),
+                                        });
                                     }
-                                }
+                                },
                             }
                         }
                     }
@@ -135,7 +139,7 @@ pub fn AppLayout() -> Element {
                                             project_id: proj_id.clone(),
                                         });
                                     }
-                                }
+                                },
                             }
                         }
                     }

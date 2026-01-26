@@ -17,16 +17,20 @@ pub fn WorkspaceSettings(id: String) -> Element {
             on_close: {
                 let ws_id = ws_id.clone();
                 move |_| {
-                    nav.push(Route::WorkspaceDetail { id: ws_id.clone() });
+                    nav.push(Route::WorkspaceDetail {
+                        id: ws_id.clone(),
+                    });
                 }
             },
             on_save: {
                 let ws_id = ws_id.clone();
                 move |_config: MorphirConfig| {
                     // TODO: Actually save the config
-                    nav.push(Route::WorkspaceDetail { id: ws_id.clone() });
+                    nav.push(Route::WorkspaceDetail {
+                        id: ws_id.clone(),
+                    });
                 }
-            }
+            },
         }
     }
 }

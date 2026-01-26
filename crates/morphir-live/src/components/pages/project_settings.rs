@@ -35,7 +35,7 @@ pub fn ProjectSettings(workspace_id: String, id: String) -> Element {
                         id: proj_id.clone(),
                     });
                 }
-            }
+            },
         }
     }
 }

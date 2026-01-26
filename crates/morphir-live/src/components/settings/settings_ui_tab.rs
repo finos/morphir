@@ -31,7 +31,7 @@ pub fn SettingsUITab(config: MorphirConfig, on_change: EventHandler<MorphirConfi
                             new_config.project = project;
                             on_change.call(new_config);
                         }
-                    }
+                    },
                 }
             }
 
@@ -50,7 +50,7 @@ pub fn SettingsUITab(config: MorphirConfig, on_change: EventHandler<MorphirConfi
                             new_config.workspace = workspace;
                             on_change.call(new_config);
                         }
-                    }
+                    },
                 }
             }
 
@@ -69,7 +69,7 @@ pub fn SettingsUITab(config: MorphirConfig, on_change: EventHandler<MorphirConfi
                             new_config.codegen = codegen;
                             on_change.call(new_config);
                         }
-                    }
+                    },
                 }
             }
 
@@ -88,7 +88,7 @@ pub fn SettingsUITab(config: MorphirConfig, on_change: EventHandler<MorphirConfi
                             new_config.ir = ir;
                             on_change.call(new_config);
                         }
-                    }
+                    },
                 }
             }
 
@@ -107,7 +107,7 @@ pub fn SettingsUITab(config: MorphirConfig, on_change: EventHandler<MorphirConfi
                             new_config.cache = cache;
                             on_change.call(new_config);
                         }
-                    }
+                    },
                 }
             }
 
@@ -126,7 +126,7 @@ pub fn SettingsUITab(config: MorphirConfig, on_change: EventHandler<MorphirConfi
                             new_config.logging = logging;
                             on_change.call(new_config);
                         }
-                    }
+                    },
                 }
             }
 
@@ -145,7 +145,7 @@ pub fn SettingsUITab(config: MorphirConfig, on_change: EventHandler<MorphirConfi
                             new_config.ui = ui;
                             on_change.call(new_config);
                         }
-                    }
+                    },
                 }
             }
         }
@@ -168,7 +168,7 @@ fn ProjectSettingsFields(config: ProjectConfig, on_change: EventHandler<ProjectC
                     new_config.name = name;
                     on_change.call(new_config);
                 }
-            }
+            },
         }
         SettingsTextInput {
             label: "Version",
@@ -181,7 +181,7 @@ fn ProjectSettingsFields(config: ProjectConfig, on_change: EventHandler<ProjectC
                     new_config.version = version;
                     on_change.call(new_config);
                 }
-            }
+            },
         }
         SettingsTextInput {
             label: "Source Directory",
@@ -194,7 +194,7 @@ fn ProjectSettingsFields(config: ProjectConfig, on_change: EventHandler<ProjectC
                     new_config.source_directory = source_directory;
                     on_change.call(new_config);
                 }
-            }
+            },
         }
         SettingsTagInput {
             label: "Exposed Modules",
@@ -207,7 +207,7 @@ fn ProjectSettingsFields(config: ProjectConfig, on_change: EventHandler<ProjectC
                     new_config.exposed_modules = exposed_modules;
                     on_change.call(new_config);
                 }
-            }
+            },
         }
     }
 }
@@ -229,7 +229,7 @@ fn WorkspaceSettingsFields(
                     new_config.root = root;
                     on_change.call(new_config);
                 }
-            }
+            },
         }
         SettingsTextInput {
             label: "Output Directory",
@@ -242,7 +242,7 @@ fn WorkspaceSettingsFields(
                     new_config.output_dir = output_dir;
                     on_change.call(new_config);
                 }
-            }
+            },
         }
         SettingsTagInput {
             label: "Members",
@@ -255,7 +255,7 @@ fn WorkspaceSettingsFields(
                     new_config.members = members;
                     on_change.call(new_config);
                 }
-            }
+            },
         }
         SettingsTagInput {
             label: "Exclude",
@@ -268,7 +268,7 @@ fn WorkspaceSettingsFields(
                     new_config.exclude = exclude;
                     on_change.call(new_config);
                 }
-            }
+            },
         }
     }
 }
@@ -293,7 +293,7 @@ fn CodegenSettingsFields(config: CodegenConfig, on_change: EventHandler<CodegenC
                     new_config.targets = targets;
                     on_change.call(new_config);
                 }
-            }
+            },
         }
         SettingsSelect {
             label: "Output Format",
@@ -314,7 +314,7 @@ fn CodegenSettingsFields(config: CodegenConfig, on_change: EventHandler<CodegenC
                     };
                     on_change.call(new_config);
                 }
-            }
+            },
         }
     }
 }
@@ -334,7 +334,7 @@ fn IrSettingsFields(config: IrConfig, on_change: EventHandler<IrConfig>) -> Elem
                     new_config.format_version = version as u32;
                     on_change.call(new_config);
                 }
-            }
+            },
         }
         SettingsToggle {
             label: "Strict Mode",
@@ -347,7 +347,7 @@ fn IrSettingsFields(config: IrConfig, on_change: EventHandler<IrConfig>) -> Elem
                     new_config.strict_mode = strict_mode;
                     on_change.call(new_config);
                 }
-            }
+            },
         }
     }
 }
@@ -366,7 +366,7 @@ fn CacheSettingsFields(config: CacheConfig, on_change: EventHandler<CacheConfig>
                     new_config.enabled = enabled;
                     on_change.call(new_config);
                 }
-            }
+            },
         }
         SettingsTextInput {
             label: "Directory",
@@ -379,7 +379,7 @@ fn CacheSettingsFields(config: CacheConfig, on_change: EventHandler<CacheConfig>
                     new_config.dir = dir;
                     on_change.call(new_config);
                 }
-            }
+            },
         }
         SettingsNumberInput {
             label: "Max Size (bytes)",
@@ -393,7 +393,7 @@ fn CacheSettingsFields(config: CacheConfig, on_change: EventHandler<CacheConfig>
                     new_config.max_size = max_size;
                     on_change.call(new_config);
                 }
-            }
+            },
         }
     }
 }
@@ -434,7 +434,7 @@ fn LoggingSettingsFields(config: LoggingConfig, on_change: EventHandler<LoggingC
                     };
                     on_change.call(new_config);
                 }
-            }
+            },
         }
         SettingsSelect {
             label: "Format",
@@ -453,7 +453,7 @@ fn LoggingSettingsFields(config: LoggingConfig, on_change: EventHandler<LoggingC
                     };
                     on_change.call(new_config);
                 }
-            }
+            },
         }
         SettingsTextInput {
             label: "Log File",
@@ -466,7 +466,7 @@ fn LoggingSettingsFields(config: LoggingConfig, on_change: EventHandler<LoggingC
                     new_config.file = file;
                     on_change.call(new_config);
                 }
-            }
+            },
         }
     }
 }
@@ -491,7 +491,7 @@ fn UiSettingsFields(config: UiConfig, on_change: EventHandler<UiConfig>) -> Elem
                     new_config.color = color;
                     on_change.call(new_config);
                 }
-            }
+            },
         }
         SettingsToggle {
             label: "Interactive Mode",
@@ -504,7 +504,7 @@ fn UiSettingsFields(config: UiConfig, on_change: EventHandler<UiConfig>) -> Elem
                     new_config.interactive = interactive;
                     on_change.call(new_config);
                 }
-            }
+            },
         }
         SettingsSelect {
             label: "Theme",
@@ -525,7 +525,7 @@ fn UiSettingsFields(config: UiConfig, on_change: EventHandler<UiConfig>) -> Elem
                     };
                     on_change.call(new_config);
                 }
-            }
+            },
         }
     }
 }

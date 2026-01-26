@@ -106,14 +106,10 @@ pub fn TomlEditor(content: String, on_change: EventHandler<String>) -> Element {
     });
 
     rsx! {
-        div {
-            id: "{container_id}",
-            class: "monaco-editor-container",
+        div { id: "{container_id}", class: "monaco-editor-container",
             // Show loading state while Monaco is initializing
             if !monaco_ready {
-                div { class: "monaco-loading",
-                    "Loading editor..."
-                }
+                div { class: "monaco-loading", "Loading editor..." }
             }
         }
     }

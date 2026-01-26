@@ -15,8 +15,9 @@ pub fn TomlEditor(content: String, on_change: EventHandler<String>) -> Element {
     rsx! {
         div { class: "toml-overlay-editor",
             // Line numbers gutter
-            div { class: "toml-line-numbers",
-                dangerous_inner_html: "{generate_line_numbers(&local_content.read())}"
+            div {
+                class: "toml-line-numbers",
+                dangerous_inner_html: "{generate_line_numbers(&local_content.read())}",
             }
 
             // Editor area with overlay
@@ -24,7 +25,7 @@ pub fn TomlEditor(content: String, on_change: EventHandler<String>) -> Element {
                 // Highlighted code layer (behind)
                 pre {
                     class: "toml-highlight-layer",
-                    dangerous_inner_html: "{highlighted_html}"
+                    dangerous_inner_html: "{highlighted_html}",
                 }
 
                 // Transparent textarea (on top for input)
@@ -36,7 +37,7 @@ pub fn TomlEditor(content: String, on_change: EventHandler<String>) -> Element {
                         let new_value = e.value();
                         local_content.set(new_value.clone());
                         on_change.call(new_value);
-                    }
+                    },
                 }
             }
         }

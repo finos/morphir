@@ -83,34 +83,24 @@ pub fn SettingsView(
                         onclick: move |_| on_close.call(()),
                         "Cancel"
                     }
-                    button {
-                        class: "btn-primary",
-                        onclick: handle_save,
-                        "Save"
-                    }
+                    button { class: "btn-primary", onclick: handle_save, "Save" }
                 }
             }
 
             // Tab bar
             SettingsTabBar {
                 active_tab: active_tab.read().clone(),
-                on_tab_change: move |tab| active_tab.set(tab)
+                on_tab_change: move |tab| active_tab.set(tab),
             }
 
             // Tab content
             div { class: "settings-content",
                 match *active_tab.read() {
                     SettingsTab::UI => rsx! {
-                        SettingsUITab {
-                            config: config.read().clone(),
-                            on_change: handle_config_change
-                        }
+                        SettingsUITab { config: config.read().clone(), on_change: handle_config_change }
                     },
                     SettingsTab::Toml => rsx! {
-                        SettingsTomlTab {
-                            content: toml_content.read().clone(),
-                            on_change: handle_toml_change
-                        }
+                        SettingsTomlTab { content: toml_content.read().clone(), on_change: handle_toml_change }
                     },
                 }
             }

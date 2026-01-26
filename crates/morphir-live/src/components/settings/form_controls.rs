@@ -18,7 +18,7 @@ pub fn SettingsTextInput(
                 r#type: "text",
                 value: "{value}",
                 placeholder: placeholder.unwrap_or_default(),
-                oninput: move |e| on_change.call(e.value())
+                oninput: move |e| on_change.call(e.value()),
             }
         }
     }
@@ -42,7 +42,7 @@ pub fn SettingsTextArea(
                 rows: rows as i64,
                 value: "{value}",
                 placeholder: placeholder.unwrap_or_default(),
-                oninput: move |e| on_change.call(e.value())
+                oninput: move |e| on_change.call(e.value()),
             }
         }
     }
@@ -67,8 +67,8 @@ pub fn SettingsToggle(
             label { class: "settings-toggle",
                 input {
                     r#type: "checkbox",
-                    checked: checked,
-                    onchange: move |e| on_change.call(e.checked())
+                    checked,
+                    onchange: move |e| on_change.call(e.checked()),
                 }
                 span { class: "settings-toggle-slider" }
             }
@@ -91,12 +91,8 @@ pub fn SettingsSelect(
                 class: "settings-select",
                 value: "{value}",
                 onchange: move |e| on_change.call(e.value()),
-                for (val, display) in options {
-                    option {
-                        value: "{val}",
-                        selected: val == value,
-                        "{display}"
-                    }
+                for (val , display) in options {
+                    option { value: "{val}", selected: val == value, "{display}" }
                 }
             }
         }
@@ -125,7 +121,7 @@ pub fn SettingsNumberInput(
                     if let Ok(num) = e.value().parse::<u64>() {
                         on_change.call(num);
                     }
-                }
+                },
             }
         }
     }
@@ -157,10 +153,8 @@ pub fn SettingsTagInput(
             label { class: "settings-label", "{label}" }
             div { class: "settings-tag-input-container",
                 div { class: "settings-tags",
-                    for (idx, tag) in tags.iter().enumerate() {
-                        span {
-                            key: "{idx}",
-                            class: "settings-tag",
+                    for (idx , tag) in tags.iter().enumerate() {
+                        span { key: "{idx}", class: "settings-tag",
                             "{tag}"
                             button {
                                 class: "settings-tag-remove",
@@ -195,7 +189,7 @@ pub fn SettingsTagInput(
                                     input_value.set(String::new());
                                 }
                             }
-                        }
+                        },
                     }
                     button {
                         class: "btn-secondary settings-tag-add",

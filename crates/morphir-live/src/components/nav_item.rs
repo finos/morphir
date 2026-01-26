@@ -11,9 +11,7 @@ pub fn NavItem(icon: String, label: String, active: bool, on_click: EventHandler
     };
 
     rsx! {
-        div {
-            class: "{class_name}",
-            onclick: move |_| on_click.call(()),
+        div { class: "{class_name}", onclick: move |_| on_click.call(()),
             span { class: "nav-icon", "{icon}" }
             span { class: "nav-label", "{label}" }
         }

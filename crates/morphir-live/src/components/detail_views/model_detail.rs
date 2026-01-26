@@ -58,12 +58,8 @@ pub fn ModelDetailView(model: Model) -> Element {
                     pre { class: "code-block",
                         code {
                             match model.model_type {
-                                ModelType::TypeDefinition => rsx! {
-                                    "type {model.name} = \n    {{ -- Type definition here }}"
-                                },
-                                ModelType::Function => rsx! {
-                                    "{model.name} : Input -> Output\n{model.name} input =\n    -- Function body here"
-                                },
+                                ModelType::TypeDefinition => rsx! { "type {model.name} = \n    {{ -- Type definition here }}" },
+                                ModelType::Function => rsx! { "{model.name} : Input -> Output\n{model.name} input =\n    -- Function body here" },
                             }
                         }
                     }
