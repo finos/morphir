@@ -14,6 +14,8 @@ github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuP
 github.com/aymerick/douceur v0.2.0/go.mod h1:wlT5vV2O3h55X9m7iVYN0TBM0NH/MmbLnd30/FjWUq4=
 github.com/bmatcuk/doublestar/v4 v4.9.2 h1:b0mc6WyRSYLjzofB2v/0cuDUZ+MqoGyH3r0dVij35GI=
 github.com/bmatcuk/doublestar/v4 v4.9.2/go.mod h1:xBQ8jztBU6kakFMg+8WGxn0c6z1fTSPVIjEY1Wr7jzc=
+github.com/bmatcuk/doublestar/v4 v4.10.0 h1:zU9WiOla1YA122oLM6i4EXvGW62DvKZVxIe6TYWexEs=
+github.com/bmatcuk/doublestar/v4 v4.10.0/go.mod h1:xBQ8jztBU6kakFMg+8WGxn0c6z1fTSPVIjEY1Wr7jzc=
 github.com/charmbracelet/colorprofile v0.3.1 h1:k8dTHMd7fgw4bnFd7jXTLZrSU/CQrKnL3m+AxCzDz40=
 github.com/charmbracelet/colorprofile v0.3.1/go.mod h1:/GkGusxNs8VB/RSOh3fu0TJmQ4ICMMPApIIVn0KszZ0=
 github.com/charmbracelet/glamour v0.10.0 h1:MtZvfwsYCx8jEPFJm3rIBFIMZUfUJ765oX8V6kXldcY=
@@ -37,10 +39,16 @@ github.com/dlclark/regexp2 v1.11.0 h1:G/nrcoOa7ZXlpoa/91N3X7mM3r8eIlMBBJZvsz/mxK
 github.com/dlclark/regexp2 v1.11.0/go.mod h1:DHkYz0B9wPfa6wondMfaivmHpzrQ3v9q8cnmRbL6yW8=
 github.com/finos/morphir/pkg/bindings/typemap v0.4.0-alpha.3 h1:IpfyZX93vUvhtlmwqXtmahR0cyjlZJrCSJvIyJuMQJI=
 github.com/finos/morphir/pkg/bindings/typemap v0.4.0-alpha.3/go.mod h1:jFMQJYWS19DsqnIKVnlZyEKslfanFJu5lg9Voyy3j2Y=
+github.com/finos/morphir/pkg/bindings/typemap v0.4.0-alpha.4 h1:y86KENCDitaafQG+p4tJnKMNn5NhtnHPiEUrsnel7eA=
+github.com/finos/morphir/pkg/bindings/typemap v0.4.0-alpha.4/go.mod h1:jFMQJYWS19DsqnIKVnlZyEKslfanFJu5lg9Voyy3j2Y=
 github.com/finos/morphir/pkg/config v0.4.0-alpha.3 h1:npAlb5ar8qhIlquzUPSrSLdUkshcc1IkcgMXy/FbqYw=
 github.com/finos/morphir/pkg/config v0.4.0-alpha.3/go.mod h1:vqwVJ3aVNBagmK9QXqqdBqXqSMCjriZv0b/2rIIpwXg=
+github.com/finos/morphir/pkg/config v0.4.0-alpha.4 h1:pq1GjTybT9nZ0yq1guoyQwouTYa8Te+RHk1Up9q1uL4=
+github.com/finos/morphir/pkg/config v0.4.0-alpha.4/go.mod h1:1SQBiiNmPcl9/7gY6i46DyFaBXr++MXwhlgff9AAq00=
 github.com/finos/morphir/pkg/models v0.4.0-alpha.3 h1:JhQQhKjU/BYX5QEy8F/QyvR2jLEhSmXbOYNM37xFVTU=
 github.com/finos/morphir/pkg/models v0.4.0-alpha.3/go.mod h1:oBNh9BY20lb98AokG9K4HEHbrhvfTW8awNShzi4ttqs=
+github.com/finos/morphir/pkg/models v0.4.0-alpha.4 h1:tOcGrXBRey+Yzh7tGP0n9zVqWJOyIt/wZF6uG8ipyng=
+github.com/finos/morphir/pkg/models v0.4.0-alpha.4/go.mod h1:oBNh9BY20lb98AokG9K4HEHbrhvfTW8awNShzi4ttqs=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 github.com/gorilla/css v1.0.1 h1:ntNaBIghp6JmvWnxbZKANoLyuXTPZ4cAMlo6RyhlbO8=
