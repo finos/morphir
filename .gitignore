@@ -69,3 +69,8 @@ website/.docusaurus/
 
 # NOTE: cmd/morphir/cmd/CHANGELOG.md is committed and kept in sync
 # with root CHANGELOG.md during releases for go:embed to work with go install
+
+
+# Added by cargo
+
+/target

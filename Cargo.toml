@@ -1,0 +1,52 @@
+
+[workspace]
+members = ["crates/*"]
+default-members = ["crates/morphir-live"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+authors = [
+    "FINOS <info@finos.org>",
+    "Damian Reeves <957246+DamianReeves@users.noreply.github.com>",
+]
+license = "Apache-2.0"
+repository = "https://github.com/finos/morphir"
+homepage = "https://github.com/finos/morphir"
+documentation = "https://docs.rs/morphir"
+keywords = ["morphir", "functional", "domain-modeling", "ir"]
+categories = ["development-tools", "parsers"]
+
+[workspace.dependencies]
+# CLI framework
+clap = { version = "4.5", features = ["derive", "color"] }
+anyhow = "1.0"
+thiserror = "2.0.18"
+miette = { version = "7", features = ["fancy"] }
+
+# UI framework
+dioxus = { version = "0.7.3", features = ["web", "router"] }
+
+# Structured logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = "0.2"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# WASM utilities
+gloo-timers = { version = "0.3", features = ["futures"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[profile.dev]
+opt-level = 0
+debug = true

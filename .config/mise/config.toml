@@ -8,7 +8,7 @@ experimental = true
 # Core tools
 go = "1.25.6"
 python = "3.14.2"
-rust = "1.93.0"  # For wasm-tools WIT verification
+rust = "1.93.0"   # For wasm-tools WIT verification
 
 # JavaScript runtimes and package managers (for toolchain backend tests)
 node = "24.13.0" # Provides npm and npx
@@ -18,7 +18,10 @@ yarn = "4.12.0"  # Provides yarn dlx (Yarn Berry)
 pnpm = "10.28.1" # Provides pnpm dlx
 
 # Development tools
-golangci-lint = "2.8.0"   # Go linter aggregator
+golangci-lint = "2.8.0"           # Go linter aggregator
+"cargo:cargo-binstall" = "latest"
+"cargo:dioxus-cli" = "latest"            # Provides dx command
+"aqua:WebAssembly/binaryen" = "125"      # Provides wasm-opt
 
 # Task dependencies (augments file-based tasks)
 [tasks.typecheck]

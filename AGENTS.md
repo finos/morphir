@@ -452,7 +452,82 @@ func UpdateState(state *State, value int) {
 }
 ```
 
+## Technology Stack
+
+### Go
+
+The primary implementation language for CLI tooling and IR processing.
+
+**Key Dependencies:**
+- **Cobra** - CLI framework for command structure
+- **Bubbletea** - Terminal UI framework for interactive experiences
+- **testify** - Testing assertions (`require`/`assert`)
+
+### Rust
+
+Rust is used for performance-critical components and the Morphir Live application.
+
+**Workspace Structure:**
+- Cargo workspace at repository root
+- Crates located in `crates/` directory
+- Edition 2024 with resolver v3
+
+**Key Dependencies:**
+- **dioxus** - Cross-platform UI framework (web, desktop, mobile)
+- **clap** - Command-line argument parsing with derive macros
+- **miette** - Fancy diagnostic error reporting
+- **tracing** - Structured, async-aware logging and diagnostics
+- **tracing-subscriber** - Subscriber implementation for tracing
+- **tracing-appender** - Non-blocking log file appending
+
+**Rust Development Guidelines:**
+1. Use workspace dependencies for version consistency
+2. Prefer `miette` for user-facing errors with helpful diagnostics
+3. Use `tracing` macros (`info!`, `debug!`, `error!`) instead of `println!`
+4. Structure CLI commands with `clap` derive macros
+5. Follow Rust 2024 edition idioms
+
+**Example Rust patterns:**
+
+```rust
+// CLI with clap
+use clap::Parser;
+
+#[derive(Parser)]
+#[command(name = "morphir-live")]
+struct Cli {
+    #[arg(short, long)]
+    verbose: bool,
+}
+
+// Error handling with miette
+use miette::{Diagnostic, Result};
+use thiserror::Error;
+
+#[derive(Error, Diagnostic, Debug)]
+#[error("Failed to parse IR")]
+#[diagnostic(code(morphir::parse_error))]
+struct ParseError {
+    #[source_code]
+    src: String,
+    #[label("here")]
+    span: (usize, usize),
+}
+
+// Structured logging with tracing
+use tracing::{info, instrument};
+
+#[instrument]
+fn process_ir(path: &str) -> Result<()> {
+    info!(path, "Processing IR file");
+    // ...
+    Ok(())
+}
+```
+
 ## Project Structure
+
+### Go Modules
 
 - `cmd/morphir/` - CLI application (Cobra + Bubbletea)
 - `pkg/models/` - Morphir IR model types
@@ -461,6 +536,10 @@ func UpdateState(state *State, value int) {
 - `pkg/pipeline/` - Processing pipelines for IR transformations
 
 Each package is a separate Go module, managed via `go.work` for development.
+
+### Rust Crates
+
+- `crates/morphir-live/` - Interactive visualization and IR management application
 
 ## Build and Development
 
