@@ -11,6 +11,10 @@ keywords.workspace = true
 categories.workspace = true
 description = "Morphir live application provides visualization and interactive experience for the management of the Morphir IR and projects"
 
+[lib]
+name = "morphir_live"
+path = "src/lib.rs"
+
 [[bin]]
 name = "morphir-live"
 path = "src/main.rs"

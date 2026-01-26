@@ -1,34 +1,41 @@
 //! Morphir Live - Interactive visualization and management tool for Morphir IR.
 
-use dioxus::prelude::*;
-
-mod components;
-mod data;
-pub mod models;
-pub mod monaco;
-mod routes;
-
-pub use routes::Route;
-
-const FAVICON: Asset = asset!("/assets/favicon.ico");
-const MAIN_CSS: Asset = asset!("/assets/main.css");
-const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
+use morphir_live::{App, AppConfig};
 
 fn main() {
-    dioxus::launch(App);
+    let config = get_app_config();
+
+    dioxus::LaunchBuilder::new()
+        .with_context(config)
+        .launch(App);
 }
 
-#[component]
-fn App() -> Element {
-    // Initialize Monaco Editor asynchronously on app startup
-    use_effect(|| {
-        monaco::init_monaco_on_startup();
-    });
+#[cfg(not(target_arch = "wasm32"))]
+fn get_app_config() -> AppConfig {
+    use clap::Parser;
+    use morphir_live::cli::{Cli, Commands};
 
-    rsx! {
-        document::Link { rel: "icon", href: FAVICON }
-        document::Link { rel: "stylesheet", href: MAIN_CSS }
-        document::Link { rel: "stylesheet", href: TAILWIND_CSS }
-        Router::<Route> {}
+    let args = Cli::parse();
+
+    match args.command {
+        Some(Commands::Version) => {
+            println!("morphir-live {}", env!("CARGO_PKG_VERSION"));
+            std::process::exit(0);
+        }
+        Some(Commands::Serve) => {
+            println!("morphir-live serve");
+            println!();
+            println!("Coming soon: Start a headless Morphir Live server that exposes");
+            println!("the IR visualization and management API without launching the UI.");
+            std::process::exit(0);
+        }
+        None => AppConfig {
+            config_path: args.path,
+        },
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn get_app_config() -> AppConfig {
+    AppConfig::default()
 }
