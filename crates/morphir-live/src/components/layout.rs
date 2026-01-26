@@ -140,7 +140,7 @@ pub fn MainLayout() -> Element {
 
                     // Projects Section (visible when workspace selected)
                     if selected_workspace.read().is_some() {
-                        SidebarSection { icon: Some("📂".to_string()), title: "Projects",
+                        SidebarSection { icon: Some("📑".to_string()), title: "Projects",
                             // Show selected project if any
                             if let Some(proj) = selected_project.read().as_ref() {
                                 SelectedItem {

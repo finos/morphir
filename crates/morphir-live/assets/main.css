@@ -134,6 +134,12 @@ body {
     min-height: 3.5rem;
 }
 
+.toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
 .toolbar-title {
     font-size: 1.125rem;
     font-weight: 600;
@@ -173,6 +179,11 @@ body {
 .toolbar-btn:hover {
     background: #252233;
     color: #ffffff;
+}
+
+.toolbar-back-btn {
+    font-size: 1.25rem;
+    font-weight: 500;
 }
 
 /* Content Body (scrollable area below toolbar) */

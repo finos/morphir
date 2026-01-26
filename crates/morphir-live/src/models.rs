@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
-// View State
+// View State (deprecated - use Route instead)
 // ============================================================================
 
 /// Represents the current view state of the application
