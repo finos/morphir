@@ -35,6 +35,9 @@ body {
 }
 
 .section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     color: #8b8798;
     font-size: 0.6875rem;
     font-weight: 500;
@@ -42,6 +45,16 @@ body {
     letter-spacing: 0;
     margin-bottom: 0.25rem;
     padding: 0.5rem 0.75rem 0.25rem;
+}
+
+.section-header-icon {
+    font-size: 0.875rem;
+    opacity: 0.9;
+}
+
+.section-header-title {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 /* Nav Items - M365 Copilot style */

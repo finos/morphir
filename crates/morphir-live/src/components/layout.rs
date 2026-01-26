@@ -85,7 +85,7 @@ pub fn MainLayout() -> Element {
             if !is_settings_view {
                 aside { class: "sidebar",
                     // Workspaces Section (always visible)
-                    SidebarSection { title: "Workspaces",
+                    SidebarSection { icon: Some("📁".to_string()), title: "Workspaces",
                         // Show selected workspace if any
                         if let Some(ws) = selected_workspace.read().as_ref() {
                             SelectedItem {
@@ -140,7 +140,7 @@ pub fn MainLayout() -> Element {
 
                     // Projects Section (visible when workspace selected)
                     if selected_workspace.read().is_some() {
-                        SidebarSection { title: "Projects",
+                        SidebarSection { icon: Some("📂".to_string()), title: "Projects",
                             // Show selected project if any
                             if let Some(proj) = selected_project.read().as_ref() {
                                 SelectedItem {
@@ -193,7 +193,7 @@ pub fn MainLayout() -> Element {
 
                     // Models Section (visible when project selected)
                     if selected_project.read().is_some() {
-                        SidebarSection { title: "Models",
+                        SidebarSection { icon: Some("⊞".to_string()), title: "Models",
                             NavItem {
                                 icon: "🧊",
                                 label: "All Models",
