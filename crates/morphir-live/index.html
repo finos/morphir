@@ -190,6 +190,7 @@
       };
 
       // Initialize Monaco when the loader is ready
+      window.monacoReady = false;
       window.initMonacoLoader = function() {
           require.config({
               paths: {
@@ -198,9 +199,12 @@
           });
 
           require(['vs/editor/editor.main'], function() {
-              console.log('Monaco Editor loaded');
+              console.log('[JS] Monaco Editor loaded');
               window.defineMonacoTheme();
               window.registerTomlLanguage();
+              // Set ready flag for Rust polling
+              window.monacoReady = true;
+              console.log('[JS] Monaco ready flag set to true');
               // Dispatch event to notify that Monaco is ready
               window.dispatchEvent(new CustomEvent('monaco-ready'));
           });

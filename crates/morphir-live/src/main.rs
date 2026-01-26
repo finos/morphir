@@ -5,6 +5,7 @@ use dioxus::prelude::*;
 mod components;
 mod data;
 mod models;
+pub mod monaco;
 
 use components::MainLayout;
 
@@ -18,6 +19,11 @@ fn main() {
 
 #[component]
 fn App() -> Element {
+    // Initialize Monaco Editor asynchronously on app startup
+    use_effect(|| {
+        monaco::init_monaco_on_startup();
+    });
+
     rsx! {
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: MAIN_CSS }

@@ -2786,9 +2786,12 @@ dependencies = [
  "clap",
  "dioxus",
  "gloo-timers",
+ "js-sys",
  "serde",
  "serde_json",
  "toml",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]
