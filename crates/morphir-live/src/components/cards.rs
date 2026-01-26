@@ -78,7 +78,8 @@ pub fn ProjectCard(project: Project, on_open: EventHandler<Project>) -> Element 
 }
 
 #[component]
-pub fn ModelCard(model: Model) -> Element {
+pub fn ModelCard(model: Model, on_open: EventHandler<Model>) -> Element {
+    let m = model.clone();
     let icon = match model.model_type {
         ModelType::TypeDefinition => "📐",
         ModelType::Function => "⚡",
@@ -98,7 +99,11 @@ pub fn ModelCard(model: Model) -> Element {
                             h3 { class: "card-name", "{model.name}" }
                             div { class: "card-subtitle", "{type_label}" }
                         }
-                        button { class: "btn-primary", "View" }
+                        button {
+                            class: "btn-primary",
+                            onclick: move |_| on_open.call(m.clone()),
+                            "View"
+                        }
                     }
                     p { class: "card-description", "{model.description}" }
                     div { class: "card-stats",

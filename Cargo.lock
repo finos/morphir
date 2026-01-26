@@ -2785,6 +2785,8 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "dioxus",
+ "serde",
+ "toml",
 ]
 
 [[package]]

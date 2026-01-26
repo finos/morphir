@@ -18,6 +18,8 @@ path = "src/main.rs"
 [dependencies]
 clap = { workspace = true, features = ["color"] }
 dioxus = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+toml = { workspace = true }
 
 [features]
 default = ["web"]
