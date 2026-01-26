@@ -1095,3 +1095,92 @@ body {
 .monaco-editor .overflow-guard {
     border-radius: 0.5rem;
 }
+
+/* Syntect Editor (Desktop) */
+.syntect-editor-container {
+    height: 100%;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    background: #252233;
+    border-radius: 0.5rem;
+}
+
+.syntect-editor-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #1a1625;
+    border-bottom: 1px solid #3d3a4d;
+    border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.syntect-editor-content {
+    flex: 1;
+    display: flex;
+    gap: 1px;
+    background: #3d3a4d;
+    min-height: 350px;
+}
+
+.syntect-editor-input {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.syntect-textarea {
+    width: 100%;
+    height: 100%;
+    min-height: 350px;
+    padding: 1rem;
+    background: #252233;
+    border: none;
+    color: #d1d0d5;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    resize: none;
+}
+
+.syntect-textarea:focus {
+    outline: none;
+}
+
+.syntect-textarea::placeholder {
+    color: #6b6879;
+}
+
+.syntect-editor-preview {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #1a1625;
+}
+
+.preview-header {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #8b8798;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: #252233;
+    border-bottom: 1px solid #3d3a4d;
+}
+
+.syntect-highlighted {
+    flex: 1;
+    padding: 1rem;
+    overflow: auto;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+/* Syntect generates pre tags with inline styles, override margin */
+.syntect-highlighted pre {
+    margin: 0;
+    background: transparent !important;
+}
