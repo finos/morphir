@@ -1,61 +1,46 @@
 //! Custom TOML editor for desktop platform with syntax highlighting.
-//! Uses a custom highlighter since syntect's defaults don't include TOML.
+//! Uses an overlay technique: transparent textarea over highlighted code.
 
 use dioxus::prelude::*;
 
 /// Custom TOML editor for desktop platform.
-/// Provides an editable textarea with live syntax-highlighted preview.
+/// Uses overlay technique for real-time syntax highlighting while typing.
 #[component]
 pub fn TomlEditor(
     content: String,
     on_change: EventHandler<String>,
 ) -> Element {
     let mut local_content = use_signal(|| content.clone());
-    let mut show_preview = use_signal(|| true);
 
     // Generate highlighted HTML from the current content
     let highlighted_html = use_memo(move || {
-        highlight_toml(&local_content.read())
+        highlight_toml_with_lines(&local_content.read())
     });
 
     rsx! {
-        div { class: "syntect-editor-container",
-            // Toolbar with preview toggle
-            div { class: "syntect-editor-toolbar",
-                button {
-                    class: if *show_preview.read() { "toolbar-btn active" } else { "toolbar-btn" },
-                    onclick: move |_| {
-                        let current = *show_preview.read();
-                        show_preview.set(!current);
-                    },
-                    if *show_preview.read() { "Hide Preview" } else { "Show Preview" }
-                }
+        div { class: "toml-overlay-editor",
+            // Line numbers gutter
+            div { class: "toml-line-numbers",
+                dangerous_inner_html: "{generate_line_numbers(&local_content.read())}"
             }
 
-            // Main editor area
-            div { class: "syntect-editor-content",
-                // Editable textarea
-                div { class: "syntect-editor-input",
-                    textarea {
-                        class: "syntect-textarea",
-                        value: "{local_content}",
-                        spellcheck: false,
-                        oninput: move |e| {
-                            let new_value = e.value();
-                            local_content.set(new_value.clone());
-                            on_change.call(new_value);
-                        }
-                    }
+            // Editor area with overlay
+            div { class: "toml-editor-area",
+                // Highlighted code layer (behind)
+                pre {
+                    class: "toml-highlight-layer",
+                    dangerous_inner_html: "{highlighted_html}"
                 }
 
-                // Syntax-highlighted preview
-                if *show_preview.read() {
-                    div { class: "syntect-editor-preview",
-                        div { class: "preview-header", "Preview" }
-                        div {
-                            class: "syntect-highlighted",
-                            dangerous_inner_html: "{highlighted_html}"
-                        }
+                // Transparent textarea (on top for input)
+                textarea {
+                    class: "toml-input-layer",
+                    value: "{local_content}",
+                    spellcheck: false,
+                    oninput: move |e| {
+                        let new_value = e.value();
+                        local_content.set(new_value.clone());
+                        on_change.call(new_value);
                     }
                 }
             }
@@ -63,22 +48,43 @@ pub fn TomlEditor(
     }
 }
 
+/// Generates line numbers HTML.
+fn generate_line_numbers(code: &str) -> String {
+    let line_count = code.lines().count().max(1);
+    let mut html = String::new();
+
+    for i in 1..=line_count {
+        html.push_str(&format!("<div class=\"line-number\">{}</div>", i));
+    }
+
+    // Add extra line if content ends with newline
+    if code.ends_with('\n') {
+        html.push_str(&format!("<div class=\"line-number\">{}</div>", line_count + 1));
+    }
+
+    html
+}
+
 /// Custom TOML syntax highlighter.
 /// Highlights TOML content and returns HTML string with inline styles.
-fn highlight_toml(code: &str) -> String {
-    let mut html = String::from("<pre style=\"margin: 0; font-family: inherit;\">");
+/// Returns content without wrapping pre tag (component provides that).
+fn highlight_toml_with_lines(code: &str) -> String {
+    let mut html = String::new();
 
     for line in code.lines() {
         html.push_str(&highlight_toml_line(line));
         html.push('\n');
     }
 
-    // Remove trailing newline if present
-    if html.ends_with('\n') {
-        html.pop();
+    // Add trailing newline to match textarea behavior
+    // This ensures cursor positioning aligns correctly
+    if !code.ends_with('\n') && !code.is_empty() {
+        // Remove the last newline we added if original didn't have one
+        if html.ends_with('\n') {
+            html.pop();
+        }
     }
 
-    html.push_str("</pre>");
     html
 }
 

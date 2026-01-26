@@ -1096,91 +1096,83 @@ body {
     border-radius: 0.5rem;
 }
 
-/* Syntect Editor (Desktop) */
-.syntect-editor-container {
+/* TOML Overlay Editor (Desktop) */
+.toml-overlay-editor {
+    display: flex;
     height: 100%;
     min-height: 400px;
-    display: flex;
-    flex-direction: column;
-    background: #252233;
+    background: #1e1e2e;
     border-radius: 0.5rem;
+    overflow: hidden;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
 }
 
-.syntect-editor-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
+/* Line numbers gutter */
+.toml-line-numbers {
+    padding: 1rem 0;
     background: #1a1625;
-    border-bottom: 1px solid #3d3a4d;
-    border-radius: 0.5rem 0.5rem 0 0;
+    border-right: 1px solid #3d3a4d;
+    user-select: none;
+    min-width: 3rem;
+    text-align: right;
 }
 
-.syntect-editor-content {
+.line-number {
+    padding: 0 0.75rem;
+    color: #6b6879;
+    height: 1.5em;
+}
+
+/* Editor area with overlay technique */
+.toml-editor-area {
     flex: 1;
-    display: flex;
-    gap: 1px;
-    background: #3d3a4d;
-    min-height: 350px;
+    position: relative;
+    overflow: auto;
 }
 
-.syntect-editor-input {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
+/* Highlighted code layer (behind) */
+.toml-highlight-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 1rem;
+    pointer-events: none;
+    white-space: pre;
+    word-wrap: normal;
+    overflow: visible;
+    color: #d1d0d5;
+    background: transparent;
 }
 
-.syntect-textarea {
+/* Transparent textarea layer (on top) */
+.toml-input-layer {
+    position: relative;
     width: 100%;
     height: 100%;
-    min-height: 350px;
-    padding: 1rem;
-    background: #252233;
-    border: none;
-    color: #d1d0d5;
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-    font-size: 0.875rem;
-    line-height: 1.5;
-    resize: none;
-}
-
-.syntect-textarea:focus {
-    outline: none;
-}
-
-.syntect-textarea::placeholder {
-    color: #6b6879;
-}
-
-.syntect-editor-preview {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    background: #1a1625;
-}
-
-.preview-header {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #8b8798;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    background: #252233;
-    border-bottom: 1px solid #3d3a4d;
-}
-
-.syntect-highlighted {
-    flex: 1;
-    padding: 1rem;
-    overflow: auto;
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-    font-size: 0.875rem;
-    line-height: 1.5;
-}
-
-/* Syntect generates pre tags with inline styles, override margin */
-.syntect-highlighted pre {
+    min-height: 400px;
     margin: 0;
-    background: transparent !important;
+    padding: 1rem;
+    border: none;
+    outline: none;
+    resize: none;
+    background: transparent;
+    color: transparent;
+    caret-color: #ffffff;
+    font: inherit;
+    line-height: inherit;
+    white-space: pre;
+    word-wrap: normal;
+    overflow: auto;
+}
+
+.toml-input-layer::selection {
+    background: rgba(59, 130, 246, 0.4);
+}
+
+.toml-input-layer::-moz-selection {
+    background: rgba(59, 130, 246, 0.4);
 }
