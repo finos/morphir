@@ -1624,3 +1624,722 @@ body {
     font-size: 0.75rem;
     font-style: italic;
 }
+
+/* ============================================================================
+   Mode Switcher
+   ============================================================================ */
+
+.mode-switcher {
+    display: flex;
+    background: #1a1625;
+    border-radius: 0.5rem;
+    padding: 0.25rem;
+    gap: 0.125rem;
+}
+
+.mode-btn {
+    padding: 0.375rem 0.75rem;
+    background: transparent;
+    border: none;
+    border-radius: 0.375rem;
+    color: #8b8798;
+    font-size: 0.8125rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.mode-btn:hover {
+    color: #d1d0d5;
+}
+
+.mode-btn.active {
+    background: #252233;
+    color: #ffffff;
+}
+
+/* ============================================================================
+   Sidebar Header & Collapse
+   ============================================================================ */
+
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #3d3a4d;
+    margin-bottom: 0.5rem;
+}
+
+.sidebar-collapse-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    background: transparent;
+    border: none;
+    color: #8b8798;
+    font-size: 1rem;
+    cursor: pointer;
+    border-radius: 0.375rem;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.sidebar-collapse-btn:hover {
+    background: #252233;
+    color: #ffffff;
+}
+
+.collapse-icon {
+    display: block;
+}
+
+/* Collapsed sidebar */
+.sidebar.collapsed {
+    width: 4rem;
+    min-width: 4rem;
+}
+
+.sidebar.collapsed .sidebar-header {
+    justify-content: center;
+    padding: 0.75rem 0.5rem;
+}
+
+.layout.sidebar-collapsed {
+    grid-template-columns: 4rem 1fr;
+}
+
+/* Sidebar icons for collapsed state */
+.sidebar-icons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+}
+
+.sidebar-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    background: transparent;
+    border: none;
+    color: #8b8798;
+    font-size: 1.125rem;
+    cursor: pointer;
+    border-radius: 0.5rem;
+    transition: all 0.15s ease;
+}
+
+.sidebar-icon-btn:hover {
+    background: #252233;
+    color: #d1d0d5;
+}
+
+.sidebar-icon-btn.active {
+    background: #3b5998;
+    color: #ffffff;
+}
+
+/* ============================================================================
+   Designs Sidebar (Try Mode)
+   ============================================================================ */
+
+.designs-sidebar {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.designs-sidebar.collapsed {
+    align-items: center;
+    padding: 0.5rem;
+    gap: 0.5rem;
+}
+
+.designs-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+}
+
+.designs-header h3 {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #8b8798;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.new-design-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    background: transparent;
+    border: 1px dashed #3d3a4d;
+    border-radius: 0.25rem;
+    color: #8b8798;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.new-design-btn:hover {
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.designs-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 0.5rem;
+}
+
+.design-item {
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.design-item:hover {
+    background: #252233;
+}
+
+.design-item.selected {
+    background: #3b5998;
+}
+
+.design-item-name {
+    font-size: 0.875rem;
+    color: #ffffff;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+.design-item-meta {
+    font-size: 0.75rem;
+    color: #8b8798;
+}
+
+.design-item.selected .design-item-meta {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* ============================================================================
+   Try Mode Page
+   ============================================================================ */
+
+.try-mode-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 1.5rem;
+}
+
+.try-mode-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+}
+
+.empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 4rem;
+    height: 4rem;
+    margin: 0 auto 1.5rem;
+    background: #252233;
+    border: 2px dashed #3d3a4d;
+    border-radius: 1rem;
+    font-size: 2rem;
+    color: #8b8798;
+}
+
+.empty-state h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.25rem;
+    color: #ffffff;
+}
+
+.empty-state p {
+    margin: 0 0 1.5rem;
+    color: #8b8798;
+}
+
+/* ============================================================================
+   Notebook Interface
+   ============================================================================ */
+
+.notebook-container {
+    display: flex;
+    flex-direction: column;
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.notebook-header {
+    margin-bottom: 2rem;
+}
+
+.notebook-title {
+    margin: 0 0 0.5rem;
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.notebook-description {
+    margin: 0;
+    color: #8b8798;
+}
+
+.notebook-cells {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.notebook-cell {
+    background: #252233;
+    border: 1px solid #3d3a4d;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.notebook-cell.code-cell {
+    border-left: 3px solid #3b82f6;
+}
+
+.notebook-cell.markdown-cell {
+    border-left: 3px solid #10b981;
+}
+
+.cell-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    background: #1a1625;
+    border-bottom: 1px solid #3d3a4d;
+}
+
+.cell-type-indicator {
+    font-size: 0.75rem;
+    color: #8b8798;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.cell-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.cell-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    background: transparent;
+    border: none;
+    color: #8b8798;
+    font-size: 0.875rem;
+    cursor: pointer;
+    border-radius: 0.25rem;
+    transition: all 0.15s ease;
+}
+
+.cell-action-btn:hover {
+    background: #252233;
+    color: #ffffff;
+}
+
+.cell-input {
+    padding: 0;
+}
+
+.cell-editor {
+    width: 100%;
+    min-height: 100px;
+    padding: 0.75rem;
+    background: transparent;
+    border: none;
+    color: #d1d0d5;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    resize: vertical;
+}
+
+.cell-editor:focus {
+    outline: none;
+}
+
+.cell-editor::placeholder {
+    color: #6b6879;
+}
+
+.cell-output {
+    padding: 0.75rem;
+    background: #1a1625;
+    border-top: 1px solid #3d3a4d;
+}
+
+.cell-output pre {
+    margin: 0;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.8125rem;
+    color: #10b981;
+}
+
+.add-cell-container {
+    display: flex;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.add-cell-btn {
+    padding: 0.5rem 1.5rem;
+    background: transparent;
+    border: 1px dashed #3d3a4d;
+    border-radius: 0.5rem;
+    color: #8b8798;
+    font-size: 0.875rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.add-cell-btn:hover {
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+/* ============================================================================
+   Try Mode Sidebar
+   ============================================================================ */
+
+.try-sidebar {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.try-sidebar.collapsed {
+    align-items: center;
+    padding: 0.5rem;
+    gap: 0.5rem;
+}
+
+.try-sidebar-tabs {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    background: #1a1625;
+    border-bottom: 1px solid #3d3a4d;
+}
+
+.try-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    border: none;
+    border-radius: 0.375rem;
+    color: #8b8798;
+    font-size: 0.8125rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.try-tab:hover {
+    background: #252233;
+    color: #d1d0d5;
+}
+
+.try-tab.active {
+    background: #3b5998;
+    color: #ffffff;
+}
+
+.try-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    color: #d1d0d5;
+    font-size: 0.875rem;
+}
+
+.new-item-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    background: #3b5998;
+    border: none;
+    border-radius: 0.25rem;
+    color: #ffffff;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.new-item-btn:hover {
+    background: #4a6eb8;
+}
+
+.try-sidebar-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 0.5rem;
+}
+
+.try-item {
+    display: flex;
+    flex-direction: column;
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    margin-bottom: 0.25rem;
+}
+
+.try-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.try-item.selected {
+    background: rgba(59, 89, 152, 0.3);
+}
+
+.try-item-name {
+    font-size: 0.875rem;
+    color: #d1d0d5;
+    margin-bottom: 0.25rem;
+}
+
+.try-item.selected .try-item-name {
+    color: #ffffff;
+}
+
+.try-item-meta {
+    font-size: 0.75rem;
+    color: #6b6879;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.language-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.375rem;
+    background: #252233;
+    border: 1px solid #3d3a4d;
+    border-radius: 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: #8b8798;
+}
+
+.language-badge.large {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.sidebar-divider {
+    width: 60%;
+    height: 1px;
+    background: #3d3a4d;
+    margin: 0.5rem 0;
+}
+
+/* ============================================================================
+   Try Mode Content
+   ============================================================================ */
+
+.try-mode-content {
+    flex: 1;
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+/* ============================================================================
+   Exploration Split-Panel View
+   ============================================================================ */
+
+.exploration-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.exploration-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #3d3a4d;
+    background: #1a1625;
+}
+
+.exploration-title-area {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.exploration-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.exploration-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-run {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 1rem;
+    background: #10b981;
+    border: none;
+    border-radius: 0.375rem;
+    color: #ffffff;
+    font-size: 0.875rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-run:hover {
+    background: #0d9668;
+}
+
+.exploration-split {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+.exploration-editor-panel,
+.exploration-output-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.exploration-editor-panel {
+    border-right: 1px solid #3d3a4d;
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.625rem 1rem;
+    background: #252233;
+    border-bottom: 1px solid #3d3a4d;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #8b8798;
+}
+
+.file-ext {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.75rem;
+    color: #6b6879;
+}
+
+.panel-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: auto;
+}
+
+.exploration-editor {
+    flex: 1;
+    width: 100%;
+    min-height: 300px;
+    padding: 1rem;
+    background: #1a1625;
+    border: none;
+    color: #d1d0d5;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    resize: none;
+}
+
+.exploration-editor:focus {
+    outline: none;
+}
+
+.exploration-output {
+    margin: 0;
+    padding: 1rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: #10b981;
+    white-space: pre-wrap;
+}
+
+.output-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    color: #6b6879;
+    font-size: 0.875rem;
+}
+
+.exploration-resizer {
+    width: 4px;
+    background: #3d3a4d;
+    cursor: col-resize;
+    transition: background 0.15s ease;
+}
+
+.exploration-resizer:hover {
+    background: #3b82f6;
+}

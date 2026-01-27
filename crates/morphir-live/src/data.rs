@@ -1,6 +1,9 @@
 //! Sample data for demonstration purposes.
 
-use crate::models::{Model, ModelType, Project, SearchResult, Workspace};
+use crate::models::{
+    Exploration, Model, ModelType, MorphirLanguage, Notebook, NotebookCell, NotebookCellType,
+    Project, SearchResult, Workspace,
+};
 
 pub fn sample_workspaces() -> Vec<Workspace> {
     vec![
@@ -186,3 +189,92 @@ pub fn all_search_results() -> Vec<SearchResult> {
 
     results
 }
+
+/// Sample notebooks for Try mode.
+pub fn sample_notebooks() -> Vec<Notebook> {
+    vec![
+        Notebook {
+            id: "notebook-1".to_string(),
+            name: "Account Model".to_string(),
+            description: "Interactive notebook for the Account type and related functions.".to_string(),
+            cells: vec![
+                NotebookCell {
+                    cell_type: NotebookCellType::Markdown,
+                    content: "# Account Model\n\nThis notebook defines the core Account type for our financial domain.".to_string(),
+                    output: None,
+                },
+                NotebookCell {
+                    cell_type: NotebookCellType::Code,
+                    content: "type alias Account =\n    { id : AccountId\n    , name : String\n    , balance : Amount\n    , status : AccountStatus\n    }".to_string(),
+                    output: Some("Type defined: Account".to_string()),
+                },
+                NotebookCell {
+                    cell_type: NotebookCellType::Code,
+                    content: "type AccountStatus\n    = Active\n    | Frozen\n    | Closed".to_string(),
+                    output: Some("Type defined: AccountStatus".to_string()),
+                },
+            ],
+            updated_at: "Jan 14".to_string(),
+        },
+        Notebook {
+            id: "notebook-2".to_string(),
+            name: "Transaction Functions".to_string(),
+            description: "Functions for processing financial transactions.".to_string(),
+            cells: vec![
+                NotebookCell {
+                    cell_type: NotebookCellType::Markdown,
+                    content: "# Transaction Processing\n\nCore functions for handling transactions.".to_string(),
+                    output: None,
+                },
+                NotebookCell {
+                    cell_type: NotebookCellType::Code,
+                    content: "transfer : Account -> Account -> Amount -> Result String (Account, Account)\ntransfer from to amount =\n    if from.balance >= amount then\n        Ok ( { from | balance = from.balance - amount }\n           , { to | balance = to.balance + amount }\n           )\n    else\n        Err \"Insufficient funds\"".to_string(),
+                    output: Some("Function defined: transfer".to_string()),
+                },
+            ],
+            updated_at: "Jan 4".to_string(),
+        },
+    ]
+}
+
+/// Sample explorations for Try mode.
+pub fn sample_explorations() -> Vec<Exploration> {
+    vec![
+        Exploration {
+            id: "exploration-1".to_string(),
+            name: "Hello World".to_string(),
+            language: MorphirLanguage::Elm,
+            source_code: r#"module Example exposing (..)
+
+greeting : String -> String
+greeting name =
+    "Hello, " ++ name ++ "!"
+
+
+main =
+    greeting "World"
+"#.to_string(),
+            output: Some("\"Hello, World!\"".to_string()),
+            updated_at: "Jan 20".to_string(),
+        },
+        Exploration {
+            id: "exploration-2".to_string(),
+            name: "List Operations".to_string(),
+            language: MorphirLanguage::Elm,
+            source_code: r#"module ListOps exposing (..)
+
+doubleAll : List Int -> List Int
+doubleAll numbers =
+    List.map (\n -> n * 2) numbers
+
+
+sumAll : List Int -> Int
+sumAll numbers =
+    List.foldl (+) 0 numbers
+"#.to_string(),
+            output: Some("doubleAll [1, 2, 3] = [2, 4, 6]\nsumAll [1, 2, 3, 4, 5] = 15".to_string()),
+            updated_at: "Jan 15".to_string(),
+        },
+    ]
+}
+

@@ -286,6 +286,80 @@ pub struct UploadedFile {
 }
 
 // ============================================================================
+// Try Mode Models (Notebooks & Explorations)
+// ============================================================================
+
+/// A notebook in Try mode - an interactive Jupyter-style notebook for building Morphir models.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Notebook {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub cells: Vec<NotebookCell>,
+    pub updated_at: String,
+}
+
+/// Cell type in a notebook.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum NotebookCellType {
+    #[default]
+    Code,
+    Markdown,
+}
+
+/// A cell in a notebook.
+#[derive(Clone, Debug, PartialEq)]
+pub struct NotebookCell {
+    pub cell_type: NotebookCellType,
+    pub content: String,
+    pub output: Option<String>,
+}
+
+/// An exploration in Try mode - split-panel code editor with output.
+/// Replaces the try-morphir page functionality.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Exploration {
+    pub id: String,
+    pub name: String,
+    pub language: MorphirLanguage,
+    pub source_code: String,
+    pub output: Option<String>,
+    pub updated_at: String,
+}
+
+/// Morphir frontend languages supported in explorations.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum MorphirLanguage {
+    #[default]
+    Elm,
+    Bosque,
+    Morphir,
+}
+
+impl MorphirLanguage {
+    pub fn label(&self) -> &'static str {
+        match self {
+            MorphirLanguage::Elm => "Elm",
+            MorphirLanguage::Bosque => "Bosque",
+            MorphirLanguage::Morphir => "Morphir",
+        }
+    }
+
+    pub fn file_extension(&self) -> &'static str {
+        match self {
+            MorphirLanguage::Elm => ".elm",
+            MorphirLanguage::Bosque => ".bsq",
+            MorphirLanguage::Morphir => ".morphir",
+        }
+    }
+}
+
+// Keep Design as an alias for backwards compatibility
+pub type Design = Notebook;
+pub type DesignCell = NotebookCell;
+pub type DesignCellType = NotebookCellType;
+
+// ============================================================================
 // Configuration Models (morphir.toml)
 // ============================================================================
 
