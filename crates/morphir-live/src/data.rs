@@ -1,6 +1,6 @@
 //! Sample data for demonstration purposes.
 
-use crate::models::{Model, ModelType, Project, Workspace};
+use crate::models::{Model, ModelType, Project, SearchResult, Workspace};
 
 pub fn sample_workspaces() -> Vec<Workspace> {
     vec![
@@ -148,4 +148,41 @@ pub fn sample_models(project_id: &str) -> Vec<Model> {
             function_count: 0,
         }],
     }
+}
+
+/// Get all projects across all workspaces.
+pub fn all_projects() -> Vec<Project> {
+    let workspaces = sample_workspaces();
+    workspaces
+        .iter()
+        .flat_map(|ws| sample_projects(&ws.id))
+        .collect()
+}
+
+/// Get all models across all projects.
+pub fn all_models() -> Vec<Model> {
+    let projects = all_projects();
+    projects
+        .iter()
+        .flat_map(|p| sample_models(&p.id))
+        .collect()
+}
+
+/// Get all items as search results.
+pub fn all_search_results() -> Vec<SearchResult> {
+    let mut results = Vec::new();
+
+    for ws in sample_workspaces() {
+        results.push(SearchResult::Workspace(ws));
+    }
+
+    for proj in all_projects() {
+        results.push(SearchResult::Project(proj));
+    }
+
+    for model in all_models() {
+        results.push(SearchResult::Model(model));
+    }
+
+    results
 }

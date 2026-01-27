@@ -83,6 +83,57 @@ pub enum ModelType {
 }
 
 // ============================================================================
+// Search Result
+// ============================================================================
+
+/// A unified search result that can be a workspace, project, or model.
+#[derive(Clone, Debug)]
+pub enum SearchResult {
+    Workspace(Workspace),
+    Project(Project),
+    Model(Model),
+}
+
+impl SearchResult {
+    /// Check if this result matches a search query (case-insensitive).
+    pub fn matches(&self, query: &str) -> bool {
+        if query.is_empty() {
+            return true;
+        }
+        let q = query.to_lowercase();
+        match self {
+            SearchResult::Workspace(w) => {
+                w.name.to_lowercase().contains(&q) || w.description.to_lowercase().contains(&q)
+            }
+            SearchResult::Project(p) => {
+                p.name.to_lowercase().contains(&q) || p.description.to_lowercase().contains(&q)
+            }
+            SearchResult::Model(m) => {
+                m.name.to_lowercase().contains(&q) || m.description.to_lowercase().contains(&q)
+            }
+        }
+    }
+
+    /// Get the last accessed timestamp (only workspaces have this).
+    pub fn last_accessed(&self) -> Option<u64> {
+        match self {
+            SearchResult::Workspace(w) => w.last_accessed,
+            SearchResult::Project(_) => None,
+            SearchResult::Model(_) => None,
+        }
+    }
+
+    /// Check if this result is marked as favorite (only workspaces have this).
+    pub fn is_favorite(&self) -> bool {
+        match self {
+            SearchResult::Workspace(w) => w.is_favorite,
+            SearchResult::Project(_) => false,
+            SearchResult::Model(_) => false,
+        }
+    }
+}
+
+// ============================================================================
 // Filter Enums
 // ============================================================================
 
@@ -108,6 +159,130 @@ pub enum ModelFilter {
     All,
     Types,
     Functions,
+}
+
+// ============================================================================
+// Content Filters
+// ============================================================================
+
+/// Entity type for filtering search results.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum EntityType {
+    Workspace,
+    Project,
+    Model,
+}
+
+impl EntityType {
+    pub fn label(&self) -> &'static str {
+        match self {
+            EntityType::Workspace => "Workspace",
+            EntityType::Project => "Project",
+            EntityType::Model => "Model",
+        }
+    }
+}
+
+/// Status filter options.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum StatusFilter {
+    Active,
+    Archived,
+    Favorite,
+}
+
+impl StatusFilter {
+    pub fn label(&self) -> &'static str {
+        match self {
+            StatusFilter::Active => "Active",
+            StatusFilter::Archived => "Archived",
+            StatusFilter::Favorite => "Favorite",
+        }
+    }
+}
+
+/// Types of filters that can be applied.
+#[derive(Clone, PartialEq, Debug)]
+pub enum FilterType {
+    Type(EntityType),
+    Location(String),
+    Status(StatusFilter),
+    Tags(Vec<String>),
+}
+
+/// An active filter applied by the user.
+#[derive(Clone, PartialEq, Debug)]
+pub struct ActiveFilter {
+    pub filter_type: FilterType,
+    pub label: String,
+}
+
+impl SearchResult {
+    /// Check if this result matches an active filter.
+    pub fn matches_filter(&self, filter: &ActiveFilter) -> bool {
+        match &filter.filter_type {
+            FilterType::Type(entity_type) => match (entity_type, self) {
+                (EntityType::Workspace, SearchResult::Workspace(_)) => true,
+                (EntityType::Project, SearchResult::Project(_)) => true,
+                (EntityType::Model, SearchResult::Model(_)) => true,
+                _ => false,
+            },
+            FilterType::Location(workspace_id) => match self {
+                SearchResult::Workspace(w) => &w.id == workspace_id,
+                SearchResult::Project(p) => &p.workspace_id == workspace_id,
+                SearchResult::Model(_) => true, // Models don't have direct workspace ref
+            },
+            FilterType::Status(status) => match (status, self) {
+                (StatusFilter::Active, SearchResult::Project(p)) => p.is_active,
+                (StatusFilter::Archived, SearchResult::Project(p)) => !p.is_active,
+                (StatusFilter::Favorite, SearchResult::Workspace(w)) => w.is_favorite,
+                _ => false,
+            },
+            FilterType::Tags(_) => true, // Tags not implemented on entities yet
+        }
+    }
+}
+
+// ============================================================================
+// Upload Types
+// ============================================================================
+
+/// Type of uploaded Morphir file.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum UploadFileType {
+    /// morphir-ir.json - Morphir IR JSON file
+    MorphirIr,
+    /// morphir.json - Morphir project configuration
+    MorphirJson,
+    /// morphir.toml - Morphir TOML configuration
+    MorphirToml,
+    /// .tgz archive containing v4 model
+    MorphirTgz,
+}
+
+impl UploadFileType {
+    /// Detect file type from filename.
+    pub fn from_filename(name: &str) -> Option<Self> {
+        let lower = name.to_lowercase();
+        if lower.ends_with("morphir-ir.json") {
+            Some(UploadFileType::MorphirIr)
+        } else if lower.ends_with("morphir.json") {
+            Some(UploadFileType::MorphirJson)
+        } else if lower.ends_with("morphir.toml") {
+            Some(UploadFileType::MorphirToml)
+        } else if lower.ends_with(".tgz") {
+            Some(UploadFileType::MorphirTgz)
+        } else {
+            None
+        }
+    }
+}
+
+/// Uploaded file info (minimal for now, content types to be provided later).
+#[derive(Clone, Debug)]
+pub struct UploadedFile {
+    pub name: String,
+    pub file_type: UploadFileType,
 }
 
 // ============================================================================

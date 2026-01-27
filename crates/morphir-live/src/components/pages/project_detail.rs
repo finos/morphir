@@ -27,7 +27,7 @@ pub fn ProjectDetail(workspace_id: String, id: String) -> Element {
         let ws_id = workspace_id.clone();
 
         let breadcrumbs = vec![
-            BreadcrumbItem::new("Workspaces", Route::Home {}),
+            BreadcrumbItem::new("Workspaces", Route::WorkspaceList {}),
             BreadcrumbItem::new(&ws_name, Route::WorkspaceDetail { id: ws_id.clone() }),
             BreadcrumbItem::new(
                 "Projects",

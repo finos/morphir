@@ -5,7 +5,7 @@ use dioxus::prelude::*;
 // Import page components for the router
 use crate::components::pages::{
     Home, ModelDetail, ModelList, NotFound, ProjectDetail, ProjectList, ProjectSettings,
-    WorkspaceDetail, WorkspaceSettings,
+    WorkspaceDetail, WorkspaceList, WorkspaceSettings,
 };
 
 /// Application routes for URL-based navigation
@@ -14,9 +14,12 @@ use crate::components::pages::{
 pub enum Route {
     /// Main layout wrapper
     #[layout(crate::components::AppLayout)]
-        /// Home page - list of all workspaces
+        /// Home page - search interface
         #[route("/")]
         Home {},
+        /// Workspace list - all workspaces
+        #[route("/workspaces")]
+        WorkspaceList {},
         /// Workspace detail view
         #[route("/workspace/:id")]
         WorkspaceDetail { id: String },

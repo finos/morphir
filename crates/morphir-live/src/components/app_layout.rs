@@ -18,6 +18,7 @@ pub fn AppLayout() -> Element {
     // Determine current context from route
     let (current_workspace_id, current_project_id, is_settings) = match &route {
         Route::Home {} => (None, None, false),
+        Route::WorkspaceList {} => (None, None, false),
         Route::WorkspaceDetail { id } => (Some(id.clone()), None, false),
         Route::WorkspaceSettings { id } => (Some(id.clone()), None, true),
         Route::ProjectList { workspace_id } => (Some(workspace_id.clone()), None, false),
@@ -58,6 +59,16 @@ pub fn AppLayout() -> Element {
             // Sidebar (hidden in settings view for cleaner look)
             if !is_settings {
                 aside { class: "sidebar",
+                    // Search button (always visible at top)
+                    NavItem {
+                        icon: "🔍",
+                        label: "Search",
+                        active: matches!(route, Route::Home {}),
+                        on_click: move |_| {
+                            nav.push(Route::Home {});
+                        },
+                    }
+
                     // Workspaces Section (always visible)
                     SidebarSection { icon: Some("📁".to_string()), title: "Workspaces",
                         // Show selected workspace if any
@@ -79,9 +90,9 @@ pub fn AppLayout() -> Element {
                         NavItem {
                             icon: "📁",
                             label: "All Workspaces",
-                            active: matches!(route, Route::Home {}),
+                            active: matches!(route, Route::WorkspaceList {}),
                             on_click: move |_| {
-                                nav.push(Route::Home {});
+                                nav.push(Route::WorkspaceList {});
                             },
                         }
                     }

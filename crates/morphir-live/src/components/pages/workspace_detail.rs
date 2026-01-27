@@ -19,7 +19,7 @@ pub fn WorkspaceDetail(id: String) -> Element {
         let ws_id = ws.id.clone();
 
         let breadcrumbs = vec![
-            BreadcrumbItem::new("Workspaces", Route::Home {}),
+            BreadcrumbItem::new("Workspaces", Route::WorkspaceList {}),
             BreadcrumbItem::current(&ws_name),
         ];
 
@@ -38,7 +38,7 @@ pub fn WorkspaceDetail(id: String) -> Element {
                 show_back: true,
                 on_back: Some(
                     EventHandler::new(move |_| {
-                        nav.push(Route::Home {});
+                        nav.push(Route::WorkspaceList {});
                     }),
                 ),
             }
