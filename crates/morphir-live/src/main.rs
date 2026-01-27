@@ -38,7 +38,7 @@ fn load_icon() -> Option<dioxus::desktop::tao::window::Icon> {
     use std::path::PathBuf;
 
     // Icon filenames to try (in order of preference)
-    let icon_files = ["favicon.ico", "icon.png"];
+    let icon_files = ["icon.png", "favicon.ico"];
 
     // Base paths to search
     let base_paths: Vec<PathBuf> = vec![
