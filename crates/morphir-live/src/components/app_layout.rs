@@ -81,74 +81,81 @@ pub fn AppLayout() -> Element {
             // Sidebar
             if !is_settings {
                 aside { class: if collapsed { "sidebar collapsed" } else { "sidebar" },
-                    // Sidebar header with mode switcher and collapse toggle
+                    // Sidebar header with app title, collapse button, and mode switcher
                     div { class: "sidebar-header",
+                        // Row 1: App title and collapse button
+                        div { class: "sidebar-header-row",
+                            if !collapsed {
+                                span { class: "app-title", "Morphir" }
+                            }
+                            button {
+                                class: "sidebar-collapse-btn",
+                                onclick: move |_| sidebar_collapsed.toggle(),
+                                title: if collapsed { "Expand sidebar" } else { "Collapse sidebar" },
+                                // Sidebar panel icon
+                                svg {
+                                    class: "collapse-icon",
+                                    width: "18",
+                                    height: "18",
+                                    view_box: "0 0 24 24",
+                                    fill: "none",
+                                    xmlns: "http://www.w3.org/2000/svg",
+                                    // Outer rounded rectangle
+                                    rect {
+                                        x: "2",
+                                        y: "3",
+                                        width: "20",
+                                        height: "18",
+                                        rx: "3",
+                                        stroke: "currentColor",
+                                        stroke_width: "2",
+                                        fill: "none",
+                                    }
+                                    // Vertical divider line
+                                    line {
+                                        x1: "9",
+                                        y1: "3",
+                                        x2: "9",
+                                        y2: "21",
+                                        stroke: "currentColor",
+                                        stroke_width: "2",
+                                    }
+                                    // Horizontal lines in sidebar area
+                                    line {
+                                        x1: "4",
+                                        y1: "8",
+                                        x2: "7",
+                                        y2: "8",
+                                        stroke: "currentColor",
+                                        stroke_width: "2",
+                                        stroke_linecap: "round",
+                                    }
+                                    line {
+                                        x1: "4",
+                                        y1: "12",
+                                        x2: "7",
+                                        y2: "12",
+                                        stroke: "currentColor",
+                                        stroke_width: "2",
+                                        stroke_linecap: "round",
+                                    }
+                                    line {
+                                        x1: "4",
+                                        y1: "16",
+                                        x2: "7",
+                                        y2: "16",
+                                        stroke: "currentColor",
+                                        stroke_width: "2",
+                                        stroke_linecap: "round",
+                                    }
+                                }
+                            }
+                        }
+                        // Row 2: Mode switcher
                         if !collapsed {
                             ModeSwitcher {
                                 current_mode: *app_mode.read(),
                                 on_change: move |mode| app_mode.set(mode),
-                            }
-                        }
-                        button {
-                            class: "sidebar-collapse-btn",
-                            onclick: move |_| sidebar_collapsed.toggle(),
-                            title: if collapsed { "Expand sidebar" } else { "Collapse sidebar" },
-                            // Sidebar panel icon
-                            svg {
-                                class: "collapse-icon",
-                                width: "18",
-                                height: "18",
-                                view_box: "0 0 24 24",
-                                fill: "none",
-                                xmlns: "http://www.w3.org/2000/svg",
-                                // Outer rounded rectangle
-                                rect {
-                                    x: "2",
-                                    y: "3",
-                                    width: "20",
-                                    height: "18",
-                                    rx: "3",
-                                    stroke: "currentColor",
-                                    stroke_width: "2",
-                                    fill: "none",
-                                }
-                                // Vertical divider line
-                                line {
-                                    x1: "9",
-                                    y1: "3",
-                                    x2: "9",
-                                    y2: "21",
-                                    stroke: "currentColor",
-                                    stroke_width: "2",
-                                }
-                                // Horizontal lines in sidebar area
-                                line {
-                                    x1: "4",
-                                    y1: "8",
-                                    x2: "7",
-                                    y2: "8",
-                                    stroke: "currentColor",
-                                    stroke_width: "2",
-                                    stroke_linecap: "round",
-                                }
-                                line {
-                                    x1: "4",
-                                    y1: "12",
-                                    x2: "7",
-                                    y2: "12",
-                                    stroke: "currentColor",
-                                    stroke_width: "2",
-                                    stroke_linecap: "round",
-                                }
-                                line {
-                                    x1: "4",
-                                    y1: "16",
-                                    x2: "7",
-                                    y2: "16",
-                                    stroke: "currentColor",
-                                    stroke_width: "2",
-                                    stroke_linecap: "round",
-                                }
                             }
                         }
                     }
