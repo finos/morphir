@@ -1,7 +1,9 @@
 [application]
+name = "Morphir Live"
+default_platform = "desktop"
+asset_dir = "assets"
 
 [web.app]
-
 # HTML title tag content
 title = "Morphir Live"
 
@@ -19,3 +21,12 @@ script = []
 # Javascript code file
 # serve: [dev-server] only
 script = []
+
+[desktop]
+# Desktop window configuration
+
+[desktop.window]
+title = "Morphir Live"
+resizable = true
+width = 1280
+height = 800
