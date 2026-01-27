@@ -37,30 +37,36 @@ fn main() {
 fn load_icon() -> Option<dioxus::desktop::tao::window::Icon> {
     use std::path::PathBuf;
 
-    // Try multiple paths to find the icon
-    let paths_to_try: Vec<PathBuf> = vec![
+    // Icon filenames to try (in order of preference)
+    let icon_files = ["favicon.ico", "icon.png"];
+
+    // Base paths to search
+    let base_paths: Vec<PathBuf> = vec![
         // Current directory (when running from crate root)
-        PathBuf::from("assets/icon.png"),
+        PathBuf::from("assets"),
         // Manifest directory at compile time
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/icon.png"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets"),
         // Relative to executable
         std::env::current_exe()
             .ok()
-            .and_then(|p| p.parent().map(|p| p.join("assets/icon.png")))
+            .and_then(|p| p.parent().map(|p| p.join("assets")))
             .unwrap_or_default(),
     ];
 
-    for icon_path in paths_to_try {
-        if icon_path.exists() {
-            if let Ok(image) = image::open(&icon_path) {
-                let rgba = image.to_rgba8();
-                let (width, height) = rgba.dimensions();
-                if let Ok(icon) = dioxus::desktop::tao::window::Icon::from_rgba(
-                    rgba.into_raw(),
-                    width,
-                    height,
-                ) {
-                    return Some(icon);
+    for base in &base_paths {
+        for filename in &icon_files {
+            let icon_path = base.join(filename);
+            if icon_path.exists() {
+                if let Ok(image) = image::open(&icon_path) {
+                    let rgba = image.to_rgba8();
+                    let (width, height) = rgba.dimensions();
+                    if let Ok(icon) = dioxus::desktop::tao::window::Icon::from_rgba(
+                        rgba.into_raw(),
+                        width,
+                        height,
+                    ) {
+                        return Some(icon);
+                    }
                 }
             }
         }
