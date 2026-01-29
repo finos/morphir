@@ -174,7 +174,6 @@ definitions:
 
   PackageDefinition:
     type: object
-    required: ["modules"]
     properties:
       modules:
         type: object
@@ -186,15 +185,17 @@ definitions:
         description: |
           Dictionary mapping module paths to access-controlled module definitions.
           V4 uses object format: { "module/path": { "access": "Public", "value": {...} } }
+          Optional - defaults to empty object if omitted.
     description: |
       Full package definition containing all modules with their complete implementations.
-      Used in Library and Application distributions.
+      Used in Library and Application distributions. The "modules" field can be omitted
+      if empty.
     examples:
       - { "modules": { "domain/users": { "access": "Public", "value": { "types": {}, "values": {} } } } }
+      - {}
 
   PackageSpecification:
     type: object
-    required: ["modules"]
     properties:
       modules:
         type: object
@@ -202,11 +203,14 @@ definitions:
         description: |
           Dictionary mapping module paths to module specifications.
           V4 uses object format: { "module/path": { "types": {...}, "values": {...} } }
+          Optional - defaults to empty object if omitted.
     description: |
       Package specification containing only public interfaces (no implementations).
-      Used in dependencies and Specs distributions.
+      Used in dependencies and Specs distributions. The "modules" field can be omitted
+      if empty.
     examples:
       - { "modules": { "basics": { "types": { "int": { "OpaqueTypeSpecification": {} } }, "values": {} } } }
+      - {}
 
   # Distributions
   LibraryDistribution:
@@ -216,7 +220,7 @@ definitions:
     properties:
       Library:
         type: object
-        required: ["packageName", "dependencies", "def"]
+        required: ["packageName"]
         properties:
           packageName: { $ref: "#/definitions/PackageName" }
           dependencies: { $ref: "#/definitions/Dependencies" }
@@ -224,8 +228,11 @@ definitions:
     description: |
       Library distribution - a reusable package with full implementations.
       Used for libraries that can be imported by other packages.
+      The "dependencies" and "def" fields can be omitted if empty.
     examples:
       - { "Library": { "packageName": "my-org/my-lib", "dependencies": {}, "def": { "modules": {} } } }
+      - { "Library": { "packageName": "my-org/my-lib", "def": {} } }
+      - { "Library": { "packageName": "my-org/my-lib" } }
 
   SpecsDistribution:
     type: object
@@ -234,7 +241,7 @@ definitions:
     properties:
       Specs:
         type: object
-        required: ["packageName", "dependencies", "spec"]
+        required: ["packageName"]
         properties:
           packageName: { $ref: "#/definitions/PackageName" }
           dependencies: { $ref: "#/definitions/Dependencies" }
@@ -242,8 +249,11 @@ definitions:
     description: |
       Specs distribution - contains only public interfaces/specifications.
       Used for dependencies or FFI bindings where implementations are not needed.
+      The "dependencies" and "spec" fields can be omitted if empty.
     examples:
       - { "Specs": { "packageName": "morphir/sdk", "dependencies": {}, "spec": { "modules": {} } } }
+      - { "Specs": { "packageName": "morphir/sdk", "spec": {} } }
+      - { "Specs": { "packageName": "morphir/sdk" } }
 
   ApplicationDistribution:
     type: object
@@ -252,7 +262,7 @@ definitions:
     properties:
       Application:
         type: object
-        required: ["packageName", "dependencies", "def", "entryPoints"]
+        required: ["packageName", "entryPoints"]
         properties:
           packageName: { $ref: "#/definitions/PackageName" }
           dependencies: { $ref: "#/definitions/ApplicationDependencies" }
@@ -262,17 +272,20 @@ definitions:
             additionalProperties: { $ref: "#/definitions/EntryPoint" }
             description: |
               Map of entry point names (keys) to their definitions.
-              
+
               The key is an arbitrary identifier chosen by the developer (e.g., "startup", "build", "api-handler").
               The EntryPoint object contains a "kind" field that categorizes it semantically (main, command, handler, job, policy).
-              
+
               Example: An entry point named "startup" can have kind "main", or "api-handler" can have kind "handler".
               The name and kind can differ - the name is for identification, the kind is for semantic categorization.
     description: |
       Application distribution - an executable package with statically linked dependencies.
       Contains named entry points that can be invoked by tooling or runtime.
+      The "dependencies" and "def" fields can be omitted if empty.
     examples:
       - { "Application": { "packageName": "my-org/my-app", "dependencies": {}, "def": { "modules": {} }, "entryPoints": { "startup": { "target": "my-org/my-app:main#run", "kind": "main" } } } }
+      - { "Application": { "packageName": "my-org/my-app", "def": {}, "entryPoints": { "main": { "target": "my-org/my-app:main#run", "kind": "main" } } } }
+      - { "Application": { "packageName": "my-org/my-app", "entryPoints": { "main": { "target": "my-org/my-app:main#run", "kind": "main" } } } }
 
   ApplicationDependencies:
     type: object
@@ -322,7 +335,6 @@ definitions:
   # Modules
   ModuleDefinition:
     type: object
-    required: ["types", "values"]
     properties:
       types:
         type: object
@@ -342,6 +354,7 @@ definitions:
           Dictionary mapping type names to access-controlled type definitions.
           V4 uses object format: { "type-name": { "access": "Public", "TypeAliasDefinition": {...} } }
           Documentation can be included inline or omitted if None.
+          Optional - defaults to empty object if omitted.
       values:
         type: object
         additionalProperties:
@@ -360,17 +373,19 @@ definitions:
           Dictionary mapping value names to access-controlled value definitions.
           V4 uses object format: { "value-name": { "access": "Public", "ExpressionBody": {...} } }
           Documentation can be included inline or omitted if None.
+          Optional - defaults to empty object if omitted.
       doc: { type: string, description: "Optional module-level documentation" }
     description: |
       Full module definition containing all types and values with their implementations.
       Includes both public and private items. Used in PackageDefinition.
+      The "types" and "values" fields can be omitted if empty.
     examples:
       - { "types": { "user": { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/sdk:string#string" } } }, "values": {} }
       - { "types": {}, "values": { "calculate": { "access": "Public", "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/sdk:basics#int", "body": { "Literal": { "attributes": {}, "literal": { "IntegerLiteral": 42 } } } } } }, "doc": "Module documentation" }
+      - { "values": { "main": { "access": "Public", "ExpressionBody": { "inputTypes": {}, "outputType": { "Unit": {} }, "body": { "Unit": {} } } } } }
 
   ModuleSpecification:
     type: object
-    required: ["types", "values"]
     properties:
       types:
         type: object
@@ -386,6 +401,7 @@ definitions:
           Dictionary mapping type names to documented type specifications.
           V4 uses object format: { "type-name": { "TypeAliasSpecification": {...} } }
           Documentation can be included inline or omitted if None.
+          Optional - defaults to empty object if omitted.
       values:
         type: object
         additionalProperties:
@@ -400,12 +416,15 @@ definitions:
           Dictionary mapping value names to documented value specifications.
           V4 uses object format: { "value-name": { "inputs": {...}, "output": "..." } }
           Documentation can be included inline or omitted if None.
+          Optional - defaults to empty object if omitted.
       doc: { type: string, description: "Optional module-level documentation" }
     description: |
       Module specification containing only public interfaces (no implementations).
       Used in PackageSpecification and dependencies.
+      The "types" and "values" fields can be omitted if empty.
     examples:
       - { "types": { "int": { "OpaqueTypeSpecification": {} } }, "values": { "add": { "inputs": { "a": "morphir/sdk:basics#int", "b": "morphir/sdk:basics#int" }, "output": "morphir/sdk:basics#int" } } }
+      - { "types": { "int": { "OpaqueTypeSpecification": {} } } }
 
   # Type System
   #
@@ -451,6 +470,9 @@ definitions:
           Reference:
             type: array
             minItems: 2
+            items:
+              - $ref: "#/definitions/FQName"
+            additionalItems: { $ref: "#/definitions/Type" }
             description: |
               Array where first element is FQName, rest are type arguments.
         description: |

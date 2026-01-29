@@ -50,13 +50,43 @@ Both modes support three kinds of distributions:
 Contains the full implementation logic (`TypeDefinition`, `ValueDefinition`).
 - Used for the project being compiled.
 - Corresponds to the `pkg/` directory in Document Tree mode.
+- **Required fields**: `packageName`
+- **Optional fields**: `dependencies` (default: empty), `def` (default: empty)
+
+```json
+// Full form
+{ "Library": { "packageName": "my-org/my-lib", "dependencies": {...}, "def": {...} } }
+
+// Compact form (empty dependencies and def omitted)
+{ "Library": { "packageName": "my-org/my-lib" } }
+```
 
 ### Specs Distribution
 Contains only the public interface (`TypeSpecification`, `ValueSpecification`).
 - Used for dependencies to speed up compilation.
 - Corresponds to the `deps/` directory in Document Tree mode.
+- **Required fields**: `packageName`
+- **Optional fields**: `dependencies` (default: empty), `spec` (default: empty)
+
+```json
+// Full form
+{ "Specs": { "packageName": "morphir/sdk", "dependencies": {...}, "spec": {...} } }
+
+// Compact form
+{ "Specs": { "packageName": "morphir/sdk" } }
+```
 
 ### Application Distribution
 A self-contained distribution with all dependencies statically linked.
-- Includes an entry point.
+- Includes named entry points that can be invoked by tooling or runtime.
 - Used for deployment and execution.
+- **Required fields**: `packageName`, `entryPoints`
+- **Optional fields**: `dependencies` (default: empty), `def` (default: empty)
+
+```json
+// Full form
+{ "Application": { "packageName": "my-org/my-app", "dependencies": {...}, "def": {...}, "entryPoints": {...} } }
+
+// Compact form
+{ "Application": { "packageName": "my-org/my-app", "entryPoints": { "main": { "target": "my-org/my-app:main#run", "kind": "main" } } } }
+```
