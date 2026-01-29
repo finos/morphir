@@ -54,6 +54,18 @@ In the single-blob distribution, a module is a JSON object nesting all its types
 }
 ```
 
+**Optional fields**: The `types` and `values` fields can be omitted when empty:
+
+```json
+// Module with only values
+{ "values": { "main": { ... } } }
+
+// Module with only types
+{ "types": { "user": { ... } } }
+
+// Empty module (valid but unusual)
+{}
+
 ### Document Tree Mode
 In the hierarchical layout, a module is represented by a `module.json` file, which supports two encoding styles (or a mix):
 

@@ -18,6 +18,16 @@ A package is identified by:
 ### Classic Mode
 A package is part of the monolithic `morphir-ir.json` structure, containing a map of module paths to module definitions.
 
+**PackageDefinition** and **PackageSpecification** both have an optional `modules` field:
+
+```json
+// Full form
+{ "modules": { "domain/users": { ... }, "domain/orders": { ... } } }
+
+// Compact form (empty modules omitted)
+{}
+```
+
 ### Document Tree Mode
 A package maps to a directory structure within the `.morphir-dist` root:
 

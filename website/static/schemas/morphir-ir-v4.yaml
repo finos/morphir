@@ -1,7 +1,18 @@
 $schema: "http://json-schema.org/draft-07/schema#"
 $id: "https://morphir.finos.org/schemas/morphir-ir-v4.yaml"
 title: "Morphir IR Distribution"
-description: "Morphir IR format version 4"
+description: |
+  Morphir IR format version 4.
+  
+  V4 introduces key improvements:
+  - Wrapper object format for distributions (replaces tagged arrays)
+  - Object/dict format for modules, types, values, and dependencies
+  - Explicit TypeAttributes and ValueAttributes
+  - Canonical string formats for names, paths, and FQNames
+  - Embedded documentation support
+  - New value expressions (Hole, Native, External)
+  
+  See the complete example at: docs/spec/ir/schemas/v4/complete-example.json
 
 type: object
 required:
@@ -9,18 +20,26 @@ required:
   - distribution
 properties:
   formatVersion:
-    type: integer
-    const: 4
+    oneOf:
+      - type: string
+        pattern: "^4\\.0\\.0(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$"
+        description: "Semantic version string (e.g., '4.0.0', '4.0.0-alpha.1')"
+        examples: ["4.0.0", "4.0.0-alpha.1", "4.0.0+20240123"]
+      - type: integer
+        const: 4
+        description: "Legacy integer format for backwards compatibility"
+        examples: [4]
   
   distribution:
-    type: array
-    minItems: 4
-    maxItems: 4
-    items:
-      - const: "Library"
-      - $ref: "#/definitions/PackageName"
-      - $ref: "#/definitions/Dependencies"
-      - $ref: "#/definitions/PackageDefinition"
+    oneOf:
+      - $ref: "#/definitions/LibraryDistribution"
+      - $ref: "#/definitions/SpecsDistribution"
+      - $ref: "#/definitions/ApplicationDistribution"
+    description: |
+      Root distribution node. V4 uses wrapper object format where the distribution type
+      is the key and its content is the value.
+      
+      Example: { "Library": { "packageName": "...", "dependencies": {...}, "def": {...} } }
 
 definitions:
   # Basic Types
@@ -28,32 +47,52 @@ definitions:
     oneOf:
       - type: string
         pattern: "^[a-z0-9]+(-[a-z0-9]+|-(\\([a-z]+\\)))*$"
-        description: "Canonical string representation (e.g. 'my-name', 'value-in-(usd)')"
+        description: |
+          Canonical string representation of a name.
+          Supports kebab-case with optional parenthesized units (e.g., "value-in-(usd)").
+        examples: ["my-name", "user-id", "value-in-(usd)", "price-per-(unit)"]
       - type: array
         items:
           type: string
           pattern: "^[a-z][a-z0-9]*$"
         minItems: 1
-        description: "Legacy array representation"
+        description: "Legacy array representation (e.g., [\"my\", \"name\"] for 'my-name')"
+        examples: [["my", "name"], ["user", "id"]]
 
   Path:
     oneOf:
       - type: string
         pattern: "^[a-z0-9-()]+(/[a-z0-9-()]+)*$"
-        description: "Canonical string representation (e.g. 'morphir/sdk')"
+        description: |
+          Canonical string representation of a path (package or module path).
+          Uses forward slashes to separate path segments.
+        examples: ["morphir/sdk", "my-org/domain/users", "u-s/f-r-2052-a/data-tables"]
       - type: array
         items: { $ref: "#/definitions/Name" }
         minItems: 1
-        description: "Legacy array representation"
+        description: "Legacy array representation (e.g., [[\"morphir\"], [\"sdk\"]] for 'morphir/sdk')"
+        examples: [[["morphir"], ["sdk"]], [["my-org"], ["domain"], ["users"]]]
 
-  PackageName: { $ref: "#/definitions/Path" }
-  ModuleName: { $ref: "#/definitions/Path" }
+  PackageName:
+    $ref: "#/definitions/Path"
+    description: |
+      Package identifier. Examples: "morphir/sdk", "my-org/my-project"
+    examples: ["morphir/sdk", "my-org/my-project", "regulation"]
+
+  ModuleName:
+    $ref: "#/definitions/Path"
+    description: |
+      Module path within a package. Examples: "basics", "list", "domain/users"
+    examples: ["basics", "list", "domain/users", "u-s/f-r-2052-a/data-tables"]
 
   FQName:
     oneOf:
       - type: string
         pattern: "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+$"
-        description: "Canonical string representation (e.g. 'morphir/sdk:list#map')"
+        description: |
+          Fully-qualified name in canonical string format: "package:module#name"
+          This uniquely identifies a type or value across the entire IR.
+        examples: ["morphir/sdk:list#map", "morphir/sdk:basics#int", "my-org/domain:users#create-user"]
       - type: array
         minItems: 3
         maxItems: 3
@@ -61,31 +100,50 @@ definitions:
           - $ref: "#/definitions/PackageName"
           - $ref: "#/definitions/ModuleName"
           - $ref: "#/definitions/Name"
-        description: "Legacy array representation"
+        description: "Legacy array representation: [packageName, moduleName, name]"
+        examples: [["morphir/sdk", "list", "map"], [["morphir"], ["sdk"], ["list"], ["map"]]]
 
   # Attributes
   SourceLocation:
     type: object
     required: ["startLine", "startColumn", "endLine", "endColumn"]
     properties:
-      startLine: { type: integer }
-      startColumn: { type: integer }
-      endLine: { type: integer }
-      endColumn: { type: integer }
+      startLine: { type: integer, description: "Starting line number (1-based)" }
+      startColumn: { type: integer, description: "Starting column number (1-based)" }
+      endLine: { type: integer, description: "Ending line number (1-based)" }
+      endColumn: { type: integer, description: "Ending column number (1-based)" }
+    description: "Source code location for error reporting and IDE support"
+    examples:
+      - { startLine: 10, startColumn: 5, endLine: 10, endColumn: 15 }
+      - { startLine: 42, startColumn: 1, endLine: 45, endColumn: 20 }
 
   TypeAttributes:
     type: object
     properties:
       source: { $ref: "#/definitions/SourceLocation" }
-      constraints: { type: object } # Placeholder for TypeConstraints
-      extensions: { type: object }
+      constraints: { type: object, description: "Type constraints (placeholder for future expansion)" }
+      extensions: { type: object, description: "Custom extension data" }
+    description: |
+      V4 explicit type attributes replacing generic 'a' parameter.
+      Contains source location, type constraints, and extensibility hooks.
+    examples:
+      - {}
+      - { source: { startLine: 10, startColumn: 5, endLine: 10, endColumn: 15 } }
+      - { source: { startLine: 10, startColumn: 5, endLine: 10, endColumn: 15 }, extensions: { custom: "data" } }
 
   ValueAttributes:
     type: object
     properties:
       source: { $ref: "#/definitions/SourceLocation" }
-      inferredType: { $ref: "#/definitions/Type" }
-      extensions: { type: object }
+      inferredType: { $ref: "#/definitions/Type", description: "Type inferred during type checking" }
+      extensions: { type: object, description: "Custom extension data" }
+    description: |
+      V4 explicit value attributes replacing generic 'a' parameter.
+      Contains source location, inferred type, and extensibility hooks.
+    examples:
+      - {}
+      - { source: { startLine: 20, startColumn: 1, endLine: 20, endColumn: 10 } }
+      - { source: { startLine: 20, startColumn: 1, endLine: 20, endColumn: 10 }, inferredType: "morphir/sdk:basics#int" }
 
   # Access Control
   AccessControlled:
@@ -94,102 +152,289 @@ definitions:
     properties:
       access:
         enum: ["Public", "Private"]
+        description: "Visibility level: Public (exported) or Private (internal)"
       value: {}
+    description: |
+      Wrapper for access control. In V4, this is flattened in JSON when used within
+      module definitions (e.g., { "access": "Public", "TypeAliasDefinition": {...} }).
+    examples:
+      - { access: "Public", value: { "some": "data" } }
+      - { access: "Private", value: { "internal": "data" } }
 
   # Packages
   Dependencies:
-    type: array
-    items:
-      type: array
-      items:
-        - $ref: "#/definitions/PackageName"
-        - $ref: "#/definitions/PackageSpecification"
+    type: object
+    additionalProperties: { $ref: "#/definitions/PackageSpecification" }
+    description: |
+      Dictionary mapping package names to their specifications.
+      V4 uses object format: { "package/name": { "modules": {...} } }
+    examples:
+      - { "morphir/sdk": { "modules": { "basics": { "types": {}, "values": {} } } } }
+      - { "morphir/sdk": { "modules": { "basics": { "types": {}, "values": {} } }, "other/pkg": { "modules": {} } }
 
   PackageDefinition:
     type: object
-    required: ["modules"]
     properties:
       modules:
-        type: array
-        items:
-          type: array
-          items:
-            - $ref: "#/definitions/ModuleName"
-            - allOf:
-                - $ref: "#/definitions/AccessControlled"
-                - properties:
-                    value: { $ref: "#/definitions/ModuleDefinition" }
+        type: object
+        additionalProperties:
+          allOf:
+            - $ref: "#/definitions/AccessControlled"
+            - properties:
+                value: { $ref: "#/definitions/ModuleDefinition" }
+        description: |
+          Dictionary mapping module paths to access-controlled module definitions.
+          V4 uses object format: { "module/path": { "access": "Public", "value": {...} } }
+          Optional - defaults to empty object if omitted.
+    description: |
+      Full package definition containing all modules with their complete implementations.
+      Used in Library and Application distributions. The "modules" field can be omitted
+      if empty.
+    examples:
+      - { "modules": { "domain/users": { "access": "Public", "value": { "types": {}, "values": {} } } } }
+      - {}
 
   PackageSpecification:
     type: object
-    required: ["modules"]
     properties:
       modules:
-        type: array
-        items:
-          type: array
-          items:
-            - $ref: "#/definitions/ModuleName"
-            - $ref: "#/definitions/ModuleSpecification"
+        type: object
+        additionalProperties: { $ref: "#/definitions/ModuleSpecification" }
+        description: |
+          Dictionary mapping module paths to module specifications.
+          V4 uses object format: { "module/path": { "types": {...}, "values": {...} } }
+          Optional - defaults to empty object if omitted.
+    description: |
+      Package specification containing only public interfaces (no implementations).
+      Used in dependencies and Specs distributions. The "modules" field can be omitted
+      if empty.
+    examples:
+      - { "modules": { "basics": { "types": { "int": { "OpaqueTypeSpecification": {} } }, "values": {} } } }
+      - {}
+
+  # Distributions
+  LibraryDistribution:
+    type: object
+    required: ["Library"]
+    additionalProperties: false
+    properties:
+      Library:
+        type: object
+        required: ["packageName"]
+        properties:
+          packageName: { $ref: "#/definitions/PackageName" }
+          dependencies: { $ref: "#/definitions/Dependencies" }
+          def: { $ref: "#/definitions/PackageDefinition" }
+    description: |
+      Library distribution - a reusable package with full implementations.
+      Used for libraries that can be imported by other packages.
+      The "dependencies" and "def" fields can be omitted if empty.
+    examples:
+      - { "Library": { "packageName": "my-org/my-lib", "dependencies": {}, "def": { "modules": {} } } }
+      - { "Library": { "packageName": "my-org/my-lib", "def": {} } }
+      - { "Library": { "packageName": "my-org/my-lib" } }
+
+  SpecsDistribution:
+    type: object
+    required: ["Specs"]
+    additionalProperties: false
+    properties:
+      Specs:
+        type: object
+        required: ["packageName"]
+        properties:
+          packageName: { $ref: "#/definitions/PackageName" }
+          dependencies: { $ref: "#/definitions/Dependencies" }
+          spec: { $ref: "#/definitions/PackageSpecification" }
+    description: |
+      Specs distribution - contains only public interfaces/specifications.
+      Used for dependencies or FFI bindings where implementations are not needed.
+      The "dependencies" and "spec" fields can be omitted if empty.
+    examples:
+      - { "Specs": { "packageName": "morphir/sdk", "dependencies": {}, "spec": { "modules": {} } } }
+      - { "Specs": { "packageName": "morphir/sdk", "spec": {} } }
+      - { "Specs": { "packageName": "morphir/sdk" } }
+
+  ApplicationDistribution:
+    type: object
+    required: ["Application"]
+    additionalProperties: false
+    properties:
+      Application:
+        type: object
+        required: ["packageName", "entryPoints"]
+        properties:
+          packageName: { $ref: "#/definitions/PackageName" }
+          dependencies: { $ref: "#/definitions/ApplicationDependencies" }
+          def: { $ref: "#/definitions/PackageDefinition" }
+          entryPoints:
+            type: object
+            additionalProperties: { $ref: "#/definitions/EntryPoint" }
+            description: |
+              Map of entry point names (keys) to their definitions.
+
+              The key is an arbitrary identifier chosen by the developer (e.g., "startup", "build", "api-handler").
+              The EntryPoint object contains a "kind" field that categorizes it semantically (main, command, handler, job, policy).
+
+              Example: An entry point named "startup" can have kind "main", or "api-handler" can have kind "handler".
+              The name and kind can differ - the name is for identification, the kind is for semantic categorization.
+    description: |
+      Application distribution - an executable package with statically linked dependencies.
+      Contains named entry points that can be invoked by tooling or runtime.
+      The "dependencies" and "def" fields can be omitted if empty.
+    examples:
+      - { "Application": { "packageName": "my-org/my-app", "dependencies": {}, "def": { "modules": {} }, "entryPoints": { "startup": { "target": "my-org/my-app:main#run", "kind": "main" } } } }
+      - { "Application": { "packageName": "my-org/my-app", "def": {}, "entryPoints": { "main": { "target": "my-org/my-app:main#run", "kind": "main" } } } }
+      - { "Application": { "packageName": "my-org/my-app", "entryPoints": { "main": { "target": "my-org/my-app:main#run", "kind": "main" } } } }
+
+  ApplicationDependencies:
+    type: object
+    additionalProperties: { $ref: "#/definitions/PackageDefinition" }
+    description: |
+      Dictionary mapping package names to full definitions (statically linked for Application distributions).
+      Unlike Library dependencies which use specifications, Application dependencies include full implementations
+      for static linking.
+    examples:
+      - { "morphir/sdk": { "modules": { "basics": { "access": "Public", "value": { "types": {}, "values": {} } } } } }
+
+  EntryPoint:
+    type: object
+    required: ["target", "kind"]
+    properties:
+      target: 
+        $ref: "#/definitions/FQName"
+        description: "Fully-qualified name of the value to invoke"
+      kind: 
+        $ref: "#/definitions/EntryPointKind"
+        description: |
+          Semantic category of this entry point. Note: This is distinct from the entry point name (the dictionary key).
+          The name is an arbitrary identifier, while kind is a semantic category from a fixed set.
+      doc: 
+        type: string
+        description: "Documentation for this entry point"
+    description: |
+      Defines an entry point for an Application distribution.
+      The entry point name (the dictionary key) is arbitrary, while 'kind' provides semantic categorization.
+    examples:
+      - { "target": "my-org/my-app:main#run", "kind": "main", "doc": "Application startup entry point" }
+      - { "target": "my-org/my-app:api#handle", "kind": "handler", "doc": "HTTP API handler" }
+
+  EntryPointKind:
+    type: string
+    enum: ["main", "command", "handler", "job", "policy"]
+    description: |
+      Semantic category for entry points. Used by tooling and runtime to determine behavior.
+      
+      - "main": Default/primary entry point (like application startup)
+      - "command": CLI subcommand
+      - "handler": Service endpoint or message handler
+      - "job": Batch or scheduled job
+      - "policy": Business policy or rule
+    examples: ["main", "command", "handler", "job", "policy"]
 
   # Modules
   ModuleDefinition:
     type: object
-    required: ["types", "values"]
     properties:
       types:
-        type: array
-        items:
-          type: array
-          items:
-            - $ref: "#/definitions/Name"
-            - allOf:
-                - $ref: "#/definitions/AccessControlled"
-                - properties:
-                    value:
-                      oneOf:
-                        - { type: object, required: ["doc", "value"], properties: { doc: { type: string }, value: { $ref: "#/definitions/TypeDefinition" } } }
-                        - { $ref: "#/definitions/TypeDefinition" }
+        type: object
+        additionalProperties:
+          allOf:
+            - $ref: "#/definitions/AccessControlled"
+            - properties:
+                value:
+                  oneOf:
+                    - type: object
+                      required: ["doc", "value"]
+                      properties:
+                        doc: { type: string }
+                        value: { $ref: "#/definitions/TypeDefinition" }
+                    - $ref: "#/definitions/TypeDefinition"
+        description: |
+          Dictionary mapping type names to access-controlled type definitions.
+          V4 uses object format: { "type-name": { "access": "Public", "TypeAliasDefinition": {...} } }
+          Documentation can be included inline or omitted if None.
+          Optional - defaults to empty object if omitted.
       values:
-        type: array
-        items:
-          type: array
-          items:
-            - $ref: "#/definitions/Name"
-            - allOf:
-                - $ref: "#/definitions/AccessControlled"
-                - properties:
-                    value:
-                      oneOf:
-                        - { type: object, required: ["doc", "value"], properties: { doc: { type: string }, value: { $ref: "#/definitions/ValueDefinition" } } }
-                        - { $ref: "#/definitions/ValueDefinition" }
-      doc: { type: string }
+        type: object
+        additionalProperties:
+          allOf:
+            - $ref: "#/definitions/AccessControlled"
+            - properties:
+                value:
+                  oneOf:
+                    - type: object
+                      required: ["doc", "value"]
+                      properties:
+                        doc: { type: string }
+                        value: { $ref: "#/definitions/ValueDefinition" }
+                    - $ref: "#/definitions/ValueDefinition"
+        description: |
+          Dictionary mapping value names to access-controlled value definitions.
+          V4 uses object format: { "value-name": { "access": "Public", "ExpressionBody": {...} } }
+          Documentation can be included inline or omitted if None.
+          Optional - defaults to empty object if omitted.
+      doc: { type: string, description: "Optional module-level documentation" }
+    description: |
+      Full module definition containing all types and values with their implementations.
+      Includes both public and private items. Used in PackageDefinition.
+      The "types" and "values" fields can be omitted if empty.
+    examples:
+      - { "types": { "user": { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/sdk:string#string" } } }, "values": {} }
+      - { "types": {}, "values": { "calculate": { "access": "Public", "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/sdk:basics#int", "body": { "Literal": { "attributes": {}, "literal": { "IntegerLiteral": 42 } } } } } }, "doc": "Module documentation" }
+      - { "values": { "main": { "access": "Public", "ExpressionBody": { "inputTypes": {}, "outputType": { "Unit": {} }, "body": { "Unit": {} } } } } }
 
   ModuleSpecification:
     type: object
-    required: ["types", "values"]
     properties:
       types:
-        type: array
-        items:
-          type: array
-          items:
-            - $ref: "#/definitions/Name"
-            - oneOf:
-                - { type: object, required: ["doc", "value"], properties: { doc: { type: string }, value: { $ref: "#/definitions/TypeSpecification" } } }
-                - { $ref: "#/definitions/TypeSpecification" }
+        type: object
+        additionalProperties:
+          oneOf:
+            - type: object
+              required: ["doc", "value"]
+              properties:
+                doc: { type: string }
+                value: { $ref: "#/definitions/TypeSpecification" }
+            - $ref: "#/definitions/TypeSpecification"
+        description: |
+          Dictionary mapping type names to documented type specifications.
+          V4 uses object format: { "type-name": { "TypeAliasSpecification": {...} } }
+          Documentation can be included inline or omitted if None.
+          Optional - defaults to empty object if omitted.
       values:
-        type: array
-        items:
-          type: array
-          items:
-            - $ref: "#/definitions/Name"
-            - oneOf:
-                - { type: object, required: ["doc", "value"], properties: { doc: { type: string }, value: { $ref: "#/definitions/ValueSpecification" } } }
-                - { $ref: "#/definitions/ValueSpecification" }
-      doc: { type: string }
+        type: object
+        additionalProperties:
+          oneOf:
+            - type: object
+              required: ["doc", "value"]
+              properties:
+                doc: { type: string }
+                value: { $ref: "#/definitions/ValueSpecification" }
+            - $ref: "#/definitions/ValueSpecification"
+        description: |
+          Dictionary mapping value names to documented value specifications.
+          V4 uses object format: { "value-name": { "inputs": {...}, "output": "..." } }
+          Documentation can be included inline or omitted if None.
+          Optional - defaults to empty object if omitted.
+      doc: { type: string, description: "Optional module-level documentation" }
+    description: |
+      Module specification containing only public interfaces (no implementations).
+      Used in PackageSpecification and dependencies.
+      The "types" and "values" fields can be omitted if empty.
+    examples:
+      - { "types": { "int": { "OpaqueTypeSpecification": {} } }, "values": { "add": { "inputs": { "a": "morphir/sdk:basics#int", "b": "morphir/sdk:basics#int" }, "output": "morphir/sdk:basics#int" } } }
+      - { "types": { "int": { "OpaqueTypeSpecification": {} } } }
 
   # Type System
+  #
+  # V4 Type expressions use compact object notation:
+  # - Variables: bare name string (e.g., "a")
+  # - References without args: bare FQName string (e.g., "morphir/sdk:int#int")
+  # - References with args: {"Reference": {"fqname": "...", "args": [...]}}
+  # - Records: {"Record": {field-map}}
+  # - Other types: {"TypeName": {...}}
+  #
   Type:
     oneOf:
       - $ref: "#/definitions/VariableType"
@@ -201,59 +446,128 @@ definitions:
       - $ref: "#/definitions/UnitType"
 
   VariableType:
-    type: array
-    items:
-      - const: "Variable"
-      - $ref: "#/definitions/TypeAttributes"
-      - $ref: "#/definitions/Name"
+    type: string
+    pattern: "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+    description: |
+      Type variable (generic type parameter).
+      V4 compact format: bare name string (no ':' or '#').
+      Distinguished from Reference by absence of FQName separators.
+    examples:
+      - "a"
+      - "comparable"
+      - "number"
 
   ReferenceType:
-    type: array
-    items:
-      - const: "Reference"
-      - $ref: "#/definitions/TypeAttributes"
-      - $ref: "#/definitions/FQName"
-      - type: array
-        items: { $ref: "#/definitions/Type" }
+    oneOf:
+      - type: string
+        pattern: "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+$"
+        description: |
+          Compact format for Reference without type arguments.
+          Just the FQName string: "package:module#name"
+      - type: object
+        required: ["Reference"]
+        properties:
+          Reference:
+            type: array
+            minItems: 2
+            items:
+              - $ref: "#/definitions/FQName"
+            additionalItems: { $ref: "#/definitions/Type" }
+            description: |
+              Array where first element is FQName, rest are type arguments.
+        description: |
+          Array format for Reference with type arguments.
+    description: |
+      Reference to a named type, optionally with type arguments.
+      Compact: "morphir/sdk:int#int" (no args)
+      Array: {"Reference": ["morphir/sdk:list#list", "a"]}
+    examples:
+      - "morphir/sdk:basics#int"
+      - "morphir/sdk:string#string"
+      - { "Reference": ["morphir/sdk:list#list", "a"] }
+      - { "Reference": ["morphir/sdk:dict#dict", "morphir/sdk:string#string", "morphir/sdk:int#int"] }
 
   TupleType:
-    type: array
-    items:
-      - const: "Tuple"
-      - $ref: "#/definitions/TypeAttributes"
-      - type: array
-        items: { $ref: "#/definitions/Type" }
+    type: object
+    required: ["Tuple"]
+    properties:
+      Tuple:
+        type: object
+        required: ["elements"]
+        properties:
+          elements:
+            type: array
+            items: { $ref: "#/definitions/Type" }
+    description: |
+      Tuple type with multiple element types.
+      Format: {"Tuple": {"elements": [type1, type2, ...]}}
+    examples:
+      - { "Tuple": { "elements": ["morphir/sdk:int#int", "morphir/sdk:string#string"] } }
+      - { "Tuple": { "elements": ["a", "b", "c"] } }
 
   RecordType:
-    type: array
-    items:
-      - const: "Record"
-      - $ref: "#/definitions/TypeAttributes"
-      - type: array
-        items: { $ref: "#/definitions/Field" }
+    type: object
+    required: ["Record"]
+    properties:
+      Record:
+        type: object
+        additionalProperties: { $ref: "#/definitions/Type" }
+        description: |
+          Dictionary mapping field names to their types.
+          Field names use kebab-case.
+    description: |
+      Record type with named fields.
+      Format: {"Record": {"field-name": type, ...}}
+    examples:
+      - { "Record": { "name": "morphir/sdk:string#string", "age": "morphir/sdk:int#int" } }
+      - { "Record": { "inflows": "regulation:data-tables#inflows", "outflows": "regulation:data-tables#outflows" } }
 
   ExtensibleRecordType:
-    type: array
-    items:
-      - const: "ExtensibleRecord"
-      - $ref: "#/definitions/TypeAttributes"
-      - $ref: "#/definitions/Name"
-      - type: array
-        items: { $ref: "#/definitions/Field" }
+    type: object
+    required: ["ExtensibleRecord"]
+    properties:
+      ExtensibleRecord:
+        type: object
+        required: ["variable", "fields"]
+        properties:
+          variable: { $ref: "#/definitions/Name" }
+          fields:
+            type: object
+            additionalProperties: { $ref: "#/definitions/Type" }
+    description: |
+      Extensible record type (row polymorphism).
+      Format: {"ExtensibleRecord": {"variable": "a", "fields": {...}}}
+    examples:
+      - { "ExtensibleRecord": { "variable": "a", "fields": { "name": "morphir/sdk:string#string" } } }
+      - { "ExtensibleRecord": { "variable": "r", "fields": { "email": "morphir/sdk:string#string" } } }
 
   FunctionType:
-    type: array
-    items:
-      - const: "Function"
-      - $ref: "#/definitions/TypeAttributes"
-      - $ref: "#/definitions/Type"
-      - $ref: "#/definitions/Type"
+    type: object
+    required: ["Function"]
+    properties:
+      Function:
+        type: object
+        required: ["argumentType", "returnType"]
+        properties:
+          argumentType: { $ref: "#/definitions/Type" }
+          returnType: { $ref: "#/definitions/Type" }
+    description: |
+      Function type.
+      Format: {"Function": {"argumentType": ..., "returnType": ...}}
+    examples:
+      - { "Function": { "argumentType": "morphir/sdk:int#int", "returnType": "morphir/sdk:string#string" } }
 
   UnitType:
-    type: array
-    items:
-      - const: "Unit"
-      - $ref: "#/definitions/TypeAttributes"
+    type: object
+    required: ["Unit"]
+    properties:
+      Unit:
+        type: object
+    description: |
+      Unit type (the type with exactly one value).
+      Format: {"Unit": {}}
+    examples:
+      - { "Unit": {} }
 
   Field:
     type: object
@@ -344,6 +658,15 @@ definitions:
               - $ref: "#/definitions/Type"
 
   # Value System
+  #
+  # V4 Value expressions use object wrappers to distinguish expression types:
+  # - {"Variable": "name"}
+  # - {"Reference": "fqname"}
+  # - {"Literal": {...}}
+  # - {"Record": {field-map}}
+  # - {"Apply": {"function": ..., "argument": ...}}
+  # etc.
+  #
   Value:
     oneOf:
       - $ref: "#/definitions/LiteralValue"
@@ -366,165 +689,282 @@ definitions:
       - $ref: "#/definitions/UnitValue"
 
   LiteralValue:
-    type: array
-    items:
-      - const: "Literal"
-      - $ref: "#/definitions/ValueAttributes"
-      - $ref: "#/definitions/Literal"
+    type: object
+    required: ["Literal"]
+    properties:
+      Literal: { $ref: "#/definitions/Literal" }
+    description: |
+      Literal constant value.
+      Format: {"Literal": {"IntLiteral": 42}} or {"Literal": {"StringLiteral": "hello"}}
+    examples:
+      - { "Literal": { "IntLiteral": 42 } }
+      - { "Literal": { "StringLiteral": "hello" } }
+      - { "Literal": { "BoolLiteral": true } }
 
   ConstructorValue:
-    type: array
-    items:
-      - const: "Constructor"
-      - $ref: "#/definitions/ValueAttributes"
-      - $ref: "#/definitions/FQName"
+    type: object
+    required: ["Constructor"]
+    properties:
+      Constructor: { $ref: "#/definitions/FQName" }
+    description: |
+      Reference to a custom type constructor.
+      Format: {"Constructor": "package:module#constructor-name"}
+    examples:
+      - { "Constructor": "morphir/sdk:maybe#just" }
+      - { "Constructor": "morphir/sdk:maybe#nothing" }
 
   TupleValue:
-    type: array
-    items:
-      - const: "Tuple"
-      - $ref: "#/definitions/ValueAttributes"
-      - type: array
-        items: { $ref: "#/definitions/Value" }
+    type: object
+    required: ["Tuple"]
+    properties:
+      Tuple:
+        type: object
+        required: ["elements"]
+        properties:
+          elements:
+            type: array
+            items: { $ref: "#/definitions/Value" }
+    description: |
+      Tuple value with multiple elements.
+      Format: {"Tuple": {"elements": [value1, value2, ...]}}
+    examples:
+      - { "Tuple": { "elements": [{ "Variable": "x" }, { "Literal": { "IntLiteral": 1 } }] } }
 
   ListValue:
-    type: array
-    items:
-      - const: "List"
-      - $ref: "#/definitions/ValueAttributes"
-      - type: array
-        items: { $ref: "#/definitions/Value" }
+    type: object
+    required: ["List"]
+    properties:
+      List:
+        type: object
+        required: ["items"]
+        properties:
+          items:
+            type: array
+            items: { $ref: "#/definitions/Value" }
+    description: |
+      List of values.
+      Format: {"List": {"items": [value1, value2, ...]}}
+    examples:
+      - { "List": { "items": [{ "Literal": { "IntLiteral": 1 } }, { "Literal": { "IntLiteral": 2 } }] } }
 
   RecordValue:
-    type: array
-    items:
-      - const: "Record"
-      - $ref: "#/definitions/ValueAttributes"
-      - type: array
-        items:
-          type: array
-          items:
-            - $ref: "#/definitions/Name"
-            - $ref: "#/definitions/Value"
+    type: object
+    required: ["Record"]
+    properties:
+      Record:
+        type: object
+        additionalProperties: { $ref: "#/definitions/Value" }
+    description: |
+      Record value with named fields.
+      Format: {"Record": {"field-name": value, ...}}
+      Field names use kebab-case.
+    examples:
+      - { "Record": { "name": { "Variable": "x" }, "age": { "Literal": { "IntLiteral": 25 } } } }
 
   VariableValue:
-    type: array
-    items:
-      - const: "Variable"
-      - $ref: "#/definitions/ValueAttributes"
-      - $ref: "#/definitions/Name"
+    type: object
+    required: ["Variable"]
+    properties:
+      Variable: { $ref: "#/definitions/Name" }
+    description: |
+      Reference to a variable in scope.
+      Format: {"Variable": "variable-name"}
+    examples:
+      - { "Variable": "x" }
+      - { "Variable": "my-value" }
 
   ReferenceValue:
-    type: array
-    items:
-      - const: "Reference"
-      - $ref: "#/definitions/ValueAttributes"
-      - $ref: "#/definitions/FQName"
+    type: object
+    required: ["Reference"]
+    properties:
+      Reference: { $ref: "#/definitions/FQName" }
+    description: |
+      Reference to a defined value (function or constant).
+      Format: {"Reference": "package:module#name"}
+    examples:
+      - { "Reference": "morphir/sdk:basics#add" }
+      - { "Reference": "morphir/sdk:list#map" }
 
   FieldValue:
-    type: array
-    items:
-      - const: "Field"
-      - $ref: "#/definitions/ValueAttributes"
-      - $ref: "#/definitions/Value"
-      - $ref: "#/definitions/Name"
+    type: object
+    required: ["Field"]
+    properties:
+      Field:
+        type: object
+        required: ["target", "name"]
+        properties:
+          target: { $ref: "#/definitions/Value" }
+          name: { $ref: "#/definitions/Name" }
+    description: |
+      Field access on a record.
+      Format: {"Field": {"target": value, "name": "field-name"}}
+    examples:
+      - { "Field": { "target": { "Variable": "record" }, "name": "field-name" } }
 
   FieldFunctionValue:
-    type: array
-    items:
-      - const: "FieldFunction"
-      - $ref: "#/definitions/ValueAttributes"
-      - $ref: "#/definitions/Name"
+    type: object
+    required: ["FieldFunction"]
+    properties:
+      FieldFunction: { $ref: "#/definitions/Name" }
+    description: |
+      A function that extracts a field.
+      Format: {"FieldFunction": "field-name"}
+    examples:
+      - { "FieldFunction": "name" }
+      - { "FieldFunction": "age" }
 
   ApplyValue:
-    type: array
-    items:
-      - const: "Apply"
-      - $ref: "#/definitions/ValueAttributes"
-      - $ref: "#/definitions/Value"
-      - $ref: "#/definitions/Value"
+    type: object
+    required: ["Apply"]
+    properties:
+      Apply:
+        type: object
+        required: ["function", "argument"]
+        properties:
+          function: { $ref: "#/definitions/Value" }
+          argument: { $ref: "#/definitions/Value" }
+    description: |
+      Function application.
+      Format: {"Apply": {"function": value, "argument": value}}
+    examples:
+      - { "Apply": { "function": { "Reference": "morphir/sdk:basics#add" }, "argument": { "Literal": { "IntLiteral": 1 } } } }
 
   LambdaValue:
-    type: array
-    items:
-      - const: "Lambda"
-      - $ref: "#/definitions/ValueAttributes"
-      - $ref: "#/definitions/Pattern"
-      - $ref: "#/definitions/Value"
+    type: object
+    required: ["Lambda"]
+    properties:
+      Lambda:
+        type: object
+        required: ["pattern", "body"]
+        properties:
+          pattern: { $ref: "#/definitions/Pattern" }
+          body: { $ref: "#/definitions/Value" }
+    description: |
+      Anonymous function (lambda).
+      Format: {"Lambda": {"pattern": pattern, "body": value}}
+    examples:
+      - { "Lambda": { "pattern": { "AsPattern": { "pattern": { "WildcardPattern": {} }, "name": "x" } }, "body": { "Variable": "x" } } }
 
   LetDefinitionValue:
-    type: array
-    items:
-      - const: "LetDefinition"
-      - $ref: "#/definitions/ValueAttributes"
-      - $ref: "#/definitions/Name"
-      - $ref: "#/definitions/ValueDefinition"
-      - $ref: "#/definitions/Value"
+    type: object
+    required: ["LetDefinition"]
+    properties:
+      LetDefinition:
+        type: object
+        required: ["name", "definition", "in"]
+        properties:
+          name: { $ref: "#/definitions/Name" }
+          definition: { $ref: "#/definitions/ValueDefinition" }
+          in: { $ref: "#/definitions/Value" }
+    description: |
+      Let binding introducing a single value.
+      Format: {"LetDefinition": {"name": "x", "definition": {...}, "in": value}}
+    examples:
+      - { "LetDefinition": { "name": "x", "definition": { }, "in": { "Variable": "x" } } }
 
   LetRecursionValue:
-    type: array
-    items:
-      - const: "LetRecursion"
-      - $ref: "#/definitions/ValueAttributes"
-      - type: array
-        items:
-          type: array
-          items:
-            - $ref: "#/definitions/Name"
-            - $ref: "#/definitions/ValueDefinition"
-      - $ref: "#/definitions/Value"
+    type: object
+    required: ["LetRecursion"]
+    properties:
+      LetRecursion:
+        type: object
+        required: ["definitions", "in"]
+        properties:
+          definitions:
+            type: object
+            additionalProperties: { $ref: "#/definitions/ValueDefinition" }
+          in: { $ref: "#/definitions/Value" }
+    description: |
+      Mutually recursive let bindings.
+      Format: {"LetRecursion": {"definitions": {"f": {...}, "g": {...}}, "in": value}}
+    examples:
+      - { "LetRecursion": { "definitions": { "f": { }, "g": { } }, "in": { "Variable": "f" } } }
 
   DestructureValue:
-    type: array
-    items:
-      - const: "Destructure"
-      - $ref: "#/definitions/ValueAttributes"
-      - $ref: "#/definitions/Pattern"
-      - $ref: "#/definitions/Value"
-      - $ref: "#/definitions/Value"
+    type: object
+    required: ["Destructure"]
+    properties:
+      Destructure:
+        type: object
+        required: ["pattern", "value", "in"]
+        properties:
+          pattern: { $ref: "#/definitions/Pattern" }
+          value: { $ref: "#/definitions/Value" }
+          in: { $ref: "#/definitions/Value" }
+    description: |
+      Pattern-based destructuring.
+      Format: {"Destructure": {"pattern": pattern, "value": value, "in": value}}
 
   IfThenElseValue:
-    type: array
-    items:
-      - const: "IfThenElse"
-      - $ref: "#/definitions/ValueAttributes"
-      - $ref: "#/definitions/Value"
-      - $ref: "#/definitions/Value"
-      - $ref: "#/definitions/Value"
+    type: object
+    required: ["IfThenElse"]
+    properties:
+      IfThenElse:
+        type: object
+        required: ["condition", "then", "else"]
+        properties:
+          condition: { $ref: "#/definitions/Value" }
+          then: { $ref: "#/definitions/Value" }
+          else: { $ref: "#/definitions/Value" }
+    description: |
+      Conditional expression.
+      Format: {"IfThenElse": {"condition": value, "then": value, "else": value}}
 
   PatternMatchValue:
-    type: array
-    items:
-      - const: "PatternMatch"
-      - $ref: "#/definitions/ValueAttributes"
-      - $ref: "#/definitions/Value"
-      - type: array
-        items:
-          type: array
-          items:
-            - $ref: "#/definitions/Pattern"
-            - $ref: "#/definitions/Value"
+    type: object
+    required: ["PatternMatch"]
+    properties:
+      PatternMatch:
+        type: object
+        required: ["value", "cases"]
+        properties:
+          value: { $ref: "#/definitions/Value" }
+          cases:
+            type: array
+            items:
+              type: object
+              required: ["pattern", "body"]
+              properties:
+                pattern: { $ref: "#/definitions/Pattern" }
+                body: { $ref: "#/definitions/Value" }
+    description: |
+      Pattern matching with multiple cases.
+      Format: {"PatternMatch": {"value": value, "cases": [{"pattern": ..., "body": ...}, ...]}}
 
   UpdateRecordValue:
-    type: array
-    items:
-      - const: "UpdateRecord"
-      - $ref: "#/definitions/ValueAttributes"
-      - $ref: "#/definitions/Value"
-      - type: array
-        items:
-          type: array
-          items:
-            - $ref: "#/definitions/Name"
-            - $ref: "#/definitions/Value"
+    type: object
+    required: ["UpdateRecord"]
+    properties:
+      UpdateRecord:
+        type: object
+        required: ["target", "fields"]
+        properties:
+          target: { $ref: "#/definitions/Value" }
+          fields:
+            type: object
+            additionalProperties: { $ref: "#/definitions/Value" }
+    description: |
+      Record update expression.
+      Format: {"UpdateRecord": {"target": value, "fields": {"field-name": value, ...}}}
+    examples:
+      - { "UpdateRecord": { "target": { "Variable": "record" }, "fields": { "name": { "Literal": { "StringLiteral": "new" } } } } }
 
   UnitValue:
-    type: array
-    items:
-      - const: "Unit"
-      - $ref: "#/definitions/ValueAttributes"
+    type: object
+    required: ["Unit"]
+    properties:
+      Unit:
+        type: object
+    description: |
+      The unit value.
+      Format: {"Unit": {}}
+    examples:
+      - { "Unit": {} }
 
   # Pattern
+  #
+  # Patterns use object wrapper notation for consistency with Value expressions.
+  #
   Pattern:
     oneOf:
       - $ref: "#/definitions/WildcardPattern"
@@ -537,62 +977,119 @@ definitions:
       - $ref: "#/definitions/UnitPattern"
 
   WildcardPattern:
-    type: array
-    items:
-      - const: "WildcardPattern"
-      - $ref: "#/definitions/ValueAttributes"
+    type: object
+    required: ["WildcardPattern"]
+    properties:
+      WildcardPattern:
+        type: object
+    description: |
+      Wildcard pattern (matches anything).
+      Format: {"WildcardPattern": {}}
+    examples:
+      - { "WildcardPattern": {} }
 
   AsPattern:
-    type: array
-    items:
-      - const: "AsPattern"
-      - $ref: "#/definitions/ValueAttributes"
-      - $ref: "#/definitions/Pattern"
-      - $ref: "#/definitions/Name"
+    type: object
+    required: ["AsPattern"]
+    properties:
+      AsPattern:
+        type: object
+        required: ["pattern", "name"]
+        properties:
+          pattern: { $ref: "#/definitions/Pattern" }
+          name: { $ref: "#/definitions/Name" }
+    description: |
+      As pattern (binds matched value to a name).
+      Format: {"AsPattern": {"pattern": pattern, "name": "x"}}
+    examples:
+      - { "AsPattern": { "pattern": { "WildcardPattern": {} }, "name": "x" } }
 
   TuplePattern:
-    type: array
-    items:
-      - const: "TuplePattern"
-      - $ref: "#/definitions/ValueAttributes"
-      - type: array
-        items: { $ref: "#/definitions/Pattern" }
+    type: object
+    required: ["TuplePattern"]
+    properties:
+      TuplePattern:
+        type: object
+        required: ["patterns"]
+        properties:
+          patterns:
+            type: array
+            items: { $ref: "#/definitions/Pattern" }
+    description: |
+      Tuple pattern.
+      Format: {"TuplePattern": {"patterns": [pattern1, pattern2, ...]}}
+    examples:
+      - { "TuplePattern": { "patterns": [{ "WildcardPattern": {} }, { "AsPattern": { "pattern": { "WildcardPattern": {} }, "name": "x" } }] } }
 
   ConstructorPattern:
-    type: array
-    items:
-      - const: "ConstructorPattern"
-      - $ref: "#/definitions/ValueAttributes"
-      - $ref: "#/definitions/FQName"
-      - type: array
-        items: { $ref: "#/definitions/Pattern" }
+    type: object
+    required: ["ConstructorPattern"]
+    properties:
+      ConstructorPattern:
+        type: object
+        required: ["fqname", "patterns"]
+        properties:
+          fqname: { $ref: "#/definitions/FQName" }
+          patterns:
+            type: array
+            items: { $ref: "#/definitions/Pattern" }
+    description: |
+      Constructor pattern for custom type matching.
+      Format: {"ConstructorPattern": {"fqname": "package:module#ctor", "patterns": [...]}}
+    examples:
+      - { "ConstructorPattern": { "fqname": "morphir/sdk:maybe#just", "patterns": [{ "AsPattern": { "pattern": { "WildcardPattern": {} }, "name": "x" } }] } }
 
   EmptyListPattern:
-    type: array
-    items:
-      - const: "EmptyListPattern"
-      - $ref: "#/definitions/ValueAttributes"
+    type: object
+    required: ["EmptyListPattern"]
+    properties:
+      EmptyListPattern:
+        type: object
+    description: |
+      Pattern matching an empty list.
+      Format: {"EmptyListPattern": {}}
+    examples:
+      - { "EmptyListPattern": {} }
 
   HeadTailPattern:
-    type: array
-    items:
-      - const: "HeadTailPattern"
-      - $ref: "#/definitions/ValueAttributes"
-      - $ref: "#/definitions/Pattern"
-      - $ref: "#/definitions/Pattern"
+    type: object
+    required: ["HeadTailPattern"]
+    properties:
+      HeadTailPattern:
+        type: object
+        required: ["head", "tail"]
+        properties:
+          head: { $ref: "#/definitions/Pattern" }
+          tail: { $ref: "#/definitions/Pattern" }
+    description: |
+      Pattern matching head and tail of a list.
+      Format: {"HeadTailPattern": {"head": pattern, "tail": pattern}}
+    examples:
+      - { "HeadTailPattern": { "head": { "AsPattern": { "pattern": { "WildcardPattern": {} }, "name": "x" } }, "tail": { "AsPattern": { "pattern": { "WildcardPattern": {} }, "name": "xs" } } } }
 
   LiteralPattern:
-    type: array
-    items:
-      - const: "LiteralPattern"
-      - $ref: "#/definitions/ValueAttributes"
-      - $ref: "#/definitions/Literal"
+    type: object
+    required: ["LiteralPattern"]
+    properties:
+      LiteralPattern: { $ref: "#/definitions/Literal" }
+    description: |
+      Pattern matching a literal value.
+      Format: {"LiteralPattern": {"IntLiteral": 42}}
+    examples:
+      - { "LiteralPattern": { "IntLiteral": 42 } }
+      - { "LiteralPattern": { "StringLiteral": "hello" } }
 
   UnitPattern:
-    type: array
-    items:
-      - const: "UnitPattern"
-      - $ref: "#/definitions/ValueAttributes"
+    type: object
+    required: ["UnitPattern"]
+    properties:
+      UnitPattern:
+        type: object
+    description: |
+      Pattern matching the unit value.
+      Format: {"UnitPattern": {}}
+    examples:
+      - { "UnitPattern": {} }
 
   # Specs & Defs
   ValueSpecification:
@@ -609,19 +1106,106 @@ definitions:
       output: { $ref: "#/definitions/Type" }
 
   ValueDefinition:
+    oneOf:
+      - type: object
+        required: ["ExpressionBody"]
+        additionalProperties: false
+        properties:
+          ExpressionBody: { $ref: "#/definitions/ExpressionBody" }
+      - type: object
+        required: ["NativeBody"]
+        additionalProperties: false
+        properties:
+          NativeBody: { $ref: "#/definitions/NativeBody" }
+      - type: object
+        required: ["ExternalBody"]
+        additionalProperties: false
+        properties:
+          ExternalBody: { $ref: "#/definitions/ExternalBody" }
+      - type: object
+        required: ["IncompleteBody"]
+        additionalProperties: false
+        properties:
+          IncompleteBody: { $ref: "#/definitions/IncompleteBody" }
+    description: |
+      Value definition body variant. When wrapped in AccessControlled (as in ModuleDefinition.values),
+      the structure is: { "access": "Public", "ExpressionBody": { ... } } or similar for other variants.
+      The wrapper object format uses the variant name as a key.
+
+  ExpressionBody:
     type: object
     required: ["inputTypes", "outputType", "body"]
     properties:
       inputTypes:
-        type: array
-        items:
-          type: array
-          items:
-            - $ref: "#/definitions/Name"
-            - $ref: "#/definitions/TypeAttributes" # Originally va, probably TypeAttributes of the argument? or ValueAttributes? The spec says 'va' but type is Type. It's likely value attributes for the parameter binding.
-            - $ref: "#/definitions/Type"
+        type: object
+        additionalProperties: { $ref: "#/definitions/Type" }
+        description: |
+          Dictionary mapping input parameter names to their types.
+          V4 uses object format: { "param-name": type, ... }
       outputType: { $ref: "#/definitions/Type" }
       body: { $ref: "#/definitions/Value" }
+    description: |
+      Normal IR expression body with input types, output type, and expression body.
+      Used for most value definitions.
+    examples:
+      - { "inputTypes": { "x": "morphir/sdk:basics#int" }, "outputType": "morphir/sdk:basics#int", "body": { "Variable": { "attributes": {}, "name": "x" } } }
+      - { "inputTypes": { "tables": "regulation:data-tables#data-tables" }, "outputType": "morphir/sdk:basics#float", "body": { "Literal": { "attributes": {}, "literal": { "FloatLiteral": 0.0 } } } }
+
+  NativeBody:
+    type: object
+    required: ["inputTypes", "outputType", "nativeInfo"]
+    properties:
+      inputTypes:
+        type: object
+        additionalProperties: { $ref: "#/definitions/Type" }
+        description: |
+          Dictionary mapping input parameter names to their types.
+          V4 uses object format: { "param-name": type, ... }
+      outputType: { $ref: "#/definitions/Type" }
+      nativeInfo: { $ref: "#/definitions/NativeInfo" }
+    description: |
+      Native/builtin operation body (no IR expression).
+      Used for platform operations that don't have an IR representation.
+    examples:
+      - { "inputTypes": { "a": "morphir/sdk:basics#int", "b": "morphir/sdk:basics#int" }, "outputType": "morphir/sdk:basics#int", "nativeInfo": { "hint": { "Arithmetic": {} } } }
+
+  ExternalBody:
+    type: object
+    required: ["inputTypes", "outputType", "externalName", "targetPlatform"]
+    properties:
+      inputTypes:
+        type: object
+        additionalProperties: { $ref: "#/definitions/Type" }
+        description: |
+          Dictionary mapping input parameter names to their types.
+          V4 uses object format: { "param-name": type, ... }
+      outputType: { $ref: "#/definitions/Type" }
+      externalName: { type: string, description: "Name of the external function/operation" }
+      targetPlatform: { type: string, description: "Target platform identifier (e.g., 'wasm', 'native')" }
+    description: |
+      External FFI call body (no IR expression).
+      Used for foreign function interface calls to platform-specific code.
+    examples:
+      - { "inputTypes": { "msg": "morphir/sdk:string#string" }, "outputType": "morphir/sdk:basics#unit", "externalName": "console.log", "targetPlatform": "javascript" }
+
+  IncompleteBody:
+    type: object
+    required: ["inputTypes", "incompleteness"]
+    properties:
+      inputTypes:
+        type: object
+        additionalProperties: { $ref: "#/definitions/Type" }
+        description: |
+          Dictionary mapping input parameter names to their types.
+          V4 uses object format: { "param-name": type, ... }
+      outputType: { $ref: "#/definitions/Type" }
+      incompleteness: { $ref: "#/definitions/Incompleteness" }
+      partialBody: { $ref: "#/definitions/Value" }
+    description: |
+      Incomplete definition body (V4 feature for best-effort support).
+      Used when a definition cannot be fully resolved (e.g., deleted reference, type mismatch).
+    examples:
+      - { "inputTypes": { "x": "morphir/sdk:basics#int" }, "outputType": "morphir/sdk:basics#int", "incompleteness": { "Hole": { "reason": { "UnresolvedReference": { "target": "my-org/project:module#deleted-function" } } } } }
 
   # Literals
   Literal:
@@ -656,3 +1240,131 @@ definitions:
   DecimalLiteral:
     type: array
     items: [ { const: "DecimalLiteral" }, { type: "string" } ] # Decimals often represented as strings
+
+  # V4-specific: Native and Incomplete Support
+  NativeInfo:
+    type: object
+    required: ["hint"]
+    properties:
+      hint: { $ref: "#/definitions/NativeHint" }
+      description: { type: string, description: "Optional human-readable description of the native operation" }
+    description: |
+      Information about a native operation. Used in NativeBody to categorize
+      platform operations for optimization and code generation.
+    examples:
+      - { "hint": { "Arithmetic": {} } }
+      - { "hint": { "CollectionOp": {} }, "description": "List map operation" }
+      - { "hint": { "PlatformSpecific": { "platform": "wasm" } } }
+
+  NativeHint:
+    oneOf:
+      - type: object
+        required: ["Arithmetic"]
+        additionalProperties: false
+        properties:
+          Arithmetic: {}
+        description: "Basic arithmetic/logic operation (add, subtract, multiply, etc.)"
+      - type: object
+        required: ["Comparison"]
+        additionalProperties: false
+        properties:
+          Comparison: {}
+        description: "Comparison operation (equals, less than, greater than, etc.)"
+      - type: object
+        required: ["StringOp"]
+        additionalProperties: false
+        properties:
+          StringOp: {}
+        description: "String operation (concat, split, etc.)"
+      - type: object
+        required: ["CollectionOp"]
+        additionalProperties: false
+        properties:
+          CollectionOp: {}
+        description: "Collection operation (map, filter, fold, etc.)"
+      - type: object
+        required: ["PlatformSpecific"]
+        additionalProperties: false
+        properties:
+          PlatformSpecific:
+            type: object
+            required: ["platform"]
+            properties:
+              platform: { type: string, description: "Platform identifier (e.g., 'wasm', 'javascript', 'native')" }
+        description: "Platform-specific operation"
+    description: |
+      Categorization hint for native operations. Used by code generators
+      to select appropriate implementations or optimizations.
+    examples:
+      - { "Arithmetic": {} }
+      - { "Comparison": {} }
+      - { "StringOp": {} }
+      - { "CollectionOp": {} }
+      - { "PlatformSpecific": { "platform": "wasm" } }
+
+  Incompleteness:
+    oneOf:
+      - type: object
+        required: ["Hole"]
+        additionalProperties: false
+        properties:
+          Hole:
+            type: object
+            required: ["reason"]
+            properties:
+              reason: { $ref: "#/definitions/HoleReason" }
+              partialBody: { $ref: "#/definitions/Type", description: "Optional partial type information if available" }
+        description: "Hole due to unresolved reference or error"
+      - type: object
+        required: ["Draft"]
+        additionalProperties: false
+        properties:
+          Draft: {}
+        description: "Author-marked work-in-progress"
+    description: |
+      Reason for incomplete type or value definition. V4 feature for
+      best-effort IR generation when full resolution isn't possible.
+    examples:
+      - { "Hole": { "reason": { "UnresolvedReference": { "target": "my-org/project:module#deleted-function" } } } }
+      - { "Draft": {} }
+
+  HoleReason:
+    oneOf:
+      - type: object
+        required: ["UnresolvedReference"]
+        additionalProperties: false
+        properties:
+          UnresolvedReference:
+            type: object
+            required: ["target"]
+            properties:
+              target: { $ref: "#/definitions/FQName", description: "The FQName that could not be resolved" }
+        description: "Reference to something that doesn't exist or was deleted"
+      - type: object
+        required: ["DeletedDuringRefactor"]
+        additionalProperties: false
+        properties:
+          DeletedDuringRefactor:
+            type: object
+            required: ["tx-id"]
+            properties:
+              "tx-id": { type: string, description: "Transaction ID of the refactoring that deleted this reference" }
+        description: "Reference was deleted during a refactoring operation"
+      - type: object
+        required: ["TypeMismatch"]
+        additionalProperties: false
+        properties:
+          TypeMismatch:
+            type: object
+            required: ["expected", "found"]
+            properties:
+              expected: { type: string, description: "Expected type description" }
+              found: { type: string, description: "Actual type description" }
+        description: "Type mismatch error"
+    description: |
+      Specific reason why a Hole exists in the IR. Used for error reporting
+      and to guide developers in fixing incomplete definitions.
+    examples:
+      - { "UnresolvedReference": { "target": "my-org/project:module#missing-function" } }
+      - { "DeletedDuringRefactor": { "tx-id": "refactor-2024-01-15-abc123" } }
+      - { "TypeMismatch": { "expected": "Int", "found": "String" } }
