@@ -360,6 +360,7 @@ function IRCheckerContent() {
   });
 
   // Monaco editor options - optimized for large files
+  // See: https://microsoft.github.io/monaco-editor/
   const editorOptions = React.useMemo(() => {
     const baseOptions = {
       lineNumbers: 'on',
@@ -372,22 +373,26 @@ function IRCheckerContent() {
       tabSize: 2,
       renderLineHighlight: 'all',
       bracketPairColorization: { enabled: true },
+      // Monaco's built-in large file optimizations (disables certain memory-intensive features)
+      largeFileOptimizations: true,
+      // Lines above this length will not be tokenized for performance
+      maxTokenizationLineLength: 20000,
     };
 
     if (isLargeFile) {
-      // Performance optimizations for large files
+      // Additional performance optimizations for large files
       return {
         ...baseOptions,
         minimap: { enabled: false },
         renderLineHighlight: 'none',
-        folding: false,
-        wordWrap: 'off',
+        folding: false, // Folding can be expensive on large files
+        wordWrap: 'off', // Word wrap is expensive for long lines
         bracketPairColorization: { enabled: false },
         matchBrackets: 'never',
-        occurrencesHighlight: false,
+        occurrencesHighlight: 'off',
         selectionHighlight: false,
         renderWhitespace: 'none',
-        guides: { indentation: false },
+        guides: { indentation: false, bracketPairs: false, highlightActiveBracketPair: false },
         colorDecorators: false,
         links: false,
         quickSuggestions: false,
@@ -396,6 +401,10 @@ function IRCheckerContent() {
         tabCompletion: 'off',
         parameterHints: { enabled: false },
         hover: { enabled: false },
+        // More aggressive tokenization limit for very large files
+        maxTokenizationLineLength: 5000,
+        // Stop rendering very long lines after this many characters
+        stopRenderingLineAfter: 10000,
       };
     }
 
