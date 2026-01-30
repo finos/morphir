@@ -4,10 +4,10 @@ This guide covers the development workflow for contributing to Morphir.
 
 ## Prerequisites
 
-- Go 1.25.5 or later
+- Rust 1.93.0 or later (for morphir-live development)
+- Node.js 24+ (for website development)
 - Git
 - Mise (task runner) - Install from https://mise.jdx.dev
-- (Optional) Beads - For issue tracking
 
 ## Quick Start
 
@@ -18,104 +18,90 @@ git clone https://github.com/finos/morphir.git
 cd morphir
 ```
 
-### 2. Set Up Development Environment
-
-Run the development setup task to configure your local Go workspace:
+### 2. Install Dependencies
 
 ```bash
-mise run dev-setup
+# Install mise tools
+mise install
+
+# For website development
+cd website && npm install
 ```
-
-This script will:
-- Create a `go.work` file that enables cross-module development
-- Sync the workspace with all modules
-- Verify your setup
-
-**Important**: The `go.work` file is git-ignored and only used for local development. This allows you to make changes across multiple modules without needing version tags or replace directives.
 
 ### 3. Verify Your Setup
 
 ```bash
-mise run verify
+mise run build
+mise run test
 ```
-
-This will run all module verifications, ensuring everything is correctly configured.
 
 ## Development Workflow
 
-### Working Across Modules
-
-With the `go.work` file in place, you can freely edit code across modules:
+### Working on morphir-live (Rust)
 
 ```bash
-# Edit code in pkg/models
-cd pkg/models
-# Make changes...
+# Run in development mode with hot reload
+mise run dev
 
-# Edit code in cmd/morphir that uses pkg/models
-cd ../../cmd/morphir
-# Your local changes from pkg/models are automatically used!
+# Or manually:
+cd crates/morphir-live
+dx serve
 ```
 
-The Go workspace automatically handles the module dependencies using your local code.
+### Working on the Website (Docusaurus)
+
+```bash
+cd website
+npm start    # Development server
+npm run build  # Production build
+```
 
 ### Running Tests
 
 ```bash
-# Run all tests
+# Run all Rust tests
 mise run test
 
-# Run tests for a specific module
-cd pkg/models
-go test ./...
-```
-
-`mise run test` is preferred because it runs the workspace doctor first and applies the default
-local fix for missing internal module tags.
-
-### Building the CLI
-
-```bash
-# Build morphir CLI
-mise run build
-
-# Run the CLI
-./bin/morphir --help
+# Or manually:
+cargo test --all-features --workspace
 ```
 
 ### Code Quality Checks
 
 ```bash
-# Run linting
+# Run linting (clippy)
 mise run lint
 
 # Format code
 mise run fmt
 
-# Run all verifications (tests, lint, build)
-mise run verify
+# Check formatting
+mise run fmt-check
+
+# Run all checks
+mise run check
 ```
 
-## Module Structure
-
-Morphir uses a multi-module Go workspace:
+## Project Structure
 
 ```
 morphir/
-├── cmd/
-│   └── morphir/          # Main CLI application
-├── pkg/
-│   ├── config/           # Configuration management
-│   ├── models/           # Morphir IR models
-│   ├── pipeline/         # Processing pipelines
-│   ├── sdk/              # SDK components
-│   └── tooling/          # Tooling utilities
-├── tests/
-│   └── bdd/              # BDD tests
-└── go.work               # Workspace file (local only, git-ignored)
+├── crates/
+│   └── morphir-live/     # Interactive Morphir visualization app
+│       ├── src/
+│       │   ├── main.rs
+│       │   ├── components/  # UI components
+│       │   ├── models.rs
+│       │   └── routes.rs
+│       └── Cargo.toml
+├── website/               # Docusaurus documentation site
+│   ├── docs/
+│   ├── src/
+│   └── package.json
+├── docs/                  # Documentation content
+├── examples/              # Example Morphir projects
+└── Cargo.toml             # Workspace configuration
 ```
-
-Each subdirectory with a `go.mod` file is an independent Go module.
 
 ## Making Changes
 
@@ -127,12 +113,13 @@ git checkout -b feat/my-feature
 
 ### 2. Make Your Changes
 
-Edit code across any modules as needed. The workspace handles dependencies automatically.
+Edit code and ensure tests pass.
 
 ### 3. Run Verifications
 
 ```bash
-mise run verify
+mise run check
+mise run test
 ```
 
 ### 4. Commit Your Changes
@@ -141,8 +128,6 @@ mise run verify
 git add .
 git commit -m "feat: add my feature"
 ```
-
-**Important**: Do NOT commit the `go.work` or `go.work.sum` files. They are git-ignored and should remain local only.
 
 ### 5. Push and Create PR
 
@@ -153,300 +138,72 @@ gh pr create
 
 ## Common Tasks
 
-### Adding a New Go Module
-
-When creating a new Go module in the monorepo (e.g., `pkg/newmodule`), follow this checklist:
-
-**1. Create the module:**
-```bash
-mkdir -p pkg/newmodule
-cd pkg/newmodule
-
-# Initialize the module
-go mod init github.com/finos/morphir/pkg/newmodule
-
-# Create doc.go with package documentation
-cat > doc.go << 'EOF'
-// Package newmodule provides...
-package newmodule
-EOF
-```
-
-**2. Add to the Go workspace (local development):**
-```bash
-cd ../..  # Return to repo root
-go work use ./pkg/newmodule
-```
-
-**3. Add to `.goreleaser.yaml` hooks:**
-
-Edit `.goreleaser.yaml` and add a `go mod tidy` entry in the `before.hooks` section:
-```yaml
-before:
-  hooks:
-    # ... existing hooks ...
-    - go mod tidy -C pkg/newmodule  # Add this line
-```
-
-**4. Validate the setup:**
-```bash
-mise run release:validate
-```
-
-This checks that:
-- All modules are synced with `.goreleaser.yaml`
-- All hook scripts exist
-- Module dependencies are correct
-
-**5. For first release of the module:**
-
-The module needs a tag before other modules can depend on it via published versions:
-```bash
-# Tags are created during release using:
-mise run release:tags create v0.X.Y
-```
-
-Until tagged, use `go.work` for local development - avoid adding pseudo-version dependencies.
-
-### Adding a New Dependency
+### Building for Release
 
 ```bash
-# Navigate to the module that needs the dependency
-cd pkg/models
-
-# Add the dependency
-go get github.com/example/package@latest
-
-# Sync the workspace
-cd ../..
-go work sync
+# Build optimized WASM for morphir-live
+cd crates/morphir-live
+dx build --release
 ```
 
-### Updating Dependencies
+### Adding Dependencies
 
 ```bash
-# Update all modules
-mise run mod-tidy
+# Add to a specific crate
+cd crates/morphir-live
+cargo add some-crate
 
-# Or manually for each module
-cd pkg/models && go get -u ./...
-cd ../config && go get -u ./...
-# ... repeat for each module
+# Add to workspace (shared)
+# Edit root Cargo.toml [workspace.dependencies]
 ```
 
 ### Cleaning Build Artifacts
 
 ```bash
 mise run clean
+# Or: cargo clean
 ```
 
 ## Troubleshooting
 
-### "package not found" errors
+### WASM Build Issues
 
-If you get "package not found" errors:
+If you encounter WASM build issues:
 
-1. Verify your workspace is set up:
+1. Ensure the WASM target is installed:
    ```bash
-   cat go.work
+   rustup target add wasm32-unknown-unknown
    ```
 
-2. Re-run the setup script:
+2. Install dioxus-cli:
    ```bash
-   ./scripts/dev-setup.sh
+   cargo install dioxus-cli
    ```
 
-3. Sync the workspace:
+### Website Build Issues
+
+If the website fails to build:
+
+1. Clear the cache:
    ```bash
-   go work sync
+   cd website
+   npm run clear
    ```
 
-### Module version conflicts
-
-If you see module version conflicts:
-
-1. Ensure you're using the workspace:
+2. Reinstall dependencies:
    ```bash
-   ls go.work  # Should exist
+   rm -rf node_modules
+   npm install
    ```
-
-2. Check workspace modules:
-   ```bash
-   go work edit -print
-   ```
-
-3. Run sync:
-   ```bash
-   go work sync
-   ```
-
-### Go workspace resolution errors
-
-If you see errors like `unknown revision pkg/.../vX.Y.Z` or Go tries to fetch local modules:
-
-Run the workspace doctor for an interactive diagnosis and default fixes:
-```bash
-mise run workspace-doctor
-```
-The default fix will create `go.work` (via `setup-workspace`) if missing and add versioned
-`go.work` replaces for missing internal tags.
-
-1. Confirm the workspace is in use:
-   ```bash
-   go env GOWORK
-   ```
-   It should point at your repo's `go.work`.
-
-   From the repo root, `go env GOMOD` is expected to be `/dev/null` when the workspace is active.
-
-2. Ensure all modules are in the workspace:
-   ```bash
-   go work use -r .
-   go work edit -print
-   ```
-
-3. Sync the workspace:
-   ```bash
-   go work sync
-   ```
-
-4. If `go env GOWORK` is empty or not the repo workspace, run tests from the repo root
-   or set the workspace explicitly for the command:
-   ```bash
-   GOWORK="$(git rev-parse --show-toplevel)/go.work" go test ./cmd/morphir/...
-   ```
-
-5. Verify no `replace` directives are in any `go.mod`:
-   ```bash
-   rg -n "^replace " --glob "*/go.mod"
-   ```
-
-6. Confirm `go.work` and `go.work.sum` are not staged:
-   ```bash
-   git status --short | rg "go.work"
-   ```
-
-7. If errors still mention `unknown revision pkg/.../vX.Y.Z`, verify the version exists.
-   Untagged internal modules must not be required at non-existent versions:
-   - Prefer adding a release tag for the module, or
-   - Avoid introducing the dependency until a release tag exists.
-   - `go.work` use does not override invalid version references in go.mod.
-   - As a local-only workaround, add a versioned `go.work` replace:
-     ```bash
-     go work edit -replace=github.com/finos/morphir/pkg/<module>@vX.Y.Z=./pkg/<module>
-     ```
-
-8. If you are using git worktrees, each worktree needs its own `go.work`.
-   Re-run the workspace setup in each worktree:
-   ```bash
-   ./scripts/setup-workspace.sh
-   ```
-
-9. If you suspect stale cache behavior after repeated attempts:
-   ```bash
-   go clean -cache -modcache
-   ```
-
-**Observed behaviors (playbook notes):**
-- From repo root with workspace active, `go env GOMOD` is `/dev/null`.
-- `go work sync` fails if any internal module version in go.mod does not exist as a tag.
-- `go test ./cmd/morphir/...` will still fail when a required internal module version tag is missing.
-
-### Build failures after pulling changes
-
-After pulling changes from main:
-
-```bash
-# Sync workspace
-go work sync
-
-# Update dependencies
-mise run mod-tidy
-
-# Verify everything works
-mise run verify
-```
-
-## Understanding the Workspace
-
-The `go.work` file tells Go to use your local copies of modules instead of fetching them from GitHub. This means:
-
-- ✅ **Immediate feedback**: Changes are reflected across modules instantly
-- ✅ **No version tagging needed**: Work with local code directly
-- ✅ **No replace directives**: Cleaner go.mod files
-- ✅ **Go install compatible**: Modules can be installed via `go install` since they have no replace directives
-- ✅ **Stable versions in go.mod**: Keep internal deps on released tags; use go.work for unreleased local changes
-
-When a module needs an unreleased change from another module, keep the dependency version in `go.mod`
-at the latest released tag and rely on `go.work` to use the local code. Avoid pseudo-versions for
-in-repo modules. If the module has never been tagged, prefer a local-only, versioned `go.work`
-replace as the default workaround; add an initial tag before depending on it only when you intend
-to publish and consume that version.
-
-**Questions about how CI and releases work?** See [CI_RELEASE_FAQ.md](./CI_RELEASE_FAQ.md) for detailed answers about:
-- How CI tests your PR code (not old published versions)
-- How multi-module PRs work
-- How the release workflow handles versioning
-- Common troubleshooting scenarios
-
-## Release Process
-
-For maintainers preparing releases, see the detailed release process in [AGENTS.md](./AGENTS.md).
-
-Quick reference:
-
-```bash
-# Prepare release (creates tags for all modules)
-./scripts/release-prep.sh v0.3.0
-
-# Push tags to trigger release
-git push origin --tags
-```
 
 ## Getting Help
 
-- **Issues**: Use Beads issue tracking (`bd new "your issue"`)
+- **Issues**: Use Beads issue tracking (`bd create --title="your issue"`)
 - **Discussions**: GitHub Discussions at https://github.com/finos/morphir/discussions
-- **Contributing**: See [CONTRIBUTING.md](./CONTRIBUTING.md)
+- **Contributing**: See [CONTRIBUTING.md](./docs/developers/contributing.md)
 
 ## Additional Resources
 
-- [Go Workspaces Documentation](https://go.dev/doc/tutorial/workspaces)
+- [Dioxus Documentation](https://dioxuslabs.com/docs)
 - [Morphir Documentation](https://morphir.finos.org)
 - [FINOS Community](https://finos.org)
-
-## Using AI Assistance
-
-### Release Manager Skill
-
-The repository includes a Claude Code skill for release management. To use it:
-
-```
-/skill release-manager
-```
-
-The release manager can help with:
-- Analyzing commits and suggesting changelog entries
-- Determining appropriate version numbers
-- Updating CHANGELOG.md
-- Creating release tags
-- Managing the release process
-
-### Quick Release Workflow with AI
-
-```bash
-# 1. Suggest changelog entries
-mise run changelog-suggest
-
-# 2. Use release manager skill to update CHANGELOG.md
-# /skill release-manager
-# Ask: "Help me prepare a release with the suggested changes"
-
-# 3. The skill will guide you through:
-#    - Version number selection
-#    - CHANGELOG.md updates
-#    - Tagging and release
-
-# 4. Or do it manually:
-mise run release -- v0.3.0
-```
