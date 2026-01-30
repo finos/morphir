@@ -601,7 +601,7 @@ See [Migration Guide - V4 → V3](../migration-guide/#v4--v3) for details.
 
 ## See Also
 
-- [Version 4 Schema](./morphir-ir-v4.yaml)
+- [Version 4 Schema](/schemas/morphir-ir-v4.yaml)
 - [Migration Guide](../migration-guide/)
 - [Version 3 Documentation](../v3/)
 - [Morphir IR Specification](../../morphir-ir-specification/)
