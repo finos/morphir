@@ -391,6 +391,87 @@ python .claude/skills/technical-writer/scripts/check_schema_drift.py --all
 | New Go type without schema entry | `--code` shows undocumented type | Add to schema or document as intentional |
 | Schema type without Go implementation | `--code` shows potential missing impl | Implement or document as intentional |
 
+## Docusaurus Static Assets
+
+### How Docusaurus Handles File Links
+
+Docusaurus has **two different behaviors** for file links that are critical to understand:
+
+| Link Type | Example | Result |
+|-----------|---------|--------|
+| **Absolute path** | `[Schema](/schemas/file.json)` | Served from `static/` folder without hashing |
+| **Relative path** | `[Schema](./file.json)` | Processed by webpack, hashed, placed in `/assets/files/` |
+
+### Static Folder Files (Recommended)
+
+Files in `website/static/` are served directly at the root URL without any processing:
+
+- `website/static/schemas/morphir-ir-v3.json` → `https://morphir.finos.org/schemas/morphir-ir-v3.json`
+- `website/static/img/logo.png` → `https://morphir.finos.org/img/logo.png`
+
+**Always use absolute paths starting with `/` to reference static assets:**
+
+```markdown
+<!-- CORRECT: Absolute path - served clean from static folder -->
+[Download Schema](/schemas/morphir-ir-v3.json)
+
+<!-- WRONG: Relative path - gets hashed by webpack -->
+[Download Schema](./morphir-ir-v3.json)
+```
+
+### When Relative Links Cause Problems
+
+Relative links to non-markdown files (`.json`, `.yaml`, `.pdf`, etc.) in MDX/MD files trigger webpack processing:
+
+1. The file gets copied to `/assets/files/`
+2. A content hash is added: `morphir-ir-v3-85ce70553b0c0364e88a70abdc45ce97.json`
+3. The original clean URL still works, but the hashed version creates confusion
+
+**This happens because** Docusaurus treats relative asset links as "require" statements, enabling cache busting but creating ugly URLs.
+
+### Best Practices for Static Assets
+
+1. **Canonical location**: Keep all downloadable files in `website/static/`
+   - Schemas: `website/static/schemas/`
+   - Images: `website/static/img/`
+   - Examples: `website/static/ir/examples/`
+
+2. **Never duplicate files**: Don't copy static files into `docs/` folders
+
+3. **Always use absolute paths** for downloadable assets:
+   ```markdown
+   - [JSON Schema](/schemas/morphir-ir-v3.json)
+   - [YAML Schema](/schemas/morphir-ir-v3.yaml)
+   - [Example IR](/ir/examples/v3/lcr-morphir-ir.json)
+   ```
+
+4. **Relative paths are OK for**:
+   - Links to other markdown/MDX docs: `[Related Doc](./other-doc.md)`
+   - These get proper URL rewriting by Docusaurus
+
+### Checking for Problematic Links
+
+Search for relative links to non-markdown files:
+
+```bash
+# Find relative links to JSON/YAML files (potential problems)
+grep -rn '\]\(\./.*\.\(json\|yaml\)\)' docs/
+
+# All such links should be converted to absolute paths
+# ./schema.json → /schemas/schema.json
+```
+
+### URL Reference
+
+| File Location | Clean URL |
+|---------------|-----------|
+| `website/static/schemas/*.json` | `/schemas/*.json` |
+| `website/static/schemas/*.yaml` | `/schemas/*.yaml` |
+| `website/static/ir/examples/v3/*.json` | `/ir/examples/v3/*.json` |
+| `website/static/img/*` | `/img/*` |
+
+For more details, see the [Docusaurus Static Assets documentation](https://docusaurus.io/docs/static-assets).
+
 ## LLM-Friendly Documentation (llms.txt)
 
 ### What is llms.txt?
@@ -458,7 +539,9 @@ The generated files follow the llms.txt specification:
 
 1. **Read existing docs** before writing - maintain consistency
 2. **Test all code examples** - they should work when copied
-3. **Use relative links** - `./other-doc.md` not absolute URLs
+3. **Use correct link types**:
+   - Relative links for other docs: `./other-doc.md`
+   - Absolute paths for static assets: `/schemas/file.json` (see [Docusaurus Static Assets](#docusaurus-static-assets))
 4. **Add frontmatter** - every file needs title and sidebar_position
 5. **Check spelling and grammar** - professional quality matters
 
