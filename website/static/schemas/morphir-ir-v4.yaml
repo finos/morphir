@@ -570,22 +570,52 @@ definitions:
       - { "Reference": { "fqname": "morphir/sdk:list#list", "args": ["a"] } }
 
   TupleType:
-    type: object
-    required: ["Tuple"]
-    properties:
-      Tuple:
-        type: object
-        required: ["elements"]
+    oneOf:
+      # Bare array (compact, unambiguous since Reference doesn't use bare arrays)
+      - type: array
+        items: { $ref: "#/definitions/Type" }
+        description: |
+          Bare array of types. Unambiguous because ReferenceType does not accept bare arrays.
+      # Wrapper with array (canonical)
+      - type: object
+        required: ["Tuple"]
+        additionalProperties: false
         properties:
-          elements:
+          Tuple:
             type: array
             items: { $ref: "#/definitions/Type" }
+        description: |
+          Canonical wrapper format with array of types.
+      # Wrapper with object (expanded)
+      - type: object
+        required: ["Tuple"]
+        additionalProperties: false
+        properties:
+          Tuple:
+            type: object
+            required: ["elements"]
+            properties:
+              elements:
+                type: array
+                items: { $ref: "#/definitions/Type" }
+        description: |
+          Expanded wrapper format with explicit elements field.
     description: |
       Tuple type with multiple element types.
-      Format: {"Tuple": {"elements": [type1, type2, ...]}}
+
+      Canonical: {"Tuple": [type1, type2, ...]}
+
+      Accepted formats:
+      - Bare array: [type1, type2, ...] (unambiguous since Reference doesn't use bare arrays)
+      - Wrapper with array: {"Tuple": [type1, type2, ...]}
+      - Wrapper with object: {"Tuple": {"elements": [type1, type2, ...]}}
+
+      Encoders should output canonical form.
     examples:
+      - ["morphir/sdk:int#int", "morphir/sdk:string#string"]
+      - { "Tuple": ["morphir/sdk:int#int", "morphir/sdk:string#string"] }
       - { "Tuple": { "elements": ["morphir/sdk:int#int", "morphir/sdk:string#string"] } }
-      - { "Tuple": { "elements": ["a", "b", "c"] } }
+      - ["a", "b", "c"]
 
   RecordType:
     type: object
@@ -1013,37 +1043,87 @@ definitions:
       - { "Constructor": "morphir/sdk:maybe#nothing" }
 
   TupleValue:
-    type: object
-    required: ["Tuple"]
-    properties:
-      Tuple:
-        type: object
-        required: ["elements"]
+    oneOf:
+      # Wrapper with array (canonical)
+      - type: object
+        required: ["Tuple"]
+        additionalProperties: false
         properties:
-          elements:
+          Tuple:
             type: array
             items: { $ref: "#/definitions/Value" }
+        description: |
+          Canonical wrapper format with array of values.
+      # Wrapper with object (expanded)
+      - type: object
+        required: ["Tuple"]
+        additionalProperties: false
+        properties:
+          Tuple:
+            type: object
+            required: ["elements"]
+            properties:
+              elements:
+                type: array
+                items: { $ref: "#/definitions/Value" }
+        description: |
+          Expanded wrapper format with explicit elements field.
     description: |
       Tuple value with multiple elements.
-      Format: {"Tuple": {"elements": [value1, value2, ...]}}
+
+      Canonical: {"Tuple": [value1, value2, ...]}
+
+      Accepted formats:
+      - Wrapper with array: {"Tuple": [value1, value2, ...]}
+      - Wrapper with object: {"Tuple": {"elements": [value1, value2, ...]}}
+
+      Note: Bare arrays are NOT allowed for values (would be ambiguous with ListValue).
+
+      Encoders should output canonical form.
     examples:
+      - { "Tuple": [{ "Variable": "x" }, { "Literal": { "IntegerLiteral": 1 } }] }
       - { "Tuple": { "elements": [{ "Variable": "x" }, { "Literal": { "IntegerLiteral": 1 } }] } }
 
   ListValue:
-    type: object
-    required: ["List"]
-    properties:
-      List:
-        type: object
-        required: ["items"]
+    oneOf:
+      # Wrapper with array (canonical)
+      - type: object
+        required: ["List"]
+        additionalProperties: false
         properties:
-          items:
+          List:
             type: array
             items: { $ref: "#/definitions/Value" }
+        description: |
+          Canonical wrapper format with array of values.
+      # Wrapper with object (expanded)
+      - type: object
+        required: ["List"]
+        additionalProperties: false
+        properties:
+          List:
+            type: object
+            required: ["items"]
+            properties:
+              items:
+                type: array
+                items: { $ref: "#/definitions/Value" }
+        description: |
+          Expanded wrapper format with explicit items field.
     description: |
       List of values.
-      Format: {"List": {"items": [value1, value2, ...]}}
+
+      Canonical: {"List": [value1, value2, ...]}
+
+      Accepted formats:
+      - Wrapper with array: {"List": [value1, value2, ...]}
+      - Wrapper with object: {"List": {"items": [value1, value2, ...]}}
+
+      Note: Bare arrays are NOT allowed for values (would be ambiguous with TupleValue).
+
+      Encoders should output canonical form.
     examples:
+      - { "List": [{ "Literal": { "IntegerLiteral": 1 } }, { "Literal": { "IntegerLiteral": 2 } }] }
       - { "List": { "items": [{ "Literal": { "IntegerLiteral": 1 } }, { "Literal": { "IntegerLiteral": 2 } }] } }
 
   RecordValue:
@@ -1304,20 +1384,50 @@ definitions:
       - { "AsPattern": { "pattern": { "WildcardPattern": {} }, "name": "x" } }
 
   TuplePattern:
-    type: object
-    required: ["TuplePattern"]
-    properties:
-      TuplePattern:
-        type: object
-        required: ["patterns"]
+    oneOf:
+      # Bare array (compact, unambiguous)
+      - type: array
+        items: { $ref: "#/definitions/Pattern" }
+        description: |
+          Bare array of patterns. Unambiguous because no other pattern type uses bare arrays.
+      # Wrapper with array (canonical)
+      - type: object
+        required: ["TuplePattern"]
+        additionalProperties: false
         properties:
-          patterns:
+          TuplePattern:
             type: array
             items: { $ref: "#/definitions/Pattern" }
+        description: |
+          Canonical wrapper format with array of patterns.
+      # Wrapper with object (expanded)
+      - type: object
+        required: ["TuplePattern"]
+        additionalProperties: false
+        properties:
+          TuplePattern:
+            type: object
+            required: ["patterns"]
+            properties:
+              patterns:
+                type: array
+                items: { $ref: "#/definitions/Pattern" }
+        description: |
+          Expanded wrapper format with explicit patterns field.
     description: |
-      Tuple pattern.
-      Format: {"TuplePattern": {"patterns": [pattern1, pattern2, ...]}}
+      Tuple pattern for destructuring tuples.
+
+      Canonical: {"TuplePattern": [pattern1, pattern2, ...]}
+
+      Accepted formats:
+      - Bare array: [pattern1, pattern2, ...]
+      - Wrapper with array: {"TuplePattern": [pattern1, pattern2, ...]}
+      - Wrapper with object: {"TuplePattern": {"patterns": [pattern1, pattern2, ...]}}
+
+      Encoders should output canonical form.
     examples:
+      - [{ "WildcardPattern": {} }, { "AsPattern": { "pattern": { "WildcardPattern": {} }, "name": "x" } }]
+      - { "TuplePattern": [{ "WildcardPattern": {} }, { "AsPattern": { "pattern": { "WildcardPattern": {} }, "name": "x" } }] }
       - { "TuplePattern": { "patterns": [{ "WildcardPattern": {} }, { "AsPattern": { "pattern": { "WildcardPattern": {} }, "name": "x" } }] } }
 
   ConstructorPattern:
