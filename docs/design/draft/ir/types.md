@@ -25,6 +25,37 @@ pub type AccessControlled(a) {
 }
 ```
 
+### Access JSON Formats
+
+V4 follows a **permissive input, canonical output** policy. Decoders accept multiple formats; encoders output canonical form.
+
+| Format | Example | Notes |
+|--------|---------|-------|
+| Canonical | `"Public"`, `"Private"` | Preferred output |
+| Lowercase | `"public"`, `"private"` | Accepted |
+| Abbreviation | `"pub"` | Accepted (means Public) |
+
+### AccessControlled JSON Formats
+
+| Format | Example | Notes |
+|--------|---------|-------|
+| **Canonical** | `{ "Public": {...} }` | Access as key, value as value |
+| Lowercase key | `{ "public": {...} }`, `{ "private": {...} }` | Accepted |
+| Abbreviation key | `{ "pub": {...} }` | Accepted (means Public) |
+| Legacy | `{ "access": "Public", "value": {...} }` | V3 compatibility |
+
+**Examples:**
+```json
+// Canonical (encoders should output this)
+{ "Public": { "TypeAliasDefinition": { "body": "morphir/sdk:string#string" } } }
+{ "Private": { "CustomTypeDefinition": { "params": [], "constructors": {} } } }
+
+// Accepted alternatives
+{ "pub": { "TypeAliasDefinition": { "body": "morphir/sdk:string#string" } } }
+{ "public": { "TypeAliasDefinition": { "body": "morphir/sdk:string#string" } } }
+{ "access": "Public", "value": { "TypeAliasDefinition": { "body": "morphir/sdk:string#string" } } }
+```
+
 ## Type Expressions
 
 Type expressions describe the shape of data.
@@ -256,49 +287,84 @@ Examples show both shorthand and canonical forms.
 { "Variable": { "name": "a" } }        // canonical
 ```
 
-### Reference (no type arguments)
+### Reference (ReferenceType)
+
+V4 follows a **permissive input, canonical output** policy for Reference types.
+
+#### No Type Arguments
+
+| Format | Example | Notes |
+|--------|---------|-------|
+| **Canonical** | `"morphir/sdk:basics#int"` | Bare FQName string |
+| Wrapper with FQName | `{ "Reference": "morphir/sdk:basics#int" }` | Accepted |
+| Wrapper with object | `{ "Reference": { "fqname": "morphir/sdk:basics#int" } }` | Expanded form |
 
 ```json
-"morphir/sdk:basics#int"                           // shorthand
-{ "Reference": { "fqname": "morphir/sdk:basics#int" } }  // canonical
+// Canonical (encoders should output this)
+"morphir/sdk:basics#int"
+
+// Accepted alternatives
+{ "Reference": "morphir/sdk:basics#int" }
+{ "Reference": { "fqname": "morphir/sdk:basics#int" } }
 ```
 
-### Reference (with type arguments)
+#### With Type Arguments
+
+| Format | Example | Notes |
+|--------|---------|-------|
+| **Canonical** | `{ "Reference": ["fqname", type1, ...] }` | Wrapper with array |
+| Wrapper with object | `{ "Reference": { "fqname": "...", "args": [...] } }` | Expanded form |
+
+:::warning
+Bare arrays (e.g., `["morphir/sdk:list#list", "a"]`) are **NOT** allowed for Reference at the top level—this would conflict with TupleType which uses bare arrays.
+:::
 
 ```json
-// List Int
-["morphir/sdk:list#list", "morphir/sdk:basics#int"]   // shorthand
+// Canonical (encoders should output this for types with args)
+{ "Reference": ["morphir/sdk:list#list", "morphir/sdk:basics#int"] }
 
-// canonical
+// Expanded form (accepted)
 {
   "Reference": {
     "fqname": "morphir/sdk:list#list",
-    "args": [
-      { "Reference": { "fqname": "morphir/sdk:basics#int" } }
-    ]
+    "args": ["morphir/sdk:basics#int"]
   }
 }
+
+// Dict String Int
+{ "Reference": ["morphir/sdk:dict#dict", "morphir/sdk:string#string", "morphir/sdk:basics#int"] }
 ```
 
-### Tuple
+### Tuple (TupleType)
+
+V4 follows a **permissive input, canonical output** policy for Tuple types.
+
+| Format | Example | Notes |
+|--------|---------|-------|
+| Bare array | `[type1, type2, ...]` | Compact, unambiguous (Reference doesn't use bare arrays) |
+| **Canonical** | `{ "Tuple": [type1, type2, ...] }` | Wrapper with array |
+| Expanded | `{ "Tuple": { "elements": [type1, type2, ...] } }` | Wrapper with object |
+
+:::note
+Bare arrays are unambiguous for TupleType because ReferenceType does **not** allow bare arrays (to avoid this exact conflict).
+:::
 
 ```json
-// shorthand
+// Bare array (most compact, accepted)
+["morphir/sdk:basics#int", "morphir/sdk:string#string"]
+
+// Canonical (encoders should output this)
+{ "Tuple": ["morphir/sdk:basics#int", "morphir/sdk:string#string"] }
+
+// Expanded form (accepted)
 {
   "Tuple": {
     "elements": ["morphir/sdk:basics#int", "morphir/sdk:string#string"]
   }
 }
 
-// canonical
-{
-  "Tuple": {
-    "elements": [
-      { "Reference": { "fqname": "morphir/sdk:basics#int" } },
-      { "Reference": { "fqname": "morphir/sdk:string#string" } }
-    ]
-  }
-}
+// With nested types
+{ "Tuple": ["a", "b", ["morphir/sdk:list#list", "c"]] }
 ```
 
 ### Record

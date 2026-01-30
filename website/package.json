@@ -19,12 +19,18 @@
 		"typecheck": "tsc"
 	},
 	"dependencies": {
+		"ajv": "^8.17.1",
+		"ajv-formats": "^3.0.1",
 		"@cmfcmf/docusaurus-search-local": "^2.0.0",
 		"@docusaurus/core": "^3.9.2",
 		"@docusaurus/plugin-google-gtag": "^3.9.2",
 		"@docusaurus/preset-classic": "^3.9.2",
 		"@mdx-js/react": "^3.0.0",
 		"clsx": "^2.1.0",
+		"@monaco-editor/react": "^4.6.0",
+		"jsonpath-plus": "^10.2.0",
+		"@uiw/react-json-view": "^2.0.0-alpha.27",
+		"docusaurus-json-schema-plugin": "^1.13.3",
 		"prism-react-renderer": "^2.3.0",
 		"prismjs": "^1.30.0",
 		"prismjs-gleam": "^1.0.4",

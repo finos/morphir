@@ -68,7 +68,7 @@ morphir run codegen:typescript
 morphir run codegen:scala
 ```
 
-See [WASM Components](./wasm-component.md) for how extensions register tasks.
+See [WASM Components](../../../spec/webassembly/wasm-components.md) for how extensions register tasks.
 
 ## Task Definition
 
@@ -437,4 +437,4 @@ run = "morphir-elm make"
 4. **Compatibility**: File-based tasks work with any scripting language
 5. **Incremental**: Source/output tracking avoids unnecessary work
 
-For extension points beyond tasks (custom commands, protocol extensions), see [WASM Components](./wasm-component.md) for the WASM Component Model approach.
+For extension points beyond tasks (custom commands, protocol extensions), see [WASM Components](../../../spec/webassembly/wasm-components.md) for the WASM Component Model approach.

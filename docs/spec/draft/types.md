@@ -156,29 +156,225 @@ A **Type Specification** defines the public interface of a type—the contract e
 
 ### TypeAliasSpecification
 
-An alias for another type.
+An alias for another type. Type aliases provide a new name for an existing type.
 
 - **Structure**: `TypeAliasSpecification typeParams type`
 - **Components**:
   - typeParams: List of type parameters (`List Name`)
   - type: The aliased type expression (`Type`)
 
+**Example 1: Simple type alias (no parameters)**
+
+```elm
+type alias UserId = String
+```
+
+```json
+{
+  "TypeAliasSpecification": {
+    "typeParams": [],
+    "type": "morphir/sdk:string#string"
+  }
+}
+```
+
+**Example 2: Type alias with type parameters**
+
+```elm
+type alias Pair a b = ( a, b )
+```
+
+```json
+{
+  "TypeAliasSpecification": {
+    "typeParams": ["a", "b"],
+    "type": { "Tuple": { "elements": ["a", "b"] } }
+  }
+}
+```
+
+**Example 3: Record type alias**
+
+```elm
+type alias Person = { name : String, age : Int, email : Maybe String }
+```
+
+```json
+{
+  "TypeAliasSpecification": {
+    "typeParams": [],
+    "type": {
+      "Record": {
+        "name": "morphir/sdk:string#string",
+        "age": "morphir/sdk:basics#int",
+        "email": ["morphir/sdk:maybe#maybe", "morphir/sdk:string#string"]
+      }
+    }
+  }
+}
+```
+
+**Example 4: Function type alias**
+
+```elm
+type alias Predicate a = a -> Bool
+```
+
+```json
+{
+  "TypeAliasSpecification": {
+    "typeParams": ["a"],
+    "type": { "Function": { "argumentType": "a", "returnType": "morphir/sdk:basics#bool" } }
+  }
+}
+```
+
 ### OpaqueTypeSpecification
 
-A type with unknown structure.
+A type with unknown structure. Opaque types hide their internal implementation.
 
 - **Structure**: `OpaqueTypeSpecification typeParams`
 - **Components**:
   - typeParams: List of type parameters (`List Name`)
 
+**Example 1: Simple opaque type (no parameters)**
+
+```elm
+-- Int is opaque - its internal representation is hidden
+type Int
+```
+
+```json
+{ "OpaqueTypeSpecification": { "typeParams": [] } }
+```
+
+**Example 2: Parameterized opaque type**
+
+```elm
+-- A set implementation where the internal structure is hidden
+type Set a
+```
+
+```json
+{ "OpaqueTypeSpecification": { "typeParams": ["a"] } }
+```
+
+**Example 3: Multi-parameter opaque type**
+
+```elm
+type Dict k v
+```
+
+```json
+{ "OpaqueTypeSpecification": { "typeParams": ["k", "v"] } }
+```
+
 ### CustomTypeSpecification
 
-A tagged union type (sum type).
+A tagged union type (sum type). Custom types define a closed set of constructors.
 
 - **Structure**: `CustomTypeSpecification typeParams constructors`
 - **Components**:
   - typeParams: List of type parameters (`List Name`)
   - constructors: Dictionary of constructor names to their arguments (`Dict Name (List (Name, Type))`)
+
+**Example 1: Simple enumeration (no data)**
+
+```elm
+type Color = Red | Green | Blue
+```
+
+```json
+{
+  "CustomTypeSpecification": {
+    "typeParams": [],
+    "constructors": { "red": [], "green": [], "blue": [] }
+  }
+}
+```
+
+**Example 2: Maybe type (parameterized)**
+
+```elm
+type Maybe a = Just a | Nothing
+```
+
+```json
+{
+  "CustomTypeSpecification": {
+    "typeParams": ["a"],
+    "constructors": {
+      "just": [["value", "a"]],
+      "nothing": []
+    }
+  }
+}
+```
+
+**Example 3: Result type (two type parameters)**
+
+```elm
+type Result error value = Ok value | Err error
+```
+
+```json
+{
+  "CustomTypeSpecification": {
+    "typeParams": ["error", "value"],
+    "constructors": {
+      "ok": [["value", "value"]],
+      "err": [["error", "error"]]
+    }
+  }
+}
+```
+
+**Example 4: List type (recursive)**
+
+```elm
+type List a = Nil | Cons a (List a)
+```
+
+```json
+{
+  "CustomTypeSpecification": {
+    "typeParams": ["a"],
+    "constructors": {
+      "nil": [],
+      "cons": [["head", "a"], ["tail", ["morphir/sdk:list#list", "a"]]]
+    }
+  }
+}
+```
+
+**Example 5: Complex domain type**
+
+```elm
+type PaymentMethod
+    = CreditCard { number : String, expiry : String, cvv : String }
+    | BankTransfer { accountNumber : String, routingNumber : String }
+    | Cash
+```
+
+```json
+{
+  "CustomTypeSpecification": {
+    "typeParams": [],
+    "constructors": {
+      "credit-card": [
+        ["number", "morphir/sdk:string#string"],
+        ["expiry", "morphir/sdk:string#string"],
+        ["cvv", "morphir/sdk:string#string"]
+      ],
+      "bank-transfer": [
+        ["account-number", "morphir/sdk:string#string"],
+        ["routing-number", "morphir/sdk:string#string"]
+      ],
+      "cash": []
+    }
+  }
+}
+```
 
 ### DerivedTypeSpecification
 
@@ -189,6 +385,82 @@ A type with platform-specific representation but known serialization.
   - `baseType`: The type used for serialization
   - `fromBaseType`: FQName of function to convert from base type
   - `toBaseType`: FQName of function to convert to base type
+
+**Example 1: LocalDate derived from String**
+
+```elm
+-- A date type that serializes as ISO 8601 string
+type LocalDate
+```
+
+```json
+{
+  "DerivedTypeSpecification": {
+    "typeParams": [],
+    "baseType": "morphir/sdk:string#string",
+    "fromBaseType": "morphir/sdk:local-date#from-i-s-o",
+    "toBaseType": "morphir/sdk:local-date#to-i-s-o"
+  }
+}
+```
+
+**Example 2: Decimal derived from String**
+
+```elm
+-- Precise decimal avoiding floating point issues
+type Decimal
+```
+
+```json
+{
+  "DerivedTypeSpecification": {
+    "typeParams": [],
+    "baseType": "morphir/sdk:string#string",
+    "fromBaseType": "morphir/sdk:decimal#from-string",
+    "toBaseType": "morphir/sdk:decimal#to-string"
+  }
+}
+```
+
+**Example 3: Money derived from record**
+
+```elm
+type Money
+```
+
+```json
+{
+  "DerivedTypeSpecification": {
+    "typeParams": [],
+    "baseType": {
+      "Record": {
+        "amount": "morphir/sdk:decimal#decimal",
+        "currency": "morphir/sdk:string#string"
+      }
+    },
+    "fromBaseType": "my-org/finance:money#from-record",
+    "toBaseType": "my-org/finance:money#to-record"
+  }
+}
+```
+
+**Example 4: Parameterized derived type**
+
+```elm
+-- NonEmpty list that serializes as regular list
+type NonEmpty a
+```
+
+```json
+{
+  "DerivedTypeSpecification": {
+    "typeParams": ["a"],
+    "baseType": ["morphir/sdk:list#list", "a"],
+    "fromBaseType": "my-org/collections:non-empty#from-list",
+    "toBaseType": "my-org/collections:non-empty#to-list"
+  }
+}
+```
 
 ## Type Definitions
 

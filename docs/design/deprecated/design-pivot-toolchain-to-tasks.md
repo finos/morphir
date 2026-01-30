@@ -200,5 +200,5 @@ The following issues are closed as "will not do":
 ## References
 
 - [Tasks Design](../draft/configuration/tasks.md) - New task system
-- [WASM Components](../draft/vfs-protocol/wasm-component.md) - Extension model
+- [WASM Components](../../spec/webassembly/wasm-components.md) - Extension model
 - [mise tasks](https://mise.jdx.dev/tasks/) - Inspiration for new approach

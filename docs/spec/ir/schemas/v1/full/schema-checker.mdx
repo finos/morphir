@@ -1,0 +1,271 @@
+---
+title: "Schema Checker - Version 1"
+sidebar_label: "Schema Checker"
+sidebar_position: 2
+description: "Validate Morphir IR JSON against the Version 1 schema"
+---
+
+import React from "react";
+import JsonView from "@uiw/react-json-view";
+import { githubDarkTheme } from "@uiw/react-json-view/githubDark";
+import { githubLightTheme } from "@uiw/react-json-view/githubLight";
+import Editor from "@monaco-editor/react";
+import { useColorMode } from "@docusaurus/theme-common";
+import Ajv from "ajv";
+import addFormats from "ajv-formats";
+
+# Morphir IR Schema Checker - Version 1
+
+Validate your Morphir IR JSON against the **Version 1 (Legacy)** schema. Version 1 is the original format with lowercase tags.
+
+export const SchemaChecker = () => {
+  const [jsonInput, setJsonInput] = React.useState('');
+  const [validationResult, setValidationResult] = React.useState(null);
+  const [isValidating, setIsValidating] = React.useState(false);
+  const [schema, setSchema] = React.useState(null);
+  const [loadError, setLoadError] = React.useState(null);
+  const { colorMode } = useColorMode();
+  const fileInputRef = React.useRef(null);
+
+  React.useEffect(() => {
+    fetch('/schemas/morphir-ir-v1.json')
+      .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`))
+      .then(setSchema)
+      .catch(err => setLoadError(`Failed to load schema: ${err}`));
+  }, []);
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setJsonInput(e.target.result);
+        setValidationResult(null);
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const validateJson = async () => {
+    setIsValidating(true);
+    setValidationResult(null);
+
+    try {
+      let parsedJson;
+      try {
+        parsedJson = JSON.parse(jsonInput);
+      } catch (parseErr) {
+        setValidationResult({
+          valid: false,
+          errors: [{ message: `JSON Parse Error: ${parseErr.message}` }],
+          parsedJson: null,
+        });
+        setIsValidating(false);
+        return;
+      }
+
+      if (!schema) {
+        setValidationResult({
+          valid: false,
+          errors: [{ message: 'Schema not loaded' }],
+          parsedJson,
+        });
+        setIsValidating(false);
+        return;
+      }
+
+      const ajv = new Ajv({ allErrors: true, verbose: true, strict: false });
+      addFormats(ajv);
+      const validate = ajv.compile(schema);
+      const valid = validate(parsedJson);
+
+      setValidationResult({
+        valid,
+        errors: validate.errors || [],
+        parsedJson,
+      });
+    } catch (err) {
+      setValidationResult({
+        valid: false,
+        errors: [{ message: `Validation Error: ${err.message}` }],
+        parsedJson: null,
+      });
+    }
+
+    setIsValidating(false);
+  };
+
+  const sampleJson = `[
+  "library",
+  [["my", "org"], ["my", "package"]],
+  {},
+  {
+    "modules": []
+  }
+]`;
+
+  if (loadError) {
+    return <div className="alert alert--danger">{loadError}</div>;
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom: '1rem' }}>
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileUpload}
+          accept=".json"
+          style={{ display: 'none' }}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            padding: '0.5rem 1rem',
+            cursor: 'pointer',
+            border: '1px solid var(--ifm-color-emphasis-300)',
+            borderRadius: '4px',
+            backgroundColor: 'var(--ifm-background-surface-color)',
+            color: 'var(--ifm-font-color-base)',
+            marginRight: '0.5rem',
+          }}
+        >
+          Upload JSON File
+        </button>
+        <button
+          onClick={() => {
+            setJsonInput(sampleJson);
+            setValidationResult(null);
+          }}
+          style={{
+            padding: '0.5rem 1rem',
+            cursor: 'pointer',
+            border: '1px solid var(--ifm-color-emphasis-300)',
+            borderRadius: '4px',
+            backgroundColor: 'var(--ifm-background-surface-color)',
+            color: 'var(--ifm-font-color-base)',
+          }}
+        >
+          Load V1 Sample
+        </button>
+      </div>
+
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+          Morphir IR JSON (Monaco Editor):
+        </label>
+        <div style={{ border: '1px solid var(--ifm-color-emphasis-300)', borderRadius: '4px' }}>
+          <Editor
+            height="350px"
+            language="json"
+            value={jsonInput}
+            onChange={(value) => {
+              setJsonInput(value || '');
+              setValidationResult(null);
+            }}
+            theme={colorMode === 'dark' ? 'vs-dark' : 'light'}
+            options={{
+              minimap: { enabled: true },
+              lineNumbers: 'on',
+              scrollBeyondLastLine: false,
+              wordWrap: 'on',
+              automaticLayout: true,
+              fontSize: 14,
+              folding: true,
+              formatOnPaste: true,
+              tabSize: 2,
+            }}
+          />
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '1rem' }}>
+        <button
+          onClick={validateJson}
+          disabled={isValidating || !jsonInput.trim() || !schema}
+          style={{
+            padding: '0.75rem 2rem',
+            cursor: isValidating || !jsonInput.trim() || !schema ? 'not-allowed' : 'pointer',
+            border: 'none',
+            borderRadius: '4px',
+            backgroundColor: isValidating || !jsonInput.trim() || !schema
+              ? 'var(--ifm-color-emphasis-300)'
+              : 'var(--ifm-color-primary)',
+            color: 'white',
+            fontWeight: 'bold',
+            fontSize: '1rem',
+          }}
+        >
+          {isValidating ? 'Validating...' : 'Validate against V1 Schema'}
+        </button>
+      </div>
+
+      {validationResult && (
+        <div>
+          {validationResult.valid ? (
+            <div className="alert alert--success" style={{ marginBottom: '1rem' }}>
+              <strong>Valid!</strong> Your JSON conforms to the Morphir IR v1 schema.
+            </div>
+          ) : (
+            <div className="alert alert--danger" style={{ marginBottom: '1rem' }}>
+              <strong>Invalid!</strong> Found {validationResult.errors.length} error(s):
+              <ul style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                {validationResult.errors.slice(0, 10).map((err, i) => (
+                  <li key={i} style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                    {err.instancePath && <strong>{err.instancePath}: </strong>}
+                    {err.message}
+                  </li>
+                ))}
+                {validationResult.errors.length > 10 && (
+                  <li>...and {validationResult.errors.length - 10} more errors</li>
+                )}
+              </ul>
+            </div>
+          )}
+
+          {validationResult.parsedJson && (
+            <details>
+              <summary style={{ cursor: 'pointer', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                Parsed JSON Tree
+              </summary>
+              <JsonView
+                value={validationResult.parsedJson}
+                style={colorMode === 'dark' ? githubDarkTheme : githubLightTheme}
+                displayDataTypes={false}
+                collapsed={2}
+              />
+            </details>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+<SchemaChecker />
+
+## V1 Format Overview
+
+Version 1 is the **original format** with lowercase tags:
+
+```json
+["library", packageName, dependencies, definition]
+["variable", attributes, name]
+["reference", attributes, fqName, typeArgs]
+```
+
+### Key Characteristics
+
+- **Tagged array format**: `["tagname", ...args]`
+- **Lowercase tags**: `library`, `variable`, `reference`
+- **Original morphir-elm output format**
+
+## Schema Reference
+
+- [Schema Viewer](./schema-viewer) - Interactive schema browser
+- [Download Schema](/schemas/morphir-ir-v1.json) - JSON format
+
+## See Also
+
+- [Global Schema Checker](/docs/tools/schema-checker) - Check all versions
+- [Migration Guide](../../migration-guide) - Version migration

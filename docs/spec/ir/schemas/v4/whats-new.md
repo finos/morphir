@@ -465,7 +465,36 @@ IncompleteBody(
 
 ---
 
-### 9. JSON Representation Changes
+### 9. Permissive Input, Canonical Output Policy
+
+V4 establishes a clear **permissive input, canonical output** policy:
+
+- **Decoders** accept multiple formats for backwards compatibility and flexibility
+- **Encoders** output only the canonical format for consistency
+
+This applies to all V4 constructs. The table below summarizes key formats:
+
+| Construct | Canonical Output | Also Accepted |
+|-----------|-----------------|---------------|
+| **Access** | `"Public"`, `"Private"` | `"public"`, `"private"`, `"pub"` |
+| **AccessControlled** | `{ "Public": {...} }` | `{ "pub": {...} }`, `{ "access": "Public", "value": {...} }` |
+| **ReferenceType (no args)** | `"morphir/sdk:basics#int"` | `{ "Reference": "..." }`, `{ "Reference": { "fqname": "..." } }` |
+| **ReferenceType (with args)** | `{ "Reference": ["fqname", t1, ...] }` | `{ "Reference": { "fqname": "...", "args": [...] } }` |
+| **TupleType** | `{ "Tuple": [t1, t2, ...] }` | `[t1, t2, ...]`, `{ "Tuple": { "elements": [...] } }` |
+| **TuplePattern** | `{ "TuplePattern": [p1, p2, ...] }` | `[p1, p2, ...]`, `{ "TuplePattern": { "patterns": [...] } }` |
+| **TupleValue** | `{ "Tuple": [v1, v2, ...] }` | `{ "Tuple": { "elements": [...] } }` (NO bare arrays) |
+| **ListValue** | `{ "List": [v1, v2, ...] }` | `{ "List": { "items": [...] } }` (NO bare arrays) |
+| **Literals** | `{ "IntegerLiteral": 42 }` | `{ "IntegerLiteral": { "value": 42 } }`, `{ "WholeNumberLiteral": 42 }` |
+
+:::note Design Rationale
+- **TupleType** allows bare arrays because ReferenceType does NOT (avoiding ambiguity)
+- **TupleValue/ListValue** do NOT allow bare arrays because they would be ambiguous with each other
+- **Access abbreviations** like `"pub"` improve ergonomics for hand-written IR
+:::
+
+---
+
+### 10. JSON Representation Changes
 
 V4 moves from **tagged arrays** to **wrapper objects** for the canonical format:
 
