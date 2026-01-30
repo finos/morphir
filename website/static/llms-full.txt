@@ -1336,6 +1336,7 @@ Technical specifications including IR format and schemas
 - [Morphir JSON Project Configuration Specification](https://morphir.finos.org/docs/spec/morphir-json/morphir-json-specification/): Formal specification for morphir.json (Morphir Elm project configuration)
 - [Morphir TOML Configuration Merge Rules](https://morphir.finos.org/docs/spec/morphir-toml/morphir-toml-merge-rules/): How Morphir merges morphir.toml configuration sources into an effective configuration
 - [Morphir TOML Configuration Specification](https://morphir.finos.org/docs/spec/morphir-toml/morphir-toml-specification/): Formal specification for morphir.toml configuration files
+- [WASM Component Model](https://morphir.finos.org/docs/spec/webassembly/wasm-components/): This document defines WIT (WebAssembly Interface Types) interfaces for implementing Morphir backends and extensions as portable, sandboxed WASM components.
 
 ### Design Documents
 
@@ -1364,7 +1365,6 @@ Design documents, proposals, and RFCs for Morphir features
 - [Document Tree Protocol (JSON-RPC 2.0)](https://morphir.finos.org/docs/design/draft/document-tree-protocol/protocol/): This document details the JSON-RPC 2.0 methods and notifications used by the Morphir Core Daemon to manage the Document Tree and coordinate with backends.
 - [Workflows](https://morphir.finos.org/docs/design/draft/document-tree-protocol/workflows/): (TODO: This document will describe common workflows for Document Tree Protocol.)
 - [Tasks](https://morphir.finos.org/docs/design/draft/extensions/tasks/): This document defines the task system for Morphir, modeled after mise tasks.
-- [WASM Component Model](https://morphir.finos.org/docs/design/draft/extensions/wasm-component/): This document defines WIT (WebAssembly Interface Types) interfaces for implementing Morphir backends and extensions as portable, sandboxed WASM components.
 - [Design Agent Guidelines](https://morphir.finos.org/docs/design/draft/ir/AGENTS/): Working agreement for AI agents and contributors working on Morphir v4 IR design documents.
 - [IR v4 Format](https://morphir.finos.org/docs/design/draft/ir/): This is a DRAFT design document. All types and protocols are subject to change.
 - [Decorations](https://morphir.finos.org/docs/design/draft/ir/decorations/): Decorations provide a way to attach additional metadata to IR nodes without modifying the core IR structure. They are stored separately from the IR in a layered, composable system.
