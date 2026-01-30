@@ -12,6 +12,131 @@ const schemaVersions = [
   { value: 'v4', label: 'v4', file: 'morphir-ir-v4.json', status: 'Draft' },
 ];
 
+// XRay Tree Node Component
+function XRayTreeNode({ name, value, depth = 0, colorMode, expandedNodes, toggleNode, path }) {
+  const nodeId = path;
+  const isExpanded = expandedNodes[nodeId] !== false; // Default to expanded
+  const hasChildren = value !== null && typeof value === 'object' && Object.keys(value).length > 0;
+  const isArray = Array.isArray(value);
+
+  // Determine node type and color
+  const getNodeStyle = () => {
+    if (value === null) return { bg: '#f5f5f5', label: 'null' };
+    if (typeof value === 'string') return { bg: '#e3f2fd', label: 'String' };
+    if (typeof value === 'number') return { bg: '#fff3e0', label: 'Number' };
+    if (typeof value === 'boolean') return { bg: '#fce4ec', label: 'Boolean' };
+    if (isArray) return { bg: '#e8f5e9', label: `Array[${value.length}]` };
+
+    // Check for Morphir IR specific patterns
+    const keys = Object.keys(value);
+    if (keys.length === 1) {
+      const key = keys[0];
+      // Wrapper object pattern (e.g., { "Library": {...} })
+      if (['Library', 'Specs', 'Application', 'Reference', 'Variable', 'Literal',
+           'Apply', 'Lambda', 'IfThenElse', 'PatternMatch', 'Constructor',
+           'Tuple', 'List', 'Record', 'Field', 'Unit', 'Let', 'LetDefinition',
+           'LetRecursion', 'Destructure', 'UpdateRecord'].includes(key)) {
+        return { bg: '#e1bee7', label: key };
+      }
+    }
+    return { bg: '#f3e5f5', label: 'Object' };
+  };
+
+  const nodeStyle = getNodeStyle();
+  const indent = depth * 16;
+
+  const baseStyle = {
+    fontFamily: 'monospace',
+    fontSize: '0.8rem',
+    marginLeft: `${indent}px`,
+    marginBottom: '2px',
+  };
+
+  const headerStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '2px 6px',
+    backgroundColor: colorMode === 'dark' ?
+      (nodeStyle.bg === '#e3f2fd' ? '#1e3a5f' :
+       nodeStyle.bg === '#fff3e0' ? '#4a3000' :
+       nodeStyle.bg === '#fce4ec' ? '#4a1a2c' :
+       nodeStyle.bg === '#e8f5e9' ? '#1a3a1f' :
+       nodeStyle.bg === '#e1bee7' ? '#3a1a4a' :
+       nodeStyle.bg === '#f3e5f5' ? '#2a1a3a' : '#2a2a2a') :
+      nodeStyle.bg,
+    borderRadius: '3px',
+    cursor: hasChildren ? 'pointer' : 'default',
+    borderLeft: `3px solid ${colorMode === 'dark' ? '#666' : '#999'}`,
+  };
+
+  const labelStyle = {
+    color: colorMode === 'dark' ? '#aaa' : '#666',
+    fontSize: '0.7rem',
+    marginLeft: '8px',
+  };
+
+  const renderValue = () => {
+    if (value === null) return <span style={{ color: '#999' }}>null</span>;
+    if (typeof value === 'string') return <span style={{ color: colorMode === 'dark' ? '#98c379' : '#22863a' }}>"{value}"</span>;
+    if (typeof value === 'number') return <span style={{ color: colorMode === 'dark' ? '#d19a66' : '#005cc5' }}>{value}</span>;
+    if (typeof value === 'boolean') return <span style={{ color: colorMode === 'dark' ? '#56b6c2' : '#d73a49' }}>{value.toString()}</span>;
+    return null;
+  };
+
+  const toggleIcon = hasChildren ? (isExpanded ? '▼' : '▶') : '•';
+
+  return (
+    <div style={baseStyle}>
+      <div
+        style={headerStyle}
+        onClick={() => hasChildren && toggleNode(nodeId)}
+      >
+        <span style={{ width: '12px', color: colorMode === 'dark' ? '#888' : '#666', fontSize: '0.7rem' }}>
+          {toggleIcon}
+        </span>
+        {name && (
+          <span style={{ fontWeight: 'bold', color: colorMode === 'dark' ? '#61afef' : '#0366d6', marginRight: '4px' }}>
+            {name}:
+          </span>
+        )}
+        {!hasChildren && renderValue()}
+        {hasChildren && <span style={labelStyle}>{nodeStyle.label}</span>}
+      </div>
+      {hasChildren && isExpanded && (
+        <div>
+          {isArray ? (
+            value.map((item, index) => (
+              <XRayTreeNode
+                key={index}
+                name={`[${index}]`}
+                value={item}
+                depth={depth + 1}
+                colorMode={colorMode}
+                expandedNodes={expandedNodes}
+                toggleNode={toggleNode}
+                path={`${path}/${index}`}
+              />
+            ))
+          ) : (
+            Object.entries(value).map(([key, val]) => (
+              <XRayTreeNode
+                key={key}
+                name={key}
+                value={val}
+                depth={depth + 1}
+                colorMode={colorMode}
+                expandedNodes={expandedNodes}
+                toggleNode={toggleNode}
+                path={`${path}/${key}`}
+              />
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const sampleJson = {
   v4: `{
   "formatVersion": 4,
@@ -64,6 +189,10 @@ function IRCheckerContent() {
   const [sidebarWidth, setSidebarWidth] = React.useState(350);
   const [isDragging, setIsDragging] = React.useState(false);
   const [expandedCards, setExpandedCards] = React.useState({});
+  const [showXRay, setShowXRay] = React.useState(false);
+  const [xrayWidth, setXrayWidth] = React.useState(400);
+  const [isDraggingXray, setIsDraggingXray] = React.useState(false);
+  const [xrayExpandedNodes, setXrayExpandedNodes] = React.useState({});
   const { colorMode } = useColorMode();
   const fileInputRef = React.useRef(null);
   const editorRef = React.useRef(null);
@@ -132,6 +261,67 @@ function IRCheckerContent() {
       document.body.style.cursor = '';
     };
   }, [isDragging]);
+
+  // XRay splitter handlers
+  const handleXrayMouseDown = React.useCallback((e) => {
+    e.preventDefault();
+    setIsDraggingXray(true);
+  }, []);
+
+  React.useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDraggingXray || !containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newWidth = containerRect.right - e.clientX - sidebarWidth - 4;
+
+      const constrainedWidth = Math.max(250, Math.min(800, newWidth));
+      setXrayWidth(constrainedWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingXray(false);
+    };
+
+    if (isDraggingXray) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+  }, [isDraggingXray, sidebarWidth]);
+
+  const toggleXrayNode = (nodeId) => {
+    setXrayExpandedNodes(prev => ({
+      ...prev,
+      [nodeId]: prev[nodeId] === undefined ? false : !prev[nodeId]
+    }));
+  };
+
+  const expandAllXrayNodes = () => setXrayExpandedNodes({});
+  const collapseAllXrayNodes = () => {
+    if (!validationResult?.parsedJson) return;
+    const collapsed = {};
+    const collectPaths = (obj, path) => {
+      if (obj && typeof obj === 'object') {
+        collapsed[path] = false;
+        if (Array.isArray(obj)) {
+          obj.forEach((_, i) => collectPaths(obj[i], `${path}/${i}`));
+        } else {
+          Object.keys(obj).forEach(k => collectPaths(obj[k], `${path}/${k}`));
+        }
+      }
+    };
+    collectPaths(validationResult.parsedJson, 'root');
+    setXrayExpandedNodes(collapsed);
+  };
 
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
@@ -581,6 +771,50 @@ function IRCheckerContent() {
       color: '#fff',
       fontSize: '0.8rem',
     },
+    xrayPanel: {
+      width: `${xrayWidth}px`,
+      display: 'flex',
+      flexDirection: 'column',
+      backgroundColor: colorMode === 'dark' ? '#1e1e1e' : '#fafafa',
+      borderLeft: `1px solid ${colorMode === 'dark' ? '#333' : '#e0e0e0'}`,
+      flexShrink: 0,
+    },
+    xrayHeader: {
+      padding: '0.5rem 1rem',
+      borderBottom: `1px solid ${colorMode === 'dark' ? '#333' : '#e0e0e0'}`,
+      fontWeight: 'bold',
+      fontSize: '0.9rem',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colorMode === 'dark' ? '#252526' : '#f0f0f0',
+    },
+    xrayContent: {
+      flex: 1,
+      overflow: 'auto',
+      padding: '0.5rem',
+    },
+    xraySplitter: {
+      width: '4px',
+      cursor: 'col-resize',
+      backgroundColor: isDraggingXray
+        ? '#0078d4'
+        : (colorMode === 'dark' ? '#333' : '#e0e0e0'),
+      transition: isDraggingXray ? 'none' : 'background-color 0.2s',
+      flexShrink: 0,
+    },
+    xrayToggleBtn: (isActive) => ({
+      padding: '0.25rem 0.75rem',
+      fontSize: '0.85rem',
+      border: `1px solid ${isActive ? '#9c27b0' : (colorMode === 'dark' ? '#555' : '#ccc')}`,
+      borderRadius: '3px',
+      backgroundColor: isActive ? '#9c27b0' : 'transparent',
+      color: isActive ? '#fff' : (colorMode === 'dark' ? '#ccc' : '#333'),
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.25rem',
+    }),
   };
 
   if (loadError) {
@@ -644,6 +878,19 @@ function IRCheckerContent() {
               Validate
             </button>
           )}
+        </div>
+
+        <div style={{ borderLeft: `1px solid ${colorMode === 'dark' ? '#555' : '#ccc'}`, height: '20px' }} />
+
+        <div style={styles.toolbarGroup}>
+          <button
+            onClick={() => setShowXRay(!showXRay)}
+            style={styles.xrayToggleBtn(showXRay)}
+            title="Toggle XRay View - Show parsed IR structure"
+          >
+            <span style={{ fontFamily: 'monospace' }}>⟨/⟩</span>
+            XRay
+          </button>
         </div>
       </div>
 
@@ -799,6 +1046,84 @@ function IRCheckerContent() {
             </div>
           </div>
         </div>
+
+        {/* XRay Panel */}
+        {showXRay && (
+          <>
+            {/* XRay Splitter */}
+            <div
+              style={styles.xraySplitter}
+              onMouseDown={handleXrayMouseDown}
+            >
+              <div style={styles.splitterHover} />
+            </div>
+
+            {/* XRay Panel */}
+            <div style={styles.xrayPanel}>
+              <div style={styles.xrayHeader}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontFamily: 'monospace' }}>⟨/⟩</span>
+                  <span>XRay View</span>
+                </div>
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  <button
+                    style={styles.iconBtn}
+                    onClick={expandAllXrayNodes}
+                    title="Expand all"
+                  >
+                    <span>+</span>
+                  </button>
+                  <button
+                    style={styles.iconBtn}
+                    onClick={collapseAllXrayNodes}
+                    title="Collapse all"
+                  >
+                    <span>−</span>
+                  </button>
+                  <button
+                    style={styles.iconBtn}
+                    onClick={() => setShowXRay(false)}
+                    title="Close XRay panel"
+                  >
+                    <span>✕</span>
+                  </button>
+                </div>
+              </div>
+              <div style={styles.xrayContent}>
+                {validationResult?.parsedJson ? (
+                  <XRayTreeNode
+                    name="root"
+                    value={validationResult.parsedJson}
+                    depth={0}
+                    colorMode={colorMode}
+                    expandedNodes={xrayExpandedNodes}
+                    toggleNode={toggleXrayNode}
+                    path="root"
+                  />
+                ) : (
+                  <div style={{
+                    padding: '2rem',
+                    textAlign: 'center',
+                    color: colorMode === 'dark' ? '#888' : '#666',
+                    fontSize: '0.9rem'
+                  }}>
+                    {jsonInput.trim() ? (
+                      <span>
+                        <span style={{ display: 'block', fontSize: '1.5rem', marginBottom: '0.5rem' }}>⚠️</span>
+                        Parse the JSON first to view the XRay structure
+                      </span>
+                    ) : (
+                      <span>
+                        <span style={{ display: 'block', fontSize: '1.5rem', marginBottom: '0.5rem' }}>📄</span>
+                        Enter Morphir IR JSON to see its structure
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Status Bar */}
