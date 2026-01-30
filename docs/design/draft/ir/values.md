@@ -317,13 +317,47 @@ pub type ValueSpecification(attributes) {
 
 ### Literal Examples
 
+V4 follows a **permissive input, canonical output** policy for Literals.
+
+#### Literal (within LiteralValue or LiteralPattern)
+
+| Literal Type | Canonical | Compact | Notes |
+|--------------|-----------|---------|-------|
+| BoolLiteral | `{ "BoolLiteral": { "value": true } }` | `{ "BoolLiteral": true }` | |
+| StringLiteral | `{ "StringLiteral": { "value": "hello" } }` | `{ "StringLiteral": "hello" }` | |
+| IntegerLiteral | `{ "IntegerLiteral": { "value": 42 } }` | `{ "IntegerLiteral": 42 }` | Renamed from WholeNumberLiteral |
+| FloatLiteral | `{ "FloatLiteral": { "value": 3.14 } }` | `{ "FloatLiteral": 3.14 }` | |
+| DecimalLiteral | `{ "DecimalLiteral": { "value": "123.456" } }` | `{ "DecimalLiteral": "123.456" }` | String for precision |
+| CharLiteral | `{ "CharLiteral": { "value": "A" } }` | `{ "CharLiteral": "A" }` | |
+
+#### LiteralValue (Value expression wrapping a Literal)
+
+| Format | Example | Notes |
+|--------|---------|-------|
+| **Canonical** | `{ "Literal": { "IntegerLiteral": 42 } }` | Compact literal inside |
+| Expanded | `{ "Literal": { "literal": { "IntegerLiteral": { "value": 42 } } } }` | With attributes |
+| With attributes | `{ "Literal": { "attributes": {...}, "literal": {...} } }` | Full form |
+
 ```json
+// Canonical forms (encoders should output these)
+{ "BoolLiteral": true }
+{ "StringLiteral": "hello world" }
+{ "IntegerLiteral": 42 }
+{ "FloatLiteral": 3.14159 }
+{ "DecimalLiteral": "123456789.987654321" }
+{ "CharLiteral": "A" }
+
+// Expanded forms (accepted)
 { "BoolLiteral": { "value": true } }
 { "StringLiteral": { "value": "hello world" } }
 { "IntegerLiteral": { "value": 42 } }
 { "FloatLiteral": { "value": 3.14159 } }
 { "DecimalLiteral": { "value": "123456789.987654321" } }
 { "CharLiteral": { "value": "A" } }
+
+// Legacy (accepted for backwards compatibility)
+{ "WholeNumberLiteral": 42 }
+{ "WholeNumberLiteral": { "value": 42 } }
 ```
 
 ### Pattern Examples
@@ -350,10 +384,37 @@ Simple variable binding (most common case):
 
 #### TuplePattern
 
+V4 follows a **permissive input, canonical output** policy for TuplePattern.
+
+| Format | Example | Notes |
+|--------|---------|-------|
+| Bare array | `[pattern1, pattern2, ...]` | Compact, unambiguous |
+| **Canonical** | `{ "TuplePattern": [pattern1, pattern2, ...] }` | Wrapper with array |
+| Expanded | `{ "TuplePattern": { "patterns": [pattern1, ...] } }` | Wrapper with object |
+
+:::note
+Bare arrays are unambiguous for TuplePattern because no other pattern type uses bare arrays at the top level.
+:::
+
 ```json
+// Bare array (most compact, accepted)
+[
+  { "AsPattern": { "a": { "WildcardPattern": {} } } },
+  { "AsPattern": { "b": { "WildcardPattern": {} } } }
+]
+
+// Canonical (encoders should output this)
+{
+  "TuplePattern": [
+    { "AsPattern": { "a": { "WildcardPattern": {} } } },
+    { "AsPattern": { "b": { "WildcardPattern": {} } } }
+  ]
+}
+
+// Expanded form (accepted)
 {
   "TuplePattern": {
-    "elements": [
+    "patterns": [
       { "AsPattern": { "a": { "WildcardPattern": {} } } },
       { "AsPattern": { "b": { "WildcardPattern": {} } } }
     ]
@@ -387,7 +448,20 @@ Simple variable binding (most common case):
 
 #### LiteralPattern
 
+V4 follows a **permissive input, canonical output** policy for LiteralPattern.
+
+| Format | Example | Notes |
+|--------|---------|-------|
+| **Canonical** | `{ "LiteralPattern": { "IntegerLiteral": 42 } }` | Compact literal |
+| Expanded | `{ "LiteralPattern": { "literal": { "IntegerLiteral": { "value": 42 } } } }` | Full form |
+
 ```json
+// Canonical (encoders should output this)
+{ "LiteralPattern": { "IntegerLiteral": 42 } }
+{ "LiteralPattern": { "StringLiteral": "hello" } }
+{ "LiteralPattern": { "BoolLiteral": true } }
+
+// Expanded form (accepted)
 { "LiteralPattern": { "literal": { "IntegerLiteral": { "value": 42 } } } }
 ```
 
@@ -421,27 +495,67 @@ Simple variable binding (most common case):
 { "Constructor": { "fqname": "morphir/sdk:maybe#just" } }
 ```
 
-#### Tuple
+#### Tuple (TupleValue)
+
+V4 follows a **permissive input, canonical output** policy for TupleValue.
+
+| Format | Example | Notes |
+|--------|---------|-------|
+| **Canonical** | `{ "Tuple": [value1, value2, ...] }` | Wrapper with array |
+| Expanded | `{ "Tuple": { "elements": [value1, ...] } }` | Wrapper with object |
+
+:::warning
+Bare arrays are **NOT** allowed for TupleValue. This would be ambiguous with ListValue. The wrapper is required to distinguish tuples from lists.
+:::
 
 ```json
+// Canonical (encoders should output this)
+{
+  "Tuple": [
+    { "Literal": { "IntegerLiteral": 1 } },
+    { "Literal": { "StringLiteral": "hello" } }
+  ]
+}
+
+// Expanded form (accepted)
 {
   "Tuple": {
     "elements": [
-      { "Literal": { "literal": { "IntegerLiteral": { "value": 1 } } } },
-      { "Literal": { "literal": { "StringLiteral": { "value": "hello" } } } }
+      { "Literal": { "IntegerLiteral": 1 } },
+      { "Literal": { "StringLiteral": "hello" } }
     ]
   }
 }
 ```
 
-#### List
+#### List (ListValue)
+
+V4 follows a **permissive input, canonical output** policy for ListValue.
+
+| Format | Example | Notes |
+|--------|---------|-------|
+| **Canonical** | `{ "List": [value1, value2, ...] }` | Wrapper with array |
+| Expanded | `{ "List": { "items": [value1, ...] } }` | Wrapper with object |
+
+:::warning
+Bare arrays are **NOT** allowed for ListValue. This would be ambiguous with TupleValue. The wrapper is required to distinguish lists from tuples.
+:::
 
 ```json
+// Canonical (encoders should output this)
+{
+  "List": [
+    { "Literal": { "IntegerLiteral": 1 } },
+    { "Literal": { "IntegerLiteral": 2 } }
+  ]
+}
+
+// Expanded form (accepted)
 {
   "List": {
     "items": [
-      { "Literal": { "literal": { "IntegerLiteral": { "value": 1 } } } },
-      { "Literal": { "literal": { "IntegerLiteral": { "value": 2 } } } }
+      { "Literal": { "IntegerLiteral": 1 } },
+      { "Literal": { "IntegerLiteral": 2 } }
     ]
   }
 }
