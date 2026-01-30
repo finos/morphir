@@ -54,15 +54,14 @@ const config = {
             label: 'Docs',
           },
           {
+            to: '/schema-checker',
+            position: 'right',
+            label: 'Schema Checker',
+          },
+          {
             href: 'https://github.com/finos/morphir',
             label: 'GitHub',
             position: 'right',
-          },
-          {
-            type: 'doc',
-            docId: 'tools/schema-checker',
-            position: 'right',
-            label: 'Schema Checker',
           },
           {
             href: "https://lcr-interactive.finos.org/",
