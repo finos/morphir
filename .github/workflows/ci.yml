@@ -88,25 +88,5 @@ jobs:
       - name: Build
         run: cargo build --release --workspace
 
-  # WASM build for morphir-live
-  build-wasm:
-    name: Build WASM
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-
-      - name: Install dioxus-cli
-        run: cargo install dioxus-cli
-
-      - name: Build WASM
-        working-directory: crates/morphir-live
-        run: dx build --release
+  # TODO: Add WASM build once dioxus-cli workspace issue is resolved
+  # See: https://github.com/finos/morphir/issues/XXX
