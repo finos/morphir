@@ -1,0 +1,195 @@
+---
+title: "Interactive Schema Viewer"
+linkTitle: "Schema Viewer"
+weight: 21
+description: "Interactive JSON Schema viewer for Morphir IR format version 1"
+---
+
+import React from "react";
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+import JSONSchemaViewer from "@theme/JSONSchemaViewer";
+import JsonView from "@uiw/react-json-view";
+import { githubDarkTheme } from "@uiw/react-json-view/githubDark";
+import Editor from "@monaco-editor/react";
+import { useColorMode } from "@docusaurus/theme-common";
+import { JSONPath } from "jsonpath-plus";
+
+# Morphir IR Schema Version 1 - Interactive Viewer
+
+This page provides an interactive viewer for the Morphir IR JSON Schema version 1.
+
+## Download
+
+- JSON: [morphir-ir-v1.json](/schemas/morphir-ir-v1.json)
+- YAML: [morphir-ir-v1.yaml](/schemas/morphir-ir-v1.yaml)
+
+## Interactive Schema Viewer
+
+Browse the schema structure interactively below.
+
+export const JsonPathFilter = ({ data }) => {
+  const [query, setQuery] = React.useState('$');
+  const [result, setResult] = React.useState(data);
+  const [error, setError] = React.useState(null);
+  const [resultCount, setResultCount] = React.useState(null);
+
+  const exampleQueries = [
+    { label: 'Root', path: '$' },
+    { label: 'Definitions', path: '$.definitions' },
+    { label: 'All Definition Names', path: '$.definitions.*~' },
+    { label: 'Type Definition', path: '$.definitions.Type' },
+    { label: 'Value Definition', path: '$.definitions.Value' },
+    { label: 'All oneOf', path: '$..oneOf[*]' },
+    { label: 'All $ref', path: '$..$ref' },
+  ];
+
+  React.useEffect(() => {
+    if (!query.trim()) {
+      setResult(data);
+      setError(null);
+      setResultCount(null);
+      return;
+    }
+    try {
+      const results = JSONPath({ path: query, json: data, wrap: true });
+      setResult(results.length === 1 ? results[0] : results);
+      setResultCount(results.length);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+      setResult(null);
+      setResultCount(null);
+    }
+  }, [query, data]);
+
+  return (
+    <div>
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+          JSONPath Query:
+        </label>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Enter JSONPath (e.g., $.definitions.Type)"
+          style={{
+            width: '100%',
+            padding: '0.5rem',
+            fontSize: '1rem',
+            fontFamily: 'monospace',
+            border: '1px solid var(--ifm-color-emphasis-300)',
+            borderRadius: '4px',
+            backgroundColor: 'var(--ifm-background-color)',
+            color: 'var(--ifm-font-color-base)',
+          }}
+        />
+        <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          {exampleQueries.map((ex) => (
+            <button
+              key={ex.path}
+              onClick={() => setQuery(ex.path)}
+              style={{
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                border: '1px solid var(--ifm-color-emphasis-300)',
+                borderRadius: '4px',
+                backgroundColor: query === ex.path ? 'var(--ifm-color-primary)' : 'var(--ifm-background-surface-color)',
+                color: query === ex.path ? 'white' : 'var(--ifm-font-color-base)',
+              }}
+            >
+              {ex.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {error && (
+        <div className="alert alert--danger margin-bottom--md">
+          <strong>Invalid JSONPath:</strong> {error}
+        </div>
+      )}
+      {resultCount !== null && !error && (
+        <div className="alert alert--success margin-bottom--md">
+          <strong>Results:</strong> {resultCount} match{resultCount !== 1 ? 'es' : ''} found
+        </div>
+      )}
+      {result && (
+        <JsonView
+          value={result}
+          style={githubDarkTheme}
+          displayDataTypes={false}
+          collapsed={2}
+        />
+      )}
+    </div>
+  );
+};
+
+export const SchemaViewer = () => {
+  const [schema, setSchema] = React.useState(undefined);
+  const [yaml, setYaml] = React.useState(undefined);
+  const [error, setError] = React.useState(null);
+  const { colorMode } = useColorMode();
+
+  React.useEffect(() => {
+    Promise.all([
+      fetch('/schemas/morphir-ir-v1.json').then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`)),
+      fetch('/schemas/morphir-ir-v1.yaml').then(r => r.ok ? r.text() : Promise.reject(`HTTP ${r.status}`))
+    ])
+      .then(([jsonData, yamlData]) => {
+        setSchema(jsonData);
+        setYaml(yamlData);
+      })
+      .catch(err => setError(String(err)));
+  }, []);
+
+  if (error) return <div className="alert alert--danger"><strong>Error:</strong> {error}</div>;
+  if (!schema) return <div className="alert alert--info">Loading schema...</div>;
+
+  return (
+    <Tabs>
+      <TabItem value="schema" label="Schema Explorer" default>
+        <JSONSchemaViewer schema={schema} />
+      </TabItem>
+      <TabItem value="json" label="JSON Tree">
+        <JsonPathFilter data={schema} />
+      </TabItem>
+      <TabItem value="yaml" label="YAML">
+        <Editor
+          height="70vh"
+          language="yaml"
+          value={yaml}
+          theme={colorMode === 'dark' ? 'vs-dark' : 'light'}
+          options={{
+            readOnly: true,
+            minimap: { enabled: true },
+            folding: true,
+            lineNumbers: 'on',
+            scrollBeyondLastLine: false,
+            wordWrap: 'on',
+            automaticLayout: true,
+          }}
+        />
+      </TabItem>
+    </Tabs>
+  );
+};
+
+<SchemaViewer />
+
+## Schema Highlights
+
+Version 1 uses **lowercase tags** for all tagged unions:
+
+| Element | Tag Format |
+|---------|------------|
+| Distribution | `"library"` |
+| Access Control | `"public"`, `"private"` |
+| Type Tags | `"variable"`, `"reference"`, `"tuple"`, etc. |
+
+## References
+
+- [Schema Version 1 Documentation](../)
+- [Migration Guide](../../migration-guide/)

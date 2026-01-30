@@ -35,6 +35,7 @@ const config = {
     ],
   ],
   plugins: [require.resolve("@cmfcmf/docusaurus-search-local")],
+  themes: ["docusaurus-json-schema-plugin"],
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({

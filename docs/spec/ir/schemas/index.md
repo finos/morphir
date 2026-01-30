@@ -13,14 +13,14 @@ This directory contains formal JSON schema specifications for all supported form
 
 The schemas are available in both YAML and JSON formats at SEO-friendly URLs:
 
-| Version | YAML | JSON |
-|---------|------|------|
-| v4 (Draft) | [morphir-ir-v4.yaml](/schemas/morphir-ir-v4.yaml) | [morphir-ir-v4.json](/schemas/morphir-ir-v4.json) |
-| v3 (Current) | [morphir-ir-v3.yaml](/schemas/morphir-ir-v3.yaml) | [morphir-ir-v3.json](/schemas/morphir-ir-v3.json) |
-| v2 | [morphir-ir-v2.yaml](/schemas/morphir-ir-v2.yaml) | [morphir-ir-v2.json](/schemas/morphir-ir-v2.json) |
-| v1 | [morphir-ir-v1.yaml](/schemas/morphir-ir-v1.yaml) | [morphir-ir-v1.json](/schemas/morphir-ir-v1.json) |
+| Version | YAML | JSON | Interactive Viewer |
+|---------|------|------|-------------------|
+| v4 (Draft) | [morphir-ir-v4.yaml](/schemas/morphir-ir-v4.yaml) | [morphir-ir-v4.json](/schemas/morphir-ir-v4.json) | [View Schema](./v4/full/schema-viewer/) |
+| v3 (Current) | [morphir-ir-v3.yaml](/schemas/morphir-ir-v3.yaml) | [morphir-ir-v3.json](/schemas/morphir-ir-v3.json) | [View Schema](./v3/full/schema-viewer/) |
+| v2 | [morphir-ir-v2.yaml](/schemas/morphir-ir-v2.yaml) | [morphir-ir-v2.json](/schemas/morphir-ir-v2.json) | [View Schema](./v2/full/schema-viewer/) |
+| v1 | [morphir-ir-v1.yaml](/schemas/morphir-ir-v1.yaml) | [morphir-ir-v1.json](/schemas/morphir-ir-v1.json) | [View Schema](./v1/full/schema-viewer/) |
 
-Use YAML for better readability or JSON for maximum tool compatibility.
+Use YAML for better readability, JSON for maximum tool compatibility, or the interactive viewer to explore the schema structure visually.
 
 ## Format Version Differences
 

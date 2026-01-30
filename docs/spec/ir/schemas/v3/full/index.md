@@ -15,6 +15,10 @@ You can download the schema file directly:
 - YAML: [morphir-ir-v3.yaml](/schemas/morphir-ir-v3.yaml)
 - JSON: [morphir-ir-v3.json](/schemas/morphir-ir-v3.json)
 
+## Interactive Viewer
+
+For an interactive browsing experience, see the [Interactive Schema Viewer](./schema-viewer/).
+
 ## Usage
 
 This schema can be used to validate Morphir IR JSON files in format version 3:

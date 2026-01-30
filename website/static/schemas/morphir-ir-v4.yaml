@@ -170,7 +170,7 @@ definitions:
       V4 uses object format: { "package/name": { "modules": {...} } }
     examples:
       - { "morphir/sdk": { "modules": { "basics": { "types": {}, "values": {} } } } }
-      - { "morphir/sdk": { "modules": { "basics": { "types": {}, "values": {} } }, "other/pkg": { "modules": {} } }
+      - { "morphir/sdk": { "modules": { "basics": { "types": {}, "values": {} } } }, "other/pkg": { "modules": {} } }
 
   PackageDefinition:
     type: object
