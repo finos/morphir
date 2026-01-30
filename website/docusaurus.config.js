@@ -54,9 +54,9 @@ const config = {
             label: 'Docs',
           },
           {
-            to: '/schema-checker',
+            to: '/ir-checker',
             position: 'right',
-            label: 'Schema Checker',
+            label: 'IR Checker',
           },
           {
             href: 'https://github.com/finos/morphir',

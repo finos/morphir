@@ -54,7 +54,7 @@ const sampleJson = {
 }`,
 };
 
-function SchemaCheckerContent() {
+function IRCheckerContent() {
   const [selectedVersion, setSelectedVersion] = React.useState('v4');
   const [jsonInput, setJsonInput] = React.useState(sampleJson.v4);
   const [validationResult, setValidationResult] = React.useState(null);
@@ -63,6 +63,7 @@ function SchemaCheckerContent() {
   const [autoValidate, setAutoValidate] = React.useState(true);
   const [sidebarWidth, setSidebarWidth] = React.useState(350);
   const [isDragging, setIsDragging] = React.useState(false);
+  const [expandedCards, setExpandedCards] = React.useState({});
   const { colorMode } = useColorMode();
   const fileInputRef = React.useRef(null);
   const editorRef = React.useRef(null);
@@ -351,6 +352,21 @@ function SchemaCheckerContent() {
     editor.focus();
   };
 
+  const toggleCard = (cardId) => {
+    setExpandedCards(prev => ({
+      ...prev,
+      [cardId]: !prev[cardId]
+    }));
+  };
+
+  const isCardExpanded = (cardId) => {
+    // Default to expanded for error cards, collapsed for info cards
+    if (expandedCards[cardId] === undefined) {
+      return cardId.startsWith('error-') || cardId === 'success' || cardId === 'ready';
+    }
+    return expandedCards[cardId];
+  };
+
   const styles = {
     container: {
       display: 'flex',
@@ -469,6 +485,8 @@ function SchemaCheckerContent() {
       padding: '0.5rem 0.75rem',
       backgroundColor: colorMode === 'dark' ? '#333' : '#f5f5f5',
       borderBottom: `1px solid ${colorMode === 'dark' ? '#444' : '#eee'}`,
+      cursor: 'pointer',
+      userSelect: 'none',
     },
     cardTitle: {
       fontSize: '0.8rem',
@@ -476,6 +494,12 @@ function SchemaCheckerContent() {
       display: 'flex',
       alignItems: 'center',
       gap: '0.5rem',
+    },
+    cardToggle: {
+      fontSize: '0.7rem',
+      color: colorMode === 'dark' ? '#888' : '#666',
+      marginRight: '0.5rem',
+      transition: 'transform 0.2s',
     },
     cardMeta: {
       fontSize: '0.75rem',
@@ -632,35 +656,42 @@ function SchemaCheckerContent() {
           <div style={styles.sidebarContent}>
             {!validationResult && (
               <div style={styles.card('info')}>
-                <div style={styles.cardHeader}>
+                <div style={styles.cardHeader} onClick={() => toggleCard('ready')}>
                   <span style={styles.cardTitle}>
+                    <span style={{ ...styles.cardToggle, transform: isCardExpanded('ready') ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
                     <span>ℹ️</span> Ready to Validate
                   </span>
                 </div>
-                <div style={styles.cardBody}>
-                  Enter or paste Morphir IR JSON in the editor. Validation runs automatically.
-                </div>
+                {isCardExpanded('ready') && (
+                  <div style={styles.cardBody}>
+                    Enter or paste Morphir IR JSON in the editor. Validation runs automatically.
+                  </div>
+                )}
               </div>
             )}
 
             {validationResult?.valid && (
               <div style={styles.card('success')}>
-                <div style={styles.cardHeader}>
+                <div style={styles.cardHeader} onClick={() => toggleCard('success')}>
                   <span style={styles.cardTitle}>
+                    <span style={{ ...styles.cardToggle, transform: isCardExpanded('success') ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
                     <span>✅</span> Validation Passed
                   </span>
                   <span style={styles.cardMeta}>Schema {selectedVersion}</span>
                 </div>
-                <div style={styles.cardBody}>
-                  Your JSON conforms to the Morphir IR {selectedVersion} schema.
-                </div>
+                {isCardExpanded('success') && (
+                  <div style={styles.cardBody}>
+                    Your JSON conforms to the Morphir IR {selectedVersion} schema.
+                  </div>
+                )}
               </div>
             )}
 
             {validationResult?.errors?.map((err, i) => (
               <div key={i} style={styles.card('error')}>
-                <div style={styles.cardHeader}>
+                <div style={styles.cardHeader} onClick={() => toggleCard(`error-${i}`)}>
                   <span style={styles.cardTitle}>
+                    <span style={{ ...styles.cardToggle, transform: isCardExpanded(`error-${i}`) ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
                     <span>❌</span>
                     {err.type === 'parse' ? 'Parse Error' :
                      err.type === 'schema' ? `Schema Error` : 'Error'}
@@ -669,45 +700,50 @@ function SchemaCheckerContent() {
                     {err.line && `Line ${err.line}`}
                   </span>
                 </div>
-                <div style={styles.cardBody}>
-                  {err.message}
-                  {err.path && err.path !== '/' && (
-                    <div style={{ marginTop: '0.5rem' }}>
-                      <span
-                        style={styles.pathLink}
-                        onClick={() => navigateToPath(err.path)}
-                        title="Click to highlight in editor"
-                      >
-                        {err.path}
-                      </span>
-                    </div>
-                  )}
-                  {err.keyword && (
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: colorMode === 'dark' ? '#888' : '#666' }}>
-                      Rule: {err.keyword}
-                    </div>
-                  )}
-                </div>
+                {isCardExpanded(`error-${i}`) && (
+                  <div style={styles.cardBody}>
+                    {err.message}
+                    {err.path && err.path !== '/' && (
+                      <div style={{ marginTop: '0.5rem' }}>
+                        <span
+                          style={styles.pathLink}
+                          onClick={(e) => { e.stopPropagation(); navigateToPath(err.path); }}
+                          title="Click to highlight in editor"
+                        >
+                          {err.path}
+                        </span>
+                      </div>
+                    )}
+                    {err.keyword && (
+                      <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: colorMode === 'dark' ? '#888' : '#666' }}>
+                        Rule: {err.keyword}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
 
             {/* Schema Info Card */}
             <div style={{ ...styles.card('info'), marginTop: '1rem' }}>
-              <div style={styles.cardHeader}>
+              <div style={styles.cardHeader} onClick={() => toggleCard('schema-info')}>
                 <span style={styles.cardTitle}>
+                  <span style={{ ...styles.cardToggle, transform: isCardExpanded('schema-info') ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
                   <span>📋</span> Schema Info
                 </span>
               </div>
-              <div style={styles.cardBody}>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>Selected:</strong> Version {selectedVersion} ({schemaVersions.find(v => v.value === selectedVersion)?.status})
+              {isCardExpanded('schema-info') && (
+                <div style={styles.cardBody}>
+                  <div style={{ marginBottom: '0.5rem' }}>
+                    <strong>Selected:</strong> Version {selectedVersion} ({schemaVersions.find(v => v.value === selectedVersion)?.status})
+                  </div>
+                  <div style={{ fontSize: '0.8rem' }}>
+                    <a href={`/schemas/morphir-ir-${selectedVersion}.json`} target="_blank" rel="noopener">Download JSON</a>
+                    {' | '}
+                    <a href={`/schemas/morphir-ir-${selectedVersion}.yaml`} target="_blank" rel="noopener">Download YAML</a>
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.8rem' }}>
-                  <a href={`/schemas/morphir-ir-${selectedVersion}.json`} target="_blank" rel="noopener">Download JSON</a>
-                  {' | '}
-                  <a href={`/schemas/morphir-ir-${selectedVersion}.yaml`} target="_blank" rel="noopener">Download YAML</a>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -720,18 +756,18 @@ function SchemaCheckerContent() {
            errorCount > 0 ? `✗ ${errorCount} issue${errorCount > 1 ? 's' : ''} found` :
            'Ready'}
         </span>
-        <span>Morphir IR Schema Checker • {selectedVersion.toUpperCase()}</span>
+        <span>Morphir IR Checker • {selectedVersion.toUpperCase()}</span>
       </div>
     </div>
   );
 }
 
-function SchemaChecker() {
+function IRChecker() {
   return (
-    <Layout title="Schema Checker" description="Validate Morphir IR JSON against official schemas" noFooter>
-      <SchemaCheckerContent />
+    <Layout title="IR Checker" description="Validate Morphir IR JSON against official schemas" noFooter>
+      <IRCheckerContent />
     </Layout>
   );
 }
 
-export default SchemaChecker;
+export default IRChecker;
