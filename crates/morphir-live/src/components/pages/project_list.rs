@@ -2,11 +2,11 @@
 
 use dioxus::prelude::*;
 
+use crate::Route;
 use crate::components::cards::ProjectCard;
 use crate::components::toolbar::Toolbar;
 use crate::data::{sample_projects, sample_workspaces};
 use crate::models::{Project, ProjectFilter};
-use crate::Route;
 
 #[component]
 pub fn ProjectList(workspace_id: String) -> Element {
@@ -14,8 +14,14 @@ pub fn ProjectList(workspace_id: String) -> Element {
     let project_filter = use_signal(ProjectFilter::default);
 
     let all_workspaces = sample_workspaces();
-    let workspace = all_workspaces.iter().find(|w| w.id == workspace_id).cloned();
-    let ws_name = workspace.as_ref().map(|w| w.name.clone()).unwrap_or_default();
+    let workspace = all_workspaces
+        .iter()
+        .find(|w| w.id == workspace_id)
+        .cloned();
+    let ws_name = workspace
+        .as_ref()
+        .map(|w| w.name.clone())
+        .unwrap_or_default();
 
     let projects: Vec<Project> = sample_projects(&workspace_id)
         .into_iter()

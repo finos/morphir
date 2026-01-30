@@ -13,25 +13,35 @@ on:
 
 permissions:
   contents: write
-  packages: write
+  pages: write
+  id-token: write
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
-  validate:
-    name: Pre-Release Validation
+  build:
+    name: Build Release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Fetch all tags
         run: git fetch --force --tags
 
-      - name: Install mise
-        uses: jdx/mise-action@v3
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          version: 2025.12.13
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install dioxus-cli
+        run: cargo install dioxus-cli
 
       - name: Determine version
         id: version
@@ -42,71 +52,93 @@ jobs:
             echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Run release validation
+      - name: Build WASM release
+        working-directory: crates/morphir-live
+        run: dx build --release
+
+      - name: Create release archive
         run: |
-          mise run release:validate -- --json ${{ steps.version.outputs.VERSION }} | tee validation-results.json
-          # Check for errors in JSON output
-          if jq -e '.status == "error"' validation-results.json > /dev/null; then
-            echo "::error::Pre-release validation failed. Check the validation results above."
-            jq -r '.checks[] | select(.status == "error") | "❌ \(.name): \(.message)"' validation-results.json
-            exit 1
-          fi
+          cd crates/morphir-live/dist
+          tar -czvf ../../../morphir-live-${{ steps.version.outputs.VERSION }}.tar.gz .
+          cd ../../..
 
-      - name: Upload validation results
-        if: always()
-        uses: actions/upload-artifact@v6
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: validation-results
-          path: validation-results.json
-          if-no-files-found: ignore
+          name: morphir-live-wasm
+          path: morphir-live-*.tar.gz
 
-  goreleaser:
-    name: GoReleaser
+  release:
+    name: Create Release
     runs-on: ubuntu-latest
-    needs: validate
+    needs: build
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
+        uses: actions/checkout@v4
 
-      - name: Fetch all tags
-        run: git fetch --force --tags
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.25.6'
-          cache: true
-
-      - name: Install mise
-        uses: jdx/mise-action@v3
-        with:
-          version: 2025.12.13
-
-      - name: Install GoReleaser
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          distribution: goreleaser
-          version: latest
-          install-only: true
-
-      - name: Set tag for manual dispatch
-        if: github.event_name == 'workflow_dispatch'
+      - name: Determine version
+        id: version
         run: |
-          git tag -f ${{ github.event.inputs.tag }}
-          echo "GORELEASER_CURRENT_TAG=${{ github.event.inputs.tag }}" >> $GITHUB_ENV
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Run GoReleaser
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: morphir-live-wasm
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          name: Release ${{ steps.version.outputs.VERSION }}
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.VERSION, '-') }}
+          files: |
+            morphir-live-*.tar.gz
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: goreleaser release --clean
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v6
+  # Optional: Deploy to GitHub Pages
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          name: release-artifacts
-          path: |
-            dist/*.tar.gz
-            dist/*.zip
-            dist/checksums.txt
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install dioxus-cli
+        run: cargo install dioxus-cli
+
+      - name: Build for GitHub Pages
+        working-directory: crates/morphir-live
+        run: dx build --release
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: crates/morphir-live/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

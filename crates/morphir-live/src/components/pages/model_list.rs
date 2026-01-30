@@ -2,11 +2,11 @@
 
 use dioxus::prelude::*;
 
+use crate::Route;
 use crate::components::cards::ModelCard;
 use crate::components::toolbar::Toolbar;
 use crate::data::{sample_models, sample_projects};
 use crate::models::{Model, ModelFilter, ModelType};
-use crate::Route;
 
 #[component]
 pub fn ModelList(workspace_id: String, project_id: String) -> Element {
