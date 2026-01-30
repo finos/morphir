@@ -37,7 +37,7 @@ const sidebars = {
             'getting-started/editor-setup',
           ],
         },
-        'getting-started/tutorials',
+        'getting-started/morphir-quick-start',
         'getting-started/Morphir Web UI',
         'getting-started/morphir-go-preview',
       ],
