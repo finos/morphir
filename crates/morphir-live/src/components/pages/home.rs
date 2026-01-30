@@ -2,11 +2,11 @@
 
 use dioxus::prelude::*;
 
+use crate::Route;
 use crate::components::cards::WorkspaceCard;
 use crate::components::toolbar::Toolbar;
 use crate::data::sample_workspaces;
 use crate::models::{Workspace, WorkspaceFilter};
-use crate::Route;
 
 #[component]
 pub fn Home() -> Element {

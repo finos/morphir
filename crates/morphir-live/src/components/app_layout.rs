@@ -2,11 +2,11 @@
 
 use dioxus::prelude::*;
 
+use crate::Route;
 use crate::components::nav_item::NavItem;
 use crate::components::selected_item::SelectedItem;
 use crate::components::sidebar::SidebarSection;
 use crate::data::{sample_projects, sample_workspaces};
-use crate::Route;
 
 /// Main application layout with sidebar navigation.
 /// Uses Outlet to render routed content.

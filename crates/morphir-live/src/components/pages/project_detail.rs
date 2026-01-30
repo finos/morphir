@@ -2,10 +2,10 @@
 
 use dioxus::prelude::*;
 
+use crate::Route;
 use crate::components::detail_views::ProjectDetailView;
 use crate::components::toolbar::Toolbar;
 use crate::data::sample_projects;
-use crate::Route;
 
 #[component]
 pub fn ProjectDetail(workspace_id: String, id: String) -> Element {

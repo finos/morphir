@@ -2,9 +2,9 @@
 
 use dioxus::prelude::*;
 
+use crate::Route;
 use crate::components::settings::SettingsView;
 use crate::models::{MorphirConfig, SettingsContext};
-use crate::Route;
 
 #[component]
 pub fn WorkspaceSettings(id: String) -> Element {

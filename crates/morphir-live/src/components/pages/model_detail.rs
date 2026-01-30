@@ -2,10 +2,10 @@
 
 use dioxus::prelude::*;
 
+use crate::Route;
 use crate::components::detail_views::ModelDetailView;
 use crate::components::toolbar::Toolbar;
 use crate::data::sample_models;
-use crate::Route;
 
 #[component]
 pub fn ModelDetail(workspace_id: String, project_id: String, id: String) -> Element {
