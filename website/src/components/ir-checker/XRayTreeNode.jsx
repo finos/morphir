@@ -8,6 +8,7 @@ export function XRayTreeNode({
   name,
   value,
   depth = 0,
+  maxDepth = 50,
   colorMode,
   expandedNodes,
   toggleNode,
@@ -18,6 +19,7 @@ export function XRayTreeNode({
   const isExpanded = expandedNodes[nodeId] !== false; // Default to expanded
   const hasChildren = value !== null && typeof value === 'object' && Object.keys(value).length > 0;
   const isArray = Array.isArray(value);
+  const isAtMaxDepth = depth >= maxDepth;
 
   // Determine node type and color
   const getNodeStyle = () => {
@@ -133,7 +135,7 @@ export function XRayTreeNode({
         {!hasChildren && renderValue()}
         {hasChildren && <span style={labelStyle}>{nodeStyle.label}</span>}
       </div>
-      {hasChildren && isExpanded && (
+      {hasChildren && isExpanded && !isAtMaxDepth && (
         <div>
           {isArray ? (
             value.map((item, index) => (
@@ -142,6 +144,7 @@ export function XRayTreeNode({
                 name={`[${index}]`}
                 value={item}
                 depth={depth + 1}
+                maxDepth={maxDepth}
                 colorMode={colorMode}
                 expandedNodes={expandedNodes}
                 toggleNode={toggleNode}
@@ -156,6 +159,7 @@ export function XRayTreeNode({
                 name={key}
                 value={val}
                 depth={depth + 1}
+                maxDepth={maxDepth}
                 colorMode={colorMode}
                 expandedNodes={expandedNodes}
                 toggleNode={toggleNode}
@@ -164,6 +168,17 @@ export function XRayTreeNode({
               />
             ))
           )}
+        </div>
+      )}
+      {hasChildren && isExpanded && isAtMaxDepth && (
+        <div style={{
+          marginLeft: `${(depth + 1) * 16}px`,
+          padding: '2px 6px',
+          fontSize: '0.75rem',
+          color: colorMode === 'dark' ? '#888' : '#999',
+          fontStyle: 'italic',
+        }}>
+          ... (max depth reached, click to navigate)
         </div>
       )}
     </div>
