@@ -13,7 +13,7 @@ const schemaVersions = [
 ];
 
 // XRay Tree Node Component
-function XRayTreeNode({ name, value, depth = 0, colorMode, expandedNodes, toggleNode, path }) {
+function XRayTreeNode({ name, value, depth = 0, colorMode, expandedNodes, toggleNode, path, onSelectNode }) {
   const nodeId = path;
   const isExpanded = expandedNodes[nodeId] !== false; // Default to expanded
   const hasChildren = value !== null && typeof value === 'object' && Object.keys(value).length > 0;
@@ -65,7 +65,7 @@ function XRayTreeNode({ name, value, depth = 0, colorMode, expandedNodes, toggle
        nodeStyle.bg === '#f3e5f5' ? '#2a1a3a' : '#2a2a2a') :
       nodeStyle.bg,
     borderRadius: '3px',
-    cursor: hasChildren ? 'pointer' : 'default',
+    cursor: 'pointer',
     borderLeft: `3px solid ${colorMode === 'dark' ? '#666' : '#999'}`,
   };
 
@@ -85,13 +85,42 @@ function XRayTreeNode({ name, value, depth = 0, colorMode, expandedNodes, toggle
 
   const toggleIcon = hasChildren ? (isExpanded ? '▼' : '▶') : '•';
 
+  // Convert internal path to JSON path format (remove 'root' prefix)
+  const getJsonPath = () => {
+    const jsonPath = path.replace(/^root/, '').replace(/\/(\d+)/g, '/$1');
+    return jsonPath || '/';
+  };
+
+  const handleClick = (e) => {
+    // If clicking on the toggle icon area, just toggle expand/collapse
+    if (hasChildren && e.target.closest('.xray-toggle')) {
+      toggleNode(nodeId);
+      return;
+    }
+    // Otherwise, navigate to the node in the editor
+    onSelectNode && onSelectNode(getJsonPath());
+  };
+
+  const handleDoubleClick = () => {
+    // Double-click toggles expand/collapse for nodes with children
+    if (hasChildren) {
+      toggleNode(nodeId);
+    }
+  };
+
   return (
     <div style={baseStyle}>
       <div
         style={headerStyle}
-        onClick={() => hasChildren && toggleNode(nodeId)}
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
+        title="Click to highlight in editor, double-click to expand/collapse"
       >
-        <span style={{ width: '12px', color: colorMode === 'dark' ? '#888' : '#666', fontSize: '0.7rem' }}>
+        <span
+          className="xray-toggle"
+          style={{ width: '12px', color: colorMode === 'dark' ? '#888' : '#666', fontSize: '0.7rem' }}
+          onClick={(e) => { e.stopPropagation(); hasChildren && toggleNode(nodeId); }}
+        >
           {toggleIcon}
         </span>
         {name && (
@@ -115,6 +144,7 @@ function XRayTreeNode({ name, value, depth = 0, colorMode, expandedNodes, toggle
                 expandedNodes={expandedNodes}
                 toggleNode={toggleNode}
                 path={`${path}/${index}`}
+                onSelectNode={onSelectNode}
               />
             ))
           ) : (
@@ -128,6 +158,7 @@ function XRayTreeNode({ name, value, depth = 0, colorMode, expandedNodes, toggle
                 expandedNodes={expandedNodes}
                 toggleNode={toggleNode}
                 path={`${path}/${key}`}
+                onSelectNode={onSelectNode}
               />
             ))
           )}
@@ -967,6 +998,7 @@ function IRCheckerContent() {
                     expandedNodes={xrayExpandedNodes}
                     toggleNode={toggleXrayNode}
                     path="root"
+                    onSelectNode={navigateToPath}
                   />
                 ) : (
                   <div style={{
