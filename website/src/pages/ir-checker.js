@@ -273,9 +273,11 @@ function IRCheckerContent() {
       if (!isDraggingXray || !containerRef.current) return;
 
       const containerRect = containerRef.current.getBoundingClientRect();
-      const newWidth = containerRect.right - e.clientX - sidebarWidth - 4;
+      // XRay panel is between editor and sidebar
+      // Calculate width from mouse position to the sidebar splitter
+      const newWidth = containerRect.right - e.clientX - sidebarWidth - 12; // 6px for each splitter
 
-      const constrainedWidth = Math.max(250, Math.min(800, newWidth));
+      const constrainedWidth = Math.max(200, Math.min(600, newWidth));
       setXrayWidth(constrainedWidth);
     };
 
@@ -632,22 +634,13 @@ function IRCheckerContent() {
       minWidth: 0, // Allow flex shrinking
     },
     splitter: {
-      width: '4px',
+      width: '6px',
       cursor: 'col-resize',
       backgroundColor: isDragging
         ? '#0078d4'
         : (colorMode === 'dark' ? '#333' : '#e0e0e0'),
       transition: isDragging ? 'none' : 'background-color 0.2s',
       flexShrink: 0,
-      position: 'relative',
-    },
-    splitterHover: {
-      position: 'absolute',
-      top: 0,
-      bottom: 0,
-      left: '-4px',
-      right: '-4px',
-      zIndex: 10,
     },
     editorHeader: {
       display: 'flex',
@@ -776,7 +769,6 @@ function IRCheckerContent() {
       display: 'flex',
       flexDirection: 'column',
       backgroundColor: colorMode === 'dark' ? '#1e1e1e' : '#fafafa',
-      borderLeft: `1px solid ${colorMode === 'dark' ? '#333' : '#e0e0e0'}`,
       flexShrink: 0,
     },
     xrayHeader: {
@@ -795,10 +787,10 @@ function IRCheckerContent() {
       padding: '0.5rem',
     },
     xraySplitter: {
-      width: '4px',
+      width: '6px',
       cursor: 'col-resize',
       backgroundColor: isDraggingXray
-        ? '#0078d4'
+        ? '#9c27b0'
         : (colorMode === 'dark' ? '#333' : '#e0e0e0'),
       transition: isDraggingXray ? 'none' : 'background-color 0.2s',
       flexShrink: 0,
@@ -925,13 +917,87 @@ function IRCheckerContent() {
           />
         </div>
 
-        {/* Draggable Splitter */}
+        {/* XRay Panel - between editor and validation results */}
+        {showXRay && (
+          <>
+            {/* XRay Splitter */}
+            <div
+              style={styles.xraySplitter}
+              onMouseDown={handleXrayMouseDown}
+            />
+
+            {/* XRay Panel */}
+            <div style={styles.xrayPanel}>
+              <div style={styles.xrayHeader}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontFamily: 'monospace' }}>⟨/⟩</span>
+                  <span>XRay View</span>
+                </div>
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  <button
+                    style={styles.iconBtn}
+                    onClick={expandAllXrayNodes}
+                    title="Expand all"
+                  >
+                    <span>+</span>
+                  </button>
+                  <button
+                    style={styles.iconBtn}
+                    onClick={collapseAllXrayNodes}
+                    title="Collapse all"
+                  >
+                    <span>−</span>
+                  </button>
+                  <button
+                    style={styles.iconBtn}
+                    onClick={() => setShowXRay(false)}
+                    title="Close XRay panel"
+                  >
+                    <span>✕</span>
+                  </button>
+                </div>
+              </div>
+              <div style={styles.xrayContent}>
+                {validationResult?.parsedJson ? (
+                  <XRayTreeNode
+                    name="root"
+                    value={validationResult.parsedJson}
+                    depth={0}
+                    colorMode={colorMode}
+                    expandedNodes={xrayExpandedNodes}
+                    toggleNode={toggleXrayNode}
+                    path="root"
+                  />
+                ) : (
+                  <div style={{
+                    padding: '2rem',
+                    textAlign: 'center',
+                    color: colorMode === 'dark' ? '#888' : '#666',
+                    fontSize: '0.9rem'
+                  }}>
+                    {jsonInput.trim() ? (
+                      <span>
+                        <span style={{ display: 'block', fontSize: '1.5rem', marginBottom: '0.5rem' }}>⚠️</span>
+                        Parse the JSON first to view the XRay structure
+                      </span>
+                    ) : (
+                      <span>
+                        <span style={{ display: 'block', fontSize: '1.5rem', marginBottom: '0.5rem' }}>📄</span>
+                        Enter Morphir IR JSON to see its structure
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Draggable Splitter for Validation Results */}
         <div
           style={styles.splitter}
           onMouseDown={handleMouseDown}
-        >
-          <div style={styles.splitterHover} />
-        </div>
+        />
 
         {/* Sidebar */}
         <div style={styles.sidebar}>
@@ -1046,84 +1112,6 @@ function IRCheckerContent() {
             </div>
           </div>
         </div>
-
-        {/* XRay Panel */}
-        {showXRay && (
-          <>
-            {/* XRay Splitter */}
-            <div
-              style={styles.xraySplitter}
-              onMouseDown={handleXrayMouseDown}
-            >
-              <div style={styles.splitterHover} />
-            </div>
-
-            {/* XRay Panel */}
-            <div style={styles.xrayPanel}>
-              <div style={styles.xrayHeader}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontFamily: 'monospace' }}>⟨/⟩</span>
-                  <span>XRay View</span>
-                </div>
-                <div style={{ display: 'flex', gap: '0.25rem' }}>
-                  <button
-                    style={styles.iconBtn}
-                    onClick={expandAllXrayNodes}
-                    title="Expand all"
-                  >
-                    <span>+</span>
-                  </button>
-                  <button
-                    style={styles.iconBtn}
-                    onClick={collapseAllXrayNodes}
-                    title="Collapse all"
-                  >
-                    <span>−</span>
-                  </button>
-                  <button
-                    style={styles.iconBtn}
-                    onClick={() => setShowXRay(false)}
-                    title="Close XRay panel"
-                  >
-                    <span>✕</span>
-                  </button>
-                </div>
-              </div>
-              <div style={styles.xrayContent}>
-                {validationResult?.parsedJson ? (
-                  <XRayTreeNode
-                    name="root"
-                    value={validationResult.parsedJson}
-                    depth={0}
-                    colorMode={colorMode}
-                    expandedNodes={xrayExpandedNodes}
-                    toggleNode={toggleXrayNode}
-                    path="root"
-                  />
-                ) : (
-                  <div style={{
-                    padding: '2rem',
-                    textAlign: 'center',
-                    color: colorMode === 'dark' ? '#888' : '#666',
-                    fontSize: '0.9rem'
-                  }}>
-                    {jsonInput.trim() ? (
-                      <span>
-                        <span style={{ display: 'block', fontSize: '1.5rem', marginBottom: '0.5rem' }}>⚠️</span>
-                        Parse the JSON first to view the XRay structure
-                      </span>
-                    ) : (
-                      <span>
-                        <span style={{ display: 'block', fontSize: '1.5rem', marginBottom: '0.5rem' }}>📄</span>
-                        Enter Morphir IR JSON to see its structure
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
       </div>
 
       {/* Status Bar */}
