@@ -59,6 +59,12 @@ const config = {
             position: 'right',
           },
           {
+            type: 'doc',
+            docId: 'tools/schema-checker',
+            position: 'right',
+            label: 'Schema Checker',
+          },
+          {
             href: "https://lcr-interactive.finos.org/",
             label: "LCR Interactive",
             position: "right",

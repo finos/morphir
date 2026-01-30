@@ -1,0 +1,8 @@
+label: 'Tools'
+position: 3
+collapsed: false
+link:
+  type: generated-index
+  title: Morphir Tools
+  description: Interactive tools for working with Morphir IR
+  slug: /tools
