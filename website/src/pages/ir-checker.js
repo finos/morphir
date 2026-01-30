@@ -367,6 +367,26 @@ function IRCheckerContent() {
     return expandedCards[cardId];
   };
 
+  const expandAllCards = () => {
+    const allCardIds = ['ready', 'success', 'schema-info'];
+    if (validationResult?.errors) {
+      validationResult.errors.forEach((_, i) => allCardIds.push(`error-${i}`));
+    }
+    const expanded = {};
+    allCardIds.forEach(id => expanded[id] = true);
+    setExpandedCards(expanded);
+  };
+
+  const collapseAllCards = () => {
+    const allCardIds = ['ready', 'success', 'schema-info'];
+    if (validationResult?.errors) {
+      validationResult.errors.forEach((_, i) => allCardIds.push(`error-${i}`));
+    }
+    const collapsed = {};
+    allCardIds.forEach(id => collapsed[id] = false);
+    setExpandedCards(collapsed);
+  };
+
   const styles = {
     container: {
       display: 'flex',
@@ -457,13 +477,35 @@ function IRCheckerContent() {
       flexShrink: 0,
     },
     sidebarHeader: {
-      padding: '0.75rem 1rem',
+      padding: '0.5rem 1rem',
       borderBottom: `1px solid ${colorMode === 'dark' ? '#333' : '#e0e0e0'}`,
       fontWeight: 'bold',
       fontSize: '0.9rem',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
+      gap: '0.5rem',
+    },
+    sidebarHeaderLeft: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+    },
+    sidebarHeaderButtons: {
+      display: 'flex',
+      gap: '0.25rem',
+    },
+    iconBtn: {
+      padding: '0.25rem 0.5rem',
+      fontSize: '0.75rem',
+      border: `1px solid ${colorMode === 'dark' ? '#555' : '#ccc'}`,
+      borderRadius: '3px',
+      backgroundColor: 'transparent',
+      color: colorMode === 'dark' ? '#ccc' : '#666',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.25rem',
     },
     sidebarContent: {
       flex: 1,
@@ -647,10 +689,20 @@ function IRCheckerContent() {
         {/* Sidebar */}
         <div style={styles.sidebar}>
           <div style={styles.sidebarHeader}>
-            <span>Validation Results</span>
-            <span style={styles.badge(validationResult?.valid ? '#4caf50' : (errorCount > 0 ? '#f44336' : '#2196f3'))}>
-              {validationResult?.valid ? 'VALID' : (errorCount > 0 ? `${errorCount} ISSUES` : 'READY')}
-            </span>
+            <div style={styles.sidebarHeaderLeft}>
+              <span>Validation Results</span>
+              <span style={styles.badge(validationResult?.valid ? '#4caf50' : (errorCount > 0 ? '#f44336' : '#2196f3'))}>
+                {validationResult?.valid ? 'VALID' : (errorCount > 0 ? `${errorCount} ISSUES` : 'READY')}
+              </span>
+            </div>
+            <div style={styles.sidebarHeaderButtons}>
+              <button style={styles.iconBtn} onClick={expandAllCards} title="Expand all">
+                <span>+</span>
+              </button>
+              <button style={styles.iconBtn} onClick={collapseAllCards} title="Collapse all">
+                <span>−</span>
+              </button>
+            </div>
           </div>
 
           <div style={styles.sidebarContent}>
