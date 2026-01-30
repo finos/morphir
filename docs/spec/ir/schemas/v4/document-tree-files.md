@@ -1182,4 +1182,4 @@ Module-level metadata is stored in `module.json`. Additional metadata can be inc
 - [Module Structure](../modules.md) - Module concepts and structure
 - [Distribution Structure](../../design/draft/ir/distributions.md) - Distribution modes and VFS examples
 - [V4 Schema](../schemas/v4/) - Complete V4 schema documentation
-- [V4 Schema YAML](../schemas/v4/morphir-ir-v4.yaml) - Formal JSON schema
+- [V4 Schema YAML](/schemas/morphir-ir-v4.yaml) - Formal JSON schema

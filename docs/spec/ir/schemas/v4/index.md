@@ -533,7 +533,7 @@ Version 4 is **recommended for new Morphir projects** due to:
 
 ## Full Schema
 
-See [morphir-ir-v4.yaml](./morphir-ir-v4.yaml) for the complete schema definition.
+See [morphir-ir-v4.yaml](/schemas/morphir-ir-v4.yaml) for the complete schema definition.
 
 ## References
 
