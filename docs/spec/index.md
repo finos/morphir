@@ -19,6 +19,8 @@ This section contains formal specifications for Morphir configuration and IR for
 
 - **[Morphir IR Specification](./ir/morphir-ir-specification/)**: The complete Morphir IR specification document, describing the structure, semantics, and usage of the Morphir IR format.
 
+- **[WebAssembly](./webassembly/)**: Specifications related to WebAssembly (Component Model, WIT, and related Morphir tooling).
+
 - **[Morphir IR JSON Schemas](./ir/schemas/)**: JSON schema definitions for all supported format versions of the Morphir IR (available in both YAML and JSON formats):
   - v3 (Current): [YAML](/schemas/morphir-ir-v3.yaml) | [JSON](/schemas/morphir-ir-v3.json)
   - v2: [YAML](/schemas/morphir-ir-v2.yaml) | [JSON](/schemas/morphir-ir-v2.json)

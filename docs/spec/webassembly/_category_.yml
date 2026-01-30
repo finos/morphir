@@ -1,0 +1,6 @@
+label: 'WebAssembly'
+position: 4
+collapsed: true
+link:
+  type: doc
+  id: spec/webassembly/index
