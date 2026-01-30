@@ -546,8 +546,6 @@ File: `.morphir-dist/format.json`
 > - `"nightly-report"` with `kind: "job"` - Job name, job kind
 >
 > This allows flexible naming while maintaining semantic categorization for tooling and runtime behavior.
-}
-```
 
 ## VFS Specification File Examples
 

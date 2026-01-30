@@ -41,9 +41,9 @@ pub type Literal {
 
 | v1/v2/v3 | v4 | Notes |
 |----------|----|----|
-| `IntegerLiteral` | `IntegerLiteral` | Renamed for correctness (whole numbers are non-negative; integers include negatives) |
+| `WholeNumberLiteral` | `IntegerLiteral` | **Breaking change**: Renamed for correctness (whole numbers are non-negative; integers include negatives) |
 
-Decoders should accept both `IntegerLiteral` and `IntegerLiteral` for backwards compatibility. Encoders should output `IntegerLiteral`.
+Decoders should accept both `WholeNumberLiteral` and `IntegerLiteral` for backwards compatibility. V4 encoders should output `IntegerLiteral`.
 
 ## Patterns
 
