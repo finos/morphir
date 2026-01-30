@@ -20,34 +20,38 @@ const sampleJson = {
       "packageName": "my-org/my-package",
       "dependencies": {},
       "def": {
-        "modules": {
-          "example/module": {
-            "types": {},
-            "values": {}
-          }
-        }
+        "modules": {}
       }
     }
   }
 }`,
-  v3: `[
-  "Library",
-  [["my", "org"], ["my", "package"]],
-  {},
-  { "modules": [] }
-]`,
-  v2: `[
-  "Library",
-  [["my", "org"], ["my", "package"]],
-  {},
-  { "modules": [] }
-]`,
-  v1: `[
-  "library",
-  [["my", "org"], ["my", "package"]],
-  {},
-  { "modules": [] }
-]`,
+  v3: `{
+  "formatVersion": 3,
+  "distribution": [
+    "Library",
+    [[["my"], ["org"]], [["my"], ["package"]]],
+    [],
+    { "modules": [] }
+  ]
+}`,
+  v2: `{
+  "formatVersion": 2,
+  "distribution": [
+    "Library",
+    [[["my"], ["org"]], [["my"], ["package"]]],
+    [],
+    { "modules": [] }
+  ]
+}`,
+  v1: `{
+  "formatVersion": 1,
+  "distribution": [
+    "library",
+    [[["my"], ["org"]], [["my"], ["package"]]],
+    [],
+    { "modules": [] }
+  ]
+}`,
 };
 
 function SchemaCheckerContent() {
