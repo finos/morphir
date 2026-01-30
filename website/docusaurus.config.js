@@ -36,6 +36,13 @@ const config = {
   ],
   plugins: [require.resolve("@cmfcmf/docusaurus-search-local")],
   themes: ["docusaurus-json-schema-plugin"],
+  stylesheets: [
+    {
+      href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
+      type: 'text/css',
+      crossorigin: 'anonymous',
+    },
+  ],
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
@@ -57,6 +64,7 @@ const config = {
             to: '/ir-checker',
             position: 'right',
             label: 'IR Checker',
+            className: 'navbar-ir-checker',
           },
           {
             href: 'https://github.com/finos/morphir',

@@ -41,3 +41,12 @@ html[data-theme='dark'] .docusaurus-highlight-code-line {
 .footer .footer__links {
 	text-align: center;
 }
+
+/* IR Checker navbar icon */
+.navbar-ir-checker::after {
+	content: '\f46c'; /* fa-clipboard-check */
+	font-family: 'Font Awesome 6 Free';
+	font-weight: 900;
+	margin-left: 0.4rem;
+	font-size: 0.9em;
+}
