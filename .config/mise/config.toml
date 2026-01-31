@@ -94,3 +94,33 @@ dir = "crates/morphir-live"
 [tasks.clean]
 description = "Clean build artifacts"
 run = "cargo clean"
+
+# ===== Website Tasks =====
+[tasks."website:install"]
+description = "Install website dependencies"
+run = "npm install"
+dir = "website"
+
+[tasks."website:build-worker"]
+description = "Build the validation worker (bundles Ajv)"
+run = "npm run build:worker"
+dir = "website"
+depends = ["website:install"]
+
+[tasks."website:build"]
+description = "Build the website for production"
+run = "npm run build"
+dir = "website"
+depends = ["website:build-worker"]
+
+[tasks."website:dev"]
+description = "Start website development server"
+run = "npm run start"
+dir = "website"
+depends = ["website:build-worker"]
+
+[tasks."website:typecheck"]
+description = "Run TypeScript type checking on website"
+run = "npm run typecheck"
+dir = "website"
+depends = ["website:install"]

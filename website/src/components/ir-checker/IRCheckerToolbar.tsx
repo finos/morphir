@@ -1,5 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { schemaVersions, sampleJson } from './constants';
+import type { IRCheckerStyles, SchemaVersionValue, ExampleManifestItem } from './types';
+
+interface IRCheckerToolbarProps {
+  selectedVersion: SchemaVersionValue;
+  onVersionChange: (version: SchemaVersionValue) => void;
+  onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onLoadSample: (text: string, isLarge?: boolean) => void;
+  onLoadSampleStart?: () => void;
+  onFormat: () => void;
+  autoValidate: boolean;
+  onAutoValidateChange: (checked: boolean) => void;
+  onValidate: () => void;
+  showXRay: boolean;
+  onToggleXRay: () => void;
+  styles: IRCheckerStyles;
+  colorMode: 'dark' | 'light';
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+}
 
 /**
  * Toolbar component with schema selection, file operations, and view toggles
@@ -10,6 +28,7 @@ export function IRCheckerToolbar({
   onVersionChange,
   onFileUpload,
   onLoadSample,
+  onLoadSampleStart,
   onFormat,
   autoValidate,
   onAutoValidateChange,
@@ -19,23 +38,21 @@ export function IRCheckerToolbar({
   styles,
   colorMode,
   fileInputRef,
-}) {
+}: IRCheckerToolbarProps): React.ReactElement {
   const [showExampleDropdown, setShowExampleDropdown] = useState(false);
-  const [loadingExample, setLoadingExample] = useState(null);
-  const [availableExamples, setAvailableExamples] = useState([]);
+  const [loadingExample, setLoadingExample] = useState<string | null>(null);
+  const [availableExamples, setAvailableExamples] = useState<ExampleManifestItem[]>([]);
   const [loadingManifest, setLoadingManifest] = useState(false);
 
-  // Fetch available examples when version changes
   useEffect(() => {
-    const fetchExamples = async () => {
+    const fetchExamples = async (): Promise<void> => {
       setLoadingManifest(true);
       try {
         const response = await fetch(`/ir/examples/${selectedVersion}/index.json`);
         if (response.ok) {
-          const manifest = await response.json();
-          setAvailableExamples(manifest.examples || []);
+          const manifest = await response.json() as { examples?: ExampleManifestItem[] };
+          setAvailableExamples(manifest.examples ?? []);
         } else {
-          // No manifest found, clear examples
           setAvailableExamples([]);
         }
       } catch (error) {
@@ -49,12 +66,12 @@ export function IRCheckerToolbar({
     fetchExamples();
   }, [selectedVersion]);
 
-  const dividerStyle = {
+  const dividerStyle: React.CSSProperties = {
     borderLeft: `1px solid ${colorMode === 'dark' ? '#555' : '#ccc'}`,
     height: '20px'
   };
 
-  const dropdownStyle = {
+  const dropdownStyle: React.CSSProperties = {
     position: 'absolute',
     top: '100%',
     left: 0,
@@ -67,7 +84,7 @@ export function IRCheckerToolbar({
     minWidth: '200px',
   };
 
-  const dropdownItemStyle = {
+  const dropdownItemStyle: React.CSSProperties = {
     display: 'block',
     width: '100%',
     padding: '8px 12px',
@@ -79,22 +96,41 @@ export function IRCheckerToolbar({
     fontSize: '0.875rem',
   };
 
-  const handleLoadInlineSample = () => {
+  const handleLoadInlineSample = (): void => {
     setShowExampleDropdown(false);
-    onLoadSample(sampleJson[selectedVersion]);
+    const sample = sampleJson[selectedVersion];
+    if (sample != null) {
+      onLoadSample(sample);
+    }
   };
 
-  const handleLoadExample = async (example) => {
+  const handleLoadExample = async (example: ExampleManifestItem): Promise<void> => {
     setShowExampleDropdown(false);
+
+    if (example.large) {
+      const proceed = window.confirm(
+        `⚠️ Large File Warning\n\n` +
+        `This example is ${example.sizeWarning ?? 'very large'}.\n\n` +
+        `Loading it may:\n` +
+        `• Take several seconds\n` +
+        `• Disable auto-validation\n` +
+        `• Disable XRay view\n` +
+        `• Reduce editor features\n\n` +
+        `Continue loading?`
+      );
+      if (!proceed) return;
+    }
+
+    onLoadSampleStart?.();
     setLoadingExample(example.id);
     try {
       const response = await fetch(`/ir/examples/${selectedVersion}/${example.file}`);
       if (!response.ok) throw new Error(`Failed to load ${example.file}`);
       const text = await response.text();
-      onLoadSample(text);
+      onLoadSample(text, example.large ?? false);
     } catch (error) {
       console.error('Failed to load example:', error);
-      alert(`Failed to load example: ${error.message}`);
+      alert(`Failed to load example: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoadingExample(null);
     }
@@ -102,7 +138,6 @@ export function IRCheckerToolbar({
 
   return (
     <div style={styles.toolbar}>
-      {/* Schema Version Selection */}
       <div style={styles.toolbarGroup}>
         <span style={styles.toolbarLabel}>Schema:</span>
         {schemaVersions.map((v) => (
@@ -119,7 +154,6 @@ export function IRCheckerToolbar({
 
       <div style={dividerStyle} />
 
-      {/* File Operations */}
       <div style={styles.toolbarGroup}>
         <input
           type="file"
@@ -132,7 +166,6 @@ export function IRCheckerToolbar({
           Open File
         </button>
 
-        {/* Example Dropdown - sourced from /ir/examples/<version>/ */}
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => setShowExampleDropdown(!showExampleDropdown)}
@@ -144,23 +177,21 @@ export function IRCheckerToolbar({
             }}
             disabled={loadingExample !== null || loadingManifest}
           >
-            {loadingExample ? 'Loading...' : 'Load Example'}
+            {loadingExample != null ? 'Loading...' : 'Load Example'}
             <span style={{ fontSize: '0.6rem' }}>▼</span>
           </button>
 
           {showExampleDropdown && (
             <div style={dropdownStyle}>
-              {/* Always available: inline empty library */}
               <button
                 style={dropdownItemStyle}
                 onClick={handleLoadInlineSample}
-                onMouseEnter={(e) => e.target.style.backgroundColor = colorMode === 'dark' ? '#404040' : '#f0f0f0'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                onMouseEnter={(e) => { (e.target as HTMLElement).style.backgroundColor = colorMode === 'dark' ? '#404040' : '#f0f0f0'; }}
+                onMouseLeave={(e) => { (e.target as HTMLElement).style.backgroundColor = 'transparent'; }}
               >
                 Empty Library
               </button>
 
-              {/* Separator if we have examples */}
               {availableExamples.length > 0 && (
                 <div style={{
                   borderTop: `1px solid ${colorMode === 'dark' ? '#555' : '#ddd'}`,
@@ -168,14 +199,13 @@ export function IRCheckerToolbar({
                 }} />
               )}
 
-              {/* Examples from manifest */}
               {availableExamples.map((example) => (
                 <button
                   key={example.id}
                   style={dropdownItemStyle}
                   onClick={() => handleLoadExample(example)}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = colorMode === 'dark' ? '#404040' : '#f0f0f0'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                  onMouseEnter={(e) => { (e.target as HTMLElement).style.backgroundColor = colorMode === 'dark' ? '#404040' : '#f0f0f0'; }}
+                  onMouseLeave={(e) => { (e.target as HTMLElement).style.backgroundColor = 'transparent'; }}
                   title={example.description}
                 >
                   {example.label}
@@ -192,7 +222,6 @@ export function IRCheckerToolbar({
 
       <div style={dividerStyle} />
 
-      {/* Validation Controls */}
       <div style={styles.toolbarGroup}>
         <label style={{ ...styles.toolbarLabel, display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer' }}>
           <input
@@ -211,7 +240,6 @@ export function IRCheckerToolbar({
 
       <div style={dividerStyle} />
 
-      {/* View Toggles */}
       <div style={styles.toolbarGroup}>
         <button
           onClick={onToggleXRay}
@@ -223,7 +251,6 @@ export function IRCheckerToolbar({
         </button>
       </div>
 
-      {/* Click outside to close dropdown */}
       {showExampleDropdown && (
         <div
           style={{ position: 'fixed', inset: 0, zIndex: 999 }}
@@ -235,4 +262,3 @@ export function IRCheckerToolbar({
 }
 
 export default IRCheckerToolbar;
-

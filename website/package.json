@@ -6,19 +6,21 @@
 		"node": ">=18.0"
 	},
 	"scripts": {
-		"postinstall": "node scripts/setup-gleam-prism.js",
-		"docusaurus": "docusaurus",
-		"start": "docusaurus start",
-		"build": "docusaurus build",
-		"swizzle": "docusaurus swizzle",
-		"deploy": "docusaurus deploy",
-		"clear": "docusaurus clear",
-		"serve": "docusaurus serve",
-		"write-translations": "docusaurus write-translations",
-		"write-heading-ids": "docusaurus write-heading-ids",
-		"typecheck": "tsc"
+		"postinstall": "node scripts/setup-gleam-prism.js && node scripts/build-validation-worker.js",
+		"docusaurus": "node node_modules/@docusaurus/core/bin/docusaurus.mjs",
+		"start": "npm run docusaurus -- start",
+		"build": "npm run docusaurus -- build",
+		"swizzle": "npm run docusaurus -- swizzle",
+		"deploy": "npm run docusaurus -- deploy",
+		"clear": "npm run docusaurus -- clear",
+		"serve": "npm run docusaurus -- serve",
+		"write-translations": "npm run docusaurus -- write-translations",
+		"write-heading-ids": "npm run docusaurus -- write-heading-ids",
+		"typecheck": "tsc",
+		"build:worker": "node scripts/build-validation-worker.js"
 	},
 	"dependencies": {
+		"effect": "3.19.15",
 		"ajv": "^8.17.1",
 		"ajv-formats": "^3.0.1",
 		"@cmfcmf/docusaurus-search-local": "^2.0.0",

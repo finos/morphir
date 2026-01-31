@@ -2,7 +2,9 @@
  * IR Checker constants - schema versions and sample data
  */
 
-export const schemaVersions = [
+import type { SchemaVersion, SchemaVersionValue } from './types';
+
+export const schemaVersions: SchemaVersion[] = [
   { value: 'v1', label: 'v1', file: 'morphir-ir-v1.json', status: 'Legacy' },
   { value: 'v2', label: 'v2', file: 'morphir-ir-v2.json', status: 'Legacy' },
   { value: 'v3', label: 'v3', file: 'morphir-ir-v3.json', status: 'Stable' },
@@ -10,7 +12,7 @@ export const schemaVersions = [
 ];
 
 // Inline minimal samples for each version (used for "Empty Library" option)
-export const sampleJson = {
+export const sampleJson: Record<SchemaVersionValue, string> = {
   v4: `{
   "formatVersion": 4,
   "distribution": {
@@ -55,10 +57,9 @@ export const sampleJson = {
 // Additional example files are dynamically loaded from /ir/examples/<version>/index.json
 
 // Morphir IR node types for special highlighting
-export const morphirNodeTypes = [
+export const morphirNodeTypes: readonly string[] = [
   'Library', 'Specs', 'Application', 'Reference', 'Variable', 'Literal',
   'Apply', 'Lambda', 'IfThenElse', 'PatternMatch', 'Constructor',
   'Tuple', 'List', 'Record', 'Field', 'Unit', 'Let', 'LetDefinition',
   'LetRecursion', 'Destructure', 'UpdateRecord'
 ];
-
