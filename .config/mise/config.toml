@@ -101,6 +101,12 @@ description = "Install website dependencies"
 run = "npm install"
 dir = "website"
 
+[tasks."website:build-schemas"]
+description = "Generate JSON schemas from YAML sources"
+run = "npm run build:schemas"
+dir = "website"
+depends = ["website:install"]
+
 [tasks."website:build-worker"]
 description = "Build the validation worker (bundles Ajv)"
 run = "npm run build:worker"
@@ -111,13 +117,13 @@ depends = ["website:install"]
 description = "Build the website for production"
 run = "npm run build"
 dir = "website"
-depends = ["website:build-worker"]
+depends = ["website:build-schemas", "website:build-worker"]
 
 [tasks."website:dev"]
 description = "Start website development server"
 run = "npm run start"
 dir = "website"
-depends = ["website:build-worker"]
+depends = ["website:build-schemas", "website:build-worker"]
 
 [tasks."website:typecheck"]
 description = "Run TypeScript type checking on website"

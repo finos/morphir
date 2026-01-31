@@ -9,7 +9,7 @@
 		"postinstall": "node scripts/setup-gleam-prism.js && node scripts/build-validation-worker.js",
 		"docusaurus": "node node_modules/@docusaurus/core/bin/docusaurus.mjs",
 		"start": "npm run docusaurus -- start",
-		"build": "npm run build:worker && npm run docusaurus -- build",
+		"build": "npm run build:schemas && npm run build:worker && npm run docusaurus -- build",
 		"swizzle": "npm run docusaurus -- swizzle",
 		"deploy": "npm run docusaurus -- deploy",
 		"clear": "npm run docusaurus -- clear",
@@ -17,7 +17,8 @@
 		"write-translations": "npm run docusaurus -- write-translations",
 		"write-heading-ids": "npm run docusaurus -- write-heading-ids",
 		"typecheck": "tsc",
-		"build:worker": "node scripts/build-validation-worker.js"
+		"build:worker": "node scripts/build-validation-worker.js",
+		"build:schemas": "node scripts/yaml-to-json-schemas.js"
 	},
 	"dependencies": {
 		"effect": "3.19.15",
@@ -42,6 +43,7 @@
 	"devDependencies": {
 		"@docusaurus/module-type-aliases": "^3.9.2",
 		"@docusaurus/tsconfig": "^3.9.2",
+		"js-yaml": "^4.1.0",
 		"typescript": "~5.9.0"
 	},
 	"browserslist": {
