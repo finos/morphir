@@ -12,6 +12,18 @@
             "label": "LCR (Large)",
             "file": "lcr-morphir-ir.json",
             "description": "Liquidity Coverage Ratio - complete real-world model"
+        },
+        {
+            "id": "direct-rules",
+            "label": "Direct Rules",
+            "file": "direct-rules-example.json",
+            "description": "Business rules modeled using decision trees and tables"
+        },
+        {
+            "id": "rule-set",
+            "label": "Rule Set",
+            "file": "rule-set-example.json",
+            "description": "Rule set example using the Morphir SDK Rule module"
         }
     ]
 }

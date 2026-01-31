@@ -15,6 +15,7 @@ This script:
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -101,10 +102,25 @@ def validate_file(
     if verbose:
         print(f"  Version: {version}, Schema: {schema_path.name}")
 
-    # For now, just validate JSON structure is parseable
-    # Full JSON Schema validation would require jsonschema library
-    # The jsonschema CLI tool handles the actual validation
-    return True, f"Valid (v{version})"
+    # Run jsonschema CLI for actual validation
+    try:
+        # We use jsonschema CLI which is part of our mise configuration
+        result = subprocess.run(
+            ["jsonschema", "validate", str(schema_path), str(file_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            return True, f"Valid (v{version})"
+        else:
+            # Clean up error message (take first few lines of stderr)
+            error_msg = result.stderr.strip().split("\n")[0]
+            return False, f"Schema validation failed: {error_msg}"
+    except FileNotFoundError:
+        return False, "jsonschema CLI not found. Please run 'mise install'."
+    except Exception as e:
+        return False, f"Validation error: {e}"
 
 
 def main() -> int:

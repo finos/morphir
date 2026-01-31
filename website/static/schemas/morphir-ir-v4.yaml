@@ -26,7 +26,7 @@ properties:
         description: "Semantic version string (e.g., '4.0.0', '4.0.0-alpha.1')"
         examples: ["4.0.0", "4.0.0-alpha.1", "4.0.0+20240123"]
       - type: integer
-        minimum: 1
+        minimum: 4
         description: "Legacy integer format for backwards compatibility"
         examples: [4]
   

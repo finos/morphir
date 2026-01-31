@@ -14,6 +14,7 @@ python = "3.14.2"
 # JavaScript runtimes for website and tooling
 node = "24.13.0"
 bun = "1.3.8"
+"npm:morphir-elm" = "2.100.0"
 
 # Rust tools
 "cargo:cargo-binstall" = "latest"
