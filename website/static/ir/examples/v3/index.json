@@ -11,7 +11,9 @@
             "id": "lcr",
             "label": "LCR (Large)",
             "file": "lcr-morphir-ir.json",
-            "description": "Liquidity Coverage Ratio - complete real-world model"
+            "description": "Liquidity Coverage Ratio - complete real-world model",
+            "large": true,
+            "sizeWarning": "3.4MB - Auto-validation will be disabled"
         },
         {
             "id": "direct-rules",
