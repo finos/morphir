@@ -17,6 +17,8 @@ export const validationModes: ValidationModeInfo[] = [
 ];
 
 // Inline minimal samples for each version (used for "Empty Library" option)
+// PackageName is a Path (array of Names), where each Name is an array of strings (words)
+// Example: [["my", "org"], ["my", "package"]] represents the path "my.org/my.package"
 export const sampleJson: Record<SchemaVersionValue, string> = {
   v4: `{
   "formatVersion": 4,
@@ -34,7 +36,7 @@ export const sampleJson: Record<SchemaVersionValue, string> = {
   "formatVersion": 3,
   "distribution": [
     "Library",
-    [[["my"], ["org"]], [["my"], ["package"]]],
+    [["my", "org"], ["my", "package"]],
     [],
     { "modules": [] }
   ]
@@ -43,7 +45,7 @@ export const sampleJson: Record<SchemaVersionValue, string> = {
   "formatVersion": 2,
   "distribution": [
     "Library",
-    [[["my"], ["org"]], [["my"], ["package"]]],
+    [["my", "org"], ["my", "package"]],
     [],
     { "modules": [] }
   ]
@@ -52,7 +54,7 @@ export const sampleJson: Record<SchemaVersionValue, string> = {
   "formatVersion": 1,
   "distribution": [
     "library",
-    [[["my"], ["org"]], [["my"], ["package"]]],
+    [["my", "org"], ["my", "package"]],
     [],
     { "modules": [] }
   ]

@@ -8,7 +8,6 @@ interface IRCheckerToolbarProps {
   onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onLoadSample: (text: string, isLarge?: boolean, exampleName?: string) => void;
   onLoadSampleStart?: () => void;
-  loadedExampleName?: string | null;
   onFormat: () => void;
   autoValidate: boolean;
   onAutoValidateChange: (checked: boolean) => void;
@@ -43,7 +42,6 @@ export function IRCheckerToolbar({
   styles,
   colorMode,
   fileInputRef,
-  loadedExampleName,
 }: IRCheckerToolbarProps): React.ReactElement {
   const [showExampleDropdown, setShowExampleDropdown] = useState(false);
   const [loadingExample, setLoadingExample] = useState<string | null>(null);
@@ -186,17 +184,6 @@ export function IRCheckerToolbar({
             {loadingExample != null ? 'Loading...' : 'Load Example'}
             <span style={{ fontSize: '0.6rem' }}>▼</span>
           </button>
-
-          {loadedExampleName && (
-            <span style={{
-              fontSize: '0.75rem',
-              color: colorMode === 'dark' ? '#8b8b8b' : '#666',
-              fontStyle: 'italic',
-              marginLeft: '4px',
-            }}>
-              ({loadedExampleName})
-            </span>
-          )}
 
           {showExampleDropdown && (
             <div style={dropdownStyle}>

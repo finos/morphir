@@ -525,7 +525,6 @@ function IRCheckerContent(): React.ReactElement {
             setJsonInput(text);
           }
         }}
-        loadedExampleName={loadedExampleName}
         onFormat={formatJson}
         autoValidate={autoValidate}
         onAutoValidateChange={setAutoValidate}
