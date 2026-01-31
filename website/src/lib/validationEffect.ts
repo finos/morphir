@@ -6,7 +6,7 @@
 import { Effect, Either } from "effect";
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
-import type { ValidationResult, SchemaVersionValue, ValidationError } from "../components/ir-checker/types";
+import type { ValidationResult, SchemaVersionValue, ValidationError, ValidationMode } from "../components/ir-checker/types";
 
 export const MAIN_THREAD_MAX_BYTES = 50 * 1024; // 50KB — above this we require a worker
 const VALIDATION_TIMEOUT_BASE_MS = 15_000; // Base timeout
@@ -37,6 +37,7 @@ function validateInWorker(
   jsonString: string,
   schema: object,
   schemaVersion: SchemaVersionValue,
+  validationMode: ValidationMode,
   schemaUrl?: string
 ): Effect.Effect<ValidationResult> {
   return Effect.async<ValidationResult>((resume) => {
@@ -88,6 +89,7 @@ function validateInWorker(
       runId,
       jsonString,
       schemaVersion,
+      validationMode,
     };
     // On localhost, send schema directly to avoid potential fetch issues in worker.
     // In production, use schemaUrl to avoid blocking on large schema cloning.
@@ -119,7 +121,8 @@ function extractLineNumber(jsonString: string, message: string): number | null {
 function validateOnMainThread(
   jsonString: string,
   schema: object,
-  schemaVersion: SchemaVersionValue
+  schemaVersion: SchemaVersionValue,
+  validationMode: ValidationMode
 ): Effect.Effect<ValidationResult> {
   return Effect.gen(function* () {
     // Wait for paint (rAF + setTimeout) so "Validating..." is visible before we block.
@@ -157,7 +160,9 @@ function validateOnMainThread(
 
     const compileEither = yield* Effect.try({
       try: () => {
-        const ajv = new Ajv({ allErrors: true, verbose: true, strict: false });
+        // 'fast' mode stops at first error, 'thorough' finds all errors
+        const allErrors = validationMode === 'thorough';
+        const ajv = new Ajv({ allErrors, verbose: true, strict: false });
         addFormats(ajv);
         return ajv.compile(schema);
       },
@@ -218,6 +223,7 @@ function validateInWorkerWithTimeout(
   jsonString: string,
   schema: object,
   schemaVersion: SchemaVersionValue,
+  validationMode: ValidationMode,
   schemaUrl?: string
 ): Effect.Effect<ValidationResult> {
   // Calculate dynamic timeout based on input size (base + extra time per 100KB)
@@ -236,7 +242,7 @@ function validateInWorkerWithTimeout(
     parsedJson: null,
   };
   return Effect.race(
-    validateInWorker(worker, runId, jsonString, schema, schemaVersion, schemaUrl),
+    validateInWorker(worker, runId, jsonString, schema, schemaVersion, validationMode, schemaUrl),
     Effect.gen(function* () {
       yield* Effect.sleep(timeoutMs);
       return timeoutResult;
@@ -254,13 +260,14 @@ export function runValidationEffect(
   schema: object,
   schemaVersion: SchemaVersionValue,
   runId: number,
+  validationMode: ValidationMode = 'fast',
   schemaUrl?: string
 ): Effect.Effect<ValidationResult> {
   const sizeBytes = new Blob([jsonString]).size;
   const mainThreadLimit = MAIN_THREAD_MAX_BYTES; // Same in dev/prod to avoid main-thread lock-up on large files
 
   if (worker) {
-    return validateInWorkerWithTimeout(worker, runId, jsonString, schema, schemaVersion, schemaUrl);
+    return validateInWorkerWithTimeout(worker, runId, jsonString, schema, schemaVersion, validationMode, schemaUrl);
   }
 
   if (sizeBytes > mainThreadLimit) {
@@ -277,6 +284,6 @@ export function runValidationEffect(
     });
   }
 
-  return validateOnMainThread(jsonString, schema, schemaVersion);
+  return validateOnMainThread(jsonString, schema, schemaVersion, validationMode);
 }
 

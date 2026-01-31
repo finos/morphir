@@ -2,13 +2,18 @@
  * IR Checker constants - schema versions and sample data
  */
 
-import type { SchemaVersion, SchemaVersionValue } from './types';
+import type { SchemaVersion, SchemaVersionValue, ValidationModeInfo } from './types';
 
 export const schemaVersions: SchemaVersion[] = [
   { value: 'v1', label: 'v1', file: 'morphir-ir-v1.json', status: 'Legacy' },
   { value: 'v2', label: 'v2', file: 'morphir-ir-v2.json', status: 'Legacy' },
   { value: 'v3', label: 'v3', file: 'morphir-ir-v3.json', status: 'Stable' },
   { value: 'v4', label: 'v4', file: 'morphir-ir-v4.json', status: 'Draft' },
+];
+
+export const validationModes: ValidationModeInfo[] = [
+  { value: 'fast', label: 'Fast', description: 'Stop at first error (recommended)' },
+  { value: 'thorough', label: 'Thorough', description: 'Find all errors (slower for large files)' },
 ];
 
 // Inline minimal samples for each version (used for "Empty Library" option)

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { schemaVersions, sampleJson } from './constants';
-import type { IRCheckerStyles, SchemaVersionValue, ExampleManifestItem } from './types';
+import { schemaVersions, sampleJson, validationModes } from './constants';
+import type { IRCheckerStyles, SchemaVersionValue, ExampleManifestItem, ValidationMode } from './types';
 
 interface IRCheckerToolbarProps {
   selectedVersion: SchemaVersionValue;
@@ -13,6 +13,8 @@ interface IRCheckerToolbarProps {
   autoValidate: boolean;
   onAutoValidateChange: (checked: boolean) => void;
   onValidate: () => void;
+  validationMode: ValidationMode;
+  onValidationModeChange: (mode: ValidationMode) => void;
   showXRay: boolean;
   onToggleXRay: () => void;
   styles: IRCheckerStyles;
@@ -34,6 +36,8 @@ export function IRCheckerToolbar({
   autoValidate,
   onAutoValidateChange,
   onValidate,
+  validationMode,
+  onValidationModeChange,
   showXRay,
   onToggleXRay,
   styles,
@@ -249,6 +253,22 @@ export function IRCheckerToolbar({
             Validate
           </button>
         )}
+        <select
+          value={validationMode}
+          onChange={(e) => onValidationModeChange(e.target.value as ValidationMode)}
+          style={{
+            ...styles.toolbarBtn,
+            padding: '0.25rem 0.5rem',
+            cursor: 'pointer',
+          }}
+          title={validationModes.find(m => m.value === validationMode)?.description}
+        >
+          {validationModes.map((mode) => (
+            <option key={mode.value} value={mode.value}>
+              {mode.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div style={dividerStyle} />

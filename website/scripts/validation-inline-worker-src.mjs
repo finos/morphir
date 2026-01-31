@@ -54,9 +54,9 @@ self.onmessage = function (e) {
         });
         return;
       }
-      // Use allErrors: false for faster fail-fast validation (stops at first error)
-      // allErrors: true can be exponentially slow on complex schemas with many violations
-      const ajv = new Ajv({ allErrors: false, verbose: false, strict: false });
+      // 'fast' mode stops at first error, 'thorough' finds all errors (slower for large files)
+      const allErrors = d.validationMode === 'thorough';
+      const ajv = new Ajv({ allErrors, verbose: false, strict: false });
       const validate = ajv.compile(schema);
       try {
         const valid = validate(parsedJson);

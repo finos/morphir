@@ -15,7 +15,7 @@ import {
   schemaVersions,
   sampleJson,
 } from '../components/ir-checker';
-import type { ValidationResult, SchemasMap, SchemaVersionValue } from '../components/ir-checker';
+import type { ValidationResult, SchemasMap, SchemaVersionValue, ValidationMode } from '../components/ir-checker';
 import { runValidationEffect } from '../lib/validationEffect';
 
 const LARGE_FILE_BYTES = 500 * 1024; // 500KB
@@ -55,6 +55,7 @@ function IRCheckerContent(): React.ReactElement {
   const [largeFileWarning, setLargeFileWarning] = React.useState<string | null>(null);
   const [isLoadingContent, setIsLoadingContent] = React.useState(false);
   const [loadedExampleName, setLoadedExampleName] = React.useState<string | null>(null);
+  const [validationMode, setValidationMode] = React.useState<ValidationMode>('fast');
   const { colorMode } = useColorMode() as { colorMode: 'dark' | 'light' };
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const editorRef = React.useRef<unknown>(null);
@@ -170,6 +171,7 @@ function IRCheckerContent(): React.ReactElement {
       schema,
       selectedVersion,
       runId,
+      validationMode,
       schemaUrl
     );
 
@@ -215,7 +217,7 @@ function IRCheckerContent(): React.ReactElement {
     } else {
       setTimeout(run, 0);
     }
-  }, [jsonInput, schemas, selectedVersion, getValidationWorker, schemaUrl]);
+  }, [jsonInput, schemas, selectedVersion, getValidationWorker, validationMode, schemaUrl]);
 
   React.useEffect(() => {
     if (validationTimeoutRef.current) {
@@ -501,15 +503,6 @@ function IRCheckerContent(): React.ReactElement {
         onFileUpload={handleFileUpload}
         onLoadSampleStart={() => setIsLoadingContent(true)}
         onLoadSample={(text, isLarge, exampleName) => {
-          const sizeInKB = new Blob([text]).size / 1024;
-          if (sizeInKB > 100) {
-            setLargeFileWarning(
-              `⚠️ File too large (${sizeInKB.toFixed(0)}KB). The IR Checker currently cannot handle files larger than 100KB. Please use a smaller example or validate using the command line tools.`
-            );
-            setIsLoadingContent(false);
-            return;
-          }
-
           // Track the loaded example name
           setLoadedExampleName(exampleName ?? null);
 
@@ -537,6 +530,8 @@ function IRCheckerContent(): React.ReactElement {
         autoValidate={autoValidate}
         onAutoValidateChange={setAutoValidate}
         onValidate={validateJson}
+        validationMode={validationMode}
+        onValidationModeChange={setValidationMode}
         showXRay={showXRay}
         onToggleXRay={handleToggleXRay}
         styles={styles}

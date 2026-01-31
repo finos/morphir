@@ -6,6 +6,15 @@ import type { CSSProperties } from 'react';
 
 export type SchemaVersionValue = 'v1' | 'v2' | 'v3' | 'v4';
 
+/** Validation mode controls how thorough the validation is */
+export type ValidationMode = 'fast' | 'thorough';
+
+export interface ValidationModeInfo {
+  value: ValidationMode;
+  label: string;
+  description: string;
+}
+
 export interface SchemaVersion {
   value: SchemaVersionValue;
   label: string;

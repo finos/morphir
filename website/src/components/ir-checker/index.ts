@@ -12,7 +12,7 @@ export { ValidationSidebar } from './ValidationSidebar';
 export { IRCheckerToolbar } from './IRCheckerToolbar';
 export { createStyles } from './styles';
 export { useJsonNavigation } from './useJsonNavigation';
-export { schemaVersions, sampleJson, morphirNodeTypes } from './constants';
+export { schemaVersions, sampleJson, morphirNodeTypes, validationModes } from './constants';
 export type {
   SchemaVersion,
   SchemaVersionValue,
@@ -25,4 +25,7 @@ export type {
   WorkerResultMessage,
   WorkerErrorMessage,
   WorkerOutMessage,
+  ValidationMode,
+  ValidationModeInfo,
 } from './types';
+export { SchemasMap } from './types';
