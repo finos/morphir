@@ -6,8 +6,9 @@ interface IRCheckerToolbarProps {
   selectedVersion: SchemaVersionValue;
   onVersionChange: (version: SchemaVersionValue) => void;
   onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onLoadSample: (text: string, isLarge?: boolean) => void;
+  onLoadSample: (text: string, isLarge?: boolean, exampleName?: string) => void;
   onLoadSampleStart?: () => void;
+  loadedExampleName?: string | null;
   onFormat: () => void;
   autoValidate: boolean;
   onAutoValidateChange: (checked: boolean) => void;
@@ -38,6 +39,7 @@ export function IRCheckerToolbar({
   styles,
   colorMode,
   fileInputRef,
+  loadedExampleName,
 }: IRCheckerToolbarProps): React.ReactElement {
   const [showExampleDropdown, setShowExampleDropdown] = useState(false);
   const [loadingExample, setLoadingExample] = useState<string | null>(null);
@@ -100,7 +102,7 @@ export function IRCheckerToolbar({
     setShowExampleDropdown(false);
     const sample = sampleJson[selectedVersion];
     if (sample != null) {
-      onLoadSample(sample);
+      onLoadSample(sample, false, 'Empty Library');
     }
   };
 
@@ -127,7 +129,7 @@ export function IRCheckerToolbar({
       const response = await fetch(`/ir/examples/${selectedVersion}/${example.file}`);
       if (!response.ok) throw new Error(`Failed to load ${example.file}`);
       const text = await response.text();
-      onLoadSample(text, example.large ?? false);
+      onLoadSample(text, example.large ?? false, example.label);
     } catch (error) {
       console.error('Failed to load example:', error);
       alert(`Failed to load example: ${error instanceof Error ? error.message : String(error)}`);
@@ -180,6 +182,17 @@ export function IRCheckerToolbar({
             {loadingExample != null ? 'Loading...' : 'Load Example'}
             <span style={{ fontSize: '0.6rem' }}>▼</span>
           </button>
+
+          {loadedExampleName && (
+            <span style={{
+              fontSize: '0.75rem',
+              color: colorMode === 'dark' ? '#8b8b8b' : '#666',
+              fontStyle: 'italic',
+              marginLeft: '4px',
+            }}>
+              ({loadedExampleName})
+            </span>
+          )}
 
           {showExampleDropdown && (
             <div style={dropdownStyle}>

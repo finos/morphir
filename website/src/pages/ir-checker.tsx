@@ -54,6 +54,7 @@ function IRCheckerContent(): React.ReactElement {
   const [isValidating, setIsValidating] = React.useState(false);
   const [largeFileWarning, setLargeFileWarning] = React.useState<string | null>(null);
   const [isLoadingContent, setIsLoadingContent] = React.useState(false);
+  const [loadedExampleName, setLoadedExampleName] = React.useState<string | null>(null);
   const { colorMode } = useColorMode() as { colorMode: 'dark' | 'light' };
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const editorRef = React.useRef<unknown>(null);
@@ -335,6 +336,9 @@ function IRCheckerContent(): React.ReactElement {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const file = event.target.files?.[0];
     if (file) {
+      // Clear example name since user is loading their own file
+      setLoadedExampleName(null);
+
       if (file.size > 10 * 1024 * 1024) {
         setLargeFileWarning('File is very large (>10MB). This may cause performance issues.');
       } else if (file.size > LARGE_FILE_BYTES) {
@@ -496,7 +500,7 @@ function IRCheckerContent(): React.ReactElement {
         onVersionChange={handleVersionChange}
         onFileUpload={handleFileUpload}
         onLoadSampleStart={() => setIsLoadingContent(true)}
-        onLoadSample={(text, isLarge) => {
+        onLoadSample={(text, isLarge, exampleName) => {
           const sizeInKB = new Blob([text]).size / 1024;
           if (sizeInKB > 100) {
             setLargeFileWarning(
@@ -505,6 +509,9 @@ function IRCheckerContent(): React.ReactElement {
             setIsLoadingContent(false);
             return;
           }
+
+          // Track the loaded example name
+          setLoadedExampleName(exampleName ?? null);
 
           if (isLarge !== undefined) {
             setAutoValidate(false);
@@ -525,6 +532,7 @@ function IRCheckerContent(): React.ReactElement {
             setJsonInput(text);
           }
         }}
+        loadedExampleName={loadedExampleName}
         onFormat={formatJson}
         autoValidate={autoValidate}
         onAutoValidateChange={setAutoValidate}
@@ -539,7 +547,12 @@ function IRCheckerContent(): React.ReactElement {
       <div style={styles.mainContent} ref={containerRef}>
         <div style={styles.editorPane}>
           <div style={styles.editorHeader}>
-            <span>morphir-ir.json {isLargeFile && '(large file)'}{isLoadingContent && ' • Loading…'}</span>
+            <span>
+              morphir-ir.json
+              {loadedExampleName && <span style={{ fontStyle: 'italic', opacity: 0.8 }}> — {loadedExampleName}</span>}
+              {isLargeFile && ' (large file)'}
+              {isLoadingContent && ' • Loading…'}
+            </span>
             <span>
               {isLoadingContent ? 'Loading content…' : (
                 <>{jsonInput.split('\n').length} lines{isValidating && ' • Validating...'}</>
@@ -599,7 +612,10 @@ function IRCheckerContent(): React.ReactElement {
               validationResult?.valid ? '✓ Valid' :
                 errorCount > 0 ? `✗ ${errorCount} issue${errorCount > 1 ? 's' : ''} found` : 'Ready'}
         </span>
-        <span>Morphir IR Checker • {selectedVersion.toUpperCase()}</span>
+        <span>
+          {loadedExampleName && <span style={{ opacity: 0.7 }}>{loadedExampleName} • </span>}
+          Morphir IR Checker • {selectedVersion.toUpperCase()}
+        </span>
       </div>
     </div>
   );
