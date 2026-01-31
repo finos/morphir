@@ -9,7 +9,7 @@
 		"postinstall": "node scripts/setup-gleam-prism.js && node scripts/build-validation-worker.js",
 		"docusaurus": "node node_modules/@docusaurus/core/bin/docusaurus.mjs",
 		"start": "npm run docusaurus -- start",
-		"build": "npm run docusaurus -- build",
+		"build": "npm run build:worker && npm run docusaurus -- build",
 		"swizzle": "npm run docusaurus -- swizzle",
 		"deploy": "npm run docusaurus -- deploy",
 		"clear": "npm run docusaurus -- clear",

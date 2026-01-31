@@ -116,37 +116,21 @@ function IRCheckerContent(): React.ReactElement {
     if (workerRef.current) return workerRef.current;
     try {
       if (typeof Worker === 'undefined') return null;
-      const isLocalhost =
-        typeof window !== 'undefined' &&
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      // On localhost, use the bundled static worker (Ajv is included via esbuild bundle).
+      // Always use the bundled static worker (Ajv is included via esbuild bundle).
+      // The webpack worker approach has issues with ES module syntax in classic workers.
       // Run `npm run build:worker` in website/ to rebuild if needed.
-      if (isLocalhost) {
-        try {
-          // Construct absolute URL for the worker
-          const workerAbsoluteUrl = new URL(staticWorkerUrl, window.location.origin).href;
-          workerRef.current = new Worker(workerAbsoluteUrl);
-          workerSupportedRef.current = true;
-          return workerRef.current;
-        } catch (err) {
-          // Static worker failed to load; fall through to main-thread validation
-          console.warn('[IR Checker] Static worker failed to load:', err);
-          workerSupportedRef.current = false;
-          return null;
-        }
-      }
-      if (typeof import.meta === 'undefined' || !import.meta.url) {
+      try {
+        // Construct absolute URL for the worker
+        const workerAbsoluteUrl = new URL(staticWorkerUrl, window.location.origin).href;
+        workerRef.current = new Worker(workerAbsoluteUrl);
+        workerSupportedRef.current = true;
+        return workerRef.current;
+      } catch (err) {
+        // Static worker failed to load; fall through to main-thread validation
+        console.warn('[IR Checker] Static worker failed to load:', err);
         workerSupportedRef.current = false;
         return null;
       }
-      const workerUrl = new URL(
-        /* webpackChunkName: "validation.worker" */
-        '../workers/validation.worker.ts',
-        import.meta.url
-      );
-      workerRef.current = new Worker(workerUrl);
-      workerSupportedRef.current = true;
-      return workerRef.current;
     } catch {
       workerSupportedRef.current = false;
       return null;
