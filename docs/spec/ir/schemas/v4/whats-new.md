@@ -7,7 +7,7 @@ description: "Changes and improvements in Morphir IR schema version 4"
 
 # What's New in Version 4
 
-Version 4 of the Morphir IR schema introduces explicit attribute types, canonical string formats, embedded documentation, and new constructs for handling incomplete code and native operations.
+Version 4 of the Morphir IR schema introduces explicit attribute types, canonical string formats, embedded documentation, structured annotations, and new constructs for handling incomplete code and native operations.
 
 ## Key Changes from Version 3
 
@@ -196,6 +196,40 @@ V4 supports compact shorthand notation for types and values when attributes are 
 - If string (no special chars) → Variable name
 - If array → Parameterized type (first element is FQName, rest are type args)
 - If object → Canonical wrapper object format
+
+#### Value Shorthand
+
+V4 also supports compact shorthand for value expressions when attributes are empty.
+
+```json
+// Boolean & Numbers
+true                                   // shorthand for BoolLiteral
+42                                     // shorthand for IntegerLiteral
+
+// References & Variables
+"morphir/sdk:basics#add"               // shorthand for Reference
+"x"                                    // shorthand for Variable
+
+// Lists
+[1, 2, 3]                              // shorthand for List of Literals
+["x", "y", "z"]                        // shorthand for List of Variables
+```
+
+**Disambiguation Logic:**
+- If string contains `:` and `#` → FQName reference
+- If string (no special chars) → Variable name
+- If boolean/number → Literal
+- If array → List value
+- If object → Canonical wrapper object format
+
+#### Ultra-compact Patterns
+
+Similarly, **LiteralPattern** supports direct primitive values for maximum ergonomics:
+
+```json
+{ "LiteralPattern": 42 }                // ultra-compact
+{ "LiteralPattern": { "IntegerLiteral": 42 } } // compact/canonical
+```
 
 ---
 
@@ -523,6 +557,41 @@ V4 moves from **tagged arrays** to **wrapper objects** for the canonical format:
 - Wrapper object (v4 canonical)
 - Tagged array with capitalized tags (v2/v3)
 - Tagged array with lowercase tags (v1)
+
+---
+
+---
+
+### 11. Structured Annotations
+
+V4 introduces a first-class annotation system for attaching high-level semantic metadata (like `@deprecated`, `@stable`, or `@jsonName`) to signature specifications.
+
+Unlike attributes (used for implementation-level metadata like source locations), annotations are intended for consumers of the IR and support both a compact string shorthand and a canonical object format.
+
+**Compact Shorthand:**
+```json
+"annotations": [
+  "morphir/sdk:annotations#stable",
+  "my-org/sdk:annotations#deprecated:Use new-version instead"
+]
+```
+
+**Canonical Object:**
+```json
+"annotations": [
+  {
+    "name": "my-org/sdk:annotations#author",
+    "arguments": [
+      { "name": "name", "value": { "Literal": { "StringLiteral": "Damian" } } }
+    ]
+  }
+]
+```
+
+**Benefits:**
+- **Semantic Metadata**: Attach domain-specific hints for downstream tools
+- **API Life-cycle**: First-class support for deprecations and stability markers
+- **Improved Code Generation**: Use annotations to drive platform-specific code generation patterns
 
 ---
 

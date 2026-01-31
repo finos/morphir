@@ -111,6 +111,7 @@ Key items:
 - [ ] Breaking changes have migration guides
 - [ ] Tutorials are complete and tested
 - [ ] Links work and formatting is correct
+- [ ] JSON examples validate against schemas (`mise run examples:validate`)
 
 ### Spec/Design Consistency Review
 
@@ -155,13 +156,19 @@ When specification documents (`docs/spec/`) need to match design documents (`doc
 **Workflow for consistency review:**
 
 ```bash
-# 1. Open design and spec side-by-side
-# 2. Walk through each section
-# 3. Validate JSON examples
-# 4. Verify directory structure examples
-# 5. Fix discrepancies
-# 6. Generate review document (optional, saved to .morphir/out/)
-# 7. Regenerate llms.txt
+# 1. Validate examples against schemas
+mise run examples:validate
+
+# 2. Validate fixtures (if present)
+mise run fixtures:validate
+
+# 3. Open design and spec side-by-side
+# 4. Walk through each section
+# 5. Validate JSON examples
+# 6. Verify directory structure examples
+# 7. Fix discrepancies
+# 8. Generate review document (optional, saved to .morphir/out/)
+# 9. Regenerate llms.txt
 python .claude/skills/technical-writer/scripts/generate_llms_txt.py
 ```
 

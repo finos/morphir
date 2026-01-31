@@ -17,22 +17,66 @@ bun = "1.3.8"
 
 # Rust tools
 "cargo:cargo-binstall" = "latest"
-"cargo:dioxus-cli" = "latest"            # Provides dx command
-"aqua:WebAssembly/binaryen" = "125"      # Provides wasm-opt
+"cargo:dioxus-cli" = "latest"       # Provides dx command
+"aqua:WebAssembly/binaryen" = "125" # Provides wasm-opt
 
-# Rust development tasks
+# JSON Schema CLI (https://github.com/sourcemeta/jsonschema)
+jsonschema = "latest"
+
+# ===== Formatting Tasks =====
 [tasks.fmt]
+description = "Format all code"
+depends = ["fmt:rust", "fmt:schema"]
+
+[tasks."fmt:rust"]
 description = "Format Rust code"
 run = "cargo fmt --all"
 
+[tasks."fmt:schema"]
+description = "Format JSON Schema files"
+run = "jsonschema fmt website/static/schemas/"
+
 [tasks.fmt-check]
+description = "Check all formatting"
+depends = ["fmt-check:rust", "fmt-check:schema"]
+
+[tasks."fmt-check:rust"]
 description = "Check Rust code formatting"
 run = "cargo fmt --all --check"
 
+[tasks."fmt-check:schema"]
+description = "Check JSON Schema formatting"
+run = "jsonschema fmt website/static/schemas/ --check"
+
+# ===== Linting Tasks =====
 [tasks.lint]
+description = "Run all linters"
+depends = ["lint:rust", "lint:schema"]
+
+[tasks."lint:rust"]
 description = "Run Clippy linter"
 run = "cargo clippy --all-targets --all-features -- -D warnings"
 
+[tasks."lint:schema"]
+description = "Lint JSON Schema files"
+run = "jsonschema lint website/static/schemas/*.yaml website/static/schemas/*.json"
+
+# ===== Validation Tasks =====
+[tasks."schema:validate"]
+description = "Validate schemas against metaschema"
+run = "jsonschema metaschema website/static/schemas/*.yaml"
+
+[tasks.check]
+description = "Run all checks"
+depends = [
+    "fmt-check",
+    "lint",
+    "examples:validate",
+    "fixtures:validate",
+    "schema:validate",
+]
+
+# ===== Testing Tasks =====
 [tasks.test]
 description = "Run tests"
 run = "cargo test --all-features --workspace"
@@ -40,10 +84,6 @@ run = "cargo test --all-features --workspace"
 [tasks.build]
 description = "Build release"
 run = "cargo build --release --workspace"
-
-[tasks.check]
-description = "Run all checks"
-depends = ["fmt-check", "lint"]
 
 [tasks.dev]
 description = "Run morphir-live in development mode"

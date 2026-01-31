@@ -141,21 +141,27 @@ pub type DerivedTypeSpecificationDetails(attributes) {
 pub type TypeSpecification(attributes) {
   /// Type alias visible to consumers
   TypeAliasSpecification(
+    annotations: List(Annotation),
     params: List(TypeVariable),
     body: Type(attributes),
   )
 
   /// Opaque - no structure, no conversion (not serializable via Morphir)
-  OpaqueTypeSpecification(params: List(TypeVariable))
+  OpaqueTypeSpecification(
+    annotations: List(Annotation),
+    params: List(TypeVariable),
+  )
 
   /// Custom type with public constructors
   CustomTypeSpecification(
+    annotations: List(Annotation),
     params: List(TypeVariable),
     constructors: Constructors(attributes),
   )
 
   /// Derived - opaque structure BUT with conversion functions (serializable)
   DerivedTypeSpecification(
+    annotations: List(Annotation),
     params: List(TypeVariable),
     details: DerivedTypeSpecificationDetails(attributes),
   )

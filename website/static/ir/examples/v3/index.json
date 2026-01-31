@@ -1,0 +1,17 @@
+{
+    "version": "v3",
+    "examples": [
+        {
+            "id": "greeting",
+            "label": "Greeting Module",
+            "file": "greeting-example.json",
+            "description": "Simple module with custom type, record, and pattern matching"
+        },
+        {
+            "id": "lcr",
+            "label": "LCR (Large)",
+            "file": "lcr-morphir-ir.json",
+            "description": "Liquidity Coverage Ratio - complete real-world model"
+        }
+    ]
+}

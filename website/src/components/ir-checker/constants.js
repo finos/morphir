@@ -9,6 +9,7 @@ export const schemaVersions = [
   { value: 'v4', label: 'v4', file: 'morphir-ir-v4.json', status: 'Draft' },
 ];
 
+// Inline minimal samples for each version (used for "Empty Library" option)
 export const sampleJson = {
   v4: `{
   "formatVersion": 4,
@@ -51,6 +52,8 @@ export const sampleJson = {
 }`,
 };
 
+// Additional example files are dynamically loaded from /ir/examples/<version>/index.json
+
 // Morphir IR node types for special highlighting
 export const morphirNodeTypes = [
   'Library', 'Specs', 'Application', 'Reference', 'Variable', 'Literal',
@@ -58,3 +61,4 @@ export const morphirNodeTypes = [
   'Tuple', 'List', 'Record', 'Field', 'Unit', 'Let', 'LetDefinition',
   'LetRecursion', 'Destructure', 'UpdateRecord'
 ];
+

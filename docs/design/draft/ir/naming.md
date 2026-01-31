@@ -559,7 +559,7 @@ Schema definition supporting canonical format:
 ```yaml
 Name:
   type: string
-  pattern: "^[a-z0-9]+(-[a-z0-9]+|-(\\([a-z]+\\)))*$"
+  pattern: "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$"
   description: "Canonical name: kebab-case with abbreviations in parentheses"
   examples:
     - "user-account"
@@ -568,7 +568,7 @@ Name:
 
 Path:
   type: string
-  pattern: "^[a-z0-9-()]+(/[a-z0-9-()]+)*$"
+  pattern: "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*$"
   description: "Canonical path: names joined by /"
   examples:
     - "main/domain"
@@ -576,7 +576,7 @@ Path:
 
 FQName:
   type: string
-  pattern: "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+$"
+  pattern: "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*:([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*#([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$"
   description: "Canonical FQName: package:module#name"
   examples:
     - "morphir/sdk:list#map"

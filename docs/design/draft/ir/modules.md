@@ -101,6 +101,7 @@ pub fn with_doc_lines(value: a, lines: List(String)) -> Documented(a) {
 /// Contains only public types and value signatures (no implementations)
 pub type ModuleSpecification(attributes) {
   ModuleSpecification(
+    annotations: List(Annotation),
     types: Dict(Name, Documented(TypeSpecification(attributes))),
     values: Dict(Name, Documented(ValueSpecification(attributes))),
   )
