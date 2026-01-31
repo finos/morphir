@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://morphir.finos.org/schemas/morphir-ir-v4.yaml",
+  "$id": "https://morphir.finos.org/schemas/morphir-ir-v4.json",
   "title": "Morphir IR Distribution",
   "description": "Morphir IR format version 4.\n\nV4 introduces key improvements:\n- Wrapper object format for distributions (replaces tagged arrays)\n- Object/dict format for modules, types, values, and dependencies\n- Explicit TypeAttributes and ValueAttributes\n- Canonical string formats for names, paths, and FQNames\n- Embedded documentation support\n- New value expressions (Hole, Native, External)\n\nSee the complete example at: docs/spec/ir/schemas/v4/complete-example.json\n",
   "type": "object",
@@ -23,7 +23,7 @@
         },
         {
           "type": "integer",
-          "const": 4,
+          "minimum": 4,
           "description": "Legacy integer format for backwards compatibility",
           "examples": [
             4
@@ -47,18 +47,21 @@
     }
   },
   "definitions": {
+    "NameString": {
+      "type": "string",
+      "pattern": "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$",
+      "description": "Canonical string representation of a name.\nSupports kebab-case with parenthesized acronyms (e.g., \"(usd)\", \"my-(api)-client\").\n",
+      "examples": [
+        "my-name",
+        "user-id",
+        "value-in-(usd)",
+        "price-per-(unit)"
+      ]
+    },
     "Name": {
       "oneOf": [
         {
-          "type": "string",
-          "pattern": "^[a-z0-9]+(-[a-z0-9]+|-(\\([a-z]+\\)))*$",
-          "description": "Canonical string representation of a name.\nSupports kebab-case with optional parenthesized units (e.g., \"value-in-(usd)\").\n",
-          "examples": [
-            "my-name",
-            "user-id",
-            "value-in-(usd)",
-            "price-per-(unit)"
-          ]
+          "$ref": "#/definitions/NameString"
         },
         {
           "type": "array",
@@ -81,17 +84,20 @@
         }
       ]
     },
+    "PathString": {
+      "type": "string",
+      "pattern": "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*$",
+      "description": "Canonical string representation of a path (package or module path).\nSegments are Names joined by forward slashes.\n",
+      "examples": [
+        "morphir/sdk",
+        "my-org/domain/users",
+        "u-s/f-r-2052-a/data-tables"
+      ]
+    },
     "Path": {
       "oneOf": [
         {
-          "type": "string",
-          "pattern": "^[a-z0-9-()]+(/[a-z0-9-()]+)*$",
-          "description": "Canonical string representation of a path (package or module path).\nUses forward slashes to separate path segments.\n",
-          "examples": [
-            "morphir/sdk",
-            "my-org/domain/users",
-            "u-s/f-r-2052-a/data-tables"
-          ]
+          "$ref": "#/definitions/PathString"
         },
         {
           "type": "array",
@@ -143,17 +149,20 @@
         "u-s/f-r-2052-a/data-tables"
       ]
     },
+    "FQNameString": {
+      "type": "string",
+      "pattern": "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*:([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*#([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$",
+      "description": "Fully-qualified name in canonical string format: \"package:module#name\"\nThis uniquely identifies a type or value across the entire IR.\n",
+      "examples": [
+        "morphir/sdk:list#map",
+        "morphir/sdk:basics#int",
+        "my-org/domain:users#create-user"
+      ]
+    },
     "FQName": {
       "oneOf": [
         {
-          "type": "string",
-          "pattern": "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+$",
-          "description": "Fully-qualified name in canonical string format: \"package:module#name\"\nThis uniquely identifies a type or value across the entire IR.\n",
-          "examples": [
-            "morphir/sdk:list#map",
-            "morphir/sdk:basics#int",
-            "my-org/domain:users#create-user"
-          ]
+          "$ref": "#/definitions/FQNameString"
         },
         {
           "type": "array",
@@ -313,34 +322,176 @@
         }
       ]
     },
-    "AccessControlled": {
-      "type": "object",
-      "required": [
-        "access",
-        "value"
-      ],
-      "properties": {
-        "access": {
-          "enum": [
-            "Public",
-            "Private"
-          ],
-          "description": "Visibility level: Public (exported) or Private (internal)"
+    "Annotation": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+(:.+)?$",
+          "description": "Compact shorthand format for an annotation: \"fqname\" or \"fqname:value\".\nExamples:\n- \"morphir/sdk:annotations#stable\"\n- \"my-org/sdk:annotations#deprecated:Use new-version instead\"\n"
         },
-        "value": {}
-      },
-      "description": "Wrapper for access control. In V4, this is flattened in JSON when used within\nmodule definitions (e.g., { \"access\": \"Public\", \"TypeAliasDefinition\": {...} }).\n",
+        {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "$ref": "#/definitions/FQName"
+            },
+            "arguments": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/AnnotationArgument"
+              },
+              "description": "Arguments to the annotation (positional or named)"
+            }
+          }
+        }
+      ],
+      "description": "Structured annotation on a specification type.\nCan be a compact string or a canonical object.\n",
+      "examples": [
+        "morphir/sdk:annotations#stable",
+        "my-org/sdk:annotations#deprecated:Use new-version instead",
+        {
+          "name": "morphir/sdk:annotations#deprecated",
+          "arguments": [
+            {
+              "Literal": {
+                "StringLiteral": "Use new-version instead"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "AnnotationArgument": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/Value",
+          "description": "Positional argument"
+        },
+        {
+          "type": "object",
+          "required": [
+            "name",
+            "value"
+          ],
+          "properties": {
+            "name": {
+              "$ref": "#/definitions/Name"
+            },
+            "value": {
+              "$ref": "#/definitions/Value"
+            }
+          },
+          "description": "Named argument"
+        }
+      ],
+      "description": "An argument to an annotation, either positional (Value) or named."
+    },
+    "Access": {
+      "type": "string",
+      "enum": [
+        "Public",
+        "Private",
+        "public",
+        "private",
+        "pub"
+      ],
+      "description": "Visibility level for definitions.\nCanonical: \"Public\" or \"Private\"\nAccepted: lowercase (\"public\", \"private\") and abbreviation (\"pub\" for Public)\n\nEncoders should output the canonical form.\n",
+      "examples": [
+        "Public",
+        "Private",
+        "pub"
+      ]
+    },
+    "AccessControlled": {
+      "oneOf": [
+        {
+          "type": "object",
+          "oneOf": [
+            {
+              "required": [
+                "Public"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "Public": {}
+              }
+            },
+            {
+              "required": [
+                "Private"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "Private": {}
+              }
+            },
+            {
+              "required": [
+                "public"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "public": {}
+              }
+            },
+            {
+              "required": [
+                "private"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "private": {}
+              }
+            },
+            {
+              "required": [
+                "pub"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "pub": {}
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "access",
+            "value"
+          ],
+          "properties": {
+            "access": {
+              "$ref": "#/definitions/Access"
+            },
+            "value": {}
+          }
+        }
+      ],
+      "description": "Wrapper for access control.\n\nCanonical: Access level as the key: { \"Public\": {...} } or { \"Private\": {...} }\nAccepted: lowercase and abbreviations: { \"pub\": {...} }, { \"public\": {...} }, { \"private\": {...} }\nLegacy: { \"access\": \"Public\", \"value\": {...} }\n\nEncoders should output the canonical form.\n",
       "examples": [
         {
-          "access": "Public",
-          "value": {
+          "Public": {
             "some": "data"
           }
         },
         {
-          "access": "Private",
-          "value": {
+          "Private": {
             "internal": "data"
+          }
+        },
+        {
+          "pub": {
+            "some": "data"
+          }
+        },
+        {
+          "access": "Public",
+          "value": {
+            "some": "data"
           }
         }
       ]
@@ -828,6 +979,13 @@
     "ModuleSpecification": {
       "type": "object",
       "properties": {
+        "annotations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Annotation"
+          },
+          "description": "Module-level annotations"
+        },
         "types": {
           "type": "object",
           "additionalProperties": {
@@ -959,6 +1117,21 @@
           "required": [
             "Reference"
           ],
+          "additionalProperties": false,
+          "properties": {
+            "Reference": {
+              "type": "string",
+              "pattern": "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+$"
+            }
+          },
+          "description": "Wrapper format for Reference without type arguments.\n"
+        },
+        {
+          "type": "object",
+          "required": [
+            "Reference"
+          ],
+          "additionalProperties": false,
           "properties": {
             "Reference": {
               "type": "array",
@@ -974,13 +1147,44 @@
               "description": "Array where first element is FQName, rest are type arguments.\n"
             }
           },
-          "description": "Array format for Reference with type arguments.\n"
+          "description": "Canonical format for Reference with type arguments.\n"
+        },
+        {
+          "type": "object",
+          "required": [
+            "Reference"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "Reference": {
+              "type": "object",
+              "required": [
+                "fqname"
+              ],
+              "properties": {
+                "fqname": {
+                  "$ref": "#/definitions/FQName"
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Type"
+                  }
+                }
+              },
+              "description": "Object with fqname and optional args fields.\n"
+            }
+          },
+          "description": "Expanded wrapper format with explicit fqname and args fields.\n"
         }
       ],
-      "description": "Reference to a named type, optionally with type arguments.\nCompact: \"morphir/sdk:int#int\" (no args)\nArray: {\"Reference\": [\"morphir/sdk:list#list\", \"a\"]}\n",
+      "description": "Reference to a named type, optionally with type arguments.\n\nCanonical (no args): \"morphir/sdk:basics#int\"\nCanonical (with args): {\"Reference\": [\"morphir/sdk:list#list\", \"a\"]}\n\nAccepted formats:\n- Bare FQName string: \"morphir/sdk:basics#int\"\n- Wrapper with FQName: {\"Reference\": \"morphir/sdk:basics#int\"}\n- Wrapper with array: {\"Reference\": [\"morphir/sdk:list#list\", \"a\"]}\n- Wrapper with object: {\"Reference\": {\"fqname\": \"morphir/sdk:list#list\", \"args\": [\"a\"]}}\n\nEncoders should output canonical form.\n",
       "examples": [
         "morphir/sdk:basics#int",
         "morphir/sdk:string#string",
+        {
+          "Reference": "morphir/sdk:basics#int"
+        },
         {
           "Reference": [
             "morphir/sdk:list#list",
@@ -993,32 +1197,79 @@
             "morphir/sdk:string#string",
             "morphir/sdk:int#int"
           ]
+        },
+        {
+          "Reference": {
+            "fqname": "morphir/sdk:list#list",
+            "args": [
+              "a"
+            ]
+          }
         }
       ]
     },
     "TupleType": {
-      "type": "object",
-      "required": [
-        "Tuple"
-      ],
-      "properties": {
-        "Tuple": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Type"
+          },
+          "description": "Bare array of types. Unambiguous because ReferenceType does not accept bare arrays.\n"
+        },
+        {
           "type": "object",
           "required": [
-            "elements"
+            "Tuple"
           ],
+          "additionalProperties": false,
           "properties": {
-            "elements": {
+            "Tuple": {
               "type": "array",
               "items": {
                 "$ref": "#/definitions/Type"
               }
             }
-          }
+          },
+          "description": "Canonical wrapper format with array of types.\n"
+        },
+        {
+          "type": "object",
+          "required": [
+            "Tuple"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "Tuple": {
+              "type": "object",
+              "required": [
+                "elements"
+              ],
+              "properties": {
+                "elements": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Type"
+                  }
+                }
+              }
+            }
+          },
+          "description": "Expanded wrapper format with explicit elements field.\n"
         }
-      },
-      "description": "Tuple type with multiple element types.\nFormat: {\"Tuple\": {\"elements\": [type1, type2, ...]}}\n",
+      ],
+      "description": "Tuple type with multiple element types.\n\nCanonical: {\"Tuple\": [type1, type2, ...]}\n\nAccepted formats:\n- Bare array: [type1, type2, ...] (unambiguous since Reference doesn't use bare arrays)\n- Wrapper with array: {\"Tuple\": [type1, type2, ...]}\n- Wrapper with object: {\"Tuple\": {\"elements\": [type1, type2, ...]}}\n\nEncoders should output canonical form.\n",
       "examples": [
+        [
+          "morphir/sdk:int#int",
+          "morphir/sdk:string#string"
+        ],
+        {
+          "Tuple": [
+            "morphir/sdk:int#int",
+            "morphir/sdk:string#string"
+          ]
+        },
         {
           "Tuple": {
             "elements": [
@@ -1027,15 +1278,11 @@
             ]
           }
         },
-        {
-          "Tuple": {
-            "elements": [
-              "a",
-              "b",
-              "c"
-            ]
-          }
-        }
+        [
+          "a",
+          "b",
+          "c"
+        ]
       ]
     },
     "RecordType": {
@@ -1194,82 +1441,312 @@
       ]
     },
     "TypeAliasSpecification": {
-      "type": "array",
-      "items": [
+      "oneOf": [
         {
-          "const": "TypeAliasSpecification"
-        },
-        {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Name"
+          "type": "object",
+          "required": [
+            "TypeAliasSpecification"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "TypeAliasSpecification": {
+              "type": "object",
+              "required": [
+                "typeParams",
+                "typeExp"
+              ],
+              "properties": {
+                "annotations": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Annotation"
+                  }
+                },
+                "typeParams": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Name"
+                  }
+                },
+                "typeExp": {
+                  "$ref": "#/definitions/Type"
+                }
+              }
+            }
           }
         },
         {
-          "$ref": "#/definitions/Type"
+          "type": "array",
+          "items": [
+            {
+              "const": "TypeAliasSpecification"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Name"
+              }
+            },
+            {
+              "$ref": "#/definitions/Type"
+            }
+          ]
+        }
+      ],
+      "description": "Type alias specification (public interface).\nV4 format: { \"TypeAliasSpecification\": { \"typeParams\": [...], \"typeExp\": ... } }\nLegacy format: [\"TypeAliasSpecification\", [...], ...]\n",
+      "examples": [
+        {
+          "TypeAliasSpecification": {
+            "typeParams": [],
+            "typeExp": "morphir/sdk:string#string"
+          }
+        },
+        {
+          "TypeAliasSpecification": {
+            "typeParams": [
+              "a"
+            ],
+            "typeExp": {
+              "Reference": [
+                "morphir/sdk:list#list",
+                "a"
+              ]
+            }
+          }
         }
       ]
     },
     "OpaqueTypeSpecification": {
-      "type": "array",
-      "items": [
+      "oneOf": [
         {
-          "const": "OpaqueTypeSpecification"
+          "type": "object",
+          "required": [
+            "OpaqueTypeSpecification"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "OpaqueTypeSpecification": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "annotations": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/Annotation"
+                      }
+                    },
+                    "typeParams": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/Name"
+                      }
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "annotations": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/Annotation"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
         },
         {
           "type": "array",
-          "items": {
-            "$ref": "#/definitions/Name"
+          "items": [
+            {
+              "const": "OpaqueTypeSpecification"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Name"
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Opaque type specification (no visible structure).\nV4 format: { \"OpaqueTypeSpecification\": {} } or { \"OpaqueTypeSpecification\": { \"typeParams\": [...] } }\nLegacy format: [\"OpaqueTypeSpecification\", [...]]\n",
+      "examples": [
+        {
+          "OpaqueTypeSpecification": {}
+        },
+        {
+          "OpaqueTypeSpecification": {
+            "typeParams": [
+              "a"
+            ]
           }
         }
       ]
     },
     "CustomTypeSpecification": {
-      "type": "array",
-      "items": [
+      "oneOf": [
         {
-          "const": "CustomTypeSpecification"
-        },
-        {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Name"
+          "type": "object",
+          "required": [
+            "CustomTypeSpecification"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "CustomTypeSpecification": {
+              "type": "object",
+              "required": [
+                "typeParams",
+                "constructors"
+              ],
+              "properties": {
+                "annotations": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Annotation"
+                  }
+                },
+                "typeParams": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Name"
+                  }
+                },
+                "constructors": {
+                  "$ref": "#/definitions/Constructors"
+                }
+              }
+            }
           }
         },
         {
-          "$ref": "#/definitions/Constructors"
+          "type": "array",
+          "items": [
+            {
+              "const": "CustomTypeSpecification"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Name"
+              }
+            },
+            {
+              "$ref": "#/definitions/Constructors"
+            }
+          ]
+        }
+      ],
+      "description": "Custom type specification (sum type with constructors).\nV4 format: { \"CustomTypeSpecification\": { \"typeParams\": [...], \"constructors\": {...} } }\nLegacy format: [\"CustomTypeSpecification\", [...], [...]]\n",
+      "examples": [
+        {
+          "CustomTypeSpecification": {
+            "typeParams": [
+              "a"
+            ],
+            "constructors": {
+              "just": [
+                [
+                  "value",
+                  "a"
+                ]
+              ],
+              "nothing": []
+            }
+          }
         }
       ]
     },
     "DerivedTypeSpecification": {
-      "type": "array",
-      "items": [
-        {
-          "const": "DerivedTypeSpecification"
-        },
-        {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Name"
-          }
-        },
+      "oneOf": [
         {
           "type": "object",
           "required": [
-            "baseType",
-            "fromBaseType",
-            "toBaseType"
+            "DerivedTypeSpecification"
           ],
+          "additionalProperties": false,
           "properties": {
-            "baseType": {
-              "$ref": "#/definitions/Type"
-            },
-            "fromBaseType": {
-              "$ref": "#/definitions/FQName"
-            },
-            "toBaseType": {
-              "$ref": "#/definitions/FQName"
+            "DerivedTypeSpecification": {
+              "type": "object",
+              "required": [
+                "typeParams",
+                "baseType",
+                "fromBaseType",
+                "toBaseType"
+              ],
+              "properties": {
+                "annotations": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Annotation"
+                  }
+                },
+                "typeParams": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Name"
+                  }
+                },
+                "baseType": {
+                  "$ref": "#/definitions/Type"
+                },
+                "fromBaseType": {
+                  "$ref": "#/definitions/FQName"
+                },
+                "toBaseType": {
+                  "$ref": "#/definitions/FQName"
+                }
+              }
             }
+          }
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "const": "DerivedTypeSpecification"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Name"
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "baseType",
+                "fromBaseType",
+                "toBaseType"
+              ],
+              "properties": {
+                "baseType": {
+                  "$ref": "#/definitions/Type"
+                },
+                "fromBaseType": {
+                  "$ref": "#/definitions/FQName"
+                },
+                "toBaseType": {
+                  "$ref": "#/definitions/FQName"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Derived type specification (opaque with conversion functions).\nV4 format: { \"DerivedTypeSpecification\": { \"typeParams\": [...], \"baseType\": ..., \"fromBaseType\": ..., \"toBaseType\": ... } }\n",
+      "examples": [
+        {
+          "DerivedTypeSpecification": {
+            "typeParams": [],
+            "baseType": "morphir/sdk:string#string",
+            "fromBaseType": "my-org/sdk:local-date#from-string",
+            "toBaseType": "my-org/sdk:local-date#to-string"
           }
         }
       ]
@@ -1281,66 +1758,223 @@
         },
         {
           "$ref": "#/definitions/CustomTypeDefinition"
+        },
+        {
+          "$ref": "#/definitions/IncompleteTypeDefinition"
         }
       ]
     },
     "TypeAliasDefinition": {
-      "type": "array",
-      "items": [
+      "oneOf": [
         {
-          "const": "TypeAliasDefinition"
-        },
-        {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Name"
+          "type": "object",
+          "required": [
+            "TypeAliasDefinition"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "TypeAliasDefinition": {
+              "type": "object",
+              "required": [
+                "typeParams",
+                "typeExp"
+              ],
+              "properties": {
+                "typeParams": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Name"
+                  }
+                },
+                "typeExp": {
+                  "$ref": "#/definitions/Type"
+                }
+              }
+            }
           }
         },
         {
-          "$ref": "#/definitions/Type"
+          "type": "array",
+          "items": [
+            {
+              "const": "TypeAliasDefinition"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Name"
+              }
+            },
+            {
+              "$ref": "#/definitions/Type"
+            }
+          ]
+        }
+      ],
+      "description": "Type alias definition (implementation).\nV4 format: { \"TypeAliasDefinition\": { \"typeParams\": [...], \"typeExp\": ... } }\nLegacy format: [\"TypeAliasDefinition\", [...], ...]\n",
+      "examples": [
+        {
+          "TypeAliasDefinition": {
+            "typeParams": [],
+            "typeExp": "morphir/sdk:string#string"
+          }
+        },
+        {
+          "TypeAliasDefinition": {
+            "typeParams": [],
+            "typeExp": {
+              "Record": {
+                "name": "morphir/sdk:string#string",
+                "age": "morphir/sdk:basics#int"
+              }
+            }
+          }
         }
       ]
     },
     "CustomTypeDefinition": {
-      "type": "array",
-      "items": [
+      "oneOf": [
         {
-          "const": "CustomTypeDefinition"
-        },
-        {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Name"
-          }
-        },
-        {
-          "allOf": [
-            {
-              "$ref": "#/definitions/AccessControlled"
-            },
-            {
+          "type": "object",
+          "required": [
+            "CustomTypeDefinition"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "CustomTypeDefinition": {
+              "type": "object",
+              "required": [
+                "typeParams",
+                "constructors"
+              ],
               "properties": {
-                "value": {
+                "typeParams": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Name"
+                  }
+                },
+                "access": {
+                  "enum": [
+                    "Public",
+                    "Private"
+                  ],
+                  "description": "Visibility of constructors"
+                },
+                "constructors": {
                   "$ref": "#/definitions/Constructors"
                 }
               }
             }
+          }
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "const": "CustomTypeDefinition"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Name"
+              }
+            },
+            {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/AccessControlled"
+                },
+                {
+                  "properties": {
+                    "value": {
+                      "$ref": "#/definitions/Constructors"
+                    }
+                  }
+                }
+              ]
+            }
           ]
+        }
+      ],
+      "description": "Custom type definition (sum type implementation).\nV4 format: { \"CustomTypeDefinition\": { \"typeParams\": [...], \"access\": \"Public\", \"constructors\": {...} } }\nLegacy format: [\"CustomTypeDefinition\", [...], { \"access\": ..., \"value\": [...] }]\n",
+      "examples": [
+        {
+          "CustomTypeDefinition": {
+            "typeParams": [
+              "a"
+            ],
+            "access": "Public",
+            "constructors": {
+              "just": [
+                [
+                  "value",
+                  "a"
+                ]
+              ],
+              "nothing": []
+            }
+          }
+        }
+      ]
+    },
+    "IncompleteTypeDefinition": {
+      "type": "object",
+      "required": [
+        "IncompleteTypeDefinition"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "IncompleteTypeDefinition": {
+          "type": "object",
+          "required": [
+            "typeParams",
+            "incompleteness"
+          ],
+          "properties": {
+            "typeParams": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Name"
+              }
+            },
+            "incompleteness": {
+              "$ref": "#/definitions/Incompleteness"
+            },
+            "partialTypeExp": {
+              "$ref": "#/definitions/Type"
+            }
+          }
+        }
+      },
+      "description": "Incomplete type definition (V4 feature for best-effort support).\nUsed when a type definition cannot be fully resolved.\n",
+      "examples": [
+        {
+          "IncompleteTypeDefinition": {
+            "typeParams": [],
+            "incompleteness": {
+              "Hole": {
+                "reason": {
+                  "UnresolvedReference": {
+                    "target": "my-org/project:domain#missing-type"
+                  }
+                }
+              }
+            }
+          }
         }
       ]
     },
     "Constructors": {
-      "type": "array",
-      "items": {
-        "type": "array",
-        "items": [
-          {
-            "$ref": "#/definitions/Name"
-          },
-          {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": {
             "type": "array",
             "items": {
               "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
               "items": [
                 {
                   "$ref": "#/definitions/Name"
@@ -1350,12 +1984,89 @@
                 }
               ]
             }
+          },
+          "description": "Object mapping constructor names to their argument lists"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": [
+              {
+                "$ref": "#/definitions/Name"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": [
+                    {
+                      "$ref": "#/definitions/Name"
+                    },
+                    {
+                      "$ref": "#/definitions/Type"
+                    }
+                  ]
+                }
+              }
+            ]
           }
-        ]
-      }
+        }
+      ],
+      "description": "Type constructors. V4 uses object format keyed by constructor name.\nV4 format: { \"just\": [[\"value\", \"a\"]], \"nothing\": [] }\nLegacy format: [[\"just\", [[\"value\", \"a\"]]], [\"nothing\", []]]\n",
+      "examples": [
+        {
+          "just": [
+            [
+              "value",
+              "a"
+            ]
+          ],
+          "nothing": []
+        },
+        {
+          "ok": [
+            [
+              "value",
+              "ok"
+            ]
+          ],
+          "err": [
+            [
+              "error",
+              "err"
+            ]
+          ]
+        }
+      ]
     },
     "Value": {
       "oneOf": [
+        {
+          "type": "boolean",
+          "description": "Shorthand for BoolLiteral"
+        },
+        {
+          "type": "number",
+          "description": "Shorthand for IntegerLiteral or FloatLiteral"
+        },
+        {
+          "type": "string",
+          "pattern": "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+$",
+          "description": "Shorthand for Reference (FQName string)"
+        },
+        {
+          "type": "string",
+          "pattern": "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$",
+          "description": "Shorthand for Variable (Name string)"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Value"
+          },
+          "description": "Shorthand for List"
+        },
         {
           "$ref": "#/definitions/LiteralValue"
         },
@@ -1419,24 +2130,79 @@
       ],
       "properties": {
         "Literal": {
-          "$ref": "#/definitions/Literal"
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/Literal"
+            },
+            {
+              "type": "object",
+              "required": [
+                "literal"
+              ],
+              "properties": {
+                "attributes": {
+                  "$ref": "#/definitions/ValueAttributes"
+                },
+                "literal": {
+                  "oneOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "#/definitions/Literal"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
         }
       },
-      "description": "Literal constant value.\nFormat: {\"Literal\": {\"IntLiteral\": 42}} or {\"Literal\": {\"StringLiteral\": \"hello\"}}\n",
+      "description": "Literal constant value. Multiple forms accepted (permissive decoding):\n\n- Most compact: { \"Literal\": 42 } (when type is unambiguous from context)\n- Compact with type: { \"Literal\": { \"IntegerLiteral\": 42 } }\n- Expanded with attributes: { \"Literal\": { \"attributes\": {...}, \"literal\": { \"IntegerLiteral\": 42 } } }\n- Expanded with direct value: { \"Literal\": { \"attributes\": {...}, \"literal\": 42 } }\n\nEncoders should prefer the most compact unambiguous form.\n",
       "examples": [
         {
+          "Literal": 42
+        },
+        {
+          "Literal": "hello"
+        },
+        {
           "Literal": {
-            "IntLiteral": 42
+            "IntegerLiteral": 42
           }
         },
         {
           "Literal": {
-            "StringLiteral": "hello"
+            "FloatLiteral": 3.14
           }
         },
         {
           "Literal": {
-            "BoolLiteral": true
+            "attributes": {},
+            "literal": {
+              "IntegerLiteral": 42
+            }
+          }
+        },
+        {
+          "Literal": {
+            "attributes": {},
+            "literal": 0
           }
         }
       ]
@@ -1462,28 +2228,62 @@
       ]
     },
     "TupleValue": {
-      "type": "object",
-      "required": [
-        "Tuple"
-      ],
-      "properties": {
-        "Tuple": {
+      "oneOf": [
+        {
           "type": "object",
           "required": [
-            "elements"
+            "Tuple"
           ],
+          "additionalProperties": false,
           "properties": {
-            "elements": {
+            "Tuple": {
               "type": "array",
               "items": {
                 "$ref": "#/definitions/Value"
               }
             }
-          }
+          },
+          "description": "Canonical wrapper format with array of values.\n"
+        },
+        {
+          "type": "object",
+          "required": [
+            "Tuple"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "Tuple": {
+              "type": "object",
+              "required": [
+                "elements"
+              ],
+              "properties": {
+                "elements": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Value"
+                  }
+                }
+              }
+            }
+          },
+          "description": "Expanded wrapper format with explicit elements field.\n"
         }
-      },
-      "description": "Tuple value with multiple elements.\nFormat: {\"Tuple\": {\"elements\": [value1, value2, ...]}}\n",
+      ],
+      "description": "Tuple value with multiple elements.\n\nCanonical: {\"Tuple\": [value1, value2, ...]}\n\nAccepted formats:\n- Wrapper with array: {\"Tuple\": [value1, value2, ...]}\n- Wrapper with object: {\"Tuple\": {\"elements\": [value1, value2, ...]}}\n\nNote: Bare arrays are NOT allowed for values (would be ambiguous with ListValue).\n\nEncoders should output canonical form.\n",
       "examples": [
+        {
+          "Tuple": [
+            {
+              "Variable": "x"
+            },
+            {
+              "Literal": {
+                "IntegerLiteral": 1
+              }
+            }
+          ]
+        },
         {
           "Tuple": {
             "elements": [
@@ -1492,7 +2292,7 @@
               },
               {
                 "Literal": {
-                  "IntLiteral": 1
+                  "IntegerLiteral": 1
                 }
               }
             ]
@@ -1501,39 +2301,75 @@
       ]
     },
     "ListValue": {
-      "type": "object",
-      "required": [
-        "List"
-      ],
-      "properties": {
-        "List": {
+      "oneOf": [
+        {
           "type": "object",
           "required": [
-            "items"
+            "List"
           ],
+          "additionalProperties": false,
           "properties": {
-            "items": {
+            "List": {
               "type": "array",
               "items": {
                 "$ref": "#/definitions/Value"
               }
             }
-          }
+          },
+          "description": "Canonical wrapper format with array of values.\n"
+        },
+        {
+          "type": "object",
+          "required": [
+            "List"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "List": {
+              "type": "object",
+              "required": [
+                "items"
+              ],
+              "properties": {
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Value"
+                  }
+                }
+              }
+            }
+          },
+          "description": "Expanded wrapper format with explicit items field.\n"
         }
-      },
-      "description": "List of values.\nFormat: {\"List\": {\"items\": [value1, value2, ...]}}\n",
+      ],
+      "description": "List of values.\n\nCanonical: {\"List\": [value1, value2, ...]}\n\nAccepted formats:\n- Wrapper with array: {\"List\": [value1, value2, ...]}\n- Wrapper with object: {\"List\": {\"items\": [value1, value2, ...]}}\n\nNote: Bare arrays are NOT allowed for values (would be ambiguous with TupleValue).\n\nEncoders should output canonical form.\n",
       "examples": [
+        {
+          "List": [
+            {
+              "Literal": {
+                "IntegerLiteral": 1
+              }
+            },
+            {
+              "Literal": {
+                "IntegerLiteral": 2
+              }
+            }
+          ]
+        },
         {
           "List": {
             "items": [
               {
                 "Literal": {
-                  "IntLiteral": 1
+                  "IntegerLiteral": 1
                 }
               },
               {
                 "Literal": {
-                  "IntLiteral": 2
+                  "IntegerLiteral": 2
                 }
               }
             ]
@@ -1563,7 +2399,7 @@
             },
             "age": {
               "Literal": {
-                "IntLiteral": 25
+                "IntegerLiteral": 25
               }
             }
           }
@@ -1695,7 +2531,7 @@
             },
             "argument": {
               "Literal": {
-                "IntLiteral": 1
+                "IntegerLiteral": 1
               }
             }
           }
@@ -2057,28 +2893,85 @@
       ]
     },
     "TuplePattern": {
-      "type": "object",
-      "required": [
-        "TuplePattern"
-      ],
-      "properties": {
-        "TuplePattern": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Pattern"
+          },
+          "description": "Bare array of patterns. Unambiguous because no other pattern type uses bare arrays.\n"
+        },
+        {
           "type": "object",
           "required": [
-            "patterns"
+            "TuplePattern"
           ],
+          "additionalProperties": false,
           "properties": {
-            "patterns": {
+            "TuplePattern": {
               "type": "array",
               "items": {
                 "$ref": "#/definitions/Pattern"
               }
             }
-          }
+          },
+          "description": "Canonical wrapper format with array of patterns.\n"
+        },
+        {
+          "type": "object",
+          "required": [
+            "TuplePattern"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "TuplePattern": {
+              "type": "object",
+              "required": [
+                "patterns"
+              ],
+              "properties": {
+                "patterns": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Pattern"
+                  }
+                }
+              }
+            }
+          },
+          "description": "Expanded wrapper format with explicit patterns field.\n"
         }
-      },
-      "description": "Tuple pattern.\nFormat: {\"TuplePattern\": {\"patterns\": [pattern1, pattern2, ...]}}\n",
+      ],
+      "description": "Tuple pattern for destructuring tuples.\n\nCanonical: {\"TuplePattern\": [pattern1, pattern2, ...]}\n\nAccepted formats:\n- Bare array: [pattern1, pattern2, ...]\n- Wrapper with array: {\"TuplePattern\": [pattern1, pattern2, ...]}\n- Wrapper with object: {\"TuplePattern\": {\"patterns\": [pattern1, pattern2, ...]}}\n\nEncoders should output canonical form.\n",
       "examples": [
+        [
+          {
+            "WildcardPattern": {}
+          },
+          {
+            "AsPattern": {
+              "pattern": {
+                "WildcardPattern": {}
+              },
+              "name": "x"
+            }
+          }
+        ],
+        {
+          "TuplePattern": [
+            {
+              "WildcardPattern": {}
+            },
+            {
+              "AsPattern": {
+                "pattern": {
+                  "WildcardPattern": {}
+                },
+                "name": "x"
+              }
+            }
+          ]
+        },
         {
           "TuplePattern": {
             "patterns": [
@@ -2212,14 +3105,60 @@
       ],
       "properties": {
         "LiteralPattern": {
-          "$ref": "#/definitions/Literal"
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/Literal"
+            },
+            {
+              "type": "object",
+              "required": [
+                "literal"
+              ],
+              "properties": {
+                "attributes": {
+                  "$ref": "#/definitions/ValueAttributes"
+                },
+                "literal": {
+                  "oneOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "#/definitions/Literal"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
         }
       },
-      "description": "Pattern matching a literal value.\nFormat: {\"LiteralPattern\": {\"IntLiteral\": 42}}\n",
+      "description": "Pattern matching a literal value. Multiple forms accepted:\n\n- Most compact: { \"LiteralPattern\": 42 }\n- Compact with type: { \"LiteralPattern\": { \"IntegerLiteral\": 42 } }\n- Expanded: { \"LiteralPattern\": { \"attributes\": {...}, \"literal\": { \"IntegerLiteral\": 42 } } }\n\nEncoders should prefer the most compact unambiguous form.\n",
       "examples": [
         {
+          "LiteralPattern": 42
+        },
+        {
+          "LiteralPattern": "hello"
+        },
+        {
           "LiteralPattern": {
-            "IntLiteral": 42
+            "IntegerLiteral": 42
           }
         },
         {
@@ -2249,28 +3188,66 @@
     "ValueSpecification": {
       "type": "object",
       "required": [
-        "inputs",
         "output"
       ],
       "properties": {
-        "inputs": {
+        "annotations": {
           "type": "array",
           "items": {
-            "type": "array",
-            "items": [
-              {
-                "$ref": "#/definitions/Name"
-              },
-              {
+            "$ref": "#/definitions/Annotation"
+          }
+        },
+        "inputs": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": {
                 "$ref": "#/definitions/Type"
               }
-            ]
-          }
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": [
+                  {
+                    "$ref": "#/definitions/Name"
+                  },
+                  {
+                    "$ref": "#/definitions/Type"
+                  }
+                ]
+              }
+            }
+          ],
+          "description": "Input parameters.\nCanonical (output): Object keyed by parameter name: { \"x\": type, \"y\": type }\nAccepted (input): Array format: [[\"x\", type], [\"y\", type]]\nCan be omitted if empty (no inputs).\n"
         },
         "output": {
           "$ref": "#/definitions/Type"
+        },
+        "doc": {
+          "type": "string",
+          "description": "Optional documentation for this value"
         }
-      }
+      },
+      "description": "Value specification (public interface - signature only, no implementation).\n\nCanonical format: { \"inputs\": { \"a\": type, \"b\": type }, \"output\": type }\nThe \"inputs\" field can be omitted if empty.\n\nEncoders should output the canonical object format.\nDecoders should accept both object and legacy array formats.\n",
+      "examples": [
+        {
+          "inputs": {
+            "a": "morphir/sdk:basics#int",
+            "b": "morphir/sdk:basics#int"
+          },
+          "output": "morphir/sdk:basics#int"
+        },
+        {
+          "output": "morphir/sdk:basics#int"
+        },
+        {
+          "inputs": {},
+          "output": "morphir/sdk:string#string",
+          "doc": "Returns a greeting"
+        }
+      ]
     },
     "ValueDefinition": {
       "oneOf": [
@@ -2370,7 +3347,7 @@
             "Literal": {
               "attributes": {},
               "literal": {
-                "FloatLiteral": 0.0
+                "FloatLiteral": 0
               }
             }
           }
@@ -2510,7 +3487,7 @@
           "$ref": "#/definitions/StringLiteral"
         },
         {
-          "$ref": "#/definitions/WholeNumberLiteral"
+          "$ref": "#/definitions/IntegerLiteral"
         },
         {
           "$ref": "#/definitions/FloatLiteral"
@@ -2518,73 +3495,232 @@
         {
           "$ref": "#/definitions/DecimalLiteral"
         }
-      ]
+      ],
+      "description": "Literal constant value. V4 uses wrapper object format.\n\nTwo forms are accepted (permissive decoding):\n- Compact (canonical): { \"IntegerLiteral\": 42 }\n- Expanded: { \"IntegerLiteral\": { \"value\": 42 } }\n\nEncoders should output the compact form.\n"
     },
     "BoolLiteral": {
-      "type": "array",
-      "items": [
+      "type": "object",
+      "required": [
+        "BoolLiteral"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "BoolLiteral": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "object",
+              "required": [
+                "value"
+              ],
+              "properties": {
+                "value": {
+                  "type": "boolean"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "description": "Boolean literal.\nCompact: { \"BoolLiteral\": true }\nExpanded: { \"BoolLiteral\": { \"value\": true } }\n",
+      "examples": [
         {
-          "const": "BoolLiteral"
+          "BoolLiteral": true
         },
         {
-          "type": "boolean"
+          "BoolLiteral": false
         }
       ]
     },
     "CharLiteral": {
-      "type": "array",
-      "items": [
+      "type": "object",
+      "required": [
+        "CharLiteral"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "CharLiteral": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1
+            },
+            {
+              "type": "object",
+              "required": [
+                "value"
+              ],
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1
+                }
+              }
+            }
+          ]
+        }
+      },
+      "description": "Character literal (single character).\nCompact: { \"CharLiteral\": \"A\" }\nExpanded: { \"CharLiteral\": { \"value\": \"A\" } }\n",
+      "examples": [
         {
-          "const": "CharLiteral"
+          "CharLiteral": "A"
         },
         {
-          "type": "string",
-          "maxLength": 1,
-          "minLength": 1
+          "CharLiteral": "\n"
         }
       ]
     },
     "StringLiteral": {
-      "type": "array",
-      "items": [
+      "type": "object",
+      "required": [
+        "StringLiteral"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "StringLiteral": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "required": [
+                "value"
+              ],
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "description": "String literal.\nCompact: { \"StringLiteral\": \"hello\" }\nExpanded: { \"StringLiteral\": { \"value\": \"hello\" } }\n",
+      "examples": [
         {
-          "const": "StringLiteral"
+          "StringLiteral": "hello world"
         },
         {
-          "type": "string"
+          "StringLiteral": ""
         }
       ]
     },
-    "WholeNumberLiteral": {
-      "type": "array",
-      "items": [
+    "IntegerLiteral": {
+      "type": "object",
+      "required": [
+        "IntegerLiteral"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "IntegerLiteral": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "object",
+              "required": [
+                "value"
+              ],
+              "properties": {
+                "value": {
+                  "type": "integer"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "description": "Integer literal (arbitrary precision, includes negatives).\nV4 renamed from WholeNumberLiteral for correctness.\nCompact: { \"IntegerLiteral\": 42 }\nExpanded: { \"IntegerLiteral\": { \"value\": 42 } }\n",
+      "examples": [
         {
-          "const": "WholeNumberLiteral"
+          "IntegerLiteral": 42
         },
         {
-          "type": "integer"
+          "IntegerLiteral": -100
+        },
+        {
+          "IntegerLiteral": 0
         }
       ]
     },
     "FloatLiteral": {
-      "type": "array",
-      "items": [
+      "type": "object",
+      "required": [
+        "FloatLiteral"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "FloatLiteral": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "object",
+              "required": [
+                "value"
+              ],
+              "properties": {
+                "value": {
+                  "type": "number"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "description": "Floating-point literal.\nCompact: { \"FloatLiteral\": 3.14 }\nExpanded: { \"FloatLiteral\": { \"value\": 3.14 } }\n",
+      "examples": [
         {
-          "const": "FloatLiteral"
+          "FloatLiteral": 3.14159
         },
         {
-          "type": "number"
+          "FloatLiteral": -0.5
+        },
+        {
+          "FloatLiteral": 10000000000
         }
       ]
     },
     "DecimalLiteral": {
-      "type": "array",
-      "items": [
+      "type": "object",
+      "required": [
+        "DecimalLiteral"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "DecimalLiteral": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "required": [
+                "value"
+              ],
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "description": "Arbitrary-precision decimal literal (stored as string for precision).\nCompact: { \"DecimalLiteral\": \"123.456789012345678901234567890\" }\nExpanded: { \"DecimalLiteral\": { \"value\": \"123.456789012345678901234567890\" } }\n",
+      "examples": [
         {
-          "const": "DecimalLiteral"
+          "DecimalLiteral": "123456789.987654321"
         },
         {
-          "type": "string"
+          "DecimalLiteral": "0.000000000000000001"
         }
       ]
     },

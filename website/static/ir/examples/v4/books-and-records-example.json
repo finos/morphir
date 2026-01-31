@@ -1,0 +1,211 @@
+{
+    "formatVersion": "4.0.0",
+    "distribution": {
+        "Library": {
+            "packageName": "morphir/reference/model",
+            "dependencies": {
+                "morphir/sdk": {
+                    "modules": {
+                        "basics": {
+                            "types": {
+                                "int": {
+                                    "OpaqueTypeSpecification": {}
+                                },
+                                "float": {
+                                    "OpaqueTypeSpecification": {}
+                                },
+                                "bool": {
+                                    "OpaqueTypeSpecification": {}
+                                }
+                            },
+                            "values": {}
+                        },
+                        "string": {
+                            "types": {
+                                "string": {
+                                    "OpaqueTypeSpecification": {}
+                                }
+                            },
+                            "values": {}
+                        },
+                        "dict": {
+                            "types": {
+                                "dict": {
+                                    "TypeAliasSpecification": {
+                                        "typeParams": [
+                                            "k",
+                                            "v"
+                                        ],
+                                        "typeExp": [
+                                            "morphir/sdk:dict#dict",
+                                            "k",
+                                            "v"
+                                        ]
+                                    }
+                                }
+                            },
+                            "values": {}
+                        }
+                    }
+                }
+            },
+            "def": {
+                "modules": {
+                    "books-and-records": {
+                        "Public": {
+                            "types": {
+                                "product-(i-d)": {
+                                    "Public": {
+                                        "TypeAliasDefinition": {
+                                            "typeParams": [],
+                                            "typeExp": "morphir/sdk:string#string"
+                                        }
+                                    }
+                                },
+                                "price": {
+                                    "Public": {
+                                        "TypeAliasDefinition": {
+                                            "typeParams": [],
+                                            "typeExp": "morphir/sdk:basics#float"
+                                        }
+                                    }
+                                },
+                                "quantity": {
+                                    "Public": {
+                                        "TypeAliasDefinition": {
+                                            "typeParams": [],
+                                            "typeExp": "morphir/sdk:basics#int"
+                                        }
+                                    }
+                                },
+                                "deal": {
+                                    "Public": {
+                                        "TypeAliasDefinition": {
+                                            "typeParams": [],
+                                            "typeExp": {
+                                                "Record": {
+                                                    "product": "morphir/reference/model:books-and-records#product-(i-d)",
+                                                    "price": "morphir/reference/model:books-and-records#price",
+                                                    "quantity": "morphir/reference/model:books-and-records#quantity"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "deal-cmd": {
+                                    "Public": {
+                                        "CustomTypeDefinition": {
+                                            "typeParams": [],
+                                            "accessControlledConstructors": {
+                                                "Public": {
+                                                    "open-deal": {
+                                                        "product": "morphir/reference/model:books-and-records#product-(i-d)",
+                                                        "price": "morphir/reference/model:books-and-records#price",
+                                                        "quantity": "morphir/reference/model:books-and-records#quantity"
+                                                    },
+                                                    "close-deal": {
+                                                        "product": "morphir/reference/model:books-and-records#product-(i-d)"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "deal-event": {
+                                    "Public": {
+                                        "CustomTypeDefinition": {
+                                            "typeParams": [],
+                                            "accessControlledConstructors": {
+                                                "Public": {
+                                                    "deal-opened": {
+                                                        "product": "morphir/reference/model:books-and-records#product-(i-d)",
+                                                        "price": "morphir/reference/model:books-and-records#price",
+                                                        "quantity": "morphir/reference/model:books-and-records#quantity"
+                                                    },
+                                                    "deal-closed": {
+                                                        "product": "morphir/reference/model:books-and-records#product-(i-d)"
+                                                    },
+                                                    "deal-not-found": {
+                                                        "product": "morphir/reference/model:books-and-records#product-(i-d)"
+                                                    },
+                                                    "duplicate-deal": {
+                                                        "product": "morphir/reference/model:books-and-records#product-(i-d)"
+                                                    },
+                                                    "invalid-price": {
+                                                        "price": "morphir/reference/model:books-and-records#price"
+                                                    },
+                                                    "invalid-quantity": {
+                                                        "quantity": "morphir/reference/model:books-and-records#quantity"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "book": {
+                                    "Public": {
+                                        "TypeAliasDefinition": {
+                                            "typeParams": [],
+                                            "typeExp": [
+                                                "morphir/sdk:dict#dict",
+                                                "morphir/reference/model:books-and-records#product-(i-d)",
+                                                "morphir/reference/model:books-and-records#deal"
+                                            ]
+                                        }
+                                    }
+                                }
+                            },
+                            "values": {
+                                "open-deal": {
+                                    "Public": {
+                                        "ExpressionBody": {
+                                            "inputTypes": {
+                                                "product": "morphir/reference/model:books-and-records#product-(i-d)",
+                                                "price": "morphir/reference/model:books-and-records#price",
+                                                "quantity": "morphir/reference/model:books-and-records#quantity",
+                                                "book": "morphir/reference/model:books-and-records#book"
+                                            },
+                                            "outputType": [
+                                                "Tuple",
+                                                "morphir/reference/model:books-and-records#book",
+                                                "morphir/reference/model:books-and-records#deal-event"
+                                            ],
+                                            "body": {
+                                                "Hole": {
+                                                    "attributes": {},
+                                                    "message": "Implementation pending"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "close-deal": {
+                                    "Public": {
+                                        "ExpressionBody": {
+                                            "inputTypes": {
+                                                "product": "morphir/reference/model:books-and-records#product-(i-d)",
+                                                "book": "morphir/reference/model:books-and-records#book"
+                                            },
+                                            "outputType": [
+                                                "Tuple",
+                                                "morphir/reference/model:books-and-records#book",
+                                                "morphir/reference/model:books-and-records#deal-event"
+                                            ],
+                                            "body": {
+                                                "Hole": {
+                                                    "attributes": {},
+                                                    "message": "Implementation pending"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "doc": "Books and Records module - manages deal lifecycle including opening, closing, and tracking deals."
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

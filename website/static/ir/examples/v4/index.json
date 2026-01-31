@@ -1,0 +1,17 @@
+{
+    "version": "v4",
+    "examples": [
+        {
+            "id": "books-and-records",
+            "label": "Books & Records",
+            "file": "books-and-records-example.json",
+            "description": "Complete domain model with types and functions"
+        },
+        {
+            "id": "complete",
+            "label": "Complete Example",
+            "file": "complete-example.json",
+            "description": "Comprehensive v4 IR example"
+        }
+    ]
+}

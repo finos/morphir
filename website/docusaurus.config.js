@@ -1,7 +1,7 @@
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
 
-const {themes: prismThemes} = require('prism-react-renderer');
+const { themes: prismThemes } = require('prism-react-renderer');
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -34,7 +34,11 @@ const config = {
       }),
     ],
   ],
-  plugins: [require.resolve("@cmfcmf/docusaurus-search-local")],
+  plugins: [
+    require.resolve("@cmfcmf/docusaurus-search-local"),
+    require.resolve("./plugins/dynamic-routes"),
+    require.resolve("./plugins/worker-chunk-js"),
+  ],
   themes: ["docusaurus-json-schema-plugin"],
   stylesheets: [
     {

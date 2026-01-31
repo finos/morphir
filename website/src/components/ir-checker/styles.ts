@@ -1,6 +1,9 @@
 /**
  * Generate styles object for IR Checker components
  */
+
+import type { CreateStylesParams, IRCheckerStyles } from './types';
+
 export function createStyles({
   colorMode,
   sidebarWidth,
@@ -8,7 +11,7 @@ export function createStyles({
   isDragging,
   isDraggingXray,
   validationResult,
-}) {
+}: CreateStylesParams): IRCheckerStyles {
   return {
     container: {
       display: 'flex',

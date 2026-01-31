@@ -307,6 +307,7 @@ pub type ValueDefinition(attributes) {
 /// Value specification - the public interface (signature only, no implementation)
 pub type ValueSpecification(attributes) {
   ValueSpecification(
+    annotations: List(Annotation),
     inputs: List(#(Name, Type(attributes))),
     output: Type(attributes),
   )
@@ -452,10 +453,16 @@ V4 follows a **permissive input, canonical output** policy for LiteralPattern.
 
 | Format | Example | Notes |
 |--------|---------|-------|
-| **Canonical** | `{ "LiteralPattern": { "IntegerLiteral": 42 } }` | Compact literal |
+| **Ultra-compact** | `{ "LiteralPattern": 42 }` | Direct primitive value |
+| Canonical | `{ "LiteralPattern": { "IntegerLiteral": 42 } }` | Compact literal |
 | Expanded | `{ "LiteralPattern": { "literal": { "IntegerLiteral": { "value": 42 } } } }` | Full form |
 
 ```json
+// Ultra-compact (most ergonomic)
+{ "LiteralPattern": 42 }
+{ "LiteralPattern": "hello" }
+{ "LiteralPattern": true }
+
 // Canonical (encoders should output this)
 { "LiteralPattern": { "IntegerLiteral": 42 } }
 { "LiteralPattern": { "StringLiteral": "hello" } }
@@ -465,7 +472,25 @@ V4 follows a **permissive input, canonical output** policy for LiteralPattern.
 { "LiteralPattern": { "literal": { "IntegerLiteral": { "value": 42 } } } }
 ```
 
-### Value Expression Examples
+### Value Shorthand
+
+V4 supports compact shorthand for value expressions when attributes are empty.
+
+| Type | Shorthand | Canonical | Notes |
+|------|-----------|-----------|-------|
+| Bool | `true` | `{"Literal": {"BoolLiteral": true}}` | |
+| Number | `42` | `{"Literal": {"IntegerLiteral": 42}}` | |
+| Reference | `"pkg:mod#val"` | `{"Reference": "pkg:mod#val"}` | If string matches FQName pattern |
+| Variable | `"name"` | `{"Variable": "name"}` | If string matches Name pattern |
+| List | `[v1, v2]` | `{"List": [v1, v2]}` | |
+
+:::note Disambiguation
+- Strings are first checked against the **FQName** pattern.
+- If it doesn't match, it's checked against the **Name** pattern for a `Variable`.
+- **String Literals** and **Tuples** must always use explicit wrappers to avoid ambiguity.
+:::
+
+#### Value Expression Examples
 
 #### Literal
 

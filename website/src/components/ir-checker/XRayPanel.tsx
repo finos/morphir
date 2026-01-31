@@ -1,9 +1,23 @@
 import React from 'react';
 import { XRayTreeNode } from './XRayTreeNode';
+import type { IRCheckerStyles } from './types';
 
-// Maximum depth to render for large files
 const MAX_DEPTH_LARGE_FILE = 5;
 const MAX_DEPTH_NORMAL = 50;
+
+interface XRayPanelProps {
+  colorMode: 'dark' | 'light';
+  parsedJson: unknown;
+  jsonInput: string;
+  expandedNodes: Record<string, boolean>;
+  toggleNode: (nodeId: string) => void;
+  onSelectNode: (path: string) => void;
+  onExpandAll: () => void;
+  onCollapseAll: () => void;
+  onClose: () => void;
+  styles: IRCheckerStyles;
+  isLargeFile?: boolean;
+}
 
 /**
  * XRay Panel component for displaying parsed JSON structure
@@ -20,7 +34,7 @@ export function XRayPanel({
   onClose,
   styles,
   isLargeFile = false,
-}) {
+}: XRayPanelProps): React.ReactElement {
   const maxDepth = isLargeFile ? MAX_DEPTH_LARGE_FILE : MAX_DEPTH_NORMAL;
 
   return (
@@ -80,7 +94,7 @@ export function XRayPanel({
             ⚠️ Large file: Tree depth limited to {maxDepth} levels
           </div>
         )}
-        {parsedJson ? (
+        {parsedJson != null ? (
           <XRayTreeNode
             name="root"
             value={parsedJson}

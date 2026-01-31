@@ -1,4 +1,18 @@
 import React from 'react';
+import type { IRCheckerStyles, ValidationError } from './types';
+
+interface ValidationCardProps {
+  id: string;
+  type: 'info' | 'success' | 'error';
+  title: string;
+  icon: string;
+  meta?: string | null;
+  children?: React.ReactNode;
+  isExpanded: boolean;
+  onToggle: (id: string) => void;
+  styles: IRCheckerStyles;
+  colorMode: 'dark' | 'light';
+}
 
 /**
  * Collapsible card component for validation results
@@ -13,8 +27,7 @@ export function ValidationCard({
   isExpanded,
   onToggle,
   styles,
-  colorMode,
-}) {
+}: ValidationCardProps): React.ReactElement {
   return (
     <div style={styles.card(type)}>
       <div style={styles.cardHeader} onClick={() => onToggle(id)}>
@@ -25,7 +38,7 @@ export function ValidationCard({
           }}>▶</span>
           <span>{icon}</span> {title}
         </span>
-        {meta && <span style={styles.cardMeta}>{meta}</span>}
+        {meta != null && meta !== '' && <span style={styles.cardMeta}>{meta}</span>}
       </div>
       {isExpanded && (
         <div style={styles.cardBody}>
@@ -34,6 +47,16 @@ export function ValidationCard({
       )}
     </div>
   );
+}
+
+interface ErrorCardProps {
+  error: ValidationError;
+  index: number;
+  isExpanded: boolean;
+  onToggle: (id: string) => void;
+  onNavigateToPath: (path: string) => void;
+  styles: IRCheckerStyles;
+  colorMode: 'dark' | 'light';
 }
 
 /**
@@ -47,10 +70,10 @@ export function ErrorCard({
   onNavigateToPath,
   styles,
   colorMode,
-}) {
+}: ErrorCardProps): React.ReactElement {
   const title = error.type === 'parse' ? 'Parse Error' :
                 error.type === 'schema' ? 'Schema Error' : 'Error';
-  const meta = error.line ? `Line ${error.line}` : null;
+  const meta = error.line != null ? `Line ${error.line}` : null;
 
   return (
     <ValidationCard
@@ -65,18 +88,18 @@ export function ErrorCard({
       colorMode={colorMode}
     >
       {error.message}
-      {error.path && error.path !== '/' && (
+      {error.path != null && error.path !== '/' && (
         <div style={{ marginTop: '0.5rem' }}>
           <span
             style={styles.pathLink}
-            onClick={(e) => { e.stopPropagation(); onNavigateToPath(error.path); }}
+            onClick={(e) => { e.stopPropagation(); onNavigateToPath(error.path!); }}
             title="Click to highlight in editor"
           >
             {error.path}
           </span>
         </div>
       )}
-      {error.keyword && (
+      {error.keyword != null && (
         <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: colorMode === 'dark' ? '#888' : '#666' }}>
           Rule: {error.keyword}
         </div>

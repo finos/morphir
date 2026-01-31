@@ -45,8 +45,7 @@ definitions:
     description: |
       A Name is a list of lowercase words that represents a human-readable identifier.
       Each word is either a lowercase letter followed by lowercase letters/digits,
-      or a standalone numeric sequence (compatible with morphir-elm word extraction).
-      Example: ["value", "in", "u", "s", "d"] can be rendered as valueInUSD or value_in_USD.
+      or a standalone numeric sequence.
   
   Path:
     type: array
@@ -55,7 +54,6 @@ definitions:
     minItems: 1
     description: |
       A Path is a list of Names representing a hierarchical location in the IR structure.
-      Used for package names and module names.
   
   PackageName:
     $ref: "#/definitions/Path"
@@ -80,24 +78,30 @@ definitions:
   # ===== Attributes =====
   
   Attributes:
-    type: object
+    oneOf:
+      - type: object
+      - $ref: "#/definitions/Type"
     description: |
       Attributes can be attached to various nodes in the IR for extensibility.
-      When no additional information is needed, an empty object {} is used.
+      In many distributions (like those from morphir-elm), expressions are annotated
+      with their inferred types in the attributes field.
   
   # ===== Access Control =====
   
+  AccessLevel:
+    type: string
+    enum: ["Public", "Private"]
+    description: "Controls visibility. Strictly PascalCase to match morphir-elm output."
+
   AccessControlled:
     type: object
     required: ["access", "value"]
     properties:
       access:
-        type: string
-        enum: ["Public", "Private"]
-        description: "Controls visibility of types and values."
+        $ref: "#/definitions/AccessLevel"
       value:
         description: "The value being access controlled."
-    description: "Wrapper that manages visibility of types and values."
+    description: "Wrapper that manages visibility. Strictly object {access, value} form in V3."
   
   # Note: Documented is not a separate schema definition because it's encoded conditionally.
   # When documentation exists, the JSON has both "doc" and "value" fields.
@@ -171,16 +175,14 @@ definitions:
                 - $ref: "#/definitions/AccessControlled"
                 - properties:
                     value:
-                      # Documented wrapper: can have "doc" and "value", or just the type definition directly
-                      oneOf:
-                        - type: object
-                          required: ["doc", "value"]
-                          properties:
-                            doc:
-                              type: string
-                            value:
-                              $ref: "#/definitions/TypeDefinition"
-                        - $ref: "#/definitions/TypeDefinition"
+                      # Documented wrapper: strictly an object with "doc" and "value"
+                      type: object
+                      required: ["doc", "value"]
+                      properties:
+                        doc:
+                          type: [string, "null"]
+                        value:
+                          $ref: "#/definitions/TypeDefinition"
         description: "All type definitions (public and private)."
       values:
         type: array
@@ -194,19 +196,17 @@ definitions:
                 - $ref: "#/definitions/AccessControlled"
                 - properties:
                     value:
-                      # Documented wrapper: can have "doc" and "value", or just the value definition directly
-                      oneOf:
-                        - type: object
-                          required: ["doc", "value"]
-                          properties:
-                            doc:
-                              type: string
-                            value:
-                              $ref: "#/definitions/ValueDefinition"
-                        - $ref: "#/definitions/ValueDefinition"
+                      # Documented wrapper: strictly an object with "doc" and "value"
+                      type: object
+                      required: ["doc", "value"]
+                      properties:
+                        doc:
+                          type: [string, "null"]
+                        value:
+                          $ref: "#/definitions/ValueDefinition"
         description: "All value definitions (public and private)."
       doc:
-        type: string
+        type: [string, "null"]
         description: "Optional documentation for the module."
     description: "Complete implementation of a module."
   
@@ -222,15 +222,13 @@ definitions:
           maxItems: 2
           items:
             - $ref: "#/definitions/Name"
-            - oneOf:
-                - type: object
-                  required: ["doc", "value"]
-                  properties:
-                    doc:
-                      type: string
-                    value:
-                      $ref: "#/definitions/TypeSpecification"
-                - $ref: "#/definitions/TypeSpecification"
+            - type: object
+              required: ["doc", "value"]
+              properties:
+                doc:
+                  type: [string, "null"]
+                value:
+                  $ref: "#/definitions/TypeSpecification"
         description: "Public type specifications only."
       values:
         type: array
@@ -240,18 +238,16 @@ definitions:
           maxItems: 2
           items:
             - $ref: "#/definitions/Name"
-            - oneOf:
-                - type: object
-                  required: ["doc", "value"]
-                  properties:
-                    doc:
-                      type: string
-                    value:
-                      $ref: "#/definitions/ValueSpecification"
-                - $ref: "#/definitions/ValueSpecification"
+            - type: object
+              required: ["doc", "value"]
+              properties:
+                doc:
+                  type: [string, "null"]
+                value:
+                  $ref: "#/definitions/ValueSpecification"
         description: "Public value specifications only."
       doc:
-        type: string
+        type: [string, "null"]
         description: "Optional documentation for the module."
     description: "Public interface of a module."
   
@@ -278,7 +274,7 @@ definitions:
       - const: "Variable"
       - $ref: "#/definitions/Attributes"
       - $ref: "#/definitions/Name"
-    description: "Represents a type variable (generic parameter)."
+    description: "A type variable (e.g., 'a' in List a)."
   
   ReferenceType:
     type: array
@@ -292,7 +288,7 @@ definitions:
         items:
           $ref: "#/definitions/Type"
         description: "Type arguments for generic types."
-    description: "Reference to another type or type alias."
+    description: "Reference to a named type (e.g., String or List Int)."
   
   TupleType:
     type: array

@@ -1,10 +1,21 @@
-import { useCallback } from 'react';
+import { useCallback, RefObject } from 'react';
+
+/** Minimal Monaco editor interface for navigation (avoids full monaco-editor types) */
+export interface IStandaloneCodeEditorRef {
+  getModel(): { getValue(): string } | null;
+  setSelection(selection: { startLineNumber: number; startColumn: number; endLineNumber: number; endColumn: number }): void;
+  revealLineInCenter(lineNumber: number): void;
+  focus(): void;
+}
 
 /**
  * Hook for navigating to JSON paths in the Monaco editor
  */
-export function useJsonNavigation(editorRef, jsonInput) {
-  const navigateToPath = useCallback((path) => {
+export function useJsonNavigation(
+  editorRef: RefObject<IStandaloneCodeEditorRef | null>,
+  jsonInput: string
+): { navigateToPath: (path: string) => void } {
+  const navigateToPath = useCallback((path: string) => {
     if (!editorRef.current || !path || path === '/') return;
 
     const editor = editorRef.current;
@@ -25,7 +36,7 @@ export function useJsonNavigation(editorRef, jsonInput) {
 
       if (isArrayIndex) {
         // For array indices, find the nth element after current position
-        const index = parseInt(segment);
+        const index = parseInt(segment, 10);
         let bracketDepth = 0;
         let elementCount = 0;
         let foundStart = false;
@@ -69,7 +80,7 @@ export function useJsonNavigation(editorRef, jsonInput) {
         // For object keys, search for the key name
         const keyPattern = new RegExp(`"${segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"\\s*:`);
         const match = text.substring(searchPos).match(keyPattern);
-        if (match) {
+        if (match && match.index !== undefined) {
           searchPos = searchPos + match.index + match[0].length;
           // Skip whitespace to get to the value
           while (searchPos < text.length && /\s/.test(text[searchPos])) {

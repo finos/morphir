@@ -1,5 +1,18 @@
 import React from 'react';
 import { morphirNodeTypes } from './constants';
+import type { IRCheckerStyles } from './types';
+
+interface XRayTreeNodeProps {
+  name: string;
+  value: unknown;
+  depth?: number;
+  maxDepth?: number;
+  colorMode: 'dark' | 'light';
+  expandedNodes: Record<string, boolean>;
+  toggleNode: (nodeId: string) => void;
+  path: string;
+  onSelectNode?: (path: string) => void;
+}
 
 /**
  * Recursive tree node component for displaying JSON structure in XRay view
@@ -14,23 +27,23 @@ export function XRayTreeNode({
   toggleNode,
   path,
   onSelectNode
-}) {
+}: XRayTreeNodeProps): React.ReactElement {
   const nodeId = path;
   const isExpanded = expandedNodes[nodeId] !== false; // Default to expanded
-  const hasChildren = value !== null && typeof value === 'object' && Object.keys(value).length > 0;
+  const hasChildren = value !== null && typeof value === 'object' && Object.keys(value as object).length > 0;
   const isArray = Array.isArray(value);
   const isAtMaxDepth = depth >= maxDepth;
 
   // Determine node type and color
-  const getNodeStyle = () => {
+  const getNodeStyle = (): { bg: string; label: string } => {
     if (value === null) return { bg: '#f5f5f5', label: 'null' };
     if (typeof value === 'string') return { bg: '#e3f2fd', label: 'String' };
     if (typeof value === 'number') return { bg: '#fff3e0', label: 'Number' };
     if (typeof value === 'boolean') return { bg: '#fce4ec', label: 'Boolean' };
-    if (isArray) return { bg: '#e8f5e9', label: `Array[${value.length}]` };
+    if (isArray) return { bg: '#e8f5e9', label: `Array[${(value as unknown[]).length}]` };
 
     // Check for Morphir IR specific patterns
-    const keys = Object.keys(value);
+    const keys = Object.keys(value as object);
     if (keys.length === 1) {
       const key = keys[0];
       if (morphirNodeTypes.includes(key)) {
@@ -43,15 +56,15 @@ export function XRayTreeNode({
   const nodeStyle = getNodeStyle();
   const indent = depth * 16;
 
-  const baseStyle = {
+  const baseStyle: React.CSSProperties = {
     fontFamily: 'monospace',
     fontSize: '0.8rem',
     marginLeft: `${indent}px`,
     marginBottom: '2px',
   };
 
-  const getDarkBgColor = (lightBg) => {
-    const colorMap = {
+  const getDarkBgColor = (lightBg: string): string => {
+    const colorMap: Record<string, string> = {
       '#e3f2fd': '#1e3a5f',
       '#fff3e0': '#4a3000',
       '#fce4ec': '#4a1a2c',
@@ -60,10 +73,10 @@ export function XRayTreeNode({
       '#f3e5f5': '#2a1a3a',
       '#f5f5f5': '#2a2a2a',
     };
-    return colorMap[lightBg] || '#2a2a2a';
+    return colorMap[lightBg] ?? '#2a2a2a';
   };
 
-  const headerStyle = {
+  const headerStyle: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
     padding: '2px 6px',
@@ -73,13 +86,13 @@ export function XRayTreeNode({
     borderLeft: `3px solid ${colorMode === 'dark' ? '#666' : '#999'}`,
   };
 
-  const labelStyle = {
+  const labelStyle: React.CSSProperties = {
     color: colorMode === 'dark' ? '#aaa' : '#666',
     fontSize: '0.7rem',
     marginLeft: '8px',
   };
 
-  const renderValue = () => {
+  const renderValue = (): React.ReactNode => {
     if (value === null) return <span style={{ color: '#999' }}>null</span>;
     if (typeof value === 'string') return <span style={{ color: colorMode === 'dark' ? '#98c379' : '#22863a' }}>"{value}"</span>;
     if (typeof value === 'number') return <span style={{ color: colorMode === 'dark' ? '#d19a66' : '#005cc5' }}>{value}</span>;
@@ -90,23 +103,21 @@ export function XRayTreeNode({
   const toggleIcon = hasChildren ? (isExpanded ? '▼' : '▶') : '•';
 
   // Convert internal path to JSON path format (remove 'root' prefix)
-  const getJsonPath = () => {
+  const getJsonPath = (): string => {
     const jsonPath = path.replace(/^root/, '').replace(/\/(\d+)/g, '/$1');
     return jsonPath || '/';
   };
 
-  const handleClick = (e) => {
-    // If clicking on the toggle icon area, just toggle expand/collapse
-    if (hasChildren && e.target.closest('.xray-toggle')) {
+  const handleClick = (e: React.MouseEvent): void => {
+    const target = e.target as HTMLElement;
+    if (hasChildren && target.closest('.xray-toggle')) {
       toggleNode(nodeId);
       return;
     }
-    // Otherwise, navigate to the node in the editor
-    onSelectNode && onSelectNode(getJsonPath());
+    onSelectNode?.(getJsonPath());
   };
 
-  const handleDoubleClick = () => {
-    // Double-click toggles expand/collapse for nodes with children
+  const handleDoubleClick = (): void => {
     if (hasChildren) {
       toggleNode(nodeId);
     }
@@ -138,7 +149,7 @@ export function XRayTreeNode({
       {hasChildren && isExpanded && !isAtMaxDepth && (
         <div>
           {isArray ? (
-            value.map((item, index) => (
+            (value as unknown[]).map((item, index) => (
               <XRayTreeNode
                 key={index}
                 name={`[${index}]`}
@@ -153,7 +164,7 @@ export function XRayTreeNode({
               />
             ))
           ) : (
-            Object.entries(value).map(([key, val]) => (
+            Object.entries(value as object).map(([key, val]) => (
               <XRayTreeNode
                 key={key}
                 name={key}

@@ -45,7 +45,7 @@
         "pattern": "^([a-z][a-z0-9]*|[0-9]+)$"
       },
       "minItems": 1,
-      "description": "A Name is a list of lowercase words that represents a human-readable identifier.\nEach word is either a lowercase letter followed by lowercase letters/digits,\nor a standalone numeric sequence (compatible with morphir-elm word extraction).\nExample: [\"value\", \"in\", \"u\", \"s\", \"d\"] can be rendered as valueInUSD or value_in_USD.\n"
+      "description": "A Name is a list of lowercase words that represents a human-readable identifier.\nEach word is either a lowercase letter followed by lowercase letters/digits,\nor a standalone numeric sequence.\n"
     },
     "Path": {
       "type": "array",
@@ -53,7 +53,7 @@
         "$ref": "#/definitions/Name"
       },
       "minItems": 1,
-      "description": "A Path is a list of Names representing a hierarchical location in the IR structure.\nUsed for package names and module names.\n"
+      "description": "A Path is a list of Names representing a hierarchical location in the IR structure.\n"
     },
     "PackageName": {
       "$ref": "#/definitions/Path",
@@ -81,8 +81,23 @@
       "description": "Fully-Qualified Name that provides a globally unique identifier for any type or value.\nConsists of [packagePath, modulePath, localName].\n"
     },
     "Attributes": {
-      "type": "object",
-      "description": "Attributes can be attached to various nodes in the IR for extensibility.\nWhen no additional information is needed, an empty object {} is used.\n"
+      "oneOf": [
+        {
+          "type": "object"
+        },
+        {
+          "$ref": "#/definitions/Type"
+        }
+      ],
+      "description": "Attributes can be attached to various nodes in the IR for extensibility.\nIn many distributions (like those from morphir-elm), expressions are annotated\nwith their inferred types in the attributes field.\n"
+    },
+    "AccessLevel": {
+      "type": "string",
+      "enum": [
+        "Public",
+        "Private"
+      ],
+      "description": "Controls visibility. Strictly PascalCase to match morphir-elm output."
     },
     "AccessControlled": {
       "type": "object",
@@ -92,18 +107,13 @@
       ],
       "properties": {
         "access": {
-          "type": "string",
-          "enum": [
-            "Public",
-            "Private"
-          ],
-          "description": "Controls visibility of types and values."
+          "$ref": "#/definitions/AccessLevel"
         },
         "value": {
           "description": "The value being access controlled."
         }
       },
-      "description": "Wrapper that manages visibility of types and values."
+      "description": "Wrapper that manages visibility. Strictly object {access, value} form in V3."
     },
     "Dependencies": {
       "type": "array",
@@ -210,26 +220,22 @@
                   {
                     "properties": {
                       "value": {
-                        "oneOf": [
-                          {
-                            "type": "object",
-                            "required": [
-                              "doc",
-                              "value"
-                            ],
-                            "properties": {
-                              "doc": {
-                                "type": "string"
-                              },
-                              "value": {
-                                "$ref": "#/definitions/TypeDefinition"
-                              }
-                            }
+                        "type": "object",
+                        "required": [
+                          "doc",
+                          "value"
+                        ],
+                        "properties": {
+                          "doc": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
-                          {
+                          "value": {
                             "$ref": "#/definitions/TypeDefinition"
                           }
-                        ]
+                        }
                       }
                     }
                   }
@@ -257,26 +263,22 @@
                   {
                     "properties": {
                       "value": {
-                        "oneOf": [
-                          {
-                            "type": "object",
-                            "required": [
-                              "doc",
-                              "value"
-                            ],
-                            "properties": {
-                              "doc": {
-                                "type": "string"
-                              },
-                              "value": {
-                                "$ref": "#/definitions/ValueDefinition"
-                              }
-                            }
+                        "type": "object",
+                        "required": [
+                          "doc",
+                          "value"
+                        ],
+                        "properties": {
+                          "doc": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
-                          {
+                          "value": {
                             "$ref": "#/definitions/ValueDefinition"
                           }
-                        ]
+                        }
                       }
                     }
                   }
@@ -287,7 +289,10 @@
           "description": "All value definitions (public and private)."
         },
         "doc": {
-          "type": "string",
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "Optional documentation for the module."
         }
       },
@@ -311,26 +316,22 @@
                 "$ref": "#/definitions/Name"
               },
               {
-                "oneOf": [
-                  {
-                    "type": "object",
-                    "required": [
-                      "doc",
-                      "value"
-                    ],
-                    "properties": {
-                      "doc": {
-                        "type": "string"
-                      },
-                      "value": {
-                        "$ref": "#/definitions/TypeSpecification"
-                      }
-                    }
+                "type": "object",
+                "required": [
+                  "doc",
+                  "value"
+                ],
+                "properties": {
+                  "doc": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   },
-                  {
+                  "value": {
                     "$ref": "#/definitions/TypeSpecification"
                   }
-                ]
+                }
               }
             ]
           },
@@ -347,33 +348,32 @@
                 "$ref": "#/definitions/Name"
               },
               {
-                "oneOf": [
-                  {
-                    "type": "object",
-                    "required": [
-                      "doc",
-                      "value"
-                    ],
-                    "properties": {
-                      "doc": {
-                        "type": "string"
-                      },
-                      "value": {
-                        "$ref": "#/definitions/ValueSpecification"
-                      }
-                    }
+                "type": "object",
+                "required": [
+                  "doc",
+                  "value"
+                ],
+                "properties": {
+                  "doc": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   },
-                  {
+                  "value": {
                     "$ref": "#/definitions/ValueSpecification"
                   }
-                ]
+                }
               }
             ]
           },
           "description": "Public value specifications only."
         },
         "doc": {
-          "type": "string",
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "Optional documentation for the module."
         }
       },
@@ -420,7 +420,7 @@
           "$ref": "#/definitions/Name"
         }
       ],
-      "description": "Represents a type variable (generic parameter)."
+      "description": "A type variable (e.g., 'a' in List a)."
     },
     "ReferenceType": {
       "type": "array",
@@ -444,7 +444,7 @@
           "description": "Type arguments for generic types."
         }
       ],
-      "description": "Reference to another type or type alias."
+      "description": "Reference to a named type (e.g., String or List Int)."
     },
     "TupleType": {
       "type": "array",

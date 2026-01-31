@@ -27,7 +27,7 @@ function HomepageHeader() {
 				<p className='hero__subtitle'>{siteConfig.tagline}</p>
 
 				<div className={styles.buttons}>
-					<a href='https://resources.finos.org/znglist/morphir/' class='button button--secondary'>
+					<a href='https://resources.finos.org/znglist/morphir/' className='button button--secondary'>
 						Get To Know Morphir
 					</a>
 				</div>

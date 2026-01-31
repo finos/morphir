@@ -57,26 +57,32 @@ V4 supports compact string representations for Names, Paths, and FQNames:
 **Name:**
 ```
 Array:  ["value", "in", "u", "s", "d"]
-String: "value-in-u-s-d"
+String: "value-in-(usd)"
 ```
 
 **Path:**
 ```
-Array:  [["morphir"], ["s", "d", "k"]]
-String: "morphir/s-d-k"
+Array:  [["morphir"], ["sdk"]]
+String: "morphir/sdk"
 ```
 
 **FQName:**
 ```
-Array:  [[["morphir"], ["s","d","k"]], [["list"]], ["map"]]
-String: "morphir/s-d-k:list#map"
+Array:  [["morphir/sdk"], ["list"], ["map"]]
+String: "morphir/sdk:list#map"
+```
+
+**Annotations:**
+V4 introduces structured annotations for semantic metadata:
+```json
+"annotations": ["morphir/sdk:annotations#stable"]
 ```
 
 **Benefits:**
 - 30% smaller IR files
 - More readable references
-- Faster parsing
-- Better error messages
+- Metadata for signatures via Annotations
+- Better tooling support
 
 ### Embedded Documentation
 
@@ -84,18 +90,16 @@ V4 supports inline documentation for types and values:
 
 ```json
 {
-  "types": [
-    [
-      ["user", "id"],
-      {
-        "access": "Public",
-        "value": {
-          "doc": "Unique identifier for a user in the system",
-          "value": ["TypeAliasSpecification", [], [...]]
-        }
+  "types": {
+    "user-id": {
+      "access": "Public",
+      "doc": "Unique identifier for a user in the system",
+      "TypeAliasSpecification": {
+        "typeParams": [],
+        "typeExp": "morphir/sdk:string#string"
       }
-    ]
-  ]
+    }
+  }
 }
 ```
 
@@ -116,12 +120,19 @@ V4 introduces several new value expression types:
 -- Elm code
 List.map Just [1, 2, 3]
 
--- V4 IR
-["Apply", {},
-  ["Apply", {},
-    ["Reference", {}, "morphir/s-d-k:list#map"],
-    ["Constructor", {}, "morphir/s-d-k:maybe#Just"]],
-  ["List", {}, [...]]]
+-- V4 IR (Compact Canonical)
+```json
+{
+  "Apply": {
+    "function": {
+      "Apply": {
+        "function": "morphir/sdk:list#map",
+        "argument": "morphir/sdk:maybe#Just"
+      }
+    },
+    "argument": [1, 2, 3]
+  }
+}
 ```
 
 ### Module.json Support
@@ -154,24 +165,24 @@ Version 4 supports both array and string formats for names:
 A **Name** represents a human-readable identifier.
 
 - **Array format**: `["value", "in", "u", "s", "d"]`
-- **String format**: `"value-in-u-s-d"`
-- **Pattern**: `^[a-z0-9]+(-[a-z0-9]+|-(\\([a-z]+\\)))*$`
+- **String format**: `"value-in-(usd)"`
+- **Pattern**: `^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$`
 
 #### Path
 
 A **Path** represents a hierarchical location.
 
-- **Array format**: `[["morphir"], ["s", "d", "k"]]`
-- **String format**: `"morphir/s-d-k"`
-- **Pattern**: `^[a-z0-9-()]+(/[a-z0-9-()]+)*$`
+- **Array format**: `[["morphir"], ["sdk"]]`
+- **String format**: `"morphir/sdk"`
+- **Pattern**: `^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*$`
 
 #### FQName
 
 A **Fully-Qualified Name** provides globally unique identifiers.
 
-- **Array format**: `[[pkg], [mod], [name]]`
+- **Array format**: `[pkg, mod, name]`
 - **String format**: `"pkg:mod#name"`
-- **Pattern**: `^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+$`
+- **Pattern**: `^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*:([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*#([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$`
 
 ### Access Control
 
@@ -432,13 +443,13 @@ Same as V3, but with `TypeAttributes`:
 
 ### Type Expressions
 
-- **Variable**: `["Variable", TypeAttributes, name]`
-- **Reference**: `["Reference", TypeAttributes, fqName, typeArgs]`
-- **Tuple**: `["Tuple", TypeAttributes, elementTypes]`
-- **Record**: `["Record", TypeAttributes, fields]`
-- **ExtensibleRecord**: `["ExtensibleRecord", TypeAttributes, variable, fields]`
-- **Function**: `["Function", TypeAttributes, argType, returnType]`
-- **Unit**: `["Unit", TypeAttributes]`
+- **Variable**: `{"Variable": {"name": Name}}`
+- **Reference**: `{"Reference": {"fqname": FQName, "args": [Type]}}`
+- **Tuple**: `{"Tuple": [Type]}`
+- **Record**: `{"Record": {"fieldName": Type}}`
+- **ExtensibleRecord**: `{"ExtensibleRecord": {"variable": Name, "fields": {"fieldName": Type}}}`
+- **Function**: `{"Function": {"argument": Type, "return": Type}}`
+- **Unit**: `{"Unit": {}}`
 
 ### Type Specifications
 
@@ -495,7 +506,7 @@ Same as V3:
 - **BoolLiteral**
 - **CharLiteral**
 - **StringLiteral**
-- **WholeNumberLiteral**
+- **IntegerLiteral**
 - **FloatLiteral**
 - **DecimalLiteral**
 

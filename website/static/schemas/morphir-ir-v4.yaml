@@ -26,7 +26,7 @@ properties:
         description: "Semantic version string (e.g., '4.0.0', '4.0.0-alpha.1')"
         examples: ["4.0.0", "4.0.0-alpha.1", "4.0.0+20240123"]
       - type: integer
-        const: 4
+        minimum: 4
         description: "Legacy integer format for backwards compatibility"
         examples: [4]
   
@@ -43,14 +43,17 @@ properties:
 
 definitions:
   # Basic Types
+  NameString:
+    type: string
+    pattern: "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$"
+    description: |
+      Canonical string representation of a name.
+      Supports kebab-case with parenthesized acronyms (e.g., "(usd)", "my-(api)-client").
+    examples: ["my-name", "user-id", "value-in-(usd)", "price-per-(unit)"]
+
   Name:
     oneOf:
-      - type: string
-        pattern: "^[a-z0-9]+(-[a-z0-9]+|-(\\([a-z]+\\)))*$"
-        description: |
-          Canonical string representation of a name.
-          Supports kebab-case with optional parenthesized units (e.g., "value-in-(usd)").
-        examples: ["my-name", "user-id", "value-in-(usd)", "price-per-(unit)"]
+      - $ref: "#/definitions/NameString"
       - type: array
         items:
           type: string
@@ -59,14 +62,17 @@ definitions:
         description: "Legacy array representation (e.g., [\"my\", \"name\"] for 'my-name')"
         examples: [["my", "name"], ["user", "id"]]
 
+  PathString:
+    type: string
+    pattern: "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*$"
+    description: |
+      Canonical string representation of a path (package or module path).
+      Segments are Names joined by forward slashes.
+    examples: ["morphir/sdk", "my-org/domain/users", "u-s/f-r-2052-a/data-tables"]
+
   Path:
     oneOf:
-      - type: string
-        pattern: "^[a-z0-9-()]+(/[a-z0-9-()]+)*$"
-        description: |
-          Canonical string representation of a path (package or module path).
-          Uses forward slashes to separate path segments.
-        examples: ["morphir/sdk", "my-org/domain/users", "u-s/f-r-2052-a/data-tables"]
+      - $ref: "#/definitions/PathString"
       - type: array
         items: { $ref: "#/definitions/Name" }
         minItems: 1
@@ -85,14 +91,17 @@ definitions:
       Module path within a package. Examples: "basics", "list", "domain/users"
     examples: ["basics", "list", "domain/users", "u-s/f-r-2052-a/data-tables"]
 
+  FQNameString:
+    type: string
+    pattern: "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*:([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*#([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$"
+    description: |
+      Fully-qualified name in canonical string format: "package:module#name"
+      This uniquely identifies a type or value across the entire IR.
+    examples: ["morphir/sdk:list#map", "morphir/sdk:basics#int", "my-org/domain:users#create-user"]
+
   FQName:
     oneOf:
-      - type: string
-        pattern: "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+$"
-        description: |
-          Fully-qualified name in canonical string format: "package:module#name"
-          This uniquely identifies a type or value across the entire IR.
-        examples: ["morphir/sdk:list#map", "morphir/sdk:basics#int", "my-org/domain:users#create-user"]
+      - $ref: "#/definitions/FQNameString"
       - type: array
         minItems: 3
         maxItems: 3
@@ -144,6 +153,44 @@ definitions:
       - {}
       - { source: { startLine: 20, startColumn: 1, endLine: 20, endColumn: 10 } }
       - { source: { startLine: 20, startColumn: 1, endLine: 20, endColumn: 10 }, inferredType: "morphir/sdk:basics#int" }
+
+  # Annotations
+  Annotation:
+    oneOf:
+      - type: string
+        pattern: "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+(:.+)?$"
+        description: |
+          Compact shorthand format for an annotation: "fqname" or "fqname:value".
+          Examples:
+          - "morphir/sdk:annotations#stable"
+          - "my-org/sdk:annotations#deprecated:Use new-version instead"
+      - type: object
+        required: ["name"]
+        properties:
+          name: { $ref: "#/definitions/FQName" }
+          arguments:
+            type: array
+            items: { $ref: "#/definitions/AnnotationArgument" }
+            description: "Arguments to the annotation (positional or named)"
+    description: |
+      Structured annotation on a specification type.
+      Can be a compact string or a canonical object.
+    examples:
+      - "morphir/sdk:annotations#stable"
+      - "my-org/sdk:annotations#deprecated:Use new-version instead"
+      - { "name": "morphir/sdk:annotations#deprecated", "arguments": [{ "Literal": { "StringLiteral": "Use new-version instead" } }] }
+
+  AnnotationArgument:
+    oneOf:
+      - $ref: "#/definitions/Value"
+        description: "Positional argument"
+      - type: object
+        required: ["name", "value"]
+        properties:
+          name: { $ref: "#/definitions/Name" }
+          value: { $ref: "#/definitions/Value" }
+        description: "Named argument"
+    description: "An argument to an annotation, either positional (Value) or named."
 
   # Access Control
   Access:
@@ -428,6 +475,10 @@ definitions:
   ModuleSpecification:
     type: object
     properties:
+      annotations:
+        type: array
+        items: { $ref: "#/definitions/Annotation" }
+        description: "Module-level annotations"
       types:
         type: object
         additionalProperties:
@@ -712,6 +763,9 @@ definitions:
             type: object
             required: ["typeParams", "typeExp"]
             properties:
+              annotations:
+                type: array
+                items: { $ref: "#/definitions/Annotation" }
               typeParams:
                 type: array
                 items: { $ref: "#/definitions/Name" }
@@ -742,11 +796,18 @@ definitions:
             oneOf:
               - type: object
                 properties:
+                  annotations:
+                    type: array
+                    items: { $ref: "#/definitions/Annotation" }
                   typeParams:
                     type: array
                     items: { $ref: "#/definitions/Name" }
               - type: object
                 additionalProperties: false
+                properties:
+                  annotations:
+                    type: array
+                    items: { $ref: "#/definitions/Annotation" }
       # Legacy tagged array format
       - type: array
         items:
@@ -772,6 +833,9 @@ definitions:
             type: object
             required: ["typeParams", "constructors"]
             properties:
+              annotations:
+                type: array
+                items: { $ref: "#/definitions/Annotation" }
               typeParams:
                 type: array
                 items: { $ref: "#/definitions/Name" }
@@ -801,6 +865,9 @@ definitions:
             type: object
             required: ["typeParams", "baseType", "fromBaseType", "toBaseType"]
             properties:
+              annotations:
+                type: array
+                items: { $ref: "#/definitions/Annotation" }
               typeParams:
                 type: array
                 items: { $ref: "#/definitions/Name" }
@@ -971,6 +1038,22 @@ definitions:
   #
   Value:
     oneOf:
+      # Compact shorthands
+      - type: boolean
+        description: "Shorthand for BoolLiteral"
+      - type: number
+        description: "Shorthand for IntegerLiteral or FloatLiteral"
+      - type: string
+        pattern: "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+$"
+        description: "Shorthand for Reference (FQName string)"
+      - type: string
+        pattern: "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$"
+        description: "Shorthand for Variable (Name string)"
+      - type: array
+        items: { $ref: "#/definitions/Value" }
+        description: "Shorthand for List"
+
+      # Canonical wrapper formats
       - $ref: "#/definitions/LiteralValue"
       - $ref: "#/definitions/ConstructorValue"
       - $ref: "#/definitions/TupleValue"
@@ -1530,6 +1613,9 @@ definitions:
     type: object
     required: ["output"]
     properties:
+      annotations:
+        type: array
+        items: { $ref: "#/definitions/Annotation" }
       inputs:
         oneOf:
           # V4 object format (canonical)

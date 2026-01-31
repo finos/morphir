@@ -1,6 +1,19 @@
 import React from 'react';
 import { ValidationCard, ErrorCard } from './ValidationCard';
 import { schemaVersions } from './constants';
+import type { IRCheckerStyles, ValidationResult, SchemaVersionValue } from './types';
+
+interface ValidationSidebarProps {
+  validationResult: ValidationResult | null;
+  selectedVersion: SchemaVersionValue;
+  expandedCards: Record<string, boolean>;
+  onToggleCard: (cardId: string) => void;
+  onExpandAll: () => void;
+  onCollapseAll: () => void;
+  onNavigateToPath: (path: string) => void;
+  styles: IRCheckerStyles;
+  colorMode: 'dark' | 'light';
+}
 
 /**
  * Sidebar component displaying validation results
@@ -15,10 +28,10 @@ export function ValidationSidebar({
   onNavigateToPath,
   styles,
   colorMode,
-}) {
-  const errorCount = validationResult?.errors?.length || 0;
+}: ValidationSidebarProps): React.ReactElement {
+  const errorCount = validationResult?.errors?.length ?? 0;
 
-  const isCardExpanded = (cardId) => {
+  const isCardExpanded = (cardId: string): boolean => {
     if (expandedCards[cardId] === undefined) {
       return cardId.startsWith('error-') || cardId === 'success' || cardId === 'ready';
     }
@@ -46,7 +59,7 @@ export function ValidationSidebar({
 
       <div style={styles.sidebarContent}>
         {/* Ready state */}
-        {!validationResult && (
+        {validationResult == null && (
           <ValidationCard
             id="ready"
             type="info"
@@ -62,7 +75,7 @@ export function ValidationSidebar({
         )}
 
         {/* Success state */}
-        {validationResult?.valid && (
+        {validationResult?.valid === true && (
           <ValidationCard
             id="success"
             type="success"
@@ -106,9 +119,9 @@ export function ValidationSidebar({
                 <strong>Selected:</strong> Version {selectedVersion} ({schemaVersions.find(v => v.value === selectedVersion)?.status})
               </div>
               <div style={{ fontSize: '0.8rem' }}>
-                <a href={`/schemas/morphir-ir-${selectedVersion}.json`} target="_blank" rel="noopener">Download JSON</a>
+                <a href={`/schemas/morphir-ir-${selectedVersion}.json`} target="_blank" rel="noopener noreferrer">Download JSON</a>
                 {' | '}
-                <a href={`/schemas/morphir-ir-${selectedVersion}.yaml`} target="_blank" rel="noopener">Download YAML</a>
+                <a href={`/schemas/morphir-ir-${selectedVersion}.yaml`} target="_blank" rel="noopener noreferrer">Download YAML</a>
               </div>
             </div>
           )}

@@ -89,10 +89,10 @@ const FeatureList: FeatureItem[] = [
 								</>
 							),
 						},
-					].map(({ title, description }) => (
-						<div className='text--left col col--6'>
+					].map(({ title, description }, idx) => (
+						<div key={idx} className='text--left col col--6'>
 							<h3>{title}</h3>
-							<p>{description}</p>
+							<div>{description}</div>
 						</div>
 					))}
 				</section>
@@ -191,7 +191,7 @@ function Feature({ title, description, ...props }: FeatureItem) {
 				)}
 				<div className='padding-horiz--md'>
 					<h2>{title}</h2>
-					<p>{description}</p>
+					<div>{description}</div>
 				</div>
 			</div>
 		</div>
