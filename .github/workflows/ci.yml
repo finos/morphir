@@ -128,6 +128,7 @@ jobs:
         run: cargo build --release --package morphir
 
   # Docs: lightweight job for documentation changes (fast-path)
+  # Note: This job intentionally does NOT install mise to stay fast
   docs:
     name: Docs
     runs-on: ubuntu-latest
@@ -137,11 +138,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Install mise
-        uses: jdx/mise-action@v2
-
       - name: Validate documentation
-        run: mise run ci:validate-docs
+        run: python3 .config/mise/tasks/ci/validate_docs.py
 
   check:
     name: All Checks

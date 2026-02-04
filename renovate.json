@@ -7,12 +7,34 @@
   "prConcurrentLimit": 10,
   "packageRules": [
     {
+      "description": "Group Rust/Cargo dependency updates",
+      "groupName": "rust",
+      "matchManagers": ["cargo"]
+    },
+    {
+      "description": "Group Go module updates",
       "groupName": "go",
       "matchManagers": ["gomod"]
     },
     {
+      "description": "Group npm/Node.js dependency updates",
       "groupName": "npm",
       "matchManagers": ["npm", "pnpm", "yarn"]
+    },
+    {
+      "description": "Group GitHub Actions updates",
+      "groupName": "github-actions",
+      "matchManagers": ["github-actions"]
+    },
+    {
+      "description": "Group mise tool version updates",
+      "groupName": "mise-tools",
+      "matchManagers": ["mise"]
+    },
+    {
+      "description": "Group Docker-related updates",
+      "groupName": "docker",
+      "matchManagers": ["dockerfile", "docker-compose"]
     }
   ]
 }
