@@ -11,22 +11,18 @@ COMMIT_MSG_FILE="$1"
 # Includes: Claude, Cursor, Copilot, ChatGPT, Gemini, Cody, etc.
 AI_PATTERN="claude|anthropic|cursor|copilot|chatgpt|openai|gpt-[34]|gemini|bard|codewhisperer|tabnine|cody|ai-assistant|noreply@anthropic|noreply@cursor|noreply@openai|cursoragent"
 
-# Check for Co-authored-by lines that match AI patterns
+# Automatically remove AI co-authored-by trailers
+# This is required for EasyCLA compliance - AI agents cannot sign CLAs
 if grep -iE "^Co-[Aa]uthored-[Bb]y:.*($AI_PATTERN)" "$COMMIT_MSG_FILE" > /dev/null 2>&1; then
+    # Create a temporary file with cleaned content
+    TEMP_FILE=$(mktemp)
+    grep -viE "^Co-[Aa]uthored-[Bb]y:.*($AI_PATTERN)" "$COMMIT_MSG_FILE" > "$TEMP_FILE"
+    mv "$TEMP_FILE" "$COMMIT_MSG_FILE"
     echo ""
-    echo "ERROR: AI co-author detected in commit message!"
+    echo "WARNING: AI co-author trailer automatically removed from commit message."
+    echo "This project uses EasyCLA for FINOS compliance - AI assistants cannot"
+    echo "sign Contributor License Agreements."
     echo ""
-    echo "This project uses EasyCLA for FINOS compliance. AI assistants cannot"
-    echo "sign Contributor License Agreements, so they must not be listed as"
-    echo "commit co-authors."
-    echo ""
-    echo "Please remove any lines like:"
-    echo "  Co-Authored-By: Claude <noreply@anthropic.com>"
-    echo "  Co-Authored-By: Cursor <cursoragent@cursor.com>"
-    echo ""
-    echo "See CLAUDE.md and AGENTS.md for more information."
-    echo ""
-    exit 1
 fi
 
 # Also check for generated-with footers that might cause issues
