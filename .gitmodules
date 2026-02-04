@@ -4,3 +4,6 @@
 [submodule "ecosystem/morphir-examples"]
 	path = ecosystem/morphir-examples
 	url = https://github.com/finos/morphir-examples.git
+[submodule "ecosystem/morphir-moonbit"]
+	path = ecosystem/morphir-moonbit
+	url = https://github.com/finos/morphir-moonbit.git

@@ -8,6 +8,7 @@ This directory contains [git submodules](https://git-scm.com/book/en/v2/Git-Tool
 |------------------|------------|--------|
 | **morphir-rust** | [finos/morphir-rust](https://github.com/finos/morphir-rust) | Rust libraries (morphir-core, morphir-common, etc.) used by morphir-live and the morphir CLI in this repo |
 | **morphir-examples** | [finos/morphir-examples](https://github.com/finos/morphir-examples) | Example Morphir projects; used for docs, tests, and reference |
+| **morphir-moonbit** | [finos/morphir-moonbit](https://github.com/finos/morphir-moonbit) | MoonBit implementation of Morphir tooling |
 
 ## First-time clone
 
