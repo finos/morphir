@@ -19,6 +19,7 @@ This repository contains:
 - **[finos/morphir-dotnet](https://github.com/finos/morphir-dotnet)** - .NET implementation
 - **[finos/morphir-rust](https://github.com/finos/morphir-rust)** - Rust tooling
 - **[finos/morphir-python](https://github.com/finos/morphir-python)** - Python tooling
+- **[finos/morphir-moonbit](https://github.com/finos/morphir-moonbit)** - MoonBit implementation of Morphir tooling
 
 ### Morphir IR Specification
 
