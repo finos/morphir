@@ -6,6 +6,7 @@ This directory holds **git submodules** for Morphir ecosystem repositories. Use 
 
 - **morphir-rust** – Rust workspace (morphir-core, morphir-common, morphir-daemon, morphir-ext, etc.). The **morphir** CLI binary lives in this repo under `crates/morphir`, not in the submodule; it depends on morphir-rust crates via path.
 - **morphir-examples** – Example Morphir projects.
+- **morphir-moonbit** – MoonBit implementation of Morphir tooling.
 
 Do not edit submodule content in-place for long-term changes. Prefer contributing in the submodule's own repo and then updating the submodule ref in finos/morphir when intentional.
 
