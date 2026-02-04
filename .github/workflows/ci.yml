@@ -13,10 +13,39 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # Detect what files changed to enable fast-path for docs-only changes
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      rust: ${{ steps.filter.outputs.rust }}
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Check for file changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            rust:
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'crates/**'
+              - '.github/workflows/ci.yml'
+            docs:
+              - 'website/**'
+              - 'docs/**'
+              - '**/*.md'
+              - '.github/workflows/ci.yml'
+
   # morphir-live: web UI application (depends on dioxus)
   morphir-live:
     name: morphir-live
     runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.rust == 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -61,6 +90,8 @@ jobs:
   morphir-cli:
     name: morphir CLI
     runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.rust == 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -103,12 +134,58 @@ jobs:
       - name: Build
         run: cargo build --release --package morphir
 
+  # Docs: lightweight job for documentation changes
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.docs == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install mise
+        uses: jdx/mise-action@v2
+
+      - name: Initialize environment
+        run: mise run init -- --ci
+
+      - name: Check markdown links
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: 'yes'
+          config-file: '.github/markdown-link-check-config.json'
+        continue-on-error: true
+
+      - name: Docs check passed
+        run: echo "Documentation checks passed!"
+
   check:
     name: All Checks
     runs-on: ubuntu-latest
-    needs: [morphir-live, morphir-cli]
+    needs: [changes, morphir-live, morphir-cli, docs]
+    if: always()
     steps:
-      - name: All checks passed
-        run: echo "All checks passed!"
+      - name: Check results
+        run: |
+          # Check if rust jobs were required and passed
+          if [[ "${{ needs.changes.outputs.rust }}" == "true" ]]; then
+            if [[ "${{ needs.morphir-live.result }}" != "success" ]]; then
+              echo "morphir-live failed"
+              exit 1
+            fi
+            if [[ "${{ needs.morphir-cli.result }}" != "success" ]]; then
+              echo "morphir-cli failed"
+              exit 1
+            fi
+          fi
+          # Check if docs job was required and passed
+          if [[ "${{ needs.changes.outputs.docs }}" == "true" ]]; then
+            if [[ "${{ needs.docs.result }}" != "success" ]]; then
+              echo "docs failed"
+              exit 1
+            fi
+          fi
+          echo "All required checks passed!"
 
   # TODO: Add WASM build once dioxus-cli workspace issue is resolved
