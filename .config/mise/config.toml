@@ -26,8 +26,21 @@ jsonschema = "latest"
 
 # ===== Initialization Tasks =====
 [tasks.init]
-description = "Initialize development environment (submodules, etc.)"
-depends = ["submodules:init"]
+description = "Initialize development environment. Use --ci for CI environments."
+run = """
+#!/usr/bin/env bash
+set -e
+
+if [[ "$1" == "--ci" ]]; then
+    # CI mode: shallow clone submodules for faster checkout
+    echo "Initializing in CI mode (shallow submodules)..."
+    git submodule update --init --recursive --depth 1
+else
+    # Development mode: full clone
+    echo "Initializing development environment..."
+    git submodule update --init --recursive
+fi
+"""
 
 # ===== Formatting Tasks =====
 [tasks.fmt]

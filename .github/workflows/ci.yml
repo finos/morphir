@@ -13,80 +13,102 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  fmt:
-    name: Format Check
+  # morphir-live: web UI application (depends on dioxus)
+  morphir-live:
+    name: morphir-live
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
+      - name: Install mise
+        uses: jdx/mise-action@v2
 
-      - name: Check formatting
-        run: cargo fmt --all --check
+      - name: Initialize environment
+        run: mise run init -- --ci
 
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - name: Add Rust components
+        run: rustup component add rustfmt clippy
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
+      - name: Install GTK dependencies (for desktop build)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev libxdo-dev
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          key: morphir-live
 
-      # Only check default features (web) - desktop features require GTK/OpenSSL
+      - name: Check formatting
+        run: cargo fmt --package morphir-live --check
+
       - name: Run clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --package morphir-live --all-targets -- -D warnings
+
+      - name: Run tests
+        run: cargo test --package morphir-live
+
+      - name: Build (web)
+        run: cargo build --release --package morphir-live
+
+      - name: Build (desktop)
+        run: cargo build --release --package morphir-live --features desktop
+
+  # morphir: CLI tool (depends on extism via morphir-daemon)
+  # Uses separate dependency resolution to avoid conflict with dioxus-desktop
+  morphir-cli:
+    name: morphir CLI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install mise
+        uses: jdx/mise-action@v2
+
+      - name: Initialize environment
+        run: mise run init -- --ci
+
+      - name: Add Rust components
+        run: rustup component add rustfmt clippy
+
+      # Generate fresh lockfile without dioxus-desktop to avoid toml_datetime conflict
+      - name: Regenerate lockfile for CLI
+        run: |
+          # Remove morphir-live from workspace temporarily to avoid dependency conflict
+          sed -i 's/members = \["crates\/\*"\]/members = ["crates\/morphir"]/' Cargo.toml
+          sed -i 's/default-members = \["crates\/morphir-live", "crates\/morphir"\]/default-members = ["crates\/morphir"]/' Cargo.toml
+          rm Cargo.lock
+          cargo generate-lockfile
+          # Update extism to latest compatible version
+          cargo update -p extism
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          key: morphir-cli
+
+      - name: Check formatting
+        run: cargo fmt --package morphir --check
+
+      - name: Run clippy
+        run: cargo clippy --package morphir --all-targets -- -D warnings
+
+      - name: Run tests
+        run: cargo test --package morphir
+
+      - name: Build
+        run: cargo build --release --package morphir
 
   check:
     name: All Checks
     runs-on: ubuntu-latest
-    needs: [fmt, clippy]
+    needs: [morphir-live, morphir-cli]
     steps:
       - name: All checks passed
         run: echo "All checks passed!"
 
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-
-      # Only test default features (web) - desktop features require GTK/OpenSSL
-      - name: Run tests
-        run: cargo test --workspace
-
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-
-      - name: Build
-        run: cargo build --release --workspace
-
   # TODO: Add WASM build once dioxus-cli workspace issue is resolved
-  # See: https://github.com/finos/morphir/issues/XXX
