@@ -21,7 +21,7 @@
 		"build:schemas": "node scripts/yaml-to-json-schemas.js"
 	},
 	"dependencies": {
-		"effect": "3.19.15",
+		"effect": "3.19.16",
 		"ajv": "^8.17.1",
 		"ajv-formats": "^3.0.1",
 		"@cmfcmf/docusaurus-search-local": "^2.0.0",
