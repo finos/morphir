@@ -1,0 +1,43 @@
+#!/bin/sh
+
+# Prevent AI co-authored-by trailers in commits
+# This is required for EasyCLA compliance - AI agents cannot sign CLAs
+#
+# See CLAUDE.md and AGENTS.md for more information
+
+COMMIT_MSG_FILE="$1"
+
+# Pattern matching common AI assistants (case-insensitive)
+# Includes: Claude, Cursor, Copilot, ChatGPT, Gemini, Cody, etc.
+AI_PATTERN="claude|anthropic|cursor|copilot|chatgpt|openai|gpt-[34]|gemini|bard|codewhisperer|tabnine|cody|ai-assistant|noreply@anthropic|noreply@cursor|noreply@openai|cursoragent"
+
+# Check for Co-authored-by lines that match AI patterns
+if grep -iE "^Co-[Aa]uthored-[Bb]y:.*($AI_PATTERN)" "$COMMIT_MSG_FILE" > /dev/null 2>&1; then
+    echo ""
+    echo "ERROR: AI co-author detected in commit message!"
+    echo ""
+    echo "This project uses EasyCLA for FINOS compliance. AI assistants cannot"
+    echo "sign Contributor License Agreements, so they must not be listed as"
+    echo "commit co-authors."
+    echo ""
+    echo "Please remove any lines like:"
+    echo "  Co-Authored-By: Claude <noreply@anthropic.com>"
+    echo "  Co-Authored-By: Cursor <cursoragent@cursor.com>"
+    echo ""
+    echo "See CLAUDE.md and AGENTS.md for more information."
+    echo ""
+    exit 1
+fi
+
+# Also check for generated-with footers that might cause issues
+if grep -iE "Generated.*(with|by).*(Claude|Cursor|Copilot|ChatGPT|AI)" "$COMMIT_MSG_FILE" > /dev/null 2>&1; then
+    echo ""
+    echo "WARNING: AI generation footer detected in commit message!"
+    echo ""
+    echo "Lines like 'Generated with Claude Code' may cause EasyCLA issues."
+    echo "Consider removing this line from your commit message."
+    echo ""
+    # This is a warning only, not blocking
+fi
+
+exit 0
