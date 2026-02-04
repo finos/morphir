@@ -24,6 +24,24 @@ bun = "1.3.8"
 # JSON Schema CLI (https://github.com/sourcemeta/jsonschema)
 jsonschema = "latest"
 
+# ===== Initialization Tasks =====
+[tasks.init]
+description = "Initialize development environment. Use --ci for CI environments."
+run = """
+#!/usr/bin/env bash
+set -e
+
+if [[ "$1" == "--ci" ]]; then
+    # CI mode: shallow clone submodules for faster checkout
+    echo "Initializing in CI mode (shallow submodules)..."
+    git submodule update --init --recursive --depth 1
+else
+    # Development mode: full clone
+    echo "Initializing development environment..."
+    git submodule update --init --recursive
+fi
+"""
+
 # ===== Formatting Tasks =====
 [tasks.fmt]
 description = "Format all code"
@@ -130,3 +148,33 @@ description = "Run TypeScript type checking on website"
 run = "npm run typecheck"
 dir = "website"
 depends = ["website:install"]
+
+# ===== Submodule Tasks =====
+[tasks."submodules:init"]
+description = "Initialize and fetch all submodules (first-time or after clone without --recurse-submodules)"
+run = "git submodule update --init --recursive"
+
+[tasks."submodules:update"]
+description = "Update each submodule to the commit recorded in the superproject"
+run = "git submodule update --recursive"
+
+[tasks."submodules:status"]
+description = "Show submodule status (commit, branch, dirty state)"
+run = "git submodule status"
+
+[tasks."submodules:pull"]
+description = "Pull latest in each submodule (superproject ref unchanged until you commit)"
+run = "git submodule foreach 'git pull origin main'"
+
+[tasks."submodules:add"]
+description = "Add a new submodule under ecosystem/. Usage: mise run submodules:add -- <name> [url]"
+run = "python .config/mise/tasks/submodules/add.py"
+
+# ===== CI Tasks =====
+[tasks."ci:prepare-cli-workspace"]
+description = "Prepare Cargo workspace for CLI-only build (excludes morphir-live)"
+run = "python .config/mise/tasks/ci/prepare_cli_workspace.py"
+
+[tasks."ci:validate-docs"]
+description = "Validate documentation files"
+run = "python .config/mise/tasks/ci/validate_docs.py"

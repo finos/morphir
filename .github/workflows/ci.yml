@@ -13,80 +13,160 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  fmt:
-    name: Format Check
+  # Detect what files changed to enable fast-path for docs-only changes
+  changes:
+    name: Detect Changes
     runs-on: ubuntu-latest
+    outputs:
+      rust: ${{ steps.filter.outputs.rust }}
+      docs: ${{ steps.filter.outputs.docs }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Check for file changes
+        uses: dorny/paths-filter@v3
+        id: filter
         with:
-          components: rustfmt
+          filters: |
+            rust:
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'crates/**'
+              - '.github/workflows/ci.yml'
+            docs:
+              - 'website/**'
+              - 'docs/**'
+              - '**/*.md'
+              - '.github/workflows/ci.yml'
 
-      - name: Check formatting
-        run: cargo fmt --all --check
-
-  clippy:
-    name: Clippy
+  # morphir-live: web UI application (depends on dioxus)
+  morphir-live:
+    name: morphir-live
     runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.rust == 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
+      - name: Install mise
+        uses: jdx/mise-action@v2
+
+      - name: Initialize environment
+        run: mise run init -- --ci
+
+      - name: Add Rust components
+        run: rustup component add rustfmt clippy
+
+      - name: Install GTK dependencies (for desktop build)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev libxdo-dev
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          key: morphir-live
 
-      # Only check default features (web) - desktop features require GTK/OpenSSL
+      - name: Check formatting
+        run: cargo fmt --package morphir-live --check
+
       - name: Run clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --package morphir-live --all-targets -- -D warnings
+
+      - name: Run tests
+        run: cargo test --package morphir-live
+
+      - name: Build (web)
+        run: cargo build --release --package morphir-live
+
+      - name: Build (desktop)
+        run: cargo build --release --package morphir-live --features desktop
+
+  # morphir: CLI tool (depends on extism via morphir-daemon)
+  # Uses separate dependency resolution to avoid conflict with dioxus-desktop
+  morphir-cli:
+    name: morphir CLI
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.rust == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install mise
+        uses: jdx/mise-action@v2
+
+      - name: Initialize environment
+        run: mise run init -- --ci
+
+      - name: Add Rust components
+        run: rustup component add rustfmt clippy
+
+      # Generate fresh lockfile without dioxus-desktop to avoid toml_datetime conflict
+      - name: Prepare CLI workspace
+        run: mise run ci:prepare-cli-workspace
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          key: morphir-cli
+
+      - name: Check formatting
+        run: cargo fmt --package morphir --check
+
+      - name: Run clippy
+        run: cargo clippy --package morphir --all-targets -- -D warnings
+
+      - name: Run tests
+        run: cargo test --package morphir
+
+      - name: Build
+        run: cargo build --release --package morphir
+
+  # Docs: lightweight job for documentation changes (fast-path)
+  # Note: This job intentionally does NOT install mise to stay fast
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.docs == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Validate documentation
+        run: python3 .config/mise/tasks/ci/validate_docs.py
 
   check:
     name: All Checks
     runs-on: ubuntu-latest
-    needs: [fmt, clippy]
+    needs: [changes, morphir-live, morphir-cli, docs]
+    if: always()
     steps:
-      - name: All checks passed
-        run: echo "All checks passed!"
-
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-
-      # Only test default features (web) - desktop features require GTK/OpenSSL
-      - name: Run tests
-        run: cargo test --workspace
-
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-
-      - name: Build
-        run: cargo build --release --workspace
+      - name: Check results
+        run: |
+          # Check if rust jobs were required and passed
+          if [[ "${{ needs.changes.outputs.rust }}" == "true" ]]; then
+            if [[ "${{ needs.morphir-live.result }}" != "success" ]]; then
+              echo "morphir-live failed"
+              exit 1
+            fi
+            if [[ "${{ needs.morphir-cli.result }}" != "success" ]]; then
+              echo "morphir-cli failed"
+              exit 1
+            fi
+          fi
+          # Check if docs job was required and passed
+          if [[ "${{ needs.changes.outputs.docs }}" == "true" ]]; then
+            if [[ "${{ needs.docs.result }}" != "success" ]]; then
+              echo "docs failed"
+              exit 1
+            fi
+          fi
+          echo "All required checks passed!"
 
   # TODO: Add WASM build once dioxus-cli workspace issue is resolved
-  # See: https://github.com/finos/morphir/issues/XXX

@@ -12,6 +12,15 @@ fn is_editor_initialized_js() -> bool {
     value.as_bool().unwrap_or(false)
 }
 
+/// Get Monaco editor content via JS global property (more reliable than eval return value).
+fn get_editor_content_js(container_id: &str) -> Option<String> {
+    let window = web_sys::window()?;
+    // Read from window.__monacoContent_<container_id> which we set via JS
+    let key = format!("__monacoContent_{}", container_id);
+    let value = js_sys::Reflect::get(&window, &JsValue::from_str(&key)).ok()?;
+    value.as_string()
+}
+
 /// Monaco-based TOML editor for web platform.
 /// Provides full syntax highlighting, line numbers, and code editing features.
 #[component]
@@ -20,14 +29,19 @@ pub fn TomlEditor(content: String, on_change: EventHandler<String>) -> Element {
     let mut polling_started = use_signal(|| false);
     let mut pending_content = use_signal(|| content.clone());
 
-    // Check global Monaco ready state
+    // Check global Monaco ready state - reading here subscribes component to changes
     let monaco_ready = monaco::use_monaco_ready();
 
     // Use a fixed container ID for the TOML editor
     let container_id = "toml-editor-container";
 
     // Effect to initialize the editor instance when Monaco is ready
+    // Note: We also read monaco_ready INSIDE the effect to ensure the effect re-runs
     use_effect(move || {
+        // Read Monaco ready state inside effect for proper reactivity
+        // This ensures the effect re-runs when Monaco becomes ready
+        let monaco_ready = monaco::use_monaco_ready();
+
         // Only proceed if Monaco is globally ready and we haven't initialized this editor yet
         if !monaco_ready || *editor_initialized.read() {
             return;
@@ -40,6 +54,7 @@ pub fn TomlEditor(content: String, on_change: EventHandler<String>) -> Element {
             gloo_timers::future::TimeoutFuture::new(50).await;
 
             // Initialize the editor and set a global flag for reliable detection
+            // Also set up onChange handler to write content to a window property
             let init_script = format!(
                 r#"
                 (function() {{
@@ -56,6 +71,17 @@ pub fn TomlEditor(content: String, on_change: EventHandler<String>) -> Element {
 
                     // Set global flag for Rust to check via web_sys
                     window.__tomlEditorInitialized = !!editor;
+
+                    // Set up content sync via window property (more reliable than eval return)
+                    if (editor) {{
+                        // Initialize content property
+                        window.__monacoContent_toml_editor_container = content;
+
+                        // Update on every change
+                        editor.onDidChangeModelContent(() => {{
+                            window.__monacoContent_toml_editor_container = editor.getValue();
+                        }});
+                    }}
                 }})()
                 "#,
                 content_json =
@@ -89,16 +115,12 @@ pub fn TomlEditor(content: String, on_change: EventHandler<String>) -> Element {
             loop {
                 gloo_timers::future::TimeoutFuture::new(500).await;
 
-                let get_content_script = "window.getMonacoContent('toml-editor-container')";
-
-                let result = document::eval(get_content_script);
-                if let Ok(value) = result.await {
-                    if let Some(new_content) = value.as_str() {
-                        if new_content != last_content {
-                            last_content = new_content.to_string();
-                            pending_content.set(new_content.to_string());
-                            on_change.call(new_content.to_string());
-                        }
+                // Read content via web_sys instead of unreliable eval return value
+                if let Some(new_content) = get_editor_content_js("toml_editor_container") {
+                    if new_content != last_content {
+                        last_content = new_content.clone();
+                        pending_content.set(new_content.clone());
+                        on_change.call(new_content);
                     }
                 }
             }

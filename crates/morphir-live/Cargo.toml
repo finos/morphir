@@ -21,6 +21,7 @@ dioxus = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 toml = { workspace = true }
+morphir-core = { path = "../../ecosystem/morphir-rust/crates/morphir-core" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 gloo-timers = { workspace = true }

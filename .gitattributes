@@ -1,3 +1,6 @@
+# Normalize line endings to LF for cross-platform consistency (avoids CRLF/LF noise on Windows)
+* text=auto eol=lf
+
 *.lockb binary diff=lockb
 
 # Use bd merge for beads JSONL files

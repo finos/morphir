@@ -1,0 +1,6 @@
+[submodule "ecosystem/morphir-rust"]
+	path = ecosystem/morphir-rust
+	url = https://github.com/finos/morphir-rust.git
+[submodule "ecosystem/morphir-examples"]
+	path = ecosystem/morphir-examples
+	url = https://github.com/finos/morphir-examples.git
