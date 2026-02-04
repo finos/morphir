@@ -188,6 +188,30 @@ git commit -m "feat: add new feature
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
+### Monitoring GitHub PR Checks
+
+When monitoring GitHub PR checks (CI status, workflow runs, etc.), **prefer using watch mode with timeout or failfast** rather than performing a sleep and then checking.
+
+**Preferred approach:**
+- Use `gh pr checks watch` or similar watch-mode commands with timeout/failfast flags
+- This provides real-time updates and exits as soon as checks complete or fail
+- More efficient than polling with sleep intervals
+
+**Example:**
+```bash
+# Watch PR checks with timeout
+gh pr checks watch --timeout 30m --failfast
+
+# Or watch specific workflow runs
+gh run watch --timeout 20m --exit-status
+```
+
+**Avoid:**
+- ❌ `sleep 60 && gh pr checks` (inefficient polling)
+- ❌ Manual polling loops with fixed delays
+
+Watch mode provides better responsiveness and resource efficiency by reacting to state changes immediately rather than waiting for arbitrary time intervals.
+
 ## Documentation
 
 The Docusaurus website is located in `website/`. To run locally:
