@@ -106,15 +106,8 @@ jobs:
         run: rustup component add rustfmt clippy
 
       # Generate fresh lockfile without dioxus-desktop to avoid toml_datetime conflict
-      - name: Regenerate lockfile for CLI
-        run: |
-          # Remove morphir-live from workspace temporarily to avoid dependency conflict
-          sed -i 's/members = \["crates\/\*"\]/members = ["crates\/morphir"]/' Cargo.toml
-          sed -i 's/default-members = \["crates\/morphir-live", "crates\/morphir"\]/default-members = ["crates\/morphir"]/' Cargo.toml
-          rm Cargo.lock
-          cargo generate-lockfile
-          # Update extism to latest compatible version
-          cargo update -p extism
+      - name: Prepare CLI workspace
+        run: mise run ci:prepare-cli-workspace
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
@@ -144,16 +137,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Verify markdown files are valid
-        run: |
-          # Quick syntax check - ensure no obvious issues
-          echo "Checking markdown files..."
-          find . -name "*.md" -type f | head -20 | while read f; do
-            if [ -f "$f" ]; then
-              echo "  ✓ $f"
-            fi
-          done
-          echo "Documentation validation passed!"
+      - name: Install mise
+        uses: jdx/mise-action@v2
+
+      - name: Validate documentation
+        run: mise run ci:validate-docs
 
   check:
     name: All Checks
