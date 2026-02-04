@@ -1,0 +1,76 @@
+[package]
+name = "morphir"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "CLI for working with Morphir IR - functional domain modeling and business logic"
+
+[lib]
+name = "morphir"
+path = "src/lib.rs"
+
+[[bin]]
+name = "morphir"
+path = "src/main.rs"
+
+[dependencies]
+starbase = { workspace = true }
+clap = { workspace = true, features = ["color"] }
+owo-colors = "4"
+termimad = "0.34"
+syntect = "5"
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+miette = { workspace = true, features = ["fancy"] }
+async-trait = "0.1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+morphir-core = { path = "../../ecosystem/morphir-rust/crates/morphir-core" }
+morphir-common = { path = "../../ecosystem/morphir-rust/crates/morphir-common" }
+morphir-design = { path = "../../ecosystem/morphir-rust/crates/morphir-design" }
+morphir-daemon = { path = "../../ecosystem/morphir-rust/crates/morphir-daemon" }
+morphir-extension-sdk = { path = "../../ecosystem/morphir-rust/crates/morphir-extension-sdk" }
+walkdir = "2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dirs = "6.0"
+schemars = "1.0"
+indexmap = { version = "2", features = ["serde"] }
+usage-lib = { version = "2", features = ["clap", "docs"] }
+
+# TUI
+ratatui = { workspace = true }
+crossterm = { workspace = true }
+tuirealm = { workspace = true }
+tui-realm-stdlib = { workspace = true }
+tui-realm-textarea = { workspace = true }
+
+# Structured logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-appender = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
+
+[build-dependencies]
+chrono = "0.4"
+
+[[test]]
+name = "cli_integration"
+path = "tests/cli_integration.rs"
+
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-{ version }-{ target }.{ archive-format }"
+pkg-fmt = "tgz"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-fmt = "zip"
+
+[package.metadata.binstall.overrides.aarch64-pc-windows-msvc]
+pkg-fmt = "zip"

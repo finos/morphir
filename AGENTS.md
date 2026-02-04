@@ -7,6 +7,8 @@ This document provides guidance for AI assistants and developers working on the 
 This repository contains:
 1. **Morphir Documentation Website** - Docusaurus-based documentation site
 2. **Morphir Live** - Rust-based interactive visualization and IR management application
+3. **Morphir CLI** - Command-line tool for working with Morphir IR
+4. **Ecosystem Integration** - Git submodules for ecosystem repos (morphir-rust, morphir-examples, etc.)
 
 ### Related Morphir Projects
 
@@ -116,7 +118,13 @@ fn process_ir(path: &str) -> Result<()> {
 ```
 morphir/
 ├── crates/
+│   ├── morphir/          # Morphir CLI tool
 │   └── morphir-live/     # Interactive visualization app (Dioxus)
+├── ecosystem/            # Git submodules for ecosystem repos
+│   ├── morphir-rust/     # Rust libraries (morphir-core, morphir-common, etc.)
+│   ├── morphir-examples/ # Example Morphir projects
+│   ├── README.md         # User guide for ecosystem submodules
+│   └── AGENTS.md         # Agent guidelines for ecosystem directory
 ├── website/              # Docusaurus documentation site
 ├── docs/                 # Documentation content
 ├── examples/             # Example projects
@@ -124,15 +132,22 @@ morphir/
 └── .config/mise/         # Development task configuration
 ```
 
+See [ecosystem/AGENTS.md](ecosystem/AGENTS.md) for guidelines on working with submodules and path dependencies.
+
 ## Build and Development
 
 Use `mise` task runner (`mise run <task>`) for build orchestration:
 
+- `mise run init` - Initialize development environment (submodules, etc.)
 - `mise run build` - Build the project
 - `mise run test` - Run all tests
 - `mise run fmt` - Format code
 - `mise run lint` - Run linters (clippy)
 - `mise run dev` - Run morphir-live in development mode
+- `mise run submodules:init` - Initialize git submodules (first-time setup)
+- `mise run submodules:update` - Update submodules to recorded commits
+- `mise run submodules:status` - Show submodule status
+- `mise run submodules:add -- <name> [url]` - Add a new ecosystem submodule
 
 ## When Contributing
 

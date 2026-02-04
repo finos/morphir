@@ -58,6 +58,10 @@ Morphir consists of a few projects based on the features they provide.
 
 ### Core Morphir Projects
 - **[morphir (this project)](https://github.com/finos/morphir/)** - The umbrella project
+  - **Morphir CLI** - Command-line tool for working with Morphir IR (in `crates/morphir`)
+  - **Morphir Live** - Interactive visualization and IR management application (in `crates/morphir-live`)
+  - **Documentation** - Docusaurus-based documentation site (in `website/`)
+  - **Ecosystem Integration** - Git submodules for ecosystem repos (in `ecosystem/`); see [ecosystem/README.md](ecosystem/README.md) for details
 - **[morphir-elm](https://github.com/finos/morphir-elm)** - Contains most of the core morphir functionality, including:
   - The definition of the IR
   - The Elm compiler for authoring morphir applications in Elm
@@ -70,6 +74,9 @@ Morphir consists of a few projects based on the features they provide.
 - **[morphir-scala](https://github.com/finos/morphir-scala)** - Tight integration with Scala for authoring, execution, and writing tools.
 - **[morphir-bosque](https://github.com/finos/morphir-bosque)** - Integration with the Bosque language.
 - **[morphir-dotnet](https://github.com/finos/morphir-dotnet)** - Integration with .NET via F#.
+- **[morphir-rust](https://github.com/finos/morphir-rust)** - Integration with Rust 
+- **[morphir-go](https://github.com/finos/morphir-go)** - Integration with Go lang 
+- **[morphir-python](https://github.com/finos/morphir-python)** - Integration with Python
 
 
 ## Other Resources

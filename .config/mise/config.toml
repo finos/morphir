@@ -24,6 +24,11 @@ bun = "1.3.8"
 # JSON Schema CLI (https://github.com/sourcemeta/jsonschema)
 jsonschema = "latest"
 
+# ===== Initialization Tasks =====
+[tasks.init]
+description = "Initialize development environment (submodules, etc.)"
+depends = ["submodules:init"]
+
 # ===== Formatting Tasks =====
 [tasks.fmt]
 description = "Format all code"
@@ -130,3 +135,24 @@ description = "Run TypeScript type checking on website"
 run = "npm run typecheck"
 dir = "website"
 depends = ["website:install"]
+
+# ===== Submodule Tasks =====
+[tasks."submodules:init"]
+description = "Initialize and fetch all submodules (first-time or after clone without --recurse-submodules)"
+run = "git submodule update --init --recursive"
+
+[tasks."submodules:update"]
+description = "Update each submodule to the commit recorded in the superproject"
+run = "git submodule update --recursive"
+
+[tasks."submodules:status"]
+description = "Show submodule status (commit, branch, dirty state)"
+run = "git submodule status"
+
+[tasks."submodules:pull"]
+description = "Pull latest in each submodule (superproject ref unchanged until you commit)"
+run = "git submodule foreach 'git pull origin main'"
+
+[tasks."submodules:add"]
+description = "Add a new submodule under ecosystem/. Usage: mise run submodules:add -- <name> [url]"
+run = "python .config/mise/tasks/submodules/add.py"
