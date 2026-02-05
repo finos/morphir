@@ -60,6 +60,28 @@ mise run submodules:status
 
 - **morphir-rust**: The morphir-live app and the morphir CLI (in `crates/`) depend on morphir-rust crates via Cargo path dependencies (e.g. `morphir-core`, `morphir-common`). The submodule is required to build those crates.
 - **morphir-examples**: Used for examples, documentation, and tests. See each submodule's own README for build and usage.
+- **morphir-moonbit**: MoonBit implementation with packages for SDK, core types, and WASM bindings. See below for build commands.
+
+## Building and testing morphir-moonbit
+
+Build and test MoonBit packages from the repo root:
+
+```bash
+# Build all packages (wasm and wasm-gc targets)
+mise run build:morphir-moonbit
+
+# Build specific package(s)
+mise run build:morphir-moonbit -- morphir-sdk
+mise run build:morphir-moonbit -- morphir-sdk morphir-core
+
+# Run all tests
+mise run test:morphir-moonbit
+
+# Test specific package(s)
+mise run test:morphir-moonbit -- morphir-core
+```
+
+Valid package names: `morphir-sdk`, `morphir-core`, `morphir-moonbit-bindings`
 
 ## Adding a new submodule
 
