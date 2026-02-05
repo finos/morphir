@@ -4,6 +4,7 @@ This directory holds **git submodules** for Morphir ecosystem repositories. Use 
 
 ## What lives here
 
+- **morphir-elm** – Reference Elm implementation (tracking `remixed` branch). Contains IR definition, Elm compiler, visualization components, and backend processors.
 - **morphir-rust** – Rust workspace (morphir-core, morphir-common, morphir-daemon, morphir-ext, etc.). The **morphir** CLI binary lives in this repo under `crates/morphir`, not in the submodule; it depends on morphir-rust crates via path.
 - **morphir-examples** – Example Morphir projects.
 - **morphir-moonbit** – MoonBit implementation of Morphir tooling.
@@ -56,4 +57,4 @@ Changes inside submodules are committed in the submodule repo. The morphir repo 
 
 ## Future submodules
 
-When morphir-go, morphir-elm, morphir-python, or others are added, they will live under `ecosystem/` with the same pattern. Document any language- or repo-specific usage in this file.
+When morphir-go, morphir-python, or others are added, they will live under `ecosystem/` with the same pattern. Document any language- or repo-specific usage in this file.

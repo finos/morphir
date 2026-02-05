@@ -7,3 +7,7 @@
 [submodule "ecosystem/morphir-moonbit"]
 	path = ecosystem/morphir-moonbit
 	url = https://github.com/finos/morphir-moonbit.git
+[submodule "ecosystem/morphir-elm"]
+	path = ecosystem/morphir-elm
+	url = https://github.com/finos/morphir-elm.git
+	branch = remixed
