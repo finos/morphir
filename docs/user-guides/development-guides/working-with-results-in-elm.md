@@ -15,7 +15,7 @@ This post explains the Result type in the Elm Programming Language and use cases
 5. [Use Cases in Morphir](#) 
 
 
-###1. [Overview of the Result Type](#) 
+### 1. [Overview of the Result Type](#) 
 Result is a built-in type in Elm that accepts two arguments: error and value. It represents the result of a computation that has the possibility
 of failure. The two types of constructors for the result type are given below:
 ```
