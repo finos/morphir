@@ -149,6 +149,15 @@ run = "npm run typecheck"
 dir = "website"
 depends = ["website:install"]
 
+# ===== Ecosystem Build Tasks =====
+[tasks."build:morphir-moonbit"]
+description = "Build all MoonBit packages in morphir-moonbit"
+run = "python .config/mise/tasks/ecosystem/build_morphir_moonbit.py"
+
+[tasks."test:morphir-moonbit"]
+description = "Run tests for all MoonBit packages in morphir-moonbit"
+run = "python .config/mise/tasks/ecosystem/test_morphir_moonbit.py"
+
 # ===== Submodule Tasks =====
 [tasks."submodules:init"]
 description = "Initialize and fetch all submodules (first-time or after clone without --recurse-submodules)"

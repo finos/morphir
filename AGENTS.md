@@ -150,6 +150,17 @@ Use `mise` task runner (`mise run <task>`) for build orchestration:
 - `mise run submodules:status` - Show submodule status
 - `mise run submodules:add -- <name> [url]` - Add a new ecosystem submodule
 
+### Ecosystem Build Tasks
+
+Build and test ecosystem submodules from the top-level repo:
+
+- `mise run build:morphir-moonbit` - Build all MoonBit packages
+- `mise run build:morphir-moonbit -- <pkg>` - Build specific package(s)
+- `mise run test:morphir-moonbit` - Run all MoonBit tests
+- `mise run test:morphir-moonbit -- <pkg>` - Test specific package(s)
+
+Valid package names: `morphir-sdk`, `morphir-core`, `morphir-moonbit-bindings`
+
 ## When Contributing
 
 ### Code Style
