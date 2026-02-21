@@ -1,0 +1,33 @@
+{
+  "description": "V4 Incompleteness examples for testing morphir-rust compliance",
+  "examples": {
+    "holeWithUnresolvedReference": {
+      "Incompleteness": {
+        "Hole": {
+          "reason": {
+            "UnresolvedReference": {
+              "target": "acme/finance:ledger#calculate-balance"
+            }
+          }
+        }
+      }
+    },
+    "holeWithTypeMismatch": {
+      "Incompleteness": {
+        "Hole": {
+          "reason": {
+            "TypeMismatch": {
+              "expected": "Int",
+              "found": "String"
+            }
+          }
+        }
+      }
+    },
+    "draft": {
+      "Incompleteness": {
+        "Draft": {}
+      }
+    }
+  }
+}
