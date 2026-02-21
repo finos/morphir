@@ -10,6 +10,7 @@ This directory contains [git submodules](https://git-scm.com/book/en/v2/Git-Tool
 | **morphir-rust** | [finos/morphir-rust](https://github.com/finos/morphir-rust) | main | Rust libraries (morphir-core, morphir-common, etc.) used by morphir-live and the morphir CLI in this repo |
 | **morphir-examples** | [finos/morphir-examples](https://github.com/finos/morphir-examples) | main | Example Morphir projects; used for docs, tests, and reference |
 | **morphir-moonbit** | [finos/morphir-moonbit](https://github.com/finos/morphir-moonbit) | main | MoonBit implementation of Morphir tooling |
+| **morphir-python** | [finos/morphir-python](https://github.com/finos/morphir-python) | main | Python implementation of Morphir tooling |
 
 ## First-time clone
 
@@ -63,6 +64,7 @@ mise run submodules:status
 - **morphir-rust**: The morphir-live app and the morphir CLI (in `crates/`) depend on morphir-rust crates via Cargo path dependencies (e.g. `morphir-core`, `morphir-common`). The submodule is required to build those crates.
 - **morphir-examples**: Used for examples, documentation, and tests. See each submodule's own README for build and usage.
 - **morphir-moonbit**: MoonBit implementation with packages for SDK, core types, and WASM bindings. See below for build commands.
+- **morphir-python**: Python implementation of Morphir tooling. See the submodule's own README for build and usage.
 
 ## Building and testing morphir-moonbit
 
