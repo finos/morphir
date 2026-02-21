@@ -8,6 +8,7 @@ This directory holds **git submodules** for Morphir ecosystem repositories. Use 
 - **morphir-rust** – Rust workspace (morphir-core, morphir-common, morphir-daemon, morphir-ext, etc.). The **morphir** CLI binary lives in this repo under `crates/morphir`, not in the submodule; it depends on morphir-rust crates via path.
 - **morphir-examples** – Example Morphir projects.
 - **morphir-moonbit** – MoonBit implementation of Morphir tooling.
+- **morphir-python** – Python implementation of Morphir tooling.
 
 Do not edit submodule content in-place for long-term changes. Prefer contributing in the submodule's own repo and then updating the submodule ref in finos/morphir when intentional.
 
@@ -58,3 +59,11 @@ Changes inside submodules are committed in the submodule repo. The morphir repo 
 ## Future submodules
 
 When morphir-go, morphir-python, or others are added, they will live under `ecosystem/` with the same pattern. Document any language- or repo-specific usage in this file.
+
+### morphir-python
+
+Python implementation of Morphir tooling. Uses `uv` for package management and `behave` for BDD tests.
+
+```bash
+cd ecosystem/morphir-python && uv sync && uv run behave
+```
