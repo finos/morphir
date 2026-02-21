@@ -1,0 +1,36 @@
+{
+  "description": "V4 Literal examples demonstrating IntegerLiteral (replacing WholeNumberLiteral)",
+  "v4CanonicalFormat": {
+    "comment": "V4 canonical format uses IntegerLiteral",
+    "examples": {
+      "positiveInteger": { "IntegerLiteral": 42 },
+      "negativeInteger": { "IntegerLiteral": -100 },
+      "zero": { "IntegerLiteral": 0 },
+      "largeInteger": { "IntegerLiteral": 9223372036854775807 },
+      "bool": { "BoolLiteral": true },
+      "char": { "CharLiteral": "A" },
+      "string": { "StringLiteral": "Hello, Morphir!" },
+      "float": { "FloatLiteral": 3.14159 },
+      "decimal": { "DecimalLiteral": "123456789.987654321" }
+    }
+  },
+  "v3LegacyFormat": {
+    "comment": "V3 format used WholeNumberLiteral - V4 decoders should accept this",
+    "examples": {
+      "wholeNumber": ["WholeNumberLiteral", 42],
+      "negativeWholeNumber": ["WholeNumberLiteral", -100]
+    }
+  },
+  "backwardCompatibility": {
+    "comment": "V4 decoders MUST accept WholeNumberLiteral for backward compatibility",
+    "decoderRequirements": [
+      "Accept { \"IntegerLiteral\": n } (V4 canonical)",
+      "Accept { \"WholeNumberLiteral\": n } (V4 legacy compat)",
+      "Accept [\"WholeNumberLiteral\", n] (V3 tagged array)"
+    ],
+    "encoderRequirements": [
+      "Output { \"IntegerLiteral\": n } for V4 format",
+      "Output [\"WholeNumberLiteral\", n] for V3 format"
+    ]
+  }
+}

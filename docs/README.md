@@ -25,8 +25,8 @@ The next-generation Morphir CLI built in Go
 - [Overview](cli-preview/index.md) - Introduction to the new CLI
 - [Getting Started](cli-preview/getting-started.md) - Quick start with the new CLI
 - [What's New](cli-preview/whats-new.md) - Latest features and improvements
-- [Commands](cli-preview/commands/) - CLI command reference
-- [Release Notes](cli-preview/release-notes/) - Version history and changelogs
+- [Commands](cli-preview/commands/wit.md) - CLI command reference
+- [Release Notes](cli-preview/release-notes/v0.4.0-alpha.1.md) - Version history and changelogs
 
 ### [Design](design/draft/README.md)
 Draft design documents and specifications for upcoming features
@@ -157,8 +157,8 @@ Real-world applications of Morphir
 
 ## 📖 Additional Resources
 
-- **Examples**: See the [examples](examples/) folder for practical examples
-- **Presentations**: Check [presentations](presentations/) for talks and slides
+- **Examples**: See the [examples](examples/index.html) folder for practical examples
+- **Presentations**: Check [presentations](https://github.com/finos/morphir/tree/main/docs/presentations) for talks and slides
 
 ## 🔗 External Links
 
