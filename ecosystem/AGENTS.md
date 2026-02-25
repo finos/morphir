@@ -58,7 +58,7 @@ Changes inside submodules are committed in the submodule repo. The morphir repo 
 
 ## Future submodules
 
-When morphir-go or others are added, they will live under `ecosystem/` with the same pattern. Document any language- or repo-specific usage in this file.
+When morphir-go, morphir-python, or others are added, they will live under `ecosystem/` with the same pattern. Document any language- or repo-specific usage in this file.
 
 ### morphir-python
 
