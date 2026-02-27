@@ -1,0 +1,20 @@
+package build 
+
+import mill._
+import mill.scalalib._
+import mill.scalalib.publish._
+
+trait MorphirScalaModule extends ScalaModule:
+    def scalaVersion = "3.8.2"
+
+trait MorphirPublishModule extends PublishModule:
+    def publishVersion = "0.1.0"
+    def pomSettings = PomSettings(
+        description = "Morphir is a library for creating and managing Morphir IRs",
+        organization = "org.fios.morphir.ecosystem",
+        url = "https://morphir.finos.org",
+        licenses = Seq(License.`Apache-2.0`),
+        versionControl = VersionControl.github("finos", "morphir"),
+        developers = Seq(Developer("Damian Reeves","help@finos.org")),
+    )
+end MorphirPublishModule

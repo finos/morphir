@@ -1,0 +1,2 @@
+extends: [build.morphir.ScalaTests, TestModule.ZioTest]
+mvnDeps: [dev.zio::zio-test:2.1.24, io.getkyo::kyo-zio-test:1.0-RC1]

@@ -1,0 +1,13 @@
+package build.morphir.core 
+import build._
+import mill._
+import mill.scalalib._
+import mill.api.Task.Simple
+
+object `package` extends MorphirScalaModule with MorphirPublishModule:
+    override def mvnDeps: Simple[Seq[Dep]] = Seq(
+        mvn"io.getkyo::kyo-core::1.0-RC1",
+        mvn"io.getkyo::kyo-prelude::1.0-RC1",
+        mvn"io.github.kitlangton::neotype:0.4.10",
+    )
+end `package`

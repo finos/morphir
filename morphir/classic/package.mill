@@ -1,0 +1,7 @@
+package build.morphir.classic
+import build._
+import mill._
+import mill.scalalib._
+
+object `package` extends MorphirScalaModule with MorphirPublishModule:
+    def moduleDeps = Seq(build.morphir.core)
