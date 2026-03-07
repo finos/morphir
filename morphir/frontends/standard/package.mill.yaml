@@ -1,0 +1,5 @@
+extends: [build.MorphirScalaModule, build.MorphirPublishModule]
+
+moduleDeps:
+- build.morphir.core
+- build.morphir.classic

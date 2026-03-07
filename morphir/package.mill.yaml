@@ -3,6 +3,7 @@ mvnDeps:
 - io.getkyo::kyo-core::1.0-RC1
 - io.getkyo::kyo-prelude::1.0-RC1
 - io.github.kitlangton::neotype:0.4.10
+- org.virtuslab::scala-yaml::0.3.1
 
 moduleDeps:
 - build.morphir.core
