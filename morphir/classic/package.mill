@@ -5,3 +5,9 @@ import mill.scalalib._
 
 object `package` extends MorphirScalaModule with MorphirPublishModule:
     def moduleDeps = Seq(build.morphir.core)
+    def mvnDeps = Seq(
+        mvn"io.getkyo::kyo-core::1.0-RC1",
+        mvn"io.getkyo::kyo-prelude::1.0-RC1",
+        mvn"io.github.kitlangton::neotype:0.4.10",
+        mvn"io.github.iltotore::iron::3.3.0"
+    )
