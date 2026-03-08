@@ -93,7 +93,12 @@ depends = [
     "examples:validate",
     "fixtures:validate",
     "schema:validate",
+    "check:morphir-moonbit",
 ]
+
+[tasks."check:morphir-moonbit"]
+description = "Lint and format-check morphir-moonbit submodule (when present)"
+run = "if test -d ecosystem/morphir-moonbit; then cd ecosystem/morphir-moonbit && mise run lint && mise run lint:moonbit; fi"
 
 # ===== Testing Tasks =====
 [tasks.test]

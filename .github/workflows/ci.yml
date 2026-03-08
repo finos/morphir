@@ -20,6 +20,9 @@ jobs:
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
       docs: ${{ steps.filter.outputs.docs }}
+      morphir-scala: ${{ steps.filter.outputs.morphir-scala }}
+      morphir-moonbit: ${{ steps.filter.outputs.morphir-moonbit }}
+      schema: ${{ steps.filter.outputs.schema }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -38,6 +41,16 @@ jobs:
               - 'website/**'
               - 'docs/**'
               - '**/*.md'
+              - '.github/workflows/ci.yml'
+            morphir-scala:
+              - 'morphir/**'
+              - 'build-helpers.mill'
+              - '.github/workflows/ci.yml'
+            morphir-moonbit:
+              - 'ecosystem/morphir-moonbit/**'
+              - '.github/workflows/ci.yml'
+            schema:
+              - 'website/static/schemas/**'
               - '.github/workflows/ci.yml'
 
   # morphir-live: web UI application (depends on dioxus)
@@ -127,6 +140,78 @@ jobs:
       - name: Build
         run: cargo build --release --package morphir
 
+  # morphir-scala: Scala IR (morphir/core, morphir/classic) - v4 schema work
+  morphir-scala:
+    name: morphir-scala
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.morphir-scala == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install mise
+        uses: jdx/mise-action@v3
+
+      - name: Initialize environment
+        run: mise run init -- --ci
+
+      - name: Install Mill
+        run: curl -sL https://github.com/com-lihaoyi/mill/releases/download/0.12.10/0.12.10 -o mill && chmod +x mill
+
+      - name: Build and test
+        run: ./mill morphir.core.test morphir.compile
+
+  # morphir-moonbit: MoonBit submodule (v4 schema bindings)
+  morphir-moonbit:
+    name: morphir-moonbit
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.morphir-moonbit == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install mise
+        uses: jdx/mise-action@v3
+
+      - name: Initialize submodules
+        run: git submodule update --init ecosystem/morphir-moonbit
+
+      - name: Install tools in morphir-moonbit
+        working-directory: ecosystem/morphir-moonbit
+        run: |
+          mise install
+          chmod +x "$HOME/.local/share/mise/installs/http-moonbit"/*/bin/moon* 2>/dev/null || true
+          chmod +x "$HOME/.local/share/mise/installs/http-moonbit"/*/bin/internal/moonrun 2>/dev/null || true
+
+      - name: Lint and format check
+        working-directory: ecosystem/morphir-moonbit
+        run: |
+          mise run lint
+          mise run lint:moonbit
+
+  # schema: JSON Schema validation and formatting
+  schema:
+    name: Schema
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.schema == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install mise
+        uses: jdx/mise-action@v3
+
+      - name: Initialize environment
+        run: mise run init -- --ci
+
+      - name: Lint and format check schemas
+        run: |
+          mise run fmt-check:schema
+          mise run lint:schema
+
   # Docs: lightweight job for documentation changes (fast-path)
   # Note: This job intentionally does NOT install mise to stay fast
   docs:
@@ -144,7 +229,7 @@ jobs:
   check:
     name: All Checks
     runs-on: ubuntu-latest
-    needs: [changes, morphir-live, morphir-cli, docs]
+    needs: [changes, morphir-live, morphir-cli, morphir-scala, morphir-moonbit, schema, docs]
     if: always()
     steps:
       - name: Check results
@@ -164,6 +249,27 @@ jobs:
           if [[ "${{ needs.changes.outputs.docs }}" == "true" ]]; then
             if [[ "${{ needs.docs.result }}" != "success" ]]; then
               echo "docs failed"
+              exit 1
+            fi
+          fi
+          # Check if morphir-scala (v4 schema work) was required and passed
+          if [[ "${{ needs.changes.outputs.morphir-scala }}" == "true" ]]; then
+            if [[ "${{ needs.morphir-scala.result }}" != "success" ]]; then
+              echo "morphir-scala failed"
+              exit 1
+            fi
+          fi
+          # Check if morphir-moonbit was required and passed
+          if [[ "${{ needs.changes.outputs.morphir-moonbit }}" == "true" ]]; then
+            if [[ "${{ needs.morphir-moonbit.result }}" != "success" ]]; then
+              echo "morphir-moonbit failed"
+              exit 1
+            fi
+          fi
+          # Check if schema job was required and passed
+          if [[ "${{ needs.changes.outputs.schema }}" == "true" ]]; then
+            if [[ "${{ needs.schema.result }}" != "success" ]]; then
+              echo "schema failed"
               exit 1
             fi
           fi
