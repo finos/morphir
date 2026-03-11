@@ -8,9 +8,21 @@ object NameTests extends ZIOSpecDefault:
         val name = Name("valueInUSD")
         assertTrue(name.toList == List("value", "in", "u", "s", "d"))
       },
-      test("fromString delegates to classic parsing") {
+      test("fromString delegates to classic parsing (fooBar_baz 123)") {
         val name = Name.fromString("fooBar_baz 123")
         assertTrue(name.toList == List("foo", "bar", "baz", "123"))
+      },
+      test("fromString delegates to classic parsing (ValueInUSD)") {
+        val name = Name.fromString("ValueInUSD")
+        assertTrue(name.toList == List("value", "in", "u", "s", "d"))
+      },
+      test("fromString delegates to classic parsing (value_in_USD)") {
+        val name = Name.fromString("value_in_USD")
+        assertTrue(name.toList == List("value", "in", "u", "s", "d"))
+      },
+      test("fromString delegates to classic parsing (_-% )") {
+        val name = Name.fromString("_-% ")
+        assertTrue(name.toList == Nil)
       }
     ),
     suite("fromList / toList round-trip")(
