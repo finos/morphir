@@ -1,17 +1,16 @@
-package morphir.ir
+package morphir.classic.ir
 
 import kyo.Chunk
 
 import scala.util.matching.Regex
 
+
 /**
-  * Path is a list of names representing a hierarchical location in the IR.
-  * API aligned with morphir-elm's Morphir.IR.Path: fromList, toList, fromString, toString, isPrefixOf.
-  * V4 adds toCanonicalString (names joined by / with canonical name format).
+  * Classic Path: list of classic Names. API aligned with morphir-elm Morphir.IR.Path.
   */
 final case class Path(names: Chunk[Name]):
+  self =>
 
-  /** Convert path to list of names (morphir-elm toList). */
   def toList: List[Name] =
     names.toSeq.toList
 
@@ -19,24 +18,24 @@ final case class Path(names: Chunk[Name]):
   def format(nameToString: Name => String, sep: String): String =
     toList.map(nameToString).mkString(sep)
 
-  override def toString: String =
-    format(_.toTitleCase, ".")
-
-  /** V4 canonical string: names joined by /, each name in canonical form (e.g. "morphir/(sdk)"). */
+  /** Canonical string: names joined by /, each in hyphen-joined form (classic has no acronym parens). */
   def toCanonicalString: String =
     toList.map(_.toCanonicalString).mkString("/")
 
-  /** Is the given prefix a prefix of this path? Empty prefix is prefix of any path (morphir-elm isPrefixOf). */
+  /** Is the given prefix a prefix of this path? Empty prefix is prefix of any path. */
   def isPrefixOf(prefix: Path): Boolean =
     Path.isPrefixOf(this, prefix)
 
+  override def toString: String =
+    format(_.toTitleCase, ".")
+end Path
+
 object Path:
 
-  /** Build path from list of names (morphir-elm fromList). */
   def fromList(names: List[Name]): Path =
     Path(Chunk(names*))
 
-  /** Parse string into path; splits on non-word chars (except spaces), each segment parsed with Name.fromString (morphir-elm fromString). */
+  /** Parse string; splits on non-word chars (except spaces), each segment with Name.fromString (classic). */
   def fromString(string: String): Path =
     val separatorRegex: Regex = """[^\w\s]+""".r
     val segments = separatorRegex.split(string).toList.map(_.trim).filter(_.nonEmpty)
