@@ -18,7 +18,7 @@ import neotype.*
   * name.toSnakeCase      // "value_in_USD"
   * }}}
   */
-opaque type Name = Name.Type
+type Name = Name.Type
 
 object Name extends Subtype[ClassicName]:
 
