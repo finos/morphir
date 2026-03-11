@@ -155,6 +155,10 @@ object NameTests extends ZIOSpecDefault:
         val name = Name.fromList(List("x"))
         assertTrue(name.toHumanWords == List("x"))
       },
+      test("toHumanWordsTitle [foo,bar,baz,123] -> [Foo,bar,baz,123]") {
+        val name = Name.fromList(List("foo", "bar", "baz", "123"))
+        assertTrue(name.toHumanWordsTitle == List("Foo", "bar", "baz", "123"))
+      },
       test("toHumanWordsTitle [value,in,u,s,d] -> [Value,in,USD] (doc)") {
         val name = Name.fromList(List("value", "in", "u", "s", "d"))
         assertTrue(name.toHumanWordsTitle == List("Value", "in", "USD"))

@@ -7,38 +7,90 @@ import io.github.iltotore.iron.constraint.string.*
 import scala.util.matching.Regex
 import Name.Token
 
-/**
-  * Name is a union of ClassicName (pre-v4 semantics) and CanonicalName (v4 semantics).
-  * Use fold to handle the two variants.
-  * API aligned with morphir-elm's Morphir.IR.Name: fromList, toList, fromString, toTitleCase, toCamelCase, toSnakeCase, toHumanWords, toHumanWordsTitle.
+/** Name is a union of ClassicName (pre-v4 semantics) and CanonicalName (v4 semantics).
+  *
+  * Represents human-readable identifiers made up of words, allowing the same identifiers
+  * to work across various naming conventions. Abbreviations are stored as individual
+  * single-letter words (e.g. "USD" → `["u","s","d"]`) and coalesced for display.
+  *
+  * Use `Name.fold` to handle the two variants.
+  *
+  * API aligned with morphir-elm's `Morphir.IR.Name`: `fromList`, `toList`, `fromString`,
+  * `toTitleCase`, `toCamelCase`, `toSnakeCase`, `toHumanWords`, `toHumanWordsTitle`.
   */
 sealed trait Name:
   def tokens: Chunk[Token]
   def toCanonicalString: String
 
-  /** Convert name to list of segment strings (mirrors morphir-elm toList). */
+  /** Convert name to list of segment strings (morphir-elm `Name.toList`).
+    *
+    * {{{
+    * Name.fromStringClassic("fooBar_baz 123").toList // List("foo", "bar", "baz", "123")
+    * Name.fromStringClassic("valueInUSD").toList     // List("value", "in", "u", "s", "d")
+    * }}}
+    */
   def toList: List[String] =
     tokens.toSeq.map(Token.value).toList
 
-  /** Title-case string, e.g. "ValueInUSD" (morphir-elm toTitleCase). */
+  /** Title-case string (morphir-elm `Name.toTitleCase`).
+    *
+    * Each word is capitalized and concatenated. Single-letter words from
+    * abbreviations naturally form upper-case runs.
+    *
+    * {{{
+    * Name.fromList(List("foo", "bar", "baz", "123")).toTitleCase   // "FooBarBaz123"
+    * Name.fromList(List("value", "in", "u", "s", "d")).toTitleCase // "ValueInUSD"
+    * }}}
+    */
   def toTitleCase: String =
     toList.map(Name.capitalize).mkString
 
-  /** Camel-case string, e.g. "valueInUSD" (morphir-elm toCamelCase). */
+  /** Camel-case string (morphir-elm `Name.toCamelCase`).
+    *
+    * Like title-case but the first word stays lowercase.
+    *
+    * {{{
+    * Name.fromList(List("foo", "bar", "baz", "123")).toCamelCase   // "fooBarBaz123"
+    * Name.fromList(List("value", "in", "u", "s", "d")).toCamelCase // "valueInUSD"
+    * }}}
+    */
   def toCamelCase: String =
     toList match
       case Nil       => ""
       case h :: tail => (h :: tail.map(Name.capitalize)).mkString
 
-  /** Snake-case string, e.g. "value_in_USD"; abbreviations as one word (morphir-elm toSnakeCase). */
+  /** Snake-case string (morphir-elm `Name.toSnakeCase`).
+    *
+    * Words joined with underscores. Consecutive single-letter words (abbreviations)
+    * are coalesced into one upper-case word.
+    *
+    * {{{
+    * Name.fromList(List("foo", "bar", "baz", "123")).toSnakeCase   // "foo_bar_baz_123"
+    * Name.fromList(List("value", "in", "u", "s", "d")).toSnakeCase // "value_in_USD"
+    * }}}
+    */
   def toSnakeCase: String =
     toHumanWords.mkString("_")
 
-  /** Human-readable words; single-letter runs coalesced to one upper-case word, e.g. ["value", "in", "USD"] (morphir-elm toHumanWords). */
+  /** Human-readable words (morphir-elm `Name.toHumanWords`).
+    *
+    * Like `toList` but consecutive single-letter words are coalesced into
+    * one upper-case abbreviation.
+    *
+    * {{{
+    * Name.fromList(List("value", "in", "u", "s", "d")).toHumanWords // List("value", "in", "USD")
+    * Name.fromList(List("foo", "bar", "baz", "123")).toHumanWords   // List("foo", "bar", "baz", "123")
+    * }}}
+    */
   def toHumanWords: List[String] =
     Name.toHumanWordsFromList(toList)
 
-  /** Like toHumanWords with first word capitalized, e.g. ["Value", "in", "USD"] (morphir-elm toHumanWordsTitle). */
+  /** Human-readable words with first word capitalized (morphir-elm `Name.toHumanWordsTitle`).
+    *
+    * {{{
+    * Name.fromList(List("value", "in", "u", "s", "d")).toHumanWordsTitle // List("Value", "in", "USD")
+    * }}}
+    */
   def toHumanWordsTitle: List[String] =
     toHumanWords match
       case first :: rest => Name.capitalize(first) :: rest
@@ -70,7 +122,12 @@ object Name:
       case one :: Nil if one.length == 1 => words
       case _                              => process(Nil, Nil, words)
 
-  /** Build a name from a list of words (morphir-elm fromList); produces ClassicName. */
+  /** Build a name from a list of words (morphir-elm `Name.fromList`); produces ClassicName.
+    *
+    * {{{
+    * Name.fromList(List("value", "in", "u", "s", "d")).toTitleCase // "ValueInUSD"
+    * }}}
+    */
   def fromList(words: List[String]): Name =
     ClassicName(Chunk(words.flatMap(s => word(s.toLowerCase)).toList*))
 
@@ -128,9 +185,24 @@ object Name:
     val toks = segments.flatMap(word).toList
     ClassicName(Chunk(toks*))
 
+  /** Parse with classic (morphir-elm) rules; returns ClassicName as Name.
+    *
+    * {{{
+    * Name.fromStringClassic("fooBar_baz 123").toList // List("foo", "bar", "baz", "123")
+    * Name.fromStringClassic("valueInUSD").toList     // List("value", "in", "u", "s", "d")
+    * Name.fromStringClassic("_-%").toList            // List()
+    * }}}
+    */
   def fromStringClassic(input: String): Name =
     classicName(input)
 
+  /** Smart parser: tries v4 canonical format first, falls back to classic with acronym coalescence.
+    *
+    * {{{
+    * Name.fromString("value-in-(usd)") // CanonicalName with explicit acronym
+    * Name.fromString("valueInUSD")     // CanonicalName with coalesced "USD" acronym
+    * }}}
+    */
   def fromString(input: String): Name =
     parseCanonical(input).getOrElse {
       val segments = classicWordPattern.findAllIn(input).matchData.map(_.matched.toLowerCase).toList
@@ -184,10 +256,13 @@ final case class ClassicName private[ir] (tokens: Chunk[Token]) extends Name:
   def toCanonicalString: String =
     tokens.toSeq.map(Token.value).mkString("-")
 
+end ClassicName
+
 object ClassicName:
   /** Parse with pre-v4/morphir-elm rules; one Word per segment (morphir-elm fromString). */
   def apply(input: String): ClassicName =
     Name.classicName(input)
+
   /** Alias for apply; mirrors morphir-elm Name.fromString for classic parsing. */
   def fromString(input: String): ClassicName =
     apply(input)
