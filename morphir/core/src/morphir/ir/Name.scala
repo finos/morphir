@@ -169,10 +169,10 @@ object Name:
   // ---------------------------------------------------------------------------
   // Private construction (only Name parsers use these)
   // ---------------------------------------------------------------------------
-  private def word(s: String): Option[Name.Token] =
+  private[ir] def word(s: String): Option[Name.Token] =
     s.refineOption[ValidWord].map(Token.Word.apply)
 
-  private def acronym(s: String): Option[Name.Token] =
+  private[ir] def acronym(s: String): Option[Name.Token] =
     s.refineOption[ValidAcronym].map(Token.Acronym.apply)
 
   // Classic parsing: morphir-elm behaviour — regex to only accept, one Word per segment
@@ -259,16 +259,60 @@ final case class ClassicName private[ir] (tokens: Chunk[Token]) extends Name:
 end ClassicName
 
 object ClassicName:
-  /** Parse with pre-v4/morphir-elm rules; one Word per segment (morphir-elm fromString). */
+  /** Alias for fromString. */
   def apply(input: String): ClassicName =
+    fromString(input)
+
+  /** Translate a string into a name by splitting it into words. The algorithm is designed
+    * to work with most well-known naming conventions or mix of them. The general rule is that
+    * consecutive letters and numbers are treated as words, upper-case letters and non-alphanumeric
+    * characters start a new word.
+    *
+    * {{{
+    * Name.fromString("fooBar_baz 123") // ClassicName("foo", "bar", "baz", "123")
+    * Name.fromString("valueInUSD")     // ClassicName("value", "in", "u", "s", "d")
+    * Name.fromString("ValueInUSD")     // ClassicName("value", "in", "u", "s", "d")
+    * Name.fromString("value_in_USD")   // ClassicName("value", "in", "u", "s", "d")
+    * Name.fromString("_-%")            // ClassicName()
+    * }}}
+    */
+
+  def fromString(input: String): ClassicName =
     Name.classicName(input)
 
-  /** Alias for apply; mirrors morphir-elm Name.fromString for classic parsing. */
-  def fromString(input: String): ClassicName =
-    apply(input)
-  /** Build from list of words (morphir-elm fromList). */
+  def fromChunk(words: Chunk[String]): ClassicName = 
+    ClassicName(Chunk(words.flatMap(s => Name.word(s.toLowerCase)).toList*))
+
+  /** Convert a list of strings into a name.
+   * This follows the pre-v4/morphir-elm rules; one Word per segment, and 
+   * does no processing or validation of the words.
+   * {{{
+   * assert(fromList(List("foo", "bar", "baz", "123")) == ClassicName("foo-bar-baz-123"))
+   * assert(fromList(List("value","in","u","s","d")) == ClassicName("value-in-u-s-d"))
+   * }}}
+  */
   def fromList(words: List[String]): ClassicName =
     Name.fromList(words).asInstanceOf[ClassicName]
+
+  /** Turns a name into a camel-case string. 
+   * {{{
+   * ClassicName("fooBarBaz123").toCamelCase // "fooBarBaz123"
+   * ClassicName("valueInUSD").toCamelCase // "valueInUSD"
+   * }}}
+  */
+  def toCamelCase(name: ClassicName): String = name.toCamelCase
+  def toSnakeCase(name: ClassicName): String = name.toSnakeCase
+  def toHumanWords(name: ClassicName): List[String] = name.toHumanWords
+  def toHumanWordsTitle(name: ClassicName): List[String] = name.toHumanWordsTitle
+
+  /** Turns a name into a title-case string.
+   * {{{
+   * toTitleCase(fromList(List("foo", "bar", "baz", "123"))) // "FooBarBaz123"
+   * toTitleCase(fromList(List("value","in","u","s","d"))) // "ValueInUSD"
+   * }}}
+  */
+  def toTitleCase(name: ClassicName): String = name.toTitleCase
+
 end ClassicName
 
 final case class CanonicalName private[ir] (tokens: Chunk[Token]) extends Name:

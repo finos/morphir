@@ -3,32 +3,6 @@ import zio.test.*
 
 object NameTests extends ZIOSpecDefault:
   def spec = suite("NameTests")(
-    suite("fromStringClassic (morphir-elm fromString parity)")(
-      test("fooBar_baz 123 -> [foo, bar, baz, 123] (doc + Elm test)") {
-        val name = Name.fromStringClassic("fooBar_baz 123")
-        assertTrue(name.toList == List("foo", "bar", "baz", "123"))
-      },
-      test("valueInUSD -> [value, in, u, s, d] (doc + Elm test)") {
-        val name = Name.fromStringClassic("valueInUSD")
-        assertTrue(name.toList == List("value", "in", "u", "s", "d"))
-      },
-      test("ValueInUSD -> [value, in, u, s, d] (doc example)") {
-        val name = Name.fromStringClassic("ValueInUSD")
-        assertTrue(name.toList == List("value", "in", "u", "s", "d"))
-      },
-      test("value_in_USD -> [value, in, u, s, d] (doc + Elm test)") {
-        val name = Name.fromStringClassic("value_in_USD")
-        assertTrue(name.toList == List("value", "in", "u", "s", "d"))
-      },
-      test("_-% -> [] (doc example)") {
-        val name = Name.fromStringClassic("_-%")
-        assertTrue(name.toList == Nil)
-      },
-      test("_-% with trailing space -> [] (Elm test)") {
-        val name = Name.fromStringClassic("_-% ")
-        assertTrue(name.toList == Nil)
-      }
-    ),
     suite("apply / fromString")(
       test("apply delegates to classic parsing") {
         val name = Name("valueInUSD")
@@ -105,7 +79,7 @@ object NameTests extends ZIOSpecDefault:
     ),
     suite("toCanonicalString")(
       test("classic name canonical form (all words)") {
-        val name = Name.fromStringClassic("valueInUSD")
+        val name = Name.fromString("valueInUSD")
         assertTrue(name.toCanonicalString == "value-in-u-s-d")
       },
       test("fromList canonical form") {
