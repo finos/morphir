@@ -44,7 +44,7 @@
 		"@docusaurus/module-type-aliases": "^3.9.2",
 		"@docusaurus/tsconfig": "^3.9.2",
 		"js-yaml": "^4.1.0",
-		"typescript": "~5.9.0"
+		"typescript": "~6.0.0"
 	},
 	"browserslist": {
 		"production": [
