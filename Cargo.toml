@@ -48,7 +48,7 @@ serde_json = "1.0"
 toml = "0.9.8"
 
 # WASM utilities
-gloo-timers = { version = "0.3", features = ["futures"] }
+gloo-timers = { version = "0.4", features = ["futures"] }
 
 [profile.release]
 opt-level = 3
