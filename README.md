@@ -1,6 +1,6 @@
 
 [![FINOS Hosted Platform - LCR Interactive](https://img.shields.io/badge/FINOS%20Hosted%20Platform-LCR%20Interactive-blue)](https://lcr-interactive.finos.org/)
-[![FINOS - Active](https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-active.svg)](https://community.finos.org/docs/governance/Software-Projects/stages/active)
+[![FINOS - Graduated](https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-graduated.svg)](https://community.finos.org/docs/governance/lifecycle-stages/graduated)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/6526/badge)](https://bestpractices.coreinfrastructure.org/projects/6526)
 [<img src="https://img.shields.io/badge/slack-@finos/morphir-green.svg?logo=slack">](https://finos-lf.slack.com/messages/morphir/)
 
