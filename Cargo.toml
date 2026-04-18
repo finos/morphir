@@ -30,9 +30,9 @@ miette = { version = "7", features = ["fancy"] }
 # TUI
 ratatui = "0.30"
 crossterm = "0.29"
-tuirealm = "3"
-tui-realm-stdlib = "3"
-tui-realm-textarea = "2"
+tuirealm = "4"
+tui-realm-stdlib = "4"
+tui-realm-textarea = "4"
 
 # UI framework
 dioxus = { version = "0.7.3", features = ["web", "router"] }
@@ -45,7 +45,7 @@ tracing-appender = "0.2"
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-toml = "0.9.8"
+toml = "1.0.0"
 
 # WASM utilities
 gloo-timers = { version = "0.3", features = ["futures"] }

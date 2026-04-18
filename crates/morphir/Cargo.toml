@@ -41,7 +41,7 @@ serde_json = "1.0"
 dirs = "6.0"
 schemars = "1.0"
 indexmap = { version = "2", features = ["serde"] }
-usage-lib = { version = "2", features = ["clap", "docs"] }
+usage-lib = { version = "3", features = ["clap", "docs"] }
 
 # TUI
 ratatui = { workspace = true }
