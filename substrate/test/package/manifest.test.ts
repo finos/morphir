@@ -22,16 +22,13 @@ afterEach(async () => {
 
 describe("readManifest", () => {
     it("parses a corpus manifest with dependencies", async () => {
-        const path = join(tmp, "substrate.toml");
+        const path = join(tmp, "substrate.json");
         await writeFile(
             path,
-            `[package]
-name = "@me/example"
-kind = "corpus"
-
-[dependencies]
-"@AttilaMihaly/morphir-substrate" = "^0.1.0"
-`,
+            JSON.stringify({
+                package: { name: "@me/example", kind: "corpus" },
+                dependencies: { "@AttilaMihaly/morphir-substrate": "^0.1.0" },
+            }, null, 2),
             "utf8",
         );
         const manifest = await readManifest(path);
@@ -44,14 +41,10 @@ kind = "corpus"
     });
 
     it("parses a library manifest with version", async () => {
-        const path = join(tmp, "substrate.toml");
+        const path = join(tmp, "substrate.json");
         await writeFile(
             path,
-            `[package]
-name = "@org/lib"
-kind = "library"
-version = "1.2.3"
-`,
+            JSON.stringify({ package: { name: "@org/lib", kind: "library", version: "1.2.3" } }),
             "utf8",
         );
         const manifest = await readManifest(path);
@@ -61,37 +54,45 @@ version = "1.2.3"
     });
 
     it("rejects a library missing version", async () => {
-        const path = join(tmp, "substrate.toml");
-        await writeFile(path, `[package]\nname = "@org/lib"\nkind = "library"\n`, "utf8");
-        await expect(readManifest(path)).rejects.toThrow(/must declare \[package\].version/);
+        const path = join(tmp, "substrate.json");
+        await writeFile(
+            path,
+            JSON.stringify({ package: { name: "@org/lib", kind: "library" } }),
+            "utf8",
+        );
+        await expect(readManifest(path)).rejects.toThrow(/must declare package\.version/);
     });
 
     it("rejects an invalid kind", async () => {
-        const path = join(tmp, "substrate.toml");
+        const path = join(tmp, "substrate.json");
         await writeFile(
             path,
-            `[package]\nname = "@org/lib"\nkind = "application"\n`,
+            JSON.stringify({ package: { name: "@org/lib", kind: "application" } }),
             "utf8",
         );
         await expect(readManifest(path)).rejects.toThrow(/kind must be/);
     });
 
     it("rejects a non-scoped name", async () => {
-        const path = join(tmp, "substrate.toml");
-        await writeFile(path, `[package]\nname = "bare"\nkind = "corpus"\n`, "utf8");
+        const path = join(tmp, "substrate.json");
+        await writeFile(
+            path,
+            JSON.stringify({ package: { name: "bare", kind: "corpus" } }),
+            "utf8",
+        );
         await expect(readManifest(path)).rejects.toThrow(/@<scope>\/<name>/);
     });
 
-    it("rejects malformed TOML", async () => {
-        const path = join(tmp, "substrate.toml");
-        await writeFile(path, `[package\nname = broken`, "utf8");
-        await expect(readManifest(path)).rejects.toThrow(/Malformed TOML/);
+    it("rejects malformed JSON", async () => {
+        const path = join(tmp, "substrate.json");
+        await writeFile(path, `{ not valid json`, "utf8");
+        await expect(readManifest(path)).rejects.toThrow(/Malformed JSON/);
     });
 });
 
 describe("formatManifest / writeManifest round-trip", () => {
     it("preserves all declared fields", async () => {
-        const path = join(tmp, "substrate.toml");
+        const path = join(tmp, "substrate.json");
         const manifest: Manifest = {
             name: "@me/example",
             kind: "library",
@@ -106,7 +107,7 @@ describe("formatManifest / writeManifest round-trip", () => {
         expect(reloaded).toEqual(manifest);
     });
 
-    it("omits the dependencies table when empty", () => {
+    it("omits the dependencies key when empty", () => {
         const manifest: Manifest = {
             name: "@me/solo",
             kind: "library",
@@ -114,6 +115,6 @@ describe("formatManifest / writeManifest round-trip", () => {
             dependencies: [],
         };
         const text = formatManifest(manifest);
-        expect(text).not.toMatch(/\[dependencies\]/);
+        expect(text).not.toMatch(/"dependencies"/);
     });
 });

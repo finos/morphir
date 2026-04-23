@@ -9,7 +9,7 @@ import type { Manifest } from "./manifest.js";
 import { readManifest } from "./manifest.js";
 
 /** File names and directories relative to the corpus root. */
-export const MANIFEST_FILE = "substrate.toml";
+export const MANIFEST_FILE = "substrate.json";
 export const LOCKFILE_FILE = "substrate.lock";
 export const PACKAGES_DIR = join("substrate", "packages");
 
@@ -31,7 +31,7 @@ export interface LocatedPackage {
 
 /**
  * Locate the nearest enclosing package by walking up from `startDir`
- * until a `substrate.toml` is found.
+ * until a `substrate.json` is found.
  *
  * Throws if no manifest is found up to the filesystem root.
  */
