@@ -1,7 +1,7 @@
 /**
  * Package manifest — read and write `substrate.toml`.
  *
- * See `specs/tools/packages.md` for the manifest format.
+ * See `specs/tools/cli/packages.md` for the manifest format.
  */
 import { readFile, writeFile } from "node:fs/promises";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";

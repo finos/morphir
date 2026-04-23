@@ -66,4 +66,4 @@ substrate publish   # publish the current package to the registry
 
 - Read the [language specification](/docs/specs/language/) for syntax and semantics.
 - Browse the [examples](https://github.com/AttilaMihaly/morphir-substrate/tree/main/examples) for fully-worked specs.
-- See the [CLI reference](/docs/specs/tools/cli/) for every command and flag.
+- See the [CLI reference](/docs/specs/tools/cli/readme/) for every command and flag.

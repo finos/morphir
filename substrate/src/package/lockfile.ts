@@ -1,7 +1,7 @@
 /**
  * Package lockfile — read and write `substrate.lock`.
  *
- * See `specs/tools/packages.md` for the lockfile format.
+ * See `specs/tools/cli/packages.md` for the lockfile format.
  */
 import { readFile, writeFile, access } from "node:fs/promises";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";

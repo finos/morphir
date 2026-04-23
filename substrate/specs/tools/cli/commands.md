@@ -1,6 +1,6 @@
 # CLI
 
-The `substrate` CLI parses, evaluates, and tests [user modules](../language.md#user-modules) written as markdown files.
+The `substrate` CLI parses, evaluates, and tests [user modules](../../language.md#user-modules) written as markdown files.
 
 ## Commands
 

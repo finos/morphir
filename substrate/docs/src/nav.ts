@@ -56,8 +56,10 @@ export const NAV: NavSection[] = [
   {
     name: "Tools",
     items: [
-      { slug: "specs/tools/cli", label: "CLI" },
-      { slug: "specs/tools/packages", label: "Packages" },
+      { slug: "specs/tools/cli/readme", label: "CLI" },
+      { slug: "specs/tools/cli/commands", label: "Commands" },
+      { slug: "specs/tools/cli/packages", label: "Packages" },
+      { slug: "specs/tools/cli/design-decisions", label: "Design Decisions" },
     ],
   },
   {

@@ -54,71 +54,51 @@ of `^0.1.0`. Tags without a leading `v` are accepted.
 A corpus that depends on one or more packages has the following layout:
 
 ```text
-├── substrate.toml               # manifest
-├── substrate.lock               # lockfile
+├── substrate.json               # manifest
 ├── substrate/
-│   └── packages/
-│       └── @<scope>/
-│           └── <name>/          # vendored package contents
+│   └── @<scope>/
+│       └── <name>/              # vendored package contents
 └── <corpus's own content>
 ```
 
-The `substrate/` parent directory is reserved for substrate tooling
-artifacts and is committed to the repository alongside everything else.
-The `substrate/packages/` subdirectory contains the full contents of each
+The `substrate/` directory contains the full contents of each
 installed package under a `@<scope>/<name>/` path.
 
-All three artifacts — `substrate.toml`, `substrate.lock`, and the entire
-`substrate/packages/` tree — are committed. GitHub renders cross-package
-links natively because the target files are present at the expected paths.
-Updating a dependency is an explicit commit with a reviewable diff.
+Both artifacts — `substrate.json` and the entire `substrate/` tree —
+are committed. GitHub renders cross-package links natively because the
+target files are present at the expected paths. Updating a dependency is
+an explicit commit with a reviewable diff.
 
 ## Manifest
 
-The manifest is `substrate.toml` at the corpus root:
+The manifest is `substrate.json` at the corpus root:
 
-```toml
-[package]
-name = "@MyOrg/fr2052a-lcr"
-kind = "corpus"
-
-[dependencies]
-"@AttilaMihaly/morphir-substrate" = "^0.1.0"
+```json
+{
+  "package": {
+    "name": "@MyOrg/fr2052a-lcr",
+    "kind": "corpus"
+  },
+  "dependencies": {
+    "@AttilaMihaly/morphir-substrate": "^0.1.0"
+  }
+}
 ```
 
-The `[package]` table declares this package's own identity. The `kind`
+The `package` object declares this package's own identity. The `kind`
 field is required and takes one of the two values defined in
 [Package Kinds](#package-kinds): `"library"` or `"corpus"`. A library
 additionally declares `version`; a corpus typically omits it.
 
-The `[dependencies]` table lists each required package and a semver range.
+The `dependencies` object lists each required package and a semver range.
 Keys are the full scoped package name; values are semver ranges following
 standard operators (`^`, `~`, `>=`, exact).
-
-## Lockfile
-
-The lockfile is `substrate.lock` at the corpus root. It records the
-resolved version of every dependency and is managed by tooling:
-
-```toml
-[[packages]]
-name = "@AttilaMihaly/morphir-substrate"
-requested = "^0.1.0"
-resolved = "0.1.3"
-commit = "ef7d96a1b2c3d4e5f6..."
-integrity = "sha256-..."
-```
-
-`requested` copies the manifest range. `resolved` is the concrete version
-selected. `commit` is the full git SHA of the resolved tag. `integrity`
-is a hash of the installed package contents, used to detect tampering or
-accidental edits to vendored files.
 
 ## Authoring Cross-Package Links
 
 Authors write ordinary markdown links — inline or reference-style —
 using relative paths through `substrate/packages/`. The existing
-[link reference conventions](../language.md#link-references) apply
+[link reference conventions](../../language.md#link-references) apply
 unchanged:
 
 ```markdown
@@ -144,28 +124,21 @@ do so through package documentation rather than enforcement.
 
 ### `substrate install`
 
-Reads `substrate.toml` and `substrate.lock` (if present) and populates
-`substrate/packages/` so that every declared dependency is present at
-its expected path.
-
-When `substrate.lock` is absent, versions are resolved from the
-manifest ranges against each dependency's available git tags, the
-lockfile is written, and the resolved versions are installed.
-
-When `substrate.lock` is present, it is authoritative: the exact
-`resolved` versions are installed. The lockfile is regenerated only by
-`substrate update`.
+Reads `substrate.json` and populates `substrate/packages/` so that
+every declared dependency is present at its expected path. Versions are
+resolved from the manifest ranges against each dependency's available
+git tags.
 
 The command is idempotent: running it repeatedly with an unchanged
-manifest and lockfile yields no changes.
+manifest yields no changes.
 
 ### `substrate update [<package>]`
 
 Bumps the resolved version of the named package (or of every
 dependency, when no package is named) to the latest git tag that
-satisfies the manifest's semver range. Rewrites `substrate.lock`,
-updates the vendored contents under `substrate/packages/`, and leaves
-the working tree staged for review and commit.
+satisfies the manifest's semver range. Updates the vendored contents
+under `substrate/packages/` and leaves the working tree staged for
+review and commit.
 
 ### `substrate validate`
 
@@ -176,18 +149,17 @@ are found.
 
 Validation is the safety net for manually authored reference
 definitions: any typo or stale path after an update surfaces here.
-Validation checks link resolution only; it does not verify lockfile
-integrity or semver constraints at this stage.
+Validation checks link resolution only; it does not verify semver
+constraints at this stage.
 
 ### `substrate publish`
 
 Prepares a library for release. Aborts if the package's `kind` is
 `corpus`, since corpora are not published for others to depend on.
 
-1. Confirms `substrate.toml` and `substrate.lock` are committed and the
-   working tree is clean.
+1. Confirms `substrate.json` is committed and the working tree is clean.
 2. Runs `substrate validate` and aborts on any failure.
-3. Creates a git tag matching the `[package].version` field and pushes
+3. Creates a git tag matching the `package.version` field and pushes
    it to the origin remote.
 
 Publishing does not interact with any central registry. Consumers

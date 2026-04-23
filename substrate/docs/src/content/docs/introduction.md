@@ -16,7 +16,7 @@ Substrate collapses that split: the specification **is** the program. It reads l
 
 - **[Vision](/docs/specs/vision/)** — the motivation and design principles.
 - **[Language](/docs/specs/language/)** — the definitive reference for syntax, types, concepts, and expressions. Every spec construct is documented here.
-- **[Tools](/docs/specs/tools/cli/)** — the `substrate` CLI, package manager, and related tooling.
+- **[Tools](/docs/specs/tools/cli/readme/)** — the `substrate` CLI, package manager, and related tooling.
 - **[Install & quickstart](/docs/getting-started/)** — run your first spec in about five minutes.
 
 ## Conventions

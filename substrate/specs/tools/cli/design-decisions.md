@@ -11,7 +11,7 @@ The TypeScript source tree under `src/` mirrors the layout of
 | --- | --- | --- |
 | `language/concepts/` | `src/language/concepts/` | Parse and validate each concept kind |
 | `language/expressions/` | `src/language/expressions/` | Operation evaluators and type metadata |
-| `tools/cli.md` | `src/cli.ts` | Commander entry point |
+| `tools/cli/commands.md` | `src/cli.ts` | Commander entry point |
 
 Each concept module (e.g., `src/language/concepts/operation.ts`) exports
 functions to **detect** a concept from an MDAST heading, **parse** it

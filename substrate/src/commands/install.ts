@@ -2,7 +2,7 @@
  * `substrate install` — resolve and vendor every declared dependency
  * into `substrate/packages/`.
  *
- * Behaviour per `specs/tools/packages.md`:
+ * Behaviour per `specs/tools/cli/packages.md`:
  *
  * - When a lockfile is present, it is authoritative: each dependency
  *   is installed at the recorded commit.

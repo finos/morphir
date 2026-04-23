@@ -2,10 +2,6 @@
 
 This specification organizes the language into modular, human-readable markdown files. Each module describes a distinct aspect of the language, focusing on clarity and traceability.
 
-## [Concepts](language/concepts/)
-
-## [Expressions](language/expressions/)
-
 ## Markdown Conventions
 
 ### Syntax Policy
@@ -85,32 +81,7 @@ Every markdown file in the directory is included as a subsection, ordered
 alphabetically by filename. Numeric prefixes (e.g., `01-boolean.md`,
 `02-integer.md`) control ordering. The same rules apply recursively.
 
-## Alternative Formats
+## [Concepts](language/concepts/)
 
-When markdown alone is insufficient for precision or conciseness, alternative
-intermediate formats may be used within a module. These may appear as code
-blocks inside the markdown file or as separate artifact files referenced from
-it. In either case, every alternative-format fragment must carry a provenance
-reference --- a link or annotation that identifies the specification section
-or operation it belongs to.
+## [Expressions](language/expressions/)
 
-## User Modules
-
-User modules are markdown files that describe business logic using the language's building blocks. Business logic is expressed as nested lists:
-
-- The parent item is a reference to an operation (linked to its definition in a type class module).
-- Each child item is an argument passed to that operation, which may itself be a nested operation call.
-
-This mirrors function application in a readable, non-syntactic form.
-
-### Example
-
-- [Add](language/expressions/number.md#addition-operation)
-  - [Multiply](language/expressions/number.md#multiplication-operation)
-    - `unit_price`
-    - `quantity`
-  - `tax`
-
-This reads as: add the result of multiplying `unit_price` by `quantity` to `tax`.
-
-Leaf values (e.g., `unit_price`) refer to named inputs or constants defined elsewhere in the user module. A [Boolean](language/expressions/boolean.md) value can be used as a condition in the [If-Then-Else](language/expressions/boolean.md#if-then-else-operation) control-flow construct.

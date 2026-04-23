@@ -2,7 +2,7 @@
 
 Documentation / marketing surface for Substrate. Models the existing
 material in `specs/` as a statically-rendered documentation site, plus a
-landing hero and an interactive CLI demo drawn from `specs/tools/cli.md`.
+landing hero and an interactive CLI demo drawn from `specs/tools/cli/commands.md`.
 
 **What's mocked:**
 - Landing hero with lattice background

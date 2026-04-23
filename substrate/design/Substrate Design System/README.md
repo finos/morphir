@@ -29,7 +29,7 @@ originals; every asset used here has been copied into the project.
   - `specs/language.md` — markdown conventions, document-inclusion rules
   - `specs/language/concepts/*.md` — decision tables, provenance, records, choice, etc.
   - `specs/language/expressions/*.md` — the primitive operation catalog
-  - `specs/tools/cli.md` — the `substrate` CLI (`test`, `eval`, `list`)
+  - `specs/tools/cli/commands.md` — the `substrate` CLI (`test`, `eval`, `list`)
   - `examples/order-total.md` — a complete worked example
   - `branding/` — identical to the uploaded references
 
