@@ -1,10 +1,24 @@
 import { describe, it, expect } from "vitest";
 
-import { normaliseTag, pickBestTag } from "../../src/package/resolve.js";
+import { isBranchRef, normaliseTag, pickBestTag } from "../../src/package/resolve.js";
 import type { RemoteTag } from "../../src/package/git.js";
 
 const tags = (pairs: ReadonlyArray<readonly [string, string]>): RemoteTag[] =>
     pairs.map(([tag, commit]) => ({ tag, commit }));
+
+describe("isBranchRef", () => {
+    it("returns false for a semver range", () => {
+        expect(isBranchRef("^0.1.0")).toBe(false);
+        expect(isBranchRef("~1.2.3")).toBe(false);
+        expect(isBranchRef("1.0.0")).toBe(false);
+    });
+
+    it("returns true for branch names", () => {
+        expect(isBranchRef("main")).toBe(true);
+        expect(isBranchRef("develop")).toBe(true);
+        expect(isBranchRef("feature/xyz")).toBe(true);
+    });
+});
 
 describe("normaliseTag", () => {
     it("accepts both v-prefixed and bare tags", () => {

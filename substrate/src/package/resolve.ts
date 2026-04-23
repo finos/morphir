@@ -1,10 +1,18 @@
 /**
- * Resolve a semver range against the set of tags on a remote
- * repository. Tags may be prefixed with `v` or not; both are accepted.
+ * Resolve a semver range or branch name against the remote repository.
+ * Tags may be prefixed with `v` or not; both are accepted.
  */
-import { maxSatisfying, valid as validVersion } from "semver";
+import { maxSatisfying, valid as validVersion, validRange } from "semver";
 
 import type { RemoteTag } from "./git.js";
+
+/**
+ * Returns true when `range` is a branch name rather than a semver range.
+ * Any string that is not a valid semver range is treated as a branch ref.
+ */
+export function isBranchRef(range: string): boolean {
+    return validRange(range) === null;
+}
 
 /**
  * Given a set of remote tags and a semver range, return the best tag

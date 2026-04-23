@@ -45,9 +45,18 @@ A package is identified by `@<github-org>/<repo>`, matching the GitHub
 repository that hosts it. GitHub serves as the registry; there is no
 separate namespace or central server to operate.
 
+A package's declared name (the `name` field in its own `substrate.json`)
+may differ from its repository name. When a consumer installs a dependency
+the installed directory is named after the package's own declared name, not
+the repository name. This lets package authors rename or relocate their
+content without breaking consumers' link paths.
+
 A package version is a git tag on the source repository, interpreted as
 [semver](https://semver.org). A tag `v0.1.3` satisfies a manifest entry
-of `^0.1.0`. Tags without a leading `v` are accepted.
+of `^0.1.0`. Tags without a leading `v` are accepted. A branch name (e.g.
+`main`) may be used in place of a semver range, in which case the latest
+commit on that branch is installed and the lockfile records the resolved
+commit hash.
 
 ## Directory Layout
 
@@ -62,7 +71,8 @@ A corpus that depends on one or more packages has the following layout:
 ```
 
 The `substrate/` directory contains the full contents of each
-installed package under a `@<scope>/<name>/` path.
+installed package under a `@<scope>/<name>/` path, where `<scope>/<name>`
+is the package's own declared name (from its `substrate.json`).
 
 Both artifacts — `substrate.json` and the entire `substrate/` tree —
 are committed. GitHub renders cross-package links natively because the
@@ -90,27 +100,46 @@ field is required and takes one of the two values defined in
 [Package Kinds](#package-kinds): `"library"` or `"corpus"`. A library
 additionally declares `version`; a corpus typically omits it.
 
-The `dependencies` object lists each required package and a semver range.
-Keys are the full scoped package name; values are semver ranges following
-standard operators (`^`, `~`, `>=`, exact).
+An optional `subdir` field under `package` specifies a sub-directory
+within the repository where the substrate documents reside. When `subdir`
+is set, `substrate install` extracts only that sub-directory's contents
+into the vendored location rather than the whole repository:
+
+```json
+{
+  "package": {
+    "name": "@MyOrg/shared-concepts",
+    "kind": "library",
+    "version": "1.0.0",
+    "subdir": "specs"
+  }
+}
+```
+
+The `dependencies` object lists each required package and a version
+constraint. Keys are the full scoped repository name; values are either:
+
+- A semver range following standard operators (`^`, `~`, `>=`, exact), or
+- A branch name (e.g. `main`), which pins to the latest commit on that
+  branch at install time.
 
 ## Authoring Cross-Package Links
 
 Authors write ordinary markdown links — inline or reference-style —
-using relative paths through `substrate/packages/`. The existing
+using relative paths through `substrate/`. The existing
 [link reference conventions](../../language.md#link-references) apply
 unchanged:
 
 ```markdown
 Retail Outflow Rate uses a [Decision Table][dt] over [records][rec].
 
-[dt]: substrate/packages/@AttilaMihaly/morphir-substrate/specs/language/concepts/decision-table.md
-[rec]: substrate/packages/@AttilaMihaly/morphir-substrate/specs/language/concepts/record.md
+[dt]: substrate/@AttilaMihaly/morphir-substrate/specs/language/concepts/decision-table.md
+[rec]: substrate/@AttilaMihaly/morphir-substrate/specs/language/concepts/record.md
 ```
 
-Link paths are the author's responsibility. Tooling does not rewrite
-them. Reference-style definitions keep the verbose paths out of the
-prose.
+Link paths use the package's declared name (from its own `substrate.json`),
+not the repository name. Reference-style definitions keep the verbose paths
+out of the prose.
 
 ## Exports
 
@@ -144,10 +173,19 @@ exists. Pass `--yes` to accept all defaults without prompting.
 
 ### `substrate install`
 
-Reads `substrate.json` and populates `substrate/packages/` so that
-every declared dependency is present at its expected path. Versions are
-resolved from the manifest ranges against each dependency's available
-git tags.
+Reads `substrate.json` and populates `substrate/` so that every declared
+dependency is present at its expected path.
+
+For each dependency the command:
+
+1. Resolves the version constraint — a semver range is matched against the
+   repository's git tags; a branch name is resolved to the current HEAD
+   commit of that branch.
+2. Clones the repository at the resolved ref.
+3. Reads the cloned package's own `substrate.json` to determine its
+   declared `name` and, if present, its `subdir`.
+4. Copies the relevant content (the full clone, or just the `subdir`
+   subdirectory when specified) into `substrate/@<scope>/<declared-name>/`.
 
 The command is idempotent: running it repeatedly with an unchanged
 manifest yields no changes.
@@ -156,9 +194,9 @@ manifest yields no changes.
 
 Bumps the resolved version of the named package (or of every
 dependency, when no package is named) to the latest git tag that
-satisfies the manifest's semver range. Updates the vendored contents
-under `substrate/packages/` and leaves the working tree staged for
-review and commit.
+satisfies the manifest's semver range, or to the current HEAD commit for
+branch-pinned dependencies. Updates the vendored contents under
+`substrate/` and leaves the working tree staged for review and commit.
 
 ### `substrate validate`
 

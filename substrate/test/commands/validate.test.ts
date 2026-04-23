@@ -59,12 +59,12 @@ describe("validate", () => {
 
     it("skips vendored packages when walking", async () => {
         await writeFile(join(tmp, "README.md"), "# Entry\n", "utf8");
-        await mkdir(join(tmp, "substrate", "packages", "@org", "lib"), {
+        await mkdir(join(tmp, "substrate", "@org", "lib"), {
             recursive: true,
         });
         // A deliberately-broken file under vendored packages — must be ignored.
         await writeFile(
-            join(tmp, "substrate", "packages", "@org", "lib", "bad.md"),
+            join(tmp, "substrate", "@org", "lib", "bad.md"),
             "# Bad\n\n[missing](nowhere.md)\n",
             "utf8",
         );
@@ -74,17 +74,17 @@ describe("validate", () => {
     });
 
     it("resolves links from the corpus into a vendored package", async () => {
-        await mkdir(join(tmp, "substrate", "packages", "@org", "lib"), {
+        await mkdir(join(tmp, "substrate", "@org", "lib"), {
             recursive: true,
         });
         await writeFile(
-            join(tmp, "substrate", "packages", "@org", "lib", "concept.md"),
+            join(tmp, "substrate", "@org", "lib", "concept.md"),
             "# Concept\n",
             "utf8",
         );
         await writeFile(
             join(tmp, "README.md"),
-            `# Entry\n\nLinks to [concept](substrate/packages/@org/lib/concept.md).\n`,
+            `# Entry\n\nLinks to [concept](substrate/@org/lib/concept.md).\n`,
             "utf8",
         );
         const result = await validate(tmp);

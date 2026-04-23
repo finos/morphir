@@ -83,6 +83,19 @@ describe("readManifest", () => {
         await expect(readManifest(path)).rejects.toThrow(/@<scope>\/<name>/);
     });
 
+    it("parses a library manifest with subdir", async () => {
+        const path = join(tmp, "substrate.json");
+        await writeFile(
+            path,
+            JSON.stringify({
+                package: { name: "@org/lib", kind: "library", version: "1.0.0", subdir: "specs" },
+            }),
+            "utf8",
+        );
+        const manifest = await readManifest(path);
+        expect(manifest.subdir).toBe("specs");
+    });
+
     it("rejects malformed JSON", async () => {
         const path = join(tmp, "substrate.json");
         await writeFile(path, `{ not valid json`, "utf8");
@@ -105,6 +118,20 @@ describe("formatManifest / writeManifest round-trip", () => {
         await writeManifest(path, manifest);
         const reloaded = await readManifest(path);
         expect(reloaded).toEqual(manifest);
+    });
+
+    it("round-trips a manifest with subdir", async () => {
+        const path = join(tmp, "substrate.json");
+        const manifest: Manifest = {
+            name: "@org/lib",
+            kind: "library",
+            version: "1.0.0",
+            subdir: "specs",
+            dependencies: [],
+        };
+        await writeManifest(path, manifest);
+        const reloaded = await readManifest(path);
+        expect(reloaded.subdir).toBe("specs");
     });
 
     it("omits the dependencies key when empty", () => {
