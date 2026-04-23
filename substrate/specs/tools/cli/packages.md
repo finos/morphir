@@ -41,15 +41,16 @@ conventions. They differ only in two expectations:
 
 ## Package Identity
 
-A package is identified by `@<github-org>/<repo>`, matching the GitHub
-repository that hosts it. GitHub serves as the registry; there is no
-separate namespace or central server to operate.
+A package's declared name is a forward-slash-separated path such as
+`myorg/fr2052a-lcr` or `concepts/core`. It may have any number of segments
+and does not need to match the hosting repository's name or owner. The name
+is used as the install path under `substrate/` and as the stable identifier
+that consumers write in their cross-package links.
 
-A package's declared name (the `name` field in its own `substrate.json`)
-may differ from its repository name. When a consumer installs a dependency
-the installed directory is named after the package's own declared name, not
-the repository name. This lets package authors rename or relocate their
-content without breaking consumers' link paths.
+Dependency keys in `substrate.json` are the GitHub repository paths used
+to locate and clone the package (e.g. `finos/morphir`).
+A single repository may contain multiple `substrate.json` files and thus
+publish multiple packages under different names.
 
 A package version is a git tag on the source repository, interpreted as
 [semver](https://semver.org). A tag `v0.1.3` satisfies a manifest entry
@@ -65,14 +66,13 @@ A corpus that depends on one or more packages has the following layout:
 ```text
 ├── substrate.json               # manifest
 ├── substrate/
-│   └── @<scope>/
-│       └── <name>/              # vendored package contents
+│   └── <package-name>/          # vendored package contents (mirrors declared name)
 └── <corpus's own content>
 ```
 
-The `substrate/` directory contains the full contents of each
-installed package under a `@<scope>/<name>/` path, where `<scope>/<name>`
-is the package's own declared name (from its `substrate.json`).
+The `substrate/` directory contains the full contents of each installed
+package mirroring its declared name as a path. For example a package named
+`myorg/concepts` is vendored at `substrate/myorg/concepts/`.
 
 Both artifacts — `substrate.json` and the entire `substrate/` tree —
 are committed. GitHub renders cross-package links natively because the
@@ -86,11 +86,11 @@ The manifest is `substrate.json` at the corpus root:
 ```json
 {
   "package": {
-    "name": "@MyOrg/fr2052a-lcr",
+    "name": "MyOrg/fr2052a-lcr",
     "kind": "corpus"
   },
   "dependencies": {
-    "@AttilaMihaly/morphir-substrate": "^0.1.0"
+    "AttilaMihaly/morphir-substrate": "^0.1.0"
   }
 }
 ```
@@ -108,7 +108,7 @@ into the vendored location rather than the whole repository:
 ```json
 {
   "package": {
-    "name": "@MyOrg/shared-concepts",
+    "name": "MyOrg/shared-concepts",
     "kind": "library",
     "version": "1.0.0",
     "subdir": "specs"
@@ -117,7 +117,7 @@ into the vendored location rather than the whole repository:
 ```
 
 The `dependencies` object lists each required package and a version
-constraint. Keys are the full scoped repository name; values are either:
+constraint. Keys are GitHub repository paths (`org/repo`); values are either:
 
 - A semver range following standard operators (`^`, `~`, `>=`, exact), or
 - A branch name (e.g. `main`), which pins to the latest commit on that
@@ -133,12 +133,12 @@ unchanged:
 ```markdown
 Retail Outflow Rate uses a [Decision Table][dt] over [records][rec].
 
-[dt]: substrate/@AttilaMihaly/morphir-substrate/specs/language/concepts/decision-table.md
-[rec]: substrate/@AttilaMihaly/morphir-substrate/specs/language/concepts/record.md
+[dt]: /substrate/core/concepts/decision-table.md
+[rec]: /substrate/core/concepts/record.md
 ```
 
 Link paths use the package's declared name (from its own `substrate.json`),
-not the repository name. Reference-style definitions keep the verbose paths
+not the repository path. Reference-style definitions keep the verbose paths
 out of the prose.
 
 ## Exports
@@ -159,7 +159,7 @@ then writes the file and creates the `substrate/` vendor directory.
 
 | Prompt | Default | Notes |
 | --- | --- | --- |
-| Package name | `@<git-remote-org>/<directory-name>` | Must be `@<scope>/<name>` |
+| Package name | `<git-remote-org>/<directory-name>` | Any path with no leading/trailing slashes or `..` |
 | Kind | `corpus` | `library` or `corpus` |
 | Version | `0.1.0` | Libraries only; omitted for corpora |
 
@@ -185,7 +185,7 @@ For each dependency the command:
 3. Reads the cloned package's own `substrate.json` to determine its
    declared `name` and, if present, its `subdir`.
 4. Copies the relevant content (the full clone, or just the `subdir`
-   subdirectory when specified) into `substrate/@<scope>/<declared-name>/`.
+   subdirectory when specified) into `substrate/<declared-name>/`.
 
 The command is idempotent: running it repeatedly with an unchanged
 manifest yields no changes.

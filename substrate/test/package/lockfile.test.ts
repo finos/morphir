@@ -24,24 +24,24 @@ afterEach(async () => {
 const sample: Lockfile = {
     packages: [
         {
-            name: "@b/two",
+            name: "b/two",
             ref: "v0.2.1",
             requested: "^0.2.0",
             resolved: "0.2.1",
             commit: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             installs: [
-                { name: "@b/two", integrity: "sha256-bbbb" },
+                { name: "b/two", integrity: "sha256-bbbb" },
             ],
         },
         {
-            name: "@a/one",
+            name: "a/one",
             ref: "v1.0.3",
             requested: "^1.0.0",
             resolved: "1.0.3",
             commit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             installs: [
-                { name: "@a/published-name", integrity: "sha256-aaaa" },
-                { name: "@a/extra-pkg", integrity: "sha256-cccc" },
+                { name: "a/published-name", integrity: "sha256-aaaa" },
+                { name: "a/extra-pkg", integrity: "sha256-cccc" },
             ],
         },
     ],
@@ -65,11 +65,11 @@ describe("readLockfile", () => {
         await writeLockfile(path, sample);
         const reloaded = await readLockfile(path);
         // serialiser sorts by name
-        expect(reloaded.packages.map((p) => p.name)).toEqual(["@a/one", "@b/two"]);
+        expect(reloaded.packages.map((p) => p.name)).toEqual(["a/one", "b/two"]);
         expect(reloaded.packages[0]!.resolved).toBe("1.0.3");
         expect(reloaded.packages[0]!.ref).toBe("v1.0.3");
         expect(reloaded.packages[0]!.installs).toHaveLength(2);
-        expect(reloaded.packages[0]!.installs[0]!.name).toBe("@a/published-name");
+        expect(reloaded.packages[0]!.installs[0]!.name).toBe("a/published-name");
     });
 
     it("treats an empty packages array as having no packages", async () => {
@@ -91,7 +91,7 @@ describe("readLockfile", () => {
         await writeFile(
             path,
             JSON.stringify({
-                packages: [{ name: "@a/one", ref: "v1.0.0", requested: "^1.0.0", resolved: "1.0.0", commit: "aaaa" }],
+                packages: [{ name: "a/one", ref: "v1.0.0", requested: "^1.0.0", resolved: "1.0.0", commit: "aaaa" }],
             }),
             "utf8",
         );
@@ -110,7 +110,7 @@ describe("formatLockfile", () => {
         const text = formatLockfile(sample);
         const parsed = JSON.parse(text) as { packages: Array<{ name: string }> };
         const names = parsed.packages.map((p) => p.name);
-        expect(names).toEqual(["@a/one", "@b/two"]);
+        expect(names).toEqual(["a/one", "b/two"]);
     });
 
     it("includes ref and installs fields", () => {

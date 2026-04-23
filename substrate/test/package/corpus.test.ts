@@ -14,17 +14,17 @@ let tmp: string;
 async function setupCorpus(): Promise<void> {
     await writeFile(
         join(tmp, "substrate.json"),
-        JSON.stringify({ package: { name: "@me/example", kind: "corpus" } }),
+        JSON.stringify({ package: { name: "me/example", kind: "corpus" } }),
         "utf8",
     );
     await writeFile(join(tmp, "README.md"), "# Root\n", "utf8");
     await mkdir(join(tmp, "docs"), { recursive: true });
     await writeFile(join(tmp, "docs", "a.md"), "# A\n", "utf8");
-    await mkdir(join(tmp, "substrate", "@org", "lib"), {
+    await mkdir(join(tmp, "substrate", "org", "lib"), {
         recursive: true,
     });
     await writeFile(
-        join(tmp, "substrate", "@org", "lib", "inside.md"),
+        join(tmp, "substrate", "org", "lib", "inside.md"),
         "# Inside\n",
         "utf8",
     );
@@ -45,7 +45,7 @@ describe("locatePackage", () => {
     it("finds the manifest from the root", async () => {
         const located = await locatePackage(tmp);
         expect(located.root).toBe(tmp);
-        expect(located.manifest.name).toBe("@me/example");
+        expect(located.manifest.name).toBe("me/example");
     });
 
     it("walks up from a subdirectory", async () => {
@@ -69,26 +69,36 @@ describe("listMarkdownFiles", () => {
         const relFiles = files.map((f) => relative(tmp, f).split(sep).join("/"));
         expect(relFiles).toContain("README.md");
         expect(relFiles).toContain("docs/a.md");
-        expect(relFiles).not.toContain("substrate/@org/lib/inside.md");
+        expect(relFiles).not.toContain("substrate/org/lib/inside.md");
         expect(relFiles).not.toContain("node_modules/pkg/x.md");
     });
 
     it("includes vendored packages when asked", async () => {
         const files = await listMarkdownFiles(tmp, { includeVendored: true });
         const relFiles = files.map((f) => relative(tmp, f).split(sep).join("/"));
-        expect(relFiles).toContain("substrate/@org/lib/inside.md");
+        expect(relFiles).toContain("substrate/org/lib/inside.md");
     });
 });
 
 describe("vendoredPath", () => {
-    it("resolves a scoped package to its vendored location", () => {
-        const p = vendoredPath("/root", "@org/lib");
+    it("resolves a two-segment name to its vendored location", () => {
+        const p = vendoredPath("/root", "org/lib");
         expect(relative("/root", p).split(sep).join("/")).toBe(
-            "substrate/@org/lib",
+            "substrate/org/lib",
         );
     });
 
-    it("rejects unscoped names", () => {
-        expect(() => vendoredPath("/root", "bare")).toThrow(/Invalid scoped/);
+    it("resolves a single-segment name", () => {
+        const p = vendoredPath("/root", "standalone");
+        expect(relative("/root", p).split(sep).join("/")).toBe(
+            "substrate/standalone",
+        );
+    });
+
+    it("resolves a three-segment name", () => {
+        const p = vendoredPath("/root", "org/team/project");
+        expect(relative("/root", p).split(sep).join("/")).toBe(
+            "substrate/org/team/project",
+        );
     });
 });

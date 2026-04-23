@@ -19,7 +19,7 @@ describe("publish", () => {
     it("aborts on a corpus package before touching git", async () => {
         await writeFile(
             join(tmp, "substrate.json"),
-            JSON.stringify({ package: { name: "@me/ex", kind: "corpus" } }),
+            JSON.stringify({ package: { name: "me/ex", kind: "corpus" } }),
             "utf8",
         );
         await expect(publish(tmp)).rejects.toThrow(/Cannot publish corpus/);
@@ -30,7 +30,7 @@ describe("publish", () => {
         // surface that as the pre-git failure mode.
         await writeFile(
             join(tmp, "substrate.json"),
-            JSON.stringify({ package: { name: "@me/lib", kind: "library" } }),
+            JSON.stringify({ package: { name: "me/lib", kind: "library" } }),
             "utf8",
         );
         await expect(publish(tmp)).rejects.toThrow(/version/);
