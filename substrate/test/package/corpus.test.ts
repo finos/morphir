@@ -13,8 +13,8 @@ let tmp: string;
 
 async function setupCorpus(): Promise<void> {
     await writeFile(
-        join(tmp, "substrate.toml"),
-        `[package]\nname = "@me/example"\nkind = "corpus"\n`,
+        join(tmp, "substrate.json"),
+        JSON.stringify({ package: { name: "@me/example", kind: "corpus" } }),
         "utf8",
     );
     await writeFile(join(tmp, "README.md"), "# Root\n", "utf8");
@@ -56,7 +56,7 @@ describe("locatePackage", () => {
     it("throws when no manifest exists", async () => {
         const orphan = await mkdtemp(join(tmpdir(), "substrate-orphan-"));
         try {
-            await expect(locatePackage(orphan)).rejects.toThrow(/No substrate\.toml/);
+            await expect(locatePackage(orphan)).rejects.toThrow(/No substrate\.json/);
         } finally {
             await rm(orphan, { recursive: true, force: true });
         }

@@ -4,6 +4,7 @@
  *
  * Commands:
  *   - `substrate verify <file>` — run the full verification pipeline on a file.
+ *   - `substrate init`          — scaffold a new package in the current directory.
  *   - `substrate validate`      — walk the current corpus and check links.
  *   - `substrate install`       — vendor every declared dependency.
  *   - `substrate update [pkg]`  — re-resolve dependencies to latest tags.
@@ -13,6 +14,7 @@ import { Command } from "commander";
 import { resolve } from "node:path";
 import { verify } from "./pipeline.js";
 import { consoleListener, printSummary, exitCode } from "./progress.js";
+import { init } from "./commands/init.js";
 import { install } from "./commands/install.js";
 import { publish } from "./commands/publish.js";
 import { update } from "./commands/update.js";
@@ -42,6 +44,25 @@ program
 
         printSummary(result);
         process.exitCode = exitCode(result);
+    });
+
+program
+    .command("init")
+    .description(
+        "Scaffold a new package in the current directory. Prompts for package " +
+            "name, kind, and version (libraries only), then writes substrate.json " +
+            "and creates the substrate/ vendor directory.",
+    )
+    .option("-y, --yes", "Accept all defaults without prompting", false)
+    .action(async (opts: { yes: boolean }) => {
+        try {
+            const result = await init(process.cwd(), { yes: opts.yes });
+            console.log(`✓ Created substrate.json for ${result.manifest.name}`);
+            console.log("✓ Created substrate/");
+        } catch (err: unknown) {
+            console.error(err instanceof Error ? err.message : String(err));
+            process.exitCode = 1;
+        }
     });
 
 program

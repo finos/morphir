@@ -18,8 +18,8 @@ afterEach(async () => {
 describe("publish", () => {
     it("aborts on a corpus package before touching git", async () => {
         await writeFile(
-            join(tmp, "substrate.toml"),
-            `[package]\nname = "@me/ex"\nkind = "corpus"\n`,
+            join(tmp, "substrate.json"),
+            JSON.stringify({ package: { name: "@me/ex", kind: "corpus" } }),
             "utf8",
         );
         await expect(publish(tmp)).rejects.toThrow(/Cannot publish corpus/);
@@ -29,8 +29,8 @@ describe("publish", () => {
         // The manifest reader itself rejects a library without a version;
         // surface that as the pre-git failure mode.
         await writeFile(
-            join(tmp, "substrate.toml"),
-            `[package]\nname = "@me/lib"\nkind = "library"\n`,
+            join(tmp, "substrate.json"),
+            JSON.stringify({ package: { name: "@me/lib", kind: "library" } }),
             "utf8",
         );
         await expect(publish(tmp)).rejects.toThrow(/version/);

@@ -122,6 +122,26 @@ do so through package documentation rather than enforcement.
 
 ## Commands
 
+### `substrate init`
+
+Interactively scaffolds a new package in the current directory. Prompts
+for the minimum information needed to produce a valid `substrate.json`,
+then writes the file and creates the `substrate/` vendor directory.
+
+| Prompt | Default | Notes |
+| --- | --- | --- |
+| Package name | `@<git-remote-org>/<directory-name>` | Must be `@<scope>/<name>` |
+| Kind | `corpus` | `library` or `corpus` |
+| Version | `0.1.0` | Libraries only; omitted for corpora |
+
+After the prompts, `substrate init` writes `substrate.json` with the
+supplied values and creates an empty `substrate/` directory. It does not
+add any dependencies; use `substrate install` after editing
+`substrate.json` to add them.
+
+The command aborts without writing anything if `substrate.json` already
+exists. Pass `--yes` to accept all defaults without prompting.
+
 ### `substrate install`
 
 Reads `substrate.json` and populates `substrate/packages/` so that

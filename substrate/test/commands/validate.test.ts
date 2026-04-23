@@ -10,8 +10,8 @@ let tmp: string;
 beforeEach(async () => {
     tmp = await mkdtemp(join(tmpdir(), "substrate-validate-"));
     await writeFile(
-        join(tmp, "substrate.toml"),
-        `[package]\nname = "@me/ex"\nkind = "corpus"\n`,
+        join(tmp, "substrate.json"),
+        JSON.stringify({ package: { name: "@me/ex", kind: "corpus" } }),
         "utf8",
     );
 });
