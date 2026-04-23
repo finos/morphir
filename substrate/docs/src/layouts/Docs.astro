@@ -1,0 +1,91 @@
+---
+import Base from "./Base.astro";
+import Sidebar from "../components/Sidebar.astro";
+import { NAV } from "../nav";
+
+interface Props {
+  title: string;
+  description?: string;
+  activeSlug: string;
+  breadcrumb?: string[];
+  headings?: { depth: number; slug: string; text: string }[];
+}
+const {
+  title,
+  description,
+  activeSlug,
+  breadcrumb = [],
+  headings = [],
+} = Astro.props;
+
+// Flatten nav for prev/next calculation.
+const flat = NAV.flatMap((s) => s.items);
+const idx = flat.findIndex((i) => i.slug === activeSlug);
+const prev = idx > 0 ? flat[idx - 1] : null;
+const next = idx >= 0 && idx < flat.length - 1 ? flat[idx + 1] : null;
+
+const tocItems = headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+
+<Base title={title} description={description} activeNav="docs">
+  <div class="docs-work">
+    <aside class="docs-sidebar">
+      <Sidebar activeSlug={activeSlug} />
+    </aside>
+    <main class="docs-main">
+      <article class="docs-page substrate">
+        {
+          breadcrumb.length > 0 && (
+            <div class="page-breadcrumb">
+              {breadcrumb.slice(0, -1).map((c) => (
+                <span>
+                  {c} ·{" "}
+                </span>
+              ))}
+              <b>{breadcrumb[breadcrumb.length - 1]}</b>
+            </div>
+          )
+        }
+        <h1>{title}</h1>
+        {description && <p class="s-lede">{description}</p>}
+        <slot />
+        {
+          (prev || next) && (
+            <nav class="page-pager" aria-label="Page navigation">
+              {prev ? (
+                <a href={`/docs/${prev.slug}/`}>
+                  <span>← Prev</span>
+                  <b>{prev.label}</b>
+                </a>
+              ) : (
+                <span />
+              )}
+              {next ? (
+                <a href={`/docs/${next.slug}/`} class="next">
+                  <span>Next →</span>
+                  <b>{next.label}</b>
+                </a>
+              ) : (
+                <span />
+              )}
+            </nav>
+          )
+        }
+      </article>
+    </main>
+    {
+      tocItems.length > 0 && (
+        <aside class="docs-toc" aria-label="On this page">
+          <div class="toc-eyebrow">On this page</div>
+          <ul>
+            {tocItems.map((h) => (
+              <li>
+                <a href={`#${h.slug}`}>{h.text}</a>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      )
+    }
+  </div>
+</Base>

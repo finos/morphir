@@ -1,0 +1,50 @@
+---
+import { getCollection, render } from "astro:content";
+import Docs from "../../layouts/Docs.astro";
+import { NAV } from "../../nav";
+
+export async function getStaticPaths() {
+  const entries = await getCollection("docs");
+  return entries.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content, headings } = await render(entry);
+
+function labelFor(slug: string): string | undefined {
+  for (const s of NAV) {
+    const it = s.items.find((i) => i.slug === slug);
+    if (it) return it.label;
+  }
+  return undefined;
+}
+
+// Compute breadcrumb from slug segments or explicit frontmatter.
+const segments = entry.id.split("/");
+const defaultCrumb = segments
+  .slice(0, -1)
+  .map(
+    (s) =>
+      s.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+  );
+const breadcrumb = entry.data.breadcrumb ?? [
+  ...defaultCrumb,
+  labelFor(entry.id) ?? entry.data.title,
+];
+
+const title = entry.data.title;
+const description = entry.data.description;
+---
+
+<Docs
+  title={title}
+  description={description}
+  activeSlug={entry.id}
+  breadcrumb={breadcrumb}
+  headings={headings}
+>
+  <Content />
+</Docs>

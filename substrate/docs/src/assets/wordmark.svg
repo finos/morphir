@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 900 300"
+     role="img" aria-label="Morphir Substrate">
+  <title>Morphir Substrate</title>
+  <g transform="translate(150 150)">
+    <polyline
+      points="69.282,-80 0,-120 -69.282,-80 -69.282,0 0,40"
+      fill="none" stroke="#16A2DC" stroke-width="38.4"
+      stroke-linecap="round" stroke-linejoin="round"/>
+    <polyline
+      points="0,-40 69.282,0 69.282,80 0,120 -69.282,80"
+      fill="none" stroke="#F26A21" stroke-width="38.4"
+      stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="310" y="150"
+        fill="#2C4A5A"
+        font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        font-size="140" font-weight="600"
+        letter-spacing="-1.4"
+        dominant-baseline="central"
+        text-anchor="start">substrate</text>
+</svg>

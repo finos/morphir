@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 200" width="760" height="200" aria-label="Substrate logo lockup">
+  
+  <g transform="translate(100,100) scale(0.45)">
+    <polyline points="69.282,-140 0,-180 -69.282,-140 -69.282,-60 0,-20" fill="none" stroke="#16A2DC" stroke-width="38.4" stroke-linecap="round" stroke-linejoin="round"></polyline>
+    <polyline points="0,-100 69.282,-60 69.282,20 0,60 -69.282,20" fill="none" stroke="#F26A21" stroke-width="38.4" stroke-linecap="round" stroke-linejoin="round"></polyline>
+  </g>
+  
+  <text x="212" y="140" font-family="&#39;Fraunces&#39;, &#39;Source Serif Pro&#39;, Georgia, serif" font-weight="500" font-size="120" fill="#243228" letter-spacing="-3">Substrate</text>
+</svg>

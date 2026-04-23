@@ -1,0 +1,30 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Type · Body & UI</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;height:100%;font-family:var(--font-body);color:var(--fg-1);background:var(--paper)}
+  body{padding:18px 24px;display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .col{display:flex;flex-direction:column;gap:6px}
+  .eyebrow{font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--fg-3);font-family:var(--font-mono)}
+  .h3{font-family:var(--font-body);font-weight:600;font-size:16px;color:var(--pine-900)}
+  .p{font-size:14px;line-height:1.55;color:var(--pine-800);max-width:360px}
+  .caption{font-size:12px;color:var(--fg-3)}
+  .specs{font-family:var(--font-mono);font-size:10px;color:var(--fg-4);margin-top:auto}
+</style></head>
+<body>
+  <div class="col">
+    <div class="eyebrow">Body · Inter</div>
+    <div class="h3">Condition cells</div>
+    <div class="p">A row matches when every condition cell matches. A matching row's output cells determine the result. Rows are evaluated in document order.</div>
+    <div class="specs">400/600 · 15px / 1.55 · text-wrap: pretty</div>
+  </div>
+  <div class="col">
+    <div class="eyebrow">Scale</div>
+    <div style="font-size:12px">12 · xs &nbsp; extra small · captions, chip text</div>
+    <div style="font-size:13px">13 · sm &nbsp; small · table cells, UI</div>
+    <div style="font-size:15px">15 · base &nbsp; body default</div>
+    <div style="font-size:17px">17 · md &nbsp; emphasis, card titles</div>
+    <div style="font-size:20px;font-family:var(--font-display);font-weight:500">20 · lg &nbsp; subsection head</div>
+    <div style="font-size:24px;font-family:var(--font-display);font-weight:500">24 · xl &nbsp; section head</div>
+  </div>
+</body></html>

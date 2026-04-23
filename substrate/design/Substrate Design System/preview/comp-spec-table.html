@@ -1,0 +1,23 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Spec table</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;height:100%;background:var(--paper);font-family:var(--font-body)}
+  body{padding:18px 22px}
+  h4{margin:0 0 8px;font-family:var(--font-display);font-weight:500;font-size:15px;color:var(--pine-900)}
+  h4 a{color:var(--pine-900);text-decoration:underline;text-decoration-color:rgba(47,71,56,.3)}
+  .arr{color:#F26A21}
+</style></head>
+<body class="substrate">
+  <h4>Retail Outflow Rate <a href="#">Decision Table</a></h4>
+  <table>
+    <thead><tr><th>counterparty</th><th>insured</th><th>account_type</th><th>relationship</th><th><span class="arr">→</span> outflow_rate</th></tr></thead>
+    <tbody>
+      <tr><td>Retail</td><td>true</td><td>Transactional</td><td></td><td style="color:#C4531A;font-family:var(--font-mono)">0.03</td></tr>
+      <tr><td>Retail</td><td>true</td><td>Non-Transactional</td><td>Established</td><td style="color:#C4531A;font-family:var(--font-mono)">0.03</td></tr>
+      <tr><td>Retail</td><td>true</td><td>Non-Transactional</td><td>None</td><td style="color:#C4531A;font-family:var(--font-mono)">0.10</td></tr>
+      <tr><td>Retail</td><td>false</td><td></td><td></td><td style="color:#C4531A;font-family:var(--font-mono)">0.40</td></tr>
+      <tr><td><em style="color:var(--fg-3)">otherwise</em></td><td></td><td></td><td></td><td style="color:#C4531A;font-family:var(--font-mono)">0.40</td></tr>
+    </tbody>
+  </table>
+</body></html>

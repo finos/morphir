@@ -1,0 +1,99 @@
+---
+// Animated substrate CLI demo. The animation runs client-side once
+// hydrated; if JS is disabled the full transcript is shown statically.
+---
+
+<div class="cli-window" data-cli-demo>
+  <div class="cli-titlebar">
+    <span class="dot" style="background:#F26A21"></span>
+    <span class="dot" style="background:#16A2DC"></span>
+    <span class="dot" style="background:#869CAB"></span>
+    <span class="cli-title">substrate — order-total</span>
+  </div>
+  <div class="cli-body" data-cli-body>
+    <!-- Static fallback lines. Replaced with progressive render on load. -->
+    <div class="cli-line cli-prompt">$ substrate test examples/order-total.md</div>
+    <div class="cli-line cli-ok">✓ 24/24 tests passed</div>
+  </div>
+</div>
+
+<script>
+  type Line = { t: string; c: string };
+  const LINES: Line[] = [
+    { t: "prompt", c: "$ substrate test examples/order-total.md" },
+    { t: "ok", c: "✓ 24/24 tests passed" },
+    { t: "dim", c: "  subtotal, discount_amount, discounted_subtotal," },
+    { t: "dim", c: "  tax_amount, total, is_valid_quantity," },
+    { t: "dim", c: "  is_valid_discount, clamped_discount_rate" },
+    { t: "gap", c: "" },
+    { t: "prompt", c: "$ substrate eval examples/order-total.md total \\" },
+    { t: "prompt", c: "    -i unit_price=10 quantity=3 \\" },
+    { t: "prompt", c: "       discount_rate=0.1 tax_rate=0.2" },
+    { t: "num", c: "32.4" },
+    { t: "gap", c: "" },
+    { t: "prompt", c: "$ substrate list examples/order-total.md" },
+    { t: "hdr", c: "Order Total" },
+    { t: "dim", c: "  inputs:  unit_price, quantity, discount_rate, tax_rate" },
+    { t: "def", c: "  subtotal              (4 cases)" },
+    { t: "def", c: "  discount_amount       (4 cases)" },
+    { t: "def", c: "  discounted_subtotal   (4 cases)" },
+    { t: "def", c: "  tax_amount            (4 cases)" },
+    { t: "def", c: "  total                 (4 cases)" },
+    { t: "def", c: "  is_valid_quantity     (4 cases)" },
+  ];
+
+  const NBSP = "\u00a0";
+
+  function delay(t: string) {
+    if (t === "gap") return 180;
+    if (t === "prompt") return 340;
+    return 90;
+  }
+
+  function init(window_: HTMLElement) {
+    const body = window_.querySelector<HTMLElement>("[data-cli-body]");
+    if (!body) return;
+    body.innerHTML = "";
+    let i = 0;
+
+    function append(line: Line) {
+      const el = document.createElement("div");
+      el.className = "cli-line cli-" + line.t;
+      el.textContent = line.c || NBSP;
+      body.appendChild(el);
+      body.scrollTop = body.scrollHeight;
+    }
+
+    function caret() {
+      const el = document.createElement("span");
+      el.className = "caret";
+      el.textContent = "▍";
+      return el;
+    }
+
+    const blinker = caret();
+    body.appendChild(blinker);
+
+    function tick() {
+      if (i >= LINES.length) {
+        blinker.remove();
+        const prompt = document.createElement("div");
+        prompt.className = "cli-line cli-prompt";
+        const c = caret();
+        prompt.textContent = "$ ";
+        prompt.appendChild(c);
+        body.appendChild(prompt);
+        body.scrollTop = body.scrollHeight;
+        return;
+      }
+      const line = LINES[i++];
+      append(line);
+      body.scrollTop = body.scrollHeight;
+      body.appendChild(blinker);
+      setTimeout(tick, delay(line.t));
+    }
+    setTimeout(tick, 400);
+  }
+
+  document.querySelectorAll<HTMLElement>("[data-cli-demo]").forEach(init);
+</script>
