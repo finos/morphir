@@ -3,27 +3,19 @@
  * dependency) against the latest tags or branch HEAD, rewrite the
  * lockfile, and refresh the vendored content.
  */
-import { cp, mkdir, mkdtemp, rm } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
     LOCKFILE_FILE,
-    MANIFEST_FILE,
     locatePackage,
-    vendoredPath,
 } from "../package/corpus.js";
-import { cloneAtRef, listRemoteTags, repoUrl, resolveRefToCommit } from "../package/git.js";
+import { listRemoteTags, repoUrl, resolveRefToCommit } from "../package/git.js";
 import { computeIntegrity } from "../package/integrity.js";
-import {
-    lockfileExists,
-    readLockfile,
-    writeLockfile,
-} from "../package/lockfile.js";
-import type { LockEntry } from "../package/lockfile.js";
+import { lockfileExists, readLockfile, writeLockfile } from "../package/lockfile.js";
+import type { LockEntry, LockInstall } from "../package/lockfile.js";
 import type { DependencySpec } from "../package/manifest.js";
-import { readManifest } from "../package/manifest.js";
 import { isBranchRef, pickBestTag } from "../package/resolve.js";
+import { fetchAndInstall } from "./install.js";
 
 export interface UpdateResult {
     readonly root: string;
@@ -37,10 +29,6 @@ export interface UpdatedEntry {
     readonly changed: boolean;
 }
 
-/**
- * Update one named package, or every dependency when `packageName` is
- * undefined.
- */
 export async function update(
     startDir: string,
     packageName?: string,
@@ -48,9 +36,14 @@ export async function update(
     const pkg = await locatePackage(startDir);
     const lockPath = join(pkg.root, LOCKFILE_FILE);
 
-    const previous = (await lockfileExists(lockPath))
-        ? (await readLockfile(lockPath)).packages
-        : [];
+    let previous: readonly LockEntry[] = [];
+    if (await lockfileExists(lockPath)) {
+        try {
+            previous = (await readLockfile(lockPath)).packages;
+        } catch {
+            previous = [];
+        }
+    }
     const previousByName = new Map(previous.map((p) => [p.name, p]));
 
     const targets =
@@ -82,10 +75,7 @@ export async function update(
     return { root: pkg.root, updated };
 }
 
-async function resolveDependency(
-    root: string,
-    dep: DependencySpec,
-): Promise<LockEntry> {
+async function resolveDependency(root: string, dep: DependencySpec): Promise<LockEntry> {
     const url = repoUrl(dep.name);
 
     let ref: string;
@@ -111,73 +101,25 @@ async function resolveDependency(
         resolved = picked.tag.startsWith("v") ? picked.tag.slice(1) : picked.tag;
     }
 
-    const { installName, dest } = await fetchAndInstall(dep.name, ref, root);
-    const integrity = await computeIntegrity(dest);
+    const subInstalls = await fetchAndInstall(dep.name, ref, root);
+    const lockInstalls: LockInstall[] = [];
+    for (const inst of subInstalls) {
+        const integrity = await computeIntegrity(inst.dest);
+        lockInstalls.push({ name: inst.installName, integrity });
+    }
 
     return {
         name: dep.name,
-        installName,
+        ref,
         requested: dep.range,
         resolved,
         commit,
-        integrity,
+        installs: lockInstalls,
     };
-}
-
-async function fetchAndInstall(
-    depName: string,
-    ref: string,
-    corpusRoot: string,
-): Promise<{ installName: string; dest: string }> {
-    const url = repoUrl(depName);
-    const tempBase = await mkdtemp(join(tmpdir(), "substrate-fetch-"));
-    const tempClone = join(tempBase, "clone");
-
-    try {
-        await cloneAtRef(url, ref, tempClone);
-        await rm(join(tempClone, ".git"), { recursive: true, force: true });
-
-        const { installName, subdir } = await readPackageMeta(tempClone, depName);
-        const dest = vendoredPath(corpusRoot, installName);
-
-        if (await pathExists(dest)) {
-            await rm(dest, { recursive: true, force: true });
-        }
-        await mkdir(dest, { recursive: true });
-
-        const source = subdir ? join(tempClone, subdir) : tempClone;
-        await cp(source, dest, { recursive: true });
-
-        return { installName, dest };
-    } finally {
-        await rm(tempBase, { recursive: true, force: true });
-    }
-}
-
-async function readPackageMeta(
-    cloneDir: string,
-    depName: string,
-): Promise<{ installName: string; subdir: string | undefined }> {
-    try {
-        const manifest = await readManifest(join(cloneDir, MANIFEST_FILE));
-        return { installName: manifest.name, subdir: manifest.subdir };
-    } catch {
-        return { installName: depName, subdir: undefined };
-    }
 }
 
 function replaceEntry(entries: LockEntry[], incoming: LockEntry): void {
     const idx = entries.findIndex((e) => e.name === incoming.name);
     if (idx >= 0) entries[idx] = incoming;
     else entries.push(incoming);
-}
-
-async function pathExists(path: string): Promise<boolean> {
-    try {
-        const { access } = await import("node:fs/promises");
-        await access(path);
-        return true;
-    } catch {
-        return false;
-    }
 }
