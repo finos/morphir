@@ -2,24 +2,35 @@
  * Package lockfile — read and write `substrate.lock`.
  *
  * See `specs/tools/cli/packages.md` for the lockfile format.
+ *
+ * Format: JSON. Each entry in `packages` represents one resolved
+ * dependency (identified by its repository name). A single repo may
+ * install multiple sub-packages; these are listed in `installs`.
  */
 import { readFile, writeFile, access } from "node:fs/promises";
-import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
+
+/** One sub-package installed from a dependency. */
+export interface LockInstall {
+    /** Declared package name — used as the directory under `substrate/`. */
+    readonly name: string;
+    readonly integrity: string;
+}
 
 /** One resolved dependency entry in `substrate.lock`. */
 export interface LockEntry {
     /** Dependency key in the consumer's manifest (repository identity). */
     readonly name: string;
     /**
-     * Declared package name from the installed package's own manifest.
-     * Used as the directory name under `substrate/`. Defaults to `name`
-     * when absent (backward compatibility with older lockfiles).
+     * The exact git ref that was checked out — the tag string (e.g. `v0.1.3`)
+     * for semver-resolved deps, or the branch name (e.g. `main`) for
+     * branch-pinned deps. Used to re-clone when reinstalling from lockfile.
      */
-    readonly installName: string;
+    readonly ref: string;
     readonly requested: string;
+    /** Normalized version string for tags, or commit hash for branches. */
     readonly resolved: string;
     readonly commit: string;
-    readonly integrity: string;
+    readonly installs: readonly LockInstall[];
 }
 
 /** Parsed contents of `substrate.lock`. */
@@ -40,7 +51,7 @@ export async function lockfileExists(path: string): Promise<boolean> {
 /**
  * Read and parse `substrate.lock` at the given path.
  *
- * Throws if the file is missing, malformed, or violates the schema.
+ * Throws if the file is missing, malformed JSON, or violates the schema.
  */
 export async function readLockfile(path: string): Promise<Lockfile> {
     let source: string;
@@ -53,32 +64,31 @@ export async function readLockfile(path: string): Promise<Lockfile> {
 
     let parsed: unknown;
     try {
-        parsed = parseToml(source);
+        parsed = JSON.parse(source);
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
-        throw new Error(`Malformed TOML in ${path}: ${message}`);
+        throw new Error(`Malformed JSON in ${path}: ${message}`);
     }
 
     return validateLockfile(parsed, path);
 }
 
 /**
- * Serialise a lockfile back to TOML using the canonical `[[packages]]`
- * array-of-tables form, with entries sorted by name for stable diffs.
+ * Serialise a lockfile to JSON, with entries sorted by name for stable diffs.
  */
 export function formatLockfile(lockfile: Lockfile): string {
     const sorted = [...lockfile.packages].sort((a, b) => a.name.localeCompare(b.name));
     const doc = {
         packages: sorted.map((p) => ({
             name: p.name,
-            install_name: p.installName,
+            ref: p.ref,
             requested: p.requested,
             resolved: p.resolved,
             commit: p.commit,
-            integrity: p.integrity,
+            installs: p.installs.map((i) => ({ name: i.name, integrity: i.integrity })),
         })),
     };
-    return stringifyToml(doc);
+    return JSON.stringify(doc, null, 2) + "\n";
 }
 
 export async function writeLockfile(path: string, lockfile: Lockfile): Promise<void> {
@@ -91,7 +101,7 @@ export async function writeLockfile(path: string, lockfile: Lockfile): Promise<v
 
 function validateLockfile(value: unknown, path: string): Lockfile {
     if (typeof value !== "object" || value === null || Array.isArray(value)) {
-        throw new Error(`${path}: expected a TOML table at document root`);
+        throw new Error(`${path}: expected a JSON object at document root`);
     }
     const root = value as Record<string, unknown>;
 
@@ -100,31 +110,43 @@ function validateLockfile(value: unknown, path: string): Lockfile {
         return { packages: [] };
     }
     if (!Array.isArray(packagesRaw)) {
-        throw new Error(`${path}: [[packages]] must be an array of tables`);
+        throw new Error(`${path}: "packages" must be an array`);
     }
 
     const packages: LockEntry[] = [];
     for (const [i, entry] of packagesRaw.entries()) {
         if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
-            throw new Error(`${path}: packages[${i}] must be a table`);
+            throw new Error(`${path}: packages[${i}] must be an object`);
         }
         const e = entry as Record<string, unknown>;
-        const name = requireString(e, "name", path, i);
-        // `install_name` was introduced later; fall back to `name` for older lockfiles.
-        const installName = optionalString(e, "install_name") ?? name;
-        packages.push({
-            name,
-            installName,
-            requested: requireString(e, "requested", path, i),
-            resolved: requireString(e, "resolved", path, i),
-            commit: requireString(e, "commit", path, i),
-            integrity: requireString(e, "integrity", path, i),
-        });
+        const name = requireStr(e, "name", path, i);
+        const ref = requireStr(e, "ref", path, i);
+        const requested = requireStr(e, "requested", path, i);
+        const resolved = requireStr(e, "resolved", path, i);
+        const commit = requireStr(e, "commit", path, i);
+        const installs = parseInstalls(e["installs"], path, i);
+        packages.push({ name, ref, requested, resolved, commit, installs });
     }
     return { packages };
 }
 
-function requireString(
+function parseInstalls(value: unknown, path: string, idx: number): LockInstall[] {
+    if (!Array.isArray(value)) {
+        throw new Error(`${path}: packages[${idx}].installs must be an array`);
+    }
+    return value.map((item, j) => {
+        if (typeof item !== "object" || item === null || Array.isArray(item)) {
+            throw new Error(`${path}: packages[${idx}].installs[${j}] must be an object`);
+        }
+        const e = item as Record<string, unknown>;
+        return {
+            name: requireStr(e, "name", path, idx),
+            integrity: requireStr(e, "integrity", path, idx),
+        };
+    });
+}
+
+function requireStr(
     entry: Record<string, unknown>,
     key: string,
     path: string,
@@ -132,14 +154,7 @@ function requireString(
 ): string {
     const v = entry[key];
     if (typeof v !== "string" || v.length === 0) {
-        throw new Error(`${path}: packages[${index}].${key} is required and must be a string`);
+        throw new Error(`${path}: packages[${index}].${key} is required and must be a non-empty string`);
     }
     return v;
-}
-
-function optionalString(entry: Record<string, unknown>, key: string): string | undefined {
-    const v = entry[key];
-    if (v === undefined) return undefined;
-    if (typeof v !== "string") return undefined;
-    return v.length > 0 ? v : undefined;
 }

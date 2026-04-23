@@ -25,19 +25,24 @@ const sample: Lockfile = {
     packages: [
         {
             name: "@b/two",
-            installName: "@b/two",
+            ref: "v0.2.1",
             requested: "^0.2.0",
             resolved: "0.2.1",
             commit: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            integrity: "sha256-bbbb",
+            installs: [
+                { name: "@b/two", integrity: "sha256-bbbb" },
+            ],
         },
         {
             name: "@a/one",
-            installName: "@a/published-name",
+            ref: "v1.0.3",
             requested: "^1.0.0",
             resolved: "1.0.3",
             commit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            integrity: "sha256-aaaa",
+            installs: [
+                { name: "@a/published-name", integrity: "sha256-aaaa" },
+                { name: "@a/extra-pkg", integrity: "sha256-cccc" },
+            ],
         },
     ],
 };
@@ -49,7 +54,7 @@ describe("lockfileExists", () => {
 
     it("returns true when present", async () => {
         const path = join(tmp, "substrate.lock");
-        await writeFile(path, "");
+        await writeFile(path, "{}");
         expect(await lockfileExists(path)).toBe(true);
     });
 });
@@ -59,26 +64,24 @@ describe("readLockfile", () => {
         const path = join(tmp, "substrate.lock");
         await writeLockfile(path, sample);
         const reloaded = await readLockfile(path);
-        // The serialiser sorts by name for stable diffs.
+        // serialiser sorts by name
         expect(reloaded.packages.map((p) => p.name)).toEqual(["@a/one", "@b/two"]);
         expect(reloaded.packages[0]!.resolved).toBe("1.0.3");
-        expect(reloaded.packages[0]!.installName).toBe("@a/published-name");
+        expect(reloaded.packages[0]!.ref).toBe("v1.0.3");
+        expect(reloaded.packages[0]!.installs).toHaveLength(2);
+        expect(reloaded.packages[0]!.installs[0]!.name).toBe("@a/published-name");
     });
 
-    it("falls back installName to name when install_name is absent (backward compat)", async () => {
+    it("treats an empty packages array as having no packages", async () => {
         const path = join(tmp, "substrate.lock");
-        await writeFile(
-            path,
-            `[[packages]]\nname = "@a/one"\nrequested = "^1.0.0"\nresolved = "1.0.0"\ncommit = "aaaa"\nintegrity = "sha256-x"\n`,
-            "utf8",
-        );
+        await writeFile(path, JSON.stringify({ packages: [] }), "utf8");
         const lock = await readLockfile(path);
-        expect(lock.packages[0]!.installName).toBe("@a/one");
+        expect(lock.packages).toEqual([]);
     });
 
-    it("treats an empty lockfile as having no packages", async () => {
+    it("treats a missing packages key as having no packages", async () => {
         const path = join(tmp, "substrate.lock");
-        await writeFile(path, "", "utf8");
+        await writeFile(path, "{}", "utf8");
         const lock = await readLockfile(path);
         expect(lock.packages).toEqual([]);
     });
@@ -87,19 +90,35 @@ describe("readLockfile", () => {
         const path = join(tmp, "substrate.lock");
         await writeFile(
             path,
-            `[[packages]]\nname = "@a/one"\nrequested = "^1.0.0"\n`,
+            JSON.stringify({
+                packages: [{ name: "@a/one", ref: "v1.0.0", requested: "^1.0.0", resolved: "1.0.0", commit: "aaaa" }],
+            }),
             "utf8",
         );
-        await expect(readLockfile(path)).rejects.toThrow(/resolved/);
+        await expect(readLockfile(path)).rejects.toThrow(/installs/);
+    });
+
+    it("rejects malformed JSON", async () => {
+        const path = join(tmp, "substrate.lock");
+        await writeFile(path, "{ not json", "utf8");
+        await expect(readLockfile(path)).rejects.toThrow(/Malformed JSON/);
     });
 });
 
 describe("formatLockfile", () => {
-    it("emits packages sorted by name", () => {
+    it("emits valid JSON sorted by name", () => {
         const text = formatLockfile(sample);
-        const firstAt = text.indexOf("@a/one");
-        const secondAt = text.indexOf("@b/two");
-        expect(firstAt).toBeGreaterThan(-1);
-        expect(secondAt).toBeGreaterThan(firstAt);
+        const parsed = JSON.parse(text) as { packages: Array<{ name: string }> };
+        const names = parsed.packages.map((p) => p.name);
+        expect(names).toEqual(["@a/one", "@b/two"]);
+    });
+
+    it("includes ref and installs fields", () => {
+        const text = formatLockfile(sample);
+        const parsed = JSON.parse(text) as {
+            packages: Array<{ ref: string; installs: Array<{ name: string }> }>;
+        };
+        expect(parsed.packages[0]!.ref).toBe("v1.0.3");
+        expect(parsed.packages[0]!.installs).toHaveLength(2);
     });
 });

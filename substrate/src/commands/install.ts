@@ -4,17 +4,20 @@
  *
  * Behaviour per `specs/tools/cli/packages.md`:
  *
- * - When a lockfile is present, it is authoritative: each dependency
- *   is installed at the recorded commit.
- * - When no lockfile is present, each manifest range is resolved
- *   against the remote's tags (for semver ranges) or used directly
- *   as a branch ref, the lockfile is written, and the resolved
- *   versions are installed.
- * - The command is idempotent: repeated runs with an unchanged
- *   manifest and lockfile yield no changes.
+ * - When a lockfile is present and valid, it is authoritative: each
+ *   dependency is re-installed at the recorded ref if any of its
+ *   installed sub-packages is missing or has stale integrity.
+ * - When no lockfile is present (or it cannot be parsed), each manifest
+ *   range is resolved and the lockfile is written.
+ * - Every `substrate.json` found inside a cloned repository is treated
+ *   as a sub-package. If two sub-packages declare the same name their
+ *   file trees are merged; clashing paths within the same declared name
+ *   are an error.
+ * - The command is idempotent: repeated runs with an unchanged manifest
+ *   and lockfile yield no changes.
  */
-import { cp, mkdir, mkdtemp, rm } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { cp, mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
+import { dirname, join, relative } from "node:path";
 import { tmpdir } from "node:os";
 
 import {
@@ -23,14 +26,15 @@ import {
     locatePackage,
     vendoredPath,
 } from "../package/corpus.js";
-import { cloneAtRef, listRemoteTags, repoUrl, resolveRefToCommit } from "../package/git.js";
-import { computeIntegrity } from "../package/integrity.js";
 import {
-    lockfileExists,
-    readLockfile,
-    writeLockfile,
-} from "../package/lockfile.js";
-import type { LockEntry, Lockfile } from "../package/lockfile.js";
+    cloneAtRef,
+    listRemoteTags,
+    repoUrl,
+    resolveRefToCommit,
+} from "../package/git.js";
+import { computeIntegrity } from "../package/integrity.js";
+import { lockfileExists, readLockfile, writeLockfile } from "../package/lockfile.js";
+import type { LockEntry, LockInstall, Lockfile } from "../package/lockfile.js";
 import type { DependencySpec } from "../package/manifest.js";
 import { readManifest } from "../package/manifest.js";
 import { isBranchRef, pickBestTag } from "../package/resolve.js";
@@ -42,21 +46,27 @@ export interface InstallResult {
 }
 
 export interface InstalledEntry {
-    readonly name: string;
+    readonly depName: string;
     readonly installName: string;
     readonly resolved: string;
     readonly action: "installed" | "already-present";
 }
 
-/**
- * Run install against the package containing `startDir`.
- */
 export async function install(startDir: string): Promise<InstallResult> {
     const pkg = await locatePackage(startDir);
     const lockPath = join(pkg.root, LOCKFILE_FILE);
 
+    let lock: Lockfile | null = null;
     if (await lockfileExists(lockPath)) {
-        const lock = await readLockfile(lockPath);
+        try {
+            lock = await readLockfile(lockPath);
+        } catch {
+            // Stale or incompatible lockfile — regenerate.
+            lock = null;
+        }
+    }
+
+    if (lock !== null) {
         const installed = await installFromLock(pkg.root, lock);
         return { root: pkg.root, installed, wroteLockfile: false };
     }
@@ -69,45 +79,59 @@ export async function install(startDir: string): Promise<InstallResult> {
     return { root: pkg.root, installed, wroteLockfile: true };
 }
 
-/**
- * Install every dependency recorded in `lock`. Skips any dependency
- * whose vendored tree already matches the lockfile's integrity.
- */
+// ---------------------------------------------------------------------------
+// Install from lockfile
+// ---------------------------------------------------------------------------
+
 async function installFromLock(
     root: string,
     lock: Lockfile,
 ): Promise<readonly InstalledEntry[]> {
     const out: InstalledEntry[] = [];
     for (const entry of lock.packages) {
-        const dest = vendoredPath(root, entry.installName);
-        if (await pathExists(dest)) {
-            const integrity = await computeIntegrity(dest);
-            if (integrity === entry.integrity) {
+        const allPresent = await checkInstalls(root, entry.installs);
+        if (allPresent) {
+            for (const inst of entry.installs) {
                 out.push({
-                    name: entry.name,
-                    installName: entry.installName,
+                    depName: entry.name,
+                    installName: inst.name,
                     resolved: entry.resolved,
                     action: "already-present",
                 });
-                continue;
             }
-            await rm(dest, { recursive: true, force: true });
+            continue;
         }
-        await fetchInto(entry.name, entry.resolved, dest);
-        out.push({
-            name: entry.name,
-            installName: entry.installName,
-            resolved: entry.resolved,
-            action: "installed",
-        });
+        // Remove stale install dirs before re-fetching.
+        for (const inst of entry.installs) {
+            await rm(vendoredPath(root, inst.name), { recursive: true, force: true });
+        }
+        const installs = await fetchAndInstall(entry.name, entry.ref, root);
+        for (const inst of installs) {
+            out.push({
+                depName: entry.name,
+                installName: inst.installName,
+                resolved: entry.resolved,
+                action: "installed",
+            });
+        }
     }
     return out;
 }
 
-/**
- * Resolve every manifest dependency's range against remote tags (or as a
- * branch ref) and install the selected version.
- */
+async function checkInstalls(root: string, installs: readonly LockInstall[]): Promise<boolean> {
+    for (const inst of installs) {
+        const dest = vendoredPath(root, inst.name);
+        if (!(await pathExists(dest))) return false;
+        const integrity = await computeIntegrity(dest);
+        if (integrity !== inst.integrity) return false;
+    }
+    return installs.length > 0;
+}
+
+// ---------------------------------------------------------------------------
+// Resolve and install from manifest
+// ---------------------------------------------------------------------------
+
 async function resolveAndInstall(
     root: string,
     dependencies: readonly DependencySpec[],
@@ -117,24 +141,26 @@ async function resolveAndInstall(
 
     for (const dep of dependencies) {
         const { ref, commit, resolved } = await resolveDepRef(dep);
-        const { installName, dest } = await fetchAndInstall(dep.name, ref, root);
-        const integrity = await computeIntegrity(dest);
-        entries.push({
-            name: dep.name,
-            installName,
-            requested: dep.range,
-            resolved,
-            commit,
-            integrity,
-        });
-        installed.push({ name: dep.name, installName, resolved, action: "installed" });
+        const subInstalls = await fetchAndInstall(dep.name, ref, root);
+        const lockInstalls: LockInstall[] = [];
+        for (const inst of subInstalls) {
+            const integrity = await computeIntegrity(inst.dest);
+            lockInstalls.push({ name: inst.installName, integrity });
+            installed.push({
+                depName: dep.name,
+                installName: inst.installName,
+                resolved,
+                action: "installed",
+            });
+        }
+        entries.push({ name: dep.name, ref, requested: dep.range, resolved, commit, installs: lockInstalls });
     }
 
     return { entries, installed };
 }
 
 // ---------------------------------------------------------------------------
-// Resolution helpers
+// Ref resolution
 // ---------------------------------------------------------------------------
 
 async function resolveDepRef(
@@ -160,21 +186,24 @@ async function resolveDepRef(
 }
 
 // ---------------------------------------------------------------------------
-// Fetch helpers
+// Fetch and install
 // ---------------------------------------------------------------------------
 
+export interface SubInstall {
+    readonly installName: string;
+    readonly dest: string;
+}
+
 /**
- * Clone `depName` at `ref` into a temp directory, read the package's own
- * manifest to discover its declared name and optional `subdir`, then copy
- * the relevant content into `substrate/<installName>`.
- *
- * Returns the install name and the final destination path.
+ * Clone `depName` at `ref`, scan every `substrate.json` inside the clone,
+ * merge sub-packages with the same declared name (erroring on path clashes),
+ * and copy each into `substrate/<installName>/`.
  */
-async function fetchAndInstall(
+export async function fetchAndInstall(
     depName: string,
     ref: string,
     corpusRoot: string,
-): Promise<{ installName: string; dest: string }> {
+): Promise<SubInstall[]> {
     const url = repoUrl(depName);
     const tempBase = await mkdtemp(join(tmpdir(), "substrate-fetch-"));
     const tempClone = join(tempBase, "clone");
@@ -183,70 +212,131 @@ async function fetchAndInstall(
         await cloneAtRef(url, ref, tempClone);
         await rm(join(tempClone, ".git"), { recursive: true, force: true });
 
-        const { installName, subdir } = await readPackageMeta(tempClone, depName);
-        const dest = vendoredPath(corpusRoot, installName);
-
-        if (await pathExists(dest)) {
-            await rm(dest, { recursive: true, force: true });
+        const subPackages = await scanManifests(tempClone);
+        if (subPackages.length === 0) {
+            // No manifest found — fall back to using dep name, whole clone.
+            subPackages.push({ installName: depName, sourceDir: tempClone });
         }
-        await mkdir(dest, { recursive: true });
 
-        const source = subdir ? join(tempClone, subdir) : tempClone;
-        await cp(source, dest, { recursive: true });
+        const fileMap = await buildFileMap(subPackages);
+        const results: SubInstall[] = [];
 
-        return { installName, dest };
+        for (const [installName, files] of fileMap) {
+            const dest = vendoredPath(corpusRoot, installName);
+            if (await pathExists(dest)) {
+                await rm(dest, { recursive: true, force: true });
+            }
+            await mkdir(dest, { recursive: true });
+            for (const [relPath, absSource] of files) {
+                const destFile = join(dest, relPath);
+                await mkdir(dirname(destFile), { recursive: true });
+                await cp(absSource, destFile);
+            }
+            results.push({ installName, dest });
+        }
+
+        return results;
     } finally {
         await rm(tempBase, { recursive: true, force: true });
     }
 }
 
+// ---------------------------------------------------------------------------
+// Multi-manifest scanning
+// ---------------------------------------------------------------------------
+
+interface SubPackage {
+    readonly installName: string;
+    readonly sourceDir: string;
+}
+
+const SCAN_SKIP = new Set([".git", "node_modules", "substrate", "dist"]);
+
 /**
- * Thin wrapper used by `installFromLock` where we already know the
- * `installName` and `dest` from the lockfile — just (re-)clone and copy.
+ * Recursively find every `substrate.json` in `dir` (skipping vendor/tool
+ * directories), read each manifest, and return the list of sub-packages
+ * with their source directories.
  */
-async function fetchInto(
-    depName: string,
-    ref: string,
-    dest: string,
-): Promise<void> {
-    const url = repoUrl(depName);
-    const tempBase = await mkdtemp(join(tmpdir(), "substrate-fetch-"));
-    const tempClone = join(tempBase, "clone");
+export async function scanManifests(dir: string): Promise<SubPackage[]> {
+    const manifestPaths: string[] = [];
 
-    try {
-        await cloneAtRef(url, ref, tempClone);
-        await rm(join(tempClone, ".git"), { recursive: true, force: true });
-
-        const { subdir } = await readPackageMeta(tempClone, depName);
-        await mkdir(dirname(dest), { recursive: true });
-
-        if (await pathExists(dest)) {
-            await rm(dest, { recursive: true, force: true });
+    async function walk(d: string): Promise<void> {
+        const entries = await readdir(d, { withFileTypes: true });
+        for (const entry of entries) {
+            const full = join(d, entry.name);
+            if (entry.isDirectory()) {
+                if (SCAN_SKIP.has(entry.name)) continue;
+                await walk(full);
+            } else if (entry.isFile() && entry.name === MANIFEST_FILE) {
+                manifestPaths.push(full);
+            }
         }
-        await mkdir(dest, { recursive: true });
-
-        const source = subdir ? join(tempClone, subdir) : tempClone;
-        await cp(source, dest, { recursive: true });
-    } finally {
-        await rm(tempBase, { recursive: true, force: true });
     }
+
+    await walk(dir);
+
+    const results: SubPackage[] = [];
+    for (const manifestPath of manifestPaths) {
+        try {
+            const manifest = await readManifest(manifestPath);
+            const manifestDir = dirname(manifestPath);
+            const sourceDir = manifest.subdir
+                ? join(manifestDir, manifest.subdir)
+                : manifestDir;
+            results.push({ installName: manifest.name, sourceDir });
+        } catch {
+            // Unreadable or invalid manifest — skip.
+        }
+    }
+    return results;
 }
 
 /**
- * Read the package's own manifest from `cloneDir` to obtain its declared
- * name and optional `subdir`. Falls back to `depName` when no manifest
- * is present or it cannot be parsed.
+ * Build a map of `installName → Map<relPath, absSourcePath>` from a list
+ * of sub-packages. Throws when two sub-packages with the same `installName`
+ * produce a file at the same relative path.
  */
-async function readPackageMeta(
-    cloneDir: string,
-    depName: string,
-): Promise<{ installName: string; subdir: string | undefined }> {
-    try {
-        const manifest = await readManifest(join(cloneDir, MANIFEST_FILE));
-        return { installName: manifest.name, subdir: manifest.subdir };
-    } catch {
-        return { installName: depName, subdir: undefined };
+async function buildFileMap(
+    subPackages: SubPackage[],
+): Promise<Map<string, Map<string, string>>> {
+    const result = new Map<string, Map<string, string>>();
+
+    for (const pkg of subPackages) {
+        if (!result.has(pkg.installName)) {
+            result.set(pkg.installName, new Map());
+        }
+        const files = result.get(pkg.installName)!;
+        const walked = await walkFiles(pkg.sourceDir);
+        for (const absPath of walked) {
+            const relPath = relative(pkg.sourceDir, absPath);
+            if (files.has(relPath)) {
+                throw new Error(
+                    `Package name clash: "${relPath}" appears in two sub-packages ` +
+                        `both declaring name "${pkg.installName}"`,
+                );
+            }
+            files.set(relPath, absPath);
+        }
     }
+
+    return result;
+}
+
+async function walkFiles(dir: string): Promise<string[]> {
+    const out: string[] = [];
+    async function walk(d: string): Promise<void> {
+        const entries = await readdir(d, { withFileTypes: true });
+        for (const entry of entries) {
+            const full = join(d, entry.name);
+            if (entry.isDirectory()) {
+                await walk(full);
+            } else if (entry.isFile()) {
+                out.push(full);
+            }
+        }
+    }
+    await walk(dir);
+    return out;
 }
 
 async function pathExists(path: string): Promise<boolean> {

@@ -84,14 +84,14 @@ program
 program
     .command("install")
     .description(
-        "Resolve and vendor every declared dependency into substrate/packages/.",
+        "Resolve and vendor every declared dependency into substrate/.",
     )
     .action(async () => {
         try {
             const result = await install(process.cwd());
             for (const entry of result.installed) {
                 const mark = entry.action === "already-present" ? "·" : "✓";
-                console.log(`  ${mark} ${entry.name}@${entry.resolved} (${entry.action})`);
+                console.log(`  ${mark} ${entry.installName}@${entry.resolved} (${entry.action})`);
             }
             if (result.wroteLockfile) {
                 console.log("✓ Wrote substrate.lock");
