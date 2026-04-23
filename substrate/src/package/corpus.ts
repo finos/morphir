@@ -87,15 +87,10 @@ export async function listMarkdownFiles(
 
 /**
  * Compute the on-disk location for an installed package's vendored
- * content, given the corpus root and the scoped package name.
+ * content, given the corpus root and the package name (any path string).
  */
 export function vendoredPath(corpusRoot: string, packageName: string): string {
-    const match = /^@([^/]+)\/([^/]+)$/.exec(packageName);
-    if (match === null) {
-        throw new Error(`Invalid scoped package name: ${packageName}`);
-    }
-    const [, scope, name] = match;
-    return join(corpusRoot, PACKAGES_DIR, `@${scope!}`, name!);
+    return join(corpusRoot, PACKAGES_DIR, ...packageName.split("/"));
 }
 
 async function fileExists(path: string): Promise<boolean> {

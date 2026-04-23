@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 import {
     formatManifest,
+    isValidPackagePath,
     readManifest,
     writeManifest,
 } from "../../src/package/manifest.js";
@@ -26,17 +27,17 @@ describe("readManifest", () => {
         await writeFile(
             path,
             JSON.stringify({
-                package: { name: "@me/example", kind: "corpus" },
-                dependencies: { "@AttilaMihaly/morphir-substrate": "^0.1.0" },
+                package: { name: "me/example", kind: "corpus" },
+                dependencies: { "AttilaMihaly/morphir-substrate": "^0.1.0" },
             }, null, 2),
             "utf8",
         );
         const manifest = await readManifest(path);
-        expect(manifest.name).toBe("@me/example");
+        expect(manifest.name).toBe("me/example");
         expect(manifest.kind).toBe("corpus");
         expect(manifest.version).toBeUndefined();
         expect(manifest.dependencies).toEqual([
-            { name: "@AttilaMihaly/morphir-substrate", range: "^0.1.0" },
+            { name: "AttilaMihaly/morphir-substrate", range: "^0.1.0" },
         ]);
     });
 
@@ -44,7 +45,7 @@ describe("readManifest", () => {
         const path = join(tmp, "substrate.json");
         await writeFile(
             path,
-            JSON.stringify({ package: { name: "@org/lib", kind: "library", version: "1.2.3" } }),
+            JSON.stringify({ package: { name: "org/lib", kind: "library", version: "1.2.3" } }),
             "utf8",
         );
         const manifest = await readManifest(path);
@@ -53,11 +54,33 @@ describe("readManifest", () => {
         expect(manifest.dependencies).toEqual([]);
     });
 
+    it("accepts a single-segment package name", async () => {
+        const path = join(tmp, "substrate.json");
+        await writeFile(
+            path,
+            JSON.stringify({ package: { name: "standalone", kind: "corpus" } }),
+            "utf8",
+        );
+        const manifest = await readManifest(path);
+        expect(manifest.name).toBe("standalone");
+    });
+
+    it("accepts a multi-segment package name", async () => {
+        const path = join(tmp, "substrate.json");
+        await writeFile(
+            path,
+            JSON.stringify({ package: { name: "org/team/project", kind: "corpus" } }),
+            "utf8",
+        );
+        const manifest = await readManifest(path);
+        expect(manifest.name).toBe("org/team/project");
+    });
+
     it("rejects a library missing version", async () => {
         const path = join(tmp, "substrate.json");
         await writeFile(
             path,
-            JSON.stringify({ package: { name: "@org/lib", kind: "library" } }),
+            JSON.stringify({ package: { name: "org/lib", kind: "library" } }),
             "utf8",
         );
         await expect(readManifest(path)).rejects.toThrow(/must declare package\.version/);
@@ -67,20 +90,30 @@ describe("readManifest", () => {
         const path = join(tmp, "substrate.json");
         await writeFile(
             path,
-            JSON.stringify({ package: { name: "@org/lib", kind: "application" } }),
+            JSON.stringify({ package: { name: "org/lib", kind: "application" } }),
             "utf8",
         );
         await expect(readManifest(path)).rejects.toThrow(/kind must be/);
     });
 
-    it("rejects a non-scoped name", async () => {
+    it("rejects a name with leading slash", async () => {
         const path = join(tmp, "substrate.json");
         await writeFile(
             path,
-            JSON.stringify({ package: { name: "bare", kind: "corpus" } }),
+            JSON.stringify({ package: { name: "/org/lib", kind: "corpus" } }),
             "utf8",
         );
-        await expect(readManifest(path)).rejects.toThrow(/@<scope>\/<name>/);
+        await expect(readManifest(path)).rejects.toThrow(/non-empty path/);
+    });
+
+    it("rejects a name with '..' segment", async () => {
+        const path = join(tmp, "substrate.json");
+        await writeFile(
+            path,
+            JSON.stringify({ package: { name: "org/../lib", kind: "corpus" } }),
+            "utf8",
+        );
+        await expect(readManifest(path)).rejects.toThrow(/non-empty path/);
     });
 
     it("parses a library manifest with subdir", async () => {
@@ -88,7 +121,7 @@ describe("readManifest", () => {
         await writeFile(
             path,
             JSON.stringify({
-                package: { name: "@org/lib", kind: "library", version: "1.0.0", subdir: "specs" },
+                package: { name: "org/lib", kind: "library", version: "1.0.0", subdir: "specs" },
             }),
             "utf8",
         );
@@ -103,16 +136,41 @@ describe("readManifest", () => {
     });
 });
 
+describe("isValidPackagePath", () => {
+    it("accepts simple paths", () => {
+        expect(isValidPackagePath("org/repo")).toBe(true);
+        expect(isValidPackagePath("standalone")).toBe(true);
+        expect(isValidPackagePath("a/b/c")).toBe(true);
+    });
+
+    it("rejects empty string", () => {
+        expect(isValidPackagePath("")).toBe(false);
+    });
+
+    it("rejects leading slash", () => {
+        expect(isValidPackagePath("/org/repo")).toBe(false);
+    });
+
+    it("rejects trailing slash", () => {
+        expect(isValidPackagePath("org/repo/")).toBe(false);
+    });
+
+    it("rejects '..' segments", () => {
+        expect(isValidPackagePath("org/../repo")).toBe(false);
+        expect(isValidPackagePath("..")).toBe(false);
+    });
+});
+
 describe("formatManifest / writeManifest round-trip", () => {
     it("preserves all declared fields", async () => {
         const path = join(tmp, "substrate.json");
         const manifest: Manifest = {
-            name: "@me/example",
+            name: "me/example",
             kind: "library",
             version: "0.1.0",
             dependencies: [
-                { name: "@a/one", range: "^1.0.0" },
-                { name: "@b/two", range: "~0.2.0" },
+                { name: "a/one", range: "^1.0.0" },
+                { name: "b/two", range: "~0.2.0" },
             ],
         };
         await writeManifest(path, manifest);
@@ -123,7 +181,7 @@ describe("formatManifest / writeManifest round-trip", () => {
     it("round-trips a manifest with subdir", async () => {
         const path = join(tmp, "substrate.json");
         const manifest: Manifest = {
-            name: "@org/lib",
+            name: "org/lib",
             kind: "library",
             version: "1.0.0",
             subdir: "specs",
@@ -136,7 +194,7 @@ describe("formatManifest / writeManifest round-trip", () => {
 
     it("omits the dependencies key when empty", () => {
         const manifest: Manifest = {
-            name: "@me/solo",
+            name: "me/solo",
             kind: "library",
             version: "0.1.0",
             dependencies: [],

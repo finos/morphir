@@ -16,10 +16,11 @@ afterEach(async () => {
 });
 
 describe("init --yes", () => {
-    it("writes substrate.json with corpus defaults", async () => {
+    it("writes substrate.json without @ prefix in name", async () => {
         const result = await init(tmp, { yes: true });
         expect(result.manifest.kind).toBe("corpus");
-        expect(result.manifest.name).toMatch(/^@[^/]+\/[^/]+$/);
+        // Name must be a valid path — no @ prefix
+        expect(result.manifest.name).not.toMatch(/^@/);
 
         const raw = await readFile(join(tmp, "substrate.json"), "utf8");
         const parsed = JSON.parse(raw) as unknown;
@@ -35,7 +36,7 @@ describe("init --yes", () => {
     it("aborts if substrate.json already exists", async () => {
         await writeFile(
             join(tmp, "substrate.json"),
-            JSON.stringify({ package: { name: "@me/ex", kind: "corpus" } }),
+            JSON.stringify({ package: { name: "me/ex", kind: "corpus" } }),
             "utf8",
         );
         await expect(init(tmp, { yes: true })).rejects.toThrow(/already exists/);

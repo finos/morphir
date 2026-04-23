@@ -110,8 +110,11 @@ function validateManifest(value: unknown, path: string): Manifest {
     if (typeof name !== "string" || name.length === 0) {
         throw new Error(`${path}: package.name is required and must be a string`);
     }
-    if (!/^@[^/]+\/[^/]+$/.test(name)) {
-        throw new Error(`${path}: package.name must match "@<scope>/<name>", got "${name}"`);
+    if (!isValidPackagePath(name)) {
+        throw new Error(
+            `${path}: package.name must be a non-empty path with no leading/trailing ` +
+                `slashes or ".." segments, got "${name}"`,
+        );
     }
 
     const kindRaw = pkg["kind"];
@@ -148,12 +151,13 @@ function validateManifest(value: unknown, path: string): Manifest {
         for (const [depName, depValue] of Object.entries(depsRaw as Record<string, unknown>)) {
             if (typeof depValue !== "string") {
                 throw new Error(
-                    `${path}: dependency "${depName}" must be a semver-range string`,
+                    `${path}: dependency "${depName}" must be a semver-range or branch string`,
                 );
             }
-            if (!/^@[^/]+\/[^/]+$/.test(depName)) {
+            if (!isValidPackagePath(depName)) {
                 throw new Error(
-                    `${path}: dependency name must match "@<scope>/<name>", got "${depName}"`,
+                    `${path}: dependency name must be a non-empty path with no leading/trailing ` +
+                        `slashes or ".." segments, got "${depName}"`,
                 );
             }
             dependencies.push({ name: depName, range: depValue });
@@ -161,8 +165,21 @@ function validateManifest(value: unknown, path: string): Manifest {
     }
 
     const result: Record<string, unknown> = { name, kind, dependencies };
+
     if (version !== undefined) result["version"] = version;
     if (subdir !== undefined) result["subdir"] = subdir;
 
     return result as unknown as Manifest;
+}
+
+/**
+ * Returns true when `name` is a valid package path: non-empty, no leading
+ * or trailing slashes, no empty segments, and no ".." segments (to prevent
+ * path traversal).
+ */
+export function isValidPackagePath(name: string): boolean {
+    if (name.length === 0) return false;
+    if (name.startsWith("/") || name.endsWith("/")) return false;
+    const segments = name.split("/");
+    return segments.every((seg) => seg.length > 0 && seg !== "..");
 }

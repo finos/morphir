@@ -7,19 +7,15 @@
  */
 import { spawn } from "node:child_process";
 
-/** Host used to build clone URLs for scoped package names. */
+/** Host used to build clone URLs for GitHub-hosted packages. */
 const GITHUB_HOST = "https://github.com";
 
 /**
- * Build the clone URL for a scoped package `@scope/name`.
+ * Build the GitHub clone URL for a package path such as `org/repo` or
+ * `org/repo/subpath`. The path is used as-is after the host.
  */
 export function repoUrl(packageName: string): string {
-    const match = /^@([^/]+)\/([^/]+)$/.exec(packageName);
-    if (match === null) {
-        throw new Error(`Invalid scoped package name: ${packageName}`);
-    }
-    const [, scope, name] = match;
-    return `${GITHUB_HOST}/${scope!}/${name!}.git`;
+    return `${GITHUB_HOST}/${packageName}.git`;
 }
 
 /** A tag discovered on a remote repository. */

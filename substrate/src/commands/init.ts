@@ -15,7 +15,7 @@ import { spawn } from "node:child_process";
 
 import { MANIFEST_FILE } from "../package/corpus.js";
 import type { Manifest, PackageKind } from "../package/manifest.js";
-import { formatManifest } from "../package/manifest.js";
+import { formatManifest, isValidPackagePath } from "../package/manifest.js";
 
 export interface InitResult {
     readonly root: string;
@@ -56,8 +56,11 @@ async function promptForManifest(defaultName: string): Promise<Manifest> {
 
     try {
         const name = await ask(rl, `Package name (${defaultName}): `, defaultName);
-        if (!/^@[^/]+\/[^/]+$/.test(name)) {
-            throw new Error(`Package name must match "@<scope>/<name>", got "${name}"`);
+        if (!isValidPackagePath(name)) {
+            throw new Error(
+                `Package name must be a non-empty path with no leading/trailing ` +
+                    `slashes or ".." segments, got "${name}"`,
+            );
         }
 
         const kindRaw = await ask(rl, "Kind [corpus/library] (corpus): ", "corpus");
@@ -96,7 +99,7 @@ async function ask(
 async function deriveDefaultName(dir: string): Promise<string> {
     const dirName = basename(dir);
     const org = await gitRemoteOrg(dir);
-    return org !== null ? `@${org}/${dirName}` : `@<scope>/${dirName}`;
+    return org !== null ? `${org}/${dirName}` : dirName;
 }
 
 async function gitRemoteOrg(cwd: string): Promise<string | null> {
