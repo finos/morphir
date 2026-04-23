@@ -1,14 +1,16 @@
 # String [Type](../concepts/type.md)
 
-## Overview
+## Summary
 
-The String type represents finite sequences of Unicode code points. It is
+The String type represents finite sequences of Unicode code points,
 used for textual data such as names, identifiers, codes, and free-form
-descriptions.
-
-A String value is always fully present; the empty string `""` is a
-distinguished member value, not to be confused with an absent
-[optional](../concepts/optionality.md) slot.
+descriptions. A String value is always fully present; the empty string
+`""` is a distinguished member value, not to be confused with an
+absent optional slot. Length and positional operations count Unicode
+code points (not graphemes or bytes). Operations: **Length**,
+**Concatenate**, **Is Empty**, **Contains**. Implements Equality
+(same code-point sequence) and Ordering (lexicographic by code point;
+empty string precedes every non-empty string).
 
 ## [Member Values](../concepts/type.md#member-values)
 

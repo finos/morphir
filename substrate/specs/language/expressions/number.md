@@ -1,8 +1,13 @@
 # Number [Type Class](../concepts/type-class.md)
 
-## Overview
+## Summary
 
-The Number [type class](../concepts/type-class.md) defines operations for numeric [types](../concepts/type.md), supporting arithmetic and related transformations. It extends [Equality](equality.md) and [Ordering](ordering.md): numeric values can be compared for equality and relative order.
+The Number type class defines arithmetic operations for numeric types.
+It extends Equality and Ordering: numeric values can be compared for
+equality and relative order. Operations: **Addition**, **Subtraction**,
+**Multiplication**, **Division** (precondition: non-zero divisor),
+**Negation**, **Absolute Value**, **Modulus** (precondition: non-zero
+divisor).
 
 ## Operations
 

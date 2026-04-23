@@ -19,6 +19,7 @@ import { install } from "./commands/install.js";
 import { publish } from "./commands/publish.js";
 import { update } from "./commands/update.js";
 import { reportValidate, validate } from "./commands/validate.js";
+import { context } from "./commands/context.js";
 
 const program = new Command();
 
@@ -137,6 +138,23 @@ program
             console.error(err instanceof Error ? err.message : String(err));
             process.exitCode = 1;
         }
+    });
+
+program
+    .command("context <files...>")
+    .description(
+        "Produce a self-contained, tree-shaken markdown context from one or more " +
+            "<file.md[#section]> roots. Follows links transitively and rewrites " +
+            "cross-file references as in-document anchors. Output is written to stdout.",
+    )
+    .action(async (files: string[]) => {
+        const result = await context(process.cwd(), files);
+        if (result.errors.length > 0) {
+            for (const e of result.errors) console.error(e);
+            process.exitCode = 1;
+            return;
+        }
+        process.stdout.write(result.markdown);
     });
 
 program.parse(process.argv);

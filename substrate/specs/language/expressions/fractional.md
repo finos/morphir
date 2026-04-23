@@ -1,8 +1,11 @@
 # Fractional
 
-## Overview
+## Summary
 
-A [type class](../concepts/type-class.md) for [types](../concepts/type.md) supporting division and related operations with non-integer results. Extends [Number](number.md).
+A type class for types supporting division and related operations with
+non-integer results. Extends Number. Operations: **Division**
+(required; precondition: divisor must be non-zero). Members:
+Floating-Point, Decimal.
 
 ### Extended [Type Classes](../concepts/type-class.md)
 

@@ -1,11 +1,13 @@
 # Collection Multiplicity [Type](../concepts/type.md)
 
-## Overview
+## Summary
 
-An attribute type that governs whether duplicate elements are permitted in a
-[Collection](collection.md). Two elements are considered duplicates when they
-compare [Equal](equality.md#equal-operation) under the element type's
-[Equality](equality.md) instance.
+An attribute type that governs whether duplicate elements are permitted
+in a Collection. Two elements are considered duplicates when they
+compare equal under the element type's Equality instance. Values:
+**unique** (no two elements may be equal; adding a duplicate leaves the
+collection unchanged) or **multi** (duplicates permitted; the same
+value may appear more than once).
 
 ## [Member Values](../concepts/type.md#member-values)
 

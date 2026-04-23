@@ -1,8 +1,11 @@
 # Ordering Relation [Type](../concepts/type.md)
 
-## Overview
+## Summary
 
-The Ordering Relation type represents the outcome of a comparison between two ordered values. It has three distinct member values.
+The Ordering Relation type represents the outcome of a comparison
+between two ordered values. Three member values: **Less** (first is
+smaller), **Equal** (same), **Greater** (first is larger). Implements
+Equality.
 
 ## [Member Values](../concepts/type.md#member-values)
 

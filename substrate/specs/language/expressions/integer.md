@@ -1,8 +1,14 @@
 # Integer
 
-## Overview
+## Summary
 
-Represents whole numbers, optionally with fixed precision and signedness. Used for counting, indexing, and discrete arithmetic.
+Represents whole numbers, optionally with fixed precision and
+signedness. Used for counting, indexing, and discrete arithmetic.
+Attributes: **size in bits** (optional, e.g. 8, 16, 32, 64; arbitrary
+precision when unset) and **signed** (Boolean; controls whether
+negative values are representable). Integer-specific operations:
+**Integer Division** (floor division) and **Remainder**, both with a
+non-zero divisor precondition. Implements Number, Equality, Ordering.
 
 ### Attributes
 

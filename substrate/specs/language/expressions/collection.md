@@ -1,13 +1,15 @@
 # Collection [Type](../concepts/type.md)
 
-## Overview
+## Summary
 
 A Collection is a parametric type over an element type `T` that holds zero or more elements. Collections are characterized by four attributes:
 
-- **multiplicity** ([Collection Multiplicity][col-mult]) — governs whether duplicate elements are permitted.
-- **iteration order** ([Collection Iteration Order][col-iter]) — governs the sequence in which elements are visited during iteration.
-- **minimum cardinality** ([Integer][int]) — the minimum number of elements the collection must contain.
-- **maximum cardinality** ([Integer][int], optional) — the maximum number of elements the collection may contain.
+- **multiplicity** (Collection Multiplicity: `unique` or `multi`) — governs whether duplicate elements are permitted.
+- **iteration order** (Collection Iteration Order: `none`, `insertion`, or `key`) — governs the sequence in which elements are visited during iteration.
+- **minimum cardinality** (Integer) — the minimum number of elements the collection must contain.
+- **maximum cardinality** (Integer, optional) — the maximum number of elements the collection may contain; unbounded when unspecified.
+
+Operations include Size, Is Empty, Contains, Map, Filter, Distinct, Union, Intersect, Difference, Sort By, Then By, Min, Max, Min Or None, Max Or None, Reduce, Reduce Or None, Sum, Average. Operation applicability depends on the element type's type class instances and the collection's attribute values, as stated per operation.
 
 ## [Parameters](../concepts/parameter.md)
 

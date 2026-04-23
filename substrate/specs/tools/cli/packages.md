@@ -222,3 +222,69 @@ Prepares a library for release. Aborts if the package's `kind` is
 
 Publishing does not interact with any central registry. Consumers
 depend on the tagged commit directly via their own manifest.
+
+### `substrate context <file.md[#section]> [<file.md[#section]> ...]`
+
+Takes one or more markdown files (or sub-sections of files) and emits a
+single self-contained markdown document on standard out, suitable for
+feeding to an LLM as compact context. Cross-file references are
+rewritten as in-document anchors so the result has no external
+dependencies. The command is intended to be invoked by AI agents that
+need a focused slice of the corpus without pulling in unrelated
+material.
+
+Each argument is either a file path (`spec.md`) or a file with a
+section anchor (`spec.md#decision-table`). The anchor matches the
+GFM-slugified heading of the section.
+
+#### Tree-shaking algorithm
+
+The command tree-shakes the corpus at section granularity, so only the
+content reachable from the supplied roots ends up in the output.
+
+1. **Seed the work queue** with each command-line argument as an
+   *inclusion job*. A job is either *whole-file* (no anchor) or
+   *section* (with anchor).
+2. **Process jobs.** For each job, parse its file once and build a
+   section tree (a heading + its descendants, recursively). Mark the
+   requested unit as included. A *whole-file* job that targets a file
+   containing a section with the slug `summary` is silently rewritten
+   to a section job for that summary — the section exists precisely to
+   give consumers a compact synopsis instead of the entire document.
+   Files without a summary are pulled in whole. A *section* job marks
+   the named section's full subtree plus the *framing context* of each
+   ancestor — the ancestor's heading line and any prose between that
+   heading and its first child subheading. Sibling subsections that
+   physically precede the target are **not** pulled in unless
+   something separately links to them.
+3. **Walk links transitively.** For every link found in the included
+   content (inline or reference-style), enqueue a new job:
+   - External URLs (`http`, `https`, `mailto`) are ignored.
+   - Same-file `#anchor` links resolve within the same file.
+   - Cross-file `path[#anchor]` links resolve relative to the linking
+     file and become a new inclusion job.
+   Jobs are deduplicated by `(file, anchor|whole)` so cycles and
+   diamonds terminate.
+4. **Build the file dependency graph.** Each link from file F to file
+   G adds an edge F → G. Topologically sort files with dependencies
+   first (sinks before sources). Cycles, if any, are broken by
+   condensing each strongly-connected component and ordering members
+   by file path.
+5. **Render in topo order.** For each file, emit the included nodes in
+   their original document order. For whole-file inclusions, that's
+   the entire file. For partial inclusions, walk the file's top-level
+   nodes and keep, for each marked section, its full subtree, plus
+   each ancestor's heading and intro prose. Skipped sibling sections
+   leave gaps; no ellipsis marker is inserted.
+6. **Rewrite cross-references.** Build a global anchor table mapping
+   every emitted section to a unique anchor: start from the section's
+   GFM slug and append `-2`, `-3`, … on collision. A bare `file.md`
+   link rewrites to the file's primary section anchor (its h1, or
+   first heading). A `file.md#anchor` link rewrites to the matching
+   section's unique anchor. Links whose target was not included are
+   left unchanged so the user can see what was pruned.
+
+The output is a single markdown document with possibly multiple `#`
+headings (one per included file). No frontmatter or boilerplate is
+added. The command exits 0 on success; missing files or unresolvable
+section anchors in the supplied arguments cause exit 1.
