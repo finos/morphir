@@ -25,6 +25,7 @@ const sample: Lockfile = {
     packages: [
         {
             name: "@b/two",
+            installName: "@b/two",
             requested: "^0.2.0",
             resolved: "0.2.1",
             commit: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -32,6 +33,7 @@ const sample: Lockfile = {
         },
         {
             name: "@a/one",
+            installName: "@a/published-name",
             requested: "^1.0.0",
             resolved: "1.0.3",
             commit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -60,6 +62,18 @@ describe("readLockfile", () => {
         // The serialiser sorts by name for stable diffs.
         expect(reloaded.packages.map((p) => p.name)).toEqual(["@a/one", "@b/two"]);
         expect(reloaded.packages[0]!.resolved).toBe("1.0.3");
+        expect(reloaded.packages[0]!.installName).toBe("@a/published-name");
+    });
+
+    it("falls back installName to name when install_name is absent (backward compat)", async () => {
+        const path = join(tmp, "substrate.lock");
+        await writeFile(
+            path,
+            `[[packages]]\nname = "@a/one"\nrequested = "^1.0.0"\nresolved = "1.0.0"\ncommit = "aaaa"\nintegrity = "sha256-x"\n`,
+            "utf8",
+        );
+        const lock = await readLockfile(path);
+        expect(lock.packages[0]!.installName).toBe("@a/one");
     });
 
     it("treats an empty lockfile as having no packages", async () => {

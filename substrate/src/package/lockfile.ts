@@ -8,7 +8,14 @@ import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 
 /** One resolved dependency entry in `substrate.lock`. */
 export interface LockEntry {
+    /** Dependency key in the consumer's manifest (repository identity). */
     readonly name: string;
+    /**
+     * Declared package name from the installed package's own manifest.
+     * Used as the directory name under `substrate/`. Defaults to `name`
+     * when absent (backward compatibility with older lockfiles).
+     */
+    readonly installName: string;
     readonly requested: string;
     readonly resolved: string;
     readonly commit: string;
@@ -64,6 +71,7 @@ export function formatLockfile(lockfile: Lockfile): string {
     const doc = {
         packages: sorted.map((p) => ({
             name: p.name,
+            install_name: p.installName,
             requested: p.requested,
             resolved: p.resolved,
             commit: p.commit,
@@ -101,8 +109,12 @@ function validateLockfile(value: unknown, path: string): Lockfile {
             throw new Error(`${path}: packages[${i}] must be a table`);
         }
         const e = entry as Record<string, unknown>;
+        const name = requireString(e, "name", path, i);
+        // `install_name` was introduced later; fall back to `name` for older lockfiles.
+        const installName = optionalString(e, "install_name") ?? name;
         packages.push({
-            name: requireString(e, "name", path, i),
+            name,
+            installName,
             requested: requireString(e, "requested", path, i),
             resolved: requireString(e, "resolved", path, i),
             commit: requireString(e, "commit", path, i),
@@ -123,4 +135,11 @@ function requireString(
         throw new Error(`${path}: packages[${index}].${key} is required and must be a string`);
     }
     return v;
+}
+
+function optionalString(entry: Record<string, unknown>, key: string): string | undefined {
+    const v = entry[key];
+    if (v === undefined) return undefined;
+    if (typeof v !== "string") return undefined;
+    return v.length > 0 ? v : undefined;
 }

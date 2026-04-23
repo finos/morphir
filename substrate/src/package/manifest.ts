@@ -8,7 +8,7 @@ import { readFile, writeFile } from "node:fs/promises";
 /** Kind declared in `package.kind`. */
 export type PackageKind = "library" | "corpus";
 
-/** A single dependency entry: a scoped name and a semver range. */
+/** A single dependency entry: a scoped name and a semver range or branch. */
 export interface DependencySpec {
     readonly name: string;
     readonly range: string;
@@ -20,6 +20,12 @@ export interface Manifest {
     readonly kind: PackageKind;
     /** Present for libraries; typically absent for corpora. */
     readonly version?: string;
+    /**
+     * Optional sub-directory within the repository where the substrate
+     * documents reside. When set, `substrate install` extracts only this
+     * directory's contents into the vendored location.
+     */
+    readonly subdir?: string;
     readonly dependencies: readonly DependencySpec[];
 }
 
@@ -53,7 +59,7 @@ export async function readManifest(path: string): Promise<Manifest> {
  * Serialise a manifest to JSON.
  *
  * Emits the canonical key order: `package` first with `name`, `kind`,
- * `version` (if present), then `dependencies`.
+ * `version` (if present), `subdir` (if present), then `dependencies`.
  */
 export function formatManifest(manifest: Manifest): string {
     const pkg: Record<string, string> = {
@@ -62,6 +68,9 @@ export function formatManifest(manifest: Manifest): string {
     };
     if (manifest.version !== undefined) {
         pkg["version"] = manifest.version;
+    }
+    if (manifest.subdir !== undefined) {
+        pkg["subdir"] = manifest.subdir;
     }
 
     const deps: Record<string, string> = {};
@@ -122,6 +131,14 @@ function validateManifest(value: unknown, path: string): Manifest {
         throw new Error(`${path}: library packages must declare package.version`);
     }
 
+    let subdir: string | undefined;
+    if (pkg["subdir"] !== undefined) {
+        if (typeof pkg["subdir"] !== "string" || pkg["subdir"].length === 0) {
+            throw new Error(`${path}: package.subdir must be a non-empty string`);
+        }
+        subdir = pkg["subdir"];
+    }
+
     const depsRaw = root["dependencies"];
     const dependencies: DependencySpec[] = [];
     if (depsRaw !== undefined) {
@@ -143,7 +160,9 @@ function validateManifest(value: unknown, path: string): Manifest {
         }
     }
 
-    return version !== undefined
-        ? { name, kind, version, dependencies }
-        : { name, kind, dependencies };
+    const result: Record<string, unknown> = { name, kind, dependencies };
+    if (version !== undefined) result["version"] = version;
+    if (subdir !== undefined) result["subdir"] = subdir;
+
+    return result as unknown as Manifest;
 }

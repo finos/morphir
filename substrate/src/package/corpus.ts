@@ -11,7 +11,7 @@ import { readManifest } from "./manifest.js";
 /** File names and directories relative to the corpus root. */
 export const MANIFEST_FILE = "substrate.json";
 export const LOCKFILE_FILE = "substrate.lock";
-export const PACKAGES_DIR = join("substrate", "packages");
+export const PACKAGES_DIR = "substrate";
 
 /** Directories skipped when walking the corpus. */
 const SKIP_DIRS: ReadonlySet<string> = new Set([

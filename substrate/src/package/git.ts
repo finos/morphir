@@ -47,6 +47,26 @@ export async function listRemoteTags(url: string): Promise<readonly RemoteTag[]>
 }
 
 /**
+ * Resolve a branch name to its current HEAD commit hash.
+ * Returns null if the branch does not exist on the remote.
+ */
+export async function resolveRefToCommit(url: string, branch: string): Promise<string | null> {
+    const out = await runGit([
+        "ls-remote",
+        url,
+        `refs/heads/${branch}`,
+        `refs/tags/${branch}`,
+    ]);
+    for (const line of out.split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (trimmed.length === 0) continue;
+        const match = /^([0-9a-f]+)\s+/.exec(trimmed);
+        if (match) return match[1]!;
+    }
+    return null;
+}
+
+/**
  * Shallow-clone a repository at the given tag or ref into `destination`.
  */
 export async function cloneAtRef(

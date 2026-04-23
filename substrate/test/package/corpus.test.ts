@@ -20,11 +20,11 @@ async function setupCorpus(): Promise<void> {
     await writeFile(join(tmp, "README.md"), "# Root\n", "utf8");
     await mkdir(join(tmp, "docs"), { recursive: true });
     await writeFile(join(tmp, "docs", "a.md"), "# A\n", "utf8");
-    await mkdir(join(tmp, "substrate", "packages", "@org", "lib"), {
+    await mkdir(join(tmp, "substrate", "@org", "lib"), {
         recursive: true,
     });
     await writeFile(
-        join(tmp, "substrate", "packages", "@org", "lib", "inside.md"),
+        join(tmp, "substrate", "@org", "lib", "inside.md"),
         "# Inside\n",
         "utf8",
     );
@@ -69,14 +69,14 @@ describe("listMarkdownFiles", () => {
         const relFiles = files.map((f) => relative(tmp, f).split(sep).join("/"));
         expect(relFiles).toContain("README.md");
         expect(relFiles).toContain("docs/a.md");
-        expect(relFiles).not.toContain("substrate/packages/@org/lib/inside.md");
+        expect(relFiles).not.toContain("substrate/@org/lib/inside.md");
         expect(relFiles).not.toContain("node_modules/pkg/x.md");
     });
 
     it("includes vendored packages when asked", async () => {
         const files = await listMarkdownFiles(tmp, { includeVendored: true });
         const relFiles = files.map((f) => relative(tmp, f).split(sep).join("/"));
-        expect(relFiles).toContain("substrate/packages/@org/lib/inside.md");
+        expect(relFiles).toContain("substrate/@org/lib/inside.md");
     });
 });
 
@@ -84,7 +84,7 @@ describe("vendoredPath", () => {
     it("resolves a scoped package to its vendored location", () => {
         const p = vendoredPath("/root", "@org/lib");
         expect(relative("/root", p).split(sep).join("/")).toBe(
-            "substrate/packages/@org/lib",
+            "substrate/@org/lib",
         );
     });
 
