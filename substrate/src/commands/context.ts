@@ -21,6 +21,7 @@ import remarkGfm from "remark-gfm";
 import remarkStringify from "remark-stringify";
 
 import { nodeText, slugify } from "../language/mdast-utils.js";
+import { locatePackage } from "../package/corpus.js";
 
 // ---------------------------------------------------------------------------
 // Public entry point
@@ -54,6 +55,7 @@ export async function context(
     }
 
     const errors: string[] = [];
+    const packageRootCache = new Map<string, string>();
     const rootJobs: Job[] = [];
     for (const arg of args) {
         const { filePath, anchor } = parseArg(arg, cwd);
@@ -92,6 +94,7 @@ export async function context(
         }
 
         const newSections = applyJob(tree, inc, job, errors, rootJobs.includes(job));
+        const packageRoot = await getPackageRoot(job.filePath, packageRootCache);
         for (const sec of newSections) {
             // Walk links in the newly-included nodes
             const linkSources = collectLinkUrls(tree, sec);
@@ -99,7 +102,7 @@ export async function context(
             for (const url of linkSources) {
                 const resolved = resolveUrl(url, definitions);
                 if (resolved === null) continue;
-                const next = resolveLinkTarget(resolved, job.filePath);
+                const next = resolveLinkTarget(resolved, job.filePath, packageRoot);
                 if (next !== null) queue.push(next);
             }
         }
@@ -109,8 +112,13 @@ export async function context(
         return { markdown: "", errors };
     }
 
+    // Ensure package roots are cached for every loaded file.
+    for (const filePath of files.keys()) {
+        await getPackageRoot(filePath, packageRootCache);
+    }
+
     // Phase 4: file-level dependency graph + topological order.
-    const order = topoOrderFiles(files, inclusions);
+    const order = topoOrderFiles(files, inclusions, packageRootCache);
 
     // Phase 5: choose, for each file, the indices of root.children to emit.
     const emissionPlans = new Map<string, EmissionPlan>();
@@ -371,23 +379,47 @@ function resolveUrl(url: string, definitions: ReadonlyMap<string, string>): stri
     return url;
 }
 
-function resolveLinkTarget(url: string, fromFile: string): Job | null {
+function resolveLinkTarget(url: string, fromFile: string, baseDir: string): Job | null {
     if (/^https?:\/\//.test(url) || url.startsWith("mailto:")) return null;
     const hashIdx = url.indexOf("#");
     const filePart = hashIdx >= 0 ? url.slice(0, hashIdx) : url;
     const anchor = hashIdx >= 0 ? url.slice(hashIdx + 1) : null;
     if (filePart === "") return null; // same-file anchor; already covered
-    const target = resolve(dirname(fromFile), filePart);
-    return { filePath: target, anchor };
+    if (filePart.startsWith("/")) {
+        // Absolute path — resolve from base dir
+        const target = resolve(baseDir, "." + filePart);
+        return { filePath: target, anchor };
+    } else {
+        const target = resolve(dirname(fromFile), filePart);
+        return { filePath: target, anchor };
+    }
 }
 
 // ---------------------------------------------------------------------------
 // Topological ordering of files (dependencies first)
 // ---------------------------------------------------------------------------
 
+async function getPackageRoot(
+    filePath: string,
+    cache: Map<string, string>,
+): Promise<string> {
+    const dir = dirname(filePath);
+    const cached = cache.get(dir);
+    if (cached !== undefined) return cached;
+    try {
+        const located = await locatePackage(dir);
+        cache.set(dir, located.root);
+        return located.root;
+    } catch {
+        cache.set(dir, dir);
+        return dir;
+    }
+}
+
 function topoOrderFiles(
     files: ReadonlyMap<string, FileTree>,
     inclusions: ReadonlyMap<string, FileInclusion>,
+    packageRoots: ReadonlyMap<string, string>,
 ): string[] {
     // Build adjacency: F -> set of files G that F's emitted nodes link to.
     const outgoing = new Map<string, Set<string>>();
@@ -403,7 +435,7 @@ function topoOrderFiles(
             for (const raw of urls) {
                 const u = resolveUrl(raw, definitions);
                 if (u === null) continue;
-                const t = resolveLinkTarget(u, filePath);
+                const t = resolveLinkTarget(u, filePath, packageRoots.get(dirname(filePath)) ?? dirname(filePath));
                 if (t === null) continue;
                 if (files.has(t.filePath) && t.filePath !== filePath) {
                     out.add(t.filePath);
