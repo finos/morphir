@@ -1,11 +1,24 @@
 # Provenance
 
+## Summary
+
+A Provenance section records the authoritative external sources from
+which a specification artifact derives — regulations, standards,
+statutes, published guidance. Any artifact (a Record type, a Choice, a
+Decision Table, an Operation, or a whole module) that encodes material
+from an external document should declare its sources. A provenance
+section is identified by a heading whose text links to this concept
+page, e.g. `#### [Provenance](../concepts/provenance.md)`. Its scope is
+the enclosing heading. Sources are listed as a bulleted list with
+deep links and optional verbatim quoted passages from the source.
+
+## Overview
+
 A Provenance section records the authoritative sources from which a
-specification artifact derives. Any artifact — a [Record](record.md)
-type, a [Choice](choice.md), a [Decision Table](decision-table.md), an
-[Operation](operation.md), or a whole module — that encodes material
-from an external document should declare its sources in a Provenance
-section.
+specification artifact derives. Any artifact — a Record type, a Choice,
+a Decision Table, an Operation, or a whole module — that encodes
+material from an external document should declare its sources in a
+Provenance section.
 
 Provenance exists to make traceability explicit and machine-readable.
 The rendered markdown remains the specification; the Provenance section

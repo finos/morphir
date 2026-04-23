@@ -1,15 +1,28 @@
 # Choice
 
+## Summary
+
+A Choice is a type whose members are partitioned into a fixed set of
+named **variants**. Every value is exactly one variant. A variant may
+carry zero or more typed fields; the fields of different variants are
+independent. Variant names are unique within a Choice. A Choice with
+only zero-field variants is an enumeration. A declaration is identified
+by a heading whose text links to this concept page, e.g.
+`### Maturity Bucket [Choice](choice.md)`. Every Choice supports the
+meta-operations **Construct**, **Is Variant**, and **Match** (which is
+exhaustive).
+
+## Overview
+
 A Choice is a [type](type.md) whose members are partitioned into a fixed
 set of named **variants**. Every value of a Choice type is exactly one
 variant. A variant may carry zero or more typed fields; the fields of
 different variants are independent.
 
 A Choice with zero-field variants only is an enumeration: its values are
-effectively named constants. [Boolean](../expressions/boolean.md) and
-[Collection Multiplicity](../expressions/collection-multiplicity.md) are
-built-in examples. Choices with data-carrying variants express cases like
-"a maturity bucket is either _Open_, a day _Range_, or _Beyond_ a
+effectively named constants. Boolean and Collection Multiplicity are
+built-in examples. Choices with data-carrying variants express cases
+like "a maturity bucket is either _Open_, a day _Range_, or _Beyond_ a
 threshold."
 
 A choice type may be declared anywhere in the specification corpus. A
@@ -118,8 +131,7 @@ used to compute the absolute value:
   the two values are equal under that field's type's Equality. When a
   variant has no fields, comparing two values of that variant is
   equality on variant name alone. This makes pure-enumeration Choices
-  (zero-field variants) equal exactly when their variants match, which
-  matches [Boolean](../expressions/boolean.md)'s behaviour.
+  (zero-field variants) equal exactly when their variants match.
 
 - **[Ordering](../expressions/ordering.md)** is not implemented by
   default. A specific Choice may declare an Ordering instance in its

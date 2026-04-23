@@ -1,8 +1,8 @@
 # Boolean [Type](../concepts/type.md)
 
-## Overview
+## Summary
 
-The Boolean type represents a fundamental data type with two distinct member values: **true** and **false**. It is used to express binary logic, decision making, and control flow within specifications and executable models.
+The Boolean type represents a fundamental data type with two distinct member values: **true** and **false**. It is used to express binary logic, decision making, and control flow within specifications and executable models. Operations: NOT, AND, OR, XOR, IMPLIES, If-Then-Else. Implements Equality.
 
 ## [Member Values](../concepts/type.md#member-values)
 

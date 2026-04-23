@@ -1,16 +1,14 @@
 # Date [Type](../concepts/type.md)
 
-## Overview
+## Summary
 
-The Date type represents a single calendar day in the proleptic Gregorian
-calendar. A Date has no time-of-day component and no time-zone component:
-it identifies a day as a year, month, and day of month.
-
-Date literals are written in ISO 8601 form `YYYY-MM-DD` (e.g., `2025-02-26`).
-
-Duration between dates is expressed as an [Integer][int] number of days.
-Substrate does not, at this stage, introduce a dedicated Duration type;
-day counts compose directly with the operations below.
+The Date type represents a single calendar day in the proleptic
+Gregorian calendar. A Date has no time-of-day or time-zone component:
+it identifies a day as a year, month, and day of month. Literals use
+ISO 8601 form `YYYY-MM-DD` (e.g., `2025-02-26`). Duration between
+dates is expressed as an Integer number of days; there is no dedicated
+Duration type. Operations: Add Days, Days Between. Implements Equality
+and Ordering.
 
 ## [Member Values](../concepts/type.md#member-values)
 

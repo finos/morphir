@@ -1,11 +1,26 @@
 # Decision Table
 
+## Summary
+
+A Decision Table is a tabular conditional: a set of rules evaluated top
+to bottom, where the first rule whose conditions all match determines
+the result. A declaration has three parts — **Inputs** (named values
+the table reads, with types), **Outputs** (named values it produces,
+with types), and **Rules** (a markdown table where each row is a rule
+and column headers prefixed with `→` denote outputs). Condition cells
+are literals, comparisons (`=`, `≠`, `>`, `≥`, `<`, `≤` with ASCII
+equivalents), or blank (don't care). Rows are evaluated in document
+order; an `otherwise` row may appear last as a catch-all. A
+declaration is identified by a heading whose text links to this concept
+page, e.g. `### Retail Outflow Rate [Decision Table](decision-table.md)`.
+
+## Overview
+
 A Decision Table is a tabular representation of a conditional: a set of
-rules, evaluated top to bottom, where the first rule whose conditions all
-match determines the result. It is the tabular counterpart to nested
-[If-Then-Else](../expressions/boolean.md#if-then-else-operation) and
-complements the decision-tree style of branching with a data-style form
-that reads as a single artifact.
+rules, evaluated top to bottom, where the first rule whose conditions
+all match determines the result. It is the tabular counterpart to
+nested If-Then-Else and complements the decision-tree style of
+branching with a data-style form that reads as a single artifact.
 
 Decision Tables are well suited to regulatory material, rate sheets,
 classification rules, and any logic whose authoritative reference is
@@ -127,7 +142,7 @@ Given values for every input:
 ## Invocation
 
 A decision table is invoked from a user module exactly like an
-[operation](operation.md): the table's heading link is the parent item
+operation: the table's heading link is the parent item
 of a nested list, and each child item supplies one of the table's
 inputs in the same order they are declared. The result is the table's
 output. When a table declares a single output, the invocation yields
@@ -152,10 +167,10 @@ rows.
 
 ## Relationship to If-Then-Else
 
-A decision table with two rules and one output is semantically equivalent
-to a single [If-Then-Else](../expressions/boolean.md#if-then-else-operation)
-applied to the conjunction of the first row's conditions. A table with
-N rules is equivalent to a cascade of nested If-Then-Else. Authors choose
+A decision table with two rules and one output is semantically
+equivalent to a single If-Then-Else applied to the conjunction of the
+first row's conditions. A table with N rules is equivalent to a cascade
+of nested If-Then-Else. Authors choose
 the form that best communicates intent: If-Then-Else for one-off
 branches; Decision Table when the same condition columns determine
 multiple related results and the rules form an authoritative table.

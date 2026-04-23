@@ -1,5 +1,21 @@
 # Optionality
 
+## Summary
+
+Optionality is a property of a _slot_ — a parameter, attribute, record
+field, or operation result — indicating whether the slot must carry a
+value (**Required**, the default) or may be absent (**Optional**). It
+is a property of the slot itself, not a type constructor: a slot of
+type Integer marked optional still has type Integer; what varies is
+whether a value is present. There is no wrapper type — no `Maybe`, no
+`Option`. Absence is not a value of any type; equality, ordering, and
+arithmetic are not defined between a value and absence. Operations
+applied to an absent input are undefined; callers must coalesce an
+optional value with the **Default** operation before passing it to a
+required parameter, or check presence with **Is Present**.
+
+## Overview
+
 A property applied to a _slot_ — a [parameter][param], an [attribute][attr],
 a record field, or the result of an [operation][op] — indicating whether
 the slot must carry a value or may be absent.
@@ -43,13 +59,12 @@ be checked first.
 
 - **[Parameters][param]** of operations. An operation may declare any
   parameter optional.
-- **[Attributes][attr]** of types. For example, the maximum cardinality
-  attribute of [Collection][col] is optional; when unspecified, the
-  collection is unbounded.
+- **[Attributes][attr]** of types. For example, a maximum cardinality
+  attribute may be optional, defaulting to unbounded when unspecified.
 - **Fields of records.** Each field carries its own optionality marking.
 - **Operation results.** An operation may declare that its result is
   optional, meaning the operation produces either a value of the declared
-  type or absence. [Min Or None][min-or-none] is an example.
+  type or absence.
 
 In each case, optionality is declared alongside the slot's declared type
 and carries the semantics defined here.
@@ -110,11 +125,9 @@ its type and does not remove or add type class instances.
 
 [attr]: attribute.md
 [bool]: ../expressions/boolean.md
-[col]: ../expressions/collection.md
 [eq]: ../expressions/equality.md
 [eq-equal]: ../expressions/equality.md#equal-operation
 [int]: ../expressions/integer.md
-[min-or-none]: ../expressions/collection.md#min-or-none-operation
 [op]: operation.md
 [ord]: ../expressions/ordering.md
 [param]: parameter.md

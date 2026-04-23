@@ -1,9 +1,14 @@
 # Collection Iteration Order [Type](../concepts/type.md)
 
-## Overview
+## Summary
 
-An attribute type that governs the sequence in which elements are visited
-during iteration of a [Collection](collection.md).
+An attribute type that governs the sequence in which elements are
+visited during iteration of a Collection. Values: **none** (no
+guaranteed order), **insertion** (visited in the order added), or
+**key** (ascending by a key derived from each element). When the value
+is **key**, a sub-attribute **tie-breaking** is either **stable**
+(equal-keyed elements retain insertion order) or **unstable**
+(unspecified relative order).
 
 ## [Member Values](../concepts/type.md#member-values)
 

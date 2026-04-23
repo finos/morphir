@@ -1,8 +1,13 @@
 # Decimal [Type](../concepts/type.md)
 
-## Overview
+## Summary
 
-Represents real numbers using a base-10 format with explicit precision and scale. Used for financial and business calculations requiring exact decimal representation.
+Represents real numbers using a base-10 format with explicit precision
+and scale. Used for financial and business calculations requiring exact
+decimal representation. Attributes: **total digits** (required, the
+number of significant digits — precision) and **fractional digits**
+(required, the number of digits after the decimal point — scale).
+Implements Number, Fractional, Equality, and Ordering.
 
 ### Attributes
 

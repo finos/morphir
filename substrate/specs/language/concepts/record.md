@@ -1,5 +1,18 @@
 # Record
 
+## Summary
+
+A Record is a composite type with a fixed set of named fields. Each
+field has a declared type and an optionality marking (required or
+optional). The identity of a record type is its name: two record types
+with the same fields but different names are distinct. Field names are
+unique within a record type. A declaration is identified by a heading
+whose text links to this concept page, e.g.
+`### Customer [Record](record.md)`. Every record type supports the
+meta-operations **Get Field**, **With Field**, and **Construct**.
+
+## Overview
+
 A Record is a composite [type](type.md) with a fixed set of named fields.
 Each field has a declared [type](type.md) and an [optionality](optionality.md)
 marking. The identity of a record type is its name: two record types with
@@ -8,8 +21,7 @@ the same fields but different names are distinct.
 A record type may be declared anywhere in the specification corpus —
 inside a dedicated module, as a subsection of a larger document, or
 alongside the logic that consumes it. A declaration is identified by a
-heading whose text links to this concept page, following the same pattern
-that [operations](operation.md) use to link to their concept:
+heading whose text links to this concept page:
 
 ```markdown
 ### Customer [Record](record.md)
@@ -48,8 +60,7 @@ reference field names declared by the specific record type in scope.
 
 _[Required](operation.md#required)._ Returns the value of the named field
 from a record. If the field is declared [optional](optionality.md) and no
-value is present, the result is absent; see [Optionality](optionality.md)
-for absence semantics.
+value is present, the result is absent.
 
 #### Test cases
 

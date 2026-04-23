@@ -1,8 +1,11 @@
 # Equality [Type Class](../concepts/type-class.md)
 
-## Overview
+## Summary
 
-The Equality [type class](../concepts/type-class.md) defines operations for comparing values to determine if they are equal or not equal. It applies to [types](../concepts/type.md) where equality is meaningful.
+The Equality type class defines operations for comparing values to
+determine if they are equal or not equal. It applies to types where
+equality is meaningful. Operations: **Equal** (required) and **Not
+Equal** (derived as `NOT (a == b)`). All operations return Boolean.
 
 ## Operations
 

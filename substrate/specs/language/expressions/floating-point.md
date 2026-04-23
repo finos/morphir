@@ -1,8 +1,13 @@
 # Floating-Point [Type](../concepts/type.md)
 
-## Overview
+## Summary
 
-Represents real numbers using a fixed-size binary format with a sign, exponent, and significand (mantissa). Used for scientific and engineering calculations where approximate values and wide dynamic range are needed.
+Represents real numbers using a fixed-size binary format with a sign,
+exponent, and significand (mantissa). Used for scientific and
+engineering calculations where approximate values and wide dynamic
+range are needed. Attribute: **size in bits** (required; e.g. 32 for
+single precision, 64 for double precision). Implements Number,
+Fractional, Equality, and Ordering.
 
 ### Attributes
 
