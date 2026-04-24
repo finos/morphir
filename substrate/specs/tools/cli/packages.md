@@ -205,6 +205,12 @@ target exists on disk. Applies to both inline links and reference-style
 definitions. Reports unresolved links and exits with code `1` if any
 are found.
 
+The scan root is determined by locating the nearest `substrate.json`
+from the current working directory (walking up the directory tree).
+If the manifest's `package.subdir` field is set, the scan starts at
+that sub-directory within the package root; otherwise it starts at the
+directory containing `substrate.json`.
+
 Validation is the safety net for manually authored reference
 definitions: any typo or stale path after an update surfaces here.
 Validation checks link resolution only; it does not verify semver

@@ -5,7 +5,7 @@
  * Vendored packages under `substrate/packages/` are excluded from the
  * walk but are valid link targets for corpus files.
  */
-import { relative } from "node:path";
+import { join, relative } from "node:path";
 
 import { listMarkdownFiles, locatePackage } from "../package/corpus.js";
 import { parseFile } from "../stages/parse.js";
@@ -25,7 +25,8 @@ export interface ValidateResult {
  */
 export async function validate(startDir: string): Promise<ValidateResult> {
     const pkg = await locatePackage(startDir);
-    const files = await listMarkdownFiles(pkg.root);
+    const scanRoot = pkg.manifest.subdir ? join(pkg.root, pkg.manifest.subdir) : pkg.root;
+    const files = await listMarkdownFiles(scanRoot);
 
     const diagnostics: Diagnostic[] = [];
     for (const file of files) {
@@ -38,7 +39,7 @@ export async function validate(startDir: string): Promise<ValidateResult> {
         diagnostics.push(...refDiags);
     }
 
-    return { root: pkg.root, fileCount: files.length, diagnostics };
+    return { root: scanRoot, fileCount: files.length, diagnostics };
 }
 
 /**
