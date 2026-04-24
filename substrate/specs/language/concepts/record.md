@@ -13,8 +13,8 @@ meta-operations **Get Field**, **With Field**, and **Construct**.
 
 ## Overview
 
-A Record is a composite [type](type.md) with a fixed set of named fields.
-Each field has a declared [type](type.md) and an [optionality](optionality.md)
+A Record is a composite [type](datatype.md) with a fixed set of named fields.
+Each field has a declared [type](datatype.md) and an [optionality](optionality.md)
 marking. The identity of a record type is its name: two record types with
 the same fields but different names are distinct.
 
@@ -35,7 +35,7 @@ A record type declares its fields in a **Fields** section. Each entry
 supplies:
 
 - A **name** by which the field is accessed.
-- A declared [type](type.md) linked to its definition.
+- A declared [type](datatype.md) linked to its definition.
 - An [optionality](optionality.md) marking — _required_ or _optional_.
   Required is the default.
 - A short description of the field's meaning.

@@ -1,4 +1,4 @@
-# Collection Iteration Order [Type](../concepts/type.md)
+# Collection Iteration Order [Type](../concepts/datatype.md)
 
 ## Summary
 
@@ -10,7 +10,7 @@ is **key**, a sub-attribute **tie-breaking** is either **stable**
 (equal-keyed elements retain insertion order) or **unstable**
 (unspecified relative order).
 
-## [Member Values](../concepts/type.md#member-values)
+## [Member Values](../concepts/datatype.md#member-values)
 
 - **none** — no iteration order is guaranteed.
 - **insertion** — elements are visited in the order they were added.

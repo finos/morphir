@@ -1,4 +1,4 @@
-# Collection Multiplicity [Type](../concepts/type.md)
+# Collection Multiplicity [Type](../concepts/datatype.md)
 
 ## Summary
 
@@ -9,7 +9,7 @@ compare equal under the element type's Equality instance. Values:
 collection unchanged) or **multi** (duplicates permitted; the same
 value may appear more than once).
 
-## [Member Values](../concepts/type.md#member-values)
+## [Member Values](../concepts/datatype.md#member-values)
 
 - **unique** — no two elements in the collection may be equal. Adding a
   duplicate element leaves the collection unchanged.

@@ -14,7 +14,7 @@ exhaustive).
 
 ## Overview
 
-A Choice is a [type](type.md) whose members are partitioned into a fixed
+A Choice is a [type](datatype.md) whose members are partitioned into a fixed
 set of named **variants**. Every value of a Choice type is exactly one
 variant. A variant may carry zero or more typed fields; the fields of
 different variants are independent.
@@ -41,7 +41,7 @@ bulleted list. Each entry supplies:
 - A **variant name**, unique within the Choice type.
 - A short description of the variant's meaning.
 - Zero or more **fields**, each nested as a sub-bullet. Each field
-  supplies a name, a declared [type](type.md) linked to its definition,
+  supplies a name, a declared [type](datatype.md) linked to its definition,
   an [optionality](optionality.md) marking, and a short description.
 
 For example:

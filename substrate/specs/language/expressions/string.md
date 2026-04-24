@@ -1,4 +1,4 @@
-# String [Type](../concepts/type.md)
+# String [Type](../concepts/datatype.md)
 
 ## Summary
 
@@ -12,7 +12,7 @@ code points (not graphemes or bytes). Operations: **Length**,
 (same code-point sequence) and Ordering (lexicographic by code point;
 empty string precedes every non-empty string).
 
-## [Member Values](../concepts/type.md#member-values)
+## [Member Values](../concepts/datatype.md#member-values)
 
 Every finite sequence of Unicode code points, including the empty
 sequence, is a member of String. Individual characters are not a separate
@@ -83,7 +83,7 @@ points within the first. Every string contains the empty string.
 | `""`     | `""`      | true   |
 | `""`     | `"a"`     | false  |
 
-## [Type Class Instances](../concepts/type.md#type-class-instances)
+## [Type Class Instances](../concepts/datatype.md#type-class-instances)
 
 - **[Equality][eq]** — two strings are equal when they contain the same
   sequence of code points.

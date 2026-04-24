@@ -14,7 +14,7 @@ types in a **Type Class Members** section as a quick cross-reference.
 ## Overview
 
 A type class defines a shared interface: a set of operations that any
-[type](type.md) may implement. It is analogous to an interface or trait in
+[type](datatype.md) may implement. It is analogous to an interface or trait in
 other languages. A type that implements a type class is said to _instance_
 that type class.
 
@@ -41,5 +41,5 @@ the module.
 
 Some type class modules list their known member types in a **Type Class
 Members** section. This is the inverse of a type's
-[Type Class Instances](type.md#type-class-instances) section and serves as a
+[Type Class Instances](datatype.md#type-class-instances) section and serves as a
 quick reference for which types implement the class.

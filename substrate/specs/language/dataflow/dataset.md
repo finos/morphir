@@ -18,4 +18,4 @@ Defines the columns of the dataset by listing out each column with name,
 
 [summary]: ../metadata/summary.md
 [struct]: ../metadata/structure.md
-[dt]: ../concepts/type.md
+[dt]: ../concepts/datatype.md

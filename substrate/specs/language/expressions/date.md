@@ -1,4 +1,4 @@
-# Date [Type](../concepts/type.md)
+# Date [Type](../concepts/datatype.md)
 
 ## Summary
 
@@ -10,7 +10,7 @@ dates is expressed as an Integer number of days; there is no dedicated
 Duration type. Operations: Add Days, Days Between. Implements Equality
 and Ordering.
 
-## [Member Values](../concepts/type.md#member-values)
+## [Member Values](../concepts/datatype.md#member-values)
 
 Every valid day in the proleptic Gregorian calendar, identified by a year,
 a month (1–12), and a day of month within that month's length (accounting
@@ -52,7 +52,7 @@ when the two are the same day.
 | `2025-01-31` | `2025-01-01` | -30    |
 | `2024-02-28` | `2024-03-01` | 2      |
 
-## [Type Class Instances](../concepts/type.md#type-class-instances)
+## [Type Class Instances](../concepts/datatype.md#type-class-instances)
 
 - **[Equality][eq]** — two dates are equal when they name the same
   calendar day.
