@@ -8,5 +8,7 @@ modules, and manages package dependencies.
 - [Commands](commands.md) — the `test`, `eval`, and `list` commands and all their options.
 - [Packages](packages.md) — the package system: manifests, versioning, vendoring, and the
   `init`, `install`, `update`, `validate`, and `publish` commands.
+- [Refactor](refactor.md) — the `refactor rename` command: rename files and sections, move
+  sections between files, and keep all cross-project references consistent.
 - [Design Decisions](design-decisions.md) — implementation rationale: pipeline architecture,
   TypeScript configuration, and testing strategy.
