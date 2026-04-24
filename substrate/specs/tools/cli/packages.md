@@ -237,6 +237,10 @@ Each argument is either a file path (`spec.md`) or a file with a
 section anchor (`spec.md#decision-table`). The anchor matches the
 GFM-slugified heading of the section.
 
+| Option              | Default | Description                                                                      |
+| ------------------- | ------- | -------------------------------------------------------------------------------- |
+| `--no-tree-shaking` | off     | Include every referenced file in full instead of tree-shaking to sections only. Links are still rewritten as in-document anchors. |
+
 #### Tree-shaking algorithm
 
 The command tree-shakes the corpus at section granularity, so only the
@@ -288,3 +292,38 @@ The output is a single markdown document with possibly multiple `#`
 headings (one per included file). No frontmatter or boilerplate is
 added. The command exits 0 on success; missing files or unresolvable
 section anchors in the supplied arguments cause exit 1.
+
+### `substrate stats [<file>]`
+
+Prints statistics about a markdown file to standard out. When no file
+argument is supplied, reads from standard in.
+
+```
+Words:                1,234
+Lines:                  567
+Tokens (est.):        2,345
+
+Links:
+  External:              12
+  Local:                  8
+  Anchors:               34
+
+Sections:               56
+Max heading depth:        3
+Avg heading depth:      2.1
+```
+
+| Statistic          | Description                                                                         |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| Words              | Non-code prose words (code blocks and inline code are excluded).                    |
+| Lines              | Raw line count of the source file.                                                  |
+| Tokens (est.)      | Rough token estimate: `ceil(character_count / 4)`.                                  |
+| Links — External   | Links whose URL starts with `http://`, `https://`, or `mailto:`.                    |
+| Links — Local      | Links to other files (relative paths without a leading `#`).                        |
+| Links — Anchors    | Same-file fragment links (URL starts with `#`).                                     |
+| Sections           | Total number of headings at any depth.                                              |
+| Max heading depth  | Deepest heading level present (`1`–`6`).                                            |
+| Avg heading depth  | Mean heading level across all sections, rounded to one decimal place.               |
+
+Both inline links and reference-style link definitions are counted.
+The command exits 0 on success and 1 if the file cannot be read.
