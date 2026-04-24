@@ -240,6 +240,7 @@ GFM-slugified heading of the section.
 | Option              | Default | Description                                                                      |
 | ------------------- | ------- | -------------------------------------------------------------------------------- |
 | `--no-tree-shaking` | off     | Include every referenced file in full instead of tree-shaking to sections only. Links are still rewritten as in-document anchors. |
+| `--no-inline`       | off     | Skip link traversal entirely. Only the explicitly-specified files or sections are included; no cross-file dependencies are followed. Links whose targets were not included are left unchanged. |
 
 #### Tree-shaking algorithm
 

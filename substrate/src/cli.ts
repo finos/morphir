@@ -152,8 +152,15 @@ program
         "--no-tree-shaking",
         "Include every referenced file in full instead of tree-shaking to sections.",
     )
-    .action(async (files: string[], opts: { treeShaking: boolean }) => {
-        const result = await context(process.cwd(), files, { noTreeShaking: !opts.treeShaking });
+    .option(
+        "--no-inline",
+        "Skip link traversal entirely — only include the explicitly-specified files or sections.",
+    )
+    .action(async (files: string[], opts: { treeShaking: boolean; inline: boolean }) => {
+        const result = await context(process.cwd(), files, {
+            noTreeShaking: !opts.treeShaking,
+            noInline: !opts.inline,
+        });
         if (result.errors.length > 0) {
             for (const e of result.errors) console.error(e);
             process.exitCode = 1;

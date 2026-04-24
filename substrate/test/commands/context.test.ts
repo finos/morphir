@@ -255,4 +255,66 @@ describe("substrate context", () => {
             expect(r.markdown).not.toContain("b.md");
         });
     });
+
+    describe("--no-inline", () => {
+        it("does not follow cross-file links", async () => {
+            await writeFile(join(tmp, "a.md"), "# A\n\nSee [B](b.md).\n", "utf8");
+            await writeFile(join(tmp, "b.md"), "# B\n\nDep body.\n", "utf8");
+            const r = await context(tmp, ["a.md"], { noInline: true });
+            expect(r.errors).toEqual([]);
+            expect(r.markdown).toContain("# A");
+            expect(r.markdown).not.toContain("# B");
+            expect(r.markdown).not.toContain("Dep body.");
+        });
+
+        it("leaves links to non-included files unchanged", async () => {
+            await writeFile(join(tmp, "a.md"), "# A\n\nSee [B](b.md).\n", "utf8");
+            await writeFile(join(tmp, "b.md"), "# B\n", "utf8");
+            const r = await context(tmp, ["a.md"], { noInline: true });
+            expect(r.markdown).toContain("b.md");
+            expect(r.markdown).not.toMatch(/\[B\]\(#b\)/);
+        });
+
+        it("still rewrites links between explicitly-included files", async () => {
+            await writeFile(join(tmp, "a.md"), "# A\n\nSee [B](b.md).\n", "utf8");
+            await writeFile(join(tmp, "b.md"), "# B\n\nContent.\n", "utf8");
+            const r = await context(tmp, ["a.md", "b.md"], { noInline: true });
+            expect(r.errors).toEqual([]);
+            expect(r.markdown).toContain("# B");
+            expect(r.markdown).toMatch(/\[B\]\(#b\)/);
+        });
+
+        it("respects a section anchor without pulling in linked files", async () => {
+            await writeFile(
+                join(tmp, "a.md"),
+                [
+                    "# A",
+                    "",
+                    "## Section One",
+                    "",
+                    "See [B](b.md).",
+                    "",
+                    "## Section Two",
+                    "",
+                    "Unrelated.",
+                ].join("\n"),
+                "utf8",
+            );
+            await writeFile(join(tmp, "b.md"), "# B\n\nDep body.\n", "utf8");
+            const r = await context(tmp, ["a.md#section-one"], { noInline: true });
+            expect(r.errors).toEqual([]);
+            expect(r.markdown).toContain("Section One");
+            expect(r.markdown).not.toContain("Section Two");
+            expect(r.markdown).not.toContain("Dep body.");
+        });
+
+        it("combined with --no-tree-shaking includes full files without following links", async () => {
+            await writeFile(join(tmp, "a.md"), "# A\n\nSee [B](b.md).\n", "utf8");
+            await writeFile(join(tmp, "b.md"), "# B\n\nDep body.\n", "utf8");
+            const r = await context(tmp, ["a.md"], { noTreeShaking: true, noInline: true });
+            expect(r.errors).toEqual([]);
+            expect(r.markdown).toContain("# A");
+            expect(r.markdown).not.toContain("# B");
+        });
+    });
 });
