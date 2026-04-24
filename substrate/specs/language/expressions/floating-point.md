@@ -1,4 +1,4 @@
-# Floating-Point [Type](../concepts/type.md)
+# Floating-Point [Type](../concepts/datatype.md)
 
 ## Summary
 
@@ -13,11 +13,11 @@ Fractional, Equality, and Ordering.
 
 - **size in bits** (required): Specifies the bit width of the floating-point representation (e.g., 32 for single precision, 64 for double precision).
 
-## [Member Values](../concepts/type.md#member-values)
+## [Member Values](../concepts/datatype.md#member-values)
 
 - Any real number representable within the chosen format, including special values (e.g., infinity, NaN).
 
-## [Type Class Instances](../concepts/type.md#type-class-instances)
+## [Type Class Instances](../concepts/datatype.md#type-class-instances)
 
 - [Number](number.md)
 - [Fractional](fractional.md)

@@ -1,4 +1,4 @@
-# Decimal [Type](../concepts/type.md)
+# Decimal [Type](../concepts/datatype.md)
 
 ## Summary
 
@@ -14,11 +14,11 @@ Implements Number, Fractional, Equality, and Ordering.
 - **total digits** (required): The total number of significant digits (precision).
 - **fractional digits** (required): The number of digits after the decimal point (scale).
 
-## [Member Values](../concepts/type.md#member-values)
+## [Member Values](../concepts/datatype.md#member-values)
 
 - Any decimal number representable within the specified precision and scale.
 
-## [Type Class Instances](../concepts/type.md#type-class-instances)
+## [Type Class Instances](../concepts/datatype.md#type-class-instances)
 
 - [Number](number.md)
 - [Fractional](fractional.md)

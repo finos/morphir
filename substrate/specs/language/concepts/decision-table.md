@@ -40,9 +40,9 @@ page:
 A decision table declaration has three parts:
 
 - **[Inputs](#inputs)** — the named values the table reads, each with its
-  declared [type](type.md).
+  declared [type](datatype.md).
 - **[Outputs](#outputs)** — the named values the table produces, each with
-  its declared [type](type.md).
+  its declared [type](datatype.md).
 - **[Rules](#rules)** — a markdown table where each row is a rule. Column
   headers name an input or output; headers prefixed with `→` name outputs,
   all other headers name inputs.

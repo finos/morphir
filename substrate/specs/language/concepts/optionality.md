@@ -133,4 +133,4 @@ its type and does not remove or add type class instances.
 [param]: parameter.md
 [req]: operation.md#required
 [tc]: type-class.md
-[type]: type.md
+[type]: datatype.md

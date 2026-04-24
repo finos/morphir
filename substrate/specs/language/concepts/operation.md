@@ -36,7 +36,7 @@ must reference the required operation(s) they are defined in terms of.
 
 ## Required
 
-The operation must be implemented by any [type](type.md) that instances the
+The operation must be implemented by any [type](datatype.md) that instances the
 [type class](type-class.md). It cannot be derived from other operations in
 the same type class.
 

@@ -1,10 +1,10 @@
-# Boolean [Type](../concepts/type.md)
+# Boolean [Type](../concepts/datatype.md)
 
 ## Summary
 
 The Boolean type represents a fundamental data type with two distinct member values: **true** and **false**. It is used to express binary logic, decision making, and control flow within specifications and executable models. Operations: NOT, AND, OR, XOR, IMPLIES, If-Then-Else. Implements Equality.
 
-## [Member Values](../concepts/type.md#member-values)
+## [Member Values](../concepts/datatype.md#member-values)
 
 - **true**: Represents affirmation, presence, or logical truth.
 - **false**: Represents negation, absence, or logical falsehood.
@@ -85,6 +85,6 @@ Evaluates to the then-value when the condition is `true`, and to the else-value 
 | true      | 1    | 2    | 1      |
 | false     | 1    | 2    | 2      |
 
-## [Type Class Instances](../concepts/type.md#type-class-instances)
+## [Type Class Instances](../concepts/datatype.md#type-class-instances)
 
 Boolean implements [Equality](equality.md): two Boolean values are equal when they are the same member.

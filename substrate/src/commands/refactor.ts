@@ -8,14 +8,13 @@
  *   file.md#sec → other.md      move section to another file (prompts or uses [below])
  *   file.md#sec → other.md#par  move section, insert after #par in target
  */
-import { readFile, writeFile, rename as fsRename } from "node:fs/promises";
-import { dirname, isAbsolute, relative, resolve } from "node:path";
+import { readdir, readFile, stat, writeFile, rename as fsRename } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import type { Root, Heading } from "mdast";
 import { nodeText, slugify } from "../language/mdast-utils.js";
-import { listMarkdownFiles, locatePackage } from "../package/corpus.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -138,17 +137,17 @@ async function doRenameFile(cwd: string, fromPath: string, toPath: string): Prom
     if (fromPath === toPath) {
         throw new Error(`Source and destination are the same file: ${fromPath}`);
     }
-    const pkg = await locatePackage(cwd);
+    const root = await findProjectRoot(cwd);
 
     await fsRename(fromPath, toPath);
-    console.log(`  Renamed ${relative(pkg.root, fromPath)} → ${relative(pkg.root, toPath)}`);
+    console.log(`  Renamed ${relative(root, fromPath)} → ${relative(root, toPath)}`);
 
-    const allFiles = await listMarkdownFiles(pkg.root);
+    const allFiles = await walkMarkdownFiles(root);
     const updated = await updateAllRefs(allFiles, (absFile, anchor) => {
         if (absFile !== fromPath) return null;
         return { file: toPath, anchor };
     });
-    for (const f of updated) console.log(`  Updated ${relative(pkg.root, f)}`);
+    for (const f of updated) console.log(`  Updated ${relative(root, f)}`);
     console.log(`✓ Done (${updated.length} file${updated.length === 1 ? "" : "s"} updated)`);
 }
 
@@ -162,7 +161,7 @@ async function doRenameSection(
     oldAnchor: string,
     newAnchorArg: string,
 ): Promise<void> {
-    const pkg = await locatePackage(cwd);
+    const projectRoot = await findProjectRoot(cwd);
     const source = await readFile(filePath, "utf8");
     const root = parseMarkdown(source);
     const sections = buildSections(root);
@@ -189,14 +188,14 @@ async function doRenameSection(
     const newHeadingRaw = "#".repeat(sec.depth) + " " + newHeadingText;
     const newSource = source.slice(0, startOff) + newHeadingRaw + source.slice(endOff);
     await writeFile(filePath, newSource, "utf8");
-    console.log(`  Renamed #${oldAnchor} → #${newAnchor} in ${relative(pkg.root, filePath)}`);
+    console.log(`  Renamed #${oldAnchor} → #${newAnchor} in ${relative(projectRoot, filePath)}`);
 
-    const allFiles = await listMarkdownFiles(pkg.root);
+    const allFiles = await walkMarkdownFiles(projectRoot);
     const updated = await updateAllRefs(allFiles, (absFile, anchor) => {
         if (absFile !== filePath || anchor !== oldAnchor) return null;
         return { file: filePath, anchor: newAnchor };
     });
-    for (const f of updated) console.log(`  Updated ${relative(pkg.root, f)}`);
+    for (const f of updated) console.log(`  Updated ${relative(projectRoot, f)}`);
     console.log(`✓ Done (${updated.length} file${updated.length === 1 ? "" : "s"} updated)`);
 }
 
@@ -211,7 +210,7 @@ async function doMoveSection(
     toFile: string,
     parentAnchorArg: string | undefined,
 ): Promise<void> {
-    const pkg = await locatePackage(cwd);
+    const projectRoot = await findProjectRoot(cwd);
 
     const sourceText = await readFile(fromFile, "utf8");
     const sourceRoot = parseMarkdown(sourceText);
@@ -236,7 +235,7 @@ async function doMoveSection(
     for (const slug of movedAnchors) {
         if (targetSections.has(slug)) {
             throw new Error(
-                `Section "#${slug}" already exists in ${relative(pkg.root, toFile)}. ` +
+                `Section "#${slug}" already exists in ${relative(projectRoot, toFile)}. ` +
                     `Rename the conflicting section first before moving.`,
             );
         }
@@ -248,12 +247,12 @@ async function doMoveSection(
         parentAnchor = parentAnchorArg;
         if (!targetSections.has(parentAnchor)) {
             throw new Error(
-                `Section "#${parentAnchor}" not found in ${relative(pkg.root, toFile)}.`,
+                `Section "#${parentAnchor}" not found in ${relative(projectRoot, toFile)}.`,
             );
         }
     } else {
         parentAnchor = await promptSelectParent(
-            relative(pkg.root, toFile),
+            relative(projectRoot, toFile),
             [...targetSections.values()],
         );
         // promptSelectParent throws on cancellation.
@@ -298,18 +297,18 @@ async function doMoveSection(
     await writeFile(fromFile, newSourceText, "utf8");
     await writeFile(toFile, newTargetText, "utf8");
     console.log(
-        `  Moved #${sectionAnchor} from ${relative(pkg.root, fromFile)} ` +
-            `to ${relative(pkg.root, toFile)}`,
+        `  Moved #${sectionAnchor} from ${relative(projectRoot, fromFile)} ` +
+            `to ${relative(projectRoot, toFile)}`,
     );
 
-    const allFiles = await listMarkdownFiles(pkg.root);
+    const allFiles = await walkMarkdownFiles(projectRoot);
     const updated = await updateAllRefs(allFiles, (absFile, anchor) => {
         if (absFile === fromFile && anchor !== null && movedAnchors.has(anchor)) {
             return { file: toFile, anchor };
         }
         return null;
     });
-    for (const f of updated) console.log(`  Updated ${relative(pkg.root, f)}`);
+    for (const f of updated) console.log(`  Updated ${relative(projectRoot, f)}`);
     console.log(`✓ Done (${updated.length} file${updated.length === 1 ? "" : "s"} updated)`);
 }
 
@@ -395,6 +394,50 @@ async function promptSelectParent(
         process.stdin.on("data", onData);
         render();
     });
+}
+
+// ---------------------------------------------------------------------------
+// Project root discovery and markdown file walking
+// ---------------------------------------------------------------------------
+
+const WALK_SKIP = new Set([".git", "node_modules", "dist"]);
+
+/**
+ * Walk up from `dir` to find the nearest `.git` directory, which is treated
+ * as the project root. Falls back to `dir` itself if none is found.
+ * This avoids depending on `substrate.json` which may live in a parent and
+ * would cause `listMarkdownFiles` to skip the current subtree as vendored.
+ */
+async function findProjectRoot(dir: string): Promise<string> {
+    let current = resolve(dir);
+    while (true) {
+        try {
+            const s = await stat(join(current, ".git"));
+            if (s.isDirectory()) return current;
+        } catch { /* not found at this level */ }
+        const parent = dirname(current);
+        if (parent === current) return resolve(dir);
+        current = parent;
+    }
+}
+
+/** Recursively collect all `.md` files under `root`, skipping common non-source dirs. */
+async function walkMarkdownFiles(root: string): Promise<readonly string[]> {
+    const out: string[] = [];
+    async function walk(dir: string): Promise<void> {
+        let entries;
+        try { entries = await readdir(dir, { withFileTypes: true }); } catch { return; }
+        for (const entry of entries) {
+            const full = join(dir, entry.name);
+            if (entry.isDirectory()) {
+                if (!WALK_SKIP.has(entry.name)) await walk(full);
+            } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
+                out.push(full);
+            }
+        }
+    }
+    await walk(resolve(root));
+    return out.sort((a, b) => a.localeCompare(b));
 }
 
 // ---------------------------------------------------------------------------
