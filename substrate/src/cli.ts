@@ -21,6 +21,7 @@ import { update } from "./commands/update.js";
 import { reportValidate, validate } from "./commands/validate.js";
 import { context } from "./commands/context.js";
 import { statsFile, statsStdin, formatStats } from "./commands/stats.js";
+import { rename as refactorRename } from "./commands/refactor.js";
 
 const program = new Command();
 
@@ -182,6 +183,29 @@ program
                 ? await statsFile(resolve(process.cwd(), file))
                 : await statsStdin();
             console.log(formatStats(result));
+        } catch (err: unknown) {
+            console.error(err instanceof Error ? err.message : String(err));
+            process.exitCode = 1;
+        }
+    });
+
+const refactor = program
+    .command("refactor")
+    .description("Refactoring operations on specification files and sections.");
+
+refactor
+    .command("rename <from> <to>")
+    .description(
+        "Rename a file or section, or move a section between files, updating every " +
+            "reference in the project.\n\n" +
+            "  file.md → other.md          rename file\n" +
+            "  file.md#old → file.md#new   rename section heading\n" +
+            "  file.md#sec → other.md      move section (prompts for insertion point)\n" +
+            "  file.md#sec → other.md#par  move section, append after #par",
+    )
+    .action(async (from: string, to: string) => {
+        try {
+            await refactorRename(process.cwd(), from, to);
         } catch (err: unknown) {
             console.error(err instanceof Error ? err.message : String(err));
             process.exitCode = 1;
