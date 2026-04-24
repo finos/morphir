@@ -95,3 +95,8 @@ Press **Enter** to confirm, **Ctrl+C** or **Esc** to cancel.
 
 If stdin is not a TTY (piped input, CI), the prompt cannot be shown — include
 the parent anchor directly in the `<to>` argument instead.
+
+
+# TODO
+
+- Add split/merge commands to break up a large document into smaller ones using the document include feature or merge a directory into a single document.
