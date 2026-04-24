@@ -38,6 +38,11 @@ export interface ContextResult {
     readonly errors: readonly string[];
 }
 
+export interface ContextOptions {
+    /** When true, include every referenced file in full instead of tree-shaking to sections. */
+    readonly noTreeShaking?: boolean;
+}
+
 /**
  * Build a self-contained markdown context document from a list of
  * `<file.md[#section]>` roots. Returns the rendered document and any
@@ -46,6 +51,7 @@ export interface ContextResult {
 export async function context(
     cwd: string,
     args: readonly string[],
+    opts: ContextOptions = {},
 ): Promise<ContextResult> {
     if (args.length === 0) {
         return {
@@ -54,6 +60,7 @@ export async function context(
         };
     }
 
+    const noTreeShaking = opts.noTreeShaking ?? false;
     const errors: string[] = [];
     const packageRootCache = new Map<string, string>();
     const rootJobs: Job[] = [];
@@ -93,17 +100,32 @@ export async function context(
             inclusions.set(job.filePath, inc);
         }
 
-        const newSections = applyJob(tree, inc, job, errors, rootJobs.includes(job));
         const packageRoot = await getPackageRoot(job.filePath, packageRootCache);
-        for (const sec of newSections) {
-            // Walk links in the newly-included nodes
-            const linkSources = collectLinkUrls(tree, sec);
-            const definitions = collectDefinitions(tree.root);
-            for (const url of linkSources) {
-                const resolved = resolveUrl(url, definitions);
-                if (resolved === null) continue;
-                const next = resolveLinkTarget(resolved, job.filePath, packageRoot);
-                if (next !== null) queue.push(next);
+        const definitions = collectDefinitions(tree.root);
+
+        if (noTreeShaking) {
+            if (inc.whole) continue;
+            inc.whole = true;
+            for (let i = 0; i < tree.root.children.length; i++) {
+                const urls: string[] = [];
+                collectFromNode(tree.root.children[i]!, urls);
+                for (const url of urls) {
+                    const resolved = resolveUrl(url, definitions);
+                    if (resolved === null) continue;
+                    const next = resolveLinkTarget(resolved, job.filePath, packageRoot);
+                    if (next !== null) queue.push(next);
+                }
+            }
+        } else {
+            const newSections = applyJob(tree, inc, job, errors, rootJobs.includes(job));
+            for (const sec of newSections) {
+                const linkSources = collectLinkUrls(tree, sec);
+                for (const url of linkSources) {
+                    const resolved = resolveUrl(url, definitions);
+                    if (resolved === null) continue;
+                    const next = resolveLinkTarget(resolved, job.filePath, packageRoot);
+                    if (next !== null) queue.push(next);
+                }
             }
         }
     }

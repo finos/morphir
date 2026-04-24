@@ -190,4 +190,69 @@ describe("substrate context", () => {
         expect(r.markdown).toContain("# A");
         expect(r.markdown).toContain("# B");
     });
+
+    describe("--no-tree-shaking", () => {
+        it("includes the whole referenced file even when linked by anchor", async () => {
+            await writeFile(
+                join(tmp, "a.md"),
+                "# A\n\nSee [target](x.md#target).\n",
+                "utf8",
+            );
+            await writeFile(
+                join(tmp, "x.md"),
+                [
+                    "# X",
+                    "",
+                    "## Sibling",
+                    "",
+                    "Sibling body should appear.",
+                    "",
+                    "## Target",
+                    "",
+                    "Target body.",
+                    "",
+                ].join("\n"),
+                "utf8",
+            );
+            const r = await context(tmp, ["x.md#target"], { noTreeShaking: true });
+            expect(r.errors).toEqual([]);
+            expect(r.markdown).toContain("Sibling body should appear.");
+            expect(r.markdown).toContain("Target body.");
+        });
+
+        it("includes the whole file when linked without anchor, ignoring Summary preference", async () => {
+            await writeFile(
+                join(tmp, "b.md"),
+                [
+                    "# B",
+                    "",
+                    "## Summary",
+                    "",
+                    "Compact synopsis.",
+                    "",
+                    "## Details",
+                    "",
+                    "Verbose details that should appear with no-tree-shaking.",
+                    "",
+                ].join("\n"),
+                "utf8",
+            );
+            const r = await context(tmp, ["b.md"], { noTreeShaking: true });
+            expect(r.errors).toEqual([]);
+            expect(r.markdown).toContain("Compact synopsis.");
+            expect(r.markdown).toContain("Verbose details that should appear");
+        });
+
+        it("still rewrites cross-file links as in-document anchors", async () => {
+            await writeFile(
+                join(tmp, "a.md"),
+                "# A\n\nSee [B](b.md).\n",
+                "utf8",
+            );
+            await writeFile(join(tmp, "b.md"), "# B\n\nContent.\n", "utf8");
+            const r = await context(tmp, ["a.md"], { noTreeShaking: true });
+            expect(r.markdown).toMatch(/\[B\]\(#b\)/);
+            expect(r.markdown).not.toContain("b.md");
+        });
+    });
 });

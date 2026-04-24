@@ -20,6 +20,7 @@ import { publish } from "./commands/publish.js";
 import { update } from "./commands/update.js";
 import { reportValidate, validate } from "./commands/validate.js";
 import { context } from "./commands/context.js";
+import { statsFile, statsStdin, formatStats } from "./commands/stats.js";
 
 const program = new Command();
 
@@ -147,14 +148,37 @@ program
             "<file.md[#section]> roots. Follows links transitively and rewrites " +
             "cross-file references as in-document anchors. Output is written to stdout.",
     )
-    .action(async (files: string[]) => {
-        const result = await context(process.cwd(), files);
+    .option(
+        "--no-tree-shaking",
+        "Include every referenced file in full instead of tree-shaking to sections.",
+    )
+    .action(async (files: string[], opts: { treeShaking: boolean }) => {
+        const result = await context(process.cwd(), files, { noTreeShaking: !opts.treeShaking });
         if (result.errors.length > 0) {
             for (const e of result.errors) console.error(e);
             process.exitCode = 1;
             return;
         }
         process.stdout.write(result.markdown);
+    });
+
+program
+    .command("stats [file]")
+    .description(
+        "Print statistics about a markdown file: word count, line count, token estimate, " +
+            "link breakdown (external / local / anchors), section count, and heading depth. " +
+            "Reads from stdin when no file argument is supplied.",
+    )
+    .action(async (file: string | undefined) => {
+        try {
+            const result = file
+                ? await statsFile(resolve(process.cwd(), file))
+                : await statsStdin();
+            console.log(formatStats(result));
+        } catch (err: unknown) {
+            console.error(err instanceof Error ? err.message : String(err));
+            process.exitCode = 1;
+        }
     });
 
 program.parse(process.argv);
