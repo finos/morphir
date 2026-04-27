@@ -32,6 +32,14 @@ rendered by GitHub, no custom syntax. Structure is carried by the things
 markdown already gives you — headings, tables, lists, footnotes, and 
 especially **links** between documents.
 
+Those links are the trick. As authors describe a business problem in
+their own words, every reference to a concept, type, or operation is a
+link to the place that defines it. The corpus quietly accumulates a
+**semantic knowledge graph** that tools can traverse, type-check, and
+slice for an LLM — without constraining how the prose is written. The
+freedom to describe the domain naturally and the ability to interpret
+it mechanically come from the same structure.
+
 Around that medium, Substrate adds:
 
 - A **package model** — versioned libraries of reusable concepts, and

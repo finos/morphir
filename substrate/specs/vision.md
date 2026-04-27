@@ -7,6 +7,12 @@ human-readable corpus of markdown documents that captures what a system
 *should* do — its concepts, rules, operations, and examples — in a form
 that both humans and LLMs can read, edit, and reason about.
 
+Another way to see it: Substrate quietly builds a **semantic knowledge
+graph** of an organization's concepts *into* the markdown that authors
+already write, so tools can interpret the corpus mechanically without
+constraining the freedom authors have in describing their domain. The
+prose stays prose; the graph is what links between documents.
+
 Its purpose is to turn the documents an organization already writes —
 specifications, regulations, domain models, runbooks — into **verifiable
 knowledge**: a corpus whose internal consistency, type compatibility, and
@@ -79,13 +85,23 @@ the markdown. Authors write prose and links; tools maintain everything
 downstream. The corpus remains readable, diffable, and reviewable with
 the tools every contributor already has.
 
-### 4.3 Links as a Lightweight Type System
+### 4.3 A Knowledge Graph Built from Links
 
-Plain markdown becomes structured by linking. A reference to a *concept*
-or *type* or *operation* is a link to its definition; the link target,
-not a separate annotation, is what carries the semantic relationship.
-This turns prose into a navigable graph that both humans and LLMs can
-follow.
+Plain markdown becomes structured by linking. Every reference to a
+*concept*, *type*, or *operation* is a link to its definition; the link
+target, not a separate annotation, is what carries the semantic
+relationship. As a corpus grows, those links accumulate into a
+**semantic knowledge graph** — concepts, the relationships between
+them, and their provenance back to the prose that introduced them.
+
+The graph is consequential because it is unobtrusive. Authors write the
+business problem in whatever prose, structure, and ordering best suit
+the domain; nothing about Substrate dictates a schema, a template, or a
+fixed vocabulary. Linking is the only discipline. From that one
+discipline, tools can type-check operations, resolve dependencies,
+detect contradictions, slice the corpus for an LLM, and trace any
+output back to the rule that produced it — all without ever asking
+authors to fit their domain into a rigid model.
 
 ### 4.4 Designed for Human–LLM Collaboration
 
