@@ -5,8 +5,8 @@ import CliDemo from "../components/CliDemo.astro";
 ---
 
 <Base
-  title="Substrate · Executable specifications, in markdown"
-  description="Substrate is an LLM-native executable specification language. The specification is the program."
+  title="Substrate · Verifiable knowledge for human–LLM collaboration"
+  description="Substrate turns the documents your organization already writes into a structured, link-typed corpus that humans, engineers, and LLMs can collaborate on — verifiable knowledge instead of unverifiable prose."
   activeNav="overview"
 >
   <section class="landing">
@@ -14,11 +14,13 @@ import CliDemo from "../components/CliDemo.astro";
     <div class="landing-inner">
       <header class="lead">
         <div class="eyebrow">A FINOS project · v0.1.0</div>
-        <h1>Executable specifications, in markdown.</h1>
+        <h1>Verifiable knowledge for human–LLM collaboration.</h1>
         <p class="s-lede">
-          Substrate is an LLM-native specification language. The specification
-          is the program — a typed dataflow graph of transformations and
-          decisions, traceable to the natural language it was derived from.
+          Substrate turns the documents your organization already writes —
+          specifications, regulations, domain models — into a structured,
+          link-typed corpus that humans and LLMs can read, edit, and
+          reason about. The same structure that tools can check is the
+          context an LLM can be trusted to act on.
         </p>
         <div class="cta-row">
           <a class="s-btn" href="/docs/specs/vision/">Read the vision</a>
@@ -31,25 +33,29 @@ import CliDemo from "../components/CliDemo.astro";
 
       <section class="three-up">
         <div>
-          <div class="threeup-eyebrow">Semantics over syntax</div>
+          <div class="threeup-eyebrow">Verifiable knowledge</div>
           <p>
-            There is no rigid grammar. The canonical representation is
-            GitHub-flavored Markdown, enriched with links between operations
-            and types.
+            Every claim a corpus makes — types, dependencies, examples,
+            test cases — is mechanically checkable. Findings are reported
+            against the originating prose, not an opaque intermediate
+            form.
           </p>
         </div>
         <div>
-          <div class="threeup-eyebrow">Spec-first</div>
+          <div class="threeup-eyebrow">A graph in plain markdown</div>
           <p>
-            The executable specification is the single source of truth — for
-            documentation, tests, runtime, and projection to target languages.
+            Authors describe the domain in their own words. Links between
+            documents quietly accumulate a semantic knowledge graph that
+            tools can traverse, type-check, and slice for an LLM.
           </p>
         </div>
         <div>
-          <div class="threeup-eyebrow">LLM-native</div>
+          <div class="threeup-eyebrow">Engineer leverage</div>
           <p>
-            Designed for natural-language extraction, partial regeneration,
-            structure-aware diffing, and deterministic refinement.
+            Externalize the mental model. Register patterns and
+            technology mappings against the corpus and let the tooling
+            generate implementations directly — instead of re-prompting
+            an LLM for every change.
           </p>
         </div>
       </section>
@@ -57,16 +63,19 @@ import CliDemo from "../components/CliDemo.astro";
       <section class="demo-slab">
         <div class="demo-copy">
           <div class="eyebrow">Command line</div>
-          <h2>A specification runs like a test suite.</h2>
+          <h2>The corpus is a runnable artifact.</h2>
           <p>
-            The <code>substrate</code> CLI parses, evaluates, and tests the
-            cases embedded in a user module. Exits non-zero on failure — the
-            same shape as any other linter or test runner in a CI pipeline.
+            The <code>substrate</code> CLI extracts focused context for an
+            LLM, validates the corpus for consistency and type
+            compatibility, refactors safely across files, and runs the
+            test cases embedded in the prose. Exits non-zero on failure —
+            the same shape as any other check in a CI pipeline.
           </p>
           <ul class="cli-flags">
+            <li><code>context</code> — extract a tree-shaken slice for an LLM</li>
+            <li><code>validate</code> — check structure, links, and types</li>
             <li><code>test</code> — run every embedded case</li>
-            <li><code>eval</code> — evaluate a single definition with supplied inputs</li>
-            <li><code>list</code> — inspect the module's structure</li>
+            <li><code>refactor</code> — rename and move with references intact</li>
           </ul>
         </div>
         <CliDemo />
