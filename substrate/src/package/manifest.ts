@@ -6,7 +6,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 
 /** Kind declared in `package.kind`. */
-export type PackageKind = "library" | "corpus";
+export type PackageKind = "library" | "corpus" | "horizontal";
 
 /** A single dependency entry: a scoped name and a semver range or branch. */
 export interface DependencySpec {
@@ -118,8 +118,10 @@ function validateManifest(value: unknown, path: string): Manifest {
     }
 
     const kindRaw = pkg["kind"];
-    if (kindRaw !== "library" && kindRaw !== "corpus") {
-        throw new Error(`${path}: package.kind must be "library" or "corpus"`);
+    if (kindRaw !== "library" && kindRaw !== "corpus" && kindRaw !== "horizontal") {
+        throw new Error(
+            `${path}: package.kind must be "library", "corpus", or "horizontal"`,
+        );
     }
     const kind: PackageKind = kindRaw;
 
@@ -130,8 +132,10 @@ function validateManifest(value: unknown, path: string): Manifest {
         }
         version = pkg["version"];
     }
-    if (kind === "library" && version === undefined) {
-        throw new Error(`${path}: library packages must declare package.version`);
+    if ((kind === "library" || kind === "horizontal") && version === undefined) {
+        throw new Error(
+            `${path}: ${kind} packages must declare package.version`,
+        );
     }
 
     let subdir: string | undefined;

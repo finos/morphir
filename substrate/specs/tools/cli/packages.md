@@ -13,8 +13,7 @@ validation; everything else is plain markdown.
 
 ## Package Kinds
 
-Every package declares one of two kinds, mirroring the distinction Elm
-and Cargo draw between reusable code and end deliverables:
+Every package declares one of three kinds:
 
 - **Library** — a package intended to be depended on by other packages.
   It contributes types, concepts, operations, or any other reusable
@@ -25,9 +24,17 @@ and Cargo draw between reusable code and end deliverables:
   organization's regulatory model, a particular product's rule set, a
   demonstrative example. A corpus is not itself depended on; it is the
   consumer at the bottom of the dependency tree.
+- **Horizontal** — a package whose documents run in parallel with a
+  corpus and annotate it from a particular cross-cutting perspective:
+  examples, regulatory citations, test scenarios, glossary entries,
+  change history, training notes. A horizontal does not contribute to
+  the corpus's primary specification chain; it sits alongside it and
+  links *into* corpus sections. See [Horizontals](#horizontals) for
+  semantics.
 
-Both kinds use the same manifest, directory layout, and link
-conventions. They differ only in two expectations:
+All three kinds use the same manifest, directory layout, and link
+conventions. They differ in their expectations and in how the tooling
+treats them during context assembly:
 
 - A corpus must contain a `README.md` at its root that serves as the
   entry point — the first document a reader opens. It orients the
@@ -38,6 +45,70 @@ conventions. They differ only in two expectations:
 - A corpus typically omits `version` from its manifest, because a
   corpus is generally not published for others to depend on. A library
   must declare `version` to be installable.
+- A horizontal must declare `version` if it is to be installed by other
+  packages, and follows the same publishing rules as a library.
+
+## Horizontals
+
+A horizontal is an independent package whose documents reference
+sections of a corpus (or of libraries the corpus depends on) by
+ordinary markdown links. Conceptually, the corpus is the spine and
+each horizontal is a parallel column annotating it from one angle.
+There can be any number of horizontals attached to a single corpus,
+and a horizontal may target multiple corpora.
+
+Horizontals exist because some material genuinely belongs alongside a
+corpus rather than inside it. Worked examples bloat a normative
+specification; regulatory citations rot when interleaved with
+definitions; test scenarios have a different audience than the rules
+they exercise. Keeping these in separate packages preserves the
+corpus's cohesion while still allowing the material to travel with it
+when a reader needs it.
+
+### Reverse-link semantics
+
+The defining property of a horizontal is that its links into the
+corpus are followed *backwards* during context assembly. A normal
+forward link from file F to section S means "to understand F, you
+also need S". A horizontal's link from H to S means "if you are
+reading S, the annotation in H is relevant — pull it in too".
+
+Reverse traversal applies only to links *originating in a horizontal*
+and pointing at a non-horizontal target. Forward traversal is
+universal: every outgoing link from an already-included section is
+followed, regardless of which package the linking section or the
+target lives in. So a horizontal section pulled in via reverse
+traversal can in turn pull in further corpus sections, library
+sections, or sections of another horizontal — the same way any
+included section would.
+
+Links between horizontals are therefore handled forward, not in
+reverse. If horizontal H1 is selected and a section of H1 is
+included, any horizontal it links to (H2, H3, …) gets that targeted
+section pulled in, even if H2 was not itself passed via
+`--horizontal`. The opt-in flag controls only which horizontals are
+*scanned for reverse links into the corpus*; it does not gate forward
+reachability. This keeps the rule symmetric with how a corpus reaches
+into its library dependencies without each library needing to be
+separately opted in.
+
+### Selection
+
+A horizontal is *scanned for reverse links* only when the user opts
+it in for that invocation via `--horizontal`. There is no automatic
+reverse-scan activation based on manifest presence: a corpus may have
+ten horizontals available and a given `substrate context` call may
+want zero, one, or all of them reverse-scanned depending on the
+audience. The `--horizontal` flag on
+[`substrate context`](#substrate-context-filemdsection-filemdsection-)
+selects which horizontals are in scope for reverse traversal.
+
+Forward reachability is independent of `--horizontal`. Once any
+horizontal section is in the included set — whether reached by reverse
+traversal from an opted-in horizontal, by forward traversal from
+another included section, or supplied directly as a command-line
+argument — its outgoing links are followed normally, and any
+horizontal it transitively points at is pulled in along with it.
 
 ## Package Identity
 
@@ -96,9 +167,10 @@ The manifest is `substrate.json` at the corpus root:
 ```
 
 The `package` object declares this package's own identity. The `kind`
-field is required and takes one of the two values defined in
-[Package Kinds](#package-kinds): `"library"` or `"corpus"`. A library
-additionally declares `version`; a corpus typically omits it.
+field is required and takes one of the values defined in
+[Package Kinds](#package-kinds): `"library"`, `"corpus"`, or
+`"horizontal"`. A library and a horizontal additionally declare
+`version`; a corpus typically omits it.
 
 An optional `subdir` field under `package` specifies a sub-directory
 within the repository where the substrate documents reside. When `subdir`
@@ -160,8 +232,8 @@ then writes the file and creates the `substrate/` vendor directory.
 | Prompt | Default | Notes |
 | --- | --- | --- |
 | Package name | `<git-remote-org>/<directory-name>` | Any path with no leading/trailing slashes or `..` |
-| Kind | `corpus` | `library` or `corpus` |
-| Version | `0.1.0` | Libraries only; omitted for corpora |
+| Kind | `corpus` | `library`, `corpus`, or `horizontal` |
+| Version | `0.1.0` | Libraries and horizontals; omitted for corpora |
 
 After the prompts, `substrate init` writes `substrate.json` with the
 supplied values and creates an empty `substrate/` directory. It does not
@@ -218,8 +290,9 @@ constraints at this stage.
 
 ### `substrate publish`
 
-Prepares a library for release. Aborts if the package's `kind` is
-`corpus`, since corpora are not published for others to depend on.
+Prepares a library or horizontal for release. Aborts if the package's
+`kind` is `corpus`, since corpora are not published for others to
+depend on.
 
 1. Confirms `substrate.json` is committed and the working tree is clean.
 2. Runs `substrate validate` and aborts on any failure.
@@ -247,6 +320,7 @@ GFM-slugified heading of the section.
 | ------------------- | ------- | -------------------------------------------------------------------------------- |
 | `--no-tree-shaking` | off     | Include every referenced file in full instead of tree-shaking to sections only. Links are still rewritten as in-document anchors. |
 | `--no-inline`       | off     | Skip link traversal entirely. Only the explicitly-specified files or sections are included; no cross-file dependencies are followed. Links whose targets were not included are left unchanged. |
+| `--horizontal <path>` | none  | Include the named horizontal package in the assembly. The path points at a directory containing a `substrate.json` whose `package.kind` is `horizontal`. Repeatable: `--horizontal a --horizontal b` activates both. Documents in the named horizontal are scanned for links targeting included corpus sections; matching horizontal sections are pulled in via reverse traversal. See [Tree-shaking algorithm](#tree-shaking-algorithm). |
 
 #### Tree-shaking algorithm
 
@@ -276,11 +350,32 @@ content reachable from the supplied roots ends up in the output.
      file and become a new inclusion job.
    Jobs are deduplicated by `(file, anchor|whole)` so cycles and
    diamonds terminate.
-4. **Build the file dependency graph.** Each link from file F to file
-   G adds an edge F → G. Topologically sort files with dependencies
-   first (sinks before sources). Cycles, if any, are broken by
-   condensing each strongly-connected component and ordering members
-   by file path.
+3a. **Reverse-link from horizontals.** For each horizontal supplied
+    via `--horizontal`, build (once, lazily) an index mapping every
+    target it links to — `(file, anchor|whole)` — to the set of
+    horizontal sections that contain a link to that target. A
+    horizontal section is the smallest enclosing heading subtree
+    around the link; if the link sits at the top of the file before
+    any heading, the whole file is the unit. Whenever step 2 marks a
+    non-horizontal section S as included, consult the index: for each
+    horizontal section H that links to S (or to an ancestor of S
+    whose subtree contains S, when the link is whole-file), enqueue H
+    as an inclusion job. The newly-included horizontal section then
+    re-enters step 3 and its outgoing links are followed forward
+    normally — including links to other horizontals, which pull in
+    their targeted sections without requiring those horizontals to be
+    separately passed via `--horizontal`. Reverse traversal applies
+    only to links whose source is in a horizontal package opted in via
+    `--horizontal` and whose target is not in any horizontal; links
+    from one horizontal to another, or within the same horizontal,
+    are not followed in reverse.
+4. **Build the file dependency graph.** Each forward link from file F
+   to file G adds an edge F → G. Reverse links from horizontals do not
+   add edges; horizontal sections are placed alongside the corpus
+   section they annotate, immediately after it in render order.
+   Topologically sort files with dependencies first (sinks before
+   sources). Cycles, if any, are broken by condensing each strongly-
+   connected component and ordering members by file path.
 5. **Render in topo order.** For each file, emit the included nodes in
    their original document order. For whole-file inclusions, that's
    the entire file. For partial inclusions, walk the file's top-level

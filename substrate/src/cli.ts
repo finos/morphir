@@ -157,18 +157,32 @@ program
         "--no-inline",
         "Skip link traversal entirely — only include the explicitly-specified files or sections.",
     )
-    .action(async (files: string[], opts: { treeShaking: boolean; inline: boolean }) => {
-        const result = await context(process.cwd(), files, {
-            noTreeShaking: !opts.treeShaking,
-            noInline: !opts.inline,
-        });
-        if (result.errors.length > 0) {
-            for (const e of result.errors) console.error(e);
-            process.exitCode = 1;
-            return;
-        }
-        process.stdout.write(result.markdown);
-    });
+    .option(
+        "--horizontal <path>",
+        "Include the named horizontal package: documents in the package are scanned " +
+            "for links targeting included corpus sections, and matching horizontal " +
+            "sections are pulled in via reverse traversal. Repeatable.",
+        (value: string, prior: string[] = []) => [...prior, value],
+        [] as string[],
+    )
+    .action(
+        async (
+            files: string[],
+            opts: { treeShaking: boolean; inline: boolean; horizontal: string[] },
+        ) => {
+            const result = await context(process.cwd(), files, {
+                noTreeShaking: !opts.treeShaking,
+                noInline: !opts.inline,
+                horizontals: opts.horizontal,
+            });
+            if (result.errors.length > 0) {
+                for (const e of result.errors) console.error(e);
+                process.exitCode = 1;
+                return;
+            }
+            process.stdout.write(result.markdown);
+        },
+    );
 
 program
     .command("stats [file]")
