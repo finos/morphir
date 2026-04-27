@@ -59,6 +59,25 @@ structural validity, link resolution, type compatibility, embedded test
 cases — and findings are reported against the originating prose, not an
 opaque intermediate representation.
 
+## What this changes for engineers
+
+Engineers contribute most when they can spot patterns and translate
+them into efficient technology. With unstructured prose as the only
+context, that skill has nowhere to land — engineers either build a
+mental model in their head and hand-hold an LLM through implementation,
+or they let the LLM interpret the prose directly and improvise a
+solution from prose plus training data.
+
+Substrate externalizes the mental model. Engineers describe recurring
+patterns using the corpus's own identifiers and attach **technology
+mappings** to them — how each pattern is realized in TypeScript, SQL,
+or whatever target fits. Where a pattern matches and a mapping exists,
+the tooling produces the implementation directly: no LLM improvisation,
+no per-task prompt engineering. Where a case is novel, the LLM still
+helps, but its work is checked against the corpus and the result can
+be promoted to a reusable pattern. Engineering judgment accumulates
+in the corpus rather than evaporating into chat transcripts.
+
 ## What you can do with it today
 
 ```bash

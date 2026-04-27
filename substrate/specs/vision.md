@@ -134,7 +134,41 @@ Where Substrate *is* used to drive software, the specification is the
 source of truth and implementations are derived from it. A change to
 behaviour is a change to the corpus first; the implementation follows.
 
-## 5. Tooling Pillars
+## 5. Externalizing the Mental Model
+
+Engineers contribute most when they can identify patterns and translate
+them into efficient technology solutions. That skill needs something to
+act on. When the context for a system is just natural-language prose,
+two things tend to happen — neither of them good.
+
+Either the engineer reads the prose, builds a mental model of the
+domain in their head, and uses it to hand-hold an LLM through
+implementation — in which case the model never leaves the engineer's
+head, is not reviewable, and rotates off the project with them. Or the
+engineer skips the model and lets the LLM interpret the prose directly
+— in which case the LLM improvises a solution from prose plus training
+data, with no seam at which engineering judgment can attach.
+
+Substrate changes the seam. Because the corpus carries an explicit
+knowledge graph, engineers can describe recurring **patterns** using
+its own identifiers — "this shape of operation, with these inputs and
+these invariants, is the recurring case" — and attach **technology
+mappings** to those patterns: how each pattern is realized in
+TypeScript, SQL, a stream processor, or whichever target is
+appropriate. Patterns and mappings live in the corpus itself, written
+in the same markdown, linked into the same graph, and validated by the
+same tooling.
+
+That makes **deterministic automation** possible for the common cases.
+Where a pattern matches and a mapping exists, the tooling produces the
+implementation directly — no LLM improvisation, no per-task prompt
+engineering, no force-feeding the model with bespoke instructions.
+Where a case is genuinely novel, the LLM still helps, but against a
+corpus where its work can be checked and the resulting solution can
+be promoted to a reusable pattern. Engineering judgment accumulates in
+the corpus instead of evaporating into chat transcripts.
+
+## 6. Tooling Pillars
 
 The CLI is organized around five capabilities:
 
@@ -168,20 +202,25 @@ in the prose. Editing a rule re-runs the corpus and surfaces the diff in
 output. The specification *is* the debugger interface, accessible to
 domain experts without engineering tooling.
 
-## 6. Projections to Implementations
+## 7. Projections to Implementations
 
-Where a corpus is precise enough, AI agents can derive runnable
-implementations in target languages — TypeScript, Python, SQL — from the
-specification. The natural-language descriptions and embedded test cases
-are the authoritative semantic reference; the projection is validated by
-running the corpus's own test cases against the generated code.
+A **projection** transforms a corpus into a runnable implementation in
+a target language — TypeScript, Python, SQL, or another. Projections
+are downstream of the corpus, not parallel to it: the specification is
+the source of truth, and provenance links flow from generated code
+back to the originating fragments.
 
-Projections are downstream of the corpus, not parallel to it. The
-specification, not the projection, is the source of truth, and
-provenance links flow from generated code back to the originating
-fragments.
+Projections combine two derivation strategies. Where the corpus
+expresses a recognized pattern and an engineer has registered a
+**technology mapping** for it, the tooling produces the implementation
+directly from the pattern — deterministically, repeatably,
+reviewably. Where no such mapping exists, an AI agent derives an
+implementation from the natural-language descriptions and embedded
+test cases. In both cases, the corpus's own test cases are the
+acceptance criterion: a projection is valid only if every test case
+defined in the specification passes against the generated code.
 
-## 7. Versioning
+## 8. Versioning
 
 Corpora evolve as the regulations or domains they codify are amended.
 Substrate treats this as ordinary software versioning: git tags, semver,
@@ -193,12 +232,14 @@ The language itself stays free of effective-date machinery. Date-sensitive
 behaviour within a single version is expressed using ordinary constructs
 — for example, a decision table with a reporting-date column.
 
-## 8. Who Substrate Is For
+## 9. Who Substrate Is For
 
 - **Domain experts** — write and review specifications in prose, debug
   them against real data, without learning a programming language.
-- **Engineers** — derive and maintain implementations from a verified
-  source of truth, with refactors that don't break references.
+- **Engineers** — externalize the mental model of the domain, register
+  patterns and technology mappings against it, and derive implementations
+  from a verified source of truth instead of reinterpreting prose for
+  every change.
 - **AI agents** — operate against a corpus whose structure and
   consistency they can rely on, with tooling that gives them exactly
   the slice of context a task requires.
@@ -206,7 +247,7 @@ behaviour within a single version is expressed using ordinary constructs
   runs, with provenance from any output back to the rule that produced
   it.
 
-## 9. Long-Term Ambition
+## 10. Long-Term Ambition
 
 > Institutions accumulate verifiable knowledge — specifications they can
 > trust, evolve, and project into running systems — co-developed with AI
