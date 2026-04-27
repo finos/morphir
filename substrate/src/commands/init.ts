@@ -63,13 +63,19 @@ async function promptForManifest(defaultName: string): Promise<Manifest> {
             );
         }
 
-        const kindRaw = await ask(rl, "Kind [corpus/library] (corpus): ", "corpus");
-        if (kindRaw !== "corpus" && kindRaw !== "library") {
-            throw new Error(`Kind must be "corpus" or "library", got "${kindRaw}"`);
+        const kindRaw = await ask(
+            rl,
+            "Kind [corpus/library/horizontal] (corpus): ",
+            "corpus",
+        );
+        if (kindRaw !== "corpus" && kindRaw !== "library" && kindRaw !== "horizontal") {
+            throw new Error(
+                `Kind must be "corpus", "library", or "horizontal", got "${kindRaw}"`,
+            );
         }
         const kind: PackageKind = kindRaw;
 
-        if (kind === "library") {
+        if (kind === "library" || kind === "horizontal") {
             const version = await ask(rl, "Version (0.1.0): ", "0.1.0");
             return { name, kind, version, dependencies: [] };
         }

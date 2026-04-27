@@ -21,7 +21,7 @@ import remarkGfm from "remark-gfm";
 import remarkStringify from "remark-stringify";
 
 import { nodeText, slugify } from "../language/mdast-utils.js";
-import { locatePackage } from "../package/corpus.js";
+import { listMarkdownFiles, locatePackage } from "../package/corpus.js";
 
 // ---------------------------------------------------------------------------
 // Public entry point
@@ -43,6 +43,14 @@ export interface ContextOptions {
     readonly noTreeShaking?: boolean;
     /** When true, skip link traversal entirely — only include the explicitly-specified files/sections. */
     readonly noInline?: boolean;
+    /**
+     * Paths to horizontal package roots to scan for reverse links. Each
+     * directory must contain a `substrate.json` whose `package.kind` is
+     * `horizontal`. When a non-horizontal section is included, any
+     * horizontal section that links to it (or to its containing file) is
+     * pulled in as if it had been linked forward.
+     */
+    readonly horizontals?: readonly string[];
 }
 
 /**
@@ -64,6 +72,7 @@ export async function context(
 
     const noTreeShaking = opts.noTreeShaking ?? false;
     const noInline = opts.noInline ?? false;
+    const horizontalPaths = opts.horizontals ?? [];
     const errors: string[] = [];
     const packageRootCache = new Map<string, string>();
     const rootJobs: Job[] = [];
@@ -77,6 +86,16 @@ export async function context(
     const inclusions = new Map<string, FileInclusion>();
     const queue: Job[] = [...rootJobs];
     const seenJobs = new Set<string>();
+
+    // Build the reverse-link index from the opted-in horizontals (if any).
+    // The index maps a target file path to the list of horizontal sections
+    // linking into it; firing a reverse pull enqueues those sections as
+    // ordinary inclusion jobs.
+    const horizontalIndex = await loadHorizontals(horizontalPaths, cwd, errors);
+    if (errors.length > 0) {
+        return { markdown: "", errors };
+    }
+    const firedReverse = new Set<string>();
 
     while (queue.length > 0) {
         const job = queue.shift()!;
@@ -109,6 +128,7 @@ export async function context(
         if (noTreeShaking) {
             if (inc.whole) continue;
             inc.whole = true;
+            fireReverseForFile(job.filePath, tree, horizontalIndex, queue, firedReverse);
             if (!noInline) {
                 for (let i = 0; i < tree.root.children.length; i++) {
                     const urls: string[] = [];
@@ -123,6 +143,14 @@ export async function context(
             }
         } else {
             const newSections = applyJob(tree, inc, job, errors, rootJobs.includes(job));
+            for (const sec of newSections) {
+                fireReverseForSection(job.filePath, sec, horizontalIndex, queue, firedReverse);
+            }
+            // A whole-file inclusion of a file with no headings produces no
+            // new sections, but should still fire whole-file reverse entries.
+            if (inc.whole && tree.all.length === 0) {
+                fireReverseWholeFile(job.filePath, horizontalIndex, queue, firedReverse);
+            }
             if (!noInline) {
                 for (const sec of newSections) {
                     const linkSources = collectLinkUrls(tree, sec);
@@ -646,6 +674,190 @@ function rewriteNode(
     }
     return obj;
 }
+
+// ---------------------------------------------------------------------------
+// Horizontal packages — reverse-link index
+// ---------------------------------------------------------------------------
+
+interface ReverseEntry {
+    /** Target anchor in the corpus file; `null` means whole-file link. */
+    readonly targetAnchor: string | null;
+    /** The horizontal section to enqueue when this entry fires. */
+    readonly sourceJob: Job;
+}
+
+interface HorizontalIndex {
+    /** Keyed by absolute path of the corpus file the horizontal links to. */
+    readonly byTarget: ReadonlyMap<string, readonly ReverseEntry[]>;
+    /** Set of file paths that belong to any opted-in horizontal package. */
+    readonly horizontalFiles: ReadonlySet<string>;
+}
+
+const EMPTY_INDEX: HorizontalIndex = {
+    byTarget: new Map(),
+    horizontalFiles: new Set(),
+};
+
+async function loadHorizontals(
+    paths: readonly string[],
+    cwd: string,
+    errors: string[],
+): Promise<HorizontalIndex> {
+    if (paths.length === 0) return EMPTY_INDEX;
+
+    const horizontalFiles = new Set<string>();
+    interface PendingFile {
+        readonly absPath: string;
+        readonly tree: FileTree;
+        readonly packageRoot: string;
+    }
+    const pending: PendingFile[] = [];
+
+    for (const raw of paths) {
+        const dir = isAbsolute(raw) ? resolve(raw) : resolve(cwd, raw);
+        let pkg;
+        try {
+            pkg = await locatePackage(dir);
+        } catch (err) {
+            errors.push(
+                `--horizontal ${raw}: ${err instanceof Error ? err.message : String(err)}`,
+            );
+            continue;
+        }
+        if (pkg.manifest.kind !== "horizontal") {
+            errors.push(
+                `--horizontal ${raw}: package "${pkg.manifest.name}" has kind ` +
+                    `"${pkg.manifest.kind}", expected "horizontal"`,
+            );
+            continue;
+        }
+        const mdFiles = await listMarkdownFiles(pkg.root);
+        for (const filePath of mdFiles) {
+            const tree = await loadFile(filePath);
+            if (tree === null) continue;
+            horizontalFiles.add(filePath);
+            pending.push({ absPath: filePath, tree, packageRoot: pkg.root });
+        }
+    }
+
+    const byTarget = new Map<string, ReverseEntry[]>();
+
+    for (const { absPath, tree, packageRoot } of pending) {
+        const definitions = collectDefinitions(tree.root);
+        for (let i = 0; i < tree.root.children.length; i++) {
+            const sec = deepestEnclosingSection(tree, i);
+            walkLinksWithContext(tree.root.children[i]!, (rawUrl) => {
+                const url = resolveUrl(rawUrl, definitions);
+                if (url === null) return;
+                const target = resolveLinkTarget(url, absPath, packageRoot);
+                if (target === null) return;
+                // Skip targets in any opted-in horizontal — those links
+                // travel forward, not in reverse.
+                if (horizontalFiles.has(target.filePath)) return;
+                const sourceJob: Job = sec === null
+                    ? { filePath: absPath, anchor: null }
+                    : { filePath: absPath, anchor: sec.slug };
+                let bucket = byTarget.get(target.filePath);
+                if (bucket === undefined) {
+                    bucket = [];
+                    byTarget.set(target.filePath, bucket);
+                }
+                bucket.push({ targetAnchor: target.anchor, sourceJob });
+            });
+        }
+    }
+
+    return { byTarget, horizontalFiles };
+}
+
+/**
+ * Find the deepest section whose subtree contains `childIdx` (an index
+ * into `tree.root.children`). Returns `null` when the index sits before
+ * any heading — i.e. in the file's preamble.
+ */
+function deepestEnclosingSection(tree: FileTree, childIdx: number): SectionNode | null {
+    let best: SectionNode | null = null;
+    for (const sec of tree.all) {
+        if (sec.headingIdx > childIdx) break;
+        if (childIdx < sec.subtreeEnd) {
+            if (best === null || sec.depth > best.depth) best = sec;
+        }
+    }
+    return best;
+}
+
+function walkLinksWithContext(node: unknown, onUrl: (url: string) => void): void {
+    if (typeof node !== "object" || node === null) return;
+    const obj = node as Record<string, unknown>;
+    if (obj["type"] === "link" && typeof obj["url"] === "string") {
+        onUrl(obj["url"] as string);
+    } else if (obj["type"] === "linkReference" && typeof obj["identifier"] === "string") {
+        onUrl(`\x01ref:${obj["identifier"] as string}`);
+    }
+    const children = obj["children"];
+    if (Array.isArray(children)) {
+        for (const c of children) walkLinksWithContext(c, onUrl);
+    }
+}
+
+function fireReverseForSection(
+    filePath: string,
+    sec: SectionNode,
+    index: HorizontalIndex,
+    queue: Job[],
+    fired: Set<string>,
+): void {
+    if (index.horizontalFiles.has(filePath)) return;
+    const bucket = index.byTarget.get(filePath);
+    if (bucket === undefined) return;
+    for (const entry of bucket) {
+        if (entry.targetAnchor !== null && entry.targetAnchor !== sec.slug) continue;
+        enqueueReverse(entry.sourceJob, queue, fired);
+    }
+}
+
+function fireReverseForFile(
+    filePath: string,
+    tree: FileTree,
+    index: HorizontalIndex,
+    queue: Job[],
+    fired: Set<string>,
+): void {
+    if (index.horizontalFiles.has(filePath)) return;
+    const bucket = index.byTarget.get(filePath);
+    if (bucket === undefined) return;
+    const slugs = new Set(tree.all.map((s) => s.slug));
+    for (const entry of bucket) {
+        if (entry.targetAnchor !== null && !slugs.has(entry.targetAnchor)) continue;
+        enqueueReverse(entry.sourceJob, queue, fired);
+    }
+}
+
+function fireReverseWholeFile(
+    filePath: string,
+    index: HorizontalIndex,
+    queue: Job[],
+    fired: Set<string>,
+): void {
+    if (index.horizontalFiles.has(filePath)) return;
+    const bucket = index.byTarget.get(filePath);
+    if (bucket === undefined) return;
+    for (const entry of bucket) {
+        if (entry.targetAnchor !== null) continue;
+        enqueueReverse(entry.sourceJob, queue, fired);
+    }
+}
+
+function enqueueReverse(job: Job, queue: Job[], fired: Set<string>): void {
+    const k = jobKey(job);
+    if (fired.has(k)) return;
+    fired.add(k);
+    queue.push(job);
+}
+
+// ---------------------------------------------------------------------------
+// Link rewriting (continued)
+// ---------------------------------------------------------------------------
 
 function rewriteUrl(
     url: string,

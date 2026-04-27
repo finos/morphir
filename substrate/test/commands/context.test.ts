@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -315,6 +315,209 @@ describe("substrate context", () => {
             expect(r.errors).toEqual([]);
             expect(r.markdown).toContain("# A");
             expect(r.markdown).not.toContain("# B");
+        });
+    });
+
+    describe("--horizontal", () => {
+        async function setupCorpus(): Promise<{ corpus: string; hRoot: string }> {
+            const corpus = join(tmp, "corpus");
+            await mkdir(corpus, { recursive: true });
+            await writeFile(
+                join(corpus, "substrate.json"),
+                JSON.stringify({ package: { name: "test/corpus", kind: "corpus" } }),
+                "utf8",
+            );
+            const hRoot = join(tmp, "annotations");
+            await mkdir(hRoot, { recursive: true });
+            await writeFile(
+                join(hRoot, "substrate.json"),
+                JSON.stringify({
+                    package: {
+                        name: "test/annotations",
+                        kind: "horizontal",
+                        version: "0.1.0",
+                    },
+                }),
+                "utf8",
+            );
+            return { corpus, hRoot };
+        }
+
+        it("pulls in a horizontal section that reverse-links into an included corpus section", async () => {
+            const { corpus, hRoot } = await setupCorpus();
+            await writeFile(
+                join(corpus, "spec.md"),
+                [
+                    "# Spec",
+                    "",
+                    "## Rule A",
+                    "",
+                    "Rule A body.",
+                    "",
+                    "## Rule B",
+                    "",
+                    "Rule B body.",
+                    "",
+                ].join("\n"),
+                "utf8",
+            );
+            // Horizontal annotation references Rule A only.
+            await writeFile(
+                join(hRoot, "examples.md"),
+                [
+                    "# Examples",
+                    "",
+                    "## Example for A",
+                    "",
+                    "See [Rule A](../corpus/spec.md#rule-a).",
+                    "",
+                    "Example body for A.",
+                    "",
+                    "## Example for B",
+                    "",
+                    "Example body for B.",
+                    "",
+                ].join("\n"),
+                "utf8",
+            );
+            const r = await context(corpus, ["spec.md#rule-a"], {
+                horizontals: [hRoot],
+            });
+            expect(r.errors).toEqual([]);
+            expect(r.markdown).toContain("Rule A body.");
+            expect(r.markdown).toContain("Example body for A.");
+            // Rule B not included → its annotation should not appear either.
+            expect(r.markdown).not.toContain("Example body for B.");
+            expect(r.markdown).not.toContain("Rule B body.");
+        });
+
+        it("does nothing when no --horizontal flag is given", async () => {
+            const { corpus, hRoot } = await setupCorpus();
+            await writeFile(join(corpus, "spec.md"), "# Spec\n\nBody.\n", "utf8");
+            await writeFile(
+                join(hRoot, "ann.md"),
+                "# Ann\n\nSee [spec](../corpus/spec.md).\n\nAnnotation body.\n",
+                "utf8",
+            );
+            const r = await context(corpus, ["spec.md"]);
+            expect(r.errors).toEqual([]);
+            expect(r.markdown).toContain("Body.");
+            expect(r.markdown).not.toContain("Annotation body.");
+        });
+
+        it("forward-traverses links from a reverse-pulled horizontal section", async () => {
+            const { corpus, hRoot } = await setupCorpus();
+            await writeFile(
+                join(corpus, "spec.md"),
+                "# Spec\n\nBody.\n",
+                "utf8",
+            );
+            await writeFile(
+                join(corpus, "extra.md"),
+                "# Extra\n\nExtra body.\n",
+                "utf8",
+            );
+            await writeFile(
+                join(hRoot, "ann.md"),
+                [
+                    "# Ann",
+                    "",
+                    "## A",
+                    "",
+                    "Targets [spec](../corpus/spec.md) and links to [extra](../corpus/extra.md).",
+                    "",
+                ].join("\n"),
+                "utf8",
+            );
+            const r = await context(corpus, ["spec.md"], { horizontals: [hRoot] });
+            expect(r.errors).toEqual([]);
+            // The horizontal section was reverse-pulled, then its forward
+            // link to extra.md should have dragged extra.md in.
+            expect(r.markdown).toContain("Extra body.");
+        });
+
+        it("follows horizontal-to-horizontal links forward without requiring opt-in for the second", async () => {
+            const corpus = join(tmp, "corpus");
+            await mkdir(corpus, { recursive: true });
+            await writeFile(
+                join(corpus, "substrate.json"),
+                JSON.stringify({ package: { name: "test/corpus", kind: "corpus" } }),
+                "utf8",
+            );
+            const h1 = join(tmp, "h1");
+            await mkdir(h1, { recursive: true });
+            await writeFile(
+                join(h1, "substrate.json"),
+                JSON.stringify({
+                    package: { name: "test/h1", kind: "horizontal", version: "0.1.0" },
+                }),
+                "utf8",
+            );
+            const h2 = join(tmp, "h2");
+            await mkdir(h2, { recursive: true });
+            await writeFile(
+                join(h2, "substrate.json"),
+                JSON.stringify({
+                    package: { name: "test/h2", kind: "horizontal", version: "0.1.0" },
+                }),
+                "utf8",
+            );
+            await writeFile(join(corpus, "spec.md"), "# Spec\n\nBody.\n", "utf8");
+            await writeFile(
+                join(h1, "ann.md"),
+                "# Ann1\n\nTargets [spec](../corpus/spec.md). See [also](../h2/more.md).\n",
+                "utf8",
+            );
+            await writeFile(join(h2, "more.md"), "# More\n\nMore body from h2.\n", "utf8");
+            // Only h1 is opted in. h2 should be reachable via forward traversal.
+            const r = await context(corpus, ["spec.md"], { horizontals: [h1] });
+            expect(r.errors).toEqual([]);
+            expect(r.markdown).toContain("More body from h2.");
+        });
+
+        it("errors when --horizontal points at a non-horizontal package", async () => {
+            const { corpus } = await setupCorpus();
+            await writeFile(join(corpus, "spec.md"), "# Spec\n", "utf8");
+            const libRoot = join(tmp, "lib");
+            await mkdir(libRoot, { recursive: true });
+            await writeFile(
+                join(libRoot, "substrate.json"),
+                JSON.stringify({
+                    package: { name: "test/lib", kind: "library", version: "0.1.0" },
+                }),
+                "utf8",
+            );
+            const r = await context(corpus, ["spec.md"], { horizontals: [libRoot] });
+            expect(r.errors.length).toBeGreaterThan(0);
+            expect(r.errors.join(" ")).toMatch(/expected "horizontal"/);
+        });
+
+        it("whole-file reverse links fire when any section of the target is included", async () => {
+            const { corpus, hRoot } = await setupCorpus();
+            await writeFile(
+                join(corpus, "spec.md"),
+                [
+                    "# Spec",
+                    "",
+                    "## Section X",
+                    "",
+                    "Section X body.",
+                    "",
+                ].join("\n"),
+                "utf8",
+            );
+            // Horizontal links to the whole file (no anchor).
+            await writeFile(
+                join(hRoot, "note.md"),
+                "# Note\n\nApplies to [the spec](../corpus/spec.md).\n\nNote body.\n",
+                "utf8",
+            );
+            const r = await context(corpus, ["spec.md#section-x"], {
+                horizontals: [hRoot],
+            });
+            expect(r.errors).toEqual([]);
+            expect(r.markdown).toContain("Section X body.");
+            expect(r.markdown).toContain("Note body.");
         });
     });
 });
