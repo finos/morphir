@@ -21,7 +21,7 @@ categories = ["development-tools", "parsers"]
 
 [workspace.dependencies]
 # CLI framework
-starbase = "0.10"
+starbase = "0.11"
 clap = { version = "4.5.57", features = ["derive", "color"] }
 anyhow = "1.0"
 thiserror = "2.0.18"
@@ -48,7 +48,7 @@ serde_json = "1.0"
 toml = "0.9.8"
 
 # WASM utilities
-gloo-timers = { version = "0.3", features = ["futures"] }
+gloo-timers = { version = "0.4", features = ["futures"] }
 
 [profile.release]
 opt-level = 3
