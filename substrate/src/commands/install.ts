@@ -250,7 +250,7 @@ interface SubPackage {
     readonly sourceDir: string;
 }
 
-const SCAN_SKIP = new Set([".git", "node_modules", "substrate", "dist"]);
+const SCAN_SKIP = new Set([".git", "node_modules", "dist"]);
 
 /**
  * Recursively find every `substrate.json` in `dir` (skipping vendor/tool
@@ -262,13 +262,21 @@ export async function scanManifests(dir: string): Promise<SubPackage[]> {
 
     async function walk(d: string): Promise<void> {
         const entries = await readdir(d, { withFileTypes: true });
+        var foundManifest = false;
         for (const entry of entries) {
             const full = join(d, entry.name);
-            if (entry.isDirectory()) {
-                if (SCAN_SKIP.has(entry.name)) continue;
-                await walk(full);
-            } else if (entry.isFile() && entry.name === MANIFEST_FILE) {
+            if (entry.isFile() && entry.name === MANIFEST_FILE) {
                 manifestPaths.push(full);
+                foundManifest = true;
+            }
+        }
+        if (!foundManifest) {
+            for (const entry of entries) {
+                const full = join(d, entry.name);
+                if (entry.isDirectory()) {
+                    if (SCAN_SKIP.has(entry.name)) continue;
+                    await walk(full);
+                }
             }
         }
     }
@@ -312,7 +320,7 @@ async function buildFileMap(
             if (files.has(relPath)) {
                 throw new Error(
                     `Package name clash: "${relPath}" appears in two sub-packages ` +
-                        `both declaring name "${pkg.installName}"`,
+                    `both declaring name "${pkg.installName}"`,
                 );
             }
             files.set(relPath, absPath);
