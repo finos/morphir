@@ -199,259 +199,259 @@ field's complete definition is in [Field Definitions](../02-field-definitions.md
 
 #### Assets (I.A)
 
-| Field | Type |
-|---|---|
-| Reporting Entity | text |
-| Product | text |
-| Sub-Product | numeric |
-| Market Value | numeric |
-| Lendable Value | text |
-| Maturity Bucket | numeric |
-| Forward Start Amount | text |
-| Forward Start Bucket | text |
-| Collateral Class | text |
-| Treasury Control | text |
-| Accounting Designation | text |
-| Effective Maturity Bucket | text |
-| Encumbrance Type | text |
-| Internal Counterparty | text |
-| Business Line | |
+| Field | Type | Mandatory / Dependent |
+|---|---|---|
+| Reporting Entity | text | M |
+| Product | text | M |
+| Sub-Product | text | D |
+| Market Value | numeric | M |
+| Lendable Value | numeric | M |
+| Maturity Bucket | text | M |
+| Forward Start Amount | numeric | D |
+| Forward Start Bucket | text | D |
+| Collateral Class | text | M |
+| Treasury Control | text | M |
+| Accounting Designation | text | M |
+| Effective Maturity Bucket | text | D |
+| Encumbrance Type | text | D |
+| Internal Counterparty | text | D |
+| Business Line | text | M |
 
 #### Unsecured (I.U)
 
-| Field | Type |
-|---|---|
-| Reporting Entity | text |
-| Product | text |
-| Counterparty | text |
-| G-SIB | numeric |
-| Maturity Amount | text |
-| Maturity Bucket | text |
-| Maturity Optionality | text |
-| Effective Maturity Bucket | text |
-| Encumbrance Type | numeric |
-| Forward Start Amount | text |
-| Forward Start Bucket | text |
-| Internal | text |
-| Internal Counterparty | percent |
-| Risk Weight | text |
-| Business Line | |
+| Field | Type | Mandatory / Dependent |
+|---|---|---|
+| Reporting Entity | text | M |
+| Product | text | M |
+| Counterparty | text | D |
+| G-SIB | text | D |
+| Maturity Amount | numeric | M |
+| Maturity Bucket | text | M |
+| Maturity Optionality | text | D |
+| Effective Maturity Bucket | text | D |
+| Encumbrance Type | text | D |
+| Forward Start Amount | numeric | D |
+| Forward Start Bucket | text | D |
+| Internal | text | M |
+| Internal Counterparty | text | D |
+| Risk Weight | percent | D |
+| Business Line | text | M |
 
 #### Secured (I.S)
 
-| Field | Type |
-|---|---|
-| Reporting Entity | text |
-| Product | text |
-| Sub-Product | numeric |
-| Maturity Amount | text |
-| Maturity Bucket | text |
-| Maturity Optionality | text |
-| Effective Maturity Bucket | text |
-| Encumbrance Type | numeric |
-| Forward Start Amount | text |
-| Forward Start Bucket | text |
-| Collateral Class | numeric |
-| Collateral Value | text |
-| Unencumbered | text |
-| Treasury Control | text |
-| Internal | text |
-| Internal Counterparty | percent |
-| Risk Weight | text |
-| Business Line | text |
-| Settlement | text |
-| Counterparty | text |
-| G-SIB | |
+| Field | Type | Mandatory / Dependent |
+|---|---|---|
+| Reporting Entity | text | M |
+| Product | text | M |
+| Sub-Product | text | D |
+| Maturity Amount | numeric | M |
+| Maturity Bucket | text | M |
+| Maturity Optionality | text | D |
+| Effective Maturity Bucket | text | D |
+| Encumbrance Type | text | D |
+| Forward Start Amount | numeric | D |
+| Forward Start Bucket | text | D |
+| Collateral Class | text | M |
+| Collateral Value | numeric | M |
+| Unencumbered | text | M |
+| Treasury Control | text | M |
+| Internal | text | M |
+| Internal Counterparty | text | D |
+| Risk Weight | percent | M |
+| Business Line | text | M |
+| Settlement | text | M |
+| Counterparty | text | M |
+| G-SIB | text | D |
 
 #### Other (I.O)
 
-| Field | Type |
-|---|---|
-| Reporting Entity | text |
-| Product | numeric |
-| Maturity Amount | text |
-| Maturity Bucket | numeric |
-| Forward Start Amount | text |
-| Forward Start Bucket | text |
-| Collateral Class | numeric |
-| Collateral Value | text |
-| Treasury Control | text |
-| Counterparty | text |
-| G-SIB | text |
-| Internal | text |
-| Internal Counterparty | text |
-| Business Line | |
+| Field | Type | Mandatory / Dependent |
+|---|---|---|
+| Reporting Entity | text | M |
+| Product | text | M |
+| Maturity Amount | numeric | M |
+| Maturity Bucket | text | M |
+| Forward Start Amount | numeric | D |
+| Forward Start Bucket | text | D |
+| Collateral Class | text | D |
+| Collateral Value | numeric | D |
+| Treasury Control | text | M |
+| Counterparty | text | D |
+| G-SIB | text | D |
+| Internal | text | M |
+| Internal Counterparty | text | D |
+| Business Line | text | M |
 
 ### Outflows
 
 #### Deposits (O.D)
 
-| Field | Type |
-|---|---|
-| Reporting Entity | text |
-| Product | text |
-| Counterparty | text |
-| G-SIB | numeric |
-| Maturity Amount | text |
-| Maturity Bucket | text |
-| Maturity Optionality | text |
-| Collateral Class | numeric |
-| Collateral Value | text |
-| Insured | text |
-| Trigger | text |
-| Rehypothecated | text |
-| Business Line | text |
-| Internal | text |
-| Internal Counterparty | |
+| Field | Type | Mandatory / Dependent |
+|---|---|---|
+| Reporting Entity | text | M |
+| Product | text | M |
+| Counterparty | text | M |
+| G-SIB | text | D |
+| Maturity Amount | numeric | M |
+| Maturity Bucket | text | M |
+| Maturity Optionality | text | D |
+| Collateral Class | text | D |
+| Collateral Value | numeric | D |
+| Insured | text | M |
+| Trigger | text | M |
+| Rehypothecated | text | D |
+| Business Line | text | M |
+| Internal | text | M |
+| Internal Counterparty | text | D |
 
 #### Wholesale (O.W)
 
-| Field | Type |
-|---|---|
-| Reporting Entity | text |
-| Product | text |
-| Counterparty | text |
-| G-SIB | numeric |
-| Maturity Amount | text |
-| Maturity Bucket | text |
-| Maturity Optionality | text |
-| Collateral Class | numeric |
-| Collateral Value | numeric |
-| Forward Start Amount | text |
-| Forward Start Bucket | text |
-| Internal | text |
-| Internal Counterparty | text |
-| Loss Absorbency | text |
-| Business Line | |
+| Field | Type | Mandatory / Dependent |
+|---|---|---|
+| Reporting Entity | text | M |
+| Product | text | M |
+| Counterparty | text | D |
+| G-SIB | text | D |
+| Maturity Amount | numeric | M |
+| Maturity Bucket | text | M |
+| Maturity Optionality | text | D |
+| Collateral Class | text | D |
+| Collateral Value | numeric | D |
+| Forward Start Amount | numeric | D |
+| Forward Start Bucket | text | D |
+| Internal | text | M |
+| Internal Counterparty | text | D |
+| Loss Absorbency | text | D |
+| Business Line | text | M |
 
 #### Secured (O.S)
 
-| Field | Type |
-|---|---|
-| Reporting Entity | text |
-| Product | text |
-| Sub-Product | numeric |
-| Maturity Amount | text |
-| Maturity Bucket | text |
-| Maturity Optionality | numeric |
-| Forward Start Amount | text |
-| Forward Start Bucket | text |
-| Collateral Class | numeric |
-| Collateral Value | text |
-| Treasury Control | text |
-| Internal | text |
-| Internal Counterparty | text |
-| Business Line | text |
-| Settlement | text |
-| Rehypothecated | text |
-| Counterparty | text |
-| G-SIB | |
+| Field | Type | Mandatory / Dependent |
+|---|---|---|
+| Reporting Entity | text | M |
+| Product | text | M |
+| Sub-Product | text | D |
+| Maturity Amount | numeric | M |
+| Maturity Bucket | text | M |
+| Maturity Optionality | text | D |
+| Forward Start Amount | numeric | D |
+| Forward Start Bucket | text | D |
+| Collateral Class | text | M |
+| Collateral Value | numeric | M |
+| Treasury Control | text | M |
+| Internal | text | M |
+| Internal Counterparty | text | D |
+| Business Line | text | M |
+| Settlement | text | M |
+| Rehypothecated | text | M |
+| Counterparty | text | M |
+| G-SIB | text | D |
 
 #### Other (O.O)
 
-| Field | Type |
-|---|---|
-| Reporting Entity | text |
-| Product | text |
-| Counterparty | text |
-| G-SIB | numeric |
-| Maturity Amount | text |
-| Maturity Bucket | numeric |
-| Forward Start Amount | text |
-| Forward Start Bucket | text |
-| Collateral Class | numeric |
-| Collateral Value | text |
-| Internal | text |
-| Internal Counterparty | text |
-| Business Line | |
+| Field | Type | Mandatory / Dependent |
+|---|---|---|
+| Reporting Entity | text | M |
+| Product | text | M |
+| Counterparty | text | D |
+| G-SIB | text | D |
+| Maturity Amount | numeric | M |
+| Maturity Bucket | text | M |
+| Forward Start Amount | numeric | D |
+| Forward Start Bucket | text | D |
+| Collateral Class | text | D |
+| Collateral Value | numeric | D |
+| Internal | text | M |
+| Internal Counterparty | text | D |
+| Business Line | text | M |
 
 ### Supplemental
 
 #### Informational (S.I)
 
-| Field | Type |
-|---|---|
-| Reporting Entity | text |
-| Product | text |
-| Market Value | numeric |
-| Collateral Class | text |
-| Internal | text |
-| Internal Counterparty | text |
-| Business Line | text |
+| Field | Type | Mandatory / Dependent |
+|---|---|---|
+| Reporting Entity | text | M |
+| Product | text | M |
+| Market Value | numeric | M |
+| Collateral Class | text | D |
+| Internal | text | M |
+| Internal Counterparty | text | D |
+| Business Line | text | M |
 
 #### Derivatives & Collateral (S.DC)
 
-| Field | Type |
-|---|---|
-| Reporting Entity | text |
-| Product | text |
-| Sub-Product | text |
-| Sub-Product 2 | text |
-| Market Value | numeric |
-| Collateral Class | text |
-| Collateral Level | text |
-| Counterparty | text |
-| G-SIB | text |
-| Effective Maturity Bucket | text |
-| Encumbrance Type | text |
-| Netting Eligible | text |
-| Treasury Control | text |
-| Internal | text |
-| Internal Counterparty | text |
-| Business Line | text |
+| Field | Type | Mandatory / Dependent |
+|---|---|---|
+| Reporting Entity | text | M |
+| Product | text | M |
+| Sub-Product | text | D |
+| Sub-Product 2 | text | D |
+| Market Value | numeric | M |
+| Collateral Class | text | D |
+| Collateral Level | text | D |
+| Counterparty | text | D |
+| G-SIB | text | D |
+| Effective Maturity Bucket | text | D |
+| Encumbrance Type | text | D |
+| Netting Eligible | text | D |
+| Treasury Control | text | D |
+| Internal | text | M |
+| Internal Counterparty | text | D |
+| Business Line | text | M |
 
 #### Liquidity Risk Measurement (S.L)
 
-| Field | Type |
-|---|---|
-| Reporting Entity | text |
-| Product | text |
-| Market Value | numeric |
-| Collateral Class | text |
-| Internal | text |
-| Internal Counterparty | text |
+| Field | Type | Mandatory / Dependent |
+|---|---|---|
+| Reporting Entity | text | M |
+| Product | text | M |
+| Market Value | numeric | M |
+| Collateral Class | text | D |
+| Internal | text | M |
+| Internal Counterparty | text | D |
 
 #### Balance Sheet (S.B)
 
-| Field | Type |
-|---|---|
-| Reporting Entity | |
-| Collection Reference | text |
-| Product | text |
-| Product Reference | text |
-| Sub-Product Reference | text |
-| Collateral Class | text |
-| Maturity Bucket | text |
-| Effective Maturity Bucket | text |
-| Encumbrance Type | text |
-| Market Value | text |
-| Maturity Amount | numeric |
-| Collateral Value | numeric |
-| Counterparty | numeric |
-| G-SIB | text |
-| Risk Weight | text |
-| Internal | percent |
-| Internal Counterparty | text |
+| Field | Type | Mandatory / Dependent |
+|---|---|---|
+| Reporting Entity | text | M |
+| Collection Reference | text | D |
+| Product | text | M |
+| Product Reference | text | D |
+| Sub-Product Reference | text | D |
+| Collateral Class | text | D |
+| Maturity Bucket | text | M |
+| Effective Maturity Bucket | text | D |
+| Encumbrance Type | text | D |
+| Market Value | numeric | D |
+| Maturity Amount | numeric | D |
+| Collateral Value | numeric | D |
+| Counterparty | text | D |
+| G-SIB | text | D |
+| Risk Weight | percent | D |
+| Internal | text | M |
+| Internal Counterparty | text | D |
 
 #### Foreign Exchange (S.FX)
 
-| Field | Type |
-|---|---|
-| Reporting Entity | |
-| Product | text |
-| Maturity Amount Currency 1 | text |
-| Maturity Amount Currency 2 | numeric |
-| Maturity Bucket | numeric |
-| Foreign Exchange Option Direction | text |
-| Forward Start Amount Currency 1 | text |
-| Forward Start Amount Currency 2 | numeric |
-| Forward Start Bucket | numeric |
-| Counterparty | text |
-| G-SIB | text |
-| Settlement | text |
-| Business Line | text |
-| Internal | text |
-| Internal Counterparty | text |
+| Field | Type | Mandatory / Dependent |
+|---|---|---|
+| Reporting Entity | text | M |
+| Product | text | M |
+| Maturity Amount Currency 1 | numeric | M |
+| Maturity Amount Currency 2 | numeric | M |
+| Maturity Bucket | text | M |
+| Foreign Exchange Option Direction | text | D |
+| Forward Start Amount Currency 1 | numeric | D |
+| Forward Start Amount Currency 2 | numeric | D |
+| Forward Start Bucket | text | D |
+| Counterparty | text | M |
+| G-SIB | text | D |
+| Settlement | text | M |
+| Business Line | text | M |
+| Internal | text | M |
+| Internal Counterparty | text | D |
 
 ### Comments
 
@@ -459,10 +459,10 @@ The Comments mechanism is shown adjacent to the Supplemental section in the
 source figure but is not one of the 13 data tables; it captures
 free-text annotations associated with reported records.
 
-| Field | Type |
-|---|---|
-| Reporting Entity | text |
-| Collection | text |
-| Product | text |
-| Sub-Product | text |
-| Comments | text |
+| Field | Type | Mandatory / Dependent |
+|---|---|---|
+| Reporting Entity | text | M |
+| Collection | text | M |
+| Product | text | M |
+| Sub-Product | text | D |
+| Comments | text | M |
