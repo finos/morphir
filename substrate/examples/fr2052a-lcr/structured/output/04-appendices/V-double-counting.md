@@ -1,10 +1,12 @@
 # Appendix V: FR 2052a Double Counting of Certain Exposures
 
-> Preserved verbatim from the source PDF. Tables in this appendix
-> are drawn with positioned text and ruling lines; the fenced block
-> below retains the original column alignment.
+> **hand-curated.** Content preserved verbatim from the source PDF;
+> the only edit is removal of trailing references to Appendices VI,
+> VII, and VIII (which live in their own files). The fenced block
+> below retains the original column alignment. See
+> [`human-annotations.md`](../../human-annotations.md) for notes.
 
-```
+
 The FR 2052a instructions state that, as a general rule, transactions should not be reported twice in a
 single submission. However, there are certain exceptions to this rule and this document outlines the
 instances when it is acceptable. This appendix provides indicative guidance on cases where double-
@@ -12,36 +14,35 @@ counting is generally appropriate and expected. The items listed below may not b
 have exceptions. Consult with the applicable supervisory and regulatory reporting teams for additional
 guidance on potential exceptions.
 
-    1. All third-party exposures at subsidiaries that are designated reporting entities, as
-         these will be, at a minimum, reported for both the consolidated reporting entity and all
-         applicable reporting entities that comprise the consolidated firm.
+1. All third-party exposures at subsidiaries that are designated reporting entities, as
+    these will be, at a minimum, reported for both the consolidated reporting entity and all
+    applicable reporting entities that comprise the consolidated firm.
 
-    2. Collateral swaps, as each transaction will be reported in both the Inflows-Secured and
-         Outflows-Secured tables (albeit from different perspectives).
+2. Collateral swaps, as each transaction will be reported in both the Inflows-Secured and
+    Outflows-Secured tables (albeit from different perspectives).
 
-    3. Collateral that has been received via a secured lending transaction and pre-positioned
-         at a central bank or GSE, as these assets should appear in the I.S table (note that the
-         [Unencumbered] flag must be set to false) and under product I.A.2: Capacity.
+3. Collateral that has been received via a secured lending transaction and pre-positioned
+    at a central bank or GSE, as these assets should appear in the I.S table (note that the
+    [Unencumbered] flag must be set to false) and under product I.A.2: Capacity.
 
-    4. Loans and leases, as these must be reported in the Inflows-Unsecured or Inflows-
-         Secured tables by counterparty as well as in the appropriate product in the I.A table
-         according to their market value.
+4. Loans and leases, as these must be reported in the Inflows-Unsecured or Inflows-
+    Secured tables by counterparty as well as in the appropriate product in the I.A table
+    according to their market value.
 
-    5. Assets that are encumbered to financing transactions and derivatives, as these must
-         be reported under I.A.7: Encumbered Assets and the value of these positions must also
-         be reported under the product to which they are encumbered in the O.W, O.S or S.DC
-         tables (i.e., using the [Collateral Value] or [Market Value] fields).
+5. Assets that are encumbered to financing transactions and derivatives, as these must
+    be reported under I.A.7: Encumbered Assets and the value of these positions must also
+    be reported under the product to which they are encumbered in the O.W, O.S or S.DC
+    tables (i.e., using the [Collateral Value] or [Market Value] fields).
 
-    6. Unsecured derivatives cash flows occurring over the next 30 days, as these must be
-         reported under products I.O.1: Derivatives Receivables or O.O.1: Derivatives Payables
-         and must be included in the calculation of products I.O.7: Net 30-day Derivative
-         Receivables or O.O.20: Net 30-day Derivative Payables.
+6. Unsecured derivatives cash flows occurring over the next 30 days, as these must be
+    reported under products I.O.1: Derivatives Receivables or O.O.1: Derivatives Payables
+    and must be included in the calculation of products I.O.7: Net 30-day Derivative
+    Receivables or O.O.20: Net 30-day Derivative Payables.
 
-    7. Derivative collateral cash flows occurring over the next 30 days, as these must be
-         reported under products I.O.2: Collateral Called for Receipt or O.O.2: Collateral Called
-         for Delivery and must be included in the calculation of products I.O.7: Net 30-day
-         Derivative Receivables or O.O.20: Net 30-day Derivative Payables.
-
+7. Derivative collateral cash flows occurring over the next 30 days, as these must be
+    reported under products I.O.2: Collateral Called for Receipt or O.O.2: Collateral Called
+    for Delivery and must be included in the calculation of products I.O.7: Net 30-day
+    Derivative Receivables or O.O.20: Net 30-day Derivative Payables.
 
 8. Foreign exchange transactions maturing over the next 30 days, as these must be
     reported under products S.FX.1: Spot, S.FX.2: Forwards and Futures, and S.FX.3: Swaps
@@ -118,16 +119,3 @@ guidance on potential exceptions.
     value of these securities must also be reported in the I.A.1: Unencumbered Assets or
     I.A.2: Capacity products.
 
-
-Appendix VI: LRM: LCR to FR 2052a Mapping
-
-[Enclosure]
-
-Appendix VII: wSTWF to FR 2052a Mapping
-
-[Enclosure]
-
-Appendix VIII: LRM: NSFR to FR 2052a Mapping
-
-[Enclosure]
-```

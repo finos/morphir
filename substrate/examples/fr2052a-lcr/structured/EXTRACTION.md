@@ -29,12 +29,21 @@ later restructuring pass.
 | Appendix II-d — Forward Start Exclusions           | ✅ hand-curated      |
 | Appendix III — Asset Category Table                | ✅ hand-curated      |
 | Appendix IV-a — Maturity Bucket Value List         | ✅ hand-curated      |
-| **Appendix IV-b — Maturity Bucket Tailoring**      | ⚠️ fenced verbatim — needs curation |
-| Appendix V — Double Counting of Certain Exposures  | 📄 fenced verbatim (intentionally left as-is — prose-heavy, no tabular data) |
-| Appendices VI / VII / VIII — Mapping enclosures    | 📄 fenced verbatim   |
+| Appendix IV-b — Maturity Bucket Tailoring          | ✅ hand-curated      |
+| Appendix V — Double Counting of Certain Exposures  | ✅ hand-curated (fenced verbatim; trailing VI/VII/VIII pointers removed) |
+| Appendix VI — LCR to FR 2052a Mapping              | ✅ hand-curated      |
+| Appendix VII — STWF to FR 2052a Mapping            | ✅ hand-curated      |
+| Appendix VIII — NSFR to FR 2052a Mapping           | ✅ hand-curated      |
 
-The **next item to pick up** is **Appendix IV-a — Maturity Bucket Value
-List** (single page).
+All product / appendix sections are now curated. Appendix V
+is kept as fenced verbatim (prose-heavy, no tabular data); the only
+hand edit was stripping the trailing pointers to Appendices VI/VII/VIII,
+which live in their own files. Appendices VI and VIII required special
+handling because the LCR/NSFR formulas use Cambria Math font subsets
+with a broken ToUnicode CMap; formulas were transcribed from 12 CFR 249
+and the visible document structure. The mapping tables (140 provisions
+in VI, 114 provisions in VIII) were extracted via
+`pdfplumber.extract_text()`.
 
 ## Why this approach
 
@@ -111,12 +120,12 @@ output/
     II-c-collateral-class-requirements.md       (curated — 5-col MD table, generated)
     II-d-forward-start-exclusions.md            (curated — nested bullet list)
     III-asset-category-table.md                 (curated — nested bullet list)
-    IV-a-maturity-bucket-value-list.md          (fenced — PENDING)
-    IV-b-maturity-bucket-tailoring.md           (fenced — PENDING)
-    V-double-counting.md                        (fenced — keeping as-is)
-    VI-lcr-mapping.md                           (fenced — enclosure)
-    VII-stwf-mapping.md                         (fenced — enclosure)
-    VIII-nsfr-mapping.md                        (fenced — enclosure)
+    IV-a-maturity-bucket-value-list.md          (curated — flat bullet list)
+    IV-b-maturity-bucket-tailoring.md           (curated — one MD table per rule)
+    V-double-counting.md                        (curated — fenced verbatim, VI/VII/VIII tail removed)
+    VI-lcr-mapping.md                           (curated — formulas + field/value tables)
+    VII-stwf-mapping.md                         (curated — field/value tables)
+    VIII-nsfr-mapping.md                        (curated — formulas + field/value tables)
 ```
 
 Granularity is **one file per product group** (e.g. all `I.A.x` products
@@ -248,6 +257,18 @@ structured/scripts/
                     # column x-positions, classifies every Wingdings
                     # check mark by column, emits a 5-column MD
                     # table with section headings as inline rows.
+  extract_vi.py     # Appendix VI generator. Formulas transcribed
+                    # from 12 CFR 249 (broken font in source PDF);
+                    # mapping tables (140 provisions, pages 112-179)
+                    # extracted via pdfplumber.extract_text().
+  extract_vii.py    # Appendix VII generator. STWF mapping tables
+                    # (24 sub-tables, pages 180-194) extracted via
+                    # pdfplumber.extract_text().
+  extract_viii.py   # Appendix VIII generator. NSFR formulas
+                    # transcribed from 12 CFR 249 §.100-§.109
+                    # (same broken font as VI); mapping tables
+                    # (114 provisions, pages 197-253) extracted
+                    # via pdfplumber.extract_text().
   _full.txt         # Cached pdftotext output. Regenerated on each
                     # extract.py run; safe to delete.
 ```
@@ -267,6 +288,15 @@ pdftotext -raw -enc UTF-8 -f 87 -l 88 raw/FR_2052a20250226_f.pdf - \
 
 # Re-generate Appendix II-c from the PDF
 python structured/scripts/extract_iic.py
+
+# Re-generate Appendix VI from the PDF
+python structured/scripts/extract_vi.py
+
+# Re-generate Appendix VII from the PDF
+python structured/scripts/extract_vii.py
+
+# Re-generate Appendix VIII from the PDF
+python structured/scripts/extract_viii.py
 ```
 
 ## Picking up the curation work in a fresh session
@@ -281,16 +311,9 @@ If you (or another assistant) want to continue from where we stopped:
    of curated files.
 3. **Run `python structured/scripts/extract.py`** to confirm the
    environment works. The "Skipped N hand-curated file(s)" tail
-   should mention 6 files (Appendix I, II-a/b/c/d, and III).
-4. **Tackle Appendix IV-a next** (single page) — a 2-column
-   maturity-bucket value list. Should be trivial.
-5. **Then Appendix IV-b** — maturity bucket tailoring. Inspect the
-   fenced output to see whether it's another check-mark matrix
-   (would need pdfplumber) or a clean table.
-6. After IV-b, the only remaining work would be the V/VI/VII/VIII
-   appendices — V is prose-heavy and intentionally left fenced; the
-   VI/VII/VIII enclosures contain math glyphs and are best left as
-   fenced verbatim unless explicitly requested.
+   should mention 12 files (Appendix I, II-a/b/c/d, III, IV-a, IV-b,
+   V, VI, VII, and VIII).
+4. All appendices are now curated. No remaining extraction work.
 
 ## Known limitations
 

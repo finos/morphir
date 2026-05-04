@@ -427,3 +427,188 @@ typographic two-column split is dropped.
 **Reproduce:** No script — manually transcribed from the fenced
 auto-generated output of `extract.py`, then re-ordered into a single
 column-major list.
+
+## Appendix IV-b
+
+### Maturity Bucket Tailoring
+
+**Visual layout (from human inspection of the PDF):**
+A nested numbered structure: top-level items `(1) … (3)` group firms by
+regulatory category (Category I/II, Category III/IV with wSTWF > $50B,
+Category IV with wSTWF < $50B), and second-level items `(a) … (d)` give
+specific bucketing rules within each category. Each lettered item is
+introduced by a paragraph of prose and followed by a small diagram that
+visualises the maturity-bucket layout for that rule.
+
+Each diagram is a horizontal strip with a row of column headers naming
+the kinds of buckets (e.g. `Open`, `Daily`, `Weekly* Buckets`,
+`30-Day Buckets`, `90-Day Buckets`, `Yearly Buckets`, `> 5 Years`,
+`Perpetual`, or for some rules residual-maturity ranges instead). Below
+the headers are two text rows: a day-range line (e.g. `Day 1 … Day 60`,
+`Day 61 … Day 90`) and a bucket-count line (e.g. `60 buckets`,
+`4 buckets`). The two text rows together describe the contents of each
+header column. Visually they sit under a continuous ruled axis, but
+semantically each column is independent.
+
+A footnote at the very end of the appendix clarifies the weekly buckets:
+*The first two "weekly" buckets contain 7 days, while the last two
+contain 8 days (i.e., days 61-67, 68-74, 75-82, 83-90).*
+
+**Decision:** Render each diagram as a Markdown table with one header
+row (the bucket-kind labels) and one value row (the day-range and
+bucket-count fused into a single cell, e.g. `Day 1 – Day 60, 60 buckets`).
+For columns whose header alone is sufficient (`Open`, `Perpetual`, the
+bare `> 5 Years` column in (1)(a)) the value cell is left empty.
+The numbered structure is preserved as Markdown headings: `##` for the
+top-level firm category and `###` for each lettered rule, with the
+original prose used verbatim as the heading text. The weekly-buckets
+footnote is rendered as a trailing note after a horizontal rule.
+
+**Reproduce:** No script — manually transcribed from the fenced
+auto-generated output of `extract.py`.
+
+## Appendix VI
+
+### LCR Formulas (pages 108–110)
+
+**Why text extraction failed:** The formulas use Cambria/CambriaMath font
+subsets (`SCLACN+Cambria`, `SZVSQN+CambriaMath`, `NAWWKX+Cambria-Italic`)
+whose ToUnicode CMap is broken in two ways:
+
+1. **Character doubling:** Each glyph maps to *two* copies of the same
+   Unicode codepoint (e.g., one "L" glyph → U+1D43F U+1D43F = `𝐿𝐿`).
+2. **Character conflation:** Multiple distinct glyphs (e.g., L, C, R)
+   all map to the *same* codepoint. The font has only ~14 unique output
+   characters (L, H, a, T, N, C, h, O, s, B, M, U, e, c) for what should
+   be the full alphabet.
+
+Additionally, `pdftotext` encodes the resulting (incorrect) Supplementary
+Multilingual Plane codepoints as CESU-8 surrogate pairs (byte sequence
+`ED XX XX ED XX XX`) rather than valid UTF-8, producing U+FFFD replacement
+characters when read.
+
+The character identity is irrecoverably lost in the PDF metadata. No text
+extraction tool can recover the formulas.
+
+**Page 110 — Maturity mismatch formulas:** These two formulas (Largest net
+cumulative maturity outflow amount, Net day 30 cumulative maturity outflow
+amount) are rendered entirely as graphical objects with no text layer at all.
+`pdftotext` produces nothing for them. Transcribed from a screenshot saved at
+[`screenshots/p110-maturity-mismatch-formulas.png`](screenshots/p110-maturity-mismatch-formulas.png).
+
+**Decision:** Transcribe formulas from 12 CFR 249 (the LCR Rule) and the
+Board's mapping document structure, matching the visible layout (operators,
+coefficients, bracket structure) from the garbled but structurally intact
+extraction. Page 110 formulas transcribed from screenshot. Render as a fenced
+code block with plain-text math notation.
+
+### Mapping Tables (pages 111–179)
+
+The table pages use a repeating "Field / Value" structure for each numbered
+LCR provision (140 total, numbered (1) through (140)). Each provision
+references a section of the LCR Rule and specifies the FR 2052a field
+constraints.
+
+`pdfplumber.extract_text()` handles these cleanly — no font issues, no
+layout problems. The only artifact is page-break blank lines splitting
+multi-line values (counterparty lists spanning pages), which the formatter
+joins automatically.
+
+Page 111 contains a standalone "Outflow Adjustment Percentage" table
+mapping firm categories to their percentage; this is hand-formatted.
+
+**Reproduce:**
+
+```bash
+python structured/scripts/extract_vi.py
+```
+
+## Appendix VII
+
+### STWF Mapping Tables (pages 180–194)
+
+**Visual layout (from human inspection of the PDF):** Each numbered
+sub-table uses a two-column "Field / Value" format identical to the
+Appendix VI mapping tables. Items are grouped under section headings
+("Item 1.a", "Item 1.b", etc.) with 24 total sub-tables numbered
+(1) through (24). The document maps FR 2052a data identifiers to the
+FR Y-15 Schedule G (STWF Indicator) line items.
+
+No font issues; `pdfplumber.extract_text()` handles all pages cleanly.
+The `pdftotext -layout` extraction interleaves columns from side-by-side
+tables, which is why the fenced verbatim was unreadable.
+
+**Decision:** Extract via `pdfplumber.extract_text()`, same approach as
+Appendix VI mapping tables. Parse "Field Value" headers, known field
+names (sorted by length to avoid prefix shadowing), and item/table
+headings. Render as markdown heading hierarchy (`##` for Items, `###`
+for sub-tables) with `| Field | Value |` tables. Multi-line cell values
+joined with `<br>`.
+
+**Reproduce:**
+
+```bash
+python structured/scripts/extract_vii.py
+```
+
+## Appendix VIII: NSFR to FR 2052a Mapping (pages 195–253)
+
+### NSFR Formulas (pages 195–196)
+
+Same broken Cambria/CambriaMath font as Appendix VI. The formulas use
+Mathematical Italic characters (U+1D400 block) where each glyph is
+doubled, and multiple different source glyphs map to the same codepoint.
+Decoded output is garbled — letter identities are irrecoverable.
+
+**Decision:** Transcribe from 12 CFR 249 §.100–§.109 (the NSFR Rule)
+and the visible structure of the garbled extraction. The formulas define
+the NSFR ratio, ASF amount, RSF amount, and derivatives RSF amount
+components. Mapping table ID references (i_102, i_110, etc.) are
+preserved as cross-references to the numbered provisions.
+
+### Reference Key (page 195)
+
+The NSFR reference key is more extensive than VI/VII. In addition to
+`*`, `#`, and `NULL`, it defines compound terms:
+
+- **Level 1 HQLA / Level 2A HQLA / Level 2B HQLA / HQLA**: specific
+  Collateral Class value sets
+- **Financial Sector Entity / Non-Financial Wholesale Entity**: specific
+  Counterparty value sets
+
+These are rendered as a Markdown table for machine readability.
+
+### Rules of construction (§.102) — page 196
+
+Prose section explaining how S.B.5 (Counterparty Netting) and S.B.6
+(Carrying Value Adjustment) products adjust gross balances. Rendered as
+native Markdown with bullet list.
+
+### Mapping Tables (pages 197–253)
+
+114 numbered NSFR provisions with "Field / Value" structure, same format
+as VI and VII. `pdfplumber.extract_text()` handles these cleanly — no
+font issues.
+
+**Section structure:**
+- ASF Amount Values: provisions (1)–(44), grouped by ASF factor
+  percentage (100%, 95%, 90%, 50%, 0%)
+- RSF Amount Values: provisions (45)–(101), grouped by RSF factor
+  percentage (0%, 5%, 15%, 50%, 65%, 85%, 100%), plus encumbered assets
+- Calculation of NSFR derivatives amounts (§.107): provisions (102)–(113)
+- Rules for consolidation (§.109): provision (114)
+
+**Additional fields not in VI/VII:** Collection Reference, Product
+Reference, Sub-Product Reference, Sub-Product2, Collateral Level,
+Netting Eligible.
+
+**Footnotes:** 5 footnotes extracted inline as `[^N]` Markdown footnotes.
+Footnote 2 explains the "less than" maturity bucket convention; footnote
+3 clarifies the encumbered asset RSF section scope; footnotes 4 and 5
+define "Overcollateralized" for variation margin received/pledged.
+
+**Reproduce:**
+
+```bash
+python structured/scripts/extract_viii.py
+```

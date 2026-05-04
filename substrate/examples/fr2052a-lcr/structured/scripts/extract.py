@@ -106,6 +106,11 @@ MANUAL_CURATION: set[str] = {
     "04-appendices/II-d-forward-start-exclusions.md",
     "04-appendices/III-asset-category-table.md",
     "04-appendices/IV-a-maturity-bucket-value-list.md",
+    "04-appendices/IV-b-maturity-bucket-tailoring.md",
+    "04-appendices/V-double-counting.md",
+    "04-appendices/VI-lcr-mapping.md",
+    "04-appendices/VII-stwf-mapping.md",
+    "04-appendices/VIII-nsfr-mapping.md",
 }
 
 
