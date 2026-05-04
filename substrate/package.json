@@ -1,0 +1,34 @@
+{
+  "name": "@morphir/substrate",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "substrate": "dist/cli.js"
+  },
+  "scripts": {
+    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
+    "lint:links": "remark --frail .",
+    "lint": "npm run lint:md && npm run lint:links",
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "remark-gfm": "^4.0.0",
+    "remark-parse": "^11.0.0",
+    "semver": "^7.7.4",
+    "smol-toml": "^1.6.1",
+    "unified": "^11.0.5"
+  },
+  "devDependencies": {
+    "@types/mdast": "^4.0.4",
+    "@types/node": "^22.15.3",
+    "@types/semver": "^7.7.1",
+    "markdownlint-cli2": "^0.21.0",
+    "remark-cli": "^12.0.1",
+    "remark-validate-links": "^13.0.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.2"
+  }
+}

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="-150 -150 300 300"
+     role="img" aria-label="Morphir Substrate">
+  <title>Morphir Substrate</title>
+  <polyline
+    points="69.282,-80 0,-120 -69.282,-80 -69.282,0 0,40"
+    fill="none" stroke="#16A2DC" stroke-width="38.4"
+    stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline
+    points="0,-40 69.282,0 69.282,80 0,120 -69.282,80"
+    fill="none" stroke="#F26A21" stroke-width="38.4"
+    stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

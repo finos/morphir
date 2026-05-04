@@ -1,0 +1,33 @@
+---
+import { NAV } from "../nav";
+interface Props {
+  activeSlug?: string;
+}
+const { activeSlug } = Astro.props;
+
+function href(slug: string) {
+  return `/docs/${slug}/`;
+}
+---
+
+<nav class="docs-nav" aria-label="Documentation">
+  {
+    NAV.map((section) => (
+      <div class={`nav-section indent-${section.indent || 0}`}>
+        <div class="nav-eyebrow">{section.name}</div>
+        <ul>
+          {section.items.map((item) => (
+            <li>
+              <a
+                href={href(item.slug)}
+                class={activeSlug === item.slug ? "active" : ""}
+              >
+                {item.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))
+  }
+</nav>

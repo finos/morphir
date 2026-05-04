@@ -1,0 +1,30 @@
+---
+import TopBar from "../components/TopBar.astro";
+import Footer from "../components/Footer.astro";
+import "../styles/tokens.css";
+import "../styles/app.css";
+interface Props {
+  title: string;
+  description?: string;
+  activeNav?: "overview" | "docs" | "examples" | "blog";
+}
+const { title, description, activeNav = "overview" } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <div class="docs-app substrate">
+      <TopBar active={activeNav} />
+      <slot />
+      <Footer />
+    </div>
+  </body>
+</html>

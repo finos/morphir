@@ -1,0 +1,143 @@
+---
+// Triangular lattice (deltille / A2) background pattern, rendered to a
+// canvas that fills its host element. Ported from the Substrate design
+// system reference lattice-background.js.
+interface Props {
+  spacing?: number;
+  dotRadius?: number;
+  lineWidth?: number;
+  class?: string;
+  id?: string;
+}
+const {
+  spacing = 26,
+  dotRadius = 1.4,
+  lineWidth = 0.55,
+  class: className = "lattice-host",
+  id,
+} = Astro.props;
+---
+
+<div
+  class={className}
+  id={id}
+  data-lattice
+  data-spacing={spacing}
+  data-dot-radius={dotRadius}
+  data-line-width={lineWidth}
+></div>
+
+<script>
+  type Host = HTMLDivElement & { dataset: DOMStringMap };
+
+  function getVar(el: Element, name: string, fallback: string): string {
+    const v = getComputedStyle(el).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+
+  function install(host: Host) {
+    const spacing = Number(host.dataset.spacing) || 26;
+    const dotRadius = Number(host.dataset.dotRadius) || 1.4;
+    const lineWidth = Number(host.dataset.lineWidth) || 0.55;
+    const dotColor = getVar(host, "--dot-color", "rgba(44, 74, 90, 0.26)");
+    const lineColor = getVar(host, "--line-color", "rgba(44, 74, 90, 0.11)");
+    const COL_WIDTH = (spacing * Math.sqrt(3)) / 2;
+
+    const canvas = document.createElement("canvas");
+    canvas.setAttribute("aria-hidden", "true");
+    Object.assign(canvas.style, {
+      position: "absolute",
+      inset: "0",
+      width: "100%",
+      height: "100%",
+      display: "block",
+      pointerEvents: "none",
+    } as CSSStyleDeclaration);
+    if (getComputedStyle(host).position === "static") {
+      host.style.position = "relative";
+    }
+    host.insertBefore(canvas, host.firstChild);
+    const ctx = canvas.getContext("2d")!;
+
+    function draw() {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = host.getBoundingClientRect();
+      const W = Math.max(1, Math.floor(rect.width));
+      const H = Math.max(1, Math.floor(rect.height));
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      canvas.style.width = W + "px";
+      canvas.style.height = H + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+
+      const cols = Math.ceil(W / COL_WIDTH) + 4;
+      const rows = Math.ceil(H / spacing) + 4;
+      const originX = W / 2 - (cols / 2) * COL_WIDTH;
+      const originY = H / 2 - (rows / 2) * spacing;
+
+      const pts: { x: number; y: number }[][] = [];
+      for (let r = 0; r <= rows; r++) {
+        pts[r] = [];
+        for (let c = 0; c <= cols; c++) {
+          const yOff = c % 2 !== 0 ? spacing / 2 : 0;
+          pts[r][c] = {
+            x: originX + c * COL_WIDTH,
+            y: originY + r * spacing + yOff,
+          };
+        }
+      }
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = lineWidth;
+      ctx.lineCap = "round";
+      for (let r = 0; r <= rows; r++) {
+        for (let c = 0; c <= cols; c++) {
+          const p = pts[r][c];
+          const odd = c % 2 !== 0;
+          if (r < rows) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(pts[r + 1][c].x, pts[r + 1][c].y);
+            ctx.stroke();
+          }
+          if (c < cols) {
+            const urR = odd ? r : r - 1;
+            if (urR >= 0 && urR <= rows) {
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(pts[urR][c + 1].x, pts[urR][c + 1].y);
+              ctx.stroke();
+            }
+            const lrR = odd ? r + 1 : r;
+            if (lrR >= 0 && lrR <= rows) {
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(pts[lrR][c + 1].x, pts[lrR][c + 1].y);
+              ctx.stroke();
+            }
+          }
+        }
+      }
+      ctx.fillStyle = dotColor;
+      for (let r = 0; r <= rows; r++) {
+        for (let c = 0; c <= cols; c++) {
+          const p = pts[r][c];
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, dotRadius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    const ro = new ResizeObserver(draw);
+    ro.observe(host);
+    window.addEventListener("resize", draw);
+    draw();
+  }
+
+  document.querySelectorAll<HTMLDivElement>("[data-lattice]").forEach((h) => {
+    if ((h as Host).dataset.latticeInstalled) return;
+    (h as Host).dataset.latticeInstalled = "1";
+    install(h as Host);
+  });
+</script>

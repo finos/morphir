@@ -1,0 +1,92 @@
+/*
+ * Morphir Substrate — design tokens
+ *
+ * Canonical source: branding/design-system.md
+ * Geometry source: branding/style.md
+ *
+ * Import this file wherever brand styling is needed. Never hard-code
+ * hex values outside of this file.
+ */
+
+:root {
+  /* Brand palette */
+  --brand-blue: #16a2dc;
+  --brand-orange: #f26a21;
+  --brand-slate: #2c4a5a;
+
+  /* Surfaces */
+  --surface-1: #f7f9fb;
+  --surface-2: #eef2f6;
+  --surface-inverse: #1a2a34;
+
+  /* Ink */
+  --ink: #2c4a5a;
+  --ink-muted: rgba(44, 74, 90, 0.7);
+  --ink-subtle: rgba(44, 74, 90, 0.45);
+  --rule: rgba(44, 74, 90, 0.14);
+
+  /* Functional */
+  --link: var(--brand-blue);
+  --link-hover: #0e87b8;
+  --accent: var(--brand-orange);
+  --accent-hover: #d9571a;
+
+  /* Lattice */
+  --lattice-dot: rgba(44, 74, 90, 0.5);
+  --lattice-line: rgba(44, 74, 90, 0.25);
+
+  /* Typography */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular,
+    Menlo, Consolas, monospace;
+
+  /* Type scale (major third, 1.250) */
+  --step--1: 0.833rem;
+  --step-0: 1rem;
+  --step-1: 1.25rem;
+  --step-2: 1.563rem;
+  --step-3: 1.953rem;
+  --step-4: 2.441rem;
+  --step-5: 3.052rem;
+
+  /* Spacing (8-pt scale) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  /* Elevation */
+  --shadow-1: 0 1px 2px rgba(44, 74, 90, 0.06);
+  --shadow-2: 0 4px 12px rgba(44, 74, 90, 0.08);
+  --shadow-focus: 0 0 0 3px rgba(22, 162, 220, 0.35);
+}
+
+/* Dark mode: invert surfaces and ink, keep brand signals saturated */
+:root[data-theme="dark"],
+:root.theme-dark {
+  --surface-1: #1a2a34;
+  --surface-2: #22333f;
+  --surface-inverse: #f7f9fb;
+
+  --ink: #e6edf3;
+  --ink-muted: rgba(230, 237, 243, 0.7);
+  --ink-subtle: rgba(230, 237, 243, 0.45);
+  --rule: rgba(230, 237, 243, 0.12);
+
+  --lattice-dot: rgba(230, 237, 243, 0.45);
+  --lattice-line: rgba(230, 237, 243, 0.2);
+
+  --link: #4ebbe8;
+  --link-hover: #86d0ef;
+}
