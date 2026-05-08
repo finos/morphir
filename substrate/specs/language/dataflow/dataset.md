@@ -9,8 +9,12 @@ rows and columns.
 
 ### Schema
 
-Defines the columns of the dataset by listing out each column with name, 
-[type][dt] and an optional description.
+Defines a collection of columns with the following details for each:
+
+- The name of the column surrounded by backticks. This is the name 
+  that will be used to refer to it later.
+- The [datatype][dt] of the column.
+- Description of the column.
 
 ### Identifier
 
