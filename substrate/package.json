@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "commander": "^13.1.0",
+    "morphir-elm": "^2.100.0",
     "remark-gfm": "^4.0.0",
     "remark-parse": "^11.0.0",
     "semver": "^7.7.4",
