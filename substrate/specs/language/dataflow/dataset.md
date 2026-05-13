@@ -24,7 +24,7 @@ Defines a collection of columns with the following details for each:
 ## [Schema][schema]
 
 - `first name`: [text][str]
-- `middle name`: [text][str]
+- `middle name`: [optional][opt] [text][str]
 - `last name`: [text][str]
 - `onboarding date`: [date][date]
 
