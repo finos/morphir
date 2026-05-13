@@ -22,7 +22,6 @@ import { reportValidate, validate } from "./commands/validate.js";
 import { context } from "./commands/context.js";
 import { statsFile, statsStdin, formatStats } from "./commands/stats.js";
 import { rename as refactorRename } from "./commands/refactor.js";
-import { migrateFromMorphir } from "./commands/migrate.js";
 
 const program = new Command();
 
@@ -232,81 +231,5 @@ refactor
       process.exitCode = 1;
     }
   });
-
-const migrate = program
-  .command("migrate")
-  .description(
-    "Convert specification modules between substrate's native markdown format and external formats.",
-  );
-
-const migrateFrom = migrate
-  .command("from")
-  .description("Import from an external format into substrate markdown.");
-
-migrateFrom
-  .command("morphir <ir-file>")
-  .description(
-    "Read a Morphir IR JSON file and write one markdown module file per Morphir module found in the IR.",
-  )
-  .option(
-    "-o, --output <dir>",
-    "Directory to write the generated markdown files into",
-    "specs/",
-  )
-  .option("--overwrite", "Overwrite existing files; errors by default", false)
-  .option(
-    "--dry-run",
-    "Print what would be written without touching the disk",
-    false,
-  )
-  .action(
-    async (
-      irFile: string,
-      opts: { output: string; overwrite: boolean; dryRun: boolean },
-    ) => {
-      try {
-        const resolvedOutput = resolve(process.cwd(), opts.output);
-        const result = await migrateFromMorphir(
-          resolve(process.cwd(), irFile),
-          {
-            output: resolvedOutput,
-            overwrite: opts.overwrite,
-            dryRun: opts.dryRun,
-          },
-        );
-
-        for (const f of result.files) {
-          const mark =
-            f.action === "written" ? "✓" : f.action === "dry-run" ? "~" : "·";
-          console.log(`  ${mark} ${f.path}`);
-        }
-
-        const written = result.files.filter(
-          (f) => f.action === "written",
-        ).length;
-        const skipped = result.files.filter(
-          (f) => f.action === "skipped",
-        ).length;
-        const dryRun = result.files.filter(
-          (f) => f.action === "dry-run",
-        ).length;
-
-        if (opts.dryRun) {
-          console.log(
-            `~ ${dryRun} file${dryRun === 1 ? "" : "s"} would be written (dry run)`,
-          );
-        } else {
-          const parts = [
-            `✓ ${written} file${written === 1 ? "" : "s"} written`,
-          ];
-          if (skipped > 0) parts.push(`${skipped} skipped`);
-          console.log(parts.join(", "));
-        }
-      } catch (err: unknown) {
-        console.error(err instanceof Error ? err.message : String(err));
-        process.exitCode = 1;
-      }
-    },
-  );
 
 program.parse(process.argv);
