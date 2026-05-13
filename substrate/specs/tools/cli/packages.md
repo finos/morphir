@@ -199,7 +199,7 @@ constraint. Keys are GitHub repository paths (`org/repo`); values are either:
 
 Authors write ordinary markdown links — inline or reference-style —
 using relative paths through `substrate/`. The existing
-[link reference conventions](../../language.md#link-references) apply
+[link reference conventions](../../language/README.md#link-references) apply
 unchanged:
 
 ```markdown

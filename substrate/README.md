@@ -100,7 +100,7 @@ evolving together.
 
 - [Vision](specs/vision.md) — goals, principles, and where this is
   headed.
-- [Language Specification](specs/language.md) — the conventions the
+- [Language Specification](specs/language/README.md) — the conventions the
   corpus follows.
 - [CLI](specs/tools/cli/) — command reference and design decisions.
 
