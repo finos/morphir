@@ -16,32 +16,26 @@ Defines a collection of columns with the following details for each:
 - The [datatype][dt] of the column.
 - Description of the column.
 
-### Identifier
+## [Examples][examples]
 
-Names the fields whose values uniquely identify a row. The identifier
-is declared as a list of one or more field names drawn from the
-[Schema](#schema). A single field is a simple key; two or more fields
-form a composite key.
+```markdown
+# [Employees][dataset]
 
-The listed order is canonical for presentation but not semantically
-significant: the identifier is a set of fields, and two rows are
-considered to have the same key when their values agree on every
-listed field.
+## [Schema][schema]
 
-Fields used in the identifier:
+- `first name`: [text][str]
+- `middle name`: [text][str]
+- `last name`: [text][str]
+- `onboarding date`: [date][date]
 
-- Must be declared in the schema.
-- May be [required or optional](../concepts/optionality.md). When a
-  field is optional, two rows that are both absent in that field are
-  treated as equal on that field. Absence is matched by absence, not
-  by any sentinel value.
-- Must have a type that supports equality.
-
-A dataset declaration with no Identifier section has no declared
-primary key.
-
-### Constraints
+[dataset]: /substrate/language/dataflow/dataset.md
+[schema]: /substrate/language/dataflow/dataset.md#schema
+[str]: /substrate/language/expressions/string.md
+[date]: /substrate/language/expressions/date.md
+[opt]: /substrate/language/concepts/optionality.md
+```
 
 [summary]: ../metadata/summary.md
 [struct]: ../metadata/structure.md
 [dt]: ../concepts/datatype.md
+[examples]: ../metadata/examples.md
