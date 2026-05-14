@@ -5,6 +5,10 @@
   "bin": {
     "substrate": "dist/cli.js"
   },
+  "files": [
+    "dist",
+    "assets"
+  ],
   "scripts": {
     "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
     "lint:links": "remark --frail .",

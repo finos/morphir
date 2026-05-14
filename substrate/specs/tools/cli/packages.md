@@ -243,6 +243,10 @@ add any dependencies; use `substrate install` after editing
 The command aborts without writing anything if `substrate.json` already
 exists. Pass `--yes` to accept all defaults without prompting.
 
+After the manifest is written, `substrate init` also drops the bundled
+AI-assistant instructions into the project (see
+[AI assistant instructions](#ai-assistant-instructions)).
+
 ### `substrate install`
 
 Reads `substrate.json` and populates `substrate/` so that every declared
@@ -261,6 +265,10 @@ For each dependency the command:
 
 The command is idempotent: running it repeatedly with an unchanged
 manifest yields no changes.
+
+After vendoring dependencies, `substrate install` also refreshes the
+bundled AI-assistant instructions in the project (see
+[AI assistant instructions](#ai-assistant-instructions)).
 
 ### `substrate update [<package>]`
 
@@ -429,3 +437,32 @@ Avg heading depth:      2.1
 
 Both inline links and reference-style link definitions are counted.
 The command exits 0 on success and 1 if the file cannot be read.
+
+## AI assistant instructions
+
+`substrate init` and `substrate install` both drop a set of AI-assistant
+instructions into the consumer project so that any LLM working in the
+project knows how to use the CLI. The set is shipped inside the
+substrate npm package under `assets/ai-instructions/`; the CLI copies it
+into the destinations expected by each assistant.
+
+| Assistant | Source (inside substrate package) | Destination (in consumer project) |
+| --- | --- | --- |
+| Claude (skills) | `assets/ai-instructions/claude/substrate-cli/SKILL.md` | `.claude/skills/substrate-cli/SKILL.md` |
+| GitHub Copilot (path-scoped instructions) | `assets/ai-instructions/copilot/substrate-cli.instructions.md` | `.github/instructions/substrate-cli.instructions.md` |
+
+These destination files are **managed by `substrate`**: every run of
+`substrate init` or `substrate install` rewrites them to match the
+shipped versions. Consumers who wish to customise the guidance should
+copy the file to a different name; hand-edits to the managed paths are
+overwritten without warning.
+
+The copy step is content-aware: when the destination already matches the
+source byte-for-byte the file is left untouched and reported as
+`unchanged` so repeat installs are quiet. New destinations and outdated
+ones are reported as `written`.
+
+If the source files are missing (for example, when running from a
+development checkout where the npm package layout has not been
+assembled), the copy step is silently skipped so the rest of `init` and
+`install` continues to work.

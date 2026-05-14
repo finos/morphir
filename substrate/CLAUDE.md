@@ -2,9 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Important Instruction
+## Important Instructions
 
 - When implementing a new feature or changing an existing one always update the `specs/` folder to reflect the requirements and design.
+- **Keep the bundled AI-assistant instructions in sync with the CLI.** Whenever you add, rename, remove, or change the behavior of a `substrate` command (especially the `refactor` subcommands), update *both* of these files in the same change so users who consume substrate via `substrate install` get an accurate skill:
+  - `assets/ai-instructions/claude/substrate-cli/SKILL.md` — the Claude skill.
+  - `assets/ai-instructions/copilot/substrate-cli.instructions.md` — the GitHub Copilot path-scoped instructions.
+  These are shipped with the npm package and copied into the consumer's project by `substrate init` and `substrate install`. If the spec under `specs/tools/cli/` changes but these files do not, the change is incomplete.
 
 ## Commands
 

@@ -16,10 +16,13 @@ import { spawn } from "node:child_process";
 import { MANIFEST_FILE } from "../package/corpus.js";
 import type { Manifest, PackageKind } from "../package/manifest.js";
 import { formatManifest, isValidPackagePath } from "../package/manifest.js";
+import { installAiInstructions } from "./ai-instructions.js";
+import type { CopiedArtifact } from "./ai-instructions.js";
 
 export interface InitResult {
     readonly root: string;
     readonly manifest: Manifest;
+    readonly aiArtifacts: readonly CopiedArtifact[];
 }
 
 export interface InitOptions {
@@ -43,8 +46,9 @@ export async function init(startDir: string, options: InitOptions = {}): Promise
 
     await writeFile(manifestPath, formatManifest(manifest), "utf8");
     await mkdir(join(startDir, "substrate"), { recursive: true });
+    const aiArtifacts = await installAiInstructions(startDir);
 
-    return { root: startDir, manifest };
+    return { root: startDir, manifest, aiArtifacts };
 }
 
 // ---------------------------------------------------------------------------

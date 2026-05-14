@@ -68,6 +68,10 @@ program
       const result = await init(process.cwd(), { yes: opts.yes });
       console.log(`✓ Created substrate.json for ${result.manifest.name}`);
       console.log("✓ Created substrate/");
+      for (const a of result.aiArtifacts) {
+        const mark = a.action === "written" ? "✓" : "·";
+        console.log(`  ${mark} ${a.label} (${a.action})`);
+      }
     } catch (err: unknown) {
       console.error(err instanceof Error ? err.message : String(err));
       process.exitCode = 1;
@@ -106,6 +110,10 @@ program
         console.log("✓ Wrote substrate.lock");
       }
       console.log(`✓ Installed ${result.installed.length} package(s)`);
+      for (const a of result.aiArtifacts) {
+        const mark = a.action === "written" ? "✓" : "·";
+        console.log(`  ${mark} ${a.label} (${a.action})`);
+      }
     } catch (err: unknown) {
       console.error(err instanceof Error ? err.message : String(err));
       process.exitCode = 1;

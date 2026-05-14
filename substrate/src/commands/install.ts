@@ -42,11 +42,14 @@ import type { LockEntry, LockInstall, Lockfile } from "../package/lockfile.js";
 import type { DependencySpec } from "../package/manifest.js";
 import { readManifest } from "../package/manifest.js";
 import { isBranchRef, pickBestTag } from "../package/resolve.js";
+import { installAiInstructions } from "./ai-instructions.js";
+import type { CopiedArtifact } from "./ai-instructions.js";
 
 export interface InstallResult {
   readonly root: string;
   readonly installed: readonly InstalledEntry[];
   readonly wroteLockfile: boolean;
+  readonly aiArtifacts: readonly CopiedArtifact[];
 }
 
 export interface InstalledEntry {
@@ -72,7 +75,8 @@ export async function install(startDir: string): Promise<InstallResult> {
 
   if (lock !== null) {
     const installed = await installFromLock(pkg.root, lock);
-    return { root: pkg.root, installed, wroteLockfile: false };
+    const aiArtifacts = await installAiInstructions(pkg.root);
+    return { root: pkg.root, installed, wroteLockfile: false, aiArtifacts };
   }
 
   const { entries, installed } = await resolveAndInstall(
@@ -80,7 +84,8 @@ export async function install(startDir: string): Promise<InstallResult> {
     pkg.manifest.dependencies,
   );
   await writeLockfile(lockPath, { packages: entries });
-  return { root: pkg.root, installed, wroteLockfile: true };
+  const aiArtifacts = await installAiInstructions(pkg.root);
+  return { root: pkg.root, installed, wroteLockfile: true, aiArtifacts };
 }
 
 // ---------------------------------------------------------------------------
