@@ -190,6 +190,10 @@ that any LLM working in the project knows about the CLI.
 Resolves every dependency in `substrate.json` and vendors it under
 `substrate/`. Writes (or honours) `substrate.lock`. Idempotent.
 
+Pass `-f` / `--force` to reinstall every dependency even when the
+lockfile says it is already present and intact — useful after local
+edits to vendored content or an interrupted install.
+
 Running `substrate install` also refreshes the bundled AI-assistant
 instructions in the project (`.claude/skills/substrate-cli/SKILL.md` and
 `.github/instructions/substrate-cli.instructions.md`). Treat those files

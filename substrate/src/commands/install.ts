@@ -59,9 +59,21 @@ export interface InstalledEntry {
   readonly action: "installed" | "already-present";
 }
 
-export async function install(startDir: string): Promise<InstallResult> {
+export interface InstallOptions {
+  /**
+   * When true, re-fetch and reinstall every dependency even if its
+   * lockfile-recorded installs are already present and intact.
+   */
+  readonly force?: boolean;
+}
+
+export async function install(
+  startDir: string,
+  options: InstallOptions = {},
+): Promise<InstallResult> {
   const pkg = await locatePackage(startDir);
   const lockPath = join(pkg.root, LOCKFILE_FILE);
+  const force = options.force === true;
 
   let lock: Lockfile | null = null;
   if (await lockfileExists(lockPath)) {
@@ -74,7 +86,7 @@ export async function install(startDir: string): Promise<InstallResult> {
   }
 
   if (lock !== null) {
-    const installed = await installFromLock(pkg.root, lock);
+    const installed = await installFromLock(pkg.root, lock, force);
     const aiArtifacts = await installAiInstructions(pkg.root);
     return { root: pkg.root, installed, wroteLockfile: false, aiArtifacts };
   }
@@ -95,10 +107,11 @@ export async function install(startDir: string): Promise<InstallResult> {
 async function installFromLock(
   root: string,
   lock: Lockfile,
+  force: boolean,
 ): Promise<readonly InstalledEntry[]> {
   const out: InstalledEntry[] = [];
   for (const entry of lock.packages) {
-    const allPresent = await checkInstalls(root, entry.installs);
+    const allPresent = !force && (await checkInstalls(root, entry.installs));
     if (allPresent) {
       for (const inst of entry.installs) {
         out.push({

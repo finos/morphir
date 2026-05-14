@@ -97,9 +97,13 @@ program
 program
   .command("install")
   .description("Resolve and vendor every declared dependency into substrate/.")
-  .action(async () => {
+  .option(
+    "-f, --force",
+    "Reinstall every dependency even if already present per the lockfile.",
+  )
+  .action(async (opts: { force?: boolean }) => {
     try {
-      const result = await install(process.cwd());
+      const result = await install(process.cwd(), { force: opts.force === true });
       for (const entry of result.installed) {
         const mark = entry.action === "already-present" ? "·" : "✓";
         console.log(

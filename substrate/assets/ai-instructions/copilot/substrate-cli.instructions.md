@@ -73,7 +73,7 @@ slices.
 | Command | Purpose |
 | --- | --- |
 | `substrate init` | Scaffold a new package: prompts for name, kind, version. Pass `-y` for defaults. Also drops these AI instructions into the project. |
-| `substrate install` | Resolve and vendor every dependency under `substrate/`. Writes `substrate.lock`. Also refreshes these AI instructions. Idempotent. |
+| `substrate install` | Resolve and vendor every dependency under `substrate/`. Writes `substrate.lock`. Also refreshes these AI instructions. Idempotent. Pass `-f` / `--force` to reinstall everything even if already present per the lockfile. |
 | `substrate update [pkg]` | Re-resolve one or every dependency against the latest matching git tag. |
 | `substrate publish` | Tag and push a library/horizontal release. Refuses on dirty trees or `kind: corpus`. |
 

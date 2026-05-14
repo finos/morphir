@@ -266,6 +266,12 @@ For each dependency the command:
 The command is idempotent: running it repeatedly with an unchanged
 manifest yields no changes.
 
+Pass `-f` / `--force` to reinstall every dependency even when the
+lockfile-recorded installs are already present and intact. Each
+dependency is re-fetched at its recorded ref and its vendored tree
+under `substrate/` is replaced. Use this to recover from local edits
+to vendored content or after an interrupted install.
+
 After vendoring dependencies, `substrate install` also refreshes the
 bundled AI-assistant instructions in the project (see
 [AI assistant instructions](#ai-assistant-instructions)).
