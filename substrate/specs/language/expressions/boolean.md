@@ -2,7 +2,7 @@
 
 ## Summary
 
-The Boolean type represents a fundamental data type with two distinct member values: **true** and **false**. It is used to express binary logic, decision making, and control flow within specifications and executable models. Operations: NOT, AND, OR, XOR, IMPLIES, If-Then-Else. Implements Equality.
+The Boolean type represents a fundamental data type with two distinct member values: **true** and **false**. It is used to express binary logic, decision making, and control flow within specifications and executable models. Operations: NOT, AND, OR, XOR, IMPLIES. Implements Equality. Conditional branching on a Boolean is expressed with a [Decision Tree](decision-tree.md).
 
 ## [Member Values](../concepts/datatype.md#member-values)
 
@@ -73,17 +73,6 @@ Returns false only when the antecedent is true and the consequent is false.
 | true    | false   | false  |
 | false   | true    | true   |
 | false   | false   | true   |
-
-### If-Then-Else [Operation](../concepts/operation.md)
-
-Evaluates to the then-value when the condition is `true`, and to the else-value when the condition is `false`. The condition must be a Boolean.
-
-#### Test cases
-
-| Condition | Then | Else | Output |
-| --------- | ---- | ---- | ------ |
-| true      | 1    | 2    | 1      |
-| false     | 1    | 2    | 2      |
 
 ## [Type Class Instances](../concepts/datatype.md#type-class-instances)
 
