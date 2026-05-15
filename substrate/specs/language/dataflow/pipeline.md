@@ -12,28 +12,144 @@ specified separately.
 
 ## [Structure][struct]
 
+A pipeline is written as a markdown document with three required
+sections: [Input](#input), [Steps](#steps), and [Output](#output).
+
 ### Input
 
-The [schema][schema] of the dataset that enters the first step. Optional. 
-May be inferred from the operations.
+The [schema][schema] of the dataset that enters the first step. Written
+as a list of column entries in the same shape as a
+[dataset schema][schema]: each entry gives the column name in
+backticks, its [datatype][dt], and an optional description.
+
+The input schema is **required**. The columns it declares are the
+variables in scope for any expression evaluated by the first step.
 
 ### Output
 
-The [schema][schema] of the dataset produced by the last step. Optional. 
-May be inferred from the operations.
+The [schema][schema] of the dataset produced by the last step. Written
+in the same shape as the [Input](#input) schema.
+
+The output schema is **required**. It must match — column-for-column,
+in order, by name and datatype — the output schema of the last step.
 
 ### Steps
 
-An ordered list of operations. Each step receives the previous step's
-output (or the pipeline's input, for the first step) and produces the
-next step's input (or the pipeline's output, for the last step).
+An ordered list of step operations. Each step receives the previous
+step's output (or the pipeline's input, for the first step) and
+produces the next step's input (or the pipeline's output, for the last
+step).
 
-The only step operation defined for now is:
+The body of this section is a **numbered markdown list**. Each
+top-level item is one step. The item's inline payload is a markdown
+link to the step operation's specification; the item's nested children
+are the parameters of that operation, in the shape defined by the
+operation's own spec.
 
-- **Select** — applies a per-row transformation, producing a dataset
-  with the declared output schema.
+```markdown
+## Steps
+
+1. [<step operation>][...]
+   - <step parameters>
+2. [<step operation>][...]
+   - <step parameters>
+```
+
+Step recognition is based on the link target, not the link text:
+authors may write `[Select]`, `[project]`, or any other phrasing as
+long as the link points to the anchor of the intended step operation.
+
+A pipeline must contain at least one step.
+
+The step operations currently defined are:
+
+- [Select](select.md) — applies a per-row transformation, producing a
+  dataset whose schema is the ordered list of output columns declared
+  by the Select.
+
+## Evaluation
+
+Given an input dataset matching the declared [Input](#input) schema,
+the pipeline produces an output dataset as follows:
+
+1. The steps in [Steps](#steps) are evaluated in document order.
+2. The first step receives the pipeline's input dataset. Each
+   subsequent step receives the dataset produced by the previous
+   step. The dataset produced by the last step is the pipeline's
+   output.
+3. Each step's evaluation is defined by its own specification (e.g.
+   [Select's Evaluation](select.md#evaluation)).
+
+A pipeline is **well-formed** when, in addition to the constraints
+above:
+
+- For every step after the first, the step's declared input schema
+  (as defined by its operation) is compatible with the previous
+  step's output schema. For Select, this means every variable
+  referenced by any output column expression names a column of the
+  previous step's output schema.
+- The first step's expressions reference only columns of the
+  pipeline's [Input](#input) schema.
+- The last step's output schema matches the pipeline's
+  [Output](#output) schema column-for-column, in order, by name and
+  datatype.
+
+An interpreter may reject an ill-formed pipeline without evaluating
+it.
+
+## [Examples][examples]
+
+A single-step pipeline that derives two columns from an `Employees`
+input dataset:
+
+````markdown
+# Onboarding Tiering
+
+## Input
+
+- `first name`: [text][str-t]
+- `last name`: [text][str-t]
+- `amount`: [number][num-t]
+
+## Steps
+
+1. [Select][select]
+   - `full name` : [text][str-t]
+     - [concat][cat]
+       - [first name][var]
+       - [last name][var]
+   - `discount tier` : [text][str-t]
+     - [if][if] [amount][var] [>][gt] [1000][num]
+       - [then][then] ["tier-2"][str]
+     - [else][else] ["tier-1"][str]
+
+## Output
+
+- `full name`: [text][str-t]
+- `discount tier`: [text][str-t]
+
+[cat]: /substrate/language/expressions/string.md#concatenate-operation
+[else]: /substrate/language/expressions/decision-tree.md#else
+[gt]: /substrate/language/expressions/ordering-relation.md#greater-than-derived-operation
+[if]: /substrate/language/expressions/decision-tree.md#if
+[num]: /substrate/language/expressions/number.md#literals
+[num-t]: /substrate/language/expressions/number.md
+[select]: /substrate/language/dataflow/select.md
+[str]: /substrate/language/expressions/string.md#literals
+[str-t]: /substrate/language/expressions/string.md
+[then]: /substrate/language/expressions/decision-tree.md#then
+[var]: /substrate/language/expressions/README.md#variables
+````
+
+A two-step pipeline composes Selects: the second step sees the first
+step's output columns as its input columns. For example, a second
+Select could reference `full name` (a column produced by the first
+step) but not any column of the original pipeline input that was
+dropped by the first step.
 
 [dataset]: dataset.md
+[dt]: ../concepts/datatype.md
+[examples]: ../metadata/examples.md
 [op]: ../concepts/operation.md
 [schema]: dataset.md#schema
 [struct]: ../metadata/structure.md
