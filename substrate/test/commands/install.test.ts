@@ -31,12 +31,13 @@ describe("scanManifests", () => {
     });
 
     it("finds manifests in sub-directories", async () => {
-        await mkdir(join(tmp, "sub"), { recursive: true });
-        await writeManifest(tmp, "org/root");
-        await writeManifest(join(tmp, "sub"), "org/sub");
+        await mkdir(join(tmp, "pkgA"), { recursive: true });
+        await mkdir(join(tmp, "pkgB"), { recursive: true });
+        await writeManifest(join(tmp, "pkgA"), "org/a");
+        await writeManifest(join(tmp, "pkgB"), "org/b");
         const pkgs = await scanManifests(tmp);
         const names = pkgs.map((p) => p.installName).sort();
-        expect(names).toEqual(["org/root", "org/sub"]);
+        expect(names).toEqual(["org/a", "org/b"]);
     });
 
     it("resolves sourceDir to subdir when specified", async () => {

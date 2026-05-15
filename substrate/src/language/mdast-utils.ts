@@ -77,6 +77,7 @@ export function detectConceptLink(heading: Heading): ConceptKind | null {
 
 const CONCEPT_STEMS: ReadonlyMap<string, ConceptKind> = new Map([
     ["type.md", "type"],
+    ["datatype.md", "type"],
     ["type-class.md", "type-class"],
     ["operation.md", "operation"],
     ["record.md", "record"],

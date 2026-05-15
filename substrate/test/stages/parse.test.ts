@@ -41,7 +41,7 @@ describe("parseFile", () => {
 
     it("parses the language index file", async () => {
         const { doc, diagnostics } = await parseFile(
-            resolve(SPECS_DIR, "language.md"),
+            resolve(SPECS_DIR, "language/README.md"),
         );
         expect(diagnostics).toHaveLength(0);
         expect(doc).not.toBeNull();
