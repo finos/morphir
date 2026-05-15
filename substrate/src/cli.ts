@@ -111,7 +111,7 @@ program
         );
       }
       if (result.wroteLockfile) {
-        console.log("✓ Wrote substrate.lock");
+        console.log("✓ Wrote substrate-lock.json");
       }
       console.log(`✓ Installed ${result.installed.length} package(s)`);
       for (const a of result.aiArtifacts) {
@@ -138,7 +138,7 @@ program
         const from = u.from === null ? "(new)" : u.from;
         console.log(`  ${mark} ${u.name}: ${from} → ${u.to}`);
       }
-      console.log("✓ Wrote substrate.lock");
+      console.log("✓ Wrote substrate-lock.json");
     } catch (err: unknown) {
       console.error(err instanceof Error ? err.message : String(err));
       process.exitCode = 1;

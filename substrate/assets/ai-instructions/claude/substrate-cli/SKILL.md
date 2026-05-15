@@ -188,7 +188,7 @@ that any LLM working in the project knows about the CLI.
 ### `substrate install`
 
 Resolves every dependency in `substrate.json` and vendors it under
-`substrate/`. Writes (or honours) `substrate.lock`. Idempotent.
+`substrate/`. Writes (or honours) `substrate-lock.json`. Idempotent.
 
 Pass `-f` / `--force` to reinstall every dependency even when the
 lockfile says it is already present and intact — useful after local
@@ -204,7 +204,7 @@ file before running `install`.
 ### `substrate update [package]`
 
 Re-resolves one dependency (or every dependency) against the latest
-matching git tag, updates `substrate.lock`, and refreshes the vendored
+matching git tag, updates `substrate-lock.json`, and refreshes the vendored
 tree.
 
 ### `substrate publish`

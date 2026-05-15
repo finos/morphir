@@ -1,5 +1,5 @@
 /**
- * Package lockfile — read and write `substrate.lock`.
+ * Package lockfile — read and write `substrate-lock.json`.
  *
  * See `specs/tools/cli/packages.md` for the lockfile format.
  *
@@ -16,7 +16,7 @@ export interface LockInstall {
     readonly integrity: string;
 }
 
-/** One resolved dependency entry in `substrate.lock`. */
+/** One resolved dependency entry in `substrate-lock.json`. */
 export interface LockEntry {
     /** Dependency key in the consumer's manifest (repository identity). */
     readonly name: string;
@@ -33,7 +33,7 @@ export interface LockEntry {
     readonly installs: readonly LockInstall[];
 }
 
-/** Parsed contents of `substrate.lock`. */
+/** Parsed contents of `substrate-lock.json`. */
 export interface Lockfile {
     readonly packages: readonly LockEntry[];
 }
@@ -49,7 +49,7 @@ export async function lockfileExists(path: string): Promise<boolean> {
 }
 
 /**
- * Read and parse `substrate.lock` at the given path.
+ * Read and parse `substrate-lock.json` at the given path.
  *
  * Throws if the file is missing, malformed JSON, or violates the schema.
  */

@@ -49,11 +49,11 @@ const sample: Lockfile = {
 
 describe("lockfileExists", () => {
     it("returns false when absent", async () => {
-        expect(await lockfileExists(join(tmp, "substrate.lock"))).toBe(false);
+        expect(await lockfileExists(join(tmp, "substrate-lock.json"))).toBe(false);
     });
 
     it("returns true when present", async () => {
-        const path = join(tmp, "substrate.lock");
+        const path = join(tmp, "substrate-lock.json");
         await writeFile(path, "{}");
         expect(await lockfileExists(path)).toBe(true);
     });
@@ -61,7 +61,7 @@ describe("lockfileExists", () => {
 
 describe("readLockfile", () => {
     it("round-trips a written lockfile", async () => {
-        const path = join(tmp, "substrate.lock");
+        const path = join(tmp, "substrate-lock.json");
         await writeLockfile(path, sample);
         const reloaded = await readLockfile(path);
         // serialiser sorts by name
@@ -73,21 +73,21 @@ describe("readLockfile", () => {
     });
 
     it("treats an empty packages array as having no packages", async () => {
-        const path = join(tmp, "substrate.lock");
+        const path = join(tmp, "substrate-lock.json");
         await writeFile(path, JSON.stringify({ packages: [] }), "utf8");
         const lock = await readLockfile(path);
         expect(lock.packages).toEqual([]);
     });
 
     it("treats a missing packages key as having no packages", async () => {
-        const path = join(tmp, "substrate.lock");
+        const path = join(tmp, "substrate-lock.json");
         await writeFile(path, "{}", "utf8");
         const lock = await readLockfile(path);
         expect(lock.packages).toEqual([]);
     });
 
     it("rejects entries missing required fields", async () => {
-        const path = join(tmp, "substrate.lock");
+        const path = join(tmp, "substrate-lock.json");
         await writeFile(
             path,
             JSON.stringify({
@@ -99,7 +99,7 @@ describe("readLockfile", () => {
     });
 
     it("rejects malformed JSON", async () => {
-        const path = join(tmp, "substrate.lock");
+        const path = join(tmp, "substrate-lock.json");
         await writeFile(path, "{ not json", "utf8");
         await expect(readLockfile(path)).rejects.toThrow(/Malformed JSON/);
     });

@@ -10,7 +10,7 @@ import { readManifest } from "./manifest.js";
 
 /** File names and directories relative to the corpus root. */
 export const MANIFEST_FILE = "substrate.json";
-export const LOCKFILE_FILE = "substrate.lock";
+export const LOCKFILE_FILE = "substrate-lock.json";
 export const PACKAGES_DIR = "substrate";
 
 /** Directories skipped when walking the corpus. */
