@@ -18,7 +18,7 @@ Relational operations return a [Boolean][bool] value.
 
 _[Required][req]._ Returns an [Ordering Relation][or] representing the relationship between the first and second value. All other ordering operations are derived from this.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input A | Input B | Output                |
 | ------- | ------- | --------------------- |
@@ -30,7 +30,7 @@ _[Required][req]._ Returns an [Ordering Relation][or] representing the relations
 
 _[Derived][der]._ Returns true when `compare(a, b)` is [Less][or-less].
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input A | Input B | Output |
 | ------- | ------- | ------ |
@@ -42,7 +42,7 @@ _[Derived][der]._ Returns true when `compare(a, b)` is [Less][or-less].
 
 _[Derived][der]._ Returns true when `compare(a, b)` is [Greater][or-greater].
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input A | Input B | Output |
 | ------- | ------- | ------ |
@@ -54,7 +54,7 @@ _[Derived][der]._ Returns true when `compare(a, b)` is [Greater][or-greater].
 
 _[Derived][der]._ Returns true when `compare(a, b)` is not [Greater][or-greater].
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input A | Input B | Output |
 | ------- | ------- | ------ |
@@ -66,7 +66,7 @@ _[Derived][der]._ Returns true when `compare(a, b)` is not [Greater][or-greater]
 
 _[Derived][der]._ Returns true when `compare(a, b)` is not [Less][or-less].
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input A | Input B | Output |
 | ------- | ------- | ------ |
@@ -82,3 +82,4 @@ _[Derived][der]._ Returns true when `compare(a, b)` is not [Less][or-less].
 [or-greater]: ordering-relation.md#greater
 [or-less]: ordering-relation.md#less
 [req]: ../concepts/operation.md#required
+[tc]: ../concepts/test-case.md

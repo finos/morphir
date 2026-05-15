@@ -95,7 +95,7 @@ regardless of the slot's declared type.
 _[Required][req]._ Returns [Boolean][bool] `true` when the slot carries a
 value, `false` when the slot is absent.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Slot value | Output |
 | ---------- | ------ |
@@ -108,7 +108,7 @@ _[Required][req]._ Returns the slot's value when present, or the supplied
 fallback value when absent. The fallback must have the slot's declared
 type.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Slot value | Fallback | Output |
 | ---------- | -------- | ------ |
@@ -119,7 +119,7 @@ type.
 ## Interaction with Types and Type Classes
 
 Optionality is orthogonal to [Type][type]. Declared type determines which
-[type class][tc] instances and operations apply; optionality determines
+[type class][tclass] instances and operations apply; optionality determines
 whether the slot must be occupied. Marking a slot optional does not change
 its type and does not remove or add type class instances.
 
@@ -132,5 +132,6 @@ its type and does not remove or add type class instances.
 [ord]: ../expressions/ordering.md
 [param]: parameter.md
 [req]: operation.md#required
-[tc]: type-class.md
+[tc]: test-case.md
+[tclass]: type-class.md
 [type]: datatype.md

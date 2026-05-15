@@ -33,7 +33,7 @@ Divides one integer by another, discarding any remainder. The result is the grea
 
 **Precondition:** Divisor must be non-zero.
 
-#### Test Cases
+#### [Test cases][tc]
 
 | Dividend | Divisor | Result |
 | -------- | ------- | ------ |
@@ -50,7 +50,7 @@ Returns the remainder after integer division.
 
 **Precondition:** Divisor must be non-zero.
 
-#### Test Cases
+#### [Test cases][tc]
 
 | Dividend | Divisor | Result |
 | -------- | ------- | ------ |
@@ -60,3 +60,5 @@ Returns the remainder after integer division.
 | -7       | -2      | 1      |
 | 5        | 5       | 0      |
 | 0        | 3       | 0      |
+
+[tc]: ../concepts/test-case.md

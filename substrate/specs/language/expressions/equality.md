@@ -15,7 +15,7 @@ All operations return a [Boolean](boolean.md) value.
 
 _[Required](../concepts/operation.md#required)._ Returns true if both values are the same. Must be implemented by any type that instances this type class.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input A | Input B | Output |
 | ------- | ------- | ------ |
@@ -28,7 +28,7 @@ _[Required](../concepts/operation.md#required)._ Returns true if both values are
 
 _[Derived](../concepts/operation.md#derived)._ Returns true if values are different. Defined as [NOT](boolean.md#not-operation)`(a == b)`; does not need to be separately implemented.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input A | Input B | Output |
 | ------- | ------- | ------ |
@@ -36,3 +36,5 @@ _[Derived](../concepts/operation.md#derived)._ Returns true if values are differ
 | true    | false   | true   |
 | false   | true    | true   |
 | false   | false   | false  |
+
+[tc]: ../concepts/test-case.md

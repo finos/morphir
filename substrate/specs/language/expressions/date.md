@@ -24,7 +24,7 @@ _[Required](../concepts/operation.md#required)._ Returns the Date obtained
 by adding a signed [Integer][int] number of days to the input Date.
 Negative values produce an earlier Date.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Date         | Days | Output       |
 | ------------ | ---- | ------------ |
@@ -42,7 +42,7 @@ of days from the first Date to the second as an [Integer][int]. The result
 is positive when the second Date is later, negative when earlier, and zero
 when the two are the same day.
 
-#### Test cases
+#### [Test cases][tc]
 
 | From         | To           | Output |
 | ------------ | ------------ | ------ |
@@ -79,3 +79,4 @@ inline:
 [eq]: equality.md
 [int]: integer.md
 [ord]: ordering.md
+[tc]: ../concepts/test-case.md

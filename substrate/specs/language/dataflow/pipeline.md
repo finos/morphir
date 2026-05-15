@@ -13,7 +13,8 @@ specified separately.
 ## [Structure][struct]
 
 A pipeline is written as a markdown document with three required
-sections: [Input](#input), [Steps](#steps), and [Output](#output).
+sections — [Input](#input), [Steps](#steps), and [Output](#output) —
+and an optional [Test cases](#test-cases) section.
 
 ### Input
 
@@ -66,6 +67,39 @@ The step operations currently defined are:
 - [Select](select.md) — applies a per-row transformation, producing a
   dataset whose schema is the ordered list of output columns declared
   by the Select.
+
+### [Test cases][tc]
+
+A pipeline document may optionally include a `Test cases` section
+following the conventions of the [Test Case][tc] concept. The section
+is **optional**: pipelines without test cases are well-formed.
+
+As with every other named construct in substrate — concepts,
+expressions, step operations, decision-tree keywords — the section is
+identified by linking its heading to the
+[Test Case specification][tc], not by the visible heading text. An
+interpreter recognizes a `## [Test cases][tc]` heading as the test
+cases section because of the link target, not because of the string
+`"Test cases"`. Authors may choose any visible heading text (`Test
+cases`, `Tests`, `Examples to verify`, …) provided the heading is a
+markdown link whose target is the
+[Test Case specification][tc]. The same rule applies wherever a `Test
+cases` section appears in any other substrate document.
+
+Because a pipeline's input and output are whole datasets, test cases
+use the [Scenario Form][tc-scenario]. A pipeline has exactly one
+unnamed input dataset and one unnamed output dataset, so each
+scenario's `Inputs` and `Expected outputs` subsections take the
+arity-1 shape: their body holds the dataset directly as an inline
+markdown table, with no inner heading.
+
+Each scenario's input dataset must match the pipeline's
+[Input](#input) schema, and its expected output dataset must match the
+pipeline's [Output](#output) schema, in both cases column-for-column,
+in order, by name and datatype. An interpreter executes a scenario by
+evaluating the pipeline against the scenario's input dataset and
+comparing the produced dataset to the scenario's expected output
+dataset; the row-order semantics of [Evaluation](#evaluation) apply.
 
 ## Evaluation
 
@@ -128,6 +162,24 @@ input dataset:
 - `full name`: [text][str-t]
 - `discount tier`: [text][str-t]
 
+## [Test cases][tc]
+
+### Tiers a mix of above- and below-threshold rows
+
+#### Inputs
+
+| `first name` | `last name`  | `amount` |
+| ------------ | ------------ | -------- |
+| `"Ada"`      | `"Lovelace"` | 1500     |
+| `"Alan"`     | `"Turing"`   | 500      |
+
+#### Expected outputs
+
+| `full name`     | `discount tier` |
+| --------------- | --------------- |
+| `"AdaLovelace"` | `"tier-2"`      |
+| `"AlanTuring"`  | `"tier-1"`      |
+
 [cat]: /substrate/language/expressions/string.md#concatenate-operation
 [else]: /substrate/language/expressions/decision-tree.md#else
 [gt]: /substrate/language/expressions/ordering-relation.md#greater-than-derived-operation
@@ -137,6 +189,7 @@ input dataset:
 [select]: /substrate/language/dataflow/select.md
 [str]: /substrate/language/expressions/string.md#literals
 [str-t]: /substrate/language/expressions/string.md
+[tc]: /substrate/language/concepts/test-case.md
 [then]: /substrate/language/expressions/decision-tree.md#then
 [var]: /substrate/language/expressions/README.md#variables
 ````
@@ -154,3 +207,5 @@ dropped by the first step.
 [schema]: dataset.md#schema
 [struct]: ../metadata/structure.md
 [summary]: ../metadata/summary.md
+[tc]: ../concepts/test-case.md
+[tc-scenario]: ../concepts/test-case.md#scenario-form

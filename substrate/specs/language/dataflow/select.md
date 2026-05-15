@@ -86,7 +86,7 @@ produces an output dataset as follows:
 Output columns may be evaluated in any order, or in parallel, because
 they cannot reference one another.
 
-## Test cases
+## [Test cases][tc]
 
 Given an input dataset with schema:
 
@@ -148,3 +148,4 @@ and rows:
 [str]: ../expressions/string.md
 [struct]: ../metadata/structure.md
 [summary]: ../metadata/summary.md
+[tc]: ../concepts/test-case.md

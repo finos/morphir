@@ -15,7 +15,7 @@ The Boolean type represents a fundamental data type with two distinct member val
 
 Inverts the value of a Boolean.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input | Output |
 | ----- | ------ |
@@ -26,7 +26,7 @@ Inverts the value of a Boolean.
 
 Returns true if and only if both inputs are true.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input A | Input B | Output |
 | ------- | ------- | ------ |
@@ -39,7 +39,7 @@ Returns true if and only if both inputs are true.
 
 Returns true if at least one input is true.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input A | Input B | Output |
 | ------- | ------- | ------ |
@@ -52,7 +52,7 @@ Returns true if at least one input is true.
 
 Returns true if exactly one input is true.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input A | Input B | Output |
 | ------- | ------- | ------ |
@@ -65,7 +65,7 @@ Returns true if exactly one input is true.
 
 Returns false only when the antecedent is true and the consequent is false.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input A | Input B | Output |
 | ------- | ------- | ------ |
@@ -96,3 +96,5 @@ unambiguous.
 ## [Type Class Instances](../concepts/datatype.md#type-class-instances)
 
 Boolean implements [Equality](equality.md): two Boolean values are equal when they are the same member.
+
+[tc]: ../concepts/test-case.md

@@ -30,7 +30,7 @@ rather than by the primitive operations defined here.
 _[Required](../concepts/operation.md#required)._ Returns the number of
 Unicode code points in the string as an [Integer][int].
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input   | Output |
 | ------- | ------ |
@@ -44,7 +44,7 @@ _[Required](../concepts/operation.md#required)._ Returns a new string
 containing the code points of the first input followed by the code points
 of the second.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input A | Input B | Output   |
 | ------- | ------- | -------- |
@@ -59,7 +59,7 @@ _[Derived](../concepts/operation.md#derived)._ Returns [Boolean][bool]
 `true` when the string contains no code points. Defined as
 [Length](#length-operation) equal to zero.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input   | Output |
 | ------- | ------ |
@@ -73,7 +73,7 @@ _[Required](../concepts/operation.md#required)._ Returns [Boolean][bool]
 `true` when the second input appears as a contiguous subsequence of code
 points within the first. Every string contains the empty string.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input    | Substring | Output |
 | -------- | --------- | ------ |
@@ -114,3 +114,4 @@ literal backslash. The empty string is written `""`.
 [eq]: equality.md
 [int]: integer.md
 [ord]: ordering.md
+[tc]: ../concepts/test-case.md

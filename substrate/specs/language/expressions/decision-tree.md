@@ -181,7 +181,7 @@ Only the selected branch is evaluated. Conditions of `if` items after
 the first matching one are not evaluated, and the payloads of
 non-selected `then` and `else` items are not evaluated.
 
-## Test cases
+## [Test cases][tc]
 
 A single-clause decision tree:
 
@@ -235,3 +235,5 @@ A three-way chain expressing
 Note that the third top-level item is written as `[otherwise]` but
 links to the [`else`](#else) anchor; it is therefore recognized as the
 closing `else` of the decision tree.
+
+[tc]: ../concepts/test-case.md

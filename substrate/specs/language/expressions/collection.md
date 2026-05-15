@@ -41,7 +41,7 @@ Type: [Integer][int], optional. The maximum number of elements the collection ma
 
 _[Required][req]._ Returns the number of elements in the collection.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection | Output |
 | ---------- | ------ |
@@ -54,7 +54,7 @@ _[Required][req]._ Returns the number of elements in the collection.
 
 _[Derived][der]._ Returns [Boolean][bool] `true` if the collection contains no elements. Defined as [Size](#size-operation) equal to zero.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection | Output |
 | ---------- | ------ |
@@ -66,7 +66,7 @@ _[Derived][der]._ Returns [Boolean][bool] `true` if the collection contains no e
 
 _[Required][req]._ Precondition: element type implements [Equality][eq]. Returns [Boolean][bool] `true` if any element in the collection compares [Equal][eq-equal] to the given value.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection | Value | Output |
 | ---------- | ----- | ------ |
@@ -79,7 +79,7 @@ _[Required][req]._ Precondition: element type implements [Equality][eq]. Returns
 
 _[Required][req]._ Returns a new collection of the same multiplicity and iteration order containing the result of applying a given function to each element. The output cardinality equals the input cardinality.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection | Function         | Output    |
 | ---------- | ---------------- | --------- |
@@ -91,7 +91,7 @@ _[Required][req]._ Returns a new collection of the same multiplicity and iterati
 
 _[Required][req]._ Returns a new collection containing only the elements for which a given predicate returns [Boolean][bool] `true`, preserving multiplicity and iteration order.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection | Predicate              | Output |
 | ---------- | ---------------------- | ------ |
@@ -106,7 +106,7 @@ _[Required][req]._ Precondition: element type implements [Equality][eq]. Returns
 
 When iteration order is **insertion** or **key**, the first occurrence of each distinct value is retained and relative order is preserved (stable). When iteration order is **none**, the relative order of retained elements is unspecified.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection   | Output    |
 | ------------ | --------- |
@@ -122,7 +122,7 @@ _[Required][req]._ Precondition: element type implements [Equality][eq]. Returns
 - For **unique** collections: each distinct element appears exactly once (set union).
 - For **multi** collections: each element appears as many times as the sum of its occurrences across both collections (bag union).
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection A | Collection B | Output (unique) |
 | ------------ | ------------ | --------------- |
@@ -138,7 +138,7 @@ _[Required][req]._ Precondition: element type implements [Equality][eq]. Returns
 - For **unique** collections: each distinct common element appears exactly once (set intersection).
 - For **multi** collections: each element appears as many times as the minimum of its occurrences in each collection (bag intersection).
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection A | Collection B | Output (unique) |
 | ------------ | ------------ | --------------- |
@@ -154,7 +154,7 @@ _[Required][req]._ Precondition: element type implements [Equality][eq]. Returns
 - For **unique** collections: each element of the first that is absent from the second appears exactly once (set difference).
 - For **multi** collections: the occurrence count of each element is reduced by its occurrence count in the second collection, with a floor of zero (bag difference).
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection A | Collection B | Output (unique) |
 | ------------ | ------------ | --------------- |
@@ -167,7 +167,7 @@ _[Required][req]._ Precondition: element type implements [Equality][eq]. Returns
 
 _[Required][req]._ Precondition: a key function and a [Compare][compare] expression over the key type are provided. Returns a new collection with elements ordered by the key in ascending order. The resulting collection has iteration order **key**. Tie-breaking is stable: elements with equal keys retain their relative input order.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection     | Key function            | Output         |
 | -------------- | ----------------------- | -------------- |
@@ -180,7 +180,7 @@ _[Required][req]._ Precondition: a key function and a [Compare][compare] express
 
 _[Derived][der]._ Precondition: a preceding [Sort By](#sort-by-operation) or Then By has established a primary key ordering; a secondary key function and [Compare][compare] expression over the secondary key type are provided. Returns a new collection where elements with equal primary keys are further ordered by the secondary key. Tie-breaking on the secondary key is stable. Defined in terms of [Sort By](#sort-by-operation) applied to a composite key that lexicographically combines the primary and secondary keys.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection            | Primary key             | Secondary key            | Output                |
 | --------------------- | ----------------------- | ------------------------ | --------------------- |
@@ -191,7 +191,7 @@ _[Derived][der]._ Precondition: a preceding [Sort By](#sort-by-operation) or The
 
 _[Required][req]._ Precondition: element type implements [Ordering][ord]; minimum cardinality ≥ 1. Returns the smallest element according to [Compare][compare]. If multiple elements are [Equal][or-equal], any one of them may be returned.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection | Output |
 | ---------- | ------ |
@@ -203,7 +203,7 @@ _[Required][req]._ Precondition: element type implements [Ordering][ord]; minimu
 
 _[Required][req]._ Precondition: element type implements [Ordering][ord]; minimum cardinality ≥ 1. Returns the largest element according to [Compare][compare]. If multiple elements are [Equal][or-equal], any one of them may be returned.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection | Output |
 | ---------- | ------ |
@@ -215,7 +215,7 @@ _[Required][req]._ Precondition: element type implements [Ordering][ord]; minimu
 
 _[Derived][der]._ Precondition: element type implements [Ordering][ord]. Returns the smallest element if the collection is non-empty, or an absent value otherwise. Defined in terms of [Is Empty](#is-empty-operation) and [Min](#min-operation).
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection | Output |
 | ---------- | ------ |
@@ -227,7 +227,7 @@ _[Derived][der]._ Precondition: element type implements [Ordering][ord]. Returns
 
 _[Derived][der]._ Precondition: element type implements [Ordering][ord]. Returns the largest element if the collection is non-empty, or an absent value otherwise. Defined in terms of [Is Empty](#is-empty-operation) and [Max](#max-operation).
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection | Output |
 | ---------- | ------ |
@@ -239,7 +239,7 @@ _[Derived][der]._ Precondition: element type implements [Ordering][ord]. Returns
 
 _[Required][req]._ Precondition: minimum cardinality ≥ 1. Combines all elements using a binary associative function without an initial accumulator, returning a single value of the same type.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection | Function          | Output |
 | ---------- | ----------------- | ------ |
@@ -251,7 +251,7 @@ _[Required][req]._ Precondition: minimum cardinality ≥ 1. Combines all element
 
 _[Derived][der]._ Like [Reduce](#reduce-operation) but returns an absent value when the collection is empty. Defined in terms of [Is Empty](#is-empty-operation) and [Reduce](#reduce-operation).
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection | Function          | Output |
 | ---------- | ----------------- | ------ |
@@ -263,7 +263,7 @@ _[Derived][der]._ Like [Reduce](#reduce-operation) but returns an absent value w
 
 _[Derived][der]._ Precondition: element type implements [Number][num]. Returns the total of all elements. Defined as [Reduce](#reduce-operation) with [Addition](number.md#addition-operation) when the collection is non-empty, and zero otherwise.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection | Output |
 | ---------- | ------ |
@@ -276,7 +276,7 @@ _[Derived][der]._ Precondition: element type implements [Number][num]. Returns t
 
 _[Derived][der]._ Precondition: element type implements [Number][num]; minimum cardinality ≥ 1. Returns the arithmetic mean of all elements. Defined as [Sum](#sum-operation) divided by [Size](#size-operation).
 
-#### Test cases
+#### [Test cases][tc]
 
 | Collection | Output |
 | ---------- | ------ |
@@ -300,3 +300,4 @@ Collection does not itself implement a [type class](../concepts/type-class.md). 
 [or-equal]: ordering-relation.md#equal
 [ord]: ordering.md
 [req]: ../concepts/operation.md#required
+[tc]: ../concepts/test-case.md

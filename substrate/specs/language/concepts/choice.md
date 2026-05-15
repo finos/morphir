@@ -78,7 +78,7 @@ type by selecting a named variant and supplying a value for each of that
 variant's fields. Required fields must be supplied; optional fields may
 be supplied as absent.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Choice type | Variant | Field values | Output |
 | ---------------- | ------- | ------------------------- | --------------- |
@@ -91,7 +91,7 @@ be supplied as absent.
 _[Required](operation.md#required)._ Returns [Boolean][bool] `true` when
 the value is the named variant, `false` otherwise.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Value         | Variant | Output |
 | ------------- | ------- | ------ |
@@ -111,7 +111,7 @@ Every variant of the Choice type must be covered: Match is exhaustive.
 All branch expressions must produce values of the same type; that type
 is the type of the Match result.
 
-#### Test cases
+#### [Test cases][tc]
 
 For a Choice type `Signed Integer` with variants `Positive` (field
 `value`), `Zero` (no fields), and `Negative` (field `value`), Match is
@@ -139,3 +139,4 @@ used to compute the absolute value:
   buckets ordered by the day ranges their variants represent.
 
 [bool]: ../expressions/boolean.md
+[tc]: test-case.md

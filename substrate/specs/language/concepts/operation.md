@@ -4,13 +4,13 @@
 
 An operation is a named unit of logic, typically defined within a
 type class. Each operation has a **Required** or **Derived** marker, a
-natural-language description of its semantics, and a **Test cases**
-table giving full-coverage input/output examples. Built-in operations
-have no implementation in the language itself unless they are derived;
-their description and test cases serve as the authoritative semantic
-reference. A derived operation has a default definition expressed in
-terms of one or more required operations and may be overridden by
-instancing types.
+natural-language description of its semantics, and a
+[Test cases](test-case.md) section giving full-coverage input/output
+examples. Built-in operations have no implementation in the language
+itself unless they are derived; their description and test cases serve
+as the authoritative semantic reference. A derived operation has a
+default definition expressed in terms of one or more required
+operations and may be overridden by instancing types.
 
 ## Overview
 
@@ -20,8 +20,10 @@ own subsection containing:
 
 - A [Required](#required) or [Derived](#derived) marker.
 - A description of the operation's semantics.
-- A test cases subsection with a table of inputs and expected outputs
-  providing full-coverage test cases.
+- A [test cases](test-case.md) subsection providing full-coverage
+  input/output examples. Operations require full coverage; the
+  [Test Case](test-case.md) document defines the available forms
+  (table or scenario) and how each is structured.
 
 Heading depth is relative, not absolute. A test cases subsection must appear
 under the heading of its operation, but additional grouping sections may

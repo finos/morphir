@@ -45,7 +45,7 @@ fixes its value.
 
 Returns the sum of two numbers.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input A | Input B | Output |
 | ------- | ------- | ------ |
@@ -57,7 +57,7 @@ Returns the sum of two numbers.
 
 Returns the difference of two numbers.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input A | Input B | Output |
 | ------- | ------- | ------ |
@@ -69,7 +69,7 @@ Returns the difference of two numbers.
 
 Returns the product of two numbers.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input A | Input B | Output |
 | ------- | ------- | ------ |
@@ -81,7 +81,7 @@ Returns the product of two numbers.
 
 Returns the quotient of two numbers. Precondition: divisor must not be zero; the result is undefined otherwise.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input A | Input B | Output |
 | ------- | ------- | ------ |
@@ -93,7 +93,7 @@ Returns the quotient of two numbers. Precondition: divisor must not be zero; the
 
 Returns the additive inverse of a number such that `a + negate(a) == 0`.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input | Output |
 | ----- | ------ |
@@ -105,7 +105,7 @@ Returns the additive inverse of a number such that `a + negate(a) == 0`.
 
 Returns the non-negative magnitude of a number. Equal to the number itself when non-negative, and its [negation](#negation-operation) otherwise.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input | Output |
 | ----- | ------ |
@@ -117,10 +117,12 @@ Returns the non-negative magnitude of a number. Equal to the number itself when 
 
 Returns the remainder after dividing the first number by the second. Precondition: divisor must not be zero.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Input A | Input B | Output |
 | ------- | ------- | ------ |
 | 7       | 3       | 1      |
 | 6       | 3       | 0      |
 | 2       | 5       | 2      |
+
+[tc]: ../concepts/test-case.md

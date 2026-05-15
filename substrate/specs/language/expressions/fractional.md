@@ -19,7 +19,7 @@ Divides one value by another, producing a fractional result. The result may be i
 
 **Precondition:** Divisor must be non-zero.
 
-#### Test Cases
+#### [Test cases][tc]
 
 | Dividend | Divisor | Result |
 | -------- | ------- | ------ |
@@ -34,3 +34,5 @@ Divides one value by another, producing a fractional result. The result may be i
 
 - [Floating-Point](floating-point.md)
 - [Decimal](decimal.md)
+
+[tc]: ../concepts/test-case.md

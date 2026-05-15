@@ -62,7 +62,7 @@ _[Required](operation.md#required)._ Returns the value of the named field
 from a record. If the field is declared [optional](optionality.md) and no
 value is present, the result is absent.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Record                           | Field   | Output |
 | -------------------------------- | ------- | ------ |
@@ -78,7 +78,7 @@ fields retain their current values. The supplied value must match the
 field's declared type; its presence or absence must be compatible with
 the field's optionality.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Record                          | Field   | Value  | Output                           |
 | ------------------------------- | ------- | ------ | -------------------------------- |
@@ -91,7 +91,7 @@ _[Required](operation.md#required)._ Returns a new record of the
 specified type given a value for each field. Required fields must be
 supplied; optional fields may be supplied as absent.
 
-#### Test cases
+#### [Test cases][tc]
 
 | Record type | Field values                 | Output                           |
 | ----------- | ---------------------------- | -------------------------------- |
@@ -106,3 +106,5 @@ useful — for example, an [Equality](../expressions/equality.md) instance
 defined field-by-field. Such declarations are made per record type, not
 derived automatically, because the treatment of absent fields in equality
 and ordering is a design decision of the specific type.
+
+[tc]: test-case.md
