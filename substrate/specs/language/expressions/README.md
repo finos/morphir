@@ -1,0 +1,181 @@
+# Composing Expressions
+
+Each file in this directory documents a [type](../concepts/datatype.md) or
+[type class](../concepts/type-class.md) together with the
+[operations](../concepts/operation.md) it provides. An operation in
+isolation is a single node; real specifications compose operations into
+larger **expression trees** whose leaves are literals or named references
+and whose internal nodes are operation applications.
+
+This document defines two surface forms for writing such expression
+trees in markdown:
+
+- the [Nested List Form](#nested-list-form), which is the canonical
+  shape and works for every operation regardless of arity, and
+- the [Infix Form](#infix-form), an abbreviated shape available only
+  for binary operations.
+
+Both forms denote the same expression tree. A specification may mix
+them freely — for example, using the nested list form at the outer
+level while writing a binary sub-expression inline.
+
+## Operation References
+
+In both forms an operation is identified by a markdown link whose target
+is the anchor of that operation's heading in its defining file. The link
+text is free: authors may choose whatever reads best at the call site
+(`+`, `add`, `plus`, `Addition`, …); recognition is based on the link
+target, not the visible text. This mirrors the convention already used
+by the [Decision Tree](decision-tree.md) expression for its `if` / `then`
+/ `else` keywords.
+
+For example, [Addition][add] on [Number](number.md), [AND][and] on
+[Boolean](boolean.md), and [Integer Division][idiv] on
+[Integer](integer.md) are all referenced by linking to the anchor of
+their respective `### Operation` heading.
+
+Authors are encouraged to keep example snippets readable by using
+[reference-style link definitions][refs] with short aliases for each
+operator — `add`, `sub`, `mul`, `div`, `mod`, `neg`, `abs`, `and`,
+`or`, `not`, `xor`, `eq`, `neq`, `lt`, `lte`, `gt`, `gte`, … — and
+collecting the definitions at the bottom of the enclosing document.
+The snippets below follow this convention: each example uses the
+short alias inline and lists its link definitions at the end of the
+snippet, so the snippet is self-contained.
+
+## Nested List Form
+
+An expression tree is written as a markdown list. Each list item carries
+one node of the tree:
+
+- The item's inline payload is a link to the operation that node
+  applies.
+- The item's nested children — in document order — are that operation's
+  arguments. Each child is itself either another list item denoting a
+  sub-expression, or a leaf payload (literal, named reference, …).
+
+This list structure mirrors the expression tree exactly: the depth of a
+list item equals the depth of its node in the tree, and sibling items at
+the same level are sibling arguments of the same parent operation.
+
+### Basic Form
+
+A unary operation has one nested child; a binary operation has two; an
+*n*-ary operation has *n*. Leaves appear as ordinary list items
+without nested children.
+
+### Examples
+
+The arithmetic expression `(a + b) * c` written in nested list form,
+using [Addition][add] and [Multiplication][mul]:
+
+```markdown
+- [×][mul]
+  - [+][add]
+    - `a`
+    - `b`
+  - `c`
+
+[add]: number.md#addition-operation
+[mul]: number.md#multiplication-operation
+```
+
+The Boolean expression `not (x and y)` using [NOT][not] and [AND][and]:
+
+```markdown
+- [not][not]
+  - [and][and]
+    - `x`
+    - `y`
+
+[and]: boolean.md#and-operation
+[not]: boolean.md#not-operation
+```
+
+Leaves may themselves be any kind of payload — a literal, a named
+reference, a [Decision Tree](decision-tree.md), or any other expression
+form — and need not be list items if no further nesting is required.
+
+## Infix Form
+
+For binary operations, the nested list form may be abbreviated to a
+single inline expression of the shape:
+
+```markdown
+<left expression> <operator link> <right expression>
+```
+
+The pattern recognized is: an expression, followed by a markdown link
+whose target is the anchor of a binary operation, followed by another
+expression — all on the same line, within a single list item or
+paragraph. The link target identifies the operation; the link text is
+free.
+
+### Examples
+
+The condition `amount > 1000` using [greater-than][gt] on a numeric
+type:
+
+```markdown
+`amount` [>][gt] `1000`
+
+[gt]: ordering-relation.md#greater-than-derived-operation
+```
+
+A simple sum `a + b` using [Addition][add]:
+
+```markdown
+`a` [+][add] `b`
+
+[add]: number.md#addition-operation
+```
+
+### Grouping and Associativity
+
+The infix form has no notion of operator precedence or parentheses.
+When more than one binary operator appears on the same line, the
+expression's associativity is therefore ambiguous and the snippet is
+ill-formed. To express grouping explicitly, fall back to the
+[Nested List Form](#nested-list-form): the list hierarchy directly
+encodes which operator applies first.
+
+For example, `(a + b) * c` cannot be written purely infix. Instead
+either use the fully nested form shown [above](#examples), or mix the
+two forms — keeping the outer multiplication as a list and writing the
+inner addition inline:
+
+```markdown
+- [×][mul]
+  - `a` [+][add] `b`
+  - `c`
+
+[add]: number.md#addition-operation
+[mul]: number.md#multiplication-operation
+```
+
+### Mixing Forms
+
+Infix sub-expressions may appear inside the nested list form wherever
+an argument is expected, as in the grouping example above. Conversely,
+a nested list may appear in place of either operand of an infix
+expression when the operand is too complex to read inline. The
+[Decision Tree](decision-tree.md) examples already use this mixing:
+each `if` carries an infix Boolean condition as its payload while the
+surrounding tree is a nested list.
+
+### Restriction to Binary Operations
+
+The infix form applies only when the operation being referenced is
+binary. Unary operations (e.g. [NOT][not], [Negation][neg],
+[Absolute Value][abs]) and *n*-ary operations with arity other than
+two must be written in the [Nested List Form](#nested-list-form).
+
+[abs]: number.md#absolute-value-operation
+[add]: number.md#addition-operation
+[and]: boolean.md#and-operation
+[gt]: ordering-relation.md#greater-than-derived-operation
+[idiv]: integer.md#integer-division-required-operation
+[mul]: number.md#multiplication-operation
+[neg]: number.md#negation-operation
+[not]: boolean.md#not-operation
+[refs]: ../README.md#link-references
