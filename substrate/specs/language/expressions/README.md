@@ -19,6 +19,47 @@ Both forms denote the same expression tree. A specification may mix
 them freely — for example, using the nested list form at the outer
 level while writing a binary sub-expression inline.
 
+## Literals
+
+A *literal* is a leaf of an expression tree that denotes a constant
+value of some type — a particular number, Boolean, date, string, …
+Like operation references, literals are written explicitly as markdown
+links so that every leaf carries an unambiguous type. The link text is
+the value as it would be written on paper; the link target is the
+anchor of the **Literals** section in the file that defines the
+literal's type.
+
+For example, to write the number *one thousand five hundred* as a leaf
+of an expression, link the text `1500` to the [number literal
+section](number.md#literals):
+
+```markdown
+[1500][num]
+
+[num]: number.md#literals
+```
+
+As with operation references, snippets are easier to read when each
+literal target is given a short [reference-style alias][refs] at the
+bottom of the document. The aliases conventionally used are `num` for
+[Number literals](number.md#literals), `bool` for [Boolean
+literals](boolean.md#literals), `date` for [Date
+literals](date.md#literals), and `str` for [String
+literals](string.md#literals). The condition `amount > 1500` from the
+[infix form](#examples-1) example then reads:
+
+```markdown
+`amount` [>][gt] [1500][num]
+
+[gt]: ordering-relation.md#greater-than-derived-operation
+[num]: number.md#literals
+```
+
+Backtick spans (e.g. `` `amount` ``, `` `x` ``) continue to denote
+*named references* — variables, parameters, fields — not literals. The
+two are distinguished by syntax: a literal is always a link to a
+**Literals** section, a named reference is always a backtick span.
+
 ## Operation References
 
 In both forms an operation is identified by a markdown link whose target
@@ -117,9 +158,10 @@ The condition `amount > 1000` using [greater-than][gt] on a numeric
 type:
 
 ```markdown
-`amount` [>][gt] `1000`
+`amount` [>][gt] [1000][num]
 
 [gt]: ordering-relation.md#greater-than-derived-operation
+[num]: number.md#literals
 ```
 
 A simple sum `a + b` using [Addition][add]:

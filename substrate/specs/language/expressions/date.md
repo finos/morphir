@@ -52,6 +52,23 @@ when the two are the same day.
 | `2025-01-31` | `2025-01-01` | -30    |
 | `2024-02-28` | `2024-03-01` | 2      |
 
+## Literals
+
+A Date literal is written, per the [Literals](README.md#literals)
+convention, as a markdown link whose text is an ISO 8601 calendar date
+of the form `YYYY-MM-DD` and whose target is this section. The link
+text must name a valid day in the proleptic Gregorian calendar (see
+[Member Values](#member-values)). Authors typically introduce a short
+alias `date` at the bottom of the enclosing document and use it
+inline:
+
+```markdown
+`as-of` [>][gt] [2025-01-01][date]
+
+[date]: date.md#literals
+[gt]: ordering-relation.md#greater-than-derived-operation
+```
+
 ## [Type Class Instances](../concepts/datatype.md#type-class-instances)
 
 - **[Equality][eq]** — two dates are equal when they name the same

@@ -74,6 +74,25 @@ Returns false only when the antecedent is true and the consequent is false.
 | false   | true    | true   |
 | false   | false   | true   |
 
+## Literals
+
+A Boolean literal is written, per the [Literals](README.md#literals)
+convention, as a markdown link whose text is one of the two member
+values `true` or `false` and whose target is this section. Authors
+typically introduce a short alias `bool` at the bottom of the
+enclosing document and use it inline:
+
+```markdown
+`flag` [==][eq] [true][bool]
+
+[bool]: boolean.md#literals
+[eq]: equality.md#equal-operation
+```
+
+The link text must match the spelling of a [Member Value](#member-values)
+exactly — `true` or `false`, lowercase — so that the literal is
+unambiguous.
+
 ## [Type Class Instances](../concepts/datatype.md#type-class-instances)
 
 Boolean implements [Equality](equality.md): two Boolean values are equal when they are the same member.

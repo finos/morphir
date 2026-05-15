@@ -83,6 +83,26 @@ points within the first. Every string contains the empty string.
 | `""`     | `""`      | true   |
 | `""`     | `"a"`     | false  |
 
+## Literals
+
+A String literal is written, per the [Literals](README.md#literals)
+convention, as a markdown link whose text is the string value enclosed
+in double quotes and whose target is this section. The quotes
+delimit the literal so that leading or trailing whitespace and the
+empty string `""` are unambiguous. Authors typically introduce a short
+alias `str` at the bottom of the enclosing document and use it inline:
+
+```markdown
+`name` [==][eq] ["Alice"][str]
+
+[eq]: equality.md#equal-operation
+[str]: string.md#literals
+```
+
+A backslash inside the quotes introduces an escape sequence; at
+minimum, `\"` denotes a literal double quote and `\\` denotes a
+literal backslash. The empty string is written `""`.
+
 ## [Type Class Instances](../concepts/datatype.md#type-class-instances)
 
 - **[Equality][eq]** — two strings are equal when they contain the same
