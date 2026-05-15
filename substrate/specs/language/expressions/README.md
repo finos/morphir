@@ -4,7 +4,7 @@ Each file in this directory documents a [type](../concepts/datatype.md) or
 [type class](../concepts/type-class.md) together with the
 [operations](../concepts/operation.md) it provides. An operation in
 isolation is a single node; real specifications compose operations into
-larger **expression trees** whose leaves are literals or named references
+larger **expression trees** whose leaves are literals or variables
 and whose internal nodes are operation applications.
 
 This document defines two surface forms for writing such expression
@@ -49,16 +49,48 @@ literals](string.md#literals). The condition `amount > 1500` from the
 [infix form](#examples-1) example then reads:
 
 ```markdown
-`amount` [>][gt] [1500][num]
+[amount][var] [>][gt] [1500][num]
 
 [gt]: ordering-relation.md#greater-than-derived-operation
 [num]: number.md#literals
+[var]: #variables
 ```
 
-Backtick spans (e.g. `` `amount` ``, `` `x` ``) continue to denote
-*named references* — variables, parameters, fields — not literals. The
-two are distinguished by syntax: a literal is always a link to a
-**Literals** section, a named reference is always a backtick span.
+## Variables
+
+A *variable* is a leaf of an expression tree that refers to a named
+value bound elsewhere — a parameter, a field, a local binding, an
+iteration variable, … Like literals and operation references,
+variables are written explicitly as markdown links so that every leaf
+of an expression carries an unambiguous role. The link text is the
+variable's name as it would appear in prose; the link target is the
+anchor of this **Variables** section.
+
+For example, to refer to a variable named `amount` as a leaf of an
+expression, link the text `amount` to this section:
+
+```markdown
+[amount][var]
+
+[var]: #variables
+```
+
+As with literals and operations, snippets are easier to read when the
+link target is given a short [reference-style alias][refs] at the
+bottom of the document. The conventional alias is `var`, pointing at
+this section. Authors are encouraged to use this shorthand in their
+examples. The sum `a + b` then reads:
+
+```markdown
+[a][var] [+][add] [b][var]
+
+[add]: number.md#addition-operation
+[var]: #variables
+```
+
+Because every variable shares the same link target, the `var` alias
+is defined once per document regardless of how many variables appear
+in it.
 
 ## Operation References
 
@@ -113,12 +145,13 @@ using [Addition][add] and [Multiplication][mul]:
 ```markdown
 - [×][mul]
   - [+][add]
-    - `a`
-    - `b`
-  - `c`
+    - [a][var]
+    - [b][var]
+  - [c][var]
 
 [add]: number.md#addition-operation
 [mul]: number.md#multiplication-operation
+[var]: #variables
 ```
 
 The Boolean expression `not (x and y)` using [NOT][not] and [AND][and]:
@@ -126,11 +159,12 @@ The Boolean expression `not (x and y)` using [NOT][not] and [AND][and]:
 ```markdown
 - [not][not]
   - [and][and]
-    - `x`
-    - `y`
+    - [x][var]
+    - [y][var]
 
 [and]: boolean.md#and-operation
 [not]: boolean.md#not-operation
+[var]: #variables
 ```
 
 Leaves may themselves be any kind of payload — a literal, a named
@@ -158,18 +192,20 @@ The condition `amount > 1000` using [greater-than][gt] on a numeric
 type:
 
 ```markdown
-`amount` [>][gt] [1000][num]
+[amount][var] [>][gt] [1000][num]
 
 [gt]: ordering-relation.md#greater-than-derived-operation
 [num]: number.md#literals
+[var]: #variables
 ```
 
 A simple sum `a + b` using [Addition][add]:
 
 ```markdown
-`a` [+][add] `b`
+[a][var] [+][add] [b][var]
 
 [add]: number.md#addition-operation
+[var]: #variables
 ```
 
 ### Grouping and Associativity
@@ -188,11 +224,12 @@ inner addition inline:
 
 ```markdown
 - [×][mul]
-  - `a` [+][add] `b`
-  - `c`
+  - [a][var] [+][add] [b][var]
+  - [c][var]
 
 [add]: number.md#addition-operation
 [mul]: number.md#multiplication-operation
+[var]: #variables
 ```
 
 ### Mixing Forms
@@ -221,3 +258,4 @@ two must be written in the [Nested List Form](#nested-list-form).
 [neg]: number.md#negation-operation
 [not]: boolean.md#not-operation
 [refs]: ../README.md#link-references
+[var]: #variables
