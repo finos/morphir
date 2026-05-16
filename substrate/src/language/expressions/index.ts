@@ -6,6 +6,12 @@
  * indexes all expression modules.
  */
 import type { Value } from "../ast.js";
+export {
+    parseLiteral,
+    parseCellHeuristic,
+    typeNameToParserKey,
+    literalParserRegistry,
+} from "./literal-registry.js";
 
 import * as boolean_ from "./boolean.js";
 import * as number_ from "./number.js";

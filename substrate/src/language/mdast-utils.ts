@@ -84,6 +84,7 @@ const CONCEPT_STEMS: ReadonlyMap<string, ConceptKind> = new Map([
     ["choice.md", "choice"],
     ["decision-table.md", "decision-table"],
     ["provenance.md", "provenance"],
+    ["pipeline.md", "pipeline"],
 ]);
 
 function conceptKindFromUrl(url: string): ConceptKind | null {
@@ -185,9 +186,10 @@ export function rowCells(row: TableRow): readonly string[] {
 }
 
 /**
- * Parse a raw cell string into a typed Value.
+ * Parse a raw cell string into a typed Value using heuristics.
  *
- * Recognises booleans, numbers, and falls back to string.
+ * @deprecated Use `parseCellHeuristic` from the literal-registry instead,
+ * which is type-aware when a signature is available.
  */
 export function parseCellValue(raw: string): Value {
     if (raw === "true") return true;

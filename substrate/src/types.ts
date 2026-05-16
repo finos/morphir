@@ -7,6 +7,7 @@ export type StageName =
     | "include"
     | "lint"
     | "references"
+    | "context"
     | "typecheck"
     | "test";
 

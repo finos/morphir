@@ -11,6 +11,7 @@ const STAGE_LABELS: Readonly<Record<string, string>> = {
     include: "Include",
     lint: "Lint",
     references: "References",
+    context: "context",
     typecheck: "Typecheck",
     test: "Test",
 };
@@ -100,4 +101,55 @@ export function exitCode(result: VerificationResult): number {
         s.diagnostics.some((d) => d.severity === "error"),
     );
     return hasErrors ? 1 : 0;
+}
+
+/**
+ * Print a compact one-line result for one file in a multi-file run,
+ * then return whether the file had errors.
+ */
+export function printFileResult(result: VerificationResult): boolean {
+    const errors = result.stages.reduce(
+        (n, s) => n + s.diagnostics.filter((d) => d.severity === "error").length,
+        0,
+    );
+    const warnings = result.stages.reduce(
+        (n, s) => n + s.diagnostics.filter((d) => d.severity === "warning").length,
+        0,
+    );
+    const icon = errors > 0 ? "✗" : "✓";
+    const parts: string[] = [];
+    if (errors > 0) parts.push(`${errors} error${errors > 1 ? "s" : ""}`);
+    if (warnings > 0) parts.push(`${warnings} warning${warnings > 1 ? "s" : ""}`);
+    const detail = parts.length > 0 ? `  ${parts.join(", ")}` : "";
+    console.log(`  ${icon} ${result.entryFile}${detail}`);
+
+    // Print individual diagnostics for errors only (warnings clutter multi-file output)
+    if (errors > 0) {
+        for (const stage of result.stages) {
+            for (const d of stage.diagnostics) {
+                if (d.severity === "error") printDiagnostic(d);
+            }
+        }
+    }
+    return errors > 0;
+}
+
+/**
+ * Print a final aggregate summary for a multi-file verification run.
+ */
+export function printMultiSummary(
+    passed: number,
+    failed: number,
+    totalMs: number,
+): void {
+    const total = passed + failed;
+    const ms = totalMs.toFixed(0);
+    console.log("");
+    if (failed === 0) {
+        console.log(`✓ ${total} file${total === 1 ? "" : "s"} passed (${ms}ms)`);
+    } else {
+        console.log(
+            `✗ ${failed}/${total} file${total === 1 ? "" : "s"} failed (${ms}ms)`,
+        );
+    }
 }

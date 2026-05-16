@@ -18,6 +18,10 @@ is **key**, a sub-attribute **tie-breaking** is either **stable**
   [Compare](ordering.md#compare-operation) expression over a key derived from each
   element, equivalent to SQL `ORDER BY`.
 
+## [Type Class Instances](../concepts/datatype.md#type-class-instances)
+
+Collection Iteration Order does not implement any type class.
+
 ## Attributes
 
 ### Tie-Breaking

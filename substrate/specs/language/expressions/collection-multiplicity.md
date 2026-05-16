@@ -15,3 +15,7 @@ value may appear more than once).
   duplicate element leaves the collection unchanged.
 - **multi** — duplicate elements are permitted; the same value may appear more
   than once.
+
+## [Type Class Instances](../concepts/datatype.md#type-class-instances)
+
+Collection Multiplicity does not implement any type class.

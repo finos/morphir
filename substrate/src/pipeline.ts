@@ -17,11 +17,14 @@ import { parseFile } from "./stages/parse.js";
 import { resolveInclusions } from "./stages/include.js";
 import { lintDocument } from "./stages/lint.js";
 import { checkReferences } from "./stages/references.js";
+import { composeContext } from "./stages/context.js";
 import { typecheckDocument } from "./stages/typecheck.js";
 import { runTestCases } from "./stages/test-runner.js";
 
 /**
  * Run the full verification pipeline on an entry file.
+ *
+ * Stage chain: parse → include → lint → references → context → typecheck → test
  */
 export async function verify(
     filePath: string,
@@ -72,14 +75,25 @@ export async function verify(
     });
     stages.push(refResult.stage);
 
-    // Stage 5: Typecheck
+    // Stage 5: Context — compose the transitive spec corpus into one tree
+    const contextResult = await runStage("context", listener, async () => {
+        const { diagnostics, data } = await composeContext(absPath, expandedRoot);
+        return { diagnostics, data };
+    });
+    stages.push(contextResult.stage);
+
+    const composedRoot = contextResult.data ?? expandedRoot;
+
+    // Stage 6: Typecheck — uses the composed tree for cross-file type resolution
     const typecheckResult = await runStage("typecheck", listener, () => {
-        const diagnostics = typecheckDocument(expandedRoot, absPath);
+        const diagnostics = typecheckDocument(composedRoot, absPath);
         return { diagnostics, data: null };
     });
     stages.push(typecheckResult.stage);
 
-    // Stage 6: Test
+    // Stage 7: Test — uses the expanded root so original link URLs are intact
+    // (the composed tree rewrites links to in-document anchors, which breaks
+    // concept-kind detection needed for operation dispatch)
     const testResult = await runStage("test", listener, () => {
         const diagnostics = runTestCases(expandedRoot, absPath);
         return { diagnostics, data: null };

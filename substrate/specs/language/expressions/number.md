@@ -45,84 +45,79 @@ fixes its value.
 
 Returns the sum of two numbers.
 
-#### [Test cases][tc]
+#### Inputs
+- `left`: [Type Instance][instance]
+- `right`: [Type Instance][instance]
 
-| Input A | Input B | Output |
-| ------- | ------- | ------ |
-| 1       | 2       | 3      |
-| -1      | 1       | 0      |
-| 0       | 0       | 0      |
+#### Outputs
+- `result`: [Type Instance][instance]
 
 ### Subtraction [Operation](../concepts/operation.md)
 
 Returns the difference of two numbers.
 
-#### [Test cases][tc]
+#### Inputs
+- `left`: [Type Instance][instance]
+- `right`: [Type Instance][instance]
 
-| Input A | Input B | Output |
-| ------- | ------- | ------ |
-| 3       | 2       | 1      |
-| 1       | 1       | 0      |
-| 0       | 3       | -3     |
+#### Outputs
+- `result`: [Type Instance][instance]
 
 ### Multiplication [Operation](../concepts/operation.md)
 
 Returns the product of two numbers.
 
-#### [Test cases][tc]
+#### Inputs
+- `left`: [Type Instance][instance]
+- `right`: [Type Instance][instance]
 
-| Input A | Input B | Output |
-| ------- | ------- | ------ |
-| 3       | 2       | 6      |
-| -2      | 3       | -6     |
-| 0       | 5       | 0      |
+#### Outputs
+- `result`: [Type Instance][instance]
 
 ### Division [Operation](../concepts/operation.md)
 
 Returns the quotient of two numbers. Precondition: divisor must not be zero; the result is undefined otherwise.
 
-#### [Test cases][tc]
+#### Inputs
+- `left`: [Type Instance][instance]
+- `right`: [Type Instance][instance]
 
-| Input A | Input B | Output |
-| ------- | ------- | ------ |
-| 6       | 2       | 3      |
-| 7       | 2       | 3.5    |
-| 0       | 5       | 0      |
+#### Outputs
+- `result`: [Type Instance][instance]
 
 ### Negation [Operation](../concepts/operation.md)
 
 Returns the additive inverse of a number such that `a + negate(a) == 0`.
 
-#### [Test cases][tc]
+#### Inputs
+- `value`: [Type Instance][instance]
 
-| Input | Output |
-| ----- | ------ |
-| 3     | -3     |
-| -3    | 3      |
-| 0     | 0      |
+#### Outputs
+- `result`: [Type Instance][instance]
 
 ### Absolute Value [Operation](../concepts/operation.md)
 
 Returns the non-negative magnitude of a number. Equal to the number itself when non-negative, and its [negation](#negation-operation) otherwise.
 
-#### [Test cases][tc]
+#### Inputs
+- `value`: [Type Instance][instance]
 
-| Input | Output |
-| ----- | ------ |
-| 3     | 3      |
-| -3    | 3      |
-| 0     | 0      |
+#### Outputs
+- `result`: [Type Instance][instance]
 
 ### Modulus [Operation](../concepts/operation.md)
 
 Returns the remainder after dividing the first number by the second. Precondition: divisor must not be zero.
 
-#### [Test cases][tc]
+#### Inputs
+- `left`: [Type Instance][instance]
+- `right`: [Type Instance][instance]
 
-| Input A | Input B | Output |
-| ------- | ------- | ------ |
-| 7       | 3       | 1      |
-| 6       | 3       | 0      |
-| 2       | 5       | 2      |
+#### Outputs
+- `result`: [Type Instance][instance]
 
+Test cases for each instance live under the implementing type's
+[Type Class Instances](../concepts/datatype.md#type-class-instances) section.
+
+[instance]: ../concepts/type-class.md#type-instance
 [tc]: ../concepts/test-case.md

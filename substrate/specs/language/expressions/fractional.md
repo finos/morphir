@@ -19,20 +19,20 @@ Divides one value by another, producing a fractional result. The result may be i
 
 **Precondition:** Divisor must be non-zero.
 
-#### [Test cases][tc]
+#### Inputs
+- `dividend`: [Type Instance][instance]
+- `divisor`: [Type Instance][instance]
 
-| Dividend | Divisor | Result |
-| -------- | ------- | ------ |
-| 7.0      | 2.0     | 3.5    |
-| -7.0     | 2.0     | -3.5   |
-| 7.0      | -2.0    | -3.5   |
-| -7.0     | -2.0    | 3.5    |
-| 5.0      | 5.0     | 1.0    |
-| 0.0      | 3.0     | 0.0    |
+#### Outputs
+- `result`: [Type Instance][instance]
+
+Test cases for each instance live under the implementing type's
+[Type Class Instances](../concepts/datatype.md#type-class-instances) section.
 
 ## [Type Class](../concepts/type-class.md) Members
 
 - [Floating-Point](floating-point.md)
 - [Decimal](decimal.md)
 
+[instance]: ../concepts/type-class.md#type-instance
 [tc]: ../concepts/test-case.md

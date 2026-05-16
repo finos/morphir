@@ -89,26 +89,29 @@ every output fits comfortably in a single table cell.
 
 ### Structure
 
-The table has one column per input, in the order the definition
-declares them, followed by one column per expected output. Column
-headers are the input and output names exactly as declared. When a
-definition produces a single unnamed output, the conventional column
-header is `Result`.
+The table has one column per input and one column per expected output.
+Column headers are the parameter names in backticks, exactly as declared
+in the operation's `Inputs` and `Outputs` sections. Column order in the
+table is free — binding is by name, not position. Missing columns are
+an error; unknown columns are an error.
+
+The runner looks up each column header against the operation's signature to
+determine the parameter's type, then uses the type's registered literal parser
+to interpret the cell value.
 
 ### Example
 
 Under the [Integer Division](../expressions/integer.md#integer-division-required-operation)
-operation, which takes a `Dividend` and a `Divisor` and returns one
-result:
+operation, which declares inputs `dividend` and `divisor` and output `result`:
 
 ```markdown
 #### [Test cases][tc]
 
-| Dividend | Divisor | Result |
-| -------- | ------- | ------ |
-| 7        | 2       | 3      |
-| -7       | 2       | -4     |
-| 0        | 3       | 0      |
+| `dividend` | `divisor` | `result` |
+| ---------- | --------- | -------- |
+| 7          | 2         | 3        |
+| -7         | 2         | -4       |
+| 0          | 3         | 0        |
 
 [tc]: ../concepts/test-case.md
 ```

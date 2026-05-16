@@ -46,7 +46,7 @@ bottom of the document. The aliases conventionally used are `num` for
 literals](boolean.md#literals), `date` for [Date
 literals](date.md#literals), and `str` for [String
 literals](string.md#literals). The condition `amount > 1500` from the
-[infix form](#examples-1) example then reads:
+[infix form](#infix-examples) example then reads:
 
 ```markdown
 [amount][var] [>][gt] [1500][num]
@@ -186,7 +186,7 @@ expression — all on the same line, within a single list item or
 paragraph. The link target identifies the operation; the link text is
 free.
 
-### Examples
+### Infix Examples
 
 The condition `amount > 1000` using [greater-than][gt] on a numeric
 type:

@@ -37,6 +37,21 @@ extends type class _A_, any type that instances _B_ must also instance _A_.
 Extended type classes are listed in the **Extended Type Classes** section of
 the module.
 
+## Type Instance
+
+A type-class operation signature uses the `[Type Instance][instance]` link as a
+placeholder for the concrete implementing type. When the test runner encounters
+a test-case table under a type-class operation, it resolves `[Type Instance]` to
+the concrete type by walking up from the test-case heading through the
+`Type Class Instances › <ClassName> › <OpName>` structure to the enclosing
+file's H1. The H1 of the implementing type's file is the binding.
+
+Each type-class file defines this reference at the bottom:
+
+```markdown
+[instance]: ../concepts/type-class.md#type-instance
+```
+
 ## Type Class Members
 
 Some type class modules list their known member types in a **Type Class

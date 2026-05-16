@@ -18,65 +18,64 @@ Relational operations return a [Boolean][bool] value.
 
 _[Required][req]._ Returns an [Ordering Relation][or] representing the relationship between the first and second value. All other ordering operations are derived from this.
 
-#### [Test cases][tc]
+#### Inputs
+- `left`: [Type Instance][instance]
+- `right`: [Type Instance][instance]
 
-| Input A | Input B | Output                |
-| ------- | ------- | --------------------- |
-| 1       | 2       | [Less][or-less]       |
-| 2       | 2       | [Equal][or-equal]     |
-| 3       | 2       | [Greater][or-greater] |
+#### Outputs
+- `result`: [Ordering Relation][or]
 
 ### Less Than [Operation](../concepts/operation.md)
 
 _[Derived][der]._ Returns true when `compare(a, b)` is [Less][or-less].
 
-#### [Test cases][tc]
+#### Inputs
+- `left`: [Type Instance][instance]
+- `right`: [Type Instance][instance]
 
-| Input A | Input B | Output |
-| ------- | ------- | ------ |
-| 1       | 2       | true   |
-| 2       | 2       | false  |
-| 3       | 2       | false  |
+#### Outputs
+- `result`: [Boolean][bool]
 
 ### Greater Than [Operation](../concepts/operation.md)
 
 _[Derived][der]._ Returns true when `compare(a, b)` is [Greater][or-greater].
 
-#### [Test cases][tc]
+#### Inputs
+- `left`: [Type Instance][instance]
+- `right`: [Type Instance][instance]
 
-| Input A | Input B | Output |
-| ------- | ------- | ------ |
-| 1       | 2       | false  |
-| 2       | 2       | false  |
-| 3       | 2       | true   |
+#### Outputs
+- `result`: [Boolean][bool]
 
 ### Less Than or Equal [Operation](../concepts/operation.md)
 
 _[Derived][der]._ Returns true when `compare(a, b)` is not [Greater][or-greater].
 
-#### [Test cases][tc]
+#### Inputs
+- `left`: [Type Instance][instance]
+- `right`: [Type Instance][instance]
 
-| Input A | Input B | Output |
-| ------- | ------- | ------ |
-| 1       | 2       | true   |
-| 2       | 2       | true   |
-| 3       | 2       | false  |
+#### Outputs
+- `result`: [Boolean][bool]
 
 ### Greater Than or Equal [Operation](../concepts/operation.md)
 
 _[Derived][der]._ Returns true when `compare(a, b)` is not [Less][or-less].
 
-#### [Test cases][tc]
+#### Inputs
+- `left`: [Type Instance][instance]
+- `right`: [Type Instance][instance]
 
-| Input A | Input B | Output |
-| ------- | ------- | ------ |
-| 1       | 2       | false  |
-| 2       | 2       | true   |
-| 3       | 2       | true   |
+#### Outputs
+- `result`: [Boolean][bool]
+
+Test cases for each instance live under the implementing type's
+[Type Class Instances](../concepts/datatype.md#type-class-instances) section.
 
 [bool]: boolean.md
 [der]: ../concepts/operation.md#derived
 [eq]: equality.md
+[instance]: ../concepts/type-class.md#type-instance
 [or]: ordering-relation.md
 [or-equal]: ordering-relation.md#equal
 [or-greater]: ordering-relation.md#greater

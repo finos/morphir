@@ -24,16 +24,23 @@ _[Required](../concepts/operation.md#required)._ Returns the Date obtained
 by adding a signed [Integer][int] number of days to the input Date.
 Negative values produce an earlier Date.
 
+#### Inputs
+- `date`: [Date][date]
+- `days`: [Integer][int]
+
+#### Outputs
+- `result`: [Date][date]
+
 #### [Test cases][tc]
 
-| Date         | Days | Output       |
-| ------------ | ---- | ------------ |
-| `2025-01-01` | 0    | `2025-01-01` |
-| `2025-01-01` | 1    | `2025-01-02` |
-| `2025-01-31` | 1    | `2025-02-01` |
-| `2024-02-28` | 1    | `2024-02-29` |
-| `2025-02-28` | 1    | `2025-03-01` |
-| `2025-01-01` | -1   | `2024-12-31` |
+| `date`       | `days` | `result`     |
+| ------------ | ------ | ------------ |
+| `2025-01-01` | 0      | `2025-01-01` |
+| `2025-01-01` | 1      | `2025-01-02` |
+| `2025-01-31` | 1      | `2025-02-01` |
+| `2024-02-28` | 1      | `2024-02-29` |
+| `2025-02-28` | 1      | `2025-03-01` |
+| `2025-01-01` | -1     | `2024-12-31` |
 
 ### Days Between [Operation](../concepts/operation.md)
 
@@ -42,15 +49,22 @@ of days from the first Date to the second as an [Integer][int]. The result
 is positive when the second Date is later, negative when earlier, and zero
 when the two are the same day.
 
+#### Inputs
+- `from`: [Date][date]
+- `to`: [Date][date]
+
+#### Outputs
+- `result`: [Integer][int]
+
 #### [Test cases][tc]
 
-| From         | To           | Output |
-| ------------ | ------------ | ------ |
-| `2025-01-01` | `2025-01-01` | 0      |
-| `2025-01-01` | `2025-01-02` | 1      |
-| `2025-01-01` | `2025-01-31` | 30     |
-| `2025-01-31` | `2025-01-01` | -30    |
-| `2024-02-28` | `2024-03-01` | 2      |
+| `from`       | `to`         | `result` |
+| ------------ | ------------ | -------- |
+| `2025-01-01` | `2025-01-01` | 0        |
+| `2025-01-01` | `2025-01-02` | 1        |
+| `2025-01-01` | `2025-01-31` | 30       |
+| `2025-01-31` | `2025-01-01` | -30      |
+| `2024-02-28` | `2024-03-01` | 2        |
 
 ## Literals
 
@@ -71,12 +85,48 @@ inline:
 
 ## [Type Class Instances](../concepts/datatype.md#type-class-instances)
 
-- **[Equality][eq]** — two dates are equal when they name the same
-  calendar day.
-- **[Ordering][ord]** — dates are ordered chronologically: the earlier
-  date precedes the later one.
+### [Equality][eq]
 
+Two dates are equal when they name the same calendar day.
+
+#### [Equal][eq-equal] [Operation][op]
+
+##### [Test cases][tc]
+
+| `left`       | `right`      | `result` |
+| ------------ | ------------ | -------- |
+| `2025-01-01` | `2025-01-01` | true     |
+| `2025-01-01` | `2025-01-02` | false    |
+
+#### [Not Equal][eq-not-equal] [Operation][op]
+
+##### [Test cases][tc]
+
+| `left`       | `right`      | `result` |
+| ------------ | ------------ | -------- |
+| `2025-01-01` | `2025-01-01` | false    |
+| `2025-01-01` | `2025-01-02` | true     |
+
+### [Ordering][ord]
+
+Dates are ordered chronologically: the earlier date precedes the later one.
+
+#### [Compare][ord-compare] [Operation][op]
+
+##### [Test cases][tc]
+
+| `left`       | `right`      | `result` |
+| ------------ | ------------ | -------- |
+| `2025-01-01` | `2025-01-02` | Less     |
+| `2025-01-01` | `2025-01-01` | Equal    |
+| `2025-01-02` | `2025-01-01` | Greater  |
+
+[date]: date.md#literals
 [eq]: equality.md
+[eq-equal]: equality.md#equal-operation
+[eq-not-equal]: equality.md#not-equal-operation
 [int]: integer.md
+[op]: ../concepts/operation.md
 [ord]: ordering.md
+[ord-compare]: ordering.md#compare-operation
 [tc]: ../concepts/test-case.md

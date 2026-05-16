@@ -6,6 +6,7 @@
  *   - `substrate verify <file>` — run the full verification pipeline on a file.
  *   - `substrate init`          — scaffold a new package in the current directory.
  *   - `substrate validate`      — walk the current corpus and check links.
+ *   - `substrate coverage`      — analyse spec coverage across a corpus.
  *   - `substrate install`       — vendor every declared dependency.
  *   - `substrate update [pkg]`  — re-resolve dependencies to latest tags.
  *   - `substrate publish`       — tag and push a library release.
@@ -13,12 +14,20 @@
 import { Command } from "commander";
 import { resolve } from "node:path";
 import { verify } from "./pipeline.js";
-import { consoleListener, printSummary, exitCode } from "./progress.js";
+import {
+    consoleListener,
+    printSummary,
+    printFileResult,
+    printMultiSummary,
+    exitCode,
+} from "./progress.js";
+import { listMarkdownFiles } from "./package/corpus.js";
 import { init } from "./commands/init.js";
 import { install } from "./commands/install.js";
 import { publish } from "./commands/publish.js";
 import { update } from "./commands/update.js";
 import { reportValidate, validate } from "./commands/validate.js";
+import { coverage, reportCoverage } from "./commands/coverage.js";
 import { context } from "./commands/context.js";
 import { statsFile, statsStdin, formatStats } from "./commands/stats.js";
 import { rename as refactorRename } from "./commands/refactor.js";
@@ -33,26 +42,61 @@ program
   .version("0.1.0");
 
 program
-  .command("verify <file>")
+  .command("verify <paths...>")
   .description(
-    "Verify a substrate markdown document through the full pipeline: " +
-      "parse → include → lint → references → typecheck → test",
+    "Verify one or more substrate markdown documents (or directories of them) " +
+      "through the full pipeline: " +
+      "parse → include → lint → references → context → typecheck → test. " +
+      "Directories are walked recursively for .md files.",
   )
   .option(
     "-q, --quiet",
     "Suppress progress output; only print the summary",
     false,
   )
-  .action(async (file: string, opts: { quiet: boolean }) => {
-    const filePath = resolve(process.cwd(), file);
-    const listener = opts.quiet ? undefined : consoleListener();
+  .action(async (paths: string[], opts: { quiet: boolean }) => {
+    const cwd = process.cwd();
 
-    console.log(`Verifying: ${filePath}`);
+    // Resolve all paths to absolute file lists.
+    const files: string[] = [];
+    for (const p of paths) {
+      const abs = resolve(cwd, p);
+      const mds = await listMarkdownFiles(abs).catch(() =>
+        abs.endsWith(".md") ? [abs] : [],
+      );
+      files.push(...mds);
+    }
 
-    const result = await verify(filePath, listener);
+    if (files.length === 0) {
+      console.error("verify: no markdown files found");
+      process.exitCode = 1;
+      return;
+    }
 
-    printSummary(result);
-    process.exitCode = exitCode(result);
+    // Single-file path: keep the existing rich per-stage output.
+    if (files.length === 1) {
+      const filePath = files[0]!;
+      const listener = opts.quiet ? undefined : consoleListener();
+      console.log(`Verifying: ${filePath}`);
+      const result = await verify(filePath, listener);
+      printSummary(result);
+      process.exitCode = exitCode(result);
+      return;
+    }
+
+    // Multi-file path: compact one-line-per-file output.
+    console.log(`Verifying ${files.length} files...\n`);
+    const start = performance.now();
+    let passed = 0;
+    let failed = 0;
+    for (const filePath of files) {
+      const result = await verify(filePath);
+      const hadErrors = printFileResult(result);
+      if (hadErrors) failed++;
+      else passed++;
+    }
+    printMultiSummary(passed, failed, performance.now() - start);
+    if (failed > 0) process.exitCode = 1;
   });
 
 program
@@ -88,6 +132,33 @@ program
     try {
       const result = await validate(process.cwd());
       process.exitCode = reportValidate(result);
+    } catch (err: unknown) {
+      console.error(err instanceof Error ? err.message : String(err));
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("coverage [paths...]")
+  .description(
+    "Analyse one or more substrate documents and report how they relate to the " +
+      "language specification: structural coverage (which operations are exercised), " +
+      "narrative coverage (which spec sections are linked), and recognition " +
+      "(share of the document understood as substrate).",
+  )
+  .option(
+    "--format <format>",
+    "Output format: text (default), json, or markdown",
+    "text",
+  )
+  .option(
+    "--against <glob>",
+    "Spec corpus to measure against (defaults to the installed language spec)",
+  )
+  .action(async (paths: string[], opts: { format: string; against?: string }) => {
+    try {
+      const result = await coverage(process.cwd(), paths, { format: opts.format as "text" | "json" | "markdown" });
+      console.log(reportCoverage(result, opts.format));
     } catch (err: unknown) {
       console.error(err instanceof Error ? err.message : String(err));
       process.exitCode = 1;

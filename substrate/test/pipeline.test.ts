@@ -12,13 +12,14 @@ describe("verify pipeline", () => {
             resolve(SPECS_DIR, "language/expressions/boolean.md"),
             (e) => events.push(e),
         );
-        // Should have all 6 stages
-        expect(result.stages).toHaveLength(6);
+        // Should have all 7 stages (parse → include → lint → references → context → typecheck → test)
+        expect(result.stages).toHaveLength(7);
         expect(result.stages.map((s) => s.stage)).toEqual([
             "parse",
             "include",
             "lint",
             "references",
+            "context",
             "typecheck",
             "test",
         ]);

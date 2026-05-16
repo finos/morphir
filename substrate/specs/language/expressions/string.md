@@ -30,13 +30,19 @@ rather than by the primitive operations defined here.
 _[Required](../concepts/operation.md#required)._ Returns the number of
 Unicode code points in the string as an [Integer][int].
 
+#### Inputs
+- `value`: [String][str]
+
+#### Outputs
+- `result`: [Integer][int]
+
 #### [Test cases][tc]
 
-| Input   | Output |
-| ------- | ------ |
-| `""`    | 0      |
-| `"a"`   | 1      |
-| `"abc"` | 3      |
+| `value` | `result` |
+| ------- | -------- |
+| `""`    | 0        |
+| `"a"`   | 1        |
+| `"abc"` | 3        |
 
 ### Concatenate [Operation](../concepts/operation.md)
 
@@ -44,9 +50,16 @@ _[Required](../concepts/operation.md#required)._ Returns a new string
 containing the code points of the first input followed by the code points
 of the second.
 
+#### Inputs
+- `left`: [String][str]
+- `right`: [String][str]
+
+#### Outputs
+- `result`: [String][str]
+
 #### [Test cases][tc]
 
-| Input A | Input B | Output   |
+| `left`  | `right` | `result` |
 | ------- | ------- | -------- |
 | `""`    | `""`    | `""`     |
 | `"ab"`  | `""`    | `"ab"`   |
@@ -59,13 +72,19 @@ _[Derived](../concepts/operation.md#derived)._ Returns [Boolean][bool]
 `true` when the string contains no code points. Defined as
 [Length](#length-operation) equal to zero.
 
+#### Inputs
+- `value`: [String][str]
+
+#### Outputs
+- `result`: [Boolean][bool]
+
 #### [Test cases][tc]
 
-| Input   | Output |
-| ------- | ------ |
-| `""`    | true   |
-| `"a"`   | false  |
-| `"abc"` | false  |
+| `value` | `result` |
+| ------- | -------- |
+| `""`    | true     |
+| `"a"`   | false    |
+| `"abc"` | false    |
 
 ### Contains [Operation](../concepts/operation.md)
 
@@ -73,15 +92,22 @@ _[Required](../concepts/operation.md#required)._ Returns [Boolean][bool]
 `true` when the second input appears as a contiguous subsequence of code
 points within the first. Every string contains the empty string.
 
+#### Inputs
+- `value`: [String][str]
+- `substring`: [String][str]
+
+#### Outputs
+- `result`: [Boolean][bool]
+
 #### [Test cases][tc]
 
-| Input    | Substring | Output |
-| -------- | --------- | ------ |
-| `"abcd"` | `"bc"`    | true   |
-| `"abcd"` | `"ce"`    | false  |
-| `"abcd"` | `""`      | true   |
-| `""`     | `""`      | true   |
-| `""`     | `"a"`     | false  |
+| `value`  | `substring` | `result` |
+| -------- | ----------- | -------- |
+| `"abcd"` | `"bc"`      | true     |
+| `"abcd"` | `"ce"`      | false    |
+| `"abcd"` | `""`        | true     |
+| `""`     | `""`        | true     |
+| `""`     | `"a"`       | false    |
 
 ## Literals
 
@@ -105,13 +131,54 @@ literal backslash. The empty string is written `""`.
 
 ## [Type Class Instances](../concepts/datatype.md#type-class-instances)
 
-- **[Equality][eq]** — two strings are equal when they contain the same
-  sequence of code points.
-- **[Ordering][ord]** — strings are compared lexicographically by code
-  point. The empty string precedes every non-empty string.
+### [Equality][eq]
+
+Two strings are equal when they contain the same sequence of code points.
+
+#### [Equal][eq-equal] [Operation][op]
+
+##### [Test cases][tc]
+
+| `left`  | `right` | `result` |
+| ------- | ------- | -------- |
+| `""`    | `""`    | true     |
+| `"abc"` | `"abc"` | true     |
+| `"abc"` | `"ABC"` | false    |
+| `"a"`   | `""`    | false    |
+
+#### [Not Equal][eq-not-equal] [Operation][op]
+
+##### [Test cases][tc]
+
+| `left`  | `right` | `result` |
+| ------- | ------- | -------- |
+| `""`    | `""`    | false    |
+| `"abc"` | `"abc"` | false    |
+| `"abc"` | `"ABC"` | true     |
+| `"a"`   | `""`    | true     |
+
+### [Ordering][ord]
+
+Strings are compared lexicographically by code point. The empty string precedes every non-empty string.
+
+#### [Compare][ord-compare] [Operation][op]
+
+##### [Test cases][tc]
+
+| `left`  | `right` | `result`  |
+| ------- | ------- | --------- |
+| `"a"`   | `"b"`   | Less      |
+| `"a"`   | `"a"`   | Equal     |
+| `"b"`   | `"a"`   | Greater   |
+| `""`    | `"a"`   | Less      |
 
 [bool]: boolean.md
 [eq]: equality.md
+[eq-equal]: equality.md#equal-operation
+[eq-not-equal]: equality.md#not-equal-operation
 [int]: integer.md
+[op]: ../concepts/operation.md
 [ord]: ordering.md
+[ord-compare]: ordering.md#compare-operation
+[str]: string.md#literals
 [tc]: ../concepts/test-case.md

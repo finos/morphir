@@ -13,66 +13,100 @@ The Boolean type represents a fundamental data type with two distinct member val
 
 ### NOT [Operation](../concepts/operation.md)
 
-Inverts the value of a Boolean.
+_[Required](../concepts/operation.md#required)._ Inverts the value of a Boolean.
+
+#### Inputs
+- `value`: [Boolean][bool]
+
+#### Outputs
+- `result`: [Boolean][bool]
 
 #### [Test cases][tc]
 
-| Input | Output |
-| ----- | ------ |
-| true  | false  |
-| false | true   |
+| `value` | `result` |
+| ------- | -------- |
+| true    | false    |
+| false   | true     |
 
 ### AND [Operation](../concepts/operation.md)
 
-Returns true if and only if both inputs are true.
+_[Required](../concepts/operation.md#required)._ Returns true if and only if both inputs are true.
+
+#### Inputs
+- `left`: [Boolean][bool]
+- `right`: [Boolean][bool]
+
+#### Outputs
+- `result`: [Boolean][bool]
 
 #### [Test cases][tc]
 
-| Input A | Input B | Output |
-| ------- | ------- | ------ |
-| true    | true    | true   |
-| true    | false   | false  |
-| false   | true    | false  |
-| false   | false   | false  |
+| `left` | `right` | `result` |
+| ------ | ------- | -------- |
+| true   | true    | true     |
+| true   | false   | false    |
+| false  | true    | false    |
+| false  | false   | false    |
 
 ### OR [Operation](../concepts/operation.md)
 
-Returns true if at least one input is true.
+_[Required](../concepts/operation.md#required)._ Returns true if at least one input is true.
+
+#### Inputs
+- `left`: [Boolean][bool]
+- `right`: [Boolean][bool]
+
+#### Outputs
+- `result`: [Boolean][bool]
 
 #### [Test cases][tc]
 
-| Input A | Input B | Output |
-| ------- | ------- | ------ |
-| true    | true    | true   |
-| true    | false   | true   |
-| false   | true    | true   |
-| false   | false   | false  |
+| `left` | `right` | `result` |
+| ------ | ------- | -------- |
+| true   | true    | true     |
+| true   | false   | true     |
+| false  | true    | true     |
+| false  | false   | false    |
 
 ### XOR [Operation](../concepts/operation.md)
 
-Returns true if exactly one input is true.
+_[Required](../concepts/operation.md#required)._ Returns true if exactly one input is true.
+
+#### Inputs
+- `left`: [Boolean][bool]
+- `right`: [Boolean][bool]
+
+#### Outputs
+- `result`: [Boolean][bool]
 
 #### [Test cases][tc]
 
-| Input A | Input B | Output |
-| ------- | ------- | ------ |
-| true    | true    | false  |
-| true    | false   | true   |
-| false   | true    | true   |
-| false   | false   | false  |
+| `left` | `right` | `result` |
+| ------ | ------- | -------- |
+| true   | true    | false    |
+| true   | false   | true     |
+| false  | true    | true     |
+| false  | false   | false    |
 
 ### IMPLIES [Operation](../concepts/operation.md)
 
-Returns false only when the antecedent is true and the consequent is false.
+_[Required](../concepts/operation.md#required)._ Returns false only when the antecedent is true and the consequent is false.
+
+#### Inputs
+- `left`: [Boolean][bool]
+- `right`: [Boolean][bool]
+
+#### Outputs
+- `result`: [Boolean][bool]
 
 #### [Test cases][tc]
 
-| Input A | Input B | Output |
-| ------- | ------- | ------ |
-| true    | true    | true   |
-| true    | false   | false  |
-| false   | true    | true   |
-| false   | false   | true   |
+| `left` | `right` | `result` |
+| ------ | ------- | -------- |
+| true   | true    | true     |
+| true   | false   | false    |
+| false  | true    | true     |
+| false  | false   | true     |
 
 ## Literals
 
@@ -95,6 +129,37 @@ unambiguous.
 
 ## [Type Class Instances](../concepts/datatype.md#type-class-instances)
 
-Boolean implements [Equality](equality.md): two Boolean values are equal when they are the same member.
+### [Equality][eq]
 
+Boolean implements [Equality][eq]: two Boolean values are equal when they are the same member.
+
+#### [Equal][eq-equal] [Operation][op]
+
+##### [Test cases][tc]
+
+| `left` | `right` | `result` |
+| ------ | ------- | -------- |
+| true   | true    | true     |
+| true   | false   | false    |
+| false  | true    | false    |
+| false  | false   | true     |
+
+#### [Not Equal][eq-not-equal] [Operation][op]
+
+Derived from [NOT](#not-operation)([Equal][eq-equal]).
+
+##### [Test cases][tc]
+
+| `left` | `right` | `result` |
+| ------ | ------- | -------- |
+| true   | true    | false    |
+| true   | false   | true     |
+| false  | true    | true     |
+| false  | false   | false    |
+
+[bool]: boolean.md#literals
 [tc]: ../concepts/test-case.md
+[eq]: equality.md
+[eq-equal]: equality.md#equal-operation
+[eq-not-equal]: equality.md#not-equal-operation
+[op]: ../concepts/operation.md

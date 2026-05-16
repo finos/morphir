@@ -23,4 +23,34 @@ The first value is larger than the second.
 
 ## [Type Class Instances](../concepts/datatype.md#type-class-instances)
 
-Ordering Relation implements [Equality](equality.md): two Ordering Relation values are equal when they are the same member.
+### [Equality][eq]
+
+Ordering Relation implements [Equality][eq]: two Ordering Relation values are equal when they are the same member.
+
+#### [Equal][eq-equal] [Operation][op]
+
+##### [Test cases][tc]
+
+| `left`   | `right`  | `result` |
+| -------- | -------- | -------- |
+| Less     | Less     | true     |
+| Equal    | Equal    | true     |
+| Greater  | Greater  | true     |
+| Less     | Greater  | false    |
+
+#### [Not Equal][eq-not-equal] [Operation][op]
+
+##### [Test cases][tc]
+
+| `left`   | `right`  | `result` |
+| -------- | -------- | -------- |
+| Less     | Less     | false    |
+| Equal    | Equal    | false    |
+| Greater  | Greater  | false    |
+| Less     | Greater  | true     |
+
+[eq]: equality.md
+[eq-equal]: equality.md#equal-operation
+[eq-not-equal]: equality.md#not-equal-operation
+[op]: ../concepts/operation.md
+[tc]: ../concepts/test-case.md

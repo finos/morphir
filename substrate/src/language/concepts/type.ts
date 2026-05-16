@@ -8,9 +8,9 @@
 import type { Content, Heading } from "mdast";
 import { detectConceptLink, headingName, isHeading, nodeText } from "../mdast-utils.js";
 
-/** Returns true when the heading declares a Type. */
+/** Returns true when the heading declares a Type (H1 only — types are always document-level). */
 export function isTypeHeading(heading: Heading): boolean {
-    return detectConceptLink(heading) === "type";
+    return heading.depth === 1 && detectConceptLink(heading) === "type";
 }
 
 /** Extract the type name from a Type heading. */

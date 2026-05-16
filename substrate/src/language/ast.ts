@@ -14,7 +14,8 @@ export type ConceptKind =
     | "record"
     | "choice"
     | "decision-table"
-    | "provenance";
+    | "provenance"
+    | "pipeline";
 
 /** An operation parsed from a spec document. */
 export interface OperationNode {
