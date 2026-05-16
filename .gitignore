@@ -73,3 +73,5 @@ website/.docusaurus/
 # Added by cargo
 
 /target
+
+.claude/
