@@ -1,9 +1,7 @@
 /**
- * Expression registry — indexes all operation evaluators by their
- * canonical spec path `{directory}/{file}#{anchor}`.
- *
- * This is the code-side counterpart of `specs/language.md` which
- * indexes all expression modules.
+ * Expression registry — generated assembly; indexes all operation evaluators
+ * by their canonical spec path `{directory}/{file}#{anchor}`.
+ * DO NOT EDIT — regenerate with the ts-horizontal-regen skill.
  */
 import type { Value } from "../ast.js";
 export {
@@ -21,6 +19,7 @@ import * as string_ from "./string.js";
 import * as fractional from "./fractional.js";
 import * as date_ from "./date.js";
 import * as collection from "./collection.js";
+import * as integer from "./integer.js";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -55,6 +54,7 @@ registerModule(string_.modulePath, string_.operations);
 registerModule(fractional.modulePath, fractional.operations);
 registerModule(date_.modulePath, date_.operations);
 registerModule(collection.modulePath, collection.operations);
+registerModule(integer.modulePath, integer.operations);
 
 // ---------------------------------------------------------------------------
 // Lookup

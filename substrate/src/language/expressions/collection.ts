@@ -1,9 +1,8 @@
 /**
- * Collection type — corresponds to `specs/language/expressions/collection.md`.
- *
- * Registers a subset of the 24 collection operations. Additional
- * operations can be added as the spec stabilises.
+ * Collection type — generated from horizontals/typescript/expressions/collection.md
+ * DO NOT EDIT — regenerate with the ts-horizontal-regen skill.
  */
+import type { Value } from "../ast.js";
 import type { OperationEvaluator } from "./index.js";
 
 export const modulePath = "expressions/collection.md";
@@ -11,6 +10,13 @@ export const modulePath = "expressions/collection.md";
 export const operations: ReadonlyMap<string, OperationEvaluator> = new Map<string, OperationEvaluator>([
     [
         "size-operation",
-        { arity: 1, evaluate: (args) => (args[0] as unknown as readonly unknown[]).length },
+        {
+            arity: 1,
+            evaluate: (args) => {
+                const lambda = (collection: readonly unknown[]): number =>
+                    collection.length;
+                return lambda(args[0] as unknown as readonly unknown[]) as Value;
+            },
+        },
     ],
 ]);
