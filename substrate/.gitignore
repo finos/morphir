@@ -2,3 +2,5 @@ node_modules/
 dist/
 .claude/
 .obsidian/
+*.code-workspace
+*.log

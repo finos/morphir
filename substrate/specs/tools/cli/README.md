@@ -10,5 +10,7 @@ modules, and manages package dependencies.
   `init`, `install`, `update`, `validate`, and `publish` commands.
 - [Refactor](refactor.md) — the `refactor rename` command: rename files and sections, move
   sections between files, and keep all cross-project references consistent.
+- [Coverage](coverage.md) — the `coverage` command: measure which language features a document
+  exercises and how much of a document is recognised as substrate rather than plain prose.
 - [Design Decisions](design-decisions.md) — implementation rationale: pipeline architecture,
   TypeScript configuration, and testing strategy.
