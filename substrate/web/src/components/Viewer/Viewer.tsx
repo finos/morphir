@@ -259,6 +259,17 @@ function cssEscape(value: string): string {
 }
 
 function clearHighlights(root: HTMLElement): void {
+    for (const badge of Array.from(
+        root.querySelectorAll<HTMLElement>(".substrate-coverage-indicator"),
+    )) {
+        badge.remove();
+    }
+    for (const host of Array.from(
+        root.querySelectorAll<HTMLElement>(".substrate-coverage-host"),
+    )) {
+        host.classList.remove("substrate-coverage-host");
+        host.classList.remove("substrate-coverage-active");
+    }
     for (const mark of Array.from(
         root.querySelectorAll<HTMLElement>("mark[data-substrate-src]"),
     )) {
@@ -290,6 +301,50 @@ function highlightSrcReferences(
             highlightInElement(node, ref);
         }
     }
+    for (const node of Array.from(nodes)) {
+        decorateCoverageIndicator(node);
+    }
+}
+
+/**
+ * After all marks have been placed, drop a small badge in the
+ * top-right of every prose block showing how much of its text is
+ * linked to the visualisation. Hovering the badge tints every linked
+ * span inside the block grey.
+ */
+function decorateCoverageIndicator(node: HTMLElement): void {
+    const total = (node.textContent ?? "").length;
+    if (total === 0) return;
+    let covered = 0;
+    for (const mark of Array.from(
+        node.querySelectorAll<HTMLElement>("mark[data-substrate-src]"),
+    )) {
+        // Use the immediate text length only — nested marks would
+        // otherwise be counted twice via their parent mark.
+        let len = 0;
+        for (const child of Array.from(mark.childNodes)) {
+            if (child.nodeType === Node.TEXT_NODE) {
+                len += (child as Text).data.length;
+            }
+        }
+        covered += len;
+    }
+    if (covered === 0) return;
+    const pct = Math.min(100, Math.round((covered / total) * 100));
+
+    const badge = document.createElement("span");
+    badge.className = "substrate-coverage-indicator";
+    badge.textContent = `${pct}%`;
+    badge.title = `${pct}% of this paragraph is linked to the visualisation`;
+    badge.setAttribute("aria-hidden", "true");
+    badge.addEventListener("mouseenter", () => {
+        node.classList.add("substrate-coverage-active");
+    });
+    badge.addEventListener("mouseleave", () => {
+        node.classList.remove("substrate-coverage-active");
+    });
+    node.classList.add("substrate-coverage-host");
+    node.appendChild(badge);
 }
 
 function highlightInElement(node: HTMLElement, ref: SrcRef): void {

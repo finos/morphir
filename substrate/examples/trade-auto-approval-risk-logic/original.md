@@ -53,5 +53,6 @@ substrate:
                     less-than:
                       - leverage
                       - 2
-            src: "For derivatives, we want to auto-approve only if the notional is under one million and the leverage is less than 2."        
+            src: "For derivatives, we want to auto-approve only if the notional is under one million and the leverage is less than 2."
+        src: "Each type has a different risk profile"            
 ```

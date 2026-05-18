@@ -81,3 +81,49 @@ tr[data-src-id].substrate-src-active > td {
         transparent
     ) !important;
 }
+
+/* Per-paragraph coverage indicator. Sits flush with the top-right of
+   the block; hover reveals every linked span inside the block in a
+   neutral grey so the reader can see which fragments are wired. */
+.substrate-coverage-host {
+    position: relative;
+}
+
+.substrate-coverage-indicator {
+    position: absolute;
+    top: 2px;
+    right: 0;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1;
+    padding: 3px 6px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    color: var(--ink-muted);
+    border: 1px solid var(--rule);
+    cursor: help;
+    user-select: none;
+    transition:
+        background-color 120ms ease,
+        color 120ms ease,
+        border-color 120ms ease;
+}
+
+.substrate-coverage-indicator:hover {
+    background: color-mix(in srgb, var(--ink) 14%, var(--surface-2));
+    color: var(--ink);
+    border-color: var(--ink-muted);
+}
+
+.substrate-coverage-active mark[data-substrate-src] {
+    background-color: color-mix(
+        in srgb,
+        var(--ink) 16%,
+        transparent
+    );
+    text-decoration-color: color-mix(
+        in srgb,
+        var(--ink) 55%,
+        transparent
+    );
+}
