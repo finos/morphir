@@ -14,7 +14,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run build        # Compile TypeScript → dist/
+npm run build        # Build CLI (tsc → dist/) and web UI (vite → assets/web/)
+npm run build:cli    # CLI only
+npm run build:web    # Web UI only (Vite production build)
+npm run dev:web      # Live dev: substrate dev :5173 + Vite HMR on :5174
+npm run web:install  # Install web/ dependencies
 npm run test         # Run all tests (vitest)
 npm run test:watch   # Watch mode
 npm run lint         # Markdown lint + link validation
@@ -36,6 +40,18 @@ morphir repo, but it should treated as a standalne project.
 ### Specs (`specs/`)
 
 The language specification itself lives in `specs/language/concepts/` and `specs/language/expressions/` as markdown files — they are both the source of truth and test input for the pipeline.
+
+### Web UI (`web/`)
+
+The `substrate dev` development UI is a Vite + React + TypeScript SPA
+under `web/`. `vite build` emits a self-contained bundle into
+`assets/web/`, which `src/commands/dev.ts` serves as static files in
+production.
+
+Layout and conventions (one folder per component, CSS modules, brand
+tokens via `branding/tokens.css`) are documented in `web/README.md`.
+Keep `web/src/types.ts` in sync with the JSON shapes served by
+`src/commands/dev.ts`.
 
 ## Important Notes
 

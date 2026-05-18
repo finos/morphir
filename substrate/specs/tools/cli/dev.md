@@ -63,6 +63,18 @@ The API is unauthenticated and intentionally local-only. Binding to a
 non-loopback `--host` is the user's call; do not do this on an untrusted
 network.
 
+## Implementation
+
+The UI is a Vite + React + TypeScript SPA under `web/`. `vite build`
+emits a self-contained bundle into `assets/web/`, which this command
+serves as static files. End users running `substrate dev` never need
+Node tooling beyond the published npm package.
+
+For contributors, the dev loop is `npm run dev:web` from the repo root:
+it runs `substrate dev` on `:5173` (API + WebSocket) and the Vite dev
+server on `:5174` with HMR. The Vite server proxies `/api` and `/_ws`
+to substrate dev — see `web/vite.config.ts` and `web/README.md`.
+
 ## Out of scope (for now)
 
 - No substrate-specific rendering (link resolution, type information,

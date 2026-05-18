@@ -50,10 +50,9 @@ export async function startDev(opts: DevOptions = {}): Promise<DevServer> {
     }
 
     const webRoot = await locateWebAssetsRoot();
-    const tokensPath = await locateBrandingTokens();
 
     const server = createServer((req, res) => {
-        handle(req, res, { root, webRoot, tokensPath }).catch((err) => {
+        handle(req, res, { root, webRoot }).catch((err) => {
             console.error(err);
             if (!res.headersSent) {
                 res.writeHead(500, { "content-type": "text/plain" });
@@ -125,7 +124,6 @@ export async function startDev(opts: DevOptions = {}): Promise<DevServer> {
 interface HandlerCtx {
     root: string;
     webRoot: string;
-    tokensPath: string | null;
 }
 
 async function handle(
@@ -158,11 +156,6 @@ async function handle(
         } catch {
             return send(res, 404, "Not found");
         }
-    }
-
-    // Branding tokens — served via dedicated path for cleanliness.
-    if (pathname === "/_assets/tokens.css" && ctx.tokensPath) {
-        return sendFile(res, ctx.tokensPath, "text/css; charset=utf-8");
     }
 
     // Static web client assets.
@@ -259,18 +252,6 @@ async function locateWebAssetsRoot(): Promise<string> {
     const pkgRoot = await locatePackageRoot();
     if (!pkgRoot) throw new Error("dev: could not locate substrate package root");
     return join(pkgRoot, "assets", "web");
-}
-
-async function locateBrandingTokens(): Promise<string | null> {
-    const pkgRoot = await locatePackageRoot();
-    if (!pkgRoot) return null;
-    const candidate = join(pkgRoot, "branding", "tokens.css");
-    try {
-        await stat(candidate);
-        return candidate;
-    } catch {
-        return null;
-    }
 }
 
 async function locatePackageRoot(): Promise<string | null> {

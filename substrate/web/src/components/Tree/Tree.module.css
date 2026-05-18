@@ -1,0 +1,78 @@
+.tree {
+    border-right: 1px solid var(--rule);
+    background: var(--surface-2);
+    overflow: auto;
+    padding: var(--space-4) var(--space-3);
+}
+
+.eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-subtle);
+    padding: 0 var(--space-2) var(--space-2);
+}
+
+.list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 13.5px;
+    color: var(--ink);
+    user-select: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+}
+
+.row:hover {
+    background: rgba(22, 162, 220, 0.08);
+}
+
+.row.active {
+    background: rgba(22, 162, 220, 0.16);
+    color: var(--brand-blue);
+    font-weight: 500;
+}
+
+.row:focus-visible {
+    outline: 2px solid var(--link);
+    outline-offset: -2px;
+}
+
+.caret {
+    width: 12px;
+    display: inline-block;
+    color: var(--ink-subtle);
+    font-size: 10px;
+    flex-shrink: 0;
+}
+
+.icon {
+    width: 14px;
+    color: var(--ink-subtle);
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.children {
+    margin-left: 14px;
+    border-left: 1px dotted var(--rule);
+    padding-left: 6px;
+    list-style: none;
+}

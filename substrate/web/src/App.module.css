@@ -1,0 +1,11 @@
+.app {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    height: 100vh;
+}
+
+.body {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: 0;
+}
