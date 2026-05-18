@@ -278,8 +278,11 @@ function highlightSrcReferences(
     root: HTMLElement,
     refs: readonly SrcRef[],
 ): void {
-    // Sort by length descending so longer phrases match before shorter
-    // sub-phrases would consume them.
+    // Sort by length DESCENDING so the outermost phrase wraps first;
+    // shorter substrings then nest inside it. We deliberately allow
+    // wrapping inside an existing mark so that a nested viz node
+    // (whose src is a substring of a parent's src) can still light up
+    // its own piece of prose.
     const sorted = [...refs].sort((a, b) => b.text.length - a.text.length);
     const nodes = root.querySelectorAll<HTMLElement>(PROSE_SELECTOR);
     for (const node of Array.from(nodes)) {
@@ -302,7 +305,15 @@ function highlightInElement(node: HTMLElement, ref: SrcRef): void {
     for (const t of textNodes) {
         const parent = t.parentElement;
         if (!parent) continue;
-        if (parent.closest("mark[data-substrate-src]")) continue;
+        // Skip only when the immediate parent is a mark for this same
+        // ref — otherwise we'd wrap the same span twice for one ref.
+        if (
+            parent instanceof HTMLElement &&
+            parent.tagName === "MARK" &&
+            parent.dataset["srcId"] === ref.id
+        ) {
+            continue;
+        }
         const hay = t.data.toLowerCase();
         const idx = hay.indexOf(needle);
         if (idx < 0) continue;

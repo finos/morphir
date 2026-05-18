@@ -28,18 +28,27 @@ a:hover {
 }
 
 /* Inline prose marks injected by the substrate viewer to back-link
-   the prose to nodes in the rendered visualisation. They stay
-   invisible until either the mark or the corresponding viz node is
-   hovered (see `.substrate-src-active`). */
+   the prose to nodes in the rendered visualisation. A faint dotted
+   underline signals that the span is hover-linked to the
+   visualisation; the orange highlight kicks in via
+   `.substrate-src-active`. */
 mark[data-substrate-src] {
     background: transparent;
     color: inherit;
     cursor: pointer;
     border-radius: 2px;
-    padding: 0 2px;
+    padding: 0 1px;
+    text-decoration: underline dotted
+        color-mix(in srgb, var(--ink-subtle) 70%, transparent);
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
     transition:
         background-color 120ms ease,
-        box-shadow 120ms ease;
+        text-decoration-color 120ms ease;
+}
+
+mark[data-substrate-src]:hover {
+    text-decoration-color: var(--accent);
 }
 
 /* Highlight state, applied to both the prose <mark> and the viz
