@@ -169,6 +169,26 @@ Runs the full pipeline (parse → include → lint → references → typecheck
 → test) on a single file. Heavier than `validate`; reach for it when the
 user wants the *language* checks, not just link resolution.
 
+### `substrate dev`
+
+Starts a local development web UI that browses every `.md` file under a
+directory and auto-reloads when files change on disk. Use it when the
+user wants to "see" the corpus in a browser while editing.
+
+```bash
+substrate dev                  # serve the current working directory
+substrate dev --dir specs      # serve a specific directory
+substrate dev --port 4000      # pin the port (default: OS-assigned)
+```
+
+The URL is printed on standard out so the user can ctrl/cmd-click to
+open it. The server binds to `127.0.0.1` by default and is
+unauthenticated — do not pass `--host 0.0.0.0` on an untrusted network.
+
+The current implementation is a plain markdown viewer; substrate-specific
+rendering (link resolution, type info, test overlays) is intentionally
+out of scope for now.
+
 ## Package commands
 
 ### `substrate init`

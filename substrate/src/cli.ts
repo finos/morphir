@@ -31,6 +31,7 @@ import { coverage, reportCoverage } from "./commands/coverage.js";
 import { context } from "./commands/context.js";
 import { statsFile, statsStdin, formatStats } from "./commands/stats.js";
 import { rename as refactorRename } from "./commands/refactor.js";
+import { startDev } from "./commands/dev.js";
 
 const program = new Command();
 
@@ -314,5 +315,49 @@ refactor
       process.exitCode = 1;
     }
   });
+
+program
+  .command("dev")
+  .description(
+    "Start a local development web UI that browses markdown files in a " +
+      "directory. The UI auto-reloads when files change on disk.",
+  )
+  .option(
+    "-d, --dir <path>",
+    "Directory to serve (default: current working directory)",
+  )
+  .option("-p, --port <port>", "Port to listen on (default: random free port)")
+  .option("-h, --host <host>", "Host/interface to bind to", "127.0.0.1")
+  .action(
+    async (opts: { dir?: string; port?: string; host: string }) => {
+      try {
+        const port = opts.port ? Number.parseInt(opts.port, 10) : undefined;
+        if (port !== undefined && (!Number.isFinite(port) || port < 0)) {
+          throw new Error(`dev: invalid --port '${opts.port}'`);
+        }
+        const devOpts: {
+          dir?: string;
+          port?: number;
+          host?: string;
+        } = { host: opts.host };
+        if (opts.dir) devOpts.dir = resolve(process.cwd(), opts.dir);
+        if (port !== undefined) devOpts.port = port;
+        const server = await startDev(devOpts);
+        console.log(`substrate dev`);
+        console.log(`  serving: ${server.root}`);
+        console.log(`  url:     ${server.url}`);
+        console.log(`  (press Ctrl+C to stop)`);
+        const shutdown = async () => {
+          await server.close();
+          process.exit(0);
+        };
+        process.on("SIGINT", shutdown);
+        process.on("SIGTERM", shutdown);
+      } catch (err: unknown) {
+        console.error(err instanceof Error ? err.message : String(err));
+        process.exitCode = 1;
+      }
+    },
+  );
 
 program.parse(process.argv);

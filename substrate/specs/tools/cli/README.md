@@ -6,6 +6,8 @@ modules, and manages package dependencies.
 ## Contents
 
 - [Commands](commands.md) — the `test`, `eval`, and `list` commands and all their options.
+- [Dev server](dev.md) — the `dev` command: start a local web UI that browses
+  markdown files in a directory and auto-reloads on disk changes.
 - [Packages](packages.md) — the package system: manifests, versioning, vendoring, and the
   `init`, `install`, `update`, `validate`, and `publish` commands.
 - [Refactor](refactor.md) — the `refactor rename` command: rename files and sections, move

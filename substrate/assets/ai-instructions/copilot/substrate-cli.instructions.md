@@ -82,6 +82,22 @@ The contents of `.github/instructions/substrate-cli.instructions.md` and
 install`** — they are overwritten on every install. Do not hand-edit
 them; if you need a customisation, copy them to a different filename.
 
+## Local dev UI
+
+`substrate dev` starts a local web UI that browses every `.md` file under
+a directory and auto-reloads on disk changes. Run it from the corpus root
+when the user wants to "see" their markdown in a browser.
+
+```bash
+substrate dev                       # serve the current directory
+substrate dev --dir specs           # serve a specific directory
+substrate dev --port 4000           # pin the port
+```
+
+The command prints the URL on standard out so it is ctrl/cmd-clickable.
+It binds to `127.0.0.1` by default; do not bind elsewhere on untrusted
+networks — the server is unauthenticated.
+
 ## Conventions for generated commands
 
 - Always use forward slashes in paths, even on Windows.

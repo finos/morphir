@@ -1,0 +1,345 @@
+/* Substrate dev — markdown viewer.
+   Pulls colours from /branding/tokens.css served as /_assets/tokens.css. */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--surface-1);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--step-0);
+  line-height: 1.55;
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--link-hover);
+  text-decoration: underline;
+}
+
+/* ─── App shell ─────────────────────────────────────────────── */
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--rule);
+  background: rgba(247, 249, 251, 0.9);
+  backdrop-filter: blur(6px);
+}
+
+.topbar .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+  font-size: 16px;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.topbar .brand img {
+  width: 24px;
+  height: 24px;
+}
+
+.topbar .root-path {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--ink-muted);
+  margin-left: var(--space-3);
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--rule);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar .status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--ink-muted);
+}
+
+.status .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #b7c1c8;
+}
+.status.connected .dot {
+  background: #4caf50;
+}
+.status.reloading .dot {
+  background: var(--accent);
+  animation: pulse 0.6s ease-in-out infinite alternate;
+}
+@keyframes pulse {
+  to {
+    transform: scale(1.4);
+    opacity: 0.5;
+  }
+}
+
+/* ─── Body grid ─────────────────────────────────────────────── */
+.body {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 0;
+}
+
+/* ─── Tree sidebar ──────────────────────────────────────────── */
+.tree {
+  border-right: 1px solid var(--rule);
+  background: var(--surface-2);
+  overflow: auto;
+  padding: var(--space-4) var(--space-3);
+}
+
+.tree-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-subtle);
+  padding: 0 var(--space-2) var(--space-2);
+}
+
+.tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tree li {
+  margin: 0;
+}
+
+.tree .row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13.5px;
+  color: var(--ink);
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree .row:hover {
+  background: rgba(22, 162, 220, 0.08);
+}
+
+.tree .row.active {
+  background: rgba(22, 162, 220, 0.16);
+  color: var(--brand-blue);
+  font-weight: 500;
+}
+
+.tree .caret {
+  width: 12px;
+  display: inline-block;
+  color: var(--ink-subtle);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.tree .icon {
+  width: 14px;
+  color: var(--ink-subtle);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.tree .children {
+  margin-left: 14px;
+  border-left: 1px dotted var(--rule);
+  padding-left: 6px;
+}
+
+/* ─── Main viewer ───────────────────────────────────────────── */
+.viewer {
+  overflow: auto;
+  background: var(--surface-1);
+}
+
+.viewer-inner {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: var(--space-7) var(--space-6) var(--space-9);
+}
+
+.viewer .breadcrumb {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: var(--space-3);
+}
+
+.viewer .empty {
+  display: grid;
+  place-items: center;
+  height: 60vh;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+.viewer .empty .big {
+  font-size: var(--step-3);
+  color: var(--ink);
+  margin-bottom: var(--space-3);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* ─── Markdown styling ──────────────────────────────────────── */
+.markdown {
+  color: var(--ink);
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4 {
+  color: var(--ink);
+  letter-spacing: -0.015em;
+  font-weight: 500;
+  line-height: 1.2;
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-3);
+}
+
+.markdown > h1:first-child {
+  margin-top: 0;
+}
+
+.markdown h1 {
+  font-size: var(--step-4);
+}
+.markdown h2 {
+  font-size: var(--step-2);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--rule);
+}
+.markdown h3 {
+  font-size: var(--step-1);
+}
+.markdown h4 {
+  font-size: var(--step-0);
+  font-weight: 600;
+}
+
+.markdown p,
+.markdown li {
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.markdown p {
+  margin: var(--space-3) 0;
+}
+
+.markdown ul,
+.markdown ol {
+  padding-left: 22px;
+}
+
+.markdown li {
+  margin: 4px 0;
+}
+
+.markdown code {
+  font-family: var(--font-mono);
+  background: var(--surface-2);
+  border: 1px solid var(--rule);
+  padding: 0.08em 0.38em;
+  border-radius: var(--radius-sm);
+  font-size: 0.88em;
+}
+
+.markdown pre {
+  background: var(--surface-inverse);
+  color: #d4dde4;
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.markdown pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+.markdown blockquote {
+  margin: var(--space-4) 0;
+  padding: var(--space-3) var(--space-5);
+  border-left: 3px solid var(--brand-blue);
+  background: rgba(22, 162, 220, 0.06);
+  color: var(--ink-muted);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-style: italic;
+}
+
+.markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--space-4) 0;
+  font-size: 14px;
+}
+
+.markdown th,
+.markdown td {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+
+.markdown th {
+  font-weight: 600;
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--ink-subtle);
+}
+
+.markdown hr {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: var(--space-6) 0;
+}
+
+.markdown img {
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+}
