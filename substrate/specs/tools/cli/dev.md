@@ -15,14 +15,23 @@ substrate dev [--dir <path>] [--port <port>] [--host <host>]
 
 ## Behaviour
 
+- Resolves the **project root** by walking up from `--dir` (or the current
+  working directory, if `--dir` is omitted) until it finds the closest
+  enclosing `substrate.json`. That manifest's directory becomes the served
+  root — not the directory the command was invoked from. This means the
+  dev UI always sees a whole substrate project, including any vendored
+  dependencies under `substrate/`, regardless of where inside the project
+  the user runs the command. Fails fast if no `substrate.json` is found up
+  to the filesystem root.
 - Starts an HTTP server bound to `--host` (default `127.0.0.1`) on `--port`
   (default: a free port chosen by the OS).
-- On startup, prints the directory it is serving and the URL on standard out,
+- On startup, prints the package being served and the URL on standard out,
   one item per line, so the URL is easy to ctrl/cmd-click in any terminal:
 
   ```
   substrate dev
-    serving: /path/to/dir
+    package: acme/my-corpus
+    serving: /path/to/project
     url:     http://127.0.0.1:5173/
     (press Ctrl+C to stop)
   ```
@@ -44,7 +53,7 @@ substrate dev [--dir <path>] [--port <port>] [--host <host>]
 
 | Flag | Default | Meaning |
 | --- | --- | --- |
-| `-d, --dir <path>` | current working directory | Directory to serve. |
+| `-d, --dir <path>` | current working directory | Starting point for locating the project's `substrate.json`. The served root is the manifest's directory, which may be an ancestor of this path. |
 | `-p, --port <port>` | `0` (OS-assigned) | TCP port to listen on. |
 | `-h, --host <host>` | `127.0.0.1` | Interface to bind to. |
 

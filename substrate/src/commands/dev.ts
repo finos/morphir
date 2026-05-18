@@ -17,6 +17,9 @@ import chokidar from "chokidar";
 import { marked } from "marked";
 import { WebSocketServer, type WebSocket } from "ws";
 
+import { locatePackage } from "../package/corpus.js";
+import type { Manifest } from "../package/manifest.js";
+
 export interface DevOptions {
     readonly dir?: string;
     readonly port?: number;
@@ -27,6 +30,8 @@ export interface DevOptions {
 export interface DevServer {
     readonly url: string;
     readonly root: string;
+    readonly manifestPath: string;
+    readonly manifest: Manifest;
     close(): Promise<void>;
 }
 
@@ -43,11 +48,19 @@ const MIME: Record<string, string> = {
 };
 
 export async function startDev(opts: DevOptions = {}): Promise<DevServer> {
-    const root = resolve(opts.dir ?? process.cwd());
-    const rootStat = await stat(root).catch(() => null);
-    if (!rootStat || !rootStat.isDirectory()) {
-        throw new Error(`dev: ${root} is not a directory`);
+    const startDir = resolve(opts.dir ?? process.cwd());
+    const startStat = await stat(startDir).catch(() => null);
+    if (!startStat || !startStat.isDirectory()) {
+        throw new Error(`dev: ${startDir} is not a directory`);
     }
+
+    // Walk up from the requested directory to the closest enclosing
+    // `substrate.json`. The located package's root becomes the served
+    // directory, so the dev UI sees the whole project — including its
+    // vendored dependencies under `substrate/` — rather than an
+    // arbitrary subdirectory of it.
+    const located = await locatePackage(startDir);
+    const root = located.root;
 
     const webRoot = await locateWebAssetsRoot();
 
@@ -113,6 +126,8 @@ export async function startDev(opts: DevOptions = {}): Promise<DevServer> {
     return {
         url,
         root,
+        manifestPath: located.manifestPath,
+        manifest: located.manifest,
         async close() {
             await watcher.close();
             wss.close();

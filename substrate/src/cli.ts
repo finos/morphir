@@ -344,6 +344,7 @@ program
         if (port !== undefined) devOpts.port = port;
         const server = await startDev(devOpts);
         console.log(`substrate dev`);
+        console.log(`  package: ${server.manifest.name}`);
         console.log(`  serving: ${server.root}`);
         console.log(`  url:     ${server.url}`);
         console.log(`  (press Ctrl+C to stop)`);
