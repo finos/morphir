@@ -10,11 +10,13 @@ substrate:
     asset:
       one-of: 
         - tag: equity
-            src: "equities"
+          src: "equities"
         - tag: bond
-            src: "bonds"
+          src: "bonds"
         - tag: derivative
-            src: "derivatives"
+          src: "derivatives"
+        - tag: crypto
+          src: "crypto"
         src: "type of asset"
   values:
     auto-approve:
@@ -27,6 +29,7 @@ substrate:
                   less-than:
                     - risk_score
                     - 0.5
+                  src: "risk score is under 0.5."   
                 then: true
                 else: false
             src: "Equities should be auto-approved if their risk score is under 0.5."                     
@@ -35,7 +38,8 @@ substrate:
               - if: 
                   less-than:
                     - risk_score
-                    - 0.5
+                    - 0.3
+                  src: "risk score is under 0.3."  
                 then: true
                 else: false
             src: "Bonds are more conservative, so only auto-approve if the risk score is under 0.3."                     

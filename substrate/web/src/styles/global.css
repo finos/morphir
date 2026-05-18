@@ -26,3 +26,49 @@ a:hover {
     color: var(--link-hover);
     text-decoration: underline;
 }
+
+/* Inline prose marks injected by the substrate viewer to back-link
+   the prose to nodes in the rendered visualisation. They stay
+   invisible until either the mark or the corresponding viz node is
+   hovered (see `.substrate-src-active`). */
+mark[data-substrate-src] {
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    border-radius: 2px;
+    padding: 0 2px;
+    transition:
+        background-color 120ms ease,
+        box-shadow 120ms ease;
+}
+
+/* Highlight state, applied to both the prose <mark> and the viz
+   element with the same `data-src-id`. */
+.substrate-src-active {
+    background-color: color-mix(
+        in srgb,
+        var(--accent) 24%,
+        transparent
+    ) !important;
+    box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* Viz nodes use a stronger border treatment than the prose mark. */
+[data-src-id].substrate-src-active:not(mark) {
+    border-color: var(--accent) !important;
+    background-color: color-mix(
+        in srgb,
+        var(--accent) 10%,
+        var(--surface-1)
+    ) !important;
+    box-shadow: 0 0 0 3px
+        color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+tr[data-src-id].substrate-src-active > td {
+    background-color: color-mix(
+        in srgb,
+        var(--accent) 12%,
+        transparent
+    ) !important;
+}
