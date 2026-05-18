@@ -6,6 +6,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - When presenting multiple options for the user to choose between (e.g. during grilling sessions, design discussions, or any enumerated choice), label them with latin letters or short descriptive tags — never Greek letters.
 - When implementing a new feature or changing an existing one always update the `specs/` folder to reflect the requirements and design.
+- **Minimum 7-day package age (transitive too).** Never add or upgrade an
+  npm dependency — direct *or transitive* — to a version published less
+  than seven days ago. Brand-new releases get yanked or get
+  supply-chain-compromised; the seven-day soak is our line of defence.
+  Workflow when adding/bumping a dep:
+  1. Before installing, check `npm view <pkg> time --json` for the
+     candidate version; pick an older patch or wait if it's too young.
+  2. After installing, run **`node scripts/check-ages-deep.mjs`** — it
+     walks every package in `node_modules/` and `web/node_modules/`
+     (730+ entries) and exits non-zero if anything is younger than 7 days.
+     This is the script that matters; it catches transitive deps that
+     direct-only audits miss (e.g. `rollup` arriving via `vite`).
+  3. If a direct dep's `^` / `~` range would resolve to a too-young
+     version, pin it to an exact version (no caret/tilde).
+  4. If a *transitive* dep is too young, pin it via the `overrides` field
+     in the relevant `package.json` (`web/package.json` for the SPA tree,
+     root `package.json` for the CLI tree). Document the rationale in a
+     `comment_overrides` sibling so the next person knows why and when to
+     revisit. Re-run the deep audit after `npm install`.
+
+  `scripts/check-ages.mjs` (direct-only) and
+  `scripts/check-range-risk.mjs` (latest-satisfying probe) exist as
+  faster sanity checks but **are not sufficient on their own**;
+  `check-ages-deep.mjs` is the source of truth.
 - **Keep the bundled AI-assistant instructions in sync with the CLI.** Whenever you add, rename, remove, or change the behavior of a `substrate` command (especially the `refactor` subcommands), update *both* of these files in the same change so users who consume substrate via `substrate install` get an accurate skill:
   - `assets/ai-instructions/claude/substrate-cli/SKILL.md` — the Claude skill.
   - `assets/ai-instructions/copilot/substrate-cli.instructions.md` — the GitHub Copilot path-scoped instructions.
