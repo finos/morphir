@@ -2,7 +2,7 @@
 
 ### [Asset][one-of]
 
-[Provenance](/specs/language/concepts/provenance.md)
+[Provenance](/substrate/language/concepts/provenance.md)
 - [equities, bonds, and derivatives](original.md#overview)
 
 #### [Equity][variant]
@@ -13,11 +13,11 @@
 
 ## Domain Logic
 
-[Provenance](/specs/language/concepts/provenance.md)
+[Provenance](/substrate/language/concepts/provenance.md)
 - [equities, bonds, and derivatives](original.md#overview)
 
 - [Equities should be auto-approved if their risk score is under 0.5.](original.md#overview)
 
 
-[one-of]: /specs/language/concepts/choice.md
-[variant]: /specs/language/concepts/choice.md#variants
+[one-of]: /substrate/language/concepts/choice.md
+[variant]: /substrate/language/concepts/choice.md#variants

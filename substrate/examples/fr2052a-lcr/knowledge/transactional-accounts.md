@@ -1,4 +1,4 @@
-# Transactional Accounts [Record](../../specs/language/concepts/record.md)
+# Transactional Accounts [Record](../../substrate/language/concepts/record.md)
 
 The Transactional Accounts record captures one row of FR 2052a section
 **§O.D.1 Outflows — Deposits — Transactional Accounts**. Each row
@@ -12,7 +12,7 @@ currency, collateral class, encumbrance flags, and reporting-entity
 identifiers; those are orthogonal to the classification logic and are
 omitted in this MVP slice.
 
-## [Provenance](../../specs/language/concepts/provenance.md)
+## [Provenance](../../substrate/language/concepts/provenance.md)
 
 - [FR 2052a instructions, §O.D.1 Transactional Accounts][fr2052a-form]
 
@@ -32,13 +32,13 @@ omitted in this MVP slice.
 
 | Name              | Type                                                   | Optionality | Description                                                            |
 | ----------------- | ------------------------------------------------------ | ----------- | ---------------------------------------------------------------------- |
-| `report_date`     | [Date](../../specs/language/expressions/date.md)       | required    | The FR 2052a reporting date as of which balances are measured.         |
-| `amount`          | [Decimal](../../specs/language/expressions/decimal.md) | required    | Unpaid principal balance, in reporting currency units.                 |
+| `report_date`     | [Date](../../substrate/language/expressions/date.md)       | required    | The FR 2052a reporting date as of which balances are measured.         |
+| `amount`          | [Decimal](../../substrate/language/expressions/decimal.md) | required    | Unpaid principal balance, in reporting currency units.                 |
 | `counterparty`    | [Counterparty](counterparty.md)                        | required    | The party on the other side of the deposit position.                   |
 | `account_type`    | [Account Type](account-type.md)                        | required    | Whether the deposit is held in a transactional account.                |
 | `relationship`    | [Relationship](relationship.md)                        | required    | Whether the counterparty has an established relationship.              |
 | `maturity_bucket` | [Maturity Bucket](maturity-bucket.md)                  | required    | Remaining contractual maturity, bucketed.                              |
-| `insured`         | [Boolean](../../specs/language/expressions/boolean.md) | required    | `true` when the deposit is covered by deposit insurance up to limit.   |
+| `insured`         | [Boolean](../../substrate/language/expressions/boolean.md) | required    | `true` when the deposit is covered by deposit insurance up to limit.   |
 
 ## Type Class Instances
 
@@ -48,6 +48,6 @@ position within it, not by structural equality of their fields; two
 rows with identical field values may represent distinct aggregated
 populations.
 
-[eq]: ../../specs/language/expressions/equality.md
+[eq]: ../../substrate/language/expressions/equality.md
 [cfr-32a]: https://www.ecfr.gov/current/title-12/part-249/section-249.32#p-249.32(a)
 [fr2052a-form]: https://www.federalreserve.gov/reportforms/forms/FR_2052a20220429_f.pdf

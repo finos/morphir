@@ -15,7 +15,7 @@ Combines the base price with the tier and promo multipliers to produce a final p
 
 Gross cost before any discounts.
 
-- [Multiply](../../specs/language/expressions/number.md#multiplication-operation)
+- [Multiply](../../substrate/language/expressions/number.md#multiplication-operation)
   - `base_price`
   - `quantity`
 
@@ -31,8 +31,8 @@ Gross cost before any discounts.
 
 Price after applying both the tier and promotional multipliers.
 
-- [Multiply](../../specs/language/expressions/number.md#multiplication-operation)
-  - [Multiply](../../specs/language/expressions/number.md#multiplication-operation)
+- [Multiply](../../substrate/language/expressions/number.md#multiplication-operation)
+  - [Multiply](../../substrate/language/expressions/number.md#multiplication-operation)
     - `line_total`
     - `tier_multiplier`
   - `promo_multiplier`
@@ -50,7 +50,7 @@ Price after applying both the tier and promotional multipliers.
 
 Returns [true][bool] when any discount was applied.
 
-- [Not Equal](../../specs/language/expressions/equality.md#not-equal-operation)
+- [Not Equal](../../substrate/language/expressions/equality.md#not-equal-operation)
   - `discounted_total`
   - `line_total`
 
@@ -62,4 +62,4 @@ Returns [true][bool] when any discount was applied.
 | 50                  | 50           | false          |
 | 45                  | 50           | true           |
 
-[bool]: ../../specs/language/expressions/boolean.md
+[bool]: ../../substrate/language/expressions/boolean.md

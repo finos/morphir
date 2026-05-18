@@ -12,7 +12,7 @@ Determines a discount multiplier based on the number of items purchased.
 
 Returns [true][bool] when the quantity qualifies for a bulk discount (10 or more).
 
-- [Greater Than or Equal](../../specs/language/expressions/ordering.md#greater-than-or-equal-operation)
+- [Greater Than or Equal](../../substrate/language/expressions/ordering.md#greater-than-or-equal-operation)
   - `quantity`
   - `10`
 
@@ -29,7 +29,7 @@ Returns [true][bool] when the quantity qualifies for a bulk discount (10 or more
 
 Returns `0.9` for bulk orders (a 10% discount) and `1` otherwise.
 
-- [If-Then-Else](../../specs/language/expressions/boolean.md#if-then-else-operation)
+- [If-Then-Else](../../substrate/language/expressions/boolean.md#if-then-else-operation)
   - `is_bulk_order`
   - `0.9`
   - `1`
@@ -41,4 +41,4 @@ Returns `0.9` for bulk orders (a 10% discount) and `1` otherwise.
 | true            | 0.9               |
 | false           | 1                 |
 
-[bool]: ../../specs/language/expressions/boolean.md
+[bool]: ../../substrate/language/expressions/boolean.md

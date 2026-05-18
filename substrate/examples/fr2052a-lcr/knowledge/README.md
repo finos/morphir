@@ -77,13 +77,13 @@ Start at the data schema, work up to the rule, then the calculation:
 - Cross-references to substrate concepts use reference-style link
   definitions to keep inline prose readable.
 
-[choice]: ../../specs/language/concepts/choice.md
+[choice]: ../../substrate/language/concepts/choice.md
 [cfr-32a]: https://www.ecfr.gov/current/title-12/part-249/section-249.32#p-249.32(a)
-[dt]: ../../specs/language/concepts/decision-table.md
-[ite]: ../../specs/language/expressions/boolean.md#if-then-else-operation
-[opt]: ../../specs/language/concepts/optionality.md
-[opt-default]: ../../specs/language/concepts/optionality.md#default-operation
+[dt]: ../../substrate/language/concepts/decision-table.md
+[ite]: ../../substrate/language/expressions/boolean.md#if-then-else-operation
+[opt]: ../../substrate/language/concepts/optionality.md
+[opt-default]: ../../substrate/language/concepts/optionality.md#default-operation
 [part-249]: https://www.ecfr.gov/current/title-12/part-249
-[prov]: ../../specs/language/concepts/provenance.md
-[rec]: ../../specs/language/concepts/record.md
-[str]: ../../specs/language/expressions/string.md
+[prov]: ../../substrate/language/concepts/provenance.md
+[rec]: ../../substrate/language/concepts/record.md
+[str]: ../../substrate/language/expressions/string.md

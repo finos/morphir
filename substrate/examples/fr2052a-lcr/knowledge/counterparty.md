@@ -1,4 +1,4 @@
-# Counterparty [Choice](../../specs/language/concepts/choice.md)
+# Counterparty [Choice](../../substrate/language/concepts/choice.md)
 
 The Counterparty type classifies the party on the other side of a
 position for FR 2052a reporting. The set of counterparty categories is
@@ -13,7 +13,7 @@ Broker-Dealer, Investment Company or Advisor, Financial Market Utility,
 Other Supervised Non-Bank Financial Entity, Non-Regulated Fund, and
 Internal.
 
-## [Provenance](../../specs/language/concepts/provenance.md)
+## [Provenance](../../substrate/language/concepts/provenance.md)
 
 - [FR 2052a instructions, Field Definitions — Counterparty (version 2025-02-26)][fr2052a-form]
 
@@ -45,12 +45,12 @@ Internal.
 
 ## Type Class Instances
 
-- **[Equality](../../specs/language/expressions/equality.md)** —
+- **[Equality](../../substrate/language/expressions/equality.md)** —
   inherited automatically from the [Choice][choice] concept: two values
   are equal when they name the same variant.
-- **[Ordering](../../specs/language/expressions/ordering.md)** — not
+- **[Ordering](../../substrate/language/expressions/ordering.md)** — not
   implemented. Counterparty categories have no canonical order.
 
-[choice]: ../../specs/language/concepts/choice.md
+[choice]: ../../substrate/language/concepts/choice.md
 [cfr-3]: https://www.ecfr.gov/current/title-12/part-249/section-249.3
 [fr2052a-form]: https://www.federalreserve.gov/reportforms/forms/FR_2052a20220429_f.pdf

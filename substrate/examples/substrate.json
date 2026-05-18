@@ -1,0 +1,9 @@
+{
+  "package": {
+    "name": "examples",
+    "kind": "corpus"
+  },
+  "dependencies": {
+    "AttilaMihaly/morphir": "substrate"
+  }
+}

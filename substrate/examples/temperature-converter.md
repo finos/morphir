@@ -13,8 +13,8 @@ Converts temperatures between Celsius and Fahrenheit scales.
 
 Converts a Celsius value to Fahrenheit using the formula _C × 9 / 5 + 32_.
 
-- [Add](../specs/language/expressions/number.md#addition-operation)
-  - [Multiply](../specs/language/expressions/number.md#multiplication-operation)
+- [Add](../substrate/language/expressions/number.md#addition-operation)
+  - [Multiply](../substrate/language/expressions/number.md#multiplication-operation)
     - `celsius`
     - `1.8`
   - `32`
@@ -32,8 +32,8 @@ Converts a Celsius value to Fahrenheit using the formula _C × 9 / 5 + 32_.
 
 Converts a Fahrenheit value to Celsius using the formula _(F − 32) / 1.8_.
 
-- [Divide](../specs/language/expressions/number.md#division-operation)
-  - [Subtract](../specs/language/expressions/number.md#subtraction-operation)
+- [Divide](../substrate/language/expressions/number.md#division-operation)
+  - [Subtract](../substrate/language/expressions/number.md#subtraction-operation)
     - `fahrenheit`
     - `32`
   - `1.8`
@@ -51,7 +51,7 @@ Converts a Fahrenheit value to Celsius using the formula _(F − 32) / 1.8_.
 
 Returns [true][bool] when the Celsius temperature is at or above the boiling point of water.
 
-- [Greater Than or Equal](../specs/language/expressions/ordering.md#greater-than-or-equal-operation)
+- [Greater Than or Equal](../substrate/language/expressions/ordering.md#greater-than-or-equal-operation)
   - `celsius`
   - `100`
 
@@ -68,7 +68,7 @@ Returns [true][bool] when the Celsius temperature is at or above the boiling poi
 
 Returns [true][bool] when the Celsius temperature is at or below freezing.
 
-- [Less Than or Equal](../specs/language/expressions/ordering.md#less-than-or-equal-operation)
+- [Less Than or Equal](../substrate/language/expressions/ordering.md#less-than-or-equal-operation)
   - `celsius`
   - `0`
 
@@ -81,4 +81,4 @@ Returns [true][bool] when the Celsius temperature is at or below freezing.
 | 1         | false         |
 | 100       | false         |
 
-[bool]: ../specs/language/expressions/boolean.md
+[bool]: ../substrate/language/expressions/boolean.md

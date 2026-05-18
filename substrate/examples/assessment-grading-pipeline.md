@@ -1,4 +1,4 @@
-# Assessment Grading [Pipeline](../specs/language/dataflow/pipeline.md)
+# Assessment Grading [Pipeline](../substrate/language/dataflow/pipeline.md)
 
 Routes candidate names and test scores through two transformation steps:
 the first step assigns a pass/fail status and assembles the full name;
@@ -68,15 +68,15 @@ the second step formats a one-line summary message.
 | ------------------- |
 | `"DavidLee: fail"`  |
 
-[cat]: ../specs/language/expressions/string.md#concatenate-operation
-[else]: ../specs/language/expressions/decision-tree.md#else
-[gt]: ../specs/language/expressions/ordering.md#greater-than-operation
-[if]: ../specs/language/expressions/decision-tree.md#if
-[num]: ../specs/language/expressions/number.md#literals
-[num-t]: ../specs/language/expressions/number.md
-[select]: ../specs/language/dataflow/select.md
-[str]: ../specs/language/expressions/string.md#literals
-[str-t]: ../specs/language/expressions/string.md
-[tc]: ../specs/language/concepts/test-case.md
-[then]: ../specs/language/expressions/decision-tree.md#then
-[var]: ../specs/language/expressions/README.md#variables
+[cat]: ../substrate/language/expressions/string.md#concatenate-operation
+[else]: ../substrate/language/expressions/decision-tree.md#else
+[gt]: ../substrate/language/expressions/ordering.md#greater-than-operation
+[if]: ../substrate/language/expressions/decision-tree.md#if
+[num]: ../substrate/language/expressions/number.md#literals
+[num-t]: ../substrate/language/expressions/number.md
+[select]: ../substrate/language/dataflow/select.md
+[str]: ../substrate/language/expressions/string.md#literals
+[str-t]: ../substrate/language/expressions/string.md
+[tc]: ../substrate/language/concepts/test-case.md
+[then]: ../substrate/language/expressions/decision-tree.md#then
+[var]: ../substrate/language/expressions/README.md#variables

@@ -13,7 +13,7 @@ The calculation has two steps:
    multiply by the row's `amount` to produce a per-row outflow.
 2. Sum the per-row outflows across the collection.
 
-## [Provenance](../../specs/language/concepts/provenance.md)
+## [Provenance](../../substrate/language/concepts/provenance.md)
 
 - [12 CFR §249.32(a) — Retail deposit outflow amount][cfr-32a]
 
@@ -80,9 +80,9 @@ outflows.
 | `[{ amount: 1000, Retail, insured, Transactional, Established }, { amount: 1000, Retail, insured, Non-Transactional, None }]`                                                           | 130             |
 | `[{ amount: 2500, Retail, uninsured, Transactional, Established }, { amount: 500, Small Business, insured, Non-Transactional, Established }]`                                           | 265             |
 
-[col]: ../../specs/language/expressions/collection.md
+[col]: ../../substrate/language/expressions/collection.md
 [cfr-32a]: https://www.ecfr.gov/current/title-12/part-249/section-249.32#p-249.32(a)
-[map]: ../../specs/language/expressions/collection.md#map-operation
-[mul]: ../../specs/language/expressions/number.md#multiplication-operation
+[map]: ../../substrate/language/expressions/collection.md#map-operation
+[mul]: ../../substrate/language/expressions/number.md#multiplication-operation
 [rate]: retail-outflow-rate.md
-[sum]: ../../specs/language/expressions/collection.md#sum-operation
+[sum]: ../../substrate/language/expressions/collection.md#sum-operation

@@ -11,9 +11,9 @@ An intentionally malformed document for testing CLI error reporting.
 
 ### `computed_tax`
 
-Computes tax with a [broken link to nowhere](../specs/language/expressions/nonexistent.md#fake-operation).
+Computes tax with a [broken link to nowhere](../substrate/language/expressions/nonexistent.md#fake-operation).
 
-- [Multiply](../specs/language/expressions/nonexistent.md#fake-operation)
+- [Multiply](../substrate/language/expressions/nonexistent.md#fake-operation)
   - `price`
   - `rate`
 
@@ -27,7 +27,7 @@ Computes tax with a [broken link to nowhere](../specs/language/expressions/nonex
 
 Returns [true][bool] unconditionally but the test table expects the wrong result.
 
-- [Equal](../specs/language/expressions/equality.md#equal-operation)
+- [Equal](../substrate/language/expressions/equality.md#equal-operation)
   - `price`
   - `price`
 
@@ -37,4 +37,4 @@ Returns [true][bool] unconditionally but the test table expects the wrong result
 | ------- | ------------- |
 | 42      | false         |
 
-[bool]: ../specs/language/expressions/boolean.md
+[bool]: ../substrate/language/expressions/boolean.md

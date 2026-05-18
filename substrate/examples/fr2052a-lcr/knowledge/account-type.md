@@ -1,10 +1,10 @@
-# Account Type [Choice](../../specs/language/concepts/choice.md)
+# Account Type [Choice](../../substrate/language/concepts/choice.md)
 
 The Account Type classifies whether a deposit is held in a transactional
 account. The distinction is material for LCR: transactional accounts are
 presumed to be operational and receive a lower outflow rate.
 
-## [Provenance](../../specs/language/concepts/provenance.md)
+## [Provenance](../../substrate/language/concepts/provenance.md)
 
 - [FR 2052a instructions, Product classifications for §O.D Outflows — Deposits][fr2052a-form]
 
@@ -29,9 +29,9 @@ presumed to be operational and receive a lower outflow rate.
 
 ## Type Class Instances
 
-- **[Equality](../../specs/language/expressions/equality.md)** —
+- **[Equality](../../substrate/language/expressions/equality.md)** —
   inherited automatically from the [Choice][choice] concept.
 
-[choice]: ../../specs/language/concepts/choice.md
+[choice]: ../../substrate/language/concepts/choice.md
 [cfr-3]: https://www.ecfr.gov/current/title-12/part-249/section-249.3
 [fr2052a-form]: https://www.federalreserve.gov/reportforms/forms/FR_2052a20220429_f.pdf

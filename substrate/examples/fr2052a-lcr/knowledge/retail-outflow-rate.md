@@ -1,4 +1,4 @@
-# Retail Outflow Rate [Decision Table](../../specs/language/concepts/decision-table.md)
+# Retail Outflow Rate [Decision Table](../../substrate/language/concepts/decision-table.md)
 
 The Retail Outflow Rate decision table assigns an LCR runoff rate to a
 retail deposit position based on its classification. The rates and
@@ -19,7 +19,7 @@ Retail counterparties for this rate, per [§249.32(a)(5)][cfr-32a-5].
 Non-retail counterparties fall outside §249.32(a) and are not in scope
 for this table.
 
-## [Provenance](../../specs/language/concepts/provenance.md)
+## [Provenance](../../substrate/language/concepts/provenance.md)
 
 - [12 CFR §249.32(a) — Retail deposit outflow amount][cfr-32a]
 
@@ -43,13 +43,13 @@ for this table.
 ## Inputs
 
 - `counterparty` — [Counterparty](counterparty.md)
-- `insured` — [Boolean](../../specs/language/expressions/boolean.md)
+- `insured` — [Boolean](../../substrate/language/expressions/boolean.md)
 - `account_type` — [Account Type](account-type.md)
 - `relationship` — [Relationship](relationship.md)
 
 ## Outputs
 
-- `outflow_rate` — [Decimal](../../specs/language/expressions/decimal.md)
+- `outflow_rate` — [Decimal](../../substrate/language/expressions/decimal.md)
 
 ## Rules
 

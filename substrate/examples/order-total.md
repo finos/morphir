@@ -47,7 +47,7 @@ Amount deducted from the subtotal.
 
 Cost after applying the discount.
 
-- [Subtract](../specs/language/expressions/number.md#subtraction-operation)
+- [Subtract](../substrate/language/expressions/number.md#subtraction-operation)
   - `subtotal`
   - `discount_amount`
 
@@ -81,7 +81,7 @@ Sales tax charged on the discounted subtotal.
 
 Final amount due.
 
-- [Add](../specs/language/expressions/number.md#addition-operation)
+- [Add](../substrate/language/expressions/number.md#addition-operation)
   - `discounted_subtotal`
   - `tax_amount`
 
@@ -100,7 +100,7 @@ Final amount due.
 
 Returns [true][bool] when `quantity` is at least `1`.
 
-- [Greater Than or Equal](../specs/language/expressions/ordering.md#greater-than-or-equal-operation)
+- [Greater Than or Equal](../substrate/language/expressions/ordering.md#greater-than-or-equal-operation)
   - `quantity`
   - `1`
 
@@ -117,7 +117,7 @@ Returns [true][bool] when `quantity` is at least `1`.
 
 Returns [true][bool] when `discount_rate` does not exceed `1`.
 
-- [Less Than or Equal](../specs/language/expressions/ordering.md#less-than-or-equal-operation)
+- [Less Than or Equal](../substrate/language/expressions/ordering.md#less-than-or-equal-operation)
   - `discount_rate`
   - `1`
 
@@ -134,7 +134,7 @@ Returns [true][bool] when `discount_rate` does not exceed `1`.
 
 Returns `discount_rate` when `is_valid_discount` is [true][bool], otherwise `0`.
 
-- [If-Then-Else](../specs/language/expressions/boolean.md#if-then-else-operation)
+- [If-Then-Else](../substrate/language/expressions/boolean.md#if-then-else-operation)
   - `is_valid_discount`
   - `discount_rate`
   - `0`
@@ -148,5 +148,5 @@ Returns `discount_rate` when `is_valid_discount` is [true][bool], otherwise `0`.
 | false               | 1.5             | 0                       |
 | false               | 2               | 0                       |
 
-[bool]: ../specs/language/expressions/boolean.md
-[mul]: ../specs/language/expressions/number.md#multiplication-operation
+[bool]: ../substrate/language/expressions/boolean.md
+[mul]: ../substrate/language/expressions/number.md#multiplication-operation
