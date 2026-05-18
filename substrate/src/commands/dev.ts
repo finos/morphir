@@ -81,6 +81,15 @@ export async function startDev(opts: DevOptions = {}): Promise<DevServer> {
         ws.on("close", () => clients.delete(ws));
     });
 
+    // Track raw TCP sockets so shutdown can forcibly close them; otherwise
+    // `server.close()` waits for every keep-alive / WebSocket connection
+    // to drain on its own, which means Ctrl+C appears to hang.
+    const sockets = new Set<import("node:net").Socket>();
+    server.on("connection", (socket) => {
+        sockets.add(socket);
+        socket.once("close", () => sockets.delete(socket));
+    });
+
     const broadcast = (msg: object): void => {
         const data = JSON.stringify(msg);
         for (const ws of clients) {
@@ -128,11 +137,26 @@ export async function startDev(opts: DevOptions = {}): Promise<DevServer> {
         root,
         manifestPath: located.manifestPath,
         manifest: located.manifest,
-        async close() {
-            await watcher.close();
-            wss.close();
-            await new Promise<void>((res2) => server.close(() => res2()));
-        },
+        close: (() => {
+            let closing: Promise<void> | null = null;
+            return () => {
+                if (closing) return closing;
+                closing = (async () => {
+                    await watcher.close();
+                    for (const ws of clients) {
+                        try { ws.terminate(); } catch { /* ignore */ }
+                    }
+                    clients.clear();
+                    await new Promise<void>((res2) => wss.close(() => res2()));
+                    for (const socket of sockets) {
+                        try { socket.destroy(); } catch { /* ignore */ }
+                    }
+                    sockets.clear();
+                    await new Promise<void>((res2) => server.close(() => res2()));
+                })();
+                return closing;
+            };
+        })(),
     };
 }
 

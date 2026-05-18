@@ -1,0 +1,126 @@
+.block {
+    margin: var(--space-4) 0;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    padding: var(--space-4) var(--space-5);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--ink);
+}
+
+.header {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px dashed var(--rule);
+}
+
+.tag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sm);
+    padding: 2px 6px;
+    color: var(--ink-muted);
+}
+
+.subtitle {
+    font-size: 12px;
+    color: var(--ink-subtle);
+}
+
+.keyed {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 4px 0;
+}
+
+.key {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.value {
+    min-width: 0;
+}
+
+.mapping {
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface-2);
+    position: relative;
+}
+
+.mappingWithSrc {
+    border-left: 3px solid var(--src-color);
+    background: color-mix(in srgb, var(--src-color) 6%, var(--surface-2));
+}
+
+.row {
+    margin: 2px 0;
+}
+
+.sequence {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sequenceItem {
+    position: relative;
+    padding-left: 14px;
+}
+
+.sequenceItem::before {
+    content: "▸";
+    position: absolute;
+    left: 0;
+    top: 2px;
+    color: var(--ink-subtle);
+    font-size: 10px;
+}
+
+.scalar {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ink);
+}
+
+.scalarNumber {
+    color: #b45309;
+}
+
+.scalarBool {
+    color: #15803d;
+    font-weight: 600;
+}
+
+.scalarNull {
+    color: var(--ink-subtle);
+    font-style: italic;
+}
+
+.srcBadge {
+    margin-top: var(--space-2);
+    font-size: 12px;
+    line-height: 1.4;
+    color: white;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-style: italic;
+}

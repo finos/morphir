@@ -41,6 +41,26 @@ substrate dev [--dir <path>] [--port <port>] [--host <host>]
     Directories that contain no markdown (transitively) are hidden. Entries
     whose name starts with `.`, plus `node_modules` and `dist`, are skipped.
   - **Main view:** the selected document, rendered as HTML.
+- **Client-side routing.** The active document path lives in the
+  `path` query parameter of the page URL (e.g. `/?path=specs/foo.md`).
+  Tree selections and in-document link clicks update history via
+  `pushState` — there is no full page reload — and the browser's
+  back/forward buttons restore prior documents.
+- **Link handling in rendered markdown.**
+  - **Local links** — relative (`./sibling.md`, `../other.md`) and
+    absolute paths rooted at the served package (`/substrate/<lib>/x.md`)
+    — are resolved against the current document's directory and loaded
+    in-place via the API. Absolute paths starting with `/substrate/...`
+    refer to libraries listed in `substrate.json` and vendored into the
+    `substrate/` subtree, which the dev server already serves; no
+    special-cased rewriting is needed.
+  - **External links** — anything with a URL scheme (`http:`, `https:`,
+    `mailto:`, …) or a protocol-relative `//host/…` form — open in a
+    new browser tab (`target="_blank"`, `rel="noopener noreferrer"`).
+  - Pure-fragment links (`#section`) scroll within the current document
+    without changing the active path.
+  - Modified clicks (ctrl/cmd/shift/alt, middle/right button) are left
+    to the browser's default behaviour.
 - Watches the served directory recursively. On every filesystem event the
   server pushes a notification over a WebSocket (path `/_ws`); the UI then
   re-fetches the affected document (or rebuilds the tree, for adds/removes)

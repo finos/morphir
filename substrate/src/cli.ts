@@ -348,12 +348,21 @@ program
         console.log(`  serving: ${server.root}`);
         console.log(`  url:     ${server.url}`);
         console.log(`  (press Ctrl+C to stop)`);
+        let shuttingDown = false;
         const shutdown = async () => {
-          await server.close();
-          process.exit(0);
+          if (shuttingDown) {
+            // Second Ctrl+C: bail out hard.
+            process.exit(1);
+          }
+          shuttingDown = true;
+          try {
+            await server.close();
+          } finally {
+            process.exit(0);
+          }
         };
-        process.on("SIGINT", shutdown);
-        process.on("SIGTERM", shutdown);
+        process.once("SIGINT", shutdown);
+        process.once("SIGTERM", shutdown);
       } catch (err: unknown) {
         console.error(err instanceof Error ? err.message : String(err));
         process.exitCode = 1;
