@@ -66,11 +66,11 @@ export function parseSubstrate(
             message: e.message,
             ...(e.linePos?.[0]
                 ? {
-                      position: {
-                          line: e.linePos[0].line,
-                          col: e.linePos[0].col,
-                      },
-                  }
+                    position: {
+                        line: e.linePos[0].line,
+                        col: e.linePos[0].col,
+                    },
+                }
                 : {}),
         });
     }
@@ -80,11 +80,11 @@ export function parseSubstrate(
             message: w.message,
             ...(w.linePos?.[0]
                 ? {
-                      position: {
-                          line: w.linePos[0].line,
-                          col: w.linePos[0].col,
-                      },
-                  }
+                    position: {
+                        line: w.linePos[0].line,
+                        col: w.linePos[0].col,
+                    },
+                }
                 : {}),
         });
     }
@@ -468,6 +468,16 @@ function parseMappingExpression(
     path: readonly (string | number)[],
 ): ValueExpression {
     const { src, entries } = extractSrc(w, node, path);
+
+    // Explicit 'lit: <value>' form for literals. This is optional — a plain scalar is also a literal — but it allows an author to be explicit about their intent and avoid the YAML parser's heuristics.
+    const litEntry = entries.find((e) => e.key === "lit");
+    if (litEntry) {
+        if (isScalar(litEntry.value)) {
+            return parseScalarExpression(litEntry.value, src);
+        }
+        diag(w, "error", "`lit` value must be a scalar", litEntry.value, [...path, "lit"]);
+        return nullLiteral(src);
+    }
 
     // Explicit `var: <name>` form.
     const varEntry = entries.find((e) => e.key === "var");
