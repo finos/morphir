@@ -52,8 +52,42 @@
     white-space: nowrap;
 }
 
-.status {
+.viewToggle {
     margin-left: auto;
+    display: inline-flex;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--surface-1);
+}
+
+.viewBtn {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--ink-muted);
+    font: inherit;
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    padding: 4px 12px;
+    cursor: pointer;
+}
+
+.viewBtn:hover {
+    color: var(--ink);
+}
+
+.viewBtnActive {
+    background: var(--ink);
+    color: #fff;
+}
+
+.viewBtnActive:hover {
+    color: #fff;
+}
+
+.status {
+    margin-left: var(--space-3);
     display: flex;
     align-items: center;
     gap: 8px;

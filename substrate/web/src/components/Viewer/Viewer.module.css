@@ -50,6 +50,27 @@
 .docScroll {
     overflow: auto;
     min-width: 0;
+    position: relative;
+}
+
+.floatingBreadcrumb {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    padding: 10px 16px;
+    background: linear-gradient(
+        to bottom,
+        var(--surface-1) 0%,
+        var(--surface-1) 70%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    pointer-events: none;
+}
+
+.floatingBreadcrumb > * {
+    pointer-events: auto;
 }
 
 .interpScroll {

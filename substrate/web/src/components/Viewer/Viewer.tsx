@@ -88,16 +88,9 @@ export function Viewer({
                 if (!/^\s*substrate\s*:/m.test(text)) continue;
                 try {
                     const ast = parseYaml(text);
-                    const section = document.createElement("section");
-                    section.className = styles["interpItem"] ?? "";
-                    const header = document.createElement("div");
-                    header.className = styles["interpItemHeader"] ?? "";
-                    header.textContent = `Substrate definition #${found.length + 1}`;
-                    section.appendChild(header);
                     const host = document.createElement("div");
                     host.className = "substrate-mount";
-                    section.appendChild(host);
-                    interp.appendChild(section);
+                    interp.appendChild(host);
                     pre.remove();
                     found.push({ host, ast });
                 } catch (err) {
@@ -257,15 +250,21 @@ export function Viewer({
             <section className={styles.column} aria-label="Documentation">
                 <header className={styles.columnHeader}>
                     <span className={styles.columnTitle}>Documentation</span>
-                    <TreeSelect
-                        activePath={activePath}
-                        registerCloseOnSelect={onRegisterCloseTreeDropdown}
-                    >
-                        {treeSlot}
-                    </TreeSelect>
                 </header>
                 <div className={styles.docBody}>
-                    <div className={styles.docScroll}>{docBody}</div>
+                    <div className={styles.docScroll}>
+                        <div className={styles.floatingBreadcrumb}>
+                            <TreeSelect
+                                activePath={activePath}
+                                registerCloseOnSelect={
+                                    onRegisterCloseTreeDropdown
+                                }
+                            >
+                                {treeSlot}
+                            </TreeSelect>
+                        </div>
+                        {docBody}
+                    </div>
                 </div>
             </section>
             <section className={styles.column} aria-label="Interpretation">
@@ -361,9 +360,6 @@ function renderDocBody({
     }
     return (
         <div className={styles.inner}>
-            <div className={styles.breadcrumb}>
-                {doc.path.split("/").join(" / ")}
-            </div>
             <div
                 ref={markdownRef}
                 className={styles.markdown}

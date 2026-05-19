@@ -61,17 +61,7 @@ export function SubstrateBlock({
         [refs.map((r) => `${r.id}|${r.text}`).join("\n")],
     );
 
-    return (
-        <div className={styles.block}>
-            <div className={styles.header}>
-                <span className={styles.tag}>substrate</span>
-                <span className={styles.subtitle}>
-                    executable specification
-                </span>
-            </div>
-            {content}
-        </div>
-    );
+    return <div className={styles.block}>{content}</div>;
 }
 
 const findSrc = (node: YamlNode): string | null => {

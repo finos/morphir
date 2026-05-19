@@ -1,0 +1,204 @@
+.root {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    min-height: 0;
+    min-width: 0;
+    background:
+        radial-gradient(
+            circle at 20% 10%,
+            rgba(22, 162, 220, 0.05),
+            transparent 60%
+        ),
+        var(--surface-2);
+}
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface-1);
+    font-family: var(--font-mono);
+    font-size: 12px;
+}
+
+.toolBtn {
+    border: 1px solid var(--rule);
+    background: var(--surface-1);
+    color: var(--ink);
+    border-radius: var(--radius-sm);
+    padding: 2px 10px;
+    cursor: pointer;
+    font: inherit;
+}
+.toolBtn:hover {
+    background: var(--surface-2);
+}
+
+.zoomReadout {
+    margin-left: auto;
+    color: var(--ink-subtle);
+}
+
+.viewport {
+    position: relative;
+    overflow: hidden;
+    cursor: grab;
+    user-select: none;
+}
+
+.canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+}
+
+.empty {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    color: var(--ink-muted);
+}
+
+/* Folder boxes */
+
+.folder {
+    display: inline-flex;
+    flex-direction: column;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.85);
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.04),
+        0 4px 16px rgba(15, 23, 42, 0.04);
+    padding: 12px;
+    gap: 10px;
+    vertical-align: top;
+}
+
+.folderRoot {
+    background: rgba(255, 255, 255, 0.6);
+    border-style: dashed;
+}
+
+.folderHeader {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-muted);
+}
+
+.folderIcon {
+    color: var(--brand-blue, #16a2dc);
+}
+
+.folderName {
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.folderMeta {
+    margin-left: auto;
+    color: var(--ink-subtle);
+    font-size: 10px;
+}
+
+.folderEmpty {
+    color: var(--ink-subtle);
+    font-style: italic;
+    font-size: 11px;
+    padding: 8px 4px;
+}
+
+.layers {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 56px;
+    padding: 8px 4px 4px;
+}
+
+.layer {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    justify-content: center;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+}
+
+.childSlot {
+    display: inline-flex;
+}
+
+.docCard {
+    appearance: none;
+    border: 1px solid var(--rule);
+    background: var(--surface-1);
+    color: var(--ink);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    min-width: 140px;
+    max-width: 240px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-align: left;
+    font: inherit;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    transition:
+        transform 80ms ease,
+        box-shadow 120ms ease,
+        border-color 120ms ease;
+}
+
+.docCard:hover {
+    border-color: var(--brand-blue, #16a2dc);
+    box-shadow: 0 2px 8px rgba(22, 162, 220, 0.2);
+    transform: translateY(-1px);
+}
+
+.docIcon {
+    font-family: var(--font-mono);
+    color: var(--ink-subtle);
+}
+
+.docName {
+    font-size: 13px;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.arrows {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: visible;
+}
+
+.arrow {
+    fill: none;
+    stroke: var(--ink-subtle, #8a96a3);
+    stroke-width: 1.5;
+    opacity: 0.7;
+}
+
+.arrowHead {
+    fill: var(--ink-subtle, #8a96a3);
+    opacity: 0.85;
+}

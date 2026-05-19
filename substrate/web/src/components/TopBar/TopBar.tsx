@@ -1,10 +1,13 @@
 import styles from "./TopBar.module.css";
 
 export type ConnectionState = "connecting" | "connected" | "reloading";
+export type ViewMode = "doc" | "map";
 
 export interface TopBarProps {
     readonly rootName: string;
     readonly connection: ConnectionState;
+    readonly view: ViewMode;
+    readonly onChangeView: (v: ViewMode) => void;
 }
 
 const LABEL: Record<ConnectionState, string> = {
@@ -13,7 +16,12 @@ const LABEL: Record<ConnectionState, string> = {
     reloading: "reloading",
 };
 
-export function TopBar({ rootName, connection }: TopBarProps): JSX.Element {
+export function TopBar({
+    rootName,
+    connection,
+    view,
+    onChangeView,
+}: TopBarProps): JSX.Element {
     const statusClass = `${styles.status} ${styles[connection] ?? ""}`.trim();
     return (
         <header className={styles.topbar}>
@@ -29,6 +37,38 @@ export function TopBar({ rootName, connection }: TopBarProps): JSX.Element {
                     {rootName}
                 </div>
             )}
+            <div
+                className={styles.viewToggle}
+                role="tablist"
+                aria-label="View mode"
+            >
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={view === "doc"}
+                    className={
+                        view === "doc"
+                            ? `${styles.viewBtn} ${styles.viewBtnActive}`
+                            : styles.viewBtn
+                    }
+                    onClick={() => onChangeView("doc")}
+                >
+                    Document
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={view === "map"}
+                    className={
+                        view === "map"
+                            ? `${styles.viewBtn} ${styles.viewBtnActive}`
+                            : styles.viewBtn
+                    }
+                    onClick={() => onChangeView("map")}
+                >
+                    Map
+                </button>
+            </div>
             <div className={statusClass}>
                 <span className={styles.dot} />
                 <span>{LABEL[connection]}</span>
