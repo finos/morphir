@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { TopBar, type ConnectionState } from "./components/TopBar/TopBar";
 import { Tree } from "./components/Tree/Tree";
 import { Viewer } from "./components/Viewer/Viewer";
@@ -21,30 +21,25 @@ export function App(): JSX.Element {
         readPathFromURL,
     );
     const [reloadFlash, setReloadFlash] = useState(false);
+    const closeTreeDropdownRef = useRef<(() => void) | null>(null);
 
     const { tree, refresh: refreshTree } = useTree();
     const { doc, loading, error, refresh: refreshDoc } = useDoc(activePath);
 
-    // Replace the *first* history entry with a canonical URL so back/forward
-    // works from the moment the page loads.
     useEffect(() => {
         window.history.replaceState(
             { path: activePath },
             "",
             urlForPath(activePath),
         );
-        // Run once on mount.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Push a new history entry whenever the user navigates within the SPA.
     const navigateTo = useCallback((path: string | null, hash?: string) => {
         setActivePathState((prev) => {
             const url = urlForPath(path, hash);
             const sameDoc = prev === path;
             if (sameDoc && hash) {
-                // Same document, new fragment — just update the URL hash
-                // and let the browser scroll. No new history entry.
                 window.history.replaceState({ path }, "", url);
             } else if (!sameDoc) {
                 window.history.pushState({ path }, "", url);
@@ -53,13 +48,18 @@ export function App(): JSX.Element {
         });
     }, []);
 
-    // Tree clicks should update history too.
     const handleTreeSelect = useCallback(
-        (path: string) => navigateTo(path),
+        (path: string) => {
+            navigateTo(path);
+            closeTreeDropdownRef.current?.();
+        },
         [navigateTo],
     );
 
-    // Back/forward: sync state from the URL.
+    const registerCloseTreeDropdown = useCallback((close: () => void) => {
+        closeTreeDropdownRef.current = close;
+    }, []);
+
     useEffect(() => {
         const onPop = (): void => {
             setActivePathState(readPathFromURL());
@@ -94,7 +94,6 @@ export function App(): JSX.Element {
         return () => window.clearTimeout(t);
     }, [reloadFlash]);
 
-    // After a doc loads, if the URL has a fragment, scroll to that anchor.
     useEffect(() => {
         if (!doc) return;
         const hash = window.location.hash.slice(1);
@@ -109,16 +108,20 @@ export function App(): JSX.Element {
         <div className={styles.app}>
             <TopBar rootName={tree?.name ?? ""} connection={connection} />
             <div className={styles.body}>
-                <Tree
-                    tree={tree}
-                    activePath={activePath}
-                    onSelect={handleTreeSelect}
-                />
                 <Viewer
                     doc={doc}
                     loading={loading}
                     error={error}
                     onNavigate={navigateTo}
+                    treeSlot={
+                        <Tree
+                            tree={tree}
+                            activePath={activePath}
+                            onSelect={handleTreeSelect}
+                        />
+                    }
+                    activePath={activePath}
+                    onRegisterCloseTreeDropdown={registerCloseTreeDropdown}
                 />
             </div>
         </div>

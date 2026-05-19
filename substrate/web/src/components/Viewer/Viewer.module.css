@@ -1,6 +1,79 @@
-.viewer {
-    overflow: auto;
+.column {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    min-height: 0;
+    min-width: 0;
     background: var(--surface-1);
+    border-right: 1px solid var(--rule);
+}
+
+.column:last-of-type {
+    border-right: 0;
+}
+
+.columnHeader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    height: 48px;
+    padding: 0 16px;
+    box-sizing: border-box;
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface-2);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-subtle);
+    overflow: visible;
+    position: relative;
+}
+
+.columnTitle {
+    color: var(--ink-muted);
+}
+
+.docBody {
+    display: grid;
+    grid-template-columns: 1fr;
+    min-height: 0;
+    min-width: 0;
+}
+
+.docScroll {
+    overflow: auto;
+    min-width: 0;
+}
+
+.interpScroll {
+    overflow: auto;
+    min-width: 0;
+    padding: var(--space-5) var(--space-5) var(--space-7);
+}
+
+.interpInner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.interpItem {
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    overflow: hidden;
+}
+
+.interpItemHeader {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-subtle);
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface-2);
 }
 
 .inner {
@@ -24,6 +97,7 @@
     height: 60vh;
     color: var(--ink-muted);
     text-align: center;
+    padding: var(--space-5);
 }
 
 .emptyTitle {

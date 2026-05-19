@@ -1,9 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+    type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import type { DocResponse } from "../../types";
 import { isExternalHref, resolveLocalHref } from "../../router";
 import { parseYaml, type YamlNode } from "./yaml";
 import { SubstrateBlock, type SrcRef } from "./SubstrateBlock";
+import { TreeSelect } from "./TreeSelect";
 import styles from "./Viewer.module.css";
 
 interface BlockMount {
@@ -21,6 +28,16 @@ export interface ViewerProps {
      * navigation; the host decides how to update the URL and state.
      */
     readonly onNavigate: (path: string | null, hash?: string) => void;
+    /** File tree, rendered inside the documentation header dropdown. */
+    readonly treeSlot: ReactNode;
+    /** Path of the active doc, displayed in the tree dropdown button. */
+    readonly activePath: string | null;
+    /**
+     * Lets the host close the tree dropdown after a selection. The host
+     * stores the registered closer and invokes it from its tree-select
+     * handler.
+     */
+    readonly onRegisterCloseTreeDropdown?: (close: () => void) => void;
 }
 
 export function Viewer({
@@ -28,16 +45,20 @@ export function Viewer({
     loading,
     error,
     onNavigate,
+    treeSlot,
+    activePath,
+    onRegisterCloseTreeDropdown,
 }: ViewerProps): JSX.Element {
     const markdownRef = useRef<HTMLDivElement | null>(null);
+    const interpRef = useRef<HTMLDivElement | null>(null);
     const [mounts, setMounts] = useState<readonly BlockMount[]>([]);
     const refsByBlockRef = useRef<SrcRef[][]>([]);
 
-    // After the markdown HTML is injected, decorate external anchors so
-    // they open in a new tab — we want this even if the click reaches the
-    // browser's default handler (e.g. middle-click, keyboard activation).
+    // After the markdown HTML is injected, decorate external anchors and
+    // extract substrate yaml blocks into the interpretation column.
     useEffect(() => {
         const root = markdownRef.current;
+        const interp = interpRef.current;
         if (!root || !doc) {
             setMounts([]);
             return;
@@ -50,26 +71,38 @@ export function Viewer({
             }
         }
 
-        // Find every YAML code block whose root key is `substrate` and
-        // swap the original `<pre>` for a placeholder div we'll render
-        // a React-based visualisation into via a portal.
+        // Find every YAML code block whose root key is `substrate`. Remove
+        // each from the prose entirely and append a placeholder element to
+        // the interpretation column; render React content into the
+        // placeholders via portals below.
         const found: BlockMount[] = [];
-        const codes = root.querySelectorAll<HTMLElement>(
-            "pre > code.language-yaml",
-        );
-        for (const code of Array.from(codes)) {
-            const pre = code.parentElement;
-            if (!pre) continue;
-            const text = code.textContent ?? "";
-            if (!/^\s*substrate\s*:/m.test(text)) continue;
-            try {
-                const ast = parseYaml(text);
-                const host = document.createElement("div");
-                host.className = "substrate-mount";
-                pre.replaceWith(host);
-                found.push({ host, ast });
-            } catch (err) {
-                console.warn("substrate block parse failed", err);
+        if (interp) {
+            interp.innerHTML = "";
+            const codes = root.querySelectorAll<HTMLElement>(
+                "pre > code.language-yaml",
+            );
+            for (const code of Array.from(codes)) {
+                const pre = code.parentElement;
+                if (!pre) continue;
+                const text = code.textContent ?? "";
+                if (!/^\s*substrate\s*:/m.test(text)) continue;
+                try {
+                    const ast = parseYaml(text);
+                    const section = document.createElement("section");
+                    section.className = styles["interpItem"] ?? "";
+                    const header = document.createElement("div");
+                    header.className = styles["interpItemHeader"] ?? "";
+                    header.textContent = `Substrate definition #${found.length + 1}`;
+                    section.appendChild(header);
+                    const host = document.createElement("div");
+                    host.className = "substrate-mount";
+                    section.appendChild(host);
+                    interp.appendChild(section);
+                    pre.remove();
+                    found.push({ host, ast });
+                } catch (err) {
+                    console.warn("substrate block parse failed", err);
+                }
             }
         }
         refsByBlockRef.current = found.map(() => []);
@@ -89,28 +122,38 @@ export function Viewer({
         [],
     );
 
-    // Cross-element hover linkage between viz nodes and prose marks.
-    // Listens on the markdown root (which contains both, since the
-    // substrate visualisations live inside the root via portals).
+    // Cross-element hover linkage between viz nodes (in the
+    // interpretation column) and prose marks (in the documentation
+    // column). Listens on both roots so a mouseover on either side
+    // lights up the matching span on the other.
     useEffect(() => {
-        const root = markdownRef.current;
-        if (!root) return;
+        const md = markdownRef.current;
+        const interp = interpRef.current;
+        if (!md && !interp) return;
+        const roots: HTMLElement[] = [];
+        if (md) roots.push(md);
+        if (interp) roots.push(interp);
+
         let activeId: string | null = null;
         const setActive = (id: string | null): void => {
             if (id === activeId) return;
             if (activeId) {
-                for (const el of root.querySelectorAll<HTMLElement>(
-                    `[data-src-id="${cssEscape(activeId)}"]`,
-                )) {
-                    el.classList.remove("substrate-src-active");
+                for (const r of roots) {
+                    for (const el of r.querySelectorAll<HTMLElement>(
+                        `[data-src-id="${cssEscape(activeId)}"]`,
+                    )) {
+                        el.classList.remove("substrate-src-active");
+                    }
                 }
             }
             activeId = id;
             if (id) {
-                for (const el of root.querySelectorAll<HTMLElement>(
-                    `[data-src-id="${cssEscape(id)}"]`,
-                )) {
-                    el.classList.add("substrate-src-active");
+                for (const r of roots) {
+                    for (const el of r.querySelectorAll<HTMLElement>(
+                        `[data-src-id="${cssEscape(id)}"]`,
+                    )) {
+                        el.classList.add("substrate-src-active");
+                    }
                 }
             }
         };
@@ -132,11 +175,15 @@ export function Viewer({
             }
             setActive(toHit?.dataset["srcId"] ?? null);
         };
-        root.addEventListener("mouseover", onOver);
-        root.addEventListener("mouseout", onOut);
+        for (const r of roots) {
+            r.addEventListener("mouseover", onOver);
+            r.addEventListener("mouseout", onOut);
+        }
         return () => {
-            root.removeEventListener("mouseover", onOver);
-            root.removeEventListener("mouseout", onOut);
+            for (const r of roots) {
+                r.removeEventListener("mouseover", onOver);
+                r.removeEventListener("mouseout", onOut);
+            }
             setActive(null);
         };
     }, [doc, mounts]);
@@ -148,8 +195,6 @@ export function Viewer({
             const href = anchor.getAttribute("href");
             if (!href) return;
 
-            // Let the browser handle modified clicks (new tab/window),
-            // non-primary buttons, and external links.
             if (
                 e.defaultPrevented ||
                 e.button !== 0 ||
@@ -161,8 +206,6 @@ export function Viewer({
                 return;
             }
             if (isExternalHref(href)) {
-                // The useEffect above already added target=_blank; the
-                // browser's default action will open it in a new tab.
                 return;
             }
 
@@ -173,81 +216,136 @@ export function Viewer({
         [doc, onNavigate],
     );
 
-    if (error && !doc) {
-        return (
-            <main className={styles.viewer}>
-                <div className={styles.inner}>
-                    <div className={styles.empty}>
-                        <div>
-                            <div className={styles.emptyTitle}>
-                                Couldn't load that file
-                            </div>
-                            <div>{error.message}</div>
-                        </div>
-                    </div>
-                </div>
-            </main>
-        );
-    }
-
-    if (!doc && loading) {
-        return (
-            <main className={styles.viewer}>
-                <div className={styles.inner}>
-                    <div className={styles.empty}>Loading…</div>
-                </div>
-            </main>
-        );
-    }
-
-    if (!doc) {
-        return (
-            <main className={styles.viewer}>
-                <div className={styles.inner}>
-                    <div className={styles.empty}>
-                        <div>
-                            <div className={styles.emptyTitle}>
-                                Pick a document
-                            </div>
-                            <div>
-                                Select a markdown file from the tree on the
-                                left.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
-        );
-    }
+    const docBody = renderDocBody({
+        doc,
+        loading,
+        error,
+        markdownRef,
+        onClick: handleClick,
+    });
 
     return (
-        <main className={styles.viewer}>
-            <div className={styles.inner}>
-                <div className={styles.breadcrumb}>
-                    {doc.path.split("/").join(" / ")}
+        <>
+            <section className={styles.column} aria-label="Documentation">
+                <header className={styles.columnHeader}>
+                    <span className={styles.columnTitle}>Documentation</span>
+                    <TreeSelect
+                        activePath={activePath}
+                        registerCloseOnSelect={onRegisterCloseTreeDropdown}
+                    >
+                        {treeSlot}
+                    </TreeSelect>
+                </header>
+                <div className={styles.docBody}>
+                    <div className={styles.docScroll}>{docBody}</div>
                 </div>
-                <div
-                    ref={markdownRef}
-                    className={styles.markdown}
-                    onClick={handleClick}
-                    // Markdown rendered server-side; HTML comes from the
-                    // substrate dev API. Treat the source as trusted —
-                    // this server only serves local files.
-                    dangerouslySetInnerHTML={{ __html: doc.html }}
-                />
-                {mounts.map((m, i) =>
-                    createPortal(
-                        <SubstrateBlock
-                            blockId={`b${i}`}
-                            ast={m.ast}
-                            onRefs={(refs) => onRefsForBlock(i, refs)}
-                        />,
-                        m.host,
-                        `substrate-mount-${i}`,
-                    ),
-                )}
+            </section>
+            <section className={styles.column} aria-label="Interpretation">
+                <header className={styles.columnHeader}>
+                    <span className={styles.columnTitle}>Interpretation</span>
+                </header>
+                <div className={styles.interpScroll}>
+                    <div ref={interpRef} className={styles.interpInner} />
+                    {doc && mounts.length === 0 && (
+                        <div className={styles.empty}>
+                            <div>
+                                <div className={styles.emptyTitle}>
+                                    No substrate definitions
+                                </div>
+                                <div>
+                                    This document does not contain a substrate
+                                    YAML block.
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {!doc && (
+                        <div className={styles.empty}>
+                            <div className={styles.emptyTitle}>
+                                Nothing to interpret
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </section>
+            {mounts.map((m, i) =>
+                createPortal(
+                    <SubstrateBlock
+                        blockId={`b${i}`}
+                        ast={m.ast}
+                        onRefs={(refs) => onRefsForBlock(i, refs)}
+                    />,
+                    m.host,
+                    `substrate-mount-${i}`,
+                ),
+            )}
+        </>
+    );
+}
+
+interface RenderDocBodyArgs {
+    readonly doc: DocResponse | null;
+    readonly loading: boolean;
+    readonly error: Error | null;
+    readonly markdownRef: React.MutableRefObject<HTMLDivElement | null>;
+    readonly onClick: (e: React.MouseEvent<HTMLDivElement>) => void;
+}
+
+function renderDocBody({
+    doc,
+    loading,
+    error,
+    markdownRef,
+    onClick,
+}: RenderDocBodyArgs): JSX.Element {
+    if (error && !doc) {
+        return (
+            <div className={styles.inner}>
+                <div className={styles.empty}>
+                    <div>
+                        <div className={styles.emptyTitle}>
+                            Couldn't load that file
+                        </div>
+                        <div>{error.message}</div>
+                    </div>
+                </div>
             </div>
-        </main>
+        );
+    }
+    if (!doc && loading) {
+        return (
+            <div className={styles.inner}>
+                <div className={styles.empty}>Loading…</div>
+            </div>
+        );
+    }
+    if (!doc) {
+        return (
+            <div className={styles.inner}>
+                <div className={styles.empty}>
+                    <div>
+                        <div className={styles.emptyTitle}>Pick a document</div>
+                        <div>Select a markdown file from the tree.</div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+    return (
+        <div className={styles.inner}>
+            <div className={styles.breadcrumb}>
+                {doc.path.split("/").join(" / ")}
+            </div>
+            <div
+                ref={markdownRef}
+                className={styles.markdown}
+                onClick={onClick}
+                // Markdown rendered server-side; HTML comes from the
+                // substrate dev API. Treat the source as trusted —
+                // this server only serves local files.
+                dangerouslySetInnerHTML={{ __html: doc.html }}
+            />
+        </div>
     );
 }
 
@@ -289,11 +387,6 @@ function highlightSrcReferences(
     root: HTMLElement,
     refs: readonly SrcRef[],
 ): void {
-    // Sort by length DESCENDING so the outermost phrase wraps first;
-    // shorter substrings then nest inside it. We deliberately allow
-    // wrapping inside an existing mark so that a nested viz node
-    // (whose src is a substring of a parent's src) can still light up
-    // its own piece of prose.
     const sorted = [...refs].sort((a, b) => b.text.length - a.text.length);
     const nodes = root.querySelectorAll<HTMLElement>(PROSE_SELECTOR);
     for (const node of Array.from(nodes)) {
@@ -304,13 +397,6 @@ function highlightSrcReferences(
     decorateSectionCoverageIndicators(root);
 }
 
-/**
- * After all marks have been placed, drop a coverage badge on every
- * section heading. Each section's coverage rolls up its descendant
- * sections (i.e. an h2 includes every h3/h4/… that follows it until
- * the next h1/h2). Hovering the badge tints every linked span inside
- * the section grey.
- */
 function decorateSectionCoverageIndicators(root: HTMLElement): void {
     const headings = Array.from(
         root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6"),
@@ -336,8 +422,6 @@ function decorateSectionCoverageIndicators(root: HTMLElement): void {
             for (const mark of Array.from(
                 el.querySelectorAll<HTMLElement>("mark[data-substrate-src]"),
             )) {
-                // Use the immediate text length only — nested marks would
-                // otherwise be counted twice via their parent mark.
                 for (const child of Array.from(mark.childNodes)) {
                     if (child.nodeType === Node.TEXT_NODE) {
                         covered += (child as Text).data.length;
@@ -379,8 +463,6 @@ function highlightInElement(node: HTMLElement, ref: SrcRef): void {
     for (const t of textNodes) {
         const parent = t.parentElement;
         if (!parent) continue;
-        // Skip only when the immediate parent is a mark for this same
-        // ref — otherwise we'd wrap the same span twice for one ref.
         if (
             parent instanceof HTMLElement &&
             parent.tagName === "MARK" &&
