@@ -9,12 +9,6 @@ Substrate markdown documents become executable when each meaningful
 section carries a fenced `substrate:` YAML block describing its types
 and values. This file tells you how to produce those blocks from prose.
 
-The canonical example is
-`examples/trade-auto-approval-risk-logic/original.md`. The AST spec is
-`specs/language/interpretation-ast.md`. The authoritative grammar is
-the parser at `web/src/substrate/parse.ts` and the type definitions at
-`web/src/substrate/ast.ts`.
-
 ## When to add YAML
 
 Add a `substrate:` YAML block to a markdown section when the prose
@@ -114,9 +108,88 @@ matching `^[A-Za-z_][A-Za-z0-9_-]*$`. Pick names that mirror the prose
 - Using operators outside the closed set.
 - Omitting `src:` because "the structure is obvious".
 
+## Canonical example
+
+The following short document exercises every construct in one piece —
+a `one-of` type, a `match` over its variants, nested `if` / operator
+expressions, numeric literals, variable references, and `src:` anchors
+at every level.
+
+````markdown
+# Trade Auto-Approval Risk Logic
+
+## Overview
+
+We need to build some basic logic for auto-approving trades based on
+the type of asset being traded. For now, we're dealing with equities,
+bonds, and derivatives. Each type has a different risk profile, so the
+approval logic should reflect that. Equities should be auto-approved
+if their risk score is under 0.5. Bonds are more conservative, so only
+auto-approve if the risk score is under 0.3. For derivatives, we want
+to auto-approve only if the notional is under one million and the
+leverage is less than 2.
+
+```yaml
+substrate:
+  types:
+    asset:
+      one-of:
+        - tag: equity
+          src: "equities"
+        - tag: bond
+          src: "bonds"
+        - tag: derivative
+          src: "derivatives"
+      src: "type of asset"
+  values:
+    auto-approve:
+      match:
+        on: asset
+        cases:
+          - when: equity
+            then:
+              - if:
+                  less-than:
+                    - risk_score
+                    - 0.5
+                  src: "risk score is under 0.5."
+                then: true
+                else: false
+            src: "Equities should be auto-approved if their risk score is under 0.5."
+          - when: bond
+            then:
+              - if:
+                  less-than:
+                    - risk_score
+                    - 0.3
+                  src: "risk score is under 0.3."
+                then: true
+                else: false
+            src: "Bonds are more conservative, so only auto-approve if the risk score is under 0.3."
+          - when: derivative
+            then:
+              - if:
+                  all-of:
+                    - less-than:
+                      - notional
+                      - 1,000,000
+                    - less-than:
+                      - leverage
+                      - 2
+                  src: "notional is under one million and the leverage is less than 2"
+                then: true
+                else: false
+            src: "For derivatives, we want to auto-approve only if the notional is under one million and the leverage is less than 2."
+        src: "Each type has a different risk profile"
+```
+````
+
+Notice how every variant, every comparison, and every case carries its
+own `src:` quoting the exact phrase from the prose above.
+
 ## Validating
 
-`npm run dev:web` boots the interpretation view; the diagnostics panel
-flags structural problems. The parser never throws — a broken block
-degrades gracefully — but resolve every diagnostic before declaring the
-file done.
+The `substrate dev` command boots the interpretation view; its
+diagnostics panel flags structural problems. The parser never throws —
+a broken block degrades gracefully — but resolve every diagnostic
+before declaring the file done.
