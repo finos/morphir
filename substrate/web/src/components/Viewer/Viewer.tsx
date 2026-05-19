@@ -301,50 +301,69 @@ function highlightSrcReferences(
             highlightInElement(node, ref);
         }
     }
-    for (const node of Array.from(nodes)) {
-        decorateCoverageIndicator(node);
-    }
+    decorateSectionCoverageIndicators(root);
 }
 
 /**
- * After all marks have been placed, drop a small badge in the
- * top-right of every prose block showing how much of its text is
- * linked to the visualisation. Hovering the badge tints every linked
- * span inside the block grey.
+ * After all marks have been placed, drop a coverage badge on every
+ * section heading. Each section's coverage rolls up its descendant
+ * sections (i.e. an h2 includes every h3/h4/… that follows it until
+ * the next h1/h2). Hovering the badge tints every linked span inside
+ * the section grey.
  */
-function decorateCoverageIndicator(node: HTMLElement): void {
-    const total = (node.textContent ?? "").length;
-    if (total === 0) return;
-    let covered = 0;
-    for (const mark of Array.from(
-        node.querySelectorAll<HTMLElement>("mark[data-substrate-src]"),
-    )) {
-        // Use the immediate text length only — nested marks would
-        // otherwise be counted twice via their parent mark.
-        let len = 0;
-        for (const child of Array.from(mark.childNodes)) {
-            if (child.nodeType === Node.TEXT_NODE) {
-                len += (child as Text).data.length;
+function decorateSectionCoverageIndicators(root: HTMLElement): void {
+    const headings = Array.from(
+        root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6"),
+    );
+    for (const heading of headings) {
+        const level = Number(heading.tagName.substring(1));
+        const sectionEls: HTMLElement[] = [];
+        let sibling = heading.nextElementSibling as HTMLElement | null;
+        while (sibling) {
+            const tag = sibling.tagName;
+            if (/^H[1-6]$/.test(tag)) {
+                const siblingLevel = Number(tag.substring(1));
+                if (siblingLevel <= level) break;
+            }
+            sectionEls.push(sibling);
+            sibling = sibling.nextElementSibling as HTMLElement | null;
+        }
+
+        let total = 0;
+        let covered = 0;
+        for (const el of sectionEls) {
+            total += (el.textContent ?? "").length;
+            for (const mark of Array.from(
+                el.querySelectorAll<HTMLElement>("mark[data-substrate-src]"),
+            )) {
+                // Use the immediate text length only — nested marks would
+                // otherwise be counted twice via their parent mark.
+                for (const child of Array.from(mark.childNodes)) {
+                    if (child.nodeType === Node.TEXT_NODE) {
+                        covered += (child as Text).data.length;
+                    }
+                }
             }
         }
-        covered += len;
-    }
-    if (covered === 0) return;
-    const pct = Math.min(100, Math.round((covered / total) * 100));
+        if (total === 0) continue;
+        const pct = Math.min(100, Math.round((covered / total) * 100));
 
-    const badge = document.createElement("span");
-    badge.className = "substrate-coverage-indicator";
-    badge.textContent = `${pct}%`;
-    badge.title = `${pct}% of this paragraph is linked to the visualisation`;
-    badge.setAttribute("aria-hidden", "true");
-    badge.addEventListener("mouseenter", () => {
-        node.classList.add("substrate-coverage-active");
-    });
-    badge.addEventListener("mouseleave", () => {
-        node.classList.remove("substrate-coverage-active");
-    });
-    node.classList.add("substrate-coverage-host");
-    node.appendChild(badge);
+        const badge = document.createElement("span");
+        badge.className = "substrate-coverage-indicator";
+        badge.textContent = `${pct}%`;
+        badge.title = `${pct}% of this section is linked to the visualisation`;
+        badge.setAttribute("aria-hidden", "true");
+        const setActive = (on: boolean): void => {
+            heading.classList.toggle("substrate-coverage-active", on);
+            for (const el of sectionEls) {
+                el.classList.toggle("substrate-coverage-active", on);
+            }
+        };
+        badge.addEventListener("mouseenter", () => setActive(true));
+        badge.addEventListener("mouseleave", () => setActive(false));
+        heading.classList.add("substrate-coverage-host");
+        heading.appendChild(badge);
+    }
 }
 
 function highlightInElement(node: HTMLElement, ref: SrcRef): void {
