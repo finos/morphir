@@ -19,7 +19,10 @@ export function TopBar({ rootName, connection }: TopBarProps): JSX.Element {
         <header className={styles.topbar}>
             <div className={styles.brand}>
                 <img src="/logo.svg" alt="" />
-                <span>Substrate</span>
+                <div className={styles.wordmark}>
+                    <div className={styles.parentProjectName}>Morphir</div>
+                    <div className={styles.projectName}>Substrate</div>
+                </div>
             </div>
             {rootName && (
                 <div className={styles.rootPath} title={rootName}>
