@@ -8,14 +8,15 @@ import {
 import { createPortal } from "react-dom";
 import type { DocResponse } from "../../types";
 import { isExternalHref, resolveLocalHref } from "../../router";
-import { parseYaml, type YamlNode } from "./yaml";
+import { parseSubstrate } from "../../substrate/parse";
+import type { ParseResult } from "../../substrate/ast";
 import { SubstrateBlock, type SrcRef } from "./SubstrateBlock";
 import { TreeSelect } from "./TreeSelect";
 import styles from "./Viewer.module.css";
 
 interface BlockMount {
     readonly host: HTMLElement;
-    readonly ast: YamlNode;
+    readonly result: ParseResult;
 }
 
 export interface ViewerProps {
@@ -81,21 +82,22 @@ export function Viewer({
             const codes = root.querySelectorAll<HTMLElement>(
                 "pre > code.language-yaml",
             );
+            const filePath = doc.path ?? "";
             for (const code of Array.from(codes)) {
                 const pre = code.parentElement;
                 if (!pre) continue;
                 const text = code.textContent ?? "";
                 if (!/^\s*substrate\s*:/m.test(text)) continue;
-                try {
-                    const ast = parseYaml(text);
-                    const host = document.createElement("div");
-                    host.className = "substrate-mount";
-                    interp.appendChild(host);
-                    pre.remove();
-                    found.push({ host, ast });
-                } catch (err) {
-                    console.warn("substrate block parse failed", err);
-                }
+                const sectionId = nearestSectionId(pre);
+                const result = parseSubstrate(text, {
+                    file: filePath,
+                    sectionId,
+                });
+                const host = document.createElement("div");
+                host.className = "substrate-mount";
+                interp.appendChild(host);
+                pre.remove();
+                found.push({ host, result });
             }
         }
         refsByBlockRef.current = found.map(() => []);
@@ -299,7 +301,7 @@ export function Viewer({
                 createPortal(
                     <SubstrateBlock
                         blockId={`b${i}`}
-                        ast={m.ast}
+                        result={m.result}
                         onRefs={(refs) => onRefsForBlock(i, refs)}
                     />,
                     m.host,
@@ -371,6 +373,24 @@ function renderDocBody({
             />
         </div>
     );
+}
+
+function nearestSectionId(el: Element): string {
+    // Walk backwards through previous siblings, then up through
+    // ancestors, looking for the most recent heading with an `id` (set
+    // by the markdown renderer's slug pipeline).
+    let cursor: Element | null = el;
+    while (cursor) {
+        let prev = cursor.previousElementSibling;
+        while (prev) {
+            if (/^H[1-6]$/.test(prev.tagName) && prev.id) return prev.id;
+            const inner = prev.querySelector("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]");
+            if (inner && inner.id) return inner.id;
+            prev = prev.previousElementSibling;
+        }
+        cursor = cursor.parentElement;
+    }
+    return "";
 }
 
 function cssEscape(value: string): string {

@@ -17,7 +17,7 @@ substrate:
           src: "derivatives"
         - tag: crypto
           src: "crypto"
-        src: "type of asset"
+      src: "type of asset"
   values:
     auto-approve:
       match:
@@ -47,12 +47,13 @@ substrate:
             then:
               - if:
                   all-of:
-                    less-than:
+                    - less-than:
                       - notional
                       - 1,000,000
-                    less-than:
+                    - less-than:
                       - leverage
                       - 2
+                  src: "notional is under one million and the leverage is less than 2"    
                 then: true
                 else: false      
             src: "For derivatives, we want to auto-approve only if the notional is under one million and the leverage is less than 2."

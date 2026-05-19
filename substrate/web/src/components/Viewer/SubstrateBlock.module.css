@@ -106,3 +106,34 @@
     font-style: italic;
 }
 
+.variable {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--accent, #1d4ed8);
+    font-style: italic;
+}
+
+.apply {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ink);
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px;
+}
+
+.op {
+    color: var(--ink-muted);
+    font-weight: 600;
+}
+
+.paramList {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-subtle);
+    margin-left: 4px;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
