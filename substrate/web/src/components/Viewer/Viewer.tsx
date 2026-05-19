@@ -175,14 +175,42 @@ export function Viewer({
             }
             setActive(toHit?.dataset["srcId"] ?? null);
         };
+        // Click a linked span on one side → scroll the matching span on
+        // the other side into view. Picks the first match if many.
+        const onClick = (e: Event): void => {
+            const t = e.target as HTMLElement | null;
+            if (!t) return;
+            // Don't hijack clicks on anchors — link navigation wins.
+            if (t.closest("a")) return;
+            const hit = t.closest<HTMLElement>("[data-src-id]");
+            if (!hit) return;
+            const id = hit.dataset["srcId"];
+            if (!id) return;
+            for (const r of roots) {
+                if (r.contains(hit)) continue;
+                const target = r.querySelector<HTMLElement>(
+                    `[data-src-id="${cssEscape(id)}"]`,
+                );
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                    });
+                    break;
+                }
+            }
+        };
+
         for (const r of roots) {
             r.addEventListener("mouseover", onOver);
             r.addEventListener("mouseout", onOut);
+            r.addEventListener("click", onClick);
         }
         return () => {
             for (const r of roots) {
                 r.removeEventListener("mouseover", onOver);
                 r.removeEventListener("mouseout", onOut);
+                r.removeEventListener("click", onClick);
             }
             setActive(null);
         };
