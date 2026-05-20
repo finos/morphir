@@ -32,6 +32,12 @@ import { context } from "./commands/context.js";
 import { statsFile, statsStdin, formatStats } from "./commands/stats.js";
 import { rename as refactorRename } from "./commands/refactor.js";
 import { startDev } from "./commands/dev.js";
+import {
+    writeInterpretation,
+    readStdin,
+    formatDiagnostic,
+    WriteInterpretationError,
+} from "./commands/write.js";
 
 const program = new Command();
 
@@ -369,5 +375,52 @@ program
       }
     },
   );
+
+const write = program
+  .command("write")
+  .description("Write substrate constructs into existing markdown documents.");
+
+write
+  .command("interpretation <file> <anchor>")
+  .description(
+    "Read substrate YAML from stdin and embed it into <file> under the section " +
+      "identified by <anchor> (the heading slug, with or without leading '#'). " +
+      "Replaces any existing substrate fenced block in that section, or appends " +
+      "a new one if none is present. The YAML is validated through the same " +
+      "parser the dev UI uses; parse errors abort the write. A fresh " +
+      "`last-interpreted-at` timestamp is stamped into the YAML (overwriting any " +
+      "supplied value) and the file's mtime is aligned with it so the dev " +
+      "viewer's freshness check matches.",
+  )
+  .action(async (file: string, anchor: string) => {
+    try {
+      const yaml = await readStdin();
+      if (yaml.trim().length === 0) {
+        throw new WriteInterpretationError("no YAML received on stdin");
+      }
+      const result = await writeInterpretation(process.cwd(), {
+        file,
+        anchor,
+        yaml,
+      });
+      for (const d of result.diagnostics) {
+        console.error(formatDiagnostic(d));
+      }
+      console.log(
+        `✓ ${result.action} substrate block in ${result.file}#${result.anchor} ` +
+          `(last-interpreted-at ${result.timestamp.toISOString()})`,
+      );
+    } catch (err: unknown) {
+      if (err instanceof WriteInterpretationError) {
+        console.error(err.message);
+        for (const d of err.diagnostics) {
+          console.error(formatDiagnostic(d));
+        }
+      } else {
+        console.error(err instanceof Error ? err.message : String(err));
+      }
+      process.exitCode = 1;
+    }
+  });
 
 program.parse(process.argv);

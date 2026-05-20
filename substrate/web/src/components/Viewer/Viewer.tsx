@@ -8,8 +8,8 @@ import {
 import { createPortal } from "react-dom";
 import type { DocResponse } from "../../types";
 import { isExternalHref, resolveLocalHref } from "../../router";
-import { parseSubstrate } from "../../substrate/parse";
-import type { ParseResult } from "../../substrate/ast";
+import { parseSubstrate } from "../../../../src/substrate/parse";
+import type { ParseResult } from "../../../../src/substrate/ast";
 import { SubstrateBlock, type SrcRef } from "./SubstrateBlock";
 import { TreeSelect } from "./TreeSelect";
 import styles from "./Viewer.module.css";
@@ -303,6 +303,7 @@ export function Viewer({
                         blockId={`b${i}`}
                         result={m.result}
                         onRefs={(refs) => onRefsForBlock(i, refs)}
+                        docLastModified={doc?.lastModified}
                     />,
                     m.host,
                     `substrate-mount-${i}`,

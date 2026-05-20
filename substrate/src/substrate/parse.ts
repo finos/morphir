@@ -38,8 +38,8 @@ import type {
     ValueExpression,
     Variable,
     Variant,
-} from "./ast";
-import { BINARY_OPS, NARY_OPS, UNARY_OPS } from "./ast";
+} from "./ast.js";
+import { BINARY_OPS, NARY_OPS, UNARY_OPS } from "./ast.js";
 
 // --- Public API ----------------------------------------------------------
 
@@ -233,8 +233,14 @@ function parseModule(
     const { src, entries } = extractSrc(w, node, path);
     const types = new Map<string, TypeDefinition>();
     const values = new Map<string, ValueDefinition>();
+    let lastInterpretedAt: Date | undefined;
 
     for (const { key, value } of entries) {
+        if (key === "last-interpreted-at") {
+            const parsed = parseLastInterpretedAt(w, value, [...path, key]);
+            if (parsed) lastInterpretedAt = parsed;
+            continue;
+        }
         if (key === "types") {
             if (!isMap(value)) {
                 diag(w, "error", "`types` must be a mapping", value, [...path, "types"]);
@@ -276,7 +282,35 @@ function parseModule(
         }
     }
 
-    return { types, values, src };
+    return lastInterpretedAt
+        ? { types, values, src, lastInterpretedAt }
+        : { types, values, src };
+}
+
+function parseLastInterpretedAt(
+    w: Walker,
+    node: Node | null | undefined,
+    path: readonly (string | number)[],
+): Date | undefined {
+    if (!node) return undefined;
+    if (!isScalar(node)) {
+        diag(w, "error", "`last-interpreted-at` must be a timestamp string", node, path);
+        return undefined;
+    }
+    const raw = node.value;
+    if (raw instanceof Date) {
+        return Number.isNaN(raw.getTime()) ? undefined : raw;
+    }
+    if (typeof raw !== "string" || raw.trim().length === 0) {
+        diag(w, "error", "`last-interpreted-at` must be a timestamp string", node, path);
+        return undefined;
+    }
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) {
+        diag(w, "error", `\`last-interpreted-at\` is not a valid timestamp: '${raw}'`, node, path);
+        return undefined;
+    }
+    return d;
 }
 
 // --- Types ---------------------------------------------------------------

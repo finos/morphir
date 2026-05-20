@@ -21,6 +21,13 @@ export interface DocResponse {
     readonly html: string;
     /** Raw markdown source (handy for future features). */
     readonly raw: string;
+    /**
+     * ISO-8601 timestamp of the file's last on-disk modification.
+     * Compared against `last-interpreted-at` in each substrate block to
+     * flag the interpretation as outdated when the prose has changed
+     * since the last review.
+     */
+    readonly lastModified: string;
 }
 
 export type WsEventType =

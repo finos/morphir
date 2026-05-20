@@ -24,5 +24,5 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
   },
-  "include": ["src", "src/**/*.css.d.ts", "vite-env.d.ts"]
+  "include": ["src", "src/**/*.css.d.ts", "vite-env.d.ts", "../src/substrate"]
 }

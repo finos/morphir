@@ -82,8 +82,10 @@ substrate dev [--dir <path>] [--port <port>] [--host <host>]
 The dev server exposes a small JSON API consumed by the bundled UI:
 
 - `GET /api/tree` → `{ name, path, type: "dir", children: TreeNode[] }`
-- `GET /api/doc?path=<relative>` → `{ path, raw, html }` where `html` is the
-  rendered markdown.
+- `GET /api/doc?path=<relative>` → `{ path, raw, html, lastModified }`
+  where `html` is the rendered markdown and `lastModified` is the file's
+  on-disk mtime as an ISO-8601 string (used by the viewer to flag stale
+  `last-interpreted-at` interpretations).
 - `GET /_ws` → WebSocket; messages are `{ type, path }` where `type` is one of
   `add`, `change`, `unlink`, `addDir`, `unlinkDir` and `path` is relative to
   the served root.

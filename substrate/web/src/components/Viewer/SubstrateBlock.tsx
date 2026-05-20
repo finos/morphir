@@ -16,8 +16,8 @@ import type {
     SourceLocation,
     ValueDefinition,
     ValueExpression,
-} from "../../substrate/ast";
-import { BINARY_OPS, NARY_OPS, UNARY_OPS } from "../../substrate/ast";
+} from "../../../../src/substrate/ast";
+import { BINARY_OPS, NARY_OPS, UNARY_OPS } from "../../../../src/substrate/ast";
 import { DecisionTree, type DecisionTreeNode } from "./DecisionTree";
 import { DecisionTable, type DecisionTableRow } from "./DecisionTable";
 import { TypeDiagram, type TypeVariant } from "./TypeDiagram";
@@ -60,12 +60,15 @@ export interface SubstrateBlockProps {
     readonly blockId: string;
     readonly result: ParseResult;
     readonly onRefs?: (refs: readonly SrcRef[]) => void;
+    /** ISO-8601 timestamp of the source markdown's last modification. */
+    readonly docLastModified?: string | undefined;
 }
 
 export function SubstrateBlock({
     blockId,
     result,
     onRefs,
+    docLastModified,
 }: SubstrateBlockProps): JSX.Element {
     const { content, refs } = useMemo(() => {
         const ctx: CollectCtx = { blockId, refs: [] };
@@ -82,9 +85,53 @@ export function SubstrateBlock({
     return (
         <div className={styles.block}>
             <Diagnostics diagnostics={result.diagnostics} />
+            <StalenessIndicator
+                module={result.module}
+                docLastModified={docLastModified}
+            />
             {content}
         </div>
     );
+}
+
+function StalenessIndicator({
+    module,
+    docLastModified,
+}: {
+    readonly module: Module | undefined;
+    readonly docLastModified: string | undefined;
+}): JSX.Element | null {
+    if (!module) return null;
+    const reviewed = module.lastInterpretedAt;
+    if (!reviewed) return null;
+    const docMtime = docLastModified ? new Date(docLastModified) : null;
+    const outdated = docMtime != null && docMtime.getTime() > reviewed.getTime();
+    return (
+        <div className={styles.staleness}>
+            <span
+                className={
+                    outdated ? styles.stalenessBadge : styles.stalenessFresh
+                }
+            >
+                {outdated ? "Outdated" : "Up to date"}
+            </span>
+            <span className={outdated ? styles.stalenessOutdated : undefined}>
+                {outdated
+                    ? `Markdown edited ${formatTs(docMtime!)} — last reviewed ${formatTs(reviewed)}`
+                    : `Last reviewed ${formatTs(reviewed)}`}
+            </span>
+        </div>
+    );
+}
+
+function formatTs(d: Date): string {
+    return d.toLocaleString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
 }
 
 // --- Module --------------------------------------------------------------

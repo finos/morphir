@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import type { ParseDiagnostic } from "../../substrate/ast";
+import type { ParseDiagnostic } from "../../../../src/substrate/ast";
 import styles from "./Diagnostics.module.css";
 
 export interface DiagnosticsProps {

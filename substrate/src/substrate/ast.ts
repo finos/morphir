@@ -18,6 +18,13 @@ export interface Module {
     readonly types: ReadonlyMap<string, TypeDefinition>;
     readonly values: ReadonlyMap<string, ValueDefinition>;
     readonly src: readonly SourceLocation[];
+    /**
+     * Timestamp at which the interpretation (pros + descriptions) was
+     * last reviewed against the prose. Compared against the markdown
+     * file's mtime to flag the interpretation as outdated when the
+     * prose has been edited since this review.
+     */
+    readonly lastInterpretedAt?: Date;
 }
 
 // --- Types ---------------------------------------------------------------

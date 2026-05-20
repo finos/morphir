@@ -185,12 +185,16 @@ async function handle(
         const safe = safeJoin(ctx.root, rel);
         if (!safe) return send(res, 400, "Bad path");
         try {
-            const raw = await readFile(safe, "utf8");
+            const [raw, st] = await Promise.all([
+                readFile(safe, "utf8"),
+                stat(safe),
+            ]);
             const html = marked.parse(raw, { async: false }) as string;
             return sendJSON(res, {
                 path: rel,
                 html,
                 raw,
+                lastModified: st.mtime.toISOString(),
             });
         } catch {
             return send(res, 404, "Not found");

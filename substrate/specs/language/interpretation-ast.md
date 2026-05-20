@@ -7,8 +7,10 @@ the prose and structured `substrate:` YAML blocks, and that the viewer
 renders as a side-by-side visualisation.
 
 This document describes the AST. The parser that turns the authored
-YAML into AST lives in `web/src/substrate/parse.ts`; the type
-definitions are in `web/src/substrate/ast.ts`.
+YAML into AST lives in `src/substrate/parse.ts`; the type definitions
+are in `src/substrate/ast.ts`. Both files are imported by the Vite SPA
+under `web/` and by the CLI (notably `substrate write interpretation`),
+so authoring and rendering go through one parser.
 
 ## Module
 
@@ -17,7 +19,30 @@ A `Module` is the entry point. It has two maps from name to definition:
 - `types: Map<string, TypeDefinition>` — type definitions keyed by name.
 - `values: Map<string, ValueDefinition>` — value definitions keyed by name.
 
-A module also carries its own list of source locations (see below).
+A module also carries its own list of source locations (see below), and
+an optional `lastInterpretedAt: Date` recording when the interpretation
+was last reviewed against the prose.
+
+## Freshness: `last-interpreted-at`
+
+The module mapping may carry a `last-interpreted-at` key immediately
+under `substrate:`. Its value is an ISO-8601 timestamp (parsed via
+`new Date(...)`) recording when an author or LLM last reconciled the
+interpretation with the surrounding prose and section descriptions.
+
+```yaml
+substrate:
+  last-interpreted-at: "2026-05-18T10:30:00Z"
+  types: ...
+  values: ...
+```
+
+The dev viewer compares this timestamp against the markdown file's
+last-modified mtime: if the markdown was edited after the recorded
+review timestamp, the interpretation is flagged as **Outdated** in the
+UI. Both timestamps are compared at full resolution, not just date.
+
+When the key is absent, the viewer makes no claim about freshness.
 
 ## Source locations
 

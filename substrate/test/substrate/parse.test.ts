@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseSubstrate } from "../../web/src/substrate/parse";
+import { parseSubstrate } from "../../src/substrate/parse";
 import type {
     Apply,
     IfExpr,
@@ -8,7 +8,7 @@ import type {
     OneOfType,
     ValueDefinition,
     ValueExpression,
-} from "../../web/src/substrate/ast";
+} from "../../src/substrate/ast";
 
 const CTX = { file: "spec.md", sectionId: "overview" };
 
@@ -47,6 +47,34 @@ describe("parseSubstrate — module shape", () => {
         const r = parse("substrate: 7\n");
         expect(r.module).toBeUndefined();
         expect(r.diagnostics[0]?.severity).toBe("error");
+    });
+
+    it("parses `last-interpreted-at` as a Date", () => {
+        const r = parse(`
+substrate:
+  last-interpreted-at: "2026-05-18T10:30:00Z"
+`);
+        expect(r.module?.lastInterpretedAt).toBeInstanceOf(Date);
+        expect(r.module?.lastInterpretedAt?.toISOString()).toBe(
+            "2026-05-18T10:30:00.000Z",
+        );
+    });
+
+    it("emits an error for an invalid `last-interpreted-at`", () => {
+        const r = parse(`
+substrate:
+  last-interpreted-at: "not a date"
+`);
+        expect(r.module?.lastInterpretedAt).toBeUndefined();
+        expect(
+            r.diagnostics.some(
+                (d) =>
+                    (d as { severity: string }).severity === "error" &&
+                    (d as { message: string }).message.includes(
+                        "last-interpreted-at",
+                    ),
+            ),
+        ).toBe(true);
     });
 });
 
