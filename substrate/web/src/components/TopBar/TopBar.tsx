@@ -1,7 +1,7 @@
 import styles from "./TopBar.module.css";
 
 export type ConnectionState = "connecting" | "connected" | "reloading";
-export type ViewMode = "doc" | "map";
+export type ViewMode = "doc" | "map" | "ir";
 
 export interface TopBarProps {
     readonly rootName: string;
@@ -67,6 +67,19 @@ export function TopBar({
                     onClick={() => onChangeView("map")}
                 >
                     Map
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={view === "ir"}
+                    className={
+                        view === "ir"
+                            ? `${styles.viewBtn} ${styles.viewBtnActive}`
+                            : styles.viewBtn
+                    }
+                    onClick={() => onChangeView("ir")}
+                >
+                    IR
                 </button>
             </div>
             <div className={statusClass}>

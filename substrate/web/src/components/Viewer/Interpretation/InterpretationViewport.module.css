@@ -1,0 +1,76 @@
+.shell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--surface-2);
+}
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface-1);
+    z-index: 1;
+}
+
+.toolBtn {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1;
+    padding: 4px 8px;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sm);
+    background: var(--surface-1);
+    color: var(--ink);
+    cursor: pointer;
+}
+
+.toolBtn:hover {
+    background: var(--surface-2);
+}
+
+.zoomReadout {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-subtle);
+}
+
+.viewport {
+    flex: 1 1 auto;
+    position: relative;
+    overflow: hidden;
+    cursor: grab;
+    outline: none;
+    background:
+        radial-gradient(
+            circle,
+            rgba(0, 0, 0, 0.06) 1px,
+            transparent 1px
+        );
+    background-size: 24px 24px;
+    background-position: 0 0;
+}
+
+.canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 8px;
+}
+
+.canvasAnim {
+    transition: transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}

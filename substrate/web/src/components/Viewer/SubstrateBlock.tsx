@@ -22,6 +22,10 @@ import { DecisionTree, type DecisionTreeNode } from "./DecisionTree";
 import { DecisionTable, type DecisionTableRow } from "./DecisionTable";
 import { TypeDiagram, type TypeVariant } from "./TypeDiagram";
 import { Diagnostics } from "./Diagnostics";
+import {
+    InterpretationViewport,
+    NodeSlot,
+} from "./Interpretation";
 import styles from "./SubstrateBlock.module.css";
 
 export interface SrcRef {
@@ -89,7 +93,9 @@ export function SubstrateBlock({
                 module={result.module}
                 docLastModified={docLastModified}
             />
-            {content}
+            {content && (
+                <InterpretationViewport>{content}</InterpretationViewport>
+            )}
         </div>
     );
 }
@@ -171,11 +177,13 @@ function renderTypeDefinition(
         };
     });
     return (
-        <TypeDiagram
-            parentName={name}
-            {...(parentSrcId !== undefined ? { parentSrcId } : {})}
-            variants={variants}
-        />
+        <NodeSlot kind="type-diagram" label={name}>
+            <TypeDiagram
+                parentName={name}
+                {...(parentSrcId !== undefined ? { parentSrcId } : {})}
+                variants={variants}
+            />
+        </NodeSlot>
     );
 }
 
@@ -282,7 +290,11 @@ function renderIf(expr: IfExpr, ctx: CollectCtx): JSX.Element {
         thenBranch: exprToTree(expr.then, ctx),
         elseBranch: exprToTree(expr.else, ctx),
     };
-    return <DecisionTree node={tree} />;
+    return (
+        <NodeSlot kind="decision-tree" label="decision tree">
+            <DecisionTree node={tree} />
+        </NodeSlot>
+    );
 }
 
 function exprToTree(
@@ -313,7 +325,11 @@ function renderMatch(expr: MatchExpr, ctx: CollectCtx): JSX.Element {
         };
         return row;
     });
-    return <DecisionTable headers={headers} rows={rows} />;
+    return (
+        <NodeSlot kind="decision-table" label="decision table">
+            <DecisionTable headers={headers} rows={rows} />
+        </NodeSlot>
+    );
 }
 
 // --- Apply ---------------------------------------------------------------

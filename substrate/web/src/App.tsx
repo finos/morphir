@@ -7,6 +7,7 @@ import {
 import { Tree } from "./components/Tree/Tree";
 import { Viewer } from "./components/Viewer/Viewer";
 import { MapView } from "./components/MapView/MapView";
+import { IRPage } from "./components/IRPage/IRPage";
 import { useLiveReload } from "./hooks/useLiveReload";
 import { useTree } from "./hooks/useTree";
 import { useDoc } from "./hooks/useDoc";
@@ -120,7 +121,7 @@ export function App(): JSX.Element {
             />
             <div
                 className={
-                    view === "map" ? styles.bodyFullspan : styles.body
+                    view === "doc" ? styles.body : styles.bodyFullspan
                 }
             >
                 {view === "doc" ? (
@@ -139,7 +140,7 @@ export function App(): JSX.Element {
                         activePath={activePath}
                         onRegisterCloseTreeDropdown={registerCloseTreeDropdown}
                     />
-                ) : (
+                ) : view === "map" ? (
                     <MapView
                         tree={tree}
                         onNavigate={(p) => {
@@ -147,6 +148,8 @@ export function App(): JSX.Element {
                             setView("doc");
                         }}
                     />
+                ) : (
+                    <IRPage />
                 )}
             </div>
         </div>

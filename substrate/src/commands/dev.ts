@@ -19,6 +19,9 @@ import { WebSocketServer, type WebSocket } from "ws";
 
 import { locatePackage } from "../package/corpus.js";
 import type { Manifest } from "../package/manifest.js";
+import { decodeSubstrateDistribution, tryDecodeSubstrateDistribution } from "../ir/codec.js";
+import { buildSourceLocationIndex } from "../ir/source-location.js";
+import type { SimplifiedModuleFile } from "../ir/simplified.js";
 
 export interface DevOptions {
     readonly dir?: string;
@@ -201,6 +204,52 @@ async function handle(
         }
     }
 
+    if (pathname === "/api/ir") {
+        const morphirJsonPath = safeJoin(ctx.root, "morphir.json");
+        if (!morphirJsonPath) return send(res, 400, "Bad path");
+        let raw: string;
+        try {
+            raw = await readFile(morphirJsonPath, "utf8");
+        } catch {
+            return send(res, 404, "morphir.json not found");
+        }
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(raw);
+        } catch {
+            return send(res, 500, "morphir.json is not valid JSON");
+        }
+        const result = tryDecodeSubstrateDistribution(parsed);
+        if (!result.ok) {
+            return send(res, 500, `IR decode error: ${result.error.message}`);
+        }
+        const index = buildSourceLocationIndex(result.value);
+        return sendJSON(res, {
+            distribution: parsed,
+            forwardIndex: Array.from(index.forward.entries()),
+            reverseIndex: Array.from(index.reverse.entries()).map(
+                ([k, v]) => [k, Array.from(v)] as const,
+            ),
+        });
+    }
+
+    // API: simplified IR — walks a `simplified-ir/` directory in the
+    // served root (the output of `morphir simplify`) and returns each
+    // per-module JSON file together with its module path.  The browser
+    // decodes them into a Distribution using `web/src/ir/simplified.ts`.
+    if (pathname === "/api/simplified-ir") {
+        const dir = safeJoin(ctx.root, "simplified-ir");
+        if (!dir) return send(res, 400, "Bad path");
+        try {
+            const st = await stat(dir);
+            if (!st.isDirectory()) return send(res, 404, "simplified-ir not found");
+        } catch {
+            return send(res, 404, "simplified-ir not found");
+        }
+        const files = await readSimplifiedDir(dir);
+        return sendJSON(res, { files });
+    }
+
     // Static web client assets.
     const webPath = pathname === "/" ? "/index.html" : pathname;
     const filePath = safeJoin(ctx.webRoot, webPath);
@@ -256,6 +305,30 @@ async function buildTree(root: string): Promise<TreeNode> {
         type: "dir",
         children: await walk(root),
     };
+}
+
+async function readSimplifiedDir(dir: string): Promise<SimplifiedModuleFile[]> {
+    const { readdir } = await import("node:fs/promises");
+    const out: SimplifiedModuleFile[] = [];
+    async function walk(abs: string): Promise<void> {
+        const entries = await readdir(abs, { withFileTypes: true });
+        for (const entry of entries) {
+            const childAbs = join(abs, entry.name);
+            if (entry.isDirectory()) {
+                await walk(childAbs);
+            } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".json")) {
+                const raw = await readFile(childAbs, "utf8");
+                const rel = relative(dir, childAbs).split(sep).join("/");
+                try {
+                    out.push({ relPath: rel, json: JSON.parse(raw) });
+                } catch {
+                    // Skip malformed files but don't fail the whole index.
+                }
+            }
+        }
+    }
+    await walk(dir);
+    return out;
 }
 
 function safeJoin(base: string, rel: string): string | null {

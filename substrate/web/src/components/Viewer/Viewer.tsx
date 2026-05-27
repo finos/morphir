@@ -95,6 +95,13 @@ export function Viewer({
                 });
                 const host = document.createElement("div");
                 host.className = "substrate-mount";
+                // The interp column is now a flex chain that lets the
+                // viewport fill its share of the available height instead
+                // of scrolling. Each mount has to opt into that chain.
+                host.style.flex = "1 1 0";
+                host.style.minHeight = "0";
+                host.style.display = "flex";
+                host.style.flexDirection = "column";
                 interp.appendChild(host);
                 pre.remove();
                 found.push({ host, result });
@@ -170,8 +177,16 @@ export function Viewer({
             }
             setActive(toHit?.dataset["srcId"] ?? null);
         };
-        // Click a linked span on one side → scroll the matching span on
-        // the other side into view. Picks the first match if many.
+        // Click a linked span on one side → reveal the matching span
+        // on the other side. The direction matters:
+        //   - prose → interp: zoom the visualisation onto the enclosing
+        //     NodeSlot, so the criterion under the cursor jumps to its
+        //     visible expression-tree node.
+        //   - interp → prose: scroll the corresponding paragraph into
+        //     view, the original behaviour.
+        // Clicks on a NodeSlot also bubble here, but the slot's own
+        // handler calls stopPropagation, so this listener only fires
+        // for clicks on prose marks.
         const onClick = (e: Event): void => {
             const t = e.target as HTMLElement | null;
             if (!t) return;
@@ -186,13 +201,24 @@ export function Viewer({
                 const target = r.querySelector<HTMLElement>(
                     `[data-src-id="${cssEscape(id)}"]`,
                 );
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: "smooth",
-                        block: "center",
-                    });
-                    break;
+                if (!target) continue;
+                if (interp && r === interp) {
+                    // Find the nearest enclosing NodeSlot and trigger
+                    // its zoom handler — clicking the slot is exactly
+                    // the gesture we want to emulate.
+                    const slot = target.closest<HTMLElement>(
+                        "[data-slot-kind]",
+                    );
+                    if (slot) {
+                        slot.click();
+                        break;
+                    }
                 }
+                target.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                });
+                break;
             }
         };
 
