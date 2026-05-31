@@ -10,3 +10,10 @@
     min-height: 0;
     min-width: 0;
 }
+
+.bodyFullspan {
+    display: grid;
+    grid-template-columns: 1fr;
+    min-height: 0;
+    min-width: 0;
+}

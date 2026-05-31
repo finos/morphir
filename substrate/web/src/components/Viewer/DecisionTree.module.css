@@ -1,13 +1,6 @@
-.branch {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-3);
-    min-width: 0;
-}
-
-.condition {
-    align-self: flex-start;
+.condition,
+.leaf {
+    display: inline-block;
     border: 2px solid var(--rule);
     border-radius: var(--radius-md);
     padding: 6px 12px;
@@ -15,7 +8,11 @@
     font-family: var(--font-mono);
     font-size: 12px;
     color: var(--ink);
-    transition: border-color 120ms ease;
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.leaf {
+    background: var(--surface-2);
 }
 
 .highlighted.condition,
@@ -24,63 +21,175 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-blue) 18%, transparent);
 }
 
-.branches {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding-left: var(--space-4);
-    border-left: 2px solid var(--rule);
-    margin-left: 10px;
-}
-
-.arm {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-3);
-    position: relative;
-}
-
-.armLabel {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex: 0 0 auto;
-    color: var(--ink-muted);
+.label {
     font-family: var(--font-mono);
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    margin-top: 8px;
+    color: var(--ink-muted);
+    padding: 4px 6px;
+    white-space: nowrap;
 }
 
-.armLine {
-    display: block;
-    width: 18px;
-    height: 2px;
-    background: var(--rule);
-    border-radius: 2px;
+.labelCenter {
+    text-align: center;
 }
 
-.highlighted .armText {
+.highlighted.label {
     color: var(--brand-blue);
     font-weight: 600;
 }
 
-.highlighted .armLine {
-    background: var(--brand-blue);
+/* ---------- Vertical layout ---------- */
+
+.vLayout {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
 }
 
-.armBody {
+.vTopRow {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+}
+
+.vConditionCol {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    align-self: stretch;
+}
+
+.vDownArrowRow {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-2);
+    padding-left: var(--space-3);
     flex: 1 1 auto;
-    min-width: 0;
+    min-height: 32px;
 }
 
-.leaf {
-    display: inline-block;
-    border: 2px solid var(--rule);
-    border-radius: var(--radius-md);
-    padding: 6px 12px;
-    background: var(--surface-2);
-    font-family: var(--font-mono);
-    font-size: 12px;
+.vArrowCol {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding-top: var(--space-3);
+    min-width: 48px;
+}
+
+.vBranch1 {
+    align-self: flex-start;
+    padding-right: var(--space-3);
+}
+
+.vBranch2 {
+    align-self: stretch;
+}
+
+/* ---------- Horizontal layout ---------- */
+
+.hLayout {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+.hLeftCol {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.hTopRow {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+}
+
+.hConditionCol {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    align-self: stretch;
+}
+
+.hDownArrowRow {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-2);
+    padding-left: var(--space-3);
+    flex: 1 1 auto;
+    min-height: 32px;
+}
+
+.hArrowCol {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding-top: var(--space-3);
+    min-width: 48px;
+}
+
+.hBranch1 {
+    padding-right: var(--space-3);
+    padding-top: var(--space-2);
+}
+
+.hBranch2 {
+    align-self: flex-start;
+}
+
+/* ---------- Arrows ---------- */
+
+.rightArrow {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    min-width: 32px;
+}
+
+.rightArrowLine {
+    flex: 1 1 auto;
+    height: 2px;
+    background: currentColor;
+}
+
+.rightArrowHead {
+    flex: 0 0 auto;
+    width: 10px;
+    height: 10px;
+    fill: currentColor;
+}
+
+.downArrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    min-height: 24px;
+}
+
+.downArrowLine {
+    flex: 1 1 auto;
+    width: 2px;
+    background: currentColor;
+}
+
+.downArrowHead {
+    flex: 0 0 auto;
+    width: 10px;
+    height: 10px;
+    fill: currentColor;
+}
+
+.arrowIdle {
+    color: var(--rule);
+}
+
+.arrowActive {
+    color: var(--brand-blue);
 }

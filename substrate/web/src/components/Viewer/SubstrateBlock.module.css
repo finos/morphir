@@ -1,13 +1,13 @@
 .block {
     margin: var(--space-4) 0;
-    border: 1px solid var(--rule);
-    border-radius: var(--radius-md);
-    background: var(--surface-1);
-    padding: var(--space-4) var(--space-5);
     font-family: var(--font-sans);
     font-size: 14px;
     line-height: 1.5;
     color: var(--ink);
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .header {
@@ -56,14 +56,7 @@
 }
 
 .mapping {
-    border: 1px solid var(--rule);
-    border-radius: var(--radius-sm);
-    padding: var(--space-2) var(--space-3);
-    background: var(--surface-2);
     position: relative;
-    transition:
-        border-color 120ms ease,
-        background-color 120ms ease;
 }
 
 .mapping[data-src-id] {
@@ -115,5 +108,75 @@
 .scalarNull {
     color: var(--ink-subtle);
     font-style: italic;
+}
+
+.variable {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--accent, #1d4ed8);
+    font-style: italic;
+}
+
+.apply {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ink);
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px;
+}
+
+.op {
+    color: var(--ink-muted);
+    font-weight: 600;
+}
+
+.paramList {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-subtle);
+    margin-left: 4px;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.staleness {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+    font-size: 12px;
+    color: var(--ink-subtle);
+    font-family: var(--font-sans);
+}
+
+.stalenessOutdated {
+    color: #b45309;
+    font-weight: 600;
+}
+
+.stalenessBadge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-radius: var(--radius-sm);
+    padding: 2px 6px;
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+.stalenessFresh {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-radius: var(--radius-sm);
+    padding: 2px 6px;
+    background: var(--surface-2);
+    color: var(--ink-muted);
+    border: 1px solid var(--rule);
 }
 

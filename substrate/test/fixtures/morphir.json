@@ -1,0 +1,468 @@
+{
+  "formatVersion": 3,
+  "distribution": [
+    "Library",
+    [
+      [
+        "sample"
+      ]
+    ],
+    [],
+    {
+      "modules": [
+        [
+          [
+            [
+              "module",
+              "a"
+            ]
+          ],
+          {
+            "access": "Public",
+            "value": {
+              "types": [
+                [
+                  [
+                    "bar"
+                  ],
+                  {
+                    "access": "Public",
+                    "value": {
+                      "doc": "",
+                      "value": [
+                        "TypeAliasDefinition",
+                        [],
+                        [
+                          "Reference",
+                          {},
+                          [
+                            [
+                              [
+                                "sample"
+                              ]
+                            ],
+                            [
+                              [
+                                "a"
+                              ]
+                            ],
+                            [
+                              "foo"
+                            ]
+                          ],
+                          []
+                        ]
+                      ]
+                    }
+                  }
+                ],
+                [
+                  [
+                    "foo"
+                  ],
+                  {
+                    "access": "Public",
+                    "value": {
+                      "doc": "",
+                      "value": [
+                        "CustomTypeDefinition",
+                        [],
+                        {
+                          "access": "Public",
+                          "value": [
+                            [
+                              [
+                                "foo"
+                              ],
+                              [
+                                [
+                                  [
+                                    "arg",
+                                    "1"
+                                  ],
+                                  [
+                                    "Reference",
+                                    {},
+                                    [
+                                      [
+                                        [
+                                          "sample"
+                                        ]
+                                      ],
+                                      [
+                                        [
+                                          "b"
+                                        ]
+                                      ],
+                                      [
+                                        "bee"
+                                      ]
+                                    ],
+                                    []
+                                  ]
+                                ]
+                              ]
+                            ]
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                ],
+                [
+                  [
+                    "output",
+                    "rec"
+                  ],
+                  {
+                    "access": "Public",
+                    "value": {
+                      "doc": "It's an even simpler rec",
+                      "value": [
+                        "TypeAliasDefinition",
+                        [],
+                        [
+                          "Record",
+                          {},
+                          [
+                            {
+                              "name": [
+                                "result"
+                              ],
+                              "tpe": [
+                                "Reference",
+                                {},
+                                [
+                                  [
+                                    [
+                                      "morphir"
+                                    ],
+                                    [
+                                      "s",
+                                      "d",
+                                      "k"
+                                    ]
+                                  ],
+                                  [
+                                    [
+                                      "basics"
+                                    ]
+                                  ],
+                                  [
+                                    "int"
+                                  ]
+                                ],
+                                []
+                              ]
+                            }
+                          ]
+                        ]
+                      ]
+                    }
+                  }
+                ],
+                [
+                  [
+                    "rec"
+                  ],
+                  {
+                    "access": "Public",
+                    "value": {
+                      "doc": " It's a rec ",
+                      "value": [
+                        "TypeAliasDefinition",
+                        [],
+                        [
+                          "Record",
+                          {},
+                          [
+                            {
+                              "name": [
+                                "field",
+                                "1"
+                              ],
+                              "tpe": [
+                                "Reference",
+                                {},
+                                [
+                                  [
+                                    [
+                                      "sample"
+                                    ]
+                                  ],
+                                  [
+                                    [
+                                      "a"
+                                    ]
+                                  ],
+                                  [
+                                    "foo"
+                                  ]
+                                ],
+                                []
+                              ]
+                            },
+                            {
+                              "name": [
+                                "field",
+                                "2"
+                              ],
+                              "tpe": [
+                                "Reference",
+                                {},
+                                [
+                                  [
+                                    [
+                                      "sample"
+                                    ]
+                                  ],
+                                  [
+                                    [
+                                      "a"
+                                    ]
+                                  ],
+                                  [
+                                    "bar"
+                                  ]
+                                ],
+                                []
+                              ]
+                            }
+                          ]
+                        ]
+                      ]
+                    }
+                  }
+                ],
+                [
+                  [
+                    "simple",
+                    "rec"
+                  ],
+                  {
+                    "access": "Public",
+                    "value": {
+                      "doc": "It's a simple rec ",
+                      "value": [
+                        "TypeAliasDefinition",
+                        [],
+                        [
+                          "Record",
+                          {},
+                          [
+                            {
+                              "name": [
+                                "field",
+                                "1"
+                              ],
+                              "tpe": [
+                                "Reference",
+                                {},
+                                [
+                                  [
+                                    [
+                                      "morphir"
+                                    ],
+                                    [
+                                      "s",
+                                      "d",
+                                      "k"
+                                    ]
+                                  ],
+                                  [
+                                    [
+                                      "basics"
+                                    ]
+                                  ],
+                                  [
+                                    "string"
+                                  ]
+                                ],
+                                []
+                              ]
+                            },
+                            {
+                              "name": [
+                                "field",
+                                "2"
+                              ],
+                              "tpe": [
+                                "Reference",
+                                {},
+                                [
+                                  [
+                                    [
+                                      "morphir"
+                                    ],
+                                    [
+                                      "s",
+                                      "d",
+                                      "k"
+                                    ]
+                                  ],
+                                  [
+                                    [
+                                      "basics"
+                                    ]
+                                  ],
+                                  [
+                                    "int"
+                                  ]
+                                ],
+                                []
+                              ]
+                            }
+                          ]
+                        ]
+                      ]
+                    }
+                  }
+                ]
+              ],
+              "values": [
+                [
+                  [
+                    "output",
+                    "function"
+                  ],
+                  {
+                    "access": "Public",
+                    "value": {
+                      "doc": "",
+                      "value": {
+                        "inputTypes": [
+                          [
+                            [
+                              "data"
+                            ],
+                            [
+                              "Reference",
+                              {},
+                              [
+                                [
+                                  [
+                                    "sample"
+                                  ]
+                                ],
+                                [
+                                  [
+                                    "module",
+                                    "a"
+                                  ]
+                                ],
+                                [
+                                  "simple",
+                                  "rec"
+                                ]
+                              ],
+                              []
+                            ],
+                            [
+                              "Reference",
+                              {},
+                              [
+                                [
+                                  [
+                                    "sample"
+                                  ]
+                                ],
+                                [
+                                  [
+                                    "module",
+                                    "a"
+                                  ]
+                                ],
+                                [
+                                  "simple",
+                                  "rec"
+                                ]
+                              ],
+                              []
+                            ]
+                          ]
+                        ],
+                        "outputType": [
+                          "Reference",
+                          {},
+                          [
+                            [
+                              [
+                                "sample"
+                              ]
+                            ],
+                            [
+                              [
+                                "module",
+                                "a"
+                              ]
+                            ],
+                            [
+                              "output",
+                              "rec"
+                            ]
+                          ],
+                          []
+                        ],
+                        "body": [
+                          "Unit",
+                          [
+                            "Unit",
+                            {}
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                ]
+              ],
+              "doc": null
+            }
+          }
+        ],
+        [
+          [
+            [
+              "module",
+              "b"
+            ]
+          ],
+          {
+            "access": "Private",
+            "value": {
+              "types": [
+                [
+                  [
+                    "bee"
+                  ],
+                  {
+                    "access": "Public",
+                    "value": {
+                      "doc": " It's a bee ",
+                      "value": [
+                        "CustomTypeDefinition",
+                        [],
+                        {
+                          "access": "Public",
+                          "value": [
+                            [
+                              [
+                                "bee"
+                              ],
+                              []
+                            ]
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                ]
+              ],
+              "values": [],
+              "doc": null
+            }
+          }
+        ]
+      ]
+    }
+  ]
+}

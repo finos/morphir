@@ -8,14 +8,15 @@ import {
 import { createPortal } from "react-dom";
 import type { DocResponse } from "../../types";
 import { isExternalHref, resolveLocalHref } from "../../router";
-import { parseYaml, type YamlNode } from "./yaml";
+import { parseSubstrate } from "../../../../src/substrate/parse";
+import type { ParseResult } from "../../../../src/substrate/ast";
 import { SubstrateBlock, type SrcRef } from "./SubstrateBlock";
 import { TreeSelect } from "./TreeSelect";
 import styles from "./Viewer.module.css";
 
 interface BlockMount {
     readonly host: HTMLElement;
-    readonly ast: YamlNode;
+    readonly result: ParseResult;
 }
 
 export interface ViewerProps {
@@ -81,28 +82,29 @@ export function Viewer({
             const codes = root.querySelectorAll<HTMLElement>(
                 "pre > code.language-yaml",
             );
+            const filePath = doc.path ?? "";
             for (const code of Array.from(codes)) {
                 const pre = code.parentElement;
                 if (!pre) continue;
                 const text = code.textContent ?? "";
                 if (!/^\s*substrate\s*:/m.test(text)) continue;
-                try {
-                    const ast = parseYaml(text);
-                    const section = document.createElement("section");
-                    section.className = styles["interpItem"] ?? "";
-                    const header = document.createElement("div");
-                    header.className = styles["interpItemHeader"] ?? "";
-                    header.textContent = `Substrate definition #${found.length + 1}`;
-                    section.appendChild(header);
-                    const host = document.createElement("div");
-                    host.className = "substrate-mount";
-                    section.appendChild(host);
-                    interp.appendChild(section);
-                    pre.remove();
-                    found.push({ host, ast });
-                } catch (err) {
-                    console.warn("substrate block parse failed", err);
-                }
+                const sectionId = nearestSectionId(pre);
+                const result = parseSubstrate(text, {
+                    file: filePath,
+                    sectionId,
+                });
+                const host = document.createElement("div");
+                host.className = "substrate-mount";
+                // The interp column is now a flex chain that lets the
+                // viewport fill its share of the available height instead
+                // of scrolling. Each mount has to opt into that chain.
+                host.style.flex = "1 1 0";
+                host.style.minHeight = "0";
+                host.style.display = "flex";
+                host.style.flexDirection = "column";
+                interp.appendChild(host);
+                pre.remove();
+                found.push({ host, result });
             }
         }
         refsByBlockRef.current = found.map(() => []);
@@ -175,8 +177,16 @@ export function Viewer({
             }
             setActive(toHit?.dataset["srcId"] ?? null);
         };
-        // Click a linked span on one side → scroll the matching span on
-        // the other side into view. Picks the first match if many.
+        // Click a linked span on one side → reveal the matching span
+        // on the other side. The direction matters:
+        //   - prose → interp: zoom the visualisation onto the enclosing
+        //     NodeSlot, so the criterion under the cursor jumps to its
+        //     visible expression-tree node.
+        //   - interp → prose: scroll the corresponding paragraph into
+        //     view, the original behaviour.
+        // Clicks on a NodeSlot also bubble here, but the slot's own
+        // handler calls stopPropagation, so this listener only fires
+        // for clicks on prose marks.
         const onClick = (e: Event): void => {
             const t = e.target as HTMLElement | null;
             if (!t) return;
@@ -191,13 +201,24 @@ export function Viewer({
                 const target = r.querySelector<HTMLElement>(
                     `[data-src-id="${cssEscape(id)}"]`,
                 );
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: "smooth",
-                        block: "center",
-                    });
-                    break;
+                if (!target) continue;
+                if (interp && r === interp) {
+                    // Find the nearest enclosing NodeSlot and trigger
+                    // its zoom handler — clicking the slot is exactly
+                    // the gesture we want to emulate.
+                    const slot = target.closest<HTMLElement>(
+                        "[data-slot-kind]",
+                    );
+                    if (slot) {
+                        slot.click();
+                        break;
+                    }
                 }
+                target.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                });
+                break;
             }
         };
 
@@ -257,15 +278,21 @@ export function Viewer({
             <section className={styles.column} aria-label="Documentation">
                 <header className={styles.columnHeader}>
                     <span className={styles.columnTitle}>Documentation</span>
-                    <TreeSelect
-                        activePath={activePath}
-                        registerCloseOnSelect={onRegisterCloseTreeDropdown}
-                    >
-                        {treeSlot}
-                    </TreeSelect>
                 </header>
                 <div className={styles.docBody}>
-                    <div className={styles.docScroll}>{docBody}</div>
+                    <div className={styles.docScroll}>
+                        <div className={styles.floatingBreadcrumb}>
+                            <TreeSelect
+                                activePath={activePath}
+                                registerCloseOnSelect={
+                                    onRegisterCloseTreeDropdown
+                                }
+                            >
+                                {treeSlot}
+                            </TreeSelect>
+                        </div>
+                        {docBody}
+                    </div>
                 </div>
             </section>
             <section className={styles.column} aria-label="Interpretation">
@@ -300,8 +327,9 @@ export function Viewer({
                 createPortal(
                     <SubstrateBlock
                         blockId={`b${i}`}
-                        ast={m.ast}
+                        result={m.result}
                         onRefs={(refs) => onRefsForBlock(i, refs)}
+                        docLastModified={doc?.lastModified}
                     />,
                     m.host,
                     `substrate-mount-${i}`,
@@ -361,9 +389,6 @@ function renderDocBody({
     }
     return (
         <div className={styles.inner}>
-            <div className={styles.breadcrumb}>
-                {doc.path.split("/").join(" / ")}
-            </div>
             <div
                 ref={markdownRef}
                 className={styles.markdown}
@@ -375,6 +400,24 @@ function renderDocBody({
             />
         </div>
     );
+}
+
+function nearestSectionId(el: Element): string {
+    // Walk backwards through previous siblings, then up through
+    // ancestors, looking for the most recent heading with an `id` (set
+    // by the markdown renderer's slug pipeline).
+    let cursor: Element | null = el;
+    while (cursor) {
+        let prev = cursor.previousElementSibling;
+        while (prev) {
+            if (/^H[1-6]$/.test(prev.tagName) && prev.id) return prev.id;
+            const inner = prev.querySelector("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]");
+            if (inner && inner.id) return inner.id;
+            prev = prev.previousElementSibling;
+        }
+        cursor = cursor.parentElement;
+    }
+    return "";
 }
 
 function cssEscape(value: string): string {

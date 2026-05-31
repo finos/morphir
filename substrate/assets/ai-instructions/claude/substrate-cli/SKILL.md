@@ -189,6 +189,46 @@ The current implementation is a plain markdown viewer; substrate-specific
 rendering (link resolution, type info, test overlays) is intentionally
 out of scope for now.
 
+## Writing interpretations — `substrate write interpretation`
+
+Use this whenever you produce or update a substrate YAML snippet for a
+markdown section. It writes the snippet *into* the document for you,
+rather than asking the user to copy-paste a fenced block.
+
+```bash
+substrate write interpretation <file> <anchor> < snippet.yaml
+# or, piping inline:
+printf 'substrate:\n  values:\n    foo:\n      add: [a, b]\n' \
+  | substrate write interpretation specs/foo.md overview
+```
+
+What it does:
+
+- Reads pure substrate YAML from **stdin** (no temp file required).
+- Validates it through the same parser the dev UI uses. Both YAML
+  syntax errors and substrate language errors (`unknown expression
+  shape`, wrong arity, missing required key, …) abort the write with
+  exit code 1 and print every diagnostic to stderr. Warnings are
+  printed but do not abort.
+- Stamps a fresh `last-interpreted-at` ISO-8601 timestamp under the
+  `substrate:` mapping in the YAML text. If the input already contains
+  a `last-interpreted-at`, it is overwritten — never carry one through
+  from a previous snippet, the CLI owns that field.
+- Aligns the markdown file's mtime with the stamped timestamp so the
+  dev viewer's freshness check reads "up to date" immediately after the
+  write.
+- Locates `<anchor>` by slugifying every ATX heading in the file (GFM
+  rules) and matching against the argument. A leading `#` is
+  tolerated.
+- Within that section, replaces an existing ` ```yaml ` fenced block
+  whose first content line begins with `substrate:`. If no such block
+  exists, appends a new fenced block as the section's last piece of
+  content.
+
+The command touches only `<file>`; cross-document links and vendored
+packages are untouched. Pair it with the dev viewer (`substrate dev`)
+to see the rendered interpretation immediately after writing.
+
 ## Package commands
 
 ### `substrate init`

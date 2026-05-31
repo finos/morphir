@@ -53,6 +53,16 @@ export const AI_ARTIFACTS: readonly AiArtifact[] = [
         destination: ".github/instructions/substrate-cli.instructions.md",
         label: "GitHub Copilot instructions",
     },
+    {
+        source: "assets/ai-instructions/claude/substrate-interpretation/SKILL.md",
+        destination: ".claude/skills/substrate-interpretation/SKILL.md",
+        label: "Claude interpretation skill",
+    },
+    {
+        source: "assets/ai-instructions/copilot/substrate-interpretation.instructions.md",
+        destination: ".github/instructions/substrate-interpretation.instructions.md",
+        label: "GitHub Copilot interpretation instructions",
+    },
 ];
 
 /**

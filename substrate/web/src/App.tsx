@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { TopBar, type ConnectionState } from "./components/TopBar/TopBar";
+import {
+    TopBar,
+    type ConnectionState,
+    type ViewMode,
+} from "./components/TopBar/TopBar";
 import { Tree } from "./components/Tree/Tree";
 import { Viewer } from "./components/Viewer/Viewer";
+import { MapView } from "./components/MapView/MapView";
+import { IRPage } from "./components/IRPage/IRPage";
 import { useLiveReload } from "./hooks/useLiveReload";
 import { useTree } from "./hooks/useTree";
 import { useDoc } from "./hooks/useDoc";
@@ -20,6 +26,7 @@ export function App(): JSX.Element {
     const [activePath, setActivePathState] = useState<string | null>(
         readPathFromURL,
     );
+    const [view, setView] = useState<ViewMode>("doc");
     const [reloadFlash, setReloadFlash] = useState(false);
     const closeTreeDropdownRef = useRef<(() => void) | null>(null);
 
@@ -106,23 +113,44 @@ export function App(): JSX.Element {
 
     return (
         <div className={styles.app}>
-            <TopBar rootName={tree?.name ?? ""} connection={connection} />
-            <div className={styles.body}>
-                <Viewer
-                    doc={doc}
-                    loading={loading}
-                    error={error}
-                    onNavigate={navigateTo}
-                    treeSlot={
-                        <Tree
-                            tree={tree}
-                            activePath={activePath}
-                            onSelect={handleTreeSelect}
-                        />
-                    }
-                    activePath={activePath}
-                    onRegisterCloseTreeDropdown={registerCloseTreeDropdown}
-                />
+            <TopBar
+                rootName={tree?.name ?? ""}
+                connection={connection}
+                view={view}
+                onChangeView={setView}
+            />
+            <div
+                className={
+                    view === "doc" ? styles.body : styles.bodyFullspan
+                }
+            >
+                {view === "doc" ? (
+                    <Viewer
+                        doc={doc}
+                        loading={loading}
+                        error={error}
+                        onNavigate={navigateTo}
+                        treeSlot={
+                            <Tree
+                                tree={tree}
+                                activePath={activePath}
+                                onSelect={handleTreeSelect}
+                            />
+                        }
+                        activePath={activePath}
+                        onRegisterCloseTreeDropdown={registerCloseTreeDropdown}
+                    />
+                ) : view === "map" ? (
+                    <MapView
+                        tree={tree}
+                        onNavigate={(p) => {
+                            navigateTo(p);
+                            setView("doc");
+                        }}
+                    />
+                ) : (
+                    <IRPage />
+                )}
             </div>
         </div>
     );

@@ -11,16 +11,33 @@
 .brand {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--space-2);
     font-weight: 500;
-    font-size: 16px;
     color: var(--ink);
     letter-spacing: -0.01em;
 }
 
 .brand img {
-    width: 24px;
-    height: 24px;
+    width: var(--space-6);
+    height: var(--space-6);
+}
+
+.wordmark {
+    display: flex;
+    flex-direction: column;
+    line-height: 1;
+    gap: var(--space-1);
+}
+
+.wordmark .parentProjectName {
+    font-size: var(--space-3);
+    color: var(--ink-muted);
+}
+
+.wordmark .projectName {
+    font-size: var(--space-4);
+    color: var(--ink);
+    font-weight: 500;
 }
 
 .rootPath {
@@ -35,8 +52,42 @@
     white-space: nowrap;
 }
 
-.status {
+.viewToggle {
     margin-left: auto;
+    display: inline-flex;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--surface-1);
+}
+
+.viewBtn {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--ink-muted);
+    font: inherit;
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    padding: 4px 12px;
+    cursor: pointer;
+}
+
+.viewBtn:hover {
+    color: var(--ink);
+}
+
+.viewBtnActive {
+    background: var(--ink);
+    color: #fff;
+}
+
+.viewBtnActive:hover {
+    color: #fff;
+}
+
+.status {
+    margin-left: var(--space-3);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -51,13 +102,16 @@
     border-radius: 999px;
     background: #b7c1c8;
 }
+
 .connected .dot {
     background: #4caf50;
 }
+
 .reloading .dot {
     background: var(--accent);
     animation: pulse 0.6s ease-in-out infinite alternate;
 }
+
 @keyframes pulse {
     to {
         transform: scale(1.4);

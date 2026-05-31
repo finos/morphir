@@ -82,8 +82,10 @@ substrate dev [--dir <path>] [--port <port>] [--host <host>]
 The dev server exposes a small JSON API consumed by the bundled UI:
 
 - `GET /api/tree` → `{ name, path, type: "dir", children: TreeNode[] }`
-- `GET /api/doc?path=<relative>` → `{ path, raw, html }` where `html` is the
-  rendered markdown.
+- `GET /api/doc?path=<relative>` → `{ path, raw, html, lastModified }`
+  where `html` is the rendered markdown and `lastModified` is the file's
+  on-disk mtime as an ISO-8601 string (used by the viewer to flag stale
+  `last-interpreted-at` interpretations).
 - `GET /_ws` → WebSocket; messages are `{ type, path }` where `type` is one of
   `add`, `change`, `unlink`, `addDir`, `unlinkDir` and `path` is relative to
   the served root.
@@ -103,6 +105,52 @@ For contributors, the dev loop is `npm run dev:web` from the repo root:
 it runs `substrate dev` on `:5173` (API + WebSocket) and the Vite dev
 server on `:5174` with HMR. The Vite server proxies `/api` and `/_ws`
 to substrate dev — see `web/vite.config.ts` and `web/README.md`.
+
+## Interpretation visualisation
+
+The right-hand "interpretation" column renders each substrate YAML
+block (a `Module`) as an interactive visualisation of its
+expression tree. The goal is to keep the *shape* of the parent
+node legible no matter how deeply the children nest.
+
+- **Fixed slots per node kind.** Every visual expression node has a
+  hardcoded slot size that does **not** adapt to its content. A
+  decision-table slot is always the same size whether it has three
+  rules or thirty; a decision-tree slot is always the same size
+  whether its branches are leaves or whole sub-programs. Current
+  sizes (see `web/src/components/Viewer/Interpretation/slotSizes.ts`):
+  decision-tree 520×360, decision-table 520×360, type-diagram
+  360×240.
+- **Measure-then-scale.** Each slot renders its children at their
+  natural (unconstrained) size inside an inner container, measures
+  that container with a `ResizeObserver`, and then applies a CSS
+  `transform: scale(s)` with `transform-origin: top left` so the
+  content exactly fits its slot. Compounded scales propagate
+  through nested slots automatically.
+- **Pan and zoom.** The whole interpretation tree sits in a viewport
+  with wheel-zoom (anchored around the cursor), mouse-drag pan, and
+  arrow-key pan. A toolbar exposes `+`, `−`, and `reset`.
+- **Click-to-zoom.** Clicking a slot animates the viewport
+  transform so the slot fills (most of) the viewport, effectively
+  undoing the compounded ancestor scales and returning the slot to
+  its natural size.
+- **Placeholder cutoff.** When a slot's *effective* scale (root
+  zoom × the product of every ancestor slot's own scale) falls
+  below a hardcoded threshold (currently `0.15`), the slot stops
+  rendering its real content and shows a labelled placeholder
+  instead. The slot still occupies the full reserved space, so
+  the surrounding layout is unaffected. This prevents the
+  compounded transforms from generating thousands of unreadable
+  nested elements at deep zoom levels.
+- **Type definitions** use the same slot/scale model as decision
+  trees and tables, even though current corpora don't nest types
+  deeply.
+
+The visualisation continues to participate in the existing
+cross-highlighting flow: `data-src-id` anchors inside the rendered
+nodes link visual elements to phrases in the documentation column,
+and the viewer's hover/click handlers light up the matching span on
+the other side.
 
 ## Out of scope (for now)
 

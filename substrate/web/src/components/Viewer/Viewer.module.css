@@ -32,6 +32,12 @@
 
 .columnTitle {
     color: var(--ink-muted);
+    background: #fff;
+    padding: 4px 12px;
+    border-radius: 999px;
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.08),
+        0 2px 6px rgba(15, 23, 42, 0.06);
 }
 
 .docBody {
@@ -44,15 +50,42 @@
 .docScroll {
     overflow: auto;
     min-width: 0;
+    position: relative;
+}
+
+.floatingBreadcrumb {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    padding: 10px 16px;
+    background: linear-gradient(
+        to bottom,
+        var(--surface-1) 0%,
+        var(--surface-1) 70%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    pointer-events: none;
+}
+
+.floatingBreadcrumb > * {
+    pointer-events: auto;
 }
 
 .interpScroll {
-    overflow: auto;
+    overflow: hidden;
     min-width: 0;
+    min-height: 0;
     padding: var(--space-5) var(--space-5) var(--space-7);
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .interpInner {
+    flex: 1 1 auto;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     gap: var(--space-5);

@@ -82,6 +82,32 @@ The contents of `.github/instructions/substrate-cli.instructions.md` and
 install`** — they are overwritten on every install. Do not hand-edit
 them; if you need a customisation, copy them to a different filename.
 
+## Writing substrate interpretations into markdown
+
+`substrate write interpretation <file> <anchor>` reads pure substrate
+YAML from stdin and splices it into the named section of `<file>`. Use
+this instead of hand-editing fenced code blocks whenever an LLM
+produces a new or updated interpretation for a section.
+
+```bash
+substrate write interpretation specs/foo.md overview < snippet.yaml
+```
+
+Behaviour:
+
+- The YAML is validated through the same parser the dev viewer uses;
+  YAML syntax errors and substrate language errors both abort the
+  write with a non-zero exit code.
+- A fresh `last-interpreted-at` ISO-8601 timestamp is stamped under
+  `substrate:` (overwriting any value the caller supplied), and the
+  file's mtime is aligned with it so the dev viewer reads "up to date".
+- If the target section already contains a ` ```yaml ` block whose
+  first content line is `substrate:`, it is replaced in place;
+  otherwise a new fenced block is appended as the section's last
+  piece of content.
+- `<anchor>` is a GFM heading slug — the same form used in cross-document
+  link fragments. A leading `#` is tolerated.
+
 ## Local dev UI
 
 `substrate dev` starts a local web UI that browses every `.md` file under
