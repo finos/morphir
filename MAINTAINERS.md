@@ -8,7 +8,7 @@ This file lists the maintainers of this repository.
 |----------------|------|--------------|-------|
 | @AttilaMihaly | Attila Mihaly | Morgan Stanley | *please add email* |
 | @DamianReeves | Damian Reeves | @CapitalOne | *please add email* |
-| @michelchan | Michelle | *please add organization* | *please add email* |
+| @michelchan | Michelle | Disney | *please add email* |
 | @nwokafor-choongsaeng | Nwokafor Choongsaeng | *please add organization* | *please add email* |
 | @psmulovics | Peter Smulovics | Morgan Stanley | *please add email* |
 | @stephengoldbaum | Stephen Goldbaum | *please add organization* | *please add email* |
