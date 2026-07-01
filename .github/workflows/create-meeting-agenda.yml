@@ -73,6 +73,7 @@ jobs:
 
       - name: Create issue from template
         if: steps.check-date.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
+        id: create-issue
         uses: peter-evans/create-issue-from-file@v6
         with:
           title: "${{ steps.meeting-date.outputs.short_date }} (${{ steps.meeting-date.outputs.formatted_date }}) - Morphir Project Meeting"
@@ -85,8 +86,12 @@ jobs:
       - name: Update meeting date in issue
         if: steps.check-date.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
         run: |
-          # Get the issue number from the previous step
-          ISSUE_NUMBER=$(gh issue list --label "meeting" --state open --limit 1 --json number --jq '.[0].number')
+          ISSUE_NUMBER="${{ steps.create-issue.outputs.issue-number }}"
+
+          if [ -z "$ISSUE_NUMBER" ]; then
+            echo "Failed to get issue number from create issue step."
+            exit 1
+          fi
 
           # Update the issue body to replace the placeholder date
           MEETING_DATE_FORMATTED=$(date -d "${{ steps.meeting-date.outputs.meeting_date }}" +"%A %d %b %Y")
