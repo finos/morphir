@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="-150 -150 300 300"
+     width="240" height="240"
+     role="img" aria-label="Morphir Substrate logo mark">
+  <title>Morphir Substrate</title>
+  <!--
+    Geometric bounding box of the mark is centered on (0, 0).
+    Construction coordinates from branding/style.md § Logo
+    have been shifted by +60 on the y-axis so that the bbox
+    midpoint coincides with the SVG origin — any container that
+    centers the SVG will therefore visually center the mark.
+  -->
+  <g>
+    <!-- Blue partial hexagon -->
+    <polyline
+      points="69.282,-80 0,-120 -69.282,-80 -69.282,0 0,40"
+      fill="none" stroke="#16A2DC" stroke-width="38.4"
+      stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Orange partial hexagon -->
+    <polyline
+      points="0,-40 69.282,0 69.282,80 0,120 -69.282,80"
+      fill="none" stroke="#F26A21" stroke-width="38.4"
+      stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

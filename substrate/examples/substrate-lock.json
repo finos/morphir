@@ -1,0 +1,17 @@
+{
+  "packages": [
+    {
+      "name": "AttilaMihaly/morphir",
+      "ref": "substrate",
+      "requested": "substrate",
+      "resolved": "48263660c7383b436857e713fd5b9a89a2a2e394",
+      "commit": "48263660c7383b436857e713fd5b9a89a2a2e394",
+      "installs": [
+        {
+          "name": "language",
+          "integrity": "sha256-WnGEj9Wd4vLvem5W5q0giXzQiFimCUMyW2RhQ0vVVkQ="
+        }
+      ]
+    }
+  ]
+}

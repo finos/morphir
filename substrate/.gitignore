@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.claude/
+.obsidian/
+*.code-workspace
+*.log
+*.tsbuildinfo
+assets/web/assets/
+assets/web/index.html
+examples/.github/
+examples/substrate/

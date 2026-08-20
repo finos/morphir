@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Morphir Substrate - Triangular Dot Background</title>
+    <style>
+        :root {
+            --bg-1: #f7f9f7;
+            --bg-2: #eef4ef;
+            --dot: #2f4738;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            width: 100%;
+            min-height: 100%;
+        }
+
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle at 20% 10%, var(--bg-1), var(--bg-2));
+            overflow: hidden;
+        }
+
+        canvas {
+            position: fixed;
+            inset: 0;
+            display: block;
+        }
+
+        .label {
+            position: fixed;
+            left: 1rem;
+            bottom: 1rem;
+            padding: 0.45rem 0.7rem;
+            border-radius: 0.45rem;
+            background: rgba(255, 255, 255, 0.7);
+            color: #243228;
+            font-size: 0.82rem;
+            letter-spacing: 0.02em;
+            backdrop-filter: blur(2px);
+        }
+    </style>
+</head>
+
+<body>
+    <!--
+      Dots placed at every vertex of a triangular tiling.
+      Each vertex has exactly 6 neighbours at 60° intervals and equal distance.
+      Canvas is used so spacing is always pixel-perfect regardless of viewport.
+    -->
+    <canvas id="lattice" aria-hidden="true"></canvas>
+
+    <div class="label">Triangular tiling — dots at vertices</div>
+
+    <script>
+        const canvas = document.getElementById('lattice');
+        const ctx = canvas.getContext('2d');
+
+        // Triangle side length in CSS pixels.
+        const SPACING = 40;
+        // Horizontal distance between columns: side * sqrt(3)/2
+        const COL_WIDTH = SPACING * Math.sqrt(3) / 2;
+
+        const DOT_RADIUS = 2.5;
+        const DOT_COLOR = 'rgba(47, 71, 56, 0.5)';
+        const LINE_WIDTH = 0.8;
+        const LINE_COLOR = 'rgba(47, 71, 56, 0.25)';
+
+        function draw() {
+            const W = canvas.width;
+            const H = canvas.height;
+            ctx.clearRect(0, 0, W, H);
+
+            const cols = Math.ceil(W / COL_WIDTH) + 4;
+            const rows = Math.ceil(H / SPACING) + 4;
+            const originX = W / 2 - (cols / 2) * COL_WIDTH;
+            const originY = H / 2 - (rows / 2) * SPACING;
+
+            // Build vertex positions once so lines and dots share the same coords.
+            // Odd columns are shifted down by half a spacing.
+            const pts = [];
+            for (let row = 0; row <= rows; row++) {
+                pts[row] = [];
+                for (let col = 0; col <= cols; col++) {
+                    const yOffset = (col % 2 !== 0) ? SPACING / 2 : 0;
+                    pts[row][col] = {
+                        x: originX + col * COL_WIDTH,
+                        y: originY + row * SPACING + yOffset
+                    };
+                }
+            }
+
+            // Draw lines first so dots render on top.
+            // Each vertex connects to 3 forward neighbours to avoid drawing each edge twice:
+            //   down (same column), upper-right and lower-right (next column).
+            ctx.strokeStyle = LINE_COLOR;
+            ctx.lineWidth = LINE_WIDTH;
+            ctx.lineCap = 'round';
+            for (let row = 0; row <= rows; row++) {
+                for (let col = 0; col <= cols; col++) {
+                    const { x, y } = pts[row][col];
+                    const isOddCol = col % 2 !== 0;
+
+                    // Down neighbour (same column).
+                    if (row < rows) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(pts[row + 1][col].x, pts[row + 1][col].y);
+                        ctx.stroke();
+                    }
+
+                    if (col < cols) {
+                        // Upper-right neighbour.
+                        const urRow = isOddCol ? row : row - 1;
+                        if (urRow >= 0 && urRow <= rows) {
+                            ctx.beginPath();
+                            ctx.moveTo(x, y);
+                            ctx.lineTo(pts[urRow][col + 1].x, pts[urRow][col + 1].y);
+                            ctx.stroke();
+                        }
+                        // Lower-right neighbour.
+                        const lrRow = isOddCol ? row + 1 : row;
+                        if (lrRow >= 0 && lrRow <= rows) {
+                            ctx.beginPath();
+                            ctx.moveTo(x, y);
+                            ctx.lineTo(pts[lrRow][col + 1].x, pts[lrRow][col + 1].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+
+            // Draw dots on top of lines.
+            ctx.fillStyle = DOT_COLOR;
+            for (let row = 0; row <= rows; row++) {
+                for (let col = 0; col <= cols; col++) {
+                    const { x, y } = pts[row][col];
+                    ctx.beginPath();
+                    ctx.arc(x, y, DOT_RADIUS, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            draw();
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+    </script>
+</body>
+
+</html>

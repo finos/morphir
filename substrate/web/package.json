@@ -1,0 +1,32 @@
+{
+  "name": "@morphir/substrate-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "yaml": "2.9.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.8.3",
+    "vite": "^5.4.11"
+  },
+  "comment_overrides": "Pinned to satisfy the repo-wide 7-day minimum-age rule (see substrate/CLAUDE.md). Newer transitive releases were under 7 days old at the time of pinning; revisit and bump once the soak window has passed.",
+  "overrides": {
+    "rollup": "4.60.3",
+    "caniuse-lite": "1.0.30001792",
+    "electron-to-chromium": "1.5.353",
+    "baseline-browser-mapping": "2.10.29",
+    "node-releases": "2.0.38"
+  }
+}

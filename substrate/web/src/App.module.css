@@ -1,0 +1,19 @@
+.app {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    height: 100vh;
+}
+
+.body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 0;
+    min-width: 0;
+}
+
+.bodyFullspan {
+    display: grid;
+    grid-template-columns: 1fr;
+    min-height: 0;
+    min-width: 0;
+}

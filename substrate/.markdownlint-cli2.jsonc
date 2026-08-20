@@ -1,0 +1,14 @@
+{
+    "config": {
+        // Heading levels should increment one at a time
+        "MD001": true,
+        // Line length: disabled (spec tables and links can be long)
+        "MD013": false,
+        // Allow duplicate headings in different sections (operations reuse names)
+        "MD024": false,
+        // Ordered list items should use incrementing numbers
+        "MD029": true,
+        // Inline HTML: disabled (none expected, but don't block on it)
+        "MD033": false
+    }
+}

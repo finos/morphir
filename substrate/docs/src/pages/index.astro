@@ -1,0 +1,85 @@
+---
+import Base from "../layouts/Base.astro";
+import Lattice from "../components/Lattice.astro";
+import CliDemo from "../components/CliDemo.astro";
+---
+
+<Base
+  title="Substrate · Verifiable knowledge for human–LLM collaboration"
+  description="Substrate turns the documents your organization already writes into a structured, link-typed corpus that humans, engineers, and LLMs can collaborate on — verifiable knowledge instead of unverifiable prose."
+  activeNav="overview"
+>
+  <section class="landing">
+    <Lattice id="lattice-host" />
+    <div class="landing-inner">
+      <header class="lead">
+        <div class="eyebrow">A FINOS project · v0.1.0</div>
+        <h1>Verifiable knowledge for human–LLM collaboration.</h1>
+        <p class="s-lede">
+          Substrate turns the documents your organization already writes —
+          specifications, regulations, domain models — into a structured,
+          link-typed corpus that humans and LLMs can read, edit, and
+          reason about. The same structure that tools can check is the
+          context an LLM can be trusted to act on.
+        </p>
+        <div class="cta-row">
+          <a class="s-btn" href="/docs/specs/vision/">Read the vision</a>
+          <a
+            class="s-btn secondary"
+            href="https://github.com/AttilaMihaly/morphir-substrate">View on GitHub</a
+          >
+        </div>
+      </header>
+
+      <section class="three-up">
+        <div>
+          <div class="threeup-eyebrow">Verifiable knowledge</div>
+          <p>
+            Every claim a corpus makes — types, dependencies, examples,
+            test cases — is mechanically checkable. Findings are reported
+            against the originating prose, not an opaque intermediate
+            form.
+          </p>
+        </div>
+        <div>
+          <div class="threeup-eyebrow">A graph in plain markdown</div>
+          <p>
+            Authors describe the domain in their own words. Links between
+            documents quietly accumulate a semantic knowledge graph that
+            tools can traverse, type-check, and slice for an LLM.
+          </p>
+        </div>
+        <div>
+          <div class="threeup-eyebrow">Engineer leverage</div>
+          <p>
+            Externalize the mental model. Register patterns and
+            technology mappings against the corpus and let the tooling
+            generate implementations directly — instead of re-prompting
+            an LLM for every change.
+          </p>
+        </div>
+      </section>
+
+      <section class="demo-slab">
+        <div class="demo-copy">
+          <div class="eyebrow">Command line</div>
+          <h2>The corpus is a runnable artifact.</h2>
+          <p>
+            The <code>substrate</code> CLI extracts focused context for an
+            LLM, validates the corpus for consistency and type
+            compatibility, refactors safely across files, and runs the
+            test cases embedded in the prose. Exits non-zero on failure —
+            the same shape as any other check in a CI pipeline.
+          </p>
+          <ul class="cli-flags">
+            <li><code>context</code> — extract a tree-shaken slice for an LLM</li>
+            <li><code>validate</code> — check structure, links, and types</li>
+            <li><code>test</code> — run every embedded case</li>
+            <li><code>refactor</code> — rename and move with references intact</li>
+          </ul>
+        </div>
+        <CliDemo />
+      </section>
+    </div>
+  </section>
+</Base>

@@ -1,0 +1,284 @@
+/* =============================================================
+   Substrate · Colors, Type & Foundations
+   -----------------------------------------------------------------
+   The palette is anchored by a slate surface system centered on
+   #2C4A5A (the tertiary ink — see branding/design-system.md),
+   paired with the canonical blue (#16A2DC) and orange (#F26A21)
+   as the two "signal" accents — mirroring the two polylines in
+   the logo.
+   ============================================================= */
+
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+:root {
+  /* ─── Brand colours ─────────────────────────────────────────── */
+  --brand-blue: #16a2dc;
+  --brand-blue-ink: #0e7ca9;
+  --brand-blue-soft: #d7eef8;
+
+  --brand-orange: #f26a21;
+  --brand-orange-ink: #c4531a;
+  --brand-orange-soft: #fce4d5;
+
+  /* ─── Slate surface / ink scale (tertiary, anchored on #2C4A5A) ─ */
+  --slate-900: #0e1e28;
+  --slate-800: #1a2a34;
+  --slate-700: #2c4a5a;
+  /* ← anchor: dot/line colour & ink on light */
+  --slate-600: #3e5c6c;
+  --slate-500: #5a7586;
+  --slate-400: #869cab;
+  --slate-300: #b6c5d0;
+  --slate-200: #d4dde4;
+  --slate-100: #e6ebf0;
+  --slate-50: #eef2f6;
+  --paper: #f7f9fb;
+  --paper-pure: #fdfefe;
+
+  /* ─── Semantic surface / text ───────────────────────────────── */
+  --bg: var(--paper);
+  --bg-elev: var(--paper-pure);
+  --bg-sunk: var(--slate-50);
+  --bg-tint: var(--slate-100);
+  --bg-radial: radial-gradient(circle at 20% 10%, var(--paper), var(--slate-50));
+
+  --fg-1: var(--slate-800);
+  --fg-2: var(--slate-600);
+  --fg-3: var(--slate-500);
+  --fg-4: var(--slate-400);
+  --fg-inverse: var(--paper-pure);
+
+  --link: var(--brand-blue);
+  --link-hover: var(--brand-blue-ink);
+  --link-visited: var(--brand-blue-ink);
+
+  /* ─── Lattice tokens (read by the Lattice component) ──────── */
+  --dot-color: rgba(44, 74, 90, 0.26);
+  --line-color: rgba(44, 74, 90, 0.11);
+
+  /* ─── Status / verification ─────────────────────────────────── */
+  --ok: #3b8e5a;
+  --ok-soft: #e1f1e6;
+  --warn: #c47a0e;
+  --warn-soft: #fbefd4;
+  --fail: #c0392b;
+  --fail-soft: #f8e1dd;
+  --info: var(--brand-blue);
+  --info-soft: var(--brand-blue-soft);
+
+  /* ─── Borders, radii, shadow ────────────────────────────────── */
+  --border: 1px solid var(--slate-200);
+  --border-strong: 1px solid var(--slate-300);
+  --border-faint: 1px solid var(--slate-100);
+
+  --radius-xs: 3px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  /* soft, slate-tinted shadows — never pure black */
+  --shadow-1: 0 1px 2px rgba(26, 42, 52, 0.06),
+    0 1px 1px rgba(26, 42, 52, 0.04);
+  --shadow-2: 0 2px 6px rgba(26, 42, 52, 0.07),
+    0 1px 2px rgba(26, 42, 52, 0.05);
+  --shadow-3: 0 8px 24px rgba(26, 42, 52, 0.09),
+    0 2px 6px rgba(26, 42, 52, 0.06);
+  --shadow-ink: inset 0 0 0 1px rgba(26, 42, 52, 0.08);
+
+  /* ─── Spacing scale (4px base) ──────────────────────────────── */
+  --s-0: 0;
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+  --s-20: 80px;
+  --s-24: 96px;
+
+  /* ─── Typography ────────────────────────────────────────────── */
+  --font-display:
+    "Fraunces", "Source Serif Pro", "Iowan Old Style", "Apple Garamond",
+    Georgia, "Times New Roman", serif;
+  --font-body:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+    sans-serif;
+  --font-mono:
+    "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  /* Type scale */
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-base: 15px;
+  --fs-md: 17px;
+  --fs-lg: 20px;
+  --fs-xl: 24px;
+  --fs-2xl: 32px;
+  --fs-3xl: 44px;
+  --fs-4xl: 60px;
+
+  --lh-tight: 1.15;
+  --lh-snug: 1.3;
+  --lh-body: 1.55;
+  --lh-loose: 1.7;
+
+  --tracking-tight: -0.01em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.04em;
+  --tracking-caps: 0.08em;
+
+  /* Motion */
+  --ease-standard: cubic-bezier(0.2, 0.6, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --dur-1: 120ms;
+  --dur-2: 180ms;
+  --dur-3: 260ms;
+}
+
+/* =============================================================
+   Base element styles (scoped to .substrate — applied at the
+   top-level app shell so it covers the whole page).
+   ============================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+.substrate {
+  font-family: var(--font-body);
+  color: var(--fg-1);
+  background: var(--bg);
+  font-size: var(--fs-base);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.substrate a {
+  color: var(--link);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in oklab, var(--link) 40%, transparent);
+  text-underline-offset: 2px;
+  transition:
+    color var(--dur-1) var(--ease-standard),
+    text-decoration-color var(--dur-1) var(--ease-standard);
+}
+
+.substrate a:hover {
+  color: var(--link-hover);
+  text-decoration-color: currentColor;
+}
+
+/* Buttons */
+.s-btn {
+  --_bg: var(--slate-800);
+  --_fg: var(--paper-pure);
+  --_bd: var(--slate-800);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  line-height: 1;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--_bg);
+  color: var(--_fg);
+  border: 1px solid var(--_bd);
+  cursor: pointer;
+  transition:
+    transform var(--dur-1) var(--ease-standard),
+    background var(--dur-1) var(--ease-standard),
+    box-shadow var(--dur-1) var(--ease-standard);
+  text-decoration: none;
+}
+
+.s-btn:hover {
+  background: var(--slate-900);
+  border-color: var(--slate-900);
+}
+
+.s-btn:active {
+  transform: translateY(1px);
+}
+
+.s-btn.secondary {
+  --_bg: var(--paper-pure);
+  --_fg: var(--slate-800);
+  --_bd: var(--slate-300);
+}
+
+.s-btn.secondary:hover {
+  background: var(--slate-50);
+  border-color: var(--slate-400);
+}
+
+.s-btn.ghost {
+  --_bg: transparent;
+  --_fg: var(--slate-800);
+  --_bd: transparent;
+}
+
+.s-btn.ghost:hover {
+  background: var(--slate-100);
+}
+
+.s-btn.primary-blue {
+  --_bg: var(--brand-blue);
+  --_bd: var(--brand-blue);
+}
+
+.s-btn.primary-blue:hover {
+  background: var(--brand-blue-ink);
+  border-color: var(--brand-blue-ink);
+}
+
+.s-btn.primary-orange {
+  --_bg: var(--brand-orange);
+  --_bd: var(--brand-orange);
+}
+
+.s-btn.primary-orange:hover {
+  background: var(--brand-orange-ink);
+  border-color: var(--brand-orange-ink);
+}
+
+/* Lede / eyebrow */
+.s-lede {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--fs-lg);
+  line-height: var(--lh-body);
+  color: var(--fg-2);
+  font-style: italic;
+}
+
+.s-eyebrow,
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--fg-3);
+}
+
+/* Selection */
+.substrate ::selection {
+  background: color-mix(in oklab, var(--brand-orange) 30%, transparent);
+}

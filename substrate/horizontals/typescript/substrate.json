@@ -1,0 +1,7 @@
+{
+  "package": {
+    "name": "substrate/typescript-horizontal",
+    "kind": "horizontal",
+    "version": "0.1.0"
+  }
+}

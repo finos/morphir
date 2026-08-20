@@ -1,0 +1,30 @@
+---
+interface Props {
+  active?: "overview" | "docs" | "examples" | "blog";
+}
+const { active = "overview" } = Astro.props;
+import logo from "../assets/logo.svg";
+---
+
+<header class="docs-top">
+  <a href="/" class="docs-brand">
+    <img src={logo.src} width={26} height={26} alt="" />
+    <span>Substrate</span>
+  </a>
+  <nav class="docs-topnav">
+    <a href="/" class={active === "overview" ? "active" : ""}>Overview</a>
+    <a href="/docs/" class={active === "docs" ? "active" : ""}>Docs</a>
+    <a
+      href="https://github.com/AttilaMihaly/morphir-substrate/tree/main/examples"
+      class={active === "examples" ? "active" : ""}>Examples</a
+    >
+    <a href="#" class={active === "blog" ? "active" : ""}>Blog</a>
+  </nav>
+  <div class="docs-top-right">
+    <div class="search"><span>⌘K</span> Search the corpus</div>
+    <a
+      class="s-btn secondary"
+      href="https://github.com/AttilaMihaly/morphir-substrate">GitHub</a
+    >
+  </div>
+</header>

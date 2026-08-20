@@ -1,0 +1,6 @@
+[package]
+name = "@AttilaMihaly/fr2052a-lcr-example"
+kind = "corpus"
+
+[dependencies]
+"@AttilaMihaly/morphir-substrate" = "^0.1.0"

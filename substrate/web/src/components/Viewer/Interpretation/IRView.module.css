@@ -1,0 +1,217 @@
+.module {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 16px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ink);
+}
+
+.moduleHeader {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 8px;
+}
+
+.moduleKind {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-subtle);
+}
+
+.modulePath {
+    font-weight: 600;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sectionTitle {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-subtle);
+}
+
+.sectionGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+    gap: 12px;
+}
+
+.docNote {
+    font-family: var(--font-sans, inherit);
+    font-size: 11px;
+    color: var(--ink-subtle);
+    font-style: italic;
+    white-space: pre-wrap;
+}
+
+.typeCard,
+.valueCard {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+}
+
+.cardHead {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.cardKind {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-subtle);
+    padding: 2px 6px;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sm);
+}
+
+.cardName {
+    font-weight: 600;
+}
+
+.cardParams {
+    color: var(--ink-subtle);
+}
+
+.expr {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.exprHead {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-subtle);
+}
+
+.exprRow {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+.exprLabel {
+    color: var(--ink-subtle);
+}
+
+.exprTok {
+    font-weight: 600;
+}
+
+.exprLit {
+    color: var(--accent, #1d4ed8);
+}
+
+.ref {
+    color: var(--ink);
+    background: var(--surface-2);
+    padding: 1px 4px;
+    border-radius: var(--radius-sm);
+    word-break: break-all;
+}
+
+.ctorRef {
+    color: #6d28d9;
+}
+
+.pattern {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    padding: 4px 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+}
+
+.ctorRows {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ctorRow {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.fieldRow {
+    display: grid;
+    grid-template-columns: minmax(80px, auto) 1fr;
+    gap: 8px;
+    align-items: baseline;
+}
+
+.fieldName {
+    color: var(--ink-subtle);
+}
+
+.indent {
+    border-left: 2px solid var(--rule);
+    padding-left: 8px;
+    margin-left: 4px;
+}
+
+.empty {
+    color: var(--ink-subtle);
+    font-style: italic;
+}
+
+.modulesList {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 8px;
+}
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface-1);
+}
+
+.toolbarTitle {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.toolbarMeta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-subtle);
+    margin-left: auto;
+}
+
+.errorPanel {
+    padding: 16px;
+    color: #b91c1c;
+    font-family: var(--font-mono);
+    font-size: 12px;
+}
