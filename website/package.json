@@ -43,8 +43,8 @@
 	"devDependencies": {
 		"@docusaurus/module-type-aliases": "^3.9.2",
 		"@docusaurus/tsconfig": "^3.9.2",
-		"js-yaml": "^4.3.1",
-		"typescript": "~5.9.0"
+		"js-yaml": "^5.0.0",
+		"typescript": "~7.0.0"
 	},
 	"browserslist": {
 		"production": [
