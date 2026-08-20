@@ -14,10 +14,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Calculate if this is a bi-weekly Thursday
+      - name: Calculate if this is one week before a bi-weekly Thursday meeting
         id: check-date
         run: |
           # Calculate the number of weeks since a reference Thursday (2025-08-07)
+          # Note: the reference date itself is a meeting Thursday, so the week
+          # before it (odd weeks since reference) is when we want to fire, i.e.
+          # a week ahead of each bi-weekly meeting.
           REFERENCE_DATE="2025-08-07"
           CURRENT_DATE=$(date +%Y-%m-%d)
 
@@ -31,33 +34,28 @@ jobs:
           # Calculate the number of weeks since reference
           WEEKS_SINCE_REFERENCE=$(( DAYS_DIFF / 7 ))
 
-          # Check if this is an even number of weeks (bi-weekly schedule)
-          if [ $(( WEEKS_SINCE_REFERENCE % 2 )) -eq 0 ]; then
+          # Check if this is an odd number of weeks (the Thursday one week
+          # before a bi-weekly meeting Thursday)
+          if [ $(( WEEKS_SINCE_REFERENCE % 2 )) -eq 1 ]; then
             echo "should_run=true" >> $GITHUB_OUTPUT
           else
             echo "should_run=false" >> $GITHUB_OUTPUT
           fi
 
           echo "Current date: $CURRENT_DATE"
-          echo "Reference date: $REFERENCE_DATE" 
+          echo "Reference date: $REFERENCE_DATE"
           echo "Weeks since reference: $WEEKS_SINCE_REFERENCE"
-          echo "Should run: $([ $(( WEEKS_SINCE_REFERENCE % 2 )) -eq 0 ] && echo true || echo false)"
+          echo "Should run: $([ $(( WEEKS_SINCE_REFERENCE % 2 )) -eq 1 ] && echo true || echo false)"
 
       - name: Get meeting date
         if: steps.check-date.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
         id: meeting-date
         run: |
-          # Get the date for the upcoming Thursday (or today if today is Thursday)
+          # Get the date of the next Thursday, one week ahead of the meeting
+          # so the agenda issue is created with time for people to fill it in.
           CURRENT_DAY=$(date +%u)  # 1=Monday, 7=Sunday
-          DAYS_TO_THURSDAY=$(( (4 - CURRENT_DAY + 7) % 7 ))
-
-          if [ $DAYS_TO_THURSDAY -eq 0 ]; then
-            # Today is Thursday
-            MEETING_DATE=$(date +%Y-%m-%d)
-          else
-            # Calculate next Thursday
-            MEETING_DATE=$(date -d "+${DAYS_TO_THURSDAY} days" +%Y-%m-%d)
-          fi
+          DAYS_TO_NEXT_THURSDAY=$(( ((4 - CURRENT_DAY + 6) % 7) + 1 ))
+          MEETING_DATE=$(date -d "+${DAYS_TO_NEXT_THURSDAY} days" +%Y-%m-%d)
 
           # Format dates for the issue
           FORMATTED_DATE=$(date -d "$MEETING_DATE" +"%d %b %Y")  # e.g., "07 Aug 2025"
@@ -71,13 +69,31 @@ jobs:
           echo "Formatted: $FORMATTED_DATE"
           echo "Short: $SHORT_DATE"
 
+      - name: Strip front matter from issue template
+        if: steps.check-date.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
+        id: strip-frontmatter
+        run: |
+          # The issue template's YAML front matter (name/about) is metadata
+          # for GitHub's "new issue" template chooser, not meeting content -
+          # strip it so it doesn't end up in the created issue's body.
+          BODY_FILE="${RUNNER_TEMP}/meeting-agenda-body.md"
+
+          awk '
+            NR==1 && $0=="---" { infm=1; next }
+            infm && $0=="---" { infm=0; next }
+            infm { next }
+            { print }
+          ' .github/ISSUE_TEMPLATE/Meeting.md | sed -e '/./,$!d' > "$BODY_FILE"
+
+          echo "body-filepath=$BODY_FILE" >> $GITHUB_OUTPUT
+
       - name: Create issue from template
         if: steps.check-date.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
         id: create-issue
         uses: peter-evans/create-issue-from-file@v6
         with:
           title: "${{ steps.meeting-date.outputs.short_date }} (${{ steps.meeting-date.outputs.formatted_date }}) - Morphir Project Meeting"
-          content-filepath: .github/ISSUE_TEMPLATE/Meeting.md
+          content-filepath: ${{ steps.strip-frontmatter.outputs.body-filepath }}
           labels: |
             meeting
             agenda
