@@ -304,7 +304,7 @@ impl JsonPager {
         self.cursor.line = (self.cursor.line + lines).min(self.line_count.saturating_sub(1));
         // Clamp column to line length
         if let Some(line) = self.raw_lines.get(self.cursor.line) {
-            self.cursor.col = self.cursor.col.min(line.len().saturating_sub(1).max(0));
+            self.cursor.col = self.cursor.col.min(line.len().saturating_sub(1));
         }
         // Scroll to keep cursor visible
         if self.cursor.line >= self.scroll + visible_height {
@@ -317,7 +317,7 @@ impl JsonPager {
         self.cursor.line = self.cursor.line.saturating_sub(lines);
         // Clamp column to line length
         if let Some(line) = self.raw_lines.get(self.cursor.line) {
-            self.cursor.col = self.cursor.col.min(line.len().saturating_sub(1).max(0));
+            self.cursor.col = self.cursor.col.min(line.len().saturating_sub(1));
         }
         // Scroll to keep cursor visible
         if self.cursor.line < self.scroll {
@@ -749,11 +749,9 @@ impl JsonPager {
 
     /// Render the footer bar with help text.
     fn render_footer(&self, frame: &mut Frame, area: Rect) {
-        let progress = if self.line_count > 0 {
-            let percent = ((self.cursor.line + 1) * 100) / self.line_count;
-            format!("{}%", percent.min(100))
-        } else {
-            "0%".to_string()
+        let progress = match ((self.cursor.line + 1) * 100).checked_div(self.line_count) {
+            Some(percent) => format!("{}%", percent.min(100)),
+            None => "0%".to_string(),
         };
 
         // Build footer text based on current mode
