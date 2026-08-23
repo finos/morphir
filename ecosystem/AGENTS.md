@@ -9,6 +9,7 @@ This directory holds **git submodules** for Morphir ecosystem repositories. Use 
 - **morphir-examples** – Example Morphir projects.
 - **morphir-moonbit** – MoonBit implementation of Morphir tooling.
 - **morphir-python** – Python implementation of Morphir tooling.
+- **morphir-scala** – Scala implementation of Morphir tooling. Mill build, cross-compiled to JVM, JS, and Scala Native.
 
 Do not edit submodule content in-place for long-term changes. Prefer contributing in the submodule's own repo and then updating the submodule ref in finos/morphir when intentional.
 
@@ -54,12 +55,6 @@ mise run test:morphir-moonbit -- morphir-sdk
 
 Valid package names: `morphir-sdk`, `morphir-core`, `morphir-moonbit-bindings`
 
-Changes inside submodules are committed in the submodule repo. The morphir repo only commits the submodule ref when intentionally updating to a new revision.
-
-## Future submodules
-
-When morphir-go, morphir-python, or others are added, they will live under `ecosystem/` with the same pattern. Document any language- or repo-specific usage in this file.
-
 ### morphir-python
 
 Python implementation of Morphir tooling. Uses `uv` for package management and `behave` for BDD tests.
@@ -67,3 +62,25 @@ Python implementation of Morphir tooling. Uses `uv` for package management and `
 ```bash
 cd ecosystem/morphir-python && uv sync && uv run behave
 ```
+
+### morphir-scala
+
+Scala implementation of Morphir tooling. Built with [Mill](https://mill-build.org) through the repo's own `./mill` launcher; the Mill version is pinned in `.mill-version`. finos/morphir defines **no** top-level mise tasks for it — run its tasks from inside the submodule:
+
+```bash
+cd ecosystem/morphir-scala
+
+mise run lint          # Formatting check (./mill --ticker false -i ci.lint)
+mise run test:jvm      # JVM tests
+mise run test:js       # JS tests
+mise run test:native   # Scala Native tests
+mise run ci:local      # Full local CI
+```
+
+Mill can also be driven directly, e.g. `./mill morphir.jvm.compile` or `./mill morphir.tests.jvm.test`. See the submodule's own [AGENTS.md](morphir-scala/AGENTS.md) for the full task list and its Scala coding conventions.
+
+Changes inside submodules are committed in the submodule repo. The morphir repo only commits the submodule ref when intentionally updating to a new revision.
+
+## Future submodules
+
+When morphir-go, morphir-dotnet, or others are added, they will live under `ecosystem/` with the same pattern. Document any language- or repo-specific usage in this file.

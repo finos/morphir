@@ -11,6 +11,7 @@ This directory contains [git submodules](https://git-scm.com/book/en/v2/Git-Tool
 | **morphir-examples** | [finos/morphir-examples](https://github.com/finos/morphir-examples) | main | Example Morphir projects; used for docs, tests, and reference |
 | **morphir-moonbit** | [finos/morphir-moonbit](https://github.com/finos/morphir-moonbit) | main | MoonBit implementation of Morphir tooling |
 | **morphir-python** | [finos/morphir-python](https://github.com/finos/morphir-python) | main | Python implementation of Morphir tooling |
+| **morphir-scala** | [finos/morphir-scala](https://github.com/finos/morphir-scala) | main | Scala implementation of Morphir tooling; Mill build cross-compiled to JVM, JS, and Scala Native |
 
 ## First-time clone
 
@@ -65,6 +66,7 @@ mise run submodules:status
 - **morphir-examples**: Used for examples, documentation, and tests. See each submodule's own README for build and usage.
 - **morphir-moonbit**: MoonBit implementation with packages for SDK, core types, and WASM bindings. See below for build commands.
 - **morphir-python**: Python implementation of Morphir tooling. See the submodule's own README for build and usage.
+- **morphir-scala**: Scala implementation of Morphir tooling, built with Mill. See below for build commands.
 
 ## Building and testing morphir-moonbit
 
@@ -86,6 +88,22 @@ mise run test:morphir-moonbit -- morphir-core
 ```
 
 Valid package names: `morphir-sdk`, `morphir-core`, `morphir-moonbit-bindings`
+
+## Building and testing morphir-scala
+
+morphir-scala is built with [Mill](https://mill-build.org) using the launcher checked into its own repo. There are no top-level `mise` tasks for it in finos/morphir — run its tasks from inside the submodule:
+
+```bash
+cd ecosystem/morphir-scala
+
+mise run lint          # Check formatting
+mise run test:jvm      # Run JVM tests
+mise run test:js       # Run JS tests
+mise run test:native   # Run Scala Native tests
+mise run ci:local      # Run full local CI
+```
+
+Mill can also be invoked directly, e.g. `./mill morphir.jvm.compile`. See the submodule's own [README](morphir-scala/README.md) and [CONTRIBUTING](morphir-scala/CONTRIBUTING.md) for details.
 
 ## Adding a new submodule
 
