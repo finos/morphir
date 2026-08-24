@@ -23,7 +23,7 @@ path = "src/main.rs"
 starbase = { workspace = true }
 clap = { workspace = true, features = ["color"] }
 owo-colors = "4"
-termimad = "0.34"
+termimad = "0.35"
 syntect = "5"
 anyhow = { workspace = true }
 thiserror = { workspace = true }

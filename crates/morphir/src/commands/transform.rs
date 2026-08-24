@@ -3,7 +3,7 @@
 use starbase::AppResult;
 
 /// Run the transform command
-pub fn run_transform(input: Option<String>, output: Option<String>) -> AppResult {
+pub fn run_transform(input: Option<String>, output: Option<String>) -> AppResult<miette::Report> {
     println!("Transforming Morphir IR...");
     if let Some(path) = input {
         println!("Input path: {}", path);

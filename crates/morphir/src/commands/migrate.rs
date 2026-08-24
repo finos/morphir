@@ -119,7 +119,7 @@ pub fn run_migrate(
     no_cache: bool,
     json: bool,
     _expanded: bool, // TODO: Will be used when converter module is re-enabled
-) -> AppResult {
+) -> AppResult<miette::Report> {
     let output_str = output
         .as_ref()
         .map(|p| p.display().to_string())

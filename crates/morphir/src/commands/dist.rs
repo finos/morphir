@@ -96,7 +96,7 @@ impl DistRegistry {
 }
 
 /// Run the dist install command
-pub fn run_dist_install(name: String, version: Option<String>) -> AppResult {
+pub fn run_dist_install(name: String, version: Option<String>) -> AppResult<miette::Report> {
     println!("Installing Morphir distribution: {}", name);
 
     let mut registry = match DistRegistry::load() {
@@ -145,7 +145,7 @@ pub fn run_dist_install(name: String, version: Option<String>) -> AppResult {
 }
 
 /// Run the dist list command
-pub fn run_dist_list() -> AppResult {
+pub fn run_dist_list() -> AppResult<miette::Report> {
     println!("Listing installed Morphir distributions...\n");
 
     let registry = match DistRegistry::load() {
@@ -176,7 +176,7 @@ pub fn run_dist_list() -> AppResult {
 }
 
 /// Run the dist update command
-pub fn run_dist_update(name: String, version: Option<String>) -> AppResult {
+pub fn run_dist_update(name: String, version: Option<String>) -> AppResult<miette::Report> {
     println!("Updating Morphir distribution: {}", name);
 
     let mut registry = match DistRegistry::load() {
@@ -238,7 +238,7 @@ pub fn run_dist_update(name: String, version: Option<String>) -> AppResult {
 }
 
 /// Run the dist uninstall command
-pub fn run_dist_uninstall(name: String) -> AppResult {
+pub fn run_dist_uninstall(name: String) -> AppResult<miette::Report> {
     println!("Uninstalling Morphir distribution: {}", name);
 
     let mut registry = match DistRegistry::load() {

@@ -32,7 +32,7 @@ pub struct CompileOptions {
 }
 
 /// Run the compile command
-pub async fn run_compile(options: CompileOptions) -> AppResult {
+pub async fn run_compile(options: CompileOptions) -> AppResult<miette::Report> {
     let CompileOptions {
         language,
         input,

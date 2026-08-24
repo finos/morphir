@@ -95,7 +95,7 @@ impl ToolRegistry {
 }
 
 /// Run the tool install command
-pub fn run_tool_install(name: String, version: Option<String>) -> AppResult {
+pub fn run_tool_install(name: String, version: Option<String>) -> AppResult<miette::Report> {
     println!("Installing Morphir tool: {}", name);
 
     let mut registry = match ToolRegistry::load() {
@@ -144,7 +144,7 @@ pub fn run_tool_install(name: String, version: Option<String>) -> AppResult {
 }
 
 /// Run the tool list command
-pub fn run_tool_list() -> AppResult {
+pub fn run_tool_list() -> AppResult<miette::Report> {
     println!("Listing installed Morphir tools...\n");
 
     let registry = match ToolRegistry::load() {
@@ -175,7 +175,7 @@ pub fn run_tool_list() -> AppResult {
 }
 
 /// Run the tool update command
-pub fn run_tool_update(name: String, version: Option<String>) -> AppResult {
+pub fn run_tool_update(name: String, version: Option<String>) -> AppResult<miette::Report> {
     println!("Updating Morphir tool: {}", name);
 
     let mut registry = match ToolRegistry::load() {
@@ -234,7 +234,7 @@ pub fn run_tool_update(name: String, version: Option<String>) -> AppResult {
 }
 
 /// Run the tool uninstall command
-pub fn run_tool_uninstall(name: String) -> AppResult {
+pub fn run_tool_uninstall(name: String) -> AppResult<miette::Report> {
     println!("Uninstalling Morphir tool: {}", name);
 
     let mut registry = match ToolRegistry::load() {

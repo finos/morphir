@@ -96,7 +96,7 @@ impl ExtensionRegistry {
 }
 
 /// Run the extension install command
-pub fn run_extension_install(name: String, version: Option<String>) -> AppResult {
+pub fn run_extension_install(name: String, version: Option<String>) -> AppResult<miette::Report> {
     println!("Installing Morphir extension: {}", name);
 
     let mut registry = match ExtensionRegistry::load() {
@@ -145,7 +145,7 @@ pub fn run_extension_install(name: String, version: Option<String>) -> AppResult
 }
 
 /// Run the extension list command
-pub fn run_extension_list() -> AppResult {
+pub fn run_extension_list() -> AppResult<miette::Report> {
     println!("Listing Morphir extensions...\n");
 
     // Discover builtin extensions
@@ -220,7 +220,7 @@ pub fn run_extension_list() -> AppResult {
 }
 
 /// Run the extension update command
-pub fn run_extension_update(name: String, version: Option<String>) -> AppResult {
+pub fn run_extension_update(name: String, version: Option<String>) -> AppResult<miette::Report> {
     println!("Updating Morphir extension: {}", name);
 
     let mut registry = match ExtensionRegistry::load() {
@@ -282,7 +282,7 @@ pub fn run_extension_update(name: String, version: Option<String>) -> AppResult 
 }
 
 /// Run the extension uninstall command
-pub fn run_extension_uninstall(name: String) -> AppResult {
+pub fn run_extension_uninstall(name: String) -> AppResult<miette::Report> {
     println!("Uninstalling Morphir extension: {}", name);
 
     let mut registry = match ExtensionRegistry::load() {

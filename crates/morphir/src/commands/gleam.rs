@@ -13,7 +13,7 @@ pub async fn run_gleam_compile(
     project: Option<String>,
     json: bool,
     json_lines: bool,
-) -> AppResult {
+) -> AppResult<miette::Report> {
     run_compile(CompileOptions {
         language: Some("gleam".to_string()), // Set language to gleam
         input,
@@ -35,7 +35,7 @@ pub async fn run_gleam_generate(
     project: Option<String>,
     json: bool,
     json_lines: bool,
-) -> AppResult {
+) -> AppResult<miette::Report> {
     run_generate(
         Some("gleam".to_string()), // Set target to gleam
         input,
@@ -57,7 +57,7 @@ pub async fn run_gleam_roundtrip(
     project: Option<String>,
     json: bool,
     json_lines: bool,
-) -> AppResult {
+) -> AppResult<miette::Report> {
     // First compile
     let compile_output = output.clone().or_else(|| {
         // Use default compile output path
