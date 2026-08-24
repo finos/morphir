@@ -22,7 +22,7 @@ Sources are loaded from **lowest precedence** to **highest precedence**:
 | Priority | Source | Typical path |
 |----------|--------|--------------|
 | 1 (lowest) | Built-in defaults | (compiled in) |
-| 2 | System config | `/etc/morphir/morphir.toml` |
+| 2 | System config | `/etc/morphir/morphir.toml`, or `%PROGRAMDATA%\morphir\morphir.toml` on Windows |
 | 3 | Global user config | Platform config directory or user-home `.morphir` directory |
 | 4 | Project config | `morphir.toml` |
 | 5 | User override | `.morphir/morphir.user.toml` |
@@ -30,7 +30,13 @@ Sources are loaded from **lowest precedence** to **highest precedence**:
 
 If the same setting is present in multiple sources, **the value from the highest-precedence source wins**, subject to the merge algorithm described below.
 
+Each file source accepts a `morphir.yaml` serialization at the corresponding location (`morphir.user.yaml` for the user override). A loader MUST accept at most one serialization per location and MUST report an ambiguity error that names both files when a TOML and a YAML file coexist. See the [YAML specification](../morphir-yaml/morphir-yaml-specification/) for discovery details.
+
+On Windows, `%PROGRAMDATA%` resolves through the `PROGRAMDATA` environment variable and falls back to `C:\ProgramData` when it is unset.
+
 > Note: A “hidden project config” variant (`.morphir/morphir.toml`) may also be used by some commands/workflows. The merge semantics are identical.
+>
+> When a workspace configuration selects a member project, the member's configuration is merged after the workspace configuration and before the user overrides. The workspace-level `.morphir/morphir.user.*` file is applied first, then the member's.
 
 ### Global user path resolution
 
@@ -94,7 +100,7 @@ Given two maps: `base` and `overlay`, `DeepMerge(base, overlay)` produces a new 
 - **Rule 4 — `nil` overlay is ignored**: if an overlay value is `nil`, it does **not** override the base value.
 - **Rule 5 — No mutation**: the merge result is independent; inputs are not modified.
 
-These rules are implemented by `pkg/config/internal/configloader.DeepMerge` and `MergeAll`.
+These rules are implemented by `deep_merge` and `merge_all` in the `morphir_common::config::merge` module of morphir-rust. The layered loader in `morphir_design::config` (`load_effective_config`) applies them across the sources above and records which sources were consulted; `morphir config path` and `morphir config show` expose that result.
 
 ## Environment variable mapping (informative)
 
@@ -106,6 +112,16 @@ Key mapping:
   - `MORPHIR_CODEGEN__GO__PACKAGE=foo` → `codegen.go.package = "foo"`
 - Single underscores are not split into nested keys by the loader; they remain part of the key name at that level:
   - `MORPHIR_IR_FORMAT_VERSION=3` → `ir_format_version = 3` (as a single key in the env-derived map)
+- Key segments are lower-cased. Underscores immediately after the prefix are ignored, so `MORPHIR__IR__STRICT_MODE` and `MORPHIR_IR__STRICT_MODE` map to the same key.
+
+Value mapping:
+
+- `true` and `false` (any case) become booleans.
+- Integers become numbers.
+- A value that starts with `[` or `{` and parses as JSON becomes an array or object.
+- Anything else stays a string.
+
+When a scalar and a nested key conflict (`MORPHIR_IR=x` together with `MORPHIR_IR__STRICT_MODE=true`), the shorter path wins and the nested variable is dropped, regardless of environment iteration order.
 
 > The env mapping behavior is intentionally mechanical; it does not attempt to “guess” dotted paths. The final effective configuration still follows the same DeepMerge rules.
 
