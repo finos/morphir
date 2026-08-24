@@ -22,10 +22,10 @@ jobs:
       docs: ${{ steps.filter.outputs.docs }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Check for file changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -48,10 +48,10 @@ jobs:
     if: ${{ needs.changes.outputs.rust == 'true' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install mise
-        uses: jdx/mise-action@v3
+        uses: jdx/mise-action@v4
 
       - name: Initialize environment
         run: mise run init -- --ci
@@ -93,10 +93,10 @@ jobs:
     if: ${{ needs.changes.outputs.rust == 'true' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install mise
-        uses: jdx/mise-action@v3
+        uses: jdx/mise-action@v4
 
       - name: Initialize environment
         run: mise run init -- --ci
@@ -131,7 +131,7 @@ jobs:
     if: ${{ needs.changes.outputs.docs == 'true' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Validate documentation
         run: python3 .config/mise/tasks/ci/validate_docs.py
