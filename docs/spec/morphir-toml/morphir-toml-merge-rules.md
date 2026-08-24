@@ -113,4 +113,4 @@ Key mapping:
 
 - `docs/configuration.md` (user-facing configuration guide)
 - `docs/spec/morphir-toml/morphir-toml-specification.md` (format/structure specification)
-- `docs/spec/morphir-yaml/morphir-yaml-specification.md` (proposed YAML serialization)
+- `docs/spec/morphir-yaml/morphir-yaml-specification.md` (YAML serialization)

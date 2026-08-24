@@ -27,9 +27,11 @@ pub async fn run_generate(
     let config_file = if let Some(cfg) = config_path {
         PathBuf::from(cfg)
     } else {
-        discover_config(&start_dir).ok_or_else(|| CliError::Config {
-            error: anyhow::anyhow!("No morphir.toml or morphir.json found"),
-        })?
+        discover_config(&start_dir)
+            .map_err(|error| CliError::Config { error })?
+            .ok_or_else(|| CliError::Config {
+                error: anyhow::anyhow!("No morphir.toml, morphir.yaml, or morphir.json found"),
+            })?
     };
 
     // Load config context

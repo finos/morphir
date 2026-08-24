@@ -21,7 +21,7 @@ Morphir loads configuration from multiple sources, merged in priority order:
 | 1 (lowest) | Built-in defaults | (compiled in) | Sensible defaults |
 | 2 | System config | `/etc/morphir/morphir.toml` | System-wide settings |
 | 3 | Global user config | Platform config directory or user-home `.morphir` directory | User preferences |
-| 4 | Project config | `morphir.toml` or `.morphir/morphir.toml` | Project settings |
+| 4 | Project config | `morphir.toml`, `morphir.yaml`, or the corresponding hidden path | Project settings |
 | 5 | User override | `.morphir/morphir.user.toml` | Local overrides (gitignored) |
 | 6 (highest) | Environment variables | `MORPHIR_*` | Runtime overrides |
 
@@ -31,11 +31,11 @@ Higher-priority sources override lower-priority ones for the same setting.
 
 ### Project Configuration
 
-Place `morphir.toml` in your project root:
+Place `morphir.toml` or `morphir.yaml` in your project root:
 
 ```
 my-project/
-├── morphir.toml          # Project configuration
+├── morphir.toml          # Project configuration (morphir.yaml is also supported)
 ├── .morphir/
 │   └── morphir.user.toml # User overrides (gitignored)
 └── src/
@@ -46,7 +46,7 @@ Or use the hidden style with `morphir workspace init --hidden`:
 ```
 my-project/
 ├── .morphir/
-│   ├── morphir.toml      # Project configuration
+│   ├── morphir.toml      # Project configuration (morphir.yaml is also supported)
 │   └── morphir.user.toml # User overrides
 └── src/
 ```

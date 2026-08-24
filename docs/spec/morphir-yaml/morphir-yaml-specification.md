@@ -7,9 +7,9 @@ description: "Proposed specification for morphir.yaml configuration files"
 
 ## Status and scope
 
-This document specifies the proposed `morphir.yaml` configuration format. It is a second serialization of the same configuration model as `morphir.toml`.
+This document specifies the `morphir.yaml` configuration format. It is a second serialization of the same configuration model as `morphir.toml`.
 
-- Status: Draft design. Repository tooling does not yet claim support for loading `morphir.yaml`.
+- Status: Supported by the Morphir Rust configuration loader and CLI.
 - Applies to: Project, workspace, user, and system configuration.
 - Out of scope: Morphir IR YAML and the legacy `morphir.json` project file.
 

@@ -80,7 +80,7 @@ fn test_config_discovery() {
     let subdir = project_root.join("subdir");
     std::fs::create_dir_all(&subdir).unwrap();
 
-    let config_path = discover_config(&subdir);
+    let config_path = discover_config(&subdir).unwrap();
     assert!(config_path.is_some());
     assert_eq!(config_path.unwrap(), project_root.join("morphir.toml"));
 }
