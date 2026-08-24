@@ -41,7 +41,7 @@ The `build.rs` script in `crates/morphir/` can be extended to:
 ### Current Status
 
 Currently, the WASM file must be built manually and placed in the expected location.
-The extension discovery logic in `morphir-design` will look for:
+The extension discovery logic in `morphir-devkit` will look for:
 - `extensions/gleam.wasm` (relative to binary)
 - `resources/extensions/gleam.wasm` (relative to binary)
 - Bundled resources (when build script is updated)

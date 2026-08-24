@@ -100,7 +100,7 @@ Given two maps: `base` and `overlay`, `DeepMerge(base, overlay)` produces a new 
 - **Rule 4 — `nil` overlay is ignored**: if an overlay value is `nil`, it does **not** override the base value.
 - **Rule 5 — No mutation**: the merge result is independent; inputs are not modified.
 
-These rules are implemented by `deep_merge` and `merge_all` in the `morphir_common::config::merge` module of morphir-rust. The layered loader in `morphir_design::config` (`load_effective_config`) applies them across the sources above and records which sources were consulted; `morphir config path` and `morphir config show` expose that result.
+These rules are implemented by `deep_merge` and `merge_all` in the `morphir_common::config::merge` module of morphir-rust. The layered loader in `morphir_devkit::config` (`load_effective_config`) applies them across the sources above and records which sources were consulted; `morphir config path` and `morphir config show` expose that result.
 
 ## Environment variable mapping (informative)
 

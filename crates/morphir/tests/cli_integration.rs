@@ -64,7 +64,7 @@ async fn test_generate_command_basic() {
 
 #[test]
 fn test_config_discovery() {
-    use morphir_design::discover_config;
+    use morphir_devkit::discover_config;
 
     let temp_dir = TempDir::new().unwrap();
     let project_root = temp_dir.path();
@@ -87,7 +87,7 @@ fn test_config_discovery() {
 
 #[test]
 fn test_morphir_dir_discovery() {
-    use morphir_design::discover_morphir_dir;
+    use morphir_devkit::discover_morphir_dir;
 
     let temp_dir = TempDir::new().unwrap();
     let project_root = temp_dir.path();
@@ -107,7 +107,7 @@ fn test_morphir_dir_discovery() {
 
 #[test]
 fn test_path_resolution() {
-    use morphir_design::{resolve_compile_output, resolve_generate_output, sanitize_project_name};
+    use morphir_devkit::{resolve_compile_output, resolve_generate_output, sanitize_project_name};
 
     let morphir_dir = PathBuf::from(".morphir");
 

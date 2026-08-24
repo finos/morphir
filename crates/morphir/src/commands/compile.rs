@@ -3,7 +3,7 @@
 use crate::error::CliError;
 use crate::output::Diagnostic;
 use morphir_daemon::extensions::registry::ExtensionRegistry;
-use morphir_design::{
+use morphir_devkit::{
     discover_config, ensure_morphir_structure, load_config_context, resolve_compile_output,
     resolve_path_relative_to_config,
 };
@@ -128,7 +128,7 @@ pub async fn run_compile(options: CompileOptions) -> AppResult<miette::Report> {
     })?;
 
     // Register builtin extensions
-    let builtins = morphir_design::discover_builtin_extensions();
+    let builtins = morphir_devkit::discover_builtin_extensions();
     for builtin in builtins {
         if let Some(path) = builtin.path {
             registry
