@@ -19,6 +19,8 @@ This document specifies the **`morphir.toml`** configuration format used by Morp
 
 Morphir tooling treats a directory as a “workspace” when it contains a `morphir.toml` file (or the hidden variant `.morphir/morphir.toml`).
 
+Global user configuration may use `~/.config/morphir/morphir.toml` or `~/.morphir/morphir.toml`. These are alternate locations at the same precedence. See the merge rules for conflict handling across locations and serializations.
+
 > This spec focuses on the **file format**, not the multi-source merge rules. For merge precedence and merge behavior, see **[Morphir TOML Configuration Merge Rules](./morphir-toml-merge-rules/)**.
 
 ## Data model

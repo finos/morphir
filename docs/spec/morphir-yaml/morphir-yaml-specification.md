@@ -122,13 +122,15 @@ YAML uses the locations corresponding to the TOML configuration sources:
 | Precedence | YAML path |
 | --- | --- |
 | System | `/etc/morphir/morphir.yaml` |
-| Global user | `~/.config/morphir/morphir.yaml` |
+| Global user | `~/.config/morphir/morphir.yaml` or `~/.morphir/morphir.yaml` |
 | Project | `morphir.yaml` or `.morphir/morphir.yaml` |
 | User override | `.morphir/morphir.user.yaml` |
 
 Built-in defaults and `MORPHIR_*` environment variables have no file serialization.
 
-At one location, a loader MUST accept at most one serialization. If corresponding TOML and YAML files both exist, discovery MUST fail with an ambiguity error that names both files. A loader MUST NOT merge sibling TOML and YAML files or choose one by extension precedence.
+The two global user paths are alternate locations at the same precedence. Across both directories and both serializations, a loader MUST discover at most one global user file. If it finds more than one, discovery MUST fail with an ambiguity error that names every candidate. A loader MUST NOT merge global user files or choose one by directory or extension precedence.
+
+At any other location, a loader MUST accept at most one serialization. If corresponding TOML and YAML files both exist, discovery MUST fail with an ambiguity error that names both files. A loader MUST NOT merge sibling TOML and YAML files or choose one by extension precedence.
 
 The hidden and non-hidden project paths are alternate locations, not two merge layers. If both exist, discovery MUST report the same kind of ambiguity.
 

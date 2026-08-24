@@ -5,6 +5,7 @@
 #   1. Built-in defaults (lowest priority)
 #   2. System config: /etc/morphir/morphir.toml
 #   3. Global user config: ~/.config/morphir/morphir.toml
+#      or ~/.morphir/morphir.toml (alternate location at the same priority)
 #   4. This project config: morphir.toml or .morphir/morphir.toml
 #   5. User override: .morphir/morphir.user.toml (gitignored)
 #   6. Environment variables: MORPHIR_* (highest priority)

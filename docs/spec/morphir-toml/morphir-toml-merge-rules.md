@@ -23,7 +23,7 @@ Sources are loaded from **lowest precedence** to **highest precedence**:
 |----------|--------|--------------|
 | 1 (lowest) | Built-in defaults | (compiled in) |
 | 2 | System config | `/etc/morphir/morphir.toml` |
-| 3 | Global user config | `~/.config/morphir/morphir.toml` |
+| 3 | Global user config | `~/.config/morphir/morphir.toml` or `~/.morphir/morphir.toml` |
 | 4 | Project config | `morphir.toml` |
 | 5 | User override | `.morphir/morphir.user.toml` |
 | 6 (highest) | Environment variables | `MORPHIR_*` |
@@ -31,6 +31,8 @@ Sources are loaded from **lowest precedence** to **highest precedence**:
 If the same setting is present in multiple sources, **the value from the highest-precedence source wins**, subject to the merge algorithm described below.
 
 > Note: A “hidden project config” variant (`.morphir/morphir.toml`) may also be used by some commands/workflows. The merge semantics are identical.
+
+The two global user paths are alternate locations at the same precedence. A loader accepts at most one global user configuration across these directories and the supported TOML and YAML serializations. If it finds more than one candidate, it reports an ambiguity error instead of merging the files or choosing one by path or extension.
 
 ## Merge algorithm (normative)
 

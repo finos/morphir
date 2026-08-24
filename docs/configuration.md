@@ -20,7 +20,7 @@ Morphir loads configuration from multiple sources, merged in priority order:
 |----------|--------|------|---------|
 | 1 (lowest) | Built-in defaults | (compiled in) | Sensible defaults |
 | 2 | System config | `/etc/morphir/morphir.toml` | System-wide settings |
-| 3 | Global user config | `~/.config/morphir/morphir.toml` | User preferences |
+| 3 | Global user config | `~/.config/morphir/morphir.toml` or `~/.morphir/morphir.toml` | User preferences |
 | 4 | Project config | `morphir.toml` or `.morphir/morphir.toml` | Project settings |
 | 5 | User override | `.morphir/morphir.user.toml` | Local overrides (gitignored) |
 | 6 (highest) | Environment variables | `MORPHIR_*` | Runtime overrides |
@@ -53,7 +53,16 @@ my-project/
 
 ### Global User Configuration
 
-Create `~/.config/morphir/morphir.toml` for settings that apply to all projects:
+Create one global user file for settings that apply to all projects:
+
+- `~/.config/morphir/morphir.toml`
+- `~/.morphir/morphir.toml`
+- `~/.config/morphir/morphir.yaml`
+- `~/.morphir/morphir.yaml`
+
+The paths are alternatives at the same precedence. If more than one exists, Morphir reports an ambiguity error.
+
+TOML example:
 
 ```toml
 [logging]
@@ -61,6 +70,16 @@ level = "debug"
 
 [ui]
 theme = "dark"
+```
+
+YAML example:
+
+```yaml
+logging:
+  level: debug
+
+ui:
+  theme: dark
 ```
 
 ### System Configuration
