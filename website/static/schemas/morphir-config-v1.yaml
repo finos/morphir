@@ -1,7 +1,7 @@
 $schema: "http://json-schema.org/draft-07/schema#"
 $id: "https://morphir.finos.org/schemas/morphir-config-v1.yaml"
-title: "Morphir Configuration (morphir.toml)"
-description: "JSON Schema for the JSON-equivalent model of morphir.toml configuration files."
+title: "Morphir Configuration"
+description: "JSON Schema for the serialization-independent Morphir configuration model underlying morphir.toml and the proposed morphir.yaml format."
 type: object
 additionalProperties: true
 
@@ -15,6 +15,14 @@ definitions:
     type: object
     additionalProperties: true
     properties:
+      kind:
+        type: string
+        enum: ["intrinsic", "command"]
+      action:
+        type: string
+      cmd:
+        type: array
+        items: { type: string }
       depends_on:
         type: array
         items: { type: string }
@@ -43,6 +51,8 @@ definitions:
       - $ref: "#/definitions/taskCommon"
       - type: object
         additionalProperties: true
+        not:
+          required: ["cmd"]
         properties:
           kind:
             type: string
@@ -55,6 +65,9 @@ definitions:
       - $ref: "#/definitions/taskCommon"
       - type: object
         additionalProperties: true
+        required: ["kind"]
+        not:
+          required: ["action"]
         properties:
           kind:
             type: string
@@ -68,13 +81,6 @@ definitions:
     anyOf:
       - $ref: "#/definitions/commandTask"
       - $ref: "#/definitions/intrinsicTask"
-      - allOf:
-          - $ref: "#/definitions/taskCommon"
-          - type: object
-            additionalProperties: true
-            properties:
-              action:
-                type: string
 
   workflowStage:
     type: object
@@ -321,4 +327,3 @@ properties:
     type: object
     additionalProperties:
       $ref: "#/definitions/toolchain"
-

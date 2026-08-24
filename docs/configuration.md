@@ -20,7 +20,7 @@ Morphir loads configuration from multiple sources, merged in priority order:
 |----------|--------|------|---------|
 | 1 (lowest) | Built-in defaults | (compiled in) | Sensible defaults |
 | 2 | System config | `/etc/morphir/morphir.toml` | System-wide settings |
-| 3 | Global user config | `~/.config/morphir/morphir.toml` | User preferences |
+| 3 | Global user config | Platform config directory or user-home `.morphir` directory | User preferences |
 | 4 | Project config | `morphir.toml` or `.morphir/morphir.toml` | Project settings |
 | 5 | User override | `.morphir/morphir.user.toml` | Local overrides (gitignored) |
 | 6 (highest) | Environment variables | `MORPHIR_*` | Runtime overrides |
@@ -53,7 +53,24 @@ my-project/
 
 ### Global User Configuration
 
-Create `~/.config/morphir/morphir.toml` for settings that apply to all projects:
+Create one global user file for settings that apply to all projects.
+
+On Linux and other XDG systems, Morphir checks:
+
+- `$XDG_CONFIG_HOME/morphir/morphir.toml` or `morphir.yaml` when `XDG_CONFIG_HOME` is an absolute path
+- `$HOME/.config/morphir/morphir.toml` or `morphir.yaml` when `XDG_CONFIG_HOME` is unset, empty, or relative
+- `$HOME/.morphir/morphir.toml` or `morphir.yaml`
+
+On macOS, Morphir checks a valid `$XDG_CONFIG_HOME` first. Without it, the standard location is `$HOME/Library/Application Support/morphir/morphir.toml` or `morphir.yaml`. The `$HOME/.morphir` alternative also applies.
+
+On Windows, Morphir checks:
+
+- `%APPDATA%\morphir\morphir.toml` or `morphir.yaml`, resolved through the Windows `FOLDERID_RoamingAppData` known folder
+- `%USERPROFILE%\.morphir\morphir.toml` or `morphir.yaml`, resolved through `FOLDERID_Profile`
+
+The paths are alternatives at the same precedence. If more than one candidate exists, Morphir reports an ambiguity error.
+
+TOML example:
 
 ```toml
 [logging]
@@ -61,6 +78,16 @@ level = "debug"
 
 [ui]
 theme = "dark"
+```
+
+YAML example:
+
+```yaml
+logging:
+  level: debug
+
+ui:
+  theme: dark
 ```
 
 ### System Configuration

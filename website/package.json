@@ -18,7 +18,8 @@
 		"write-heading-ids": "npm run docusaurus -- write-heading-ids",
 		"typecheck": "tsc",
 		"build:worker": "node scripts/build-validation-worker.js",
-		"build:schemas": "node scripts/yaml-to-json-schemas.js"
+		"build:schemas": "node scripts/yaml-to-json-schemas.js",
+		"test:config-schema": "node scripts/test-morphir-config-schema.js"
 	},
 	"dependencies": {
 		"effect": "3.22.1",

@@ -38,10 +38,12 @@ function convertSchemas() {
   }
 
   const files = fs.readdirSync(schemasDir);
-  const yamlFiles = files.filter(f => f.endsWith('.yaml') && f.startsWith('morphir-ir-'));
+  const yamlFiles = files.filter(
+    f => f.endsWith('.yaml') && (f.startsWith('morphir-ir-') || f === 'morphir-config-v1.yaml')
+  );
 
   if (yamlFiles.length === 0) {
-    console.log('No morphir-ir-*.yaml files found in', schemasDir);
+    console.log('No Morphir YAML schema files found in', schemasDir);
     return;
   }
 
