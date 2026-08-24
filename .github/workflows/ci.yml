@@ -74,19 +74,18 @@ jobs:
         run: cargo fmt --package morphir-live --check
 
       - name: Run clippy
-        run: cargo clippy --package morphir-live --all-targets -- -D warnings
+        run: cargo clippy --locked --package morphir-live --all-targets -- -D warnings
 
       - name: Run tests
-        run: cargo test --package morphir-live
+        run: cargo test --locked --package morphir-live
 
       - name: Build (web)
-        run: cargo build --release --package morphir-live
+        run: cargo build --locked --release --package morphir-live
 
       - name: Build (desktop)
-        run: cargo build --release --package morphir-live --features desktop
+        run: cargo build --locked --release --package morphir-live --features desktop
 
   # morphir: CLI tool (depends on extism via morphir-daemon)
-  # Uses separate dependency resolution to avoid conflict with dioxus-desktop
   morphir-cli:
     name: morphir CLI
     runs-on: ubuntu-latest
@@ -105,10 +104,6 @@ jobs:
       - name: Add Rust components
         run: rustup component add rustfmt clippy
 
-      # Generate fresh lockfile without dioxus-desktop to avoid toml_datetime conflict
-      - name: Prepare CLI workspace
-        run: mise run ci:prepare-cli-workspace
-
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
@@ -119,13 +114,13 @@ jobs:
         run: cargo fmt --package morphir --check
 
       - name: Run clippy
-        run: cargo clippy --package morphir --all-targets -- -D warnings
+        run: cargo clippy --locked --package morphir --all-targets -- -D warnings
 
       - name: Run tests
-        run: cargo test --package morphir
+        run: cargo test --locked --package morphir
 
       - name: Build
-        run: cargo build --release --package morphir
+        run: cargo build --locked --release --package morphir
 
   # Docs: lightweight job for documentation changes (fast-path)
   # Note: This job intentionally does NOT install mise to stay fast
