@@ -2,6 +2,7 @@
 
 use crate::error::CliError;
 use crate::output::{OutputFormat, write_output};
+use morphir_common::config::redact_secrets;
 use morphir_design::{
     ConfigLoadOptions, ConfigSource, ConfigSourceStatus, EffectiveConfig, discover_config,
     load_effective_config,
@@ -80,21 +81,24 @@ fn print_sources(sources: &[ConfigSource]) {
     }
 }
 
-/// Show the effective configuration after merging every source
+/// Show the effective configuration after merging every source.
+///
+/// Credentials (tokens, passwords, secrets, API keys) are redacted before
+/// anything is printed, in both the human and JSON forms.
 pub fn run_config_show(config_path: Option<String>, json: bool) -> AppResult<miette::Report> {
     let (project_config, effective) = load(config_path)?;
     let format = OutputFormat::from_flags(json, false);
+    let config = redact_secrets(&effective.value);
 
     if format == OutputFormat::Human {
-        let rendered =
-            toml::to_string_pretty(&effective.value).map_err(|error| CliError::Config {
-                error: anyhow::anyhow!("Failed to render effective configuration as TOML: {error}"),
-            })?;
+        let rendered = toml::to_string_pretty(&config).map_err(|error| CliError::Config {
+            error: anyhow::anyhow!("Failed to render effective configuration as TOML: {error}"),
+        })?;
         print!("{rendered}");
     } else {
         let output = ConfigShowOutput {
             project_config,
-            config: effective.value,
+            config,
         };
         write_output(format, &output).map_err(CliError::from)?;
     }

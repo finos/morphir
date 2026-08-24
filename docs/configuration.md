@@ -235,6 +235,8 @@ morphir config show
 morphir config show --json
 ```
 
+Credentials are redacted before printing: any key containing `token`, `password`, `secret`, `credential`, or `api_key` is shown as `<redacted>`.
+
 ### Show Configuration Sources
 
 See which files were loaded:
