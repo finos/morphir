@@ -19,13 +19,13 @@ Morphir loads configuration from multiple sources, merged in priority order:
 | Priority | Source | Path | Purpose |
 |----------|--------|------|---------|
 | 1 (lowest) | Built-in defaults | (compiled in) | Sensible defaults |
-| 2 | System config | `/etc/morphir/morphir.toml` | System-wide settings |
+| 2 | System config | `/etc/morphir/morphir.toml` (`%PROGRAMDATA%\morphir\morphir.toml` on Windows) | System-wide settings |
 | 3 | Global user config | Platform config directory or user-home `.morphir` directory | User preferences |
 | 4 | Project config | `morphir.toml`, `morphir.yaml`, or the corresponding hidden path | Project settings |
-| 5 | User override | `.morphir/morphir.user.toml` | Local overrides (gitignored) |
+| 5 | User override | `.morphir/morphir.user.toml` or `.morphir/morphir.user.yaml` | Local overrides (gitignored) |
 | 6 (highest) | Environment variables | `MORPHIR_*` | Runtime overrides |
 
-Higher-priority sources override lower-priority ones for the same setting.
+Higher-priority sources override lower-priority ones for the same setting. Every file source accepts either a `morphir.toml` or a `morphir.yaml` serialization at the same location; if both exist, Morphir reports an ambiguity error instead of choosing one. See the [merge rules](spec/morphir-toml/morphir-toml-merge-rules.md) for the full algorithm.
 
 ## File Locations
 
@@ -92,7 +92,7 @@ ui:
 
 ### System Configuration
 
-Administrators can create `/etc/morphir/morphir.toml` for organization-wide defaults.
+Administrators can create `/etc/morphir/morphir.toml` (or `morphir.yaml`) for organization-wide defaults. On Windows the system location is `%PROGRAMDATA%\morphir\morphir.toml`, which falls back to `C:\ProgramData\morphir\morphir.toml` when `PROGRAMDATA` is not set.
 
 ## Configuration Sections
 
@@ -198,25 +198,28 @@ theme = "default"
 
 ## Environment Variables
 
-Override any setting with environment variables using the `MORPHIR_` prefix:
+Override any setting with environment variables using the `MORPHIR_` prefix. A double underscore (`__`) separates nesting levels; single underscores stay part of the key name:
 
 ```sh
 # Override logging level
-export MORPHIR_LOGGING_LEVEL=debug
+export MORPHIR_LOGGING__LEVEL=debug
 
 # Disable caching
-export MORPHIR_CACHE_ENABLED=false
+export MORPHIR_CACHE__ENABLED=false
 
 # Set IR format version
-export MORPHIR_IR_FORMAT_VERSION=3
+export MORPHIR_IR__FORMAT_VERSION=3
 
 # Disable colors
-export MORPHIR_UI_COLOR=false
+export MORPHIR_UI__COLOR=false
 ```
 
-Environment variable names use underscores for nested keys:
-- `logging.level` → `MORPHIR_LOGGING_LEVEL`
-- `ir.format_version` → `MORPHIR_IR_FORMAT_VERSION`
+Mapping examples:
+- `logging.level` → `MORPHIR_LOGGING__LEVEL`
+- `ir.format_version` → `MORPHIR_IR__FORMAT_VERSION`
+- `codegen.go.package` → `MORPHIR_CODEGEN__GO__PACKAGE`
+
+Values are typed mechanically: `true` and `false` become booleans, integers become numbers, values that start with `[` or `{` and parse as JSON become arrays or objects, and anything else stays a string. Key segments are lower-cased.
 
 ## CLI Commands
 
@@ -231,6 +234,8 @@ morphir config show
 # JSON format (for scripting)
 morphir config show --json
 ```
+
+Credentials are redacted before printing: any key containing `token`, `password`, `secret`, `credential`, or `api_key` is shown as `<redacted>`.
 
 ### Show Configuration Sources
 
@@ -283,7 +288,7 @@ morphir workspace init --json
 
 ## User Overrides
 
-The `.morphir/morphir.user.toml` file is for personal settings that shouldn't be committed to version control. It's automatically added to `.morphir/.gitignore`.
+The `.morphir/morphir.user.toml` file (or `.morphir/morphir.user.yaml`; not both) is for personal settings that shouldn't be committed to version control. It's automatically added to `.morphir/.gitignore`. In a workspace, Morphir also applies the override in the selected member's `.morphir` directory after the workspace-level one.
 
 Common uses:
 - Debug logging during development
@@ -335,10 +340,10 @@ For CI environments, use environment variables:
 ```yaml
 # GitHub Actions example
 env:
-  MORPHIR_LOGGING_LEVEL: warn
-  MORPHIR_UI_COLOR: false
-  MORPHIR_UI_INTERACTIVE: false
-  MORPHIR_CACHE_DIR: /tmp/morphir-cache
+  MORPHIR_LOGGING__LEVEL: warn
+  MORPHIR_UI__COLOR: false
+  MORPHIR_UI__INTERACTIVE: false
+  MORPHIR_CACHE__DIR: /tmp/morphir-cache
 ```
 
 ### Multi-Target Code Generation

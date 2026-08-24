@@ -4907,6 +4907,7 @@ dependencies = [
  "termimad",
  "thiserror 2.0.20",
  "tokio",
+ "toml 1.1.4+spec-1.1.0",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
@@ -4986,6 +4987,7 @@ dependencies = [
  "anyhow",
  "dirs",
  "morphir-common",
+ "serde",
  "serde_json",
  "tempfile",
 ]

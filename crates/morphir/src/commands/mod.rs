@@ -1,4 +1,5 @@
 pub mod compile;
+pub mod config;
 pub mod dist;
 pub mod extension;
 pub mod generate;
@@ -11,6 +12,7 @@ pub mod validate;
 pub mod version;
 
 pub use compile::*;
+pub use config::*;
 pub use dist::*;
 pub use extension::*;
 pub use generate::*;
