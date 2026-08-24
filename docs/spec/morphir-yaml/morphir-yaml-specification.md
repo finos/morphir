@@ -2,7 +2,7 @@
 id: morphir-yaml-specification
 title: "Morphir YAML configuration specification"
 sidebar_position: 1
-description: "Proposed specification for morphir.yaml configuration files"
+description: "Specification for morphir.yaml configuration files"
 ---
 
 ## Status and scope
