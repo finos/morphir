@@ -74,3 +74,6 @@ website/.docusaurus/
 # Added by cargo
 
 /target
+
+# Local working area: temp scripts, agent and script outputs, superpowers specs/plans
+.dev/
