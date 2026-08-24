@@ -13,7 +13,7 @@ This document specifies the **`morphir.toml`** configuration format used by Morp
 - **Applies to**: Configuration parsed into `pkg/config.Config`
 - **Out of scope**: Morphir IR JSON format (see the IR specification and schemas)
 
-`morphir.yaml` is a proposed second serialization of this configuration model. See the [Morphir YAML configuration specification](../morphir-yaml/morphir-yaml-specification/).
+`morphir.yaml` is a supported second serialization of this configuration model. See the [Morphir YAML configuration specification](../morphir-yaml/morphir-yaml-specification/).
 
 ## Files and discovery
 

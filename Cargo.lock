@@ -4931,11 +4931,13 @@ dependencies = [
  "reqwest 0.13.4",
  "serde",
  "serde_json",
+ "serde_yaml",
  "tar",
  "tempfile",
  "thiserror 2.0.20",
  "toml 1.1.4+spec-1.1.0",
  "uuid",
+ "yaml-rust",
  "zip",
 ]
 
@@ -4964,6 +4966,7 @@ dependencies = [
  "jsonrpsee",
  "morphir-common",
  "morphir-core",
+ "morphir-design",
  "morphir-extension-sdk",
  "notify",
  "reqwest 0.13.4",
@@ -4981,10 +4984,10 @@ name = "morphir-design"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "dirs",
  "morphir-common",
- "serde",
  "serde_json",
- "toml 1.1.4+spec-1.1.0",
+ "tempfile",
 ]
 
 [[package]]
