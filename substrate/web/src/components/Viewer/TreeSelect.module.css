@@ -1,0 +1,76 @@
+.wrap {
+    position: relative;
+    display: inline-block;
+}
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 200px;
+    max-width: 360px;
+    height: 26px;
+    padding: 0 10px;
+    border: 1px solid var(--rule);
+    background: var(--surface-1);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink);
+    letter-spacing: 0;
+    text-transform: none;
+    cursor: pointer;
+}
+
+.button:hover {
+    border-color: var(--brand-blue);
+    color: var(--brand-blue);
+}
+
+.button:focus-visible {
+    outline: 2px solid var(--link);
+    outline-offset: 1px;
+}
+
+.label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+}
+
+.placeholder {
+    color: var(--ink-subtle);
+    font-style: italic;
+}
+
+.caret {
+    color: var(--ink-subtle);
+    font-size: 9px;
+    flex-shrink: 0;
+}
+
+.popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    width: 340px;
+    max-height: 60vh;
+    background: var(--surface-1);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.popoverBody {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}

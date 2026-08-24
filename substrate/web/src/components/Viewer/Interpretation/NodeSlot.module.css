@@ -1,0 +1,67 @@
+.slot {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    flex: 0 0 auto;
+    cursor: zoom-in;
+    transition: box-shadow 120ms ease;
+}
+
+.slot:hover {
+    box-shadow: 0 0 0 2px var(--accent, #1d4ed8);
+}
+
+.slot-decision-tree {
+    background: var(--surface-1);
+}
+
+.slot-decision-table {
+    background: var(--surface-1);
+}
+
+.slot-type-diagram {
+    background: var(--surface-1);
+}
+
+.slot-apply {
+    background: var(--surface-2);
+}
+
+.natural {
+    /* The inner container holds the node at its natural, unconstrained
+       size; the slot's overflow:hidden + the scale transform on this
+       element are what fit it into the slot box. */
+    display: inline-block;
+    width: max-content;
+    height: max-content;
+    will-change: transform;
+}
+
+.placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: repeating-linear-gradient(
+        135deg,
+        var(--surface-2) 0,
+        var(--surface-2) 8px,
+        var(--surface-1) 8px,
+        var(--surface-1) 16px
+    );
+    color: var(--ink-subtle);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.placeholderLabel {
+    padding: 4px 10px;
+    background: var(--surface-1);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sm);
+}

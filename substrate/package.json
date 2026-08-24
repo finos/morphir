@@ -1,0 +1,51 @@
+{
+  "name": "@morphir/substrate",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "substrate": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "assets"
+  ],
+  "scripts": {
+    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
+    "lint:links": "remark --frail .",
+    "lint": "npm run lint:md && npm run lint:links",
+    "build": "npm run build:cli && npm run build:web",
+    "build:cli": "tsc",
+    "build:web": "npm --prefix web run build",
+    "web:install": "npm --prefix web install",
+    "dev:web": "concurrently -k -n cli,vite -c blue,magenta \"npm run dev:web:cli\" \"npm run dev:web:vite\"",
+    "dev:web:cli": "node dist/cli.js dev --dir specs --port 5173",
+    "dev:web:vite": "npm --prefix web run dev",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "chokidar": "^5.0.0",
+    "commander": "^13.1.0",
+    "marked": "^18.0.3",
+    "morphir-elm": "^2.100.0",
+    "remark-gfm": "^4.0.0",
+    "remark-parse": "^11.0.0",
+    "semver": "^7.7.4",
+    "smol-toml": "^1.6.1",
+    "unified": "^11.0.5",
+    "ws": "8.20.0",
+    "yaml": "2.9.0"
+  },
+  "devDependencies": {
+    "@types/mdast": "^4.0.4",
+    "@types/node": "22.19.18",
+    "@types/semver": "^7.7.1",
+    "@types/ws": "^8.18.1",
+    "concurrently": "^9.2.1",
+    "markdownlint-cli2": "^0.21.0",
+    "remark-cli": "^12.0.1",
+    "remark-validate-links": "^13.0.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.2"
+  }
+}
