@@ -46,6 +46,7 @@ Understand the fundamental concepts behind Morphir
 Formal specifications for Morphir configuration and IR formats
 - [Overview](spec/index.md) - Specifications overview
 - [morphir.toml](spec/morphir-toml/morphir-toml-specification.md) - `morphir.toml` format
+- [morphir.yaml](spec/morphir-yaml/morphir-yaml-specification.md) - Proposed YAML equivalent of `morphir.toml`
 - [morphir.json](spec/morphir-json/morphir-json-specification.md) - `morphir.json` format (morphir-elm legacy)
 - [Morphir IR Specification](spec/ir/morphir-ir-specification.md) - Detailed IR specification
 - [Morphir IR JSON Schemas](spec/ir/schemas/) - JSON schemas for IR versions

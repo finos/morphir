@@ -1,13 +1,13 @@
 ---
 id: morphir-toml-merge-rules
-title: "Morphir TOML Configuration Merge Rules"
+title: "Morphir configuration merge rules"
 sidebar_position: 3
-description: "How Morphir merges morphir.toml configuration sources into an effective configuration"
+description: "How Morphir merges configuration sources into an effective configuration"
 ---
 
 ## Purpose
 
-Morphir configuration is **layered**: multiple configuration sources are loaded and merged to produce one **effective configuration**.
+Morphir configuration is **layered**: multiple configuration sources are loaded and merged to produce one **effective configuration**. The algorithm operates on parsed configuration values and is independent of whether a source uses TOML or YAML.
 
 This document specifies:
 
@@ -34,7 +34,7 @@ If the same setting is present in multiple sources, **the value from the highest
 
 ## Merge algorithm (normative)
 
-Let each configuration source be represented as a nested object \(map\) `map[string]any` produced from TOML or environment variables.
+Let each configuration source be represented as a nested object \(map\) `map[string]any` produced from TOML, YAML, or environment variables.
 
 The effective configuration is computed by applying `DeepMerge` from low precedence to high precedence:
 
@@ -80,4 +80,4 @@ Key mapping:
 
 - `docs/configuration.md` (user-facing configuration guide)
 - `docs/spec/morphir-toml/morphir-toml-specification.md` (format/structure specification)
-
+- `docs/spec/morphir-yaml/morphir-yaml-specification.md` (proposed YAML serialization)

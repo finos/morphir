@@ -13,6 +13,8 @@ This document specifies the **`morphir.toml`** configuration format used by Morp
 - **Applies to**: Configuration parsed into `pkg/config.Config`
 - **Out of scope**: Morphir IR JSON format (see the IR specification and schemas)
 
+`morphir.yaml` is a proposed second serialization of this configuration model. See the [Morphir YAML configuration specification](../morphir-yaml/morphir-yaml-specification/).
+
 ## Files and discovery
 
 Morphir tooling treats a directory as a “workspace” when it contains a `morphir.toml` file (or the hidden variant `.morphir/morphir.toml`).
@@ -198,4 +200,3 @@ This specification is accompanied by a JSON Schema for the equivalent JSON model
 
 - `https://morphir.finos.org/schemas/morphir-config-v1.yaml`
 - `https://morphir.finos.org/schemas/morphir-config-v1.json`
-
