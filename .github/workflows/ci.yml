@@ -33,11 +33,19 @@ jobs:
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'crates/**'
+              # crates/morphir and crates/morphir-live path-depend on crates
+              # inside this submodule, so a ref bump changes compiled source
+              - 'ecosystem/morphir-rust'
+              - '.gitmodules'
+              # pins the Rust toolchain these jobs build with
+              - '.config/mise/**'
               - '.github/workflows/ci.yml'
             docs:
               - 'website/**'
               - 'docs/**'
               - '**/*.md'
+              # the script the Docs job runs
+              - '.config/mise/tasks/ci/validate_docs.py'
               - '.github/workflows/ci.yml'
 
   # morphir-live: web UI application (depends on dioxus)
