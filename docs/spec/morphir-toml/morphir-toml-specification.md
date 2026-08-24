@@ -19,7 +19,7 @@ This document specifies the **`morphir.toml`** configuration format used by Morp
 
 Morphir tooling treats a directory as a “workspace” when it contains a `morphir.toml` file (or the hidden variant `.morphir/morphir.toml`).
 
-Global user configuration may use `~/.config/morphir/morphir.toml` or `~/.morphir/morphir.toml`. These are alternate locations at the same precedence. See the merge rules for conflict handling across locations and serializations.
+Global user configuration may use the platform config directory or the `.morphir` directory in the user's home. See the [global user path resolution rules](./morphir-toml-merge-rules/#global-user-path-resolution) for XDG, macOS, Windows, and conflict handling.
 
 > This spec focuses on the **file format**, not the multi-source merge rules. For merge precedence and merge behavior, see **[Morphir TOML Configuration Merge Rules](./morphir-toml-merge-rules/)**.
 

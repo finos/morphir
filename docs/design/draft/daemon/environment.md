@@ -41,9 +41,10 @@ The Morphir configuration directory.
 
 | Aspect | Value |
 |--------|-------|
-| Default (Linux/macOS) | `$XDG_CONFIG_HOME/morphir` or `~/.config/morphir` |
-| Default (Windows) | `%APPDATA%\morphir` |
-| Contains | `config.toml`, credentials |
+| Default (Linux) | `$XDG_CONFIG_HOME/morphir` or `~/.config/morphir` |
+| Default (macOS) | `$XDG_CONFIG_HOME/morphir` or `~/Library/Application Support/morphir` |
+| Default (Windows) | `FOLDERID_RoamingAppData\morphir`, typically `%APPDATA%\morphir` |
+| Contains | `morphir.toml` or `morphir.yaml`, credentials |
 
 ```bash
 export MORPHIR_CONFIG_HOME="/etc/morphir"
@@ -385,7 +386,7 @@ export MORPHIR_PROFILE="true"
 
 ## Platform-Specific Variables
 
-### Linux/macOS
+### Linux and macOS
 
 ```bash
 # XDG Base Directory Specification
@@ -396,10 +397,12 @@ export XDG_CACHE_HOME="$HOME/.cache"
 
 Morphir respects XDG variables when `MORPHIR_*` equivalents are not set.
 
+XDG paths must be absolute. Morphir ignores a relative path and uses the platform default.
+
 ### Windows
 
 ```cmd
-REM Standard Windows locations
+REM Typical Windows locations. Implementations use Known Folder APIs.
 set LOCALAPPDATA=%USERPROFILE%\AppData\Local
 set APPDATA=%USERPROFILE%\AppData\Roaming
 ```

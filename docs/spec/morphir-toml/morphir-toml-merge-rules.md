@@ -23,7 +23,7 @@ Sources are loaded from **lowest precedence** to **highest precedence**:
 |----------|--------|--------------|
 | 1 (lowest) | Built-in defaults | (compiled in) |
 | 2 | System config | `/etc/morphir/morphir.toml` |
-| 3 | Global user config | `~/.config/morphir/morphir.toml` or `~/.morphir/morphir.toml` |
+| 3 | Global user config | Platform config directory or user-home `.morphir` directory |
 | 4 | Project config | `morphir.toml` |
 | 5 | User override | `.morphir/morphir.user.toml` |
 | 6 (highest) | Environment variables | `MORPHIR_*` |
@@ -32,7 +32,38 @@ If the same setting is present in multiple sources, **the value from the highest
 
 > Note: A “hidden project config” variant (`.morphir/morphir.toml`) may also be used by some commands/workflows. The merge semantics are identical.
 
-The two global user paths are alternate locations at the same precedence. A loader accepts at most one global user configuration across these directories and the supported TOML and YAML serializations. If it finds more than one candidate, it reports an ambiguity error instead of merging the files or choosing one by path or extension.
+### Global user path resolution
+
+A loader MUST resolve the platform config directory as follows:
+
+| Platform | Config directory |
+| --- | --- |
+| Linux and other XDG systems | `$XDG_CONFIG_HOME` when it is set to a non-empty absolute path; otherwise `$HOME/.config` |
+| macOS | `$XDG_CONFIG_HOME` when it is set to a non-empty absolute path; otherwise `$HOME/Library/Application Support` |
+| Windows | `FOLDERID_RoamingAppData`, typically `%APPDATA%` |
+
+This follows the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir/latest/) and the Windows [Known Folder API](https://learn.microsoft.com/windows/win32/shell/known-folders). On an XDG system, a relative `XDG_CONFIG_HOME` value is invalid and MUST be ignored. The loader then uses the platform default. `XDG_CONFIG_DIRS` does not define the global user location.
+
+Examples:
+
+| Environment | Resolved YAML candidate |
+| --- | --- |
+| Linux with `XDG_CONFIG_HOME=/srv/alice/config` | `/srv/alice/config/morphir/morphir.yaml` |
+| Linux with `XDG_CONFIG_HOME` unset, empty, or relative | `/home/alice/.config/morphir/morphir.yaml` |
+| macOS without `XDG_CONFIG_HOME` | `/Users/Alice/Library/Application Support/morphir/morphir.yaml` |
+| Windows with Roaming AppData at `D:\Profiles\Alice\Roaming` | `D:\Profiles\Alice\Roaming\morphir\morphir.yaml` |
+
+The standard global user candidates are:
+
+- `<config-directory>/morphir/morphir.toml`
+- `<config-directory>/morphir/morphir.yaml`
+
+The user-home alternatives are:
+
+- `$HOME/.morphir/morphir.toml` and `$HOME/.morphir/morphir.yaml` on Unix-like systems
+- `%USERPROFILE%\.morphir\morphir.toml` and `%USERPROFILE%\.morphir\morphir.yaml` on Windows, where the implementation resolves the profile through `FOLDERID_Profile`
+
+These paths are alternate locations at the same precedence. A loader accepts at most one global user configuration across all candidates. If it finds more than one, it reports an ambiguity error that names every candidate. It MUST NOT merge the files or choose one by path or extension.
 
 ## Merge algorithm (normative)
 
