@@ -180,10 +180,6 @@ description = "Add a new submodule under ecosystem/. Usage: mise run submodules:
 run = "python .config/mise/tasks/submodules/add.py"
 
 # ===== CI Tasks =====
-[tasks."ci:prepare-cli-workspace"]
-description = "Prepare Cargo workspace for CLI-only build (excludes morphir-live)"
-run = "python .config/mise/tasks/ci/prepare_cli_workspace.py"
-
 [tasks."ci:validate-docs"]
 description = "Validate documentation files"
 run = "python .config/mise/tasks/ci/validate_docs.py"

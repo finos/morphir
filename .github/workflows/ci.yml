@@ -86,7 +86,6 @@ jobs:
         run: cargo build --release --package morphir-live --features desktop
 
   # morphir: CLI tool (depends on extism via morphir-daemon)
-  # Uses separate dependency resolution to avoid conflict with dioxus-desktop
   morphir-cli:
     name: morphir CLI
     runs-on: ubuntu-latest
@@ -104,10 +103,6 @@ jobs:
 
       - name: Add Rust components
         run: rustup component add rustfmt clippy
-
-      # Generate fresh lockfile without dioxus-desktop to avoid toml_datetime conflict
-      - name: Prepare CLI workspace
-        run: mise run ci:prepare-cli-workspace
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
