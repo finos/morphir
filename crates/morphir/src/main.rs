@@ -350,7 +350,9 @@ struct MorphirSession {
 
 #[async_trait::async_trait]
 impl AppSession for MorphirSession {
-    async fn execute(&mut self) -> AppResult {
+    type Error = miette::Report;
+
+    async fn execute(&mut self) -> AppResult<miette::Report> {
         match &self.command {
             Commands::Validate { input } => run_validate(input.clone()),
             Commands::Compile {
@@ -599,13 +601,15 @@ async fn main() -> starbase::MainResult {
     // Create session with command
     let session = MorphirSession { command };
 
-    // Initialize and run starbase App
-    let exit_code = App::default()
+    // Initialize and run starbase App.
+    // As of starbase 0.13, run() returns AppRunOutcome rather than a Result;
+    // into_miette_result() preserves the real exit code instead of miette's
+    // default of always reporting 1 on error.
+    App::default()
         .run(
             session,
             |mut session| async move { session.execute().await },
         )
-        .await?;
-
-    Ok(std::process::ExitCode::from(exit_code))
+        .await
+        .into_miette_result()
 }

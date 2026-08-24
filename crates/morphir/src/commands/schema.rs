@@ -1,7 +1,7 @@
 use starbase::AppResult;
 use std::path::PathBuf;
 
-pub fn run_schema(output: Option<PathBuf>) -> AppResult {
+pub fn run_schema(output: Option<PathBuf>) -> AppResult<miette::Report> {
     // Note: JSON schema generation is not currently available for the full V4 IR
     // because Type, Value, and Pattern have custom serde implementations that don't
     // derive JsonSchema. A separate schema definition file would be needed.

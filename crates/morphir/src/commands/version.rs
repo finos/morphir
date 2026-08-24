@@ -27,7 +27,7 @@ impl Default for VersionInfo {
     }
 }
 
-pub fn run_version(json: bool) -> AppResult {
+pub fn run_version(json: bool) -> AppResult<miette::Report> {
     let info = VersionInfo::new();
 
     if json {

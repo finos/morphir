@@ -19,7 +19,7 @@ pub async fn run_generate(
     _project: Option<String>,
     json: bool,
     json_lines: bool,
-) -> AppResult {
+) -> AppResult<miette::Report> {
     use crate::output::{GenerateOutput, OutputFormat, write_output};
     // Discover config if not provided
     let start_dir = std::env::current_dir().map_err(|e| CliError::FileSystem { error: e })?;
