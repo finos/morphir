@@ -4,7 +4,7 @@ use crate::error::CliError;
 use crate::output::Diagnostic;
 use morphir_common::loader::load_ir;
 use morphir_daemon::extensions::registry::ExtensionRegistry;
-use morphir_design::{
+use morphir_devkit::{
     discover_config, ensure_morphir_structure, load_config_context, resolve_generate_output,
 };
 use starbase::AppResult;
@@ -65,7 +65,7 @@ pub async fn run_generate(
         PathBuf::from(inp)
     } else {
         // Default to compile output for the target language
-        morphir_design::resolve_compile_output(&proj_name, &target_lang, &ctx.morphir_dir)
+        morphir_devkit::resolve_compile_output(&proj_name, &target_lang, &ctx.morphir_dir)
     };
 
     if !input_path.exists() {
@@ -96,7 +96,7 @@ pub async fn run_generate(
     })?;
 
     // Register builtin extensions
-    let builtins = morphir_design::discover_builtin_extensions();
+    let builtins = morphir_devkit::discover_builtin_extensions();
     for builtin in builtins {
         if let Some(path) = builtin.path {
             registry

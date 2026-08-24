@@ -149,7 +149,7 @@ pub fn run_extension_list() -> AppResult<miette::Report> {
     println!("Listing Morphir extensions...\n");
 
     // Discover builtin extensions
-    let builtins = morphir_design::discover_builtin_extensions();
+    let builtins = morphir_devkit::discover_builtin_extensions();
 
     // Load registry extensions
     let registry = match ExtensionRegistry::load() {

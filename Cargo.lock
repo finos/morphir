@@ -4894,7 +4894,7 @@ dependencies = [
  "morphir-common",
  "morphir-core",
  "morphir-daemon",
- "morphir-design",
+ "morphir-devkit",
  "morphir-extension-sdk",
  "owo-colors",
  "ratatui",
@@ -4967,7 +4967,7 @@ dependencies = [
  "jsonrpsee",
  "morphir-common",
  "morphir-core",
- "morphir-design",
+ "morphir-devkit",
  "morphir-extension-sdk",
  "notify",
  "reqwest 0.13.4",
@@ -4981,7 +4981,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "morphir-design"
+name = "morphir-devkit"
 version = "0.1.0"
 dependencies = [
  "anyhow",

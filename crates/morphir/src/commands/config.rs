@@ -3,7 +3,7 @@
 use crate::error::CliError;
 use crate::output::{OutputFormat, write_output};
 use morphir_common::config::redact_secrets;
-use morphir_design::{
+use morphir_devkit::{
     ConfigLoadOptions, ConfigSource, ConfigSourceStatus, EffectiveConfig, discover_config,
     load_effective_config,
 };
