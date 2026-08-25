@@ -114,6 +114,22 @@
         },
         "mounts": {
           "$ref": "#/definitions/stringMap"
+        },
+        "description": {
+          "type": "string"
+        },
+        "run": {
+          "type": "string",
+          "description": "Shell command to run (alternative to cmd)."
+        },
+        "depends": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cwd": {
+          "type": "string"
         }
       }
     },
@@ -178,8 +194,11 @@
       ]
     },
     "task": {
-      "description": "Project task definition. kind omitted implies intrinsic.",
+      "description": "Project task definition. A string is shorthand for a command task run through the shell. kind omitted implies intrinsic.",
       "anyOf": [
+        {
+          "type": "string"
+        },
         {
           "$ref": "#/definitions/commandTask"
         },
@@ -429,6 +448,69 @@
           "type": "string"
         }
       }
+    },
+    "dependency": {
+      "description": "A dependency: a version string, or a detailed table.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "version": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "git": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "branch": {
+              "type": "string"
+            },
+            "rev": {
+              "type": "string"
+            },
+            "workspace": {
+              "type": "boolean"
+            }
+          }
+        }
+      ]
+    },
+    "extension": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "command": {
+          "type": "string"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
     }
   },
   "properties": {
@@ -438,6 +520,12 @@
       "properties": {
         "version": {
           "type": "string"
+        },
+        "min_cli_version": {
+          "type": "string"
+        },
+        "dev_mode": {
+          "type": "boolean"
         }
       }
     },
@@ -495,6 +583,24 @@
           "additionalProperties": {
             "$ref": "#/definitions/decoration"
           }
+        },
+        "description": {
+          "type": "string"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "license": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "output_directory": {
+          "type": "string"
         }
       }
     },
@@ -509,6 +615,13 @@
         },
         "strict_mode": {
           "type": "boolean"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "classic",
+            "vfs"
+          ]
         }
       }
     },
@@ -627,6 +740,44 @@
       "type": "object",
       "additionalProperties": {
         "$ref": "#/definitions/toolchain"
+      }
+    },
+    "frontend": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "language": {
+          "type": "string"
+        },
+        "emit_parse_stage": {
+          "type": "boolean"
+        },
+        "emit_parse_stage_fatal": {
+          "type": "boolean"
+        }
+      }
+    },
+    "sources": {
+      "description": "Remote source settings (see morphir_common::remote::config).",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "dependencies": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/dependency"
+      }
+    },
+    "dev-dependencies": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/dependency"
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/extension"
       }
     }
   }

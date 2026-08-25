@@ -18,6 +18,16 @@ const cases = [
   ['command kind omitted', { tasks: { build: { cmd: ['echo', 'hello'] } } }, false],
   ['intrinsic task with cmd', { tasks: { build: { kind: 'intrinsic', cmd: ['echo', 'hello'] } } }, false],
   ['command task with action', { tasks: { build: { kind: 'command', action: 'compile' } } }, false],
+  ['task string shorthand', { tasks: { build: 'cargo build' } }, true],
+  ['task with run and depends', { tasks: { build: { description: 'Build', run: 'cargo build', depends: ['fmt'], cwd: 'crates/x', env: { CI: 'true' } } } }, true],
+  ['frontend section', { frontend: { language: 'elm', emit_parse_stage: true, emit_parse_stage_fatal: false } }, true],
+  ['frontend with wrong type', { frontend: { emit_parse_stage: 'yes' } }, false],
+  ['project extras', { project: { name: 'acme/orders', description: 'Orders', authors: ['Alice'], license: 'Apache-2.0', repository: 'https://example.com/r', output_directory: '.morphir/out' } }, true],
+  ['ir mode and morphir extras', { ir: { mode: 'vfs' }, morphir: { min_cli_version: '0.2.0', dev_mode: true } }, true],
+  ['ir mode wrong type', { ir: { mode: 4 } }, false],
+  ['dependencies string and detailed', { dependencies: { 'finos/morphir-sdk': '1.0.0', local: { path: '../local', workspace: true } }, 'dev-dependencies': { git: { git: 'https://example.com/r.git', tag: 'v1' } } }, true],
+  ['dependency detailed with wrong path type', { dependencies: { local: { path: 3 } } }, false],
+  ['extensions and sources', { extensions: { gleam: { path: 'ext/gleam.wasm', enabled: true, args: ['--x'], config: { a: 1 } } }, sources: { cache_dir: '.morphir/cache' } }, true],
 ];
 
 // Cases validated against a single definition rather than the root schema.
@@ -30,6 +40,8 @@ const definitionCases = [
   ['secretValue', 'non-string env', { env: 1 }, false],
   ['secretValue', 'empty object', {}, false],
   ['secretValue', 'number', 42, false],
+  ['secretValue', 'file with extra key', { file: 'p', extra: true }, false],
+  ['secretValue', 'non-string file', { file: 1 }, false],
 ];
 
 const schemaFiles = ['morphir-config-v1.yaml', 'morphir-config-v1.json'];
