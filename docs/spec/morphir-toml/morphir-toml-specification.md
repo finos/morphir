@@ -171,7 +171,7 @@ Each entry is either:
 
 ## Secret values
 
-Some settings hold credentials. A conforming loader MUST treat a value at a position the schema declares as `secretValue` as secret: it MUST NOT display, log, or serialize the value, and tooling MUST obtain it only through an explicit exposing operation.
+Some settings hold credentials. A conforming loader MUST treat a value at a position the schema declares as `secretValue` as secret: it MUST NOT display, log, or serialize the value, and tooling MUST obtain it only through an explicit exposing operation. Schema version 1 defines `secretValue` but does not yet reference it from any property; the rule takes effect as soon as a credential field such as `registry.token` is declared with that type.
 
 A secret can also be supplied as a **secret reference**, which names where to obtain the secret instead of containing it:
 
@@ -190,7 +190,7 @@ Resolution happens only when tooling explicitly exposes the secret. Displaying t
 
 For merging, a secret reference is a leaf: a higher-precedence reference replaces a lower one entirely (see the [merge rules](./morphir-toml-merge-rules/)).
 
-The `command` reference kind and operating-system keyrings are reserved for a later version and MUST be rejected as unknown tables today.
+The `command` reference kind and operating-system keyrings are reserved for a later version. A table using them today (for example `{ command = [...] }`) matches neither `secretReference` branch: at a position the schema types as `secretValue` it therefore MUST be rejected as invalid, while at any other position it is an ordinary table and is merely an unrecognized property, treated like any other undeclared field.
 
 ## Tasks and workflows
 
