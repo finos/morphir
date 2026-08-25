@@ -235,7 +235,7 @@ morphir config show
 morphir config show --json
 ```
 
-Credentials are redacted before printing: any key containing `token`, `password`, `secret`, `credential`, or `api_key` is shown as `<redacted>`.
+See [Secrets](#secrets) for how credentials are displayed.
 
 ### Show Configuration Sources
 
@@ -307,6 +307,28 @@ file = ".morphir/debug.log"
 [ui]
 theme = "dark"
 ```
+
+## Secrets
+
+Never put credentials in a committed configuration file. Reference them instead:
+
+```toml
+[registry]
+token = { env = "GITHUB_TOKEN" }
+password = { file = "~/.config/morphir/registry-password" }
+```
+
+```yaml
+registry:
+  token: { env: GITHUB_TOKEN }
+  password: { file: ~/.config/morphir/registry-password }
+```
+
+`env` reads the named environment variable; `file` reads the file's contents (relative paths resolve against the configuration file that declares them, `~` is your home directory). Morphir resolves a reference only when a command actually needs the credential, so `morphir config show` prints the reference itself rather than the secret.
+
+A plain-string credential at a position the schema marks as secret, or under a key that looks like one (`token`, `password`, `secret`, `credential`, `api_key`, ...), is treated as a secret and shown as `<redacted>`.
+
+Environment variables can carry a reference too: `MORPHIR_REGISTRY__TOKEN='{"env":"GH_TOKEN"}'`.
 
 ## Validation
 

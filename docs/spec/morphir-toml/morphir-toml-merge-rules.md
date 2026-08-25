@@ -99,8 +99,13 @@ Given two maps: `base` and `overlay`, `DeepMerge(base, overlay)` produces a new 
 - **Rule 3 — Arrays/slices replace**: if values are arrays/slices, the overlay replaces the base entirely (no concatenation).
 - **Rule 4 — `nil` overlay is ignored**: if an overlay value is `nil`, it does **not** override the base value.
 - **Rule 5 — No mutation**: the merge result is independent; inputs are not modified.
+- **Rule 6 — Secret values are leaves**: a secret reference (`{ env = ... }` / `{ file = ... }`) or a secret string is never merged recursively; the overlay value replaces the base value entirely.
 
 These rules are implemented by `deep_merge` and `merge_all` in the `morphir_common::config::merge` module of morphir-rust. The layered loader in `morphir_devkit::config` (`load_effective_config`) applies them across the sources above and records which sources were consulted; `morphir config path` and `morphir config show` expose that result.
+
+## Provenance
+
+The effective configuration records, for every leaf value and every array, which source supplied it (the source kind and, for file sources, the path). Provenance follows the winning value through `DeepMerge`: an overlay value that replaces or is added to the base brings its own provenance. Tables carry no provenance of their own; they exist because a child does. Tooling uses provenance to explain values (`morphir config show --provenance`) and to name the file responsible for a validation error.
 
 ## Environment variable mapping (informative)
 
