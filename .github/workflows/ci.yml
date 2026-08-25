@@ -50,6 +50,8 @@ jobs:
               - '.github/workflows/ci.yml'
             release:
               - '.github/workflows/release.yml'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
               - 'crates/morphir/Cargo.toml'
               - 'tests/ci/test_release_workflow.py'
               - 'tests/ci/test_select_release_assets.py'

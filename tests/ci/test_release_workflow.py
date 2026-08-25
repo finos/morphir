@@ -5,6 +5,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "release.yml"
+CI_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 CARGO_TOML_PATH = REPO_ROOT / "crates" / "morphir" / "Cargo.toml"
 WORKSPACE_TOML_PATH = REPO_ROOT / "Cargo.toml"
 CARGO_LOCK_PATH = REPO_ROOT / "Cargo.lock"
@@ -14,6 +15,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
+        cls.ci_workflow = CI_WORKFLOW_PATH.read_text(encoding="utf-8")
         cls.cargo_toml = CARGO_TOML_PATH.read_text(encoding="utf-8")
 
     def test_workspace_uses_release_prerelease_version(self) -> None:
@@ -85,6 +87,23 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("name: morphir-cli-${{ matrix.target }}", self.workflow)
         self.assertIn("overwrite: true", self.workflow)
         self.assertIn("retention-days: 7", self.workflow)
+
+    def test_cli_checksum_uses_archive_basename(self) -> None:
+        self.assertIn("cd release-assets", self.workflow)
+        self.assertIn(
+            'shasum -a 256 "$ARCHIVE" > "$ARCHIVE.sha256"',
+            self.workflow,
+        )
+        self.assertNotIn(
+            'shasum -a 256 "release-assets/${ARCHIVE}"',
+            self.workflow,
+        )
+
+    def test_workspace_version_files_trigger_release_validation(self) -> None:
+        release_filter = self.ci_workflow.split("            release:\n", maxsplit=1)[1]
+        release_filter = release_filter.split("\n\n", maxsplit=1)[0]
+        self.assertIn("- 'Cargo.toml'", release_filter)
+        self.assertIn("- 'Cargo.lock'", release_filter)
 
     def test_publish_job_only_collects_release_artifacts(self) -> None:
         self.assertRegex(

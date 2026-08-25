@@ -145,7 +145,10 @@ jobs:
           ARCHIVE="morphir-${{ needs.release-info.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}"
           mkdir release-assets
           tar -C "target/${{ matrix.target }}/release" -czf "release-assets/${ARCHIVE}" morphir
-          shasum -a 256 "release-assets/${ARCHIVE}" > "release-assets/${ARCHIVE}.sha256"
+          (
+            cd release-assets
+            shasum -a 256 "$ARCHIVE" > "$ARCHIVE.sha256"
+          )
 
       - name: Package CLI
         if: runner.os == 'Windows'
