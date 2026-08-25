@@ -6,6 +6,49 @@
   "type": "object",
   "additionalProperties": true,
   "definitions": {
+    "secretReference": {
+      "description": "Where to obtain a secret. Exactly one of env or file.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "env"
+          ],
+          "properties": {
+            "env": {
+              "type": "string",
+              "description": "Name of the environment variable that holds the secret."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "file"
+          ],
+          "properties": {
+            "file": {
+              "type": "string",
+              "description": "Path to a file whose contents are the secret. Relative paths resolve against the declaring configuration file; ~ expands to the home directory."
+            }
+          }
+        }
+      ]
+    },
+    "secretValue": {
+      "description": "A credential. Either a plain string (treated as a secret and never displayed) or a secret reference.",
+      "x-secret": true,
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "#/definitions/secretReference"
+        }
+      ]
+    },
     "stringMap": {
       "type": "object",
       "additionalProperties": {
