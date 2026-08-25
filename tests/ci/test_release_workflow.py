@@ -1,3 +1,4 @@
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -5,6 +6,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "release.yml"
 CARGO_TOML_PATH = REPO_ROOT / "crates" / "morphir" / "Cargo.toml"
+WORKSPACE_TOML_PATH = REPO_ROOT / "Cargo.toml"
+CARGO_LOCK_PATH = REPO_ROOT / "Cargo.lock"
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
@@ -12,6 +15,24 @@ class ReleaseWorkflowTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
         cls.cargo_toml = CARGO_TOML_PATH.read_text(encoding="utf-8")
+
+    def test_workspace_uses_release_prerelease_version(self) -> None:
+        workspace = tomllib.loads(WORKSPACE_TOML_PATH.read_text(encoding="utf-8"))
+        self.assertEqual("0.2.0-alpha-01", workspace["workspace"]["package"]["version"])
+
+        lockfile = tomllib.loads(CARGO_LOCK_PATH.read_text(encoding="utf-8"))
+        workspace_packages = {
+            package["name"]: package["version"]
+            for package in lockfile["package"]
+            if package["name"] in {"morphir", "morphir-live"}
+        }
+        self.assertEqual(
+            {
+                "morphir": "0.2.0-alpha-01",
+                "morphir-live": "0.2.0-alpha-01",
+            },
+            workspace_packages,
+        )
 
     def test_manual_release_checks_out_requested_tag(self) -> None:
         self.assertIn("release-info:", self.workflow)
@@ -72,14 +93,23 @@ class ReleaseWorkflowTests(unittest.TestCase):
             r"\[release-info, package-live, package-cli\]",
         )
         self.assertIn("merge-multiple: true", self.workflow)
-        self.assertIn("files: |\n            release-assets/*", self.workflow)
 
         publish_job = self.workflow.split("  publish-release:\n", maxsplit=1)[1]
         publish_job = publish_job.split("\n  deploy-pages:\n", maxsplit=1)[0]
         self.assertIn("permissions:\n      contents: write", publish_job)
-        self.assertNotIn("actions/checkout", publish_job)
         self.assertNotIn("cargo build", publish_job)
         self.assertNotIn("dx build", publish_job)
+
+    def test_publish_job_skips_artifacts_with_matching_hashes(self) -> None:
+        publish_job = self.workflow.split("  publish-release:\n", maxsplit=1)[1]
+        publish_job = publish_job.split("\n  deploy-pages:\n", maxsplit=1)[0]
+
+        self.assertIn('gh release view "$TAG"', publish_job)
+        self.assertIn('gh release download "$TAG"', publish_job)
+        self.assertIn("select_release_assets.py", publish_job)
+        self.assertIn('gh release upload "$TAG"', publish_job)
+        self.assertIn("--clobber", publish_job)
+        self.assertNotIn("softprops/action-gh-release", publish_job)
 
     def test_pages_deployment_reuses_packaged_live_artifact(self) -> None:
         pages_job = self.workflow.split("  deploy-pages:\n", maxsplit=1)[1]

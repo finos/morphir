@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing tag to release (for example, v0.1.0)'
+        description: 'Existing tag to release (for example, v0.2.0-alpha-01)'
         required: true
         type: string
 
@@ -174,25 +174,64 @@ jobs:
     needs: [release-info, package-live, package-cli]
     permissions:
       contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ needs.release-info.outputs.tag }}
     steps:
+      - name: Checkout release tooling
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-info.outputs.tag }}
+          sparse-checkout: .github/scripts
+
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
           path: release-assets
           merge-multiple: true
 
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ needs.release-info.outputs.tag }}
-          name: Release ${{ needs.release-info.outputs.tag }}
-          draft: false
-          prerelease: ${{ contains(needs.release-info.outputs.tag, '-') }}
-          files: |
-            release-assets/*
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Read published checksums
+        shell: bash
+        run: |
+          mkdir -p published-checksums
+          if gh release view "$TAG" --json assets --jq '.assets[].name' > published-assets.txt 2>/dev/null; then
+            gh release download "$TAG" --pattern '*.sha256' --dir published-checksums || true
+          else
+            : > published-assets.txt
+          fi
+
+      - name: Select changed artifacts
+        run: |
+          python3 .github/scripts/select_release_assets.py \
+            --release-assets release-assets \
+            --published-checksums published-checksums \
+            --published-assets published-assets.txt \
+            --upload-dir upload-assets
+
+      - name: Create GitHub release if needed
+        shell: bash
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists."
+            exit 0
+          fi
+
+          CREATE_ARGS=("$TAG" --title "Release $TAG" --generate-notes)
+          if [[ "$TAG" == *-* ]]; then
+            CREATE_ARGS+=(--prerelease)
+          fi
+          gh release create "${CREATE_ARGS[@]}"
+
+      - name: Upload changed artifacts
+        shell: bash
+        run: |
+          shopt -s nullglob
+          ASSETS=(upload-assets/*)
+          if (( ${#ASSETS[@]} == 0 )); then
+            echo "All release artifacts already match their published hashes."
+            exit 0
+          fi
+          gh release upload "$TAG" "${ASSETS[@]}" --clobber
 
   deploy-pages:
     name: Deploy to GitHub Pages

@@ -4881,7 +4881,7 @@ dependencies = [
 
 [[package]]
 name = "morphir"
-version = "0.1.0"
+version = "0.2.0-alpha-01"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -5004,7 +5004,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-live"
-version = "0.1.0"
+version = "0.2.0-alpha-01"
 dependencies = [
  "clap",
  "dioxus",

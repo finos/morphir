@@ -8,27 +8,21 @@ macOS, and Windows. Both x86-64 and ARM64 packages are available.
 [mise](https://mise.jdx.dev/) can download the correct executable from the
 Morphir GitHub release for your operating system and processor.
 
-Install the latest stable release globally:
+Install the current prerelease globally:
 
 ```shell
-mise use -g github:finos/morphir
-```
-
-Install a specific version:
-
-```shell
-mise use -g github:finos/morphir@VERSION
+mise use -g github:finos/morphir@0.2.0-alpha-01
 ```
 
 To pin Morphir in a project's `mise.toml`, add:
 
 ```toml
 [tools]
-"github:finos/morphir" = "VERSION"
+"github:finos/morphir" = "0.2.0-alpha-01"
 ```
 
-Replace `VERSION` with the version the project requires. Run `mise install`
-after changing the configuration.
+Run `mise install` after changing the configuration. Prereleases must be
+selected explicitly. A request for `latest` does not select them by default.
 
 Check the installation:
 
