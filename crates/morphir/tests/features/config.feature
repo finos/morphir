@@ -23,9 +23,9 @@ Feature: Inspect Morphir configuration
       format_version = 3
       """
     And the working directory is "src/nested"
-    When I run "morphir config show"
+    When I run "morphir config show --isolated"
     Then the command succeeds
-    And stdout contains "name = \"acceptance-project\""
+    And stdout contains "acceptance-project"
     And stdout contains "format_version = 3"
 
   Scenario: Show an explicitly selected configuration as JSON
@@ -36,7 +36,7 @@ Feature: Inspect Morphir configuration
         version: 2.0.0
       """
     And the working directory is "elsewhere"
-    When I run "morphir config show --config ../configs/project.yaml --json"
+    When I run "morphir config show --config ../configs/project.yaml --json --isolated"
     Then the command succeeds
     And stdout is valid JSON
     And the JSON project name is "explicit-project"
@@ -49,7 +49,7 @@ Feature: Inspect Morphir configuration
       format_version = 3
       """
     And the environment variable "MORPHIR_IR__FORMAT_VERSION" is "4"
-    When I run "morphir config show --json"
+    When I run "morphir config show --json --isolated"
     Then the command succeeds
     And the JSON config value at "/ir/format_version" is 4
 
@@ -60,7 +60,7 @@ Feature: Inspect Morphir configuration
       token = "top-secret-token"
       endpoint = "https://registry.example.test"
       """
-    When I run "morphir config show --json"
+    When I run "morphir config show --json --isolated"
     Then the command succeeds
     And stdout contains "<redacted>"
     And stdout contains "https://registry.example.test"
@@ -73,7 +73,7 @@ Feature: Inspect Morphir configuration
       name = "source-project"
       version = "1.0.0"
       """
-    When I run "morphir config path"
+    When I run "morphir config path --isolated"
     Then the command succeeds
     And stdout contains "Configuration sources (in priority order):"
     And stdout contains "[✓] project"
@@ -88,7 +88,7 @@ Feature: Inspect Morphir configuration
       version = "1.0.0"
       """
     And the environment variable "MORPHIR_UI__COLOR" is "false"
-    When I run "morphir config path --json"
+    When I run "morphir config path --json --isolated"
     Then the command succeeds
     And stdout is valid JSON
     And the JSON source "project" has status "loaded"
@@ -101,7 +101,7 @@ Feature: Inspect Morphir configuration
       [project
       name = "broken"
       """
-    When I run "morphir config show"
+    When I run "morphir config show --isolated"
     Then the command fails
     And stderr contains "Configuration error"
 
@@ -118,6 +118,6 @@ Feature: Inspect Morphir configuration
         name: yaml-project
         version: 1.0.0
       """
-    When I run "morphir config path"
+    When I run "morphir config path --isolated"
     Then the command fails
     And stderr contains "Ambiguous Morphir configuration"

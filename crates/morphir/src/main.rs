@@ -173,6 +173,9 @@ enum ConfigAction {
         /// Output as JSON
         #[arg(long)]
         json: bool,
+        /// Ignore machine-level and user-level configuration sources
+        #[arg(long, hide = true)]
+        isolated: bool,
     },
     /// Show which configuration sources were considered
     Path {
@@ -182,6 +185,9 @@ enum ConfigAction {
         /// Output as JSON
         #[arg(long)]
         json: bool,
+        /// Ignore machine-level and user-level configuration sources
+        #[arg(long, hide = true)]
+        isolated: bool,
     },
 }
 
@@ -426,8 +432,16 @@ impl AppSession for MorphirSession {
             }
             Commands::Transform { input, output } => run_transform(input.clone(), output.clone()),
             Commands::Config { action } => match action {
-                ConfigAction::Show { config, json } => run_config_show(config.clone(), *json),
-                ConfigAction::Path { config, json } => run_config_path(config.clone(), *json),
+                ConfigAction::Show {
+                    config,
+                    json,
+                    isolated,
+                } => run_config_show(config.clone(), *json, *isolated),
+                ConfigAction::Path {
+                    config,
+                    json,
+                    isolated,
+                } => run_config_path(config.clone(), *json, *isolated),
             },
             Commands::Tool { action } => match action {
                 ToolAction::Install { name, version } => {
@@ -639,7 +653,7 @@ async fn main() -> starbase::MainResult {
     App::default()
         .run(
             session,
-            |mut session| async move { session.execute().await },
+            |_session| async move { Ok::<_, miette::Report>(None) },
         )
         .await
         .into_miette_result()

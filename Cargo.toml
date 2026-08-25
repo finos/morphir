@@ -26,6 +26,7 @@ clap = { version = "4.5.57", features = ["derive", "color"] }
 anyhow = "1.0"
 thiserror = "2.0.18"
 miette = { version = "7", features = ["fancy"] }
+cucumber = "0.22"
 
 # TUI
 ratatui = "0.30"

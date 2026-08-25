@@ -57,7 +57,7 @@ tracing-subscriber = { workspace = true }
 tracing-appender = { workspace = true }
 
 [dev-dependencies]
-cucumber = "0.22"
+cucumber = { workspace = true }
 tempfile = "3"
 
 [build-dependencies]
