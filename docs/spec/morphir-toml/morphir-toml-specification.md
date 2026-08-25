@@ -45,6 +45,10 @@ All top-level keys are optional; absent sections use defaults.
 - **`cache`**: Cache settings
 - **`logging`**: Logging settings
 - **`ui`**: UI / TUI settings
+- **`frontend`**: Frontend parsing settings
+- **`sources`**: Remote source settings
+- **`dependencies`** and **`dev-dependencies`**: Project dependencies and development-only dependencies
+- **`extensions`**: Extension definitions
 - **`tasks`**: Project task definitions (intrinsic or command tasks)
 - **`workflows`**: Named workflows (staged orchestration of targets)
 - **`bindings`**: External binding type-mapping configuration (WIT/Protobuf/JSON)
