@@ -94,7 +94,7 @@ Decorations are sidecar metadata schemas/values attached to IR nodes.
 
 ### `[ir]`
 
-- **`format_version`** (`int`, optional, default: `4`): IR format version (supported range: 1–10).
+- **`format_version`** (`int`, optional, default: `3`): IR format version (supported range: 1–10). Version 4 is under active development; a project opts into it explicitly.
 - **`strict_mode`** (`bool`, optional, default: `false`): When true, validation warnings are treated as errors.
 - **`mode`** (`string`, optional, default: `"vfs"`): One of `classic`, `vfs`.
 
