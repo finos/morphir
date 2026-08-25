@@ -45,6 +45,10 @@ All top-level keys are optional; absent sections use defaults.
 - **`cache`**: Cache settings
 - **`logging`**: Logging settings
 - **`ui`**: UI / TUI settings
+- **`frontend`**: Frontend parsing settings
+- **`sources`**: Remote source settings
+- **`dependencies`** and **`dev-dependencies`**: Project dependencies and development-only dependencies
+- **`extensions`**: Extension definitions
 - **`tasks`**: Project task definitions (intrinsic or command tasks)
 - **`workflows`**: Named workflows (staged orchestration of targets)
 - **`bindings`**: External binding type-mapping configuration (WIT/Protobuf/JSON)
@@ -55,6 +59,8 @@ All top-level keys are optional; absent sections use defaults.
 ### `[morphir]`
 
 - **`version`** (`string`, optional): SemVer constraint indicating compatible Morphir IR versions for the project (example: `"^3.0.0"`). Empty means “any”.
+- **`min_cli_version`** (`string`, optional): Minimum Morphir CLI version required to work with this configuration.
+- **`dev_mode`** (`bool`, optional, default: `false`): Enables development-mode behavior.
 
 ### `[workspace]`
 
@@ -71,6 +77,11 @@ All top-level keys are optional; absent sections use defaults.
 - **`source_directory`** (`string`, optional): Source directory containing project source files.
 - **`exposed_modules`** (`string[]`, optional): Modules exposed by the project’s public API.
 - **`module_prefix`** (`string`, optional): Optional module prefix for qualified names.
+- **`description`** (`string`, optional): Short description of the project.
+- **`license`** (`string`, optional): SPDX license identifier.
+- **`repository`** (`string`, optional): URL of the project's source repository.
+- **`authors`** (`string[]`, optional): Project authors.
+- **`output_directory`** (`string`, optional, default: `".morphir/out"`): Directory for project-level build output.
 
 #### `[project.decorations.<decorationId>]`
 
@@ -83,8 +94,9 @@ Decorations are sidecar metadata schemas/values attached to IR nodes.
 
 ### `[ir]`
 
-- **`format_version`** (`int`, optional, default: `3`): IR format version (supported range: 1–10).
+- **`format_version`** (`int`, optional, default: `4`): IR format version (supported range: 1–10).
 - **`strict_mode`** (`bool`, optional, default: `false`): When true, validation warnings are treated as errors.
+- **`mode`** (`string`, optional, default: `"vfs"`): One of `classic`, `vfs`.
 
 ### `[codegen]`
 
@@ -110,6 +122,95 @@ Decorations are sidecar metadata schemas/values attached to IR nodes.
 - **`interactive`** (`bool`, optional, default: `true`)
 - **`theme`** (`string`, optional, default: `"default"`): One of `default`, `light`, `dark`.
 
+### `[frontend]`
+
+Frontend parsing settings.
+
+- **`language`** (`string`, optional): Source language handled by the frontend parser.
+- **`emit_parse_stage`** (`bool`, optional, default: `true`): Emit the parse-stage intermediate output.
+- **`emit_parse_stage_fatal`** (`bool`, optional, default: `false`): Treat parse-stage errors as fatal.
+
+### `[sources]`
+
+Remote source settings (`morphir_common::remote::config::RemoteSourceConfig`). Unlike most sections in this document, these fields serialize in **camelCase**, not snake_case.
+
+- **`enabled`** (`bool`, optional, default: `true`): Whether remote sources are enabled.
+- **`allow`** (`string[]`, optional): Glob patterns. If non-empty, only URLs matching an entry are allowed.
+- **`deny`** (`string[]`, optional): Glob patterns denied even when `allow` matches. Takes precedence over `allow`.
+- **`trustedGithubOrgs`** (`string[]`, optional): Trusted GitHub organizations/users.
+
+#### `[sources.cache]`
+
+- **`directory`** (`string`, optional): Cache directory (defaults to a platform cache directory under `morphir/sources`).
+- **`maxSizeMb`** (`int`, optional, default: `0`): Maximum cache size in MB (`0` = unlimited).
+- **`ttlSecs`** (`int`, optional, default: `0`): TTL for cached sources in seconds (`0` = never expire).
+
+#### `[sources.network]`
+
+- **`timeoutSecs`** (`int`, optional, default: `30`): Connection timeout in seconds.
+- **`httpProxy`** (`string`, optional): HTTP proxy URL.
+- **`httpsProxy`** (`string`, optional): HTTPS proxy URL.
+- **`maxRedirects`** (`int`, optional, default: `10`): Maximum number of redirects to follow.
+- **`userAgent`** (`string`, optional): User agent string.
+
+### `[dependencies]` and `[dev-dependencies]`
+
+Maps of dependency name to a version constraint or a detailed table. `dependencies` lists the project's dependencies; `dev-dependencies` lists dependencies needed only for development.
+
+```toml
+[dependencies]
+acme-sdk = "^1.2.0"
+local-lib = { path = "../local-lib" }
+upstream = { git = "https://example.com/upstream.git", tag = "v2.0.0" }
+
+[dev-dependencies]
+test-utils = { workspace = true }
+```
+
+Each entry is either:
+
+- **A version string**: a SemVer constraint.
+- **A table**:
+  - **`version`** (`string`, optional)
+  - **`path`** (`string`, optional)
+  - **`git`** (`string`, optional)
+  - **`tag`** (`string`, optional)
+  - **`branch`** (`string`, optional)
+  - **`rev`** (`string`, optional)
+  - **`workspace`** (`bool`, optional)
+
+### `[extensions.<name>]`
+
+- **`path`** (`string`, optional)
+- **`url`** (`string`, optional)
+- **`command`** (`string`, optional)
+- **`args`** (`string[]`, optional)
+- **`enabled`** (`bool`, optional, default: `true`)
+- **`config`** (table, optional): Extension-specific configuration.
+
+## Secret values
+
+Some settings hold credentials. A conforming loader MUST treat a value at a position the schema declares as `secretValue` as secret: it MUST NOT display, log, or serialize the value, and tooling MUST obtain it only through an explicit exposing operation. Schema version 1 defines `secretValue` but does not yet reference it from any property; the rule takes effect as soon as a credential field such as `registry.token` is declared with that type.
+
+A secret can also be supplied as a **secret reference**, which names where to obtain the secret instead of containing it:
+
+```toml
+[registry]
+token = { env = "GITHUB_TOKEN" }
+password = { file = "~/.config/morphir/registry-password" }
+```
+
+A secret reference is an inline table whose keys are exactly `env`, or exactly `file`, with a string value. Any other table, including one with both keys or with extra keys, is an ordinary table. A loader MUST recognise references at every position, not only at positions the schema declares as secret.
+
+- `env`: the secret is the value of the named environment variable. A missing or empty variable is an error when the secret is resolved.
+- `file`: the secret is the file's contents with one trailing newline removed. A relative path resolves against the directory of the configuration file that declares the reference; a leading `~` expands to the user's home directory. A missing or unreadable file is an error when the secret is resolved.
+
+Resolution happens only when tooling explicitly exposes the secret. Displaying the configuration, reporting sources, validating, and decoding MUST NOT resolve references. A reference MAY be displayed verbatim because it contains no secret; a plain-string secret MUST be displayed as a placeholder such as `<redacted>`.
+
+For merging, a secret reference is a leaf: a higher-precedence reference replaces a lower one entirely (see the [merge rules](./morphir-toml-merge-rules/)).
+
+The `command` reference kind and operating-system keyrings are reserved for a later version. A table using them today (for example `{ command = [...] }`) matches neither `secretReference` branch: at a position the schema types as `secretValue` it therefore MUST be rejected as invalid, while at any other position it is an ordinary table and is merely an unrecognized property, treated like any other undeclared field.
+
 ## Tasks and workflows
 
 ### `[tasks.<taskName>]`
@@ -119,9 +220,19 @@ Tasks are project-scoped execution units. Each task is either:
 - **Intrinsic**: a built-in Morphir action (`kind = "intrinsic"`; `action = "..."`)
 - **Command**: an external command (`kind = "command"`; `cmd = ["..."]`)
 
+A string value is shorthand for a command task run through the shell: `build = "cargo build"`.
+
+`depends` and `run` relate to the pre-existing `depends_on` and `cmd`/`action` fields as follows:
+
+- **`depends`** is an accepted alternative spelling of **`depends_on`**. A task MUST NOT set both `depends_on` and `depends`.
+- **`run`** is the string form of a command task: it is equivalent to the string shorthand above, and its presence implies `kind = "command"`. A task MUST NOT set both `run` and `cmd`, and MUST NOT set both `run` and `action`.
+
+> The schema enforces the two MUST-NOT rules above (a task cannot declare both members of either pair). It does not separately enforce that `run` implies `kind = "command"` when `kind` is omitted, because doing so would require restructuring the intrinsic/command task variants in the schema. A conforming loader MUST still apply the implication: a task with `run` set and `kind` omitted (and no conflicting `action`) is a command task, not an intrinsic one.
+
 Common task fields:
 
 - **`depends_on`** (`string[]`, optional)
+- **`depends`** (`string[]`, optional): Alternative spelling of `depends_on` (see above).
 - **`pre`** (`string[]`, optional)
 - **`post`** (`string[]`, optional)
 - **`inputs`** (`string[]`, optional)
@@ -129,10 +240,13 @@ Common task fields:
 - **`params`** (table/object, optional): Arbitrary parameters
 - **`env`** (table/object, optional): `string -> string`
 - **`mounts`** (table/object, optional): mount name to permission (`"ro"`/`"rw"`)
+- **`description`** (`string`, optional)
+- **`run`** (`string`, optional): Shell command to run (alternative to `cmd`; see above).
+- **`cwd`** (`string`, optional)
 
 Intrinsic task fields:
 
-- **`kind`**: `"intrinsic"` (or omitted; omitted defaults to intrinsic)
+- **`kind`**: `"intrinsic"` (or omitted; omitted defaults to intrinsic, unless `run` is present without `action`, in which case the task is a command task per the rule above)
 - **`action`** (`string`, optional): Intrinsic action identifier (example: `morphir.pipeline.compile`)
 
 Command task fields:

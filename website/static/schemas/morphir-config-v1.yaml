@@ -1,11 +1,36 @@
 $schema: "http://json-schema.org/draft-07/schema#"
 $id: "https://morphir.finos.org/schemas/morphir-config-v1.yaml"
 title: "Morphir Configuration"
-description: "JSON Schema for the serialization-independent Morphir configuration model underlying morphir.toml and the proposed morphir.yaml format."
+description: "JSON Schema for the serialization-independent Morphir configuration model underlying morphir.toml and morphir.yaml."
 type: object
 additionalProperties: true
 
 definitions:
+  secretReference:
+    description: "Where to obtain a secret. Exactly one of env or file."
+    oneOf:
+      - type: object
+        additionalProperties: false
+        required: ["env"]
+        properties:
+          env:
+            type: string
+            description: "Name of the environment variable that holds the secret."
+      - type: object
+        additionalProperties: false
+        required: ["file"]
+        properties:
+          file:
+            type: string
+            description: "Path to a file whose contents are the secret. Relative paths resolve against the declaring configuration file; ~ expands to the home directory."
+
+  secretValue:
+    description: "A credential. Either a plain string (treated as a secret and never displayed) or a secret reference."
+    x-secret: true
+    anyOf:
+      - type: string
+      - $ref: "#/definitions/secretReference"
+
   stringMap:
     type: object
     additionalProperties:
@@ -14,6 +39,12 @@ definitions:
   taskCommon:
     type: object
     additionalProperties: true
+    not:
+      description: "depends is an alternative spelling of depends_on (not both); run is the string form of a command task and is incompatible with cmd and with action (see the TOML specification's Tasks and workflows section)."
+      anyOf:
+        - required: ["depends_on", "depends"]
+        - required: ["run", "cmd"]
+        - required: ["run", "action"]
     properties:
       kind:
         type: string
@@ -45,6 +76,16 @@ definitions:
         $ref: "#/definitions/stringMap"
       mounts:
         $ref: "#/definitions/stringMap"
+      description:
+        type: string
+      run:
+        type: string
+        description: "Shell command to run (alternative to cmd)."
+      depends:
+        type: array
+        items: { type: string }
+      cwd:
+        type: string
 
   intrinsicTask:
     allOf:
@@ -77,8 +118,9 @@ definitions:
             items: { type: string }
 
   task:
-    description: "Project task definition. kind omitted implies intrinsic."
+    description: "Project task definition. A string is shorthand for a command task run through the shell; with kind omitted, a table that sets run is a command task, and any other table is intrinsic."
     anyOf:
+      - type: string
       - $ref: "#/definitions/commandTask"
       - $ref: "#/definitions/intrinsicTask"
 
@@ -214,12 +256,72 @@ definitions:
       entry_point: { type: string }
       storage_location: { type: string }
 
+  dependency:
+    description: "A dependency: a version string, or a detailed table."
+    anyOf:
+      - type: string
+      - type: object
+        additionalProperties: true
+        properties:
+          version: { type: string }
+          path: { type: string }
+          git: { type: string }
+          tag: { type: string }
+          branch: { type: string }
+          rev: { type: string }
+          workspace: { type: boolean }
+
+  extension:
+    type: object
+    additionalProperties: true
+    properties:
+      path: { type: string }
+      url: { type: string }
+      command: { type: string }
+      args:
+        type: array
+        items: { type: string }
+      enabled: { type: boolean }
+      config:
+        type: object
+        additionalProperties: true
+
+  sourcesCache:
+    description: "morphir_common::remote::config::CacheConfig. Fields serialize in camelCase."
+    type: object
+    additionalProperties: true
+    properties:
+      directory: { type: string }
+      maxSizeMb:
+        type: integer
+        minimum: 0
+      ttlSecs:
+        type: integer
+        minimum: 0
+
+  sourcesNetwork:
+    description: "morphir_common::remote::config::NetworkConfig. Fields serialize in camelCase."
+    type: object
+    additionalProperties: true
+    properties:
+      timeoutSecs:
+        type: integer
+        minimum: 0
+      httpProxy: { type: string }
+      httpsProxy: { type: string }
+      maxRedirects:
+        type: integer
+        minimum: 0
+      userAgent: { type: string }
+
 properties:
   morphir:
     type: object
     additionalProperties: true
     properties:
       version: { type: string }
+      min_cli_version: { type: string }
+      dev_mode: { type: boolean }
 
   workspace:
     type: object
@@ -250,6 +352,13 @@ properties:
         type: object
         additionalProperties:
           $ref: "#/definitions/decoration"
+      description: { type: string }
+      authors:
+        type: array
+        items: { type: string }
+      license: { type: string }
+      repository: { type: string }
+      output_directory: { type: string }
 
   ir:
     type: object
@@ -260,6 +369,9 @@ properties:
         minimum: 1
         maximum: 10
       strict_mode: { type: boolean }
+      mode:
+        type: string
+        enum: ["classic", "vfs"]
 
   codegen:
     type: object
@@ -327,3 +439,44 @@ properties:
     type: object
     additionalProperties:
       $ref: "#/definitions/toolchain"
+
+  frontend:
+    type: object
+    additionalProperties: true
+    properties:
+      language: { type: string }
+      emit_parse_stage: { type: boolean }
+      emit_parse_stage_fatal: { type: boolean }
+
+  sources:
+    description: "Remote source settings (morphir_common::remote::config::RemoteSourceConfig). Fields serialize in camelCase."
+    type: object
+    additionalProperties: true
+    properties:
+      enabled: { type: boolean }
+      allow:
+        type: array
+        items: { type: string }
+      deny:
+        type: array
+        items: { type: string }
+      trustedGithubOrgs:
+        type: array
+        items: { type: string }
+      cache: { $ref: "#/definitions/sourcesCache" }
+      network: { $ref: "#/definitions/sourcesNetwork" }
+
+  dependencies:
+    type: object
+    additionalProperties:
+      $ref: "#/definitions/dependency"
+
+  dev-dependencies:
+    type: object
+    additionalProperties:
+      $ref: "#/definitions/dependency"
+
+  extensions:
+    type: object
+    additionalProperties:
+      $ref: "#/definitions/extension"

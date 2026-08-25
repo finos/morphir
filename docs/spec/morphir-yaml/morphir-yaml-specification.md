@@ -102,6 +102,11 @@ The root mapping accepts the same optional keys as `morphir.toml`:
 | `cache` | mapping | Cache settings |
 | `logging` | mapping | Logging settings |
 | `ui` | mapping | UI and TUI settings |
+| `frontend` | mapping | Frontend parsing settings |
+| `sources` | mapping | Remote source settings |
+| `dependencies` | mapping | Project dependencies |
+| `dev-dependencies` | mapping | Development-only dependencies |
+| `extensions` | mapping | Extension definitions |
 | `tasks` | mapping | Project task definitions |
 | `workflows` | mapping | Named workflows |
 | `bindings` | mapping | External binding type mappings |
@@ -137,6 +142,26 @@ The hidden and non-hidden project paths are alternate locations, not two merge l
 ## Merge behavior
 
 After parsing, YAML sources use the [Morphir configuration merge rules](../morphir-toml/morphir-toml-merge-rules/). The merge algorithm operates on the configuration model, so maps merge recursively, sequences replace earlier sequences, and later sources take precedence.
+
+## Secret values
+
+Secret references use the same reserved shape as TOML, written as an ordinary mapping. No YAML tag is involved, so the [YAML profile](#yaml-profile) is unchanged:
+
+```yaml
+registry:
+  token: { env: GITHUB_TOKEN }
+  password: { file: "~/.config/morphir/registry-password" }
+```
+
+Block style is equivalent:
+
+```yaml
+registry:
+  token:
+    env: GITHUB_TOKEN
+```
+
+The recognition rule, resolution rules, display rules, and merge behaviour are defined once in the [TOML specification](../morphir-toml/morphir-toml-specification/#secret-values) and apply unchanged: a mapping whose keys are exactly `env`, or exactly `file`, with a string value is a secret reference; anything else is an ordinary mapping.
 
 ## Complete example
 

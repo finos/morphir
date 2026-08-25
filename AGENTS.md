@@ -234,6 +234,16 @@ npm install
 npm start
 ```
 
+### The `.dev/` Working Area
+
+`.dev/` is a gitignored scratch area for AI-assisted development: temporary scripts, agent and script outputs, and working documents. Nothing in it is committed. Suggested layout:
+
+- Specs from the superpowers `brainstorming` skill: `.dev/docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+- Plans from the superpowers `writing-plans` skill: `.dev/docs/superpowers/plans/YYYY-MM-DD-<topic>-plan.md`
+- Scratch scripts and their outputs: `.dev/scripts/`, `.dev/out/`
+
+Never place working documents under `docs/`: everything in `docs/` is published to morphir.finos.org by the website build. When a design is final and meant for readers, write it up under `docs/design/` with the usual front matter.
+
 ## Questions?
 
 When in doubt:
