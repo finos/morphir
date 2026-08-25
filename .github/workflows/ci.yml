@@ -20,6 +20,7 @@ jobs:
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
       docs: ${{ steps.filter.outputs.docs }}
+      release: ${{ steps.filter.outputs.release }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -46,6 +47,15 @@ jobs:
               - '**/*.md'
               # the script the Docs job runs
               - '.config/mise/tasks/ci/validate_docs.py'
+              - '.github/workflows/ci.yml'
+            release:
+              - '.github/workflows/release.yml'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'crates/morphir/Cargo.toml'
+              - 'tests/ci/test_release_workflow.py'
+              - 'tests/ci/test_select_release_assets.py'
+              - '.github/scripts/select_release_assets.py'
               - '.github/workflows/ci.yml'
 
   # morphir-live: web UI application (depends on dioxus)
@@ -144,10 +154,22 @@ jobs:
       - name: Validate documentation
         run: python3 .config/mise/tasks/ci/validate_docs.py
 
+  release-workflow:
+    name: Release workflow
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.release == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Validate release workflow
+        run: python3 -B -m unittest discover -s tests/ci
+
   check:
     name: All Checks
     runs-on: ubuntu-latest
-    needs: [changes, morphir-live, morphir-cli, docs]
+    needs: [changes, morphir-live, morphir-cli, docs, release-workflow]
     if: always()
     steps:
       - name: Check results
@@ -167,6 +189,12 @@ jobs:
           if [[ "${{ needs.changes.outputs.docs }}" == "true" ]]; then
             if [[ "${{ needs.docs.result }}" != "success" ]]; then
               echo "docs failed"
+              exit 1
+            fi
+          fi
+          if [[ "${{ needs.changes.outputs.release }}" == "true" ]]; then
+            if [[ "${{ needs.release-workflow.result }}" != "success" ]]; then
+              echo "release workflow validation failed"
               exit 1
             fi
           fi

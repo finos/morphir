@@ -44,7 +44,9 @@ Defines a standard format for storing and sharing business logic. A clear set of
 
 
 ## Documentation
-If you want to start using Morphir, start with the [Documentation](docs/).
+
+To install the Morphir CLI, see [Installing Morphir](INSTALLING.md). For guides,
+concepts, and reference material, start with the [Documentation](docs/).
 
 ### For Contributors
 
