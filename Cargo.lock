@@ -4920,7 +4920,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-common"
-version = "0.1.0"
+version = "0.2.0-alpha-01"
 dependencies = [
  "anyhow",
  "dirs",
@@ -4944,7 +4944,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-core"
-version = "0.1.0"
+version = "0.2.0-alpha-01"
 dependencies = [
  "anyhow",
  "indexmap",
@@ -4958,7 +4958,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-daemon"
-version = "0.1.0"
+version = "0.2.0-alpha-01"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4982,7 +4982,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-devkit"
-version = "0.1.0"
+version = "0.2.0-alpha-01"
 dependencies = [
  "anyhow",
  "dirs",
@@ -4994,7 +4994,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-extension-sdk"
-version = "0.1.0"
+version = "0.2.0-alpha-01"
 dependencies = [
  "extism-pdk",
  "serde",
