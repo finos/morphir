@@ -310,7 +310,7 @@ theme = "dark"
 
 ## Secrets
 
-Never put credentials in a committed configuration file. Reference them instead:
+Never put credentials in a committed configuration file. The configuration format specifies a **secret reference** for this, written instead of the secret itself:
 
 ```toml
 [registry]
@@ -321,14 +321,16 @@ password = { file = "~/.config/morphir/registry-password" }
 ```yaml
 registry:
   token: { env: GITHUB_TOKEN }
-  password: { file: ~/.config/morphir/registry-password }
+  password: { file: "~/.config/morphir/registry-password" }
 ```
 
-`env` reads the named environment variable; `file` reads the file's contents (relative paths resolve against the configuration file that declares them, `~` is your home directory). Morphir resolves a reference only when a command actually needs the credential, so `morphir config show` prints the reference itself rather than the secret.
+`env` is specified to read the named environment variable; `file` is specified to read the file's contents (relative paths resolving against the configuration file that declares them, `~` expanding to your home directory). **This resolution is specified but not yet implemented by the shipped CLI.** Today, writing a reference like the ones above has no special effect: the value is stored and displayed like any other configuration value, subject to the redaction described below. No Morphir command currently reads the named environment variable or file on a reference's behalf.
 
-A plain-string credential at a position the schema marks as secret, or under a key that looks like one (`token`, `password`, `secret`, `credential`, `api_key`, ...), is treated as a secret and shown as `<redacted>`.
+### How `morphir config show` displays values today
 
-Environment variables can carry a reference too: `MORPHIR_REGISTRY__TOKEN='{"env":"GH_TOKEN"}'`.
+`morphir config show` redacts sensitive values before printing them. Redaction is a **key-name heuristic**, not a check on the value's shape: any configuration key whose name (case-insensitively, treating `-` as `_`) contains `token`, `password`, `passwd`, `secret`, `credential`, `api_key`, `apikey`, `private_key`, or `access_key` has its **entire value** replaced with `<redacted>`, whatever that value's type — a plain string, a number, a secret-reference table, or an arbitrary nested table. For example, the `token = { env = "GITHUB_TOKEN" }` example above prints as `token = <redacted>`, the same as it would for a plain-string token; today's redaction does not recognize, preserve, or resolve the reference shape.
+
+Environment variables under a sensitive key are redacted the same way, whatever value they carry: `MORPHIR_REGISTRY__TOKEN='{"env":"GH_TOKEN"}'` also displays as `<redacted>`.
 
 ## Validation
 

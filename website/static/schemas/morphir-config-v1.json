@@ -58,6 +58,29 @@
     "taskCommon": {
       "type": "object",
       "additionalProperties": true,
+      "not": {
+        "description": "depends is an alternative spelling of depends_on (not both); run is the string form of a command task and is incompatible with cmd and with action (see the TOML specification's Tasks and workflows section).",
+        "anyOf": [
+          {
+            "required": [
+              "depends_on",
+              "depends"
+            ]
+          },
+          {
+            "required": [
+              "run",
+              "cmd"
+            ]
+          },
+          {
+            "required": [
+              "run",
+              "action"
+            ]
+          }
+        ]
+      },
       "properties": {
         "kind": {
           "type": "string",
@@ -511,6 +534,48 @@
           "additionalProperties": true
         }
       }
+    },
+    "sourcesCache": {
+      "description": "morphir_common::remote::config::CacheConfig. Fields serialize in camelCase.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "directory": {
+          "type": "string"
+        },
+        "maxSizeMb": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ttlSecs": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "sourcesNetwork": {
+      "description": "morphir_common::remote::config::NetworkConfig. Fields serialize in camelCase.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "timeoutSecs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "httpProxy": {
+          "type": "string"
+        },
+        "httpsProxy": {
+          "type": "string"
+        },
+        "maxRedirects": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "userAgent": {
+          "type": "string"
+        }
+      }
     }
   },
   "properties": {
@@ -758,9 +823,38 @@
       }
     },
     "sources": {
-      "description": "Remote source settings (see morphir_common::remote::config).",
+      "description": "Remote source settings (morphir_common::remote::config::RemoteSourceConfig). Fields serialize in camelCase.",
       "type": "object",
-      "additionalProperties": true
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "allow": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deny": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "trustedGithubOrgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cache": {
+          "$ref": "#/definitions/sourcesCache"
+        },
+        "network": {
+          "$ref": "#/definitions/sourcesNetwork"
+        }
+      }
     },
     "dependencies": {
       "type": "object",

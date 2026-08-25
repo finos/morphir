@@ -21,6 +21,11 @@ const copy = path.join(repoRoot, 'ecosystem', 'morphir-rust', 'crates', 'morphir
 function read(file) {
   if (!fs.existsSync(file)) {
     console.error(`Missing: ${path.relative(repoRoot, file)}`);
+    if (file === copy) {
+      console.error('The embedded copy in morphir-rust has not been created yet.');
+      console.error(`Create ${path.relative(repoRoot, copy)} by copying the generated`);
+      console.error(`${path.relative(repoRoot, source)} over it, then bump the submodule.`);
+    }
     process.exit(1);
   }
   return fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');

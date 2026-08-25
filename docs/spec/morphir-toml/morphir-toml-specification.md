@@ -94,7 +94,7 @@ Decorations are sidecar metadata schemas/values attached to IR nodes.
 
 ### `[ir]`
 
-- **`format_version`** (`int`, optional, default: `3`): IR format version (supported range: 1–10).
+- **`format_version`** (`int`, optional, default: `4`): IR format version (supported range: 1–10).
 - **`strict_mode`** (`bool`, optional, default: `false`): When true, validation warnings are treated as errors.
 - **`mode`** (`string`, optional, default: `"vfs"`): One of `classic`, `vfs`.
 
@@ -132,7 +132,26 @@ Frontend parsing settings.
 
 ### `[sources]`
 
-Remote source settings. See the [machine-readable schema](#machine-readable-schema) for the current field set (`morphir_common::remote::config`).
+Remote source settings (`morphir_common::remote::config::RemoteSourceConfig`). Unlike most sections in this document, these fields serialize in **camelCase**, not snake_case.
+
+- **`enabled`** (`bool`, optional, default: `true`): Whether remote sources are enabled.
+- **`allow`** (`string[]`, optional): Glob patterns. If non-empty, only URLs matching an entry are allowed.
+- **`deny`** (`string[]`, optional): Glob patterns denied even when `allow` matches. Takes precedence over `allow`.
+- **`trustedGithubOrgs`** (`string[]`, optional): Trusted GitHub organizations/users.
+
+#### `[sources.cache]`
+
+- **`directory`** (`string`, optional): Cache directory (defaults to a platform cache directory under `morphir/sources`).
+- **`maxSizeMb`** (`int`, optional, default: `0`): Maximum cache size in MB (`0` = unlimited).
+- **`ttlSecs`** (`int`, optional, default: `0`): TTL for cached sources in seconds (`0` = never expire).
+
+#### `[sources.network]`
+
+- **`timeoutSecs`** (`int`, optional, default: `30`): Connection timeout in seconds.
+- **`httpProxy`** (`string`, optional): HTTP proxy URL.
+- **`httpsProxy`** (`string`, optional): HTTPS proxy URL.
+- **`maxRedirects`** (`int`, optional, default: `10`): Maximum number of redirects to follow.
+- **`userAgent`** (`string`, optional): User agent string.
 
 ### `[dependencies]` and `[dev-dependencies]`
 
@@ -203,9 +222,17 @@ Tasks are project-scoped execution units. Each task is either:
 
 A string value is shorthand for a command task run through the shell: `build = "cargo build"`.
 
+`depends` and `run` relate to the pre-existing `depends_on` and `cmd`/`action` fields as follows:
+
+- **`depends`** is an accepted alternative spelling of **`depends_on`**. A task MUST NOT set both `depends_on` and `depends`.
+- **`run`** is the string form of a command task: it is equivalent to the string shorthand above, and its presence implies `kind = "command"`. A task MUST NOT set both `run` and `cmd`, and MUST NOT set both `run` and `action`.
+
+> The schema enforces the two MUST-NOT rules above (a task cannot declare both members of either pair). It does not separately enforce that `run` implies `kind = "command"` when `kind` is omitted, because doing so would require restructuring the intrinsic/command task variants in the schema. A conforming loader MUST still apply the implication: a task with `run` set and `kind` omitted (and no conflicting `action`) is a command task, not an intrinsic one.
+
 Common task fields:
 
 - **`depends_on`** (`string[]`, optional)
+- **`depends`** (`string[]`, optional): Alternative spelling of `depends_on` (see above).
 - **`pre`** (`string[]`, optional)
 - **`post`** (`string[]`, optional)
 - **`inputs`** (`string[]`, optional)
@@ -214,13 +241,12 @@ Common task fields:
 - **`env`** (table/object, optional): `string -> string`
 - **`mounts`** (table/object, optional): mount name to permission (`"ro"`/`"rw"`)
 - **`description`** (`string`, optional)
-- **`run`** (`string`, optional): Shell command to run (alternative to `cmd`)
-- **`depends`** (`string[]`, optional)
+- **`run`** (`string`, optional): Shell command to run (alternative to `cmd`; see above).
 - **`cwd`** (`string`, optional)
 
 Intrinsic task fields:
 
-- **`kind`**: `"intrinsic"` (or omitted; omitted defaults to intrinsic)
+- **`kind`**: `"intrinsic"` (or omitted; omitted defaults to intrinsic, unless `run` is present without `action`, in which case the task is a command task per the rule above)
 - **`action`** (`string`, optional): Intrinsic action identifier (example: `morphir.pipeline.compile`)
 
 Command task fields:

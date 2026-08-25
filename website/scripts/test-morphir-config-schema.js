@@ -20,6 +20,12 @@ const cases = [
   ['command task with action', { tasks: { build: { kind: 'command', action: 'compile' } } }, false],
   ['task string shorthand', { tasks: { build: 'cargo build' } }, true],
   ['task with run and depends', { tasks: { build: { description: 'Build', run: 'cargo build', depends: ['fmt'], cwd: 'crates/x', env: { CI: 'true' } } } }, true],
+  ['task depends alt spelling accepted alone', { tasks: { build: { kind: 'command', cmd: ['echo'], depends: ['fmt'] } } }, true],
+  ['task depends and depends_on together', { tasks: { build: { kind: 'command', cmd: ['echo'], depends: ['fmt'], depends_on: ['lint'] } } }, false],
+  ['task run alone implies command shorthand', { tasks: { build: { run: 'cargo build' } } }, true],
+  ['task run and cmd together', { tasks: { build: { kind: 'command', cmd: ['echo'], run: 'echo hi' } } }, false],
+  ['task run and action together', { tasks: { build: { kind: 'intrinsic', action: 'x', run: 'echo hi' } } }, false],
+  ['task action alone without run', { tasks: { build: { kind: 'intrinsic', action: 'compile' } } }, true],
   ['frontend section', { frontend: { language: 'elm', emit_parse_stage: true, emit_parse_stage_fatal: false } }, true],
   ['frontend with wrong type', { frontend: { emit_parse_stage: 'yes' } }, false],
   ['project extras', { project: { name: 'acme/orders', description: 'Orders', authors: ['Alice'], license: 'Apache-2.0', repository: 'https://example.com/r', output_directory: '.morphir/out' } }, true],
@@ -27,7 +33,10 @@ const cases = [
   ['ir mode wrong type', { ir: { mode: 4 } }, false],
   ['dependencies string and detailed', { dependencies: { 'finos/morphir-sdk': '1.0.0', local: { path: '../local', workspace: true } }, 'dev-dependencies': { git: { git: 'https://example.com/r.git', tag: 'v1' } } }, true],
   ['dependency detailed with wrong path type', { dependencies: { local: { path: 3 } } }, false],
-  ['extensions and sources', { extensions: { gleam: { path: 'ext/gleam.wasm', enabled: true, args: ['--x'], config: { a: 1 } } }, sources: { cache_dir: '.morphir/cache' } }, true],
+  ['extensions and sources', { extensions: { gleam: { path: 'ext/gleam.wasm', enabled: true, args: ['--x'], config: { a: 1 } } }, sources: { enabled: true, allow: ['https://github.com/*'], cache: { maxSizeMb: 100 } } }, true],
+  ['project.authors wrong element type', { project: { authors: [123] } }, false],
+  ['extensions enabled wrong type', { extensions: { gleam: { enabled: 'yes' } } }, false],
+  ['morphir.dev_mode wrong type', { morphir: { dev_mode: 'yes' } }, false],
 ];
 
 // Cases validated against a single definition rather than the root schema.

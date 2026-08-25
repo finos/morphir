@@ -102,6 +102,11 @@ The root mapping accepts the same optional keys as `morphir.toml`:
 | `cache` | mapping | Cache settings |
 | `logging` | mapping | Logging settings |
 | `ui` | mapping | UI and TUI settings |
+| `frontend` | mapping | Frontend parsing settings |
+| `sources` | mapping | Remote source settings |
+| `dependencies` | mapping | Project dependencies |
+| `dev-dependencies` | mapping | Development-only dependencies |
+| `extensions` | mapping | Extension definitions |
 | `tasks` | mapping | Project task definitions |
 | `workflows` | mapping | Named workflows |
 | `bindings` | mapping | External binding type mappings |
@@ -145,7 +150,7 @@ Secret references use the same reserved shape as TOML, written as an ordinary ma
 ```yaml
 registry:
   token: { env: GITHUB_TOKEN }
-  password: { file: ~/.config/morphir/registry-password }
+  password: { file: "~/.config/morphir/registry-password" }
 ```
 
 Block style is equivalent:

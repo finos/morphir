@@ -99,13 +99,17 @@ Given two maps: `base` and `overlay`, `DeepMerge(base, overlay)` produces a new 
 - **Rule 3 — Arrays/slices replace**: if values are arrays/slices, the overlay replaces the base entirely (no concatenation).
 - **Rule 4 — `nil` overlay is ignored**: if an overlay value is `nil`, it does **not** override the base value.
 - **Rule 5 — No mutation**: the merge result is independent; inputs are not modified.
-- **Rule 6 — Secret values are leaves**: a secret reference (`{ env = ... }` / `{ file = ... }`) or a secret string is never merged recursively; the overlay value replaces the base value entirely.
+- **Rule 6 — Secret values are leaves**: if the base value, the overlay value, or both are a secret reference (`{ env = ... }` / `{ file = ... }`) or a secret string, the overlay value replaces the base value entirely; the two are never deep-merged as maps, even when both look like ordinary tables. This rule takes precedence over Rule 2: an ordinary table overlaying a base secret reference (or a secret reference overlaying an ordinary table) still replaces wholesale rather than merging recursively, because merging would otherwise produce a table that is no longer a valid secret reference.
 
 These rules are implemented by `deep_merge` and `merge_all` in the `morphir_common::config::merge` module of morphir-rust. The layered loader in `morphir_devkit::config` (`load_effective_config`) applies them across the sources above and records which sources were consulted; `morphir config path` and `morphir config show` expose that result.
 
 ## Provenance
 
-The effective configuration records, for every leaf value and every array, which source supplied it (the source kind and, for file sources, the path). Provenance follows the winning value through `DeepMerge`: an overlay value that replaces or is added to the base brings its own provenance. Tables carry no provenance of their own; they exist because a child does. Tooling uses provenance to explain values (`morphir config show --provenance`) and to name the file responsible for a validation error.
+This section is specified for future implementation; it is not implemented today. Nothing named `provenance` exists in the codebase, and `morphir config show` has no `--provenance` flag.
+
+Once implemented, a conforming loader MUST record, for every leaf value and every array in the effective configuration, which source supplied it (the source kind and, for file sources, the path). Provenance MUST follow the winning value through `DeepMerge`: an overlay value that replaces or is added to the base brings its own provenance with it. A table SHOULD NOT itself carry provenance separate from its children, since a table exists in the effective configuration only because at least one descendant leaf does.
+
+Tooling MAY expose provenance to explain values (for example, a future `--provenance` option on `morphir config show`) and to name the file responsible for a validation error. The flag name and output shape are not yet finalized.
 
 ## Environment variable mapping (informative)
 
