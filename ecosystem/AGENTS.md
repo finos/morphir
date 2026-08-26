@@ -10,6 +10,7 @@ This directory holds **git submodules** for Morphir ecosystem repositories. Use 
 - **morphir-moonbit** – MoonBit implementation of Morphir tooling.
 - **morphir-python** – Python implementation of Morphir tooling.
 - **morphir-scala** – Scala implementation of Morphir tooling. Mill build, cross-compiled to JVM, JS, and Scala Native.
+- **morphir-ui** – User-interface work for the Morphir project (scoping stage; no implementation yet).
 
 Do not edit submodule content in-place for long-term changes. Prefer contributing in the submodule's own repo and then updating the submodule ref in finos/morphir when intentional.
 

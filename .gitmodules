@@ -17,3 +17,6 @@
 [submodule "ecosystem/morphir-scala"]
 	path = ecosystem/morphir-scala
 	url = https://github.com/finos/morphir-scala.git
+[submodule "ecosystem/morphir-ui"]
+	path = ecosystem/morphir-ui
+	url = https://github.com/finos/morphir-ui.git
