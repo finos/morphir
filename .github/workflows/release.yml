@@ -77,7 +77,7 @@ jobs:
         shell: bash
         run: |
           ARCHIVE="morphir-live-${{ needs.release-info.outputs.version }}.tar.gz"
-          tar -C crates/morphir-live/dist -czf "$ARCHIVE" .
+          tar -C target/dx/morphir-live/release/web/public -czf "$ARCHIVE" .
           shasum -a 256 "$ARCHIVE" > "$ARCHIVE.sha256"
 
       - name: Upload build artifact

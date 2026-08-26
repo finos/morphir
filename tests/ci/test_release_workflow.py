@@ -97,6 +97,12 @@ class ReleaseWorkflowTests(unittest.TestCase):
             self.workflow,
         )
 
+    def test_live_archive_uses_dioxus_workspace_output(self) -> None:
+        self.assertIn(
+            "tar -C target/dx/morphir-live/release/web/public",
+            self.workflow,
+        )
+
     def test_cli_checksum_uses_archive_basename(self) -> None:
         self.assertIn("cd release-assets", self.workflow)
         self.assertIn(
