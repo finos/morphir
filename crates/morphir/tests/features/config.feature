@@ -326,6 +326,9 @@ Feature: Inspect Morphir configuration
       | failing-command | command-failed        |
       | missing-keyring | keyring-lookup-failed |
 
+  Scenario: Error observations scan both formatted streams
+    Then an error observation with backend stdout in stderr is rejected
+
   Scenario: CLI configuration inspection does not resolve command references
     Given a file "morphir.toml" containing a marker command secret reference
     When I run "morphir config get registry.token --isolated"

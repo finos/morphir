@@ -44,6 +44,14 @@ impl FormattedResolutionObservation {
     }
 }
 
+fn observation_omits_backend_output(observation: &FormattedResolutionObservation) -> bool {
+    [&observation.stdout, &observation.stderr]
+        .into_iter()
+        .all(|stream| {
+            !stream.contains(COMMAND_STDOUT_SENTINEL) && !stream.contains(COMMAND_STDERR_SENTINEL)
+        })
+}
+
 #[derive(Debug, Default, World)]
 struct ConfigWorld {
     root: Option<TempDir>,
@@ -483,9 +491,20 @@ fn resolution_diagnostic_omits_protected_backend_output(world: &mut ConfigWorld)
         .as_ref()
         .expect("secret resolution did not record a formatted observation");
     assert!(
-        !observation.stdout.contains(COMMAND_STDOUT_SENTINEL)
-            && !observation.stderr.contains(COMMAND_STDERR_SENTINEL),
+        observation_omits_backend_output(observation),
         "secret resolution diagnostic disclosed protected backend output"
+    );
+}
+
+#[then("an error observation with backend stdout in stderr is rejected")]
+fn error_observation_with_backend_stdout_in_stderr_is_rejected(_world: &mut ConfigWorld) {
+    let observation = FormattedResolutionObservation {
+        stdout: String::new(),
+        stderr: COMMAND_STDOUT_SENTINEL.to_owned(),
+    };
+    assert!(
+        !observation_omits_backend_output(&observation),
+        "the observation detector accepted protected backend output"
     );
 }
 
