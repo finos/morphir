@@ -71,7 +71,7 @@ jobs:
 
       - name: Build WASM release
         working-directory: crates/morphir-live
-        run: dx build --release
+        run: dx build --release --package morphir-live
 
       - name: Create release archive
         shell: bash
