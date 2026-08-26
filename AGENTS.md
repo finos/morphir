@@ -20,6 +20,7 @@ This repository contains:
 - **[finos/morphir-rust](https://github.com/finos/morphir-rust)** - Rust tooling
 - **[finos/morphir-python](https://github.com/finos/morphir-python)** - Python tooling
 - **[finos/morphir-moonbit](https://github.com/finos/morphir-moonbit)** - MoonBit implementation of Morphir tooling
+- **[finos/morphir-ui](https://github.com/finos/morphir-ui)** - User-interface work for the Morphir project
 
 ### Morphir IR Specification
 
