@@ -1,17 +1,86 @@
 use cucumber::{World, given, then, when};
+use morphir_common::config::{ExposeSecret, SecretReference, SecretString};
+use morphir_devkit::{
+    ConfigLoadOptions, SecretResolutionContext, SecretResolutionError, SecretResolver,
+    SystemSecretResolver, discover_config, load_effective_config,
+};
 use serde_json::Value;
 use std::collections::BTreeMap;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use tempfile::TempDir;
+
+const TEST_SECRET: &str = "acceptance-secret-value";
+const COMMAND_SECRET: &str = "command-secret";
+const COMMAND_STDOUT_SENTINEL: &str = "stdout-secret-sentinel";
+const COMMAND_STDERR_SENTINEL: &str = "stderr-secret-sentinel";
+const SECRET_ENVIRONMENT_VARIABLE: &str = "MORPHIR_ACCEPTANCE_SECRET";
+const SECRET_KEYRING_SERVICE: &str = "morphir-acceptance";
+const SECRET_KEYRING_ACCOUNT: &str = "registry-token";
+const SECRET_FILE: &str = "secrets/registry-token";
+const SECRET_MARKER: &str = "secret-command-marker";
 
 #[derive(Debug, Default, World)]
 struct ConfigWorld {
     root: Option<TempDir>,
     working_directory: Option<PathBuf>,
     environment: BTreeMap<String, String>,
+    resolved_secret: Option<SecretString>,
+    expected_secret: Option<SecretString>,
+    resolution_error: Option<SecretResolutionError>,
+    secret_environment: BTreeMap<String, SecretString>,
+    keyring_values: BTreeMap<(String, String), SecretString>,
     output: Option<Output>,
+}
+
+#[derive(Debug)]
+struct AcceptanceResolver<'a> {
+    secret_environment: &'a BTreeMap<String, SecretString>,
+    keyring_values: &'a BTreeMap<(String, String), SecretString>,
+}
+
+impl SecretResolver for AcceptanceResolver<'_> {
+    fn resolve(
+        &self,
+        reference: &SecretReference,
+        context: SecretResolutionContext<'_>,
+    ) -> Result<SecretString, SecretResolutionError> {
+        match reference {
+            SecretReference::Environment { variable } => self
+                .secret_environment
+                .get(variable)
+                .cloned()
+                .ok_or_else(|| SecretResolutionError::EnvironmentMissing {
+                    variable: variable.clone(),
+                })
+                .and_then(|value| non_empty_secret(value, "environment")),
+            SecretReference::Keyring { service, account } => self
+                .keyring_values
+                .get(&(service.clone(), account.clone()))
+                .cloned()
+                .ok_or_else(|| SecretResolutionError::KeyringLookupFailed {
+                    config_key: context.config_key.to_owned(),
+                    service: service.clone(),
+                    account: account.clone(),
+                })
+                .and_then(|value| non_empty_secret(value, "keyring")),
+            SecretReference::File { .. } | SecretReference::Command { .. } => {
+                SystemSecretResolver.resolve(reference, context)
+            }
+        }
+    }
+}
+
+fn non_empty_secret(
+    value: SecretString,
+    backend: &'static str,
+) -> Result<SecretString, SecretResolutionError> {
+    if value.expose_secret().is_empty() {
+        Err(SecretResolutionError::EmptySecret { backend })
+    } else {
+        Ok(value)
+    }
 }
 
 impl ConfigWorld {
@@ -67,6 +136,125 @@ fn file_containing(world: &mut ConfigWorld, relative_path: String, step: &cucumb
     .expect("failed to write test file");
 }
 
+fn write_file(world: &ConfigWorld, relative_path: &str, contents: impl AsRef<[u8]>) {
+    let path = world.root().join(relative_path);
+    std::fs::create_dir_all(path.parent().expect("test file has no parent"))
+        .expect("failed to create test file parent");
+    std::fs::write(path, contents).expect("failed to write test file");
+}
+
+fn command_reference(arguments: impl IntoIterator<Item = OsString>) -> String {
+    let command = toml::Value::Array(
+        arguments
+            .into_iter()
+            .map(|argument| {
+                toml::Value::String(
+                    argument
+                        .into_string()
+                        .expect("test executable arguments must be Unicode"),
+                )
+            })
+            .collect(),
+    );
+    format!("[registry]\ntoken = {{ command = {command} }}\n")
+}
+
+fn secret_helper_arguments(mode: &str) -> Vec<OsString> {
+    vec![
+        std::env::current_exe()
+            .expect("failed to locate the acceptance test executable")
+            .into_os_string(),
+        OsString::from("--secret-helper"),
+        OsString::from(mode),
+    ]
+}
+
+#[given(expr = "a file {string} containing the {word} secret reference")]
+fn file_containing_secret_reference(
+    world: &mut ConfigWorld,
+    relative_path: String,
+    reference: String,
+) {
+    let contents = match reference.as_str() {
+        "literal" => format!("[registry]\ntoken = {TEST_SECRET:?}\n"),
+        "environment" => {
+            format!("[registry]\ntoken = {{ env = {SECRET_ENVIRONMENT_VARIABLE:?} }}\n")
+        }
+        "file" => format!("[registry]\ntoken = {{ file = {SECRET_FILE:?} }}\n"),
+        "command" => command_reference(secret_helper_arguments("success")),
+        "keyring" => format!(
+            "[registry]\ntoken = {{ keyring = {{ service = {SECRET_KEYRING_SERVICE:?}, account = {SECRET_KEYRING_ACCOUNT:?} }} }}\n"
+        ),
+        _ => panic!("unsupported secret reference fixture"),
+    };
+    world.expected_secret = Some(SecretString::from(if reference == "command" {
+        COMMAND_SECRET
+    } else {
+        TEST_SECRET
+    }));
+    write_file(world, &relative_path, contents);
+}
+
+#[given(expr = "the {word} secret source contains a test value")]
+fn secret_source_contains_test_value(world: &mut ConfigWorld, backend: String) {
+    match backend.as_str() {
+        "literal" | "command" => {}
+        "environment" => {
+            world.secret_environment.insert(
+                SECRET_ENVIRONMENT_VARIABLE.to_owned(),
+                SecretString::from(TEST_SECRET.to_owned()),
+            );
+        }
+        "file" => write_file(world, SECRET_FILE, TEST_SECRET),
+        "keyring" => {
+            world.keyring_values.insert(
+                (
+                    SECRET_KEYRING_SERVICE.to_owned(),
+                    SECRET_KEYRING_ACCOUNT.to_owned(),
+                ),
+                SecretString::from(TEST_SECRET.to_owned()),
+            );
+        }
+        _ => panic!("unsupported secret backend fixture"),
+    }
+}
+
+#[given(expr = "a file {string} containing the {word} failing secret reference")]
+fn file_containing_failing_secret_reference(
+    world: &mut ConfigWorld,
+    relative_path: String,
+    reference: String,
+) {
+    let contents = match reference.as_str() {
+        "missing-file" => "[registry]\ntoken = { file = \"missing-secret\" }\n".to_owned(),
+        "malformed" => {
+            "[registry]\ntoken = { env = \"MORPHIR_ACCEPTANCE_SECRET\", file = \"missing-secret\" }\n".to_owned()
+        }
+        "empty-environment" => {
+            world.secret_environment.insert(
+                SECRET_ENVIRONMENT_VARIABLE.to_owned(),
+                SecretString::from(String::new()),
+            );
+            format!(
+                "[registry]\ntoken = {{ env = {SECRET_ENVIRONMENT_VARIABLE:?} }}\n"
+            )
+        }
+        "failing-command" => command_reference(secret_helper_arguments("failure")),
+        "missing-keyring" => format!(
+            "[registry]\ntoken = {{ keyring = {{ service = {SECRET_KEYRING_SERVICE:?}, account = {SECRET_KEYRING_ACCOUNT:?} }} }}\n"
+        ),
+        _ => panic!("unsupported failing secret reference fixture"),
+    };
+    write_file(world, &relative_path, contents);
+}
+
+#[given(expr = "a file {string} containing a marker command secret reference")]
+fn file_containing_marker_command_secret_reference(world: &mut ConfigWorld, relative_path: String) {
+    let mut arguments = secret_helper_arguments("marker");
+    arguments.push(world.root().join(SECRET_MARKER).into_os_string());
+    write_file(world, &relative_path, command_reference(arguments));
+}
+
 #[given(expr = "the working directory is {string}")]
 fn working_directory(world: &mut ConfigWorld, relative_path: String) {
     let path = world.root().join(relative_path);
@@ -77,6 +265,50 @@ fn working_directory(world: &mut ConfigWorld, relative_path: String) {
 #[given(expr = "the environment variable {string} is {string}")]
 fn environment_variable(world: &mut ConfigWorld, name: String, value: String) {
     world.environment.insert(name, value);
+}
+
+#[when(expr = "the config secret {string} is resolved")]
+fn resolve_config_secret(world: &mut ConfigWorld, key: String) {
+    let config_path = discover_config(
+        world
+            .working_directory
+            .as_deref()
+            .expect("working directory was not set"),
+    )
+    .expect("failed to discover configuration")
+    .expect("test configuration was not discovered");
+    let effective = load_effective_config(Some(&config_path), &ConfigLoadOptions::project_only())
+        .expect("failed to load effective configuration");
+    let resolver = AcceptanceResolver {
+        secret_environment: &world.secret_environment,
+        keyring_values: &world.keyring_values,
+    };
+    match effective.resolve_secret_with(&key, &resolver) {
+        Ok(secret) => {
+            world.resolved_secret = Some(secret);
+            world.resolution_error = None;
+        }
+        Err(error) => {
+            world.resolved_secret = None;
+            world.resolution_error = Some(error);
+        }
+    }
+}
+
+#[when("I load the effective configuration directly")]
+fn load_effective_configuration_directly(world: &mut ConfigWorld) {
+    let project_config = discover_config(
+        world
+            .working_directory
+            .as_deref()
+            .expect("working directory was not set"),
+    )
+    .expect("failed to discover configuration");
+    load_effective_config(
+        project_config.as_deref(),
+        &ConfigLoadOptions::project_only(),
+    )
+    .expect("failed to load effective configuration");
 }
 
 #[when(expr = "I run {string}")]
@@ -154,6 +386,104 @@ fn stdout_does_not_contain(world: &mut ConfigWorld, unexpected: String) {
     );
 }
 
+#[then("the protected secret matches the test value")]
+fn protected_secret_matches_test_value(world: &mut ConfigWorld) {
+    let expected = world
+        .expected_secret
+        .as_ref()
+        .expect("the expected protected test fixture was not set")
+        .expose_secret();
+    assert!(
+        world.resolved_secret.as_ref().unwrap().expose_secret() == expected,
+        "protected secret did not match the expected test fixture"
+    );
+}
+
+#[then(expr = "no command output contains the test value")]
+fn no_command_output_contains_test_value(world: &mut ConfigWorld) {
+    let expected = world
+        .expected_secret
+        .as_ref()
+        .expect("the expected protected test fixture was not set")
+        .expose_secret()
+        .as_bytes();
+    assert!(
+        !world.output.as_ref().is_some_and(|output| output
+            .stdout
+            .windows(expected.len())
+            .any(|value| value == expected)
+            || output
+                .stderr
+                .windows(expected.len())
+                .any(|value| value == expected)),
+        "command output unexpectedly disclosed a protected fixture"
+    );
+}
+
+#[then(expr = "no command output contains {string}")]
+fn no_command_output_contains(world: &mut ConfigWorld, unexpected: String) {
+    assert!(
+        !world.output.as_ref().is_some_and(|output| output
+            .stdout
+            .windows(unexpected.len())
+            .any(|value| value == unexpected.as_bytes())
+            || output
+                .stderr
+                .windows(unexpected.len())
+                .any(|value| value == unexpected.as_bytes())),
+        "command output unexpectedly disclosed a protected fixture"
+    );
+}
+
+#[then(expr = "the resolution error is classified as {word}")]
+fn resolution_error_is_classified_as(world: &mut ConfigWorld, classification: String) {
+    let error = world
+        .resolution_error
+        .as_ref()
+        .expect("secret resolution unexpectedly succeeded");
+    let matches_classification = match classification.as_str() {
+        "file-read" => matches!(error, SecretResolutionError::FileRead { .. }),
+        "invalid-secret-value" => matches!(error, SecretResolutionError::InvalidSecretValue { .. }),
+        "empty-environment" => matches!(
+            error,
+            SecretResolutionError::EmptySecret {
+                backend: "environment"
+            }
+        ),
+        "command-failed" => matches!(error, SecretResolutionError::CommandFailed { .. }),
+        "keyring-lookup-failed" => {
+            matches!(error, SecretResolutionError::KeyringLookupFailed { .. })
+        }
+        _ => false,
+    };
+    assert!(
+        matches_classification,
+        "secret resolution had the wrong safe classification"
+    );
+}
+
+#[then("the resolution diagnostic omits protected backend output")]
+fn resolution_diagnostic_omits_protected_backend_output(world: &mut ConfigWorld) {
+    let diagnostic = world
+        .resolution_error
+        .as_ref()
+        .expect("secret resolution unexpectedly succeeded")
+        .to_string();
+    assert!(
+        !diagnostic.contains(COMMAND_STDOUT_SENTINEL)
+            && !diagnostic.contains(COMMAND_STDERR_SENTINEL),
+        "secret resolution diagnostic disclosed protected backend output"
+    );
+}
+
+#[then("the secret command marker does not exist")]
+fn secret_command_marker_does_not_exist(world: &mut ConfigWorld) {
+    assert!(
+        !world.root().join(SECRET_MARKER).exists(),
+        "loading configuration unexpectedly ran the secret command"
+    );
+}
+
 #[then(expr = "stdout is exactly {string}")]
 fn stdout_is_exactly(world: &mut ConfigWorld, expected: String) {
     assert_eq!(world.stdout().trim_end(), expected);
@@ -201,6 +531,14 @@ fn json_config_integer(world: &mut ConfigWorld, pointer: String, expected: i64) 
     );
 }
 
+#[then(expr = "the JSON config string at {string} is {string}")]
+fn json_config_string(world: &mut ConfigWorld, pointer: String, expected: String) {
+    assert_eq!(
+        world.json().pointer(&format!("/config{pointer}")),
+        Some(&Value::String(expected))
+    );
+}
+
 #[then(expr = "the JSON get key is {string}")]
 fn json_get_key(world: &mut ConfigWorld, expected: String) {
     assert_eq!(world.json().pointer("/key"), Some(&Value::String(expected)));
@@ -242,7 +580,36 @@ fn json_sources_are_ordered(world: &mut ConfigWorld) {
     );
 }
 
+fn run_secret_helper_if_requested() -> bool {
+    let mut args = std::env::args_os();
+    let _binary = args.next();
+    if args.next().as_deref() != Some(OsStr::new("--secret-helper")) {
+        return false;
+    }
+    match args.next().as_deref() {
+        Some(mode) if mode == OsStr::new("success") => {
+            print!("command-secret\r\n");
+            true
+        }
+        Some(mode) if mode == OsStr::new("failure") => {
+            print!("{COMMAND_STDOUT_SENTINEL}");
+            eprint!("{COMMAND_STDERR_SENTINEL}");
+            std::process::exit(23);
+        }
+        Some(mode) if mode == OsStr::new("marker") => {
+            let marker = PathBuf::from(args.next().expect("marker path"));
+            std::fs::write(marker, b"executed").expect("write marker");
+            print!("marker-secret");
+            true
+        }
+        _ => std::process::exit(64),
+    }
+}
+
 #[tokio::main]
 async fn main() {
+    if run_secret_helper_if_requested() {
+        return;
+    }
     ConfigWorld::run("tests/features/config.feature").await;
 }

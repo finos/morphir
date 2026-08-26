@@ -168,3 +168,168 @@ Feature: Inspect Morphir configuration
     When I run "morphir config path --isolated"
     Then the command fails
     And stderr contains "Ambiguous Morphir configuration"
+
+  Scenario: Discover project configuration in the dot-config layout
+    Given a file ".config/morphir/config.toml" containing:
+      """
+      [project]
+      name = "dot-config-project"
+      version = "1.0.0"
+      """
+    When I run "morphir config path --isolated --json"
+    Then the command succeeds
+    And the JSON project config ends with ".config/morphir/config.toml"
+
+  Scenario: An adjacent user override wins
+    Given a file "morphir.toml" containing:
+      """
+      [ui]
+      theme = "shared"
+      """
+    And a file "morphir.user.toml" containing:
+      """
+      [ui]
+      theme = "personal"
+      """
+    When I run "morphir config show --json"
+    Then the command succeeds
+    And the JSON config string at "/ui/theme" is "personal"
+
+  Scenario: An adjacent .morphir user override wins
+    Given a file ".morphir/morphir.toml" containing:
+      """
+      [ui]
+      theme = "shared"
+      """
+    And a file ".morphir/morphir.user.toml" containing:
+      """
+      [ui]
+      theme = "personal"
+      """
+    When I run "morphir config show --json"
+    Then the command succeeds
+    And the JSON config string at "/ui/theme" is "personal"
+
+  Scenario: An adjacent dot-config user override wins
+    Given a file ".config/morphir/config.toml" containing:
+      """
+      [ui]
+      theme = "shared"
+      """
+    And a file ".config/morphir/config.user.toml" containing:
+      """
+      [ui]
+      theme = "personal"
+      """
+    When I run "morphir config show --json"
+    Then the command succeeds
+    And the JSON config string at "/ui/theme" is "personal"
+
+  Scenario: Member user overrides win after workspace user overrides
+    Given a file "morphir.toml" containing:
+      """
+      [workspace]
+      members = ["members/alpha"]
+      default_member = "members/alpha"
+
+      [ui]
+      theme = "workspace"
+      """
+    And a file "members/alpha/morphir.toml" containing:
+      """
+      [ui]
+      theme = "member"
+      """
+    And a file "morphir.user.toml" containing:
+      """
+      [ui]
+      theme = "workspace-user"
+      """
+    And a file "members/alpha/morphir.user.toml" containing:
+      """
+      [ui]
+      theme = "member-user"
+      """
+    When I run "morphir config show --json"
+    Then the command succeeds
+    And the JSON config string at "/ui/theme" is "member-user"
+
+  Scenario: Reject multiple primary configurations across layouts
+    Given a file "morphir.toml" containing:
+      """
+      [project]
+      name = "root-project"
+      version = "1.0.0"
+      """
+    And a file ".morphir/morphir.toml" containing:
+      """
+      [project]
+      name = "directory-project"
+      version = "1.0.0"
+      """
+    When I run "morphir config path --isolated"
+    Then the command fails
+    And stderr contains "Ambiguous Morphir configuration"
+
+  Scenario: Reject sibling user override serializations
+    Given a file "morphir.toml" containing:
+      """
+      [ui]
+      theme = "shared"
+      """
+    And a file "morphir.user.toml" containing:
+      """
+      [ui]
+      theme = "toml-personal"
+      """
+    And a file "morphir.user.yaml" containing:
+      """
+      ui:
+        theme: yaml-personal
+      """
+    When I run "morphir config show --json"
+    Then the command fails
+    And stderr contains "Ambiguous Morphir configuration"
+
+  Scenario Outline: Resolve a protected secret from configuration
+    Given a file "morphir.toml" containing the <reference> secret reference
+    And the <backend> secret source contains a test value
+    When the config secret "registry.token" is resolved
+    Then the protected secret matches the test value
+    And no command output contains the test value
+
+    Examples:
+      | reference   | backend     |
+      | literal     | literal     |
+      | environment | environment |
+      | file        | file        |
+      | command     | command     |
+      | keyring     | keyring     |
+
+  Scenario Outline: Secret resolution failures do not disclose backend output
+    Given a file "morphir.toml" containing the <reference> failing secret reference
+    When the config secret "registry.token" is resolved
+    Then the resolution error is classified as <classification>
+    And the resolution diagnostic omits protected backend output
+
+    Examples:
+      | reference       | classification        |
+      | missing-file    | file-read             |
+      | malformed       | invalid-secret-value  |
+      | empty-environment | empty-environment   |
+      | failing-command | command-failed        |
+      | missing-keyring | keyring-lookup-failed |
+
+  Scenario: CLI configuration inspection does not resolve command references
+    Given a file "morphir.toml" containing a marker command secret reference
+    When I run "morphir config get registry.token --isolated"
+    Then the command succeeds
+    And the secret command marker does not exist
+    When I run "morphir config show --isolated"
+    Then the command succeeds
+    And the secret command marker does not exist
+    When I run "morphir config path --isolated"
+    Then the command succeeds
+    And the secret command marker does not exist
+    When I load the effective configuration directly
+    Then the secret command marker does not exist
