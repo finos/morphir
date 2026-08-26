@@ -5042,7 +5042,7 @@ dependencies = [
 
 [[package]]
 name = "morphir"
-version = "0.2.0-alpha-01"
+version = "0.4.0-alpha.5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -5082,7 +5082,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-common"
-version = "0.2.0-alpha-01"
+version = "0.4.0-alpha.5"
 dependencies = [
  "anyhow",
  "dirs",
@@ -5106,7 +5106,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-core"
-version = "0.2.0-alpha-01"
+version = "0.4.0-alpha.5"
 dependencies = [
  "anyhow",
  "indexmap",
@@ -5120,7 +5120,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-daemon"
-version = "0.2.0-alpha-01"
+version = "0.4.0-alpha.5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -5144,7 +5144,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-devkit"
-version = "0.2.0-alpha-01"
+version = "0.4.0-alpha.5"
 dependencies = [
  "anyhow",
  "dirs",
@@ -5156,7 +5156,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-extension-sdk"
-version = "0.2.0-alpha-01"
+version = "0.4.0-alpha.5"
 dependencies = [
  "extism-pdk",
  "serde",
@@ -5166,7 +5166,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-live"
-version = "0.2.0-alpha-01"
+version = "0.4.0-alpha.5"
 dependencies = [
  "clap",
  "dioxus",
