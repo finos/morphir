@@ -77,3 +77,9 @@ website/.docusaurus/
 
 # Local working area: temp scripts, agent and script outputs, superpowers specs/plans
 .dev/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/

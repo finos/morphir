@@ -1,6 +1,7 @@
 {
   "database": "dolt",
-  "jsonl_export": "issues.jsonl",
   "backend": "dolt",
-  "dolt_database": "beads_morphir"
+  "dolt_mode": "server",
+  "dolt_database": "beads_morphir",
+  "project_id": "005c340b-a266-4354-ab6b-19c1ebae1ce7"
 }
