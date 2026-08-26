@@ -9,11 +9,11 @@ pub mod output;
 mod tui;
 
 use commands::{
-    compile::CompileOptions, run_compile, run_config_path, run_config_show, run_dist_install,
-    run_dist_list, run_dist_uninstall, run_dist_update, run_extension_install, run_extension_list,
-    run_extension_uninstall, run_extension_update, run_generate, run_gleam_compile,
-    run_gleam_generate, run_gleam_roundtrip, run_migrate, run_tool_install, run_tool_list,
-    run_tool_uninstall, run_tool_update, run_transform, run_validate, run_version,
+    compile::CompileOptions, run_compile, run_config_get, run_config_path, run_config_show,
+    run_dist_install, run_dist_list, run_dist_uninstall, run_dist_update, run_extension_install,
+    run_extension_list, run_extension_uninstall, run_extension_update, run_generate,
+    run_gleam_compile, run_gleam_generate, run_gleam_roundtrip, run_migrate, run_tool_install,
+    run_tool_list, run_tool_uninstall, run_tool_update, run_transform, run_validate, run_version,
 };
 
 /// Morphir CLI - Tools for functional domain modeling and business logic
@@ -165,6 +165,20 @@ enum Commands {
 
 #[derive(Clone, Subcommand)]
 enum ConfigAction {
+    /// Get one value from the effective configuration
+    Get {
+        /// Dotted configuration key, such as project.name
+        key: String,
+        /// Explicit project config file path
+        #[arg(long)]
+        config: Option<String>,
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+        /// Ignore machine-level and user-level configuration sources
+        #[arg(long, hide = true)]
+        isolated: bool,
+    },
     /// Show the effective configuration after merging every source
     Show {
         /// Explicit project config file path
@@ -432,6 +446,12 @@ impl AppSession for MorphirSession {
             }
             Commands::Transform { input, output } => run_transform(input.clone(), output.clone()),
             Commands::Config { action } => match action {
+                ConfigAction::Get {
+                    key,
+                    config,
+                    json,
+                    isolated,
+                } => run_config_get(key.clone(), config.clone(), *json, *isolated),
                 ConfigAction::Show {
                     config,
                     json,

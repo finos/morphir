@@ -154,6 +154,11 @@ fn stdout_does_not_contain(world: &mut ConfigWorld, unexpected: String) {
     );
 }
 
+#[then(expr = "stdout is exactly {string}")]
+fn stdout_is_exactly(world: &mut ConfigWorld, expected: String) {
+    assert_eq!(world.stdout().trim_end(), expected);
+}
+
 #[then(expr = "stderr contains {string}")]
 fn stderr_contains(world: &mut ConfigWorld, expected: String) {
     assert!(
@@ -194,6 +199,16 @@ fn json_config_integer(world: &mut ConfigWorld, pointer: String, expected: i64) 
         world.json().pointer(&format!("/config{pointer}")),
         Some(&Value::from(expected))
     );
+}
+
+#[then(expr = "the JSON get key is {string}")]
+fn json_get_key(world: &mut ConfigWorld, expected: String) {
+    assert_eq!(world.json().pointer("/key"), Some(&Value::String(expected)));
+}
+
+#[then(expr = "the JSON get value is {int}")]
+fn json_get_integer(world: &mut ConfigWorld, expected: i64) {
+    assert_eq!(world.json().pointer("/value"), Some(&Value::from(expected)));
 }
 
 #[then(expr = "the JSON source {string} has status {string}")]

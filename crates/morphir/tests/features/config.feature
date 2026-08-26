@@ -11,6 +11,53 @@ Feature: Inspect Morphir configuration
     Then the command succeeds
     And stdout contains "show"
     And stdout contains "path"
+    And stdout contains "get"
+
+  Scenario: Get a configuration value by dotted key
+    Given a file "morphir.toml" containing:
+      """
+      [project]
+      name = "acceptance-project"
+      version = "1.0.0"
+      """
+    When I run "morphir config get project.name --isolated"
+    Then the command succeeds
+    And stdout is exactly "acceptance-project"
+
+  Scenario: Get a typed configuration value as JSON
+    Given a file "morphir.toml" containing:
+      """
+      [ir]
+      format_version = 3
+      """
+    And the environment variable "MORPHIR_IR__FORMAT_VERSION" is "4"
+    When I run "morphir config get ir.format_version --json --isolated"
+    Then the command succeeds
+    And stdout is valid JSON
+    And the JSON get key is "ir.format_version"
+    And the JSON get value is 4
+
+  Scenario: Get redacts a secret value
+    Given a file "morphir.toml" containing:
+      """
+      [registry]
+      token = "top-secret-token"
+      """
+    When I run "morphir config get registry.token --json --isolated"
+    Then the command succeeds
+    And stdout contains "<redacted>"
+    And stdout does not contain "top-secret-token"
+
+  Scenario: Get fails when the key does not exist
+    Given a file "morphir.toml" containing:
+      """
+      [project]
+      name = "acceptance-project"
+      version = "1.0.0"
+      """
+    When I run "morphir config get project.missing --isolated"
+    Then the command fails
+    And stderr contains "Configuration key not found: project.missing"
 
   Scenario: Show a discovered project configuration
     Given a file "morphir.toml" containing:
