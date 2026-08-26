@@ -21,12 +21,13 @@ Sources are loaded from **lowest precedence** to **highest precedence**:
 
 | Priority | Source | Typical path |
 |----------|--------|--------------|
-| 1 (lowest) | Built-in defaults | (compiled in) |
-| 2 | System config | `/etc/morphir/morphir.toml`, or `%PROGRAMDATA%\morphir\morphir.toml` on Windows |
-| 3 | Global user config | Platform config directory or user-home `.morphir` directory |
-| 4 | Project config | `morphir.toml` |
-| 5 | User override | `.morphir/morphir.user.toml` |
-| 6 (highest) | Environment variables | `MORPHIR_*` |
+| 0 (lowest) | Built-in defaults | (compiled in) |
+| 100 | System config | `/etc/morphir/morphir.toml`, or `%PROGRAMDATA%\morphir\morphir.toml` on Windows |
+| 200 | Global user config | Platform config directory or user-home `.morphir` directory |
+| 300 | Project or workspace primary | One of the three standard primary layouts |
+| 350 | Selected workspace-member primary | One of the three standard primary layouts in the member |
+| 400 | User override | Adjacent to the selected project, workspace, or member primary |
+| 600 (highest) | Environment variables | `MORPHIR_*` |
 
 If the same setting is present in multiple sources, **the value from the highest-precedence source wins**, subject to the merge algorithm described below.
 
@@ -34,9 +35,19 @@ Each file source accepts a `morphir.yaml` serialization at the corresponding loc
 
 On Windows, `%PROGRAMDATA%` resolves through the `PROGRAMDATA` environment variable and falls back to `C:\ProgramData` when it is unset.
 
-> Note: A “hidden project config” variant (`.morphir/morphir.toml`) may also be used by some commands/workflows. The merge semantics are identical.
->
-> When a workspace configuration selects a member project, the member's configuration is merged after the workspace configuration and before the user overrides. The workspace-level `.morphir/morphir.user.*` file is applied first, then the member's.
+### Project layouts and adjacent user overrides
+
+Project, workspace, and workspace-member primaries use one of these layout pairs:
+
+| Primary configuration | Adjacent user override candidates |
+| --- | --- |
+| `morphir.toml` or `morphir.yaml` | `morphir.user.toml` or `morphir.user.yaml` |
+| `.morphir/morphir.toml` or `.morphir/morphir.yaml` | `.morphir/morphir.user.toml` or `.morphir/morphir.user.yaml` |
+| `.config/morphir/config.toml` or `.config/morphir/config.yaml` | `.config/morphir/config.user.toml` or `.config/morphir/config.user.yaml` |
+
+The primary paths are six alternatives at one discovery location. A loader MUST reject all coexisting primary candidates as ambiguous and name every path. For a selected standard primary, its two adjacent override serializations are alternatives. A loader MUST reject both override files as ambiguous. An explicitly selected primary outside these three layouts has no implicitly discovered adjacent override.
+
+When a workspace selects a member, the loader merges the workspace primary, the member primary, the workspace's adjacent override, then the member's adjacent override. The member override wins over the workspace override. A primary or override from a member is not discovered until that member is selected.
 
 ### Global user path resolution
 
@@ -99,17 +110,15 @@ Given two maps: `base` and `overlay`, `DeepMerge(base, overlay)` produces a new 
 - **Rule 3 — Arrays/slices replace**: if values are arrays/slices, the overlay replaces the base entirely (no concatenation).
 - **Rule 4 — `nil` overlay is ignored**: if an overlay value is `nil`, it does **not** override the base value.
 - **Rule 5 — No mutation**: the merge result is independent; inputs are not modified.
-- **Rule 6 — Secret values are leaves**: if the base value, the overlay value, or both are a secret reference (`{ env = ... }` / `{ file = ... }`) or a secret string, the overlay value replaces the base value entirely; the two are never deep-merged as maps, even when both look like ordinary tables. This rule takes precedence over Rule 2: an ordinary table overlaying a base secret reference (or a secret reference overlaying an ordinary table) still replaces wholesale rather than merging recursively, because merging would otherwise produce a table that is no longer a valid secret reference.
+- **Rule 6 — Secret values are leaves**: if the base value, the overlay value, or both are a secret reference (`{ env = ... }`, `{ file = ... }`, `{ command = [...] }`, or `{ keyring = { service = ..., account = ... } }`) or a secret string, the overlay value replaces the base value entirely. The two are never deep-merged as maps, even when both look like ordinary tables. This rule takes precedence over Rule 2 because a merged table can stop being a valid secret reference.
 
 These rules are implemented by `deep_merge` and `merge_all` in the `morphir_common::config::merge` module of morphir-rust. The layered loader in `morphir_devkit::config` (`load_effective_config`) applies them across the sources above and records which sources were consulted; `morphir config path` and `morphir config show` expose that result.
 
 ## Provenance
 
-This section is specified for future implementation; it is not implemented today. Nothing named `provenance` exists in the codebase, and `morphir config show` has no `--provenance` flag.
+The loader records, for every winning leaf value and every array, the source kind and, for file sources, the declaring path. Provenance follows the winning value through `DeepMerge`: an overlay value that replaces or adds a value brings its own provenance. A table does not carry provenance separate from its children.
 
-Once implemented, a conforming loader MUST record, for every leaf value and every array in the effective configuration, which source supplied it (the source kind and, for file sources, the path). Provenance MUST follow the winning value through `DeepMerge`: an overlay value that replaces or is added to the base brings its own provenance with it. A table SHOULD NOT itself carry provenance separate from its children, since a table exists in the effective configuration only because at least one descendant leaf does.
-
-Tooling MAY expose provenance to explain values (for example, a future `--provenance` option on `morphir config show`) and to name the file responsible for a validation error. The flag name and output shape are not yet finalized.
+The internal provenance data lets the secret resolver anchor a relative file reference or command working directory to the file that supplied the winning leaf. `morphir config show --provenance` is not implemented. Tooling may later expose provenance for explanations or validation diagnostics; that flag's output shape is not finalized.
 
 ## Environment variable mapping (informative)
 

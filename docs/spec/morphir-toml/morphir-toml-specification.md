@@ -17,7 +17,15 @@ This document specifies the **`morphir.toml`** configuration format used by Morp
 
 ## Files and discovery
 
-Morphir tooling treats a directory as a “workspace” when it contains a `morphir.toml` file (or the hidden variant `.morphir/morphir.toml`).
+Morphir tooling treats a directory as a project or workspace when it contains exactly one primary configuration in one of these layouts:
+
+| Layout | TOML | YAML |
+| --- | --- | --- |
+| Root | `morphir.toml` | `morphir.yaml` |
+| Hidden | `.morphir/morphir.toml` | `.morphir/morphir.yaml` |
+| Dot-config | `.config/morphir/config.toml` | `.config/morphir/config.yaml` |
+
+The six primary paths are alternatives. A loader MUST reject a directory that contains more than one of them and name every conflicting path. It MUST NOT choose a layout or serialization by precedence.
 
 Global user configuration may use the platform config directory or the `.morphir` directory in the user's home. See the [global user path resolution rules](./morphir-toml-merge-rules/#global-user-path-resolution) for XDG, macOS, Windows, and conflict handling.
 
@@ -198,18 +206,26 @@ A secret can also be supplied as a **secret reference**, which names where to ob
 [registry]
 token = { env = "GITHUB_TOKEN" }
 password = { file = "~/.config/morphir/registry-password" }
+command_token = { command = ["gh", "auth", "token"] }
+keyring_token = { keyring = { service = "github.com", account = "damre" } }
 ```
 
-A secret reference is an inline table whose keys are exactly `env`, or exactly `file`, with a string value. Any other table, including one with both keys or with extra keys, is an ordinary table. A loader MUST recognise references at every position, not only at positions the schema declares as secret.
+A secret reference has exactly one of these four shapes. A loader MUST recognise these shapes at every position, not only at positions the schema declares as secret.
 
 - `env`: the secret is the value of the named environment variable. A missing or empty variable is an error when the secret is resolved.
-- `file`: the secret is the file's contents with one trailing newline removed. A relative path resolves against the directory of the configuration file that declares the reference; a leading `~` expands to the user's home directory. A missing or unreadable file is an error when the secret is resolved.
+- `file`: the secret is the file's UTF-8 contents with one trailing `\n` or `\r\n` removed. A relative path resolves against the directory of the configuration file that declares the reference; a leading `~` expands to the user's home directory. A missing, unreadable, non-UTF-8, or empty file is an error when the secret is resolved.
+- `command`: the non-empty string array names a program followed by its arguments. Morphir executes that program directly, without a shell, with standard input closed. It runs in the declaring configuration file's directory, or in the process current directory when the reference has no declaring file. The program must succeed and write non-empty UTF-8 text to standard output after one trailing `\n` or `\r\n` is removed.
+- `keyring`: the mapping has exactly the non-empty string fields `service` and `account`. Morphir reads the matching password from the native operating-system keyring. It does not create, update, or delete keyring entries. A missing, unreadable, or empty entry is an error when the secret is resolved.
 
-Resolution happens only when tooling explicitly exposes the secret. Displaying the configuration, reporting sources, validating, and decoding MUST NOT resolve references. A reference MAY be displayed verbatim because it contains no secret; a plain-string secret MUST be displayed as a placeholder such as `<redacted>`.
+Any other table, including one with mixed discriminator keys, extra keys, an empty command, or an incomplete keyring mapping, is not a secret reference.
+
+Resolution happens only when tooling explicitly requests one dotted configuration key. It resolves that one winning leaf and MUST NOT traverse or resolve other references. The resolved value is protected: formatting and serialization redact it, and callers need an explicit exposure operation to read it. Resolution failures identify the requested key, reference kind, or safe source metadata, but MUST NOT disclose resolved secret text.
+
+Displaying the configuration, reporting sources, validating, decoding, and normal loading MUST NOT resolve references. A reference MAY be displayed verbatim because it contains no secret; a plain-string secret MUST be displayed as a placeholder such as `<redacted>`.
 
 For merging, a secret reference is a leaf: a higher-precedence reference replaces a lower one entirely (see the [merge rules](./morphir-toml-merge-rules/)).
 
-The `command` reference kind and operating-system keyrings are reserved for a later version. A table using them today (for example `{ command = [...] }`) matches neither `secretReference` branch: at a position the schema types as `secretValue` it therefore MUST be rejected as invalid, while at any other position it is an ordinary table and is merely an unrecognized property, treated like any other undeclared field.
+The shared schema defines the four reference shapes. Implementations built on morphir-rust require Rust 1.88 or later.
 
 ## Tasks and workflows
 

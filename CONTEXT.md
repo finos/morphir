@@ -21,5 +21,17 @@ Configuration that applies to every Morphir workspace for one operating-system u
 _Avoid_: User override, project configuration
 
 **User override**:
-Personal configuration for one Morphir project, stored inside that project's `.morphir` directory.
+Personal configuration stored beside one Morphir project, workspace, or workspace-member configuration and loaded above its shared settings.
 _Avoid_: Global user configuration
+
+**Secret reference**:
+An inert configuration value that names an external source for a secret without containing the resolved secret.
+_Avoid_: Secret, credential value
+
+**Secret resolver**:
+An explicitly invoked capability that turns one secret reference into a protected secret value.
+_Avoid_: Configuration loader, automatic resolution
+
+**Protected secret**:
+A resolved secret value that redacts formatting and serialization and requires an explicit operation to expose its contents.
+_Avoid_: Plain string, secret reference
