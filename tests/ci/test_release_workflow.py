@@ -5,6 +5,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "release.yml"
+PAGES_WORKFLOW_PATH = (
+    REPO_ROOT / ".github" / "workflows" / "deploy-release-pages.yml"
+)
 CI_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 CARGO_TOML_PATH = REPO_ROOT / "crates" / "morphir" / "Cargo.toml"
 WORKSPACE_TOML_PATH = REPO_ROOT / "Cargo.toml"
@@ -121,6 +124,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
     def test_workspace_version_files_trigger_release_validation(self) -> None:
         release_filter = self.ci_workflow.split("            release:\n", maxsplit=1)[1]
         release_filter = release_filter.split("\n\n", maxsplit=1)[0]
+        self.assertIn("- '.github/workflows/deploy-release-pages.yml'", release_filter)
         self.assertIn("- 'Cargo.toml'", release_filter)
         self.assertIn("- 'Cargo.lock'", release_filter)
 
@@ -149,11 +153,30 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("--clobber", publish_job)
         self.assertNotIn("softprops/action-gh-release", publish_job)
 
-    def test_pages_deployment_reuses_packaged_live_artifact(self) -> None:
-        pages_job = self.workflow.split("  deploy-pages:\n", maxsplit=1)[1]
-        self.assertIn("name: morphir-live-wasm", pages_job)
-        self.assertIn("tar -xzf morphir-live-*.tar.gz -C pages-dist", pages_job)
-        self.assertNotIn("dx build", pages_job)
+    def test_pages_deployment_runs_from_default_branch_after_release(self) -> None:
+        pages_workflow = PAGES_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+        self.assertNotIn("\n  deploy-pages:\n", self.workflow)
+        self.assertIn("workflows: [Release]", pages_workflow)
+        self.assertIn("types: [completed]", pages_workflow)
+        self.assertIn("workflow_dispatch:", pages_workflow)
+        self.assertIn("run_id:", pages_workflow)
+        self.assertIn(
+            "github.event.workflow_run.conclusion == 'success'",
+            pages_workflow,
+        )
+        self.assertIn(
+            "startsWith(github.event.workflow_run.head_branch, 'v')",
+            pages_workflow,
+        )
+        self.assertIn("name: morphir-live-wasm", pages_workflow)
+        self.assertIn("inputs.run_id || github.event.workflow_run.id", pages_workflow)
+        self.assertIn("github-token: ${{ secrets.GITHUB_TOKEN }}", pages_workflow)
+        self.assertIn(
+            "tar -xzf morphir-live-*.tar.gz -C pages-dist",
+            pages_workflow,
+        )
+        self.assertNotIn("dx build", pages_workflow)
 
 
 if __name__ == "__main__":
