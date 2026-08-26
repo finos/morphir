@@ -88,6 +88,9 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("overwrite: true", self.workflow)
         self.assertIn("retention-days: 7", self.workflow)
 
+    def test_dioxus_cli_install_uses_published_lockfile(self) -> None:
+        self.assertIn("cargo install dioxus-cli --locked", self.workflow)
+
     def test_cli_checksum_uses_archive_basename(self) -> None:
         self.assertIn("cd release-assets", self.workflow)
         self.assertIn(

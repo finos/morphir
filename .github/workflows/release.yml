@@ -67,7 +67,7 @@ jobs:
           key: morphir-live-release
 
       - name: Install dioxus-cli
-        run: cargo install dioxus-cli
+        run: cargo install dioxus-cli --locked
 
       - name: Build WASM release
         working-directory: crates/morphir-live
