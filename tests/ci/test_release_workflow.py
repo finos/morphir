@@ -23,7 +23,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
 
     def test_workspace_uses_release_prerelease_version(self) -> None:
         workspace = tomllib.loads(WORKSPACE_TOML_PATH.read_text(encoding="utf-8"))
-        self.assertEqual("0.2.0-alpha-01", workspace["workspace"]["package"]["version"])
+        self.assertEqual("0.4.0-alpha.5", workspace["workspace"]["package"]["version"])
 
         lockfile = tomllib.loads(CARGO_LOCK_PATH.read_text(encoding="utf-8"))
         workspace_packages = {
@@ -33,8 +33,8 @@ class ReleaseWorkflowTests(unittest.TestCase):
         }
         self.assertEqual(
             {
-                "morphir": "0.2.0-alpha-01",
-                "morphir-live": "0.2.0-alpha-01",
+                "morphir": "0.4.0-alpha.5",
+                "morphir-live": "0.4.0-alpha.5",
             },
             workspace_packages,
         )
