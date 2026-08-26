@@ -191,6 +191,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           path: release-assets
+          pattern: morphir-*
           merge-multiple: true
 
       - name: Read published checksums
