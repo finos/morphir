@@ -296,7 +296,7 @@ Feature: Inspect Morphir configuration
     And the <backend> secret source contains a test value
     When the config secret "registry.token" is resolved
     Then the protected secret matches the test value
-    And no command output contains the test value
+    And no resolution observation contains the test value
 
     Examples:
       | reference   | backend     |
@@ -305,6 +305,12 @@ Feature: Inspect Morphir configuration
       | file        | file        |
       | command     | command     |
       | keyring     | keyring     |
+
+  Scenario: Command secret references preserve a shell-sensitive argument
+    Given a file "morphir.toml" containing the command-argv secret reference
+    When the config secret "registry.token" is resolved
+    Then the protected secret matches the test value
+    And no resolution observation contains the test value
 
   Scenario Outline: Secret resolution failures do not disclose backend output
     Given a file "morphir.toml" containing the <reference> failing secret reference

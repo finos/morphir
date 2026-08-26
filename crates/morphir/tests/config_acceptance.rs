@@ -20,6 +20,29 @@ const SECRET_KEYRING_SERVICE: &str = "morphir-acceptance";
 const SECRET_KEYRING_ACCOUNT: &str = "registry-token";
 const SECRET_FILE: &str = "secrets/registry-token";
 const SECRET_MARKER: &str = "secret-command-marker";
+const SHELL_SENSITIVE_ARGUMENT: &str = "shell-sensitive; false";
+
+#[derive(Debug, Default)]
+struct FormattedResolutionObservation {
+    stdout: String,
+    stderr: String,
+}
+
+impl FormattedResolutionObservation {
+    fn from_result(result: &Result<SecretString, SecretResolutionError>) -> Self {
+        let rendered = format!("{result:?}");
+        match result {
+            Ok(_) => Self {
+                stdout: rendered,
+                stderr: String::new(),
+            },
+            Err(_) => Self {
+                stdout: String::new(),
+                stderr: rendered,
+            },
+        }
+    }
+}
 
 #[derive(Debug, Default, World)]
 struct ConfigWorld {
@@ -29,6 +52,7 @@ struct ConfigWorld {
     resolved_secret: Option<SecretString>,
     expected_secret: Option<SecretString>,
     resolution_error: Option<SecretResolutionError>,
+    resolution_observation: Option<FormattedResolutionObservation>,
     secret_environment: BTreeMap<String, SecretString>,
     keyring_values: BTreeMap<(String, String), SecretString>,
     output: Option<Output>,
@@ -160,13 +184,17 @@ fn command_reference(arguments: impl IntoIterator<Item = OsString>) -> String {
 }
 
 fn secret_helper_arguments(mode: &str) -> Vec<OsString> {
-    vec![
+    let mut arguments = vec![
         std::env::current_exe()
             .expect("failed to locate the acceptance test executable")
             .into_os_string(),
         OsString::from("--secret-helper"),
         OsString::from(mode),
-    ]
+    ];
+    if mode == "argv" {
+        arguments.push(OsString::from(SHELL_SENSITIVE_ARGUMENT));
+    }
+    arguments
 }
 
 #[given(expr = "a file {string} containing the {word} secret reference")]
@@ -182,16 +210,19 @@ fn file_containing_secret_reference(
         }
         "file" => format!("[registry]\ntoken = {{ file = {SECRET_FILE:?} }}\n"),
         "command" => command_reference(secret_helper_arguments("success")),
+        "command-argv" => command_reference(secret_helper_arguments("argv")),
         "keyring" => format!(
             "[registry]\ntoken = {{ keyring = {{ service = {SECRET_KEYRING_SERVICE:?}, account = {SECRET_KEYRING_ACCOUNT:?} }} }}\n"
         ),
         _ => panic!("unsupported secret reference fixture"),
     };
-    world.expected_secret = Some(SecretString::from(if reference == "command" {
-        COMMAND_SECRET
-    } else {
-        TEST_SECRET
-    }));
+    world.expected_secret = Some(SecretString::from(
+        if matches!(reference.as_str(), "command" | "command-argv") {
+            COMMAND_SECRET
+        } else {
+            TEST_SECRET
+        },
+    ));
     write_file(world, &relative_path, contents);
 }
 
@@ -283,7 +314,9 @@ fn resolve_config_secret(world: &mut ConfigWorld, key: String) {
         secret_environment: &world.secret_environment,
         keyring_values: &world.keyring_values,
     };
-    match effective.resolve_secret_with(&key, &resolver) {
+    let result = effective.resolve_secret_with(&key, &resolver);
+    world.resolution_observation = Some(FormattedResolutionObservation::from_result(&result));
+    match result {
         Ok(secret) => {
             world.resolved_secret = Some(secret);
             world.resolution_error = None;
@@ -399,39 +432,20 @@ fn protected_secret_matches_test_value(world: &mut ConfigWorld) {
     );
 }
 
-#[then(expr = "no command output contains the test value")]
-fn no_command_output_contains_test_value(world: &mut ConfigWorld) {
+#[then(expr = "no resolution observation contains the test value")]
+fn no_resolution_observation_contains_test_value(world: &mut ConfigWorld) {
+    let observation = world
+        .resolution_observation
+        .as_ref()
+        .expect("secret resolution did not record a formatted observation");
     let expected = world
         .expected_secret
         .as_ref()
         .expect("the expected protected test fixture was not set")
-        .expose_secret()
-        .as_bytes();
+        .expose_secret();
     assert!(
-        !world.output.as_ref().is_some_and(|output| output
-            .stdout
-            .windows(expected.len())
-            .any(|value| value == expected)
-            || output
-                .stderr
-                .windows(expected.len())
-                .any(|value| value == expected)),
-        "command output unexpectedly disclosed a protected fixture"
-    );
-}
-
-#[then(expr = "no command output contains {string}")]
-fn no_command_output_contains(world: &mut ConfigWorld, unexpected: String) {
-    assert!(
-        !world.output.as_ref().is_some_and(|output| output
-            .stdout
-            .windows(unexpected.len())
-            .any(|value| value == unexpected.as_bytes())
-            || output
-                .stderr
-                .windows(unexpected.len())
-                .any(|value| value == unexpected.as_bytes())),
-        "command output unexpectedly disclosed a protected fixture"
+        !(observation.stdout.contains(expected) || observation.stderr.contains(expected)),
+        "formatted resolution observation disclosed a protected fixture"
     );
 }
 
@@ -464,14 +478,13 @@ fn resolution_error_is_classified_as(world: &mut ConfigWorld, classification: St
 
 #[then("the resolution diagnostic omits protected backend output")]
 fn resolution_diagnostic_omits_protected_backend_output(world: &mut ConfigWorld) {
-    let diagnostic = world
-        .resolution_error
+    let observation = world
+        .resolution_observation
         .as_ref()
-        .expect("secret resolution unexpectedly succeeded")
-        .to_string();
+        .expect("secret resolution did not record a formatted observation");
     assert!(
-        !diagnostic.contains(COMMAND_STDOUT_SENTINEL)
-            && !diagnostic.contains(COMMAND_STDERR_SENTINEL),
+        !observation.stdout.contains(COMMAND_STDOUT_SENTINEL)
+            && !observation.stderr.contains(COMMAND_STDERR_SENTINEL),
         "secret resolution diagnostic disclosed protected backend output"
     );
 }
@@ -590,6 +603,16 @@ fn run_secret_helper_if_requested() -> bool {
         Some(mode) if mode == OsStr::new("success") => {
             print!("command-secret\r\n");
             true
+        }
+        Some(mode) if mode == OsStr::new("argv") => {
+            let exact_argument =
+                args.next().as_deref() == Some(OsStr::new(SHELL_SENSITIVE_ARGUMENT));
+            if exact_argument && args.next().is_none() {
+                print!("command-secret\r\n");
+                true
+            } else {
+                std::process::exit(65);
+            }
         }
         Some(mode) if mode == OsStr::new("failure") => {
             print!("{COMMAND_STDOUT_SENTINEL}");
