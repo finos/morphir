@@ -103,6 +103,10 @@ class ReleaseWorkflowTests(unittest.TestCase):
             self.workflow,
         )
 
+    def test_release_download_excludes_pages_artifact(self) -> None:
+        publish_job = self.workflow.split("  publish-release:\n", maxsplit=1)[1]
+        self.assertIn("pattern: morphir-*", publish_job)
+
     def test_cli_checksum_uses_archive_basename(self) -> None:
         self.assertIn("cd release-assets", self.workflow)
         self.assertIn(
