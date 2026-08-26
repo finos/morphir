@@ -91,6 +91,12 @@ class ReleaseWorkflowTests(unittest.TestCase):
     def test_dioxus_cli_install_uses_published_lockfile(self) -> None:
         self.assertIn("cargo install dioxus-cli --locked", self.workflow)
 
+    def test_dioxus_build_selects_package_in_workspace(self) -> None:
+        self.assertIn(
+            "dx build --release --package morphir-live",
+            self.workflow,
+        )
+
     def test_cli_checksum_uses_archive_basename(self) -> None:
         self.assertIn("cd release-assets", self.workflow)
         self.assertIn(
