@@ -284,7 +284,7 @@ Checks for broken internal links in markdown files.
 
 ### check_api_docs.py
 
-Analyzes Go code for undocumented public APIs.
+Analyzes source code for undocumented public APIs.
 
 ```bash
 # Check pkg directory
@@ -363,7 +363,7 @@ The Morphir IR schemas are maintained in YAML format (human-readable) with JSON 
 **Schema locations:**
 - **Source of truth (YAML)**: `website/static/schemas/*.yaml`
 - **Generated (JSON)**: `website/static/schemas/*.json`
-- **Go model schemas**: `pkg/models/ir/schema/` (in main repo)
+- **Go model schemas**: `pkg/models/ir/schema/` (in finos/morphir-go)
 
 **Workflow for schema changes:**
 

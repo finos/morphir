@@ -3,7 +3,7 @@
 //! This module provides functionality for installing, updating, listing, and
 //! uninstalling Morphir distributions.
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use starbase::AppResult;
 use std::collections::HashMap;
@@ -70,8 +70,7 @@ impl DistRegistry {
 
     /// Get the path to the distribution registry configuration file
     fn config_path() -> Result<PathBuf> {
-        let home = dirs::home_dir().ok_or_else(|| anyhow!("Could not determine home directory"))?;
-        Ok(home.join(".morphir").join("distributions.json"))
+        Ok(crate::home::MorphirHome::resolve()?.distributions_file())
     }
 
     /// Add or update a distribution in the registry

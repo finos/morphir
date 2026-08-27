@@ -33,6 +33,8 @@ MEP must support:
 
 MEP does not define extension installation, registry storage, daemon discovery, or Morphir IR itself. Those systems use the protocol but have separate formats and lifecycles.
 
+The Rust host stores its user-global extension registry under `MorphirHome`. Host implementations must use that resolver instead of hardcoding a user-home path, so `MORPHIR_HOME` relocates extension state along with other Morphir state. This changes discovery and installation behavior, not the MEP wire contract.
+
 ## Roles
 
 The **host** discovers an extension, starts or loads it, negotiates capabilities, supplies inputs, and enforces resource permissions. The Morphir CLI and daemon can both act as hosts.
@@ -445,6 +447,8 @@ The handshake chooses one exact protocol version. This makes compatibility behav
 
 The host owns access to files, generated outputs, network connections, environment variables, and secrets. It grants only the permissions declared by extension metadata and approved by configuration.
 
+Configuration may refer to secrets through environment, file, command, or native-keyring references. The host resolves a reference only when an approved extension operation needs it. Resolved values must not appear in protocol transcripts, diagnostics, or logs, and the host passes them to an extension only through an explicitly granted permission.
+
 Version 0.1 frontend compilation and backend generation work with values carried in requests and responses. They need no filesystem or network permission.
 
 Native executable extensions do not provide a strong sandbox on their own. The host should still limit inherited environment variables, choose the working directory explicitly, enforce timeouts, and treat standard output as untrusted protocol input.
@@ -512,6 +516,7 @@ The existing daemon host loads Extism WASM files only. Add a native process impl
 The host will:
 
 - resolve the executable for the current operating system and architecture;
+- resolve user-global extension state through `MorphirHome` so `MORPHIR_HOME` relocation is honored;
 - start it with an explicit working directory and filtered environment;
 - frame concurrent JSON-RPC requests and match responses by identifier;
 - drain standard error without blocking the process;

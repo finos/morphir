@@ -18,15 +18,16 @@ Start here if you're new to Morphir!
 - [Quick Start Tutorial](getting-started/tutorials.md) - Get up and running quickly
 - [Editor Setup](getting-started/editor-setup.md) - Configure your development environment
 - [Morphir Web UI](getting-started/Morphir%20Web%20UI.md) - Browse and visualize Morphir models
-- [Morphir Go Preview](getting-started/morphir-go-preview.md) - Preview of the new Go-based Morphir CLI
+- [Morphir CLI](getting-started/morphir-cli.md) - Rust CLI shipped from finos/morphir
+- [Morphir Go](getting-started/morphir-go-preview.md) - Go CLI in finos/morphir-go
 
-### [CLI Preview](cli-preview/)
-The next-generation Morphir CLI built in Go
-- [Overview](cli-preview/index.md) - Introduction to the new CLI
-- [Getting Started](cli-preview/getting-started.md) - Quick start with the new CLI
-- [What's New](cli-preview/whats-new.md) - Latest features and improvements
-- [Commands](cli-preview/commands/wit.md) - CLI command reference
-- [Release Notes](cli-preview/release-notes/v0.4.0-alpha.1.md) - Version history and changelogs
+### [CLI Preview (Archived)](cli-preview/)
+Archived pages from when Go CLI preview docs were hosted here. Current Go CLI docs: [finos/morphir-go](https://github.com/finos/morphir-go)
+- [Overview](cli-preview/index.md) - Where archived content moved
+- [Getting Started](cli-preview/getting-started.md) - Archived Go CLI quick start
+- [What's New](cli-preview/whats-new.md) - Archived feature summary
+- [Commands](cli-preview/commands/wit.md) - Archived WIT command reference
+- [Release Notes](cli-preview/release-notes/v0.4.0-alpha.1.md) - Archived alpha release notes
 
 ### [Design](design/draft/README.md)
 Draft design documents and specifications for upcoming features

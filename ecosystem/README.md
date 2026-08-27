@@ -118,8 +118,10 @@ mise run submodules:add -- <name> [url]
 Examples:
 
 ```bash
-mise run submodules:add -- morphir-go
+mise run submodules:add -- morphir-dotnet
 mise run submodules:add -- morphir-elm https://github.com/finos/morphir-elm.git
 ```
 
 If `url` is omitted, it defaults to `https://github.com/finos/<name>.git`. Then add the new submodule to the table above and to [ecosystem/AGENTS.md](AGENTS.md) as needed.
+
+**Note:** [finos/morphir-go](https://github.com/finos/morphir-go) is a sibling repository (not currently vendored here). Go tooling development happens there unless it is added as a submodule later.

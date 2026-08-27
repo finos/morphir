@@ -5,9 +5,13 @@ title: Morphir Processing Pipeline Design
 
 # Morphir Processing Pipeline Design
 
+:::note Historical design (finos/morphir-go)
+This design was written for the Go-based Morphir CLI in **[finos/morphir-go](https://github.com/finos/morphir-go)**. It does not describe the Rust CLI in finos/morphir (`crates/morphir`).
+:::
+
 ## Overview
 
-This design proposes a functional, composable processing pipeline for Morphir Go.
+This design proposes a functional, composable processing pipeline for finos/morphir-go.
 The pipeline is an orchestration layer for IR validation, transformation, analysis,
 and code generation. It favors immutable data, pure step functions, and clear I/O
 boundaries. The Morphir IR is the central AST, with decorators as extensible sidecar

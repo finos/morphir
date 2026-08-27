@@ -128,8 +128,8 @@ YAML uses the locations corresponding to the TOML configuration sources:
 | --- | --- |
 | System | `/etc/morphir/morphir.yaml` |
 | Global user | `<platform-config-directory>/morphir/morphir.yaml` or `<user-home>/.morphir/morphir.yaml` |
-| Project | `morphir.yaml` or `.morphir/morphir.yaml` |
-| User override | `.morphir/morphir.user.yaml` |
+| Project | `morphir.yaml`, `.morphir/morphir.yaml`, or `.config/morphir/config.yaml` |
+| User override | Adjacent YAML override for the selected primary layout |
 
 Built-in defaults and `MORPHIR_*` environment variables have no file serialization.
 
@@ -137,7 +137,7 @@ The [global user path resolution rules](../morphir-toml/morphir-toml-merge-rules
 
 At any other location, a loader MUST accept at most one serialization. If corresponding TOML and YAML files both exist, discovery MUST fail with an ambiguity error that names both files. A loader MUST NOT merge sibling TOML and YAML files or choose one by extension precedence.
 
-The hidden and non-hidden project paths are alternate locations, not two merge layers. If both exist, discovery MUST report the same kind of ambiguity.
+The root, hidden, and dot-config project paths are alternate locations, not merge layers. If more than one exists, discovery MUST report the same kind of ambiguity. The [merge rules](../morphir-toml/morphir-toml-merge-rules/#project-layouts-and-adjacent-user-overrides) define the layout-derived user-override paths and workspace/member order.
 
 ## Merge behavior
 
@@ -151,6 +151,8 @@ Secret references use the same reserved shape as TOML, written as an ordinary ma
 registry:
   token: { env: GITHUB_TOKEN }
   password: { file: "~/.config/morphir/registry-password" }
+  command_token: { command: [gh, auth, token] }
+  keyring_token: { keyring: { service: github.com, account: damre } }
 ```
 
 Block style is equivalent:
@@ -161,7 +163,7 @@ registry:
     env: GITHUB_TOKEN
 ```
 
-The recognition rule, resolution rules, display rules, and merge behaviour are defined once in the [TOML specification](../morphir-toml/morphir-toml-specification/#secret-values) and apply unchanged: a mapping whose keys are exactly `env`, or exactly `file`, with a string value is a secret reference; anything else is an ordinary mapping.
+The recognition rule, resolution rules, display rules, and merge behaviour are defined once in the [TOML specification](../morphir-toml/morphir-toml-specification/#secret-values) and apply unchanged. A mapping is a secret reference only when it has exactly one of the four documented `env`, `file`, `command`, or `keyring` shapes. Anything else is an ordinary mapping.
 
 ## Complete example
 

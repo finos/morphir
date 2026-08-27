@@ -84,4 +84,6 @@ Changes inside submodules are committed in the submodule repo. The morphir repo 
 
 ## Future submodules
 
-When morphir-go, morphir-dotnet, or others are added, they will live under `ecosystem/` with the same pattern. Document any language- or repo-specific usage in this file.
+Additional sibling repositories (for example `morphir-dotnet`) may be added under `ecosystem/` with the same pattern. Document any language- or repo-specific usage in this file.
+
+**Note:** [finos/morphir-go](https://github.com/finos/morphir-go) already exists as a sibling repository but is not currently vendored here. Go tooling development happens in that repo unless and until it is added as a submodule.

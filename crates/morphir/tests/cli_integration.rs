@@ -146,3 +146,28 @@ fn test_output_format() {
         OutputFormat::JsonLines // json_lines takes precedence
     );
 }
+
+#[test]
+fn test_morphir_home_env_var_relocates_home_directory() {
+    let temp_dir = TempDir::new().unwrap();
+    let morphir_home = temp_dir.path().join("relocated-home");
+
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+        .args(["tool", "install", "example-tool"])
+        .env("MORPHIR_HOME", &morphir_home)
+        .current_dir(temp_dir.path())
+        .output()
+        .expect("failed to run morphir binary");
+
+    assert!(
+        output.status.success(),
+        "tool install failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        morphir_home.join("tools.json").exists(),
+        "expected tool registry at MORPHIR_HOME ({})",
+        morphir_home.display()
+    );
+}
