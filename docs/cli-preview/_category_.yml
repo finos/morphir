@@ -1,6 +1,6 @@
-label: 'CLI Preview'
+label: 'CLI Preview (Archived)'
 position: 3
-collapsed: false
+collapsed: true
 link:
   type: doc
   id: cli-preview/index

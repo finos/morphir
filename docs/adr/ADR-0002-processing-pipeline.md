@@ -3,11 +3,12 @@
 - Status: Proposed
 - Date: 2026-01-01
 - Deciders: Morphir Maintainers
-- Technical Story: Define a functional processing pipeline for Morphir Go.
+- Technical Story: Define a functional processing pipeline for finos/morphir-go.
+- Repository: [finos/morphir-go](https://github.com/finos/morphir-go) (Go CLI; not finos/morphir)
 
 ## Context
 
-Morphir Go needs a consistent way to process IR across commands such as validate,
+finos/morphir-go needs a consistent way to process IR across commands such as validate,
 build, analyze, and generate. The Morphir IR is the central AST, with decorators
 as extensible sidecar metadata. Other ASTs may flow through the pipeline
 (e.g., Elm ASTs). Today there is no pipeline implementation in `pkg/pipeline`,

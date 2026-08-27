@@ -1,8 +1,12 @@
 # Decorators Feature Implementation Plan
 
+:::note Historical design (finos/morphir-go)
+This implementation plan applies to the Go-based Morphir CLI in **[finos/morphir-go](https://github.com/finos/morphir-go)**, not the Rust CLI in finos/morphir.
+:::
+
 ## Overview
 
-This document outlines the implementation plan for the decorators feature in Morphir Go. Decorators allow users to attach additional metadata to Morphir IR elements (types, values, modules) that cannot be captured in the source language. The metadata is stored in sidecar files and its shape is defined using Morphir IR itself.
+This document outlines the implementation plan for the decorators feature in finos/morphir-go. Decorators allow users to attach additional metadata to Morphir IR elements (types, values, modules) that cannot be captured in the source language. The metadata is stored in sidecar files and its shape is defined using Morphir IR itself.
 
 ## Current Status
 

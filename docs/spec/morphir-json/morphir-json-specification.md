@@ -7,7 +7,7 @@ description: "Formal specification for morphir.json (Morphir Elm project configu
 
 ## Status and scope
 
-This document specifies the **`morphir.json`** project configuration format as used by **`finos/morphir-elm`** and supported for compatibility by Morphir Go tooling.
+This document specifies the **`morphir.json`** project configuration format as used by **`finos/morphir-elm`** and supported for compatibility by **[finos/morphir-go](https://github.com/finos/morphir-go)** tooling.
 
 - **Status**: Draft (versioned and intended to become the authoritative reference)
 - **Authoritative source**: `finos/morphir-elm` documentation (see README)
@@ -59,7 +59,7 @@ Example: if `name = "My.Package"` then `exposedModules = ["Foo"]` refers to Elm 
 - **`github:`**
 - **`npm:`**
 
-These are intended to allow referencing dependencies by Git repository/revision, but **they are not implemented in `morphir-elm` or Morphir Go at this time**. Tools may reject these schemes until an implementation exists.
+These are intended to allow referencing dependencies by Git repository/revision, but **they are not implemented in `morphir-elm` or finos/morphir-go at this time**. Tools may reject these schemes until an implementation exists.
 
 ### `localDependencies` (optional)
 
@@ -107,9 +107,9 @@ Decoration config object fields:
 }
 ```
 
-## Compatibility notes (Morphir Go)
+## Compatibility notes (finos/morphir-go)
 
-Morphir Go currently supports `morphir.json` for **basic project metadata** and decorations:
+[finos/morphir-go](https://github.com/finos/morphir-go) supports `morphir.json` for **basic project metadata** and decorations:
 
 - Implemented: `name`, `sourceDirectory`, `exposedModules`, `decorations`
 - Not yet implemented: `dependencies`, `localDependencies`

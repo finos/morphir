@@ -1,26 +1,38 @@
 # AGENTS.md - Agentic Hints for Morphir
 
-This document provides guidance for AI assistants and developers working on the Morphir project.
+This document provides guidance for AI assistants and developers working on the **finos/morphir** repository.
 
 ## Project Overview
 
-This repository contains:
-1. **Morphir Documentation Website** - Docusaurus-based documentation site
-2. **Morphir Live** - Rust-based interactive visualization and IR management application
-3. **Morphir CLI** - Command-line tool for working with Morphir IR
-4. **Ecosystem Integration** - Git submodules for ecosystem repos (morphir-rust, morphir-examples, etc.)
+**finos/morphir** is the Morphir ecosystem umbrella (parent) repository. It coordinates documentation, shared tooling, and integration with language-specific implementations — it is not a single-language Morphir implementation.
 
-### Related Morphir Projects
+### In this repository
 
-- **[finos/morphir-go](https://github.com/finos/morphir-go)** - Go implementation of Morphir tooling
-- **[finos/morphir-elm](https://github.com/finos/morphir-elm)** - Reference implementation in Elm (most mature)
-- **[finos/morphir-jvm](https://github.com/finos/morphir-jvm)** - JVM-based implementation
-- **[finos/morphir-scala](https://github.com/finos/morphir-scala)** - Scala implementation
-- **[finos/morphir-dotnet](https://github.com/finos/morphir-dotnet)** - .NET implementation
-- **[finos/morphir-rust](https://github.com/finos/morphir-rust)** - Rust tooling
-- **[finos/morphir-python](https://github.com/finos/morphir-python)** - Python tooling
-- **[finos/morphir-moonbit](https://github.com/finos/morphir-moonbit)** - MoonBit implementation of Morphir tooling
-- **[finos/morphir-ui](https://github.com/finos/morphir-ui)** - User-interface work for the Morphir project
+1. **Morphir Documentation Website** — Docusaurus-based documentation site (`website/`, `docs/`)
+2. **Morphir Live** — Rust-based interactive visualization and IR management application (`crates/morphir-live`)
+3. **Morphir CLI** — Rust command-line tool for working with Morphir IR (`crates/morphir`)
+4. **Ecosystem Integration** — Git submodules for ecosystem repos under `ecosystem/`
+
+### Ecosystem submodules (vendored under `ecosystem/`)
+
+- **[finos/morphir-elm](https://github.com/finos/morphir-elm)** — Reference Elm implementation; IR definition, compilers, visualization, backend processors
+- **[finos/morphir-rust](https://github.com/finos/morphir-rust)** — Rust libraries (`morphir-core`, `morphir-common`, etc.) used by the CLI and Morphir Live
+- **[finos/morphir-examples](https://github.com/finos/morphir-examples)** — Example Morphir projects
+- **[finos/morphir-moonbit](https://github.com/finos/morphir-moonbit)** — MoonBit implementation of Morphir tooling
+- **[finos/morphir-python](https://github.com/finos/morphir-python)** — Python implementation of Morphir tooling
+- **[finos/morphir-scala](https://github.com/finos/morphir-scala)** — Scala implementation of Morphir tooling
+- **[finos/morphir-ui](https://github.com/finos/morphir-ui)** — User-interface work for the Morphir project
+
+See [ecosystem/README.md](ecosystem/README.md) and [ecosystem/AGENTS.md](ecosystem/AGENTS.md) for submodule workflows.
+
+### Sibling FINOS repositories (not vendored here)
+
+These live in their own repositories. Do not assume their code or build instructions apply to this tree unless they are added as submodules.
+
+- **[finos/morphir-go](https://github.com/finos/morphir-go)** — Go implementation of Morphir tooling (CLI, WIT pipeline, Go backends)
+- **[finos/morphir-jvm](https://github.com/finos/morphir-jvm)** — JVM-based implementation
+- **[finos/morphir-dotnet](https://github.com/finos/morphir-dotnet)** — .NET implementation
+- **[finos/morphir-bosque](https://github.com/finos/morphir-bosque)** — Bosque language integration
 
 ### Morphir IR Specification
 

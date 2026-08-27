@@ -75,8 +75,11 @@ Morphir consists of a few projects based on the features they provide.
 - **[morphir-scala](https://github.com/finos/morphir-scala)** - Tight integration with Scala for authoring, execution, and writing tools.
 - **[morphir-bosque](https://github.com/finos/morphir-bosque)** - Integration with the Bosque language.
 - **[morphir-dotnet](https://github.com/finos/morphir-dotnet)** - Integration with .NET via F#.
-- **[morphir-rust](https://github.com/finos/morphir-rust)** - Integration with Rust 
+- **[morphir-rust](https://github.com/finos/morphir-rust)** - Integration with Rust
 - **[morphir-python](https://github.com/finos/morphir-python)** - Integration with Python
+- **[morphir-moonbit](https://github.com/finos/morphir-moonbit)** - MoonBit implementation of Morphir tooling
+- **[morphir-go](https://github.com/finos/morphir-go)** - Go implementation of Morphir tooling (CLI, WIT pipeline, Go backends)
+- **[morphir-ui](https://github.com/finos/morphir-ui)** - User-interface work for the Morphir project
 
 
 ## Other Resources
