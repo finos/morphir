@@ -1,5 +1,9 @@
 # Release Retrospective: v0.4.0-alpha.1
 
+:::note Historical
+This retrospective covers a Go-based Morphir CLI alpha release when Go tooling was published from finos/morphir. Go CLI releases are now tracked in **[finos/morphir-go](https://github.com/finos/morphir-go)**.
+:::
+
 ## Summary
 
 Release v0.4.0-alpha.1 was successfully published on 2026-01-08, but required multiple iterations (8+ workflow runs) due to various configuration issues. This document captures the issues encountered and recommendations for improvement.

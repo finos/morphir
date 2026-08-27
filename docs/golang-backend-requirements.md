@@ -5,6 +5,10 @@ title: Morphir Golang Backend Requirements
 
 # Morphir Golang Backend Requirements
 
+:::info finos/morphir-go
+This requirements document applies to Go code generation in **[finos/morphir-go](https://github.com/finos/morphir-go)**. The finos/morphir umbrella repository does not implement this backend.
+:::
+
 ## Summary
 
 This document captures requirements for adding a Morphir backend that generates Go
