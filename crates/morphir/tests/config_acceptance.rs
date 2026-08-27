@@ -265,6 +265,7 @@ fn file_containing_failing_secret_reference(
     reference: String,
 ) {
     let contents = match reference.as_str() {
+        "missing-key" => "[registry]\nendpoint = \"https://registry.example.test\"\n".to_owned(),
         "missing-file" => "[registry]\ntoken = { file = \"missing-secret\" }\n".to_owned(),
         "malformed" => {
             "[registry]\ntoken = { env = \"MORPHIR_ACCEPTANCE_SECRET\", file = \"missing-secret\" }\n".to_owned()
@@ -464,6 +465,7 @@ fn resolution_error_is_classified_as(world: &mut ConfigWorld, classification: St
         .as_ref()
         .expect("secret resolution unexpectedly succeeded");
     let matches_classification = match classification.as_str() {
+        "missing-config-key" => matches!(error, SecretResolutionError::MissingConfigKey { .. }),
         "file-read" => matches!(error, SecretResolutionError::FileRead { .. }),
         "invalid-secret-value" => matches!(error, SecretResolutionError::InvalidSecretValue { .. }),
         "empty-environment" => matches!(

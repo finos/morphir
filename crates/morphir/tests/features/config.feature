@@ -180,6 +180,17 @@ Feature: Inspect Morphir configuration
     Then the command succeeds
     And the JSON project config ends with ".config/morphir/config.toml"
 
+  Scenario: Discover YAML project configuration in the dot-config layout
+    Given a file ".config/morphir/config.yaml" containing:
+      """
+      project:
+        name: dot-config-yaml-project
+        version: 1.0.0
+      """
+    When I run "morphir config path --isolated --json"
+    Then the command succeeds
+    And the JSON project config ends with ".config/morphir/config.yaml"
+
   Scenario: An adjacent user override wins
     Given a file "morphir.toml" containing:
       """
@@ -320,6 +331,7 @@ Feature: Inspect Morphir configuration
 
     Examples:
       | reference       | classification        |
+      | missing-key     | missing-config-key     |
       | missing-file    | file-read             |
       | malformed       | invalid-secret-value  |
       | empty-environment | empty-environment   |

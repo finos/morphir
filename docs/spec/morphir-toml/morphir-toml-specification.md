@@ -219,7 +219,7 @@ A secret reference has exactly one of these four shapes. A loader MUST recognise
 
 Any other table, including one with mixed discriminator keys, extra keys, an empty command, or an incomplete keyring mapping, is not a secret reference.
 
-Resolution happens only when tooling explicitly requests one dotted configuration key. It resolves that one winning leaf and MUST NOT traverse or resolve other references. The resolved value is protected: formatting and serialization redact it, and callers need an explicit exposure operation to read it. Resolution failures identify the requested key, reference kind, or safe source metadata, but MUST NOT disclose resolved secret text.
+Resolution happens only when tooling explicitly requests one dotted configuration key. It resolves that one winning leaf and MUST NOT traverse or resolve other references. The resolved value is protected: formatting redacts it, ordinary serialization is unavailable, and callers need an explicit exposure operation to read it. Resolution failures identify the requested key, reference kind, or safe source metadata, but MUST NOT disclose resolved secret text.
 
 Displaying the configuration, reporting sources, validating, decoding, and normal loading MUST NOT resolve references. A reference MAY be displayed verbatim because it contains no secret; a plain-string secret MUST be displayed as a placeholder such as `<redacted>`.
 

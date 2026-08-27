@@ -33,5 +33,5 @@ An explicitly invoked capability that turns one secret reference into a protecte
 _Avoid_: Configuration loader, automatic resolution
 
 **Protected secret**:
-A resolved secret value that redacts formatting and serialization and requires an explicit operation to expose its contents.
+A resolved secret value that redacts formatting, has no ordinary serialization path, and requires an explicit operation to expose its contents.
 _Avoid_: Plain string, secret reference

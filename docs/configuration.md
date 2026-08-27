@@ -347,7 +347,7 @@ The morphir-rust API, built with Rust 1.88, resolves one requested dotted key th
 
 `command` runs the array's program and arguments directly, without a shell or standard input. It runs from the directory of the configuration file that supplied the winning value. If there is no declaring file, it uses the process current directory. Successful standard output must be non-empty UTF-8 text after one line ending is removed. `keyring` reads an existing native keyring password for its service and account. It never writes to the keyring.
 
-The resolver returns a protected secret. Formatting and serialization redact it, and callers need an explicit exposure operation to read it. Loading, validation, `morphir config show`, and `morphir config path` do not resolve references. Resolution failures identify the configuration key and safe source metadata without including secret text.
+The resolver returns a protected secret. Formatting redacts it, ordinary serialization is unavailable, and callers need an explicit exposure operation to read it. Loading, validation, `morphir config show`, and `morphir config path` do not resolve references. Resolution failures identify the configuration key and safe source metadata without including secret text.
 
 ### How `morphir config show` displays values
 
