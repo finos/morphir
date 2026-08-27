@@ -323,6 +323,12 @@ Feature: Inspect Morphir configuration
     Then the protected secret matches the test value
     And no resolution observation contains the test value
 
+  Scenario: Command secret references preserve an empty argument
+    Given a file "morphir.toml" containing the command-empty-argv secret reference
+    When the config secret "registry.token" is resolved
+    Then the protected secret matches the test value
+    And no resolution observation contains the test value
+
   Scenario Outline: Secret resolution failures do not disclose backend output
     Given a file "morphir.toml" containing the <reference> failing secret reference
     When the config secret "registry.token" is resolved

@@ -33,9 +33,11 @@ definitions:
             type: array
             minItems: 1
             items:
+              - type: string
+                minLength: 1
+            additionalItems:
               type: string
-              minLength: 1
-            description: "Program and arguments executed directly without a shell."
+            description: "A non-empty program followed by string arguments, which may be empty, executed directly without a shell."
       - type: object
         additionalProperties: false
         required: ["keyring"]

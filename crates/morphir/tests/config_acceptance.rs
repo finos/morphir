@@ -201,6 +201,8 @@ fn secret_helper_arguments(mode: &str) -> Vec<OsString> {
     ];
     if mode == "argv" {
         arguments.push(OsString::from(SHELL_SENSITIVE_ARGUMENT));
+    } else if mode == "empty-argv" {
+        arguments.push(OsString::new());
     }
     arguments
 }
@@ -219,13 +221,17 @@ fn file_containing_secret_reference(
         "file" => format!("[registry]\ntoken = {{ file = {SECRET_FILE:?} }}\n"),
         "command" => command_reference(secret_helper_arguments("success")),
         "command-argv" => command_reference(secret_helper_arguments("argv")),
+        "command-empty-argv" => command_reference(secret_helper_arguments("empty-argv")),
         "keyring" => format!(
             "[registry]\ntoken = {{ keyring = {{ service = {SECRET_KEYRING_SERVICE:?}, account = {SECRET_KEYRING_ACCOUNT:?} }} }}\n"
         ),
         _ => panic!("unsupported secret reference fixture"),
     };
     world.expected_secret = Some(SecretString::from(
-        if matches!(reference.as_str(), "command" | "command-argv") {
+        if matches!(
+            reference.as_str(),
+            "command" | "command-argv" | "command-empty-argv"
+        ) {
             COMMAND_SECRET
         } else {
             TEST_SECRET
@@ -633,6 +639,15 @@ fn run_secret_helper_if_requested() -> bool {
                 true
             } else {
                 std::process::exit(65);
+            }
+        }
+        Some(mode) if mode == OsStr::new("empty-argv") => {
+            let exact_argument = args.next().is_some_and(|argument| argument.is_empty());
+            if exact_argument && args.next().is_none() {
+                print!("command-secret\r\n");
+                true
+            } else {
+                std::process::exit(66);
             }
         }
         Some(mode) if mode == OsStr::new("failure") => {
