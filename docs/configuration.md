@@ -234,6 +234,23 @@ Mapping examples:
 
 Values are typed mechanically: `true` and `false` become booleans, integers become numbers, values that start with `[` or `{` and parse as JSON become arrays or objects, and anything else stays a string. Key segments are lower-cased.
 
+### Special Environment Variables
+
+Some environment variables control Morphir directly rather than overriding a configuration key:
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `MORPHIR_HOME` | Relocates the Morphir home directory, which holds user-global state such as the tool, distribution, and extension registries and fallback log output; when set, caches also relocate under `$MORPHIR_HOME/cache` | `$HOME/.morphir` on Linux/macOS, `%USERPROFILE%\.morphir` on Windows |
+| `MORPHIR_LOG_DIR` | Overrides the log output directory | `.morphir/logs/` in the workspace, or `logs/` under the Morphir home directory |
+
+Relocating the home directory is useful for testing, CI, or sandboxed environments where the real user home is unavailable or should stay untouched:
+
+```sh
+export MORPHIR_HOME=/tmp/morphir-test-home
+```
+
+An empty value is treated as unset.
+
 ## CLI Commands
 
 ### View Configuration

@@ -3,7 +3,7 @@
 //! This module provides functionality for installing, updating, listing, and
 //! uninstalling Morphir extensions.
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use starbase::AppResult;
 use std::collections::HashMap;
@@ -70,8 +70,7 @@ impl ExtensionRegistry {
 
     /// Get the path to the extension registry configuration file
     fn config_path() -> Result<PathBuf> {
-        let home = dirs::home_dir().ok_or_else(|| anyhow!("Could not determine home directory"))?;
-        Ok(home.join(".morphir").join("extensions.json"))
+        Ok(crate::home::MorphirHome::resolve()?.extensions_file())
     }
 
     /// Add or update an extension in the registry

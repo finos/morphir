@@ -61,7 +61,7 @@ impl Default for LogConfig {
 /// Priority:
 /// 1. MORPHIR_LOG_DIR environment variable
 /// 2. `.morphir/logs/` in current or parent directory (workspace)
-/// 3. `~/.morphir/logs/` (global fallback)
+/// 3. `logs/` under the Morphir home directory (global fallback, honors MORPHIR_HOME)
 fn default_log_dir() -> PathBuf {
     // Check environment variable
     if let Ok(dir) = std::env::var("MORPHIR_LOG_DIR") {
@@ -74,10 +74,9 @@ fn default_log_dir() -> PathBuf {
     }
 
     // Global fallback
-    dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".morphir")
-        .join("logs")
+    crate::home::MorphirHome::resolve()
+        .map(|home| home.logs_dir())
+        .unwrap_or_else(|_| PathBuf::from(".morphir").join("logs"))
 }
 
 /// Find the workspace root by looking for morphir.toml or .morphir directory.

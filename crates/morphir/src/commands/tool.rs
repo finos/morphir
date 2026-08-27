@@ -3,7 +3,7 @@
 //! This module provides functionality for installing, updating, listing, and
 //! uninstalling Morphir tools and extensions, similar to npm or dotnet tool.
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use starbase::AppResult;
 use std::collections::HashMap;
@@ -69,8 +69,7 @@ impl ToolRegistry {
 
     /// Get the path to the tool registry configuration file
     fn config_path() -> Result<PathBuf> {
-        let home = dirs::home_dir().ok_or_else(|| anyhow!("Could not determine home directory"))?;
-        Ok(home.join(".morphir").join("tools.json"))
+        Ok(crate::home::MorphirHome::resolve()?.tools_file())
     }
 
     /// Add or update a tool in the registry
