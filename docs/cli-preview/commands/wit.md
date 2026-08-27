@@ -12,7 +12,7 @@ The `morphir wit` command group was part of the **Morphir Go CLI**, not the Rust
 
 ## Current documentation
 
-- [Morphir Go](../getting-started/morphir-go-preview.md)
+- [Morphir Go](../../getting-started/morphir-go-preview.md)
 - [finos/morphir-go](https://github.com/finos/morphir-go)
 - [CLI Preview (Archived) overview](../index.md)
 

@@ -66,9 +66,9 @@ DOC_SECTIONS = {
         "priority": 2,
     },
     "cli-preview": {
-        "title": "CLI Preview",
-        "description": "Next-generation command-line interface documentation",
-        "priority": 2,
+        "title": "CLI Preview (Archived)",
+        "description": "Archived Go CLI preview docs; current Go tooling is in finos/morphir-go",
+        "priority": 3,
     },
     "spec": {
         "title": "Specifications",
@@ -362,8 +362,10 @@ def scan_docs(docs_dir: Path) -> Dict[str, List[Dict]]:
         seen_titles: Set[str] = set()  # Track titles for deduplication
 
         for md_file in sorted(section_path.rglob('*.md')):
-            # Skip files in hidden directories
-            if any(part.startswith('.') for part in md_file.parts):
+            # Skip files in hidden directories (relative to docs_dir only —
+            # absolute paths may contain segments like `.t3` or `.git`).
+            rel_parts = md_file.relative_to(docs_dir).parts
+            if any(part.startswith('.') for part in rel_parts):
                 continue
 
             try:
@@ -391,7 +393,7 @@ def scan_docs(docs_dir: Path) -> Dict[str, List[Dict]]:
 
             # Build URL path with proper encoding
             rel_path = md_file.relative_to(docs_dir)
-            url_path = str(rel_path).replace('.md', '').replace('/README', '')
+            url_path = rel_path.as_posix().replace('.md', '').replace('/README', '')
             if url_path.endswith('/index'):
                 url_path = url_path[:-6]
 
@@ -448,7 +450,7 @@ def generate_compact(sections: Dict[str, List[Dict]], docs_dir: Path) -> str:
         if info['priority'] > 2:
             continue
 
-        for doc in section_data['docs'][:5]:  # Limit docs per section
+        for doc in section_data['docs'][:8]:  # Keep room for key getting-started pages
             lines.append(f"- [{doc['title']}]({doc['url']}): {doc['description']}")
 
     lines.append("")
