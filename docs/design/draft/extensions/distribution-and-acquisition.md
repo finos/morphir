@@ -84,7 +84,15 @@ Presentation fields such as descriptions, licenses, documentation, maintainers, 
 
 The client pins the Git commit used for resolution. A future HTTP registry may expose the same logical operations, but reproducibility must not depend on a mutable `latest` response. Mirrors may provide the same identity and digest from a different location.
 
-This design does not require one physical index for Morphir packages and extension distributions. It requires compatible registry capabilities and explicit record kinds. Operators may host those records together or separately.
+### Index and repository topology
+
+Morphir packages and extension distributions use separate logical registry indexes. Each index has its own record schema, validation rules, version history, and resolution policy. A model-package index cannot contain extension records, and an extension index cannot contain model-package records.
+
+Both indexes implement the same client capability for version discovery, exact-record lookup, provenance, and mirroring. That shared capability does not erase the different record types.
+
+An index is a metadata view, not a Git repository. The Git-file backend may store both indexes in one repository under separate roots, for example `model-packages/` and `extensions/`. Deployments may also place them in separate repositories or expose them through different services. Repository layout is a backend and operational choice. It does not change the logical index boundary.
+
+When one Git repository contains both indexes, a lock records the index kind, logical index identity, repository source, root path, and pinned commit. This prevents the shared repository from making an index reference ambiguous.
 
 ## Morphir package flow
 
@@ -169,7 +177,7 @@ The Windows gate is not only a linker regression test. It should build a WASM gu
 3. Adapt the current Extism container to the common session.
 4. Add spawned-process and connected-daemon adapters.
 5. Define shared identity, source, integrity, lock, acquisition, and materialization values.
-6. Implement local-directory and pinned Git-file registry backends.
+6. Implement separate model-package and extension indexes using local-directory and pinned Git-file backends. The Git backend may store both indexes in one repository under separate roots.
 7. Replace the CLI metadata-only install command and the daemon's WASM-only loader with one installed catalog and verified store.
 8. Publish and consume an extension manifest for Morphir Elm, then Morphir Scala.
 9. Prove Morphir source-package resolution with registry, Git, vendored, and workspace sources through the same package boundary.
@@ -177,13 +185,12 @@ The Windows gate is not only a linker regression test. It should build a WASM gu
 
 ## Open questions
 
-1. Does the first registry index hold both record kinds, or do model packages and extensions use separate repositories with the same client capability?
-2. Which Package URL convention identifies Morphir-native packages, and should extension distributions use that type or a distinct provisional type?
-3. What normalized digest rules remain stable across archives and case-sensitive or case-insensitive filesystems?
-4. Which version and range rules apply to Morphir-native packages and extensions?
-5. Which signature or build-provenance policy establishes publisher authenticity?
-6. How does a host distinguish a daemon it owns from an endpoint it only connects to?
-7. Which update channels and revocation behavior must work before the first public registry?
+1. Which Package URL convention identifies Morphir-native packages, and should extension distributions use that type or a distinct provisional type?
+2. What normalized digest rules remain stable across archives and case-sensitive or case-insensitive filesystems?
+3. Which version and range rules apply to Morphir-native packages and extensions?
+4. Which signature or build-provenance policy establishes publisher authenticity?
+5. How does a host distinguish a daemon it owns from an endpoint it only connects to?
+6. Which update channels and revocation behavior must work before the first public registry?
 
 ## Non-goals
 
