@@ -33,6 +33,8 @@ MEP must support:
 
 MEP does not define extension installation, registry storage, daemon discovery, or Morphir IR itself. Those systems use the protocol but have separate formats and lifecycles.
 
+The adjacent [extension distribution and package acquisition design](./distribution-and-acquisition.md) defines how a host resolves, acquires, verifies, installs, and selects extension artifacts. It also records the shared distribution machinery and separate semantics for reusable Morphir model packages.
+
 The Rust host stores its user-global extension registry under `MorphirHome`. Host implementations must use that resolver instead of hardcoding a user-home path, so `MORPHIR_HOME` relocates extension state along with other Morphir state. This changes discovery and installation behavior, not the MEP wire contract.
 
 ## Roles
