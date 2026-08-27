@@ -94,6 +94,20 @@ An index is a metadata view, not a Git repository. The Git-file backend may stor
 
 When one Git repository contains both indexes, a lock records the index kind, logical index identity, repository source, root path, and pinned commit. This prevents the shared repository from making an index reference ambiguous.
 
+### Release channels
+
+Each index supports release channels as mutable version-selection policy. The first channel model includes:
+
+- `stable` for versions intended for general use;
+- `preview` for pre-release testing, also exposed as `insiders` by products that already use that name;
+- optional segmented preview channels such as `preview/<segment>` for a bounded prototype, compatibility test, or staged rollout.
+
+A segmented preview channel remains part of the same logical index. It does not create a new package identity, extension identity, or registry index. Index policy defines valid segment names, who may publish to them, and whether they inherit candidates from the general preview channel.
+
+A channel request resolves to an exact version before acquisition. The lock records the requested channel, exact selected identity and version, index revision, source, and digest. Reusing the lock never follows a moving channel. Refreshing or changing channels is an explicit resolution operation.
+
+Stable resolution excludes preview versions unless the request or workspace policy opts into them. Promotion changes channel eligibility. It does not let a registry replace locked bytes for an existing exact identity and digest.
+
 ## Morphir package flow
 
 ```mermaid
@@ -181,7 +195,7 @@ The Windows gate is not only a linker regression test. It should build a WASM gu
 7. Replace the CLI metadata-only install command and the daemon's WASM-only loader with one installed catalog and verified store.
 8. Publish and consume an extension manifest for Morphir Elm, then Morphir Scala.
 9. Prove Morphir source-package resolution with registry, Git, vendored, and workspace sources through the same package boundary.
-10. Decide signature, provenance, update, yank, revocation, and HTTP registry policies after the local and Git-backed paths work.
+10. Implement stable and preview channel resolution, including insiders naming and segmented preview policy. Then decide signature, provenance, yank, revocation, and HTTP registry policies after the local and Git-backed paths work.
 
 ## Open questions
 
@@ -190,7 +204,7 @@ The Windows gate is not only a linker regression test. It should build a WASM gu
 3. Which version and range rules apply to Morphir-native packages and extensions?
 4. Which signature or build-provenance policy establishes publisher authenticity?
 5. How does a host distinguish a daemon it owns from an endpoint it only connects to?
-6. Which update channels and revocation behavior must work before the first public registry?
+6. Which yank and revocation behavior must work before the first public registry?
 
 ## Non-goals
 

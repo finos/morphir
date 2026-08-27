@@ -99,3 +99,7 @@ _Avoid_: Package archive, compiler cache
 **Registry index**:
 A distributable metadata view that maps package identities and versions to dependency, integrity, and source information.
 _Avoid_: Git repository, artifact store, installed extension catalog
+
+**Release channel**:
+A named, mutable policy that selects eligible package or extension versions for updates.
+_Avoid_: Package identity, exact version, registry index
