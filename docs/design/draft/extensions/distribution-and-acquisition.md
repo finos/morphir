@@ -184,18 +184,21 @@ The existing `morphir server` command becomes an extension daemon only if it imp
 
 The Windows gate is not only a linker regression test. It should build a WASM guest fixture separately, load it through the native Extism adapter, run the MEP conformance fixtures, and run the same fixtures against process and daemon adapters as those arrive.
 
+An extension milestone requires an independently built artifact invoked through the production host boundary. An in-memory provider may support unit tests, but it does not prove a runtime adapter. The first Extism artifact should be `morphir-wasm-binding`, since it exercises an existing Morphir backend and exposes SDK or host incompatibilities that an echo fixture would miss.
+
 ## Delivery sequence
 
 1. Remove Extism guest imports from the native host dependency graph and restore Windows ARM64 tests.
-2. Freeze transport-independent MEP fixtures and introduce the common extension session.
-3. Adapt the current Extism container to the common session.
-4. Add spawned-process and connected-daemon adapters.
-5. Define shared identity, source, integrity, lock, acquisition, and materialization values.
-6. Implement separate model-package and extension indexes using local-directory and pinned Git-file backends. The Git backend may store both indexes in one repository under separate roots.
-7. Replace the CLI metadata-only install command and the daemon's WASM-only loader with one installed catalog and verified store.
-8. Publish and consume an extension manifest for Morphir Elm, then Morphir Scala.
-9. Prove Morphir source-package resolution with registry, Git, vendored, and workspace sources through the same package boundary.
-10. Implement stable and preview channel resolution, including insiders naming and segmented preview policy. Then decide signature, provenance, yank, revocation, and HTTP registry policies after the local and Git-backed paths work.
+2. Build `morphir-wasm-binding`, invoke it through the Extism container, and make it pass the first transport-independent MEP cases. Introduce the common extension session as part of this working path.
+3. Build a native extension executable and run the same cases through the spawned-process adapter.
+4. Start an extension daemon and run the same cases through the connected-daemon adapter.
+5. Compile one Elm file through the spawned-process host using a real Morphir Elm extension.
+6. Define shared identity, source, integrity, lock, acquisition, and materialization values.
+7. Implement separate model-package and extension indexes using local-directory and pinned Git-file backends. The Git backend may store both indexes in one repository under separate roots.
+8. Replace the CLI metadata-only install command and the daemon's WASM-only loader with one installed catalog and verified store. Acquire and lock the Morphir Elm extension through this path.
+9. Record the Morphir Scala compiler extension in that repository's intent and knowledge system, then package and test it against the same single-file contract.
+10. Prove Morphir source-package resolution with registry, Git, vendored, and workspace sources through the same package boundary.
+11. Implement stable and preview channel resolution, including insiders naming and segmented preview policy. Then decide signature, provenance, yank, revocation, and HTTP registry policies after the local and Git-backed paths work.
 
 ## Open questions
 
