@@ -4,6 +4,7 @@ use starbase::{App, AppResult, AppSession};
 pub mod commands;
 pub mod error;
 mod help;
+pub mod home;
 mod logging;
 pub mod output;
 mod tui;

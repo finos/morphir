@@ -80,6 +80,8 @@ The user-home alternatives are:
 - `$HOME/.morphir/morphir.toml` and `$HOME/.morphir/morphir.yaml` on Unix-like systems
 - `%USERPROFILE%\.morphir\morphir.toml` and `%USERPROFILE%\.morphir\morphir.yaml` on Windows, where the implementation resolves the profile through `FOLDERID_Profile`
 
+When the `MORPHIR_HOME` environment variable is set to a non-empty value, the user-home alternatives become `$MORPHIR_HOME/morphir.toml` and `$MORPHIR_HOME/morphir.yaml` on every platform, replacing the `.morphir` directory under the user home. The platform config-directory candidates are unaffected. `MORPHIR_HOME` is an operational variable and MUST NOT be interpreted as a configuration key by the environment source.
+
 These paths are alternate locations at the same precedence. A loader accepts at most one global user configuration across all candidates. If it finds more than one, it reports an ambiguity error that names every candidate. It MUST NOT merge the files or choose one by path or extension.
 
 ## Merge algorithm (normative)
