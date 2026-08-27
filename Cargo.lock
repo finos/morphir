@@ -5439,7 +5439,6 @@ dependencies = [
  "morphir-common",
  "morphir-core",
  "morphir-devkit",
- "morphir-extension-sdk",
  "notify",
  "reqwest 0.13.4",
  "serde",
