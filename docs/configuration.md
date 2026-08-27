@@ -83,6 +83,8 @@ On Windows, Morphir checks:
 
 The paths are alternatives at the same precedence. If more than one candidate exists, Morphir reports an ambiguity error.
 
+When the [`MORPHIR_HOME` environment variable](#special-environment-variables) is set, the user-home candidate on every platform becomes `$MORPHIR_HOME/morphir.toml` or `morphir.yaml` instead of the `.morphir` directory under the user home. The platform config-directory candidates are unaffected.
+
 TOML example:
 
 ```toml
