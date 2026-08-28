@@ -62,7 +62,50 @@ cmd transform hide=#true display_order=5 args_override_self=#false help="[Experi
         arg <OUTPUT>
     }
 }
-cmd config display_order=6 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect the effective Morphir configuration" unknown_flags=error {
+cmd migrate display_order=6 args_override_self=#false help="Migrate IR between versions" unknown_flags=error {
+    long_help #"""
+Migrate IR between versions
+
+Upgrades concrete Morphir IR V3 to V4 and re-encodes V4 IR. Supports local files, document-tree directories, URLs, and GitHub shorthand sources.
+
+**Examples:**
+
+```bash
+# Migrate to file
+morphir migrate ./morphir-ir.json -o ./morphir-ir-v4.json --target-version v4
+
+# Migrate from URL
+morphir migrate https://lcr-interactive.finos.org/server/morphir-ir.json -o ./lcr-v4.json
+
+# Display in console with syntax highlighting (no -o)
+morphir migrate ./morphir-ir.json
+
+# Write the V4 document-tree layout
+morphir migrate ./morphir-ir.json -o ./morphir-ir-v4/ --output-layout vfs
+```
+
+See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tools/ir-migrate) for detailed real-world examples including the US Federal Reserve FR 2052a regulation model.
+"""#
+    flag "-o --output" help="Output file or directory (if omitted, displays in console with syntax highlighting)" {
+        arg <OUTPUT>
+    }
+    flag --target-version help="Target version: latest, v4/4, classic, v3/3, v2/2, v1/1 (default: latest)" default=latest {
+        arg <TARGET_VERSION>
+    }
+    flag --force-refresh help="Force refresh cached remote sources"
+    flag --no-cache help="Skip cache entirely for remote sources"
+    flag --json help="Output result as JSON (for scripting)"
+    flag --expanded help="Use expanded (non-compact) format for V4 output"
+    flag --allow-partial help="Permit recoverable incomplete V4 nodes when a source construct cannot be preserved"
+    flag --output-layout help="Output storage layout (inferred from the output path when omitted)" {
+        arg <OUTPUT_LAYOUT> {
+            choices single-file vfs
+        }
+    }
+    arg <INPUT> help="Input file, directory, or remote source (e.g., github:owner/repo, URL)"
+    complete output type=path
+}
+cmd config display_order=7 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect the effective Morphir configuration" unknown_flags=error {
     cmd get display_order=0 args_override_self=#false help="Get one value from the effective configuration" unknown_flags=error {
         flag --config help="Explicit project config file path" {
             arg <CONFIG>
@@ -86,7 +129,7 @@ cmd config display_order=6 subcommand_required=#true arg_required_else_help=#tru
         flag --isolated help="Ignore machine-level and user-level configuration sources" hide=#true
     }
 }
-cmd tool display_order=7 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir tools, distributions, and extensions" unknown_flags=error {
+cmd tool display_order=8 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir tools, distributions, and extensions" unknown_flags=error {
     cmd install display_order=0 args_override_self=#false help="Install a Morphir tool or extension" unknown_flags=error {
         flag "-v --version" help="Version to install (defaults to latest)" {
             arg <VERSION>
@@ -104,7 +147,7 @@ cmd tool display_order=7 subcommand_required=#true arg_required_else_help=#true 
         arg <NAME> help="Name of the tool to uninstall"
     }
 }
-cmd dist display_order=8 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir distributions" unknown_flags=error {
+cmd dist display_order=9 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir distributions" unknown_flags=error {
     cmd install display_order=0 args_override_self=#false help="Install a Morphir distribution" unknown_flags=error {
         flag "-v --version" help="Version to install (defaults to latest)" {
             arg <VERSION>
@@ -122,7 +165,7 @@ cmd dist display_order=8 subcommand_required=#true arg_required_else_help=#true 
         arg <NAME> help="Name of the distribution to uninstall"
     }
 }
-cmd extension display_order=9 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir extensions" unknown_flags=error {
+cmd extension display_order=10 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir extensions" unknown_flags=error {
     cmd install display_order=0 args_override_self=#false help="Install a Morphir extension" unknown_flags=error {
         flag "-v --version" help="Version to install (defaults to latest)" {
             arg <VERSION>
@@ -140,12 +183,12 @@ cmd extension display_order=9 subcommand_required=#true arg_required_else_help=#
         arg <NAME> help="Name of the extension to uninstall"
     }
 }
-cmd ir display_order=10 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir IR" unknown_flags=error {
+cmd ir display_order=11 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir IR" unknown_flags=error {
     cmd migrate display_order=0 args_override_self=#false help="Migrate IR between versions" unknown_flags=error {
         long_help #"""
 Migrate IR between versions
 
-Converts Morphir IR between Classic (V1-V3) and V4 formats. Supports local files, URLs, and GitHub shorthand sources.
+Upgrades concrete Morphir IR V3 to V4 and re-encodes V4 IR. Supports local files, document-tree directories, URLs, and GitHub shorthand sources.
 
 **Examples:**
 
@@ -159,8 +202,8 @@ morphir ir migrate https://lcr-interactive.finos.org/server/morphir-ir.json -o .
 # Display in console with syntax highlighting (no -o)
 morphir ir migrate ./morphir-ir.json
 
-# Downgrade V4 to Classic
-morphir ir migrate ./morphir-ir-v4.json -o ./morphir-ir-classic.json --target-version classic
+# Write the V4 document-tree layout
+morphir ir migrate ./morphir-ir.json -o ./morphir-ir-v4/ --output-layout vfs
 ```
 
 See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tools/ir-migrate) for detailed real-world examples including the US Federal Reserve FR 2052a regulation model.
@@ -175,11 +218,17 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
         flag --no-cache help="Skip cache entirely for remote sources"
         flag --json help="Output result as JSON (for scripting)"
         flag --expanded help="Use expanded (non-compact) format for V4 output"
+        flag --allow-partial help="Permit recoverable incomplete V4 nodes when a source construct cannot be preserved"
+        flag --output-layout help="Output storage layout (inferred from the output path when omitted)" {
+            arg <OUTPUT_LAYOUT> {
+                choices single-file vfs
+            }
+        }
         arg <INPUT> help="Input file, directory, or remote source (e.g., github:owner/repo, URL)"
         complete output type=path
     }
 }
-cmd gleam display_order=11 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Gleam language binding commands" unknown_flags=error {
+cmd gleam display_order=12 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Gleam language binding commands" unknown_flags=error {
     flag --json help="Output as JSON"
     flag --json-lines help="Output as JSON Lines (streaming)"
     cmd compile display_order=0 args_override_self=#false help="Compile Gleam source to Morphir IR" unknown_flags=error {
@@ -231,14 +280,14 @@ cmd gleam display_order=11 subcommand_required=#true arg_required_else_help=#tru
         }
     }
 }
-cmd schema display_order=12 args_override_self=#false help="Generate JSON Schema for Morphir IR" unknown_flags=error {
+cmd schema display_order=13 args_override_self=#false help="Generate JSON Schema for Morphir IR" unknown_flags=error {
     flag "-o --output" help="Output file path (optional)" {
         arg <OUTPUT>
     }
     complete output type=path
 }
-cmd version display_order=13 args_override_self=#false help="Print version information" unknown_flags=error {
+cmd version display_order=14 args_override_self=#false help="Print version information" unknown_flags=error {
     flag --json help="Output version info as JSON"
 }
-cmd usage hide=#true display_order=14 args_override_self=#false help="Output usage spec for documentation generation" unknown_flags=error
+cmd usage hide=#true display_order=15 args_override_self=#false help="Output usage spec for documentation generation" unknown_flags=error
 

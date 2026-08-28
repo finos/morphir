@@ -347,7 +347,10 @@ fn inferred_output_layout(
         output
             .as_ref()
             .filter(|path| {
+                let path_text = path.as_os_str().to_string_lossy();
                 path.is_dir()
+                    || path_text.ends_with('/')
+                    || path_text.ends_with('\\')
                     || path
                         .file_name()
                         .and_then(|name| name.to_str())
@@ -356,6 +359,13 @@ fn inferred_output_layout(
             .map(|_| OutputLayout::Vfs)
             .unwrap_or(OutputLayout::SingleFile)
     })
+}
+
+fn human_diagnostics(warnings: &[String]) -> String {
+    warnings
+        .iter()
+        .map(|warning| format!("warning: {warning}\n"))
+        .collect()
 }
 
 fn publish_document_tree(path: &Path, ir: &morphir_core::ir::v4::IRFile) -> Result<(), String> {
@@ -576,6 +586,7 @@ pub fn run_migrate(input: String, options: MigrateCommandOptions) -> AppResult<m
                 MigrateResult::success(&input, &output_str, "classic", target_format, warnings);
             println!("{}", serde_json::to_string_pretty(&result).unwrap());
         } else {
+            eprint!("{}", human_diagnostics(&warnings));
             eprintln!("Migration complete.");
         }
         return Ok(None);
@@ -651,7 +662,7 @@ pub fn run_migrate(input: String, options: MigrateCommandOptions) -> AppResult<m
                     &output_str,
                     source_format,
                     target_format,
-                    warnings,
+                    warnings.clone(),
                 );
                 println!("{}", serde_json::to_string_pretty(&result).unwrap());
             }
@@ -687,7 +698,7 @@ pub fn run_migrate(input: String, options: MigrateCommandOptions) -> AppResult<m
                         &output_str,
                         source_format,
                         target_format,
-                        warnings,
+                        warnings.clone(),
                     );
                     println!("{}", serde_json::to_string_pretty(&result).unwrap());
                 }
@@ -696,7 +707,26 @@ pub fn run_migrate(input: String, options: MigrateCommandOptions) -> AppResult<m
     }
 
     if !json {
+        eprint!("{}", human_diagnostics(&warnings));
         eprintln!("Migration complete.");
     }
     Ok(None)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn human_diagnostics_include_each_migration_warning() {
+        let diagnostics = human_diagnostics(&[
+            "first recoverable migration issue".to_owned(),
+            "second recoverable migration issue".to_owned(),
+        ]);
+
+        assert_eq!(
+            diagnostics,
+            "warning: first recoverable migration issue\nwarning: second recoverable migration issue\n"
+        );
+    }
 }

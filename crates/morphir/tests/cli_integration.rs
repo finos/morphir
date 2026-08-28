@@ -207,6 +207,33 @@ fn migrate_converts_a_real_v3_file_to_concrete_v4() {
 }
 
 #[test]
+fn migrate_is_available_as_a_top_level_command() {
+    let temp_dir = TempDir::new().unwrap();
+    let input = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../website/static/ir/examples/v3/greeting-example.json");
+    let output_path = temp_dir.path().join("greeting-v4.json");
+
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+        .args([
+            "migrate",
+            input.to_str().unwrap(),
+            "--output",
+            output_path.to_str().unwrap(),
+        ])
+        .output()
+        .expect("failed to run morphir binary");
+
+    assert!(
+        output.status.success(),
+        "migration failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    serde_json::from_slice::<morphir_core::ir::v4::IRFile>(&std::fs::read(output_path).unwrap())
+        .unwrap();
+}
+
+#[test]
 fn migrate_selects_compact_or_expanded_v4_type_encoding() {
     let temp_dir = TempDir::new().unwrap();
     let input = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -351,6 +378,27 @@ fn migrate_writes_and_reads_a_v4_document_tree() {
     );
     serde_json::from_slice::<morphir_core::ir::v4::IRFile>(&std::fs::read(single_file).unwrap())
         .unwrap();
+}
+
+#[test]
+fn migrate_infers_vfs_for_a_new_directory_path_with_a_trailing_separator() {
+    let temp_dir = TempDir::new().unwrap();
+    let input = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../website/static/ir/examples/v3/greeting-example.json");
+    let tree = format!("{}/", temp_dir.path().join("new-tree").display());
+
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+        .args(["ir", "migrate", input.to_str().unwrap(), "--output", &tree])
+        .output()
+        .expect("failed to migrate to an inferred document tree");
+
+    assert!(
+        output.status.success(),
+        "migration failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(PathBuf::from(tree).join("manifest.json").is_file());
 }
 
 #[test]

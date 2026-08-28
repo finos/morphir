@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use starbase::{App, AppResult, AppSession};
 
 pub mod commands;
@@ -108,6 +108,29 @@ enum Commands {
         #[arg(short, long)]
         output: Option<String>,
     },
+    /// Migrate IR between versions
+    #[command(long_about = "Migrate IR between versions
+
+Upgrades concrete Morphir IR V3 to V4 and re-encodes V4 IR. Supports local files, document-tree directories, URLs, and GitHub shorthand sources.
+
+**Examples:**
+
+```bash
+# Migrate to file
+morphir migrate ./morphir-ir.json -o ./morphir-ir-v4.json --target-version v4
+
+# Migrate from URL
+morphir migrate https://lcr-interactive.finos.org/server/morphir-ir.json -o ./lcr-v4.json
+
+# Display in console with syntax highlighting (no -o)
+morphir migrate ./morphir-ir.json
+
+# Write the V4 document-tree layout
+morphir migrate ./morphir-ir.json -o ./morphir-ir-v4/ --output-layout vfs
+```
+
+See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tools/ir-migrate) for detailed real-world examples including the US Federal Reserve FR 2052a regulation model.")]
+    Migrate(MigrateArgs),
 
     // ===== Management Commands =====
     /// Inspect the effective Morphir configuration
@@ -367,34 +390,55 @@ morphir ir migrate ./morphir-ir.json -o ./morphir-ir-v4/ --output-layout vfs
 ```
 
 See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tools/ir-migrate) for detailed real-world examples including the US Federal Reserve FR 2052a regulation model.")]
-    Migrate {
-        /// Input file, directory, or remote source (e.g., github:owner/repo, URL)
-        input: String,
-        /// Output file or directory (if omitted, displays in console with syntax highlighting)
-        #[arg(short, long)]
-        output: Option<std::path::PathBuf>,
-        /// Target version: latest, v4/4, classic, v3/3, v2/2, v1/1 (default: latest)
-        #[arg(long, default_value = "latest")]
-        target_version: String,
-        /// Force refresh cached remote sources
-        #[arg(long)]
-        force_refresh: bool,
-        /// Skip cache entirely for remote sources
-        #[arg(long)]
-        no_cache: bool,
-        /// Output result as JSON (for scripting)
-        #[arg(long)]
-        json: bool,
-        /// Use expanded (non-compact) format for V4 output
-        #[arg(long)]
-        expanded: bool,
-        /// Permit recoverable incomplete V4 nodes when a source construct cannot be preserved
-        #[arg(long)]
-        allow_partial: bool,
-        /// Output storage layout (inferred from the output path when omitted)
-        #[arg(long, value_enum)]
-        output_layout: Option<OutputLayout>,
-    },
+    Migrate(MigrateArgs),
+}
+
+#[derive(Args, Clone)]
+struct MigrateArgs {
+    /// Input file, directory, or remote source (e.g., github:owner/repo, URL)
+    input: String,
+    /// Output file or directory (if omitted, displays in console with syntax highlighting)
+    #[arg(short, long)]
+    output: Option<std::path::PathBuf>,
+    /// Target version: latest, v4/4, classic, v3/3, v2/2, v1/1 (default: latest)
+    #[arg(long, default_value = "latest")]
+    target_version: String,
+    /// Force refresh cached remote sources
+    #[arg(long)]
+    force_refresh: bool,
+    /// Skip cache entirely for remote sources
+    #[arg(long)]
+    no_cache: bool,
+    /// Output result as JSON (for scripting)
+    #[arg(long)]
+    json: bool,
+    /// Use expanded (non-compact) format for V4 output
+    #[arg(long)]
+    expanded: bool,
+    /// Permit recoverable incomplete V4 nodes when a source construct cannot be preserved
+    #[arg(long)]
+    allow_partial: bool,
+    /// Output storage layout (inferred from the output path when omitted)
+    #[arg(long, value_enum)]
+    output_layout: Option<OutputLayout>,
+}
+
+impl MigrateArgs {
+    fn run(&self) -> AppResult<miette::Report> {
+        run_migrate(
+            self.input.clone(),
+            MigrateCommandOptions {
+                output: self.output.clone(),
+                target_version: self.target_version.clone(),
+                force_refresh: self.force_refresh,
+                no_cache: self.no_cache,
+                json: self.json,
+                expanded: self.expanded,
+                allow_partial: self.allow_partial,
+                output_layout: self.output_layout,
+            },
+        )
+    }
 }
 
 /// Application session for Morphir CLI
@@ -453,6 +497,7 @@ impl AppSession for MorphirSession {
                 .await
             }
             Commands::Transform { input, output } => run_transform(input.clone(), output.clone()),
+            Commands::Migrate(args) => args.run(),
             Commands::Config { action } => match action {
                 ConfigAction::Get {
                     key,
@@ -502,29 +547,7 @@ impl AppSession for MorphirSession {
                 ExtensionAction::Uninstall { name } => run_extension_uninstall(name.clone()),
             },
             Commands::Ir { action } => match action {
-                IrAction::Migrate {
-                    input,
-                    output,
-                    target_version,
-                    force_refresh,
-                    no_cache,
-                    json,
-                    expanded,
-                    allow_partial,
-                    output_layout,
-                } => run_migrate(
-                    input.clone(),
-                    MigrateCommandOptions {
-                        output: output.clone(),
-                        target_version: target_version.clone(),
-                        force_refresh: *force_refresh,
-                        no_cache: *no_cache,
-                        json: *json,
-                        expanded: *expanded,
-                        allow_partial: *allow_partial,
-                        output_layout: *output_layout,
-                    },
-                ),
+                IrAction::Migrate(args) => args.run(),
             },
             Commands::Gleam {
                 action,
@@ -632,35 +655,18 @@ async fn main() -> starbase::MainResult {
         return Ok(std::process::ExitCode::SUCCESS);
     }
 
-    // Handle ir subcommand early (before starbase) to avoid double execution
-    if args.len() >= 3 && args[1] == "ir" {
+    // Handle migration subcommands early (before starbase) to avoid double execution
+    if (args.len() >= 2 && args[1] == "migrate") || (args.len() >= 3 && args[1] == "ir") {
         let cli = Cli::parse();
-        if let Some(Commands::Ir { action }) = cli.command {
-            let result = match action {
-                IrAction::Migrate {
-                    input,
-                    output,
-                    target_version,
-                    force_refresh,
-                    no_cache,
-                    json,
-                    expanded,
-                    allow_partial,
-                    output_layout,
-                } => run_migrate(
-                    input,
-                    MigrateCommandOptions {
-                        output,
-                        target_version,
-                        force_refresh,
-                        no_cache,
-                        json,
-                        expanded,
-                        allow_partial,
-                        output_layout,
-                    },
-                ),
-            };
+        let migrate_args = match cli.command {
+            Some(Commands::Migrate(args)) => Some(args),
+            Some(Commands::Ir {
+                action: IrAction::Migrate(args),
+            }) => Some(args),
+            _ => None,
+        };
+        if let Some(migrate_args) = migrate_args {
+            let result = migrate_args.run();
             match result {
                 Ok(Some(code)) => return Ok(std::process::ExitCode::from(code)),
                 Ok(None) => return Ok(std::process::ExitCode::SUCCESS),
