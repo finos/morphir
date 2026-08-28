@@ -286,41 +286,35 @@ bd sync               # Commit and push changes
 
 ### Session Protocol
 
-**Before ending any session:**
-
-```bash
-git status              # Check what changed
-git add <files>         # Stage code changes
-bd sync                 # Commit beads changes
-git commit -m "..."     # Commit code
-git push                # Push to remote
-```
+Session-close git behavior is governed by the **Agent Context Profiles** in the
+managed Beads block below. The default (**Conservative**) profile does NOT
+commit or push unless explicitly asked — at handoff, report changed files,
+validation results, and the exact commands you would run.
 
 ## Landing the Plane (Session Completion)
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
-
-**MANDATORY WORKFLOW:**
+**When ending a work session**, complete the steps below. Steps 1–3 and 5
+apply to every session; step 4 depends on the active profile.
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
 2. **Run quality gates** (if code changed) - Tests, linters, builds
 3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   bd sync
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
-
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
+4. **Handle git/sync by active profile:**
+   - **Conservative (default) / minimal**: do NOT commit or push unless the
+     user asked for it this session. Report status and the proposed commands.
+   - **Team-maintainer (explicit repository opt-in only)**: commit and push as
+     part of session close — work is then not complete until `git push`
+     succeeds:
+     ```bash
+     git pull --rebase
+     bd sync
+     git push
+     git status  # MUST show "up to date with origin"
+     ```
+     If push fails under this profile, resolve and retry until it succeeds. A
+     current "do not commit" or "do not push" instruction still wins.
+5. **Hand off** - Provide context for next session: changes, validation,
+   issue status, and any blocked sync/commit/push step
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:970c3bf2 -->
 ## Beads Issue Tracker
