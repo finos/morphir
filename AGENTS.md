@@ -362,6 +362,7 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
    git status
 
    # Team-maintainer opt-in only, unless current instructions forbid it:
+   git add <files> && git commit -m "..."   # commit code before pulling
    git pull --rebase
    bd dolt push
    git push
