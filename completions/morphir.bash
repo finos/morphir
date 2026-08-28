@@ -283,7 +283,485 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
         complete output type=path
     }
 }
-cmd gleam display_order=12 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Gleam language binding commands" unknown_flags=error {
+cmd kb display_order=12 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage the knowledge base under kb/ — OKF bundles and concept documents" unknown_flags=error {
+    cmd list display_order=0 args_override_self=#false help="List bundles, or one bundle's concepts" unknown_flags=error {
+        flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+            arg <PATH>
+        }
+        flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+        flag --bundle help="Show concepts within this bundle (name or group/name)" {
+            arg <BUNDLE>
+        }
+    }
+    cmd show display_order=1 args_override_self=#false help="Show one document: frontmatter, outbound links, heading outline" unknown_flags=error {
+        flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+            arg <PATH>
+        }
+        flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+        flag --path help="Concept path — bundle-relative (/x.md) or a path suffix" required=#true {
+            arg <PATH>
+        }
+        flag --bundle help="Bundle to resolve a bundle-relative path against" {
+            arg <BUNDLE>
+        }
+        flag --body help="Also include the document body"
+    }
+    cmd search display_order=2 args_override_self=#false help="Search concepts by metadata, body text, or the SQLite index" unknown_flags=error {
+        flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+            arg <PATH>
+        }
+        flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+        flag --query help="Text to look for in titles, descriptions, tags and paths" {
+            arg <QUERY>
+        }
+        flag --body help="Also search document bodies"
+        flag --type help="Filter by frontmatter type" {
+            arg <TYPE_FILTER>
+        }
+        flag --tag help="Filter by tag (repeatable)" var=#true {
+            arg <TAG>… var=#true
+        }
+        flag --status help="Filter by status" {
+            arg <STATUS>
+        }
+        flag --bundle help="Restrict to one bundle" {
+            arg <BUNDLE>
+        }
+        flag --index help="Use the SQLite index for full-text search — faster, and ranks by relevance"
+        flag --limit help="Row limit when using --index" default="20" {
+            arg <LIMIT>
+        }
+        flag --db help="Index database path (default: .dev/kb/index.db under the repository root)" {
+            arg <DB>
+        }
+    }
+    cmd check display_order=3 args_override_self=#false help="Run every check and exit non-zero when there are errors" unknown_flags=error {
+        flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+            arg <PATH>
+        }
+        flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+        flag --refs help="Reference checkout root for provenance checks (default: .refs under the repository root)" {
+            arg <REFS>
+        }
+        flag --no-provenance help="Skip provenance checks against .refs/"
+        flag --verbose help="Include info-level findings"
+        flag --strict help="Exit non-zero when warnings are present, not just errors"
+        flag --allow-dangling help="Report dangling links as warnings — OKF's stance that they mark not-yet-written knowledge"
+        flag --out help="Write the report here instead of stdout (convention: under .dev/)" {
+            arg <OUT>
+        }
+    }
+    cmd index display_order=4 args_override_self=#false help="Build the SQLite index over the knowledge base" unknown_flags=error {
+        flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+            arg <PATH>
+        }
+        flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+        flag --db help="Database path (default: .dev/kb/index.db under the repository root)" {
+            arg <DB>
+        }
+        flag --status help="Report the index's freshness instead of rebuilding it"
+    }
+    cmd refresh display_order=5 args_override_self=#false help="Bring derived state — markdown indexes and the SQLite index — back in line" unknown_flags=error {
+        flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+            arg <PATH>
+        }
+        flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+        flag --dry-run help="Report what would change without writing anything"
+        flag --force help="Rebuild the SQLite index even when it is already up to date"
+        flag --add-missing help="Append index entries for concepts no index links to"
+        flag --section help="Index section to append missing entries under" default=Orientation {
+            arg <SECTION>
+        }
+        flag --no-markdown help="Skip the markdown indexes — same as `kb refresh db`"
+        flag --no-db help="Skip the SQLite index — same as `kb refresh markdown`"
+        flag --db help="Database path (default: .dev/kb/index.db under the repository root)" {
+            arg <DB>
+        }
+        cmd markdown display_order=0 args_override_self=#false help="Rewrite drifted index bullets only — same as `kb refresh --no-db`" unknown_flags=error {
+            alias md hide=#true
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --dry-run help="Report what would change without writing anything"
+            flag --add-missing help="Append index entries for concepts no index links to"
+            flag --section help="Index section to append missing entries under" default=Orientation {
+                arg <SECTION>
+            }
+        }
+        cmd db display_order=1 args_override_self=#false help="Rebuild the SQLite index only — same as `kb refresh --no-markdown`" unknown_flags=error {
+            alias index hide=#true
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --dry-run help="Report what would change without writing anything"
+            flag --force help="Rebuild even when the index is already up to date"
+            flag --db help="Database path (default: .dev/kb/index.db under the repository root)" {
+                arg <DB>
+            }
+        }
+    }
+    cmd query display_order=6 args_override_self=#false help="Run read-only SQL over the index" unknown_flags=error {
+        flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+            arg <PATH>
+        }
+        flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+        flag --sql help="SQL to run. Read-only: SELECT, WITH, PRAGMA or EXPLAIN" required=#true {
+            arg <SQL>
+        }
+        flag --db help="Database path (default: .dev/kb/index.db under the repository root)" {
+            arg <DB>
+        }
+    }
+    cmd new-bundle display_order=7 args_override_self=#false help="Scaffold a new bundle with its index.md and log.md" unknown_flags=error {
+        flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+            arg <PATH>
+        }
+        flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+        flag --name help="Bundle slug, e.g. morphir-ir-v5" required=#true {
+            arg <NAME>
+        }
+        flag --group help="Grouping directory under bundles/, e.g. morphir" {
+            arg <GROUP>
+        }
+        flag --title help="Bundle title" required=#true {
+            arg <TITLE>
+        }
+        flag --description help="One-sentence bundle description" required=#true {
+            arg <DESCRIPTION>
+        }
+        flag --okf-version help="OKF version to declare" default="0.2" {
+            arg <OKF_VERSION>
+        }
+        flag --date help="Override today's date (YYYY-MM-DD)" {
+            arg <DATE>
+        }
+    }
+    cmd add-concept display_order=8 args_override_self=#false help="Scaffold a concept and wire it into its index and log" unknown_flags=error {
+        flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+            arg <PATH>
+        }
+        flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+        flag --bundle help="Target bundle (name or group/name)" required=#true {
+            arg <BUNDLE>
+        }
+        flag --path help="Path within the bundle, e.g. naming.md or design/naming.md" required=#true {
+            arg <PATH>
+        }
+        flag --type help="OKF type — the one required frontmatter field" required=#true {
+            arg <CONCEPT_TYPE>
+        }
+        flag --title help="Concept title" required=#true {
+            arg <TITLE>
+        }
+        flag --description help="One-sentence description" required=#true {
+            arg <DESCRIPTION>
+        }
+        flag --tag help="Tag (repeatable)" var=#true {
+            arg <TAG>… var=#true
+        }
+        flag --status help="Lifecycle status: draft, stable or deprecated" {
+            arg <STATUS>
+        }
+        flag --source help="Source URL (repeatable); use id=URL or id=URL=Title to name it" var=#true {
+            arg <SOURCE>… var=#true
+        }
+        flag --section help="Index section heading to file the entry under" default=Orientation {
+            arg <SECTION>
+        }
+        flag --generated-by help="Actor for the generated.by frontmatter, e.g. process:kb-seed" {
+            arg <GENERATED_BY>
+        }
+        flag --date help="Override today's date (YYYY-MM-DD)" {
+            arg <DATE>
+        }
+    }
+    cmd sync display_order=9 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Mirror an upstream repository into a bundle and project edits back out" unknown_flags=error {
+        cmd status display_order=0 args_override_self=#false help="What has moved, here and upstream" unknown_flags=error {
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --bundle help="Bundle to sync (defaults to the one whose index declares `sync: true`)" {
+                arg <BUNDLE>
+            }
+            flag --refs help="Reference checkouts root (default: .refs under the repository root)" {
+                arg <REFS>
+            }
+            flag --no-upstream help="Do not consult the upstream checkout — compare the mirror against the lockfile only"
+            flag --verbose help="List clean files too"
+            flag --strict help="Exit non-zero when anything has diverged"
+        }
+        cmd pull display_order=1 args_override_self=#false help="Import upstream changes and rewrite the lockfile" unknown_flags=error {
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --bundle help="Bundle to sync (defaults to the one whose index declares `sync: true`)" {
+                arg <BUNDLE>
+            }
+            flag --refs help="Reference checkouts root (default: .refs under the repository root)" {
+                arg <REFS>
+            }
+            flag --dry-run help="Report what would change without writing anything"
+            flag --theirs help="Take upstream's version of files that changed on both sides"
+            flag --prune help="Delete mirrored files that upstream has removed"
+            flag --date help="Override today's date (YYYY-MM-DD)" {
+                arg <DATE>
+            }
+        }
+        cmd push display_order=2 args_override_self=#false help="Project locally-edited files back into an upstream checkout" unknown_flags=error {
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --bundle help="Bundle to sync (defaults to the one whose index declares `sync: true`)" {
+                arg <BUNDLE>
+            }
+            flag --refs help="Reference checkouts root (default: .refs under the repository root)" {
+                arg <REFS>
+            }
+            flag --to help="Checkout to write the upstream form into (default: the reference checkout)" {
+                arg <TO>
+            }
+            flag --dry-run help="Report what would be written without writing anything"
+            flag --include-diverged help="Also export files that changed upstream since the last import"
+        }
+        cmd diff display_order=3 args_override_self=#false help="Diff upstream's copy against the upstream form of ours" unknown_flags=error {
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --bundle help="Bundle to sync (defaults to the one whose index declares `sync: true`)" {
+                arg <BUNDLE>
+            }
+            flag --refs help="Reference checkouts root (default: .refs under the repository root)" {
+                arg <REFS>
+            }
+            flag --path help="Mirrored path, e.g. docs/spec/draft/types.md" hide=#true conflicts=PATH {
+                arg <PATH>
+            }
+            flag --raw help="Print the patch alone — `git apply` takes it in the upstream checkout" conflicts=--json
+            flag "-z --null" help="Split the patterns read from stdin on NUL rather than newline, pairing with `find -print0`. Only meaningful alongside `-`"
+            arg "[PATH]…" help="Mirrored paths or globs, e.g. docs/spec/draft/types.md or 'docs/**'. Quote a glob: an unquoted one is expanded by the shell against the working directory before this ever sees it. No argument diffs every mirrored file; `-` reads the remaining patterns from stdin, one per line" required=#false var=#true var_min=1
+        }
+    }
+    cmd intent display_order=10 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage intent — work recorded as prose with a lifecycle" unknown_flags=error {
+        cmd init display_order=0 args_override_self=#false help="Scaffold an intent bundle in a knowledge base that has none" unknown_flags=error {
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --name help="Bundle name under bundles/" default=intent {
+                arg <NAME>
+            }
+            flag --system help="Package URL identifying the system, e.g. pkg:maven/org.finos.morphir/morphir-core" {
+                arg <SYSTEM>
+            }
+            flag --capability-bundle help="Bundle label holding capabilities, e.g. morphir/morphir-scala" {
+                arg <CAPABILITY_BUNDLE>
+            }
+            flag --stale-after-days help="Days before an active intent is reported stale" default="60" {
+                arg <STALE_AFTER_DAYS>
+            }
+            flag --date help="Override today's date (YYYY-MM-DD)" {
+                arg <DATE>
+            }
+        }
+        cmd new display_order=1 args_override_self=#false help="Create a new intent record in Backlog" unknown_flags=error {
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --title help="What the work is" required=#true {
+                arg <TITLE>
+            }
+            flag --description help="One sentence — also the index entry" required=#true {
+                arg <DESCRIPTION>
+            }
+            flag --kind help="feature, bug, performance, security, deprecation, removal, refactor, docs, test, build, spike" required=#true {
+                arg <KIND>
+            }
+            flag --breaking help="Marks a compatibility break — orthogonal to kind"
+            flag --issue help="GitHub issue number this came from" {
+                arg <ISSUE>
+            }
+            flag --tag help="Tag (repeatable)" var=#true {
+                arg <TAG>… var=#true
+            }
+            flag --date help="Override today's date (YYYY-MM-DD)" {
+                arg <DATE>
+            }
+        }
+        cmd list display_order=2 args_override_self=#false help="List intent records, grouped by state" unknown_flags=error {
+            alias ls hide=#true
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --state help="Filter by state" {
+                arg <STATE>
+            }
+            flag --kind help="Filter by kind" {
+                arg <KIND>
+            }
+            flag --breaking help="Only breaking intent"
+            flag --open help="Only open intent — excludes Released, Cancelled, Superseded"
+            flag --user-visible help="Only user-visible kinds, as release notes would show"
+        }
+        cmd show display_order=3 args_override_self=#false help="Show one intent record" unknown_flags=error {
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --id help="Intent id or slug, e.g. 0007" hide=#true conflicts=ID {
+                arg <ID>
+            }
+            arg "[ID]" help="Intent id or slug, e.g. 0007" required=#false
+        }
+        cmd check display_order=4 args_override_self=#false help="Check every intent record's obligations" unknown_flags=error {
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --strict help="Exit non-zero on warnings too"
+            flag --date help="Override today's date (YYYY-MM-DD)" {
+                arg <DATE>
+            }
+        }
+        cmd refine display_order=5 args_override_self=#false help="Move an intent to Refinement" unknown_flags=error {
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --id help="Intent id or slug" hide=#true conflicts=ID {
+                arg <ID>
+            }
+            flag --state help="Target state (move only)" {
+                arg <STATE>
+            }
+            flag --date help="Override today's date (YYYY-MM-DD)" {
+                arg <DATE>
+            }
+            arg "[ID]" help="Intent id or slug" required=#false
+        }
+        cmd start display_order=6 args_override_self=#false help="Move an intent to InProgress" unknown_flags=error {
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --id help="Intent id or slug" hide=#true conflicts=ID {
+                arg <ID>
+            }
+            flag --state help="Target state (move only)" {
+                arg <STATE>
+            }
+            flag --date help="Override today's date (YYYY-MM-DD)" {
+                arg <DATE>
+            }
+            arg "[ID]" help="Intent id or slug" required=#false
+        }
+        cmd move display_order=7 args_override_self=#false help="Move an intent to any state" unknown_flags=error {
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --id help="Intent id or slug" hide=#true conflicts=ID {
+                arg <ID>
+            }
+            flag --state help="Target state (move only)" {
+                arg <STATE>
+            }
+            flag --date help="Override today's date (YYYY-MM-DD)" {
+                arg <DATE>
+            }
+            arg "[ID]" help="Intent id or slug" required=#false
+        }
+        cmd release display_order=8 args_override_self=#false help="Mark an intent Released, linking the capability it produced" unknown_flags=error {
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --id help="Intent id or slug" hide=#true conflicts=ID {
+                arg <ID>
+            }
+            flag --capability help="Capability this produced, as bundle-label:/path.md" {
+                arg <CAPABILITY>
+            }
+            flag --artifact help="Package URL of a shipped artifact (repeatable)" var=#true {
+                arg <ARTIFACT>… var=#true
+            }
+            flag --date help="Override today's date (YYYY-MM-DD)" {
+                arg <DATE>
+            }
+            arg "[ID]" help="Intent id or slug" required=#false
+        }
+        cmd cancel display_order=9 args_override_self=#false help="Mark an intent Cancelled, recording why" unknown_flags=error {
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --id help="Intent id or slug" hide=#true conflicts=ID {
+                arg <ID>
+            }
+            flag --reason help="Why the work is not being done" {
+                arg <REASON>
+            }
+            flag --date help="Override today's date (YYYY-MM-DD)" {
+                arg <DATE>
+            }
+            arg "[ID]" help="Intent id or slug" required=#false
+        }
+        cmd supersede display_order=10 args_override_self=#false help="Mark an intent Superseded by another" unknown_flags=error {
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --id help="Intent id or slug" hide=#true conflicts=ID {
+                arg <ID>
+            }
+            flag --by help="Intent id that replaces it" {
+                arg <BY>
+            }
+            flag --date help="Override today's date (YYYY-MM-DD)" {
+                arg <DATE>
+            }
+            arg "[ID]" help="Intent id or slug" required=#false
+        }
+    }
+    cmd decision display_order=11 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Read decision records" unknown_flags=error {
+        cmd list display_order=0 args_override_self=#false help="List decision records, grouped by state" unknown_flags=error {
+            alias ls hide=#true
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --state help="Filter by state" {
+                arg <STATE>
+            }
+            flag --in-force help="Only decisions that still govern — excludes Superseded and Withdrawn"
+            flag --bundle help="Restrict to one bundle" {
+                arg <BUNDLE>
+            }
+        }
+        cmd show display_order=1 args_override_self=#false help="Show one decision record" unknown_flags=error {
+            flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
+                arg <PATH>
+            }
+            flag --json help="Emit JSON instead of text, for chaining and for agent consumption"
+            flag --id help="Decision id or slug, e.g. 0004" hide=#true conflicts=ID {
+                arg <ID>
+            }
+            flag --bundle help="Bundle to look in — required when an id means a record in more than one" {
+                arg <BUNDLE>
+            }
+            flag --body help="Also include the document body"
+            arg "[ID]" help="Decision id or slug, e.g. 0004" required=#false
+        }
+    }
+}
+cmd gleam display_order=13 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Gleam language binding commands" unknown_flags=error {
     flag --json help="Output as JSON"
     flag --json-lines help="Output as JSON Lines (streaming)"
     cmd compile display_order=0 args_override_self=#false help="Compile Gleam source to Morphir IR" unknown_flags=error {
@@ -335,16 +813,16 @@ cmd gleam display_order=12 subcommand_required=#true arg_required_else_help=#tru
         }
     }
 }
-cmd schema display_order=13 args_override_self=#false help="Generate JSON Schema for Morphir IR" unknown_flags=error {
+cmd schema display_order=14 args_override_self=#false help="Generate JSON Schema for Morphir IR" unknown_flags=error {
     flag "-o --output" help="Output file path (optional)" {
         arg <OUTPUT>
     }
     complete output type=path
 }
-cmd version display_order=14 args_override_self=#false help="Print version information" unknown_flags=error {
+cmd version display_order=15 args_override_self=#false help="Print version information" unknown_flags=error {
     flag --json help="Output version info as JSON"
 }
-cmd usage hide=#true display_order=15 args_override_self=#false help="Output usage spec for documentation generation" unknown_flags=error
+cmd usage hide=#true display_order=16 args_override_self=#false help="Output usage spec for documentation generation" unknown_flags=error
 __USAGE_EOF__
     # shellcheck disable=SC2207
 	COMPREPLY=($(compgen -W "$(command usage complete-word --shell bash -f "$spec_file" --cword="$cword" -- "${words[@]}")" -- "$cur"))
