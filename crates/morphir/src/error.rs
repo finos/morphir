@@ -103,9 +103,51 @@ pub fn convert_extension_diagnostics(
             }
             .to_string(),
             message: d.message.clone(),
-            file: d.location.as_ref().map(|l| l.file.clone()),
-            line: d.location.as_ref().map(|l| l.start_line),
-            column: d.location.as_ref().map(|l| l.start_col),
+            file: d.location.as_ref().map(|location| location.uri.clone()),
+            line: d
+                .location
+                .as_ref()
+                .map(|location| location.range.start.line),
+            column: d
+                .location
+                .as_ref()
+                .map(|location| location.range.start.character),
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use morphir_extension_sdk::{DiagnosticSeverity, SourceLocation, SourcePosition, SourceRange};
+
+    #[test]
+    fn extension_diagnostics_preserve_uri_and_zero_based_start_position() {
+        let diagnostics = convert_extension_diagnostics(&[morphir_extension_sdk::Diagnostic {
+            severity: DiagnosticSeverity::Warning,
+            code: Some("TEST".to_owned()),
+            message: "example warning".to_owned(),
+            location: Some(SourceLocation {
+                uri: "file:///workspace/main.gleam".to_owned(),
+                range: SourceRange {
+                    start: SourcePosition {
+                        line: 4,
+                        character: 7,
+                    },
+                    end: SourcePosition {
+                        line: 4,
+                        character: 8,
+                    },
+                },
+            }),
+            related: Vec::new(),
+        }]);
+
+        assert_eq!(
+            diagnostics[0].file.as_deref(),
+            Some("file:///workspace/main.gleam")
+        );
+        assert_eq!(diagnostics[0].line, Some(4));
+        assert_eq!(diagnostics[0].column, Some(7));
+    }
 }
