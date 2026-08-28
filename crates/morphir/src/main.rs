@@ -10,11 +10,12 @@ pub mod output;
 mod tui;
 
 use commands::{
-    compile::CompileOptions, run_compile, run_config_get, run_config_path, run_config_show,
-    run_dist_install, run_dist_list, run_dist_uninstall, run_dist_update, run_extension_install,
-    run_extension_list, run_extension_uninstall, run_extension_update, run_generate,
-    run_gleam_compile, run_gleam_generate, run_gleam_roundtrip, run_migrate, run_tool_install,
-    run_tool_list, run_tool_uninstall, run_tool_update, run_transform, run_validate, run_version,
+    MigrateCommandOptions, OutputLayout, compile::CompileOptions, run_compile, run_config_get,
+    run_config_path, run_config_show, run_dist_install, run_dist_list, run_dist_uninstall,
+    run_dist_update, run_extension_install, run_extension_list, run_extension_uninstall,
+    run_extension_update, run_generate, run_gleam_compile, run_gleam_generate, run_gleam_roundtrip,
+    run_migrate, run_tool_install, run_tool_list, run_tool_uninstall, run_tool_update,
+    run_transform, run_validate, run_version,
 };
 
 /// Morphir CLI - Tools for functional domain modeling and business logic
@@ -347,7 +348,7 @@ enum IrAction {
     /// Migrate IR between versions
     #[command(long_about = "Migrate IR between versions
 
-Converts Morphir IR between Classic (V1-V3) and V4 formats. Supports local files, URLs, and GitHub shorthand sources.
+Upgrades concrete Morphir IR V3 to V4 and re-encodes V4 IR. Supports local files, document-tree directories, URLs, and GitHub shorthand sources.
 
 **Examples:**
 
@@ -361,8 +362,8 @@ morphir ir migrate https://lcr-interactive.finos.org/server/morphir-ir.json -o .
 # Display in console with syntax highlighting (no -o)
 morphir ir migrate ./morphir-ir.json
 
-# Downgrade V4 to Classic
-morphir ir migrate ./morphir-ir-v4.json -o ./morphir-ir-classic.json --target-version classic
+# Write the V4 document-tree layout
+morphir ir migrate ./morphir-ir.json -o ./morphir-ir-v4/ --output-layout vfs
 ```
 
 See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tools/ir-migrate) for detailed real-world examples including the US Federal Reserve FR 2052a regulation model.")]
@@ -387,6 +388,12 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
         /// Use expanded (non-compact) format for V4 output
         #[arg(long)]
         expanded: bool,
+        /// Permit recoverable incomplete V4 nodes when a source construct cannot be preserved
+        #[arg(long)]
+        allow_partial: bool,
+        /// Output storage layout (inferred from the output path when omitted)
+        #[arg(long, value_enum)]
+        output_layout: Option<OutputLayout>,
     },
 }
 
@@ -503,14 +510,20 @@ impl AppSession for MorphirSession {
                     no_cache,
                     json,
                     expanded,
+                    allow_partial,
+                    output_layout,
                 } => run_migrate(
                     input.clone(),
-                    output.clone(),
-                    target_version.clone(),
-                    *force_refresh,
-                    *no_cache,
-                    *json,
-                    *expanded,
+                    MigrateCommandOptions {
+                        output: output.clone(),
+                        target_version: target_version.clone(),
+                        force_refresh: *force_refresh,
+                        no_cache: *no_cache,
+                        json: *json,
+                        expanded: *expanded,
+                        allow_partial: *allow_partial,
+                        output_layout: *output_layout,
+                    },
                 ),
             },
             Commands::Gleam {
@@ -632,14 +645,20 @@ async fn main() -> starbase::MainResult {
                     no_cache,
                     json,
                     expanded,
+                    allow_partial,
+                    output_layout,
                 } => run_migrate(
                     input,
-                    output,
-                    target_version,
-                    force_refresh,
-                    no_cache,
-                    json,
-                    expanded,
+                    MigrateCommandOptions {
+                        output,
+                        target_version,
+                        force_refresh,
+                        no_cache,
+                        json,
+                        expanded,
+                        allow_partial,
+                        output_layout,
+                    },
                 ),
             };
             match result {

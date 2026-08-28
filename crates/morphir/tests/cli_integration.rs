@@ -171,3 +171,196 @@ fn test_morphir_home_env_var_relocates_home_directory() {
         morphir_home.display()
     );
 }
+
+#[test]
+fn migrate_converts_a_real_v3_file_to_concrete_v4() {
+    let temp_dir = TempDir::new().unwrap();
+    let input = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../website/static/ir/examples/v3/greeting-example.json");
+    let output_path = temp_dir.path().join("greeting-v4.json");
+
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+        .args([
+            "ir",
+            "migrate",
+            input.to_str().unwrap(),
+            "--output",
+            output_path.to_str().unwrap(),
+            "--target-version",
+            "v4",
+        ])
+        .output()
+        .expect("failed to run morphir binary");
+
+    assert!(
+        output.status.success(),
+        "migration failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let migrated: morphir_core::ir::v4::IRFile =
+        serde_json::from_slice(&std::fs::read(output_path).unwrap()).unwrap();
+    assert_eq!(
+        migrated.format_version,
+        morphir_core::ir::v4::FormatVersion::Integer(4)
+    );
+}
+
+#[test]
+fn migrate_selects_compact_or_expanded_v4_type_encoding() {
+    let temp_dir = TempDir::new().unwrap();
+    let input = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../website/static/ir/examples/v3/greeting-example.json");
+    let compact = temp_dir.path().join("compact.json");
+    let expanded = temp_dir.path().join("expanded.json");
+
+    for (path, extra) in [(&compact, None), (&expanded, Some("--expanded"))] {
+        let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"));
+        command.args([
+            "ir",
+            "migrate",
+            input.to_str().unwrap(),
+            "--output",
+            path.to_str().unwrap(),
+            "--target-version",
+            "v4",
+        ]);
+        if let Some(extra) = extra {
+            command.arg(extra);
+        }
+        let result = command.output().unwrap();
+        assert!(result.status.success());
+    }
+
+    let type_expression = |path: &PathBuf| {
+        let value: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+        value["distribution"]["Library"]["def"]["modules"]["main"]["value"]["types"]
+            ["product-id"]["value"]["value"]["TypeAliasDefinition"]["typeExp"]
+            .clone()
+    };
+    assert!(type_expression(&compact).is_string());
+    assert!(type_expression(&expanded)["Reference"].is_object());
+}
+
+#[test]
+fn migrate_failure_does_not_replace_an_existing_output() {
+    let temp_dir = TempDir::new().unwrap();
+    let input = temp_dir.path().join("v2.json");
+    let output_path = temp_dir.path().join("result.json");
+    let mut source: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../website/static/ir/examples/v3/greeting-example.json"
+    ))
+    .unwrap();
+    source["formatVersion"] = 2.into();
+    std::fs::write(&input, serde_json::to_vec(&source).unwrap()).unwrap();
+    std::fs::write(&output_path, "unchanged").unwrap();
+
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+        .args([
+            "ir",
+            "migrate",
+            input.to_str().unwrap(),
+            "--output",
+            output_path.to_str().unwrap(),
+            "--target-version",
+            "v4",
+        ])
+        .output()
+        .expect("failed to run morphir binary");
+
+    assert!(!output.status.success());
+    assert_eq!(std::fs::read_to_string(output_path).unwrap(), "unchanged");
+}
+
+#[test]
+fn migrate_reports_unsupported_v4_downgrade_without_replacing_output() {
+    let temp_dir = TempDir::new().unwrap();
+    let input = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../website/static/ir/examples/v4/complete-example.json");
+    let output_path = temp_dir.path().join("result.json");
+    std::fs::write(&output_path, "unchanged").unwrap();
+
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+        .args([
+            "ir",
+            "migrate",
+            input.to_str().unwrap(),
+            "--output",
+            output_path.to_str().unwrap(),
+            "--target-version",
+            "v3",
+        ])
+        .output()
+        .expect("failed to run morphir binary");
+
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("unsupported-v4-distribution"));
+    assert_eq!(std::fs::read_to_string(output_path).unwrap(), "unchanged");
+}
+
+#[test]
+fn migrate_writes_and_reads_a_v4_document_tree() {
+    let temp_dir = TempDir::new().unwrap();
+    let input = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../website/static/ir/examples/v3/greeting-example.json");
+    let tree = temp_dir.path().join("greeting.morphir-dist");
+    let single_file = temp_dir.path().join("round-trip.json");
+
+    let to_tree = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+        .args([
+            "ir",
+            "migrate",
+            input.to_str().unwrap(),
+            "--output",
+            tree.to_str().unwrap(),
+            "--output-layout",
+            "vfs",
+            "--target-version",
+            "v4",
+        ])
+        .output()
+        .expect("failed to migrate to a document tree");
+    assert!(
+        to_tree.status.success(),
+        "migration failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&to_tree.stdout),
+        String::from_utf8_lossy(&to_tree.stderr)
+    );
+    assert!(tree.join("manifest.json").is_file());
+
+    let to_file = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+        .args([
+            "ir",
+            "migrate",
+            tree.to_str().unwrap(),
+            "--output",
+            single_file.to_str().unwrap(),
+            "--output-layout",
+            "single-file",
+            "--target-version",
+            "v4",
+        ])
+        .output()
+        .expect("failed to migrate the document tree to a file");
+    assert!(
+        to_file.status.success(),
+        "migration failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&to_file.stdout),
+        String::from_utf8_lossy(&to_file.stderr)
+    );
+    serde_json::from_slice::<morphir_core::ir::v4::IRFile>(&std::fs::read(single_file).unwrap())
+        .unwrap();
+}
+
+#[test]
+fn migrate_accepts_partial_and_encoding_flags() {
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+        .args(["ir", "migrate", "--help"])
+        .output()
+        .expect("failed to read migrate help");
+    let help = String::from_utf8_lossy(&output.stdout);
+    assert!(help.contains("--allow-partial"));
+    assert!(help.contains("--expanded"));
+    assert!(help.contains("--output-layout"));
+}
