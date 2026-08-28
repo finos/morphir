@@ -87,6 +87,102 @@ Manage Morphir IR
 \fBir migrate\fR
 Migrate IR between versions
 .TP
+\fBkb\fR
+Manage the knowledge base under kb/ — OKF bundles and concept documents
+.TP
+\fBkb list\fR
+List bundles, or one bundle's concepts
+.TP
+\fBkb show\fR
+Show one document: frontmatter, outbound links, heading outline
+.TP
+\fBkb search\fR
+Search concepts by metadata, body text, or the SQLite index
+.TP
+\fBkb check\fR
+Run every check and exit non\-zero when there are errors
+.TP
+\fBkb index\fR
+Build the SQLite index over the knowledge base
+.TP
+\fBkb refresh\fR
+Bring derived state — markdown indexes and the SQLite index — back in line
+.TP
+\fBkb refresh markdown\fR
+Rewrite drifted index bullets only — same as `kb refresh \-\-no\-db`
+.TP
+\fBkb refresh db\fR
+Rebuild the SQLite index only — same as `kb refresh \-\-no\-markdown`
+.TP
+\fBkb query\fR
+Run read\-only SQL over the index
+.TP
+\fBkb new\-bundle\fR
+Scaffold a new bundle with its index.md and log.md
+.TP
+\fBkb add\-concept\fR
+Scaffold a concept and wire it into its index and log
+.TP
+\fBkb sync\fR
+Mirror an upstream repository into a bundle and project edits back out
+.TP
+\fBkb sync status\fR
+What has moved, here and upstream
+.TP
+\fBkb sync pull\fR
+Import upstream changes and rewrite the lockfile
+.TP
+\fBkb sync push\fR
+Project locally\-edited files back into an upstream checkout
+.TP
+\fBkb sync diff\fR
+Diff upstream's copy against the upstream form of ours
+.TP
+\fBkb intent\fR
+Manage intent — work recorded as prose with a lifecycle
+.TP
+\fBkb intent init\fR
+Scaffold an intent bundle in a knowledge base that has none
+.TP
+\fBkb intent new\fR
+Create a new intent record in Backlog
+.TP
+\fBkb intent list\fR
+List intent records, grouped by state
+.TP
+\fBkb intent show\fR
+Show one intent record
+.TP
+\fBkb intent check\fR
+Check every intent record's obligations
+.TP
+\fBkb intent refine\fR
+Move an intent to Refinement
+.TP
+\fBkb intent start\fR
+Move an intent to InProgress
+.TP
+\fBkb intent move\fR
+Move an intent to any state
+.TP
+\fBkb intent release\fR
+Mark an intent Released, linking the capability it produced
+.TP
+\fBkb intent cancel\fR
+Mark an intent Cancelled, recording why
+.TP
+\fBkb intent supersede\fR
+Mark an intent Superseded by another
+.TP
+\fBkb decision\fR
+Read decision records
+.TP
+\fBkb decision list\fR
+List decision records, grouped by state
+.TP
+\fBkb decision show\fR
+Show one decision record
+.TP
 \fBgleam\fR
 Gleam language binding commands
 .TP
@@ -484,6 +580,793 @@ Output serialization profile (json or yaml; extension then YAML default when omi
 .TP
 \fB<INPUT>\fR
 Input file, directory, or remote source (e.g., github:owner/repo, URL)
+.SH "MORPHIR KB LIST"
+List bundles, or one bundle's concepts
+.PP
+\fBUsage:\fR morphir kb list [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-bundle\fR \fI<BUNDLE>\fR
+Show concepts within this bundle (name or group/name)
+.SH "MORPHIR KB SHOW"
+Show one document: frontmatter, outbound links, heading outline
+.PP
+\fBUsage:\fR morphir kb show [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-path\fR \fI<PATH>\fR
+Concept path — bundle\-relative (/x.md) or a path suffix
+.TP
+\fB\-\-bundle\fR \fI<BUNDLE>\fR
+Bundle to resolve a bundle\-relative path against
+.TP
+\fB\-\-body\fR
+Also include the document body
+.SH "MORPHIR KB SEARCH"
+Search concepts by metadata, body text, or the SQLite index
+.PP
+\fBUsage:\fR morphir kb search [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-query\fR \fI<QUERY>\fR
+Text to look for in titles, descriptions, tags and paths
+.TP
+\fB\-\-body\fR
+Also search document bodies
+.TP
+\fB\-\-type\fR \fI<TYPE_FILTER>\fR
+Filter by frontmatter type
+.TP
+\fB\-\-tag\fR \fI<TAG>\fR
+Filter by tag (repeatable)
+.TP
+\fB\-\-status\fR \fI<STATUS>\fR
+Filter by status
+.TP
+\fB\-\-bundle\fR \fI<BUNDLE>\fR
+Restrict to one bundle
+.TP
+\fB\-\-index\fR
+Use the SQLite index for full\-text search — faster, and ranks by relevance
+.TP
+\fB\-\-limit\fR \fI<LIMIT>\fR
+Row limit when using \-\-index
+.RS
+\fIDefault: \fR20
+.RE
+.TP
+\fB\-\-db\fR \fI<DB>\fR
+Index database path (default: .dev/kb/index.db under the repository root)
+.SH "MORPHIR KB CHECK"
+Run every check and exit non\-zero when there are errors
+.PP
+\fBUsage:\fR morphir kb check [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-refs\fR \fI<REFS>\fR
+Reference checkout root for provenance checks (default: .refs under the repository root)
+.TP
+\fB\-\-no\-provenance\fR
+Skip provenance checks against .refs/
+.TP
+\fB\-\-verbose\fR
+Include info\-level findings
+.TP
+\fB\-\-strict\fR
+Exit non\-zero when warnings are present, not just errors
+.TP
+\fB\-\-allow\-dangling\fR
+Report dangling links as warnings — OKF's stance that they mark not\-yet\-written knowledge
+.TP
+\fB\-\-out\fR \fI<OUT>\fR
+Write the report here instead of stdout (convention: under .dev/)
+.SH "MORPHIR KB INDEX"
+Build the SQLite index over the knowledge base
+.PP
+\fBUsage:\fR morphir kb index [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-db\fR \fI<DB>\fR
+Database path (default: .dev/kb/index.db under the repository root)
+.TP
+\fB\-\-status\fR
+Report the index's freshness instead of rebuilding it
+.SH "MORPHIR KB REFRESH"
+Bring derived state — markdown indexes and the SQLite index — back in line
+.PP
+\fBUsage:\fR morphir kb refresh [OPTIONS] [COMMAND]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-dry\-run\fR
+Report what would change without writing anything
+.TP
+\fB\-\-force\fR
+Rebuild the SQLite index even when it is already up to date
+.TP
+\fB\-\-add\-missing\fR
+Append index entries for concepts no index links to
+.TP
+\fB\-\-section\fR \fI<SECTION>\fR
+Index section to append missing entries under
+.RS
+\fIDefault: \fROrientation
+.RE
+.TP
+\fB\-\-no\-markdown\fR
+Skip the markdown indexes — same as `kb refresh db`
+.TP
+\fB\-\-no\-db\fR
+Skip the SQLite index — same as `kb refresh markdown`
+.TP
+\fB\-\-db\fR \fI<DB>\fR
+Database path (default: .dev/kb/index.db under the repository root)
+.SH "MORPHIR KB REFRESH MARKDOWN"
+Rewrite drifted index bullets only — same as `kb refresh \-\-no\-db`
+.PP
+\fBUsage:\fR morphir kb refresh markdown [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-dry\-run\fR
+Report what would change without writing anything
+.TP
+\fB\-\-add\-missing\fR
+Append index entries for concepts no index links to
+.TP
+\fB\-\-section\fR \fI<SECTION>\fR
+Index section to append missing entries under
+.RS
+\fIDefault: \fROrientation
+.RE
+.SH "MORPHIR KB REFRESH DB"
+Rebuild the SQLite index only — same as `kb refresh \-\-no\-markdown`
+.PP
+\fBUsage:\fR morphir kb refresh db [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-dry\-run\fR
+Report what would change without writing anything
+.TP
+\fB\-\-force\fR
+Rebuild even when the index is already up to date
+.TP
+\fB\-\-db\fR \fI<DB>\fR
+Database path (default: .dev/kb/index.db under the repository root)
+.SH "MORPHIR KB QUERY"
+Run read\-only SQL over the index
+.PP
+\fBUsage:\fR morphir kb query [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-sql\fR \fI<SQL>\fR
+SQL to run. Read\-only: SELECT, WITH, PRAGMA or EXPLAIN
+.TP
+\fB\-\-db\fR \fI<DB>\fR
+Database path (default: .dev/kb/index.db under the repository root)
+.SH "MORPHIR KB NEW-BUNDLE"
+Scaffold a new bundle with its index.md and log.md
+.PP
+\fBUsage:\fR morphir kb new\-bundle [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-name\fR \fI<NAME>\fR
+Bundle slug, e.g. morphir\-ir\-v5
+.TP
+\fB\-\-group\fR \fI<GROUP>\fR
+Grouping directory under bundles/, e.g. morphir
+.TP
+\fB\-\-title\fR \fI<TITLE>\fR
+Bundle title
+.TP
+\fB\-\-description\fR \fI<DESCRIPTION>\fR
+One\-sentence bundle description
+.TP
+\fB\-\-okf\-version\fR \fI<OKF_VERSION>\fR
+OKF version to declare
+.RS
+\fIDefault: \fR0.2
+.RE
+.TP
+\fB\-\-date\fR \fI<DATE>\fR
+Override today's date (YYYY\-MM\-DD)
+.SH "MORPHIR KB ADD-CONCEPT"
+Scaffold a concept and wire it into its index and log
+.PP
+\fBUsage:\fR morphir kb add\-concept [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-bundle\fR \fI<BUNDLE>\fR
+Target bundle (name or group/name)
+.TP
+\fB\-\-path\fR \fI<PATH>\fR
+Path within the bundle, e.g. naming.md or design/naming.md
+.TP
+\fB\-\-type\fR \fI<CONCEPT_TYPE>\fR
+OKF type — the one required frontmatter field
+.TP
+\fB\-\-title\fR \fI<TITLE>\fR
+Concept title
+.TP
+\fB\-\-description\fR \fI<DESCRIPTION>\fR
+One\-sentence description
+.TP
+\fB\-\-tag\fR \fI<TAG>\fR
+Tag (repeatable)
+.TP
+\fB\-\-status\fR \fI<STATUS>\fR
+Lifecycle status: draft, stable or deprecated
+.TP
+\fB\-\-source\fR \fI<SOURCE>\fR
+Source URL (repeatable); use id=URL or id=URL=Title to name it
+.TP
+\fB\-\-section\fR \fI<SECTION>\fR
+Index section heading to file the entry under
+.RS
+\fIDefault: \fROrientation
+.RE
+.TP
+\fB\-\-generated\-by\fR \fI<GENERATED_BY>\fR
+Actor for the generated.by frontmatter, e.g. process:kb\-seed
+.TP
+\fB\-\-date\fR \fI<DATE>\fR
+Override today's date (YYYY\-MM\-DD)
+.SH "MORPHIR KB SYNC STATUS"
+What has moved, here and upstream
+.PP
+\fBUsage:\fR morphir kb sync status [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-bundle\fR \fI<BUNDLE>\fR
+Bundle to sync (defaults to the one whose index declares `sync: true`)
+.TP
+\fB\-\-refs\fR \fI<REFS>\fR
+Reference checkouts root (default: .refs under the repository root)
+.TP
+\fB\-\-no\-upstream\fR
+Do not consult the upstream checkout — compare the mirror against the lockfile only
+.TP
+\fB\-\-verbose\fR
+List clean files too
+.TP
+\fB\-\-strict\fR
+Exit non\-zero when anything has diverged
+.SH "MORPHIR KB SYNC PULL"
+Import upstream changes and rewrite the lockfile
+.PP
+\fBUsage:\fR morphir kb sync pull [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-bundle\fR \fI<BUNDLE>\fR
+Bundle to sync (defaults to the one whose index declares `sync: true`)
+.TP
+\fB\-\-refs\fR \fI<REFS>\fR
+Reference checkouts root (default: .refs under the repository root)
+.TP
+\fB\-\-dry\-run\fR
+Report what would change without writing anything
+.TP
+\fB\-\-theirs\fR
+Take upstream's version of files that changed on both sides
+.TP
+\fB\-\-prune\fR
+Delete mirrored files that upstream has removed
+.TP
+\fB\-\-date\fR \fI<DATE>\fR
+Override today's date (YYYY\-MM\-DD)
+.SH "MORPHIR KB SYNC PUSH"
+Project locally\-edited files back into an upstream checkout
+.PP
+\fBUsage:\fR morphir kb sync push [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-bundle\fR \fI<BUNDLE>\fR
+Bundle to sync (defaults to the one whose index declares `sync: true`)
+.TP
+\fB\-\-refs\fR \fI<REFS>\fR
+Reference checkouts root (default: .refs under the repository root)
+.TP
+\fB\-\-to\fR \fI<TO>\fR
+Checkout to write the upstream form into (default: the reference checkout)
+.TP
+\fB\-\-dry\-run\fR
+Report what would be written without writing anything
+.TP
+\fB\-\-include\-diverged\fR
+Also export files that changed upstream since the last import
+.SH "MORPHIR KB SYNC DIFF"
+Diff upstream's copy against the upstream form of ours
+.PP
+\fBUsage:\fR morphir kb sync diff [OPTIONS] [<PATH>] ...
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-bundle\fR \fI<BUNDLE>\fR
+Bundle to sync (defaults to the one whose index declares `sync: true`)
+.TP
+\fB\-\-refs\fR \fI<REFS>\fR
+Reference checkouts root (default: .refs under the repository root)
+.TP
+\fB\-\-path\fR \fI<PATH>\fR
+Mirrored path, e.g. docs/spec/draft/types.md
+.TP
+\fB\-\-raw\fR
+Print the patch alone — `git apply` takes it in the upstream checkout
+.TP
+\fB\-z, \-\-null\fR
+Split the patterns read from stdin on NUL rather than newline, pairing with `find \-print0`. Only meaningful alongside `\-`
+\fBArguments:\fR
+.PP
+.TP
+\fB<PATH>\fR
+Mirrored paths or globs, e.g. docs/spec/draft/types.md or 'docs/**'. Quote a glob: an unquoted one is expanded by the shell against the working directory before this ever sees it. No argument diffs every mirrored file; `\-` reads the remaining patterns from stdin, one per line
+.SH "MORPHIR KB INTENT INIT"
+Scaffold an intent bundle in a knowledge base that has none
+.PP
+\fBUsage:\fR morphir kb intent init [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-name\fR \fI<NAME>\fR
+Bundle name under bundles/
+.RS
+\fIDefault: \fRintent
+.RE
+.TP
+\fB\-\-system\fR \fI<SYSTEM>\fR
+Package URL identifying the system, e.g. pkg:maven/org.finos.morphir/morphir\-core
+.TP
+\fB\-\-capability\-bundle\fR \fI<CAPABILITY_BUNDLE>\fR
+Bundle label holding capabilities, e.g. morphir/morphir\-scala
+.TP
+\fB\-\-stale\-after\-days\fR \fI<STALE_AFTER_DAYS>\fR
+Days before an active intent is reported stale
+.RS
+\fIDefault: \fR60
+.RE
+.TP
+\fB\-\-date\fR \fI<DATE>\fR
+Override today's date (YYYY\-MM\-DD)
+.SH "MORPHIR KB INTENT NEW"
+Create a new intent record in Backlog
+.PP
+\fBUsage:\fR morphir kb intent new [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-title\fR \fI<TITLE>\fR
+What the work is
+.TP
+\fB\-\-description\fR \fI<DESCRIPTION>\fR
+One sentence — also the index entry
+.TP
+\fB\-\-kind\fR \fI<KIND>\fR
+feature, bug, performance, security, deprecation, removal, refactor, docs, test, build, spike
+.TP
+\fB\-\-breaking\fR
+Marks a compatibility break — orthogonal to kind
+.TP
+\fB\-\-issue\fR \fI<ISSUE>\fR
+GitHub issue number this came from
+.TP
+\fB\-\-tag\fR \fI<TAG>\fR
+Tag (repeatable)
+.TP
+\fB\-\-date\fR \fI<DATE>\fR
+Override today's date (YYYY\-MM\-DD)
+.SH "MORPHIR KB INTENT LIST"
+List intent records, grouped by state
+.PP
+\fBUsage:\fR morphir kb intent list [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-state\fR \fI<STATE>\fR
+Filter by state
+.TP
+\fB\-\-kind\fR \fI<KIND>\fR
+Filter by kind
+.TP
+\fB\-\-breaking\fR
+Only breaking intent
+.TP
+\fB\-\-open\fR
+Only open intent — excludes Released, Cancelled, Superseded
+.TP
+\fB\-\-user\-visible\fR
+Only user\-visible kinds, as release notes would show
+.SH "MORPHIR KB INTENT SHOW"
+Show one intent record
+.PP
+\fBUsage:\fR morphir kb intent show [OPTIONS] [<ID>]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-id\fR \fI<ID>\fR
+Intent id or slug, e.g. 0007
+\fBArguments:\fR
+.PP
+.TP
+\fB<ID>\fR
+Intent id or slug, e.g. 0007
+.SH "MORPHIR KB INTENT CHECK"
+Check every intent record's obligations
+.PP
+\fBUsage:\fR morphir kb intent check [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-strict\fR
+Exit non\-zero on warnings too
+.TP
+\fB\-\-date\fR \fI<DATE>\fR
+Override today's date (YYYY\-MM\-DD)
+.SH "MORPHIR KB INTENT REFINE"
+Move an intent to Refinement
+.PP
+\fBUsage:\fR morphir kb intent refine [OPTIONS] [<ID>]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-id\fR \fI<ID>\fR
+Intent id or slug
+.TP
+\fB\-\-state\fR \fI<STATE>\fR
+Target state (move only)
+.TP
+\fB\-\-date\fR \fI<DATE>\fR
+Override today's date (YYYY\-MM\-DD)
+\fBArguments:\fR
+.PP
+.TP
+\fB<ID>\fR
+Intent id or slug
+.SH "MORPHIR KB INTENT START"
+Move an intent to InProgress
+.PP
+\fBUsage:\fR morphir kb intent start [OPTIONS] [<ID>]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-id\fR \fI<ID>\fR
+Intent id or slug
+.TP
+\fB\-\-state\fR \fI<STATE>\fR
+Target state (move only)
+.TP
+\fB\-\-date\fR \fI<DATE>\fR
+Override today's date (YYYY\-MM\-DD)
+\fBArguments:\fR
+.PP
+.TP
+\fB<ID>\fR
+Intent id or slug
+.SH "MORPHIR KB INTENT MOVE"
+Move an intent to any state
+.PP
+\fBUsage:\fR morphir kb intent move [OPTIONS] [<ID>]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-id\fR \fI<ID>\fR
+Intent id or slug
+.TP
+\fB\-\-state\fR \fI<STATE>\fR
+Target state (move only)
+.TP
+\fB\-\-date\fR \fI<DATE>\fR
+Override today's date (YYYY\-MM\-DD)
+\fBArguments:\fR
+.PP
+.TP
+\fB<ID>\fR
+Intent id or slug
+.SH "MORPHIR KB INTENT RELEASE"
+Mark an intent Released, linking the capability it produced
+.PP
+\fBUsage:\fR morphir kb intent release [OPTIONS] [<ID>]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-id\fR \fI<ID>\fR
+Intent id or slug
+.TP
+\fB\-\-capability\fR \fI<CAPABILITY>\fR
+Capability this produced, as bundle\-label:/path.md
+.TP
+\fB\-\-artifact\fR \fI<ARTIFACT>\fR
+Package URL of a shipped artifact (repeatable)
+.TP
+\fB\-\-date\fR \fI<DATE>\fR
+Override today's date (YYYY\-MM\-DD)
+\fBArguments:\fR
+.PP
+.TP
+\fB<ID>\fR
+Intent id or slug
+.SH "MORPHIR KB INTENT CANCEL"
+Mark an intent Cancelled, recording why
+.PP
+\fBUsage:\fR morphir kb intent cancel [OPTIONS] [<ID>]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-id\fR \fI<ID>\fR
+Intent id or slug
+.TP
+\fB\-\-reason\fR \fI<REASON>\fR
+Why the work is not being done
+.TP
+\fB\-\-date\fR \fI<DATE>\fR
+Override today's date (YYYY\-MM\-DD)
+\fBArguments:\fR
+.PP
+.TP
+\fB<ID>\fR
+Intent id or slug
+.SH "MORPHIR KB INTENT SUPERSEDE"
+Mark an intent Superseded by another
+.PP
+\fBUsage:\fR morphir kb intent supersede [OPTIONS] [<ID>]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-id\fR \fI<ID>\fR
+Intent id or slug
+.TP
+\fB\-\-by\fR \fI<BY>\fR
+Intent id that replaces it
+.TP
+\fB\-\-date\fR \fI<DATE>\fR
+Override today's date (YYYY\-MM\-DD)
+\fBArguments:\fR
+.PP
+.TP
+\fB<ID>\fR
+Intent id or slug
+.SH "MORPHIR KB DECISION LIST"
+List decision records, grouped by state
+.PP
+\fBUsage:\fR morphir kb decision list [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-state\fR \fI<STATE>\fR
+Filter by state
+.TP
+\fB\-\-in\-force\fR
+Only decisions that still govern — excludes Superseded and Withdrawn
+.TP
+\fB\-\-bundle\fR \fI<BUNDLE>\fR
+Restrict to one bundle
+.SH "MORPHIR KB DECISION SHOW"
+Show one decision record
+.PP
+\fBUsage:\fR morphir kb decision show [OPTIONS] [<ID>]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kb\fR \fI<PATH>\fR
+Path to the knowledge base root (the directory holding bundles/). Auto\-detected when omitted
+.TP
+\fB\-\-json\fR
+Emit JSON instead of text, for chaining and for agent consumption
+.TP
+\fB\-\-id\fR \fI<ID>\fR
+Decision id or slug, e.g. 0004
+.TP
+\fB\-\-bundle\fR \fI<BUNDLE>\fR
+Bundle to look in — required when an id means a record in more than one
+.TP
+\fB\-\-body\fR
+Also include the document body
+\fBArguments:\fR
+.PP
+.TP
+\fB<ID>\fR
+Decision id or slug, e.g. 0004
 .SH "MORPHIR GLEAM"
 Gleam language binding commands
 .PP

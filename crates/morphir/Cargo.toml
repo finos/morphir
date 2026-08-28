@@ -37,7 +37,10 @@ morphir-devkit = { path = "../../ecosystem/morphir-rust/crates/morphir-devkit" }
 morphir-daemon = { path = "../../ecosystem/morphir-rust/crates/morphir-daemon" }
 morphir-extension-sdk = { path = "../../ecosystem/morphir-rust/crates/morphir-extension-sdk" }
 morphir-distribution = { path = "../../ecosystem/morphir-rust/crates/morphir-distribution" }
+morphir-okf = { path = "../../ecosystem/morphir-rust/crates/morphir-okf" }
+morphir-kb = { path = "../../ecosystem/morphir-rust/crates/morphir-kb" }
 semver = { workspace = true }
+chrono = "0.4"
 walkdir = "2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -74,6 +77,11 @@ path = "tests/cli_integration.rs"
 [[test]]
 name = "config_acceptance"
 path = "tests/config_acceptance.rs"
+harness = false
+
+[[test]]
+name = "kb_acceptance"
+path = "tests/kb_acceptance.rs"
 harness = false
 
 [package.metadata.binstall]

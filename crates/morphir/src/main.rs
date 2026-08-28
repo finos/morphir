@@ -13,8 +13,14 @@ use commands::{
     run_config_path, run_config_show, run_dist_install, run_dist_list, run_dist_uninstall,
     run_dist_update, run_extension_install, run_extension_list, run_extension_uninstall,
     run_extension_update, run_generate, run_gleam_compile, run_gleam_generate, run_gleam_roundtrip,
-    run_migrate, run_tool_install, run_tool_list, run_tool_uninstall, run_tool_update,
-    run_transform, run_validate, run_version,
+    run_kb_add_concept, run_kb_check, run_kb_decision_list, run_kb_decision_show, run_kb_index,
+    run_kb_intent_cancel, run_kb_intent_check, run_kb_intent_init, run_kb_intent_list,
+    run_kb_intent_move, run_kb_intent_new, run_kb_intent_refine, run_kb_intent_release,
+    run_kb_intent_show, run_kb_intent_start, run_kb_intent_supersede, run_kb_list,
+    run_kb_new_bundle, run_kb_query, run_kb_refresh, run_kb_refresh_db, run_kb_refresh_markdown,
+    run_kb_search, run_kb_show, run_kb_sync_diff, run_kb_sync_pull, run_kb_sync_push,
+    run_kb_sync_status, run_migrate, run_tool_install, run_tool_list, run_tool_uninstall,
+    run_tool_update, run_transform, run_validate, run_version,
 };
 
 /// Morphir CLI - Tools for functional domain modeling and business logic
@@ -159,6 +165,11 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
     Ir {
         #[command(subcommand)]
         action: IrAction,
+    },
+    /// Manage the knowledge base under kb/ — OKF bundles and concept documents
+    Kb {
+        #[command(subcommand)]
+        action: KbAction,
     },
     /// Gleam language binding commands
     Gleam {
@@ -466,6 +477,108 @@ impl MigrateArgs {
     }
 }
 
+/// The `morphir kb` subcommand tree — a drop-in port of the morphir-scala
+/// `kb` CLI. The option structs live in `commands::kb`.
+#[derive(Clone, Subcommand)]
+enum KbAction {
+    /// List bundles, or one bundle's concepts
+    List(commands::kb::KbListArgs),
+    /// Show one document: frontmatter, outbound links, heading outline
+    Show(commands::kb::KbShowArgs),
+    /// Search concepts by metadata, body text, or the SQLite index
+    Search(commands::kb::KbSearchArgs),
+    /// Run every check and exit non-zero when there are errors
+    Check(commands::kb::KbCheckArgs),
+    /// Build the SQLite index over the knowledge base
+    Index(commands::kb::KbIndexArgs),
+    /// Bring derived state — markdown indexes and the SQLite index — back in line
+    Refresh {
+        #[command(subcommand)]
+        action: Option<KbRefreshAction>,
+        #[command(flatten)]
+        args: commands::kb::KbRefreshArgs,
+    },
+    /// Run read-only SQL over the index
+    Query(commands::kb::KbQueryArgs),
+    /// Scaffold a new bundle with its index.md and log.md
+    NewBundle(commands::kb::KbNewBundleArgs),
+    /// Scaffold a concept and wire it into its index and log
+    AddConcept(commands::kb::KbAddConceptArgs),
+    /// Mirror an upstream repository into a bundle and project edits back out
+    Sync {
+        #[command(subcommand)]
+        action: KbSyncAction,
+    },
+    /// Manage intent — work recorded as prose with a lifecycle
+    Intent {
+        #[command(subcommand)]
+        action: KbIntentAction,
+    },
+    /// Read decision records
+    Decision {
+        #[command(subcommand)]
+        action: KbDecisionAction,
+    },
+}
+
+#[derive(Clone, Subcommand)]
+enum KbRefreshAction {
+    /// Rewrite drifted index bullets only — same as `kb refresh --no-db`
+    #[command(alias = "md")]
+    Markdown(commands::kb::KbRefreshMarkdownArgs),
+    /// Rebuild the SQLite index only — same as `kb refresh --no-markdown`
+    #[command(alias = "index")]
+    Db(commands::kb::KbRefreshDbArgs),
+}
+
+#[derive(Clone, Subcommand)]
+enum KbSyncAction {
+    /// What has moved, here and upstream
+    Status(commands::kb::KbSyncStatusArgs),
+    /// Import upstream changes and rewrite the lockfile
+    Pull(commands::kb::KbSyncPullArgs),
+    /// Project locally-edited files back into an upstream checkout
+    Push(commands::kb::KbSyncPushArgs),
+    /// Diff upstream's copy against the upstream form of ours
+    Diff(commands::kb::KbSyncDiffArgs),
+}
+
+#[derive(Clone, Subcommand)]
+enum KbIntentAction {
+    /// Scaffold an intent bundle in a knowledge base that has none
+    Init(commands::kb::KbIntentInitArgs),
+    /// Create a new intent record in Backlog
+    New(commands::kb::KbIntentNewArgs),
+    /// List intent records, grouped by state
+    #[command(alias = "ls")]
+    List(commands::kb::KbIntentListArgs),
+    /// Show one intent record
+    Show(commands::kb::KbIntentShowArgs),
+    /// Check every intent record's obligations
+    Check(commands::kb::KbIntentCheckArgs),
+    /// Move an intent to Refinement
+    Refine(commands::kb::KbIntentMoveArgs),
+    /// Move an intent to InProgress
+    Start(commands::kb::KbIntentMoveArgs),
+    /// Move an intent to any state
+    Move(commands::kb::KbIntentMoveArgs),
+    /// Mark an intent Released, linking the capability it produced
+    Release(commands::kb::KbIntentReleaseArgs),
+    /// Mark an intent Cancelled, recording why
+    Cancel(commands::kb::KbIntentCancelArgs),
+    /// Mark an intent Superseded by another
+    Supersede(commands::kb::KbIntentSupersedeArgs),
+}
+
+#[derive(Clone, Subcommand)]
+enum KbDecisionAction {
+    /// List decision records, grouped by state
+    #[command(alias = "ls")]
+    List(commands::kb::KbDecisionListArgs),
+    /// Show one decision record
+    Show(commands::kb::KbDecisionShowArgs),
+}
+
 /// Application session for Morphir CLI
 #[derive(Clone)]
 struct MorphirSession {
@@ -589,6 +702,44 @@ impl AppSession for MorphirSession {
             },
             Commands::Ir { action } => match action {
                 IrAction::Migrate(args) => args.run(),
+            },
+            Commands::Kb { action } => match action {
+                KbAction::List(args) => run_kb_list(args.clone()),
+                KbAction::Show(args) => run_kb_show(args.clone()),
+                KbAction::Search(args) => run_kb_search(args.clone()),
+                KbAction::Check(args) => run_kb_check(args.clone()),
+                KbAction::Index(args) => run_kb_index(args.clone()),
+                KbAction::Refresh { action, args } => match action {
+                    None => run_kb_refresh(args.clone()),
+                    Some(KbRefreshAction::Markdown(a)) => run_kb_refresh_markdown(a.clone()),
+                    Some(KbRefreshAction::Db(a)) => run_kb_refresh_db(a.clone()),
+                },
+                KbAction::Query(args) => run_kb_query(args.clone()),
+                KbAction::NewBundle(args) => run_kb_new_bundle(args.clone()),
+                KbAction::AddConcept(args) => run_kb_add_concept(args.clone()),
+                KbAction::Sync { action } => match action {
+                    KbSyncAction::Status(a) => run_kb_sync_status(a.clone()),
+                    KbSyncAction::Pull(a) => run_kb_sync_pull(a.clone()),
+                    KbSyncAction::Push(a) => run_kb_sync_push(a.clone()),
+                    KbSyncAction::Diff(a) => run_kb_sync_diff(a.clone()),
+                },
+                KbAction::Intent { action } => match action {
+                    KbIntentAction::Init(a) => run_kb_intent_init(a.clone()),
+                    KbIntentAction::New(a) => run_kb_intent_new(a.clone()),
+                    KbIntentAction::List(a) => run_kb_intent_list(a.clone()),
+                    KbIntentAction::Show(a) => run_kb_intent_show(a.clone()),
+                    KbIntentAction::Check(a) => run_kb_intent_check(a.clone()),
+                    KbIntentAction::Refine(a) => run_kb_intent_refine(a.clone()),
+                    KbIntentAction::Start(a) => run_kb_intent_start(a.clone()),
+                    KbIntentAction::Move(a) => run_kb_intent_move(a.clone()),
+                    KbIntentAction::Release(a) => run_kb_intent_release(a.clone()),
+                    KbIntentAction::Cancel(a) => run_kb_intent_cancel(a.clone()),
+                    KbIntentAction::Supersede(a) => run_kb_intent_supersede(a.clone()),
+                },
+                KbAction::Decision { action } => match action {
+                    KbDecisionAction::List(a) => run_kb_decision_list(a.clone()),
+                    KbDecisionAction::Show(a) => run_kb_decision_show(a.clone()),
+                },
             },
             Commands::Gleam {
                 action,
