@@ -306,6 +306,9 @@ apply to every session; step 4 depends on the active profile.
      part of session close — work is then not complete until `git push`
      succeeds:
      ```bash
+     git status              # review what changed
+     git add <files>         # stage code changes
+     git commit -m "..."     # commit code (beads changes go via bd sync)
      git pull --rebase
      bd sync
      git push
