@@ -68,7 +68,7 @@ mise run submodules:status
 - **morphir-moonbit**: MoonBit implementation with packages for SDK, core types, and WASM bindings. See below for build commands.
 - **morphir-python**: Python implementation of Morphir tooling. See the submodule's own README for build and usage.
 - **morphir-scala**: Scala implementation of Morphir tooling, built with Mill. See below for build commands.
-- **morphir-ui**: Morphir's UI monorepo — the morphir-desktop (Electron) and morphir-web apps sharing one Svelte + Effect application, with `morphir-ir.json` browsing, MORPHIR_HOME-backed configuration, and GitHub token capture. Build with mise + bun + moon: `mise install && bun install && moon run :build` (see the repo's README for the full getting-started guide).
+- **morphir-ui**: Morphir's UI monorepo — the morphir-desktop (Electron) and morphir-web apps sharing one Svelte + Effect application, with `morphir-ir.json` browsing, MORPHIR_HOME-backed configuration, and GitHub token capture. Build from within the submodule (it has its own mise toolchain): `cd ecosystem/morphir-ui && mise install && bun install && moon run :build` (see that repo's README for the full getting-started guide).
 
 ## Building and testing morphir-moonbit
 
