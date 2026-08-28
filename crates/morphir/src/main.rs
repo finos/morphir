@@ -45,7 +45,7 @@ enum Commands {
         /// Source language (e.g., gleam, elm)
         #[arg(short, long)]
         language: Option<String>,
-        /// Input source directory or file
+        /// Input source directory or file. A configured Elm process accepts one .elm file.
         #[arg(short, long)]
         input: Option<String>,
         /// Output directory
@@ -54,7 +54,7 @@ enum Commands {
         /// Package name override
         #[arg(long)]
         package_name: Option<String>,
-        /// Explicit config file path
+        /// Explicit config file path. Elm process commands come from [extensions.morphir-elm].
         #[arg(long)]
         config: Option<String>,
         /// Project name (for workspaces)

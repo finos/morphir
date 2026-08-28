@@ -37,6 +37,8 @@ jobs:
               # crates/morphir and crates/morphir-live path-depend on crates
               # inside this submodule, so a ref bump changes compiled source
               - 'ecosystem/morphir-rust'
+              # crates/morphir tests the configured Elm process extension
+              - 'ecosystem/morphir-elm'
               - '.gitmodules'
               # pins the Rust toolchain these jobs build with
               - '.config/mise/**'
@@ -127,6 +129,26 @@ jobs:
       - name: Add Rust components
         run: rustup component add rustfmt clippy
 
+      - name: Install Morphir Elm tools
+        env:
+          MISE_AUTO_INSTALL: "false"
+        run: |
+          mise -C ecosystem/morphir-elm install
+          test "$(mise -C ecosystem/morphir-elm exec -- bun --version)" = "1.4.0"
+          test "$(mise -C ecosystem/morphir-elm exec -- elm --version)" = "0.19.1"
+
+      - name: Install Morphir Elm dependencies
+        env:
+          MISE_AUTO_INSTALL: "false"
+        run: >-
+          mise -C ecosystem/morphir-elm exec --
+          bun install --frozen-lockfile --ignore-scripts
+
+      - name: Build Morphir Elm process extension
+        env:
+          MISE_AUTO_INSTALL: "false"
+        run: mise -C ecosystem/morphir-elm run build:mep-extension
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
@@ -144,6 +166,14 @@ jobs:
 
       - name: Build
         run: cargo build --locked --release --package morphir
+
+      - name: Run Morphir Elm CLI integration tests
+        env:
+          MORPHIR_ELM_EXTENSION_BIN: >-
+            ${{ github.workspace }}/ecosystem/morphir-elm/dist/morphir-elm-extension/morphir-elm-extension
+        run: >-
+          cargo test --locked --package integration-tests --test elm_extension
+          -- --ignored --nocapture
 
       - name: Run CLI integration tests
         # integration-tests finds the CLI binary in target/release/morphir

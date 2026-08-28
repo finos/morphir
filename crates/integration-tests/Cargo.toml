@@ -18,7 +18,10 @@ path = "src/lib.rs"
 anyhow = { workspace = true }
 tempfile = "3.24"
 serde_json = "1.0"
+serde = { workspace = true }
+morphir-core = { path = "../../ecosystem/morphir-rust/crates/morphir-core" }
 morphir-common = { path = "../../ecosystem/morphir-rust/crates/morphir-common" }
+toml = { workspace = true }
 
 [dev-dependencies]
 cucumber = { version = "0.22", features = ["output-json"] }
@@ -27,3 +30,6 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 [[test]]
 name = "cli"
 harness = false
+
+[[test]]
+name = "elm_extension"

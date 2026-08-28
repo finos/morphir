@@ -32,7 +32,7 @@ cmd compile display_order=2 args_override_self=#false help="Compile source code 
     flag "-l --language" help="Source language (e.g., gleam, elm)" {
         arg <LANGUAGE>
     }
-    flag "-i --input" help="Input source directory or file" {
+    flag "-i --input" help="Input source directory or file. A configured Elm process accepts one .elm file" {
         arg <INPUT>
     }
     flag "-o --output" help="Output directory" {
@@ -41,7 +41,7 @@ cmd compile display_order=2 args_override_self=#false help="Compile source code 
     flag --package-name help="Package name override" {
         arg <PACKAGE_NAME>
     }
-    flag --config help="Explicit config file path" {
+    flag --config help="Explicit config file path. Elm process commands come from [extensions.morphir-elm]" {
         arg <CONFIG>
     }
     flag --project help="Project name (for workspaces)" {

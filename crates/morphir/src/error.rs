@@ -39,9 +39,13 @@ impl CliError {
         Diagnostic {
             level: "error".to_string(),
             message: self.to_string(),
+            code: None,
+            related: Vec::new(),
             file: None,
             line: None,
             column: None,
+            uri: None,
+            range: None,
         }
     }
 
@@ -103,6 +107,8 @@ pub fn convert_extension_diagnostics(
             }
             .to_string(),
             message: d.message.clone(),
+            code: d.code.clone(),
+            related: d.related.clone(),
             file: d.location.as_ref().map(|location| location.uri.clone()),
             line: d
                 .location
@@ -112,6 +118,8 @@ pub fn convert_extension_diagnostics(
                 .location
                 .as_ref()
                 .map(|location| location.range.start.character),
+            uri: d.location.as_ref().map(|location| location.uri.clone()),
+            range: d.location.as_ref().map(|location| location.range.clone()),
         })
         .collect()
 }
@@ -119,7 +127,9 @@ pub fn convert_extension_diagnostics(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use morphir_extension_sdk::{DiagnosticSeverity, SourceLocation, SourcePosition, SourceRange};
+    use morphir_extension_sdk::{
+        DiagnosticSeverity, RelatedInformation, SourceLocation, SourcePosition, SourceRange,
+    };
 
     #[test]
     fn extension_diagnostics_preserve_uri_and_zero_based_start_position() {
@@ -149,5 +159,76 @@ mod tests {
         );
         assert_eq!(diagnostics[0].line, Some(4));
         assert_eq!(diagnostics[0].column, Some(7));
+    }
+
+    #[test]
+    fn mep_diagnostic_conversion_preserves_code_range_and_related_information() {
+        let diagnostic = morphir_extension_sdk::Diagnostic {
+            severity: DiagnosticSeverity::Error,
+            code: Some("elm.type-mismatch".into()),
+            message: "Type mismatch".into(),
+            location: Some(location("file:///work/Example.elm", 2, 4, 2, 8)),
+            related: vec![RelatedInformation {
+                location: location("file:///work/Other.elm", 0, 1, 0, 3),
+                message: "Expected type declared here".into(),
+            }],
+        };
+
+        let converted = convert_extension_diagnostics(&[diagnostic]);
+        let converted = &converted[0];
+
+        assert_eq!(converted.code.as_deref(), Some("elm.type-mismatch"));
+        assert_eq!(converted.uri.as_deref(), Some("file:///work/Example.elm"));
+        assert_eq!(converted.range.as_ref().unwrap().start.line, 2);
+        assert_eq!(converted.range.as_ref().unwrap().start.character, 4);
+        assert_eq!(converted.related.len(), 1);
+        assert_eq!(converted.related[0].message, "Expected type declared here");
+        assert_eq!(converted.file.as_deref(), Some("file:///work/Example.elm"));
+        assert_eq!(converted.line, Some(2));
+        assert_eq!(converted.column, Some(4));
+    }
+
+    #[test]
+    fn legacy_diagnostic_locations_round_trip_without_new_fields() {
+        let value = serde_json::json!({
+            "level": "warning",
+            "message": "Legacy warning",
+            "file": "src/Example.elm",
+            "line": 7,
+            "column": 11
+        });
+
+        let diagnostic: Diagnostic = serde_json::from_value(value.clone()).unwrap();
+
+        assert_eq!(diagnostic.file.as_deref(), Some("src/Example.elm"));
+        assert_eq!(diagnostic.line, Some(7));
+        assert_eq!(diagnostic.column, Some(11));
+        assert!(diagnostic.code.is_none());
+        assert!(diagnostic.uri.is_none());
+        assert!(diagnostic.range.is_none());
+        assert!(diagnostic.related.is_empty());
+        assert_eq!(serde_json::to_value(diagnostic).unwrap(), value);
+    }
+
+    fn location(
+        uri: &str,
+        start_line: u32,
+        start_character: u32,
+        end_line: u32,
+        end_character: u32,
+    ) -> SourceLocation {
+        SourceLocation {
+            uri: uri.into(),
+            range: SourceRange {
+                start: SourcePosition {
+                    line: start_line,
+                    character: start_character,
+                },
+                end: SourcePosition {
+                    line: end_line,
+                    character: end_character,
+                },
+            },
+        }
     }
 }
