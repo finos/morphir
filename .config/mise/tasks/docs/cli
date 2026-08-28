@@ -1,0 +1,46 @@
+#!/bin/sh
+#MISE description="Generate CLI reference docs, man page, and shell completions from the morphir usage spec"
+
+set -e
+
+echo "Building morphir CLI..."
+cargo build --locked --package morphir --quiet
+
+echo "Generating usage spec..."
+mkdir -p docs/cli docs/man/man1 completions
+./target/debug/morphir usage >docs/cli/morphir.usage.kdl
+
+if ! command -v usage >/dev/null 2>&1; then
+    echo "Error: 'usage' CLI not found. Install with: mise install"
+    exit 1
+fi
+
+echo "Generating markdown reference into docs/cli/..."
+usage generate markdown --file docs/cli/morphir.usage.kdl --out-dir docs/cli --multi
+
+# usage-cli emits links rooted at the output directory (for example
+# "/config/get.md"). Docusaurus needs file-relative links, so rewrite them
+# based on each file's depth below docs/cli.
+echo "Rewriting links for Docusaurus..."
+find docs/cli -name '*.md' | while IFS= read -r file; do
+    case "$file" in
+    docs/cli/*/*) prefix='../' ;;
+    *) prefix='' ;;
+    esac
+    sed -i.bak "s|](/\([^)]*\.md\))|](${prefix}\1)|g" "$file" && rm "$file.bak"
+done
+
+echo "Generating man page into docs/man/man1/..."
+usage generate man --file docs/cli/morphir.usage.kdl --out-file docs/man/man1/morphir.1
+
+echo "Generating shell completions into completions/..."
+usage generate completion bash morphir --file docs/cli/morphir.usage.kdl >completions/morphir.bash
+usage generate completion zsh morphir --file docs/cli/morphir.usage.kdl >completions/_morphir
+usage generate completion fish morphir --file docs/cli/morphir.usage.kdl >completions/morphir.fish
+
+echo ""
+echo "CLI documentation generated:"
+echo "  - Markdown:    docs/cli/"
+echo "  - Usage spec:  docs/cli/morphir.usage.kdl"
+echo "  - Man page:    docs/man/man1/morphir.1"
+echo "  - Completions: completions/"

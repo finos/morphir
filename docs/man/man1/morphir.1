@@ -1,0 +1,484 @@
+.TH MORPHIR 1
+.SH NAME
+morphir \- CLI for working with Morphir IR \- functional domain modeling and business logic
+.SH SYNOPSIS
+\fBmorphir\fR [OPTIONS] [COMMAND]
+.SH DESCRIPTION
+CLI for working with Morphir IR \- functional domain modeling and business logic
+.PP
+.SH OPTIONS
+.TP
+\fB\-\-help\-all\fR
+Print help including experimental commands
+.TP
+\fB\-V, \-\-version\fR
+Print version
+.SH COMMANDS
+.TP
+\fBcompile\fR
+Compile source code to Morphir IR
+.TP
+\fBgenerate\fR
+Generate code from Morphir IR
+.TP
+\fBconfig\fR
+Inspect the effective Morphir configuration
+.TP
+\fBconfig get\fR
+Get one value from the effective configuration
+.TP
+\fBconfig show\fR
+Show the effective configuration after merging every source
+.TP
+\fBconfig path\fR
+Show which configuration sources were considered
+.TP
+\fBtool\fR
+Manage Morphir tools, distributions, and extensions
+.TP
+\fBtool install\fR
+Install a Morphir tool or extension
+.TP
+\fBtool list\fR
+List installed Morphir tools
+.TP
+\fBtool update\fR
+Update an installed Morphir tool
+.TP
+\fBtool uninstall\fR
+Uninstall a Morphir tool
+.TP
+\fBdist\fR
+Manage Morphir distributions
+.TP
+\fBdist install\fR
+Install a Morphir distribution
+.TP
+\fBdist list\fR
+List installed Morphir distributions
+.TP
+\fBdist update\fR
+Update an installed Morphir distribution
+.TP
+\fBdist uninstall\fR
+Uninstall a Morphir distribution
+.TP
+\fBextension\fR
+Manage Morphir extensions
+.TP
+\fBextension install\fR
+Install a Morphir extension
+.TP
+\fBextension list\fR
+List installed Morphir extensions
+.TP
+\fBextension update\fR
+Update an installed Morphir extension
+.TP
+\fBextension uninstall\fR
+Uninstall a Morphir extension
+.TP
+\fBir\fR
+Manage Morphir IR
+.TP
+\fBir migrate\fR
+Migrate IR between versions
+.TP
+\fBgleam\fR
+Gleam language binding commands
+.TP
+\fBgleam compile\fR
+Compile Gleam source to Morphir IR
+.TP
+\fBgleam generate\fR
+Generate Gleam code from Morphir IR
+.TP
+\fBgleam roundtrip\fR
+Roundtrip: compile then generate (for testing)
+.TP
+\fBschema\fR
+Generate JSON Schema for Morphir IR
+.TP
+\fBversion\fR
+Print version information
+.SH "MORPHIR COMPILE"
+Compile source code to Morphir IR
+.PP
+\fBUsage:\fR morphir compile [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-l, \-\-language\fR \fI<LANGUAGE>\fR
+Source language (e.g., gleam, elm)
+.TP
+\fB\-i, \-\-input\fR \fI<INPUT>\fR
+Input source directory or file
+.TP
+\fB\-o, \-\-output\fR \fI<OUTPUT>\fR
+Output directory
+.TP
+\fB\-\-package\-name\fR \fI<PACKAGE_NAME>\fR
+Package name override
+.TP
+\fB\-\-config\fR \fI<CONFIG>\fR
+Explicit config file path
+.TP
+\fB\-\-project\fR \fI<PROJECT>\fR
+Project name (for workspaces)
+.TP
+\fB\-\-json\fR
+Output as JSON
+.TP
+\fB\-\-json\-lines\fR
+Output as JSON Lines (streaming)
+.SH "MORPHIR GENERATE"
+Generate code from Morphir IR
+.PP
+\fBUsage:\fR morphir generate [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-t, \-\-target\fR \fI<TARGET>\fR
+Target language or format
+.TP
+\fB\-i, \-\-input\fR \fI<INPUT>\fR
+Path to the Morphir IR file or directory
+.TP
+\fB\-o, \-\-output\fR \fI<OUTPUT>\fR
+Output directory
+.TP
+\fB\-\-config\fR \fI<CONFIG>\fR
+Explicit config file path
+.TP
+\fB\-\-project\fR \fI<PROJECT>\fR
+Project name (for workspaces)
+.TP
+\fB\-\-json\fR
+Output as JSON
+.TP
+\fB\-\-json\-lines\fR
+Output as JSON Lines (streaming)
+.SH "MORPHIR CONFIG GET"
+Get one value from the effective configuration
+.PP
+\fBUsage:\fR morphir config get [OPTIONS] <KEY>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-config\fR \fI<CONFIG>\fR
+Explicit project config file path
+.TP
+\fB\-\-json\fR
+Output as JSON
+.TP
+\fB\-\-isolated\fR
+Ignore machine\-level and user\-level configuration sources
+\fBArguments:\fR
+.PP
+.TP
+\fB<KEY>\fR
+Dotted configuration key, such as project.name
+.SH "MORPHIR CONFIG SHOW"
+Show the effective configuration after merging every source
+.PP
+\fBUsage:\fR morphir config show [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-config\fR \fI<CONFIG>\fR
+Explicit project config file path
+.TP
+\fB\-\-json\fR
+Output as JSON
+.TP
+\fB\-\-isolated\fR
+Ignore machine\-level and user\-level configuration sources
+.SH "MORPHIR CONFIG PATH"
+Show which configuration sources were considered
+.PP
+\fBUsage:\fR morphir config path [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-config\fR \fI<CONFIG>\fR
+Explicit project config file path
+.TP
+\fB\-\-json\fR
+Output as JSON
+.TP
+\fB\-\-isolated\fR
+Ignore machine\-level and user\-level configuration sources
+.SH "MORPHIR TOOL INSTALL"
+Install a Morphir tool or extension
+.PP
+\fBUsage:\fR morphir tool install [OPTIONS] <NAME>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-v, \-\-version\fR \fI<VERSION>\fR
+Version to install (defaults to latest)
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Name of the tool to install
+.SH "MORPHIR TOOL UPDATE"
+Update an installed Morphir tool
+.PP
+\fBUsage:\fR morphir tool update [OPTIONS] <NAME>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-v, \-\-version\fR \fI<VERSION>\fR
+Version to update to (defaults to latest)
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Name of the tool to update
+.SH "MORPHIR TOOL UNINSTALL"
+Uninstall a Morphir tool
+.PP
+\fBUsage:\fR morphir tool uninstall <NAME>
+.PP
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Name of the tool to uninstall
+.SH "MORPHIR DIST INSTALL"
+Install a Morphir distribution
+.PP
+\fBUsage:\fR morphir dist install [OPTIONS] <NAME>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-v, \-\-version\fR \fI<VERSION>\fR
+Version to install (defaults to latest)
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Name of the distribution to install
+.SH "MORPHIR DIST UPDATE"
+Update an installed Morphir distribution
+.PP
+\fBUsage:\fR morphir dist update [OPTIONS] <NAME>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-v, \-\-version\fR \fI<VERSION>\fR
+Version to update to (defaults to latest)
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Name of the distribution to update
+.SH "MORPHIR DIST UNINSTALL"
+Uninstall a Morphir distribution
+.PP
+\fBUsage:\fR morphir dist uninstall <NAME>
+.PP
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Name of the distribution to uninstall
+.SH "MORPHIR EXTENSION INSTALL"
+Install a Morphir extension
+.PP
+\fBUsage:\fR morphir extension install [OPTIONS] <NAME>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-v, \-\-version\fR \fI<VERSION>\fR
+Version to install (defaults to latest)
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Name of the extension to install
+.SH "MORPHIR EXTENSION UPDATE"
+Update an installed Morphir extension
+.PP
+\fBUsage:\fR morphir extension update [OPTIONS] <NAME>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-v, \-\-version\fR \fI<VERSION>\fR
+Version to update to (defaults to latest)
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Name of the extension to update
+.SH "MORPHIR EXTENSION UNINSTALL"
+Uninstall a Morphir extension
+.PP
+\fBUsage:\fR morphir extension uninstall <NAME>
+.PP
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Name of the extension to uninstall
+.SH "MORPHIR IR MIGRATE"
+Migrate IR between versions
+
+Converts Morphir IR between Classic (V1\-V3) and V4 formats. Supports local files, URLs, and GitHub shorthand sources.
+
+**Examples:**
+
+```bash
+# Migrate to file
+morphir ir migrate ./morphir\-ir.json \-o ./morphir\-ir\-v4.json \-\-target\-version v4
+
+# Migrate from URL
+morphir ir migrate https://lcr\-interactive.finos.org/server/morphir\-ir.json \-o ./lcr\-v4.json
+
+# Display in console with syntax highlighting (no \-o)
+morphir ir migrate ./morphir\-ir.json
+
+# Downgrade V4 to Classic
+morphir ir migrate ./morphir\-ir\-v4.json \-o ./morphir\-ir\-classic.json \-\-target\-version classic
+```
+
+See the [IR Migration Guide](https://morphir.finos.org/docs/user\-guides/cli\-tools/ir\-migrate) for detailed real\-world examples including the US Federal Reserve FR 2052a regulation model.
+.PP
+\fBUsage:\fR morphir ir migrate [OPTIONS] <INPUT>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-o, \-\-output\fR \fI<OUTPUT>\fR
+Output file or directory (if omitted, displays in console with syntax highlighting)
+.TP
+\fB\-\-target\-version\fR \fI<TARGET_VERSION>\fR
+Target version: latest, v4/4, classic, v3/3, v2/2, v1/1 (default: latest)
+.RS
+\fIDefault: \fRlatest
+.RE
+.TP
+\fB\-\-force\-refresh\fR
+Force refresh cached remote sources
+.TP
+\fB\-\-no\-cache\fR
+Skip cache entirely for remote sources
+.TP
+\fB\-\-json\fR
+Output result as JSON (for scripting)
+.TP
+\fB\-\-expanded\fR
+Use expanded (non\-compact) format for V4 output
+\fBArguments:\fR
+.PP
+.TP
+\fB<INPUT>\fR
+Input file, directory, or remote source (e.g., github:owner/repo, URL)
+.SH "MORPHIR GLEAM"
+Gleam language binding commands
+.PP
+\fBUsage:\fR morphir gleam [OPTIONS] <COMMAND>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-json\fR
+Output as JSON
+.TP
+\fB\-\-json\-lines\fR
+Output as JSON Lines (streaming)
+.SH "MORPHIR GLEAM COMPILE"
+Compile Gleam source to Morphir IR
+.PP
+\fBUsage:\fR morphir gleam compile [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-i, \-\-input\fR \fI<INPUT>\fR
+Input source directory or file
+.TP
+\fB\-o, \-\-output\fR \fI<OUTPUT>\fR
+Output directory
+.TP
+\fB\-\-package\-name\fR \fI<PACKAGE_NAME>\fR
+Package name override
+.TP
+\fB\-\-config\fR \fI<CONFIG>\fR
+Explicit config file path
+.TP
+\fB\-\-project\fR \fI<PROJECT>\fR
+Project name (for workspaces)
+.SH "MORPHIR GLEAM GENERATE"
+Generate Gleam code from Morphir IR
+.PP
+\fBUsage:\fR morphir gleam generate [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-i, \-\-input\fR \fI<INPUT>\fR
+Path to the Morphir IR file or directory
+.TP
+\fB\-o, \-\-output\fR \fI<OUTPUT>\fR
+Output directory
+.TP
+\fB\-\-config\fR \fI<CONFIG>\fR
+Explicit config file path
+.TP
+\fB\-\-project\fR \fI<PROJECT>\fR
+Project name (for workspaces)
+.SH "MORPHIR GLEAM ROUNDTRIP"
+Roundtrip: compile then generate (for testing)
+.PP
+\fBUsage:\fR morphir gleam roundtrip [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-i, \-\-input\fR \fI<INPUT>\fR
+Input source directory or file
+.TP
+\fB\-o, \-\-output\fR \fI<OUTPUT>\fR
+Output directory
+.TP
+\fB\-\-package\-name\fR \fI<PACKAGE_NAME>\fR
+Package name override
+.TP
+\fB\-\-config\fR \fI<CONFIG>\fR
+Explicit config file path
+.TP
+\fB\-\-project\fR \fI<PROJECT>\fR
+Project name (for workspaces)
+.SH "MORPHIR SCHEMA"
+Generate JSON Schema for Morphir IR
+.PP
+\fBUsage:\fR morphir schema [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-o, \-\-output\fR \fI<OUTPUT>\fR
+Output file path (optional)
+.SH "MORPHIR VERSION"
+Print version information
+.PP
+\fBUsage:\fR morphir version [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-json\fR
+Output version info as JSON

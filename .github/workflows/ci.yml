@@ -40,6 +40,10 @@ jobs:
               - '.gitmodules'
               # pins the Rust toolchain these jobs build with
               - '.config/mise/**'
+              # generated CLI docs are diff-checked against the CLI source
+              - 'docs/cli/**'
+              - 'docs/man/**'
+              - 'completions/**'
               - '.github/workflows/ci.yml'
             docs:
               - 'website/**'
@@ -140,6 +144,17 @@ jobs:
 
       - name: Build
         run: cargo build --locked --release --package morphir
+
+      - name: Generate CLI docs
+        run: mise run docs:cli
+
+      - name: Check CLI docs are up to date
+        run: |
+          if ! git diff --quiet docs/cli docs/man completions; then
+            echo "::error::Generated CLI documentation is out of date. Run 'mise run docs:cli' and commit the changes."
+            git diff docs/cli docs/man completions
+            exit 1
+          fi
 
   # Docs: lightweight job for documentation changes (fast-path)
   # Note: This job intentionally does NOT install mise to stay fast
