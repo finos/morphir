@@ -9,6 +9,14 @@ on:
     branches:
       - main
 
+# Cancel in-progress runs when a new run supersedes them. Pull requests are keyed
+# by number rather than by head branch: two forks can both offer a branch called
+# `main`, and keying on the branch name would let one fork's push cancel the
+# other's run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
 
