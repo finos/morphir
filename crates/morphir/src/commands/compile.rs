@@ -30,6 +30,8 @@ use std::path::{Path, PathBuf};
 pub struct CompileOptions {
     /// Language to compile (e.g., "gleam", "elm")
     pub language: Option<String>,
+    /// Extension provider id for single-file Elm compilation. Defaults to morphir-{language}.
+    pub extension: Option<String>,
     /// Input path or directory
     pub input: Option<String>,
     /// Output path
@@ -50,6 +52,14 @@ pub struct CompileOptions {
 pub async fn run_compile(options: CompileOptions) -> AppResult<miette::Report> {
     if should_use_single_file_process(&options) {
         return run_single_file_compile(options).await;
+    }
+
+    if options.extension.is_some() {
+        return Err(CliError::Validation {
+            message: "Explicit extension selection currently requires single-file Elm compilation"
+                .into(),
+        }
+        .into());
     }
 
     run_legacy_compile(options).await
@@ -103,6 +113,15 @@ fn infer_language(input: &Path, override_value: Option<&str>) -> Result<String, 
             ),
         })
     }
+}
+
+fn resolve_extension_id(language: &str, explicit: Option<&str>) -> Result<ExtensionId, CliError> {
+    let value = explicit
+        .map(str::to_owned)
+        .unwrap_or_else(|| format!("morphir-{language}"));
+    ExtensionId::parse(value).map_err(|error| CliError::Extension {
+        message: format!("Invalid extension id: {error}"),
+    })
 }
 
 fn elm_module_name(source: &str) -> Result<String, CliError> {
@@ -366,15 +385,14 @@ fn relative_file_uri_error(path: &str) -> CliError {
 
 fn configured_process(
     config: &MorphirConfig,
-    language: &str,
+    extension_id: &ExtensionId,
     config_dir: &Path,
     environment: &[(OsString, OsString)],
 ) -> Result<ProcessLaunch, CliError> {
-    let extension_id = format!("morphir-{language}");
     let key = format!("[extensions.{extension_id}].command");
     let spec = config
         .extensions
-        .get(&extension_id)
+        .get(extension_id.as_str())
         .filter(|spec| spec.enabled)
         .ok_or_else(|| CliError::Extension {
             message: format!("Missing configured process extension; set {key}"),
@@ -394,7 +412,7 @@ fn configured_process(
         config_dir.join(configured_path)
     };
     let launch = spec.args.iter().fold(
-        ProcessLaunch::new(extension_id, program, config_dir),
+        ProcessLaunch::new(extension_id.as_str(), program, config_dir),
         |launch, arg| launch.arg(arg),
     );
     Ok(environment
@@ -404,15 +422,11 @@ fn configured_process(
 
 fn installed_process(
     home: &MorphirHome,
-    language: &str,
+    id: &ExtensionId,
     working_directory: &Path,
     environment: &[(OsString, OsString)],
 ) -> Result<ProcessLaunch, CliError> {
-    let id =
-        ExtensionId::parse(format!("morphir-{language}")).map_err(|error| CliError::Extension {
-            message: format!("Invalid installed extension identity: {error}"),
-        })?;
-    let artifact = activate_installed(home, &id).map_err(|error| CliError::Extension {
+    let artifact = activate_installed(home, id).map_err(|error| CliError::Extension {
         message: format!("Failed to activate installed extension '{id}': {error}"),
     })?;
     let launch = artifact.args().iter().fold(
@@ -430,7 +444,7 @@ fn installed_process(
 
 fn compile_process(
     config: Option<(&MorphirConfig, &Path)>,
-    language: &str,
+    extension_id: &ExtensionId,
     working_directory: &Path,
     home: &MorphirHome,
     environment: &[(OsString, OsString)],
@@ -438,12 +452,12 @@ fn compile_process(
     if let Some((config, config_dir)) = config
         && config
             .extensions
-            .get(&format!("morphir-{language}"))
+            .get(extension_id.as_str())
             .is_some_and(|spec| spec.enabled && spec.command.is_some())
     {
-        return configured_process(config, language, config_dir, environment);
+        return configured_process(config, extension_id, config_dir, environment);
     }
-    installed_process(home, language, working_directory, environment)
+    installed_process(home, extension_id, working_directory, environment)
 }
 
 fn filtered_process_environment() -> Vec<(OsString, OsString)> {
@@ -501,12 +515,13 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     )?;
     let environment = filtered_process_environment();
     let home = MorphirHome::resolve().map_err(|error| CliError::Config { error })?;
+    let extension_id = resolve_extension_id(&context.language_id, options.extension.as_deref())?;
     let launch = compile_process(
         config_context
             .as_ref()
             .zip(config_dir)
             .map(|(context, directory)| (&context.config, directory)),
-        &context.language_id,
+        &extension_id,
         config_dir.unwrap_or(&start_dir),
         &home,
         &environment,
@@ -900,6 +915,7 @@ fn write_compile_output(
 async fn run_legacy_compile(options: CompileOptions) -> AppResult<miette::Report> {
     let CompileOptions {
         language,
+        extension: _,
         input,
         output,
         package_name,
@@ -1179,6 +1195,10 @@ mod tests {
 
     const ELM_SOURCE: &str = "module Example exposing (add)\n\nadd left right = left + right\n";
 
+    fn extension_id(value: &str) -> ExtensionId {
+        ExtensionId::parse(value).unwrap()
+    }
+
     #[test]
     fn infers_elm_from_the_input_extension() {
         assert_eq!(
@@ -1192,6 +1212,40 @@ mod tests {
         assert_eq!(
             infer_language(Path::new("Example.txt"), Some("elm")).unwrap(),
             "elm"
+        );
+    }
+
+    #[test]
+    fn defaults_the_provider_to_the_language_extension() {
+        let provider = resolve_extension_id("elm", None).unwrap();
+
+        assert_eq!(provider.as_str(), "morphir-elm");
+    }
+
+    #[test]
+    fn accepts_an_explicit_provider_distinct_from_the_language() {
+        let provider = resolve_extension_id("elm", Some("morphir-scala-elm")).unwrap();
+
+        assert_eq!(provider.as_str(), "morphir-scala-elm");
+    }
+
+    #[test]
+    fn rejects_an_invalid_explicit_provider() {
+        let error = resolve_extension_id("elm", Some("Morphir Scala Elm")).unwrap_err();
+
+        assert!(
+            error.to_string().contains("Invalid extension id"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn rejects_surrounding_whitespace_in_an_explicit_provider() {
+        let error = resolve_extension_id("elm", Some(" morphir-scala-elm ")).unwrap_err();
+
+        assert!(
+            error.to_string().contains("Invalid extension id"),
+            "{error}"
         );
     }
 
@@ -1536,7 +1590,13 @@ enabled = true
             OsString::from("TASK10_TEST_ENV"),
             OsString::from("explicit-value"),
         )];
-        let process = configured_process(&config, "elm", config_dir, &environment).unwrap();
+        let process = configured_process(
+            &config,
+            &extension_id("morphir-elm"),
+            config_dir,
+            &environment,
+        )
+        .unwrap();
         let debug = format!("{process:?}");
 
         assert!(debug.contains("morphir-elm"));
@@ -1547,11 +1607,39 @@ enabled = true
         assert!(debug.contains("explicit-value"));
     }
 
-    fn install_test_process(directory: &Path) -> (MorphirHome, PathBuf) {
+    #[test]
+    fn resolves_an_explicit_configured_provider_by_its_exact_id() {
+        let directory = TempDir::new().unwrap();
+        let config: MorphirConfig = toml::from_str(
+            r#"
+[extensions.morphir-scala-elm]
+command = "bin/morphir-scala-elm"
+enabled = true
+"#,
+        )
+        .unwrap();
+
+        let process = configured_process(
+            &config,
+            &extension_id("morphir-scala-elm"),
+            directory.path(),
+            &[],
+        )
+        .unwrap();
+        let debug = format!("{process:?}");
+
+        assert!(debug.contains("morphir-scala-elm"), "{debug}");
+        assert!(debug.contains("bin/morphir-scala-elm"), "{debug}");
+    }
+
+    fn install_test_process_with_id(
+        directory: &Path,
+        extension_id: &str,
+    ) -> (MorphirHome, PathBuf) {
         let home_path = directory.join("home");
         let home = MorphirHome::resolve_from(Some(home_path.as_os_str()), None).unwrap();
         let index_root = directory.join("index");
-        let source_path = index_root.join("artifacts/morphir-elm");
+        let source_path = index_root.join("artifacts").join(extension_id);
         std::fs::create_dir_all(source_path.parent().unwrap()).unwrap();
         std::fs::create_dir_all(index_root.join("extensions")).unwrap();
         let bytes = b"test process bytes";
@@ -1559,8 +1647,8 @@ enabled = true
         let digest = morphir_distribution::Sha256Digest::of_bytes(bytes);
         let record = serde_json::json!({
             "schemaVersion": 1,
-            "id": "morphir-elm",
-            "name": "Morphir Elm frontend",
+            "id": extension_id,
+            "name": "Test Elm frontend",
             "version": "2.100.0",
             "channels": ["stable"],
             "mepVersions": ["0.1"],
@@ -1571,18 +1659,20 @@ enabled = true
                     "os": std::env::consts::OS,
                     "arch": std::env::consts::ARCH,
                 },
-                "source": {"kind": "local-file", "path": "artifacts/morphir-elm"},
+                "source": {"kind": "local-file", "path": format!("artifacts/{extension_id}")},
                 "sha256": digest.to_string(),
-                "filename": "morphir-elm",
+                "filename": extension_id,
                 "executable": true,
             }],
         });
         std::fs::write(
-            index_root.join("extensions/morphir-elm.jsonl"),
+            index_root
+                .join("extensions")
+                .join(format!("{extension_id}.jsonl")),
             format!("{record}\n"),
         )
         .unwrap();
-        let id = morphir_distribution::ExtensionId::parse("morphir-elm").unwrap();
+        let id = morphir_distribution::ExtensionId::parse(extension_id).unwrap();
         let selected = morphir_distribution::LocalIndex::open(&index_root)
             .unwrap()
             .resolve(
@@ -1597,12 +1687,17 @@ enabled = true
         (home.clone(), home.root().join(installed.store_path()))
     }
 
+    fn install_test_process(directory: &Path) -> (MorphirHome, PathBuf) {
+        install_test_process_with_id(directory, "morphir-elm")
+    }
+
     #[test]
     fn installed_process_launch_carries_exact_discovered_metadata() {
         let directory = TempDir::new().unwrap();
         let (home, _) = install_test_process(directory.path());
 
-        let process = installed_process(&home, "elm", directory.path(), &[]).unwrap();
+        let process =
+            installed_process(&home, &extension_id("morphir-elm"), directory.path(), &[]).unwrap();
         let debug = format!("{process:?}");
 
         assert!(debug.contains("discovered: Some"), "{debug}");
@@ -1611,12 +1706,31 @@ enabled = true
     }
 
     #[test]
+    fn installed_process_activates_an_explicit_provider_by_its_exact_id() {
+        let directory = TempDir::new().unwrap();
+        let (home, _) = install_test_process_with_id(directory.path(), "morphir-scala-elm");
+
+        let process = installed_process(
+            &home,
+            &extension_id("morphir-scala-elm"),
+            directory.path(),
+            &[],
+        )
+        .unwrap();
+        let debug = format!("{process:?}");
+
+        assert!(debug.contains("discovered: Some"), "{debug}");
+        assert!(debug.contains("morphir-scala-elm"), "{debug}");
+    }
+
+    #[test]
     fn installed_process_rehashes_bytes_before_returning_a_launch() {
         let directory = TempDir::new().unwrap();
         let (home, installed_path) = install_test_process(directory.path());
         std::fs::write(installed_path, b"tampered after installation").unwrap();
 
-        let error = installed_process(&home, "elm", directory.path(), &[]).unwrap_err();
+        let error = installed_process(&home, &extension_id("morphir-elm"), directory.path(), &[])
+            .unwrap_err();
 
         assert!(error.to_string().contains("digest"), "{error}");
     }
@@ -1637,7 +1751,7 @@ enabled = true
 
         let process = compile_process(
             Some((&config, directory.path())),
-            "elm",
+            &extension_id("morphir-elm"),
             directory.path(),
             &home,
             &[],
@@ -1650,11 +1764,49 @@ enabled = true
     }
 
     #[test]
+    fn compile_process_selects_one_configured_provider_side_by_side() {
+        let directory = TempDir::new().unwrap();
+        let config: MorphirConfig = toml::from_str(
+            r#"
+[extensions.morphir-elm]
+command = "dev/morphir-elm"
+enabled = true
+
+[extensions.morphir-scala-elm]
+command = "dev/morphir-scala-elm"
+enabled = true
+"#,
+        )
+        .unwrap();
+        let home =
+            MorphirHome::resolve_from(Some(directory.path().join("empty-home").as_os_str()), None)
+                .unwrap();
+
+        let process = compile_process(
+            Some((&config, directory.path())),
+            &extension_id("morphir-scala-elm"),
+            directory.path(),
+            &home,
+            &[],
+        )
+        .unwrap();
+        let debug = format!("{process:?}");
+
+        assert!(debug.contains("dev/morphir-scala-elm"), "{debug}");
+        assert!(!debug.contains("program: \"dev/morphir-elm\""), "{debug}");
+    }
+
+    #[test]
     fn missing_configured_command_names_the_required_config_key() {
         let config = MorphirConfig::default();
 
-        let error =
-            configured_process(&config, "elm", Path::new("/workspace/project"), &[]).unwrap_err();
+        let error = configured_process(
+            &config,
+            &extension_id("morphir-elm"),
+            Path::new("/workspace/project"),
+            &[],
+        )
+        .unwrap_err();
 
         assert!(
             error
@@ -1673,8 +1825,13 @@ enabled = true
         )
         .unwrap();
 
-        let error =
-            configured_process(&config, "elm", Path::new("/workspace/project"), &[]).unwrap_err();
+        let error = configured_process(
+            &config,
+            &extension_id("morphir-elm"),
+            Path::new("/workspace/project"),
+            &[],
+        )
+        .unwrap_err();
 
         assert!(
             error
@@ -1694,8 +1851,13 @@ enabled = true
         )
         .unwrap();
 
-        let error =
-            configured_process(&config, "elm", Path::new("/workspace/project"), &[]).unwrap_err();
+        let error = configured_process(
+            &config,
+            &extension_id("morphir-elm"),
+            Path::new("/workspace/project"),
+            &[],
+        )
+        .unwrap_err();
 
         assert!(
             error

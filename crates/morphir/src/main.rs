@@ -50,6 +50,9 @@ enum Commands {
         /// Source language (e.g., gleam, elm)
         #[arg(short, long)]
         language: Option<String>,
+        /// Extension provider id for single-file Elm compilation. Defaults to morphir-{language}.
+        #[arg(long)]
+        extension: Option<String>,
         /// Input source directory or file. An installed or configured Elm process accepts one .elm file.
         #[arg(short, long)]
         input: Option<String>,
@@ -594,6 +597,7 @@ impl AppSession for MorphirSession {
             Commands::Validate { input } => run_validate(input.clone()),
             Commands::Compile {
                 language,
+                extension,
                 input,
                 output,
                 package_name,
@@ -604,6 +608,7 @@ impl AppSession for MorphirSession {
             } => {
                 run_compile(CompileOptions {
                     language: language.clone(),
+                    extension: extension.clone(),
                     input: input.clone(),
                     output: output.clone(),
                     package_name: package_name.clone(),

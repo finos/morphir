@@ -77,6 +77,100 @@ fn run_morphir(
 }
 
 #[test]
+fn compile_help_documents_explicit_extension_selection() {
+    let temp = TempDir::new().unwrap();
+    let output = run_morphir(
+        &["compile", "--help"],
+        &temp.path().join("home"),
+        temp.path(),
+    );
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("--extension <EXTENSION>"), "{stdout}");
+    assert!(stdout.contains("single-file Elm compilation"), "{stdout}");
+    assert!(stdout.contains("morphir-{language}"), "{stdout}");
+}
+
+#[test]
+fn compile_rejects_an_invalid_explicit_extension_id() {
+    let temp = TempDir::new().unwrap();
+    let source = temp.path().join("Example.elm");
+    std::fs::write(&source, "module Example exposing (value)\n\nvalue = 1\n").unwrap();
+
+    let output = run_morphir(
+        &[
+            "compile",
+            "--input",
+            source.to_str().unwrap(),
+            "--extension",
+            "Morphir Scala Elm",
+        ],
+        &temp.path().join("home"),
+        temp.path(),
+    );
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("Invalid extension id"), "{stderr}");
+}
+
+#[test]
+fn compile_reports_the_selected_extension_when_it_is_not_installed() {
+    let temp = TempDir::new().unwrap();
+    let source = temp.path().join("Example.elm");
+    std::fs::write(&source, "module Example exposing (value)\n\nvalue = 1\n").unwrap();
+
+    let output = run_morphir(
+        &[
+            "compile",
+            "--input",
+            source.to_str().unwrap(),
+            "--extension",
+            "morphir-scala-elm",
+        ],
+        &temp.path().join("home"),
+        temp.path(),
+    );
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    let compact_stderr = stderr.split_whitespace().collect::<String>();
+    assert!(
+        compact_stderr.contains("extensionmorphir-scala-elmisnotinstalled"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn compile_rejects_explicit_extension_selection_on_the_legacy_path() {
+    let temp = TempDir::new().unwrap();
+    let source = temp.path().join("Example.gleam");
+    std::fs::write(&source, "pub fn value() { 1 }\n").unwrap();
+
+    let output = run_morphir(
+        &[
+            "compile",
+            "--language",
+            "gleam",
+            "--input",
+            source.to_str().unwrap(),
+            "--extension",
+            "morphir-other-gleam",
+        ],
+        &temp.path().join("home"),
+        temp.path(),
+    );
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("Explicit extension selection currently requires"),
+        "{stderr}"
+    );
+}
+
+#[test]
 fn extension_install_uses_verified_index_and_list_reports_the_exact_version() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
