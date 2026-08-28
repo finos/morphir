@@ -5623,6 +5623,7 @@ name = "morphir-common"
 version = "0.4.0-alpha.5"
 dependencies = [
  "anyhow",
+ "cucumber",
  "dirs",
  "flate2",
  "glob",
@@ -5638,6 +5639,7 @@ dependencies = [
  "tar",
  "tempfile",
  "thiserror 2.0.20",
+ "tokio",
  "toml 1.1.4+spec-1.1.0",
  "uuid",
  "vfs",
