@@ -1,0 +1,29 @@
+[package]
+name = "integration-tests"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+publish = false
+description = "Integration tests for the Morphir CLI and cross-crate functionality"
+
+# This crate is test-only - no lib target
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+tempfile = "3.24"
+serde_json = "1.0"
+morphir-common = { path = "../../ecosystem/morphir-rust/crates/morphir-common" }
+
+[dev-dependencies]
+cucumber = { version = "0.22", features = ["output-json"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+[[test]]
+name = "cli"
+harness = false

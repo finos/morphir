@@ -1,0 +1,50 @@
+{
+  "description": "V4 IncompleteTypeDefinition examples for testing morphir-rust compliance",
+  "examples": {
+    "holeWithUnresolvedReference": {
+      "IncompleteTypeDefinition": {
+        "typeParams": ["a"],
+        "incompleteness": {
+          "Hole": {
+            "reason": {
+              "UnresolvedReference": {
+                "target": "acme/finance:domain#missing-type"
+              }
+            }
+          }
+        },
+        "partialTypeExp": null
+      }
+    },
+    "draftWithPartialBody": {
+      "IncompleteTypeDefinition": {
+        "typeParams": [],
+        "incompleteness": {
+          "Draft": {}
+        },
+        "partialTypeExp": {
+          "Record": {
+            "id": "morphir/sdk:string#string",
+            "name": "morphir/sdk:string#string"
+          }
+        }
+      }
+    },
+    "holeWithTypeMismatch": {
+      "IncompleteTypeDefinition": {
+        "typeParams": ["a", "b"],
+        "incompleteness": {
+          "Hole": {
+            "reason": {
+              "TypeMismatch": {
+                "expected": "Function",
+                "found": "Record"
+              }
+            }
+          }
+        },
+        "partialTypeExp": null
+      }
+    }
+  }
+}
