@@ -365,7 +365,7 @@ morphir ir migrate ./morphir-ir.json
 morphir ir migrate ./morphir-ir-v4.json -o ./morphir-ir-classic.json --target-version classic
 ```
 
-See the [IR Migration Guide](/ir-migrate/) for detailed real-world examples including the US Federal Reserve FR 2052a regulation model.")]
+See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tools/ir-migrate) for detailed real-world examples including the US Federal Reserve FR 2052a regulation model.")]
     Migrate {
         /// Input file, directory, or remote source (e.g., github:owner/repo, URL)
         input: String,
