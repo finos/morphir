@@ -140,23 +140,23 @@ impl CliTestContext {
             }
         }
 
-        // Fall back to target directory locations
+        // Fall back to target directory locations, resolved to absolute
+        // paths so the binary stays reachable after the child process
+        // changes its working directory to the test project.
+        let workspace_root = Self::find_workspace_root()?;
+        let target_dir = std::env::var("CARGO_TARGET_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("target"));
+        let target_dir = if target_dir.is_absolute() {
+            target_dir
+        } else {
+            workspace_root.join(target_dir)
+        };
         let possible_paths = vec![
             // Release binary (preferred)
-            {
-                let target_dir =
-                    std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".to_string());
-                PathBuf::from(target_dir).join("release").join("morphir")
-            },
+            target_dir.join("release").join("morphir"),
             // Debug binary
-            {
-                let target_dir =
-                    std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".to_string());
-                PathBuf::from(target_dir).join("debug").join("morphir")
-            },
-            // In workspace root target
-            PathBuf::from("../../target/release/morphir"),
-            PathBuf::from("../../target/debug/morphir"),
+            target_dir.join("debug").join("morphir"),
         ];
 
         possible_paths.into_iter().find(|path| path.exists())
