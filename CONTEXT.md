@@ -35,3 +35,71 @@ _Avoid_: Configuration loader, automatic resolution
 **Protected secret**:
 A resolved secret value that redacts formatting, has no ordinary serialization path, and requires an explicit operation to expose its contents.
 _Avoid_: Plain string, secret reference
+
+## Extensions
+
+**Morphir Extension Protocol**:
+The versioned contract between a Morphir host and an extension.
+_Avoid_: CLI protocol, backend protocol
+
+**Extension**:
+An independently packaged provider of one or more Morphir capabilities.
+_Avoid_: Plugin, backend when referring to every extension type
+
+**Extension host**:
+The Morphir component that discovers, starts, negotiates with, and calls extensions.
+_Avoid_: Extension server, backend manager
+
+**Frontend**:
+An extension capability that compiles source documents into Morphir IR.
+_Avoid_: Compiler extension
+
+**Backend**:
+An extension capability that converts Morphir IR into generated artifacts.
+_Avoid_: Extension when referring to any capability provider
+
+**Capability**:
+A named family of operations that an extension can provide.
+_Avoid_: Feature flag, extension type
+
+**Extension distribution**:
+A versioned package that describes an extension and provides one or more artifacts that can implement it.
+_Avoid_: Morphir package, loaded extension
+
+**Extension artifact**:
+A runnable payload for one extension runtime and, when applicable, one operating-system and architecture target.
+_Avoid_: Extension, source package
+
+**Installed extension catalog**:
+The host's local record of verified extension distributions available for selection and activation.
+_Avoid_: Package registry, loaded-extension registry
+
+## Packages
+
+**Morphir package**:
+A versioned collection of modules that define reusable logic and types and are distributed together.
+_Avoid_: Extension distribution, generated artifact
+
+**Package requirement**:
+A request for a package identity with either an exact version or a version range.
+_Avoid_: Download URL, source location
+
+**Resolved package**:
+An exact package identity selected for a requirement, together with its dependency metadata, integrity, and source provenance.
+_Avoid_: Package requirement, materialized package
+
+**Source descriptor**:
+A typed description of where package content can be acquired, such as a verified registry archive, immutable Git commit, workspace snapshot, or vendored tree.
+_Avoid_: Package identity, package requirement
+
+**Materialized package**:
+A verified local package tree prepared from a resolved package for compilation or inspection.
+_Avoid_: Package archive, compiler cache
+
+**Registry index**:
+A distributable metadata view that maps package identities and versions to dependency, integrity, and source information.
+_Avoid_: Git repository, artifact store, installed extension catalog
+
+**Release channel**:
+A named, mutable policy that selects eligible package or extension versions for updates.
+_Avoid_: Package identity, exact version, registry index

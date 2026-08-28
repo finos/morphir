@@ -5433,6 +5433,7 @@ version = "0.4.0-alpha.5"
 dependencies = [
  "anyhow",
  "async-trait",
+ "base64 0.22.1",
  "dirs",
  "extism",
  "jsonrpsee",
