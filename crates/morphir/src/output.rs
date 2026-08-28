@@ -86,9 +86,20 @@ pub struct GenerateOutput {
 pub struct Diagnostic {
     pub level: String, // "error", "warning", "info"
     pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub related: Vec<morphir_extension_sdk::RelatedInformation>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub file: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub line: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub column: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub uri: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range: Option<morphir_extension_sdk::SourceRange>,
 }
 
 /// Progress message for streaming output
