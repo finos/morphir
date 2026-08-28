@@ -1,0 +1,3 @@
+formatVersion: 4
+seed: &seed [value, value, value, value]
+distribution: [*seed, *seed, *seed, *seed, *seed, *seed, *seed, *seed]

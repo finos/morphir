@@ -18,6 +18,7 @@ The Morphir IR specification defines:
 - **Building blocks**: Core concepts and data structures that form the IR
 - **Relationships**: How different components of the IR relate to and reference each other
 - **Semantics**: The meaning and behavior of each construct
+- **Serialization profiles**: Lossless physical representations of the same semantic IR, including JSON and YAML
 
 This specification is designed to:
 
@@ -34,6 +35,12 @@ The Morphir IR follows these key principles:
 - **Hierarchical**: Code is organized in a hierarchical namespace (Package → Module → Type/Value)
 - **Naming-agnostic**: Names are stored in a canonical format independent of any specific naming convention
 - **Explicit**: All references are fully-qualified to eliminate ambiguity
+
+### Semantic model and storage
+
+The semantic IR is independent of its storage syntax. JSON and YAML are native serialization profiles that normalize to the same versioned model. JSON Schema is used as a practical machine-readable definition of JSON encodings; it does not restrict Morphir IR to JSON. Serialization conversion is lossless when the normalized semantic IR value is unchanged.
+
+Version-specific profiles define permitted vocabulary, validation, and document-tree names. See the [v4 semantic model](schemas/v4/semantic-model.md), [v4 JSON profile](schemas/v4/json-profile.md), [v4 YAML profile](schemas/v4/yaml-profile.md), and [v4 document-tree profile](schemas/v4/document-tree-files.md).
 
 ## Core Concepts
 
