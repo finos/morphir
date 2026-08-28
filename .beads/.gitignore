@@ -1,15 +1,31 @@
 # Dolt database (managed by Dolt, not git)
 dolt/
-dolt-access.lock
+embeddeddolt/
+proxieddb/
 
 # Runtime files
 bd.sock
 bd.sock.startlock
 sync-state.json
 last-touched
+.exclusive-lock
+
+# Daemon runtime (lock, log, pid)
+daemon.*
+
+# Push state (runtime, per-machine)
+push-state.json
+
+# Lock files (various runtime locks)
+*.lock
+
+# Credential key (encryption key for federation peer auth — never commit)
+.beads-credential-key
 
 # Local version tracking (prevents upgrade notification spam after git ops)
 .local_version
+
+proxied_server_client_info.json
 
 # Worktree redirect file (contains relative path to main repo's .beads/)
 # Must not be committed as paths would be wrong in other clones
@@ -18,15 +34,34 @@ redirect
 # Sync state (local-only, per-machine)
 # These files are machine-specific and should not be shared across clones
 .sync.lock
-.jsonl.lock
-sync_base.jsonl
 export-state/
+export-state.json
+last_pull
 
 # Ephemeral store (SQLite - wisps/molecules, intentionally not versioned)
 ephemeral.sqlite3
 ephemeral.sqlite3-journal
 ephemeral.sqlite3-wal
 ephemeral.sqlite3-shm
+
+# Dolt server management (auto-started by bd)
+dolt-server.pid
+dolt-server.log
+dolt-server.lock
+dolt-server.port
+dolt-server.activity
+
+# Debug-mode pprof artifacts (written when dolt.debug: true in config.yaml)
+dolt-pprof/
+
+# Corrupt backup directories (created by bd doctor --fix recovery)
+*.corrupt.backup/
+
+# Backup data (auto-exported JSONL, local-only)
+backup/
+
+# Per-project environment file (Dolt connection config, GH#2520)
+.env
 
 # Legacy files (from pre-Dolt versions)
 *.db
@@ -36,19 +71,7 @@ ephemeral.sqlite3-shm
 *.db-shm
 db.sqlite
 bd.db
-daemon.lock
-daemon.log
-daemon-*.log.gz
-daemon.pid
-beads.base.jsonl
-beads.base.meta.json
-beads.left.jsonl
-beads.left.meta.json
-beads.right.jsonl
-beads.right.meta.json
-
-# NOTE: Do NOT add negation patterns (e.g., !issues.jsonl) here.
-# They would override fork protection in .git/info/exclude, allowing
-# contributors to accidentally commit upstream issue databases.
-# The JSONL files (issues.jsonl, interactions.jsonl) and config files
-# are tracked by git by default since no pattern above ignores them.
+# NOTE: Do NOT add negation patterns here.
+# They would override fork protection in .git/info/exclude.
+# Config files (metadata.json, config.yaml) are tracked by git by default
+# since no pattern above ignores them.
