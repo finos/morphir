@@ -4,7 +4,7 @@ This guide covers the development workflow for contributing to Morphir.
 
 ## Prerequisites
 
-- Rust 1.93.0 or later (for morphir-live development)
+- Rust 1.98.0 or later (for morphir-live development)
 - Node.js 24+ (for website development)
 - Git
 - Mise (task runner) - Install from https://mise.jdx.dev

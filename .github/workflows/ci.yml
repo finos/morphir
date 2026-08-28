@@ -46,6 +46,8 @@ jobs:
               - 'docs/cli/**'
               - 'docs/man/**'
               - 'completions/**'
+              # asserts every workspace package follows the current Rust baseline
+              - 'tests/rust/test_workspace_rust_baseline.py'
               - '.github/workflows/ci.yml'
             docs:
               - 'website/**'
@@ -83,6 +85,9 @@ jobs:
 
       - name: Add Rust components
         run: rustup component add rustfmt clippy
+
+      - name: Validate workspace Rust baseline
+        run: python3 -B tests/rust/test_workspace_rust_baseline.py
 
       - name: Install GTK dependencies (for desktop build)
         run: |
@@ -171,9 +176,12 @@ jobs:
         env:
           MORPHIR_ELM_EXTENSION_BIN: >-
             ${{ github.workspace }}/ecosystem/morphir-elm/dist/morphir-elm-extension/morphir-elm-extension
-        run: >-
-          cargo test --locked --package integration-tests --test elm_extension
-          -- --ignored --nocapture
+        run: |
+          cargo test --locked --package integration-tests --test elm_extension \
+            -- --ignored --nocapture
+          cargo test --locked --package morphir --test cli_integration \
+            real_installed_morphir_elm_is_verified_and_activates_offline \
+            -- --ignored --nocapture
 
       - name: Run CLI integration tests
         # integration-tests finds the CLI binary in target/release/morphir

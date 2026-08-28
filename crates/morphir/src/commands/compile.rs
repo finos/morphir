@@ -2,6 +2,7 @@
 
 use crate::error::CliError;
 use crate::error::convert_extension_diagnostics;
+use crate::home::MorphirHome;
 use crate::output::Diagnostic;
 use morphir_common::config::model::MorphirConfig;
 use morphir_daemon::DaemonError;
@@ -13,6 +14,7 @@ use morphir_devkit::{
     discover_config, ensure_morphir_structure, load_config_context, resolve_compile_output,
     resolve_path_relative_to_config,
 };
+use morphir_distribution::{ExtensionId, activate_installed};
 use morphir_extension_sdk::{
     CompileOptions as ExtensionCompileOptions, CompilePackage, CompileRequest, CompileResult,
     DiagnosticSeverity, ExtensionType, SourceDocument,
@@ -54,9 +56,6 @@ pub async fn run_compile(options: CompileOptions) -> AppResult<miette::Report> {
 }
 
 fn should_use_single_file_process(options: &CompileOptions) -> bool {
-    if options.config_path.is_none() {
-        return false;
-    }
     let Some(input) = options.input.as_deref() else {
         return false;
     };
@@ -403,6 +402,50 @@ fn configured_process(
         .fold(launch, |launch, (key, value)| launch.env(key, value)))
 }
 
+fn installed_process(
+    home: &MorphirHome,
+    language: &str,
+    working_directory: &Path,
+    environment: &[(OsString, OsString)],
+) -> Result<ProcessLaunch, CliError> {
+    let id =
+        ExtensionId::parse(format!("morphir-{language}")).map_err(|error| CliError::Extension {
+            message: format!("Invalid installed extension identity: {error}"),
+        })?;
+    let artifact = activate_installed(home, &id).map_err(|error| CliError::Extension {
+        message: format!("Failed to activate installed extension '{id}': {error}"),
+    })?;
+    let launch = artifact.args().iter().fold(
+        ProcessLaunch::from_discovered(
+            artifact.extension_info().clone(),
+            artifact.program(),
+            working_directory,
+        ),
+        |launch, argument| launch.arg(argument),
+    );
+    Ok(environment
+        .iter()
+        .fold(launch, |launch, (key, value)| launch.env(key, value)))
+}
+
+fn compile_process(
+    config: Option<(&MorphirConfig, &Path)>,
+    language: &str,
+    working_directory: &Path,
+    home: &MorphirHome,
+    environment: &[(OsString, OsString)],
+) -> Result<ProcessLaunch, CliError> {
+    if let Some((config, config_dir)) = config
+        && config
+            .extensions
+            .get(&format!("morphir-{language}"))
+            .is_some_and(|spec| spec.enabled && spec.command.is_some())
+    {
+        return configured_process(config, language, config_dir, environment);
+    }
+    installed_process(home, language, working_directory, environment)
+}
+
 fn filtered_process_environment() -> Vec<(OsString, OsString)> {
     [
         "HOME",
@@ -431,21 +474,17 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
             message: "Single-file compilation requires --input".into(),
         })?;
     let input_path = absolute_from(&start_dir, Path::new(input_value));
-    let config_value = options
+    let config_path = options
         .config_path
         .as_deref()
-        .ok_or_else(|| CliError::Config {
-            error: anyhow::anyhow!("Single-file process compilation requires --config"),
-        })?;
-    let config_path = absolute_from(&start_dir, Path::new(config_value));
-    let config_context =
-        load_config_context(&config_path).map_err(|error| CliError::Config { error })?;
-    let config_dir = config_path.parent().ok_or_else(|| CliError::Config {
-        error: anyhow::anyhow!(
-            "Config file has no parent directory: {}",
-            config_path.display()
-        ),
-    })?;
+        .map(Path::new)
+        .map(|path| absolute_from(&start_dir, path));
+    let config_context = config_path
+        .as_deref()
+        .map(load_config_context)
+        .transpose()
+        .map_err(|error| CliError::Config { error })?;
+    let config_dir = config_path.as_deref().and_then(Path::parent);
     let source = read_single_source(&input_path)?;
     let output_path = options
         .output
@@ -461,10 +500,15 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
         output_path,
     )?;
     let environment = filtered_process_environment();
-    let launch = configured_process(
-        &config_context.config,
+    let home = MorphirHome::resolve().map_err(|error| CliError::Config { error })?;
+    let launch = compile_process(
+        config_context
+            .as_ref()
+            .zip(config_dir)
+            .map(|(context, directory)| (&context.config, directory)),
         &context.language_id,
-        config_dir,
+        config_dir.unwrap_or(&start_dir),
+        &home,
         &environment,
     )?;
     let compile_result = invoke_frontend(launch, &context).await?;
@@ -1164,6 +1208,16 @@ mod tests {
     }
 
     #[test]
+    fn dispatcher_routes_an_elm_file_without_project_metadata_to_the_installed_process() {
+        let options = CompileOptions {
+            input: Some("Example.elm".into()),
+            ..CompileOptions::default()
+        };
+
+        assert!(should_use_single_file_process(&options));
+    }
+
+    #[test]
     fn dispatcher_normalizes_explicit_elm_and_ignores_the_input_suffix() {
         let options = CompileOptions {
             language: Some(" Elm ".into()),
@@ -1491,6 +1545,108 @@ enabled = true
         assert!(debug.contains(&config_dir.to_string_lossy().into_owned()));
         assert!(debug.contains("TASK10_TEST_ENV"));
         assert!(debug.contains("explicit-value"));
+    }
+
+    fn install_test_process(directory: &Path) -> (MorphirHome, PathBuf) {
+        let home_path = directory.join("home");
+        let home = MorphirHome::resolve_from(Some(home_path.as_os_str()), None).unwrap();
+        let index_root = directory.join("index");
+        let source_path = index_root.join("artifacts/morphir-elm");
+        std::fs::create_dir_all(source_path.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(index_root.join("extensions")).unwrap();
+        let bytes = b"test process bytes";
+        std::fs::write(&source_path, bytes).unwrap();
+        let digest = morphir_distribution::Sha256Digest::of_bytes(bytes);
+        let record = serde_json::json!({
+            "schemaVersion": 1,
+            "id": "morphir-elm",
+            "name": "Morphir Elm frontend",
+            "version": "2.100.0",
+            "channels": ["stable"],
+            "mepVersions": ["0.1"],
+            "capabilities": ["frontend"],
+            "artifacts": [{
+                "runtime": "process",
+                "platform": {
+                    "os": std::env::consts::OS,
+                    "arch": std::env::consts::ARCH,
+                },
+                "source": {"kind": "local-file", "path": "artifacts/morphir-elm"},
+                "sha256": digest.to_string(),
+                "filename": "morphir-elm",
+                "executable": true,
+            }],
+        });
+        std::fs::write(
+            index_root.join("extensions/morphir-elm.jsonl"),
+            format!("{record}\n"),
+        )
+        .unwrap();
+        let id = morphir_distribution::ExtensionId::parse("morphir-elm").unwrap();
+        let selected = morphir_distribution::LocalIndex::open(&index_root)
+            .unwrap()
+            .resolve(
+                &id,
+                morphir_distribution::Selection::Channel(morphir_distribution::Channel::Stable),
+                &morphir_distribution::Platform::current(),
+            )
+            .unwrap();
+        let installed = morphir_distribution::ExtensionInstaller::new(&home)
+            .install(selected)
+            .unwrap();
+        (home.clone(), home.root().join(installed.store_path()))
+    }
+
+    #[test]
+    fn installed_process_launch_carries_exact_discovered_metadata() {
+        let directory = TempDir::new().unwrap();
+        let (home, _) = install_test_process(directory.path());
+
+        let process = installed_process(&home, "elm", directory.path(), &[]).unwrap();
+        let debug = format!("{process:?}");
+
+        assert!(debug.contains("discovered: Some"), "{debug}");
+        assert!(debug.contains("morphir-elm"), "{debug}");
+        assert!(debug.contains("2.100.0"), "{debug}");
+    }
+
+    #[test]
+    fn installed_process_rehashes_bytes_before_returning_a_launch() {
+        let directory = TempDir::new().unwrap();
+        let (home, installed_path) = install_test_process(directory.path());
+        std::fs::write(installed_path, b"tampered after installation").unwrap();
+
+        let error = installed_process(&home, "elm", directory.path(), &[]).unwrap_err();
+
+        assert!(error.to_string().contains("digest"), "{error}");
+    }
+
+    #[test]
+    fn explicit_configured_command_overrides_installed_discovery() {
+        let directory = TempDir::new().unwrap();
+        let config: MorphirConfig = toml::from_str(
+            r#"
+[extensions.morphir-elm]
+command = "dev/morphir-elm-extension"
+enabled = true
+"#,
+        )
+        .unwrap();
+        let home_path = directory.path().join("empty-home");
+        let home = MorphirHome::resolve_from(Some(home_path.as_os_str()), None).unwrap();
+
+        let process = compile_process(
+            Some((&config, directory.path())),
+            "elm",
+            directory.path(),
+            &home,
+            &[],
+        )
+        .unwrap();
+        let debug = format!("{process:?}");
+
+        assert!(debug.contains("dev/morphir-elm-extension"), "{debug}");
+        assert!(debug.contains("discovered: None"), "{debug}");
     }
 
     #[test]

@@ -7,7 +7,7 @@ Manage Morphir extensions
 
 ## Subcommands
 
-- [`morphir extension install [-v --version <VERSION>] <NAME>`](extension/install.md)
+- [`morphir extension install <FLAGS> <NAME>`](extension/install.md)
 - [`morphir extension list`](extension/list.md)
 - [`morphir extension uninstall <NAME>`](extension/uninstall.md)
-- [`morphir extension update [-v --version <VERSION>] <NAME>`](extension/update.md)
+- [`morphir extension update <FLAGS> <NAME>`](extension/update.md)

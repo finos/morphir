@@ -7,10 +7,10 @@ Compile source code to Morphir IR
 
 ## Flags
 - **`-l --language <LANGUAGE>`** — Source language (e.g., gleam, elm)
-- **`-i --input <INPUT>`** — Input source directory or file. A configured Elm process accepts one .elm file
+- **`-i --input <INPUT>`** — Input source directory or file. An installed or configured Elm process accepts one .elm file
 - **`-o --output <OUTPUT>`** — Output directory
 - **`--package-name <PACKAGE_NAME>`** — Package name override
-- **`--config <CONFIG>`** — Explicit config file path. Elm process commands come from [extensions.morphir-elm]
+- **`--config <CONFIG>`** — Explicit config file path. An Elm command is a development override for the installed extension
 - **`--project <PROJECT>`** — Project name (for workspaces)
 - **`--json`** — Output as JSON
 - **`--json-lines`** — Output as JSON Lines (streaming)

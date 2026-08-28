@@ -36,10 +36,12 @@ morphir-common = { path = "../../ecosystem/morphir-rust/crates/morphir-common" }
 morphir-devkit = { path = "../../ecosystem/morphir-rust/crates/morphir-devkit" }
 morphir-daemon = { path = "../../ecosystem/morphir-rust/crates/morphir-daemon" }
 morphir-extension-sdk = { path = "../../ecosystem/morphir-rust/crates/morphir-extension-sdk" }
+morphir-distribution = { path = "../../ecosystem/morphir-rust/crates/morphir-distribution" }
+semver = { workspace = true }
 walkdir = "2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tempfile = "3"
+tempfile = { workspace = true }
 toml = { workspace = true }
 dirs = "6.0"
 schemars = "1.0"

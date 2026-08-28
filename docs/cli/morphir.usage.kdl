@@ -12,7 +12,7 @@ cmd compile display_order=2 args_override_self=#false help="Compile source code 
     flag "-l --language" help="Source language (e.g., gleam, elm)" {
         arg <LANGUAGE>
     }
-    flag "-i --input" help="Input source directory or file. A configured Elm process accepts one .elm file" {
+    flag "-i --input" help="Input source directory or file. An installed or configured Elm process accepts one .elm file" {
         arg <INPUT>
     }
     flag "-o --output" help="Output directory" {
@@ -21,7 +21,7 @@ cmd compile display_order=2 args_override_self=#false help="Compile source code 
     flag --package-name help="Package name override" {
         arg <PACKAGE_NAME>
     }
-    flag --config help="Explicit config file path. Elm process commands come from [extensions.morphir-elm]" {
+    flag --config help="Explicit config file path. An Elm command is a development override for the installed extension" {
         arg <CONFIG>
     }
     flag --project help="Project name (for workspaces)" {
@@ -167,17 +167,31 @@ cmd dist display_order=9 subcommand_required=#true arg_required_else_help=#true 
 }
 cmd extension display_order=10 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir extensions" unknown_flags=error {
     cmd install display_order=0 args_override_self=#false help="Install a Morphir extension" unknown_flags=error {
-        flag "-v --version" help="Version to install (defaults to latest)" {
+        flag --index help="Controlled local extension index directory" required=#true {
+            arg <INDEX>
+        }
+        flag --channel help="Moving release channel (defaults to stable)" conflicts=--version {
+            arg <CHANNEL>
+        }
+        flag --version help="Exact semantic version" conflicts=--channel {
             arg <VERSION>
         }
         arg <NAME> help="Name of the extension to install"
+        complete index type=path
     }
     cmd list display_order=1 args_override_self=#false help="List installed Morphir extensions" unknown_flags=error
     cmd update display_order=2 args_override_self=#false help="Update an installed Morphir extension" unknown_flags=error {
-        flag "-v --version" help="Version to update to (defaults to latest)" {
+        flag --index help="Controlled local extension index directory" required=#true {
+            arg <INDEX>
+        }
+        flag --channel help="Moving release channel (defaults to stable)" conflicts=--version {
+            arg <CHANNEL>
+        }
+        flag --version help="Exact semantic version" conflicts=--channel {
             arg <VERSION>
         }
         arg <NAME> help="Name of the extension to update"
+        complete index type=path
     }
     cmd uninstall display_order=3 args_override_self=#false help="Uninstall a Morphir extension" unknown_flags=error {
         arg <NAME> help="Name of the extension to uninstall"
