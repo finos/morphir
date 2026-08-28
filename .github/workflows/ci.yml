@@ -150,9 +150,13 @@ jobs:
 
       - name: Check CLI docs are up to date
         run: |
-          if ! git diff --quiet docs/cli docs/man completions; then
-            echo "::error::Generated CLI documentation is out of date. Run 'mise run docs:cli' and commit the changes."
-            git diff docs/cli docs/man completions
+          # --ignored=matching also surfaces generated outputs that a
+          # .gitignore rule would silently keep out of the repository
+          CHANGES=$(git status --porcelain --ignored=matching -- docs/cli docs/man completions)
+          if [ -n "$CHANGES" ]; then
+            echo "::error::Generated CLI documentation is out of date or untracked. Run 'mise run docs:cli' and commit the changes."
+            echo "$CHANGES"
+            git diff -- docs/cli docs/man completions
             exit 1
           fi
 

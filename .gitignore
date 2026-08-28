@@ -20,6 +20,9 @@ zig-out/
 .out/
 out/
 dist/
+# Generated CLI reference pages for the dist command are documentation,
+# not build output
+!docs/cli/dist/
 target/
 bin/
 

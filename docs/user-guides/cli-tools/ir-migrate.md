@@ -8,6 +8,10 @@ sidebar_position: 10
 
 The `morphir ir migrate` command converts Morphir IR between format versions. This is useful when upgrading projects from Classic format (V1-V3) to V4 format, or for backward compatibility when working with older tooling.
 
+:::caution Format conversion is not available yet
+In the current release, `morphir ir migrate` detects the input format, validates it, and can copy or display the IR, but the Classic ↔ V4 converter is disabled pending type system updates. Any run that requires an actual format change (for example `--target-version v4` on Classic input, or `--target-version classic` on V4 input) reports that the conversion is not yet implemented and exits with status 1. The conversion examples below describe the intended behavior once the converter is enabled.
+:::
+
 ## Overview
 
 Morphir IR has two main format generations:
@@ -596,10 +600,11 @@ The IR contains V4-specific features. Either:
 
 ### "Source URL not allowed by configuration"
 
-The remote source is blocked by your `morphir.toml` configuration:
+The remote source is blocked by your `morphir.toml` configuration. The
+allow/deny policy is enforced before any fetch, so cache flags such as
+`--no-cache` cannot bypass it:
 1. Check the `[sources.allow]` and `[sources.deny]` lists
-2. Add the source URL to your allow list
-3. Or use `--no-cache` to bypass configuration checks
+2. Add the source URL to your allow list, or remove the matching deny rule
 
 ### "Failed to fetch source"
 
