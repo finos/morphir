@@ -744,7 +744,7 @@ fn migrate_reports_unsupported_v4_downgrade_without_replacing_output() {
         .expect("failed to run morphir binary");
 
     assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("unsupported-v4-distribution"));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("unsupported_v4_downgrade"));
     assert_eq!(std::fs::read_to_string(output_path).unwrap(), "unchanged");
 }
 
@@ -776,7 +776,7 @@ fn migrate_writes_and_reads_a_v4_document_tree() {
         String::from_utf8_lossy(&to_tree.stdout),
         String::from_utf8_lossy(&to_tree.stderr)
     );
-    assert!(tree.join("manifest.json").is_file());
+    assert!(tree.join("manifest.yaml").is_file());
 
     let to_file = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
         .args([
@@ -820,7 +820,7 @@ fn migrate_infers_vfs_for_a_new_directory_path_with_a_trailing_separator() {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    assert!(PathBuf::from(tree).join("manifest.json").is_file());
+    assert!(PathBuf::from(tree).join("manifest.yaml").is_file());
 }
 
 #[test]
@@ -833,4 +833,6 @@ fn migrate_accepts_partial_and_encoding_flags() {
     assert!(help.contains("--allow-partial"));
     assert!(help.contains("--expanded"));
     assert!(help.contains("--output-layout"));
+    assert!(help.contains("--input-format"));
+    assert!(help.contains("--output-format"));
 }

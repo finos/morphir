@@ -66,18 +66,21 @@ cmd migrate display_order=6 args_override_self=#false help="Migrate IR between v
     long_help #"""
 Migrate IR between versions
 
-Upgrades concrete Morphir IR V3 to V4 and re-encodes V4 IR. Supports local files, document-tree directories, URLs, and GitHub shorthand sources.
+Converts concrete Morphir IR V3 and V4 between native JSON and YAML storage, single files, and V4 document trees. V3-to-V4 output defaults to YAML.
 
 **Examples:**
 
 ```bash
-# Migrate to file
-morphir migrate ./morphir-ir.json -o ./morphir-ir-v4.json --target-version v4
+# Migrate V3 JSON to the default V4 YAML profile
+morphir migrate ./morphir-ir.json -o ./morphir-ir-v4.yaml
+
+# Convert V4 YAML to JSON without changing the IR version
+morphir migrate ./morphir-ir-v4.yaml -o ./morphir-ir-v4.json
 
 # Migrate from URL
 morphir migrate https://lcr-interactive.finos.org/server/morphir-ir.json -o ./lcr-v4.json
 
-# Display in console with syntax highlighting (no -o)
+# Stream YAML IR to stdout (no -o)
 morphir migrate ./morphir-ir.json
 
 # Write the V4 document-tree layout
@@ -86,21 +89,27 @@ morphir migrate ./morphir-ir.json -o ./morphir-ir-v4/ --output-layout vfs
 
 See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tools/ir-migrate) for detailed real-world examples including the US Federal Reserve FR 2052a regulation model.
 """#
-    flag "-o --output" help="Output file or directory (if omitted, displays in console with syntax highlighting)" {
+    flag "-o --output" help="Output file or directory (if omitted, writes the IR artifact to stdout)" {
         arg <OUTPUT>
     }
-    flag --target-version help="Target version: latest, v4/4, classic, v3/3, v2/2, v1/1 (default: latest)" default=latest {
+    flag --target-version help="Target version: latest, v4/4, or classic/v3/3 (default: latest)" default=latest {
         arg <TARGET_VERSION>
     }
     flag --force-refresh help="Force refresh cached remote sources"
     flag --no-cache help="Skip cache entirely for remote sources"
-    flag --json help="Output result as JSON (for scripting)"
+    flag --json help="Emit JSON IR to stdout, or a JSON result envelope when --output is present"
     flag --expanded help="Use expanded (non-compact) format for V4 output"
     flag --allow-partial help="Permit recoverable incomplete V4 nodes when a source construct cannot be preserved"
     flag --output-layout help="Output storage layout (inferred from the output path when omitted)" {
         arg <OUTPUT_LAYOUT> {
             choices single-file vfs
         }
+    }
+    flag --input-format help="Input serialization profile (json or yaml; inferred when omitted)" {
+        arg <INPUT_FORMAT>
+    }
+    flag --output-format help="Output serialization profile (json or yaml; extension then YAML default when omitted)" {
+        arg <OUTPUT_FORMAT>
     }
     arg <INPUT> help="Input file, directory, or remote source (e.g., github:owner/repo, URL)"
     complete output type=path
@@ -202,18 +211,21 @@ cmd ir display_order=11 subcommand_required=#true arg_required_else_help=#true a
         long_help #"""
 Migrate IR between versions
 
-Upgrades concrete Morphir IR V3 to V4 and re-encodes V4 IR. Supports local files, document-tree directories, URLs, and GitHub shorthand sources.
+Converts concrete Morphir IR V3 and V4 between native JSON and YAML storage, single files, and V4 document trees. V3-to-V4 output defaults to YAML.
 
 **Examples:**
 
 ```bash
-# Migrate to file
-morphir ir migrate ./morphir-ir.json -o ./morphir-ir-v4.json --target-version v4
+# Migrate V3 JSON to the default V4 YAML profile
+morphir ir migrate ./morphir-ir.json -o ./morphir-ir-v4.yaml
+
+# Convert V4 YAML to JSON without changing the IR version
+morphir ir migrate ./morphir-ir-v4.yaml -o ./morphir-ir-v4.json
 
 # Migrate from URL
 morphir ir migrate https://lcr-interactive.finos.org/server/morphir-ir.json -o ./lcr-v4.json
 
-# Display in console with syntax highlighting (no -o)
+# Stream YAML IR to stdout (no -o)
 morphir ir migrate ./morphir-ir.json
 
 # Write the V4 document-tree layout
@@ -222,21 +234,27 @@ morphir ir migrate ./morphir-ir.json -o ./morphir-ir-v4/ --output-layout vfs
 
 See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tools/ir-migrate) for detailed real-world examples including the US Federal Reserve FR 2052a regulation model.
 """#
-        flag "-o --output" help="Output file or directory (if omitted, displays in console with syntax highlighting)" {
+        flag "-o --output" help="Output file or directory (if omitted, writes the IR artifact to stdout)" {
             arg <OUTPUT>
         }
-        flag --target-version help="Target version: latest, v4/4, classic, v3/3, v2/2, v1/1 (default: latest)" default=latest {
+        flag --target-version help="Target version: latest, v4/4, or classic/v3/3 (default: latest)" default=latest {
             arg <TARGET_VERSION>
         }
         flag --force-refresh help="Force refresh cached remote sources"
         flag --no-cache help="Skip cache entirely for remote sources"
-        flag --json help="Output result as JSON (for scripting)"
+        flag --json help="Emit JSON IR to stdout, or a JSON result envelope when --output is present"
         flag --expanded help="Use expanded (non-compact) format for V4 output"
         flag --allow-partial help="Permit recoverable incomplete V4 nodes when a source construct cannot be preserved"
         flag --output-layout help="Output storage layout (inferred from the output path when omitted)" {
             arg <OUTPUT_LAYOUT> {
                 choices single-file vfs
             }
+        }
+        flag --input-format help="Input serialization profile (json or yaml; inferred when omitted)" {
+            arg <INPUT_FORMAT>
+        }
+        flag --output-format help="Output serialization profile (json or yaml; extension then YAML default when omitted)" {
+            arg <OUTPUT_FORMAT>
         }
         arg <INPUT> help="Input file, directory, or remote source (e.g., github:owner/repo, URL)"
         complete output type=path

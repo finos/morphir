@@ -7,7 +7,6 @@ mod help;
 pub mod home;
 mod logging;
 pub mod output;
-mod tui;
 
 use commands::{
     MigrateCommandOptions, OutputLayout, compile::CompileOptions, run_compile, run_config_get,
@@ -111,18 +110,21 @@ enum Commands {
     /// Migrate IR between versions
     #[command(long_about = "Migrate IR between versions
 
-Upgrades concrete Morphir IR V3 to V4 and re-encodes V4 IR. Supports local files, document-tree directories, URLs, and GitHub shorthand sources.
+Converts concrete Morphir IR V3 and V4 between native JSON and YAML storage, single files, and V4 document trees. V3-to-V4 output defaults to YAML.
 
 **Examples:**
 
 ```bash
-# Migrate to file
-morphir migrate ./morphir-ir.json -o ./morphir-ir-v4.json --target-version v4
+# Migrate V3 JSON to the default V4 YAML profile
+morphir migrate ./morphir-ir.json -o ./morphir-ir-v4.yaml
+
+# Convert V4 YAML to JSON without changing the IR version
+morphir migrate ./morphir-ir-v4.yaml -o ./morphir-ir-v4.json
 
 # Migrate from URL
 morphir migrate https://lcr-interactive.finos.org/server/morphir-ir.json -o ./lcr-v4.json
 
-# Display in console with syntax highlighting (no -o)
+# Stream YAML IR to stdout (no -o)
 morphir migrate ./morphir-ir.json
 
 # Write the V4 document-tree layout
@@ -383,18 +385,21 @@ enum IrAction {
     /// Migrate IR between versions
     #[command(long_about = "Migrate IR between versions
 
-Upgrades concrete Morphir IR V3 to V4 and re-encodes V4 IR. Supports local files, document-tree directories, URLs, and GitHub shorthand sources.
+Converts concrete Morphir IR V3 and V4 between native JSON and YAML storage, single files, and V4 document trees. V3-to-V4 output defaults to YAML.
 
 **Examples:**
 
 ```bash
-# Migrate to file
-morphir ir migrate ./morphir-ir.json -o ./morphir-ir-v4.json --target-version v4
+# Migrate V3 JSON to the default V4 YAML profile
+morphir ir migrate ./morphir-ir.json -o ./morphir-ir-v4.yaml
+
+# Convert V4 YAML to JSON without changing the IR version
+morphir ir migrate ./morphir-ir-v4.yaml -o ./morphir-ir-v4.json
 
 # Migrate from URL
 morphir ir migrate https://lcr-interactive.finos.org/server/morphir-ir.json -o ./lcr-v4.json
 
-# Display in console with syntax highlighting (no -o)
+# Stream YAML IR to stdout (no -o)
 morphir ir migrate ./morphir-ir.json
 
 # Write the V4 document-tree layout
@@ -409,10 +414,10 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
 struct MigrateArgs {
     /// Input file, directory, or remote source (e.g., github:owner/repo, URL)
     input: String,
-    /// Output file or directory (if omitted, displays in console with syntax highlighting)
+    /// Output file or directory (if omitted, writes the IR artifact to stdout)
     #[arg(short, long)]
     output: Option<std::path::PathBuf>,
-    /// Target version: latest, v4/4, classic, v3/3, v2/2, v1/1 (default: latest)
+    /// Target version: latest, v4/4, or classic/v3/3 (default: latest)
     #[arg(long, default_value = "latest")]
     target_version: String,
     /// Force refresh cached remote sources
@@ -421,7 +426,7 @@ struct MigrateArgs {
     /// Skip cache entirely for remote sources
     #[arg(long)]
     no_cache: bool,
-    /// Output result as JSON (for scripting)
+    /// Emit JSON IR to stdout, or a JSON result envelope when --output is present
     #[arg(long)]
     json: bool,
     /// Use expanded (non-compact) format for V4 output
@@ -433,6 +438,12 @@ struct MigrateArgs {
     /// Output storage layout (inferred from the output path when omitted)
     #[arg(long, value_enum)]
     output_layout: Option<OutputLayout>,
+    /// Input serialization profile (json or yaml; inferred when omitted)
+    #[arg(long)]
+    input_format: Option<morphir_common::ir_transport::FormatId>,
+    /// Output serialization profile (json or yaml; extension then YAML default when omitted)
+    #[arg(long)]
+    output_format: Option<morphir_common::ir_transport::FormatId>,
 }
 
 impl MigrateArgs {
@@ -448,6 +459,8 @@ impl MigrateArgs {
                 expanded: self.expanded,
                 allow_partial: self.allow_partial,
                 output_layout: self.output_layout,
+                input_format: self.input_format.clone(),
+                output_format: self.output_format.clone(),
             },
         )
     }
