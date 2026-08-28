@@ -27,6 +27,7 @@ anyhow = "1.0"
 thiserror = "2.0.18"
 miette = { version = "7", features = ["fancy"] }
 cucumber = "0.22"
+vfs = "0.13"
 
 # TUI
 ratatui = "0.30"

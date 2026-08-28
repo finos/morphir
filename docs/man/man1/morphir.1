@@ -21,6 +21,9 @@ Compile source code to Morphir IR
 \fBgenerate\fR
 Generate code from Morphir IR
 .TP
+\fBmigrate\fR
+Migrate IR between versions
+.TP
 \fBconfig\fR
 Inspect the effective Morphir configuration
 .TP
@@ -160,6 +163,65 @@ Output as JSON
 .TP
 \fB\-\-json\-lines\fR
 Output as JSON Lines (streaming)
+.SH "MORPHIR MIGRATE"
+Migrate IR between versions
+
+Upgrades concrete Morphir IR V3 to V4 and re\-encodes V4 IR. Supports local files, document\-tree directories, URLs, and GitHub shorthand sources.
+
+**Examples:**
+
+```bash
+# Migrate to file
+morphir migrate ./morphir\-ir.json \-o ./morphir\-ir\-v4.json \-\-target\-version v4
+
+# Migrate from URL
+morphir migrate https://lcr\-interactive.finos.org/server/morphir\-ir.json \-o ./lcr\-v4.json
+
+# Display in console with syntax highlighting (no \-o)
+morphir migrate ./morphir\-ir.json
+
+# Write the V4 document\-tree layout
+morphir migrate ./morphir\-ir.json \-o ./morphir\-ir\-v4/ \-\-output\-layout vfs
+```
+
+See the [IR Migration Guide](https://morphir.finos.org/docs/user\-guides/cli\-tools/ir\-migrate) for detailed real\-world examples including the US Federal Reserve FR 2052a regulation model.
+.PP
+\fBUsage:\fR morphir migrate [OPTIONS] <INPUT>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-o, \-\-output\fR \fI<OUTPUT>\fR
+Output file or directory (if omitted, displays in console with syntax highlighting)
+.TP
+\fB\-\-target\-version\fR \fI<TARGET_VERSION>\fR
+Target version: latest, v4/4, classic, v3/3, v2/2, v1/1 (default: latest)
+.RS
+\fIDefault: \fRlatest
+.RE
+.TP
+\fB\-\-force\-refresh\fR
+Force refresh cached remote sources
+.TP
+\fB\-\-no\-cache\fR
+Skip cache entirely for remote sources
+.TP
+\fB\-\-json\fR
+Output result as JSON (for scripting)
+.TP
+\fB\-\-expanded\fR
+Use expanded (non\-compact) format for V4 output
+.TP
+\fB\-\-allow\-partial\fR
+Permit recoverable incomplete V4 nodes when a source construct cannot be preserved
+.TP
+\fB\-\-output\-layout\fR \fI<OUTPUT_LAYOUT>\fR
+Output storage layout (inferred from the output path when omitted)
+\fBArguments:\fR
+.PP
+.TP
+\fB<INPUT>\fR
+Input file, directory, or remote source (e.g., github:owner/repo, URL)
 .SH "MORPHIR CONFIG GET"
 Get one value from the effective configuration
 .PP
@@ -336,7 +398,7 @@ Name of the extension to uninstall
 .SH "MORPHIR IR MIGRATE"
 Migrate IR between versions
 
-Converts Morphir IR between Classic (V1\-V3) and V4 formats. Supports local files, URLs, and GitHub shorthand sources.
+Upgrades concrete Morphir IR V3 to V4 and re\-encodes V4 IR. Supports local files, document\-tree directories, URLs, and GitHub shorthand sources.
 
 **Examples:**
 
@@ -350,8 +412,8 @@ morphir ir migrate https://lcr\-interactive.finos.org/server/morphir\-ir.json \-
 # Display in console with syntax highlighting (no \-o)
 morphir ir migrate ./morphir\-ir.json
 
-# Downgrade V4 to Classic
-morphir ir migrate ./morphir\-ir\-v4.json \-o ./morphir\-ir\-classic.json \-\-target\-version classic
+# Write the V4 document\-tree layout
+morphir ir migrate ./morphir\-ir.json \-o ./morphir\-ir\-v4/ \-\-output\-layout vfs
 ```
 
 See the [IR Migration Guide](https://morphir.finos.org/docs/user\-guides/cli\-tools/ir\-migrate) for detailed real\-world examples including the US Federal Reserve FR 2052a regulation model.
@@ -381,6 +443,12 @@ Output result as JSON (for scripting)
 .TP
 \fB\-\-expanded\fR
 Use expanded (non\-compact) format for V4 output
+.TP
+\fB\-\-allow\-partial\fR
+Permit recoverable incomplete V4 nodes when a source construct cannot be preserved
+.TP
+\fB\-\-output\-layout\fR \fI<OUTPUT_LAYOUT>\fR
+Output storage layout (inferred from the output path when omitted)
 \fBArguments:\fR
 .PP
 .TP

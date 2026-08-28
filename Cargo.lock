@@ -5580,6 +5580,7 @@ dependencies = [
  "thiserror 2.0.20",
  "toml 1.1.4+spec-1.1.0",
  "uuid",
+ "vfs",
  "yaml-rust",
  "zip",
 ]
@@ -9842,6 +9843,15 @@ checksum = "80a7e511ce1795821207a837b7b1c8d8aca0c648810966ad200446ae58f6667f"
 dependencies = [
  "itertools 0.14.0",
  "nom 8.0.0",
+]
+
+[[package]]
+name = "vfs"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69d33cbe2ac48f2a446f04c33aef4906078ffd224888df5ae60b7ed401ded771"
+dependencies = [
+ "filetime",
 ]
 
 [[package]]

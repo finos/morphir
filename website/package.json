@@ -20,6 +20,7 @@
 		"build:worker": "node scripts/build-validation-worker.js",
 		"build:schemas": "node scripts/yaml-to-json-schemas.js",
 		"test:config-schema": "node scripts/test-morphir-config-schema.js",
+		"validate:migrated-ir": "node scripts/validate-migrated-ir.js",
 		"check:schema-sync": "node scripts/check-config-schema-sync.js"
 	},
 	"dependencies": {
