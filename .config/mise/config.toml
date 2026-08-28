@@ -58,7 +58,7 @@ run = "cargo fmt --all"
 
 [tasks."fmt:schema"]
 description = "Format JSON Schema files"
-run = "jsonschema fmt website/static/schemas/"
+run = "find website/static/schemas -type f -name '*.json' -print0 | xargs -0 jsonschema fmt"
 
 [tasks.fmt-check]
 description = "Check all formatting"
@@ -70,7 +70,7 @@ run = "cargo fmt --all --check"
 
 [tasks."fmt-check:schema"]
 description = "Check JSON Schema formatting"
-run = "jsonschema fmt website/static/schemas/ --check"
+run = "find website/static/schemas -type f -name '*.json' -print0 | xargs -0 jsonschema fmt --check"
 
 # ===== Linting Tasks =====
 [tasks.lint]
