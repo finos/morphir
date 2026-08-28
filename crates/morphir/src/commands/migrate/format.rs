@@ -7,6 +7,7 @@ use morphir_common::ir_transport::{
 };
 use morphir_common::vfs::physical_root;
 use morphir_core::traversal::IrCursor;
+use serde_saphyr::granit_parser::{Scanner, StrInput, TokenType};
 
 const PROBE_BYTES: u64 = 64 * 1024;
 
@@ -127,16 +128,9 @@ fn detect_version(input: &[u8], format: &FormatId) -> Result<IrVersion, Transpor
             .ok_or_else(|| missing_version(format))?;
         let suffix = &source[key + "\"formatVersion\"".len()..];
         let colon = suffix.find(':').ok_or_else(|| missing_version(format))?;
-        scalar_token(&suffix[colon + 1..])
+        scalar_token(&suffix[colon + 1..]).to_owned()
     } else {
-        source
-            .lines()
-            .find_map(|line| {
-                line.trim_start()
-                    .strip_prefix("formatVersion:")
-                    .map(scalar_token)
-            })
-            .ok_or_else(|| missing_version(format))?
+        yaml_root_scalar(source, "formatVersion").ok_or_else(|| missing_version(format))?
     };
     let normalized = value.trim_matches(['\'', '"']);
     if normalized == "3" || normalized.starts_with("3.") {
@@ -150,6 +144,59 @@ fn detect_version(input: &[u8], format: &FormatId) -> Result<IrVersion, Transpor
             "select concrete IR version 3 or 4",
         ))
     }
+}
+
+#[derive(Clone, Copy)]
+enum RootMappingSlot {
+    Key,
+    Value,
+}
+
+fn yaml_root_scalar(source: &str, requested_key: &str) -> Option<String> {
+    let mut collections = Vec::new();
+    let mut slot = RootMappingSlot::Key;
+    let mut requested_value = false;
+
+    for scanned in Scanner::new(StrInput::new(source)) {
+        let (_, token) = scanned.ok()?.into_parts();
+        let at_root_mapping = collections.as_slice() == [true];
+        match token {
+            TokenType::BlockMappingStart | TokenType::FlowMappingStart => {
+                if at_root_mapping && matches!(slot, RootMappingSlot::Value) && requested_value {
+                    return None;
+                }
+                collections.push(true);
+            }
+            TokenType::BlockSequenceStart | TokenType::FlowSequenceStart => {
+                if at_root_mapping && matches!(slot, RootMappingSlot::Value) && requested_value {
+                    return None;
+                }
+                collections.push(false);
+            }
+            TokenType::BlockEnd | TokenType::FlowMappingEnd | TokenType::FlowSequenceEnd => {
+                collections.pop();
+            }
+            TokenType::Key if at_root_mapping => slot = RootMappingSlot::Key,
+            TokenType::Value if at_root_mapping => slot = RootMappingSlot::Value,
+            TokenType::Scalar(_, value) if at_root_mapping => match slot {
+                RootMappingSlot::Key => {
+                    requested_value = value.as_ref() == requested_key;
+                }
+                RootMappingSlot::Value => {
+                    if requested_value {
+                        return Some(value.into_owned());
+                    }
+                }
+            },
+            TokenType::Alias(_)
+                if at_root_mapping && matches!(slot, RootMappingSlot::Value) && requested_value =>
+            {
+                return None;
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 fn scalar_token(source: &str) -> &str {
@@ -244,6 +291,29 @@ mod tests {
         assert_eq!(
             diagnostic.code(),
             "morphir::ir::detection::output_format_conflict"
+        );
+    }
+
+    #[test]
+    fn yaml_version_detection_accepts_quoted_and_flow_mapping_keys() {
+        for source in [
+            "\"formatVersion\": 4\ndistribution: {}\n",
+            "{\"formatVersion\": 4, distribution: {}}\n",
+        ] {
+            assert_eq!(
+                detect_version(source.as_bytes(), &FormatId::yaml()).unwrap(),
+                IrVersion::V4
+            );
+        }
+    }
+
+    #[test]
+    fn bounded_yaml_version_detection_stops_before_a_truncated_body() {
+        let bounded_prefix = "\"formatVersion\": 4\ndistribution:\n  modules:\n    -";
+
+        assert_eq!(
+            detect_version(bounded_prefix.as_bytes(), &FormatId::yaml()).unwrap(),
+            IrVersion::V4
         );
     }
 }

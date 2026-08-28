@@ -127,6 +127,26 @@ fn yaml_v4_single_file_converts_to_json() {
 }
 
 #[test]
+fn quoted_yaml_format_version_key_converts_to_json() {
+    let temp = TempDir::new().unwrap();
+    let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/migrate/yaml/v4-explicit.yaml");
+    let input = temp.path().join("quoted-version.yaml");
+    let output = temp.path().join("model.json");
+    let source = std::fs::read_to_string(fixture).unwrap().replacen(
+        "formatVersion:",
+        "\"formatVersion\":",
+        1,
+    );
+    std::fs::write(&input, source).unwrap();
+
+    assert_success(&migrate(&input, &output, &[]));
+
+    serde_json::from_slice::<morphir_core::ir::v4::IRFile>(&std::fs::read(output).unwrap())
+        .unwrap();
+}
+
+#[test]
 fn json_flag_without_output_emits_only_json_ir() {
     let output = Command::new(env!("CARGO_BIN_EXE_morphir"))
         .args(["migrate", greeting_v3().to_str().unwrap(), "--json"])
