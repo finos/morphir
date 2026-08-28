@@ -16,6 +16,7 @@ pub async fn run_gleam_compile(
 ) -> AppResult<miette::Report> {
     run_compile(CompileOptions {
         language: Some("gleam".to_string()), // Set language to gleam
+        extension: None,
         input,
         output,
         package_name,
