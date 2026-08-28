@@ -116,7 +116,7 @@ Compile source code to Morphir IR
 Source language (e.g., gleam, elm)
 .TP
 \fB\-i, \-\-input\fR \fI<INPUT>\fR
-Input source directory or file. A configured Elm process accepts one .elm file
+Input source directory or file. An installed or configured Elm process accepts one .elm file
 .TP
 \fB\-o, \-\-output\fR \fI<OUTPUT>\fR
 Output directory
@@ -125,7 +125,7 @@ Output directory
 Package name override
 .TP
 \fB\-\-config\fR \fI<CONFIG>\fR
-Explicit config file path. Elm process commands come from [extensions.morphir\-elm]
+Explicit config file path. An Elm command is a development override for the installed extension
 .TP
 \fB\-\-project\fR \fI<PROJECT>\fR
 Project name (for workspaces)
@@ -363,8 +363,14 @@ Install a Morphir extension
 \fBOptions:\fR
 .PP
 .TP
-\fB\-v, \-\-version\fR \fI<VERSION>\fR
-Version to install (defaults to latest)
+\fB\-\-index\fR \fI<INDEX>\fR
+Controlled local extension index directory
+.TP
+\fB\-\-channel\fR \fI<CHANNEL>\fR
+Moving release channel (defaults to stable)
+.TP
+\fB\-\-version\fR \fI<VERSION>\fR
+Exact semantic version
 \fBArguments:\fR
 .PP
 .TP
@@ -378,8 +384,14 @@ Update an installed Morphir extension
 \fBOptions:\fR
 .PP
 .TP
-\fB\-v, \-\-version\fR \fI<VERSION>\fR
-Version to update to (defaults to latest)
+\fB\-\-index\fR \fI<INDEX>\fR
+Controlled local extension index directory
+.TP
+\fB\-\-channel\fR \fI<CHANNEL>\fR
+Moving release channel (defaults to stable)
+.TP
+\fB\-\-version\fR \fI<VERSION>\fR
+Exact semantic version
 \fBArguments:\fR
 .PP
 .TP

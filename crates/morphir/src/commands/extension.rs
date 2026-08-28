@@ -1,316 +1,190 @@
-//! Extension command for managing Morphir extensions
-//!
-//! This module provides functionality for installing, updating, listing, and
-//! uninstalling Morphir extensions.
+//! Verified extension artifact management.
 
-use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
+use crate::home::MorphirHome;
+use morphir_distribution::{
+    Channel, ExtensionId, ExtensionInstaller, InstalledCatalog, LocalIndex, Platform, Selection,
+    list_installed, uninstall_extension,
+};
+use semver::Version;
 use starbase::AppResult;
-use std::collections::HashMap;
-use std::fs;
-use std::path::PathBuf;
+use std::path::Path;
 
-/// Default version to use when no version is specified
-const DEFAULT_VERSION: &str = "latest";
-
-/// Extension registry configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct ExtensionRegistry {
-    /// Installed extensions with their versions
-    extensions: HashMap<String, ExtensionInfo>,
+fn selection(channel: Option<&str>, version: Option<&str>) -> miette::Result<Selection> {
+    match (channel, version) {
+        (Some(_), Some(_)) => Err(miette::miette!(
+            "--channel and --version are mutually exclusive"
+        )),
+        (_, Some(version)) => version
+            .parse::<Version>()
+            .map(Selection::Exact)
+            .map_err(|error| {
+                miette::miette!("Invalid exact extension version '{version}': {error}")
+            }),
+        (Some(channel), None) => Channel::parse(channel)
+            .map(Selection::Channel)
+            .map_err(|error| miette::miette!("Invalid extension channel '{channel}': {error}")),
+        (None, None) => Ok(Selection::Channel(Channel::Stable)),
+    }
 }
 
-/// Information about an installed extension
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct ExtensionInfo {
-    /// Extension name
+fn extension_id(name: &str) -> miette::Result<ExtensionId> {
+    ExtensionId::parse(name).map_err(|error| miette::miette!("Invalid extension id: {error}"))
+}
+
+fn install_selected(
+    home: &MorphirHome,
+    index_path: &Path,
+    id: &ExtensionId,
+    requested: Selection,
+) -> miette::Result<morphir_distribution::InstalledExtension> {
+    let index = LocalIndex::open(index_path)
+        .map_err(|error| miette::miette!("Failed to open extension index: {error}"))?;
+    let selected = index
+        .resolve(id, requested, &Platform::current())
+        .map_err(|error| miette::miette!("Failed to resolve extension '{id}': {error}"))?;
+    ExtensionInstaller::new(home)
+        .install(selected)
+        .map_err(|error| miette::miette!("Failed to install extension '{id}': {error}"))
+}
+
+/// Resolve, verify, and install one extension from a controlled local index.
+pub fn run_extension_install(
     name: String,
-    /// Extension version
+    index: std::path::PathBuf,
+    channel: Option<String>,
     version: Option<String>,
-    /// Extension description
-    description: Option<String>,
-    /// Installation path
-    install_path: Option<String>,
-}
-
-impl ExtensionRegistry {
-    /// Create a new empty extension registry
-    fn new() -> Self {
-        Self {
-            extensions: HashMap::new(),
-        }
+) -> AppResult<miette::Report> {
+    let home = MorphirHome::resolve()
+        .map_err(|error| miette::miette!("Failed to resolve Morphir home: {error}"))?;
+    let id = extension_id(&name)?;
+    let catalog = InstalledCatalog::load(&home)
+        .map_err(|error| miette::miette!("Failed to load installed extensions: {error}"))?;
+    if let Some(installed) = catalog.get(&id) {
+        return Err(miette::miette!(
+            "Extension '{id}' is already installed at version {}; use 'morphir extension update'",
+            installed.version()
+        ));
     }
-
-    /// Load extension registry from configuration file
-    fn load() -> Result<Self> {
-        let config_path = Self::config_path()?;
-        if config_path.exists() {
-            let content = fs::read_to_string(&config_path)
-                .context("Failed to read extension registry configuration")?;
-            let registry: ExtensionRegistry = serde_json::from_str(&content)
-                .context("Failed to parse extension registry configuration")?;
-            Ok(registry)
-        } else {
-            Ok(Self::new())
-        }
-    }
-
-    /// Save extension registry to configuration file
-    fn save(&self) -> Result<()> {
-        let config_path = Self::config_path()?;
-        if let Some(parent) = config_path.parent() {
-            fs::create_dir_all(parent).context("Failed to create config directory")?;
-        }
-        let content =
-            serde_json::to_string_pretty(self).context("Failed to serialize extension registry")?;
-        fs::write(&config_path, content)
-            .context("Failed to write extension registry configuration")?;
-        Ok(())
-    }
-
-    /// Get the path to the extension registry configuration file
-    fn config_path() -> Result<PathBuf> {
-        Ok(crate::home::MorphirHome::resolve()?.extensions_file())
-    }
-
-    /// Add or update an extension in the registry
-    fn add_extension(&mut self, ext: ExtensionInfo) {
-        self.extensions.insert(ext.name.clone(), ext);
-    }
-
-    /// Remove an extension from the registry
-    fn remove_extension(&mut self, name: &str) -> Option<ExtensionInfo> {
-        self.extensions.remove(name)
-    }
-
-    /// Get an extension from the registry
-    fn get_extension(&self, name: &str) -> Option<&ExtensionInfo> {
-        self.extensions.get(name)
-    }
-
-    /// List all extensions in the registry
-    fn list_extensions(&self) -> Vec<&ExtensionInfo> {
-        self.extensions.values().collect()
-    }
-}
-
-/// Run the extension install command
-pub fn run_extension_install(name: String, version: Option<String>) -> AppResult<miette::Report> {
-    println!("Installing Morphir extension: {}", name);
-
-    let mut registry = match ExtensionRegistry::load() {
-        Ok(reg) => reg,
-        Err(e) => {
-            eprintln!("Error: Failed to load extension registry: {}", e);
-            return Ok(Some(1));
-        }
-    };
-
-    // Check if extension is already installed
-    if let Some(existing_ext) = registry.get_extension(&name) {
-        let version_str = existing_ext.version.as_deref().unwrap_or(DEFAULT_VERSION);
-        println!(
-            "Extension '{}' is already installed (version: {})",
-            name, version_str
-        );
-        println!("Use 'morphir extension update' to update to a newer version");
-        return Ok(None);
-    }
-
-    // Create extension info
-    let ext_version = version.or_else(|| Some(DEFAULT_VERSION.to_string()));
-    let display_version = ext_version.as_deref().unwrap_or(DEFAULT_VERSION);
-    let ext = ExtensionInfo {
-        name: name.clone(),
-        version: ext_version.clone(),
-        description: Some(format!("Morphir extension: {}", name)),
-        install_path: None,
-    };
-
-    // Add extension to registry
-    registry.add_extension(ext);
-    if let Err(e) = registry.save() {
-        eprintln!("Error: Failed to save extension registry: {}", e);
-        return Ok(Some(1));
-    }
-
+    let requested = selection(channel.as_deref(), version.as_deref())?;
+    let entry = install_selected(&home, &index, &id, requested.clone())?;
     println!(
-        "✓ Successfully installed extension '{}' (version: {})",
-        name, display_version
+        "Installed {} {} ({})",
+        entry.extension_id(),
+        entry.version(),
+        requested
     );
-    println!("  Run 'morphir extension list' to see all installed extensions");
-
     Ok(None)
 }
 
-/// Run the extension list command
+/// List exact active catalog entries and their locked request selection.
 pub fn run_extension_list() -> AppResult<miette::Report> {
-    println!("Listing Morphir extensions...\n");
-
-    // Discover builtin extensions
+    let home = MorphirHome::resolve()
+        .map_err(|error| miette::miette!("Failed to resolve Morphir home: {error}"))?;
     let builtins = morphir_devkit::discover_builtin_extensions();
+    let installed = list_installed(&home)
+        .map_err(|error| miette::miette!("Failed to list installed extensions: {error}"))?;
 
-    // Load registry extensions
-    let registry = match ExtensionRegistry::load() {
-        Ok(reg) => reg,
-        Err(e) => {
-            eprintln!("Error: Failed to load extension registry: {}", e);
-            return Ok(Some(1));
-        }
-    };
-
-    let registry_extensions = registry.list_extensions();
-
-    // Display builtin extensions
     if !builtins.is_empty() {
         println!("Builtin Extensions:");
-        println!(
-            "{:<20} {:<15} {:<30} Description",
-            "Extension", "Version", "Capabilities"
-        );
-        println!("{}", "-".repeat(85));
-        for builtin in &builtins {
-            let languages = builtin.languages.join(", ");
-            let targets = builtin.targets.join(", ");
-            let capabilities = if !languages.is_empty() && !targets.is_empty() {
-                format!("Frontend: {} | Backend: {}", languages, targets)
-            } else if !languages.is_empty() {
-                format!("Frontend: {}", languages)
-            } else if !targets.is_empty() {
-                format!("Backend: {}", targets)
-            } else {
-                "N/A".to_string()
+        println!("{:<24} {:<32} Capabilities", "Extension", "Name");
+        for builtin in builtins {
+            let capabilities = match (builtin.languages.is_empty(), builtin.targets.is_empty()) {
+                (false, false) => format!(
+                    "frontend: {}; backend: {}",
+                    builtin.languages.join(", "),
+                    builtin.targets.join(", ")
+                ),
+                (false, true) => format!("frontend: {}", builtin.languages.join(", ")),
+                (true, false) => format!("backend: {}", builtin.targets.join(", ")),
+                (true, true) => "none".to_owned(),
             };
-            println!(
-                "{:<20} {:<15} {:<30} {}",
-                builtin.id, "builtin", capabilities, builtin.name
-            );
+            println!("{:<24} {:<32} {}", builtin.id, builtin.name, capabilities);
         }
         println!();
     }
 
-    // Display registry extensions
-    if registry_extensions.is_empty() && builtins.is_empty() {
-        println!("No extensions available.");
-        println!("Use 'morphir extension install <name>' to install an extension");
-    } else if !registry_extensions.is_empty() {
-        println!("Installed Extensions (from registry):");
-        println!("{:<20} {:<15} Description", "Extension", "Version");
-        println!("{}", "-".repeat(70));
-        for ext in &registry_extensions {
-            let description = ext.description.as_deref().unwrap_or("No description");
-            let version_str = ext.version.as_deref().unwrap_or(DEFAULT_VERSION);
-            println!("{:<20} {:<15} {}", ext.name, version_str, description);
-        }
-        println!();
-    }
-
-    let total = builtins.len() + registry_extensions.len();
-    if total > 0 {
-        println!(
-            "Total: {} extension(s) available ({} builtin, {} installed)",
-            total,
-            builtins.len(),
-            registry_extensions.len()
-        );
-    }
-
-    Ok(None)
-}
-
-/// Run the extension update command
-pub fn run_extension_update(name: String, version: Option<String>) -> AppResult<miette::Report> {
-    println!("Updating Morphir extension: {}", name);
-
-    let mut registry = match ExtensionRegistry::load() {
-        Ok(reg) => reg,
-        Err(e) => {
-            eprintln!("Error: Failed to load extension registry: {}", e);
-            return Ok(Some(1));
-        }
-    };
-
-    // Check if extension exists
-    let existing_ext = match registry.get_extension(&name) {
-        Some(ext) => ext.clone(),
-        None => {
-            eprintln!(
-                "Error: Extension '{}' is not installed. Use 'morphir extension install' first",
-                name
-            );
-            return Ok(Some(1));
-        }
-    };
-
-    let old_version = existing_ext
-        .version
-        .as_deref()
-        .unwrap_or(DEFAULT_VERSION)
-        .to_string();
-    let new_version = version.or_else(|| Some(DEFAULT_VERSION.to_string()));
-    let new_version_str = new_version.as_deref().unwrap_or(DEFAULT_VERSION);
-
-    if old_version == new_version_str {
-        println!(
-            "Extension '{}' is already at version {}",
-            name, new_version_str
-        );
+    if installed.is_empty() {
+        println!("No verified extensions installed.");
         return Ok(None);
     }
 
-    // Update extension
-    let updated_ext = ExtensionInfo {
-        name: name.clone(),
-        version: new_version.clone(),
-        description: existing_ext.description.clone(),
-        install_path: existing_ext.install_path.clone(),
-    };
-
-    registry.add_extension(updated_ext);
-    if let Err(e) = registry.save() {
-        eprintln!("Error: Failed to save extension registry: {}", e);
-        return Ok(Some(1));
+    println!("Verified Installed Extensions:");
+    println!("{:<24} {:<16} Selection", "Extension", "Exact version");
+    for snapshot in installed {
+        let entry = snapshot.installed();
+        println!(
+            "{:<24} {:<16} {}",
+            entry.extension_id(),
+            entry.version(),
+            snapshot.selection()
+        );
     }
-
-    println!(
-        "✓ Successfully updated extension '{}' from {} to {}",
-        name, old_version, new_version_str
-    );
-
     Ok(None)
 }
 
-/// Run the extension uninstall command
+/// Re-resolve and replace an installed extension through the verified pipeline.
+pub fn run_extension_update(
+    name: String,
+    index: std::path::PathBuf,
+    channel: Option<String>,
+    version: Option<String>,
+) -> AppResult<miette::Report> {
+    let home = MorphirHome::resolve()
+        .map_err(|error| miette::miette!("Failed to resolve Morphir home: {error}"))?;
+    let id = extension_id(&name)?;
+    let catalog = InstalledCatalog::load(&home)
+        .map_err(|error| miette::miette!("Failed to load installed extensions: {error}"))?;
+    let previous = catalog.get(&id).ok_or_else(|| {
+        miette::miette!("Extension '{id}' is not installed; use 'morphir extension install' first")
+    })?;
+    let previous_version = previous.version().clone();
+    let entry = install_selected(
+        &home,
+        &index,
+        &id,
+        selection(channel.as_deref(), version.as_deref())?,
+    )?;
+    println!(
+        "Updated {} from {} to {}",
+        entry.extension_id(),
+        previous_version,
+        entry.version()
+    );
+    Ok(None)
+}
+
+/// Remove active catalog and lock state while retaining content-addressed bytes.
 pub fn run_extension_uninstall(name: String) -> AppResult<miette::Report> {
-    println!("Uninstalling Morphir extension: {}", name);
+    let home = MorphirHome::resolve()
+        .map_err(|error| miette::miette!("Failed to resolve Morphir home: {error}"))?;
+    let id = extension_id(&name)?;
+    let removed = uninstall_extension(&home, &id)
+        .map_err(|error| miette::miette!("Failed to uninstall extension '{id}': {error}"))?;
+    println!(
+        "Uninstalled {} {} (store bytes retained)",
+        removed.extension_id(),
+        removed.version()
+    );
+    Ok(None)
+}
 
-    let mut registry = match ExtensionRegistry::load() {
-        Ok(reg) => reg,
-        Err(e) => {
-            eprintln!("Error: Failed to load extension registry: {}", e);
-            return Ok(Some(1));
-        }
-    };
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    // Remove extension from registry
-    let removed_ext = match registry.remove_extension(&name) {
-        Some(ext) => ext,
-        None => {
-            eprintln!("Error: Extension '{}' is not installed", name);
-            return Ok(Some(1));
-        }
-    };
-
-    if let Err(e) = registry.save() {
-        eprintln!("Error: Failed to save extension registry: {}", e);
-        return Ok(Some(1));
+    #[test]
+    fn selection_defaults_to_stable() {
+        assert_eq!(
+            selection(None, None).unwrap(),
+            Selection::Channel(Channel::Stable)
+        );
     }
 
-    let version_str = removed_ext.version.as_deref().unwrap_or(DEFAULT_VERSION);
-    println!(
-        "✓ Successfully uninstalled extension '{}' (version: {})",
-        removed_ext.name, version_str
-    );
-
-    Ok(None)
+    #[test]
+    fn selection_accepts_an_exact_semantic_version() {
+        assert_eq!(
+            selection(None, Some("2.100.0")).unwrap(),
+            Selection::Exact(Version::new(2, 100, 0))
+        );
+    }
 }

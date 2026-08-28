@@ -45,7 +45,7 @@ enum Commands {
         /// Source language (e.g., gleam, elm)
         #[arg(short, long)]
         language: Option<String>,
-        /// Input source directory or file. A configured Elm process accepts one .elm file.
+        /// Input source directory or file. An installed or configured Elm process accepts one .elm file.
         #[arg(short, long)]
         input: Option<String>,
         /// Output directory
@@ -54,7 +54,7 @@ enum Commands {
         /// Package name override
         #[arg(long)]
         package_name: Option<String>,
-        /// Explicit config file path. Elm process commands come from [extensions.morphir-elm].
+        /// Explicit config file path. An Elm command is a development override for the installed extension.
         #[arg(long)]
         config: Option<String>,
         /// Project name (for workspaces)
@@ -290,8 +290,14 @@ enum ExtensionAction {
     Install {
         /// Name of the extension to install
         name: String,
-        /// Version to install (defaults to latest)
-        #[arg(short, long)]
+        /// Controlled local extension index directory
+        #[arg(long)]
+        index: std::path::PathBuf,
+        /// Moving release channel (defaults to stable)
+        #[arg(long, conflicts_with = "version")]
+        channel: Option<String>,
+        /// Exact semantic version
+        #[arg(long, conflicts_with = "channel")]
         version: Option<String>,
     },
     /// List installed Morphir extensions
@@ -300,8 +306,14 @@ enum ExtensionAction {
     Update {
         /// Name of the extension to update
         name: String,
-        /// Version to update to (defaults to latest)
-        #[arg(short, long)]
+        /// Controlled local extension index directory
+        #[arg(long)]
+        index: std::path::PathBuf,
+        /// Moving release channel (defaults to stable)
+        #[arg(long, conflicts_with = "version")]
+        channel: Option<String>,
+        /// Exact semantic version
+        #[arg(long, conflicts_with = "channel")]
         version: Option<String>,
     },
     /// Uninstall a Morphir extension
@@ -537,13 +549,29 @@ impl AppSession for MorphirSession {
                 DistAction::Uninstall { name } => run_dist_uninstall(name.clone()),
             },
             Commands::Extension { action } => match action {
-                ExtensionAction::Install { name, version } => {
-                    run_extension_install(name.clone(), version.clone())
-                }
+                ExtensionAction::Install {
+                    name,
+                    index,
+                    channel,
+                    version,
+                } => run_extension_install(
+                    name.clone(),
+                    index.clone(),
+                    channel.clone(),
+                    version.clone(),
+                ),
                 ExtensionAction::List => run_extension_list(),
-                ExtensionAction::Update { name, version } => {
-                    run_extension_update(name.clone(), version.clone())
-                }
+                ExtensionAction::Update {
+                    name,
+                    index,
+                    channel,
+                    version,
+                } => run_extension_update(
+                    name.clone(),
+                    index.clone(),
+                    channel.clone(),
+                    version.clone(),
+                ),
                 ExtensionAction::Uninstall { name } => run_extension_uninstall(name.clone()),
             },
             Commands::Ir { action } => match action {
