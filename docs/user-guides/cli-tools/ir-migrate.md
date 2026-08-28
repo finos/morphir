@@ -6,73 +6,102 @@ sidebar_position: 10
 
 # IR Migrate Command
 
-`morphir migrate` upgrades concrete Morphir IR version 3 to version 4. The
-equivalent nested command, `morphir ir migrate`, is also available.
+`morphir migrate` converts concrete Morphir IR version 3 and version 4 between
+native JSON and YAML storage. The equivalent nested command,
+`morphir ir migrate`, has the same behavior.
 
-The default path reads and writes a single JSON file. For large version 3
-models, such as the LCR model, this path visits and releases one module at a
-time instead of building the complete source IR in memory.
+Version migration, serialization, and physical layout are independent. A
+single invocation can migrate v3 to v4, convert JSON to YAML, and split the
+result into a document tree. The pipeline carries typed semantic IR events and
+releases each completed module, including for the LCR model.
 
 ## Usage
 
 ```bash
-morphir migrate <INPUT> --output <OUTPUT> [OPTIONS]
+morphir migrate <INPUT> [--output <OUTPUT>] [OPTIONS]
 ```
 
 | Option | Description |
 |---|---|
-| `-o, --output <PATH>` | Output JSON file or document-tree directory. Without this option, output is displayed. |
-| `--target-version <VERSION>` | `latest`, `v4`, `4`, `classic`, `v3`, `3`, `v2`, `2`, `v1`, or `1`. The default is `latest` (v4). |
+| `-o, --output <PATH>` | Output file or document-tree directory. Without this option, the IR artifact is written to stdout. |
+| `--target-version <VERSION>` | `latest`, `v4`, `4`, `classic`, `v3`, or `3`. The default is `latest` (v4). |
+| `--input-format <FORMAT>` | Input serialization profile. Built-in values are `json` and `yaml`. |
+| `--output-format <FORMAT>` | Output serialization profile. Built-in values are `json` and `yaml`. |
 | `--output-layout <LAYOUT>` | `single-file` or `vfs`. A directory-like output path also selects `vfs`. |
 | `--expanded` | Write expanded v4 type expressions instead of the default compact encoding. |
-| `--allow-partial` | Permit recoverable incomplete v4 nodes and report diagnostics. |
-| `--json` | Print a machine-readable command result. |
+| `--allow-partial` | Permit only explicitly recoverable incomplete v4 nodes and report diagnostics. |
+| `--json` | Without `--output`, emit JSON IR. With `--output`, emit a JSON result envelope after publishing the selected artifact. |
 | `--force-refresh` | Refresh a cached remote source. |
 | `--no-cache` | Do not use the remote-source cache. |
 
-## Single-file migration
+## Format selection
+
+Single-file output uses this order:
+
+1. `--output-format`;
+2. a recognized `.json`, `.yaml`, or `.yml` destination extension;
+3. YAML.
+
+A recognized extension that conflicts with `--output-format` is rejected
+before publication. Input uses `--input-format`, then a recognized extension,
+then bounded JSON-first content detection. JSON is tested first because JSON
+syntax is also valid YAML syntax.
 
 ```bash
-morphir migrate morphir-ir.json \
-  --output morphir-ir-v4.json \
-  --target-version v4
+# V3 JSON to the default V4 YAML profile
+morphir migrate morphir-ir.json --output morphir-ir-v4.yaml
+
+# V4 YAML to V4 JSON
+morphir migrate morphir-ir-v4.yaml --output morphir-ir-v4.json
+
+# Unknown physical names with explicit profiles
+morphir migrate model.data --input-format json \
+  --output result.data --output-format yaml
+
+# Same-version concrete V3 JSON to YAML
+morphir migrate morphir-ir.json --target-version v3 \
+  --output morphir-ir.yaml
 ```
 
-The output is staged and atomically published, so an existing output file is
-not replaced when parsing or migration fails. Compact type encoding is used by
-default. Use `--expanded` when a consumer requires explicit v4 type wrappers:
-
-```bash
-morphir migrate morphir-ir.json \
-  --output morphir-ir-v4.json \
-  --expanded
-```
-
-The bounded-memory streaming path currently applies to compact v3-to-v4
-single-file output. Expanded output and document-tree conversion use the typed
-in-memory representation.
+Single-file output is staged and atomically replaced only after decoding,
+transformation, encoding, and migration-report checks succeed. Stdout output is
+also staged in a temporary file so a late failure does not emit a partial IR
+artifact.
 
 ## Document-tree (VFS) layout
 
-The VFS layout stores a v4 distribution as a manifest and addressable package,
-module, type, and value documents. It can be read back without requiring a
-particular physical filesystem implementation.
+The v4 document-tree layout stores addressable package, module, type, and value
+documents. YAML trees are the default and use these physical names:
+
+- `manifest.yaml`;
+- `module.yaml`;
+- `*.type.yaml`;
+- `*.value.yaml`.
+
+JSON trees use the corresponding `.json` names. Every generated tree is
+homogeneous. Discovery rejects a tree containing both supported manifests.
 
 ```bash
-# Single file to document tree
+# V3 JSON to a V4 YAML tree
 morphir migrate morphir-ir.json \
-  --output morphir-ir-v4/ \
+  --output morphir-ir-v4.morphir-dist \
   --output-layout vfs
 
-# Document tree back to a single file
-morphir migrate morphir-ir-v4/ \
+# YAML tree back to one JSON file
+morphir migrate morphir-ir-v4.morphir-dist \
   --output morphir-ir-v4.json \
   --output-layout single-file
+
+# Request a JSON tree explicitly
+morphir migrate morphir-ir-v4.yaml \
+  --output morphir-ir-v4.morphir-dist \
+  --output-layout vfs \
+  --output-format json
 ```
 
-The transport is built on the `vfs` abstraction. The OS filesystem is the CLI
-backend; memory-backed filesystems can use the same transport in tests and
-embedded applications.
+The CLI builds the tree in a sibling staging directory, writes module manifests
+after their definitions, writes the distribution manifest last, and then
+replaces the destination with rollback protection.
 
 ## Remote inputs
 
@@ -82,38 +111,29 @@ remote-source resolver can be used in place of a local input:
 ```bash
 morphir migrate \
   https://lcr-interactive.finos.org/server/morphir-ir.json \
-  --output lcr-v4.json
+  --output lcr-v4.yaml
 ```
 
-Remote content is first resolved to the local cache, after which it follows the
-same migration path as a local file.
+Remote content is resolved to the local cache and then follows the same format,
+version, streaming, and publication path as a local artifact.
 
 ## Diagnostics and partial migration
 
-Migration diagnostics include a stable code, severity, IR path, and message.
-Without `--allow-partial`, an error diagnostic prevents publication. With the
-flag, recoverable constructs may be represented by an explicit incomplete v4
-node and reported in the command result. The flag never turns malformed input
-or an unrecoverable conversion into success.
+Transport diagnostics include a stable code, stage, severity, semantic cursor,
+guidance, and a source location when the decoder supplies one. Malformed or
+ambiguous YAML, lossy serialization, duplicate keys, unsupported tags, and
+unsafe aliases are never made publishable by `--allow-partial`.
 
 ## Compatibility
 
 | Source | Target | Status |
 |---|---|---|
-| Concrete v3 | v4 | Supported, including dependencies, package/module definitions, types, values, and patterns. |
-| Concrete v3 | Classic | Preserved in its source representation. |
-| v4 | v4 | Supported for re-encoding and layout conversion. |
-| v4 | Classic | Not yet supported; the command emits an `unsupported-v4-distribution` diagnostic and leaves existing output untouched. |
-| v1/v2 | v4 | Detected, but not claimed as fully compatible; unsupported input is diagnosed. |
+| Concrete v3 JSON or YAML | v3 JSON or YAML | Supported as a semantic same-version conversion. |
+| Concrete v3 JSON or YAML | v4 JSON or YAML | Supported with module-bounded migration. |
+| v4 JSON or YAML | v4 JSON or YAML | Supported for re-encoding and layout conversion. |
+| v4 | v3 | Diagnosed as unsupported because v4-only constructs do not yet have lossless downgrade rules. |
+| v1/v2 | v3 or v4 | Not claimed; the concrete converter reports an unsupported version. |
 
-The v4 implementation follows the formal v4 types and concrete examples. Some
-published v4 schema clauses conflict with the prose and checked-in examples,
-especially access-controlled definitions and value attributes/encodings. The
-CLI preserves typed v3 information instead of silently dropping it. These
-conflicts are tracked in `morphir-vibt`. Use the repository validator while
-resolving them:
-
-```bash
-cd website
-npm run validate:migrated-ir -- ../morphir-ir-v4.json
-```
+The v4 semantic model and JSON/YAML profiles are documented separately under
+the IR specification. JSON Schema remains the bootstrap definition of the JSON
+profile, not a restriction on native IR storage.

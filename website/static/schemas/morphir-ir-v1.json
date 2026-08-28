@@ -4,26 +4,23 @@
   "title": "Morphir IR Distribution (Version 1)",
   "description": "A Morphir IR distribution represents a complete, self-contained package of business logic\nwith all its dependencies. It captures the semantics of functional programs in a\nlanguage-independent, platform-agnostic format.\n\nThis is format version 1, which uses lowercase tags and a different module structure.\n",
   "type": "object",
-  "required": [
-    "formatVersion",
-    "distribution"
-  ],
+  "required": [ "formatVersion", "distribution" ],
   "properties": {
     "formatVersion": {
+      "description": "The version of the IR format. Must be 1 for this schema.",
       "type": "integer",
-      "const": 1,
-      "description": "The version of the IR format. Must be 1 for this schema."
+      "const": 1
     },
     "distribution": {
       "description": "The distribution data, currently only Library distributions are supported.",
       "type": "array",
-      "minItems": 4,
       "maxItems": 4,
+      "minItems": 4,
       "items": [
         {
+          "description": "Distribution type (lowercase in v1).",
           "type": "string",
-          "const": "library",
-          "description": "Distribution type (lowercase in v1)."
+          "const": "library"
         },
         {
           "$ref": "#/definitions/PackageName"
@@ -39,34 +36,35 @@
   },
   "definitions": {
     "Name": {
+      "description": "A Name is a list of lowercase words that represents a human-readable identifier.\nExample: [\"value\", \"in\", \"u\", \"s\", \"d\"] can be rendered as valueInUSD or value_in_USD.\n",
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "string",
         "pattern": "^[a-z][a-z0-9]*$"
-      },
-      "minItems": 1,
-      "description": "A Name is a list of lowercase words that represents a human-readable identifier.\nExample: [\"value\", \"in\", \"u\", \"s\", \"d\"] can be rendered as valueInUSD or value_in_USD.\n"
+      }
     },
     "Path": {
+      "description": "A Path is a list of Names representing a hierarchical location in the IR structure.\nUsed for package names and module names.\n",
       "type": "array",
+      "minItems": 1,
       "items": {
         "$ref": "#/definitions/Name"
-      },
-      "minItems": 1,
-      "description": "A Path is a list of Names representing a hierarchical location in the IR structure.\nUsed for package names and module names.\n"
+      }
     },
     "PackageName": {
-      "$ref": "#/definitions/Path",
-      "description": "Globally unique identifier for a package."
+      "description": "Globally unique identifier for a package.",
+      "$ref": "#/definitions/Path"
     },
     "ModuleName": {
-      "$ref": "#/definitions/Path",
-      "description": "Unique identifier for a module within a package."
+      "description": "Unique identifier for a module within a package.",
+      "$ref": "#/definitions/Path"
     },
     "FQName": {
+      "description": "Fully-Qualified Name that provides a globally unique identifier for any type or value.\nConsists of [packagePath, modulePath, localName].\n",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "$ref": "#/definitions/PackageName"
@@ -77,27 +75,24 @@
         {
           "$ref": "#/definitions/Name"
         }
-      ],
-      "description": "Fully-Qualified Name that provides a globally unique identifier for any type or value.\nConsists of [packagePath, modulePath, localName].\n"
+      ]
     },
     "Attributes": {
-      "type": "object",
-      "description": "Attributes can be attached to various nodes in the IR for extensibility.\nWhen no additional information is needed, an empty object {} is used.\n"
+      "description": "Attributes can be attached to various nodes in the IR for extensibility.\nWhen no additional information is needed, an empty object {} is used.\n",
+      "type": "object"
     },
     "AccessLevel": {
+      "description": "Controls visibility of types and values (lowercase in v1).",
       "type": "string",
-      "enum": [
-        "public",
-        "private"
-      ],
-      "description": "Controls visibility of types and values (lowercase in v1)."
+      "enum": [ "public", "private" ]
     },
     "Dependencies": {
+      "description": "Dictionary of package dependencies, contains only type signatures.",
       "type": "array",
       "items": {
         "type": "array",
-        "minItems": 2,
         "maxItems": 2,
+        "minItems": 2,
         "items": [
           {
             "$ref": "#/definitions/PackageName"
@@ -106,40 +101,36 @@
             "$ref": "#/definitions/PackageSpecification"
           }
         ]
-      },
-      "description": "Dictionary of package dependencies, contains only type signatures."
+      }
     },
     "PackageDefinition": {
+      "description": "Complete implementation of a package with all details.",
       "type": "object",
-      "required": [
-        "modules"
-      ],
+      "required": [ "modules" ],
       "properties": {
         "modules": {
+          "description": "All modules in the package (public and private).",
           "type": "array",
           "items": {
             "$ref": "#/definitions/ModuleEntry"
-          },
-          "description": "All modules in the package (public and private)."
+          }
         }
-      },
-      "description": "Complete implementation of a package with all details."
+      }
     },
     "ModuleEntry": {
+      "description": "Module entry with name and access-controlled definition (v1 format).",
       "type": "object",
-      "required": [
-        "name",
-        "def"
-      ],
+      "required": [ "name", "def" ],
       "properties": {
         "name": {
-          "$ref": "#/definitions/ModuleName",
-          "description": "The module name/path."
+          "description": "The module name/path.",
+          "$ref": "#/definitions/ModuleName"
         },
         "def": {
+          "description": "Access-controlled module definition [accessLevel, definition].",
           "type": "array",
-          "minItems": 2,
           "maxItems": 2,
+          "minItems": 2,
           "items": [
             {
               "$ref": "#/definitions/AccessLevel"
@@ -147,63 +138,55 @@
             {
               "$ref": "#/definitions/ModuleDefinition"
             }
-          ],
-          "description": "Access-controlled module definition [accessLevel, definition]."
+          ]
         }
-      },
-      "description": "Module entry with name and access-controlled definition (v1 format)."
+      }
     },
     "PackageSpecification": {
+      "description": "Public interface of a package, contains only type signatures.",
       "type": "object",
-      "required": [
-        "modules"
-      ],
+      "required": [ "modules" ],
       "properties": {
         "modules": {
+          "description": "Public modules only.",
           "type": "array",
           "items": {
             "type": "object",
-            "required": [
-              "name",
-              "spec"
-            ],
+            "required": [ "name", "spec" ],
             "properties": {
               "name": {
-                "$ref": "#/definitions/ModuleName",
-                "description": "The module name/path."
+                "description": "The module name/path.",
+                "$ref": "#/definitions/ModuleName"
               },
               "spec": {
-                "$ref": "#/definitions/ModuleSpecification",
-                "description": "The module specification."
+                "description": "The module specification.",
+                "$ref": "#/definitions/ModuleSpecification"
               }
             }
-          },
-          "description": "Public modules only."
+          }
         }
-      },
-      "description": "Public interface of a package, contains only type signatures."
+      }
     },
     "ModuleDefinition": {
+      "description": "Complete implementation of a module.",
       "type": "object",
-      "required": [
-        "types",
-        "values"
-      ],
+      "required": [ "types", "values" ],
       "properties": {
         "types": {
+          "description": "All type definitions (public and private).",
           "type": "array",
           "items": {
             "type": "array",
-            "minItems": 2,
             "maxItems": 2,
+            "minItems": 2,
             "items": [
               {
                 "$ref": "#/definitions/Name"
               },
               {
                 "type": "array",
-                "minItems": 2,
                 "maxItems": 2,
+                "minItems": 2,
                 "items": [
                   {
                     "$ref": "#/definitions/AccessLevel"
@@ -212,10 +195,7 @@
                     "oneOf": [
                       {
                         "type": "object",
-                        "required": [
-                          "doc",
-                          "value"
-                        ],
+                        "required": [ "doc", "value" ],
                         "properties": {
                           "doc": {
                             "type": "string"
@@ -233,23 +213,23 @@
                 ]
               }
             ]
-          },
-          "description": "All type definitions (public and private)."
+          }
         },
         "values": {
+          "description": "All value definitions (public and private).",
           "type": "array",
           "items": {
             "type": "array",
-            "minItems": 2,
             "maxItems": 2,
+            "minItems": 2,
             "items": [
               {
                 "$ref": "#/definitions/Name"
               },
               {
                 "type": "array",
-                "minItems": 2,
                 "maxItems": 2,
+                "minItems": 2,
                 "items": [
                   {
                     "$ref": "#/definitions/AccessLevel"
@@ -258,10 +238,7 @@
                     "oneOf": [
                       {
                         "type": "object",
-                        "required": [
-                          "doc",
-                          "value"
-                        ],
+                        "required": [ "doc", "value" ],
                         "properties": {
                           "doc": {
                             "type": "string"
@@ -279,29 +256,26 @@
                 ]
               }
             ]
-          },
-          "description": "All value definitions (public and private)."
+          }
         },
         "doc": {
-          "type": "string",
-          "description": "Optional documentation for the module."
+          "description": "Optional documentation for the module.",
+          "type": "string"
         }
-      },
-      "description": "Complete implementation of a module."
+      }
     },
     "ModuleSpecification": {
+      "description": "Public interface of a module.",
       "type": "object",
-      "required": [
-        "types",
-        "values"
-      ],
+      "required": [ "types", "values" ],
       "properties": {
         "types": {
+          "description": "Public type specifications only.",
           "type": "array",
           "items": {
             "type": "array",
-            "minItems": 2,
             "maxItems": 2,
+            "minItems": 2,
             "items": [
               {
                 "$ref": "#/definitions/Name"
@@ -310,10 +284,7 @@
                 "oneOf": [
                   {
                     "type": "object",
-                    "required": [
-                      "doc",
-                      "value"
-                    ],
+                    "required": [ "doc", "value" ],
                     "properties": {
                       "doc": {
                         "type": "string"
@@ -329,15 +300,15 @@
                 ]
               }
             ]
-          },
-          "description": "Public type specifications only."
+          }
         },
         "values": {
+          "description": "Public value specifications only.",
           "type": "array",
           "items": {
             "type": "array",
-            "minItems": 2,
             "maxItems": 2,
+            "minItems": 2,
             "items": [
               {
                 "$ref": "#/definitions/Name"
@@ -346,10 +317,7 @@
                 "oneOf": [
                   {
                     "type": "object",
-                    "required": [
-                      "doc",
-                      "value"
-                    ],
+                    "required": [ "doc", "value" ],
                     "properties": {
                       "doc": {
                         "type": "string"
@@ -365,15 +333,13 @@
                 ]
               }
             ]
-          },
-          "description": "Public value specifications only."
+          }
         },
         "doc": {
-          "type": "string",
-          "description": "Optional documentation for the module."
+          "description": "Optional documentation for the module.",
+          "type": "string"
         }
-      },
-      "description": "Public interface of a module."
+      }
     },
     "Type": {
       "description": "A Type is a recursive tree structure representing type expressions.\nTags are lowercase in format version 1.\n",
@@ -402,9 +368,10 @@
       ]
     },
     "VariableType": {
+      "description": "Represents a type variable (generic parameter).",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "const": "variable"
@@ -415,13 +382,13 @@
         {
           "$ref": "#/definitions/Name"
         }
-      ],
-      "description": "Represents a type variable (generic parameter)."
+      ]
     },
     "ReferenceType": {
+      "description": "Reference to another type or type alias.",
       "type": "array",
-      "minItems": 4,
       "maxItems": 4,
+      "minItems": 4,
       "items": [
         {
           "const": "reference"
@@ -433,19 +400,19 @@
           "$ref": "#/definitions/FQName"
         },
         {
+          "description": "Type arguments for generic types.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Type"
-          },
-          "description": "Type arguments for generic types."
+          }
         }
-      ],
-      "description": "Reference to another type or type alias."
+      ]
     },
     "TupleType": {
+      "description": "A composition of multiple types in a fixed order (product type).",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "const": "tuple"
@@ -454,19 +421,19 @@
           "$ref": "#/definitions/Attributes"
         },
         {
+          "description": "Element types in order.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Type"
-          },
-          "description": "Element types in order."
+          }
         }
-      ],
-      "description": "A composition of multiple types in a fixed order (product type)."
+      ]
     },
     "RecordType": {
+      "description": "A composition of named fields with their types.",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "const": "record"
@@ -475,19 +442,19 @@
           "$ref": "#/definitions/Attributes"
         },
         {
+          "description": "List of field definitions.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Field"
-          },
-          "description": "List of field definitions."
+          }
         }
-      ],
-      "description": "A composition of named fields with their types."
+      ]
     },
     "ExtensibleRecordType": {
+      "description": "A record type that can be extended with additional fields.",
       "type": "array",
-      "minItems": 4,
       "maxItems": 4,
+      "minItems": 4,
       "items": [
         {
           "const": "extensible_record"
@@ -499,19 +466,19 @@
           "$ref": "#/definitions/Name"
         },
         {
+          "description": "Known fields.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Field"
-          },
-          "description": "Known fields."
+          }
         }
-      ],
-      "description": "A record type that can be extended with additional fields."
+      ]
     },
     "FunctionType": {
+      "description": "Represents a function type. Multi-argument functions are represented via currying.\nItems: [tag, attributes, argumentType, returnType]\n",
       "type": "array",
-      "minItems": 4,
       "maxItems": 4,
+      "minItems": 4,
       "items": [
         {
           "const": "function"
@@ -525,13 +492,13 @@
         {
           "$ref": "#/definitions/Type"
         }
-      ],
-      "description": "Represents a function type. Multi-argument functions are represented via currying.\nItems: [tag, attributes, argumentType, returnType]\n"
+      ]
     },
     "UnitType": {
+      "description": "The type with exactly one value (similar to void in some languages).",
       "type": "array",
-      "minItems": 2,
       "maxItems": 2,
+      "minItems": 2,
       "items": [
         {
           "const": "unit"
@@ -539,26 +506,22 @@
         {
           "$ref": "#/definitions/Attributes"
         }
-      ],
-      "description": "The type with exactly one value (similar to void in some languages)."
+      ]
     },
     "Field": {
+      "description": "A field in a record type.",
       "type": "object",
-      "required": [
-        "name",
-        "tpe"
-      ],
+      "required": [ "name", "tpe" ],
       "properties": {
         "name": {
-          "$ref": "#/definitions/Name",
-          "description": "Field name."
+          "description": "Field name.",
+          "$ref": "#/definitions/Name"
         },
         "tpe": {
-          "$ref": "#/definitions/Type",
-          "description": "Field type."
+          "description": "Field type.",
+          "$ref": "#/definitions/Type"
         }
-      },
-      "description": "A field in a record type."
+      }
     },
     "TypeSpecification": {
       "description": "Defines the interface of a type without implementation details.",
@@ -578,105 +541,101 @@
       ]
     },
     "TypeAliasSpecification": {
+      "description": "An alias for another type.",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "const": "type_alias_specification"
         },
         {
+          "description": "Type parameters.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Name"
-          },
-          "description": "Type parameters."
+          }
         },
         {
           "$ref": "#/definitions/Type"
         }
-      ],
-      "description": "An alias for another type."
+      ]
     },
     "OpaqueTypeSpecification": {
+      "description": "A type with unknown structure. The implementation is hidden from consumers.\n",
       "type": "array",
-      "minItems": 2,
       "maxItems": 2,
+      "minItems": 2,
       "items": [
         {
           "const": "opaque_type_specification"
         },
         {
+          "description": "Type parameters.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Name"
-          },
-          "description": "Type parameters."
+          }
         }
-      ],
-      "description": "A type with unknown structure. The implementation is hidden from consumers.\n"
+      ]
     },
     "CustomTypeSpecification": {
+      "description": "A tagged union type (sum type).",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "const": "custom_type_specification"
         },
         {
+          "description": "Type parameters.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Name"
-          },
-          "description": "Type parameters."
+          }
         },
         {
           "$ref": "#/definitions/Constructors"
         }
-      ],
-      "description": "A tagged union type (sum type)."
+      ]
     },
     "DerivedTypeSpecification": {
+      "description": "A type with platform-specific representation but known serialization.\n",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "const": "derived_type_specification"
         },
         {
+          "description": "Type parameters.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Name"
-          },
-          "description": "Type parameters."
+          }
         },
         {
+          "description": "Details for derived type.",
           "type": "object",
-          "required": [
-            "baseType",
-            "fromBaseType",
-            "toBaseType"
-          ],
+          "required": [ "baseType", "fromBaseType", "toBaseType" ],
           "properties": {
             "baseType": {
-              "$ref": "#/definitions/Type",
-              "description": "The type used for serialization."
+              "description": "The type used for serialization.",
+              "$ref": "#/definitions/Type"
             },
             "fromBaseType": {
-              "$ref": "#/definitions/FQName",
-              "description": "Function to convert from base type."
+              "description": "Function to convert from base type.",
+              "$ref": "#/definitions/FQName"
             },
             "toBaseType": {
-              "$ref": "#/definitions/FQName",
-              "description": "Function to convert to base type."
+              "description": "Function to convert to base type.",
+              "$ref": "#/definitions/FQName"
             }
-          },
-          "description": "Details for derived type."
+          }
         }
-      ],
-      "description": "A type with platform-specific representation but known serialization.\n"
+      ]
     },
     "TypeDefinition": {
       "description": "Provides the complete implementation of a type.",
@@ -690,45 +649,46 @@
       ]
     },
     "TypeAliasDefinition": {
+      "description": "Complete definition of a type alias.",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "const": "type_alias_definition"
         },
         {
+          "description": "Type parameters.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Name"
-          },
-          "description": "Type parameters."
+          }
         },
         {
           "$ref": "#/definitions/Type"
         }
-      ],
-      "description": "Complete definition of a type alias."
+      ]
     },
     "CustomTypeDefinition": {
+      "description": "Complete definition of a custom type. If constructors are private, \nthe specification becomes opaque_type_specification.\n",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "const": "custom_type_definition"
         },
         {
+          "description": "Type parameters.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Name"
-          },
-          "description": "Type parameters."
+          }
         },
         {
           "type": "array",
-          "minItems": 2,
           "maxItems": 2,
+          "minItems": 2,
           "items": [
             {
               "$ref": "#/definitions/AccessLevel"
@@ -738,25 +698,26 @@
             }
           ]
         }
-      ],
-      "description": "Complete definition of a custom type. If constructors are private, \nthe specification becomes opaque_type_specification.\n"
+      ]
     },
     "Constructors": {
+      "description": "Dictionary of constructor names to their typed arguments.",
       "type": "array",
       "items": {
         "type": "array",
-        "minItems": 2,
         "maxItems": 2,
+        "minItems": 2,
         "items": [
           {
             "$ref": "#/definitions/Name"
           },
           {
+            "description": "Constructor arguments as (name, type) pairs.",
             "type": "array",
             "items": {
               "type": "array",
-              "minItems": 2,
               "maxItems": 2,
+              "minItems": 2,
               "items": [
                 {
                   "$ref": "#/definitions/Name"
@@ -765,12 +726,10 @@
                   "$ref": "#/definitions/Type"
                 }
               ]
-            },
-            "description": "Constructor arguments as (name, type) pairs."
+            }
           }
         ]
-      },
-      "description": "Dictionary of constructor names to their typed arguments."
+      }
     },
     "Value": {
       "description": "A Value is a recursive tree structure representing computations.\nAll data and logic in Morphir are represented as value expressions.\nNote: Value tags are lowercase with underscores in format version 1.\n",
@@ -832,9 +791,10 @@
       ]
     },
     "LiteralValue": {
+      "description": "A literal constant value.",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "const": "literal"
@@ -845,13 +805,13 @@
         {
           "$ref": "#/definitions/Literal"
         }
-      ],
-      "description": "A literal constant value."
+      ]
     },
     "ConstructorValue": {
+      "description": "Reference to a custom type constructor.",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "const": "constructor"
@@ -862,13 +822,13 @@
         {
           "$ref": "#/definitions/FQName"
         }
-      ],
-      "description": "Reference to a custom type constructor."
+      ]
     },
     "TupleValue": {
+      "description": "A tuple value with multiple elements.",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "const": "tuple"
@@ -877,19 +837,19 @@
           "$ref": "#/definitions/Attributes"
         },
         {
+          "description": "Element values in order.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Value"
-          },
-          "description": "Element values in order."
+          }
         }
-      ],
-      "description": "A tuple value with multiple elements."
+      ]
     },
     "ListValue": {
+      "description": "A list of values.",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "const": "list"
@@ -898,19 +858,19 @@
           "$ref": "#/definitions/Attributes"
         },
         {
+          "description": "List elements.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Value"
-          },
-          "description": "List elements."
+          }
         }
-      ],
-      "description": "A list of values."
+      ]
     },
     "RecordValue": {
+      "description": "A record value with named fields.",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "const": "record"
@@ -919,11 +879,12 @@
           "$ref": "#/definitions/Attributes"
         },
         {
+          "description": "Dictionary mapping field names to values.",
           "type": "array",
           "items": {
             "type": "array",
-            "minItems": 2,
             "maxItems": 2,
+            "minItems": 2,
             "items": [
               {
                 "$ref": "#/definitions/Name"
@@ -932,16 +893,15 @@
                 "$ref": "#/definitions/Value"
               }
             ]
-          },
-          "description": "Dictionary mapping field names to values."
+          }
         }
-      ],
-      "description": "A record value with named fields."
+      ]
     },
     "VariableValue": {
+      "description": "Reference to a variable in scope.",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "const": "variable"
@@ -952,13 +912,13 @@
         {
           "$ref": "#/definitions/Name"
         }
-      ],
-      "description": "Reference to a variable in scope."
+      ]
     },
     "ReferenceValue": {
+      "description": "Reference to a defined value (function or constant).",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "const": "reference"
@@ -969,13 +929,13 @@
         {
           "$ref": "#/definitions/FQName"
         }
-      ],
-      "description": "Reference to a defined value (function or constant)."
+      ]
     },
     "FieldValue": {
+      "description": "Field access on a record. Items: [tag, attributes, recordExpr, fieldName]",
       "type": "array",
-      "minItems": 4,
       "maxItems": 4,
+      "minItems": 4,
       "items": [
         {
           "const": "field"
@@ -989,13 +949,13 @@
         {
           "$ref": "#/definitions/Name"
         }
-      ],
-      "description": "Field access on a record. Items: [tag, attributes, recordExpr, fieldName]"
+      ]
     },
     "FieldFunctionValue": {
+      "description": "A function that extracts a field (e.g., .firstName).",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "const": "field_function"
@@ -1006,13 +966,13 @@
         {
           "$ref": "#/definitions/Name"
         }
-      ],
-      "description": "A function that extracts a field (e.g., .firstName)."
+      ]
     },
     "ApplyValue": {
+      "description": "Function application. Items: [tag, attributes, function, argument].\nMulti-argument calls are represented via currying (nested Apply nodes).\n",
       "type": "array",
-      "minItems": 4,
       "maxItems": 4,
+      "minItems": 4,
       "items": [
         {
           "const": "apply"
@@ -1026,13 +986,13 @@
         {
           "$ref": "#/definitions/Value"
         }
-      ],
-      "description": "Function application. Items: [tag, attributes, function, argument].\nMulti-argument calls are represented via currying (nested Apply nodes).\n"
+      ]
     },
     "LambdaValue": {
+      "description": "Anonymous function (lambda abstraction).\nItems: [tag, attributes, argumentPattern, body]\n",
       "type": "array",
-      "minItems": 4,
       "maxItems": 4,
+      "minItems": 4,
       "items": [
         {
           "const": "lambda"
@@ -1046,13 +1006,13 @@
         {
           "$ref": "#/definitions/Value"
         }
-      ],
-      "description": "Anonymous function (lambda abstraction).\nItems: [tag, attributes, argumentPattern, body]\n"
+      ]
     },
     "LetDefinitionValue": {
+      "description": "A let binding introducing a single value.\nItems: [tag, attributes, bindingName, definition, inExpr]\n",
       "type": "array",
-      "minItems": 5,
       "maxItems": 5,
+      "minItems": 5,
       "items": [
         {
           "const": "let_definition"
@@ -1069,13 +1029,13 @@
         {
           "$ref": "#/definitions/Value"
         }
-      ],
-      "description": "A let binding introducing a single value.\nItems: [tag, attributes, bindingName, definition, inExpr]\n"
+      ]
     },
     "LetRecursionValue": {
+      "description": "Mutually recursive let bindings.",
       "type": "array",
-      "minItems": 4,
       "maxItems": 4,
+      "minItems": 4,
       "items": [
         {
           "const": "let_recursion"
@@ -1084,11 +1044,12 @@
           "$ref": "#/definitions/Attributes"
         },
         {
+          "description": "Multiple bindings that can reference each other.",
           "type": "array",
           "items": {
             "type": "array",
-            "minItems": 2,
             "maxItems": 2,
+            "minItems": 2,
             "items": [
               {
                 "$ref": "#/definitions/Name"
@@ -1097,19 +1058,18 @@
                 "$ref": "#/definitions/ValueDefinition"
               }
             ]
-          },
-          "description": "Multiple bindings that can reference each other."
+          }
         },
         {
           "$ref": "#/definitions/Value"
         }
-      ],
-      "description": "Mutually recursive let bindings."
+      ]
     },
     "DestructureValue": {
+      "description": "Pattern-based destructuring.\nItems: [tag, attributes, pattern, valueToDestructure, inExpr]\n",
       "type": "array",
-      "minItems": 5,
       "maxItems": 5,
+      "minItems": 5,
       "items": [
         {
           "const": "destructure"
@@ -1126,13 +1086,13 @@
         {
           "$ref": "#/definitions/Value"
         }
-      ],
-      "description": "Pattern-based destructuring.\nItems: [tag, attributes, pattern, valueToDestructure, inExpr]\n"
+      ]
     },
     "IfThenElseValue": {
+      "description": "Conditional expression.\nItems: [tag, attributes, condition, thenBranch, elseBranch]\n",
       "type": "array",
-      "minItems": 5,
       "maxItems": 5,
+      "minItems": 5,
       "items": [
         {
           "const": "if_then_else"
@@ -1149,13 +1109,13 @@
         {
           "$ref": "#/definitions/Value"
         }
-      ],
-      "description": "Conditional expression.\nItems: [tag, attributes, condition, thenBranch, elseBranch]\n"
+      ]
     },
     "PatternMatchValue": {
+      "description": "Pattern matching with multiple cases.",
       "type": "array",
-      "minItems": 4,
       "maxItems": 4,
+      "minItems": 4,
       "items": [
         {
           "const": "pattern_match"
@@ -1167,11 +1127,12 @@
           "$ref": "#/definitions/Value"
         },
         {
+          "description": "List of pattern-branch pairs.",
           "type": "array",
           "items": {
             "type": "array",
-            "minItems": 2,
             "maxItems": 2,
+            "minItems": 2,
             "items": [
               {
                 "$ref": "#/definitions/Pattern"
@@ -1180,16 +1141,15 @@
                 "$ref": "#/definitions/Value"
               }
             ]
-          },
-          "description": "List of pattern-branch pairs."
+          }
         }
-      ],
-      "description": "Pattern matching with multiple cases."
+      ]
     },
     "UpdateRecordValue": {
+      "description": "Record update expression (immutable copy-on-update).\nItems: [tag, attributes, recordToUpdate, fieldsToUpdate]\n",
       "type": "array",
-      "minItems": 4,
       "maxItems": 4,
+      "minItems": 4,
       "items": [
         {
           "const": "update_record"
@@ -1201,11 +1161,12 @@
           "$ref": "#/definitions/Value"
         },
         {
+          "description": "Fields to update with new values.",
           "type": "array",
           "items": {
             "type": "array",
-            "minItems": 2,
             "maxItems": 2,
+            "minItems": 2,
             "items": [
               {
                 "$ref": "#/definitions/Name"
@@ -1214,16 +1175,15 @@
                 "$ref": "#/definitions/Value"
               }
             ]
-          },
-          "description": "Fields to update with new values."
+          }
         }
-      ],
-      "description": "Record update expression (immutable copy-on-update).\nItems: [tag, attributes, recordToUpdate, fieldsToUpdate]\n"
+      ]
     },
     "UnitValue": {
+      "description": "The unit value (the single value of the Unit type).",
       "type": "array",
-      "minItems": 2,
       "maxItems": 2,
+      "minItems": 2,
       "items": [
         {
           "const": "unit"
@@ -1231,8 +1191,7 @@
         {
           "$ref": "#/definitions/Attributes"
         }
-      ],
-      "description": "The unit value (the single value of the Unit type)."
+      ]
     },
     "Literal": {
       "description": "Represents literal constant values.",
@@ -1258,9 +1217,10 @@
       ]
     },
     "BoolLiteral": {
+      "description": "Boolean literal (true or false).",
       "type": "array",
-      "minItems": 2,
       "maxItems": 2,
+      "minItems": 2,
       "items": [
         {
           "const": "bool_literal"
@@ -1268,29 +1228,29 @@
         {
           "type": "boolean"
         }
-      ],
-      "description": "Boolean literal (true or false)."
+      ]
     },
     "CharLiteral": {
+      "description": "Single character literal.",
       "type": "array",
-      "minItems": 2,
       "maxItems": 2,
+      "minItems": 2,
       "items": [
         {
           "const": "char_literal"
         },
         {
           "type": "string",
-          "minLength": 1,
-          "maxLength": 1
+          "maxLength": 1,
+          "minLength": 1
         }
-      ],
-      "description": "Single character literal."
+      ]
     },
     "StringLiteral": {
+      "description": "Text string literal.",
       "type": "array",
-      "minItems": 2,
       "maxItems": 2,
+      "minItems": 2,
       "items": [
         {
           "const": "string_literal"
@@ -1298,13 +1258,13 @@
         {
           "type": "string"
         }
-      ],
-      "description": "Text string literal."
+      ]
     },
     "WholeNumberLiteral": {
+      "description": "Integer literal.",
       "type": "array",
-      "minItems": 2,
       "maxItems": 2,
+      "minItems": 2,
       "items": [
         {
           "const": "whole_number_literal"
@@ -1312,13 +1272,13 @@
         {
           "type": "integer"
         }
-      ],
-      "description": "Integer literal."
+      ]
     },
     "FloatLiteral": {
+      "description": "Floating-point number literal.",
       "type": "array",
-      "minItems": 2,
       "maxItems": 2,
+      "minItems": 2,
       "items": [
         {
           "const": "float_literal"
@@ -1326,13 +1286,13 @@
         {
           "type": "number"
         }
-      ],
-      "description": "Floating-point number literal."
+      ]
     },
     "DecimalLiteral": {
+      "description": "Arbitrary-precision decimal literal (stored as string).",
       "type": "array",
-      "minItems": 2,
       "maxItems": 2,
+      "minItems": 2,
       "items": [
         {
           "const": "decimal_literal"
@@ -1341,8 +1301,7 @@
           "type": "string",
           "pattern": "^-?[0-9]+(\\.[0-9]+)?$"
         }
-      ],
-      "description": "Arbitrary-precision decimal literal (stored as string)."
+      ]
     },
     "Pattern": {
       "description": "Patterns are used for destructuring and filtering values.\nThey appear in lambda, let destructure, and pattern match expressions.\nPattern tags are lowercase with underscores in format version 1.\n",
@@ -1374,9 +1333,10 @@
       ]
     },
     "WildcardPattern": {
+      "description": "Matches any value without binding (the _ pattern).",
       "type": "array",
-      "minItems": 2,
       "maxItems": 2,
+      "minItems": 2,
       "items": [
         {
           "const": "wildcard_pattern"
@@ -1384,13 +1344,13 @@
         {
           "$ref": "#/definitions/Attributes"
         }
-      ],
-      "description": "Matches any value without binding (the _ pattern)."
+      ]
     },
     "AsPattern": {
+      "description": "Binds a name to a value matched by a nested pattern.\nSimple variable binding is AsPattern with WildcardPattern nested.\nItems: [tag, attributes, nestedPattern, variableName]\n",
       "type": "array",
-      "minItems": 4,
       "maxItems": 4,
+      "minItems": 4,
       "items": [
         {
           "const": "as_pattern"
@@ -1404,13 +1364,13 @@
         {
           "$ref": "#/definitions/Name"
         }
-      ],
-      "description": "Binds a name to a value matched by a nested pattern.\nSimple variable binding is AsPattern with WildcardPattern nested.\nItems: [tag, attributes, nestedPattern, variableName]\n"
+      ]
     },
     "TuplePattern": {
+      "description": "Matches a tuple by matching each element.",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "const": "tuple_pattern"
@@ -1419,19 +1379,19 @@
           "$ref": "#/definitions/Attributes"
         },
         {
+          "description": "Patterns for each tuple element.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Pattern"
-          },
-          "description": "Patterns for each tuple element."
+          }
         }
-      ],
-      "description": "Matches a tuple by matching each element."
+      ]
     },
     "ConstructorPattern": {
+      "description": "Matches a specific type constructor and its arguments.",
       "type": "array",
-      "minItems": 4,
       "maxItems": 4,
+      "minItems": 4,
       "items": [
         {
           "const": "constructor_pattern"
@@ -1443,19 +1403,19 @@
           "$ref": "#/definitions/FQName"
         },
         {
+          "description": "Patterns for constructor arguments.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Pattern"
-          },
-          "description": "Patterns for constructor arguments."
+          }
         }
-      ],
-      "description": "Matches a specific type constructor and its arguments."
+      ]
     },
     "EmptyListPattern": {
+      "description": "Matches an empty list (the [] pattern).",
       "type": "array",
-      "minItems": 2,
       "maxItems": 2,
+      "minItems": 2,
       "items": [
         {
           "const": "empty_list_pattern"
@@ -1463,13 +1423,13 @@
         {
           "$ref": "#/definitions/Attributes"
         }
-      ],
-      "description": "Matches an empty list (the [] pattern)."
+      ]
     },
     "HeadTailPattern": {
+      "description": "Matches a non-empty list by head and tail (the x :: xs pattern).\nItems: [tag, attributes, headPattern, tailPattern]\n",
       "type": "array",
-      "minItems": 4,
       "maxItems": 4,
+      "minItems": 4,
       "items": [
         {
           "const": "head_tail_pattern"
@@ -1483,13 +1443,13 @@
         {
           "$ref": "#/definitions/Pattern"
         }
-      ],
-      "description": "Matches a non-empty list by head and tail (the x :: xs pattern).\nItems: [tag, attributes, headPattern, tailPattern]\n"
+      ]
     },
     "LiteralPattern": {
+      "description": "Matches an exact literal value.",
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
+      "minItems": 3,
       "items": [
         {
           "const": "literal_pattern"
@@ -1500,13 +1460,13 @@
         {
           "$ref": "#/definitions/Literal"
         }
-      ],
-      "description": "Matches an exact literal value."
+      ]
     },
     "UnitPattern": {
+      "description": "Matches the unit value.",
       "type": "array",
-      "minItems": 2,
       "maxItems": 2,
+      "minItems": 2,
       "items": [
         {
           "const": "unit_pattern"
@@ -1514,22 +1474,20 @@
         {
           "$ref": "#/definitions/Attributes"
         }
-      ],
-      "description": "Matches the unit value."
+      ]
     },
     "ValueSpecification": {
+      "description": "The type signature of a value or function.\nContains only type information, no implementation.\n",
       "type": "object",
-      "required": [
-        "inputs",
-        "output"
-      ],
+      "required": [ "inputs", "output" ],
       "properties": {
         "inputs": {
+          "description": "Function parameters as (name, type) pairs.",
           "type": "array",
           "items": {
             "type": "array",
-            "minItems": 2,
             "maxItems": 2,
+            "minItems": 2,
             "items": [
               {
                 "$ref": "#/definitions/Name"
@@ -1538,30 +1496,26 @@
                 "$ref": "#/definitions/Type"
               }
             ]
-          },
-          "description": "Function parameters as (name, type) pairs."
+          }
         },
         "output": {
-          "$ref": "#/definitions/Type",
-          "description": "The return type."
+          "description": "The return type.",
+          "$ref": "#/definitions/Type"
         }
-      },
-      "description": "The type signature of a value or function.\nContains only type information, no implementation.\n"
+      }
     },
     "ValueDefinition": {
+      "description": "The complete implementation of a value or function.\nContains both type information and implementation.\n",
       "type": "object",
-      "required": [
-        "inputTypes",
-        "outputType",
-        "body"
-      ],
+      "required": [ "inputTypes", "outputType", "body" ],
       "properties": {
         "inputTypes": {
+          "description": "Function parameters as (name, attributes, type) tuples.",
           "type": "array",
           "items": {
             "type": "array",
-            "minItems": 3,
             "maxItems": 3,
+            "minItems": 3,
             "items": [
               {
                 "$ref": "#/definitions/Name"
@@ -1573,19 +1527,17 @@
                 "$ref": "#/definitions/Type"
               }
             ]
-          },
-          "description": "Function parameters as (name, attributes, type) tuples."
+          }
         },
         "outputType": {
-          "$ref": "#/definitions/Type",
-          "description": "The return type."
+          "description": "The return type.",
+          "$ref": "#/definitions/Type"
         },
         "body": {
-          "$ref": "#/definitions/Value",
-          "description": "The value expression implementing the logic."
+          "description": "The value expression implementing the logic.",
+          "$ref": "#/definitions/Value"
         }
-      },
-      "description": "The complete implementation of a value or function.\nContains both type information and implementation.\n"
+      }
     }
   }
 }

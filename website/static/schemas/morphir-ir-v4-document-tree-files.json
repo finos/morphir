@@ -7,95 +7,78 @@
     "Name": {
       "oneOf": [
         {
-          "type": "string",
-          "pattern": "^[a-z0-9]+(-[a-z0-9]+|-(\\([a-z]+\\)))*$",
           "description": "Canonical string representation",
-          "examples": [
-            "my-name",
-            "user-id",
-            "value-in-(usd)"
-          ]
+          "examples": [ "my-name", "user-id", "value-in-(usd)" ],
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+|-(\\([a-z]+\\)))*$"
         },
         {
+          "description": "Legacy array representation",
           "type": "array",
+          "minItems": 1,
           "items": {
             "type": "string",
             "pattern": "^[a-z][a-z0-9]*$"
-          },
-          "minItems": 1,
-          "description": "Legacy array representation"
+          }
         }
       ]
     },
     "ModuleName": {
       "oneOf": [
         {
-          "type": "string",
-          "pattern": "^[a-z0-9-()]+(/[a-z0-9-()]+)*$",
           "description": "Canonical string representation",
-          "examples": [
-            "basics",
-            "domain/users",
-            "u-s/f-r-2052-a/data-tables"
-          ]
+          "examples": [ "basics", "domain/users", "u-s/f-r-2052-a/data-tables" ],
+          "type": "string",
+          "pattern": "^[a-z0-9-()]+(/[a-z0-9-()]+)*$"
         },
         {
+          "description": "Legacy array representation",
           "type": "array",
+          "minItems": 1,
           "items": {
             "$ref": "#/definitions/Name"
-          },
-          "minItems": 1,
-          "description": "Legacy array representation"
+          }
         }
       ]
     },
     "PackageName": {
-      "$ref": "#/definitions/ModuleName",
-      "description": "Package identifier (same format as ModuleName)"
+      "description": "Package identifier (same format as ModuleName)",
+      "$ref": "#/definitions/ModuleName"
     },
     "AccessControlled": {
       "type": "object",
-      "required": [
-        "access",
-        "value"
-      ],
+      "required": [ "access", "value" ],
       "properties": {
         "access": {
-          "enum": [
-            "Public",
-            "Private"
-          ],
-          "description": "Visibility level"
+          "description": "Visibility level",
+          "enum": [ "Public", "Private" ]
         },
         "value": {}
       }
     },
     "TypeDefinition": {
-      "type": "object",
       "description": "Type definition variant (TypeAliasDefinition, CustomTypeDefinition, or IncompleteTypeDefinition)",
+      "type": "object",
       "additionalProperties": true
     },
     "TypeSpecification": {
-      "type": "object",
       "description": "Type specification variant (TypeAliasSpecification, OpaqueTypeSpecification, etc.)",
+      "type": "object",
       "additionalProperties": true
     },
     "ValueDefinition": {
-      "type": "object",
       "description": "Value definition variant (wrapper object with ExpressionBody, NativeBody, etc.)",
+      "type": "object",
       "additionalProperties": true
     },
     "ValueSpecification": {
       "type": "object",
-      "required": [
-        "inputs",
-        "output"
-      ],
+      "required": [ "inputs", "output" ],
       "properties": {
         "inputs": {
+          "description": "Input parameter types",
           "type": "object",
-          "additionalProperties": true,
-          "description": "Input parameter types"
+          "additionalProperties": true
         },
         "output": {},
         "description": "Output type"
@@ -104,12 +87,10 @@
     },
     "EntryPoint": {
       "type": "object",
-      "required": [
-        "target",
-        "kind"
-      ],
+      "required": [ "target", "kind" ],
       "properties": {
         "target": {
+          "description": "Fully-qualified name",
           "oneOf": [
             {
               "type": "string",
@@ -117,23 +98,17 @@
             },
             {
               "type": "array",
-              "minItems": 3,
-              "maxItems": 3
+              "maxItems": 3,
+              "minItems": 3
             }
-          ],
-          "description": "Fully-qualified name"
+          ]
         },
         "kind": {
-          "enum": [
-            "main",
-            "command",
-            "handler",
-            "job",
-            "policy"
-          ],
-          "description": "Entry point kind"
+          "description": "Entry point kind",
+          "enum": [ "main", "command", "handler", "job", "policy" ]
         },
         "doc": {
+          "description": "Optional documentation",
           "oneOf": [
             {
               "type": "string"
@@ -144,44 +119,11 @@
                 "type": "string"
               }
             }
-          ],
-          "description": "Optional documentation"
+          ]
         }
       }
     },
     "VfsNodeHeader": {
-      "type": "object",
-      "required": [
-        "formatVersion",
-        "name"
-      ],
-      "properties": {
-        "formatVersion": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^4\\.0\\.0(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$",
-              "description": "Semantic version string (e.g., '4.0.0', '4.0.0-alpha.1')",
-              "examples": [
-                "4.0.0",
-                "4.0.0-alpha.1"
-              ]
-            },
-            {
-              "type": "integer",
-              "const": 4,
-              "description": "Legacy integer format for backwards compatibility",
-              "examples": [
-                4
-              ]
-            }
-          ]
-        },
-        "name": {
-          "$ref": "#/definitions/Name",
-          "description": "The canonical name of the type or value (matches filename without suffix)"
-        }
-      },
       "description": "Common header fields present in all granular definition files (*.type.json, *.value.json).\nThe name field matches the filename (without the .type.json or .value.json suffix).\n",
       "examples": [
         {
@@ -192,87 +134,33 @@
           "formatVersion": 4,
           "name": "get-user-by-email"
         }
-      ]
+      ],
+      "type": "object",
+      "required": [ "formatVersion", "name" ],
+      "properties": {
+        "formatVersion": {
+          "oneOf": [
+            {
+              "description": "Semantic version string (e.g., '4.0.0', '4.0.0-alpha.1')",
+              "examples": [ "4.0.0", "4.0.0-alpha.1" ],
+              "type": "string",
+              "pattern": "^4\\.0\\.0(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$"
+            },
+            {
+              "description": "Legacy integer format for backwards compatibility",
+              "examples": [ 4 ],
+              "type": "integer",
+              "const": 4
+            }
+          ]
+        },
+        "name": {
+          "description": "The canonical name of the type or value (matches filename without suffix)",
+          "$ref": "#/definitions/Name"
+        }
+      }
     },
     "TypeDefinitionFile": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/VfsNodeHeader"
-        },
-        {
-          "type": "object",
-          "required": [],
-          "properties": {
-            "doc": {
-              "oneOf": [
-                {
-                  "type": "string",
-                  "description": "Single-line documentation (will be split on newlines)"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "Multi-line documentation (one string per line)"
-                }
-              ],
-              "description": "Optional documentation for this type"
-            },
-            "def": {
-              "type": "object",
-              "required": [],
-              "properties": {
-                "access": {
-                  "enum": [
-                    "Public",
-                    "Private"
-                  ],
-                  "description": "Access level (required for definitions in PackageDefinition)"
-                },
-                "doc": {
-                  "oneOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  ],
-                  "description": "Optional documentation (can be at def level or top level)"
-                }
-              },
-              "additionalProperties": true,
-              "description": "Type definition (implementation). Used in PackageDefinition.\nMust contain one of: TypeAliasDefinition, CustomTypeDefinition, IncompleteTypeDefinition.\nThe access field is required when this file is part of a PackageDefinition.\n"
-            },
-            "spec": {
-              "type": "object",
-              "required": [],
-              "properties": {
-                "doc": {
-                  "oneOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  ],
-                  "description": "Optional documentation"
-                }
-              },
-              "additionalProperties": true,
-              "description": "Type specification (interface). Used in PackageSpecification.\nMust contain one of: TypeAliasSpecification, OpaqueTypeSpecification, \nCustomTypeSpecification, DerivedTypeSpecification.\n"
-            }
-          }
-        }
-      ],
       "description": "Type definition or specification file (*.type.json).\n\nStructure:\n- formatVersion: Required, semver string or integer 4\n- name: Required, canonical name matching filename\n- doc: Optional, documentation (can be at top level or nested in def/spec)\n- def: Required if this is a definition (implementation), contains TypeDefinition variant\n- spec: Required if this is a specification (interface), contains TypeSpecification variant\n\nExactly one of 'def' or 'spec' must be present.\n",
       "examples": [
         {
@@ -301,9 +189,7 @@
             "OpaqueTypeSpecification": {}
           }
         }
-      ]
-    },
-    "ValueDefinitionFile": {
+      ],
       "allOf": [
         {
           "$ref": "#/definitions/VfsNodeHeader"
@@ -313,33 +199,32 @@
           "required": [],
           "properties": {
             "doc": {
+              "description": "Optional documentation for this type",
               "oneOf": [
                 {
-                  "type": "string",
-                  "description": "Single-line documentation"
+                  "description": "Single-line documentation (will be split on newlines)",
+                  "type": "string"
                 },
                 {
+                  "description": "Multi-line documentation (one string per line)",
                   "type": "array",
                   "items": {
                     "type": "string"
-                  },
-                  "description": "Multi-line documentation"
+                  }
                 }
-              ],
-              "description": "Optional documentation for this value"
+              ]
             },
             "def": {
+              "description": "Type definition (implementation). Used in PackageDefinition.\nMust contain one of: TypeAliasDefinition, CustomTypeDefinition, IncompleteTypeDefinition.\nThe access field is required when this file is part of a PackageDefinition.\n",
               "type": "object",
               "required": [],
               "properties": {
                 "access": {
-                  "enum": [
-                    "Public",
-                    "Private"
-                  ],
-                  "description": "Access level (required for definitions in PackageDefinition)"
+                  "description": "Access level (required for definitions in PackageDefinition)",
+                  "enum": [ "Public", "Private" ]
                 },
                 "doc": {
+                  "description": "Optional documentation (can be at def level or top level)",
                   "oneOf": [
                     {
                       "type": "string"
@@ -350,18 +235,18 @@
                         "type": "string"
                       }
                     }
-                  ],
-                  "description": "Optional documentation"
+                  ]
                 }
               },
-              "additionalProperties": true,
-              "description": "Value definition (implementation). Used in PackageDefinition.\nMust contain one of: ExpressionBody, NativeBody, ExternalBody, IncompleteBody\nwrapped in their wrapper object format (e.g., { \"ExpressionBody\": { ... } }).\nThe access field is required when this file is part of a PackageDefinition.\n"
+              "additionalProperties": true
             },
             "spec": {
+              "description": "Type specification (interface). Used in PackageSpecification.\nMust contain one of: TypeAliasSpecification, OpaqueTypeSpecification, \nCustomTypeSpecification, DerivedTypeSpecification.\n",
               "type": "object",
               "required": [],
               "properties": {
                 "doc": {
+                  "description": "Optional documentation",
                   "oneOf": [
                     {
                       "type": "string"
@@ -372,16 +257,16 @@
                         "type": "string"
                       }
                     }
-                  ],
-                  "description": "Optional documentation"
+                  ]
                 }
               },
-              "additionalProperties": true,
-              "description": "Value specification (interface). Used in PackageSpecification.\nMust contain: inputs (object mapping parameter names to types) and output (type).\n"
+              "additionalProperties": true
             }
           }
         }
-      ],
+      ]
+    },
+    "ValueDefinitionFile": {
       "description": "Value definition or specification file (*.value.json).\n\nStructure:\n- formatVersion: Required, semver string or integer 4\n- name: Required, canonical name matching filename\n- doc: Optional, documentation (can be at top level or nested in def/spec)\n- def: Required if this is a definition (implementation), contains ValueDefinition variant\n- spec: Required if this is a specification (interface), contains ValueSpecification\n\nExactly one of 'def' or 'spec' must be present.\n",
       "examples": [
         {
@@ -415,167 +300,91 @@
             "output": "morphir/sdk:basics#int"
           }
         }
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/VfsNodeHeader"
+        },
+        {
+          "type": "object",
+          "required": [],
+          "properties": {
+            "doc": {
+              "description": "Optional documentation for this value",
+              "oneOf": [
+                {
+                  "description": "Single-line documentation",
+                  "type": "string"
+                },
+                {
+                  "description": "Multi-line documentation",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            "def": {
+              "description": "Value definition (implementation). Used in PackageDefinition.\nMust contain one of: ExpressionBody, NativeBody, ExternalBody, IncompleteBody\nwrapped in their wrapper object format (e.g., { \"ExpressionBody\": { ... } }).\nThe access field is required when this file is part of a PackageDefinition.\n",
+              "type": "object",
+              "required": [],
+              "properties": {
+                "access": {
+                  "description": "Access level (required for definitions in PackageDefinition)",
+                  "enum": [ "Public", "Private" ]
+                },
+                "doc": {
+                  "description": "Optional documentation",
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": true
+            },
+            "spec": {
+              "description": "Value specification (interface). Used in PackageSpecification.\nMust contain: inputs (object mapping parameter names to types) and output (type).\n",
+              "type": "object",
+              "required": [],
+              "properties": {
+                "doc": {
+                  "description": "Optional documentation",
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        }
       ]
     },
     "ModuleManifestFile": {
-      "type": "object",
-      "required": [
-        "formatVersion"
-      ],
-      "properties": {
-        "formatVersion": {
-          "oneOf": [
-            {
-              "type": "string",
-              "pattern": "^4\\.0\\.0(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$",
-              "description": "Semantic version string",
-              "examples": [
-                "4.0.0"
-              ]
-            },
-            {
-              "type": "integer",
-              "const": 4,
-              "description": "Legacy integer format",
-              "examples": [
-                4
-              ]
-            }
-          ]
-        },
-        "path": {
-          "$ref": "#/definitions/ModuleName",
-          "description": "Module path (canonical format, e.g., 'my-org/domain')"
-        },
-        "module": {
-          "$ref": "#/definitions/ModuleName",
-          "description": "Alternative field name for module path (legacy compatibility)"
-        },
-        "doc": {
-          "oneOf": [
-            {
-              "type": "string",
-              "description": "Single-line module documentation"
-            },
-            {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "Multi-line module documentation"
-            }
-          ],
-          "description": "Optional module-level documentation"
-        },
-        "types": {
-          "oneOf": [
-            {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Name"
-              },
-              "description": "List of type names in this module (manifest style)"
-            },
-            {
-              "type": "object",
-              "additionalProperties": {
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/AccessControlled"
-                  },
-                  {
-                    "properties": {
-                      "value": {
-                        "oneOf": [
-                          {
-                            "type": "object",
-                            "required": [
-                              "doc",
-                              "value"
-                            ],
-                            "properties": {
-                              "doc": {
-                                "type": "string"
-                              },
-                              "value": {
-                                "$ref": "#/definitions/TypeDefinition"
-                              }
-                            }
-                          },
-                          {
-                            "$ref": "#/definitions/TypeDefinition"
-                          }
-                        ]
-                      }
-                    }
-                  }
-                ]
-              },
-              "description": "Inline type definitions (inline style)"
-            }
-          ]
-        },
-        "values": {
-          "oneOf": [
-            {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Name"
-              },
-              "description": "List of value names in this module (manifest style)"
-            },
-            {
-              "type": "object",
-              "additionalProperties": {
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/AccessControlled"
-                  },
-                  {
-                    "properties": {
-                      "value": {
-                        "oneOf": [
-                          {
-                            "type": "object",
-                            "required": [
-                              "doc",
-                              "value"
-                            ],
-                            "properties": {
-                              "doc": {
-                                "type": "string"
-                              },
-                              "value": {
-                                "$ref": "#/definitions/ValueDefinition"
-                              }
-                            }
-                          },
-                          {
-                            "$ref": "#/definitions/ValueDefinition"
-                          }
-                        ]
-                      }
-                    }
-                  }
-                ]
-              },
-              "description": "Inline value definitions (inline style)"
-            }
-          ]
-        }
-      },
       "description": "Module manifest file (module.json).\n\nSupports two encoding styles:\n\n1. **Manifest Style (Granular)**: Lists type/value names, definitions in separate files\n   - formatVersion: Required\n   - path or module: Required, module path\n   - doc: Optional, module documentation\n   - types: Optional, array of type names\n   - values: Optional, array of value names\n\n2. **Inline Style (Hybrid)**: Contains definitions directly\n   - formatVersion: Required\n   - path or module: Required, module path\n   - doc: Optional, module documentation\n   - types: Optional, object mapping type names to definitions\n   - values: Optional, object mapping value names to definitions\n\nEither 'path' or 'module' field must be present (they are equivalent).\nThe 'path' field is preferred; 'module' is accepted for backwards compatibility.\nTypes and values can be arrays (manifest) or objects (inline), but not mixed.\n",
       "examples": [
         {
           "formatVersion": "4.0.0",
           "path": "my-org/domain",
-          "types": [
-            "user",
-            "order"
-          ],
-          "values": [
-            "create-order"
-          ]
+          "types": [ "user", "order" ],
+          "values": [ "create-order" ]
         },
         {
           "formatVersion": "4.0.0",
@@ -596,99 +405,153 @@
           "formatVersion": "4.0.0",
           "path": "my-org/domain",
           "doc": "Domain model",
-          "types": [
-            "user",
-            "order"
-          ],
-          "values": [
-            "create-order"
-          ]
+          "types": [ "user", "order" ],
+          "values": [ "create-order" ]
         },
         {
           "formatVersion": "4.0.0",
           "module": "my-org/domain",
           "doc": "Domain model (legacy field)",
-          "types": [
-            "user"
-          ],
+          "types": [ "user" ],
           "values": []
         }
-      ]
-    },
-    "DistributionManifestFile": {
-      "type": "object",
-      "required": [
-        "formatVersion",
-        "distribution",
-        "package"
       ],
+      "type": "object",
+      "required": [ "formatVersion" ],
       "properties": {
         "formatVersion": {
           "oneOf": [
             {
-              "type": "string",
-              "pattern": "^4\\.0\\.0(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$",
               "description": "Semantic version string",
-              "examples": [
-                "4.0.0"
-              ]
+              "examples": [ "4.0.0" ],
+              "type": "string",
+              "pattern": "^4\\.0\\.0(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$"
             },
             {
-              "type": "integer",
-              "const": 4,
               "description": "Legacy integer format",
-              "examples": [
-                4
-              ]
+              "examples": [ 4 ],
+              "type": "integer",
+              "const": 4
             }
           ]
         },
-        "distribution": {
-          "enum": [
-            "Library",
-            "Specs",
-            "Application"
-          ],
-          "description": "Distribution type"
+        "path": {
+          "description": "Module path (canonical format, e.g., 'my-org/domain')",
+          "$ref": "#/definitions/ModuleName"
         },
-        "package": {
-          "$ref": "#/definitions/PackageName",
-          "description": "Package name (canonical path format)"
+        "module": {
+          "description": "Alternative field name for module path (legacy compatibility)",
+          "$ref": "#/definitions/ModuleName"
         },
-        "version": {
-          "type": "string",
-          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$",
-          "description": "Package version (semantic version)",
-          "examples": [
-            "1.2.0",
-            "2.0.0-alpha.1"
+        "doc": {
+          "description": "Optional module-level documentation",
+          "oneOf": [
+            {
+              "description": "Single-line module documentation",
+              "type": "string"
+            },
+            {
+              "description": "Multi-line module documentation",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           ]
         },
-        "created": {
-          "type": "string",
-          "format": "date-time",
-          "description": "ISO 8601 timestamp when distribution was created",
-          "examples": [
-            "2026-01-15T12:00:00Z",
-            "2026-01-15T12:00:00+00:00"
+        "types": {
+          "oneOf": [
+            {
+              "description": "List of type names in this module (manifest style)",
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Name"
+              }
+            },
+            {
+              "description": "Inline type definitions (inline style)",
+              "type": "object",
+              "additionalProperties": {
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/AccessControlled"
+                  },
+                  {
+                    "properties": {
+                      "value": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "required": [ "doc", "value" ],
+                            "properties": {
+                              "doc": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "$ref": "#/definitions/TypeDefinition"
+                              }
+                            }
+                          },
+                          {
+                            "$ref": "#/definitions/TypeDefinition"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
           ]
         },
-        "layout": {
-          "enum": [
-            "Classic",
-            "VfsMode"
-          ],
-          "description": "Distribution layout mode (VfsMode for document tree)",
-          "default": "VfsMode"
-        },
-        "entryPoints": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/EntryPoint"
-          },
-          "description": "Entry points (required for Application distributions, optional otherwise).\nMap of entry point names to EntryPoint definitions.\n"
+        "values": {
+          "oneOf": [
+            {
+              "description": "List of value names in this module (manifest style)",
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Name"
+              }
+            },
+            {
+              "description": "Inline value definitions (inline style)",
+              "type": "object",
+              "additionalProperties": {
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/AccessControlled"
+                  },
+                  {
+                    "properties": {
+                      "value": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "required": [ "doc", "value" ],
+                            "properties": {
+                              "doc": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "$ref": "#/definitions/ValueDefinition"
+                              }
+                            }
+                          },
+                          {
+                            "$ref": "#/definitions/ValueDefinition"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
         }
-      },
+      }
+    },
+    "DistributionManifestFile": {
       "description": "Distribution manifest/metadata file (manifest.json).\n\nLocated at: `.morphir-dist/manifest.json`\n\nContains distribution-level metadata:\n- formatVersion: Required, IR format version\n- distribution: Required, distribution type (Library, Specs, Application)\n- package: Required, package name\n- version: Optional, package version\n- created: Optional, creation timestamp (ISO 8601)\n- layout: Optional, distribution layout (defaults to VfsMode for document tree)\n- entryPoints: Optional, entry points (required for Application distributions)\n",
       "examples": [
         {
@@ -720,7 +583,59 @@
             }
           }
         }
-      ]
+      ],
+      "type": "object",
+      "required": [ "formatVersion", "distribution", "package" ],
+      "properties": {
+        "formatVersion": {
+          "oneOf": [
+            {
+              "description": "Semantic version string",
+              "examples": [ "4.0.0" ],
+              "type": "string",
+              "pattern": "^4\\.0\\.0(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$"
+            },
+            {
+              "description": "Legacy integer format",
+              "examples": [ 4 ],
+              "type": "integer",
+              "const": 4
+            }
+          ]
+        },
+        "distribution": {
+          "description": "Distribution type",
+          "enum": [ "Library", "Specs", "Application" ]
+        },
+        "package": {
+          "description": "Package name (canonical path format)",
+          "$ref": "#/definitions/PackageName"
+        },
+        "version": {
+          "description": "Package version (semantic version)",
+          "examples": [ "1.2.0", "2.0.0-alpha.1" ],
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$"
+        },
+        "created": {
+          "description": "ISO 8601 timestamp when distribution was created",
+          "examples": [ "2026-01-15T12:00:00Z", "2026-01-15T12:00:00+00:00" ],
+          "type": "string",
+          "format": "date-time"
+        },
+        "layout": {
+          "description": "Distribution layout mode (VfsMode for document tree)",
+          "default": "VfsMode",
+          "enum": [ "Classic", "VfsMode" ]
+        },
+        "entryPoints": {
+          "description": "Entry points (required for Application distributions, optional otherwise).\nMap of entry point names to EntryPoint definitions.\n",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/EntryPoint"
+          }
+        }
+      }
     }
   }
 }

@@ -5,18 +5,21 @@
 
 Migrate IR between versions
 
-Upgrades concrete Morphir IR V3 to V4 and re-encodes V4 IR. Supports local files, document-tree directories, URLs, and GitHub shorthand sources.
+Converts concrete Morphir IR V3 and V4 between native JSON and YAML storage, single files, and V4 document trees. V3-to-V4 output defaults to YAML.
 
 **Examples:**
 
 ```bash
-# Migrate to file
-morphir migrate ./morphir-ir.json -o ./morphir-ir-v4.json --target-version v4
+# Migrate V3 JSON to the default V4 YAML profile
+morphir migrate ./morphir-ir.json -o ./morphir-ir-v4.yaml
+
+# Convert V4 YAML to JSON without changing the IR version
+morphir migrate ./morphir-ir-v4.yaml -o ./morphir-ir-v4.json
 
 # Migrate from URL
 morphir migrate https://lcr-interactive.finos.org/server/morphir-ir.json -o ./lcr-v4.json
 
-# Display in console with syntax highlighting (no -o)
+# Stream YAML IR to stdout (no -o)
 morphir migrate ./morphir-ir.json
 
 # Write the V4 document-tree layout
@@ -29,15 +32,17 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
 - **`<INPUT>`** — Input file, directory, or remote source (e.g., github:owner/repo, URL)
 
 ## Flags
-- **`-o --output <OUTPUT>`** — Output file or directory (if omitted, displays in console with syntax highlighting)
-- **`--target-version <TARGET_VERSION>`** — Target version: latest, v4/4, classic, v3/3, v2/2, v1/1 (default: latest)
+- **`-o --output <OUTPUT>`** — Output file or directory (if omitted, writes the IR artifact to stdout)
+- **`--target-version <TARGET_VERSION>`** — Target version: latest, v4/4, or classic/v3/3 (default: latest)
 
   **Default:** `latest`
 - **`--force-refresh`** — Force refresh cached remote sources
 - **`--no-cache`** — Skip cache entirely for remote sources
-- **`--json`** — Output result as JSON (for scripting)
+- **`--json`** — Emit JSON IR to stdout, or a JSON result envelope when --output is present
 - **`--expanded`** — Use expanded (non-compact) format for V4 output
 - **`--allow-partial`** — Permit recoverable incomplete V4 nodes when a source construct cannot be preserved
 - **`--output-layout <OUTPUT_LAYOUT>`** — Output storage layout (inferred from the output path when omitted)
 
   **Choices:** `single-file`, `vfs`
+- **`--input-format <INPUT_FORMAT>`** — Input serialization profile (json or yaml; inferred when omitted)
+- **`--output-format <OUTPUT_FORMAT>`** — Output serialization profile (json or yaml; extension then YAML default when omitted)

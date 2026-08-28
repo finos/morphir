@@ -47,6 +47,8 @@ tracing-appender = "0.2"
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+serde-saphyr = { version = "1", default-features = false, features = ["deserialize", "serialize"] }
+stacker = "0.1"
 toml = "1.0.0"
 tempfile = "3"
 semver = "1"

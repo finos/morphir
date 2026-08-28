@@ -7,20 +7,35 @@ description: "Complete specification for VFS document tree file formats in Morph
 
 This document provides complete specifications for all file formats used in VFS (Virtual File System) mode, where Morphir IR distributions are stored as a directory tree with individual files for each definition.
 
+## Serialization profile
+
+A document tree maps logical `manifest`, `module`, `NAME.type`, and `NAME.value` documents to one homogeneous physical serialization profile:
+
+| Logical document | JSON profile | YAML profile |
+| --- | --- | --- |
+| `manifest` | `manifest.json` | `manifest.yaml` |
+| `module` | `module.json` | `module.yaml` |
+| `NAME.type` | `NAME.type.json` | `NAME.type.yaml` |
+| `NAME.value` | `NAME.value.json` | `NAME.value.yaml` |
+
+The extension is not part of a logical identity. A generated tree MUST use one profile for every file. If discovery finds both `manifest.json` and `manifest.yaml`, it MUST report ambiguity and MUST NOT select one implicitly. The structures documented below apply to both profiles; JSON examples use the [JSON profile](json-profile.md), and their YAML equivalents use the [YAML profile](yaml-profile.md).
+
 ## Overview
 
 In VFS mode, a Morphir IR distribution is organized as:
 
 ```
 .morphir-dist/
-├── manifest.json                  # Distribution metadata
+├── manifest.yaml                  # Distribution metadata
 └── pkg/
     └── package-name/
         └── module-path/
-            ├── module.json        # Module manifest
-            ├── type-name.type.json    # Type definitions
-            └── value-name.value.json  # Value definitions
+            ├── module.yaml        # Module manifest
+            ├── type-name.type.yaml    # Type definitions
+            └── value-name.value.yaml  # Value definitions
 ```
+
+The corresponding JSON tree replaces each `.yaml` extension with `.json`.
 
 ## File Types
 

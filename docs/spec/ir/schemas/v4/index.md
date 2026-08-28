@@ -9,6 +9,17 @@ description: "Morphir IR JSON Schema for format version 4 (Draft)"
 
 Format version 4 is the next generation of the Morphir IR format. It replaces generic attributes with explicit `TypeAttributes` and `ValueAttributes` structures, introduces canonical string formats, and adds new value expressions for enhanced expressiveness.
 
+## Normative layers
+
+Version 4 separates meaning from physical storage:
+
+- [Semantic IR model](semantic-model.md) defines versioned IR values and semantic equality.
+- [JSON serialization profile](json-profile.md) defines JSON storage and the role of JSON Schema.
+- [YAML serialization profile](yaml-profile.md) defines native, lossless YAML storage.
+- [Document-tree profile](document-tree-files.md) maps logical documents to homogeneous JSON or YAML trees.
+
+JSON Schema bootstraps the JSON profile. It does not make JSON the only native IR storage format.
+
 ## Overview
 
 Version 4 standardizes attribute handling, introduces compact string representations, supports embedded documentation, and adds new value expressions to better represent functional programming constructs.
@@ -135,17 +146,17 @@ List.map Just [1, 2, 3]
 }
 ```
 
-### Module.json Support
+### Standalone module document support
 
-V4 officially supports standalone `module.json` files:
+V4 supports standalone logical module documents. Their physical extension follows the selected serialization profile:
 
 ```
 my-package/
-  morphir-ir.json
+  manifest.yaml
   modules/
-    MyModule.module.json
+    MyModule.module.yaml
     Sub/
-      Module.module.json
+      Module.module.yaml
 ```
 
 **Benefits:**
@@ -283,11 +294,11 @@ distribution:
 
 V4 supports VFS (Virtual File System) mode where distributions are stored as directory trees with individual files for each definition.
 
-**File Formats**:
-- `manifest.json` - Distribution metadata
-- `module.json` - Module manifest (with optional inline definitions)
-- `*.type.json` - Type definition/specification files
-- `*.value.json` - Value definition/specification files
+**Physical file profiles**:
+- JSON: `manifest.json`, `module.json`, `*.type.json`, and `*.value.json`
+- YAML: `manifest.yaml`, `module.yaml`, `*.type.yaml`, and `*.value.yaml`
+
+One tree uses one serialization profile. Logical identities do not contain either extension.
 
 **Complete Documentation**: See [Document Tree File Formats](document-tree-files.md) for:
 - Complete file format specifications with detailed examples
