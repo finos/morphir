@@ -1,0 +1,34 @@
+{
+  "description": "V4 HoleReason examples for testing morphir-rust compliance",
+  "examples": {
+    "unresolvedReference": {
+      "HoleReason": {
+        "UnresolvedReference": {
+          "target": "my-org/my-package:domain/users#get-user"
+        }
+      }
+    },
+    "deletedDuringRefactor": {
+      "HoleReason": {
+        "DeletedDuringRefactor": {
+          "tx-id": "refactor-2026-01-30-001"
+        }
+      }
+    },
+    "typeMismatch": {
+      "HoleReason": {
+        "TypeMismatch": {
+          "expected": "morphir/sdk:basics#int",
+          "found": "morphir/sdk:string#string"
+        }
+      }
+    }
+  },
+  "legacyStringFormats": {
+    "comment": "These string formats should be accepted for backward compatibility",
+    "examples": [
+      "DeletedDuringRefactor",
+      "TypeMismatch"
+    ]
+  }
+}

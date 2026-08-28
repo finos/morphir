@@ -134,16 +134,20 @@ jobs:
           key: morphir-cli
 
       - name: Check formatting
-        run: cargo fmt --package morphir --check
+        run: cargo fmt --package morphir --package integration-tests --check
 
       - name: Run clippy
-        run: cargo clippy --locked --package morphir --all-targets -- -D warnings
+        run: cargo clippy --locked --package morphir --package integration-tests --all-targets -- -D warnings
 
       - name: Run tests
         run: cargo test --locked --package morphir
 
       - name: Build
         run: cargo build --locked --release --package morphir
+
+      - name: Run CLI integration tests
+        # integration-tests finds the CLI binary in target/release/morphir
+        run: cargo test --locked --package integration-tests
 
       - name: Generate CLI docs
         run: mise run docs:cli
