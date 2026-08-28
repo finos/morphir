@@ -12,7 +12,7 @@ This directory contains [git submodules](https://git-scm.com/book/en/v2/Git-Tool
 | **morphir-moonbit** | [finos/morphir-moonbit](https://github.com/finos/morphir-moonbit) | main | MoonBit implementation of Morphir tooling |
 | **morphir-python** | [finos/morphir-python](https://github.com/finos/morphir-python) | main | Python implementation of Morphir tooling |
 | **morphir-scala** | [finos/morphir-scala](https://github.com/finos/morphir-scala) | main | Scala implementation of Morphir tooling; Mill build cross-compiled to JVM, JS, and Scala Native |
-| **morphir-ui** | [finos/morphir-ui](https://github.com/finos/morphir-ui) | main | User-interface work for the Morphir project (scoping stage; no implementation yet) |
+| **morphir-ui** | [finos/morphir-ui](https://github.com/finos/morphir-ui) | main | Morphir's UI monorepo: the morphir-desktop (Electron) and morphir-web apps sharing one Svelte + Effect application |
 
 ## First-time clone
 
@@ -68,7 +68,7 @@ mise run submodules:status
 - **morphir-moonbit**: MoonBit implementation with packages for SDK, core types, and WASM bindings. See below for build commands.
 - **morphir-python**: Python implementation of Morphir tooling. See the submodule's own README for build and usage.
 - **morphir-scala**: Scala implementation of Morphir tooling, built with Mill. See below for build commands.
-- **morphir-ui**: User-interface work for the Morphir project. Currently in the scoping stage with no implementation; discuss proposed work in the repo's GitHub issues.
+- **morphir-ui**: Morphir's UI monorepo — the morphir-desktop (Electron) and morphir-web apps sharing one Svelte + Effect application, with `morphir-ir.json` browsing, MORPHIR_HOME-backed configuration, and GitHub token capture. Build with mise + bun + moon: `mise install && bun install && moon run :build` (see the repo's README for the full getting-started guide).
 
 ## Building and testing morphir-moonbit
 
