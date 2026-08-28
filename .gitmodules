@@ -10,7 +10,7 @@
 [submodule "ecosystem/morphir-elm"]
 	path = ecosystem/morphir-elm
 	url = https://github.com/finos/morphir-elm.git
-	branch = remixed
+	branch = vnext
 [submodule "ecosystem/morphir-python"]
 	path = ecosystem/morphir-python
 	url = https://github.com/finos/morphir-python.git
