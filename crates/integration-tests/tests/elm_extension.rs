@@ -20,6 +20,12 @@ broken : Int
 broken =
 "#;
 
+const MALFORMED_HEADER_ELM: &str = r#"module Malformed
+
+
+value = 1
+"#;
+
 #[derive(Debug, Deserialize)]
 struct CompileOutput {
     success: bool,
@@ -32,8 +38,10 @@ struct CompileOutput {
 #[derive(Debug, Deserialize)]
 struct CompileDiagnostic {
     level: String,
+    code: Option<String>,
     file: Option<String>,
     uri: Option<String>,
+    range: Option<serde_json::Value>,
 }
 
 fn elm_extension_binary() -> PathBuf {
@@ -59,6 +67,16 @@ fn run_elm_compile(
     source_name: &str,
     source: &str,
 ) -> (Output, PathBuf) {
+    run_elm_compile_with_output_flag(directory, extension, source_name, source, "--json")
+}
+
+fn run_elm_compile_with_output_flag(
+    directory: &Path,
+    extension: &Path,
+    source_name: &str,
+    source: &str,
+    output_flag: &str,
+) -> (Output, PathBuf) {
     let input_path = directory.join(source_name);
     let output_path = directory.join("morphir-ir.json");
     let config_path = write_elm_extension_config(directory, extension);
@@ -76,7 +94,7 @@ fn run_elm_compile(
             config_path.to_str().expect("UTF-8 config path"),
             "--output",
             output_path.to_str().expect("UTF-8 output path"),
-            "--json",
+            output_flag,
         ])
         .current_dir(directory)
         .output()
@@ -167,4 +185,54 @@ fn elm_extension_reports_structured_diagnostics_for_invalid_source() {
         }),
         "an error diagnostic should identify Invalid.elm"
     );
+}
+
+#[test]
+#[ignore = "requires the independently built morphir-elm-extension executable"]
+fn elm_extension_diagnoses_a_malformed_module_header_in_structured_output() {
+    let extension = elm_extension_binary();
+
+    for output_flag in ["--json", "--json-lines"] {
+        let temp_dir = TempDir::new().expect("create temporary project");
+        let (process, output_path) = run_elm_compile_with_output_flag(
+            temp_dir.path(),
+            &extension,
+            "Malformed.elm",
+            MALFORMED_HEADER_ELM,
+            output_flag,
+        );
+
+        assert!(
+            !process.status.success(),
+            "malformed Elm unexpectedly compiled with {output_flag}\nstdout:\n{}",
+            String::from_utf8_lossy(&process.stdout)
+        );
+        let output = parse_compile_output(&process);
+        assert!(!output.success, "CompileOutput should report failure");
+        assert!(output.ir.is_none(), "failed compile should not contain IR");
+        assert!(
+            output.modules.is_empty(),
+            "failed compile should not contain modules"
+        );
+        assert!(!output_path.exists(), "failed compile should not write IR");
+
+        let diagnostic = output
+            .diagnostics
+            .iter()
+            .find(|diagnostic| diagnostic.level == "error")
+            .expect("an Elm error diagnostic");
+        assert_eq!(diagnostic.code.as_deref(), Some("elm.parser"));
+        assert!(
+            diagnostic
+                .file
+                .as_deref()
+                .or(diagnostic.uri.as_deref())
+                .is_some_and(|location| location.contains("Malformed.elm")),
+            "the parser diagnostic should identify Malformed.elm"
+        );
+        assert!(
+            diagnostic.range.is_some(),
+            "the parser diagnostic should retain its source range"
+        );
+    }
 }

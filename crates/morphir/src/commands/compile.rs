@@ -253,7 +253,7 @@ fn prepare_single_file_context(
             message: format!("Single-file process compilation does not support '{language_id}'"),
         });
     }
-    let module_name = elm_module_name(source)?;
+    let module_name = elm_module_name(source).unwrap_or_else(|_| fallback_elm_module_name(input));
     let package_name = package_override
         .map(str::trim)
         .filter(|value| !value.is_empty())
@@ -279,6 +279,18 @@ fn prepare_single_file_context(
         },
         output_path,
     })
+}
+
+fn fallback_elm_module_name(input: &Path) -> String {
+    input
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .and_then(|candidate| {
+            elm_module_path(candidate, 0)
+                .filter(|(_, end)| *end == candidate.len())
+                .map(|(module_name, _)| module_name)
+        })
+        .unwrap_or_else(|| "Main".into())
 }
 
 fn file_uri(path: &Path) -> Result<String, CliError> {
@@ -544,9 +556,95 @@ fn validate_compile_success(
     let ir = result.ir.as_ref().ok_or_else(|| CliError::Extension {
         message: "Morphir Elm returned a successful result without IR".into(),
     })?;
-    serde_json::from_value(ir.clone()).map_err(|error| CliError::Extension {
-        message: format!("Morphir Elm returned invalid classic Morphir IR: {error}"),
-    })
+    let distribution: morphir_core::ir::classic::Distribution = serde_json::from_value(ir.clone())
+        .map_err(|error| CliError::Extension {
+            message: format!("Morphir Elm returned invalid classic Morphir IR: {error}"),
+        })?;
+    validate_distribution_identity(context, result, &distribution)?;
+    Ok(distribution)
+}
+
+fn validate_distribution_identity(
+    context: &SingleFileCompileContext,
+    result: &CompileResult,
+    distribution: &morphir_core::ir::classic::Distribution,
+) -> Result<(), CliError> {
+    use morphir_core::ir::classic::{DistributionBody, Name, Path};
+
+    fn path_from_string(value: &str, separator: char) -> Path {
+        Path::new(value.split(separator).map(Name::from_str).collect())
+    }
+
+    let DistributionBody::Library(package_path, _, package) = &distribution.distribution;
+    let expected_package_path = path_from_string(&context.package.name, '/');
+    if package_path != &expected_package_path {
+        return Err(CliError::Extension {
+            message: format!(
+                "Morphir Elm returned classic Morphir IR for package '{}' instead of '{}'",
+                package_path, context.package.name
+            ),
+        });
+    }
+
+    let ir_module_paths = package
+        .modules
+        .iter()
+        .map(|module| &module.path)
+        .collect::<Vec<_>>();
+    let missing_modules = context
+        .package
+        .exposed_modules
+        .iter()
+        .filter(|module| {
+            let expected_path = path_from_string(module, '.');
+            !ir_module_paths.contains(&&expected_path)
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    if !missing_modules.is_empty() {
+        return Err(CliError::Extension {
+            message: format!(
+                "Morphir Elm returned classic Morphir IR without expected module(s) {}",
+                missing_modules.join(", ")
+            ),
+        });
+    }
+
+    let reported_module_paths = result
+        .modules
+        .iter()
+        .map(|module| path_from_string(module, '.'))
+        .collect::<Vec<_>>();
+    let metadata_matches_ir = reported_module_paths.len() == ir_module_paths.len()
+        && reported_module_paths
+            .iter()
+            .all(|reported| ir_module_paths.contains(&reported))
+        && ir_module_paths
+            .iter()
+            .all(|ir_module| reported_module_paths.contains(ir_module));
+    if !metadata_matches_ir {
+        let ir_modules = ir_module_paths
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>();
+        return Err(CliError::Extension {
+            message: format!(
+                "Morphir Elm module metadata does not match classic Morphir IR; reported module(s): {}; IR module path(s): {}",
+                if result.modules.is_empty() {
+                    "<none>".into()
+                } else {
+                    result.modules.join(", ")
+                },
+                if ir_modules.is_empty() {
+                    "<none>".into()
+                } else {
+                    ir_modules.join(", ")
+                }
+            ),
+        });
+    }
+
+    Ok(())
 }
 
 fn absolute_from(base: &Path, path: &Path) -> PathBuf {
@@ -1254,6 +1352,48 @@ mod tests {
         assert!(!context.output_path.exists());
     }
 
+    #[test]
+    fn successful_result_rejects_reported_module_absent_from_typed_ir() {
+        let directory = TempDir::new().unwrap();
+        let context = example_context_with_output(directory.path().join("morphir-ir.json"));
+        let mut result = example_compile_result(vec!["Example".into()]);
+        result.ir.as_mut().unwrap()["distribution"][3]["modules"] = serde_json::json!([]);
+
+        let error = validate_compile_success(&context, &result).unwrap_err();
+
+        assert!(error.to_string().contains("Example"));
+        assert!(error.to_string().contains("IR"));
+        assert!(!context.output_path.exists());
+    }
+
+    #[test]
+    fn successful_result_rejects_reported_modules_not_present_in_typed_ir() {
+        let directory = TempDir::new().unwrap();
+        let context = example_context_with_output(directory.path().join("morphir-ir.json"));
+        let result = example_compile_result(vec!["Example".into(), "Other".into()]);
+
+        let error = validate_compile_success(&context, &result).unwrap_err();
+
+        assert!(error.to_string().contains("Other"));
+        assert!(error.to_string().contains("IR"));
+        assert!(!context.output_path.exists());
+    }
+
+    #[test]
+    fn successful_result_rejects_a_typed_ir_package_mismatch() {
+        let directory = TempDir::new().unwrap();
+        let context = example_context_with_output(directory.path().join("morphir-ir.json"));
+        let mut result = example_compile_result(vec!["Example".into()]);
+        result.ir.as_mut().unwrap()["distribution"][1] =
+            serde_json::json!([["stale"], ["package"]]);
+
+        let error = validate_compile_success(&context, &result).unwrap_err();
+
+        assert!(error.to_string().contains("local/example"));
+        assert!(error.to_string().contains("stale.package"));
+        assert!(!context.output_path.exists());
+    }
+
     #[tokio::test]
     async fn invalid_frontend_capabilities_trigger_orderly_shutdown() {
         let state = Arc::new(Mutex::new(MockTransportState::default()));
@@ -1435,7 +1575,20 @@ enabled = true
                     "Library",
                     [["local"], ["example"]],
                     [],
-                    {"modules": []}
+                    {
+                        "modules": [
+                            [
+                                [["example"]],
+                                {
+                                    "access": "Public",
+                                    "value": {
+                                        "types": [],
+                                        "values": []
+                                    }
+                                }
+                            ]
+                        ]
+                    }
                 ]
             })),
             diagnostics: Vec::new(),
