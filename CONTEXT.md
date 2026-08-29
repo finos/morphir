@@ -20,6 +20,10 @@ _Avoid_: Final file, merged file
 Configuration that applies to every Morphir workspace for one operating-system user.
 _Avoid_: User override, project configuration
 
+**Morphir Home**:
+The per-user coordination boundary shared by Morphir components for configuration, durable state, installed artifacts, caches, and logs.
+_Avoid_: Cache directory, configuration directory, user profile
+
 **User override**:
 Personal configuration stored beside one Morphir project, workspace, or workspace-member configuration and loaded above its shared settings.
 _Avoid_: Global user configuration
@@ -74,6 +78,28 @@ _Avoid_: Extension, source package
 The host's local record of verified extension distributions available for selection and activation.
 _Avoid_: Package registry, loaded-extension registry
 
+## Tools
+
+**Tool**:
+An independently packaged Morphir executable or application launched by a person.
+_Avoid_: Extension, component
+
+**Desktop**:
+The graphical Morphir tool with the canonical tool identity `desktop`.
+_Avoid_: Desktop extension, UI component
+
+**Tool distribution**:
+A versioned package that describes a tool and provides one or more platform-specific artifacts.
+_Avoid_: Extension distribution, Morphir package, installed tool
+
+**Installed tool catalog**:
+The local record of verified tool distributions and the exact release active for each tool.
+_Avoid_: Tool registry, release index, download cache
+
+**Installed selection**:
+The persistent update intent for an installed tool or extension, expressed as a release channel or an exact version.
+_Avoid_: Active version, latest version
+
 ## Packages
 
 **Morphir package**:
@@ -101,5 +127,5 @@ A distributable metadata view that maps package identities and versions to depen
 _Avoid_: Git repository, artifact store, installed extension catalog
 
 **Release channel**:
-A named, mutable policy that selects eligible package or extension versions for updates.
+A named, mutable policy that selects eligible package, tool, or extension versions for updates.
 _Avoid_: Package identity, exact version, registry index
