@@ -8,7 +8,6 @@ This file is a quick orientation for contributors and AI assistants.
 
 - Published documentation (`docs/`, `website/`)
 - The Rust **Morphir CLI** (`crates/morphir`)
-- **Morphir Live** (`crates/morphir-live`)
 - **Ecosystem submodules** (`ecosystem/`)
 
 ## What this repo is not

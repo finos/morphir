@@ -16,8 +16,8 @@ Do not edit submodule content in-place for long-term changes. Prefer contributin
 
 ## Path dependencies
 
-- **morphir-live** (`crates/morphir-live`) and **morphir** CLI (`crates/morphir`) depend on crates under `ecosystem/morphir-rust/crates/`.
-- Use paths relative to the consuming crate. Example from `crates/morphir-live`:  
+- The **morphir** CLI (`crates/morphir`) depends on crates under `ecosystem/morphir-rust/crates/`.
+- Use paths relative to the consuming crate. Example from `crates/morphir`:
   `morphir_core = { path = "../../ecosystem/morphir-rust/crates/morphir-core" }`
 - Do **not** add `ecosystem/morphir-rust` as a workspace member in the root `Cargo.toml`; only use path dependencies to specific crates.
 

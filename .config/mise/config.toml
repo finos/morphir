@@ -1,6 +1,6 @@
 # Morphir Development Tools Configuration
 # This project contains:
-# - Rust-based tooling (crates/morphir-live)
+# - Rust-based CLI tooling (crates/morphir)
 # - Docusaurus website (website/)
 
 [settings]
@@ -18,8 +18,6 @@ bun = "1.4.0"
 
 # Rust tools
 "cargo:cargo-binstall" = "latest"
-"cargo:dioxus-cli" = "latest"       # Provides dx command
-"github:WebAssembly/binaryen" = "version_125" # Provides wasm-opt (aqua backend lacks linux/arm64)
 
 # JSON Schema CLI (https://github.com/sourcemeta/jsonschema)
 jsonschema = "latest"
@@ -108,11 +106,6 @@ run = "cargo test --all-features --workspace"
 [tasks.build]
 description = "Build release"
 run = "cargo build --release --workspace"
-
-[tasks.dev]
-description = "Run morphir-live in development mode"
-run = "dx serve"
-dir = "crates/morphir-live"
 
 [tasks.clean]
 description = "Clean build artifacts"

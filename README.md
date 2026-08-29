@@ -60,7 +60,6 @@ Morphir consists of a few projects based on the features they provide.
 ### Core Morphir Projects
 - **[morphir (this project)](https://github.com/finos/morphir/)** - The umbrella project
   - **Morphir CLI** - The canonical `morphir` command-line tool for working with Morphir IR (in `crates/morphir`); see the [CLI Reference](docs/cli/index.md)
-  - **Morphir Live** - Interactive visualization and IR management application (in `crates/morphir-live`)
   - **Documentation** - Docusaurus-based documentation site (in `website/`)
   - **Ecosystem Integration** - Git submodules for ecosystem repos (in `ecosystem/`); see [ecosystem/README.md](ecosystem/README.md) for details
 - **[morphir-elm](https://github.com/finos/morphir-elm)** - The Elm implementation of Morphir, including:
@@ -81,6 +80,11 @@ Morphir consists of a few projects based on the features they provide.
 - **[morphir-moonbit](https://github.com/finos/morphir-moonbit)** - MoonBit implementation of Morphir tooling
 - **[morphir-go](https://github.com/finos/morphir-go)** - Go implementation of Morphir tooling (CLI, WIT pipeline, Go backends)
 - **[morphir-ui](https://github.com/finos/morphir-ui)** - User-interface work for the Morphir project
+
+> **Morphir Live has been retired.** This repository no longer publishes its
+> web build or release archive. Morphir UI development continues in
+> [finos/morphir-ui](https://github.com/finos/morphir-ui); no hosted replacement
+> is currently published from this repository.
 
 
 ## Other Resources

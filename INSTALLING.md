@@ -93,9 +93,3 @@ cargo build --locked --release --package morphir
 
 The executable is written to `target/release/morphir` on Linux and macOS, or
 `target\release\morphir.exe` on Windows.
-
-## Morphir Live
-
-Each release includes `morphir-live-<version>.tar.gz`. This is the static web
-build used for hosted deployments. Extract the archive into the document root
-of a static web server. It is not a desktop installer.
