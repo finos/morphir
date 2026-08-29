@@ -821,6 +821,9 @@ impl AppSession for MorphirSession {
 async fn main() -> starbase::MainResult {
     use clap::CommandFactory;
 
+    // Keep the guard alive until process exit so non-blocking file logs flush.
+    let _logging_guard = logging::init_from_env();
+
     // Check for help/version flags first to print our custom banner
     let args: Vec<String> = std::env::args().collect();
 

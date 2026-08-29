@@ -717,6 +717,34 @@ fn test_morphir_home_env_var_relocates_home_directory() {
         "expected tool registry at MORPHIR_HOME ({})",
         morphir_home.display()
     );
+    let cli_log_root = morphir_home.join("logs/cli");
+    let session_log = std::fs::read_dir(&cli_log_root)
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().is_dir())
+        .flat_map(|entry| std::fs::read_dir(entry.path()).into_iter().flatten())
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .find(|path| path.extension().is_some_and(|ext| ext == "jsonl"))
+        .unwrap_or_else(|| {
+            panic!(
+                "expected a CLI JSONL session log beneath {}",
+                cli_log_root.display()
+            )
+        });
+    let first_record = std::fs::read_to_string(&session_log)
+        .unwrap()
+        .lines()
+        .next()
+        .map(str::to_owned)
+        .expect("session log should contain its startup event");
+    let event: serde_json::Value = serde_json::from_str(&first_record).unwrap();
+    assert_eq!(event["fields"]["schema_version"], 1);
+    assert_eq!(event["fields"]["component"], "cli");
+    assert_eq!(event["fields"]["event_name"], "cli.session.start");
+    assert!(event["fields"]["process_id"].is_number());
+    assert!(event["fields"]["session_id"].is_string());
 }
 
 #[test]
