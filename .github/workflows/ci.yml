@@ -47,6 +47,8 @@ jobs:
               - 'ecosystem/morphir-rust'
               # crates/morphir tests the configured Elm process extension
               - 'ecosystem/morphir-elm'
+              # crates/morphir acquires and runs the Scala Elm process extension
+              - 'ecosystem/morphir-scala'
               - '.gitmodules'
               # pins the Rust toolchain these jobs build with
               - '.config/mise/**'
@@ -71,6 +73,7 @@ jobs:
               - 'Cargo.lock'
               - 'crates/morphir/Cargo.toml'
               - 'tests/ci/test_release_workflow.py'
+              - 'tests/ci/test_scala_extension_workflow.py'
               - 'tests/ci/test_select_release_assets.py'
               - '.github/scripts/select_release_assets.py'
               - '.github/workflows/ci.yml'
@@ -142,6 +145,17 @@ jobs:
       - name: Add Rust components
         run: rustup component add rustfmt clippy
 
+      - name: Set up GraalVM for the Morphir Scala provider
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: "25"
+          distribution: graalvm-community
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          native-image-job-reports: "true"
+
+      - name: Cache Scala dependencies
+        uses: coursier/cache-action@v8
+
       - name: Install Morphir Elm tools
         env:
           MISE_AUTO_INSTALL: "false"
@@ -161,6 +175,17 @@ jobs:
         env:
           MISE_AUTO_INSTALL: "false"
         run: mise -C ecosystem/morphir-elm run build:mep-extension
+
+      - name: Build Morphir Scala Elm process extension
+        working-directory: ecosystem/morphir-scala
+        run: |
+          ./mill --no-server --ticker false \
+            morphir.langkit.elm.compiler.mep.jvm.nativeImage
+          provider_version=$(./mill --no-server --ticker false show \
+            morphir.langkit.elm.compiler.mep.jvm.mepProviderVersion |
+            python3 -c 'import json, sys; print(json.load(sys.stdin))')
+          printf 'MORPHIR_SCALA_ELM_EXTENSION_VERSION=%s\n' \
+            "$provider_version" >> "$GITHUB_ENV"
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
@@ -190,6 +215,15 @@ jobs:
           cargo test --locked --package morphir --test cli_integration \
             real_installed_morphir_elm_is_verified_and_activates_offline \
             -- --ignored --nocapture
+
+      - name: Run Morphir Scala Elm CLI integration test
+        env:
+          MORPHIR_SCALA_ELM_EXTENSION_BIN: >-
+            ${{ github.workspace }}/ecosystem/morphir-scala/out/morphir/langkit/elm/compiler/mep/jvm/nativeImage.dest/native-executable
+        run: >-
+          cargo test --locked --package morphir --test cli_integration
+          real_installed_morphir_scala_elm_is_selected_and_activates_offline
+          -- --ignored --exact --nocapture
 
       - name: Run CLI integration tests
         # integration-tests finds the CLI binary in target/release/morphir
