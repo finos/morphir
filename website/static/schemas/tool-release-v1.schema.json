@@ -53,9 +53,28 @@
     }
   },
   "else": {
-    "properties": {
-      "artifacts": {
-        "minItems": 1
+    "if": {
+      "properties": {
+        "status": {
+          "const": "yanked"
+        }
+      }
+    },
+    "then": {
+      "properties": {
+        "channels": {
+          "maxItems": 0
+        },
+        "artifacts": {
+          "minItems": 1
+        }
+      }
+    },
+    "else": {
+      "properties": {
+        "artifacts": {
+          "minItems": 1
+        }
       }
     }
   },
