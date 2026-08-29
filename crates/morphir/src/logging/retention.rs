@@ -18,38 +18,48 @@ struct LogEntry {
     active: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SessionState {
+    Completed,
+    Active,
+    Unavailable,
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(super) struct RetentionResult {
     pub(super) removed_files: u64,
     pub(super) removed_bytes: u64,
+    pub(super) skipped_entries: u64,
 }
 
 pub(super) fn active_marker_path(log_path: &Path) -> PathBuf {
     log_path.with_extension("jsonl.active")
 }
 
-fn session_is_active(log_path: &Path) -> bool {
+fn session_state(log_path: &Path) -> SessionState {
     let marker = active_marker_path(log_path);
     let marker_file = match fs::OpenOptions::new().read(true).write(true).open(&marker) {
         Ok(file) => file,
-        Err(error) if error.kind() == io::ErrorKind::NotFound => return false,
-        Err(_) => return true,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return SessionState::Completed,
+        Err(_) => return SessionState::Unavailable,
     };
 
     match marker_file.try_lock_exclusive() {
         Ok(()) => {
             if fs2::FileExt::unlock(&marker_file).is_err() {
-                return true;
+                return SessionState::Unavailable;
             }
             drop(marker_file);
             match fs::remove_file(marker) {
-                Ok(()) => false,
-                Err(error) if error.kind() == io::ErrorKind::NotFound => false,
-                Err(_) => true,
+                Ok(()) => SessionState::Completed,
+                Err(error) if error.kind() == io::ErrorKind::NotFound => SessionState::Completed,
+                Err(_) => SessionState::Unavailable,
             }
         }
-        Err(error) if error.raw_os_error() == fs2::lock_contended_error().raw_os_error() => true,
-        Err(_) => true,
+        Err(error) if error.raw_os_error() == fs2::lock_contended_error().raw_os_error() => {
+            SessionState::Active
+        }
+        Err(_) => SessionState::Unavailable,
     }
 }
 
@@ -84,34 +94,40 @@ fn is_managed_session_log(path: &Path) -> bool {
         && !session_id.is_empty()
 }
 
-fn collect_log_entries(log_dir: &Path) -> io::Result<Vec<LogEntry>> {
+fn collect_log_entries(log_dir: &Path) -> (Vec<LogEntry>, u64) {
     if !log_dir.exists() {
-        return Ok(Vec::new());
+        return (Vec::new(), 0);
     }
 
-    let entries = WalkDir::new(log_dir)
+    WalkDir::new(log_dir)
         .min_depth(2)
         .max_depth(2)
         .follow_links(false)
         .into_iter()
-        .map(|entry| {
-            let entry = entry.map_err(io::Error::other)?;
+        .fold((Vec::new(), 0), |(mut entries, mut skipped), entry| {
+            let Ok(entry) = entry else {
+                return (entries, skipped + 1);
+            };
             if !entry.file_type().is_file() || !is_managed_session_log(entry.path()) {
-                return Ok(None);
+                return (entries, skipped);
             }
 
-            let metadata = entry.metadata().map_err(io::Error::other)?;
+            let Ok(metadata) = entry.metadata() else {
+                return (entries, skipped + 1);
+            };
             let path = entry.into_path();
-            Ok(Some(LogEntry {
+            let state = session_state(&path);
+            if state == SessionState::Unavailable {
+                skipped += 1;
+            }
+            entries.push(LogEntry {
                 modified: metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH),
                 size: metadata.len(),
-                active: session_is_active(&path),
+                active: state != SessionState::Completed,
                 path,
-            }))
+            });
+            (entries, skipped)
         })
-        .collect::<io::Result<Vec<_>>>()?;
-
-    Ok(entries.into_iter().flatten().collect())
 }
 
 fn select_logs_for_removal(
@@ -157,15 +173,27 @@ pub(super) fn enforce_log_retention(
     now: SystemTime,
     max_age: Duration,
     max_bytes: u64,
-) -> io::Result<RetentionResult> {
-    let entries = collect_log_entries(log_dir)?;
+) -> RetentionResult {
+    let (entries, skipped_entries) = collect_log_entries(log_dir);
     let selected = select_logs_for_removal(entries, now, max_age, max_bytes);
 
-    selected
-        .into_iter()
-        .try_fold(RetentionResult::default(), |mut result, path| {
-            if session_is_active(&path) {
-                return Ok(result);
+    remove_selected_logs(selected, skipped_entries)
+}
+
+fn remove_selected_logs(selected: Vec<PathBuf>, skipped_entries: u64) -> RetentionResult {
+    selected.into_iter().fold(
+        RetentionResult {
+            skipped_entries,
+            ..RetentionResult::default()
+        },
+        |mut result, path| {
+            match session_state(&path) {
+                SessionState::Active => return result,
+                SessionState::Unavailable => {
+                    result.skipped_entries += 1;
+                    return result;
+                }
+                SessionState::Completed => {}
             }
 
             let size = fs::metadata(&path)
@@ -175,12 +203,13 @@ pub(super) fn enforce_log_retention(
                 Ok(()) => {
                     result.removed_files += 1;
                     result.removed_bytes += size;
-                    Ok(result)
                 }
-                Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(result),
-                Err(error) => Err(error),
+                Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+                Err(_) => result.skipped_entries += 1,
             }
-        })
+            result
+        },
+    )
 }
 
 #[cfg(test)]
@@ -229,8 +258,7 @@ mod tests {
         let marker_file = fs::File::create(&active_marker).unwrap();
         fs2::FileExt::try_lock_exclusive(&marker_file).unwrap();
 
-        let result =
-            enforce_log_retention(temporary.path(), SystemTime::now(), Duration::MAX, 0).unwrap();
+        let result = enforce_log_retention(temporary.path(), SystemTime::now(), Duration::MAX, 0);
 
         assert_eq!(result.removed_files, 1);
         assert!(!completed.exists());
@@ -250,11 +278,49 @@ mod tests {
         fs::write(&completed, "completed").unwrap();
         fs::create_dir(active_marker_path(&protected)).unwrap();
 
-        let result =
-            enforce_log_retention(temporary.path(), SystemTime::now(), Duration::MAX, 0).unwrap();
+        let result = enforce_log_retention(temporary.path(), SystemTime::now(), Duration::MAX, 0);
 
         assert_eq!(result.removed_files, 1);
+        assert_eq!(result.skipped_entries, 1);
         assert!(protected.exists());
+        assert!(!completed.exists());
+    }
+
+    #[test]
+    fn continues_after_an_individual_deletion_failure() {
+        let temporary = tempfile::tempdir().unwrap();
+        let blocked = temporary.path().join("blocked.jsonl");
+        let removable = temporary.path().join("removable.jsonl");
+        fs::create_dir(&blocked).unwrap();
+        fs::write(&removable, "completed").unwrap();
+
+        let result = remove_selected_logs(vec![blocked.clone(), removable.clone()], 0);
+
+        assert_eq!(result.removed_files, 1);
+        assert_eq!(result.skipped_entries, 1);
+        assert!(blocked.exists());
+        assert!(!removable.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn skips_unreadable_unknown_directories_and_cleans_managed_logs() {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        let temporary = tempfile::tempdir().unwrap();
+        let blocked = temporary.path().join("blocked");
+        let daily = temporary.path().join("2026-08-29");
+        fs::create_dir(&blocked).unwrap();
+        fs::create_dir(&daily).unwrap();
+        fs::set_permissions(&blocked, fs::Permissions::from_mode(0o000)).unwrap();
+        let completed = daily.join("20260829T140313.456Z-43-2b-b.jsonl");
+        fs::write(&completed, "completed").unwrap();
+
+        let result = enforce_log_retention(temporary.path(), SystemTime::now(), Duration::MAX, 0);
+        fs::set_permissions(&blocked, fs::Permissions::from_mode(0o700)).unwrap();
+
+        assert_eq!(result.removed_files, 1);
+        assert_eq!(result.skipped_entries, 1);
         assert!(!completed.exists());
     }
 }

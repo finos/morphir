@@ -10,6 +10,12 @@ struct TestIndex {
     filename: String,
 }
 
+fn morphir_command() -> std::process::Command {
+    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"));
+    command.env("MORPHIR_LOG_FILE", "false");
+    command
+}
+
 fn write_test_index(
     directory: &std::path::Path,
     id: &str,
@@ -68,7 +74,7 @@ fn run_morphir(
     morphir_home: &std::path::Path,
     working_directory: &std::path::Path,
 ) -> std::process::Output {
-    std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+    morphir_command()
         .args(arguments)
         .env("MORPHIR_HOME", morphir_home)
         .current_dir(working_directory)
@@ -699,11 +705,13 @@ fn test_morphir_home_env_var_relocates_home_directory() {
     let temp_dir = TempDir::new().unwrap();
     let morphir_home = temp_dir.path().join("relocated-home");
 
-    let output = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+    let output = morphir_command()
         .args(["tool", "install", "example-tool"])
         .env("MORPHIR_HOME", &morphir_home)
         .env_remove("MORPHIR_LOG_DIR")
-        .env_remove("MORPHIR_LOG_FILE")
+        .env("MORPHIR_LOG_FILE", "true")
+        .env_remove("MORPHIR_LOGGING__FILE_LEVEL")
+        .env_remove("MORPHIR_LOG_FILE_LEVEL")
         .current_dir(temp_dir.path())
         .output()
         .expect("failed to run morphir binary");
@@ -756,7 +764,7 @@ fn migrate_converts_a_real_v3_file_to_concrete_v4() {
         .join("../../website/static/ir/examples/v3/greeting-example.json");
     let output_path = temp_dir.path().join("greeting-v4.json");
 
-    let output = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+    let output = morphir_command()
         .args([
             "ir",
             "migrate",
@@ -790,7 +798,7 @@ fn migrate_is_available_as_a_top_level_command() {
         .join("../../website/static/ir/examples/v3/greeting-example.json");
     let output_path = temp_dir.path().join("greeting-v4.json");
 
-    let output = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+    let output = morphir_command()
         .args([
             "migrate",
             input.to_str().unwrap(),
@@ -819,7 +827,7 @@ fn migrate_selects_compact_or_expanded_v4_type_encoding() {
     let expanded = temp_dir.path().join("expanded.json");
 
     for (path, extra) in [(&compact, None), (&expanded, Some("--expanded"))] {
-        let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"));
+        let mut command = morphir_command();
         command.args([
             "ir",
             "migrate",
@@ -860,7 +868,7 @@ fn migrate_failure_does_not_replace_an_existing_output() {
     std::fs::write(&input, serde_json::to_vec(&source).unwrap()).unwrap();
     std::fs::write(&output_path, "unchanged").unwrap();
 
-    let output = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+    let output = morphir_command()
         .args([
             "ir",
             "migrate",
@@ -885,7 +893,7 @@ fn migrate_reports_unsupported_v4_downgrade_without_replacing_output() {
     let output_path = temp_dir.path().join("result.json");
     std::fs::write(&output_path, "unchanged").unwrap();
 
-    let output = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+    let output = morphir_command()
         .args([
             "ir",
             "migrate",
@@ -911,7 +919,7 @@ fn migrate_writes_and_reads_a_v4_document_tree() {
     let tree = temp_dir.path().join("greeting.morphir-dist");
     let single_file = temp_dir.path().join("round-trip.json");
 
-    let to_tree = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+    let to_tree = morphir_command()
         .args([
             "ir",
             "migrate",
@@ -933,7 +941,7 @@ fn migrate_writes_and_reads_a_v4_document_tree() {
     );
     assert!(tree.join("manifest.yaml").is_file());
 
-    let to_file = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+    let to_file = morphir_command()
         .args([
             "ir",
             "migrate",
@@ -964,7 +972,7 @@ fn migrate_infers_vfs_for_a_new_directory_path_with_a_trailing_separator() {
         .join("../../website/static/ir/examples/v3/greeting-example.json");
     let tree = format!("{}/", temp_dir.path().join("new-tree").display());
 
-    let output = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+    let output = morphir_command()
         .args(["ir", "migrate", input.to_str().unwrap(), "--output", &tree])
         .output()
         .expect("failed to migrate to an inferred document tree");
@@ -980,7 +988,7 @@ fn migrate_infers_vfs_for_a_new_directory_path_with_a_trailing_separator() {
 
 #[test]
 fn migrate_accepts_partial_and_encoding_flags() {
-    let output = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
+    let output = morphir_command()
         .args(["ir", "migrate", "--help"])
         .output()
         .expect("failed to read migrate help");

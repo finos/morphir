@@ -390,6 +390,7 @@ fn run_command(world: &mut ConfigWorld, command_line: String) {
     for name in inherited_morphir_variables {
         command.env_remove(name);
     }
+    command.env("MORPHIR_LOG_FILE", "false");
     for (name, value) in &world.environment {
         command.env(name, value);
     }

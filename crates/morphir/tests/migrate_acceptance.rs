@@ -8,8 +8,14 @@ fn greeting_v3() -> PathBuf {
         .join("../../website/static/ir/examples/v3/greeting-example.json")
 }
 
-fn migrate(input: &Path, output: &Path, extra: &[&str]) -> Output {
+fn morphir_command() -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_morphir"));
+    command.env("MORPHIR_LOG_FILE", "false");
+    command
+}
+
+fn migrate(input: &Path, output: &Path, extra: &[&str]) -> Output {
+    let mut command = morphir_command();
     command.args([
         "ir",
         "migrate",
@@ -148,7 +154,7 @@ fn quoted_yaml_format_version_key_converts_to_json() {
 
 #[test]
 fn json_flag_without_output_emits_only_json_ir() {
-    let output = Command::new(env!("CARGO_BIN_EXE_morphir"))
+    let output = morphir_command()
         .args(["migrate", greeting_v3().to_str().unwrap(), "--json"])
         .output()
         .unwrap();

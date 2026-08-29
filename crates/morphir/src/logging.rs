@@ -17,8 +17,7 @@ mod retention;
 
 use fs2::FileExt as _;
 use retention::{
-    DEFAULT_LOG_RETENTION, DEFAULT_MAX_LOG_BYTES, RetentionResult, active_marker_path,
-    enforce_log_retention,
+    DEFAULT_LOG_RETENTION, DEFAULT_MAX_LOG_BYTES, active_marker_path, enforce_log_retention,
 };
 use std::{
     ffi::OsStr,
@@ -192,18 +191,12 @@ pub fn init(config: LogConfig) -> Option<LogGuard> {
     let session_directory = config.log_dir.join(&session.directory);
     let log_path = session_directory.join(&session.file_name);
 
-    let retention = match enforce_log_retention(
+    let retention = enforce_log_retention(
         &config.log_dir,
         SystemTime::now(),
         config.retention,
         config.max_bytes,
-    ) {
-        Ok(result) => result,
-        Err(error) => {
-            eprintln!("Warning: Failed to apply CLI log retention: {error}");
-            RetentionResult::default()
-        }
-    };
+    );
 
     if let Err(e) = std::fs::create_dir_all(&session_directory) {
         eprintln!("Warning: Failed to create log directory: {}", e);
@@ -279,6 +272,7 @@ pub fn init(config: LogConfig) -> Option<LogGuard> {
         event_name = "cli.logs.retention",
         removed_files = retention.removed_files,
         removed_bytes = retention.removed_bytes,
+        skipped_entries = retention.skipped_entries,
         "CLI log retention completed"
     );
 
