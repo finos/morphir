@@ -28,6 +28,8 @@ The Morphir IR follows these key principles:
 - **Naming-agnostic**: Names are stored in a canonical format independent of any specific naming convention
 - **Explicit**: All references are fully-qualified to eliminate ambiguity
 
+IR roots follow the shared [`formatVersion` contract](spec/ir/format-version.md). Versions 1 and 2 are historical integer-only formats, and version 3 is the first family governed by the permanent contract. For every major `N >= 3`, integer `N` denotes exactly `N.0.0`, while a strict `N.minor.patch` triplet string denotes that exact release. Canonical writers emit integer `N` for the baseline, place `formatVersion` first, and place `distribution` second. Root member order is not semantic, so readers accept the version before or after the distribution.
+
 ## Core Concepts
 
 ### Naming

@@ -9,6 +9,8 @@ description: "Normative native YAML storage profile for Morphir IR version 4"
 
 This page defines YAML as a native, lossless storage profile for the [v4 semantic IR model](semantic-model.md). It is not the morphir-elm YAML frontend and is not a generated documentation view. JSON and YAML artifacts have equal semantic standing.
 
+Version 4 inherits the shared [`formatVersion` contract](../../format-version.md). Integer `4` aliases exactly `4.0.0`; the exact baseline string `"4.0.0"` is valid input; and later v4 revisions use strict release strings such as `"4.0.1"`. Canonical writers emit integer `4` for the baseline and an exact string for a nonzero minor or patch revision.
+
 The words MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY state requirements for conforming implementations.
 
 ## YAML processing profile
@@ -64,6 +66,8 @@ Canonical YAML output MUST:
 - avoid tags, anchors, aliases, merge keys, directives, and document-end markers.
 
 Mapping order is not semantic unless the semantic model explicitly defines order. Implementations compare normalized IR values, not YAML text, when proving losslessness.
+
+Readers MUST accept `formatVersion` before or after `distribution`. Canonical YAML output MUST place `formatVersion` first and `distribution` second. A linter SHOULD report `format_version_not_first` when another root member appears first, but this warning MUST NOT cause rejection.
 
 ## File names
 
