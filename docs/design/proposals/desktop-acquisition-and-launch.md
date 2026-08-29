@@ -194,6 +194,67 @@ A failure before step 9 leaves the previous catalog untouched. A failure while r
 
 Uninstall removes active catalog and selection state. Content-addressed bytes may remain until an explicit garbage-collection policy proves that no catalog or running release needs them.
 
+## Storage maintenance
+
+Morphir separates disposable cache cleanup from installed-artifact pruning. A cache entry is re-creatable content under `cache/`. A verified release under `store/` is installed state even when it is not active. `cache clean` never removes verified releases, and `tool prune` never treats an active catalog entry as disposable.
+
+### Manual commands
+
+Users can inspect and clean storage without finding Morphir Home by hand:
+
+```text
+morphir cache status [--json]
+morphir cache clean [--dry-run] [--all] [--component <NAME>]
+morphir tool prune [<NAME>] [--dry-run] [--keep <COUNT>] [--older-than <DURATION>]
+```
+
+`cache status` reports bytes and entry counts by owned cache namespace, the applicable policy, the last successful automatic run, and any bytes it cannot classify. `cache clean` applies the configured age and size policy by default. `--all` removes every known disposable entry, but still respects active-operation leases and ownership boundaries. It does not remove logs, crash reports, diagnostic bundles, or durable application data. Those have separate retention rules. `--component` limits cleanup to a registered owner such as `downloads`, `indexes`, `desktop`, or `extensions`.
+
+`tool prune` removes verified releases only when the maintenance engine proves they are unreachable. It protects:
+
+- every active catalog release;
+- the configured rollback releases;
+- exact versions pinned by durable configuration or selection state;
+- releases leased by running CLI, Desktop, or extension processes;
+- artifacts referenced by an installation, repair, rollback, or diagnostic-bundle transaction.
+
+The commands print the number of removed and skipped entries, bytes reclaimed, remaining usage, and the policy that made each skip necessary. JSON output carries stable reason codes. A dry run follows the same discovery and protection logic without changing files.
+
+### Automatic cleanup
+
+The CLI and Desktop call the same maintenance engine. Automatic cleanup is enabled by default and runs opportunistically after successful write-heavy operations or during Desktop idle time. A persisted last-run record and an interprocess maintenance lock limit it to once per configured interval across all Morphir processes. A foreground invocation has a small runtime budget. If it reaches that budget, it records a continuation cursor and resumes during a later run.
+
+Morphir does not require an operating-system scheduled task. `morphir cache clean` remains safe to call from cron, Task Scheduler, launchd, or managed workstation tooling. A future `morphir setup` option may install such a schedule only with explicit user or administrator consent.
+
+The initial default policy is:
+
+```toml
+[cache.cleanup]
+automatic = true
+interval = "24h"
+max_age = "30d"
+max_size = "2GiB"
+
+[tools.retention]
+automatic = true
+max_versions_per_tool = 2
+min_inactive_age = "7d"
+```
+
+Age cleanup removes eligible entries older than `max_age`. If known cache usage still exceeds `max_size`, cleanup removes the least recently used eligible entries until usage falls below the limit. Morphir records last use in owned cache metadata rather than relying on filesystem access time. The size limit is a target, not permission to remove protected or unknown content.
+
+Automatic tool pruning runs after a successful update and during the same periodic maintenance opportunity used for caches. `max_versions_per_tool` includes the active release, so the default retains the active release and one rollback candidate. The minimum inactive age prevents an update followed by immediate automatic pruning. Protected releases may keep the store above any configured size target, which `cache status` and `tool prune --dry-run` report clearly. Setting `tools.retention.automatic` to `false` keeps manual `tool prune` available.
+
+Retention settings choose what Morphir may remove, not where components store it. The legacy `cache.dir` setting cannot relocate managed cache content outside Morphir Home. Configuration migration diagnoses that setting and directs managed environments to relocate the whole home with `MORPHIR_HOME`.
+
+### Ownership and deletion safety
+
+Each cache namespace registers its owner, root, entry discovery rules, and lease checks with the maintenance engine. Cleanup ignores unknown files and directories. It never follows symbolic links or junctions, crosses the registered namespace root, deletes an active staging directory, or removes files selected only from untrusted metadata.
+
+Deletion first renames an eligible entry into a maintenance trash directory beneath Morphir Home, then removes it. This keeps discovery and removal atomic from the perspective of new readers. Failed physical deletion leaves a named trash entry for a later retry and does not fail the user's primary command.
+
+Cleanup emits structured events for policy evaluation, reclaimed bytes, skipped protected entries, failures, and elapsed time. Manual and automatic runs receive operation IDs. Troubleshooting output points to the CLI log and names the cache namespace without logging cached content or source credentials.
+
 ## Registry and trust
 
 The first remote tool index should expose immutable release records plus mutable channel membership. A channel resolves to an exact record before download. The installed catalog retains the exact metadata revision used for that resolution.
@@ -388,6 +449,11 @@ External metrics or trace export is opt-in. Enabling an exporter requires an exp
 | CLI or Desktop cannot write logs | Warn once, continue on standard error, and preserve the primary result |
 | Desktop renderer or main process crashes | Keep a local correlated crash record and show the operation ID on the next viable interface |
 | Diagnostic bundle contains a secret sentinel | Fail the test and release gate |
+| Cache exceeds its size target | Remove least recently used eligible entries and report protected or unknown bytes that remain |
+| Cleanup overlaps a download or launch | Respect the active lease and skip that entry |
+| Cleanup finds an unknown file or link | Leave it untouched and report it as unclassified |
+| Cleanup stops at its runtime budget | Persist progress and resume during a later maintenance run |
+| Artifact pruning evaluates the active or rollback release | Mark it protected and do not remove it |
 
 ## Delivery sequence
 
@@ -398,8 +464,9 @@ External metrics or trace export is opt-in. Enabling an exporter requires an exp
 5. Publish signed portable Desktop release artifacts for every supported platform.
 6. Implement correlated local instrumentation, stable event schemas, redaction, log discovery, crash capture, and diagnostic bundles.
 7. Implement `morphir desktop`, including first-use installation, `--offline`, direct launch, readiness correlation, and `--wait`.
-8. Implement `tool repair`, update availability reporting, artifact retention, and garbage collection.
-9. Add the idempotent `morphir setup` workflow after the underlying operations are reliable.
+8. Implement cache inventory and manual cleanup, then enable bounded opportunistic cleanup.
+9. Implement `tool repair`, update availability reporting, protected-release retention, and `tool prune`.
+10. Add the idempotent `morphir setup` workflow after the underlying operations are reliable.
 
 Every implementation step starts with failure-focused tests. Cross-platform acceptance tests use a small signed fixture application before exercising a real Desktop package.
 

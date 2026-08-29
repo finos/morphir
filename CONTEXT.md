@@ -24,6 +24,14 @@ _Avoid_: User override, project configuration
 The per-user coordination boundary shared by Morphir components for configuration, durable state, installed artifacts, caches, and logs.
 _Avoid_: Cache directory, configuration directory, user profile
 
+**Cache entry**:
+Re-creatable content beneath Morphir Home's cache directory that a maintenance operation may remove when no active operation holds it.
+_Avoid_: Installed artifact, active release
+
+**Verified artifact store**:
+The content-addressed area of Morphir Home containing installed tool and extension artifacts whose removal requires catalog and runtime reachability checks.
+_Avoid_: Download cache, temporary staging
+
 **User override**:
 Personal configuration stored beside one Morphir project, workspace, or workspace-member configuration and loaded above its shared settings.
 _Avoid_: Global user configuration
@@ -95,6 +103,10 @@ _Avoid_: Extension distribution, Morphir package, installed tool
 **Installed tool catalog**:
 The local record of verified tool distributions and the exact release active for each tool.
 _Avoid_: Tool registry, release index, download cache
+
+**Protected release**:
+An installed tool or extension release that cleanup cannot remove because it is active, retained for rollback, pinned, leased by a running process, or referenced by another durable record.
+_Avoid_: Cached version, latest version
 
 **Installed selection**:
 The persistent update intent for an installed tool or extension, expressed as a release channel or an exact version.
