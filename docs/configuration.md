@@ -88,21 +88,21 @@ When the [`MORPHIR_HOME` environment variable](#special-environment-variables) i
 TOML example:
 
 ```toml
-[logging]
-level = "debug"
-
 [ui]
 theme = "dark"
+
+[ir]
+format_version = 4
 ```
 
 YAML example:
 
 ```yaml
-logging:
-  level: debug
-
 ui:
   theme: dark
+
+ir:
+  format_version: 4
 ```
 
 ### System Configuration
@@ -181,19 +181,22 @@ max_size = 0
 
 ### [logging]
 
-Logging settings:
+CLI startup logging is currently configured through environment variables, not
+through discovered `morphir.toml` or `morphir.yaml` files. Use:
 
-```toml
-[logging]
-# Log level: debug, info, warn, error
-level = "info"
-
-# Log format: text, json
-format = "text"
-
-# Log file (empty = stderr)
-file = ""
+```sh
+export MORPHIR_LOGGING__LEVEL=info
+export MORPHIR_LOGGING__FILE_LEVEL=debug
+export MORPHIR_LOG_FILE=true
+export MORPHIR_LOG_DIR=/path/to/logs
 ```
+
+`MORPHIR_LOG_LEVEL` and `MORPHIR_LOG_FILE_LEVEL` remain compatibility aliases
+for the two canonical level variables.
+
+Configuration-file support for startup logging remains planned. Until it is
+implemented, a `[logging]` table may be inspected by `morphir config`, but it
+does not control the active logger.
 
 ### [ui]
 
@@ -243,7 +246,8 @@ Some environment variables control Morphir directly rather than overriding a con
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `MORPHIR_HOME` | Relocates the Morphir home directory, which holds user-global state such as the tool, distribution, and extension registries and fallback log output; when set, caches also relocate under `$MORPHIR_HOME/cache` | `$HOME/.morphir` on Linux/macOS, `%USERPROFILE%\.morphir` on Windows |
-| `MORPHIR_LOG_DIR` | Overrides the log output directory | `.morphir/logs/` in the workspace, or `logs/` under the Morphir home directory |
+| `MORPHIR_LOG_DIR` | Overrides the CLI log output directory | `$MORPHIR_HOME/logs/cli` |
+| `MORPHIR_LOG_FILE` | Enables or disables local CLI file logging | `true` |
 
 Relocating the home directory is useful for testing, CI, or sandboxed environments where the real user home is unavailable or should stay untouched:
 
@@ -325,7 +329,6 @@ A user override is personal configuration that should not be committed to versio
 In a workspace, Morphir applies the workspace override before the selected member's override. Both use the layout of their own primary configuration, so the member override wins.
 
 Common uses:
-- Debug logging during development
 - Custom cache locations
 - Personal UI preferences
 
@@ -333,10 +336,6 @@ Example:
 
 ```toml
 # morphir.user.toml next to morphir.toml
-
-[logging]
-level = "debug"
-file = ".morphir/debug.log"
 
 [ui]
 theme = "dark"
@@ -418,7 +417,4 @@ env:
 [codegen]
 targets = ["go", "typescript", "scala"]
 output_format = "pretty"
-
-[logging]
-level = "info"
 ```

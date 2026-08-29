@@ -18,6 +18,12 @@ struct LogEntry {
     active: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RemovalCandidate {
+    entry: LogEntry,
+    expired: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SessionState {
     Completed,
@@ -115,13 +121,16 @@ fn collect_log_entries(log_dir: &Path) -> (Vec<LogEntry>, u64) {
             let Ok(metadata) = entry.metadata() else {
                 return (entries, skipped + 1);
             };
+            let Ok(modified) = metadata.modified() else {
+                return (entries, skipped + 1);
+            };
             let path = entry.into_path();
             let state = session_state(&path);
             if state == SessionState::Unavailable {
                 skipped += 1;
             }
             entries.push(LogEntry {
-                modified: metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH),
+                modified,
                 size: metadata.len(),
                 active: state != SessionState::Completed,
                 path,
@@ -130,42 +139,35 @@ fn collect_log_entries(log_dir: &Path) -> (Vec<LogEntry>, u64) {
         })
 }
 
-fn select_logs_for_removal(
+fn plan_log_retention(
     mut entries: Vec<LogEntry>,
     now: SystemTime,
     max_age: Duration,
-    max_bytes: u64,
-) -> Vec<PathBuf> {
+) -> (u64, Vec<RemovalCandidate>) {
     entries.sort_by(|left, right| {
         left.modified
             .cmp(&right.modified)
             .then_with(|| left.path.cmp(&right.path))
     });
 
-    let mut remaining_bytes = entries.iter().map(|entry| entry.size).sum::<u64>();
-    let mut selected = Vec::new();
-    let mut removed = vec![false; entries.len()];
+    let remaining_bytes = entries.iter().map(|entry| entry.size).sum::<u64>();
+    let (expired, current): (Vec<_>, Vec<_>) = entries
+        .into_iter()
+        .filter(|entry| !entry.active)
+        .partition(|entry| now.duration_since(entry.modified).unwrap_or_default() >= max_age);
+    let candidates = expired
+        .into_iter()
+        .map(|entry| RemovalCandidate {
+            entry,
+            expired: true,
+        })
+        .chain(current.into_iter().map(|entry| RemovalCandidate {
+            entry,
+            expired: false,
+        }))
+        .collect();
 
-    for (index, entry) in entries.iter().enumerate() {
-        let expired = now.duration_since(entry.modified).unwrap_or_default() >= max_age;
-        if expired && !entry.active {
-            remaining_bytes = remaining_bytes.saturating_sub(entry.size);
-            selected.push(entry.path.clone());
-            removed[index] = true;
-        }
-    }
-
-    for (index, entry) in entries.iter().enumerate() {
-        if remaining_bytes <= max_bytes {
-            break;
-        }
-        if !removed[index] && !entry.active {
-            remaining_bytes = remaining_bytes.saturating_sub(entry.size);
-            selected.push(entry.path.clone());
-        }
-    }
-
-    selected
+    (remaining_bytes, candidates)
 }
 
 pub(super) fn enforce_log_retention(
@@ -175,41 +177,56 @@ pub(super) fn enforce_log_retention(
     max_bytes: u64,
 ) -> RetentionResult {
     let (entries, skipped_entries) = collect_log_entries(log_dir);
-    let selected = select_logs_for_removal(entries, now, max_age, max_bytes);
+    let (remaining_bytes, candidates) = plan_log_retention(entries, now, max_age);
 
-    remove_selected_logs(selected, skipped_entries)
+    remove_log_candidates(
+        candidates,
+        remaining_bytes,
+        max_bytes,
+        skipped_entries,
+        |path| fs::remove_file(path),
+    )
 }
 
-fn remove_selected_logs(selected: Vec<PathBuf>, skipped_entries: u64) -> RetentionResult {
-    selected.into_iter().fold(
-        RetentionResult {
-            skipped_entries,
-            ..RetentionResult::default()
-        },
-        |mut result, path| {
-            match session_state(&path) {
-                SessionState::Active => return result,
-                SessionState::Unavailable => {
-                    result.skipped_entries += 1;
-                    return result;
-                }
-                SessionState::Completed => {}
-            }
+fn remove_log_candidates(
+    candidates: Vec<RemovalCandidate>,
+    mut remaining_bytes: u64,
+    max_bytes: u64,
+    skipped_entries: u64,
+    mut remove: impl FnMut(&Path) -> io::Result<()>,
+) -> RetentionResult {
+    let mut result = RetentionResult {
+        skipped_entries,
+        ..RetentionResult::default()
+    };
 
-            let size = fs::metadata(&path)
-                .map(|metadata| metadata.len())
-                .unwrap_or(0);
-            match fs::remove_file(&path) {
-                Ok(()) => {
-                    result.removed_files += 1;
-                    result.removed_bytes += size;
-                }
-                Err(error) if error.kind() == io::ErrorKind::NotFound => {}
-                Err(_) => result.skipped_entries += 1,
+    for candidate in candidates {
+        if !candidate.expired && remaining_bytes <= max_bytes {
+            break;
+        }
+        match session_state(&candidate.entry.path) {
+            SessionState::Active => continue,
+            SessionState::Unavailable => {
+                result.skipped_entries += 1;
+                continue;
             }
-            result
-        },
-    )
+            SessionState::Completed => {}
+        }
+
+        match remove(&candidate.entry.path) {
+            Ok(()) => {
+                result.removed_files += 1;
+                result.removed_bytes += candidate.entry.size;
+                remaining_bytes = remaining_bytes.saturating_sub(candidate.entry.size);
+            }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                remaining_bytes = remaining_bytes.saturating_sub(candidate.entry.size);
+            }
+            Err(_) => result.skipped_entries += 1,
+        }
+    }
+
+    result
 }
 
 #[cfg(test)]
@@ -232,13 +249,23 @@ mod tests {
             entry("newest.jsonl", 1, 20, false),
         ];
 
+        let (remaining_bytes, candidates) =
+            plan_log_retention(entries, now, Duration::from_secs(14 * 24 * 60 * 60));
+        let mut removed = Vec::new();
+        let result = remove_log_candidates(candidates, remaining_bytes, 100, 0, |path| {
+            removed.push(path.to_path_buf());
+            Ok(())
+        });
+
         assert_eq!(
-            select_logs_for_removal(entries, now, Duration::from_secs(14 * 24 * 60 * 60), 100,),
+            removed,
             vec![
                 PathBuf::from("expired.jsonl"),
                 PathBuf::from("oldest.jsonl")
             ]
         );
+        assert_eq!(result.removed_files, 2);
+        assert_eq!(result.removed_bytes, 60);
     }
 
     #[test]
@@ -288,18 +315,38 @@ mod tests {
 
     #[test]
     fn continues_after_an_individual_deletion_failure() {
-        let temporary = tempfile::tempdir().unwrap();
-        let blocked = temporary.path().join("blocked.jsonl");
-        let removable = temporary.path().join("removable.jsonl");
-        fs::create_dir(&blocked).unwrap();
-        fs::write(&removable, "completed").unwrap();
-
-        let result = remove_selected_logs(vec![blocked.clone(), removable.clone()], 0);
+        let now = SystemTime::UNIX_EPOCH + Duration::from_secs(30 * 24 * 60 * 60);
+        let blocked = LogEntry {
+            path: PathBuf::from("blocked.jsonl"),
+            modified: now - Duration::from_secs(15 * 24 * 60 * 60),
+            size: 30,
+            active: false,
+        };
+        let removable = LogEntry {
+            path: PathBuf::from("removable.jsonl"),
+            modified: now - Duration::from_secs(24 * 60 * 60),
+            size: 90,
+            active: false,
+        };
+        let (remaining_bytes, candidates) = plan_log_retention(
+            vec![blocked.clone(), removable.clone()],
+            now,
+            Duration::from_secs(14 * 24 * 60 * 60),
+        );
+        let mut attempted = Vec::new();
+        let result = remove_log_candidates(candidates, remaining_bytes, 100, 0, |path| {
+            attempted.push(path.to_path_buf());
+            if path == blocked.path {
+                Err(io::Error::new(io::ErrorKind::PermissionDenied, "blocked"))
+            } else {
+                Ok(())
+            }
+        });
 
         assert_eq!(result.removed_files, 1);
+        assert_eq!(result.removed_bytes, 90);
         assert_eq!(result.skipped_entries, 1);
-        assert!(blocked.exists());
-        assert!(!removable.exists());
+        assert_eq!(attempted, vec![blocked.path, removable.path]);
     }
 
     #[cfg(unix)]

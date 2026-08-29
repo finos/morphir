@@ -308,7 +308,7 @@ The first implementation uses structured local events and spans. Its field model
 
 ### Current implementation gaps
 
-The CLI now initializes structured local logging on the ordinary command path, writes per-session files beneath `MORPHIR_HOME/logs/cli`, applies separate console and file filters, and enforces the default age and size retention policy at startup. `MORPHIR_LOGGING__LEVEL` and `MORPHIR_LOGGING__FILE_LEVEL` are canonical, with the older names retained as compatibility aliases. Remaining CLI work includes operation and launch correlation, lifecycle spans, log discovery, diagnostic bundles, and redaction sentinel coverage. Tool and extension commands still print some lifecycle details directly instead of emitting structured events.
+The CLI now initializes structured local logging on the ordinary command path, writes per-session files beneath `MORPHIR_HOME/logs/cli`, applies separate console and file filters, and enforces the default age and size retention policy at startup. `MORPHIR_LOGGING__LEVEL` and `MORPHIR_LOGGING__FILE_LEVEL` are canonical, with the older names retained as compatibility aliases. Startup logging is currently environment-controlled and does not yet consume a discovered `[logging]` configuration table. Remaining CLI work includes configuration-file integration, operation and launch correlation, lifecycle spans, log discovery, diagnostic bundles, and redaction sentinel coverage. Tool and extension commands still print some lifecycle details directly instead of emitting structured events.
 
 Morphir Desktop currently writes a few smoke messages through `console` and has no file logger, event schema, crash path, operation correlation, or troubleshooting interface. These are release gaps rather than optional refinements.
 
@@ -355,7 +355,7 @@ logs/
   desktop/crashes/<timestamp>-<session-id>/...
 ```
 
-The default file level is `debug`; the default console level is `info`. Configuration may raise or lower either level. `MORPHIR_LOG_DIR` may relocate logs for tests or managed environments, but all components receive the same resolved override from the launcher.
+The default file level is `debug`; the default console level is `info`. Environment variables may raise or lower either level. `MORPHIR_LOG_DIR` may relocate logs for tests or managed environments, but all components receive the same resolved override from the launcher. Discovered configuration-file controls remain planned rather than implemented.
 
 Completed session logs are retained for 14 days with a 100 MiB limit per component. Cleanup removes the oldest completed sessions when either limit is exceeded. It never deletes an active log, an uncollected crash record newer than the retention window, or a file referenced by an in-progress diagnostic bundle.
 
