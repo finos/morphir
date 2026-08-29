@@ -413,29 +413,56 @@ fn extension_uninstall_removes_active_state_but_retains_store_bytes() {
 #[test]
 #[ignore = "requires the real Bun-built morphir-elm-extension executable"]
 fn real_installed_morphir_elm_is_verified_and_activates_offline() {
-    let executable = std::env::var_os("MORPHIR_ELM_EXTENSION_BIN")
+    verify_real_installed_elm_provider(
+        "MORPHIR_ELM_EXTENSION_BIN",
+        "morphir-elm",
+        "Morphir Elm frontend",
+        "2.100.0",
+        false,
+    );
+}
+
+#[test]
+#[ignore = "requires the real GraalVM-built morphir-scala-elm executable"]
+fn real_installed_morphir_scala_elm_is_selected_and_activates_offline() {
+    let version = std::env::var("MORPHIR_SCALA_ELM_EXTENSION_VERSION")
+        .expect("set MORPHIR_SCALA_ELM_EXTENSION_VERSION to the packaged extension version");
+    verify_real_installed_elm_provider(
+        "MORPHIR_SCALA_ELM_EXTENSION_BIN",
+        "morphir-scala-elm",
+        "Morphir Scala Elm frontend",
+        &version,
+        true,
+    );
+}
+
+fn verify_real_installed_elm_provider(
+    executable_environment_variable: &str,
+    extension_id: &str,
+    extension_name: &str,
+    version: &str,
+    select_explicitly: bool,
+) {
+    let executable = std::env::var_os(executable_environment_variable)
         .map(PathBuf::from)
-        .expect("set MORPHIR_ELM_EXTENSION_BIN to the Bun-built extension");
+        .unwrap_or_else(|| panic!("set {executable_environment_variable} to the extension"));
     let bytes = std::fs::read(&executable).unwrap();
     let temp = TempDir::new().unwrap();
 
     let tamper_case = temp.path().join("source-tamper");
     let tampered_home = tamper_case.join("home");
-    let tampered_index = write_test_index(
-        &tamper_case,
-        "morphir-elm",
-        "Morphir Elm frontend",
-        "2.100.0",
-        &bytes,
-    );
+    let tampered_index =
+        write_test_index(&tamper_case, extension_id, extension_name, version, &bytes);
     std::fs::write(&tampered_index.source, b"tampered source bytes").unwrap();
     let rejected = run_morphir(
         &[
             "extension",
             "install",
-            "morphir-elm",
+            extension_id,
             "--index",
             tampered_index.root.to_str().unwrap(),
+            "--version",
+            version,
         ],
         &tampered_home,
         &tamper_case,
@@ -446,20 +473,16 @@ fn real_installed_morphir_elm_is_verified_and_activates_offline() {
     let project = temp.path().join("offline-project");
     let home = project.join("home");
     std::fs::create_dir_all(&project).unwrap();
-    let index = write_test_index(
-        &project,
-        "morphir-elm",
-        "Morphir Elm frontend",
-        "2.100.0",
-        &bytes,
-    );
+    let index = write_test_index(&project, extension_id, extension_name, version, &bytes);
     let install = run_morphir(
         &[
             "extension",
             "install",
-            "morphir-elm",
+            extension_id,
             "--index",
             index.root.to_str().unwrap(),
+            "--version",
+            version,
         ],
         &home,
         &project,
@@ -470,11 +493,15 @@ fn real_installed_morphir_elm_is_verified_and_activates_offline() {
         String::from_utf8_lossy(&install.stderr)
     );
     let catalog = std::fs::read_to_string(home.join("catalog/extensions.json")).unwrap();
-    let lock = std::fs::read_to_string(home.join("locks/extensions/morphir-elm.json")).unwrap();
-    assert!(catalog.contains("2.100.0"));
+    let lock = std::fs::read_to_string(
+        home.join("locks/extensions")
+            .join(format!("{extension_id}.json")),
+    )
+    .unwrap();
+    assert!(catalog.contains(version));
     assert!(catalog.contains(&index.digest));
-    assert!(lock.contains("2.100.0"));
-    assert!(lock.contains("stable"));
+    assert!(lock.contains(version));
+    assert!(lock.contains(r#""kind": "exact""#), "{lock}");
     let installed_path = home
         .join("store/extensions/sha256")
         .join(&index.digest)
@@ -486,22 +513,22 @@ fn real_installed_morphir_elm_is_verified_and_activates_offline() {
     let output_path = project.join("morphir-ir.json");
     std::fs::write(
         &source,
-        "module Example exposing (add)\n\nadd left right = left + right\n",
+        "module Example exposing (add)\n\nadd : Int -> Int -> Int\nadd left right = left + right\n",
     )
     .unwrap();
-    let compile = run_morphir(
-        &[
-            "compile",
-            "--language",
-            "elm",
-            "--input",
-            source.to_str().unwrap(),
-            "--output",
-            output_path.to_str().unwrap(),
-        ],
-        &home,
-        &project,
-    );
+    let mut compile_arguments = vec![
+        "compile",
+        "--language",
+        "elm",
+        "--input",
+        source.to_str().unwrap(),
+        "--output",
+        output_path.to_str().unwrap(),
+    ];
+    if select_explicitly {
+        compile_arguments.extend_from_slice(&["--extension", extension_id]);
+    }
+    let compile = run_morphir(&compile_arguments, &home, &project);
     assert!(
         compile.status.success(),
         "offline compile failed: stdout={} stderr={}",
@@ -509,21 +536,12 @@ fn real_installed_morphir_elm_is_verified_and_activates_offline() {
         String::from_utf8_lossy(&compile.stderr)
     );
     assert!(output_path.exists());
+    let ir: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&output_path).unwrap()).unwrap();
+    assert_eq!(ir["formatVersion"], 3, "{ir}");
 
     std::fs::write(&installed_path, b"tampered installed bytes").unwrap();
-    let rejected = run_morphir(
-        &[
-            "compile",
-            "--language",
-            "elm",
-            "--input",
-            source.to_str().unwrap(),
-            "--output",
-            output_path.to_str().unwrap(),
-        ],
-        &home,
-        &project,
-    );
+    let rejected = run_morphir(&compile_arguments, &home, &project);
     assert!(!rejected.status.success());
     assert!(
         String::from_utf8_lossy(&rejected.stderr).contains("digest"),
