@@ -116,11 +116,12 @@ pub struct LogConfig {
 
 impl Default for LogConfig {
     fn default() -> Self {
+        let log_dir = default_log_dir();
         Self {
             console_level: Level::INFO,
             file_level: Level::DEBUG,
-            log_dir: default_log_dir(),
-            file_logging: true,
+            file_logging: log_dir.is_some(),
+            log_dir: log_dir.unwrap_or_default(),
             json_file_logs: true,
             retention: DEFAULT_LOG_RETENTION,
             max_bytes: DEFAULT_MAX_LOG_BYTES,
@@ -133,7 +134,7 @@ impl Default for LogConfig {
 /// Priority:
 /// 1. MORPHIR_LOG_DIR environment variable
 /// 2. `logs/cli/` under the Morphir home directory
-fn default_log_dir() -> PathBuf {
+fn default_log_dir() -> Option<PathBuf> {
     let home = crate::home::MorphirHome::resolve().ok();
     log_dir_from(
         std::env::var_os("MORPHIR_LOG_DIR").as_deref(),
@@ -141,12 +142,14 @@ fn default_log_dir() -> PathBuf {
     )
 }
 
-fn log_dir_from(explicit: Option<&OsStr>, home: Option<&crate::home::MorphirHome>) -> PathBuf {
+fn log_dir_from(
+    explicit: Option<&OsStr>,
+    home: Option<&crate::home::MorphirHome>,
+) -> Option<PathBuf> {
     explicit
         .filter(|path| !path.is_empty())
         .map(PathBuf::from)
         .or_else(|| home.map(crate::home::MorphirHome::cli_logs_dir))
-        .unwrap_or_else(|| PathBuf::from(".morphir").join("logs").join("cli"))
 }
 
 fn apply_log_dir_override(current: PathBuf, explicit: Option<&OsStr>) -> PathBuf {
@@ -202,7 +205,7 @@ pub fn init(config: LogConfig) -> Option<LogGuard> {
         .compact()
         .with_filter(console_filter);
 
-    if !config.file_logging {
+    if !config.file_logging || config.log_dir.as_os_str().is_empty() {
         tracing_subscriber::registry().with(console_layer).init();
         return None;
     }
@@ -409,7 +412,7 @@ mod tests {
 
         assert_eq!(
             log_dir_from(None, Some(&home)),
-            PathBuf::from("/sandbox/morphir-home/logs/cli")
+            Some(PathBuf::from("/sandbox/morphir-home/logs/cli"))
         );
     }
 
@@ -423,8 +426,13 @@ mod tests {
 
         assert_eq!(
             log_dir_from(Some(std::ffi::OsStr::new("/managed/logs")), Some(&home)),
-            PathBuf::from("/managed/logs")
+            Some(PathBuf::from("/managed/logs"))
         );
+    }
+
+    #[test]
+    fn missing_home_does_not_invent_a_working_directory_log_path() {
+        assert_eq!(log_dir_from(None, None), None);
     }
 
     #[test]

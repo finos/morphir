@@ -344,7 +344,7 @@ The interface must still expose these actions after a failed startup where the r
 
 ### Local log contract
 
-File logging is enabled by default for the CLI acquisition and launch path and for Desktop. Console output remains human-readable on standard error, while files contain UTF-8 JSON Lines. Standard output remains reserved for command results and machine-readable output.
+File logging is enabled by default for the CLI acquisition and launch path and for Desktop when Morphir Home resolves. If neither Morphir Home nor an explicit log directory can be resolved, the CLI remains console-only instead of writing into the working directory. Console output remains human-readable on standard error, while files contain UTF-8 JSON Lines. Standard output remains reserved for command results and machine-readable output.
 
 Each process writes a separate session file so concurrent CLI and Desktop processes never compete for one rolling file:
 

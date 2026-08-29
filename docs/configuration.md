@@ -247,7 +247,7 @@ Some environment variables control Morphir directly rather than overriding a con
 |----------|---------|---------|
 | `MORPHIR_HOME` | Relocates the Morphir home directory, which holds user-global state such as the tool, distribution, and extension registries and fallback log output; when set, caches also relocate under `$MORPHIR_HOME/cache` | `$HOME/.morphir` on Linux/macOS, `%USERPROFILE%\.morphir` on Windows |
 | `MORPHIR_LOG_DIR` | Overrides the CLI log output directory | `$MORPHIR_HOME/logs/cli` |
-| `MORPHIR_LOG_FILE` | Enables or disables local CLI file logging | `true` |
+| `MORPHIR_LOG_FILE` | Enables or disables local CLI file logging | `true` when Morphir Home resolves; otherwise console-only |
 
 Relocating the home directory is useful for testing, CI, or sandboxed environments where the real user home is unavailable or should stay untouched:
 
