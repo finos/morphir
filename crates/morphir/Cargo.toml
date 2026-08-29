@@ -67,6 +67,7 @@ tracing-appender = { workspace = true }
 
 [dev-dependencies]
 cucumber = { workspace = true }
+ed25519-dalek = "2"
 
 [build-dependencies]
 chrono = "0.4"

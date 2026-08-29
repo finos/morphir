@@ -55,6 +55,9 @@ jobs:
               # generated CLI docs are diff-checked against the CLI source
               - 'docs/cli/**'
               - 'docs/man/**'
+              # signed fixtures and schemas are executable acquisition contracts
+              - 'docs/spec/tool-release-metadata/**'
+              - 'website/static/schemas/tool-release-v1.schema.json'
               - 'completions/**'
               # asserts every workspace package follows the current Rust baseline
               - 'tests/rust/test_workspace_rust_baseline.py'
@@ -152,6 +155,9 @@ jobs:
 
       - name: Run tests
         run: cargo test --locked --package morphir
+
+      - name: Validate signed tool release metadata
+        run: mise run ci:validate-tool-release-metadata
 
       - name: Build
         run: cargo build --locked --release --package morphir

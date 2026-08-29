@@ -257,9 +257,9 @@ Cleanup emits structured events for policy evaluation, reclaimed bytes, skipped 
 
 ## Registry and trust
 
-The first remote tool index should expose immutable release records plus mutable channel membership. A channel resolves to an exact record before download. The installed catalog retains the exact metadata revision used for that resolution.
+The first remote tool repository exposes immutable release descriptors plus mutable channel membership through the [tool release metadata v1 profile](../../spec/tool-release-metadata/index.md). A channel resolves to an exact descriptor before download. The installed catalog retains the exact trusted metadata version used for that resolution.
 
-Artifact digests detect corruption only when the metadata carrying the digest is authentic. Public Desktop acquisition therefore requires signed release metadata with a verification root distributed by the CLI. HTTPS remains required but is not the sole publisher-authentication mechanism. Root rotation, revocation, mirrors, and offline metadata expiry need explicit policy before public rollout.
+Artifact digests detect corruption only when the metadata carrying the digest is authentic. Public Desktop acquisition uses The Update Framework 1.0 with an out-of-band trusted root, consistent snapshots, sequential dual-threshold root rotation, signed freshness metadata, and SHA-256 target hashes. Mirrors share one repository identity and trust root. HTTPS remains required but is not the publisher-authentication mechanism. New resolution rejects expired metadata, while an installed release continues to launch from its exact catalog lock unless the client has persisted a trusted revocation.
 
 Network access supports bounded timeouts, proxies, standard certificate stores, resumable downloads where the server permits them, and useful diagnostics. Cached metadata and bytes are verified before reuse.
 
@@ -480,7 +480,6 @@ Every implementation step starts with failure-focused tests. Cross-platform acce
 
 ## Remaining policy decisions
 
-- Select the signed metadata format and root-rotation procedure.
 - Decide whether update availability checks are implemented by the CLI, Desktop, or a shared service.
 - Define optional OS shortcut and file-association integration without making it part of portable installation.
 - Choose the optional telemetry-export protocol and configuration after local instrumentation is proven.

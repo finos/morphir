@@ -1,0 +1,575 @@
+{
+  "contractVersion": 1,
+  "referenceTime": "2030-01-01T00:00:00Z",
+  "repositoryId": "aa3687fc06385750a6d31599f6d432f0633042ef70bdd999bc12b83cec97798c",
+  "mirrors": [
+    "https://primary.example.invalid/morphir-tools/",
+    "https://mirror.example.invalid/morphir-tools/"
+  ],
+  "trustedRoot": {
+    "signatures": [
+      {
+        "keyid": "7ab6b86cb2c9684b0ddc10896153aa2595decf4d4327a5ff1a8ab7422c828b12",
+        "sig": "c3a0a331d0ec4222da4b6fb7fbc56cea9133b677d9a1a1ad9e1a42cc98700d265d9b70e6ba44193714d9388059cc8e708b87a9fe00055a5ef9c3247d71634c0e"
+      },
+      {
+        "keyid": "c3f860ca5da4454d33496ca33bb48f0cdcd5b731be7316b67ca191db0185aa26",
+        "sig": "e9ab606e09fdf51454d7fbb044e9288da7183c81657890d18e71b5ebbb501d4bf88c52b51f15cc3c10b7f319be94b414c7fe76bfa799e471d7593b3e7307e203"
+      }
+    ],
+    "signed": {
+      "_type": "root",
+      "spec_version": "1.0.36",
+      "version": 1,
+      "expires": "2031-01-01T00:00:00Z",
+      "consistent_snapshot": true,
+      "keys": {
+        "7ab6b86cb2c9684b0ddc10896153aa2595decf4d4327a5ff1a8ab7422c828b12": {
+          "keytype": "ed25519",
+          "scheme": "ed25519",
+          "keyval": {
+            "public": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
+          }
+        },
+        "c3f860ca5da4454d33496ca33bb48f0cdcd5b731be7316b67ca191db0185aa26": {
+          "keytype": "ed25519",
+          "scheme": "ed25519",
+          "keyval": {
+            "public": "8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394"
+          }
+        },
+        "8bf5a507dc237a32c90c0a23b34bab6b386826145a5b726da75c91d466e4bf33": {
+          "keytype": "ed25519",
+          "scheme": "ed25519",
+          "keyval": {
+            "public": "ed4928c628d1c2c6eae90338905995612959273a5c63f93636c14614ac8737d1"
+          }
+        },
+        "48fb161d03445e4d97155a96ee648f3af8dfe3ad562c76e582dd665b42eb913b": {
+          "keytype": "ed25519",
+          "scheme": "ed25519",
+          "keyval": {
+            "public": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          }
+        },
+        "fcc01ce3c4a0930ae0d007ff151a49f7a8a86409c23c937924ac53a8a1f9ac8b": {
+          "keytype": "ed25519",
+          "scheme": "ed25519",
+          "keyval": {
+            "public": "0b513ad9b4924015ca0902ed079044d3ac5dbec2306f06948c10da8eb6e39f2d"
+          }
+        },
+        "33d640627f662f5d8685bd81f41b17429e8c75069ddae1d70f2d324bef86f608": {
+          "keytype": "ed25519",
+          "scheme": "ed25519",
+          "keyval": {
+            "public": "91a28a0b74381593a4d9469579208926afc8ad82c8839b7644359b9eba9a4b3a"
+          }
+        }
+      },
+      "roles": {
+        "root": {
+          "keyids": [
+            "7ab6b86cb2c9684b0ddc10896153aa2595decf4d4327a5ff1a8ab7422c828b12",
+            "c3f860ca5da4454d33496ca33bb48f0cdcd5b731be7316b67ca191db0185aa26",
+            "8bf5a507dc237a32c90c0a23b34bab6b386826145a5b726da75c91d466e4bf33"
+          ],
+          "threshold": 2
+        },
+        "targets": {
+          "keyids": [
+            "48fb161d03445e4d97155a96ee648f3af8dfe3ad562c76e582dd665b42eb913b"
+          ],
+          "threshold": 1
+        },
+        "snapshot": {
+          "keyids": [
+            "fcc01ce3c4a0930ae0d007ff151a49f7a8a86409c23c937924ac53a8a1f9ac8b"
+          ],
+          "threshold": 1
+        },
+        "timestamp": {
+          "keyids": [
+            "33d640627f662f5d8685bd81f41b17429e8c75069ddae1d70f2d324bef86f608"
+          ],
+          "threshold": 1
+        }
+      }
+    }
+  },
+  "rootUpdates": [
+    {
+      "signatures": [
+        {
+          "keyid": "7ab6b86cb2c9684b0ddc10896153aa2595decf4d4327a5ff1a8ab7422c828b12",
+          "sig": "d77b7b3eb410bd1e4a5976ce98e3295dfa0ea7d1de9358da7a2547f56ea5b5022b720dd31eaffedce862d84460118fe11a04f0917618f6c47a57e8f2a7a59f03"
+        },
+        {
+          "keyid": "c3f860ca5da4454d33496ca33bb48f0cdcd5b731be7316b67ca191db0185aa26",
+          "sig": "ffbcbb3c34ca0e2bf71687a312372b10459c09988fa1fa1e02632fe9d8fa1298729743d4a649de6c5a07f15f6250de0f2e07626a178e2671b4b527514b320b0f"
+        },
+        {
+          "keyid": "8bf5a507dc237a32c90c0a23b34bab6b386826145a5b726da75c91d466e4bf33",
+          "sig": "c13ab7998fe4e7088e4b30c6573e3e90a7a8b5bcdb92fb980c02f601ff5115da4de955964c64314b2373f325cd21490856f0f8f95ed2523d8ef0018ca310d90e"
+        }
+      ],
+      "signed": {
+        "_type": "root",
+        "spec_version": "1.0.36",
+        "version": 2,
+        "expires": "2032-01-01T00:00:00Z",
+        "consistent_snapshot": true,
+        "keys": {
+          "c3f860ca5da4454d33496ca33bb48f0cdcd5b731be7316b67ca191db0185aa26": {
+            "keytype": "ed25519",
+            "scheme": "ed25519",
+            "keyval": {
+              "public": "8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394"
+            }
+          },
+          "8bf5a507dc237a32c90c0a23b34bab6b386826145a5b726da75c91d466e4bf33": {
+            "keytype": "ed25519",
+            "scheme": "ed25519",
+            "keyval": {
+              "public": "ed4928c628d1c2c6eae90338905995612959273a5c63f93636c14614ac8737d1"
+            }
+          },
+          "3336b222894653a1c328c2636b5ada9d8c2f53be3b927369d64e7087014bf619": {
+            "keytype": "ed25519",
+            "scheme": "ed25519",
+            "keyval": {
+              "public": "ca93ac1705187071d67b83c7ff0efe8108e8ec4530575d7726879333dbdabe7c"
+            }
+          },
+          "48fb161d03445e4d97155a96ee648f3af8dfe3ad562c76e582dd665b42eb913b": {
+            "keytype": "ed25519",
+            "scheme": "ed25519",
+            "keyval": {
+              "public": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+            }
+          },
+          "fcc01ce3c4a0930ae0d007ff151a49f7a8a86409c23c937924ac53a8a1f9ac8b": {
+            "keytype": "ed25519",
+            "scheme": "ed25519",
+            "keyval": {
+              "public": "0b513ad9b4924015ca0902ed079044d3ac5dbec2306f06948c10da8eb6e39f2d"
+            }
+          },
+          "33d640627f662f5d8685bd81f41b17429e8c75069ddae1d70f2d324bef86f608": {
+            "keytype": "ed25519",
+            "scheme": "ed25519",
+            "keyval": {
+              "public": "91a28a0b74381593a4d9469579208926afc8ad82c8839b7644359b9eba9a4b3a"
+            }
+          }
+        },
+        "roles": {
+          "root": {
+            "keyids": [
+              "c3f860ca5da4454d33496ca33bb48f0cdcd5b731be7316b67ca191db0185aa26",
+              "8bf5a507dc237a32c90c0a23b34bab6b386826145a5b726da75c91d466e4bf33",
+              "3336b222894653a1c328c2636b5ada9d8c2f53be3b927369d64e7087014bf619"
+            ],
+            "threshold": 2
+          },
+          "targets": {
+            "keyids": [
+              "48fb161d03445e4d97155a96ee648f3af8dfe3ad562c76e582dd665b42eb913b"
+            ],
+            "threshold": 1
+          },
+          "snapshot": {
+            "keyids": [
+              "fcc01ce3c4a0930ae0d007ff151a49f7a8a86409c23c937924ac53a8a1f9ac8b"
+            ],
+            "threshold": 1
+          },
+          "timestamp": {
+            "keyids": [
+              "33d640627f662f5d8685bd81f41b17429e8c75069ddae1d70f2d324bef86f608"
+            ],
+            "threshold": 1
+          }
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "timestamp": {
+      "signatures": [
+        {
+          "keyid": "33d640627f662f5d8685bd81f41b17429e8c75069ddae1d70f2d324bef86f608",
+          "sig": "59816e1a1a2292fbd930d47281a53ec8d4f1f44a534a28e66767d3a46f1a2df940b92426afc8a5ed718666ba953a26da1ade17df28320ed418a0796d032cce07"
+        }
+      ],
+      "signed": {
+        "_type": "timestamp",
+        "spec_version": "1.0.36",
+        "version": 1,
+        "expires": "2030-01-02T00:00:00Z",
+        "meta": {
+          "snapshot.json": {
+            "version": 1,
+            "length": 468,
+            "hashes": {
+              "sha256": "bfd6cc27f2bdcde54f39d674e67602183b629f3d9d3e984a0470b2bf1c5e7b68"
+            }
+          }
+        }
+      }
+    },
+    "snapshot": {
+      "signatures": [
+        {
+          "keyid": "fcc01ce3c4a0930ae0d007ff151a49f7a8a86409c23c937924ac53a8a1f9ac8b",
+          "sig": "3c50c1444f3c64cb05241ec2f65cd0a18dda7d103e9416138b043404348ecdab6fa090166b1d8bf1bee2a21f19afb00f4f8ab521cb09fa25b36d01cc4f561c02"
+        }
+      ],
+      "signed": {
+        "_type": "snapshot",
+        "spec_version": "1.0.36",
+        "version": 1,
+        "expires": "2030-01-08T00:00:00Z",
+        "meta": {
+          "targets.json": {
+            "version": 1,
+            "length": 2712,
+            "hashes": {
+              "sha256": "6f530c37cd8f054b55283a825e8cc1dc5b9e901c058a90209b965fde8f55014a"
+            }
+          }
+        }
+      }
+    },
+    "targets": {
+      "signatures": [
+        {
+          "keyid": "48fb161d03445e4d97155a96ee648f3af8dfe3ad562c76e582dd665b42eb913b",
+          "sig": "8181cef5581dd9f7717646d069df6def6c9306a51cedd289cc2cc25ad43e99fb8a52a8b23c1d2070bea5669e4ce4b6c622c74a506e756a672903fab11fcd1000"
+        }
+      ],
+      "signed": {
+        "_type": "targets",
+        "spec_version": "1.0.36",
+        "version": 1,
+        "expires": "2030-02-01T00:00:00Z",
+        "targets": {
+          "releases/desktop/0.9.0.json": {
+            "length": 221,
+            "hashes": {
+              "sha256": "3c7dce07b221b584f1d3b735ebb6b101a3fee87dff73a687e0bbac44e323be7f"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-release",
+                "toolId": "desktop",
+                "version": "0.9.0",
+                "channels": [],
+                "status": "revoked",
+                "compatibility": {
+                  "morphirCli": ">=0.4.0-alpha.5, <0.5.0"
+                },
+                "platforms": []
+              }
+            }
+          },
+          "releases/desktop/1.0.0.json": {
+            "length": 991,
+            "hashes": {
+              "sha256": "f882054674e520c1202d03cfb5593c388b4a7fcb0b83821d4c2b36fdfcc0cdf3"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-release",
+                "toolId": "desktop",
+                "version": "1.0.0",
+                "channels": [
+                  "stable"
+                ],
+                "status": "active",
+                "compatibility": {
+                  "morphirCli": ">=0.4.0-alpha.5, <0.5.0"
+                },
+                "platforms": [
+                  {
+                    "os": "windows",
+                    "arch": "x86_64"
+                  },
+                  {
+                    "os": "macos",
+                    "arch": "aarch64"
+                  },
+                  {
+                    "os": "linux",
+                    "arch": "x86_64"
+                  }
+                ]
+              }
+            }
+          },
+          "releases/desktop/1.1.0-preview.1.json": {
+            "length": 502,
+            "hashes": {
+              "sha256": "849bca11e70d79dc84b6f1e12c0081f1814de1ed75ff9166d4171e44cadeca51"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-release",
+                "toolId": "desktop",
+                "version": "1.1.0-preview.1",
+                "channels": [
+                  "preview",
+                  "preview/nightly"
+                ],
+                "status": "active",
+                "compatibility": {
+                  "morphirCli": ">=0.4.0-alpha.5, <0.5.0"
+                },
+                "platforms": [
+                  {
+                    "os": "windows",
+                    "arch": "x86_64"
+                  }
+                ]
+              }
+            }
+          },
+          "artifacts/desktop/1.0.0/windows-x86_64.zip": {
+            "length": 37,
+            "hashes": {
+              "sha256": "01927af6444604d34547f8e427a8bf923f55398c4e2bc45bcea78e075c5a91b0"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "desktop",
+                "version": "1.0.0",
+                "platform": {
+                  "os": "windows",
+                  "arch": "x86_64"
+                }
+              }
+            }
+          },
+          "artifacts/desktop/1.0.0/macos-aarch64.zip": {
+            "length": 36,
+            "hashes": {
+              "sha256": "8c483cd816d51f0148ca4a4ef826eb134a76ab5d1cc80c1ce2f708c66cd44358"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "desktop",
+                "version": "1.0.0",
+                "platform": {
+                  "os": "macos",
+                  "arch": "aarch64"
+                }
+              }
+            }
+          },
+          "artifacts/desktop/1.0.0/linux-x86_64.tar.gz": {
+            "length": 35,
+            "hashes": {
+              "sha256": "ff4e4db101bf9df2783e600e1a7bd6c7e44bddbaab9cf60433bca2d1fadbabda"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "desktop",
+                "version": "1.0.0",
+                "platform": {
+                  "os": "linux",
+                  "arch": "x86_64"
+                }
+              }
+            }
+          },
+          "artifacts/desktop/1.1.0-preview.1/windows-x86_64.zip": {
+            "length": 47,
+            "hashes": {
+              "sha256": "20bd54d57f8232ba24d40f09d9a0220f17533285c43d1d1683826c2d8bdf1cfe"
+            },
+            "custom": {
+              "morphir": {
+                "schemaVersion": 1,
+                "kind": "tool-artifact",
+                "toolId": "desktop",
+                "version": "1.1.0-preview.1",
+                "platform": {
+                  "os": "windows",
+                  "arch": "x86_64"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "targetFiles": {
+    "releases/desktop/0.9.0.json": "{\"artifacts\":[],\"channels\":[],\"compatibility\":{\"morphirCli\":\">=0.4.0-alpha.5, <0.5.0\"},\"kind\":\"morphir-tool-release\",\"schemaVersion\":1,\"status\":\"revoked\",\"tool\":{\"id\":\"desktop\",\"name\":\"Morphir Desktop\"},\"version\":\"0.9.0\"}",
+    "releases/desktop/1.0.0.json": "{\"artifacts\":[{\"archive\":{\"entryPoint\":\"Morphir Desktop.exe\",\"format\":\"zip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"Morphir Desktop.exe\"},\"platform\":{\"arch\":\"x86_64\",\"os\":\"windows\"},\"targetPath\":\"artifacts/desktop/1.0.0/windows-x86_64.zip\"},{\"archive\":{\"entryPoint\":\"Morphir Desktop.app/Contents/MacOS/Morphir Desktop\",\"format\":\"zip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"Morphir Desktop.app/Contents/MacOS/Morphir Desktop\"},\"platform\":{\"arch\":\"aarch64\",\"os\":\"macos\"},\"targetPath\":\"artifacts/desktop/1.0.0/macos-aarch64.zip\"},{\"archive\":{\"entryPoint\":\"morphir-desktop\",\"format\":\"tar-gzip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir-desktop\"},\"platform\":{\"arch\":\"x86_64\",\"os\":\"linux\"},\"targetPath\":\"artifacts/desktop/1.0.0/linux-x86_64.tar.gz\"}],\"channels\":[\"stable\"],\"compatibility\":{\"morphirCli\":\">=0.4.0-alpha.5, <0.5.0\"},\"kind\":\"morphir-tool-release\",\"schemaVersion\":1,\"status\":\"active\",\"tool\":{\"id\":\"desktop\",\"name\":\"Morphir Desktop\"},\"version\":\"1.0.0\"}",
+    "releases/desktop/1.1.0-preview.1.json": "{\"artifacts\":[{\"archive\":{\"entryPoint\":\"Morphir Desktop.exe\",\"format\":\"zip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"Morphir Desktop.exe\"},\"platform\":{\"arch\":\"x86_64\",\"os\":\"windows\"},\"targetPath\":\"artifacts/desktop/1.1.0-preview.1/windows-x86_64.zip\"}],\"channels\":[\"preview\",\"preview/nightly\"],\"compatibility\":{\"morphirCli\":\">=0.4.0-alpha.5, <0.5.0\"},\"kind\":\"morphir-tool-release\",\"schemaVersion\":1,\"status\":\"active\",\"tool\":{\"id\":\"desktop\",\"name\":\"Morphir Desktop\"},\"version\":\"1.1.0-preview.1\"}",
+    "artifacts/desktop/1.0.0/windows-x86_64.zip": "fixture desktop 1.0.0 windows x86_64\n",
+    "artifacts/desktop/1.0.0/macos-aarch64.zip": "fixture desktop 1.0.0 macos aarch64\n",
+    "artifacts/desktop/1.0.0/linux-x86_64.tar.gz": "fixture desktop 1.0.0 linux x86_64\n",
+    "artifacts/desktop/1.1.0-preview.1/windows-x86_64.zip": "fixture desktop 1.1.0-preview.1 windows x86_64\n"
+  },
+  "resolutionCases": [
+    {
+      "name": "stable selects the highest compatible final release",
+      "toolId": "desktop",
+      "selection": {
+        "channel": "stable"
+      },
+      "cliVersion": "0.4.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x86_64"
+      },
+      "expected": "1.0.0"
+    },
+    {
+      "name": "preview selects a prerelease",
+      "toolId": "desktop",
+      "selection": {
+        "channel": "preview"
+      },
+      "cliVersion": "0.4.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x86_64"
+      },
+      "expected": "1.1.0-preview.1"
+    },
+    {
+      "name": "insiders aliases the preview family",
+      "toolId": "desktop",
+      "selection": {
+        "channel": "insiders"
+      },
+      "cliVersion": "0.4.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x86_64"
+      },
+      "expected": "1.1.0-preview.1"
+    },
+    {
+      "name": "segmented preview selects only its named stream",
+      "toolId": "desktop",
+      "selection": {
+        "channel": "preview/nightly"
+      },
+      "cliVersion": "0.4.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x86_64"
+      },
+      "expected": "1.1.0-preview.1"
+    },
+    {
+      "name": "an exact prerelease ignores channel membership",
+      "toolId": "desktop",
+      "selection": {
+        "version": "1.1.0-preview.1"
+      },
+      "cliVersion": "0.4.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x86_64"
+      },
+      "expected": "1.1.0-preview.1"
+    },
+    {
+      "name": "a revoked exact release is refused",
+      "toolId": "desktop",
+      "selection": {
+        "version": "0.9.0"
+      },
+      "cliVersion": "0.4.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x86_64"
+      },
+      "expected": {
+        "diagnostic": "release_revoked"
+      }
+    },
+    {
+      "name": "an incompatible CLI cannot select a release",
+      "toolId": "desktop",
+      "selection": {
+        "channel": "stable"
+      },
+      "cliVersion": "0.3.0",
+      "platform": {
+        "os": "windows",
+        "arch": "x86_64"
+      },
+      "expected": {
+        "diagnostic": "no_compatible_release"
+      }
+    },
+    {
+      "name": "stable selects the matching macOS artifact",
+      "toolId": "desktop",
+      "selection": {
+        "channel": "stable"
+      },
+      "cliVersion": "0.4.0",
+      "platform": {
+        "os": "macos",
+        "arch": "aarch64"
+      },
+      "expected": "1.0.0"
+    },
+    {
+      "name": "a missing platform has no compatible release",
+      "toolId": "desktop",
+      "selection": {
+        "channel": "stable"
+      },
+      "cliVersion": "0.4.0",
+      "platform": {
+        "os": "linux",
+        "arch": "aarch64"
+      },
+      "expected": {
+        "diagnostic": "no_compatible_release"
+      }
+    }
+  ],
+  "rejectionMetadata": {
+    "expiredTimestamp": {
+      "signatures": [
+        {
+          "keyid": "33d640627f662f5d8685bd81f41b17429e8c75069ddae1d70f2d324bef86f608",
+          "sig": "982d8b5396623583455f68931f71edb2d1f06ae2f395ca5f39c60b33a3a3b6ccece5fb68eb54b38a876278e6e5481d661a45a28a67b8dc7dde3a150143a6880e"
+        }
+      ],
+      "signed": {
+        "_type": "timestamp",
+        "spec_version": "1.0.36",
+        "version": 2,
+        "expires": "2029-12-31T23:59:59Z",
+        "meta": {
+          "snapshot.json": {
+            "version": 1,
+            "length": 468,
+            "hashes": {
+              "sha256": "bfd6cc27f2bdcde54f39d674e67602183b629f3d9d3e984a0470b2bf1c5e7b68"
+            }
+          }
+        }
+      }
+    }
+  }
+}

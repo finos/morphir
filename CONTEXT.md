@@ -100,6 +100,22 @@ _Avoid_: Desktop extension, UI component
 A versioned package that describes a tool and provides one or more platform-specific artifacts.
 _Avoid_: Extension distribution, Morphir package, installed tool
 
+**Tool repository**:
+An authenticated logical source of tool release descriptors and artifacts governed by one trust root.
+_Avoid_: Repository mirror, installed tool catalog, download cache
+
+**Repository mirror**:
+A location that serves metadata and artifacts for one tool repository without becoming a separate trust authority.
+_Avoid_: Tool repository, release channel
+
+**Trusted repository root**:
+The out-of-band trust anchor and its accepted rotation state for one tool repository.
+_Avoid_: Repository mirror, TLS certificate, signing key
+
+**Tool release descriptor**:
+The immutable record for one exact tool version, including compatibility, channel membership, and platform artifacts.
+_Avoid_: Release channel, tool artifact, installed selection
+
 **Installed tool catalog**:
 The local record of verified tool distributions and the exact release active for each tool.
 _Avoid_: Tool registry, release index, download cache
