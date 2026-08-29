@@ -7,9 +7,18 @@
   "required": [ "formatVersion", "distribution" ],
   "properties": {
     "formatVersion": {
-      "description": "The version of the IR format. Must be 3 for this schema.",
-      "type": "integer",
-      "const": 3
+      "description": "The IR format version, governed by the v3-and-later formatVersion contract. Integer 3 is the canonical v3.0.0 baseline; exact release strings identify later revisions in the v3 family",
+      "anyOf": [
+        {
+          "description": "Canonical spelling of v3.0.0",
+          "const": 3
+        },
+        {
+          "description": "Exact v3 release triplet",
+          "type": "string",
+          "pattern": "^3\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+        }
+      ]
     },
     "distribution": {
       "description": "The distribution data, currently only Library distributions are supported.",

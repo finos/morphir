@@ -7,20 +7,7 @@
   "required": [ "formatVersion", "distribution" ],
   "properties": {
     "formatVersion": {
-      "oneOf": [
-        {
-          "description": "Semantic version string (e.g., '4.0.0', '4.0.0-alpha.1')",
-          "examples": [ "4.0.0", "4.0.0-alpha.1", "4.0.0+20240123" ],
-          "type": "string",
-          "pattern": "^4\\.0\\.0(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$"
-        },
-        {
-          "description": "Legacy integer format for backwards compatibility",
-          "examples": [ 4 ],
-          "type": "integer",
-          "minimum": 4
-        }
-      ]
+      "$ref": "#/definitions/FormatVersion"
     },
     "distribution": {
       "description": "Root distribution node. V4 uses wrapper object format where the distribution type\nis the key and its content is the value.\n\nExample: { \"Library\": { \"packageName\": \"...\", \"dependencies\": {...}, \"def\": {...} } }\n",
@@ -38,6 +25,21 @@
     }
   },
   "definitions": {
+    "FormatVersion": {
+      "description": "The IR format version, governed by the v3-and-later formatVersion contract. Integer 4 is the canonical v4.0.0 baseline; exact release strings identify later revisions in the v4 family. Prerelease and build metadata are not allowed",
+      "examples": [ 4, "4.0.0", "4.1.0" ],
+      "anyOf": [
+        {
+          "description": "Canonical spelling of v4.0.0",
+          "const": 4
+        },
+        {
+          "description": "Exact v4 release triplet",
+          "type": "string",
+          "pattern": "^4\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+        }
+      ]
+    },
     "NameString": {
       "description": "Canonical string representation of a name.\nSupports kebab-case with parenthesized acronyms (e.g., \"(usd)\", \"my-(api)-client\").\n",
       "examples": [ "my-name", "user-id", "value-in-(usd)", "price-per-(unit)" ],

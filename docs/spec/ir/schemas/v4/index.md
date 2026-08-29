@@ -20,6 +20,10 @@ Version 4 separates meaning from physical storage:
 
 JSON Schema bootstraps the JSON profile. It does not make JSON the only native IR storage format.
 
+The `formatVersion` field follows the [shared v3-and-later contract](../../format-version.md).
+Integer `4` is the canonical v4.0.0 baseline. Later v4 revisions use exact release
+strings such as `"4.1.0"`; prerelease and build metadata are not allowed.
+
 ## Overview
 
 Version 4 standardizes attribute handling, introduces compact string representations, supports embedded documentation, and adds new value expressions to better represent functional programming constructs.
@@ -226,7 +230,7 @@ distribution:
 **Library Distribution:**
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "distribution": {
     "Library": {
       "packageName": "my-org/my-project",
@@ -242,7 +246,7 @@ distribution:
 **Specs Distribution:**
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "distribution": {
     "Specs": {
       "packageName": "morphir/sdk",
@@ -258,7 +262,7 @@ distribution:
 **Application Distribution:**
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "distribution": {
     "Application": {
       "packageName": "my-org/my-app",
@@ -317,7 +321,7 @@ A complete Library distribution example showing the full structure:
 
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "distribution": {
     "Library": {
       "packageName": "regulation",

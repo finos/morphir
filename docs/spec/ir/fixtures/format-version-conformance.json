@@ -1,0 +1,321 @@
+{
+  "contractVersion": 1,
+  "supportedVersions": [
+    "3.0.0",
+    "4.0.0"
+  ],
+  "scalarCases": [
+    {
+      "name": "historical v1 integer",
+      "value": 1,
+      "normalization": { "normalized": "1.0.0", "canonical": 1 },
+      "compatibility": "unsupported_format_version_major",
+      "schema": { "v1": true, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "historical v2 integer",
+      "value": 2,
+      "normalization": { "normalized": "2.0.0", "canonical": 2 },
+      "compatibility": "unsupported_format_version_major",
+      "schema": { "v1": false, "v2": true, "v3": false, "v4": false }
+    },
+    {
+      "name": "v3 integer alias",
+      "value": 3,
+      "normalization": { "normalized": "3.0.0", "canonical": 3 },
+      "compatibility": "supported",
+      "schema": { "v1": false, "v2": false, "v3": true, "v4": false }
+    },
+    {
+      "name": "v3 baseline release string",
+      "value": "3.0.0",
+      "normalization": { "normalized": "3.0.0", "canonical": 3 },
+      "compatibility": "supported",
+      "schema": { "v1": false, "v2": false, "v3": true, "v4": false }
+    },
+    {
+      "name": "v3 later exact revision",
+      "value": "3.1.0",
+      "normalization": { "normalized": "3.1.0", "canonical": "3.1.0" },
+      "compatibility": "unsupported_format_version_revision",
+      "schema": { "v1": false, "v2": false, "v3": true, "v4": false }
+    },
+    {
+      "name": "v4 integer alias",
+      "value": 4,
+      "normalization": { "normalized": "4.0.0", "canonical": 4 },
+      "compatibility": "supported",
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": true }
+    },
+    {
+      "name": "v4 baseline release string",
+      "value": "4.0.0",
+      "normalization": { "normalized": "4.0.0", "canonical": 4 },
+      "compatibility": "supported",
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": true }
+    },
+    {
+      "name": "v4 later exact revision",
+      "value": "4.0.1",
+      "normalization": { "normalized": "4.0.1", "canonical": "4.0.1" },
+      "compatibility": "unsupported_format_version_revision",
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": true }
+    },
+    {
+      "name": "future v5 baseline release",
+      "value": "5.0.0",
+      "normalization": { "normalized": "5.0.0", "canonical": 5 },
+      "compatibility": "unsupported_format_version_major",
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "future v5 nonbaseline release",
+      "value": "5.2.7",
+      "normalization": { "normalized": "5.2.7", "canonical": "5.2.7" },
+      "compatibility": "unsupported_format_version_major",
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "future v5 integer alias",
+      "value": 5,
+      "normalization": { "normalized": "5.0.0", "canonical": 5 },
+      "compatibility": "unsupported_format_version_major",
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "maximum u32 integer family",
+      "value": 4294967295,
+      "normalization": { "normalized": "4294967295.0.0", "canonical": 4294967295 },
+      "compatibility": "unsupported_format_version_major",
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "maximum u32 major release string",
+      "value": "4294967295.0.0",
+      "normalization": { "normalized": "4294967295.0.0", "canonical": 4294967295 },
+      "compatibility": "unsupported_format_version_major",
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "major component u32 overflow",
+      "value": "4294967296.0.0",
+      "normalization": { "diagnostic": "format_version_out_of_range" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "zero is not a format family",
+      "value": 0,
+      "normalization": { "diagnostic": "invalid_format_version_syntax" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "v1 release string is forbidden",
+      "value": "1.0.0",
+      "normalization": { "diagnostic": "invalid_format_version_syntax" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "v2 release string is forbidden",
+      "value": "2.0.0",
+      "normalization": { "diagnostic": "invalid_format_version_syntax" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "release missing patch component",
+      "value": "3.0",
+      "normalization": { "diagnostic": "invalid_format_version_syntax" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "release with extra component",
+      "value": "3.0.0.0",
+      "normalization": { "diagnostic": "invalid_format_version_syntax" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "release with plus-signed minor",
+      "value": "3.+1.0",
+      "normalization": { "diagnostic": "invalid_format_version_syntax" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "release with minus-signed minor",
+      "value": "3.-1.0",
+      "normalization": { "diagnostic": "invalid_format_version_syntax" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "release with surrounding whitespace",
+      "value": " 3.0.0",
+      "normalization": { "diagnostic": "invalid_format_version_syntax" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "v3 release with leading-zero minor",
+      "value": "3.01.0",
+      "normalization": { "diagnostic": "invalid_format_version_syntax" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "v4 release with leading-zero patch",
+      "value": "4.0.01",
+      "normalization": { "diagnostic": "invalid_format_version_syntax" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "release with prerelease suffix",
+      "value": "3.0.0-alpha",
+      "normalization": { "diagnostic": "invalid_format_version_syntax" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "release with build metadata",
+      "value": "4.0.0+build",
+      "normalization": { "diagnostic": "invalid_format_version_syntax" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "integer u32 overflow",
+      "value": 4294967296,
+      "normalization": { "diagnostic": "format_version_out_of_range" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "v3 minor component u32 overflow",
+      "value": "3.4294967296.0",
+      "normalization": { "diagnostic": "format_version_out_of_range" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": true, "v4": false }
+    },
+    {
+      "name": "v4 patch component u32 overflow",
+      "value": "4.0.4294967296",
+      "normalization": { "diagnostic": "format_version_out_of_range" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": true }
+    },
+    {
+      "name": "negative integer",
+      "value": -1,
+      "normalization": { "diagnostic": "invalid_format_version_type" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "floating-point number",
+      "value": 3.5,
+      "normalization": { "diagnostic": "invalid_format_version_type" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "boolean value",
+      "value": true,
+      "normalization": { "diagnostic": "invalid_format_version_type" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "null value",
+      "value": null,
+      "normalization": { "diagnostic": "invalid_format_version_type" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "array value",
+      "value": [3],
+      "normalization": { "diagnostic": "invalid_format_version_type" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    },
+    {
+      "name": "object value",
+      "value": { "major": 3 },
+      "normalization": { "diagnostic": "invalid_format_version_type" },
+      "compatibility": null,
+      "schema": { "v1": false, "v2": false, "v3": false, "v4": false }
+    }
+  ],
+  "headerOrderCases": [
+    {
+      "name": "canonical JSON header order",
+      "format": "json",
+      "source": "{\"formatVersion\":3,\"distribution\":[\"Library\",[[\"example\"]],[],{\"modules\":[]}]}",
+      "members": ["formatVersion", "distribution"],
+      "warning": null
+    },
+    {
+      "name": "noncanonical JSON header order",
+      "format": "json",
+      "source": "{\"distribution\":[\"Library\",[[\"example\"]],[],{\"modules\":[]}],\"formatVersion\":3}",
+      "members": ["distribution", "formatVersion"],
+      "warning": "format_version_not_first"
+    },
+    {
+      "name": "canonical YAML header order",
+      "format": "yaml",
+      "source": "formatVersion: 3\ndistribution:\n  - Library\n  - - - example\n  - []\n  - modules: []\n",
+      "members": ["formatVersion", "distribution"],
+      "warning": null
+    },
+    {
+      "name": "noncanonical YAML header order",
+      "format": "yaml",
+      "source": "distribution:\n  - Library\n  - - - example\n  - []\n  - modules: []\nformatVersion: 3\n",
+      "members": ["distribution", "formatVersion"],
+      "warning": "format_version_not_first"
+    }
+  ],
+  "rootDiagnosticCases": [
+    {
+      "name": "JSON root missing formatVersion",
+      "format": "json",
+      "source": "{\"distribution\":[\"Library\",[[\"example\"]],[],{\"modules\":[]}]}",
+      "members": ["distribution"],
+      "diagnostic": "missing_format_version"
+    },
+    {
+      "name": "JSON root with duplicate formatVersion",
+      "format": "json",
+      "source": "{\"formatVersion\":3,\"formatVersion\":3,\"distribution\":[\"Library\",[[\"example\"]],[],{\"modules\":[]}]}",
+      "members": ["formatVersion", "formatVersion", "distribution"],
+      "diagnostic": "duplicate_format_version"
+    },
+    {
+      "name": "YAML root missing formatVersion",
+      "format": "yaml",
+      "source": "distribution:\n  - Library\n  - - - example\n  - []\n  - modules: []\n",
+      "members": ["distribution"],
+      "diagnostic": "missing_format_version"
+    },
+    {
+      "name": "YAML root with duplicate formatVersion",
+      "format": "yaml",
+      "source": "formatVersion: 3\nformatVersion: 3\ndistribution:\n  - Library\n  - - - example\n  - []\n  - modules: []\n",
+      "members": ["formatVersion", "formatVersion", "distribution"],
+      "diagnostic": "duplicate_format_version"
+    },
+    {
+      "name": "quoted duplicate YAML formatVersion",
+      "format": "yaml",
+      "source": "'formatVersion': 3\n\"formatVersion\": 3\ndistribution:\n  - Library\n  - - - example\n  - []\n  - modules: []\n",
+      "members": ["formatVersion", "formatVersion", "distribution"],
+      "diagnostic": "duplicate_format_version"
+    }
+  ]
+}

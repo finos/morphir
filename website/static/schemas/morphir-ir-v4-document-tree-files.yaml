@@ -19,6 +19,16 @@ description: |
 
 definitions:
   # Import core types from main schema (these would be $ref in practice)
+  FormatVersion:
+    anyOf:
+      - const: 4
+        description: "Canonical spelling of v4.0.0"
+      - type: string
+        pattern: "^4\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+        description: "Exact v4 release triplet"
+    description: "The IR format version, governed by the v3-and-later formatVersion contract. Integer 4 is the canonical v4.0.0 baseline; exact release strings identify later revisions in the v4 family. Prerelease and build metadata are not allowed"
+    examples: [4, "4.0.0", "4.1.0"]
+
   Name:
     oneOf:
       - type: string
@@ -111,15 +121,7 @@ definitions:
     required: ["formatVersion", "name"]
     properties:
       formatVersion:
-        oneOf:
-          - type: string
-            pattern: "^4\\.0\\.0(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$"
-            description: "Semantic version string (e.g., '4.0.0', '4.0.0-alpha.1')"
-            examples: ["4.0.0", "4.0.0-alpha.1"]
-          - type: integer
-            const: 4
-            description: "Legacy integer format for backwards compatibility"
-            examples: [4]
+        $ref: "#/definitions/FormatVersion"
       name:
         $ref: "#/definitions/Name"
         description: "The canonical name of the type or value (matches filename without suffix)"
@@ -127,7 +129,7 @@ definitions:
       Common header fields present in all granular definition files (*.type.json, *.value.json).
       The name field matches the filename (without the .type.json or .value.json suffix).
     examples:
-      - { "formatVersion": "4.0.0", "name": "user" }
+      - { "formatVersion": 4, "name": "user" }
       - { "formatVersion": 4, "name": "get-user-by-email" }
 
   # Type Definition File (*.type.json)
@@ -182,7 +184,7 @@ definitions:
       Type definition or specification file (*.type.json).
       
       Structure:
-      - formatVersion: Required, semver string or integer 4
+      - formatVersion: Required, shared v4 format version
       - name: Required, canonical name matching filename
       - doc: Optional, documentation (can be at top level or nested in def/spec)
       - def: Required if this is a definition (implementation), contains TypeDefinition variant
@@ -190,8 +192,8 @@ definitions:
       
       Exactly one of 'def' or 'spec' must be present.
     examples:
-      - { "formatVersion": "4.0.0", "name": "user", "doc": "Represents a user", "def": { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": { "Record": { "fields": { "email": "morphir/sdk:string#string" } } } } } }
-      - { "formatVersion": "4.0.0", "name": "int", "spec": { "doc": "Arbitrary precision integer", "OpaqueTypeSpecification": {} } }
+      - { "formatVersion": 4, "name": "user", "doc": "Represents a user", "def": { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": { "Record": { "fields": { "email": "morphir/sdk:string#string" } } } } } }
+      - { "formatVersion": 4, "name": "int", "spec": { "doc": "Arbitrary precision integer", "OpaqueTypeSpecification": {} } }
 
   # Value Definition File (*.value.json)
   ValueDefinitionFile:
@@ -245,7 +247,7 @@ definitions:
       Value definition or specification file (*.value.json).
       
       Structure:
-      - formatVersion: Required, semver string or integer 4
+      - formatVersion: Required, shared v4 format version
       - name: Required, canonical name matching filename
       - doc: Optional, documentation (can be at top level or nested in def/spec)
       - def: Required if this is a definition (implementation), contains ValueDefinition variant
@@ -253,8 +255,8 @@ definitions:
       
       Exactly one of 'def' or 'spec' must be present.
     examples:
-      - { "formatVersion": "4.0.0", "name": "get-user-by-email", "def": { "access": "Public", "ExpressionBody": { "inputTypes": { "email": "morphir/sdk:string#string" }, "outputType": "morphir/sdk:maybe#maybe", "body": { "Variable": { "attributes": {}, "name": "email" } } } } }
-      - { "formatVersion": "4.0.0", "name": "add", "spec": { "doc": "Add two integers", "inputs": { "a": "morphir/sdk:basics#int", "b": "morphir/sdk:basics#int" }, "output": "morphir/sdk:basics#int" } }
+      - { "formatVersion": 4, "name": "get-user-by-email", "def": { "access": "Public", "ExpressionBody": { "inputTypes": { "email": "morphir/sdk:string#string" }, "outputType": "morphir/sdk:maybe#maybe", "body": { "Variable": { "attributes": {}, "name": "email" } } } } }
+      - { "formatVersion": 4, "name": "add", "spec": { "doc": "Add two integers", "inputs": { "a": "morphir/sdk:basics#int", "b": "morphir/sdk:basics#int" }, "output": "morphir/sdk:basics#int" } }
 
   # Module Manifest File (module.json)
   ModuleManifestFile:
@@ -262,15 +264,7 @@ definitions:
     required: ["formatVersion"]
     properties:
       formatVersion:
-        oneOf:
-          - type: string
-            pattern: "^4\\.0\\.0(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$"
-            description: "Semantic version string"
-            examples: ["4.0.0"]
-          - type: integer
-            const: 4
-            description: "Legacy integer format"
-            examples: [4]
+        $ref: "#/definitions/FormatVersion"
       path:
         $ref: "#/definitions/ModuleName"
         description: "Module path (canonical format, e.g., 'my-org/domain')"
@@ -346,10 +340,10 @@ definitions:
       The 'path' field is preferred; 'module' is accepted for backwards compatibility.
       Types and values can be arrays (manifest) or objects (inline), but not mixed.
     examples:
-      - { "formatVersion": "4.0.0", "path": "my-org/domain", "types": ["user", "order"], "values": ["create-order"] }
-      - { "formatVersion": "4.0.0", "module": "main/domain", "doc": "Domain model", "types": { "user": { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/sdk:string#string" } } }, "values": {} }
-      - { "formatVersion": "4.0.0", "path": "my-org/domain", "doc": "Domain model", "types": ["user", "order"], "values": ["create-order"] }
-      - { "formatVersion": "4.0.0", "module": "my-org/domain", "doc": "Domain model (legacy field)", "types": ["user"], "values": [] }
+      - { "formatVersion": 4, "path": "my-org/domain", "types": ["user", "order"], "values": ["create-order"] }
+      - { "formatVersion": 4, "module": "main/domain", "doc": "Domain model", "types": { "user": { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/sdk:string#string" } } }, "values": {} }
+      - { "formatVersion": 4, "path": "my-org/domain", "doc": "Domain model", "types": ["user", "order"], "values": ["create-order"] }
+      - { "formatVersion": 4, "module": "my-org/domain", "doc": "Domain model (legacy field)", "types": ["user"], "values": [] }
 
   # Distribution Manifest File (manifest.json)
   DistributionManifestFile:
@@ -357,15 +351,7 @@ definitions:
     required: ["formatVersion", "distribution", "package"]
     properties:
       formatVersion:
-        oneOf:
-          - type: string
-            pattern: "^4\\.0\\.0(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$"
-            description: "Semantic version string"
-            examples: ["4.0.0"]
-          - type: integer
-            const: 4
-            description: "Legacy integer format"
-            examples: [4]
+        $ref: "#/definitions/FormatVersion"
       distribution:
         enum: ["Library", "Specs", "Application"]
         description: "Distribution type"
@@ -406,6 +392,6 @@ definitions:
       - layout: Optional, distribution layout (defaults to VfsMode for document tree)
       - entryPoints: Optional, entry points (required for Application distributions)
     examples:
-      - { "formatVersion": "4.0.0", "distribution": "Library", "package": "my-org/my-project", "version": "1.2.0", "created": "2026-01-15T12:00:00Z", "layout": "VfsMode" }
-      - { "formatVersion": "4.0.0", "distribution": "Specs", "package": "morphir/sdk", "version": "3.0.0", "created": "2026-01-15T12:00:00Z", "layout": "VfsMode" }
-      - { "formatVersion": "4.0.0", "distribution": "Application", "package": "my-org/my-cli", "version": "2.0.0", "created": "2026-01-15T12:00:00Z", "entryPoints": { "startup": { "target": "my-org/my-cli:main#run", "kind": "main" } } }
+      - { "formatVersion": 4, "distribution": "Library", "package": "my-org/my-project", "version": "1.2.0", "created": "2026-01-15T12:00:00Z", "layout": "VfsMode" }
+      - { "formatVersion": 4, "distribution": "Specs", "package": "morphir/sdk", "version": "3.0.0", "created": "2026-01-15T12:00:00Z", "layout": "VfsMode" }
+      - { "formatVersion": 4, "distribution": "Application", "package": "my-org/my-cli", "version": "2.0.0", "created": "2026-01-15T12:00:00Z", "entryPoints": { "startup": { "target": "my-org/my-cli:main#run", "kind": "main" } } }

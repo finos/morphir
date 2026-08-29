@@ -45,7 +45,7 @@ The corresponding JSON tree replaces each `.yaml` extension with `.json`.
 **Purpose**: Distribution-level metadata and configuration
 
 **Required Fields**:
-- `formatVersion`: IR format version (`"4.0.0"` or `4`)
+- [`formatVersion`](#formatversion): IR format version
 - `distribution`: Distribution type (`"Library"`, `"Specs"`, or `"Application"`)
 - `package`: Package name (canonical path format, e.g., `"my-org/my-project"`)
 
@@ -60,7 +60,7 @@ The corresponding JSON tree replaces each `.yaml` extension with `.json`.
 **Example (Library)**:
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "distribution": "Library",
   "package": "my-org/my-project",
   "version": "1.2.0",
@@ -72,7 +72,7 @@ The corresponding JSON tree replaces each `.yaml` extension with `.json`.
 **Example (Specs)**:
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "distribution": "Specs",
   "package": "morphir/sdk",
   "version": "3.0.0",
@@ -84,7 +84,7 @@ The corresponding JSON tree replaces each `.yaml` extension with `.json`.
 **Example (Application)**:
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "distribution": "Application",
   "package": "my-org/my-cli",
   "version": "2.0.0",
@@ -111,7 +111,7 @@ The corresponding JSON tree replaces each `.yaml` extension with `.json`.
 **Purpose**: Module metadata and optional inline definitions
 
 **Required Fields**:
-- `formatVersion`: IR format version (`"4.0.0"` or `4`)
+- [`formatVersion`](#formatversion): IR format version
 - `path` or `module`: Module path (canonical format, e.g., `"my-org/domain"`)
 
 > **Note on `path` vs `module` fields:**
@@ -130,7 +130,7 @@ Lists type/value names; definitions in separate files:
 
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "path": "my-org/domain",
   "doc": "Domain model for main application",
   "types": ["user", "user-(id)", "order"],
@@ -141,7 +141,7 @@ Lists type/value names; definitions in separate files:
 **Example with legacy `module` field** (equivalent to `path`):
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "module": "my-org/domain",
   "doc": "Domain model for main application",
   "types": ["user", "order"],
@@ -154,7 +154,7 @@ Contains definitions directly:
 
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "path": "my-org/domain",
   "doc": "Domain model for main application",
   "types": {
@@ -194,7 +194,7 @@ Contains definitions directly:
 **Purpose**: Individual type definition or specification
 
 **Required Fields**:
-- `formatVersion`: IR format version (`"4.0.0"` or `4`)
+- [`formatVersion`](#formatversion): IR format version
 - `name`: Type name (canonical format, must match filename without `.type.json` suffix)
 - Exactly one of:
   - `def`: Type definition (implementation) - contains `TypeAliasDefinition`, `CustomTypeDefinition`, or `IncompleteTypeDefinition`
@@ -213,7 +213,7 @@ Contains definitions directly:
 **Example (Definition)**:
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "name": "user",
   "doc": "Represents a user in the system",
   "def": {
@@ -241,7 +241,7 @@ Contains definitions directly:
 **Example (Specification)**:
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "name": "int",
   "spec": {
     "doc": "Arbitrary precision integer",
@@ -253,7 +253,7 @@ Contains definitions directly:
 **Example (Custom Type Definition)**:
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "name": "order-status",
   "def": {
     "access": "Public",
@@ -280,7 +280,7 @@ Contains definitions directly:
 **Purpose**: Individual value definition or specification
 
 **Required Fields**:
-- `formatVersion`: IR format version (`"4.0.0"` or `4`)
+- [`formatVersion`](#formatversion): IR format version
 - `name`: Value name (canonical format, must match filename without `.value.json` suffix)
 - Exactly one of:
   - `def`: Value definition (implementation) - contains wrapper object with `ExpressionBody`, `NativeBody`, `ExternalBody`, or `IncompleteBody`
@@ -299,7 +299,7 @@ Contains definitions directly:
 **Example (Definition with ExpressionBody)**:
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "name": "get-user-by-email",
   "doc": "Retrieve a user by email address",
   "def": {
@@ -344,7 +344,7 @@ Contains definitions directly:
 **Example (Definition with NativeBody)**:
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "name": "add",
   "def": {
     "access": "Public",
@@ -365,7 +365,7 @@ Contains definitions directly:
 **Example (Specification)**:
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "name": "validate-email",
   "spec": {
     "doc": [
@@ -427,18 +427,22 @@ Modules can be nested by creating subdirectories:
 
 ### formatVersion
 
-**Type**: String (semver) or Integer  
-**Required**: Yes  
-**Description**: IR format version
+`formatVersion` follows the [shared v3-and-later contract](../../format-version.md).
 
-**Formats**:
-- Semantic version: `"4.0.0"`, `"4.0.0-alpha.1"`, `"4.0.0+20240123"`
-- Legacy integer: `4`
+**Type**: Integer `4` or an exact v4 release string
+**Required**: Yes
+**Description**: Integer `4` is the canonical v4.0.0 baseline. Exact strings such as
+`"4.1.0"` identify later v4 revisions. The noncanonical baseline string `"4.0.0"`
+is also accepted. Prerelease and build metadata are rejected.
 
-**Examples**:
+**Canonical baseline**:
 ```json
-"formatVersion": "4.0.0"
 "formatVersion": 4
+```
+
+**Accepted exact later revision**:
+```json
+"formatVersion": "4.1.0"
 ```
 
 ### name
@@ -590,7 +594,7 @@ When type/value files are part of a PackageSpecification:
 **user.type.json** (with incomplete definition):
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "name": "user",
   "def": {
     "access": "Public",
@@ -611,7 +615,7 @@ When type/value files are part of a PackageSpecification:
 **external-api.value.json**:
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "name": "call-external-api",
   "def": {
     "access": "Public",
@@ -636,7 +640,7 @@ When type/value files are part of a PackageSpecification:
 **calculate-total.value.json**:
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "name": "calculate-total",
   "doc": [
     "Calculate the total price of an order including tax.",
@@ -752,7 +756,7 @@ When type/value files are part of a PackageSpecification:
 **result.type.json**:
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "name": "result",
   "spec": {
     "doc": "Result type representing success or error",
@@ -774,7 +778,7 @@ When type/value files are part of a PackageSpecification:
 **module.json** (manifest style with some inline definitions):
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "path": "my-org/domain",
   "doc": "Domain model",
   "types": ["user", "order"],
@@ -817,7 +821,7 @@ When type/value files are part of a PackageSpecification:
 **module.json**:
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "path": "my-org/domain",
   "doc": "Domain model for the application",
   "types": ["user", "user-(id)", "order"],
@@ -828,7 +832,7 @@ When type/value files are part of a PackageSpecification:
 **user.type.json**:
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "name": "user",
   "doc": "Represents a user in the system",
   "def": {
@@ -852,7 +856,7 @@ When type/value files are part of a PackageSpecification:
 **user-(id).type.json**:
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "name": "user-(id)",
   "def": {
     "access": "Public",
@@ -874,7 +878,7 @@ When type/value files are part of a PackageSpecification:
 **get-user-by-email.value.json**:
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "name": "get-user-by-email",
   "doc": "Retrieve a user by their email address",
   "def": {
@@ -993,7 +997,7 @@ When type/value files are part of a PackageSpecification:
 ### Distribution Manifest Validation
 
 **Required for all distributions**:
-- `formatVersion`: Must be `"4.0.0"` or `4`
+- `formatVersion`: Must satisfy the [shared v3-and-later contract](../../format-version.md)
 - `distribution`: Must be `"Library"`, `"Specs"`, or `"Application"`
 - `package`: Must be valid PackageName (canonical format)
 
@@ -1031,7 +1035,7 @@ When type/value files are part of a PackageSpecification:
 ```json
 // ❌ Missing 'name' field
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "def": { ... }
 }
 ```
@@ -1040,7 +1044,7 @@ When type/value files are part of a PackageSpecification:
 ```json
 // ❌ File is 'user.type.json' but name is 'order'
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "name": "order",
   "def": { ... }
 }
@@ -1050,7 +1054,7 @@ When type/value files are part of a PackageSpecification:
 ```json
 // ❌ Cannot have both def and spec
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "name": "user",
   "def": { ... },
   "spec": { ... }
@@ -1061,7 +1065,7 @@ When type/value files are part of a PackageSpecification:
 ```json
 // ❌ Missing 'access' in def (required for PackageDefinition)
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "name": "user",
   "def": {
     "TypeAliasDefinition": { ... }
@@ -1073,7 +1077,7 @@ When type/value files are part of a PackageSpecification:
 ```json
 // ❌ Application distribution missing entryPoints
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "distribution": "Application",
   "package": "my-org/my-cli"
   // Missing entryPoints!
@@ -1110,7 +1114,7 @@ Package-level metadata can be stored in additional files:
 **Example**:
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "package": "my-org/my-project",
   "version": "1.2.0",
   "description": "My project description",
@@ -1134,7 +1138,7 @@ Module-level metadata is stored in `module.json`. Additional metadata can be inc
 **Example with extended metadata**:
 ```json
 {
-  "formatVersion": "4.0.0",
+  "formatVersion": 4,
   "path": "my-org/domain",
   "doc": "Domain model",
   "types": ["user", "order"],
