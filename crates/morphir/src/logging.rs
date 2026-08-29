@@ -4,7 +4,7 @@
 //! - Console logs go to stderr (stdout is reserved for program output)
 //! - File logs go to `MORPHIR_HOME/logs/cli/`
 //! - Structured JSON format for file logs
-//! - Configurable via environment variables and morphir.toml
+//! - Configurable at startup via environment variables
 //!
 //! # Usage
 //!
@@ -22,11 +22,14 @@ use retention::{
 use std::{
     ffi::OsStr,
     fs, io,
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::{Duration, SystemTime},
 };
 use tracing::Level;
-use tracing_appender::non_blocking::WorkerGuard;
+use tracing_appender::{
+    non_blocking::WorkerGuard,
+    rolling::{InitError, RollingFileAppender, Rotation},
+};
 use tracing_subscriber::{
     EnvFilter, Layer,
     fmt::{self, format::FmtSpan},
@@ -80,6 +83,16 @@ fn session_log_location(
         ),
         session_id,
     }
+}
+
+fn create_file_appender(
+    directory: &Path,
+    file_name: &str,
+) -> Result<RollingFileAppender, InitError> {
+    RollingFileAppender::builder()
+        .rotation(Rotation::NEVER)
+        .filename_prefix(file_name)
+        .build(directory)
 }
 
 /// Configuration for the logging system.
@@ -226,7 +239,20 @@ pub fn init(config: LogConfig) -> Option<LogGuard> {
         return None;
     }
 
-    let file_appender = tracing_appender::rolling::never(&session_directory, &session.file_name);
+    let file_appender = match create_file_appender(&session_directory, &session.file_name) {
+        Ok(appender) => appender,
+        Err(error) => {
+            eprintln!("Warning: Failed to create CLI log file: {error}");
+            drop(marker_file);
+            if let Err(error) = fs::remove_file(&active_marker)
+                && error.kind() != io::ErrorKind::NotFound
+            {
+                eprintln!("Warning: Failed to remove CLI log session marker: {error}");
+            }
+            tracing_subscriber::registry().with(console_layer).init();
+            return None;
+        }
+    };
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
     // Build the file layer
@@ -406,5 +432,14 @@ mod tests {
         assert!(location.file_name.starts_with("20260829T140312.456Z-42-"));
         assert!(location.file_name.ends_with(".jsonl"));
         assert!(!location.session_id.is_empty());
+    }
+
+    #[test]
+    fn file_appender_creation_reports_an_unusable_session_path() {
+        let temporary = tempfile::tempdir().unwrap();
+        let file_name = "session.jsonl";
+        std::fs::create_dir(temporary.path().join(file_name)).unwrap();
+
+        assert!(create_file_appender(temporary.path(), file_name).is_err());
     }
 }

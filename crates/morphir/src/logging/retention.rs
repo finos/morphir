@@ -87,17 +87,48 @@ fn is_managed_session_log(path: &Path) -> bool {
     let Some(timestamp) = parts.next() else {
         return false;
     };
-    let Some(process_id) = parts.next() else {
+    let Some(process_id_text) = parts.next() else {
         return false;
     };
     let Some(session_id) = parts.next() else {
         return false;
     };
+    let Some((session_process_id, session_timestamp_nanos)) = session_id.split_once('-') else {
+        return false;
+    };
+    let Ok(process_id) = process_id_text.parse::<u32>() else {
+        return false;
+    };
+    let lower_hex = |value: &str| {
+        !value.is_empty()
+            && value
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    };
+    if !lower_hex(session_process_id)
+        || !lower_hex(session_timestamp_nanos)
+        || process_id_text != process_id.to_string()
+        || session_process_id != format!("{process_id:x}")
+    {
+        return false;
+    }
+    let Ok(timestamp_nanos) = u64::from_str_radix(session_timestamp_nanos, 16) else {
+        return false;
+    };
+    let Ok(timestamp_nanos) = i64::try_from(timestamp_nanos) else {
+        return false;
+    };
+    if session_timestamp_nanos != format!("{timestamp_nanos:x}") {
+        return false;
+    }
+    let session_time = chrono::DateTime::<chrono::Utc>::from_timestamp_nanos(timestamp_nanos);
+    let session_timestamp = session_time.format("%Y%m%dT%H%M%S%.3fZ").to_string();
+    let session_directory = session_time.format("%Y-%m-%d").to_string();
 
     chrono::NaiveDate::parse_from_str(directory, "%Y-%m-%d").is_ok()
         && chrono::NaiveDateTime::parse_from_str(timestamp, "%Y%m%dT%H%M%S%.3fZ").is_ok()
-        && process_id.parse::<u32>().is_ok()
-        && !session_id.is_empty()
+        && directory == session_directory
+        && timestamp == session_timestamp
 }
 
 fn collect_log_entries(log_dir: &Path) -> (Vec<LogEntry>, u64) {
@@ -233,6 +264,43 @@ fn remove_log_candidates(
 mod tests {
     use super::*;
 
+    fn managed_log_path(directory: &Path, timestamp: &str, process_id: u32) -> PathBuf {
+        let timestamp = chrono::DateTime::parse_from_rfc3339(timestamp)
+            .unwrap()
+            .to_utc();
+        let timestamp_nanos = timestamp.timestamp_nanos_opt().unwrap() as u64;
+        directory.join(format!(
+            "{}-{process_id}-{process_id:x}-{timestamp_nanos:x}.jsonl",
+            timestamp.format("%Y%m%dT%H%M%S%.3fZ")
+        ))
+    }
+
+    #[test]
+    fn recognizes_only_exact_generated_session_names() {
+        let timestamp = chrono::DateTime::parse_from_rfc3339("2026-08-29T14:03:12.456Z")
+            .unwrap()
+            .to_utc();
+        let timestamp_nanos = timestamp.timestamp_nanos_opt().unwrap() as u64;
+        let directory = PathBuf::from("2026-08-29");
+        let valid = directory.join(format!(
+            "20260829T140312.456Z-42-2a-{timestamp_nanos:x}.jsonl"
+        ));
+
+        assert!(is_managed_session_log(&valid));
+        assert!(!is_managed_session_log(
+            &directory.join("20260829T140312.456Z-42-backup.jsonl")
+        ));
+        assert!(!is_managed_session_log(&directory.join(format!(
+            "20260829T140312.456Z-42-2b-{timestamp_nanos:x}.jsonl"
+        ))));
+        assert!(!is_managed_session_log(
+            &directory.join("20260829T140312.456Z-42-2a-1.jsonl")
+        ));
+        assert!(!is_managed_session_log(&PathBuf::from("2026-08-30").join(
+            format!("20260829T140312.456Z-42-2a-{timestamp_nanos:x}.jsonl")
+        )));
+    }
+
     #[test]
     fn removes_expired_and_oldest_completed_sessions() {
         let now = SystemTime::UNIX_EPOCH + Duration::from_secs(30 * 24 * 60 * 60);
@@ -274,8 +342,8 @@ mod tests {
         let daily = temporary.path().join("2026-08-29");
         fs::create_dir(&daily).unwrap();
 
-        let completed = daily.join("20260829T140312.456Z-42-2a-a.jsonl");
-        let active = daily.join("20260829T140313.456Z-43-2b-b.jsonl");
+        let completed = managed_log_path(&daily, "2026-08-29T14:03:12.456Z", 42);
+        let active = managed_log_path(&daily, "2026-08-29T14:03:13.456Z", 43);
         let unknown = daily.join("notes.jsonl");
         fs::write(&completed, "completed").unwrap();
         fs::write(&active, "active").unwrap();
@@ -299,8 +367,8 @@ mod tests {
         let daily = temporary.path().join("2026-08-29");
         fs::create_dir(&daily).unwrap();
 
-        let protected = daily.join("20260829T140312.456Z-42-2a-a.jsonl");
-        let completed = daily.join("20260829T140313.456Z-43-2b-b.jsonl");
+        let protected = managed_log_path(&daily, "2026-08-29T14:03:12.456Z", 42);
+        let completed = managed_log_path(&daily, "2026-08-29T14:03:13.456Z", 43);
         fs::write(&protected, "protected").unwrap();
         fs::write(&completed, "completed").unwrap();
         fs::create_dir(active_marker_path(&protected)).unwrap();
@@ -360,7 +428,7 @@ mod tests {
         fs::create_dir(&blocked).unwrap();
         fs::create_dir(&daily).unwrap();
         fs::set_permissions(&blocked, fs::Permissions::from_mode(0o000)).unwrap();
-        let completed = daily.join("20260829T140313.456Z-43-2b-b.jsonl");
+        let completed = managed_log_path(&daily, "2026-08-29T14:03:13.456Z", 43);
         fs::write(&completed, "completed").unwrap();
 
         let result = enforce_log_retention(temporary.path(), SystemTime::now(), Duration::MAX, 0);
