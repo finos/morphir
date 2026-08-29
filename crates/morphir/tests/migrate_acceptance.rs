@@ -8,8 +8,14 @@ fn greeting_v3() -> PathBuf {
         .join("../../website/static/ir/examples/v3/greeting-example.json")
 }
 
-fn migrate(input: &Path, output: &Path, extra: &[&str]) -> Output {
+fn morphir_command() -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_morphir"));
+    command.env("MORPHIR_LOG_FILE", "false");
+    command
+}
+
+fn migrate(input: &Path, output: &Path, extra: &[&str]) -> Output {
+    let mut command = morphir_command();
     command.args([
         "ir",
         "migrate",
@@ -148,7 +154,7 @@ fn quoted_yaml_format_version_key_converts_to_json() {
 
 #[test]
 fn json_flag_without_output_emits_only_json_ir() {
-    let output = Command::new(env!("CARGO_BIN_EXE_morphir"))
+    let output = morphir_command()
         .args(["migrate", greeting_v3().to_str().unwrap(), "--json"])
         .output()
         .unwrap();
@@ -175,7 +181,7 @@ fn json_flag_with_output_reports_status_without_changing_artifact_format() {
 }
 
 #[test]
-fn malformed_yaml_reports_a_stable_codec_diagnostic() {
+fn duplicate_yaml_format_version_reports_the_canonical_diagnostic() {
     let temp = TempDir::new().unwrap();
     let input = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/migrate/yaml/rejected/duplicate-key.yaml");
@@ -184,7 +190,7 @@ fn malformed_yaml_reports_a_stable_codec_diagnostic() {
     let output = migrate(&input, &output_path, &[]);
 
     assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("morphir::ir::yaml::duplicate_key"));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("duplicate_format_version"));
     assert!(!output_path.exists());
 }
 

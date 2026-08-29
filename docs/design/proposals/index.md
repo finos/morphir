@@ -10,7 +10,9 @@ This section contains design proposals for new Morphir features and capabilities
 
 ## Status
 
-No active proposals at this time. Check back later or contribute a proposal.
+Active proposals:
+
+- [CLI-managed Desktop acquisition and launch](./desktop-acquisition-and-launch.md)
 
 ## Contributing
 

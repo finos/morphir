@@ -118,6 +118,7 @@ fn publication_error(path: &Path, error: impl std::fmt::Display) -> TransportDia
 
 #[cfg(test)]
 mod tests {
+    #[cfg(unix)]
     use super::*;
 
     #[cfg(unix)]

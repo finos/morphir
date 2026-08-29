@@ -57,6 +57,7 @@ impl KbWorld {
         command
             .args(&arguments)
             .current_dir(self.root())
+            .env("MORPHIR_LOG_FILE", "false")
             .env("NO_COLOR", "1");
         let output = match self.stdin.take() {
             None => command.output().expect("failed to run morphir CLI"),

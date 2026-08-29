@@ -97,6 +97,7 @@ fn run_elm_compile_with_output_flag(
             output_flag,
         ])
         .current_dir(directory)
+        .env("MORPHIR_HOME", directory.join(".morphir-home"))
         .output()
         .expect("run morphir compile");
 

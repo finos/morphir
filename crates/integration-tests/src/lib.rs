@@ -188,6 +188,7 @@ impl CliTestContext {
 
         cmd.args(args);
         cmd.current_dir(&self.project_root);
+        cmd.env("MORPHIR_HOME", self.project_root.join(".morphir-home"));
         cmd.env("RUST_BACKTRACE", "1");
         cmd.env("RUST_LOG", "error"); // Reduce noise in test output
 
