@@ -22,7 +22,7 @@ cmd compile display_order=2 args_override_self=#false help="Compile source code 
     flag "-l --language" help="Source language (e.g., gleam, elm)" {
         arg <LANGUAGE>
     }
-    flag --extension help="Extension provider id for single-file Elm compilation. Defaults to morphir-{language}" {
+    flag --extension help="Extension provider id for single-file Elm compilation. Defaults to morphir- followed by the language name" {
         arg <EXTENSION>
     }
     flag "-i --input" help="Input source directory or file. An installed or configured Elm process accepts one .elm file" {

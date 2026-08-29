@@ -50,7 +50,7 @@ enum Commands {
         /// Source language (e.g., gleam, elm)
         #[arg(short, long)]
         language: Option<String>,
-        /// Extension provider id for single-file Elm compilation. Defaults to morphir-{language}.
+        /// Extension provider id for single-file Elm compilation. Defaults to morphir- followed by the language name.
         #[arg(long)]
         extension: Option<String>,
         /// Input source directory or file. An installed or configured Elm process accepts one .elm file.
