@@ -89,7 +89,20 @@ fn compile_help_documents_explicit_extension_selection() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("--extension <EXTENSION>"), "{stdout}");
     assert!(stdout.contains("single-file Elm compilation"), "{stdout}");
-    assert!(stdout.contains("morphir-{language}"), "{stdout}");
+    // Clap wraps help to the terminal width, so compare against text with its
+    // whitespace collapsed rather than against the wrapped lines.
+    let flowed = stdout.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(
+        flowed.contains("Defaults to morphir- followed by the language name"),
+        "{stdout}"
+    );
+    // Deliberately not `morphir-{language}`. Help text is copied verbatim into
+    // docs/cli/compile.md, which Docusaurus parses as MDX, where a brace opens a
+    // JSX expression and the page fails to render.
+    assert!(
+        !flowed.contains("morphir-{"),
+        "braces in prose help become a JSX expression in the generated docs: {stdout}"
+    );
 }
 
 #[test]
