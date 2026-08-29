@@ -5,7 +5,6 @@ use std::{
     path::{Path, PathBuf},
     time::{Duration, SystemTime},
 };
-use walkdir::WalkDir;
 
 pub(super) const DEFAULT_LOG_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 pub(super) const DEFAULT_MAX_LOG_BYTES: u64 = 100 * 1024 * 1024;
@@ -140,46 +139,62 @@ fn is_managed_date_directory(path: &Path) -> bool {
 }
 
 fn collect_log_entries(log_dir: &Path) -> (Vec<LogEntry>, u64) {
-    if !log_dir.exists() {
-        return (Vec::new(), 0);
+    let Ok(directories) = fs::read_dir(log_dir) else {
+        return (Vec::new(), u64::from(log_dir.exists()));
+    };
+
+    directories.fold((Vec::new(), 0), |state, directory| {
+        let (entries, skipped) = state;
+        let Ok(directory) = directory else {
+            return (entries, skipped + 1);
+        };
+        let path = directory.path();
+        let Ok(file_type) = directory.file_type() else {
+            return (entries, skipped + 1);
+        };
+        if !file_type.is_dir() || !is_managed_date_directory(&path) {
+            return (entries, skipped);
+        }
+        let Ok(children) = fs::read_dir(path) else {
+            return (entries, skipped + 1);
+        };
+
+        children.fold((entries, skipped), collect_log_entry)
+    })
+}
+
+fn collect_log_entry(
+    (mut entries, mut skipped): (Vec<LogEntry>, u64),
+    entry: io::Result<fs::DirEntry>,
+) -> (Vec<LogEntry>, u64) {
+    let Ok(entry) = entry else {
+        return (entries, skipped + 1);
+    };
+    let Ok(file_type) = entry.file_type() else {
+        return (entries, skipped + 1);
+    };
+    let path = entry.path();
+    if !file_type.is_file() || !is_managed_session_log(&path) {
+        return (entries, skipped);
     }
 
-    WalkDir::new(log_dir)
-        .min_depth(2)
-        .max_depth(2)
-        .follow_links(false)
-        .into_iter()
-        .filter_entry(|entry| {
-            entry.depth() != 1
-                || (entry.file_type().is_dir() && is_managed_date_directory(entry.path()))
-        })
-        .fold((Vec::new(), 0), |(mut entries, mut skipped), entry| {
-            let Ok(entry) = entry else {
-                return (entries, skipped + 1);
-            };
-            if !entry.file_type().is_file() || !is_managed_session_log(entry.path()) {
-                return (entries, skipped);
-            }
-
-            let Ok(metadata) = entry.metadata() else {
-                return (entries, skipped + 1);
-            };
-            let Ok(modified) = metadata.modified() else {
-                return (entries, skipped + 1);
-            };
-            let path = entry.into_path();
-            let state = session_state(&path);
-            if state == SessionState::Unavailable {
-                skipped += 1;
-            }
-            entries.push(LogEntry {
-                modified,
-                size: metadata.len(),
-                active: state != SessionState::Completed,
-                path,
-            });
-            (entries, skipped)
-        })
+    let Ok(metadata) = entry.metadata() else {
+        return (entries, skipped + 1);
+    };
+    let Ok(modified) = metadata.modified() else {
+        return (entries, skipped + 1);
+    };
+    let state = session_state(&path);
+    if state == SessionState::Unavailable {
+        skipped += 1;
+    }
+    entries.push(LogEntry {
+        modified,
+        size: metadata.len(),
+        active: state != SessionState::Completed,
+        path,
+    });
+    (entries, skipped)
 }
 
 fn plan_log_retention(
