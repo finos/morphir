@@ -28,28 +28,28 @@ pub(super) fn active_marker_path(log_path: &Path) -> PathBuf {
     log_path.with_extension("jsonl.active")
 }
 
-fn session_is_active(log_path: &Path) -> io::Result<bool> {
+fn session_is_active(log_path: &Path) -> bool {
     let marker = active_marker_path(log_path);
     let marker_file = match fs::OpenOptions::new().read(true).write(true).open(&marker) {
         Ok(file) => file,
-        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(false),
-        Err(error) => return Err(error),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return false,
+        Err(_) => return true,
     };
 
     match marker_file.try_lock_exclusive() {
         Ok(()) => {
-            fs2::FileExt::unlock(&marker_file)?;
+            if fs2::FileExt::unlock(&marker_file).is_err() {
+                return true;
+            }
             drop(marker_file);
             match fs::remove_file(marker) {
-                Ok(()) => Ok(false),
-                Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
-                Err(error) => Err(error),
+                Ok(()) => false,
+                Err(error) if error.kind() == io::ErrorKind::NotFound => false,
+                Err(_) => true,
             }
         }
-        Err(error) if error.raw_os_error() == fs2::lock_contended_error().raw_os_error() => {
-            Ok(true)
-        }
-        Err(error) => Err(error),
+        Err(error) if error.raw_os_error() == fs2::lock_contended_error().raw_os_error() => true,
+        Err(_) => true,
     }
 }
 
@@ -105,7 +105,7 @@ fn collect_log_entries(log_dir: &Path) -> io::Result<Vec<LogEntry>> {
             Ok(Some(LogEntry {
                 modified: metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH),
                 size: metadata.len(),
-                active: session_is_active(&path)?,
+                active: session_is_active(&path),
                 path,
             }))
         })
@@ -164,7 +164,7 @@ pub(super) fn enforce_log_retention(
     selected
         .into_iter()
         .try_fold(RetentionResult::default(), |mut result, path| {
-            if session_is_active(&path)? {
+            if session_is_active(&path) {
                 return Ok(result);
             }
 
@@ -236,5 +236,25 @@ mod tests {
         assert!(!completed.exists());
         assert!(active.exists());
         assert!(unknown.exists());
+    }
+
+    #[test]
+    fn protects_unreadable_markers_without_stopping_other_cleanup() {
+        let temporary = tempfile::tempdir().unwrap();
+        let daily = temporary.path().join("2026-08-29");
+        fs::create_dir(&daily).unwrap();
+
+        let protected = daily.join("20260829T140312.456Z-42-2a-a.jsonl");
+        let completed = daily.join("20260829T140313.456Z-43-2b-b.jsonl");
+        fs::write(&protected, "protected").unwrap();
+        fs::write(&completed, "completed").unwrap();
+        fs::create_dir(active_marker_path(&protected)).unwrap();
+
+        let result =
+            enforce_log_retention(temporary.path(), SystemTime::now(), Duration::MAX, 0).unwrap();
+
+        assert_eq!(result.removed_files, 1);
+        assert!(protected.exists());
+        assert!(!completed.exists());
     }
 }

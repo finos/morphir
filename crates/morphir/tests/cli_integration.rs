@@ -702,6 +702,8 @@ fn test_morphir_home_env_var_relocates_home_directory() {
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"))
         .args(["tool", "install", "example-tool"])
         .env("MORPHIR_HOME", &morphir_home)
+        .env_remove("MORPHIR_LOG_DIR")
+        .env_remove("MORPHIR_LOG_FILE")
         .current_dir(temp_dir.path())
         .output()
         .expect("failed to run morphir binary");
