@@ -90,8 +90,8 @@ class SelectReleaseAssetsTests(unittest.TestCase):
         self.assertEqual([name, f"{name}.sha256"], selected)
 
     def test_rejects_local_archive_with_incorrect_checksum(self) -> None:
-        name = "morphir-live-1.2.3.tar.gz"
-        self.write_asset(name, b"live artifact")
+        name = "morphir-1.2.3-x86_64-unknown-linux-gnu.tgz"
+        self.write_asset(name, b"cli artifact")
         (self.local / f"{name}.sha256").write_text(
             f"{'0' * 64}  {name}\n", encoding="utf-8"
         )

@@ -92,6 +92,6 @@ The executable is written to `target/release/morphir` (or `target\release\morphi
 | --- | --- | --- |
 | **morphir-elm** | [finos/morphir-elm](https://github.com/finos/morphir-elm) | Production Elm authoring, visualization, and mature backends |
 | **Morphir Go CLI** | [finos/morphir-go](https://github.com/finos/morphir-go) | Go-based CLI, WIT pipeline, Go code generation |
-| **Morphir Live** | [finos/morphir](https://github.com/finos/morphir) (`crates/morphir-live`) | Interactive IR visualization |
+| **Morphir UI** | [finos/morphir-ui](https://github.com/finos/morphir-ui) | User-interface development for Morphir |
 
 For stable production workflows today, continue using [morphir-elm](installation.md) unless your project specifically targets the Rust or Go CLIs.

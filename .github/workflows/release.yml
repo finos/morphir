@@ -44,53 +44,6 @@ jobs:
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-  package-live:
-    name: Package Morphir Live
-    runs-on: ubuntu-latest
-    needs: release-info
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.release-info.outputs.tag }}
-          fetch-depth: 0
-          submodules: recursive
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: morphir-live-release
-
-      - name: Install dioxus-cli
-        run: cargo install dioxus-cli --locked
-
-      - name: Build WASM release
-        working-directory: crates/morphir-live
-        run: dx build --release --package morphir-live
-
-      - name: Create release archive
-        shell: bash
-        run: |
-          ARCHIVE="morphir-live-${{ needs.release-info.outputs.version }}.tar.gz"
-          tar -C target/dx/morphir-live/release/web/public -czf "$ARCHIVE" .
-          shasum -a 256 "$ARCHIVE" > "$ARCHIVE.sha256"
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: morphir-live-wasm
-          path: |
-            morphir-live-*.tar.gz
-            morphir-live-*.tar.gz.sha256
-          if-no-files-found: error
-          overwrite: true
-          retention-days: 7
-
   package-cli:
     name: Package Morphir CLI (${{ matrix.target }})
     needs: release-info
@@ -174,7 +127,7 @@ jobs:
   publish-release:
     name: Publish GitHub release
     runs-on: ubuntu-latest
-    needs: [release-info, package-live, package-cli]
+    needs: [release-info, package-cli]
     permissions:
       contents: write
     env:
