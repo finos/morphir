@@ -4,7 +4,7 @@ This guide covers the development workflow for contributing to Morphir.
 
 ## Prerequisites
 
-- Rust 1.98.0 or later (for morphir-live development)
+- Rust 1.98.0 or later (for Morphir CLI development)
 - Node.js 24+ (for website development)
 - Git
 - Mise (task runner) - Install from https://mise.jdx.dev
@@ -37,15 +37,10 @@ mise run test
 
 ## Development Workflow
 
-### Working on morphir-live (Rust)
+### Working on the Morphir CLI (Rust)
 
 ```bash
-# Run in development mode with hot reload
-mise run dev
-
-# Or manually:
-cd crates/morphir-live
-dx serve
+cargo run --package morphir -- --help
 ```
 
 ### Working on the Website (Docusaurus)
@@ -87,13 +82,9 @@ mise run check
 ```
 morphir/
 ├── crates/
-│   └── morphir-live/     # Interactive Morphir visualization app
-│       ├── src/
-│       │   ├── main.rs
-│       │   ├── components/  # UI components
-│       │   ├── models.rs
-│       │   └── routes.rs
-│       └── Cargo.toml
+│   ├── morphir/          # Morphir CLI
+│   └── integration-tests/ # Cross-crate CLI integration tests
+├── ecosystem/            # Vendored Morphir implementation submodules
 ├── website/               # Docusaurus documentation site
 │   ├── docs/
 │   ├── src/
@@ -141,16 +132,14 @@ gh pr create
 ### Building for Release
 
 ```bash
-# Build optimized WASM for morphir-live
-cd crates/morphir-live
-dx build --release
+cargo build --locked --release --package morphir
 ```
 
 ### Adding Dependencies
 
 ```bash
 # Add to a specific crate
-cd crates/morphir-live
+cd crates/morphir
 cargo add some-crate
 
 # Add to workspace (shared)
@@ -165,20 +154,6 @@ mise run clean
 ```
 
 ## Troubleshooting
-
-### WASM Build Issues
-
-If you encounter WASM build issues:
-
-1. Ensure the WASM target is installed:
-   ```bash
-   rustup target add wasm32-unknown-unknown
-   ```
-
-2. Install dioxus-cli:
-   ```bash
-   cargo install dioxus-cli
-   ```
 
 ### Website Build Issues
 
@@ -204,6 +179,5 @@ If the website fails to build:
 
 ## Additional Resources
 
-- [Dioxus Documentation](https://dioxuslabs.com/docs)
 - [Morphir Documentation](https://morphir.finos.org)
 - [FINOS Community](https://finos.org)

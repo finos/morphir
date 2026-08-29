@@ -1,7 +1,7 @@
 
 [workspace]
 members = ["crates/*"]
-default-members = ["crates/morphir-live", "crates/morphir"]
+default-members = ["crates/morphir"]
 resolver = "3"
 
 [workspace.package]
@@ -36,9 +36,6 @@ tuirealm = "4"
 tui-realm-stdlib = "4"
 tui-realm-textarea = "4"
 
-# UI framework
-dioxus = { version = "0.7.3", features = ["web", "router"] }
-
 # Structured logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
@@ -52,9 +49,6 @@ stacker = "0.1"
 toml = "1.0.0"
 tempfile = "3"
 semver = "1"
-
-# WASM utilities
-gloo-timers = { version = "0.4", features = ["futures"] }
 
 [profile.release]
 opt-level = 3

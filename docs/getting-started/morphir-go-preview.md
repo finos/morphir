@@ -17,7 +17,7 @@ Morphir Go is **not** part of the finos/morphir umbrella tree. Development, inst
 
 | Repository | Role |
 | --- | --- |
-| **[finos/morphir](https://github.com/finos/morphir)** (this docs site) | Umbrella project: documentation, Rust CLI, Morphir Live, ecosystem submodules |
+| **[finos/morphir](https://github.com/finos/morphir)** (this docs site) | Umbrella project: documentation, Rust CLI, ecosystem submodules |
 | **[finos/morphir-go](https://github.com/finos/morphir-go)** | Go CLI, WIT pipeline, Go backends, Go libraries |
 
 Both repositories are FINOS projects. They can coexist in a workspace; choose the CLI that matches your language stack and feature needs.

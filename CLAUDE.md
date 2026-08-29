@@ -10,7 +10,6 @@ For complete development guidelines, coding standards, and contribution practice
 
 - **Documentation** — Docusaurus site (`website/`) and published docs (`docs/`)
 - **Morphir CLI** — Rust command-line tool (`crates/morphir`)
-- **Morphir Live** — Rust interactive visualization app (`crates/morphir-live`)
 - **Ecosystem integration** — Git submodules for language implementations (`ecosystem/`)
 
 This is **not** the Morphir Go repository. Go-based Morphir tooling lives in the sibling repo [finos/morphir-go](https://github.com/finos/morphir-go).
@@ -34,7 +33,7 @@ Only the human developer should be listed as the author/co-author. See [AGENTS.m
 
 ## Quick Reference
 
-- **Umbrella repo**: Docs, Rust CLI/Live, and ecosystem submodules — not a single-language implementation
+- **Umbrella repo**: Docs, Rust CLI, and ecosystem submodules — not a single-language implementation
 - **Functional Programming First**: This codebase follows functional programming principles
 - **TDD/BDD**: Write tests before implementation
 - **No AI Co-Authors**: See critical warning above - this breaks EasyCLA

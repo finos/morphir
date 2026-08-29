@@ -5,9 +5,6 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "release.yml"
-PAGES_WORKFLOW_PATH = (
-    REPO_ROOT / ".github" / "workflows" / "deploy-release-pages.yml"
-)
 CI_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 CARGO_TOML_PATH = REPO_ROOT / "crates" / "morphir" / "Cargo.toml"
 WORKSPACE_TOML_PATH = REPO_ROOT / "Cargo.toml"
@@ -32,10 +29,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
             if package["name"] in {"morphir", "morphir-live"}
         }
         self.assertEqual(
-            {
-                "morphir": "0.4.0-alpha.5",
-                "morphir-live": "0.4.0-alpha.5",
-            },
+            {"morphir": "0.4.0-alpha.5"},
             workspace_packages,
         )
 
@@ -91,22 +85,12 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("overwrite: true", self.workflow)
         self.assertIn("retention-days: 7", self.workflow)
 
-    def test_dioxus_cli_install_uses_published_lockfile(self) -> None:
-        self.assertIn("cargo install dioxus-cli --locked", self.workflow)
+    def test_release_pipeline_packages_only_the_cli(self) -> None:
+        self.assertNotIn("package-live:", self.workflow)
+        self.assertNotIn("dioxus-cli", self.workflow)
+        self.assertNotIn("morphir-live", self.workflow)
 
-    def test_dioxus_build_selects_package_in_workspace(self) -> None:
-        self.assertIn(
-            "dx build --release --package morphir-live",
-            self.workflow,
-        )
-
-    def test_live_archive_uses_dioxus_workspace_output(self) -> None:
-        self.assertIn(
-            "tar -C target/dx/morphir-live/release/web/public",
-            self.workflow,
-        )
-
-    def test_release_download_excludes_pages_artifact(self) -> None:
+    def test_release_download_selects_cli_artifacts(self) -> None:
         publish_job = self.workflow.split("  publish-release:\n", maxsplit=1)[1]
         self.assertIn("pattern: morphir-*", publish_job)
 
@@ -124,7 +108,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
     def test_workspace_version_files_trigger_release_validation(self) -> None:
         release_filter = self.ci_workflow.split("            release:\n", maxsplit=1)[1]
         release_filter = release_filter.split("\n\n", maxsplit=1)[0]
-        self.assertIn("- '.github/workflows/deploy-release-pages.yml'", release_filter)
+        self.assertNotIn("deploy-release-pages.yml", release_filter)
         self.assertIn("- 'Cargo.toml'", release_filter)
         self.assertIn("- 'Cargo.lock'", release_filter)
 
@@ -132,7 +116,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertRegex(
             self.workflow,
             r"publish-release:\n(?:.|\n)*?needs: "
-            r"\[release-info, package-live, package-cli\]",
+            r"\[release-info, package-cli\]",
         )
         self.assertIn("merge-multiple: true", self.workflow)
 
@@ -153,30 +137,12 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("--clobber", publish_job)
         self.assertNotIn("softprops/action-gh-release", publish_job)
 
-    def test_pages_deployment_runs_from_default_branch_after_release(self) -> None:
-        pages_workflow = PAGES_WORKFLOW_PATH.read_text(encoding="utf-8")
-
-        self.assertNotIn("\n  deploy-pages:\n", self.workflow)
-        self.assertIn("workflows: [Release]", pages_workflow)
-        self.assertIn("types: [completed]", pages_workflow)
-        self.assertIn("workflow_dispatch:", pages_workflow)
-        self.assertIn("run_id:", pages_workflow)
+    def test_ci_requires_only_the_cli_rust_job(self) -> None:
+        self.assertNotIn("\n  morphir-live:\n", self.ci_workflow)
         self.assertIn(
-            "github.event.workflow_run.conclusion == 'success'",
-            pages_workflow,
+            "needs: [changes, morphir-cli, docs, release-workflow]",
+            self.ci_workflow,
         )
-        self.assertIn(
-            "startsWith(github.event.workflow_run.head_branch, 'v')",
-            pages_workflow,
-        )
-        self.assertIn("name: morphir-live-wasm", pages_workflow)
-        self.assertIn("inputs.run_id || github.event.workflow_run.id", pages_workflow)
-        self.assertIn("github-token: ${{ secrets.GITHUB_TOKEN }}", pages_workflow)
-        self.assertIn(
-            "tar -xzf morphir-live-*.tar.gz -C pages-dist",
-            pages_workflow,
-        )
-        self.assertNotIn("dx build", pages_workflow)
 
 
 if __name__ == "__main__":

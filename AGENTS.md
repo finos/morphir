@@ -9,14 +9,13 @@ This document provides guidance for AI assistants and developers working on the 
 ### In this repository
 
 1. **Morphir Documentation Website** — Docusaurus-based documentation site (`website/`, `docs/`)
-2. **Morphir Live** — Rust-based interactive visualization and IR management application (`crates/morphir-live`)
-3. **Morphir CLI** — Rust command-line tool for working with Morphir IR (`crates/morphir`)
-4. **Ecosystem Integration** — Git submodules for ecosystem repos under `ecosystem/`
+2. **Morphir CLI** — Rust command-line tool for working with Morphir IR (`crates/morphir`)
+3. **Ecosystem Integration** — Git submodules for ecosystem repos under `ecosystem/`
 
 ### Ecosystem submodules (vendored under `ecosystem/`)
 
 - **[finos/morphir-elm](https://github.com/finos/morphir-elm)** — Reference Elm implementation; IR definition, compilers, visualization, backend processors
-- **[finos/morphir-rust](https://github.com/finos/morphir-rust)** — Rust libraries (`morphir-core`, `morphir-common`, etc.) used by the CLI and Morphir Live
+- **[finos/morphir-rust](https://github.com/finos/morphir-rust)** — Rust libraries (`morphir-core`, `morphir-common`, etc.) used by the CLI
 - **[finos/morphir-examples](https://github.com/finos/morphir-examples)** — Example Morphir projects
 - **[finos/morphir-moonbit](https://github.com/finos/morphir-moonbit)** — MoonBit implementation of Morphir tooling
 - **[finos/morphir-python](https://github.com/finos/morphir-python)** — Python implementation of Morphir tooling
@@ -76,7 +75,6 @@ The Morphir IR specification and JSON schemas are available in the morphir-dotne
 
 ### Key Dependencies
 
-- **dioxus** - Cross-platform UI framework (web, desktop, mobile)
 - **clap** - Command-line argument parsing with derive macros
 - **miette** - Fancy diagnostic error reporting
 - **tracing** - Structured, async-aware logging and diagnostics
@@ -96,7 +94,7 @@ The Morphir IR specification and JSON schemas are available in the morphir-dotne
 use clap::Parser;
 
 #[derive(Parser)]
-#[command(name = "morphir-live")]
+#[command(name = "morphir")]
 struct Cli {
     #[arg(short, long)]
     verbose: bool,
@@ -132,8 +130,7 @@ fn process_ir(path: &str) -> Result<()> {
 ```
 morphir/
 ├── crates/
-│   ├── morphir/          # Morphir CLI tool
-│   └── morphir-live/     # Interactive visualization app (Dioxus)
+│   └── morphir/          # Morphir CLI tool
 ├── ecosystem/            # Git submodules for ecosystem repos
 │   ├── morphir-rust/     # Rust libraries (morphir-core, morphir-common, etc.)
 │   ├── morphir-examples/ # Example Morphir projects
@@ -157,7 +154,6 @@ Use `mise` task runner (`mise run <task>`) for build orchestration:
 - `mise run test` - Run all tests
 - `mise run fmt` - Format code
 - `mise run lint` - Run linters (clippy)
-- `mise run dev` - Run morphir-live in development mode
 - `mise run submodules:init` - Initialize git submodules (first-time setup)
 - `mise run submodules:update` - Update submodules to recorded commits
 - `mise run submodules:status` - Show submodule status

@@ -3,7 +3,7 @@
 This directory is the root of the Morphir knowledge base: a collection of **knowledge bundles** that capture
 durable, reusable knowledge about Morphir, this repository, and the domains it serves, in a form that both humans
 and agents can navigate. This is finos/morphir, the ecosystem umbrella repository — documentation, the Rust CLI and
-Morphir Live, and the language implementations vendored under `ecosystem/` — so the knowledge here spans the
+the language implementations vendored under `ecosystem/` — so the knowledge here spans the
 ecosystem rather than a single implementation.
 
 Bundles here conform to the **Open Knowledge Format (OKF)**, an open specification for expressing knowledge as a
