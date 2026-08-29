@@ -179,6 +179,14 @@ fn configured_log_level(
         .unwrap_or(fallback)
 }
 
+fn configured_bool(value: Option<&str>, fallback: bool) -> bool {
+    match value.map(str::trim) {
+        Some(value) if value.eq_ignore_ascii_case("true") || value == "1" => true,
+        Some(value) if value.eq_ignore_ascii_case("false") || value == "0" => false,
+        _ => fallback,
+    }
+}
+
 /// Initialize the logging system with the given configuration.
 ///
 /// Returns a guard that must be kept alive for the duration of the program
@@ -342,9 +350,8 @@ pub fn init_from_env() -> Option<LogGuard> {
         std::env::var_os("MORPHIR_LOG_DIR").as_deref(),
     );
 
-    if let Ok(enable) = std::env::var("MORPHIR_LOG_FILE") {
-        config.file_logging = enable.to_lowercase() == "true" || enable == "1";
-    }
+    let file_logging = std::env::var("MORPHIR_LOG_FILE").ok();
+    config.file_logging = configured_bool(file_logging.as_deref(), config.file_logging);
 
     init(config)
 }
@@ -380,6 +387,16 @@ mod tests {
     #[test]
     fn default_file_logging_is_enabled() {
         assert!(LogConfig::default().file_logging);
+    }
+
+    #[test]
+    fn file_logging_changes_only_for_explicit_boolean_overrides() {
+        assert!(configured_bool(Some("true"), false));
+        assert!(configured_bool(Some("1"), false));
+        assert!(!configured_bool(Some("false"), true));
+        assert!(!configured_bool(Some("0"), true));
+        assert!(configured_bool(Some(""), true));
+        assert!(configured_bool(Some("invalid"), true));
     }
 
     #[test]

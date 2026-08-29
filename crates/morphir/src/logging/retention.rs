@@ -125,10 +125,18 @@ fn is_managed_session_log(path: &Path) -> bool {
     let session_timestamp = session_time.format("%Y%m%dT%H%M%S%.3fZ").to_string();
     let session_directory = session_time.format("%Y-%m-%d").to_string();
 
-    chrono::NaiveDate::parse_from_str(directory, "%Y-%m-%d").is_ok()
+    is_managed_date_directory(path.parent().unwrap_or_else(|| Path::new("")))
         && chrono::NaiveDateTime::parse_from_str(timestamp, "%Y%m%dT%H%M%S%.3fZ").is_ok()
         && directory == session_directory
         && timestamp == session_timestamp
+}
+
+fn is_managed_date_directory(path: &Path) -> bool {
+    let Some(directory) = path.file_name().and_then(OsStr::to_str) else {
+        return false;
+    };
+    chrono::NaiveDate::parse_from_str(directory, "%Y-%m-%d")
+        .is_ok_and(|date| directory == date.format("%Y-%m-%d").to_string())
 }
 
 fn collect_log_entries(log_dir: &Path) -> (Vec<LogEntry>, u64) {
@@ -141,6 +149,10 @@ fn collect_log_entries(log_dir: &Path) -> (Vec<LogEntry>, u64) {
         .max_depth(2)
         .follow_links(false)
         .into_iter()
+        .filter_entry(|entry| {
+            entry.depth() != 1
+                || (entry.file_type().is_dir() && is_managed_date_directory(entry.path()))
+        })
         .fold((Vec::new(), 0), |(mut entries, mut skipped), entry| {
             let Ok(entry) = entry else {
                 return (entries, skipped + 1);
@@ -419,11 +431,33 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn skips_unreadable_unknown_directories_and_cleans_managed_logs() {
+    fn ignores_unreadable_unknown_directories_and_cleans_managed_logs() {
         use std::os::unix::fs::PermissionsExt as _;
 
         let temporary = tempfile::tempdir().unwrap();
         let blocked = temporary.path().join("blocked");
+        let daily = temporary.path().join("2026-08-29");
+        fs::create_dir(&blocked).unwrap();
+        fs::create_dir(&daily).unwrap();
+        fs::set_permissions(&blocked, fs::Permissions::from_mode(0o000)).unwrap();
+        let completed = managed_log_path(&daily, "2026-08-29T14:03:13.456Z", 43);
+        fs::write(&completed, "completed").unwrap();
+
+        let result = enforce_log_retention(temporary.path(), SystemTime::now(), Duration::MAX, 0);
+        fs::set_permissions(&blocked, fs::Permissions::from_mode(0o700)).unwrap();
+
+        assert_eq!(result.removed_files, 1);
+        assert_eq!(result.skipped_entries, 0);
+        assert!(!completed.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn skips_unreadable_managed_date_directories_and_continues_cleanup() {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        let temporary = tempfile::tempdir().unwrap();
+        let blocked = temporary.path().join("2026-08-28");
         let daily = temporary.path().join("2026-08-29");
         fs::create_dir(&blocked).unwrap();
         fs::create_dir(&daily).unwrap();
