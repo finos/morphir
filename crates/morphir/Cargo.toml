@@ -42,6 +42,7 @@ morphir-kb = { path = "../../ecosystem/morphir-rust/crates/morphir-kb" }
 semver = { workspace = true }
 chrono = "0.4"
 walkdir = "2"
+fs2 = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde-saphyr = { workspace = true }

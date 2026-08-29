@@ -308,9 +308,7 @@ The first implementation uses structured local events and spans. Its field model
 
 ### Current implementation gaps
 
-The CLI already has a [tracing scaffold](../../../crates/morphir/src/logging.rs), but the module allows dead code, file logging defaults off, its configured file level is not applied, and the application does not initialize it on the ordinary command path. It also chooses workspace-local logs from the current directory, which conflicts with the shared Morphir Home contract. Tool and extension commands still print lifecycle details directly instead of emitting structured events.
-
-The current configuration guide maps `logging.level` to `MORPHIR_LOGGING__LEVEL`, while the scaffold reads `MORPHIR_LOG_LEVEL`. The implementation must choose one canonical configuration path, retain a documented compatibility alias if needed, and test precedence.
+The CLI now initializes structured local logging on the ordinary command path, writes per-session files beneath `MORPHIR_HOME/logs/cli`, applies separate console and file filters, and enforces the default age and size retention policy at startup. `MORPHIR_LOGGING__LEVEL` and `MORPHIR_LOGGING__FILE_LEVEL` are canonical, with the older names retained as compatibility aliases. Remaining CLI work includes operation and launch correlation, lifecycle spans, log discovery, diagnostic bundles, and redaction sentinel coverage. Tool and extension commands still print some lifecycle details directly instead of emitting structured events.
 
 Morphir Desktop currently writes a few smoke messages through `console` and has no file logger, event schema, crash path, operation correlation, or troubleshooting interface. These are release gaps rather than optional refinements.
 

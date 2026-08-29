@@ -13,7 +13,19 @@
 //! let _guard = logging::init_from_env();
 //! ```
 
-use std::{ffi::OsStr, path::PathBuf};
+mod retention;
+
+use fs2::FileExt as _;
+use retention::{
+    DEFAULT_LOG_RETENTION, DEFAULT_MAX_LOG_BYTES, RetentionResult, active_marker_path,
+    enforce_log_retention,
+};
+use std::{
+    ffi::OsStr,
+    fs, io,
+    path::PathBuf,
+    time::{Duration, SystemTime},
+};
 use tracing::Level;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{
@@ -28,6 +40,31 @@ struct SessionLogLocation {
     directory: PathBuf,
     file_name: String,
     session_id: String,
+}
+
+/// Keeps the non-blocking writer alive and marks its session as completed when
+/// the CLI exits normally.
+pub struct LogGuard {
+    worker: Option<WorkerGuard>,
+    marker_file: Option<fs::File>,
+    active_marker: PathBuf,
+}
+
+impl Drop for LogGuard {
+    fn drop(&mut self) {
+        drop(self.worker.take());
+        if let Some(marker_file) = self.marker_file.take() {
+            if let Err(error) = fs2::FileExt::unlock(&marker_file) {
+                eprintln!("Warning: Failed to unlock CLI log session marker: {error}");
+            }
+            drop(marker_file);
+        }
+        if let Err(error) = fs::remove_file(&self.active_marker)
+            && error.kind() != io::ErrorKind::NotFound
+        {
+            eprintln!("Warning: Failed to mark CLI log session complete: {error}");
+        }
+    }
 }
 
 fn session_log_location(
@@ -59,6 +96,10 @@ pub struct LogConfig {
     pub file_logging: bool,
     /// Whether to use JSON format for file logs
     pub json_file_logs: bool,
+    /// Maximum age for completed session logs
+    pub retention: Duration,
+    /// Target maximum bytes for completed CLI session logs
+    pub max_bytes: u64,
 }
 
 impl Default for LogConfig {
@@ -69,6 +110,8 @@ impl Default for LogConfig {
             log_dir: default_log_dir(),
             file_logging: true,
             json_file_logs: true,
+            retention: DEFAULT_LOG_RETENTION,
+            max_bytes: DEFAULT_MAX_LOG_BYTES,
         }
     }
 }
@@ -92,6 +135,13 @@ fn log_dir_from(explicit: Option<&OsStr>, home: Option<&crate::home::MorphirHome
         .map(PathBuf::from)
         .or_else(|| home.map(crate::home::MorphirHome::cli_logs_dir))
         .unwrap_or_else(|| PathBuf::from(".morphir").join("logs").join("cli"))
+}
+
+fn apply_log_dir_override(current: PathBuf, explicit: Option<&OsStr>) -> PathBuf {
+    explicit
+        .filter(|path| !path.is_empty())
+        .map(PathBuf::from)
+        .unwrap_or(current)
 }
 
 /// Parse log level from environment variable or string.
@@ -121,7 +171,7 @@ fn configured_log_level(
 ///
 /// Returns a guard that must be kept alive for the duration of the program
 /// to ensure file logs are flushed.
-pub fn init(config: LogConfig) -> Option<WorkerGuard> {
+pub fn init(config: LogConfig) -> Option<LogGuard> {
     let console_filter = EnvFilter::new(format!("morphir={}", config.console_level));
 
     // Build the console layer (writes to stderr)
@@ -142,8 +192,43 @@ pub fn init(config: LogConfig) -> Option<WorkerGuard> {
     let session_directory = config.log_dir.join(&session.directory);
     let log_path = session_directory.join(&session.file_name);
 
+    let retention = match enforce_log_retention(
+        &config.log_dir,
+        SystemTime::now(),
+        config.retention,
+        config.max_bytes,
+    ) {
+        Ok(result) => result,
+        Err(error) => {
+            eprintln!("Warning: Failed to apply CLI log retention: {error}");
+            RetentionResult::default()
+        }
+    };
+
     if let Err(e) = std::fs::create_dir_all(&session_directory) {
         eprintln!("Warning: Failed to create log directory: {}", e);
+        tracing_subscriber::registry().with(console_layer).init();
+        return None;
+    }
+
+    let active_marker = active_marker_path(&log_path);
+    let marker_file = match fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create_new(true)
+        .open(&active_marker)
+    {
+        Ok(file) => file,
+        Err(error) => {
+            eprintln!("Warning: Failed to create CLI log session marker: {error}");
+            tracing_subscriber::registry().with(console_layer).init();
+            return None;
+        }
+    };
+    if let Err(error) = marker_file.try_lock_exclusive() {
+        eprintln!("Warning: Failed to lock CLI log session marker: {error}");
+        drop(marker_file);
+        let _ = fs::remove_file(&active_marker);
         tracing_subscriber::registry().with(console_layer).init();
         return None;
     }
@@ -186,7 +271,22 @@ pub fn init(config: LogConfig) -> Option<WorkerGuard> {
         "CLI file logging initialized"
     );
 
-    Some(guard)
+    tracing::debug!(
+        schema_version = 1,
+        component = "cli",
+        process_id,
+        session_id = %session.session_id,
+        event_name = "cli.logs.retention",
+        removed_files = retention.removed_files,
+        removed_bytes = retention.removed_bytes,
+        "CLI log retention completed"
+    );
+
+    Some(LogGuard {
+        worker: Some(guard),
+        marker_file: Some(marker_file),
+        active_marker,
+    })
 }
 
 /// Initialize logging from environment variables.
@@ -198,7 +298,7 @@ pub fn init(config: LogConfig) -> Option<WorkerGuard> {
 /// - MORPHIR_LOG_FILE: Enable file logging (true/false)
 ///
 /// `MORPHIR_LOG_LEVEL` and `MORPHIR_LOG_FILE_LEVEL` remain compatibility aliases.
-pub fn init_from_env() -> Option<WorkerGuard> {
+pub fn init_from_env() -> Option<LogGuard> {
     let mut config = LogConfig::default();
 
     let console_level = std::env::var("MORPHIR_LOGGING__LEVEL").ok();
@@ -217,9 +317,10 @@ pub fn init_from_env() -> Option<WorkerGuard> {
         config.file_level,
     );
 
-    if let Ok(dir) = std::env::var("MORPHIR_LOG_DIR") {
-        config.log_dir = PathBuf::from(dir);
-    }
+    config.log_dir = apply_log_dir_override(
+        config.log_dir,
+        std::env::var_os("MORPHIR_LOG_DIR").as_deref(),
+    );
 
     if let Ok(enable) = std::env::var("MORPHIR_LOG_FILE") {
         config.file_logging = enable.to_lowercase() == "true" || enable == "1";
@@ -286,6 +387,16 @@ mod tests {
         assert_eq!(
             log_dir_from(Some(std::ffi::OsStr::new("/managed/logs")), Some(&home)),
             PathBuf::from("/managed/logs")
+        );
+    }
+
+    #[test]
+    fn empty_log_directory_override_keeps_the_resolved_default() {
+        let default = PathBuf::from("/sandbox/morphir-home/logs/cli");
+
+        assert_eq!(
+            apply_log_dir_override(default.clone(), Some(std::ffi::OsStr::new(""))),
+            default
         );
     }
 
