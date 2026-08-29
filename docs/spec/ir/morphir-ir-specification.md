@@ -40,6 +40,8 @@ The Morphir IR follows these key principles:
 
 The semantic IR is independent of its storage syntax. JSON and YAML are native serialization profiles that normalize to the same versioned model. JSON Schema is used as a practical machine-readable definition of JSON encodings; it does not restrict Morphir IR to JSON. Serialization conversion is lossless when the normalized semantic IR value is unchanged.
 
+The shared [`formatVersion` contract](format-version.md) defines version spelling, exact-release compatibility, stable diagnostics, and canonical root member order. Version 3 is the first family governed by that contract, and every later major family inherits it permanently. For every `N >= 3`, integer `N` aliases exactly `N.0.0`; later revisions use exact three-component release strings. Root member order is not semantic, although canonical writers place `formatVersion` before `distribution`.
+
 Version-specific profiles define permitted vocabulary, validation, and document-tree names. See the [v4 semantic model](schemas/v4/semantic-model.md), [v4 JSON profile](schemas/v4/json-profile.md), [v4 YAML profile](schemas/v4/yaml-profile.md), and [v4 document-tree profile](schemas/v4/document-tree-files.md).
 
 ## Core Concepts

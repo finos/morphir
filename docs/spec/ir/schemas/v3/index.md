@@ -9,6 +9,8 @@ description: "Morphir IR JSON Schema for format version 3 (Current)"
 
 Format version 3 is the current version of the Morphir IR format. It uses capitalized tags throughout for consistency and clarity.
 
+Version 3 is the first major family governed by the shared [`formatVersion` contract](../../format-version.md). Integer `3` aliases exactly `3.0.0`. The exact baseline string `"3.0.0"` is also valid input, while later v3 releases such as `"3.1.0"` use strict three-component release strings. Canonical writers emit integer `3` for `3.0.0` and preserve the exact string for any v3 release with a nonzero minor or patch component.
+
 ## Overview
 
 Version 3 of the Morphir IR format standardizes on capitalized tags for all constructs. This provides a consistent naming convention across the entire IR structure.

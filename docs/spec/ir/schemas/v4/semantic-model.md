@@ -9,6 +9,8 @@ description: "Serialization-neutral Morphir IR version 4 model"
 
 This page defines the serialization-neutral meaning of Morphir IR version 4. The [JSON profile](json-profile.md), [YAML profile](yaml-profile.md), and [document-tree profile](document-tree-files.md) are physical representations of this model. No one serialization is the semantic model.
 
+Version 4 inherits the shared [`formatVersion` contract](../../format-version.md) unchanged. Integer `4` aliases exactly `4.0.0`. The exact baseline string `"4.0.0"` is valid input, and later v4 revisions use exact three-component release strings such as `"4.1.0"`. Canonical writers emit integer `4` for `4.0.0` and an exact string when the minor or patch component is nonzero.
+
 The words MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY state requirements for conforming implementations.
 
 ## Semantic values
@@ -45,3 +47,5 @@ A conforming reader performs these conceptual stages:
 5. Apply requested transformations or version migration.
 
 A diagnostic SHOULD identify its stage and semantic cursor. A syntax diagnostic SHOULD also identify the physical source location.
+
+The reader MUST recognize, normalize, and check exact `formatVersion` compatibility before invoking v4 distribution or semantic callbacks. The v4 schema checks scalar type, lexical form, and the v4 major family. Semantic normalization checks unsigned 32-bit component bounds and exact-release support.

@@ -20,15 +20,7 @@ required:
   - distribution
 properties:
   formatVersion:
-    oneOf:
-      - type: string
-        pattern: "^4\\.0\\.0(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$"
-        description: "Semantic version string (e.g., '4.0.0', '4.0.0-alpha.1')"
-        examples: ["4.0.0", "4.0.0-alpha.1", "4.0.0+20240123"]
-      - type: integer
-        minimum: 4
-        description: "Legacy integer format for backwards compatibility"
-        examples: [4]
+    $ref: "#/definitions/FormatVersion"
   
   distribution:
     oneOf:
@@ -43,6 +35,16 @@ properties:
 
 definitions:
   # Basic Types
+  FormatVersion:
+    anyOf:
+      - const: 4
+        description: "Canonical spelling of v4.0.0"
+      - type: string
+        pattern: "^4\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+        description: "Exact v4 release triplet"
+    description: "The IR format version, governed by the v3-and-later formatVersion contract. Integer 4 is the canonical v4.0.0 baseline; exact release strings identify later revisions in the v4 family. Prerelease and build metadata are not allowed"
+    examples: [4, "4.0.0", "4.1.0"]
+
   NameString:
     type: string
     pattern: "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$"
