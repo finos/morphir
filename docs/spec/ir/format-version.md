@@ -40,12 +40,14 @@ A canonical writer MUST emit the integer `N` for the baseline release `N.0.0`. I
 
 Recognition and support are separate decisions. Recognition checks the scalar type, release grammar, component range, and major-family spelling. Syntax recognition never implies support for the normalized release.
 
-Each implementation MUST declare an explicit support table of exact normalized releases. The permanent support-table contract starts with v3 and applies to every later major family. The current reference implementation and this conformance corpus declare this exact table:
+Each implementation MUST declare an explicit support table of exact normalized releases. The permanent support-table contract starts with v3 and applies to every later major family. The reference table used by this specification and its conformance corpus is:
 
 - `3.0.0`
 - `4.0.0`
 
 An implementation MAY declare a different table when its actual decoder or migration capabilities differ. It MUST NOT claim support for an exact release that it cannot process according to that release's specification.
+
+This page defines the conformance target. A reader or writer does not conform merely because its repository publishes this specification. Implementations adopt the contract when their normalization, compatibility checks, diagnostics, ordering behavior, and replay strategy satisfy these requirements.
 
 After successful recognition and normalization, an implementation MUST distinguish these compatibility results:
 
