@@ -88,6 +88,27 @@ run = "jsonschema lint website/static/schemas/*.yaml website/static/schemas/*.js
 description = "Validate schemas against metaschema"
 run = "jsonschema metaschema website/static/schemas/*.yaml"
 
+# The generator imports only node: builtins, so bun runs it without an install.
+# Only `tools:typecheck` needs tools/node_modules.
+[tasks."fixtures:naming-corpus"]
+description = "Generate the IR v4 name-encoding conformance corpus"
+run = "bun run tools/gen-naming-corpus.ts"
+
+[tasks."fixtures:naming-corpus-check"]
+description = "Verify the name-encoding conformance corpus and its vendored copy are up to date"
+run = "bun run tools/gen-naming-corpus.ts --check"
+
+[tasks."tools:install"]
+description = "Install dependencies for the Bun specification tooling"
+run = "bun install"
+dir = "tools"
+
+[tasks."tools:typecheck"]
+description = "Type check the Bun specification tooling"
+run = "bun run typecheck"
+dir = "tools"
+depends = ["tools:install"]
+
 [tasks.check]
 description = "Run all checks"
 depends = [
@@ -95,6 +116,7 @@ depends = [
     "lint",
     "examples:validate",
     "fixtures:validate",
+    "fixtures:naming-corpus-check",
     "schema:validate",
 ]
 

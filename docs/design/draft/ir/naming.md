@@ -8,6 +8,16 @@ sidebar_position: 2
 
 The naming module uses **newtype wrappers** for type safety, **smart constructors** for validation, and a **canonical string format** for serialization.
 
+:::caution Superseded
+The parenthesis abbreviation format described below has been replaced. Its stated rationale, "URL-safe", rested on
+the claim that URLs are case-insensitive; RFC 3986 makes the path component case-sensitive.
+
+An initialism is now an uppercase segment (`value-in-USD`), and names project onto the document tree through a
+defined escape. The current specification is [Naming](../../../spec/draft/names.md); the rationale and schema patches
+are in [IR v4 name canonicalization and initialism encoding](../../proposals/ir-v4-name-encoding.md). This page has
+not yet been rewritten.
+:::
+
 ## Design Decisions
 
 | Decision | Choice | Rationale |
