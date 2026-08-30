@@ -3,7 +3,7 @@ use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use morphir_common::home::MorphirHome;
 use morphir_distribution::{
     Channel, Platform, Selection, Sha256Digest, ToolId, ToolInstaller, ToolPackageStore,
-    TrustedToolRepository, activate_installed_tool,
+    ToolRepairer, TrustedToolRepository, activate_installed_tool, list_installed_tools,
 };
 use semver::{Version, VersionReq};
 use serde_json::Value;
@@ -399,10 +399,12 @@ async fn signed_fixture_drives_the_runtime_tuf_client_and_verified_download() {
     let targets = repository_root.path().join("targets");
     let datastore = repository_root.path().join("datastore");
     let downloads = repository_root.path().join("downloads");
+    let repair_downloads = repository_root.path().join("repair-downloads");
     std::fs::create_dir_all(&metadata).unwrap();
     std::fs::create_dir_all(&targets).unwrap();
     std::fs::create_dir_all(&datastore).unwrap();
     std::fs::create_dir_all(&downloads).unwrap();
+    std::fs::create_dir_all(&repair_downloads).unwrap();
 
     write_canonical_json(&metadata.join("1.root.json"), &fixture["trustedRoot"]);
     for root in fixture["rootUpdates"].as_array().unwrap() {
@@ -434,12 +436,15 @@ async fn signed_fixture_drives_the_runtime_tuf_client_and_verified_download() {
         TrustedToolRepository::load_filesystem(&trusted_root, &metadata, &targets, &datastore)
             .await
             .unwrap();
+    let tool_id = ToolId::parse("desktop").unwrap();
+    let platform = Platform::new("windows", "x86_64").unwrap();
+    let cli_version = Version::parse("0.4.0").unwrap();
     let resolved = repository
         .resolve(
-            &ToolId::parse("desktop").unwrap(),
+            &tool_id,
             &Selection::Channel(Channel::Stable),
-            &Platform::new("windows", "x86_64").unwrap(),
-            &Version::parse("0.4.0").unwrap(),
+            &platform,
+            &cli_version,
         )
         .await
         .unwrap();
@@ -453,6 +458,19 @@ async fn signed_fixture_drives_the_runtime_tuf_client_and_verified_download() {
     let bytes = std::fs::read(downloaded.path()).unwrap();
     assert_eq!(Sha256Digest::of_bytes(&bytes), *resolved.digest());
     assert_eq!(bytes.len() as u64, resolved.length());
+    let repair_resolved = repository
+        .resolve(
+            &tool_id,
+            &Selection::Exact(Version::parse("1.0.0").unwrap()),
+            &platform,
+            &cli_version,
+        )
+        .await
+        .unwrap();
+    let repair_downloaded = repository
+        .download(&repair_resolved, &repair_downloads)
+        .await
+        .unwrap();
 
     let home_path = repository_root.path().join("home");
     let home = MorphirHome::resolve_from(Some(home_path.as_os_str()), None).unwrap();
@@ -461,12 +479,22 @@ async fn signed_fixture_drives_the_runtime_tuf_client_and_verified_download() {
         .unwrap();
     let installed = ToolInstaller::new(&home).install(package).unwrap();
     assert_eq!(installed.version(), &Version::parse("1.0.0").unwrap());
+    let initial_launch = activate_installed_tool(&home, &tool_id).unwrap();
+    std::fs::write(initial_launch.program(), b"corrupt").unwrap();
+    ToolRepairer::new(&home)
+        .repair(&tool_id, repair_resolved, repair_downloaded)
+        .unwrap();
+    assert_eq!(
+        list_installed_tools(&home).unwrap()[0].selection(),
+        &Selection::Channel(Channel::Stable)
+    );
 
     drop(repository);
     std::fs::remove_dir_all(&metadata).unwrap();
     std::fs::remove_dir_all(&targets).unwrap();
     std::fs::remove_dir_all(&downloads).unwrap();
-    let launch = activate_installed_tool(&home, &ToolId::parse("desktop").unwrap()).unwrap();
+    std::fs::remove_dir_all(&repair_downloads).unwrap();
+    let launch = activate_installed_tool(&home, &tool_id).unwrap();
     assert!(
         std::fs::read(launch.program())
             .unwrap()
