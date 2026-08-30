@@ -88,6 +88,7 @@ fn contains_sensitive_assignment(value: &str) -> bool {
         .any(|(separator, _)| {
             let key = value[..separator]
                 .trim_end()
+                .trim_end_matches(['\'', '"'])
                 .chars()
                 .rev()
                 .take_while(|character| {
@@ -231,7 +232,7 @@ fn redact_unknown_absolute_paths(value: &str) -> String {
             .find(|(_, character)| {
                 matches!(
                     character,
-                    '\r' | '\n' | '\'' | '"' | ',' | ';' | ')' | ']' | '}' | '<' | '>'
+                    '\r' | '\n' | '\'' | '"' | ')' | ']' | '}' | '<' | '>'
                 )
             })
             .map(|(offset, _)| start + offset)
@@ -670,6 +671,7 @@ mod tests {
             "password: hunter2",
             "api_key: LIVE_SECRET",
             "client-secret: LIVE_SECRET",
+            r#"request body: {"password":"hunter2"}"#,
             "Authorization:Basic dXNlcjpwYXNz",
             "-----BEGIN PRIVATE KEY-----\nLIVE_SECRET\n-----END PRIVATE KEY-----",
         ] {
@@ -703,13 +705,14 @@ mod tests {
         let value = serde_json::json!({
             "posix": "failed to open /Users/alice/company/model.json",
             "spaces": "failed to open /Users/alice/Client Merger/model.json",
+            "punctuation": "failed to open /Users/alice/Client, Inc/model;v2.json",
             "drive": r"failed to open C:\Users\alice\company\model.json",
             "unc": r"failed to open \\fileserver\private\model.json",
             "known": r"C:\Users\alice\.morphir\store\tools",
         });
         let normalized = normalize_paths(value, &[(r"C:\Users\alice\.morphir", "$MORPHIR_HOME")]);
 
-        for field in ["posix", "spaces", "drive", "unc"] {
+        for field in ["posix", "spaces", "punctuation", "drive", "unc"] {
             assert_eq!(
                 normalized[field], "failed to open $ABSOLUTE_PATH",
                 "field {field} should not expose an absolute path"
