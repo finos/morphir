@@ -122,22 +122,26 @@ fn contains_authorization_header(value: &str) -> bool {
 fn contains_sensitive_option_pair(value: &str) -> bool {
     let tokens = value.split_whitespace().collect::<Vec<_>>();
     tokens.windows(2).any(|pair| {
-        let option = pair[0].trim_matches(|character| {
-            matches!(
-                character,
-                '\'' | '"' | '[' | ']' | '(' | ')' | '{' | '}' | ','
-            )
-        });
         let value = pair[1].trim_matches(|character| {
             matches!(
                 character,
                 '\'' | '"' | '[' | ']' | '(' | ')' | '{' | '}' | ','
             )
         });
-        option.strip_prefix("--").is_some_and(sensitive_key)
-            && !value.is_empty()
-            && !value.starts_with("--")
+        sensitive_long_option(pair[0]) && !value.is_empty() && !value.starts_with("--")
     })
+}
+
+fn sensitive_long_option(value: &str) -> bool {
+    value
+        .trim_matches(|character| {
+            matches!(
+                character,
+                '\'' | '"' | '[' | ']' | '(' | ')' | '{' | '}' | ','
+            )
+        })
+        .strip_prefix("--")
+        .is_some_and(sensitive_key)
 }
 
 fn redact_urls(value: &str) -> String {
@@ -287,12 +291,28 @@ fn sanitize(value: serde_json::Value) -> serde_json::Value {
                 })
                 .collect(),
         ),
-        serde_json::Value::Array(values) => {
-            serde_json::Value::Array(values.into_iter().map(sanitize).collect())
-        }
+        serde_json::Value::Array(values) => serde_json::Value::Array(sanitize_array(values)),
         serde_json::Value::String(value) => serde_json::Value::String(sanitize_text(&value)),
         value => value,
     }
+}
+
+fn sanitize_array(values: Vec<serde_json::Value>) -> Vec<serde_json::Value> {
+    let mut redact_next = false;
+    values
+        .into_iter()
+        .map(|value| {
+            let long_option = value
+                .as_str()
+                .is_some_and(|value| value.trim_matches(['\'', '"']).starts_with("--"));
+            if redact_next && !long_option {
+                redact_next = false;
+                return serde_json::Value::String("[REDACTED]".to_owned());
+            }
+            redact_next = value.as_str().is_some_and(sensitive_long_option);
+            sanitize(value)
+        })
+        .collect()
 }
 
 fn normalize_paths(
@@ -715,6 +735,28 @@ mod tests {
                 "[REDACTED]"
             );
         }
+    }
+
+    #[test]
+    fn structured_argument_arrays_redact_sensitive_option_values() {
+        let sanitized = sanitize(serde_json::json!({
+            "args": [
+                "--api-key",
+                "LIVE_SECRET",
+                "--output",
+                "public.json",
+                "--password",
+                1234,
+                "--token",
+                "--verbose"
+            ]
+        }));
+
+        assert_eq!(sanitized["args"][0], "--api-key");
+        assert_eq!(sanitized["args"][1], "[REDACTED]");
+        assert_eq!(sanitized["args"][3], "public.json");
+        assert_eq!(sanitized["args"][5], "[REDACTED]");
+        assert_eq!(sanitized["args"][7], "--verbose");
     }
 
     #[test]
