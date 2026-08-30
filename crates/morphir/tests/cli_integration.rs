@@ -1224,7 +1224,7 @@ fn migrate_failure_does_not_replace_an_existing_output() {
         .expect("failed to run morphir binary");
 
     assert!(!output.status.success());
-    assert_eq!(std::fs::read_to_string(output_path).unwrap(), "unchanged");
+    assert_eq!(std::fs::read_to_string(&output_path).unwrap(), "unchanged");
     let stderr = String::from_utf8_lossy(&output.stderr);
     let operation_id = stderr
         .lines()
@@ -1270,8 +1270,33 @@ fn migrate_reports_unsupported_v4_downgrade_without_replacing_output() {
         .expect("failed to run morphir binary");
 
     assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("unsupported_v4_downgrade"));
-    assert_eq!(std::fs::read_to_string(output_path).unwrap(), "unchanged");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(stderr.matches("unsupported_v4_downgrade").count(), 1);
+    assert_eq!(std::fs::read_to_string(&output_path).unwrap(), "unchanged");
+
+    let json_output = morphir_command()
+        .args([
+            "ir",
+            "migrate",
+            input.to_str().unwrap(),
+            "--output",
+            output_path.to_str().unwrap(),
+            "--target-version",
+            "v3",
+            "--json",
+        ])
+        .output()
+        .expect("failed to run morphir binary in JSON mode");
+
+    assert!(!json_output.status.success());
+    let report: serde_json::Value = serde_json::from_slice(&json_output.stdout).unwrap();
+    assert_eq!(report["success"], false);
+    assert!(
+        report["error"]
+            .as_str()
+            .is_some_and(|error| error.contains("unsupported_v4_downgrade"))
+    );
+    assert!(!String::from_utf8_lossy(&json_output.stderr).contains("unsupported_v4_downgrade"));
 }
 
 #[test]

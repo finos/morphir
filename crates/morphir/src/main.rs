@@ -931,14 +931,11 @@ async fn main() -> starbase::MainResult {
             let (exit_code, failed, diagnostic) = match migrate_args.run() {
                 Ok(Some(code)) => (code, code != 0, None),
                 Ok(None) => (0, false, None),
-                Err(e) => {
-                    eprintln!("Error: {}", e);
-                    (
-                        1,
-                        true,
-                        Some(commands::diagnostics::sanitize_text(&e.to_string())),
-                    )
-                }
+                Err(e) => (
+                    1,
+                    true,
+                    Some(commands::diagnostics::sanitize_text(&e.to_string())),
+                ),
             };
             report_operation_outcome(
                 &operation_id,

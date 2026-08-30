@@ -78,6 +78,23 @@ fn sensitive_key(key: &str) -> bool {
     .any(|needle| key.contains(needle))
 }
 
+fn contains_sensitive_assignment(value: &str) -> bool {
+    value.match_indices('=').any(|(equals, _)| {
+        let key = value[..equals]
+            .trim_end()
+            .chars()
+            .rev()
+            .take_while(|character| {
+                character.is_ascii_alphanumeric() || matches!(character, '_' | '-')
+            })
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect::<String>();
+        !key.is_empty() && sensitive_key(&key)
+    })
+}
+
 fn redact_urls(value: &str) -> String {
     let mut redacted = value.to_owned();
     let mut search_from = 0;
@@ -101,10 +118,14 @@ fn redact_urls(value: &str) -> String {
             .map(|(index, _)| authority_start + index)
             .unwrap_or(token_end);
 
-        if let Some(user_info_end) = redacted[authority_start..authority_end].rfind('@') {
-            let host_start = authority_start + user_info_end + 1;
-            redacted.replace_range(authority_start..host_start, "[REDACTED]@");
-        }
+        let scan_after =
+            if let Some(user_info_end) = redacted[authority_start..authority_end].rfind('@') {
+                let host_start = authority_start + user_info_end + 1;
+                redacted.replace_range(authority_start..host_start, "[REDACTED]@");
+                authority_start + "[REDACTED]@".len()
+            } else {
+                authority_start
+            };
 
         let token_end = redacted[authority_start..]
             .char_indices()
@@ -125,7 +146,9 @@ fn redact_urls(value: &str) -> String {
             redacted.replace_range(boundary..token_end, "");
             search_from = boundary;
         } else {
-            search_from = token_end;
+            // Resume inside the current URL so every later scheme is inspected,
+            // even when log formatting joins URLs with an unknown delimiter.
+            search_from = scan_after;
         }
     }
 
@@ -143,6 +166,7 @@ pub(crate) fn sanitize_text(value: &str) -> String {
         || lower.contains("password=")
         || lower.contains("token=")
         || lower.contains("secret=")
+        || contains_sensitive_assignment(value)
     {
         return "[REDACTED]".to_owned();
     }
@@ -504,7 +528,7 @@ pub fn run_diagnostics_collect(operation: &str, output: &Path) -> AppResult<miet
 
 #[cfg(test)]
 mod tests {
-    use super::for_each_bounded_line;
+    use super::{for_each_bounded_line, sanitize_text};
     use std::io::{BufReader, Cursor};
 
     #[test]
@@ -517,5 +541,27 @@ mod tests {
         for_each_bounded_line(reader, 16, |line| lines.push(line.to_vec())).unwrap();
 
         assert_eq!(lines, [b"kept".as_slice()]);
+    }
+
+    #[test]
+    fn free_form_sensitive_assignments_are_redacted() {
+        for value in [
+            "api_key=LIVE_SECRET",
+            "apiKey=LIVE_SECRET",
+            "access-key=LIVE_SECRET",
+            "credential=LIVE_SECRET",
+        ] {
+            assert_eq!(sanitize_text(value), "[REDACTED]");
+        }
+    }
+
+    #[test]
+    fn every_url_in_free_form_text_is_sanitized() {
+        assert_eq!(
+            sanitize_text(
+                "https://public.example/status|https://alice:hunter2@private.example/artifact"
+            ),
+            "https://public.example/status|https://[REDACTED]@private.example/artifact"
+        );
     }
 }
