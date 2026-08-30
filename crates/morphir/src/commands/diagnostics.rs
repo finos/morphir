@@ -788,27 +788,30 @@ fn read_operation_events_from_files(
             continue;
         }
         let scan_result = for_each_bounded_line(reader, 1024 * 1024, |line| {
-            if let Ok(event) = serde_json::from_slice::<serde_json::Value>(line)
-                && belongs_to_operation(&event, operation_id)
-            {
-                let order = (
-                    event["timestamp"].as_str().map(ToOwned::to_owned),
-                    matched_events,
-                );
-                matched_events = matched_events.saturating_add(1);
-                retained_bytes = retained_bytes.saturating_add(line.len());
-                events.push(Reverse(RetainedEvent {
-                    order,
-                    bytes: line.len(),
-                    value: sanitize(event),
-                }));
-                while events.len() > max_events || retained_bytes > max_bytes {
-                    let Some(Reverse(removed)) = events.pop() else {
-                        break;
-                    };
-                    retained_bytes = retained_bytes.saturating_sub(removed.bytes);
-                    truncated = true;
+            match serde_json::from_slice::<serde_json::Value>(line) {
+                Ok(event) if belongs_to_operation(&event, operation_id) => {
+                    let order = (
+                        event["timestamp"].as_str().map(ToOwned::to_owned),
+                        matched_events,
+                    );
+                    matched_events = matched_events.saturating_add(1);
+                    retained_bytes = retained_bytes.saturating_add(line.len());
+                    events.push(Reverse(RetainedEvent {
+                        order,
+                        bytes: line.len(),
+                        value: sanitize(event),
+                    }));
+                    while events.len() > max_events || retained_bytes > max_bytes {
+                        let Some(Reverse(removed)) = events.pop() else {
+                            break;
+                        };
+                        retained_bytes = retained_bytes.saturating_sub(removed.bytes);
+                        truncated = true;
+                    }
                 }
+                Ok(_) => {}
+                Err(_) if !line.is_empty() => truncated = true,
+                Err(_) => {}
             }
             true
         });
@@ -1391,6 +1394,28 @@ mod tests {
         std::fs::write(
             temp_dir.path().join("events.jsonl"),
             format!("{oversized}\n"),
+        )
+        .unwrap();
+
+        let selected = read_operation_events_with_limits(
+            &[temp_dir.path().to_path_buf()],
+            operation_id,
+            10,
+            usize::MAX,
+            usize::MAX,
+        );
+
+        assert!(selected.truncated);
+        assert!(selected.events.is_empty());
+    }
+
+    #[test]
+    fn diagnostic_event_ingestion_marks_malformed_records_as_truncated() {
+        let temp_dir = TempDir::new().unwrap();
+        let operation_id = "op-123e4567-e89b-42d3-a456-426614174000";
+        std::fs::write(
+            temp_dir.path().join("events.jsonl"),
+            br#"{"timestamp":"2026-08-30T03:04:06Z","fields":{"operation_id":"op-123e4567-e89b-42d3-a456-426614174000""#,
         )
         .unwrap();
 

@@ -1165,6 +1165,66 @@ fn clap_parse_failures_report_a_correlated_outcome() {
 }
 
 #[test]
+fn successful_fast_paths_record_a_correlated_outcome() {
+    for (case, args) in [
+        ("help", vec!["--help"]),
+        ("version", vec!["version"]),
+        ("usage", vec!["usage"]),
+        ("no-command", vec![]),
+    ] {
+        let temp_dir = TempDir::new().unwrap();
+        let morphir_home = temp_dir.path().join("morphir-home");
+
+        let output = morphir_command()
+            .args(args)
+            .env("MORPHIR_HOME", &morphir_home)
+            .env_remove("MORPHIR_LOG_DIR")
+            .env("MORPHIR_LOG_FILE", "true")
+            .env("MORPHIR_LOGGING__FILE_LEVEL", "error")
+            .output()
+            .unwrap_or_else(|error| panic!("failed to run {case}: {error}"));
+
+        assert!(
+            output.status.success(),
+            "{case} failed: stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let log_path = std::fs::read_dir(morphir_home.join("logs/cli"))
+            .unwrap()
+            .filter_map(Result::ok)
+            .flat_map(|entry| std::fs::read_dir(entry.path()).into_iter().flatten())
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .find(|path| {
+                path.extension()
+                    .is_some_and(|extension| extension == "jsonl")
+            })
+            .unwrap_or_else(|| panic!("{case} should create a JSONL session log"));
+        let events = std::fs::read_to_string(log_path)
+            .unwrap()
+            .lines()
+            .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+            .collect::<Vec<_>>();
+        let started = events
+            .iter()
+            .find(|event| event["fields"]["event_name"] == "cli.session.start")
+            .unwrap_or_else(|| panic!("{case} should record session start"));
+        let finished = events
+            .iter()
+            .find(|event| event["fields"]["event_name"] == "cli.operation.finish")
+            .unwrap_or_else(|| panic!("{case} should record operation finish"));
+
+        assert_eq!(
+            finished["fields"]["operation_id"], started["fields"]["operation_id"],
+            "{case} should correlate its terminal event"
+        );
+        assert_eq!(finished["fields"]["outcome"], "success");
+        assert_eq!(finished["fields"]["exit_code"], 0);
+    }
+}
+
+#[test]
 fn migrate_converts_a_real_v3_file_to_concrete_v4() {
     let temp_dir = TempDir::new().unwrap();
     let input = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

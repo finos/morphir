@@ -921,16 +921,37 @@ async fn main() -> starbase::MainResult {
         // Handle full help variants
         if help::should_show_full_help(&args) {
             help::print_full_help::<Cli>();
+            report_operation_outcome(&operation_id, logging_guard.as_ref(), 0, false, None);
             return Ok(std::process::ExitCode::SUCCESS);
         }
 
         // Handle version subcommand early (before starbase) to avoid double execution
         if args.len() >= 2 && args[1] == "version" {
             let json = args.iter().any(|a| a == "--json");
-            if let Some(code) = run_version(json)? {
-                return Ok(std::process::ExitCode::from(code));
+            match run_version(json) {
+                Ok(code) => {
+                    let exit_code = code.unwrap_or(0);
+                    report_operation_outcome(
+                        &operation_id,
+                        logging_guard.as_ref(),
+                        exit_code,
+                        exit_code != 0,
+                        operation_diagnostic(None, exit_code).as_deref(),
+                    );
+                    return Ok(std::process::ExitCode::from(exit_code));
+                }
+                Err(error) => {
+                    let diagnostic = operation_diagnostic(Some(error.to_string()), 1);
+                    report_operation_outcome(
+                        &operation_id,
+                        logging_guard.as_ref(),
+                        1,
+                        true,
+                        diagnostic.as_deref(),
+                    );
+                    return Err(error);
+                }
             }
-            return Ok(std::process::ExitCode::SUCCESS);
         }
 
         // Handle usage subcommand early (before starbase) to avoid double execution
@@ -939,6 +960,7 @@ async fn main() -> starbase::MainResult {
             let cli = Cli::command();
             let spec: usage::Spec = cli.into();
             println!("{}", spec);
+            report_operation_outcome(&operation_id, logging_guard.as_ref(), 0, false, None);
             return Ok(std::process::ExitCode::SUCCESS);
         }
 
@@ -965,6 +987,7 @@ async fn main() -> starbase::MainResult {
             Some(cmd) => cmd,
             None => {
                 Cli::command().print_help().ok();
+                report_operation_outcome(&operation_id, logging_guard.as_ref(), 0, false, None);
                 return Ok(std::process::ExitCode::SUCCESS);
             }
         };
