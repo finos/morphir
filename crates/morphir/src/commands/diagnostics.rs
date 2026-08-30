@@ -493,6 +493,7 @@ fn sanitize(value: serde_json::Value) -> serde_json::Value {
 fn sanitize_array(values: Vec<serde_json::Value>) -> Vec<serde_json::Value> {
     if let [serde_json::Value::String(key), _] = values.as_slice()
         && sensitive_key(key)
+        && !sensitive_long_option(key)
     {
         return vec![
             serde_json::Value::String(key.clone()),
@@ -755,6 +756,29 @@ fn read_operation_events_with_limits(
     }
 }
 
+fn human_operation_event_lines(result: &OperationEvents) -> Vec<String> {
+    let mut lines = Vec::with_capacity(result.events.len().saturating_add(1));
+    if result.truncated {
+        lines.push(
+            "Older diagnostic events were omitted because the display limit was reached."
+                .to_owned(),
+        );
+    }
+    if result.events.is_empty() {
+        lines.push(format!("No local events found for {}", result.operation_id));
+    } else {
+        lines.extend(result.events.iter().map(|event| {
+            let timestamp = event["timestamp"].as_str().unwrap_or("unknown-time");
+            let level = event["level"].as_str().unwrap_or("UNKNOWN");
+            let name = event["fields"]["event_name"]
+                .as_str()
+                .unwrap_or("unknown-event");
+            format!("{timestamp} {level} {name}")
+        }));
+    }
+    lines
+}
+
 /// Show sanitized CLI and Desktop events for one reported operation ID.
 pub fn run_diagnostics_show(operation: &str, json: bool) -> AppResult<miette::Report> {
     let operation_id = crate::observability::OperationId::parse(operation)
@@ -776,19 +800,9 @@ pub fn run_diagnostics_show(operation: &str, json: bool) -> AppResult<miette::Re
                 "Failed to serialize diagnostic events: {error}"
             ))?
         );
-    } else if result.events.is_empty() {
-        println!("No local events found for {operation_id}");
     } else {
-        if result.truncated {
-            println!("Older diagnostic events were omitted because the display limit was reached.");
-        }
-        for event in &result.events {
-            let timestamp = event["timestamp"].as_str().unwrap_or("unknown-time");
-            let level = event["level"].as_str().unwrap_or("UNKNOWN");
-            let name = event["fields"]["event_name"]
-                .as_str()
-                .unwrap_or("unknown-event");
-            println!("{timestamp} {level} {name}");
+        for line in human_operation_event_lines(&result) {
+            println!("{line}");
         }
     }
     Ok(None)
@@ -978,8 +992,8 @@ pub fn run_diagnostics_collect(operation: &str, output: &Path) -> AppResult<miet
 #[cfg(test)]
 mod tests {
     use super::{
-        bounded_tail_reader, for_each_bounded_line, normalize_paths,
-        read_operation_events_with_limits, sanitize, sanitize_text,
+        OperationEvents, bounded_tail_reader, for_each_bounded_line, human_operation_event_lines,
+        normalize_paths, read_operation_events_with_limits, sanitize, sanitize_text,
     };
     use std::io::{BufReader, Cursor};
     use tempfile::TempDir;
@@ -1086,7 +1100,8 @@ mod tests {
                 "--verbose",
                 "--api-key=INLINE_SECRET",
                 "input.json"
-            ]
+            ],
+            "compact": ["--api-key=INLINE_SECRET", "input.json"]
         }));
 
         assert_eq!(sanitized["args"][0], "--api-key");
@@ -1096,6 +1111,25 @@ mod tests {
         assert_eq!(sanitized["args"][7], "--verbose");
         assert_eq!(sanitized["args"][8], "[REDACTED]");
         assert_eq!(sanitized["args"][9], "input.json");
+        assert_eq!(sanitized["compact"][0], "[REDACTED]");
+        assert_eq!(sanitized["compact"][1], "input.json");
+    }
+
+    #[test]
+    fn human_diagnostic_output_reports_an_incomplete_empty_search() {
+        let lines = human_operation_event_lines(&OperationEvents {
+            operation_id: "op-123e4567-e89b-42d3-a456-426614174000".to_owned(),
+            truncated: true,
+            events: Vec::new(),
+        });
+
+        assert_eq!(
+            lines,
+            [
+                "Older diagnostic events were omitted because the display limit was reached.",
+                "No local events found for op-123e4567-e89b-42d3-a456-426614174000"
+            ]
+        );
     }
 
     #[test]
