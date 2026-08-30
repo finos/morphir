@@ -837,7 +837,8 @@ fn diagnostics_show_finds_correlated_events_and_redacts_legacy_secrets() {
                 "apiKey": "CAMEL_API_KEY_SHOULD_NOT_ESCAPE",
                 "api_key": "SNAKE_API_KEY_SHOULD_NOT_ESCAPE",
                 "accessKey": "ACCESS_KEY_SHOULD_NOT_ESCAPE",
-                "credential": "CREDENTIAL_SHOULD_NOT_ESCAPE"
+                "credential": "CREDENTIAL_SHOULD_NOT_ESCAPE",
+                "message": "retry failed? see https://example.com/status"
             }
         }),
         serde_json::json!({
@@ -882,6 +883,10 @@ fn diagnostics_show_finds_correlated_events_and_redacts_legacy_secrets() {
     for field in ["apiKey", "api_key", "accessKey", "credential"] {
         assert_eq!(shown["events"][0]["fields"][field], "[REDACTED]");
     }
+    assert_eq!(
+        shown["events"][0]["fields"]["message"],
+        "retry failed? see https://example.com/status"
+    );
     assert!(!String::from_utf8_lossy(&output.stdout).contains("SHOULD_NOT_ESCAPE"));
 }
 

@@ -90,14 +90,14 @@ fn redact_text(value: &str) -> String {
         return "[REDACTED]".to_owned();
     }
     if value.contains("://") {
-        let boundary = value
+        let authority_start = value.find("://").expect("URL marker was checked") + 3;
+        let boundary = value[authority_start..]
             .char_indices()
             .filter(|(_, character)| matches!(character, '?' | '#'))
-            .map(|(index, _)| index)
+            .map(|(index, _)| authority_start + index)
             .min()
             .unwrap_or(value.len());
         let visible = &value[..boundary];
-        let authority_start = value.find("://").expect("URL marker was checked") + 3;
         let authority_end = visible[authority_start..]
             .find('/')
             .map(|index| authority_start + index)

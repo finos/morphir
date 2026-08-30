@@ -85,6 +85,33 @@ def main() -> int:
                 temporary / f"invalid-{field}.json",
             )
 
+        for line_name, line_terminator in [
+            ("lf", "\n"),
+            ("cr", "\r"),
+            ("line-separator", "\u2028"),
+            ("paragraph-separator", "\u2029"),
+        ]:
+            for label, field in [
+                ("target path", "targetPath"),
+                ("archive entry point", "entryPoint"),
+                ("launch path", "path"),
+            ]:
+                invalid = deepcopy(descriptor)
+                artifact = invalid["artifacts"][0]
+                invalid_path = f"artifacts/file{line_terminator}../escape"
+                if field == "targetPath":
+                    artifact[field] = invalid_path
+                elif field == "entryPoint":
+                    artifact["archive"][field] = invalid_path
+                else:
+                    artifact["launch"][field] = invalid_path
+                assert_schema_rejects(
+                    schema,
+                    invalid,
+                    f"{label} containing {line_name}",
+                    temporary / f"invalid-{field}-{line_name}.json",
+                )
+
     print(f"Validated {len(release_paths)} authenticated tool release descriptors")
     return 0
 
