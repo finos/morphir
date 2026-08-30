@@ -705,6 +705,18 @@ fn read_operation_events_with_limits(
     let mut discovery_truncated = false;
     let mut log_files = BTreeSet::new();
     for root in log_roots {
+        match std::fs::symlink_metadata(root) {
+            Ok(metadata) if metadata.is_dir() => {}
+            Ok(_) => {
+                discovery_truncated = true;
+                continue;
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(_) => {
+                discovery_truncated = true;
+                continue;
+            }
+        }
         for entry in WalkDir::new(root).follow_links(false) {
             let entry = match entry {
                 Ok(entry) => entry,
@@ -1444,6 +1456,32 @@ mod tests {
 
         assert!(selected.truncated);
         assert!(selected.events.is_empty());
+    }
+
+    #[test]
+    fn diagnostic_event_ingestion_treats_missing_optional_roots_as_empty() {
+        let temp_dir = TempDir::new().unwrap();
+        let cli = temp_dir.path().join("cli");
+        let desktop = temp_dir.path().join("desktop-not-created");
+        let operation_id = "op-123e4567-e89b-42d3-a456-426614174000";
+        std::fs::create_dir_all(&cli).unwrap();
+        let event = serde_json::json!({
+            "timestamp": "2026-08-30T03:04:05Z",
+            "fields": { "operation_id": operation_id, "message": "complete" }
+        })
+        .to_string();
+        std::fs::write(cli.join("events.jsonl"), format!("{event}\n")).unwrap();
+
+        let selected = read_operation_events_with_limits(
+            &[cli, desktop],
+            operation_id,
+            10,
+            usize::MAX,
+            usize::MAX,
+        );
+
+        assert!(!selected.truncated);
+        assert_eq!(selected.events.len(), 1);
     }
 
     #[test]
