@@ -16,6 +16,7 @@ use unicode_normalization::UnicodeNormalization as _;
 static NEXT_TRANSACTION_ID: AtomicU64 = AtomicU64::new(0);
 const MANIFEST_PATH: &str = ".morphir-generated-artifacts.json";
 const MANIFEST_SCHEMA_VERSION: u32 = 1;
+const TRANSACTION_PATH_PREFIX: &str = ".morphir-artifacts-";
 
 pub(super) fn write_all(
     output_root: &Path,
@@ -329,8 +330,10 @@ fn finish_committed_transaction<H: ArtifactHooks + ?Sized>(
 fn create_transaction(root: &Dir) -> io::Result<Transaction> {
     for _ in 0..100 {
         let id = NEXT_TRANSACTION_ID.fetch_add(1, Ordering::Relaxed);
-        let relative_path =
-            PathBuf::from(format!(".morphir-artifacts-{}-{id}", std::process::id()));
+        let relative_path = PathBuf::from(format!(
+            "{TRANSACTION_PATH_PREFIX}{}-{id}",
+            std::process::id()
+        ));
         match root.create_dir(&relative_path) {
             Ok(()) => {
                 return Ok(Transaction {
@@ -903,9 +906,9 @@ fn load_manifest(root: &Dir) -> Result<Option<Vec<ValidatedRemoval>>, CliError> 
     let mut paths_by_case_key = BTreeMap::<String, String>::new();
     let mut validated = Vec::with_capacity(manifest.artifacts.len());
     for path in manifest.artifacts {
-        if is_reserved_manifest_path(&path) {
+        if is_reserved_internal_path(&path) {
             return Err(validation_error(
-                "generated-artifact manifest cannot list itself or its descendants".to_owned(),
+                "generated-artifact manifest cannot list Morphir generation state".to_owned(),
             ));
         }
         let (relative_path, display_path) = validate_path(&path)?;
@@ -946,7 +949,7 @@ fn validate_complete_set(artifacts: &[Artifact]) -> Result<Vec<ValidatedArtifact
     let mut validated = Vec::with_capacity(artifacts.len());
 
     for artifact in artifacts {
-        if is_reserved_manifest_path(&artifact.path) {
+        if is_reserved_internal_path(&artifact.path) {
             return Err(validation_error(format!(
                 "artifact path '{}' is reserved for Morphir generation state",
                 artifact.path
@@ -1000,6 +1003,10 @@ fn portable_path_key(path: &str) -> String {
     path.nfkc().case_fold().nfc().collect()
 }
 
+fn is_reserved_internal_path(path: &str) -> bool {
+    is_reserved_manifest_path(path) || is_reserved_transaction_path(path)
+}
+
 fn is_reserved_manifest_path(path: &str) -> bool {
     let path_key = portable_path_key(path);
     let manifest_key = portable_path_key(MANIFEST_PATH);
@@ -1007,6 +1014,15 @@ fn is_reserved_manifest_path(path: &str) -> bool {
         || path_key
             .strip_prefix(&manifest_key)
             .is_some_and(|suffix| suffix.starts_with('/'))
+}
+
+fn is_reserved_transaction_path(path: &str) -> bool {
+    path.split('/')
+        .next()
+        .is_some_and(|root_segment| {
+            portable_path_key(root_segment)
+                .starts_with(&portable_path_key(TRANSACTION_PATH_PREFIX))
+        })
 }
 
 fn validate_path(path: &str) -> Result<(PathBuf, String), CliError> {
@@ -1203,6 +1219,18 @@ mod tests {
                 ".MORPHIR-GENERATED-ARTIFACTS.JSON/nested.avsc",
                 "{}",
             )])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("reserved"));
+        assert!(output.path().read_dir().unwrap().next().is_none());
+    }
+
+    #[test]
+    fn rejects_the_reserved_transaction_directory_namespace_before_writing() {
+        let output = tempdir().unwrap();
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&[text(".MORPHIR-ARTIFACTS-provider/schema.avsc", "{}")])
             .unwrap_err();
 
         assert!(error.to_string().contains("reserved"));
