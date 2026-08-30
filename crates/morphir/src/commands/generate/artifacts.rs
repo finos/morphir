@@ -1017,12 +1017,9 @@ fn is_reserved_manifest_path(path: &str) -> bool {
 }
 
 fn is_reserved_transaction_path(path: &str) -> bool {
-    path.split('/')
-        .next()
-        .is_some_and(|root_segment| {
-            portable_path_key(root_segment)
-                .starts_with(&portable_path_key(TRANSACTION_PATH_PREFIX))
-        })
+    path.split('/').next().is_some_and(|root_segment| {
+        portable_path_key(root_segment).starts_with(&portable_path_key(TRANSACTION_PATH_PREFIX))
+    })
 }
 
 fn validate_path(path: &str) -> Result<(PathBuf, String), CliError> {
@@ -1215,10 +1212,7 @@ mod tests {
         let output = tempdir().unwrap();
 
         let error = ArtifactWriter::new(output.path())
-            .write_all(&[text(
-                ".MORPHIR-GENERATED-ARTIFACTS.JSON/nested.avsc",
-                "{}",
-            )])
+            .write_all(&[text(".MORPHIR-GENERATED-ARTIFACTS.JSON/nested.avsc", "{}")])
             .unwrap_err();
 
         assert!(error.to_string().contains("reserved"));
