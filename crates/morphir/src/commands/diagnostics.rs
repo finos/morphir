@@ -2,6 +2,7 @@
 
 use serde::Serialize;
 use starbase::AppResult;
+use std::collections::BTreeSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read as _, Write as _};
 use std::path::{Path, PathBuf};
@@ -241,6 +242,60 @@ fn redact_urls(value: &str) -> String {
     redacted
 }
 
+fn reference_token_end(value: &str, authority_start: usize) -> usize {
+    value[authority_start..]
+        .char_indices()
+        .find(|(_, character)| {
+            character.is_whitespace() || matches!(character, '\'' | '"' | '<' | '>' | '|')
+        })
+        .map(|(index, _)| authority_start + index)
+        .unwrap_or(value.len())
+}
+
+fn redact_scheme_relative_urls(value: &str) -> String {
+    let mut redacted = value.to_owned();
+    let mut search_from = 0;
+
+    while let Some(relative_start) = redacted[search_from..].find("//") {
+        let start = search_from + relative_start;
+        let preceded_by_colon = redacted[..start].ends_with(':');
+        if preceded_by_colon || !path_boundary_before(&redacted, start) {
+            search_from = start + 2;
+            continue;
+        }
+
+        let authority_start = start + 2;
+        let token_end = reference_token_end(&redacted, authority_start);
+        let authority_end = redacted[authority_start..token_end]
+            .char_indices()
+            .find(|(_, character)| matches!(character, '/' | '?' | '#'))
+            .map(|(index, _)| authority_start + index)
+            .unwrap_or(token_end);
+        let scan_after =
+            if let Some(user_info_end) = redacted[authority_start..authority_end].rfind('@') {
+                let host_start = authority_start + user_info_end + 1;
+                redacted.replace_range(authority_start..host_start, "[REDACTED]@");
+                authority_start + "[REDACTED]@".len()
+            } else {
+                authority_start
+            };
+
+        let token_end = reference_token_end(&redacted, authority_start);
+        if let Some(boundary) = redacted[authority_start..token_end]
+            .char_indices()
+            .find(|(_, character)| matches!(character, '?' | '#'))
+            .map(|(index, _)| authority_start + index)
+        {
+            redacted.replace_range(boundary..token_end, "");
+            search_from = boundary;
+        } else {
+            search_from = scan_after;
+        }
+    }
+
+    redacted
+}
+
 /// Sanitize free-form text before writing it to a correlated diagnostic event.
 pub(crate) fn sanitize_text(value: &str) -> String {
     let lower = value.to_ascii_lowercase();
@@ -257,10 +312,16 @@ pub(crate) fn sanitize_text(value: &str) -> String {
     {
         return "[REDACTED]".to_owned();
     }
-    if value.contains("://") {
-        return redact_urls(value);
+    let value = if value.contains("://") {
+        redact_urls(value)
+    } else {
+        value.to_owned()
+    };
+    if value.contains("//") {
+        redact_scheme_relative_urls(&value)
+    } else {
+        value
     }
-    value.to_owned()
 }
 
 fn path_boundary_before(value: &str, start: usize) -> bool {
@@ -506,7 +567,11 @@ fn read_operation_events_with_limits(
                 .extension()
                 .is_some_and(|extension| extension == "jsonl")
         })
-        .map(|entry| entry.into_path());
+        .map(|entry| {
+            let path = entry.into_path();
+            path.canonicalize().unwrap_or(path)
+        })
+        .collect::<BTreeSet<_>>();
     let mut events = Vec::new();
     let mut retained_bytes = 0usize;
     let mut budget_exhausted = max_events == 0 || max_bytes == 0;
@@ -868,6 +933,10 @@ mod tests {
             sanitize_text("https://first.example?a=1|https://second.example/status"),
             "https://first.example|https://second.example/status"
         );
+        assert_eq!(
+            sanitize_text("fetch //alice:hunter2@private.example/artifact?download=secret"),
+            "fetch //[REDACTED]@private.example/artifact"
+        );
     }
 
     #[test]
@@ -946,5 +1015,29 @@ mod tests {
 
         assert_eq!(events.len(), 1);
         assert_eq!(events[0]["fields"]["message"], "first");
+    }
+
+    #[test]
+    fn diagnostic_event_ingestion_deduplicates_overlapping_log_roots() {
+        let temp_dir = TempDir::new().unwrap();
+        let desktop = temp_dir.path().join("logs/desktop");
+        std::fs::create_dir_all(&desktop).unwrap();
+        let operation_id = "op-123e4567-e89b-42d3-a456-426614174000";
+        let event = serde_json::json!({
+            "timestamp": "2026-08-30T03:04:05Z",
+            "fields": { "operation_id": operation_id, "message": "once" }
+        })
+        .to_string();
+        std::fs::write(desktop.join("events.jsonl"), format!("{event}\n")).unwrap();
+
+        let events = read_operation_events_with_limits(
+            &[temp_dir.path().join("logs"), desktop],
+            operation_id,
+            10,
+            event.len() * 2,
+        );
+
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0]["fields"]["message"], "once");
     }
 }
