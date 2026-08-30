@@ -31,13 +31,9 @@ pub fn run_version(json: bool) -> AppResult<miette::Report> {
     let info = VersionInfo::new();
 
     if json {
-        match serde_json::to_string_pretty(&info) {
-            Ok(json_str) => println!("{}", json_str),
-            Err(e) => {
-                eprintln!("Failed to serialize version info: {}", e);
-                return Ok(Some(1));
-            }
-        }
+        let json = serde_json::to_string_pretty(&info)
+            .map_err(|error| miette::miette!("Failed to serialize version info: {error}"))?;
+        println!("{json}");
     } else {
         println!(
             "{} {} (built {} {})",

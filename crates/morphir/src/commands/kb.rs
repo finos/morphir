@@ -570,13 +570,15 @@ pub struct KbDecisionShowArgs {
 
 /// Maps the kb error convention onto the CLI's handler convention: payload was
 /// already printed, so success is `Ok(None)`, a nonzero exit is `Ok(Some(code))`,
-/// and an operational failure prints `error: <msg>` and exits 1.
+/// and an operational failure prints `error: <msg>` and exits 1. The shared
+/// outcome pipeline records a nonempty fallback diagnostic for this legacy
+/// payload-already-printed convention.
 fn finish(result: KbResult<u8>) -> AppResult<miette::Report> {
     match result {
         Ok(0) => Ok(None),
         Ok(code) => Ok(Some(code)),
-        Err(e) => {
-            eprintln!("error: {e}");
+        Err(error) => {
+            eprintln!("error: {error}");
             Ok(Some(1))
         }
     }

@@ -123,10 +123,9 @@ pub fn run_tool_install(name: String, version: Option<String>) -> AppResult<miet
 
     // Add tool to registry
     registry.add_tool(tool);
-    if let Err(e) = registry.save() {
-        eprintln!("Error: Failed to save tool registry: {}", e);
-        return Ok(Some(1));
-    }
+    registry
+        .save()
+        .map_err(|error| miette::miette!("Failed to save tool registry: {error}"))?;
 
     println!(
         "✓ Successfully installed tool '{}' (version: {})",
@@ -141,13 +140,8 @@ pub fn run_tool_install(name: String, version: Option<String>) -> AppResult<miet
 pub fn run_tool_list() -> AppResult<miette::Report> {
     println!("Listing installed Morphir tools...\n");
 
-    let registry = match ToolRegistry::load() {
-        Ok(reg) => reg,
-        Err(e) => {
-            eprintln!("Error: Failed to load tool registry: {}", e);
-            return Ok(Some(1));
-        }
-    };
+    let registry = ToolRegistry::load()
+        .map_err(|error| miette::miette!("Failed to load tool registry: {error}"))?;
 
     let tools = registry.list_tools();
 
@@ -172,13 +166,8 @@ pub fn run_tool_list() -> AppResult<miette::Report> {
 pub fn run_tool_update(name: String, version: Option<String>) -> AppResult<miette::Report> {
     println!("Updating Morphir tool: {}", name);
 
-    let mut registry = match ToolRegistry::load() {
-        Ok(reg) => reg,
-        Err(e) => {
-            eprintln!("Error: Failed to load tool registry: {}", e);
-            return Ok(Some(1));
-        }
-    };
+    let mut registry = ToolRegistry::load()
+        .map_err(|error| miette::miette!("Failed to load tool registry: {error}"))?;
 
     // Check if tool exists
     let existing_tool = registry.get_tool(&name).cloned().ok_or_else(|| {
@@ -226,27 +215,17 @@ pub fn run_tool_update(name: String, version: Option<String>) -> AppResult<miett
 pub fn run_tool_uninstall(name: String) -> AppResult<miette::Report> {
     println!("Uninstalling Morphir tool: {}", name);
 
-    let mut registry = match ToolRegistry::load() {
-        Ok(reg) => reg,
-        Err(e) => {
-            eprintln!("Error: Failed to load tool registry: {}", e);
-            return Ok(Some(1));
-        }
-    };
+    let mut registry = ToolRegistry::load()
+        .map_err(|error| miette::miette!("Failed to load tool registry: {error}"))?;
 
     // Remove tool from registry
-    let removed_tool = match registry.remove_tool(&name) {
-        Some(tool) => tool,
-        None => {
-            eprintln!("Error: Tool '{}' is not installed", name);
-            return Ok(Some(1));
-        }
-    };
+    let removed_tool = registry
+        .remove_tool(&name)
+        .ok_or_else(|| miette::miette!("Tool '{name}' is not installed"))?;
 
-    if let Err(e) = registry.save() {
-        eprintln!("Error: Failed to save tool registry: {}", e);
-        return Ok(Some(1));
-    }
+    registry
+        .save()
+        .map_err(|error| miette::miette!("Failed to save tool registry: {error}"))?;
 
     let version_str = removed_tool.version.as_deref().unwrap_or(DEFAULT_VERSION);
     println!(

@@ -878,6 +878,18 @@ fn report_operation_outcome(
     }
 }
 
+fn operation_diagnostic(raw: Option<String>, exit_code: u8) -> Option<String> {
+    raw.filter(|diagnostic| !diagnostic.trim().is_empty())
+        .or_else(|| {
+            (exit_code != 0).then(|| {
+                format!(
+                    "command exited with status {exit_code}; details were reported by the command"
+                )
+            })
+        })
+        .map(|diagnostic| commands::diagnostics::sanitize_text(&diagnostic))
+}
+
 #[tokio::main]
 async fn main() -> starbase::MainResult {
     use clap::CommandFactory;
@@ -929,13 +941,9 @@ async fn main() -> starbase::MainResult {
         };
         if let Some(migrate_args) = migrate_args {
             let (exit_code, failed, diagnostic) = match migrate_args.run() {
-                Ok(Some(code)) => (code, code != 0, None),
+                Ok(Some(code)) => (code, code != 0, operation_diagnostic(None, code)),
                 Ok(None) => (0, false, None),
-                Err(e) => (
-                    1,
-                    true,
-                    Some(commands::diagnostics::sanitize_text(&e.to_string())),
-                ),
+                Err(error) => (1, true, operation_diagnostic(Some(error.to_string()), 1)),
             };
             report_operation_outcome(
                 &operation_id,
@@ -973,11 +981,10 @@ async fn main() -> starbase::MainResult {
         )
         .await;
     let failed = outcome.error.is_some() || outcome.exit_code != 0;
-    let diagnostic = outcome
-        .error
-        .as_ref()
-        .map(ToString::to_string)
-        .map(|diagnostic| commands::diagnostics::sanitize_text(&diagnostic));
+    let diagnostic = operation_diagnostic(
+        outcome.error.as_ref().map(ToString::to_string),
+        outcome.exit_code,
+    );
     report_operation_outcome(
         &operation_id,
         logging_guard.as_ref(),
@@ -986,4 +993,23 @@ async fn main() -> starbase::MainResult {
         diagnostic.as_deref(),
     );
     outcome.into_miette_result()
+}
+
+#[cfg(test)]
+mod operation_diagnostic_tests {
+    use super::operation_diagnostic;
+
+    #[test]
+    fn nonzero_outcomes_never_record_an_empty_diagnostic() {
+        assert_eq!(operation_diagnostic(None, 0), None);
+        assert_eq!(
+            operation_diagnostic(None, 7).as_deref(),
+            Some("command exited with status 7; details were reported by the command")
+        );
+        assert_eq!(
+            operation_diagnostic(Some("request failed: --api-key LIVE_SECRET".to_owned()), 1)
+                .as_deref(),
+            Some("[REDACTED]")
+        );
+    }
 }

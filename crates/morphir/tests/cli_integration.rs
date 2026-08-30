@@ -1050,7 +1050,7 @@ fn failed_operation_reports_correlated_id_and_exact_log_path() {
     let morphir_home = temp_dir.path().join("relocated-home");
 
     let output = morphir_command()
-        .args(["tool", "update", "not-installed"])
+        .args(["tool", "uninstall", "not-installed"])
         .env("MORPHIR_HOME", &morphir_home)
         .env_remove("MORPHIR_LOG_DIR")
         .env("MORPHIR_LOG_FILE", "true")

@@ -118,6 +118,27 @@ fn contains_authorization_header(value: &str) -> bool {
     })
 }
 
+fn contains_sensitive_option_pair(value: &str) -> bool {
+    let tokens = value.split_whitespace().collect::<Vec<_>>();
+    tokens.windows(2).any(|pair| {
+        let option = pair[0].trim_matches(|character| {
+            matches!(
+                character,
+                '\'' | '"' | '[' | ']' | '(' | ')' | '{' | '}' | ','
+            )
+        });
+        let value = pair[1].trim_matches(|character| {
+            matches!(
+                character,
+                '\'' | '"' | '[' | ']' | '(' | ')' | '{' | '}' | ','
+            )
+        });
+        option.strip_prefix("--").is_some_and(sensitive_key)
+            && !value.is_empty()
+            && !value.starts_with("--")
+    })
+}
+
 fn redact_urls(value: &str) -> String {
     let mut redacted = value.to_owned();
     let mut search_from = 0;
@@ -182,6 +203,7 @@ pub(crate) fn sanitize_text(value: &str) -> String {
         || lower.contains("token=")
         || lower.contains("secret=")
         || contains_sensitive_assignment(value)
+        || contains_sensitive_option_pair(value)
     {
         return "[REDACTED]".to_owned();
     }
@@ -672,6 +694,8 @@ mod tests {
             "api_key: LIVE_SECRET",
             "client-secret: LIVE_SECRET",
             r#"request body: {"password":"hunter2"}"#,
+            "request failed: --api-key LIVE_SECRET",
+            r#"debug args: "--password" "hunter2""#,
             "Authorization:Basic dXNlcjpwYXNz",
             "-----BEGIN PRIVATE KEY-----\nLIVE_SECRET\n-----END PRIVATE KEY-----",
         ] {
