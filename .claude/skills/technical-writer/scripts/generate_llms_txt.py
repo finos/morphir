@@ -420,7 +420,7 @@ def scan_docs(docs_dir: Path) -> Dict[str, List[Dict]]:
             continue
 
         docs = []
-        seen_titles: Set[str] = set()  # Track titles for deduplication
+        seen_routes: Set[str] = set()
 
         markdown_files = list(section_path.rglob('*.md'))
         markdown_files.extend(section_path.rglob('*.mdx'))
@@ -456,15 +456,12 @@ def scan_docs(docs_dir: Path) -> Dict[str, List[Dict]]:
                     stem = md_file.parent.name
                 title = stem.replace('-', ' ').replace('_', ' ').title()
 
-            # Deduplicate by title (keep first occurrence)
-            title_key = title.lower().strip()
-            if title_key in seen_titles:
-                continue
-            seen_titles.add(title_key)
-
             # Build URL path with proper encoding
             rel_path = md_file.relative_to(docs_dir)
             url_path = doc_route_path(md_file, docs_dir, frontmatter)
+            if url_path in seen_routes:
+                continue
+            seen_routes.add(url_path)
 
             docs.append({
                 'title': title,

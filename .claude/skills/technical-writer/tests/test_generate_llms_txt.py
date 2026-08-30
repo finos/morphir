@@ -15,6 +15,29 @@ SPEC.loader.exec_module(GENERATOR)
 
 
 class GeneratedDocumentLinkTests(unittest.TestCase):
+    def test_scan_keeps_distinct_routes_with_the_same_title(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            docs_dir = Path(temporary_directory)
+            for version in ("v1", "v2"):
+                viewer = docs_dir / f"spec/ir/schemas/{version}/full/schema-viewer.mdx"
+                viewer.parent.mkdir(parents=True)
+                viewer.write_text(
+                    "---\ntitle: Interactive Schema Viewer\n---\n# Viewer\n",
+                    encoding="utf-8",
+                )
+
+            sections = GENERATOR.scan_docs(docs_dir)
+
+        documents = sections["spec"]["docs"]
+        self.assertEqual(2, len(documents))
+        self.assertEqual(
+            {
+                "https://morphir.finos.org/docs/spec/ir/schemas/v1/full/schema-viewer",
+                "https://morphir.finos.org/docs/spec/ir/schemas/v2/full/schema-viewer",
+            },
+            {document["url"] for document in documents},
+        )
+
     def test_fallback_frontmatter_keeps_explicitly_published_documents(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             docs_dir = Path(temporary_directory)

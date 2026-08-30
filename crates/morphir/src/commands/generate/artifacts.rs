@@ -903,9 +903,9 @@ fn load_manifest(root: &Dir) -> Result<Option<Vec<ValidatedRemoval>>, CliError> 
     let mut paths_by_case_key = BTreeMap::<String, String>::new();
     let mut validated = Vec::with_capacity(manifest.artifacts.len());
     for path in manifest.artifacts {
-        if portable_path_key(&path) == portable_path_key(MANIFEST_PATH) {
+        if is_reserved_manifest_path(&path) {
             return Err(validation_error(
-                "generated-artifact manifest cannot list itself".to_owned(),
+                "generated-artifact manifest cannot list itself or its descendants".to_owned(),
             ));
         }
         let (relative_path, display_path) = validate_path(&path)?;
@@ -946,7 +946,7 @@ fn validate_complete_set(artifacts: &[Artifact]) -> Result<Vec<ValidatedArtifact
     let mut validated = Vec::with_capacity(artifacts.len());
 
     for artifact in artifacts {
-        if portable_path_key(&artifact.path) == portable_path_key(MANIFEST_PATH) {
+        if is_reserved_manifest_path(&artifact.path) {
             return Err(validation_error(format!(
                 "artifact path '{}' is reserved for Morphir generation state",
                 artifact.path
@@ -998,6 +998,15 @@ fn validate_complete_set(artifacts: &[Artifact]) -> Result<Vec<ValidatedArtifact
 
 fn portable_path_key(path: &str) -> String {
     path.nfkc().case_fold().nfc().collect()
+}
+
+fn is_reserved_manifest_path(path: &str) -> bool {
+    let path_key = portable_path_key(path);
+    let manifest_key = portable_path_key(MANIFEST_PATH);
+    path_key == manifest_key
+        || path_key
+            .strip_prefix(&manifest_key)
+            .is_some_and(|suffix| suffix.starts_with('/'))
 }
 
 fn validate_path(path: &str) -> Result<(PathBuf, String), CliError> {
@@ -1182,6 +1191,21 @@ mod tests {
             .unwrap_err();
 
         assert!(error.to_string().contains("duplicate"));
+        assert!(output.path().read_dir().unwrap().next().is_none());
+    }
+
+    #[test]
+    fn rejects_descendants_of_the_reserved_manifest_before_writing() {
+        let output = tempdir().unwrap();
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&[text(
+                ".MORPHIR-GENERATED-ARTIFACTS.JSON/nested.avsc",
+                "{}",
+            )])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("reserved"));
         assert!(output.path().read_dir().unwrap().next().is_none());
     }
 
