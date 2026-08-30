@@ -542,7 +542,7 @@ fn sanitize(value: serde_json::Value) -> serde_json::Value {
             });
             let mut sanitized = serde_json::Map::new();
             for (key, value) in values {
-                if excluded_sensitive_container(&key, &value) {
+                if excluded_sensitive_container(&key) {
                     continue;
                 }
                 let value = if sensitive_key(&key)
@@ -563,11 +563,8 @@ fn sanitize(value: serde_json::Value) -> serde_json::Value {
     }
 }
 
-fn excluded_sensitive_container(key: &str, value: &serde_json::Value) -> bool {
+fn excluded_sensitive_container(key: &str) -> bool {
     matches!(
-        value,
-        serde_json::Value::Object(_) | serde_json::Value::Array(_)
-    ) && matches!(
         normalized_key(key).as_str(),
         "env" | "environment" | "environmentvariables" | "config" | "configuration"
     )
@@ -1450,12 +1447,16 @@ mod tests {
             "configuration": {
                 "endpoint": "internal.example.test"
             },
+            "env": "DEPLOYMENT_LICENSE=SCALAR_SECRET",
+            "config": "endpoint=internal.example.test",
             "author": "Ada"
         }));
 
         assert_eq!(sanitized["_auth"], "[REDACTED]");
         assert!(sanitized.get("environment").is_none());
         assert!(sanitized.get("configuration").is_none());
+        assert!(sanitized.get("env").is_none());
+        assert!(sanitized.get("config").is_none());
         assert_eq!(sanitized["author"], "Ada");
     }
 
