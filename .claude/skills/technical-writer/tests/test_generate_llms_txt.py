@@ -15,6 +15,32 @@ SPEC.loader.exec_module(GENERATOR)
 
 
 class GeneratedDocumentLinkTests(unittest.TestCase):
+    def test_fallback_frontmatter_keeps_explicitly_published_documents(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            docs_dir = Path(temporary_directory)
+            section = docs_dir / "getting-started"
+            section.mkdir()
+            (section / "published.md").write_text(
+                "---\ndraft: false\nunlisted: false\ntitle: Published\n---\n# Published\n",
+                encoding="utf-8",
+            )
+
+            had_yaml = GENERATOR.HAS_YAML
+            GENERATOR.HAS_YAML = False
+            try:
+                sections = GENERATOR.scan_docs(docs_dir)
+            finally:
+                GENERATOR.HAS_YAML = had_yaml
+
+        self.assertIn("getting-started", sections)
+        self.assertEqual(
+            ["Published"],
+            [
+                document["title"]
+                for document in sections["getting-started"]["docs"]
+            ],
+        )
+
     def test_percent_encoded_morphir_web_ui_path_is_not_double_encoded(self) -> None:
         source = REPO_ROOT / "docs/README.md"
         content = source.read_text(encoding="utf-8")

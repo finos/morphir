@@ -154,7 +154,14 @@ def extract_frontmatter(content: str) -> Tuple[Dict, str]:
         for line in frontmatter_text.split('\n'):
             if ':' in line:
                 key, value = line.split(':', 1)
-                frontmatter[key.strip()] = value.strip().strip('"\'')
+                value = value.strip().strip('"\'')
+                if value.lower() == 'true':
+                    parsed_value = True
+                elif value.lower() == 'false':
+                    parsed_value = False
+                else:
+                    parsed_value = value
+                frontmatter[key.strip()] = parsed_value
         return frontmatter, body
 
 
