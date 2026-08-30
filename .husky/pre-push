@@ -11,6 +11,11 @@
 # Set MORPHIR_SKIP_HOOKS=1 to skip, for example when pushing a work in progress
 # branch you know does not build.
 
+# Chain the beads-managed hook. See .husky/post-merge for why this is explicit.
+if [ -x .beads/hooks/pre-push ]; then
+    .beads/hooks/pre-push "$@" || exit $?
+fi
+
 if [ "$MORPHIR_SKIP_HOOKS" = "1" ]; then
     echo "pre-push: skipped (MORPHIR_SKIP_HOOKS=1)"
     exit 0

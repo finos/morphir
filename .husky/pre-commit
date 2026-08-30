@@ -1,5 +1,13 @@
 #!/bin/sh
 
+# Chain the beads-managed hook. bd installs its shims under .beads/hooks (its
+# recommended location for the Dolt backend) and they are committed, but nothing
+# ran them: core.hooksPath now points at this directory, so bd's copies are only
+# reachable if we call them.
+if [ -x .beads/hooks/pre-commit ]; then
+    .beads/hooks/pre-commit "$@" || exit $?
+fi
+
 # Prevent committing .beads as a symlink
 # This can happen when using git worktrees where .beads becomes a symlink
 # to the main worktree's .beads directory
@@ -48,14 +56,23 @@ if [ -L ".beads" ]; then
     fi
 fi
 
-# When the beads export is being committed, confirm it still agrees with the
-# database. The two drifted apart in both directions before this check existed
-# (morphir-5uau), because the export is passive: issues committed to Dolt without
-# a re-export, or an export edited and committed to git without a dolt push, both
-# go unnoticed until someone compares them.
-if [ "$MORPHIR_SKIP_HOOKS" != "1" ] && git diff --cached --name-only | grep -q "^\.beads/issues\.jsonl$"; then
+# Confirm the beads export still agrees with the database. The two drifted apart
+# in both directions before this check existed (morphir-5uau), because the export
+# is passive: issues committed to Dolt without a re-export, or an export edited
+# and committed to git without a dolt push, both go unnoticed until someone
+# compares them.
+#
+# This runs on every commit, not only when the export is staged. The commoner
+# failure is the one where it is *not* staged: issues are created through bd and
+# nobody re-exports, which is how 17 records came to exist only in the database.
+# Checking only staged exports would miss precisely that case. The check costs
+# about half a second.
+#
+# --staged compares the index rather than the working tree, because a commit
+# records what is staged.
+if [ "$MORPHIR_SKIP_HOOKS" != "1" ]; then
     if command -v bun > /dev/null 2>&1 && command -v bd > /dev/null 2>&1; then
-        if ! bun run tools/check-beads-drift.ts; then
+        if ! bun run tools/check-beads-drift.ts --staged; then
             echo "To commit anyway: MORPHIR_SKIP_HOOKS=1 git commit ..."
             exit 1
         fi

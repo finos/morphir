@@ -175,8 +175,18 @@ bun and mise, so the hooks sat dormant in every clone and the EasyCLA guard belo
 | Hook | What it does |
 | --- | --- |
 | `commit-msg` | Strips `Co-Authored-By` trailers naming AI assistants. This is the EasyCLA guard. |
-| `pre-commit` | Blocks `go.work`, blocks committing `.beads` as a symlink, and checks beads drift when `.beads/issues.jsonl` is staged. |
-| `pre-push` | Checks formatting, and nothing slower. |
+| `pre-commit` | Chains bd, blocks `go.work`, blocks committing `.beads` as a symlink, and checks beads drift. |
+| `pre-push` | Chains bd, then checks formatting and nothing slower. |
+| `post-merge`, `post-checkout` | Chain bd, so the database keeps step with what a pull or branch switch brought in. |
+
+bd installs its own shims under `.beads/hooks/` and they are committed, but
+`core.hooksPath` points at `.husky`, so they are reachable only because each hook
+here calls its `.beads/hooks` counterpart. `bd hooks list` reports a hook as
+installed whenever one exists at the active path, so it can look wired up when it
+is not; check that the `.husky` hook actually calls bd.
+
+`prepare-commit-msg` is deliberately not chained. bd uses it to add agent
+identity trailers, which is the very thing the `commit-msg` guard exists to strip.
 
 `pre-push` does not run lint or tests on purpose. CI gates both on every pull request, and locally they mean
 `cargo clippy --all-targets` plus `cargo test --workspace`, which take minutes and do not link on some machines. A
@@ -354,7 +364,16 @@ bd show <id>          # Full issue details with dependencies
 bd create --title="..." --type=task --priority=2
 bd update <id> --status=in_progress
 bd close <id>
-bd sync               # Commit and push changes
+```
+
+After changing issues, refresh the export and push the database. There is no
+`bd sync` command; earlier revisions of this file and of `.beads/README.md` told
+you to run one, and it has never existed in the bd version this project uses:
+
+```bash
+bd export -o .beads/issues.jsonl   # refresh the passive export for git
+bd dolt commit -m "..."            # commit the database
+bd dolt push                       # publish it over refs/dolt/data
 ```
 
 ### Session Protocol
@@ -379,11 +398,12 @@ apply to every session; step 4 depends on the active profile.
      part of session close — work is then not complete until `git push`
      succeeds:
      ```bash
-     git status              # review what changed
-     git add <files>         # stage code changes
-     git commit -m "..."     # commit code (beads changes go via bd sync)
+     git status                        # review what changed
+     bd export -o .beads/issues.jsonl  # refresh the export before staging
+     git add <files>                   # stage code and the export together
+     git commit -m "..."
      git pull --rebase
-     bd sync
+     bd dolt commit -m "..." && bd dolt push
      git push
      git status  # MUST show "up to date with origin"
      ```
