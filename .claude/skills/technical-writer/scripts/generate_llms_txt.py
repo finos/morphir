@@ -65,6 +65,11 @@ DOC_SECTIONS = {
         "description": "Practical guides for using Morphir",
         "priority": 2,
     },
+    "generate": {
+        "title": "Generation Guides",
+        "description": "Guides for generating target artifacts from Morphir IR",
+        "priority": 2,
+    },
     "cli-preview": {
         "title": "CLI Preview (Archived)",
         "description": "Archived Go CLI preview docs; current Go tooling is in finos/morphir-go",

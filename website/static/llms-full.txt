@@ -2017,6 +2017,7 @@ Practical guides for using Morphir
 - [Morphir Command Line Tools](https://morphir.finos.org/docs/user-guides/cli-tools/command-line-tools): The canonical Morphir CLI is the morphir executable released from the finos/morphir repository. See the CLI Reference for the generated command documentation, and Installing Morphir for installation...
 - [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tools/ir-migrate): morphir migrate converts concrete Morphir IR version 3 and version 4 between native JSON and YAML storage. The equivalent nested command, morphir ir migrate, has the same behavior.
 - [Morphir-elm Commands Processing](https://morphir.finos.org/docs/user-guides/cli-tools/morphir-commands-processing): The purpose of the document is to explain what happens when morphir-elm commands are run. This documents also describes each morphir-elm command, options and output/result of the command.
+- [Morphir-elm Commands Processing](https://morphir.finos.org/docs/user-guides/cli-tools/morphir-elm-commands-processing): The purpose of the document is to explain what happens when morphir-elm commands are run. This documents also describes each morphir-elm command, options and output/result of the command.
 - [WIT Commands (Archived)](https://morphir.finos.org/docs/user-guides/cli-tools/wit-commands): The morphir wit command family is part of the Morphir Go CLI, not the Rust CLI shipped from finos/morphir. Current WIT documentation and development live in finos/morphir-go.
 - [WIT Type Mapping (Archived)](https://morphir.finos.org/docs/user-guides/cli-tools/wit-type-mapping): WIT ↔ Morphir IR type mapping for the Go WIT pipeline is maintained with Morphir Go. See finos/morphir-go. This page is no longer active documentation for the Rust CLI in finos/morphir.
 - [Decorations User Guide](https://morphir.finos.org/docs/user-guides/development-guides/decorations-users-guide): The Morphir IR contains all the domain models and business logic that you defined in your model but sometimes you want to add more information that cannot be captured in the language.
@@ -2028,6 +2029,12 @@ Practical guides for using Morphir
 - [Morphir Testing Setup](https://morphir.finos.org/docs/user-guides/modeling-guides/morphir-testing-setup): Elm's standard testing library is elm-test. You can install it by running the following command \ in your project. It will ask questions, just say yes to everything:
 - [Soul of your Application](https://morphir.finos.org/docs/user-guides/modeling-guides/soul-application): Morphir approaches application development from the perspective that the application's business knowledge should be enshrined. Adopting this knowledge-first has brought us great benefits, including:
 - [What Makes a Good Model?](https://morphir.finos.org/docs/user-guides/modeling-guides/domain-model): We all strive to build high-quality software and that begins with a clean and well-defined domain model.
+
+### Generation Guides
+
+Guides for generating target artifacts from Morphir IR
+
+- [Generate Apache Avro](https://morphir.finos.org/docs/generate/avro): The morphir-avro WASM extension turns public Morphir types and value specifications into Apache Avro schemas or protocols. It accepts Morphir IR v3 and v4.
 
 ### Specifications
 
@@ -2052,17 +2059,24 @@ Technical specifications including IR format and schemas
 - [Schema Checker - Version 1](https://morphir.finos.org/docs/spec/ir/schemas/v1/full/schema-checker): Validate Morphir IR JSON against the Version 1 schema
 - [Interactive Schema Viewer](https://morphir.finos.org/docs/spec/ir/schemas/v1/full/schema-viewer): Interactive JSON Schema viewer for Morphir IR format version 1
 - [Schema Version 1](https://morphir.finos.org/docs/spec/ir/schemas/v1/): Morphir IR JSON Schema for format version 1
+- [Full Schema](https://morphir.finos.org/docs/spec/ir/schemas/v2/full/): Complete Morphir IR JSON Schema for format version 2
 - [Schema Checker - Version 2](https://morphir.finos.org/docs/spec/ir/schemas/v2/full/schema-checker): Validate Morphir IR JSON against the Version 2 schema
+- [Interactive Schema Viewer](https://morphir.finos.org/docs/spec/ir/schemas/v2/full/schema-viewer): Interactive JSON Schema viewer for Morphir IR format version 2
 - [Schema Version 2](https://morphir.finos.org/docs/spec/ir/schemas/v2/): Morphir IR JSON Schema for format version 2
 - [What's New in Version 2](https://morphir.finos.org/docs/spec/ir/schemas/v2/whats-new): Changes and improvements in Morphir IR schema version 2
+- [Full Schema](https://morphir.finos.org/docs/spec/ir/schemas/v3/full/): Complete Morphir IR JSON Schema for format version 3
 - [Schema Checker - Version 3](https://morphir.finos.org/docs/spec/ir/schemas/v3/full/schema-checker): Validate Morphir IR JSON against the Version 3 schema
+- [Interactive Schema Viewer](https://morphir.finos.org/docs/spec/ir/schemas/v3/full/schema-viewer): Interactive JSON Schema viewer for Morphir IR format version 3 (current)
 - [Schema Version 3](https://morphir.finos.org/docs/spec/ir/schemas/v3/): Morphir IR JSON Schema for format version 3 (Current)
 - [What's New in Version 3](https://morphir.finos.org/docs/spec/ir/schemas/v3/whats-new): Changes and improvements in Morphir IR schema version 3
 - [Document Tree File Formats](https://morphir.finos.org/docs/spec/ir/schemas/v4/document-tree-files): Complete specification for VFS document tree file formats in Morphir IR V4
+- [Full Schema](https://morphir.finos.org/docs/spec/ir/schemas/v4/full/): Complete Morphir IR JSON Schema for format version 4 (draft)
 - [Schema Checker - Version 4](https://morphir.finos.org/docs/spec/ir/schemas/v4/full/schema-checker): Validate Morphir IR JSON against the Version 4 schema
+- [Interactive Schema Viewer](https://morphir.finos.org/docs/spec/ir/schemas/v4/full/schema-viewer): Interactive JSON Schema viewer for Morphir IR format version 4 (draft)
 - [Schema Version 4](https://morphir.finos.org/docs/spec/ir/schemas/v4/): Morphir IR JSON Schema for format version 4 (Draft)
 - [JSON Serialization Profile](https://morphir.finos.org/docs/spec/ir/schemas/v4/json-profile): Normative JSON storage profile for Morphir IR version 4
 - [Semantic IR Model](https://morphir.finos.org/docs/spec/ir/schemas/v4/semantic-model): Serialization-neutral Morphir IR version 4 model
+- [What's New in Version 4](https://morphir.finos.org/docs/spec/ir/schemas/v4/whats-new): Changes and improvements in Morphir IR schema version 4
 - [YAML Serialization Profile](https://morphir.finos.org/docs/spec/ir/schemas/v4/yaml-profile): Normative native YAML storage profile for Morphir IR version 4
 - [Morphir JSON Project Configuration Specification](https://morphir.finos.org/docs/spec/morphir-json/morphir-json-specification): Formal specification for morphir.json (Morphir Elm project configuration)
 - [Morphir configuration merge rules](https://morphir.finos.org/docs/spec/morphir-toml/morphir-toml-merge-rules): How Morphir merges configuration sources into an effective configuration
@@ -2118,7 +2132,9 @@ Design documents, proposals, and RFCs for Morphir features
 - [Node References ($ref)](https://morphir.finos.org/docs/design/draft/ir/refs): The $ref mechanism provides structural deduplication within VFS JSON files, reducing repetition of common node patterns.
 - [Types Module](https://morphir.finos.org/docs/design/draft/ir/types): This module defines the type system for Morphir IR, including type expressions, specifications, and definitions.
 - [Values Module](https://morphir.finos.org/docs/design/draft/ir/values): This module defines the value expressions, literals, patterns, and value definitions for Morphir IR.
+- [CLI-managed Desktop acquisition and launch](https://morphir.finos.org/docs/design/proposals/desktop-acquisition-and-launch): Morphir users should be able to install the CLI and then run morphir desktop. The CLI acquires a compatible Desktop release from the configured channel when needed, activates it safely, and launches...
 - [Proposals](https://morphir.finos.org/docs/design/proposals/): This section contains design proposals for new Morphir features and capabilities.
+- [IR v4 name canonicalization and initialism encoding](https://morphir.finos.org/docs/design/proposals/ir-v4-name-encoding): Proposed replacement for the naming sections of the v4 specification, with the exact schema patches.
 - [WASM extension runtime and Avro backend](https://morphir.finos.org/docs/design/proposals/wasm-extension-runtime-and-avro-backend): Status: Accepted; not released.
 - [RFCs](https://morphir.finos.org/docs/design/rfcs/): This section contains RFCs for significant Morphir changes requiring community input.
 
@@ -2196,6 +2212,8 @@ Architecture Decision Records (ADRs)
 - [ADR-0002: Processing Pipeline Architecture](https://morphir.finos.org/docs/adr/ADR-0002-processing-pipeline): finos/morphir-go needs a consistent way to process IR across commands such as validate, build, analyze, and generate.
 - [ADR-0003: Use a transport-independent JSON-RPC protocol for extensions](https://morphir.finos.org/docs/adr/ADR-0003-morphir-extension-protocol): Morphir hosts will call independently packaged extensions through the versioned Morphir Extension Protocol.
 - [ADR-0004: Retire morphir-live rather than migrate it into morphir-ui](https://morphir.finos.org/docs/adr/ADR-0004-retire-morphir-live): crates/morphir-live is a Dioxus single-page app that browses workspaces, projects and models and edits morphir.toml through either a generated form or a raw TOML tab. We are retiring it.
+- [ADR-0005: Manage Morphir Desktop as a tool from Morphir Home](https://morphir.finos.org/docs/adr/ADR-0005-cli-managed-desktop): Morphir Desktop is the well-known user-launched tool desktop, not an extension. The CLI acquires, verifies, activates, updates, repairs, and launches it through the same distribution kernel used by...
+- [ADR-0006: Keep Morphir observability local by default](https://morphir.finos.org/docs/adr/ADR-0006-local-observability-by-default): Morphir CLI and Desktop enable bounded structured file logging by default beneath Morphir Home and correlate acquisition, activation, launch, and crash events with user-visible operation IDs.
 
 ### Community
 

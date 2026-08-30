@@ -15,6 +15,26 @@ SPEC.loader.exec_module(GENERATOR)
 
 
 class GeneratedDocumentLinkTests(unittest.TestCase):
+    def test_generate_guides_are_in_compact_discovery(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            docs_dir = Path(temporary_directory)
+            generate_dir = docs_dir / "generate"
+            generate_dir.mkdir()
+            (generate_dir / "avro.md").write_text(
+                "# Generate Apache Avro\n\nEmit Avro schemas from Morphir IR.\n",
+                encoding="utf-8",
+            )
+
+            generated = GENERATOR.generate_compact(
+                GENERATOR.scan_docs(docs_dir),
+                docs_dir,
+            )
+
+        self.assertIn(
+            "https://morphir.finos.org/docs/generate/avro",
+            generated,
+        )
+
     def test_scan_keeps_distinct_routes_with_the_same_title(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             docs_dir = Path(temporary_directory)
