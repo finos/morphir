@@ -3821,6 +3821,7 @@ dependencies = [
 name = "morphir-distribution"
 version = "0.4.0-alpha.5"
 dependencies = [
+ "flate2",
  "fs2",
  "morphir-common",
  "morphir-extension-sdk",
@@ -3828,6 +3829,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.11.0",
+ "tar",
  "tempfile",
  "thiserror 2.0.20",
  "tough",
