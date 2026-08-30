@@ -867,8 +867,9 @@ fn report_operation_outcome(
     logging_guard: Option<&logging::LogGuard>,
     exit_code: u8,
     failed: bool,
+    diagnostic: Option<&str>,
 ) {
-    logging::record_operation_finish(operation_id, logging_guard, exit_code, failed);
+    logging::record_operation_finish(operation_id, logging_guard, exit_code, failed, diagnostic);
     if failed {
         eprintln!("Operation ID: {operation_id}");
         if let Some(log) = logging_guard.map(logging::LogGuard::log_path) {
@@ -927,15 +928,25 @@ async fn main() -> starbase::MainResult {
             _ => None,
         };
         if let Some(migrate_args) = migrate_args {
-            let (exit_code, failed) = match migrate_args.run() {
-                Ok(Some(code)) => (code, code != 0),
-                Ok(None) => (0, false),
+            let (exit_code, failed, diagnostic) = match migrate_args.run() {
+                Ok(Some(code)) => (code, code != 0, None),
+                Ok(None) => (0, false, None),
                 Err(e) => {
                     eprintln!("Error: {}", e);
-                    (1, true)
+                    (
+                        1,
+                        true,
+                        Some(commands::diagnostics::sanitize_text(&e.to_string())),
+                    )
                 }
             };
-            report_operation_outcome(&operation_id, logging_guard.as_ref(), exit_code, failed);
+            report_operation_outcome(
+                &operation_id,
+                logging_guard.as_ref(),
+                exit_code,
+                failed,
+                diagnostic.as_deref(),
+            );
             return Ok(std::process::ExitCode::from(exit_code));
         }
     }
@@ -965,11 +976,17 @@ async fn main() -> starbase::MainResult {
         )
         .await;
     let failed = outcome.error.is_some() || outcome.exit_code != 0;
+    let diagnostic = outcome
+        .error
+        .as_ref()
+        .map(ToString::to_string)
+        .map(|diagnostic| commands::diagnostics::sanitize_text(&diagnostic));
     report_operation_outcome(
         &operation_id,
         logging_guard.as_ref(),
         outcome.exit_code,
         failed,
+        diagnostic.as_deref(),
     );
     outcome.into_miette_result()
 }

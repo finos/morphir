@@ -354,6 +354,7 @@ pub fn record_operation_finish(
     log_guard: Option<&LogGuard>,
     exit_code: u8,
     failed: bool,
+    diagnostic: Option<&str>,
 ) {
     let session_id = log_guard
         .map(LogGuard::session_id)
@@ -368,6 +369,7 @@ pub fn record_operation_finish(
         event_name = "cli.operation.finish",
         outcome = if failed { "failure" } else { "success" },
         exit_code,
+        diagnostic = diagnostic.unwrap_or(""),
         "CLI operation finished"
     );
 }

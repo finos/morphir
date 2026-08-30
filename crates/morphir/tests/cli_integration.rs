@@ -838,7 +838,8 @@ fn diagnostics_show_finds_correlated_events_and_redacts_legacy_secrets() {
                 "api_key": "SNAKE_API_KEY_SHOULD_NOT_ESCAPE",
                 "accessKey": "ACCESS_KEY_SHOULD_NOT_ESCAPE",
                 "credential": "CREDENTIAL_SHOULD_NOT_ESCAPE",
-                "message": "retry failed? see https://example.com/status"
+                "message": "retry failed? see https://example.com/status",
+                "urls": "https://public.example/status then https://alice:hunter2@private.example/artifact"
             }
         }),
         serde_json::json!({
@@ -887,7 +888,12 @@ fn diagnostics_show_finds_correlated_events_and_redacts_legacy_secrets() {
         shown["events"][0]["fields"]["message"],
         "retry failed? see https://example.com/status"
     );
+    assert_eq!(
+        shown["events"][0]["fields"]["urls"],
+        "https://public.example/status then https://[REDACTED]@private.example/artifact"
+    );
     assert!(!String::from_utf8_lossy(&output.stdout).contains("SHOULD_NOT_ESCAPE"));
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("hunter2"));
 }
 
 #[test]
@@ -1072,6 +1078,12 @@ fn failed_operation_reports_correlated_id_and_exact_log_path() {
     assert!(finish["fields"]["session_id"].is_string());
     assert_eq!(finish["fields"]["outcome"], "failure");
     assert_eq!(finish["fields"]["exit_code"], 1);
+    assert!(
+        finish["fields"]["diagnostic"]
+            .as_str()
+            .is_some_and(|diagnostic| diagnostic.contains("not installed")),
+        "finish event should retain the failure diagnostic"
+    );
 }
 
 #[test]
@@ -1221,6 +1233,9 @@ fn migrate_failure_does_not_replace_an_existing_output() {
             event["fields"]["operation_id"] == operation_id
                 && event["fields"]["event_name"] == "cli.operation.finish"
                 && event["fields"]["outcome"] == "failure"
+                && event["fields"]["diagnostic"]
+                    .as_str()
+                    .is_some_and(|diagnostic| !diagnostic.is_empty())
         })
     }));
 }

@@ -97,13 +97,8 @@ impl ToolRegistry {
 pub fn run_tool_install(name: String, version: Option<String>) -> AppResult<miette::Report> {
     println!("Installing Morphir tool: {}", name);
 
-    let mut registry = match ToolRegistry::load() {
-        Ok(reg) => reg,
-        Err(e) => {
-            eprintln!("Error: Failed to load tool registry: {}", e);
-            return Ok(Some(1));
-        }
-    };
+    let mut registry = ToolRegistry::load()
+        .map_err(|error| miette::miette!("Failed to load tool registry: {error}"))?;
 
     // Check if tool is already installed
     if let Some(existing_tool) = registry.get_tool(&name) {
@@ -186,16 +181,12 @@ pub fn run_tool_update(name: String, version: Option<String>) -> AppResult<miett
     };
 
     // Check if tool exists
-    let existing_tool = match registry.get_tool(&name) {
-        Some(tool) => tool.clone(),
-        None => {
-            eprintln!(
-                "Error: Tool '{}' is not installed. Use 'morphir tool install' first",
-                name
-            );
-            return Ok(Some(1));
-        }
-    };
+    let existing_tool = registry.get_tool(&name).cloned().ok_or_else(|| {
+        miette::miette!(
+            "Tool '{}' is not installed. Use 'morphir tool install' first",
+            name
+        )
+    })?;
 
     let old_version = existing_tool
         .version
@@ -219,10 +210,9 @@ pub fn run_tool_update(name: String, version: Option<String>) -> AppResult<miett
     };
 
     registry.add_tool(updated_tool);
-    if let Err(e) = registry.save() {
-        eprintln!("Error: Failed to save tool registry: {}", e);
-        return Ok(Some(1));
-    }
+    registry
+        .save()
+        .map_err(|error| miette::miette!("Failed to save tool registry: {error}"))?;
 
     println!(
         "✓ Successfully updated tool '{}' from {} to {}",

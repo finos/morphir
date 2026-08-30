@@ -78,7 +78,50 @@ fn sensitive_key(key: &str) -> bool {
     .any(|needle| key.contains(needle))
 }
 
-fn redact_text(value: &str) -> String {
+fn redact_urls(value: &str) -> String {
+    let mut redacted = value.to_owned();
+    let mut search_from = 0;
+
+    while let Some(marker) = redacted[search_from..].find("://") {
+        let authority_start = search_from + marker + 3;
+        let token_end = redacted[authority_start..]
+            .char_indices()
+            .find(|(_, character)| character.is_whitespace())
+            .map(|(index, _)| authority_start + index)
+            .unwrap_or(redacted.len());
+        let authority_end = redacted[authority_start..token_end]
+            .char_indices()
+            .find(|(_, character)| matches!(character, '/' | '?' | '#'))
+            .map(|(index, _)| authority_start + index)
+            .unwrap_or(token_end);
+
+        if let Some(user_info_end) = redacted[authority_start..authority_end].rfind('@') {
+            let host_start = authority_start + user_info_end + 1;
+            redacted.replace_range(authority_start..host_start, "[REDACTED]@");
+        }
+
+        let token_end = redacted[authority_start..]
+            .char_indices()
+            .find(|(_, character)| character.is_whitespace())
+            .map(|(index, _)| authority_start + index)
+            .unwrap_or(redacted.len());
+        if let Some(boundary) = redacted[authority_start..token_end]
+            .char_indices()
+            .find(|(_, character)| matches!(character, '?' | '#'))
+            .map(|(index, _)| authority_start + index)
+        {
+            redacted.replace_range(boundary..token_end, "");
+            search_from = boundary;
+        } else {
+            search_from = token_end;
+        }
+    }
+
+    redacted
+}
+
+/// Sanitize free-form text before writing it to a correlated diagnostic event.
+pub(crate) fn sanitize_text(value: &str) -> String {
     let lower = value.to_ascii_lowercase();
     if lower.contains("bearer ")
         || lower.contains("ghp_")
@@ -90,27 +133,7 @@ fn redact_text(value: &str) -> String {
         return "[REDACTED]".to_owned();
     }
     if value.contains("://") {
-        let authority_start = value.find("://").expect("URL marker was checked") + 3;
-        let boundary = value[authority_start..]
-            .char_indices()
-            .filter(|(_, character)| matches!(character, '?' | '#'))
-            .map(|(index, _)| authority_start + index)
-            .min()
-            .unwrap_or(value.len());
-        let visible = &value[..boundary];
-        let authority_end = visible[authority_start..]
-            .find('/')
-            .map(|index| authority_start + index)
-            .unwrap_or(visible.len());
-        if let Some(user_info_end) = visible[authority_start..authority_end].rfind('@') {
-            let host_start = authority_start + user_info_end + 1;
-            return format!(
-                "{}[REDACTED]@{}",
-                &visible[..authority_start],
-                &visible[host_start..]
-            );
-        }
-        return visible.to_owned();
+        return redact_urls(value);
     }
     value.to_owned()
 }
@@ -133,7 +156,7 @@ fn sanitize(value: serde_json::Value) -> serde_json::Value {
         serde_json::Value::Array(values) => {
             serde_json::Value::Array(values.into_iter().map(sanitize).collect())
         }
-        serde_json::Value::String(value) => serde_json::Value::String(redact_text(&value)),
+        serde_json::Value::String(value) => serde_json::Value::String(sanitize_text(&value)),
         value => value,
     }
 }
