@@ -12,6 +12,8 @@ use walkdir::WalkDir;
 const MAX_DIAGNOSTIC_EVENTS: usize = 10_000;
 const MAX_DIAGNOSTIC_EVENT_BYTES: usize = 16 * 1024 * 1024;
 const MAX_DIAGNOSTIC_SCAN_BYTES: usize = 64 * 1024 * 1024;
+const MAX_DIAGNOSTIC_DISCOVERY_ENTRIES: usize = 50_000;
+const MAX_DIAGNOSTIC_LOG_FILES: usize = 4_096;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -233,6 +235,14 @@ fn sensitive_long_option_consumes_next(value: &str) -> bool {
         )
     });
     sensitive_long_option(option) && !option.contains('=')
+}
+
+fn sensitive_pair_key(value: &str) -> bool {
+    sensitive_key(value)
+        && !sensitive_long_option(value)
+        && value
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '_' | '-'))
 }
 
 fn url_scheme_start_before(value: &str, marker: usize) -> Option<usize> {
@@ -571,32 +581,25 @@ fn insert_unique_json_key(
 }
 
 fn sanitize_array(values: Vec<serde_json::Value>) -> Vec<serde_json::Value> {
-    if let [serde_json::Value::String(key), _] = values.as_slice()
-        && sensitive_key(key)
-        && !sensitive_long_option(key)
-        && key
-            .chars()
-            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '_' | '-'))
-    {
-        return vec![
-            serde_json::Value::String(key.clone()),
-            serde_json::Value::String("[REDACTED]".to_owned()),
-        ];
-    }
-    let mut redact_next = false;
+    let mut redact_next_option = false;
+    let mut redact_next_pair_value = false;
     values
         .into_iter()
-        .map(|value| {
+        .enumerate()
+        .map(|(index, value)| {
             let long_option = value
                 .as_str()
                 .is_some_and(|value| value.trim_matches(['\'', '"']).starts_with("--"));
-            if redact_next && !long_option {
-                redact_next = false;
+            if redact_next_pair_value || (redact_next_option && !long_option) {
+                redact_next_pair_value = false;
+                redact_next_option = false;
                 return serde_json::Value::String("[REDACTED]".to_owned());
             }
-            redact_next = value
+            redact_next_option = value
                 .as_str()
                 .is_some_and(sensitive_long_option_consumes_next);
+            redact_next_pair_value =
+                index.is_multiple_of(2) && value.as_str().is_some_and(sensitive_pair_key);
             sanitize(value)
         })
         .collect()
@@ -764,29 +767,61 @@ fn read_operation_events_with_limits(
     max_bytes: usize,
     max_scan_bytes: usize,
 ) -> DiagnosticEvents {
-    let mut discovery_truncated = false;
+    let discovered = discover_log_files(
+        log_roots,
+        MAX_DIAGNOSTIC_DISCOVERY_ENTRIES,
+        MAX_DIAGNOSTIC_LOG_FILES,
+    );
+    let mut selected = read_operation_events_from_files(
+        discovered.paths,
+        operation_id,
+        max_events,
+        max_bytes,
+        max_scan_bytes,
+    );
+    selected.truncated |= discovered.truncated;
+    selected
+}
+
+struct DiscoveredLogFiles {
+    paths: Vec<PathBuf>,
+    truncated: bool,
+}
+
+fn discover_log_files(
+    log_roots: &[PathBuf],
+    max_entries: usize,
+    max_files: usize,
+) -> DiscoveredLogFiles {
+    let mut truncated = false;
+    let mut visited_entries = 0usize;
     let mut log_files = BTreeSet::new();
-    for root in log_roots {
+    'roots: for root in log_roots {
         let root = match root.canonicalize() {
             Ok(root) => root,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
             Err(_) => {
-                discovery_truncated = true;
+                truncated = true;
                 continue;
             }
         };
         match root.metadata() {
             Ok(metadata) if metadata.is_dir() => {}
             Ok(_) | Err(_) => {
-                discovery_truncated = true;
+                truncated = true;
                 continue;
             }
         }
         for entry in WalkDir::new(&root).follow_links(false) {
+            if visited_entries >= max_entries {
+                truncated = true;
+                break 'roots;
+            }
+            visited_entries = visited_entries.saturating_add(1);
             let entry = match entry {
                 Ok(entry) => entry,
                 Err(_) => {
-                    discovery_truncated = true;
+                    truncated = true;
                     continue;
                 }
             };
@@ -799,7 +834,12 @@ fn read_operation_events_with_limits(
                 continue;
             }
             let path = entry.into_path();
-            log_files.insert(path.canonicalize().unwrap_or(path));
+            let path = path.canonicalize().unwrap_or(path);
+            if !log_files.contains(&path) && log_files.len() >= max_files {
+                truncated = true;
+                break 'roots;
+            }
+            log_files.insert(path);
         }
     }
     let mut log_files = log_files.into_iter().collect::<Vec<_>>();
@@ -809,15 +849,10 @@ fn read_operation_events_with_limits(
             .cmp(&modified(left))
             .then_with(|| right.cmp(left))
     });
-    let mut selected = read_operation_events_from_files(
-        log_files,
-        operation_id,
-        max_events,
-        max_bytes,
-        max_scan_bytes,
-    );
-    selected.truncated |= discovery_truncated;
-    selected
+    DiscoveredLogFiles {
+        paths: log_files,
+        truncated,
+    }
 }
 
 fn read_operation_events_from_files(
@@ -1143,9 +1178,10 @@ pub fn run_diagnostics_collect(operation: &str, output: &Path) -> AppResult<miet
 #[cfg(test)]
 mod tests {
     use super::{
-        OperationEvents, belongs_to_operation, bounded_tail_reader, for_each_bounded_line,
-        human_operation_event_lines, normalize_paths, read_operation_events_from_files,
-        read_operation_events_with_limits, sanitize, sanitize_text,
+        OperationEvents, belongs_to_operation, bounded_tail_reader, discover_log_files,
+        for_each_bounded_line, human_operation_event_lines, normalize_paths,
+        read_operation_events_from_files, read_operation_events_with_limits, sanitize,
+        sanitize_text,
     };
     use std::io::{BufReader, Cursor};
     use tempfile::TempDir;
@@ -1315,6 +1351,10 @@ mod tests {
                 ["x-api-key", "LIVE_SECRET"],
                 ["content-type", "application/json"],
                 ["password=LIVE_SECRET", "input.json"]
+            ],
+            "flatHeaders": [
+                "x-api-key", "FLAT_SECRET",
+                "content-type", "application/json"
             ]
         }));
 
@@ -1323,6 +1363,10 @@ mod tests {
         assert_eq!(sanitized["headers"][1][1], "application/json");
         assert_eq!(sanitized["headers"][2][0], "[REDACTED]");
         assert_eq!(sanitized["headers"][2][1], "input.json");
+        assert_eq!(sanitized["flatHeaders"][0], "x-api-key");
+        assert_eq!(sanitized["flatHeaders"][1], "[REDACTED]");
+        assert_eq!(sanitized["flatHeaders"][2], "content-type");
+        assert_eq!(sanitized["flatHeaders"][3], "application/json");
     }
 
     #[test]
@@ -1520,6 +1564,22 @@ mod tests {
 
         assert!(selected.truncated);
         assert!(selected.events.is_empty());
+    }
+
+    #[test]
+    fn diagnostic_log_discovery_stops_at_entry_and_candidate_limits() {
+        let temp_dir = TempDir::new().unwrap();
+        for name in ["first.jsonl", "second.jsonl", "third.jsonl"] {
+            std::fs::write(temp_dir.path().join(name), b"\n").unwrap();
+        }
+
+        let candidate_limited = discover_log_files(&[temp_dir.path().to_path_buf()], usize::MAX, 2);
+        assert!(candidate_limited.truncated);
+        assert_eq!(candidate_limited.paths.len(), 2);
+
+        let entry_limited = discover_log_files(&[temp_dir.path().to_path_buf()], 1, 10);
+        assert!(entry_limited.truncated);
+        assert!(entry_limited.paths.is_empty());
     }
 
     #[test]
