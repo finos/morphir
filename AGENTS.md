@@ -167,7 +167,8 @@ fixtures and examples include v4 document trees. Follow the user-facing steps in
 the `pathBudget` manifest field are specified in [Naming](docs/spec/draft/names.md).
 
 Two details matter more for tooling authors than for users. A process must declare `longPathAware` in its manifest
-to benefit from `LongPathsEnabled`, so the git setting alone is not enough for anything that shells out. And
+to benefit from `LongPathsEnabled` — rustc does not add one to the binaries it builds, so `crates/morphir/build.rs`
+embeds `morphir.exe.manifest` through the MSVC linker; any other tool we ship for Windows needs the same. And
 `mise run init` warns when `core.longpaths` is unset, but it does not currently run on a Windows box lacking a
 POSIX bash, since the task body uses a bash shebang (morphir-6y9z).
 

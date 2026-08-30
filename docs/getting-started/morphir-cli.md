@@ -78,12 +78,15 @@ git config --global core.longpaths true
 Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name LongPathsEnabled -Value 1
 ```
 
-Windows 10 version 1607 and later support this. Older versions cannot enable it.
+Windows 10 version 1607 and later support this. Older versions cannot enable it. The registry switch only
+affects programs that declare themselves long-path aware; `morphir.exe` does so in releases after 0.4.0-alpha.5.
 
 ### If you cannot enable long paths
 
-Some machines are locked down and the registry change is not available. In that case, tell Morphir to write
-document trees for the shorter limit by setting `pathBudget` to `200` in the distribution manifest:
+Some machines are locked down and the registry change is not available. For that situation the format defines a
+portable profile: a distribution written with `pathBudget: 200` in its manifest shortens any filename that would
+overflow and records the mapping inside the module, so the tree still reads correctly. The cost is that a
+shortened filename no longer looks like the name it holds.
 
 ```json
 {
@@ -94,8 +97,11 @@ document trees for the shorter limit by setting `pathBudget` to `200` in the dis
 }
 ```
 
-Morphir then shortens any filename that would overflow and records the mapping inside the module, so the tree
-still reads correctly. The cost is that a shortened filename no longer looks like the name it holds.
+The CLI cannot produce such a tree yet: `morphir ir migrate` always writes with the default budget, and the
+manifest is part of its output, so editing the file afterward does not change the filenames already chosen. A
+`--path-budget` writer option is tracked as follow-up work. Until it lands, the practical workaround on a
+constrained machine is to keep document trees close to the filesystem root so the package's own nesting fits
+within 260 characters.
 
 Every tree records the `pathBudget` it was written with, so a tool can compare it with what your machine handles
 and report a mismatch up front rather than failing file by file. That check is planned for `morphir doctor` and is
