@@ -984,6 +984,7 @@ fn remove_created_directories(root: &Dir, directories: &[PathBuf]) {
     }
 }
 
+#[cfg(unix)]
 fn sync_file_and_parent(parent: &Dir, leaf: &OsStr) -> io::Result<()> {
     let mut options = OpenOptions::new();
     options.read(true).follow(FollowSymlinks::No);
@@ -991,8 +992,22 @@ fn sync_file_and_parent(parent: &Dir, leaf: &OsStr) -> io::Result<()> {
     sync_dir(parent)
 }
 
+#[cfg(not(unix))]
+fn sync_file_and_parent(_parent: &Dir, _leaf: &OsStr) -> io::Result<()> {
+    // The staged file was flushed before rename. Rust does not expose a portable
+    // directory flush here, and Windows FlushFileBuffers requires write access.
+    Ok(())
+}
+
+#[cfg(unix)]
 fn sync_dir(directory: &Dir) -> io::Result<()> {
     directory.open(".")?.sync_all()
+}
+
+#[cfg(not(unix))]
+fn sync_dir(_directory: &Dir) -> io::Result<()> {
+    // Atomic rename still publishes the already-flushed staged file.
+    Ok(())
 }
 
 struct ValidatedArtifact {
