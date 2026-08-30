@@ -7,6 +7,7 @@ import json
 import subprocess
 import sys
 import tempfile
+from copy import deepcopy
 from pathlib import Path
 
 
@@ -14,6 +15,18 @@ def run(*arguments: str) -> None:
     result = subprocess.run(arguments, check=False)
     if result.returncode != 0:
         raise RuntimeError(f"{' '.join(arguments)} exited with {result.returncode}")
+
+
+def assert_schema_rejects(schema: Path, descriptor: dict, label: str, path: Path) -> None:
+    path.write_text(json.dumps(descriptor, separators=(",", ":")), encoding="utf-8")
+    result = subprocess.run(
+        ["jsonschema", "validate", str(schema), str(path)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        raise RuntimeError(f"schema accepted invalid {label}")
 
 
 def main() -> int:
@@ -46,6 +59,31 @@ def main() -> int:
                 json.dumps(descriptor, separators=(",", ":")), encoding="utf-8"
             )
             run("jsonschema", "validate", str(schema), str(descriptor_path))
+
+        descriptor = next(
+            candidate
+            for target_path in release_paths
+            if (candidate := json.loads(target_files[target_path]))["artifacts"]
+        )
+        for label, field in [
+            ("target path with a trailing empty segment", "targetPath"),
+            ("archive entry point with a trailing empty segment", "entryPoint"),
+            ("launch path with a trailing empty segment", "path"),
+        ]:
+            invalid = deepcopy(descriptor)
+            artifact = invalid["artifacts"][0]
+            if field == "targetPath":
+                artifact[field] += "/"
+            elif field == "entryPoint":
+                artifact["archive"][field] += "/"
+            else:
+                artifact["launch"][field] += "/"
+            assert_schema_rejects(
+                schema,
+                invalid,
+                label,
+                temporary / f"invalid-{field}.json",
+            )
 
     print(f"Validated {len(release_paths)} authenticated tool release descriptors")
     return 0

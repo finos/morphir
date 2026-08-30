@@ -878,7 +878,8 @@ fn diagnostics_collect_creates_an_inspectable_sanitized_archive() {
                 "operation_id": operation_id,
                 "event_name": "tool.resolve",
                 "path": morphir_home.join("store/tools").to_string_lossy(),
-                "token": "BUNDLE_SECRET_SENTINEL"
+                "token": "BUNDLE_SECRET_SENTINEL",
+                "source_url": "https://alice:hunter2@example.com/artifact"
             }
         })
         .to_string(),
@@ -920,6 +921,9 @@ fn diagnostics_collect_creates_an_inspectable_sanitized_archive() {
     let combined = entries.values().flatten().copied().collect::<Vec<_>>();
     let combined = String::from_utf8(combined).unwrap();
     assert!(!combined.contains("BUNDLE_SECRET_SENTINEL"));
+    assert!(!combined.contains("alice"));
+    assert!(!combined.contains("hunter2"));
+    assert!(combined.contains("https://[REDACTED]@example.com/artifact"));
     assert!(!combined.contains(&morphir_home.to_string_lossy().to_string()));
     assert!(combined.contains("$MORPHIR_HOME"));
 
@@ -959,6 +963,7 @@ fn failed_operation_reports_correlated_id_and_exact_log_path() {
         .env("MORPHIR_HOME", &morphir_home)
         .env_remove("MORPHIR_LOG_DIR")
         .env("MORPHIR_LOG_FILE", "true")
+        .env("MORPHIR_LOGGING__FILE_LEVEL", "error")
         .output()
         .expect("failed to run morphir binary");
 
@@ -975,10 +980,19 @@ fn failed_operation_reports_correlated_id_and_exact_log_path() {
         .expect("failure should report its exact log path");
 
     assert!(log_path.is_file(), "reported log path should exist");
-    let finish = std::fs::read_to_string(log_path)
+    let events = std::fs::read_to_string(log_path)
         .unwrap()
         .lines()
         .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+        .collect::<Vec<_>>();
+    assert!(
+        events
+            .iter()
+            .any(|event| event["fields"]["event_name"] == "cli.session.start"),
+        "session log should retain its correlation start event at error level"
+    );
+    let finish = events
+        .into_iter()
         .find(|event| event["fields"]["event_name"] == "cli.operation.finish")
         .expect("session log should contain the operation finish event");
     assert_eq!(finish["fields"]["operation_id"], operation_id);

@@ -81,10 +81,23 @@ fn redact_text(value: &str) -> String {
             .char_indices()
             .filter(|(_, character)| matches!(character, '?' | '#'))
             .map(|(index, _)| index)
-            .min();
-        if let Some(boundary) = boundary {
-            return value[..boundary].to_owned();
+            .min()
+            .unwrap_or(value.len());
+        let visible = &value[..boundary];
+        let authority_start = value.find("://").expect("URL marker was checked") + 3;
+        let authority_end = visible[authority_start..]
+            .find('/')
+            .map(|index| authority_start + index)
+            .unwrap_or(visible.len());
+        if let Some(user_info_end) = visible[authority_start..authority_end].rfind('@') {
+            let host_start = authority_start + user_info_end + 1;
+            return format!(
+                "{}[REDACTED]@{}",
+                &visible[..authority_start],
+                &visible[host_start..]
+            );
         }
+        return visible.to_owned();
     }
     value.to_owned()
 }

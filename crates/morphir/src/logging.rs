@@ -291,7 +291,10 @@ pub fn init(
             .with_ansi(false)
             .with_span_events(FmtSpan::CLOSE)
             .json()
-            .with_filter(EnvFilter::new(format!("morphir={}", config.file_level)))
+            .with_filter(EnvFilter::new(format!(
+                "morphir={},morphir::correlation=trace",
+                config.file_level
+            )))
             .boxed()
     } else {
         fmt::layer()
@@ -299,7 +302,10 @@ pub fn init(
             .with_writer(non_blocking)
             .with_ansi(false)
             .with_span_events(FmtSpan::CLOSE)
-            .with_filter(EnvFilter::new(format!("morphir={}", config.file_level)))
+            .with_filter(EnvFilter::new(format!(
+                "morphir={},morphir::correlation=trace",
+                config.file_level
+            )))
             .boxed()
     };
 
@@ -309,6 +315,7 @@ pub fn init(
         .init();
 
     tracing::debug!(
+        target: "morphir::correlation",
         schema_version = 1,
         component = "cli",
         process_id,
@@ -352,6 +359,7 @@ pub fn record_operation_finish(
         .map(LogGuard::session_id)
         .unwrap_or("console-only");
     tracing::debug!(
+        target: "morphir::correlation",
         schema_version = 1,
         component = "cli",
         process_id = std::process::id(),
