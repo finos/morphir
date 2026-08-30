@@ -839,7 +839,9 @@ fn diagnostics_show_finds_correlated_events_and_redacts_legacy_secrets() {
                 "accessKey": "ACCESS_KEY_SHOULD_NOT_ESCAPE",
                 "credential": "CREDENTIAL_SHOULD_NOT_ESCAPE",
                 "message": "retry failed? see https://example.com/status",
-                "urls": "https://public.example/status then https://alice:hunter2@private.example/artifact"
+                "urls": "https://public.example/status then https://alice:hunter2@private.example/artifact",
+                "punctuated_urls": "https://public.example/status,https://bob:password@private.example/artifact",
+                "auth_message": "Authorization: Basic dXNlcjpwYXNz"
             }
         }),
         serde_json::json!({
@@ -892,8 +894,14 @@ fn diagnostics_show_finds_correlated_events_and_redacts_legacy_secrets() {
         shown["events"][0]["fields"]["urls"],
         "https://public.example/status then https://[REDACTED]@private.example/artifact"
     );
+    assert_eq!(
+        shown["events"][0]["fields"]["punctuated_urls"],
+        "https://public.example/status,https://[REDACTED]@private.example/artifact"
+    );
+    assert_eq!(shown["events"][0]["fields"]["auth_message"], "[REDACTED]");
     assert!(!String::from_utf8_lossy(&output.stdout).contains("SHOULD_NOT_ESCAPE"));
     assert!(!String::from_utf8_lossy(&output.stdout).contains("hunter2"));
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("dXNlcjpwYXNz"));
 }
 
 #[test]

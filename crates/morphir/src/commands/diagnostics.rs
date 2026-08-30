@@ -3,7 +3,7 @@
 use serde::Serialize;
 use starbase::AppResult;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Write as _};
+use std::io::{BufRead, BufReader, Read as _, Write as _};
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
@@ -86,7 +86,13 @@ fn redact_urls(value: &str) -> String {
         let authority_start = search_from + marker + 3;
         let token_end = redacted[authority_start..]
             .char_indices()
-            .find(|(_, character)| character.is_whitespace())
+            .find(|(_, character)| {
+                character.is_whitespace()
+                    || matches!(
+                        character,
+                        ',' | ';' | '(' | ')' | '[' | ']' | '{' | '}' | '<' | '>'
+                    )
+            })
             .map(|(index, _)| authority_start + index)
             .unwrap_or(redacted.len());
         let authority_end = redacted[authority_start..token_end]
@@ -102,7 +108,13 @@ fn redact_urls(value: &str) -> String {
 
         let token_end = redacted[authority_start..]
             .char_indices()
-            .find(|(_, character)| character.is_whitespace())
+            .find(|(_, character)| {
+                character.is_whitespace()
+                    || matches!(
+                        character,
+                        ',' | ';' | '(' | ')' | '[' | ']' | '{' | '}' | '<' | '>'
+                    )
+            })
             .map(|(index, _)| authority_start + index)
             .unwrap_or(redacted.len());
         if let Some(boundary) = redacted[authority_start..token_end]
@@ -124,6 +136,8 @@ fn redact_urls(value: &str) -> String {
 pub(crate) fn sanitize_text(value: &str) -> String {
     let lower = value.to_ascii_lowercase();
     if lower.contains("bearer ")
+        || lower.contains("authorization: basic ")
+        || lower.contains("authorization=basic ")
         || lower.contains("ghp_")
         || lower.contains("github_pat_")
         || lower.contains("password=")
@@ -199,8 +213,45 @@ fn operation_log_roots(home: &crate::home::MorphirHome) -> [PathBuf; 2] {
     ]
 }
 
+fn for_each_bounded_line<R, F>(mut reader: R, max_len: usize, mut visit: F) -> std::io::Result<()>
+where
+    R: BufRead,
+    F: FnMut(&[u8]),
+{
+    let read_limit = u64::try_from(max_len).unwrap_or(u64::MAX).saturating_add(2);
+    loop {
+        let mut line = Vec::with_capacity(max_len.min(8 * 1024));
+        let read = reader
+            .by_ref()
+            .take(read_limit)
+            .read_until(b'\n', &mut line)?;
+        if read == 0 {
+            return Ok(());
+        }
+
+        let terminated = line.last() == Some(&b'\n');
+        if terminated {
+            line.pop();
+            if line.last() == Some(&b'\r') {
+                line.pop();
+            }
+        }
+        if line.len() > max_len {
+            if !terminated {
+                reader.skip_until(b'\n')?;
+            }
+            continue;
+        }
+
+        visit(&line);
+        if !terminated {
+            return Ok(());
+        }
+    }
+}
+
 fn read_operation_events(log_roots: &[PathBuf], operation_id: &str) -> Vec<serde_json::Value> {
-    let mut events = log_roots
+    let log_files = log_roots
         .iter()
         .flat_map(|root| WalkDir::new(root).follow_links(false).into_iter())
         .filter_map(Result::ok)
@@ -211,14 +262,26 @@ fn read_operation_events(log_roots: &[PathBuf], operation_id: &str) -> Vec<serde
                 .extension()
                 .is_some_and(|extension| extension == "jsonl")
         })
-        .filter_map(|entry| File::open(entry.path()).ok())
-        .flat_map(|file| BufReader::new(file).lines().map_while(Result::ok))
-        .filter(|line| line.len() <= 1024 * 1024)
-        .filter_map(|line| serde_json::from_str::<serde_json::Value>(&line).ok())
-        .filter(|event| belongs_to_operation(event, operation_id))
-        .map(sanitize)
-        .take(MAX_DIAGNOSTIC_EVENTS)
-        .collect::<Vec<_>>();
+        .map(|entry| entry.into_path());
+    let mut events = Vec::new();
+    for path in log_files {
+        if events.len() >= MAX_DIAGNOSTIC_EVENTS {
+            break;
+        }
+        let Ok(file) = File::open(path) else {
+            continue;
+        };
+        let _ = for_each_bounded_line(BufReader::new(file), 1024 * 1024, |line| {
+            if events.len() >= MAX_DIAGNOSTIC_EVENTS {
+                return;
+            }
+            if let Ok(event) = serde_json::from_slice::<serde_json::Value>(line)
+                && belongs_to_operation(&event, operation_id)
+            {
+                events.push(sanitize(event));
+            }
+        });
+    }
     events.sort_by(|left, right| left["timestamp"].as_str().cmp(&right["timestamp"].as_str()));
     events
 }
@@ -437,4 +500,22 @@ pub fn run_diagnostics_collect(operation: &str, output: &Path) -> AppResult<miet
     })?;
     println!("Created diagnostic bundle: {}", output.display());
     Ok(None)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::for_each_bounded_line;
+    use std::io::{BufReader, Cursor};
+
+    #[test]
+    fn bounded_reader_discards_an_oversized_record_and_resumes() {
+        let mut input = vec![b'x'; 64];
+        input.extend_from_slice(b"\nkept\r\n");
+        let reader = BufReader::with_capacity(8, Cursor::new(input));
+        let mut lines = Vec::new();
+
+        for_each_bounded_line(reader, 16, |line| lines.push(line.to_vec())).unwrap();
+
+        assert_eq!(lines, [b"kept".as_slice()]);
+    }
 }
