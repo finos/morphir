@@ -262,6 +262,15 @@ enum DiagnosticsAction {
         #[arg(long)]
         json: bool,
     },
+    /// Create a local sanitized diagnostic archive
+    Collect {
+        /// Operation ID reported by Morphir
+        #[arg(long)]
+        operation: String,
+        /// New ZIP archive to create
+        #[arg(long)]
+        output: std::path::PathBuf,
+    },
     /// Show events correlated with one operation
     Show {
         /// Operation ID reported by Morphir
@@ -690,6 +699,9 @@ impl AppSession for MorphirSession {
                 DiagnosticsAction::Path { json } => run_diagnostics_path(*json),
                 DiagnosticsAction::Show { operation, json } => {
                     commands::run_diagnostics_show(operation, *json)
+                }
+                DiagnosticsAction::Collect { operation, output } => {
+                    commands::run_diagnostics_collect(operation, output)
                 }
             },
             Commands::Tool { action } => match action {

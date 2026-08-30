@@ -861,6 +861,95 @@ fn diagnostics_show_finds_correlated_events_and_redacts_legacy_secrets() {
 }
 
 #[test]
+fn diagnostics_collect_creates_an_inspectable_sanitized_archive() {
+    use std::io::Read as _;
+
+    let temp_dir = TempDir::new().unwrap();
+    let morphir_home = temp_dir.path().join("private-user-home").join(".morphir");
+    let log_dir = morphir_home.join("logs").join("cli").join("2026-08-30");
+    std::fs::create_dir_all(&log_dir).unwrap();
+    let operation_id = "op-123e4567-e89b-42d3-a456-426614174000";
+    std::fs::write(
+        log_dir.join("fixture.jsonl"),
+        serde_json::json!({
+            "timestamp": "2026-08-30T03:04:05Z",
+            "level": "ERROR",
+            "fields": {
+                "operation_id": operation_id,
+                "event_name": "tool.resolve",
+                "path": morphir_home.join("store/tools").to_string_lossy(),
+                "token": "BUNDLE_SECRET_SENTINEL"
+            }
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let bundle = temp_dir.path().join("diagnostics.zip");
+
+    let output = morphir_command()
+        .args([
+            "diagnostics",
+            "collect",
+            "--operation",
+            operation_id,
+            "--output",
+            bundle.to_str().unwrap(),
+        ])
+        .env("MORPHIR_HOME", &morphir_home)
+        .output()
+        .expect("failed to run morphir binary");
+
+    assert!(
+        output.status.success(),
+        "diagnostics collect failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let mut archive = zip::ZipArchive::new(std::fs::File::open(&bundle).unwrap()).unwrap();
+    let mut entries = std::collections::BTreeMap::new();
+    for index in 0..archive.len() {
+        let mut entry = archive.by_index(index).unwrap();
+        let mut bytes = Vec::new();
+        entry.read_to_end(&mut bytes).unwrap();
+        entries.insert(entry.name().to_owned(), bytes);
+    }
+    assert_eq!(
+        entries.keys().cloned().collect::<Vec<_>>(),
+        ["events.jsonl", "manifest.json", "system.json"]
+    );
+    let combined = entries.values().flatten().copied().collect::<Vec<_>>();
+    let combined = String::from_utf8(combined).unwrap();
+    assert!(!combined.contains("BUNDLE_SECRET_SENTINEL"));
+    assert!(!combined.contains(&morphir_home.to_string_lossy().to_string()));
+    assert!(combined.contains("$MORPHIR_HOME"));
+
+    let manifest: serde_json::Value = serde_json::from_slice(&entries["manifest.json"]).unwrap();
+    assert_eq!(manifest["operationId"], operation_id);
+    for included in manifest["includedFiles"].as_array().unwrap() {
+        let path = included["path"].as_str().unwrap();
+        assert_eq!(
+            included["sha256"],
+            morphir_distribution::Sha256Digest::of_bytes(&entries[path]).to_string()
+        );
+    }
+    let original = std::fs::read(&bundle).unwrap();
+    let second = morphir_command()
+        .args([
+            "diagnostics",
+            "collect",
+            "--operation",
+            operation_id,
+            "--output",
+            bundle.to_str().unwrap(),
+        ])
+        .env("MORPHIR_HOME", &morphir_home)
+        .output()
+        .unwrap();
+    assert!(!second.status.success());
+    assert_eq!(std::fs::read(bundle).unwrap(), original);
+}
+
+#[test]
 fn failed_operation_reports_correlated_id_and_exact_log_path() {
     let temp_dir = TempDir::new().unwrap();
     let morphir_home = temp_dir.path().join("relocated-home");

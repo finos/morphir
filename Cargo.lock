@@ -3734,6 +3734,7 @@ dependencies = [
  "usage-lib",
  "uuid",
  "walkdir",
+ "zip",
 ]
 
 [[package]]

@@ -51,6 +51,7 @@ toml = "1.0.0"
 tempfile = "3"
 semver = "1"
 uuid = { version = "1", features = ["v4"] }
+zip = { version = "8.6", default-features = false, features = ["deflate"] }
 
 [profile.release]
 opt-level = 3
