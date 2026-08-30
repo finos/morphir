@@ -3,12 +3,15 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use cap_fs_ext::{DirExt, FollowSymlinks, OpenOptionsFollowExt};
 use cap_std::fs::{Dir, OpenOptions};
+use fs2::FileExt as _;
 use morphir_extension_sdk::Artifact;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::{OsStr, OsString};
 use std::io::{self, Read, Write};
 use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
+use unicode_casefold::UnicodeCaseFold as _;
+use unicode_normalization::UnicodeNormalization as _;
 
 static NEXT_TRANSACTION_ID: AtomicU64 = AtomicU64::new(0);
 const MANIFEST_PATH: &str = ".morphir-generated-artifacts.json";
@@ -53,8 +56,16 @@ impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
             .map(|artifact| artifact.display_path.clone())
             .collect::<Vec<_>>();
         let root = acquire_output_root(self.output_root, self.hooks).map_err(file_system_error)?;
+        let publication_lock =
+            acquire_publication_lock(&root.directory).map_err(file_system_error)?;
         let previous = load_manifest(&root.directory)?;
+        if let Err(error) = self.hooks.after_manifest_load() {
+            drop(publication_lock);
+            remove_created_output_directories(&root.created);
+            return Err(file_system_error(error));
+        }
         if validated.is_empty() && previous.is_none() {
+            drop(publication_lock);
             remove_created_output_directories(&root.created);
             return Ok(Vec::new());
         }
@@ -66,6 +77,7 @@ impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
             .collect::<Vec<_>>();
         validated.push(manifest_artifact(&display_paths)?);
         let result = self.run(&root.directory, &validated, &stale);
+        drop(publication_lock);
         if result.is_err() {
             remove_created_output_directories(&root.created);
         }
@@ -140,6 +152,10 @@ trait ArtifactHooks {
     }
 
     fn before_stage(&self, _index: usize) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn after_manifest_load(&self) -> io::Result<()> {
         Ok(())
     }
 
@@ -231,6 +247,12 @@ fn acquire_output_root<H: ArtifactHooks + ?Sized>(
         directory: current,
         created,
     })
+}
+
+fn acquire_publication_lock(root: &Dir) -> io::Result<std::fs::File> {
+    let directory = root.open(".")?.into_std();
+    directory.lock_exclusive()?;
+    Ok(directory)
 }
 
 fn output_root_anchor(output_root: &Path) -> io::Result<(Dir, Vec<OsString>)> {
@@ -835,13 +857,13 @@ fn load_manifest(root: &Dir) -> Result<Option<Vec<ValidatedRemoval>>, CliError> 
     let mut paths_by_case_key = BTreeMap::<String, String>::new();
     let mut validated = Vec::with_capacity(manifest.artifacts.len());
     for path in manifest.artifacts {
-        if path.eq_ignore_ascii_case(MANIFEST_PATH) {
+        if portable_path_key(&path) == portable_path_key(MANIFEST_PATH) {
             return Err(validation_error(
                 "generated-artifact manifest cannot list itself".to_owned(),
             ));
         }
         let (relative_path, display_path) = validate_path(&path)?;
-        let case_key = display_path.to_ascii_lowercase();
+        let case_key = portable_path_key(&display_path);
         if paths_by_case_key
             .insert(case_key, display_path.clone())
             .is_some()
@@ -878,14 +900,14 @@ fn validate_complete_set(artifacts: &[Artifact]) -> Result<Vec<ValidatedArtifact
     let mut validated = Vec::with_capacity(artifacts.len());
 
     for artifact in artifacts {
-        if artifact.path.eq_ignore_ascii_case(MANIFEST_PATH) {
+        if portable_path_key(&artifact.path) == portable_path_key(MANIFEST_PATH) {
             return Err(validation_error(format!(
                 "artifact path '{}' is reserved for Morphir generation state",
                 artifact.path
             )));
         }
         let (relative_path, display_path) = validate_path(&artifact.path)?;
-        let case_key = display_path.to_ascii_lowercase();
+        let case_key = portable_path_key(&display_path);
         if let Some(previous) = paths_by_case_key.get(&case_key) {
             let problem = if previous == &display_path {
                 format!("duplicate artifact path '{display_path}'")
@@ -926,6 +948,10 @@ fn validate_complete_set(artifacts: &[Artifact]) -> Result<Vec<ValidatedArtifact
 
     validated.sort_by(|left, right| left.display_path.cmp(&right.display_path));
     Ok(validated)
+}
+
+fn portable_path_key(path: &str) -> String {
+    path.nfkc().case_fold().nfc().collect()
 }
 
 fn validate_path(path: &str) -> Result<(PathBuf, String), CliError> {
@@ -1017,6 +1043,9 @@ mod tests {
     use morphir_extension_sdk::Artifact;
     use std::fs;
     use std::io;
+    use std::sync::{Arc, Mutex, mpsc};
+    use std::thread;
+    use std::time::Duration;
     use tempfile::tempdir;
 
     fn text(path: &str, content: &str) -> Artifact {
@@ -1121,6 +1150,39 @@ mod tests {
 
         assert!(error.to_string().contains("case-colliding"));
         assert!(output.path().read_dir().unwrap().next().is_none());
+    }
+
+    #[test]
+    fn rejects_unicode_case_and_normalization_collisions_before_writing() {
+        for artifacts in [
+            vec![text("Ä.avsc", "{}"), text("ä.avsc", "{}")],
+            vec![text("é.avsc", "{}"), text("e\u{301}.avsc", "{}")],
+        ] {
+            let output = tempdir().unwrap();
+
+            let error = ArtifactWriter::new(output.path())
+                .write_all(&artifacts)
+                .unwrap_err();
+
+            assert!(error.to_string().contains("colliding"));
+            assert!(output.path().read_dir().unwrap().next().is_none());
+        }
+    }
+
+    #[test]
+    fn rejects_unicode_collisions_in_the_previous_manifest() {
+        let output = tempdir().unwrap();
+        fs::write(
+            output.path().join(MANIFEST_PATH),
+            r#"{"schemaVersion":1,"artifacts":["é.avsc","e\u0301.avsc"]}"#,
+        )
+        .unwrap();
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&[])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("duplicate path"));
     }
 
     #[test]
@@ -1576,6 +1638,77 @@ mod tests {
         assert_eq!(
             fs::read_to_string(output.path().join("schema.avsc")).unwrap(),
             "concurrent"
+        );
+    }
+
+    struct PauseAfterManifestLoad {
+        loaded: mpsc::SyncSender<()>,
+        resume: Mutex<mpsc::Receiver<()>>,
+    }
+
+    impl ArtifactHooks for PauseAfterManifestLoad {
+        fn after_manifest_load(&self) -> io::Result<()> {
+            self.loaded
+                .send(())
+                .map_err(|error| io::Error::other(error.to_string()))?;
+            self.resume
+                .lock()
+                .unwrap()
+                .recv()
+                .map_err(|error| io::Error::other(error.to_string()))
+        }
+    }
+
+    #[test]
+    fn concurrent_writers_serialize_manifest_reconciliation() {
+        let output = tempdir().unwrap();
+        let output = Arc::new(output.path().to_path_buf());
+        let (loaded_tx, loaded_rx) = mpsc::sync_channel(0);
+        let (resume_tx, resume_rx) = mpsc::sync_channel(0);
+        let first_output = Arc::clone(&output);
+        let first = thread::spawn(move || {
+            let hooks = PauseAfterManifestLoad {
+                loaded: loaded_tx,
+                resume: Mutex::new(resume_rx),
+            };
+            ArtifactWriter::with_ops(&first_output, &hooks)
+                .write_all(&[text("first.avsc", "first")])
+        });
+        loaded_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("first writer should reach manifest reconciliation");
+
+        let second_output = Arc::clone(&output);
+        let (started_tx, started_rx) = mpsc::sync_channel(0);
+        let (finished_tx, finished_rx) = mpsc::sync_channel(1);
+        let second = thread::spawn(move || {
+            started_tx.send(()).unwrap();
+            let result =
+                ArtifactWriter::new(&second_output).write_all(&[text("second.avsc", "second")]);
+            finished_tx.send(result).unwrap();
+        });
+        started_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("second writer should start");
+
+        assert!(
+            finished_rx
+                .recv_timeout(Duration::from_millis(100))
+                .is_err(),
+            "second writer must wait while the first reconciles its manifest"
+        );
+        resume_tx.send(()).unwrap();
+        first.join().unwrap().unwrap();
+        finished_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("second writer should finish after the lock is released")
+            .unwrap();
+        second.join().unwrap();
+
+        assert!(!output.join("first.avsc").exists());
+        assert_eq!(
+            fs::read_to_string(output.join("second.avsc")).unwrap(),
+            "second"
         );
     }
 

@@ -55,6 +55,8 @@ dirs = "6.0"
 schemars = "1.0"
 indexmap = { version = "2", features = ["serde"] }
 usage-lib = { version = "6", features = ["clap", "docs"] }
+unicode-casefold = { workspace = true }
+unicode-normalization = { workspace = true }
 
 # TUI
 ratatui = { workspace = true }

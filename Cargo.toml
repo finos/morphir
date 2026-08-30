@@ -50,6 +50,8 @@ stacker = "0.1"
 toml = "1.0.0"
 tempfile = "3"
 semver = "1"
+unicode-casefold = "0.2"
+unicode-normalization = "0.1"
 
 [profile.release]
 opt-level = 3
