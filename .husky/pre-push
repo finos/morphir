@@ -1,38 +1,35 @@
 #!/bin/sh
 
-echo "Running pre-push checks..."
+# Fast pre-push checks.
+#
+# This hook deliberately does not run lint or the test suite. Both are gated in
+# CI on every pull request, and locally they mean `cargo clippy --all-targets
+# --all-features` plus `cargo test --workspace`, which take many minutes and do
+# not link at all on some developer machines. A hook that slow gets bypassed with
+# --no-verify, and a bypassed hook protects nothing.
+#
+# Set MORPHIR_SKIP_HOOKS=1 to skip, for example when pushing a work in progress
+# branch you know does not build.
 
-# Ensure mise is available
+if [ "$MORPHIR_SKIP_HOOKS" = "1" ]; then
+    echo "pre-push: skipped (MORPHIR_SKIP_HOOKS=1)"
+    exit 0
+fi
+
 if ! command -v mise > /dev/null 2>&1; then
-    echo "Error: mise is not installed."
-    echo "Install mise from: https://mise.jdx.dev/"
-    echo "Or run: curl https://mise.jdx.dev/install.sh | sh"
+    echo "pre-push: mise not found on PATH, skipping format check."
+    echo "  Install mise from https://mise.jdx.dev/ to enable it."
+    exit 0
+fi
+
+echo "pre-push: checking formatting..."
+if ! mise run fmt-check; then
+    echo ""
+    echo "Formatting check failed. Fix it with:"
+    echo "    mise run fmt"
+    echo ""
+    echo "To push anyway: MORPHIR_SKIP_HOOKS=1 git push"
     exit 1
 fi
 
-# Check formatting using mise task
-echo "Checking Go formatting..."
-mise run fmt-check || {
-    echo ""
-    echo "Run 'mise run fmt' to fix formatting issues."
-    exit 1
-}
-echo "Formatting check passed."
-
-# Run linting using mise task
-echo "Running linters..."
-mise run lint || {
-    echo "Linting failed."
-    exit 1
-}
-echo "Linting passed."
-
-# Run tests using mise task
-echo "Running tests..."
-mise run test || {
-    echo "Tests failed."
-    exit 1
-}
-echo "Tests passed."
-
-echo "All pre-push checks passed!"
+echo "pre-push: formatting ok."

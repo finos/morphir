@@ -47,3 +47,19 @@ if [ -L ".beads" ]; then
         exit 1
     fi
 fi
+
+# When the beads export is being committed, confirm it still agrees with the
+# database. The two drifted apart in both directions before this check existed
+# (morphir-5uau), because the export is passive: issues committed to Dolt without
+# a re-export, or an export edited and committed to git without a dolt push, both
+# go unnoticed until someone compares them.
+if [ "$MORPHIR_SKIP_HOOKS" != "1" ] && git diff --cached --name-only | grep -q "^\.beads/issues\.jsonl$"; then
+    if command -v bun > /dev/null 2>&1 && command -v bd > /dev/null 2>&1; then
+        if ! bun run tools/check-beads-drift.ts; then
+            echo "To commit anyway: MORPHIR_SKIP_HOOKS=1 git commit ..."
+            exit 1
+        fi
+    else
+        echo "pre-commit: bun or bd not found, skipping the beads drift check."
+    fi
+fi

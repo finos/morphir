@@ -159,6 +159,47 @@ Use `mise` task runner (`mise run <task>`) for build orchestration:
 - `mise run submodules:status` - Show submodule status
 - `mise run submodules:add -- <name> [url]` - Add a new ecosystem submodule
 
+### Git hooks
+
+The hooks live in `.husky/` and are activated by pointing git at that directory:
+
+```shell
+mise run hooks:install     # sets core.hooksPath to .husky
+mise run hooks:check       # fails if they are not active
+```
+
+`mise run init` does this for you, so a normal setup needs no extra step. Activation is deliberately not left to
+husky's `prepare` script: that only fires on an `npm install`, which nobody runs in a repository built with cargo,
+bun and mise, so the hooks sat dormant in every clone and the EasyCLA guard below never ran (morphir-4ohq).
+
+| Hook | What it does |
+| --- | --- |
+| `commit-msg` | Strips `Co-Authored-By` trailers naming AI assistants. This is the EasyCLA guard. |
+| `pre-commit` | Blocks `go.work`, blocks committing `.beads` as a symlink, and checks beads drift when `.beads/issues.jsonl` is staged. |
+| `pre-push` | Checks formatting, and nothing slower. |
+
+`pre-push` does not run lint or tests on purpose. CI gates both on every pull request, and locally they mean
+`cargo clippy --all-targets` plus `cargo test --workspace`, which take minutes and do not link on some machines. A
+hook that slow gets bypassed with `--no-verify`, and a bypassed hook protects nothing. Set `MORPHIR_SKIP_HOOKS=1`
+to skip the checks that honour it.
+
+Hooks must be executable in the index (mode `100755`) or git skips them silently on Linux and macOS. If you add
+one, check `git ls-files -s .husky` and use `git update-index --chmod=+x` when needed.
+
+### Keeping beads in sync
+
+The Dolt database is authoritative and `.beads/issues.jsonl` is a passive export, so the two drift apart whenever
+issues reach one side only. Both directions have happened (morphir-5uau). Never hand-edit the export. After
+changing issues, run `bd export -o .beads/issues.jsonl`, and commit that alongside `bd dolt push`.
+
+```shell
+mise run beads:drift-check
+```
+
+The `pre-commit` hook runs this automatically when the export is staged. Note that `bd` resolves `.beads` to the
+**main checkout** even when the working directory is a linked worktree, so a worktree edits its own tracked copy
+while `bd` reads and writes the main checkout's. Keep the main checkout current when working from a worktree.
+
 ### Long paths on Windows
 
 Working in this repository on Windows needs the same long path setup as using Morphir does, because the checked-in

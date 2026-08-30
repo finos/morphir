@@ -30,6 +30,9 @@ usage = "6.4.1"
 # ===== Initialization Tasks =====
 [tasks.init]
 description = "Initialize development environment. Use --ci for CI environments."
+# Hook activation is a dependency rather than part of the body below, so it still
+# runs on a Windows box without POSIX bash, where the body cannot (morphir-6y9z).
+depends = ["hooks:install"]
 run = """
 #!/usr/bin/env bash
 set -e
@@ -112,6 +115,18 @@ description = "Validate schemas against metaschema"
 # Windows shell does not expand "*.yaml", and bash is not a portable fallback
 # because a Windows box may carry only the WSL launcher.
 run = "bun run tools/validate-schemas.ts"
+
+[tasks."hooks:install"]
+description = "Activate the checked-in git hooks in .husky"
+run = "bun run tools/install-git-hooks.ts"
+
+[tasks."hooks:check"]
+description = "Verify the git hooks are active"
+run = "bun run tools/install-git-hooks.ts --check"
+
+[tasks."beads:drift-check"]
+description = "Verify the beads database and .beads/issues.jsonl agree"
+run = "bun run tools/check-beads-drift.ts"
 
 # The generator imports only node: builtins, so bun runs it without an install.
 # Only `tools:typecheck` needs tools/node_modules.
