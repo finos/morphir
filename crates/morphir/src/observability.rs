@@ -19,6 +19,13 @@ impl OperationId {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    /// Parse an identifier previously reported by Morphir.
+    pub fn parse(value: &str) -> Option<Self> {
+        let uuid = value.strip_prefix("op-")?;
+        uuid::Uuid::parse_str(uuid).ok()?;
+        Some(Self(value.to_owned()))
+    }
 }
 
 impl Default for OperationId {
@@ -45,5 +52,7 @@ mod tests {
         assert_ne!(first, second);
         assert!(first.as_str().starts_with("op-"));
         uuid::Uuid::parse_str(first.as_str().trim_start_matches("op-")).unwrap();
+        assert_eq!(OperationId::parse(first.as_str()), Some(first));
+        assert!(OperationId::parse("bad-operation").is_none());
     }
 }

@@ -262,6 +262,15 @@ enum DiagnosticsAction {
         #[arg(long)]
         json: bool,
     },
+    /// Show events correlated with one operation
+    Show {
+        /// Operation ID reported by Morphir
+        #[arg(long)]
+        operation: String,
+        /// Output events as JSON
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 #[derive(Clone, Subcommand)]
@@ -679,6 +688,9 @@ impl AppSession for MorphirSession {
             },
             Commands::Diagnostics { action } => match action {
                 DiagnosticsAction::Path { json } => run_diagnostics_path(*json),
+                DiagnosticsAction::Show { operation, json } => {
+                    commands::run_diagnostics_show(operation, *json)
+                }
             },
             Commands::Tool { action } => match action {
                 ToolAction::Install { name, version } => {

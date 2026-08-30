@@ -802,6 +802,65 @@ fn diagnostics_path_reports_shared_log_locations() {
 }
 
 #[test]
+fn diagnostics_show_finds_correlated_events_and_redacts_legacy_secrets() {
+    let temp_dir = TempDir::new().unwrap();
+    let morphir_home = temp_dir.path().join("relocated-home");
+    let log_dir = morphir_home.join("logs").join("desktop").join("2026-08-30");
+    std::fs::create_dir_all(&log_dir).unwrap();
+    let operation_id = "op-123e4567-e89b-42d3-a456-426614174000";
+    let events = [
+        serde_json::json!({
+            "timestamp": "2026-08-30T03:04:05Z",
+            "level": "INFO",
+            "fields": {
+                "operation_id": operation_id,
+                "event_name": "desktop.session.start",
+                "authorization": "Bearer SHOULD_NOT_ESCAPE"
+            }
+        }),
+        serde_json::json!({
+            "timestamp": "2026-08-30T03:04:06Z",
+            "level": "INFO",
+            "fields": {
+                "operation_id": "op-123e4567-e89b-42d3-a456-426614174999",
+                "event_name": "unrelated"
+            }
+        }),
+    ];
+    std::fs::write(
+        log_dir.join("fixture.jsonl"),
+        events
+            .iter()
+            .map(serde_json::Value::to_string)
+            .collect::<Vec<_>>()
+            .join("\n"),
+    )
+    .unwrap();
+
+    let output = morphir_command()
+        .args(["diagnostics", "show", "--operation", operation_id, "--json"])
+        .env("MORPHIR_HOME", &morphir_home)
+        .output()
+        .expect("failed to run morphir binary");
+
+    assert!(
+        output.status.success(),
+        "diagnostics show failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let shown: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(shown["operationId"], operation_id);
+    assert_eq!(shown["events"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        shown["events"][0]["fields"]["event_name"],
+        "desktop.session.start"
+    );
+    assert_eq!(shown["events"][0]["fields"]["authorization"], "[REDACTED]");
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("SHOULD_NOT_ESCAPE"));
+}
+
+#[test]
 fn failed_operation_reports_correlated_id_and_exact_log_path() {
     let temp_dir = TempDir::new().unwrap();
     let morphir_home = temp_dir.path().join("relocated-home");
