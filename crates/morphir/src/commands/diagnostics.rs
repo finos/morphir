@@ -512,6 +512,9 @@ fn sanitize_array(values: Vec<serde_json::Value>) -> Vec<serde_json::Value> {
     if let [serde_json::Value::String(key), _] = values.as_slice()
         && sensitive_key(key)
         && !sensitive_long_option(key)
+        && key
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '_' | '-'))
     {
         return vec![
             serde_json::Value::String(key.clone()),
@@ -1208,13 +1211,16 @@ mod tests {
         let sanitized = sanitize(serde_json::json!({
             "headers": [
                 ["x-api-key", "LIVE_SECRET"],
-                ["content-type", "application/json"]
+                ["content-type", "application/json"],
+                ["password=LIVE_SECRET", "input.json"]
             ]
         }));
 
         assert_eq!(sanitized["headers"][0][0], "x-api-key");
         assert_eq!(sanitized["headers"][0][1], "[REDACTED]");
         assert_eq!(sanitized["headers"][1][1], "application/json");
+        assert_eq!(sanitized["headers"][2][0], "[REDACTED]");
+        assert_eq!(sanitized["headers"][2][1], "input.json");
     }
 
     #[test]
