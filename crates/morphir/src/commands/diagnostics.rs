@@ -5,12 +5,13 @@ use starbase::AppResult;
 use std::cmp::{Ordering, Reverse};
 use std::collections::{BTreeSet, BinaryHeap};
 use std::fs::File;
-use std::io::{BufRead, BufReader, Read as _, Write as _};
+use std::io::{BufRead, BufReader, Read as _, Seek as _, SeekFrom, Write as _};
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 const MAX_DIAGNOSTIC_EVENTS: usize = 10_000;
 const MAX_DIAGNOSTIC_EVENT_BYTES: usize = 16 * 1024 * 1024;
+const MAX_DIAGNOSTIC_SCAN_BYTES: usize = 64 * 1024 * 1024;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -217,9 +218,18 @@ fn url_token_end(value: &str, authority_start: usize) -> usize {
         .match_indices("://")
         .find_map(|(index, _)| {
             let start = url_scheme_start_before(value, authority_start + index)?;
-            (start >= authority_start && value[..start].ends_with('|')).then_some(start)
+            (start >= authority_start && url_separator_before(value, start).is_some())
+                .then_some(start)
         })
         .unwrap_or(delimiter)
+}
+
+fn url_separator_before(value: &str, start: usize) -> Option<usize> {
+    value[..start]
+        .char_indices()
+        .next_back()
+        .filter(|(_, character)| matches!(character, '|' | ',' | ';'))
+        .map(|(index, _)| index)
 }
 
 fn url_scheme_starts_at(value: &str, start: usize) -> bool {
@@ -256,13 +266,10 @@ fn redact_urls(value: &str) -> String {
             .find(|(_, character)| matches!(character, '?' | '#'))
             .map(|(index, _)| authority_start + index)
         {
-            let replacement_end = if url_scheme_starts_at(&redacted, token_end)
-                && redacted[..token_end].ends_with('|')
-            {
-                token_end - 1
-            } else {
-                token_end
-            };
+            let replacement_end = url_scheme_starts_at(&redacted, token_end)
+                .then(|| url_separator_before(&redacted, token_end))
+                .flatten()
+                .unwrap_or(token_end);
             redacted.replace_range(boundary..replacement_end, "");
             search_from = boundary;
         } else {
@@ -449,6 +456,14 @@ fn sanitize(value: serde_json::Value) -> serde_json::Value {
 }
 
 fn sanitize_array(values: Vec<serde_json::Value>) -> Vec<serde_json::Value> {
+    if let [serde_json::Value::String(key), _] = values.as_slice()
+        && sensitive_key(key)
+    {
+        return vec![
+            serde_json::Value::String(key.clone()),
+            serde_json::Value::String("[REDACTED]".to_owned()),
+        ];
+    }
     let mut redact_next = false;
     values
         .into_iter()
@@ -580,6 +595,7 @@ fn read_operation_events(log_roots: &[PathBuf], operation_id: &str) -> Diagnosti
         operation_id,
         MAX_DIAGNOSTIC_EVENTS,
         MAX_DIAGNOSTIC_EVENT_BYTES,
+        MAX_DIAGNOSTIC_SCAN_BYTES,
     )
 }
 
@@ -588,6 +604,7 @@ fn read_operation_events_with_limits(
     operation_id: &str,
     max_events: usize,
     max_bytes: usize,
+    max_scan_bytes: usize,
 ) -> DiagnosticEvents {
     let log_files = log_roots
         .iter()
@@ -604,16 +621,46 @@ fn read_operation_events_with_limits(
             let path = entry.into_path();
             path.canonicalize().unwrap_or(path)
         })
-        .collect::<BTreeSet<_>>();
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
+    let mut log_files = log_files;
+    log_files.sort_by(|left, right| {
+        let modified = |path: &Path| path.metadata().and_then(|value| value.modified()).ok();
+        modified(right)
+            .cmp(&modified(left))
+            .then_with(|| right.cmp(left))
+    });
     let mut events = BinaryHeap::new();
     let mut retained_bytes = 0usize;
     let mut matched_events = 0usize;
     let mut truncated = false;
+    let mut remaining_scan_bytes = max_scan_bytes;
     for path in log_files {
-        let Ok(file) = File::open(path) else {
+        if remaining_scan_bytes == 0 {
+            truncated = true;
+            break;
+        }
+        let Ok(mut file) = File::open(path) else {
             continue;
         };
-        let _ = for_each_bounded_line(BufReader::new(file), 1024 * 1024, |line| {
+        let Ok(file_bytes) = file.metadata().map(|metadata| metadata.len()) else {
+            continue;
+        };
+        let scan_bytes = file_bytes.min(remaining_scan_bytes as u64);
+        let start = file_bytes.saturating_sub(scan_bytes);
+        if start > 0 {
+            truncated = true;
+            if file.seek(SeekFrom::Start(start)).is_err() {
+                continue;
+            }
+        }
+        remaining_scan_bytes = remaining_scan_bytes.saturating_sub(scan_bytes as usize);
+        let mut reader = BufReader::new(file);
+        if start > 0 && reader.skip_until(b'\n').is_err() {
+            continue;
+        }
+        let _ = for_each_bounded_line(reader, 1024 * 1024, |line| {
             if let Ok(event) = serde_json::from_slice::<serde_json::Value>(line)
                 && belongs_to_operation(&event, operation_id)
             {
@@ -967,6 +1014,20 @@ mod tests {
     }
 
     #[test]
+    fn structured_key_value_arrays_redact_sensitive_values() {
+        let sanitized = sanitize(serde_json::json!({
+            "headers": [
+                ["x-api-key", "LIVE_SECRET"],
+                ["content-type", "application/json"]
+            ]
+        }));
+
+        assert_eq!(sanitized["headers"][0][0], "x-api-key");
+        assert_eq!(sanitized["headers"][0][1], "[REDACTED]");
+        assert_eq!(sanitized["headers"][1][1], "application/json");
+    }
+
+    #[test]
     fn every_url_in_free_form_text_is_sanitized() {
         assert_eq!(
             sanitize_text(
@@ -991,6 +1052,18 @@ mod tests {
                 "https://public.example/continue?redirect=https://private.example/reset/LIVE_SECRET"
             ),
             "https://public.example/continue"
+        );
+        assert_eq!(
+            sanitize_text(
+                "https://first.example?a=1,https://second.example/status?download=private"
+            ),
+            "https://first.example,https://second.example/status"
+        );
+        assert_eq!(
+            sanitize_text(
+                "https://first.example?redirect=https://nested.example/path;https://second.example?download=private"
+            ),
+            "https://first.example;https://second.example"
         );
     }
 
@@ -1066,6 +1139,7 @@ mod tests {
             operation_id,
             10,
             first.len().max(second.len()),
+            usize::MAX,
         );
 
         assert!(selected.truncated);
@@ -1094,8 +1168,13 @@ mod tests {
         std::fs::write(cli.join("events.jsonl"), format!("{started}\n")).unwrap();
         std::fs::write(desktop.join("events.jsonl"), format!("{failed}\n")).unwrap();
 
-        let selected =
-            read_operation_events_with_limits(&[cli, desktop], operation_id, 1, usize::MAX);
+        let selected = read_operation_events_with_limits(
+            &[cli, desktop],
+            operation_id,
+            1,
+            usize::MAX,
+            usize::MAX,
+        );
 
         assert!(selected.truncated);
         assert_eq!(selected.events.len(), 1);
@@ -1120,10 +1199,39 @@ mod tests {
             operation_id,
             10,
             event.len() * 2,
+            usize::MAX,
         );
 
         assert!(!selected.truncated);
         assert_eq!(selected.events.len(), 1);
         assert_eq!(selected.events[0]["fields"]["message"], "once");
+    }
+
+    #[test]
+    fn diagnostic_event_ingestion_reads_the_bounded_tail_of_large_logs() {
+        let temp_dir = TempDir::new().unwrap();
+        let operation_id = "op-123e4567-e89b-42d3-a456-426614174000";
+        let terminal = serde_json::json!({
+            "timestamp": "2026-08-30T03:04:06Z",
+            "fields": { "operation_id": operation_id, "message": "terminal" }
+        })
+        .to_string();
+        std::fs::write(
+            temp_dir.path().join("events.jsonl"),
+            format!("{}\n{terminal}\n", "x".repeat(4096)),
+        )
+        .unwrap();
+
+        let selected = read_operation_events_with_limits(
+            &[temp_dir.path().to_path_buf()],
+            operation_id,
+            10,
+            usize::MAX,
+            terminal.len() + 2,
+        );
+
+        assert!(selected.truncated);
+        assert_eq!(selected.events.len(), 1);
+        assert_eq!(selected.events[0]["fields"]["message"], "terminal");
     }
 }
