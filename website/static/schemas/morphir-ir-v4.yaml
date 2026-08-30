@@ -47,11 +47,13 @@ definitions:
 
   NameString:
     type: string
-    pattern: "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$"
+    pattern: "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$"
     description: |
-      Canonical string representation of a name.
-      Supports kebab-case with parenthesized acronyms (e.g., "(usd)", "my-(api)-client").
-    examples: ["my-name", "user-id", "value-in-(usd)", "price-per-(unit)"]
+      Canonical string representation of a name: segments joined by "-".
+      A segment is all-lowercase (a word) or all-uppercase (an initialism).
+      Digits are permitted in both; a digits-only segment is a word.
+      A mixed-case segment such as "Usd" is invalid.
+    examples: ["my-name", "user-ID", "value-in-USD", "get-HTML", "price-per-unit"]
 
   Name:
     oneOf:
@@ -61,16 +63,20 @@ definitions:
           type: string
           pattern: "^[a-z][a-z0-9]*$"
         minItems: 1
-        description: "Legacy array representation (e.g., [\"my\", \"name\"] for 'my-name')"
-        examples: [["my", "name"], ["user", "id"]]
+        description: |
+          Legacy v1-v3 array representation. On decode, each maximal run of two or
+          more single-letter entries collapses into one initialism; a run of one
+          stays a word. ["value","in","u","s","d"] decodes to "value-in-USD",
+          and ["a"] decodes to "a".
+        examples: [["my", "name"], ["value", "in", "u", "s", "d"]]
 
   PathString:
     type: string
-    pattern: "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*$"
+    pattern: "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*$"
     description: |
       Canonical string representation of a path (package or module path).
       Segments are Names joined by forward slashes.
-    examples: ["morphir/sdk", "my-org/domain/users", "u-s/f-r-2052-a/data-tables"]
+    examples: ["morphir/SDK", "my-org/domain/users", "US/FR2052A/data-tables"]
 
   Path:
     oneOf:
@@ -78,28 +84,38 @@ definitions:
       - type: array
         items: { $ref: "#/definitions/Name" }
         minItems: 1
-        description: "Legacy array representation (e.g., [[\"morphir\"], [\"sdk\"]] for 'morphir/sdk')"
-        examples: [[["morphir"], ["sdk"]], [["my-org"], ["domain"], ["users"]]]
+        description: "Legacy array representation (e.g., [[\"morphir\"], [\"s\", \"d\", \"k\"]] for 'morphir/SDK')"
+        examples: [[["morphir"], ["s", "d", "k"]], [["my-org"], ["domain"], ["users"]]]
 
   PackageName:
     $ref: "#/definitions/Path"
     description: |
-      Package identifier. Examples: "morphir/sdk", "my-org/my-project"
-    examples: ["morphir/sdk", "my-org/my-project", "regulation"]
+      Package identifier. Examples: "morphir/SDK", "my-org/my-project"
+    examples: ["morphir/SDK", "my-org/my-project", "regulation"]
 
   ModuleName:
     $ref: "#/definitions/Path"
     description: |
       Module path within a package. Examples: "basics", "list", "domain/users"
-    examples: ["basics", "list", "domain/users", "u-s/f-r-2052-a/data-tables"]
+    examples: ["basics", "list", "domain/users", "US/FR2052A/data-tables"]
+
+  FileStem:
+    type: string
+    pattern: "^_?[a-z0-9]+(-_?[a-z0-9]+)*_?$"
+    description: |
+      Escaped projection of a Name onto the document tree. All lowercase, so it is
+      stable on case-insensitive filesystems. An initialism segment carries a "_"
+      prefix; a stem colliding with a Windows reserved device name carries a "_"
+      suffix.
+    examples: ["user", "user-_id", "value-in-_usd", "aux_"]
 
   FQNameString:
     type: string
-    pattern: "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*:([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*#([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$"
+    pattern: "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*:([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*#([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$"
     description: |
       Fully-qualified name in canonical string format: "package:module#name"
       This uniquely identifies a type or value across the entire IR.
-    examples: ["morphir/sdk:list#map", "morphir/sdk:basics#int", "my-org/domain:users#create-user"]
+    examples: ["morphir/SDK:list#map", "morphir/SDK:basics#int", "my-org/domain:users#create-user"]
 
   FQName:
     oneOf:
@@ -112,7 +128,7 @@ definitions:
           - $ref: "#/definitions/ModuleName"
           - $ref: "#/definitions/Name"
         description: "Legacy array representation: [packageName, moduleName, name]"
-        examples: [["morphir/sdk", "list", "map"], [["morphir"], ["sdk"], ["list"], ["map"]]]
+        examples: [["morphir/SDK", "list", "map"], [["morphir"], ["s", "d", "k"], ["list"], ["map"]]]
 
   # Attributes
   SourceLocation:
@@ -154,17 +170,17 @@ definitions:
     examples:
       - {}
       - { source: { startLine: 20, startColumn: 1, endLine: 20, endColumn: 10 } }
-      - { source: { startLine: 20, startColumn: 1, endLine: 20, endColumn: 10 }, inferredType: "morphir/sdk:basics#int" }
+      - { source: { startLine: 20, startColumn: 1, endLine: 20, endColumn: 10 }, inferredType: "morphir/SDK:basics#int" }
 
   # Annotations
   Annotation:
     oneOf:
       - type: string
-        pattern: "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+(:.+)?$"
+        pattern: "^[a-zA-Z0-9-/]+:[a-zA-Z0-9-/]+#[a-zA-Z0-9-]+(:.+)?$"
         description: |
           Compact shorthand format for an annotation: "fqname" or "fqname:value".
           Examples:
-          - "morphir/sdk:annotations#stable"
+          - "morphir/SDK:annotations#stable"
           - "my-org/sdk:annotations#deprecated:Use new-version instead"
       - type: object
         required: ["name"]
@@ -178,9 +194,9 @@ definitions:
       Structured annotation on a specification type.
       Can be a compact string or a canonical object.
     examples:
-      - "morphir/sdk:annotations#stable"
+      - "morphir/SDK:annotations#stable"
       - "my-org/sdk:annotations#deprecated:Use new-version instead"
-      - { "name": "morphir/sdk:annotations#deprecated", "arguments": [{ "Literal": { "StringLiteral": "Use new-version instead" } }] }
+      - { "name": "morphir/SDK:annotations#deprecated", "arguments": [{ "Literal": { "StringLiteral": "Use new-version instead" } }] }
 
   AnnotationArgument:
     oneOf:
@@ -207,7 +223,10 @@ definitions:
     examples: ["Public", "Private", "pub"]
 
   AccessControlled:
-    oneOf:
+    # anyOf rather than oneOf: these are alternative spellings of the same thing,
+    # and the flattened form below is deliberately a superset of the legacy
+    # {access, value} form, so exactly-one matching cannot hold.
+    anyOf:
       # V4 canonical: access level as key
       - type: object
         oneOf:
@@ -237,12 +256,21 @@ definitions:
         properties:
           access: { $ref: "#/definitions/Access" }
           value: {}
+      # Flattened: access alongside the definition variant. This is the form the
+      # document tree specification documents and every published example uses,
+      # so it must validate.
+      - type: object
+        required: ["access"]
+        minProperties: 2
+        properties:
+          access: { $ref: "#/definitions/Access" }
     description: |
       Wrapper for access control.
 
       Canonical: Access level as the key: { "Public": {...} } or { "Private": {...} }
       Accepted: lowercase and abbreviations: { "pub": {...} }, { "public": {...} }, { "private": {...} }
       Legacy: { "access": "Public", "value": {...} }
+      Flattened: { "access": "Public", "TypeAliasDefinition": {...} }
 
       Encoders should output the canonical form.
     examples:
@@ -250,6 +278,7 @@ definitions:
       - { "Private": { "internal": "data" } }
       - { "pub": { "some": "data" } }
       - { "access": "Public", "value": { "some": "data" } }
+      - { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } }
 
   # Packages
   Dependencies:
@@ -259,8 +288,8 @@ definitions:
       Dictionary mapping package names to their specifications.
       V4 uses object format: { "package/name": { "modules": {...} } }
     examples:
-      - { "morphir/sdk": { "modules": { "basics": { "types": {}, "values": {} } } } }
-      - { "morphir/sdk": { "modules": { "basics": { "types": {}, "values": {} } } }, "other/pkg": { "modules": {} } }
+      - { "morphir/SDK": { "modules": { "basics": { "types": {}, "values": {} } } } }
+      - { "morphir/SDK": { "modules": { "basics": { "types": {}, "values": {} } } }, "other/pkg": { "modules": {} } }
 
   PackageDefinition:
     type: object
@@ -341,9 +370,9 @@ definitions:
       Used for dependencies or FFI bindings where implementations are not needed.
       The "dependencies" and "spec" fields can be omitted if empty.
     examples:
-      - { "Specs": { "packageName": "morphir/sdk", "dependencies": {}, "spec": { "modules": {} } } }
-      - { "Specs": { "packageName": "morphir/sdk", "spec": {} } }
-      - { "Specs": { "packageName": "morphir/sdk" } }
+      - { "Specs": { "packageName": "morphir/SDK", "dependencies": {}, "spec": { "modules": {} } } }
+      - { "Specs": { "packageName": "morphir/SDK", "spec": {} } }
+      - { "Specs": { "packageName": "morphir/SDK" } }
 
   ApplicationDistribution:
     type: object
@@ -385,7 +414,7 @@ definitions:
       Unlike Library dependencies which use specifications, Application dependencies include full implementations
       for static linking.
     examples:
-      - { "morphir/sdk": { "modules": { "basics": { "access": "Public", "value": { "types": {}, "values": {} } } } } }
+      - { "morphir/SDK": { "modules": { "basics": { "access": "Public", "value": { "types": {}, "values": {} } } } } }
 
   EntryPoint:
     type: object
@@ -470,8 +499,8 @@ definitions:
       Includes both public and private items. Used in PackageDefinition.
       The "types" and "values" fields can be omitted if empty.
     examples:
-      - { "types": { "user": { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/sdk:string#string" } } }, "values": {} }
-      - { "types": {}, "values": { "calculate": { "access": "Public", "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/sdk:basics#int", "body": { "Literal": { "attributes": {}, "literal": { "IntegerLiteral": 42 } } } } } }, "doc": "Module documentation" }
+      - { "types": { "user": { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } } }, "values": {} }
+      - { "types": {}, "values": { "calculate": { "access": "Public", "ExpressionBody": { "inputTypes": {}, "outputType": "morphir/SDK:basics#int", "body": { "Literal": { "attributes": {}, "literal": { "IntegerLiteral": 42 } } } } } }, "doc": "Module documentation" }
       - { "values": { "main": { "access": "Public", "ExpressionBody": { "inputTypes": {}, "outputType": { "Unit": {} }, "body": { "Unit": {} } } } } }
 
   ModuleSpecification:
@@ -517,14 +546,14 @@ definitions:
       Used in PackageSpecification and dependencies.
       The "types" and "values" fields can be omitted if empty.
     examples:
-      - { "types": { "int": { "OpaqueTypeSpecification": {} } }, "values": { "add": { "inputs": { "a": "morphir/sdk:basics#int", "b": "morphir/sdk:basics#int" }, "output": "morphir/sdk:basics#int" } } }
+      - { "types": { "int": { "OpaqueTypeSpecification": {} } }, "values": { "add": { "inputs": { "a": "morphir/SDK:basics#int", "b": "morphir/SDK:basics#int" }, "output": "morphir/SDK:basics#int" } } }
       - { "types": { "int": { "OpaqueTypeSpecification": {} } } }
 
   # Type System
   #
   # V4 Type expressions use compact object notation:
   # - Variables: bare name string (e.g., "a")
-  # - References without args: bare FQName string (e.g., "morphir/sdk:int#int")
+  # - References without args: bare FQName string (e.g., "morphir/SDK:int#int")
   # - References with args: {"Reference": {"fqname": "...", "args": [...]}}
   # - Records: {"Record": {field-map}}
   # - Other types: {"TypeName": {...}}
@@ -555,7 +584,7 @@ definitions:
     oneOf:
       # Compact: bare FQName string (no type arguments)
       - type: string
-        pattern: "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+$"
+        pattern: "^[a-zA-Z0-9-/]+:[a-zA-Z0-9-/]+#[a-zA-Z0-9-]+$"
         description: |
           Compact format for Reference without type arguments.
           Just the FQName string: "package:module#name"
@@ -566,7 +595,7 @@ definitions:
         properties:
           Reference:
             type: string
-            pattern: "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+$"
+            pattern: "^[a-zA-Z0-9-/]+:[a-zA-Z0-9-/]+#[a-zA-Z0-9-]+$"
         description: |
           Wrapper format for Reference without type arguments.
       # Wrapper with array (canonical for args)
@@ -604,23 +633,23 @@ definitions:
     description: |
       Reference to a named type, optionally with type arguments.
 
-      Canonical (no args): "morphir/sdk:basics#int"
-      Canonical (with args): {"Reference": ["morphir/sdk:list#list", "a"]}
+      Canonical (no args): "morphir/SDK:basics#int"
+      Canonical (with args): {"Reference": ["morphir/SDK:list#list", "a"]}
 
       Accepted formats:
-      - Bare FQName string: "morphir/sdk:basics#int"
-      - Wrapper with FQName: {"Reference": "morphir/sdk:basics#int"}
-      - Wrapper with array: {"Reference": ["morphir/sdk:list#list", "a"]}
-      - Wrapper with object: {"Reference": {"fqname": "morphir/sdk:list#list", "args": ["a"]}}
+      - Bare FQName string: "morphir/SDK:basics#int"
+      - Wrapper with FQName: {"Reference": "morphir/SDK:basics#int"}
+      - Wrapper with array: {"Reference": ["morphir/SDK:list#list", "a"]}
+      - Wrapper with object: {"Reference": {"fqname": "morphir/SDK:list#list", "args": ["a"]}}
 
       Encoders should output canonical form.
     examples:
-      - "morphir/sdk:basics#int"
-      - "morphir/sdk:string#string"
-      - { "Reference": "morphir/sdk:basics#int" }
-      - { "Reference": ["morphir/sdk:list#list", "a"] }
-      - { "Reference": ["morphir/sdk:dict#dict", "morphir/sdk:string#string", "morphir/sdk:int#int"] }
-      - { "Reference": { "fqname": "morphir/sdk:list#list", "args": ["a"] } }
+      - "morphir/SDK:basics#int"
+      - "morphir/SDK:string#string"
+      - { "Reference": "morphir/SDK:basics#int" }
+      - { "Reference": ["morphir/SDK:list#list", "a"] }
+      - { "Reference": ["morphir/SDK:dict#dict", "morphir/SDK:string#string", "morphir/SDK:int#int"] }
+      - { "Reference": { "fqname": "morphir/SDK:list#list", "args": ["a"] } }
 
   TupleType:
     oneOf:
@@ -665,9 +694,9 @@ definitions:
 
       Encoders should output canonical form.
     examples:
-      - ["morphir/sdk:int#int", "morphir/sdk:string#string"]
-      - { "Tuple": ["morphir/sdk:int#int", "morphir/sdk:string#string"] }
-      - { "Tuple": { "elements": ["morphir/sdk:int#int", "morphir/sdk:string#string"] } }
+      - ["morphir/SDK:int#int", "morphir/SDK:string#string"]
+      - { "Tuple": ["morphir/SDK:int#int", "morphir/SDK:string#string"] }
+      - { "Tuple": { "elements": ["morphir/SDK:int#int", "morphir/SDK:string#string"] } }
       - ["a", "b", "c"]
 
   RecordType:
@@ -684,7 +713,7 @@ definitions:
       Record type with named fields.
       Format: {"Record": {"field-name": type, ...}}
     examples:
-      - { "Record": { "name": "morphir/sdk:string#string", "age": "morphir/sdk:int#int" } }
+      - { "Record": { "name": "morphir/SDK:string#string", "age": "morphir/SDK:int#int" } }
       - { "Record": { "inflows": "regulation:data-tables#inflows", "outflows": "regulation:data-tables#outflows" } }
 
   ExtensibleRecordType:
@@ -703,8 +732,8 @@ definitions:
       Extensible record type (row polymorphism).
       Format: {"ExtensibleRecord": {"variable": "a", "fields": {...}}}
     examples:
-      - { "ExtensibleRecord": { "variable": "a", "fields": { "name": "morphir/sdk:string#string" } } }
-      - { "ExtensibleRecord": { "variable": "r", "fields": { "email": "morphir/sdk:string#string" } } }
+      - { "ExtensibleRecord": { "variable": "a", "fields": { "name": "morphir/SDK:string#string" } } }
+      - { "ExtensibleRecord": { "variable": "r", "fields": { "email": "morphir/SDK:string#string" } } }
 
   FunctionType:
     type: object
@@ -720,7 +749,7 @@ definitions:
       Function type.
       Format: {"Function": {"argumentType": ..., "returnType": ...}}
     examples:
-      - { "Function": { "argumentType": "morphir/sdk:int#int", "returnType": "morphir/sdk:string#string" } }
+      - { "Function": { "argumentType": "morphir/SDK:int#int", "returnType": "morphir/SDK:string#string" } }
 
   UnitType:
     type: object
@@ -784,8 +813,8 @@ definitions:
       V4 format: { "TypeAliasSpecification": { "typeParams": [...], "typeExp": ... } }
       Legacy format: ["TypeAliasSpecification", [...], ...]
     examples:
-      - { "TypeAliasSpecification": { "typeParams": [], "typeExp": "morphir/sdk:string#string" } }
-      - { "TypeAliasSpecification": { "typeParams": ["a"], "typeExp": { "Reference": ["morphir/sdk:list#list", "a"] } } }
+      - { "TypeAliasSpecification": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } }
+      - { "TypeAliasSpecification": { "typeParams": ["a"], "typeExp": { "Reference": ["morphir/SDK:list#list", "a"] } } }
 
   OpaqueTypeSpecification:
     oneOf:
@@ -892,7 +921,7 @@ definitions:
       Derived type specification (opaque with conversion functions).
       V4 format: { "DerivedTypeSpecification": { "typeParams": [...], "baseType": ..., "fromBaseType": ..., "toBaseType": ... } }
     examples:
-      - { "DerivedTypeSpecification": { "typeParams": [], "baseType": "morphir/sdk:string#string", "fromBaseType": "my-org/sdk:local-date#from-string", "toBaseType": "my-org/sdk:local-date#to-string" } }
+      - { "DerivedTypeSpecification": { "typeParams": [], "baseType": "morphir/SDK:string#string", "fromBaseType": "my-org/sdk:local-date#from-string", "toBaseType": "my-org/sdk:local-date#to-string" } }
 
   # Type Definitions
   #
@@ -931,8 +960,8 @@ definitions:
       V4 format: { "TypeAliasDefinition": { "typeParams": [...], "typeExp": ... } }
       Legacy format: ["TypeAliasDefinition", [...], ...]
     examples:
-      - { "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/sdk:string#string" } }
-      - { "TypeAliasDefinition": { "typeParams": [], "typeExp": { "Record": { "name": "morphir/sdk:string#string", "age": "morphir/sdk:basics#int" } } } }
+      - { "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } }
+      - { "TypeAliasDefinition": { "typeParams": [], "typeExp": { "Record": { "name": "morphir/SDK:string#string", "age": "morphir/SDK:basics#int" } } } }
 
   CustomTypeDefinition:
     oneOf:
@@ -1046,10 +1075,10 @@ definitions:
       - type: number
         description: "Shorthand for IntegerLiteral or FloatLiteral"
       - type: string
-        pattern: "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+$"
+        pattern: "^[a-zA-Z0-9-/]+:[a-zA-Z0-9-/]+#[a-zA-Z0-9-]+$"
         description: "Shorthand for Reference (FQName string)"
       - type: string
-        pattern: "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$"
+        pattern: "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$"
         description: "Shorthand for Variable (Name string)"
       - type: array
         items: { $ref: "#/definitions/Value" }
@@ -1124,8 +1153,8 @@ definitions:
       Reference to a custom type constructor.
       Format: {"Constructor": "package:module#constructor-name"}
     examples:
-      - { "Constructor": "morphir/sdk:maybe#just" }
-      - { "Constructor": "morphir/sdk:maybe#nothing" }
+      - { "Constructor": "morphir/SDK:maybe#just" }
+      - { "Constructor": "morphir/SDK:maybe#nothing" }
 
   TupleValue:
     oneOf:
@@ -1246,8 +1275,8 @@ definitions:
       Reference to a defined value (function or constant).
       Format: {"Reference": "package:module#name"}
     examples:
-      - { "Reference": "morphir/sdk:basics#add" }
-      - { "Reference": "morphir/sdk:list#map" }
+      - { "Reference": "morphir/SDK:basics#add" }
+      - { "Reference": "morphir/SDK:list#map" }
 
   FieldValue:
     type: object
@@ -1291,7 +1320,7 @@ definitions:
       Function application.
       Format: {"Apply": {"function": value, "argument": value}}
     examples:
-      - { "Apply": { "function": { "Reference": "morphir/sdk:basics#add" }, "argument": { "Literal": { "IntegerLiteral": 1 } } } }
+      - { "Apply": { "function": { "Reference": "morphir/SDK:basics#add" }, "argument": { "Literal": { "IntegerLiteral": 1 } } } }
 
   LambdaValue:
     type: object
@@ -1531,7 +1560,7 @@ definitions:
       Constructor pattern for custom type matching.
       Format: {"ConstructorPattern": {"fqname": "package:module#ctor", "patterns": [...]}}
     examples:
-      - { "ConstructorPattern": { "fqname": "morphir/sdk:maybe#just", "patterns": [{ "AsPattern": { "pattern": { "WildcardPattern": {} }, "name": "x" } }] } }
+      - { "ConstructorPattern": { "fqname": "morphir/SDK:maybe#just", "patterns": [{ "AsPattern": { "pattern": { "WildcardPattern": {} }, "name": "x" } }] } }
 
   EmptyListPattern:
     type: object
@@ -1648,9 +1677,9 @@ definitions:
       Encoders should output the canonical object format.
       Decoders should accept both object and legacy array formats.
     examples:
-      - { "inputs": { "a": "morphir/sdk:basics#int", "b": "morphir/sdk:basics#int" }, "output": "morphir/sdk:basics#int" }
-      - { "output": "morphir/sdk:basics#int" }
-      - { "inputs": {}, "output": "morphir/sdk:string#string", "doc": "Returns a greeting" }
+      - { "inputs": { "a": "morphir/SDK:basics#int", "b": "morphir/SDK:basics#int" }, "output": "morphir/SDK:basics#int" }
+      - { "output": "morphir/SDK:basics#int" }
+      - { "inputs": {}, "output": "morphir/SDK:string#string", "doc": "Returns a greeting" }
 
   ValueDefinition:
     oneOf:
@@ -1695,8 +1724,8 @@ definitions:
       Normal IR expression body with input types, output type, and expression body.
       Used for most value definitions.
     examples:
-      - { "inputTypes": { "x": "morphir/sdk:basics#int" }, "outputType": "morphir/sdk:basics#int", "body": { "Variable": { "attributes": {}, "name": "x" } } }
-      - { "inputTypes": { "tables": "regulation:data-tables#data-tables" }, "outputType": "morphir/sdk:basics#float", "body": { "Literal": { "attributes": {}, "literal": { "FloatLiteral": 0.0 } } } }
+      - { "inputTypes": { "x": "morphir/SDK:basics#int" }, "outputType": "morphir/SDK:basics#int", "body": { "Variable": { "attributes": {}, "name": "x" } } }
+      - { "inputTypes": { "tables": "regulation:data-tables#data-tables" }, "outputType": "morphir/SDK:basics#float", "body": { "Literal": { "attributes": {}, "literal": { "FloatLiteral": 0.0 } } } }
 
   NativeBody:
     type: object
@@ -1714,7 +1743,7 @@ definitions:
       Native/builtin operation body (no IR expression).
       Used for platform operations that don't have an IR representation.
     examples:
-      - { "inputTypes": { "a": "morphir/sdk:basics#int", "b": "morphir/sdk:basics#int" }, "outputType": "morphir/sdk:basics#int", "nativeInfo": { "hint": { "Arithmetic": {} } } }
+      - { "inputTypes": { "a": "morphir/SDK:basics#int", "b": "morphir/SDK:basics#int" }, "outputType": "morphir/SDK:basics#int", "nativeInfo": { "hint": { "Arithmetic": {} } } }
 
   ExternalBody:
     type: object
@@ -1733,7 +1762,7 @@ definitions:
       External FFI call body (no IR expression).
       Used for foreign function interface calls to platform-specific code.
     examples:
-      - { "inputTypes": { "msg": "morphir/sdk:string#string" }, "outputType": "morphir/sdk:basics#unit", "externalName": "console.log", "targetPlatform": "javascript" }
+      - { "inputTypes": { "msg": "morphir/SDK:string#string" }, "outputType": "morphir/SDK:basics#unit", "externalName": "console.log", "targetPlatform": "javascript" }
 
   IncompleteBody:
     type: object
@@ -1752,7 +1781,7 @@ definitions:
       Incomplete definition body (V4 feature for best-effort support).
       Used when a definition cannot be fully resolved (e.g., deleted reference, type mismatch).
     examples:
-      - { "inputTypes": { "x": "morphir/sdk:basics#int" }, "outputType": "morphir/sdk:basics#int", "incompleteness": { "Hole": { "reason": { "UnresolvedReference": { "target": "my-org/project:module#deleted-function" } } } } }
+      - { "inputTypes": { "x": "morphir/SDK:basics#int" }, "outputType": "morphir/SDK:basics#int", "incompleteness": { "Hole": { "reason": { "UnresolvedReference": { "target": "my-org/project:module#deleted-function" } } } } }
 
   # Literals
   #
@@ -2032,3 +2061,6 @@ definitions:
       - { "UnresolvedReference": { "target": "my-org/project:module#missing-function" } }
       - { "DeletedDuringRefactor": { "tx-id": "refactor-2024-01-15-abc123" } }
       - { "TypeMismatch": { "expected": "Int", "found": "String" } }
+
+
+

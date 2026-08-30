@@ -86,7 +86,10 @@ run = "jsonschema lint website/static/schemas/*.yaml website/static/schemas/*.js
 # ===== Validation Tasks =====
 [tasks."schema:validate"]
 description = "Validate schemas against metaschema"
-run = "jsonschema metaschema website/static/schemas/*.yaml"
+# The glob is expanded by the script rather than by the shell: the default
+# Windows shell does not expand "*.yaml", and bash is not a portable fallback
+# because a Windows box may carry only the WSL launcher.
+run = "bun run tools/validate-schemas.ts"
 
 # The generator imports only node: builtins, so bun runs it without an install.
 # Only `tools:typecheck` needs tools/node_modules.

@@ -22,10 +22,10 @@
     "Name": {
       "oneOf": [
         {
-          "description": "Canonical string representation",
-          "examples": [ "my-name", "user-id", "value-in-(usd)" ],
+          "description": "Canonical name: segments joined by \"-\"; an initialism is an uppercase segment.",
+          "examples": [ "my-name", "user-ID", "value-in-USD" ],
           "type": "string",
-          "pattern": "^[a-z0-9]+(-[a-z0-9]+|-(\\([a-z]+\\)))*$"
+          "pattern": "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$"
         },
         {
           "description": "Legacy array representation",
@@ -41,10 +41,10 @@
     "ModuleName": {
       "oneOf": [
         {
-          "description": "Canonical string representation",
-          "examples": [ "basics", "domain/users", "u-s/f-r-2052-a/data-tables" ],
+          "description": "Canonical path: Names joined by \"/\".",
+          "examples": [ "basics", "domain/users", "US/FR2052A/data-tables" ],
           "type": "string",
-          "pattern": "^[a-z0-9-()]+(/[a-z0-9-()]+)*$"
+          "pattern": "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*$"
         },
         {
           "description": "Legacy array representation",
@@ -95,8 +95,9 @@
           "type": "object",
           "additionalProperties": true
         },
-        "output": {},
-        "description": "Output type"
+        "output": {
+          "description": "Output type"
+        }
       },
       "additionalProperties": true
     },
@@ -109,7 +110,7 @@
           "oneOf": [
             {
               "type": "string",
-              "pattern": "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+$"
+              "pattern": "^[a-zA-Z0-9-/]+:[a-zA-Z0-9-/]+#[a-zA-Z0-9-]+$"
             },
             {
               "type": "array",
@@ -176,7 +177,7 @@
               "typeExp": {
                 "Record": {
                   "fields": {
-                    "email": "morphir/sdk:string#string"
+                    "email": "morphir/SDK:string#string"
                   }
                 }
               }
@@ -278,9 +279,9 @@
             "access": "Public",
             "ExpressionBody": {
               "inputTypes": {
-                "email": "morphir/sdk:string#string"
+                "email": "morphir/SDK:string#string"
               },
-              "outputType": "morphir/sdk:maybe#maybe",
+              "outputType": "morphir/SDK:maybe#maybe",
               "body": {
                 "Variable": {
                   "attributes": {},
@@ -296,10 +297,10 @@
           "spec": {
             "doc": "Add two integers",
             "inputs": {
-              "a": "morphir/sdk:basics#int",
-              "b": "morphir/sdk:basics#int"
+              "a": "morphir/SDK:basics#int",
+              "b": "morphir/SDK:basics#int"
             },
-            "output": "morphir/sdk:basics#int"
+            "output": "morphir/SDK:basics#int"
           }
         }
       ],
@@ -397,7 +398,7 @@
               "access": "Public",
               "TypeAliasDefinition": {
                 "typeParams": [],
-                "typeExp": "morphir/sdk:string#string"
+                "typeExp": "morphir/SDK:string#string"
               }
             }
           },
@@ -554,7 +555,7 @@
         {
           "formatVersion": 4,
           "distribution": "Specs",
-          "package": "morphir/sdk",
+          "package": "morphir/SDK",
           "version": "3.0.0",
           "created": "2026-01-15T12:00:00Z",
           "layout": "VfsMode"
