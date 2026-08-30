@@ -180,6 +180,26 @@ fn contains_sensitive_option_pair(value: &str) -> bool {
     })
 }
 
+fn contains_serialized_sensitive_named_value(value: &str) -> bool {
+    let tokens = value
+        .split(|character: char| {
+            character.is_whitespace()
+                || matches!(
+                    character,
+                    '\'' | '"' | '\\' | '[' | ']' | '(' | ')' | '{' | '}' | ',' | ':' | '='
+                )
+        })
+        .filter(|token| !token.is_empty())
+        .collect::<Vec<_>>();
+    let names_sensitive_key = tokens.windows(2).any(|pair| {
+        matches!(normalized_key(pair[0]).as_str(), "name" | "key") && sensitive_key(pair[1])
+    });
+    let contains_value = tokens.windows(2).any(|pair| {
+        matches!(normalized_key(pair[0]).as_str(), "value" | "values") && !pair[1].is_empty()
+    });
+    names_sensitive_key && contains_value
+}
+
 fn sensitive_long_option(value: &str) -> bool {
     value
         .trim_matches(|character| {
@@ -376,6 +396,7 @@ pub(crate) fn sanitize_text(value: &str) -> String {
         || lower.contains("secret=")
         || contains_sensitive_assignment(value)
         || contains_sensitive_option_pair(value)
+        || contains_serialized_sensitive_named_value(value)
     {
         return "[REDACTED]".to_owned();
     }
@@ -1178,6 +1199,8 @@ mod tests {
             "request failed: --api-key LIVE_SECRET",
             r#"debug args: "--password" "hunter2""#,
             r#"args=["--password","hunter2"]"#,
+            r#"headers=[{"name":"x-api-key","value":"LIVE_SECRET"}]"#,
+            r#"headers=[{\"key\":\"authorization\",\"values\":[\"LIVE_SECRET\"]}]"#,
             "Authorization:Basic dXNlcjpwYXNz",
             "-----BEGIN PRIVATE KEY-----\nLIVE_SECRET\n-----END PRIVATE KEY-----",
         ] {
@@ -1190,6 +1213,8 @@ mod tests {
                 "[REDACTED]"
             );
         }
+        let public_header = r#"headers=[{"name":"content-type","value":"application/json"}]"#;
+        assert_eq!(sanitize_text(public_header), public_header);
     }
 
     #[test]
