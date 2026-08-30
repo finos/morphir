@@ -17,6 +17,7 @@ static NEXT_TRANSACTION_ID: AtomicU64 = AtomicU64::new(0);
 const MANIFEST_PATH: &str = ".morphir-generated-artifacts.json";
 const MANIFEST_SCHEMA_VERSION: u32 = 1;
 const PUBLICATION_LOCK_PREFIX: &str = ".morphir-artifact-publication-";
+const INTERNAL_PUBLICATION_LOCK_PATH: &str = ".morphir-artifact-publication-lock";
 const TRANSACTION_PATH_PREFIX: &str = ".morphir-artifacts-";
 
 pub(super) fn write_all(
@@ -281,7 +282,7 @@ fn acquire_publication<H: ArtifactHooks + ?Sized>(
     {
         let parent_lock = lock_directory(&parent.directory)?;
         hooks.before_output_component_open(&parent.directory, &leaf)?;
-        let root = open_or_create_output_leaf(parent.directory, leaf)?;
+        let root = open_or_create_output_leaf(parent, leaf)?;
         let root_lock = lock_directory(&root.directory)?;
         Ok(AcquiredPublication {
             root,
@@ -293,15 +294,7 @@ fn acquire_publication<H: ArtifactHooks + ?Sized>(
 
     #[cfg(not(unix))]
     {
-        let sibling_lock_path = publication_lock_path(&leaf);
-        let lock = create_or_open_publication_lock(&parent.directory, &sibling_lock_path)?;
-        lock.lock_exclusive()?;
-        hooks.before_output_component_open(&parent.directory, &leaf)?;
-        let root = open_or_create_output_leaf(parent.directory, leaf)?;
-        Ok(AcquiredPublication {
-            root,
-            lock: PublicationLock { _files: vec![lock] },
-        })
+        acquire_file_publication(parent, leaf, hooks)
     }
 }
 
@@ -312,8 +305,14 @@ fn lock_directory(directory: &Dir) -> io::Result<std::fs::File> {
     Ok(lock)
 }
 
-fn open_or_create_output_leaf(parent: Dir, leaf: OsString) -> io::Result<AcquiredOutputRoot> {
-    let mut created = Vec::new();
+fn open_or_create_output_leaf(
+    parent: AcquiredOutputRoot,
+    leaf: OsString,
+) -> io::Result<AcquiredOutputRoot> {
+    let AcquiredOutputRoot {
+        directory: parent,
+        mut created,
+    } = parent;
     let directory = match parent.open_dir_nofollow(&leaf) {
         Ok(directory) => directory,
         Err(error) if error.kind() == io::ErrorKind::NotFound => {
@@ -342,7 +341,53 @@ fn open_or_create_output_leaf(parent: Dir, leaf: OsString) -> io::Result<Acquire
     Ok(AcquiredOutputRoot { directory, created })
 }
 
-#[cfg(not(unix))]
+#[cfg(any(not(unix), test))]
+fn acquire_file_publication<H: ArtifactHooks + ?Sized>(
+    parent: AcquiredOutputRoot,
+    leaf: OsString,
+    hooks: &H,
+) -> io::Result<AcquiredPublication> {
+    let sibling_lock_path = publication_lock_path(&leaf);
+    if let Some(lock) = open_publication_lock(&parent.directory, &sibling_lock_path)? {
+        lock.lock_exclusive()?;
+        hooks.before_output_component_open(&parent.directory, &leaf)?;
+        let root = open_or_create_output_leaf(parent, leaf)?;
+        return Ok(AcquiredPublication {
+            root,
+            lock: PublicationLock { _files: vec![lock] },
+        });
+    }
+
+    hooks.before_output_component_open(&parent.directory, &leaf)?;
+    match parent.directory.open_dir_nofollow(&leaf) {
+        Ok(directory) => {
+            let lock = create_or_open_publication_lock(
+                &directory,
+                Path::new(INTERNAL_PUBLICATION_LOCK_PATH),
+            )?;
+            lock.lock_exclusive()?;
+            Ok(AcquiredPublication {
+                root: AcquiredOutputRoot {
+                    directory,
+                    created: parent.created,
+                },
+                lock: PublicationLock { _files: vec![lock] },
+            })
+        }
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            let lock = create_or_open_publication_lock(&parent.directory, &sibling_lock_path)?;
+            lock.lock_exclusive()?;
+            let root = open_or_create_output_leaf(parent, leaf)?;
+            Ok(AcquiredPublication {
+                root,
+                lock: PublicationLock { _files: vec![lock] },
+            })
+        }
+        Err(error) => Err(error),
+    }
+}
+
+#[cfg(any(not(unix), test))]
 fn open_publication_lock(directory: &Dir, path: &Path) -> io::Result<Option<std::fs::File>> {
     let mut options = OpenOptions::new();
     options.read(true).follow(FollowSymlinks::No);
@@ -353,7 +398,7 @@ fn open_publication_lock(directory: &Dir, path: &Path) -> io::Result<Option<std:
     }
 }
 
-#[cfg(not(unix))]
+#[cfg(any(not(unix), test))]
 fn create_or_open_publication_lock(directory: &Dir, path: &Path) -> io::Result<std::fs::File> {
     let mut create = OpenOptions::new();
     create
@@ -375,7 +420,7 @@ fn create_or_open_publication_lock(directory: &Dir, path: &Path) -> io::Result<s
     }
 }
 
-#[cfg(not(unix))]
+#[cfg(any(not(unix), test))]
 fn publication_lock_path(output_leaf: &OsStr) -> PathBuf {
     const FNV_OFFSET_BASIS: u64 = 0xcbf29ce484222325;
     const FNV_PRIME: u64 = 0x100000001b3;
@@ -1247,9 +1292,10 @@ fn is_reserved_transaction_path(path: &str) -> bool {
 
 fn is_reserved_publication_lock_path(path: &str) -> bool {
     let prefix = portable_path_key(PUBLICATION_LOCK_PREFIX);
+    let internal = portable_path_key(INTERNAL_PUBLICATION_LOCK_PATH);
     path.split('/').any(|segment| {
         let segment = portable_path_key(segment);
-        segment.starts_with(&prefix)
+        segment == internal || segment.starts_with(&prefix)
     })
 }
 
@@ -1400,6 +1446,27 @@ mod tests {
             fs::read_to_string(output.join("schema.avsc")).unwrap(),
             "generated"
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn regular_file_lock_falls_back_inside_an_existing_output_with_read_only_parent() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("generated");
+        fs::create_dir(&output).unwrap();
+        fs::set_permissions(&output, fs::Permissions::from_mode(0o700)).unwrap();
+        let acquired_parent = acquire_output_root(parent.path(), &NOOP_HOOKS).unwrap();
+        fs::set_permissions(parent.path(), fs::Permissions::from_mode(0o500)).unwrap();
+
+        let result =
+            acquire_file_publication(acquired_parent, OsString::from("generated"), &NOOP_HOOKS);
+
+        fs::set_permissions(parent.path(), fs::Permissions::from_mode(0o700)).unwrap();
+        let acquired = result.unwrap();
+        assert!(output.join(INTERNAL_PUBLICATION_LOCK_PATH).is_file());
+        drop(acquired);
     }
 
     #[test]
@@ -2029,6 +2096,16 @@ mod tests {
         assert!(writer.write_all(&[text("one.avsc", "one")]).is_err());
 
         assert!(!output.exists());
+    }
+
+    #[test]
+    fn empty_publication_removes_all_new_output_ancestors() {
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("new/nested/output");
+
+        ArtifactWriter::new(&output).write_all(&[]).unwrap();
+
+        assert!(!parent.path().join("new").exists());
     }
 
     #[test]
