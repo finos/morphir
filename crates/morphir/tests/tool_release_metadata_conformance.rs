@@ -481,6 +481,7 @@ async fn signed_fixture_drives_the_runtime_tuf_client_and_verified_download() {
     assert_eq!(installed.version(), &Version::parse("1.0.0").unwrap());
     let initial_launch = activate_installed_tool(&home, &tool_id).unwrap();
     std::fs::write(initial_launch.program(), b"corrupt").unwrap();
+    drop(initial_launch);
     ToolRepairer::new(&home)
         .repair(&tool_id, repair_resolved, repair_downloaded)
         .unwrap();
