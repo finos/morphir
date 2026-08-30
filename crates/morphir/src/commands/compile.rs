@@ -14,7 +14,7 @@ use morphir_devkit::{
     discover_config, ensure_morphir_structure, load_config_context, resolve_compile_output,
     resolve_path_relative_to_config,
 };
-use morphir_distribution::{ExtensionId, activate_installed};
+use morphir_distribution::{ExtensionId, VerifiedExtensionArtifact, activate_installed};
 use morphir_extension_sdk::{
     CompileOptions as ExtensionCompileOptions, CompilePackage, CompileRequest, CompileResult,
     DiagnosticSeverity, ExtensionType, SourceDocument,
@@ -429,10 +429,21 @@ fn installed_process(
     let artifact = activate_installed(home, id).map_err(|error| CliError::Extension {
         message: format!("Failed to activate installed extension '{id}': {error}"),
     })?;
-    let launch = artifact.args().iter().fold(
-        ProcessLaunch::from_discovered(
-            artifact.extension_info().clone(),
-            artifact.program(),
+    let process = match artifact {
+        VerifiedExtensionArtifact::Process(process) => process,
+        VerifiedExtensionArtifact::Wasm(_) => {
+            return Err(CliError::Extension {
+                message: format!(
+                    "Installed WASM extension '{id}' cannot compile through the process runtime"
+                ),
+            });
+        }
+    };
+    let launch = process.args().iter().fold(
+        ProcessLaunch::from_verified_bytes(
+            process.extension_info().clone(),
+            process.filename(),
+            process.bytes(),
             working_directory,
         ),
         |launch, argument| launch.arg(argument),
@@ -1691,6 +1702,52 @@ enabled = true
         install_test_process_with_id(directory, "morphir-elm")
     }
 
+    fn install_test_wasm(directory: &Path) -> MorphirHome {
+        let extension_id = "morphir-elm";
+        let home_path = directory.join("home");
+        let home = MorphirHome::resolve_from(Some(home_path.as_os_str()), None).unwrap();
+        let index_root = directory.join("index");
+        let source_path = index_root.join("artifacts/morphir-elm.wasm");
+        std::fs::create_dir_all(source_path.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(index_root.join("extensions")).unwrap();
+        let bytes = b"test wasm bytes";
+        std::fs::write(&source_path, bytes).unwrap();
+        let digest = morphir_distribution::Sha256Digest::of_bytes(bytes);
+        let record = serde_json::json!({
+            "schemaVersion": 2,
+            "id": extension_id,
+            "name": "Test Elm WASM frontend",
+            "version": "2.100.0",
+            "channels": ["stable"],
+            "mepVersions": ["0.1"],
+            "capabilities": ["frontend"],
+            "artifacts": [{
+                "runtime": "wasm",
+                "source": {"kind": "local-file", "path": "artifacts/morphir-elm.wasm"},
+                "sha256": digest.to_string(),
+                "filename": "morphir-elm.wasm",
+            }],
+        });
+        std::fs::write(
+            index_root.join("extensions/morphir-elm.jsonl"),
+            format!("{record}\n"),
+        )
+        .unwrap();
+        let id = morphir_distribution::ExtensionId::parse(extension_id).unwrap();
+        let selected = morphir_distribution::LocalIndex::open(&index_root)
+            .unwrap()
+            .resolve(
+                &id,
+                morphir_distribution::Selection::Channel(morphir_distribution::Channel::Stable),
+                &morphir_distribution::Platform::current(),
+            )
+            .unwrap();
+        morphir_distribution::ExtensionInstaller::new(&home)
+            .install(selected)
+            .unwrap();
+        home
+    }
+
     #[test]
     fn installed_process_launch_carries_exact_discovered_metadata() {
         let directory = TempDir::new().unwrap();
@@ -1733,6 +1790,22 @@ enabled = true
             .unwrap_err();
 
         assert!(error.to_string().contains("digest"), "{error}");
+    }
+
+    #[test]
+    fn installed_process_rejects_a_wasm_frontend() {
+        let directory = TempDir::new().unwrap();
+        let home = install_test_wasm(directory.path());
+
+        let error = installed_process(&home, &extension_id("morphir-elm"), directory.path(), &[])
+            .unwrap_err();
+
+        assert!(
+            error
+                .to_string()
+                .contains("cannot compile through the process runtime"),
+            "{error}"
+        );
     }
 
     #[test]

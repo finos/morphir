@@ -49,12 +49,16 @@ The long-running service for workspace management, builds, and IDE integration.
 
 ### [Extensions](./extensions/README.mdx)
 
-The extension architecture for adding capabilities to Morphir.
+The MEP architecture for adding frontends, backends, validators, and transforms
+to Morphir.
 
-**Scope:** WASM Component Model integration, task system, pre/post hooks, custom code generators.
+**Scope:** Process and WASM runtimes, typed MEP capabilities, verified
+installation, and custom code generators.
 
 **Key Documents:**
-- [WASM Components](../../spec/webassembly/wasm-components.md) - Plugin architecture
+- [Morphir Extension Protocol](./extensions/protocol.md) - Runtime-neutral lifecycle and operations
+- [Distribution and acquisition](./extensions/distribution-and-acquisition.md) - Index, lock, catalog, and activation
+- [WASM runtime and Avro backend](../proposals/wasm-extension-runtime-and-avro-backend.md) - Accepted design, not released
 - [Tasks](./extensions/tasks.md) - Build automation and hooks
 
 ---
@@ -137,8 +141,8 @@ tracking:
 2. **Dependencies** - Path and repository resolution
 3. **Builds** - Incremental compilation
 
-### Phase 3: Extensions (Future)
+### Phase 3: Extensions (not released)
 
-1. **WASM Components** - Plugin architecture
-2. **Tasks** - Automation hooks
-3. **Registry** - Package distribution
+1. **MEP runtimes** - Process and Extism-backed WASM adapters
+2. **Verified distribution** - Local index, lock, catalog, and store
+3. **Tasks** - Separate automation and hook design

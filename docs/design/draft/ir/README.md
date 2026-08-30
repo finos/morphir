@@ -64,7 +64,8 @@ This specification is organized into the following sections:
 | [Metadata](./meta.md) | Draft | File-level metadata (`$meta`) |
 | [References](./refs.md) | Draft | Node references (`$ref`) for deduplication |
 
-For extension mechanisms (WASM Components, WIT interfaces), see [Extensions](../extensions/README.mdx).
+For process and WASM extension runtimes, MEP, and verified installation, see
+[Extensions](../extensions/README.mdx).
 
 ## Architecture Overview
 
@@ -223,4 +224,4 @@ Example: Path `["Main", "Domain"]` → `pkg/main/domain/`
 ## Related
 
 - **[Morphir Daemon](../daemon/README.md)** - Workspace management and build orchestration
-- **[Extensions](../extensions/README.mdx)** - WASM components and task system
+- **[Extensions](../extensions/README.mdx)** - MEP runtimes and verified installation

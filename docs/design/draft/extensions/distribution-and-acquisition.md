@@ -13,6 +13,10 @@ Morphir needs two related distribution systems. Morphir packages distribute reus
 
 The [Morphir Extension Protocol](./protocol.md) begins after the host has selected an installed extension. This design covers the work that happens before that point and the local state that remains afterward.
 
+The accepted [WASM runtime and Avro backend proposal](../../proposals/wasm-extension-runtime-and-avro-backend.md)
+specializes this draft for portable WASM extensions. That feature is not
+released. The accepted proposal controls if the two documents differ.
+
 ## Boundaries
 
 | Concern | Morphir package | Extension distribution |
@@ -136,7 +140,13 @@ flowchart LR
     Runtime --> MEP[Open MEP session]
 ```
 
-The installed extension catalog is local state, not the distributed registry. It records exact identity, version, source provenance, artifact digest, manifest, granted permissions, and installation location. The host uses it to select an artifact and runtime without contacting a registry during normal execution.
+The installed extension catalog is local state, not the distributed registry.
+It records the extension ID, name, version, runtime, platform, arguments,
+artifact digest, content-addressed store path, capabilities, MEP versions,
+index provenance, backend metadata, and executable mode. The matching lock also
+records the requested selection and artifact source; the catalog does not. The
+host uses the catalog and lock together to select an artifact and runtime
+without contacting a registry during normal execution.
 
 An extension manifest needs:
 
@@ -149,11 +159,41 @@ An extension manifest needs:
 - launch commands and arguments for managed processes;
 - endpoint and authentication requirements for connected daemons.
 
-The runtime kind is independent from the acquisition source. A GitHub Release may contain an Extism WASM module, a native process, or a JVM process. A daemon entry may require no artifact at all when policy permits connecting to an existing endpoint.
+The runtime kind is independent from the acquisition source. A GitHub Release may contain a portable WASM module, a native process, or a JVM process. A daemon entry may require no artifact at all when policy permits connecting to an existing endpoint.
+
+Schema-v2 extension records use these rules for runnable artifacts:
+
+| Runtime | Platform | Arguments and executable bit | Rights |
+|---|---|---|---|
+| `wasm` | Must be absent. The artifact is portable. | Arguments must be empty and `executable` must be `false`. | The guest has no direct filesystem or network access. |
+| `process` | Required and matched to the host OS and architecture. | The locked arguments and executable mode are used exactly. | The process retains the ambient rights of the user who launches Morphir. |
+
+`wasm` is the public runtime name. Extism is the current engine behind that
+adapter and does not appear as a runtime value. A future WASM engine can replace
+it without changing an extension record or the MEP methods.
+
+Installation verifies the selected artifact's SHA-256 before publishing it to
+the content-addressed store. It then records the exact artifact in both the
+catalog and lock. Backend records also lock target IDs and supported Morphir IR
+versions. Normal activation is offline. It loads one catalog and lock snapshot,
+checks that they agree, canonicalizes the stored artifact under Morphir home,
+rehashes it, and verifies its runtime-specific mode before starting a session.
+
+The MEP handshake is a second check, not a replacement for the lock:
+
+| Stage | Compared values | Result on mismatch |
+|---|---|---|
+| Catalog against lock | Extension ID, name, version, runtime, platform, arguments, digest, capabilities, MEP versions, index provenance, complete backend metadata, and executable mode | Activation stops before guest code runs. |
+| Installed record against initialization | Extension ID, name, version, capability kinds, and the complete backend capability, including targets, IR versions, and `generate` | The host rejects initialization and does not call the backend. |
+| Requested operation against negotiated capability | Target ID, input IR version, and `generate` support | The host does not send `morphir.backend.generate`. |
+
+This comparison prevents a verified file from silently advertising a different
+backend after installation. Artifact integrity proves which bytes the host
+loaded. The handshake proves what those bytes claim in the current session.
 
 The host supports these activation modes behind one session contract:
 
-- load an Extism module in-process;
+- load a portable WASM module through the current Extism engine;
 - spawn a process and use `Content-Length` framed MEP over standard input and output;
 - connect to an existing daemon through a specified MEP socket or HTTP transport;
 - start a managed daemon, wait for its endpoint, and then use the daemon transport;
@@ -178,27 +218,16 @@ The existing `morphir server` command becomes an extension daemon only if it imp
 - Daemon connections require a transport-specific identity, authentication, timeout, and ownership policy.
 - Locks retain the exact registry snapshot, selected records, sources, digests, and transitive package graph.
 
-## Windows host prerequisite
+## Current host and guest split
 
-[morphir-rust issue #88](https://github.com/finos/morphir-rust/issues/88) blocks native Windows ARM64 host tests because `extism-pdk` guest imports enter the native CLI link graph. The host must first separate portable protocol types, the Extism guest SDK, runtime-neutral host orchestration, and the native Extism adapter.
+The SDK keeps protocol types and extension traits portable across native and
+WASM builds. Its Extism PDK dependency, guest exports, and imported host
+functions are compiled only for `wasm32`. Native hosts use the Extism runtime
+adapter and do not link guest PDK imports.
 
-The Windows gate is not only a linker regression test. It should build a WASM guest fixture separately, load it through the native Extism adapter, run the MEP conformance fixtures, and run the same fixtures against process and daemon adapters as those arrive.
-
-An extension milestone requires an independently built artifact invoked through the production host boundary. An in-memory provider may support unit tests, but it does not prove a runtime adapter. The first Extism artifact should be `morphir-wasm-binding`, since it exercises an existing Morphir backend and exposes SDK or host incompatibilities that an echo fixture would miss.
-
-## Delivery sequence
-
-1. Remove Extism guest imports from the native host dependency graph and restore Windows ARM64 tests.
-2. Build `morphir-wasm-binding`, invoke it through the Extism container, and make it pass the first transport-independent MEP cases. Introduce the common extension session as part of this working path.
-3. Build a native extension executable and run the same cases through the spawned-process adapter.
-4. Start an extension daemon and run the same cases through the connected-daemon adapter.
-5. Compile one Elm file through the spawned-process host using a real Morphir Elm extension.
-6. Define shared identity, source, integrity, lock, acquisition, and materialization values.
-7. Implement separate model-package and extension indexes using local-directory and pinned Git-file backends. The Git backend may store both indexes in one repository under separate roots.
-8. Replace the CLI metadata-only install command and the daemon's WASM-only loader with one installed catalog and verified store. Acquire and lock the Morphir Elm extension through this path.
-9. Record the Morphir Scala compiler extension in that repository's intent and knowledge system, then package and test it against the same single-file contract.
-10. Prove Morphir source-package resolution with registry, Git, vendored, and workspace sources through the same package boundary.
-11. Implement stable and preview channel resolution, including insiders naming and segmented preview policy. Then decide signature, provenance, yank, revocation, and HTTP registry policies after the local and Git-backed paths work.
+Process and WASM adapters feed the same runtime-neutral MEP session controller.
+An in-memory provider remains useful for unit tests, while runtime tests load an
+independently built artifact through the production host boundary.
 
 ## Open questions
 

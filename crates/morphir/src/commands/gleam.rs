@@ -1,7 +1,7 @@
 //! Gleam-specific subcommands
 
 use crate::commands::compile::CompileOptions;
-use crate::commands::{run_compile, run_generate};
+use crate::commands::{GenerateOptions, run_compile, run_generate};
 use starbase::AppResult;
 
 /// Run Gleam compile command (convenience wrapper)
@@ -37,15 +37,16 @@ pub async fn run_gleam_generate(
     json: bool,
     json_lines: bool,
 ) -> AppResult<miette::Report> {
-    run_generate(
-        Some("gleam".to_string()), // Set target to gleam
+    run_generate(GenerateOptions {
+        target: Some("gleam".to_string()), // Set target to gleam
         input,
         output,
         config_path,
         project,
+        backend_options: Vec::new(),
         json,
         json_lines,
-    )
+    })
     .await
 }
 

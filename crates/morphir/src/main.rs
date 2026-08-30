@@ -9,18 +9,19 @@ mod logging;
 pub mod output;
 
 use commands::{
-    MigrateCommandOptions, OutputLayout, compile::CompileOptions, run_compile, run_config_get,
-    run_config_path, run_config_show, run_dist_install, run_dist_list, run_dist_uninstall,
-    run_dist_update, run_extension_install, run_extension_list, run_extension_uninstall,
-    run_extension_update, run_generate, run_gleam_compile, run_gleam_generate, run_gleam_roundtrip,
-    run_kb_add_concept, run_kb_check, run_kb_decision_list, run_kb_decision_show, run_kb_index,
-    run_kb_intent_cancel, run_kb_intent_check, run_kb_intent_init, run_kb_intent_list,
-    run_kb_intent_move, run_kb_intent_new, run_kb_intent_refine, run_kb_intent_release,
-    run_kb_intent_show, run_kb_intent_start, run_kb_intent_supersede, run_kb_list,
-    run_kb_new_bundle, run_kb_query, run_kb_refresh, run_kb_refresh_db, run_kb_refresh_markdown,
-    run_kb_search, run_kb_show, run_kb_sync_diff, run_kb_sync_pull, run_kb_sync_push,
-    run_kb_sync_status, run_migrate, run_tool_install, run_tool_list, run_tool_uninstall,
-    run_tool_update, run_transform, run_validate, run_version,
+    GenerateOptions, MigrateCommandOptions, OutputLayout, compile::CompileOptions, run_compile,
+    run_config_get, run_config_path, run_config_show, run_dist_install, run_dist_list,
+    run_dist_uninstall, run_dist_update, run_extension_install, run_extension_list,
+    run_extension_uninstall, run_extension_update, run_generate, run_gleam_compile,
+    run_gleam_generate, run_gleam_roundtrip, run_kb_add_concept, run_kb_check,
+    run_kb_decision_list, run_kb_decision_show, run_kb_index, run_kb_intent_cancel,
+    run_kb_intent_check, run_kb_intent_init, run_kb_intent_list, run_kb_intent_move,
+    run_kb_intent_new, run_kb_intent_refine, run_kb_intent_release, run_kb_intent_show,
+    run_kb_intent_start, run_kb_intent_supersede, run_kb_list, run_kb_new_bundle, run_kb_query,
+    run_kb_refresh, run_kb_refresh_db, run_kb_refresh_markdown, run_kb_search, run_kb_show,
+    run_kb_sync_diff, run_kb_sync_pull, run_kb_sync_push, run_kb_sync_status, run_migrate,
+    run_tool_install, run_tool_list, run_tool_uninstall, run_tool_update, run_transform,
+    run_validate, run_version,
 };
 
 /// Morphir CLI - Tools for functional domain modeling and business logic
@@ -92,6 +93,13 @@ enum Commands {
         /// Project name (for workspaces)
         #[arg(long)]
         project: Option<String>,
+        /// Override a backend option as KEY=VALUE. May be repeated.
+        #[arg(
+            long = "option",
+            value_name = "KEY=VALUE",
+            action = clap::ArgAction::Append
+        )]
+        option: Vec<String>,
         /// Output as JSON
         #[arg(long)]
         json: bool,
@@ -625,18 +633,20 @@ impl AppSession for MorphirSession {
                 output,
                 config,
                 project,
+                option,
                 json,
                 json_lines,
             } => {
-                run_generate(
-                    target.clone(),
-                    input.clone(),
-                    output.clone(),
-                    config.clone(),
-                    project.clone(),
-                    *json,
-                    *json_lines,
-                )
+                run_generate(GenerateOptions {
+                    target: target.clone(),
+                    input: input.clone(),
+                    output: output.clone(),
+                    config_path: config.clone(),
+                    project: project.clone(),
+                    backend_options: option.clone(),
+                    json: *json,
+                    json_lines: *json_lines,
+                })
                 .await
             }
             Commands::Transform { input, output } => run_transform(input.clone(), output.clone()),

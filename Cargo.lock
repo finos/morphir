@@ -3614,6 +3614,9 @@ version = "0.4.0-alpha.5"
 dependencies = [
  "anyhow",
  "async-trait",
+ "base64 0.23.1",
+ "cap-fs-ext",
+ "cap-std",
  "chrono",
  "clap",
  "crossterm",
@@ -3709,6 +3712,7 @@ dependencies = [
  "morphir-common",
  "morphir-core",
  "morphir-devkit",
+ "morphir-distribution",
  "morphir-extension-sdk",
  "notify",
  "reqwest",
@@ -3719,6 +3723,7 @@ dependencies = [
  "tokio",
  "toml 1.1.4+spec-1.1.0",
  "tracing",
+ "wat",
 ]
 
 [[package]]

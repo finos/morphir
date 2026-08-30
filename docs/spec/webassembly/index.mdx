@@ -6,12 +6,20 @@ sidebar_position: 0
 
 # WebAssembly
 
-This section collects Morphir specifications related to WebAssembly, including the Component Model and WIT.
+This section collects Morphir specifications related to WebAssembly code
+generation, WIT input, and the Component Model.
 
-## Contents
+## Current drafts
 
 - [Wasm Component Model](./wasm-component-model)
-- [WASM Components (Extensions)](./wasm-components)
 - [Wasm Backend](./wasm-backend)
 - [WIT Frontend](./wit-frontend)
 - [WAT Code Generation](./wat-codegen)
+
+## Historical extension design
+
+The
+[WASM extension components source](https://github.com/finos/morphir/blob/main/docs/spec/webassembly/wasm-components.md)
+records an earlier WIT-based extension ABI. It is excluded from the published
+site. Current extensions use Extism plus MEP JSON-RPC, not that component
+interface.

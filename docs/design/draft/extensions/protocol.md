@@ -9,13 +9,19 @@ status: proposed
 
 The Morphir Extension Protocol, abbreviated MEP, defines how a Morphir host discovers and calls independently packaged functionality. It uses JSON-RPC 2.0 and follows the same broad model as LSP and BSP: a versioned handshake, capability negotiation, typed operations, structured diagnostics, cancellation, and an orderly shutdown.
 
-MEP separates the logical API from its transport. The first transport is a native executable connected over standard input and output. The same methods can later run over HTTP, a local socket, or a WASM host binding without changing CLI behavior.
+MEP separates the logical API from its transport. The public runtime kinds are
+`process` and `wasm`. A process connects over standard input and output. A WASM
+module carries the same JSON-RPC envelopes through host calls. Extism is the
+current WASM engine, not a protocol runtime name. HTTP and local sockets may use
+the same methods later without changing backend behavior.
 
 ## Status
 
 This is a proposed version 0.1 contract. It consolidates the method names already present in `morphir-extension-sdk` with the lifecycle, transport, and single-file compilation behavior needed for a working Elm frontend.
 
-The current Rust extension host only loads Extism WASM modules. Native executable hosting and configuration-free single-file compilation are implementation work described below.
+The accepted [WASM runtime and Avro backend proposal](../../proposals/wasm-extension-runtime-and-avro-backend.md)
+specializes this draft. That feature is not released. Where this draft and the
+accepted proposal differ, the accepted proposal controls.
 
 ## Goals
 
@@ -78,6 +84,13 @@ This framing allows formatted JSON and prevents extension logs from being mistak
 ### Other transports
 
 HTTP, local sockets, and WASM bindings may carry the same JSON-RPC messages. A transport specification must define message framing, identity, authentication, and lifecycle details that do not apply to the logical API.
+
+The `wasm` adapter invokes a guest through the current Extism engine. It does
+not expose Extism as a runtime value in configuration, manifests, locks, or
+provider selection. The guest receives request values and returns response
+values. It gets no direct filesystem or network access. Process extensions use
+the same logical session, but they retain the ambient rights of the user who
+started the host unless the operating system supplies a separate sandbox.
 
 ## Lifecycle
 
@@ -194,6 +207,24 @@ Version 0.1 defines these operation methods:
 | `morphir.transform.transform` | transform | Morphir IR and transform options | Morphir IR and diagnostics |
 
 An extension may implement any combination of these capabilities. The first Elm delivery implements only `morphir.frontend.compile`.
+
+Backend capability metadata has a typed shape:
+
+```json
+{
+  "backend": {
+    "targets": ["avro"],
+    "irVersions": ["3", "4"],
+    "generate": true
+  }
+}
+```
+
+`targets` lists stable target IDs used for provider selection. `irVersions`
+lists the Morphir IR major versions the backend can consume. `generate` says
+whether the backend accepts `morphir.backend.generate`. The host selects a
+provider by target and input IR version before it sends a request. It must not
+derive target support from the extension ID.
 
 ## Source documents
 
@@ -316,7 +347,10 @@ Lines and characters are zero-based. Ranges use an inclusive start and exclusive
 
 ## Backend generation
 
-`morphir.backend.generate` accepts one IR distribution and returns artifacts by value.
+`morphir.backend.generate` accepts one IR distribution and returns artifacts by
+value. Its parameters are exactly `GenerateRequest { ir, options }`. Input
+paths, output paths, target selection, and IR-version detection are host
+concerns. They do not appear in the guest request.
 
 ```json
 {
@@ -324,9 +358,7 @@ Lines and characters are zero-based. Ranges use an inclusive start and exclusive
   "id": "generate-1",
   "method": "morphir.backend.generate",
   "params": {
-    "irVersion": "3",
     "ir": {},
-    "target": "scala",
     "options": {}
   }
 }
@@ -340,10 +372,9 @@ Lines and characters are zero-based. Ranges use an inclusive start and exclusive
     "success": true,
     "artifacts": [
       {
-        "uri": "generated/Example.scala",
-        "mediaType": "text/x-scala",
-        "encoding": "utf-8",
-        "content": "package example\n"
+        "path": "generated/Example.scala",
+        "content": "package example\n",
+        "binary": false
       }
     ],
     "diagnostics": []
@@ -351,7 +382,18 @@ Lines and characters are zero-based. Ranges use an inclusive start and exclusive
 }
 ```
 
+An artifact has exactly `path`, `content`, and `binary`. `path` is relative to
+the host's output directory. `content` is UTF-8 text when `binary` is `false`
+and base64-encoded bytes when `binary` is `true`.
+
 The host decides whether and where to write artifacts. This prevents a backend from choosing paths outside the configured output area.
+
+Before the call, the host compares the selected target and detected IR version
+with the negotiated backend capability. It also compares locked discovery
+metadata with the initialization result. A mismatch in extension identity,
+version, capability kind, backend targets, backend IR versions, or backend
+`generate` support ends the session. The host validates all returned artifact
+paths and contents before it writes any output.
 
 ## Diagnostics
 
@@ -597,7 +639,7 @@ Acceptance criteria:
 
 - installation selects the correct artifact for OS and architecture;
 - checksums are verified before execution;
-- `morphir extension info` reports the executable, protocol version, language, and permissions;
+- `morphir extension list` reports the exact installed version and locked selection;
 - upgrade and uninstall do not disturb project source files.
 
 ## Work ownership and dependencies

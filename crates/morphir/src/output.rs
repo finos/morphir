@@ -81,6 +81,44 @@ pub struct GenerateOutput {
     pub output_path: String,
 }
 
+/// Write a human-readable generation result to the appropriate standard stream.
+pub fn write_generate_human(output: &GenerateOutput) -> io::Result<()> {
+    if output.success {
+        let stdout = io::stdout();
+        let mut writer = stdout.lock();
+        writeln!(writer, "Code generation successful!")?;
+        writeln!(writer, "Output: {}", output.output_path)?;
+        if !output.artifacts.is_empty() {
+            writeln!(writer, "Artifacts:")?;
+            for artifact in &output.artifacts {
+                writeln!(writer, "  {artifact}")?;
+            }
+        }
+        write_human_diagnostics(&mut writer, &output.diagnostics)
+    } else {
+        let stderr = io::stderr();
+        write_human_diagnostics(&mut stderr.lock(), &output.diagnostics)
+    }
+}
+
+fn write_human_diagnostics(writer: &mut impl Write, diagnostics: &[Diagnostic]) -> io::Result<()> {
+    if diagnostics.is_empty() {
+        return Ok(());
+    }
+    writeln!(writer, "Diagnostics:")?;
+    for diagnostic in diagnostics {
+        match &diagnostic.code {
+            Some(code) => writeln!(
+                writer,
+                "  {}[{code}]: {}",
+                diagnostic.level, diagnostic.message
+            )?,
+            None => writeln!(writer, "  {}: {}", diagnostic.level, diagnostic.message)?,
+        }
+    }
+    Ok(())
+}
+
 /// Diagnostic information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Diagnostic {
