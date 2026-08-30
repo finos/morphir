@@ -32,9 +32,9 @@ definitions:
   Name:
     oneOf:
       - type: string
-        pattern: "^[a-z0-9]+(-[a-z0-9]+|-(\\([a-z]+\\)))*$"
-        description: "Canonical string representation"
-        examples: ["my-name", "user-id", "value-in-(usd)"]
+        pattern: "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$"
+        description: "Canonical name: segments joined by \"-\"; an initialism is an uppercase segment."
+        examples: ["my-name", "user-ID", "value-in-USD"]
       - type: array
         items:
           type: string
@@ -45,9 +45,9 @@ definitions:
   ModuleName:
     oneOf:
       - type: string
-        pattern: "^[a-z0-9-()]+(/[a-z0-9-()]+)*$"
-        description: "Canonical string representation"
-        examples: ["basics", "domain/users", "u-s/f-r-2052-a/data-tables"]
+        pattern: "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*$"
+        description: "Canonical path: Names joined by \"/\"."
+        examples: ["basics", "domain/users", "US/FR2052A/data-tables"]
       - type: array
         items: { $ref: "#/definitions/Name" }
         minItems: 1
@@ -89,8 +89,8 @@ definitions:
         type: object
         additionalProperties: true
         description: "Input parameter types"
-      output: {}
-      description: "Output type"
+      output:
+        description: "Output type"
     additionalProperties: true
   
   EntryPoint:
@@ -100,7 +100,7 @@ definitions:
       target:
         oneOf:
           - type: string
-            pattern: "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+$"
+            pattern: "^[a-zA-Z0-9-/]+:[a-zA-Z0-9-/]+#[a-zA-Z0-9-]+$"
           - type: array
             minItems: 3
             maxItems: 3
@@ -192,7 +192,7 @@ definitions:
       
       Exactly one of 'def' or 'spec' must be present.
     examples:
-      - { "formatVersion": 4, "name": "user", "doc": "Represents a user", "def": { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": { "Record": { "fields": { "email": "morphir/sdk:string#string" } } } } } }
+      - { "formatVersion": 4, "name": "user", "doc": "Represents a user", "def": { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": { "Record": { "fields": { "email": "morphir/SDK:string#string" } } } } } }
       - { "formatVersion": 4, "name": "int", "spec": { "doc": "Arbitrary precision integer", "OpaqueTypeSpecification": {} } }
 
   # Value Definition File (*.value.json)
@@ -255,8 +255,8 @@ definitions:
       
       Exactly one of 'def' or 'spec' must be present.
     examples:
-      - { "formatVersion": 4, "name": "get-user-by-email", "def": { "access": "Public", "ExpressionBody": { "inputTypes": { "email": "morphir/sdk:string#string" }, "outputType": "morphir/sdk:maybe#maybe", "body": { "Variable": { "attributes": {}, "name": "email" } } } } }
-      - { "formatVersion": 4, "name": "add", "spec": { "doc": "Add two integers", "inputs": { "a": "morphir/sdk:basics#int", "b": "morphir/sdk:basics#int" }, "output": "morphir/sdk:basics#int" } }
+      - { "formatVersion": 4, "name": "get-user-by-email", "def": { "access": "Public", "ExpressionBody": { "inputTypes": { "email": "morphir/SDK:string#string" }, "outputType": "morphir/SDK:maybe#maybe", "body": { "Variable": { "attributes": {}, "name": "email" } } } } }
+      - { "formatVersion": 4, "name": "add", "spec": { "doc": "Add two integers", "inputs": { "a": "morphir/SDK:basics#int", "b": "morphir/SDK:basics#int" }, "output": "morphir/SDK:basics#int" } }
 
   # Module Manifest File (module.json)
   ModuleManifestFile:
@@ -341,7 +341,7 @@ definitions:
       Types and values can be arrays (manifest) or objects (inline), but not mixed.
     examples:
       - { "formatVersion": 4, "path": "my-org/domain", "types": ["user", "order"], "values": ["create-order"] }
-      - { "formatVersion": 4, "module": "main/domain", "doc": "Domain model", "types": { "user": { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/sdk:string#string" } } }, "values": {} }
+      - { "formatVersion": 4, "module": "main/domain", "doc": "Domain model", "types": { "user": { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } } }, "values": {} }
       - { "formatVersion": 4, "path": "my-org/domain", "doc": "Domain model", "types": ["user", "order"], "values": ["create-order"] }
       - { "formatVersion": 4, "module": "my-org/domain", "doc": "Domain model (legacy field)", "types": ["user"], "values": [] }
 
@@ -372,6 +372,26 @@ definitions:
         enum: ["Classic", "VfsMode"]
         description: "Distribution layout mode (VfsMode for document tree)"
         default: "VfsMode"
+      pathBudget:
+        type: integer
+        minimum: 64
+        default: 4000
+        description: |
+          Maximum path length, in characters from the distribution root, that this
+          tree was written against. A stem that would exceed it is truncated and
+          suffixed with "__" plus eight hex digits, and the module then records the
+          mapping in its "fileNames".
+
+          4000 is the default and suits Linux, macOS, and Windows with long paths
+          enabled. 200 is the portable profile, for Windows without
+          LongPathsEnabled and for stock Git for Windows, which ships
+          core.longpaths=false.
+
+          Writers set this unconditionally rather than leaving it inferred, so a
+          reader that cannot satisfy the budget can say so up front instead of
+          failing to open files one at a time. A missing value is read as 4000,
+          for trees written before this field existed.
+        examples: [4000, 200]
       entryPoints:
         type: object
         additionalProperties: { $ref: "#/definitions/EntryPoint" }
@@ -393,5 +413,7 @@ definitions:
       - entryPoints: Optional, entry points (required for Application distributions)
     examples:
       - { "formatVersion": 4, "distribution": "Library", "package": "my-org/my-project", "version": "1.2.0", "created": "2026-01-15T12:00:00Z", "layout": "VfsMode" }
-      - { "formatVersion": 4, "distribution": "Specs", "package": "morphir/sdk", "version": "3.0.0", "created": "2026-01-15T12:00:00Z", "layout": "VfsMode" }
+      - { "formatVersion": 4, "distribution": "Specs", "package": "morphir/SDK", "version": "3.0.0", "created": "2026-01-15T12:00:00Z", "layout": "VfsMode" }
       - { "formatVersion": 4, "distribution": "Application", "package": "my-org/my-cli", "version": "2.0.0", "created": "2026-01-15T12:00:00Z", "entryPoints": { "startup": { "target": "my-org/my-cli:main#run", "kind": "main" } } }
+
+

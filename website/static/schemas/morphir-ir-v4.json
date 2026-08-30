@@ -41,10 +41,16 @@
       ]
     },
     "NameString": {
-      "description": "Canonical string representation of a name.\nSupports kebab-case with parenthesized acronyms (e.g., \"(usd)\", \"my-(api)-client\").\n",
-      "examples": [ "my-name", "user-id", "value-in-(usd)", "price-per-(unit)" ],
+      "description": "Canonical string representation of a name: segments joined by \"-\".\nA segment is all-lowercase (a word) or all-uppercase (an initialism).\nDigits are permitted in both; a digits-only segment is a word.\nA mixed-case segment such as \"Usd\" is invalid.\n",
+      "examples": [
+        "my-name",
+        "user-ID",
+        "value-in-USD",
+        "get-HTML",
+        "price-per-unit"
+      ],
       "type": "string",
-      "pattern": "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$"
+      "pattern": "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$"
     },
     "Name": {
       "oneOf": [
@@ -52,16 +58,16 @@
           "$ref": "#/definitions/NameString"
         },
         {
-          "description": "Legacy array representation (e.g., [\"my\", \"name\"] for 'my-name')",
+          "description": "Legacy v1-v3 array representation. On decode, each maximal run of two or\nmore single-letter entries collapses into one initialism; a run of one\nstays a word. [\"value\",\"in\",\"u\",\"s\",\"d\"] decodes to \"value-in-USD\",\nand [\"a\"] decodes to \"a\".\n",
           "examples": [
             [ "my", "name" ],
-            [ "user", "id" ]
+            [ "value", "in", "u", "s", "d" ]
           ],
           "type": "array",
           "minItems": 1,
           "items": {
             "type": "string",
-            "pattern": "^[a-z][a-z0-9]*$"
+            "pattern": "^[a-z0-9]+$"
           }
         }
       ]
@@ -69,12 +75,12 @@
     "PathString": {
       "description": "Canonical string representation of a path (package or module path).\nSegments are Names joined by forward slashes.\n",
       "examples": [
-        "morphir/sdk",
+        "morphir/SDK",
         "my-org/domain/users",
-        "u-s/f-r-2052-a/data-tables"
+        "US/FR2052A/data-tables"
       ],
       "type": "string",
-      "pattern": "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*$"
+      "pattern": "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*$"
     },
     "Path": {
       "oneOf": [
@@ -82,11 +88,11 @@
           "$ref": "#/definitions/PathString"
         },
         {
-          "description": "Legacy array representation (e.g., [[\"morphir\"], [\"sdk\"]] for 'morphir/sdk')",
+          "description": "Legacy array representation (e.g., [[\"morphir\"], [\"s\", \"d\", \"k\"]] for 'morphir/SDK')",
           "examples": [
             [
               [ "morphir" ],
-              [ "sdk" ]
+              [ "s", "d", "k" ]
             ],
             [
               [ "my-org" ],
@@ -103,29 +109,36 @@
       ]
     },
     "PackageName": {
-      "description": "Package identifier. Examples: \"morphir/sdk\", \"my-org/my-project\"\n",
-      "examples": [ "morphir/sdk", "my-org/my-project", "regulation" ],
+      "description": "Package identifier. Examples: \"morphir/SDK\", \"my-org/my-project\"\n",
+      "examples": [ "morphir/SDK", "my-org/my-project", "regulation" ],
       "$ref": "#/definitions/Path"
     },
     "ModuleName": {
       "description": "Module path within a package. Examples: \"basics\", \"list\", \"domain/users\"\n",
-      "examples": [
-        "basics",
-        "list",
-        "domain/users",
-        "u-s/f-r-2052-a/data-tables"
-      ],
+      "examples": [ "basics", "list", "domain/users", "US/FR2052A/data-tables" ],
       "$ref": "#/definitions/Path"
+    },
+    "FileStem": {
+      "description": "Escaped projection of a Name onto the document tree. All lowercase, so it is\nstable on case-insensitive filesystems. An initialism segment carries a \"_\"\nprefix; a stem colliding with a Windows reserved device name carries a \"_\"\nsuffix.\n\nA stem truncated for path length carries \"__\" followed by eight hex digits\nof the SHA-256 of the untruncated stem. A truncated stem is not reversible,\nso the module manifest records the mapping from canonical name to stem.\n",
+      "examples": [
+        "user",
+        "user-_id",
+        "value-in-_usd",
+        "aux_",
+        "some-extremely-long-canonical__3f9a1c04"
+      ],
+      "type": "string",
+      "pattern": "^_?[a-z0-9]+(-_?[a-z0-9]+)*(__[0-9a-f]{8})?_?$"
     },
     "FQNameString": {
       "description": "Fully-qualified name in canonical string format: \"package:module#name\"\nThis uniquely identifies a type or value across the entire IR.\n",
       "examples": [
-        "morphir/sdk:list#map",
-        "morphir/sdk:basics#int",
+        "morphir/SDK:list#map",
+        "morphir/SDK:basics#int",
         "my-org/domain:users#create-user"
       ],
       "type": "string",
-      "pattern": "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*:([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*#([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$"
+      "pattern": "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*:([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*#([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$"
     },
     "FQName": {
       "oneOf": [
@@ -135,10 +148,10 @@
         {
           "description": "Legacy array representation: [packageName, moduleName, name]",
           "examples": [
-            [ "morphir/sdk", "list", "map" ],
+            [ "morphir/SDK", "list", "map" ],
             [
               [ "morphir" ],
-              [ "sdk" ],
+              [ "s", "d", "k" ],
               [ "list" ],
               [ "map" ]
             ]
@@ -255,7 +268,7 @@
             "endLine": 20,
             "endColumn": 10
           },
-          "inferredType": "morphir/sdk:basics#int"
+          "inferredType": "morphir/SDK:basics#int"
         }
       ],
       "type": "object",
@@ -276,10 +289,10 @@
     "Annotation": {
       "description": "Structured annotation on a specification type.\nCan be a compact string or a canonical object.\n",
       "examples": [
-        "morphir/sdk:annotations#stable",
+        "morphir/SDK:annotations#stable",
         "my-org/sdk:annotations#deprecated:Use new-version instead",
         {
-          "name": "morphir/sdk:annotations#deprecated",
+          "name": "morphir/SDK:annotations#deprecated",
           "arguments": [
             {
               "Literal": {
@@ -291,9 +304,9 @@
       ],
       "oneOf": [
         {
-          "description": "Compact shorthand format for an annotation: \"fqname\" or \"fqname:value\".\nExamples:\n- \"morphir/sdk:annotations#stable\"\n- \"my-org/sdk:annotations#deprecated:Use new-version instead\"\n",
+          "description": "Compact shorthand format for an annotation: \"fqname\" or \"fqname:value\".\nExamples:\n- \"morphir/SDK:annotations#stable\"\n- \"my-org/sdk:annotations#deprecated:Use new-version instead\"\n",
           "type": "string",
-          "pattern": "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+(:.+)?$"
+          "pattern": "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*:([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*#([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(:.+)?$"
         },
         {
           "type": "object",
@@ -342,7 +355,7 @@
       "enum": [ "Public", "Private", "public", "private", "pub" ]
     },
     "AccessControlled": {
-      "description": "Wrapper for access control.\n\nCanonical: Access level as the key: { \"Public\": {...} } or { \"Private\": {...} }\nAccepted: lowercase and abbreviations: { \"pub\": {...} }, { \"public\": {...} }, { \"private\": {...} }\nLegacy: { \"access\": \"Public\", \"value\": {...} }\n\nEncoders should output the canonical form.\n",
+      "description": "Wrapper for access control.\n\nCanonical: Access level as the key: { \"Public\": {...} } or { \"Private\": {...} }\nAccepted: lowercase and abbreviations: { \"pub\": {...} }, { \"public\": {...} }, { \"private\": {...} }\nLegacy: { \"access\": \"Public\", \"value\": {...} }\nFlattened: { \"access\": \"Public\", \"TypeAliasDefinition\": {...} }\n\nEncoders should output the canonical form.\n",
       "examples": [
         {
           "Public": {
@@ -364,9 +377,16 @@
           "value": {
             "some": "data"
           }
+        },
+        {
+          "access": "Public",
+          "TypeAliasDefinition": {
+            "typeParams": [],
+            "typeExp": "morphir/SDK:string#string"
+          }
         }
       ],
-      "oneOf": [
+      "anyOf": [
         {
           "type": "object",
           "oneOf": [
@@ -416,6 +436,16 @@
             },
             "value": {}
           }
+        },
+        {
+          "type": "object",
+          "required": [ "access" ],
+          "minProperties": 2,
+          "properties": {
+            "access": {
+              "$ref": "#/definitions/Access"
+            }
+          }
         }
       ]
     },
@@ -423,7 +453,7 @@
       "description": "Dictionary mapping package names to their specifications.\nV4 uses object format: { \"package/name\": { \"modules\": {...} } }\n",
       "examples": [
         {
-          "morphir/sdk": {
+          "morphir/SDK": {
             "modules": {
               "basics": {
                 "types": {},
@@ -433,7 +463,7 @@
           }
         },
         {
-          "morphir/sdk": {
+          "morphir/SDK": {
             "modules": {
               "basics": {
                 "types": {},
@@ -567,7 +597,7 @@
       "examples": [
         {
           "Specs": {
-            "packageName": "morphir/sdk",
+            "packageName": "morphir/SDK",
             "dependencies": {},
             "spec": {
               "modules": {}
@@ -576,13 +606,13 @@
         },
         {
           "Specs": {
-            "packageName": "morphir/sdk",
+            "packageName": "morphir/SDK",
             "spec": {}
           }
         },
         {
           "Specs": {
-            "packageName": "morphir/sdk"
+            "packageName": "morphir/SDK"
           }
         }
       ],
@@ -681,7 +711,7 @@
       "description": "Dictionary mapping package names to full definitions (statically linked for Application distributions).\nUnlike Library dependencies which use specifications, Application dependencies include full implementations\nfor static linking.\n",
       "examples": [
         {
-          "morphir/sdk": {
+          "morphir/SDK": {
             "modules": {
               "basics": {
                 "access": "Public",
@@ -745,7 +775,7 @@
               "access": "Public",
               "TypeAliasDefinition": {
                 "typeParams": [],
-                "typeExp": "morphir/sdk:string#string"
+                "typeExp": "morphir/SDK:string#string"
               }
             }
           },
@@ -758,7 +788,7 @@
               "access": "Public",
               "ExpressionBody": {
                 "inputTypes": {},
-                "outputType": "morphir/sdk:basics#int",
+                "outputType": "morphir/SDK:basics#int",
                 "body": {
                   "Literal": {
                     "attributes": {},
@@ -877,10 +907,10 @@
           "values": {
             "add": {
               "inputs": {
-                "a": "morphir/sdk:basics#int",
-                "b": "morphir/sdk:basics#int"
+                "a": "morphir/SDK:basics#int",
+                "b": "morphir/SDK:basics#int"
               },
-              "output": "morphir/sdk:basics#int"
+              "output": "morphir/SDK:basics#int"
             }
           }
         },
@@ -985,26 +1015,26 @@
       "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
     },
     "ReferenceType": {
-      "description": "Reference to a named type, optionally with type arguments.\n\nCanonical (no args): \"morphir/sdk:basics#int\"\nCanonical (with args): {\"Reference\": [\"morphir/sdk:list#list\", \"a\"]}\n\nAccepted formats:\n- Bare FQName string: \"morphir/sdk:basics#int\"\n- Wrapper with FQName: {\"Reference\": \"morphir/sdk:basics#int\"}\n- Wrapper with array: {\"Reference\": [\"morphir/sdk:list#list\", \"a\"]}\n- Wrapper with object: {\"Reference\": {\"fqname\": \"morphir/sdk:list#list\", \"args\": [\"a\"]}}\n\nEncoders should output canonical form.\n",
+      "description": "Reference to a named type, optionally with type arguments.\n\nCanonical (no args): \"morphir/SDK:basics#int\"\nCanonical (with args): {\"Reference\": [\"morphir/SDK:list#list\", \"a\"]}\n\nAccepted formats:\n- Bare FQName string: \"morphir/SDK:basics#int\"\n- Wrapper with FQName: {\"Reference\": \"morphir/SDK:basics#int\"}\n- Wrapper with array: {\"Reference\": [\"morphir/SDK:list#list\", \"a\"]}\n- Wrapper with object: {\"Reference\": {\"fqname\": \"morphir/SDK:list#list\", \"args\": [\"a\"]}}\n\nEncoders should output canonical form.\n",
       "examples": [
-        "morphir/sdk:basics#int",
-        "morphir/sdk:string#string",
+        "morphir/SDK:basics#int",
+        "morphir/SDK:string#string",
         {
-          "Reference": "morphir/sdk:basics#int"
+          "Reference": "morphir/SDK:basics#int"
         },
         {
-          "Reference": [ "morphir/sdk:list#list", "a" ]
+          "Reference": [ "morphir/SDK:list#list", "a" ]
         },
         {
           "Reference": [
-            "morphir/sdk:dict#dict",
-            "morphir/sdk:string#string",
-            "morphir/sdk:int#int"
+            "morphir/SDK:dict#dict",
+            "morphir/SDK:string#string",
+            "morphir/SDK:int#int"
           ]
         },
         {
           "Reference": {
-            "fqname": "morphir/sdk:list#list",
+            "fqname": "morphir/SDK:list#list",
             "args": [ "a" ]
           }
         }
@@ -1013,7 +1043,7 @@
         {
           "description": "Compact format for Reference without type arguments.\nJust the FQName string: \"package:module#name\"\n",
           "type": "string",
-          "pattern": "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+$"
+          "pattern": "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*:([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*#([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$"
         },
         {
           "description": "Wrapper format for Reference without type arguments.\n",
@@ -1022,7 +1052,7 @@
           "properties": {
             "Reference": {
               "type": "string",
-              "pattern": "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+$"
+              "pattern": "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*:([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*#([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$"
             }
           },
           "additionalProperties": false
@@ -1077,13 +1107,13 @@
     "TupleType": {
       "description": "Tuple type with multiple element types.\n\nCanonical: {\"Tuple\": [type1, type2, ...]}\n\nAccepted formats:\n- Bare array: [type1, type2, ...] (unambiguous since Reference doesn't use bare arrays)\n- Wrapper with array: {\"Tuple\": [type1, type2, ...]}\n- Wrapper with object: {\"Tuple\": {\"elements\": [type1, type2, ...]}}\n\nEncoders should output canonical form.\n",
       "examples": [
-        [ "morphir/sdk:int#int", "morphir/sdk:string#string" ],
+        [ "morphir/SDK:int#int", "morphir/SDK:string#string" ],
         {
-          "Tuple": [ "morphir/sdk:int#int", "morphir/sdk:string#string" ]
+          "Tuple": [ "morphir/SDK:int#int", "morphir/SDK:string#string" ]
         },
         {
           "Tuple": {
-            "elements": [ "morphir/sdk:int#int", "morphir/sdk:string#string" ]
+            "elements": [ "morphir/SDK:int#int", "morphir/SDK:string#string" ]
           }
         },
         [ "a", "b", "c" ]
@@ -1137,8 +1167,8 @@
       "examples": [
         {
           "Record": {
-            "name": "morphir/sdk:string#string",
-            "age": "morphir/sdk:int#int"
+            "name": "morphir/SDK:string#string",
+            "age": "morphir/SDK:int#int"
           }
         },
         {
@@ -1167,7 +1197,7 @@
           "ExtensibleRecord": {
             "variable": "a",
             "fields": {
-              "name": "morphir/sdk:string#string"
+              "name": "morphir/SDK:string#string"
             }
           }
         },
@@ -1175,7 +1205,7 @@
           "ExtensibleRecord": {
             "variable": "r",
             "fields": {
-              "email": "morphir/sdk:string#string"
+              "email": "morphir/SDK:string#string"
             }
           }
         }
@@ -1205,8 +1235,8 @@
       "examples": [
         {
           "Function": {
-            "argumentType": "morphir/sdk:int#int",
-            "returnType": "morphir/sdk:string#string"
+            "argumentType": "morphir/SDK:int#int",
+            "returnType": "morphir/SDK:string#string"
           }
         }
       ],
@@ -1276,14 +1306,14 @@
         {
           "TypeAliasSpecification": {
             "typeParams": [],
-            "typeExp": "morphir/sdk:string#string"
+            "typeExp": "morphir/SDK:string#string"
           }
         },
         {
           "TypeAliasSpecification": {
             "typeParams": [ "a" ],
             "typeExp": {
-              "Reference": [ "morphir/sdk:list#list", "a" ]
+              "Reference": [ "morphir/SDK:list#list", "a" ]
             }
           }
         }
@@ -1474,7 +1504,7 @@
         {
           "DerivedTypeSpecification": {
             "typeParams": [],
-            "baseType": "morphir/sdk:string#string",
+            "baseType": "morphir/SDK:string#string",
             "fromBaseType": "my-org/sdk:local-date#from-string",
             "toBaseType": "my-org/sdk:local-date#to-string"
           }
@@ -1570,7 +1600,7 @@
         {
           "TypeAliasDefinition": {
             "typeParams": [],
-            "typeExp": "morphir/sdk:string#string"
+            "typeExp": "morphir/SDK:string#string"
           }
         },
         {
@@ -1578,8 +1608,8 @@
             "typeParams": [],
             "typeExp": {
               "Record": {
-                "name": "morphir/sdk:string#string",
-                "age": "morphir/sdk:basics#int"
+                "name": "morphir/SDK:string#string",
+                "age": "morphir/SDK:basics#int"
               }
             }
           }
@@ -1821,12 +1851,12 @@
         {
           "description": "Shorthand for Reference (FQName string)",
           "type": "string",
-          "pattern": "^[a-z0-9-()/]+:[a-z0-9-()/]+#[a-z0-9-()]+$"
+          "pattern": "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*:([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*#([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$"
         },
         {
           "description": "Shorthand for Variable (Name string)",
           "type": "string",
-          "pattern": "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$"
+          "pattern": "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$"
         },
         {
           "description": "Shorthand for List",
@@ -1975,10 +2005,10 @@
       "description": "Reference to a custom type constructor.\nFormat: {\"Constructor\": \"package:module#constructor-name\"}\n",
       "examples": [
         {
-          "Constructor": "morphir/sdk:maybe#just"
+          "Constructor": "morphir/SDK:maybe#just"
         },
         {
-          "Constructor": "morphir/sdk:maybe#nothing"
+          "Constructor": "morphir/SDK:maybe#nothing"
         }
       ],
       "type": "object",
@@ -2176,10 +2206,10 @@
       "description": "Reference to a defined value (function or constant).\nFormat: {\"Reference\": \"package:module#name\"}\n",
       "examples": [
         {
-          "Reference": "morphir/sdk:basics#add"
+          "Reference": "morphir/SDK:basics#add"
         },
         {
-          "Reference": "morphir/sdk:list#map"
+          "Reference": "morphir/SDK:list#map"
         }
       ],
       "type": "object",
@@ -2243,7 +2273,7 @@
         {
           "Apply": {
             "function": {
-              "Reference": "morphir/sdk:basics#add"
+              "Reference": "morphir/SDK:basics#add"
             },
             "argument": {
               "Literal": {
@@ -2672,7 +2702,7 @@
       "examples": [
         {
           "ConstructorPattern": {
-            "fqname": "morphir/sdk:maybe#just",
+            "fqname": "morphir/SDK:maybe#just",
             "patterns": [
               {
                 "AsPattern": {
@@ -2848,17 +2878,17 @@
       "examples": [
         {
           "inputs": {
-            "a": "morphir/sdk:basics#int",
-            "b": "morphir/sdk:basics#int"
+            "a": "morphir/SDK:basics#int",
+            "b": "morphir/SDK:basics#int"
           },
-          "output": "morphir/sdk:basics#int"
+          "output": "morphir/SDK:basics#int"
         },
         {
-          "output": "morphir/sdk:basics#int"
+          "output": "morphir/SDK:basics#int"
         },
         {
           "inputs": {},
-          "output": "morphir/sdk:string#string",
+          "output": "morphir/SDK:string#string",
           "doc": "Returns a greeting"
         }
       ],
@@ -2955,9 +2985,9 @@
       "examples": [
         {
           "inputTypes": {
-            "x": "morphir/sdk:basics#int"
+            "x": "morphir/SDK:basics#int"
           },
-          "outputType": "morphir/sdk:basics#int",
+          "outputType": "morphir/SDK:basics#int",
           "body": {
             "Variable": {
               "attributes": {},
@@ -2969,7 +2999,7 @@
           "inputTypes": {
             "tables": "regulation:data-tables#data-tables"
           },
-          "outputType": "morphir/sdk:basics#float",
+          "outputType": "morphir/SDK:basics#float",
           "body": {
             "Literal": {
               "attributes": {},
@@ -3003,10 +3033,10 @@
       "examples": [
         {
           "inputTypes": {
-            "a": "morphir/sdk:basics#int",
-            "b": "morphir/sdk:basics#int"
+            "a": "morphir/SDK:basics#int",
+            "b": "morphir/SDK:basics#int"
           },
-          "outputType": "morphir/sdk:basics#int",
+          "outputType": "morphir/SDK:basics#int",
           "nativeInfo": {
             "hint": {
               "Arithmetic": {}
@@ -3037,9 +3067,9 @@
       "examples": [
         {
           "inputTypes": {
-            "msg": "morphir/sdk:string#string"
+            "msg": "morphir/SDK:string#string"
           },
-          "outputType": "morphir/sdk:basics#unit",
+          "outputType": "morphir/SDK:basics#unit",
           "externalName": "console.log",
           "targetPlatform": "javascript"
         }
@@ -3077,9 +3107,9 @@
       "examples": [
         {
           "inputTypes": {
-            "x": "morphir/sdk:basics#int"
+            "x": "morphir/SDK:basics#int"
           },
-          "outputType": "morphir/sdk:basics#int",
+          "outputType": "morphir/SDK:basics#int",
           "incompleteness": {
             "Hole": {
               "reason": {

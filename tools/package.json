@@ -1,0 +1,15 @@
+{
+	"name": "@morphir/tools",
+	"private": true,
+	"type": "module",
+	"description": "Bun + TypeScript tooling for Morphir specification artifacts.",
+	"scripts": {
+		"gen:naming-corpus": "bun run gen-naming-corpus.ts",
+		"check:naming-corpus": "bun run gen-naming-corpus.ts --check",
+		"typecheck": "tsc"
+	},
+	"devDependencies": {
+		"@types/bun": "^1.4.0",
+		"typescript": "~7.0.0"
+	}
+}

@@ -74,7 +74,7 @@ The corresponding JSON tree replaces each `.yaml` extension with `.json`.
 {
   "formatVersion": 4,
   "distribution": "Specs",
-  "package": "morphir/sdk",
+  "package": "morphir/SDK",
   "version": "3.0.0",
   "created": "2026-01-15T12:00:00Z",
   "layout": "VfsMode"
@@ -133,7 +133,7 @@ Lists type/value names; definitions in separate files:
   "formatVersion": 4,
   "path": "my-org/domain",
   "doc": "Domain model for main application",
-  "types": ["user", "user-(id)", "order"],
+  "types": ["user", "user-ID", "order"],
   "values": ["get-user-by-email", "create-order", "validate-user"]
 }
 ```
@@ -166,7 +166,7 @@ Contains definitions directly:
         "typeExp": {
           "Record": {
             "fields": {
-              "email": "morphir/sdk:string#string"
+              "email": "morphir/SDK:string#string"
             }
           }
         }
@@ -204,9 +204,9 @@ Contains definitions directly:
 - `doc`: Documentation (string or array of strings) - can be at top level or nested in `def`/`spec`
 
 **File Naming**:
-- Use canonical name format (kebab-case)
+- Use the escaped stem, `escape(name)`, not the canonical name
 - Suffix: `.type.json`
-- Example: `user.type.json`, `user-(id).type.json`, `order-line-item.type.json`
+- Example: `user.type.json`, `user-_id.type.json`, `order-line-item.type.json`
 
 **Schema**: See [morphir-ir-v4-document-tree-files.yaml](/schemas/morphir-ir-v4-document-tree-files.yaml) → `TypeDefinitionFile`
 
@@ -223,9 +223,9 @@ Contains definitions directly:
       "typeExp": {
         "Record": {
           "fields": {
-            "user-id": "my-org/domain:types#user-(id)",
-            "email": "morphir/sdk:string#string",
-            "created-at": "my-org/sdk:local-date-time#local-date-time"
+            "user-id": "my-org/domain:types#user-ID",
+            "email": "morphir/SDK:string#string",
+            "created-at": "my-org/SDK:local-date-time#local-date-time"
           }
         }
       }
@@ -290,7 +290,7 @@ Contains definitions directly:
 - `doc`: Documentation (string or array of strings) - can be at top level or nested in `def`/`spec`
 
 **File Naming**:
-- Use canonical name format (kebab-case)
+- Use the escaped stem, `escape(name)`, not the canonical name
 - Suffix: `.value.json`
 - Example: `get-user-by-email.value.json`, `create-order.value.json`, `validate-email.value.json`
 
@@ -306,17 +306,17 @@ Contains definitions directly:
     "access": "Public",
     "ExpressionBody": {
       "inputTypes": {
-        "email": "morphir/sdk:string#string",
-        "users": ["morphir/sdk:list#list", "my-org/domain:types#user"]
+        "email": "morphir/SDK:string#string",
+        "users": ["morphir/SDK:list#list", "my-org/domain:types#user"]
       },
-      "outputType": ["morphir/sdk:maybe#maybe", "my-org/domain:types#user"],
+      "outputType": ["morphir/SDK:maybe#maybe", "my-org/domain:types#user"],
       "body": {
         "Apply": {
           "attributes": {},
           "function": {
             "Reference": {
               "attributes": {},
-              "fqname": "morphir/sdk:list#find",
+              "fqname": "morphir/SDK:list#find",
               "args": []
             }
           },
@@ -336,8 +336,8 @@ Contains definitions directly:
 > **Note on Type Reference Formats:**
 >
 > Type references in `inputTypes`, `outputType`, and `typeExp` fields can use either:
-> - **Canonical string format**: `"morphir/sdk:string#string"` (preferred, more compact)
-> - **Array format**: `["morphir/sdk:list#list", "my-org/domain:types#user"]` (for parameterized types)
+> - **Canonical string format**: `"morphir/SDK:string#string"` (preferred, more compact)
+> - **Array format**: `["morphir/SDK:list#list", "my-org/domain:types#user"]` (for parameterized types)
 >
 > Both formats are valid. The canonical string format is preferred for simple types, while array format is used for parameterized types where the first element is the type constructor and subsequent elements are type arguments.
 
@@ -350,10 +350,10 @@ Contains definitions directly:
     "access": "Public",
     "NativeBody": {
       "inputTypes": {
-        "a": "morphir/sdk:basics#int",
-        "b": "morphir/sdk:basics#int"
+        "a": "morphir/SDK:basics#int",
+        "b": "morphir/SDK:basics#int"
       },
-      "outputType": "morphir/sdk:basics#int",
+      "outputType": "morphir/SDK:basics#int",
       "nativeInfo": {
         "hint": { "Arithmetic": {} }
       }
@@ -373,9 +373,9 @@ Contains definitions directly:
       "Returns true if the email is valid, false otherwise."
     ],
     "inputs": {
-      "email": "morphir/sdk:string#string"
+      "email": "morphir/SDK:string#string"
     },
-    "output": "morphir/sdk:basics#bool"
+    "output": "morphir/SDK:basics#bool"
   }
 }
 ```
@@ -393,7 +393,7 @@ Contains definitions directly:
             ├── domain/                   # Module directory
             │   ├── module.json          # Module manifest
             │   ├── user.type.json       # Type definition
-            │   ├── user-(id).type.json  # Type definition
+            │   ├── user-_id.type.json  # Type definition
             │   ├── order.type.json      # Type definition
             │   ├── get-user.value.json  # Value definition
             │   └── create-order.value.json
@@ -451,13 +451,15 @@ is also accepted. Prerelease and build metadata are rejected.
 **Required**: Yes (in `*.type.json` and `*.value.json` files)  
 **Description**: The canonical name of the type or value
 
-**Format**: Kebab-case with optional parenthesized abbreviations
+**Format**: Segments joined by `-`, where a segment is all-lowercase (a word) or all-uppercase (an initialism)
 - `"user"`
 - `"get-user-by-email"`
-- `"value-in-(usd)"`
-- `"user-(id)"`
+- `"value-in-USD"`
+- `"user-ID"`
 
-**Constraint**: Must match the filename (without suffix)
+**Constraint**: `escape(name)` must equal the filename without its suffix. The name itself is **not** the filename:
+`user-ID` is stored in `user-_id.type.json`. See [Naming](../../../draft/names.md) for the escape and for the
+`fileNames` map that a module carries when a stem is truncated for path length.
 
 ### path / module
 
@@ -511,7 +513,7 @@ is also accepted. Prerelease and build metadata are rejected.
     "doc": "User type",
     "TypeAliasDefinition": {
       "typeParams": [],
-      "typeExp": "morphir/sdk:string#string"
+      "typeExp": "morphir/SDK:string#string"
     }
   }
 }
@@ -564,10 +566,10 @@ is also accepted. Prerelease and build metadata are rejected.
   "spec": {
     "doc": "Add two integers",
     "inputs": {
-      "a": "morphir/sdk:basics#int",
-      "b": "morphir/sdk:basics#int"
+      "a": "morphir/SDK:basics#int",
+      "b": "morphir/SDK:basics#int"
     },
-    "output": "morphir/sdk:basics#int"
+    "output": "morphir/SDK:basics#int"
   }
 }
 ```
@@ -621,10 +623,10 @@ When type/value files are part of a PackageSpecification:
     "access": "Public",
     "ExternalBody": {
       "inputTypes": {
-        "url": "morphir/sdk:string#string",
-        "payload": "morphir/sdk:json#json"
+        "url": "morphir/SDK:string#string",
+        "payload": "morphir/SDK:json#json"
       },
-      "outputType": ["morphir/sdk:result#result", "morphir/sdk:json#json", "morphir/sdk:string#string"],
+      "outputType": ["morphir/SDK:result#result", "morphir/SDK:json#json", "morphir/SDK:string#string"],
       "externalInfo": {
         "provider": "http",
         "endpoint": "/api/v1/data",
@@ -651,9 +653,9 @@ When type/value files are part of a PackageSpecification:
     "ExpressionBody": {
       "inputTypes": {
         "order": "my-org/domain:orders#order",
-        "tax-rate": "morphir/sdk:basics#float"
+        "tax-rate": "morphir/SDK:basics#float"
       },
-      "outputType": "morphir/sdk:basics#float",
+      "outputType": "morphir/SDK:basics#float",
       "body": {
         "LetDefinition": {
           "attributes": {},
@@ -661,14 +663,14 @@ When type/value files are part of a PackageSpecification:
           "valueDefinition": {
             "ExpressionBody": {
               "inputTypes": {},
-              "outputType": "morphir/sdk:basics#float",
+              "outputType": "morphir/SDK:basics#float",
               "body": {
                 "Apply": {
                   "attributes": {},
                   "function": {
                     "Reference": {
                       "attributes": {},
-                      "fqname": "morphir/sdk:list#sum",
+                      "fqname": "morphir/SDK:list#sum",
                       "args": []
                     }
                   },
@@ -694,7 +696,7 @@ When type/value files are part of a PackageSpecification:
               "function": {
                 "Reference": {
                   "attributes": {},
-                  "fqname": "morphir/sdk:basics#multiply",
+                  "fqname": "morphir/SDK:basics#multiply",
                   "args": []
                 }
               },
@@ -714,7 +716,7 @@ When type/value files are part of a PackageSpecification:
                         "function": {
                           "Reference": {
                             "attributes": {},
-                            "fqname": "morphir/sdk:basics#add",
+                            "fqname": "morphir/SDK:basics#add",
                             "args": []
                           }
                         },
@@ -787,7 +789,7 @@ When type/value files are part of a PackageSpecification:
       "access": "Public",
       "ExpressionBody": {
         "inputTypes": {
-          "email": "morphir/sdk:string#string"
+          "email": "morphir/SDK:string#string"
         },
         "outputType": "my-org/domain:types#user",
         "body": {
@@ -824,7 +826,7 @@ When type/value files are part of a PackageSpecification:
   "formatVersion": 4,
   "path": "my-org/domain",
   "doc": "Domain model for the application",
-  "types": ["user", "user-(id)", "order"],
+  "types": ["user", "user-ID", "order"],
   "values": ["get-user-by-email", "create-order", "validate-user"]
 }
 ```
@@ -842,9 +844,9 @@ When type/value files are part of a PackageSpecification:
       "typeExp": {
         "Record": {
           "fields": {
-            "user-id": "my-org/domain:types#user-(id)",
-            "email": "morphir/sdk:string#string",
-            "created-at": "my-org/sdk:local-date-time#local-date-time"
+            "user-id": "my-org/domain:types#user-ID",
+            "email": "morphir/SDK:string#string",
+            "created-at": "my-org/SDK:local-date-time#local-date-time"
           }
         }
       }
@@ -853,11 +855,11 @@ When type/value files are part of a PackageSpecification:
 }
 ```
 
-**user-(id).type.json**:
+**user-_id.type.json**:
 ```json
 {
   "formatVersion": 4,
-  "name": "user-(id)",
+  "name": "user-ID",
   "def": {
     "access": "Public",
     "CustomTypeDefinition": {
@@ -865,8 +867,8 @@ When type/value files are part of a PackageSpecification:
       "access": "Public",
       "value": {
         "constructors": {
-          "user-(id)": [
-            ["id", "morphir/sdk:string#string"]
+          "user-ID": [
+            ["id", "morphir/SDK:string#string"]
           ]
         }
       }
@@ -885,17 +887,17 @@ When type/value files are part of a PackageSpecification:
     "access": "Public",
     "ExpressionBody": {
       "inputTypes": {
-        "email": "morphir/sdk:string#string",
-        "users": ["morphir/sdk:list#list", "my-org/domain:types#user"]
+        "email": "morphir/SDK:string#string",
+        "users": ["morphir/SDK:list#list", "my-org/domain:types#user"]
       },
-      "outputType": ["morphir/sdk:maybe#maybe", "my-org/domain:types#user"],
+      "outputType": ["morphir/SDK:maybe#maybe", "my-org/domain:types#user"],
       "body": {
         "Apply": {
           "attributes": {},
           "function": {
             "Reference": {
               "attributes": {},
-              "fqname": "morphir/sdk:list#find",
+              "fqname": "morphir/SDK:list#find",
               "args": []
             }
           },
@@ -915,25 +917,35 @@ When type/value files are part of a PackageSpecification:
 ## Validation Rules
 
 ### File Naming
-- ✅ Must use canonical name format (kebab-case)
+
+A filename is the **escaped stem** of a Name, not the canonical name. See
+[Naming](../../../draft/names.md) for the escape.
+
+- ✅ Must be `escape(name)`, matching `^_?[a-z0-9]+(-_?[a-z0-9]+)*(__[0-9a-f]{8})?_?$`
 - ✅ Type files: `*.type.json`
 - ✅ Value files: `*.value.json`
 - ✅ Module files: `module.json` (exact name)
 - ✅ Manifest file: `manifest.json` (exact name, at root)
-- ❌ No spaces or special characters (except hyphens and parentheses)
-- ❌ No uppercase letters
+- ❌ No spaces, periods, or characters outside `[a-z0-9_-]`
+- ❌ No uppercase letters. Case carries meaning in a canonical name but not in a filename, because a
+  case-insensitive filesystem cannot keep `value-in-USD` and `value-in-usd` apart. The escape encodes an
+  initialism as a `_` prefix instead.
 
 **Valid Examples**:
-- `user.type.json` ✅
-- `user-(id).type.json` ✅
+- `user.type.json` ✅ (name `user`)
+- `user-_id.type.json` ✅ (name `user-ID`)
 - `get-user-by-email.value.json` ✅
-- `value-in-(usd).value.json` ✅
+- `value-in-_usd.value.json` ✅ (name `value-in-USD`)
+- `aux_.type.json` ✅ (name `aux`, suffixed because Windows reserves the device name)
+- `_con.type.json` ✅ (name `CON`)
 
 **Invalid Examples**:
-- `User.type.json` ❌ (uppercase)
+- `User.type.json` ❌ (uppercase; the escaped stem is always lowercase)
+- `user-ID.type.json` ❌ (canonical name used verbatim; escape it to `user-_id`)
+- `user-(id).type.json` ❌ (the retired parenthesized encoding)
 - `user id.type.json` ❌ (space)
 - `user.id.type.json` ❌ (period, use hyphen)
-- `user_id.type.json` ❌ (underscore, use hyphen)
+- `aux.type.json` ❌ (Windows reserved device name; escape it to `aux_`)
 
 ### Required Fields
 - All files: `formatVersion`
@@ -1119,7 +1131,7 @@ Package-level metadata can be stored in additional files:
   "version": "1.2.0",
   "description": "My project description",
   "dependencies": {
-    "morphir/sdk": "3.0.0"
+    "morphir/SDK": "3.0.0"
   },
   "metadata": {
     "author": "My Org",
@@ -1181,7 +1193,7 @@ Module-level metadata is stored in `module.json`. Additional metadata can be inc
             ├── domain/
             │   ├── module.json
             │   ├── user.type.json
-            │   ├── user-(id).type.json
+            │   ├── user-_id.type.json
             │   ├── order.type.json
             │   ├── get-user-by-email.value.json
             │   └── create-order.value.json
@@ -1202,3 +1214,5 @@ Module-level metadata is stored in `module.json`. Additional metadata can be inc
 - [Distribution Structure](../../design/draft/ir/distributions.md) - Distribution modes and VFS examples
 - [V4 Schema](../schemas/v4/) - Complete V4 schema documentation
 - [V4 Schema YAML](/schemas/morphir-ir-v4.yaml) - Formal JSON schema
+
+

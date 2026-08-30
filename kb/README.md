@@ -40,6 +40,7 @@ under `bundles/` or be grouped one level deeper by subject.
 | Bundle | Description |
 | ------ | ----------- |
 | [morphir/morphir-cli](bundles/morphir/morphir-cli/index.md) | The Rust morphir command line: its commands, behavior and design, as shipped from finos/morphir. |
+| [morphir/morphir-ir](bundles/morphir/morphir-ir/index.md) | The Morphir IR: its data model, naming, canonical serialization and distribution formats. |
 
 `morphir kb new-bundle` scaffolds a bundle and reminds you to add its row here — the wording of the row is a
 judgement call, so the command does not write it for you.

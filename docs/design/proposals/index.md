@@ -13,6 +13,7 @@ This section contains design proposals for new Morphir features and capabilities
 Active proposals:
 
 - [CLI-managed Desktop acquisition and launch](./desktop-acquisition-and-launch.md)
+- [IR v4 name canonicalization and initialism encoding](./ir-v4-name-encoding.md)
 
 ## Contributing
 
