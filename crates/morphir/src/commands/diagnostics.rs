@@ -216,8 +216,8 @@ fn url_token_end(value: &str, authority_start: usize) -> usize {
     value[authority_start..delimiter]
         .match_indices("://")
         .find_map(|(index, _)| {
-            url_scheme_start_before(value, authority_start + index)
-                .filter(|start| *start >= authority_start)
+            let start = url_scheme_start_before(value, authority_start + index)?;
+            (start >= authority_start && value[..start].ends_with('|')).then_some(start)
         })
         .unwrap_or(delimiter)
 }
@@ -985,6 +985,12 @@ mod tests {
         assert_eq!(
             sanitize_text("fetch //alice:hunter2@private.example/artifact?download=secret"),
             "fetch //[REDACTED]@private.example/artifact"
+        );
+        assert_eq!(
+            sanitize_text(
+                "https://public.example/continue?redirect=https://private.example/reset/LIVE_SECRET"
+            ),
+            "https://public.example/continue"
         );
     }
 
