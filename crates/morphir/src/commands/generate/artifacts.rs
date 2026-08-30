@@ -20,10 +20,11 @@ const PUBLICATION_LOCK_PREFIX: &str = ".morphir-artifact-publication-";
 const TRANSACTION_PATH_PREFIX: &str = ".morphir-artifacts-";
 
 pub(super) fn write_all(
+    lock_root: &Path,
     output_root: &Path,
     artifacts: &[Artifact],
 ) -> Result<Vec<String>, CliError> {
-    ArtifactWriter::new(output_root).write_all(artifacts)
+    ArtifactWriter::with_lock_root(output_root, lock_root.to_path_buf()).write_all(artifacts)
 }
 
 /// Publishes one returned artifact set with in-process failure rollback.
@@ -33,22 +34,36 @@ pub(super) fn write_all(
 /// leave the retained transaction directory for manual recovery.
 struct ArtifactWriter<'a, H: ArtifactHooks + ?Sized = NoopHooks> {
     output_root: &'a Path,
+    lock_root: PathBuf,
     hooks: &'a H,
 }
 
 impl<'a> ArtifactWriter<'a, NoopHooks> {
-    fn new(output_root: &'a Path) -> Self {
+    fn with_lock_root(output_root: &'a Path, lock_root: PathBuf) -> Self {
         Self {
             output_root,
+            lock_root,
             hooks: &NOOP_HOOKS,
         }
+    }
+
+    #[cfg(test)]
+    fn new(output_root: &'a Path) -> Self {
+        Self::with_lock_root(
+            output_root,
+            std::env::temp_dir().join("morphir-artifact-publication-test-locks"),
+        )
     }
 }
 
 impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
     #[cfg(test)]
     fn with_ops(output_root: &'a Path, hooks: &'a H) -> Self {
-        Self { output_root, hooks }
+        Self {
+            output_root,
+            lock_root: std::env::temp_dir().join("morphir-artifact-publication-test-locks"),
+            hooks,
+        }
     }
 
     fn write_all(&self, artifacts: &[Artifact]) -> Result<Vec<String>, CliError> {
@@ -60,7 +75,8 @@ impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
         let AcquiredPublication {
             root,
             lock: publication_lock,
-        } = acquire_publication(self.output_root, self.hooks).map_err(file_system_error)?;
+        } = acquire_publication(self.output_root, &self.lock_root, self.hooks)
+            .map_err(file_system_error)?;
         let previous = load_manifest(&root.directory)?;
         if let Err(error) = self.hooks.after_manifest_load() {
             remove_created_output_root(root);
@@ -261,74 +277,39 @@ fn acquire_output_root<H: ArtifactHooks + ?Sized>(
 
 fn acquire_publication<H: ArtifactHooks + ?Sized>(
     output_root: &Path,
+    lock_root: &Path,
     hooks: &H,
 ) -> io::Result<AcquiredPublication> {
-    let absolute = std::path::absolute(output_root)?;
-    let leaf = absolute
-        .file_name()
-        .ok_or_else(|| io::Error::other("artifact output root must have a final component"))?
-        .to_owned();
-    let parent_path = absolute
-        .parent()
-        .ok_or_else(|| io::Error::other("artifact output root has no parent directory"))?;
-    let parent = acquire_output_root(parent_path, hooks)?;
-    let lock = acquire_publication_lock(&parent.directory, &leaf)?;
+    let identity = publication_identity(output_root)?;
+    let lock = acquire_publication_lock(lock_root, &identity)?;
+    let root = acquire_output_root(output_root, hooks)?;
 
-    hooks.before_output_component_open(&parent.directory, &leaf)?;
-    let mut created = Vec::new();
-    let directory = match parent.directory.open_dir_nofollow(&leaf) {
-        Ok(directory) => directory,
-        Err(error) if error.kind() == io::ErrorKind::NotFound => {
-            let creator_parent = parent.directory.try_clone()?;
-            let newly_created = match parent.directory.create_dir(&leaf) {
-                Ok(()) => true,
-                Err(error) if error.kind() == io::ErrorKind::AlreadyExists => false,
-                Err(error) => return Err(error),
-            };
-            if newly_created {
-                created.push(CreatedOutputDirectory {
-                    parent: creator_parent,
-                    leaf: leaf.clone(),
-                });
-            }
-            match parent.directory.open_dir_nofollow(&leaf) {
-                Ok(directory) => directory,
-                Err(error) => {
-                    remove_created_output_directories(&created);
-                    return Err(error);
-                }
-            }
-        }
-        Err(error) => return Err(error),
-    };
-
-    Ok(AcquiredPublication {
-        root: AcquiredOutputRoot { directory, created },
-        lock,
-    })
+    Ok(AcquiredPublication { root, lock })
 }
 
-fn acquire_publication_lock(parent: &Dir, output_leaf: &OsStr) -> io::Result<std::fs::File> {
+fn acquire_publication_lock(lock_root: &Path, identity: &Path) -> io::Result<std::fs::File> {
+    std::fs::create_dir_all(lock_root)?;
+    let directory = Dir::open_ambient_dir(lock_root, cap_std::ambient_authority())?;
     let mut options = OpenOptions::new();
     options
         .read(true)
         .write(true)
         .create(true)
         .follow(FollowSymlinks::No);
-    let lock_path = publication_lock_path(output_leaf);
-    let lock = parent.open_with(lock_path, &options)?.into_std();
+    let lock_path = publication_lock_path(identity);
+    let lock = directory.open_with(lock_path, &options)?.into_std();
     lock.lock_exclusive()?;
     Ok(lock)
 }
 
-fn publication_lock_path(output_leaf: &OsStr) -> String {
+fn publication_lock_path(identity: &Path) -> String {
     const FNV_OFFSET_BASIS: u64 = 0xcbf29ce484222325;
     const FNV_PRIME: u64 = 0x100000001b3;
 
-    // The file is addressed relative to the acquired parent capability, so aliases
-    // for that parent converge on one inode. Keep it permanently: removing and
+    // The lock lives in Morphir-owned state rather than the generated tree, so a
+    // provider cannot replace its inode. Keep it permanently: removing and
     // recreating it could let two writers lock different inodes for the same root.
-    let portable_path = portable_path_key(&output_leaf.to_string_lossy());
+    let portable_path = portable_path_key(&identity.to_string_lossy());
     let hash = portable_path
         .as_bytes()
         .iter()
@@ -336,6 +317,34 @@ fn publication_lock_path(output_leaf: &OsStr) -> String {
             (hash ^ u64::from(*byte)).wrapping_mul(FNV_PRIME)
         });
     format!("{PUBLICATION_LOCK_PREFIX}{hash:016x}.lock")
+}
+
+fn publication_identity(output_root: &Path) -> io::Result<PathBuf> {
+    let mut candidate = std::path::absolute(output_root)?;
+    let mut missing = Vec::new();
+    loop {
+        match std::fs::canonicalize(&candidate) {
+            Ok(mut identity) => {
+                for component in missing.iter().rev() {
+                    identity.push(component);
+                }
+                return Ok(identity);
+            }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                let leaf = candidate.file_name().ok_or_else(|| {
+                    io::Error::other("artifact output root has no existing ancestor")
+                })?;
+                missing.push(leaf.to_owned());
+                candidate = candidate
+                    .parent()
+                    .ok_or_else(|| {
+                        io::Error::other("artifact output root has no existing ancestor")
+                    })?
+                    .to_path_buf();
+            }
+            Err(error) => return Err(error),
+        }
+    }
 }
 
 fn output_root_anchor(output_root: &Path) -> io::Result<(Dir, Vec<OsString>)> {
@@ -876,7 +885,9 @@ fn remove_empty_destination_descendants(
     for destination in destinations {
         let mut candidate = destination.relative_path.parent();
         while let Some(directory) = candidate {
-            if directory == ancestor || !directory.starts_with(ancestor) {
+            if portable_paths_equal(directory, ancestor)
+                || !portable_path_is_descendant(directory, ancestor)
+            {
                 break;
             }
             directories.insert(directory.to_path_buf());
@@ -1148,6 +1159,25 @@ fn portable_path_key(path: &str) -> String {
     path.nfkc().case_fold().nfc().collect()
 }
 
+fn portable_path_components(path: &Path) -> Vec<String> {
+    path.components()
+        .filter_map(|component| match component {
+            Component::Normal(segment) => Some(portable_path_key(&segment.to_string_lossy())),
+            _ => None,
+        })
+        .collect()
+}
+
+fn portable_paths_equal(left: &Path, right: &Path) -> bool {
+    portable_path_components(left) == portable_path_components(right)
+}
+
+fn portable_path_is_descendant(path: &Path, ancestor: &Path) -> bool {
+    let path = portable_path_components(path);
+    let ancestor = portable_path_components(ancestor);
+    path.len() > ancestor.len() && path.starts_with(&ancestor)
+}
+
 fn is_reserved_internal_path(path: &str) -> bool {
     is_reserved_manifest_path(path) || is_reserved_transaction_path(path)
 }
@@ -1275,6 +1305,75 @@ mod tests {
             content: content.to_owned(),
             binary: true,
         }
+    }
+
+    #[test]
+    fn publication_lock_is_kept_outside_the_generated_tree() {
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("generated");
+        let lock_root = tempdir().unwrap();
+
+        ArtifactWriter::with_lock_root(&output, lock_root.path().to_path_buf())
+            .write_all(&[text("schema.avsc", "generated")])
+            .unwrap();
+
+        assert!(lock_root.path().read_dir().unwrap().any(|entry| {
+            entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with(PUBLICATION_LOCK_PREFIX)
+        }));
+        assert!(!parent.path().read_dir().unwrap().any(|entry| {
+            entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with(PUBLICATION_LOCK_PREFIX)
+        }));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn existing_writable_output_does_not_require_a_writable_parent_for_locking() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("generated");
+        let lock_root = tempdir().unwrap();
+        fs::create_dir(&output).unwrap();
+        fs::set_permissions(&output, fs::Permissions::from_mode(0o700)).unwrap();
+        fs::set_permissions(parent.path(), fs::Permissions::from_mode(0o500)).unwrap();
+
+        let result = ArtifactWriter::with_lock_root(&output, lock_root.path().to_path_buf())
+            .write_all(&[text("schema.avsc", "generated")]);
+
+        fs::set_permissions(parent.path(), fs::Permissions::from_mode(0o700)).unwrap();
+        result.unwrap();
+        assert_eq!(
+            fs::read_to_string(output.join("schema.avsc")).unwrap(),
+            "generated"
+        );
+    }
+
+    #[test]
+    fn portable_descendant_relationships_fold_case_and_unicode() {
+        assert!(portable_path_is_descendant(
+            Path::new("SCHEMA/nested"),
+            Path::new("schema")
+        ));
+        assert!(portable_path_is_descendant(
+            Path::new("e\u{301}/nested"),
+            Path::new("É")
+        ));
+        assert!(portable_paths_equal(
+            Path::new("SCHEMA"),
+            Path::new("schema")
+        ));
+        assert!(!portable_path_is_descendant(
+            Path::new("schemas/nested"),
+            Path::new("schema")
+        ));
     }
 
     #[test]
@@ -1635,6 +1734,29 @@ mod tests {
             "old"
         );
         assert!(!output.path().join("schema/nested").exists());
+    }
+
+    #[test]
+    fn failed_case_changed_file_to_directory_transition_restores_the_managed_file() {
+        let output = tempdir().unwrap();
+        ArtifactWriter::new(output.path())
+            .write_all(&[text("schema", "old")])
+            .unwrap();
+        let ops = FailingOps::on_install(1);
+
+        let error = ArtifactWriter::with_ops(output.path(), &ops)
+            .write_all(&[
+                text("SCHEMA/nested/item.avsc", "new"),
+                text("z.avsc", "later"),
+            ])
+            .unwrap_err();
+
+        assert!(matches!(error, CliError::FileSystem { .. }));
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema")).unwrap(),
+            "old"
+        );
+        assert!(!output.path().join("SCHEMA/nested").exists());
     }
 
     #[test]
