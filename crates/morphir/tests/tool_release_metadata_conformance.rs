@@ -350,6 +350,7 @@ fn signed_tool_metadata_fixture_is_authenticated_and_deterministic() {
         .unwrap()
         .parse::<DateTime<Utc>>()
         .unwrap();
+    let runtime_test_horizon = "2100-01-01T00:00:00Z".parse::<DateTime<Utc>>().unwrap();
 
     let trusted_root = &fixture["trustedRoot"];
     assert_tuf_profile(trusted_root, "root");
@@ -378,6 +379,7 @@ fn signed_tool_metadata_fixture_is_authenticated_and_deterministic() {
         current_root = update;
     }
     assert_fresh(current_root, reference_time);
+    assert_fresh(current_root, runtime_test_horizon);
 
     let timestamp = &fixture["metadata"]["timestamp"];
     let snapshot = &fixture["metadata"]["snapshot"];
@@ -390,6 +392,7 @@ fn signed_tool_metadata_fixture_is_authenticated_and_deterministic() {
         assert_tuf_profile(envelope, role);
         assert!(threshold_is_met(current_root, envelope, role));
         assert_fresh(envelope, reference_time);
+        assert_fresh(envelope, runtime_test_horizon);
     }
     assert_metadata_link(timestamp, "snapshot.json", snapshot);
     assert_metadata_link(snapshot, "targets.json", targets);
