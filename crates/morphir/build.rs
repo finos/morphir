@@ -16,11 +16,13 @@ fn main() {
     // /MANIFEST:EMBED is an MSVC linker flag, and msvc is the only Windows
     // toolchain we release for.
     if std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc") {
-        let manifest =
-            std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
-                .join("morphir.exe.manifest");
+        let manifest = std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
+            .join("morphir.exe.manifest");
         println!("cargo::rerun-if-changed=morphir.exe.manifest");
         println!("cargo::rustc-link-arg-bins=/MANIFEST:EMBED");
-        println!("cargo::rustc-link-arg-bins=/MANIFESTINPUT:{}", manifest.display());
+        println!(
+            "cargo::rustc-link-arg-bins=/MANIFESTINPUT:{}",
+            manifest.display()
+        );
     }
 }
