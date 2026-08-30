@@ -14,14 +14,15 @@ tracking:
 
 Proposed replacement for the naming sections of the v4 specification, with the exact schema patches.
 
-:::caution Partly applied
-Decision Record 0001 is `Accepted`, and the specification page
-[Naming](../../spec/draft/names.md) now describes this encoding. The reference implementation in
-`ecosystem/morphir-rust/crates/morphir-core/src/naming/` follows it, and the
-[conformance corpus](../../spec/ir/fixtures/naming-conformance.json) is generated and run.
+:::caution Applied
+Decision Record 0001 is `Accepted`. The specification page [Naming](../../spec/draft/names.md) describes this
+encoding, the four schema files under `website/static/schemas/` carry the new patterns, the reference implementation
+in `ecosystem/morphir-rust/crates/morphir-core/src/naming/` follows it, and the
+[conformance corpus](../../spec/ir/fixtures/naming-conformance.json) is generated and run against it.
 
-Still carrying the retired parenthesized encoding: `docs/design/draft/ir/naming.md`, the four schema files under
-`website/static/schemas/`, and the example-bearing pages listed in [section 10](#10-files-to-change-when-this-is-accepted).
+Still carrying the retired parenthesized encoding, as narrative rather than as normative rules:
+`docs/design/draft/ir/naming.md`, and the example-bearing pages listed in
+[section 10](#10-files-to-change-when-this-is-accepted).
 :::
 
 ## What changes
