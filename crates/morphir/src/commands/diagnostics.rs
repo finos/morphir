@@ -79,20 +79,23 @@ fn sensitive_key(key: &str) -> bool {
 }
 
 fn contains_sensitive_assignment(value: &str) -> bool {
-    value.match_indices('=').any(|(equals, _)| {
-        let key = value[..equals]
-            .trim_end()
-            .chars()
-            .rev()
-            .take_while(|character| {
-                character.is_ascii_alphanumeric() || matches!(character, '_' | '-')
-            })
-            .collect::<String>()
-            .chars()
-            .rev()
-            .collect::<String>();
-        !key.is_empty() && sensitive_key(&key)
-    })
+    value
+        .char_indices()
+        .filter(|(_, character)| matches!(character, '=' | ':'))
+        .any(|(separator, _)| {
+            let key = value[..separator]
+                .trim_end()
+                .chars()
+                .rev()
+                .take_while(|character| {
+                    character.is_ascii_alphanumeric() || matches!(character, '_' | '-')
+                })
+                .collect::<String>()
+                .chars()
+                .rev()
+                .collect::<String>();
+            !key.is_empty() && sensitive_key(&key)
+        })
 }
 
 fn contains_authorization_header(value: &str) -> bool {
@@ -303,7 +306,7 @@ fn operation_log_roots(home: &crate::home::MorphirHome) -> [PathBuf; 2] {
 fn for_each_bounded_line<R, F>(mut reader: R, max_len: usize, mut visit: F) -> std::io::Result<()>
 where
     R: BufRead,
-    F: FnMut(&[u8]),
+    F: FnMut(&[u8]) -> bool,
 {
     let read_limit = u64::try_from(max_len).unwrap_or(u64::MAX).saturating_add(2);
     loop {
@@ -330,7 +333,9 @@ where
             continue;
         }
 
-        visit(&line);
+        if !visit(&line) {
+            return Ok(());
+        }
         if !terminated {
             return Ok(());
         }
@@ -360,13 +365,14 @@ fn read_operation_events(log_roots: &[PathBuf], operation_id: &str) -> Vec<serde
         };
         let _ = for_each_bounded_line(BufReader::new(file), 1024 * 1024, |line| {
             if events.len() >= MAX_DIAGNOSTIC_EVENTS {
-                return;
+                return false;
             }
             if let Ok(event) = serde_json::from_slice::<serde_json::Value>(line)
                 && belongs_to_operation(&event, operation_id)
             {
                 events.push(sanitize(event));
             }
+            events.len() < MAX_DIAGNOSTIC_EVENTS
         });
     }
     events.sort_by(|left, right| left["timestamp"].as_str().cmp(&right["timestamp"].as_str()));
@@ -601,9 +607,27 @@ mod tests {
         let reader = BufReader::with_capacity(8, Cursor::new(input));
         let mut lines = Vec::new();
 
-        for_each_bounded_line(reader, 16, |line| lines.push(line.to_vec())).unwrap();
+        for_each_bounded_line(reader, 16, |line| {
+            lines.push(line.to_vec());
+            true
+        })
+        .unwrap();
 
         assert_eq!(lines, [b"kept".as_slice()]);
+    }
+
+    #[test]
+    fn bounded_reader_stops_when_the_visitor_reaches_its_limit() {
+        let reader = BufReader::new(Cursor::new(b"first\nsecond\nthird\n"));
+        let mut lines = Vec::new();
+
+        for_each_bounded_line(reader, 16, |line| {
+            lines.push(line.to_vec());
+            false
+        })
+        .unwrap();
+
+        assert_eq!(lines, [b"first".as_slice()]);
     }
 
     #[test]
@@ -613,6 +637,9 @@ mod tests {
             "apiKey=LIVE_SECRET",
             "access-key=LIVE_SECRET",
             "credential=LIVE_SECRET",
+            "password: hunter2",
+            "api_key: LIVE_SECRET",
+            "client-secret: LIVE_SECRET",
             "Authorization:Basic dXNlcjpwYXNz",
         ] {
             assert_eq!(sanitize_text(value), "[REDACTED]");
