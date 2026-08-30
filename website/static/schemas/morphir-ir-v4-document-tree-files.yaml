@@ -372,6 +372,26 @@ definitions:
         enum: ["Classic", "VfsMode"]
         description: "Distribution layout mode (VfsMode for document tree)"
         default: "VfsMode"
+      pathBudget:
+        type: integer
+        minimum: 64
+        default: 4000
+        description: |
+          Maximum path length, in characters from the distribution root, that this
+          tree was written against. A stem that would exceed it is truncated and
+          suffixed with "__" plus eight hex digits, and the module then records the
+          mapping in its "fileNames".
+
+          4000 is the default and suits Linux, macOS, and Windows with long paths
+          enabled. 200 is the portable profile, for Windows without
+          LongPathsEnabled and for stock Git for Windows, which ships
+          core.longpaths=false.
+
+          Writers set this unconditionally rather than leaving it inferred, so a
+          reader that cannot satisfy the budget can say so up front instead of
+          failing to open files one at a time. A missing value is read as 4000,
+          for trees written before this field existed.
+        examples: [4000, 200]
       entryPoints:
         type: object
         additionalProperties: { $ref: "#/definitions/EntryPoint" }

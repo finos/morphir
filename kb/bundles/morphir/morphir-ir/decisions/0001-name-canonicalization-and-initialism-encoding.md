@@ -83,6 +83,20 @@ cannot be created. Both are plausible domain vocabulary.
 The default `MAX_PATH` limit of 260 characters is reachable from nested modules, long kebab names and the
 `.value.json` suffix together.
 
+That limit is not universal, and it is no longer the common case, so the truncation budget defaults to 4000 rather
+than to the most restrictive target. Making every tree pay for the least capable consumer is the wrong trade when
+the payment is lossy: a truncated stem is not reversible and forces the module to carry a `fileNames` map. A
+deployment bound by `MAX_PATH` lowers the budget to 200 instead.
+
+The restrictive case is not gone. `LongPathsEnabled` is opt-in rather than default, a Win32 process must also
+declare `longPathAware` in its manifest, and Git for Windows ships `core.longpaths=false`, so a stock Windows clone
+of a tree written under the default budget can fail to check out.
+
+That residual risk is why the budget is always recorded rather than inferred. A writer sets `pathBudget` in the
+manifest unconditionally, so a reader that cannot satisfy it says so once, up front, and no consumer has to guess
+what an unmarked tree assumed. Inferring it would reintroduce the silent portability failure this escape exists to
+prevent.
+
 Either failure forces a name-to-filename escape layer. Once the specification owns that layer, the canonical string
 no longer has to satisfy the intersection of URI syntax, shell quoting and filesystem rules by itself. That is the
 structural move this record makes, and everything else follows from it.

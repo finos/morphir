@@ -230,9 +230,23 @@ escaped stem ends in `_`, so neither marker is ambiguous.
 
 ### Path length
 
-When the path from the distribution root would exceed 200 characters, the stem is truncated to fit and suffixed with
-`__` followed by the first 8 lowercase hex digits of the SHA-256 of the untruncated escaped stem. The `__` sequence
-cannot occur otherwise, because `_` appears only as a segment prefix and segments are separated by `-`.
+When the path from the distribution root would exceed the **path budget**, the stem is truncated to fit and suffixed
+with `__` followed by the first 8 lowercase hex digits of the SHA-256 of the untruncated escaped stem. The `__`
+sequence cannot occur otherwise, because `_` appears only as a segment prefix and segments are separated by `-`.
+
+The default budget is 4000, the `long` profile. Long paths are the ordinary case in 2026, and defaulting to the
+most restrictive target would make every tree pay for the least capable one. That price is not small, because
+truncation is lossy: a truncated stem is not reversible and forces the module to carry a `fileNames` map.
+
+A deployment that must satisfy a shorter limit selects the `portable` profile, budget 200. That profile still
+earns its keep: `LongPathsEnabled` is opt-in rather than default, a Win32 process must also declare
+`longPathAware` in its manifest, and Git for Windows ships `core.longpaths=false`, so a stock Windows clone of a
+`long` tree can fail to check out.
+
+Because the budget decides which trees are readable, it is always recorded rather than inferred. A writer MUST set
+`pathBudget` in `manifest.json`. Recording it unconditionally is what keeps the flipped default safe: a reader that
+cannot satisfy the recorded budget says so once, up front, and nobody has to guess what an unmarked tree assumed.
+A missing `pathBudget` is read as 4000 with a warning, for trees written before the field existed.
 
 A truncated name is not recoverable from its filename. When any name in a module is truncated, that module's
 `module.json` must carry a `fileNames` map from canonical name to filename stem.

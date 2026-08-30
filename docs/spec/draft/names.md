@@ -110,22 +110,25 @@ with `__` followed by the first 8 hex digits of the SHA-256 of the untruncated s
 recoverable from its filename, so the module's `module.json` must then carry a `fileNames` map from canonical name
 to filename stem.
 
-The budget is not a single constant, because the limit it protects against is not universal:
+**The default budget is 4000.** Long paths are the ordinary case: `PATH_MAX` on Linux and macOS is 4096, and Windows
+10 version 1607 and later lifts `MAX_PATH` through the `LongPathsEnabled` setting. Defaulting to the most
+restrictive target would make every tree pay for the least capable one, and the price is not small: truncation is
+lossy, since a truncated stem is not reversible and forces the module to carry a `fileNames` map.
 
-| Target | Limit | Default budget |
-|--------|-------|----------------|
-| Windows without long paths | `MAX_PATH` 260 | 200 |
-| Windows with `LongPathsEnabled` | ~32767 | 4000 |
-| Linux, macOS | `PATH_MAX` 4096, `NAME_MAX` 255 | 4000, and 200 per segment |
+A deployment that must satisfy a shorter limit lowers the budget instead:
 
-Windows 10 version 1607 and later can lift `MAX_PATH` through the `LongPathsEnabled` registry setting, and a
-process must also opt in through its manifest. A writer therefore detects the effective limit rather than assuming
-the most restrictive one, and a `pathBudget` setting overrides the detected value.
+| Profile | Budget | For |
+|---------|--------|-----|
+| `long` (default) | 4000 | Linux, macOS, and Windows with long paths enabled |
+| `portable` | 200 | Windows without `LongPathsEnabled`, and stock Git for Windows |
 
-**A tree is only as portable as the budget it was written with.** Detection is a convenience for local work, not a
-property of the format: a tree written on Linux under the 4000 budget can carry paths that a Windows reader without
-long paths cannot open, and nothing in the tree itself would say so. So a distribution that used anything other than
-the portable 200 budget MUST record it in `manifest.json`:
+The `portable` profile is not a historical footnote. `LongPathsEnabled` is opt-in rather than on by default, a Win32
+process must also declare `longPathAware` in its manifest, and **Git for Windows still ships `core.longpaths=false`**,
+so a stock Windows clone of a tree written under the `long` budget can fail to check out. Anyone publishing a
+document tree for unknown consumers should choose `portable` deliberately.
+
+Because the budget changes which trees are readable, it is **always recorded** rather than inferred. A writer MUST
+set `pathBudget` in `manifest.json`:
 
 ```json
 {
@@ -136,9 +139,13 @@ the portable 200 budget MUST record it in `manifest.json`:
 }
 ```
 
-A reader that cannot satisfy a recorded budget reports it rather than failing to open files one at a time. Omitting
-`pathBudget` means the portable 200, so an unmarked tree is portable by construction. Publishing pipelines should
-pin the portable budget explicitly rather than inheriting whatever the build machine detected.
+Recording it unconditionally is what keeps the flipped default safe. A reader that cannot satisfy the recorded
+budget says so once, up front, instead of failing to open files one at a time, and no consumer has to guess what an
+unmarked tree assumed. For a tree written before this field existed, a reader treats a missing `pathBudget` as 4000
+and SHOULD warn.
+
+Tooling SHOULD report when a tree written under the `long` budget contains a path over 260 characters, since that is
+the point at which it stops being checkout-safe on a stock Windows box.
 
 ## TypeVariable
 
