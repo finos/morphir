@@ -4,13 +4,15 @@ use base64::engine::general_purpose::STANDARD;
 use cap_fs_ext::{DirExt, FollowSymlinks, OpenOptionsFollowExt};
 use cap_std::fs::{Dir, OpenOptions};
 use morphir_extension_sdk::Artifact;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::{OsStr, OsString};
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 static NEXT_TRANSACTION_ID: AtomicU64 = AtomicU64::new(0);
+const MANIFEST_PATH: &str = ".morphir-generated-artifacts.json";
+const MANIFEST_SCHEMA_VERSION: u32 = 1;
 
 pub(super) fn write_all(
     output_root: &Path,
@@ -45,27 +47,40 @@ impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
     }
 
     fn write_all(&self, artifacts: &[Artifact]) -> Result<Vec<String>, CliError> {
-        let validated = validate_complete_set(artifacts)?;
-        if validated.is_empty() {
+        let mut validated = validate_complete_set(artifacts)?;
+        let display_paths = validated
+            .iter()
+            .map(|artifact| artifact.display_path.clone())
+            .collect::<Vec<_>>();
+        let root = acquire_output_root(self.output_root, self.hooks).map_err(file_system_error)?;
+        let previous = load_manifest(&root.directory)?;
+        if validated.is_empty() && previous.is_none() {
+            remove_created_output_directories(&root.created);
             return Ok(Vec::new());
         }
-        let root = acquire_output_root(self.output_root, self.hooks).map_err(file_system_error)?;
-        let result = self.run(&root.directory, &validated);
+        let current_paths = display_paths.iter().cloned().collect::<BTreeSet<_>>();
+        let stale = previous
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|artifact| !current_paths.contains(&artifact.display_path))
+            .collect::<Vec<_>>();
+        validated.push(manifest_artifact(&display_paths)?);
+        let result = self.run(&root.directory, &validated, &stale);
         if result.is_err() {
             remove_created_output_directories(&root.created);
         }
-        result.map(|()| {
-            validated
-                .into_iter()
-                .map(|artifact| artifact.display_path)
-                .collect()
-        })
+        result.map(|()| display_paths)
     }
 
-    fn run(&self, root: &Dir, artifacts: &[ValidatedArtifact]) -> Result<(), CliError> {
+    fn run(
+        &self,
+        root: &Dir,
+        artifacts: &[ValidatedArtifact],
+        stale: &[ValidatedRemoval],
+    ) -> Result<(), CliError> {
         let transaction = create_transaction(root).map_err(file_system_error)?;
         let recovery_path = self.output_root.join(&transaction.relative_path);
-        let result = run_transaction(root, &transaction.directory, artifacts, self.hooks);
+        let result = run_transaction(root, &transaction.directory, artifacts, stale, self.hooks);
         match result {
             // All destination files are installed and synced here. This is the
             // publication commit point; subsequent maintenance never rolls them back.
@@ -101,9 +116,10 @@ struct Transaction {
 struct Destination {
     parent: Dir,
     leaf: OsString,
-    staged: PathBuf,
+    staged: Option<PathBuf>,
     backup: PathBuf,
     rollback: PathBuf,
+    hook_index: Option<usize>,
 }
 
 struct CommitRecord {
@@ -312,6 +328,7 @@ fn run_transaction<H: ArtifactHooks + ?Sized>(
     root: &Dir,
     transaction: &Dir,
     artifacts: &[ValidatedArtifact],
+    stale: &[ValidatedRemoval],
     hooks: &H,
 ) -> Result<(), TransactionFailure> {
     transaction
@@ -320,17 +337,26 @@ fn run_transaction<H: ArtifactHooks + ?Sized>(
         .and_then(|()| transaction.create_dir("rollback"))
         .map_err(TransactionFailure::RolledBack)?;
     for (index, artifact) in artifacts.iter().enumerate() {
-        hooks
-            .before_stage(index)
-            .and_then(|()| stage_artifact(transaction, artifact))
-            .map_err(TransactionFailure::RolledBack)?;
+        let staged = if artifact.internal {
+            stage_artifact(transaction, artifact)
+        } else {
+            hooks
+                .before_stage(index)
+                .and_then(|()| stage_artifact(transaction, artifact))
+        };
+        staged.map_err(TransactionFailure::RolledBack)?;
     }
     for artifact in artifacts {
         preflight_destination(root, &artifact.relative_path)
             .map_err(TransactionFailure::RolledBack)?;
     }
+    for artifact in stale {
+        preflight_destination(root, &artifact.relative_path)
+            .map_err(TransactionFailure::RolledBack)?;
+    }
     let mut created_directories = Vec::new();
-    let destinations = match prepare_destinations(root, artifacts, &mut created_directories) {
+    let destinations = match prepare_destinations(root, artifacts, stale, &mut created_directories)
+    {
         Ok(destinations) => destinations,
         Err(error) => {
             remove_created_directories(root, &created_directories);
@@ -381,30 +407,50 @@ fn preflight_destination(root: &Dir, path: &Path) -> io::Result<()> {
 fn prepare_destinations(
     root: &Dir,
     artifacts: &[ValidatedArtifact],
+    stale: &[ValidatedRemoval],
     created: &mut Vec<PathBuf>,
 ) -> io::Result<Vec<Destination>> {
-    artifacts
-        .iter()
-        .enumerate()
-        .map(|(index, artifact)| {
-            let parent = ensure_directory_path(
-                root,
-                artifact.relative_path.parent().unwrap_or(Path::new("")),
-                created,
-            )?;
-            Ok(Destination {
-                parent,
-                leaf: artifact
-                    .relative_path
-                    .file_name()
-                    .expect("validated artifact has a leaf")
-                    .to_owned(),
-                staged: PathBuf::from("staged").join(&artifact.relative_path),
-                backup: PathBuf::from("backups").join(&artifact.relative_path),
-                rollback: PathBuf::from("rollback").join(index.to_string()),
-            })
-        })
-        .collect()
+    let mut destinations = Vec::with_capacity(artifacts.len() + stale.len());
+    for (index, artifact) in artifacts.iter().enumerate() {
+        let parent = ensure_directory_path(
+            root,
+            artifact.relative_path.parent().unwrap_or(Path::new("")),
+            created,
+        )?;
+        destinations.push(Destination {
+            parent,
+            leaf: artifact
+                .relative_path
+                .file_name()
+                .expect("validated artifact has a leaf")
+                .to_owned(),
+            staged: Some(PathBuf::from("staged").join(&artifact.relative_path)),
+            backup: PathBuf::from("backups").join(&artifact.relative_path),
+            rollback: PathBuf::from("rollback").join(index.to_string()),
+            hook_index: (!artifact.internal).then_some(index),
+        });
+    }
+    for (offset, artifact) in stale.iter().enumerate() {
+        let index = artifacts.len() + offset;
+        let parent = ensure_directory_path(
+            root,
+            artifact.relative_path.parent().unwrap_or(Path::new("")),
+            created,
+        )?;
+        destinations.push(Destination {
+            parent,
+            leaf: artifact
+                .relative_path
+                .file_name()
+                .expect("validated artifact has a leaf")
+                .to_owned(),
+            staged: None,
+            backup: PathBuf::from("backups").join(&artifact.relative_path),
+            rollback: PathBuf::from("rollback").join(index.to_string()),
+            hook_index: Some(index),
+        });
+    }
+    Ok(destinations)
 }
 
 fn commit_destinations<H: ArtifactHooks + ?Sized>(
@@ -426,10 +472,11 @@ fn commit_destinations<H: ArtifactHooks + ?Sized>(
                     return rollback_failure(error, transaction, destinations, &records, hooks);
                 }
                 records.last_mut().expect("record exists").backup = true;
-                if let Err(error) = hooks
-                    .after_backup_move(index)
-                    .and_then(|()| verify_moved_backup(transaction, destination))
-                {
+                let verified = destination
+                    .hook_index
+                    .map_or_else(|| Ok(()), |index| hooks.after_backup_move(index))
+                    .and_then(|()| verify_moved_backup(transaction, destination));
+                if let Err(error) = verified {
                     return rollback_failure(error, transaction, destinations, &records, hooks);
                 }
             }
@@ -437,17 +484,23 @@ fn commit_destinations<H: ArtifactHooks + ?Sized>(
                 return rollback_failure(error, transaction, destinations, &records, hooks);
             }
         }
-        if let Err(error) = hooks.before_install(index, &destination.parent, &destination.leaf) {
-            return rollback_failure(error, transaction, destinations, &records, hooks);
-        }
-        if let Err(error) =
-            transaction.hard_link(&destination.staged, &destination.parent, &destination.leaf)
-        {
-            return rollback_failure(error, transaction, destinations, &records, hooks);
-        }
-        records.last_mut().expect("record exists").installed = true;
-        if let Err(error) = sync_file_and_parent(&destination.parent, &destination.leaf) {
-            return rollback_failure(error, transaction, destinations, &records, hooks);
+        if let Some(staged) = &destination.staged {
+            let hook = destination.hook_index.map_or_else(
+                || Ok(()),
+                |index| hooks.before_install(index, &destination.parent, &destination.leaf),
+            );
+            if let Err(error) = hook {
+                return rollback_failure(error, transaction, destinations, &records, hooks);
+            }
+            if let Err(error) =
+                transaction.hard_link(staged, &destination.parent, &destination.leaf)
+            {
+                return rollback_failure(error, transaction, destinations, &records, hooks);
+            }
+            records.last_mut().expect("record exists").installed = true;
+            if let Err(error) = sync_file_and_parent(&destination.parent, &destination.leaf) {
+                return rollback_failure(error, transaction, destinations, &records, hooks);
+            }
         }
     }
     Ok(())
@@ -507,7 +560,9 @@ fn rollback<H: ArtifactHooks + ?Sized>(
     for record in records.iter().rev() {
         let destination = &destinations[record.index];
         let result: io::Result<()> = (|| {
-            hooks.before_rollback(record.index)?;
+            if let Some(index) = destination.hook_index {
+                hooks.before_rollback(index)?;
+            }
             if record.installed {
                 let rollback_parent = ensure_directory_path(
                     transaction,
@@ -632,6 +687,79 @@ struct ValidatedArtifact {
     relative_path: PathBuf,
     display_path: String,
     bytes: Vec<u8>,
+    internal: bool,
+}
+
+struct ValidatedRemoval {
+    relative_path: PathBuf,
+    display_path: String,
+}
+
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ArtifactManifest {
+    schema_version: u32,
+    artifacts: Vec<String>,
+}
+
+fn load_manifest(root: &Dir) -> Result<Option<Vec<ValidatedRemoval>>, CliError> {
+    let mut options = OpenOptions::new();
+    options.read(true).follow(FollowSymlinks::No);
+    let mut source = match root.open_with(MANIFEST_PATH, &options) {
+        Ok(source) => source,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(file_system_error(error)),
+    };
+    let mut bytes = Vec::new();
+    source.read_to_end(&mut bytes).map_err(file_system_error)?;
+    let manifest: ArtifactManifest = serde_json::from_slice(&bytes).map_err(|error| {
+        validation_error(format!("invalid generated-artifact manifest: {error}"))
+    })?;
+    if manifest.schema_version != MANIFEST_SCHEMA_VERSION {
+        return Err(validation_error(format!(
+            "unsupported generated-artifact manifest schema version {}",
+            manifest.schema_version
+        )));
+    }
+    let mut paths_by_case_key = BTreeMap::<String, String>::new();
+    let mut validated = Vec::with_capacity(manifest.artifacts.len());
+    for path in manifest.artifacts {
+        if path.eq_ignore_ascii_case(MANIFEST_PATH) {
+            return Err(validation_error(
+                "generated-artifact manifest cannot list itself".to_owned(),
+            ));
+        }
+        let (relative_path, display_path) = validate_path(&path)?;
+        let case_key = display_path.to_ascii_lowercase();
+        if paths_by_case_key
+            .insert(case_key, display_path.clone())
+            .is_some()
+        {
+            return Err(validation_error(format!(
+                "duplicate path '{display_path}' in generated-artifact manifest"
+            )));
+        }
+        validated.push(ValidatedRemoval {
+            relative_path,
+            display_path,
+        });
+    }
+    Ok(Some(validated))
+}
+
+fn manifest_artifact(paths: &[String]) -> Result<ValidatedArtifact, CliError> {
+    let mut bytes = serde_json::to_vec_pretty(&ArtifactManifest {
+        schema_version: MANIFEST_SCHEMA_VERSION,
+        artifacts: paths.to_vec(),
+    })
+    .map_err(|error| validation_error(format!("cannot encode artifact manifest: {error}")))?;
+    bytes.push(b'\n');
+    Ok(ValidatedArtifact {
+        relative_path: PathBuf::from(MANIFEST_PATH),
+        display_path: MANIFEST_PATH.to_owned(),
+        bytes,
+        internal: true,
+    })
 }
 
 fn validate_complete_set(artifacts: &[Artifact]) -> Result<Vec<ValidatedArtifact>, CliError> {
@@ -639,6 +767,12 @@ fn validate_complete_set(artifacts: &[Artifact]) -> Result<Vec<ValidatedArtifact
     let mut validated = Vec::with_capacity(artifacts.len());
 
     for artifact in artifacts {
+        if artifact.path.eq_ignore_ascii_case(MANIFEST_PATH) {
+            return Err(validation_error(format!(
+                "artifact path '{}' is reserved for Morphir generation state",
+                artifact.path
+            )));
+        }
         let (relative_path, display_path) = validate_path(&artifact.path)?;
         let case_key = display_path.to_ascii_lowercase();
         if let Some(previous) = paths_by_case_key.get(&case_key) {
@@ -664,6 +798,7 @@ fn validate_complete_set(artifacts: &[Artifact]) -> Result<Vec<ValidatedArtifact
             relative_path,
             display_path,
             bytes,
+            internal: false,
         });
     }
 
@@ -927,6 +1062,34 @@ mod tests {
         assert_eq!(
             fs::read(output.path().join("z/data.bin")).unwrap(),
             [0, 255, 128]
+        );
+    }
+
+    #[test]
+    fn reconciles_the_previous_generated_set_without_removing_user_files() {
+        let output = tempdir().unwrap();
+        fs::write(output.path().join("keep.txt"), "user-owned").unwrap();
+        let writer = ArtifactWriter::new(output.path());
+
+        writer
+            .write_all(&[
+                text("schemas/obsolete.avsc", "old"),
+                text("schemas/current.avsc", "first"),
+            ])
+            .unwrap();
+        let paths = writer
+            .write_all(&[text("schemas/current.avsc", "second")])
+            .unwrap();
+
+        assert_eq!(paths, ["schemas/current.avsc"]);
+        assert!(!output.path().join("schemas/obsolete.avsc").exists());
+        assert_eq!(
+            fs::read_to_string(output.path().join("schemas/current.avsc")).unwrap(),
+            "second"
+        );
+        assert_eq!(
+            fs::read_to_string(output.path().join("keep.txt")).unwrap(),
+            "user-owned"
         );
     }
 
