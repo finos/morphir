@@ -94,12 +94,15 @@ impl Ord for RetainedEvent {
     }
 }
 
-fn sensitive_key(key: &str) -> bool {
-    let key = key
-        .chars()
+fn normalized_key(key: &str) -> String {
+    key.chars()
         .filter(|character| character.is_ascii_alphanumeric())
         .flat_map(char::to_lowercase)
-        .collect::<String>();
+        .collect()
+}
+
+fn sensitive_key(key: &str) -> bool {
+    let key = normalized_key(key);
     key == "auth"
         || [
             "token",
@@ -451,19 +454,27 @@ fn redact_unknown_absolute_paths(value: &str) -> String {
 
 fn sanitize(value: serde_json::Value) -> serde_json::Value {
     match value {
-        serde_json::Value::Object(values) => serde_json::Value::Object(
-            values
-                .into_iter()
-                .map(|(key, value)| {
-                    let value = if sensitive_key(&key) {
-                        serde_json::Value::String("[REDACTED]".to_owned())
-                    } else {
-                        sanitize(value)
-                    };
-                    (key, value)
-                })
-                .collect(),
-        ),
+        serde_json::Value::Object(values) => {
+            let redact_named_value = values.iter().any(|(field, value)| {
+                matches!(normalized_key(field).as_str(), "name" | "key")
+                    && value.as_str().is_some_and(sensitive_key)
+            });
+            serde_json::Value::Object(
+                values
+                    .into_iter()
+                    .map(|(key, value)| {
+                        let value = if sensitive_key(&key)
+                            || (redact_named_value && normalized_key(&key) == "value")
+                        {
+                            serde_json::Value::String("[REDACTED]".to_owned())
+                        } else {
+                            sanitize(value)
+                        };
+                        (key, value)
+                    })
+                    .collect(),
+            )
+        }
         serde_json::Value::Array(values) => serde_json::Value::Array(sanitize_array(values)),
         serde_json::Value::String(value) => serde_json::Value::String(sanitize_text(&value)),
         value => value,
@@ -667,6 +678,18 @@ fn read_operation_events_with_limits(
         let file_budget = remaining_scan_bytes.div_ceil(files_remaining);
         let scan_bytes = file_bytes.min(file_budget as u64);
         let start = file_bytes.saturating_sub(scan_bytes);
+        let starts_inside_line = if start > 0 {
+            if file.seek(SeekFrom::Start(start - 1)).is_err() {
+                continue;
+            }
+            let mut previous = [0_u8; 1];
+            if file.read_exact(&mut previous).is_err() {
+                continue;
+            }
+            previous[0] != b'\n'
+        } else {
+            false
+        };
         if start > 0 {
             truncated = true;
             if file.seek(SeekFrom::Start(start)).is_err() {
@@ -675,7 +698,7 @@ fn read_operation_events_with_limits(
         }
         remaining_scan_bytes = remaining_scan_bytes.saturating_sub(scan_bytes as usize);
         let mut reader = BufReader::new(file);
-        if start > 0 && reader.skip_until(b'\n').is_err() {
+        if starts_inside_line && reader.skip_until(b'\n').is_err() {
             continue;
         }
         let _ = for_each_bounded_line(reader, 1024 * 1024, |line| {
@@ -1046,6 +1069,23 @@ mod tests {
     }
 
     #[test]
+    fn structured_named_values_redact_sensitive_values() {
+        let sanitized = sanitize(serde_json::json!({
+            "headers": [
+                { "name": "x-api-key", "value": "LIVE_SECRET" },
+                { "key": "authorization", "value": "Bearer LIVE_SECRET" },
+                { "name": "content-type", "value": "application/json" }
+            ]
+        }));
+
+        assert_eq!(sanitized["headers"][0]["name"], "x-api-key");
+        assert_eq!(sanitized["headers"][0]["value"], "[REDACTED]");
+        assert_eq!(sanitized["headers"][1]["key"], "authorization");
+        assert_eq!(sanitized["headers"][1]["value"], "[REDACTED]");
+        assert_eq!(sanitized["headers"][2]["value"], "application/json");
+    }
+
+    #[test]
     fn structured_auth_keys_are_redacted_without_redacting_author_fields() {
         let sanitized = sanitize(serde_json::json!({
             "_auth": "BASE64_CREDENTIAL",
@@ -1261,6 +1301,34 @@ mod tests {
             10,
             usize::MAX,
             terminal.len() + 2,
+        );
+
+        assert!(selected.truncated);
+        assert_eq!(selected.events.len(), 1);
+        assert_eq!(selected.events[0]["fields"]["message"], "terminal");
+    }
+
+    #[test]
+    fn diagnostic_event_ingestion_keeps_a_record_at_the_exact_tail_boundary() {
+        let temp_dir = TempDir::new().unwrap();
+        let operation_id = "op-123e4567-e89b-42d3-a456-426614174000";
+        let terminal = serde_json::json!({
+            "timestamp": "2026-08-30T03:04:06Z",
+            "fields": { "operation_id": operation_id, "message": "terminal" }
+        })
+        .to_string();
+        std::fs::write(
+            temp_dir.path().join("events.jsonl"),
+            format!("discarded\n{terminal}\n"),
+        )
+        .unwrap();
+
+        let selected = read_operation_events_with_limits(
+            &[temp_dir.path().to_path_buf()],
+            operation_id,
+            10,
+            usize::MAX,
+            terminal.len() + 1,
         );
 
         assert!(selected.truncated);
