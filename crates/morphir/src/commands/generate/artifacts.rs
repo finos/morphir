@@ -699,6 +699,11 @@ fn rollback<H: ArtifactHooks + ?Sized>(
             if record.backup {
                 match root.symlink_metadata(&destination.relative_path) {
                     Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => {
+                        remove_empty_destination_descendants(
+                            root,
+                            &destination.relative_path,
+                            destinations,
+                        )?;
                         root.remove_dir(&destination.relative_path)?;
                     }
                     Ok(_) => {}
@@ -727,6 +732,47 @@ fn rollback<H: ArtifactHooks + ?Sized>(
     } else {
         Err(io::Error::other(errors.join("; ")))
     }
+}
+
+fn remove_empty_destination_descendants(
+    root: &Dir,
+    ancestor: &Path,
+    destinations: &[Destination],
+) -> io::Result<()> {
+    let mut directories = BTreeSet::new();
+    for destination in destinations {
+        let mut candidate = destination.relative_path.parent();
+        while let Some(directory) = candidate {
+            if directory == ancestor || !directory.starts_with(ancestor) {
+                break;
+            }
+            directories.insert(directory.to_path_buf());
+            candidate = directory.parent();
+        }
+    }
+    let mut directories = directories.into_iter().collect::<Vec<_>>();
+    directories.sort_by(|left, right| {
+        right
+            .components()
+            .count()
+            .cmp(&left.components().count())
+            .then_with(|| right.cmp(left))
+    });
+    for directory in directories {
+        let parent_path = directory.parent().unwrap_or(Path::new(""));
+        let Some(parent) = open_existing_directory_path(root, parent_path)? else {
+            continue;
+        };
+        let leaf = directory
+            .file_name()
+            .expect("rollback descendant directory has a leaf");
+        match parent.remove_dir(leaf) {
+            Ok(()) => sync_dir(&parent)?,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(())
 }
 
 fn validate_leaf(parent: &Dir, leaf: &OsStr) -> io::Result<LeafState> {
@@ -1339,6 +1385,29 @@ mod tests {
             fs::read_to_string(output.path().join("schema")).unwrap(),
             "old"
         );
+    }
+
+    #[test]
+    fn failed_deep_file_to_directory_transition_restores_the_managed_file() {
+        let output = tempdir().unwrap();
+        ArtifactWriter::new(output.path())
+            .write_all(&[text("schema", "old")])
+            .unwrap();
+        let ops = FailingOps::on_install(1);
+
+        let error = ArtifactWriter::with_ops(output.path(), &ops)
+            .write_all(&[
+                text("schema/nested/item.avsc", "new"),
+                text("z.avsc", "later"),
+            ])
+            .unwrap_err();
+
+        assert!(matches!(error, CliError::FileSystem { .. }));
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema")).unwrap(),
+            "old"
+        );
+        assert!(!output.path().join("schema/nested").exists());
     }
 
     #[test]
