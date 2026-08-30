@@ -57,6 +57,51 @@ See [INSTALLING.md](https://github.com/finos/morphir/blob/main/INSTALLING.md) in
 morphir version
 ```
 
+## Windows: enable long paths
+
+A Morphir IR v4 document tree stores each type and value as its own file, nested under the package and module
+names. Those paths get long, and Morphir writes them assuming long paths are available (a budget of 4000
+characters, recorded in each distribution's manifest as `pathBudget`).
+
+Windows can handle that, but **two separate switches** have to be turned on, and both are off by default. With
+either one missing, checking out or building a document tree fails once a path passes 260 characters.
+
+**1. Git.** Git for Windows ships with long paths disabled, independently of Windows itself:
+
+```powershell
+git config --global core.longpaths true
+```
+
+**2. Windows.** Set once per machine, from an administrator PowerShell, then sign out and back in:
+
+```powershell
+Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name LongPathsEnabled -Value 1
+```
+
+Windows 10 version 1607 and later support this. Older versions cannot enable it.
+
+### If you cannot enable long paths
+
+Some machines are locked down and the registry change is not available. In that case, tell Morphir to write
+document trees for the shorter limit by setting `pathBudget` to `200` in the distribution manifest:
+
+```json
+{
+  "formatVersion": 4,
+  "distribution": "Library",
+  "package": "my-org/my-project",
+  "pathBudget": 200
+}
+```
+
+Morphir then shortens any filename that would overflow and records the mapping inside the module, so the tree
+still reads correctly. The cost is that a shortened filename no longer looks like the name it holds.
+
+Every tree records the `pathBudget` it was written with, so a tool can compare it with what your machine handles
+and report a mismatch up front rather than failing file by file. That check is planned for `morphir doctor` and is
+not in the CLI yet; until then, a tree written with the default budget may fail to check out on a machine without
+long paths enabled.
+
 ## Command overview
 
 The Rust CLI includes:

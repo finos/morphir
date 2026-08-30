@@ -161,30 +161,15 @@ Use `mise` task runner (`mise run <task>`) for build orchestration:
 
 ### Long paths on Windows
 
-An IR v4 document tree nests package, module and definition names, so paths get long. The path budget defaults to
-4000 characters and assumes long path support; see [Naming](docs/spec/draft/names.md) for the format rule and the
-`pathBudget` manifest field.
+Working in this repository on Windows needs the same long path setup as using Morphir does, because the checked-in
+fixtures and examples include v4 document trees. Follow the user-facing steps in
+[Windows: enable long paths](docs/getting-started/morphir-cli.md#windows-enable-long-paths). The format rule and
+the `pathBudget` manifest field are specified in [Naming](docs/spec/draft/names.md).
 
-On Windows **two separate switches** gate that support, and both are off by default:
-
-```powershell
-# 1. Git for Windows ships core.longpaths off, so a checkout fails past 260
-#    characters even when Windows itself allows long paths.
-git config --global core.longpaths true
-
-# 2. Windows itself, set once per machine as administrator.
-Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name LongPathsEnabled -Value 1
-```
-
-A process must also declare `longPathAware` in its manifest to benefit from the second, which is why the first alone
-is not enough for tooling that shells out.
-
-If you cannot enable both, write document trees with the portable budget by setting `pathBudget` to `200` in the
-distribution manifest. Names are then truncated with a hash suffix and the module records the mapping, so the tree
-stays readable at the cost of filenames that no longer read as their names.
-
-`mise run init` warns when `core.longpaths` is unset. Note it does not currently run on a Windows box that lacks a
-POSIX bash, since the task body uses a bash shebang; the same limitation applies to several other tasks.
+Two details matter more for tooling authors than for users. A process must declare `longPathAware` in its manifest
+to benefit from `LongPathsEnabled`, so the git setting alone is not enough for anything that shells out. And
+`mise run init` warns when `core.longpaths` is unset, but it does not currently run on a Windows box lacking a
+POSIX bash, since the task body uses a bash shebang (morphir-6y9z).
 
 ### Ecosystem Build Tasks
 
