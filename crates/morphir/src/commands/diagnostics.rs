@@ -102,8 +102,11 @@ fn normalized_key(key: &str) -> String {
 }
 
 fn sensitive_key(key: &str) -> bool {
+    let has_auth_segment = key
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .any(|segment| segment.eq_ignore_ascii_case("auth"));
     let key = normalized_key(key);
-    key == "auth"
+    has_auth_segment
         || [
             "token",
             "password",
@@ -265,8 +268,9 @@ fn url_token_end(value: &str, authority_start: usize) -> usize {
         .match_indices("://")
         .find_map(|(index, _)| {
             let start = url_scheme_start_before(value, authority_start + index)?;
-            (start >= authority_start && url_separator_before(value, start).is_some())
-                .then_some(start)
+            (start >= authority_start
+                && top_level_url_separator_before(value, authority_start, start).is_some())
+            .then_some(start)
         })
         .unwrap_or(delimiter)
 }
@@ -284,6 +288,18 @@ fn url_separator_before(value: &str, start: usize) -> Option<usize> {
         .next_back()
         .filter(|(_, character)| matches!(character, '|' | ',' | ';'))
         .map(|(index, _)| index)
+}
+
+fn top_level_url_separator_before(
+    value: &str,
+    authority_start: usize,
+    start: usize,
+) -> Option<usize> {
+    let separator = url_separator_before(value, start)?;
+    (!value[authority_start..separator]
+        .chars()
+        .any(|character| matches!(character, '?' | '#')))
+    .then_some(separator)
 }
 
 fn url_scheme_starts_at(value: &str, start: usize) -> bool {
@@ -351,7 +367,7 @@ fn reference_token_end(value: &str, authority_start: usize) -> usize {
         .match_indices("//")
         .find_map(|(index, _)| {
             let start = authority_start + index;
-            url_separator_before(value, start)
+            top_level_url_separator_before(value, authority_start, start)
                 .is_some()
                 .then_some(start)
         })
@@ -1358,10 +1374,14 @@ mod tests {
     fn structured_auth_keys_are_redacted_without_redacting_author_fields() {
         let sanitized = sanitize(serde_json::json!({
             "_auth": "BASE64_CREDENTIAL",
+            "environment": {
+                "NPM_CONFIG__AUTH": "NAMESPACED_CREDENTIAL"
+            },
             "author": "Ada"
         }));
 
         assert_eq!(sanitized["_auth"], "[REDACTED]");
+        assert_eq!(sanitized["environment"]["NPM_CONFIG__AUTH"], "[REDACTED]");
         assert_eq!(sanitized["author"], "Ada");
     }
 
@@ -1379,7 +1399,7 @@ mod tests {
         );
         assert_eq!(
             sanitize_text("https://first.example?a=1|https://second.example/status"),
-            "https://first.example|https://second.example/status"
+            "https://first.example"
         );
         assert_eq!(
             sanitize_text("fetch //alice:hunter2@private.example/artifact?download=secret"),
@@ -1395,13 +1415,19 @@ mod tests {
             sanitize_text(
                 "https://first.example?a=1,https://second.example/status?download=private"
             ),
-            "https://first.example,https://second.example/status"
+            "https://first.example"
         );
         assert_eq!(
             sanitize_text(
                 "https://first.example?redirect=https://nested.example/path;https://second.example?download=private"
             ),
-            "https://first.example;https://second.example"
+            "https://first.example"
+        );
+        assert_eq!(
+            sanitize_text(
+                "https://public.example/continue?urls=https://a.test/x,https://private.example/reset/LIVE_SECRET"
+            ),
+            "https://public.example/continue"
         );
         assert_eq!(
             sanitize_text("request (https://example.test/status?token=x),retrying"),
@@ -1409,7 +1435,7 @@ mod tests {
         );
         assert_eq!(
             sanitize_text("//first.example?a=1,//second.example/status"),
-            "//first.example,//second.example/status"
+            "//first.example"
         );
     }
 
