@@ -67,7 +67,7 @@
           "minItems": 1,
           "items": {
             "type": "string",
-            "pattern": "^[a-z][a-z0-9]*$"
+            "pattern": "^[a-z0-9]+$"
           }
         }
       ]
@@ -119,10 +119,16 @@
       "$ref": "#/definitions/Path"
     },
     "FileStem": {
-      "description": "Escaped projection of a Name onto the document tree. All lowercase, so it is\nstable on case-insensitive filesystems. An initialism segment carries a \"_\"\nprefix; a stem colliding with a Windows reserved device name carries a \"_\"\nsuffix.\n",
-      "examples": [ "user", "user-_id", "value-in-_usd", "aux_" ],
+      "description": "Escaped projection of a Name onto the document tree. All lowercase, so it is\nstable on case-insensitive filesystems. An initialism segment carries a \"_\"\nprefix; a stem colliding with a Windows reserved device name carries a \"_\"\nsuffix.\n\nA stem truncated for path length carries \"__\" followed by eight hex digits\nof the SHA-256 of the untruncated stem. A truncated stem is not reversible,\nso the module manifest records the mapping from canonical name to stem.\n",
+      "examples": [
+        "user",
+        "user-_id",
+        "value-in-_usd",
+        "aux_",
+        "some-extremely-long-canonical__3f9a1c04"
+      ],
       "type": "string",
-      "pattern": "^_?[a-z0-9]+(-_?[a-z0-9]+)*_?$"
+      "pattern": "^_?[a-z0-9]+(-_?[a-z0-9]+)*(__[0-9a-f]{8})?_?$"
     },
     "FQNameString": {
       "description": "Fully-qualified name in canonical string format: \"package:module#name\"\nThis uniquely identifies a type or value across the entire IR.\n",
@@ -300,7 +306,7 @@
         {
           "description": "Compact shorthand format for an annotation: \"fqname\" or \"fqname:value\".\nExamples:\n- \"morphir/SDK:annotations#stable\"\n- \"my-org/sdk:annotations#deprecated:Use new-version instead\"\n",
           "type": "string",
-          "pattern": "^[a-zA-Z0-9-/]+:[a-zA-Z0-9-/]+#[a-zA-Z0-9-]+(:.+)?$"
+          "pattern": "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*:([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*#([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(:.+)?$"
         },
         {
           "type": "object",
@@ -1037,7 +1043,7 @@
         {
           "description": "Compact format for Reference without type arguments.\nJust the FQName string: \"package:module#name\"\n",
           "type": "string",
-          "pattern": "^[a-zA-Z0-9-/]+:[a-zA-Z0-9-/]+#[a-zA-Z0-9-]+$"
+          "pattern": "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*:([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*#([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$"
         },
         {
           "description": "Wrapper format for Reference without type arguments.\n",
@@ -1046,7 +1052,7 @@
           "properties": {
             "Reference": {
               "type": "string",
-              "pattern": "^[a-zA-Z0-9-/]+:[a-zA-Z0-9-/]+#[a-zA-Z0-9-]+$"
+              "pattern": "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*:([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*#([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$"
             }
           },
           "additionalProperties": false
@@ -1845,7 +1851,7 @@
         {
           "description": "Shorthand for Reference (FQName string)",
           "type": "string",
-          "pattern": "^[a-zA-Z0-9-/]+:[a-zA-Z0-9-/]+#[a-zA-Z0-9-]+$"
+          "pattern": "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*:([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*#([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$"
         },
         {
           "description": "Shorthand for Variable (Name string)",

@@ -103,9 +103,42 @@ file named `aux.type.json`. Within one module, the escaped stems of all types mu
 values. Because the escape is injective and its output is all lowercase, satisfying that rule guarantees a tree
 written on Linux checks out on Windows and macOS.
 
-When a path would exceed 200 characters from the distribution root, the stem is truncated and suffixed with `__`
-followed by the first 8 hex digits of the SHA-256 of the untruncated stem. A truncated name is not recoverable from
-its filename, so the module's `module.json` must then carry a `fileNames` map from canonical name to filename stem.
+### Path length
+
+When a path would exceed the **path budget** measured from the distribution root, the stem is truncated and suffixed
+with `__` followed by the first 8 hex digits of the SHA-256 of the untruncated stem. A truncated name is not
+recoverable from its filename, so the module's `module.json` must then carry a `fileNames` map from canonical name
+to filename stem.
+
+The budget is not a single constant, because the limit it protects against is not universal:
+
+| Target | Limit | Default budget |
+|--------|-------|----------------|
+| Windows without long paths | `MAX_PATH` 260 | 200 |
+| Windows with `LongPathsEnabled` | ~32767 | 4000 |
+| Linux, macOS | `PATH_MAX` 4096, `NAME_MAX` 255 | 4000, and 200 per segment |
+
+Windows 10 version 1607 and later can lift `MAX_PATH` through the `LongPathsEnabled` registry setting, and a
+process must also opt in through its manifest. A writer therefore detects the effective limit rather than assuming
+the most restrictive one, and a `pathBudget` setting overrides the detected value.
+
+**A tree is only as portable as the budget it was written with.** Detection is a convenience for local work, not a
+property of the format: a tree written on Linux under the 4000 budget can carry paths that a Windows reader without
+long paths cannot open, and nothing in the tree itself would say so. So a distribution that used anything other than
+the portable 200 budget MUST record it in `manifest.json`:
+
+```json
+{
+  "formatVersion": 4,
+  "distribution": "Library",
+  "package": "my-org/my-project",
+  "pathBudget": 4000
+}
+```
+
+A reader that cannot satisfy a recorded budget reports it rather than failing to open files one at a time. Omitting
+`pathBudget` means the portable 200, so an unmarked tree is portable by construction. Publishing pipelines should
+pin the portable budget explicitly rather than inheriting whatever the build machine detected.
 
 ## TypeVariable
 
