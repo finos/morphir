@@ -929,17 +929,39 @@ async fn main() -> starbase::MainResult {
         return Ok(std::process::ExitCode::SUCCESS);
     }
 
-    // Handle migration subcommands early (before starbase) to avoid double execution
-    if (args.len() >= 2 && args[1] == "migrate") || (args.len() >= 3 && args[1] == "ir") {
-        let cli = Cli::parse();
-        let migrate_args = match cli.command {
-            Some(Commands::Migrate(args)) => Some(args),
-            Some(Commands::Ir {
-                action: IrAction::Migrate(args),
-            }) => Some(args),
-            _ => None,
-        };
-        if let Some(migrate_args) = migrate_args {
+    let cli = match Cli::try_parse_from(&args) {
+        Ok(cli) => cli,
+        Err(error) => {
+            let exit_code = u8::try_from(error.exit_code()).unwrap_or(1);
+            let failed = exit_code != 0;
+            let diagnostic = operation_diagnostic(Some(error.to_string()), exit_code);
+            let _ = error.print();
+            report_operation_outcome(
+                &operation_id,
+                logging_guard.as_ref(),
+                exit_code,
+                failed,
+                diagnostic.as_deref(),
+            );
+            return Ok(std::process::ExitCode::from(exit_code));
+        }
+    };
+
+    // Handle case where no command is provided.
+    let command = match cli.command {
+        Some(cmd) => cmd,
+        None => {
+            Cli::command().print_help().ok();
+            return Ok(std::process::ExitCode::SUCCESS);
+        }
+    };
+
+    // Handle migration subcommands early (before starbase) to avoid double execution.
+    let command = match command {
+        Commands::Migrate(migrate_args)
+        | Commands::Ir {
+            action: IrAction::Migrate(migrate_args),
+        } => {
             let (exit_code, failed, diagnostic) = match migrate_args.run() {
                 Ok(Some(code)) => (code, code != 0, operation_diagnostic(None, code)),
                 Ok(None) => (0, false, None),
@@ -954,17 +976,7 @@ async fn main() -> starbase::MainResult {
             );
             return Ok(std::process::ExitCode::from(exit_code));
         }
-    }
-
-    let cli = Cli::parse();
-
-    // Handle case where no command is provided
-    let command = match cli.command {
-        Some(cmd) => cmd,
-        None => {
-            Cli::command().print_help().ok();
-            return Ok(std::process::ExitCode::SUCCESS);
-        }
+        command => command,
     };
 
     // Create session with command

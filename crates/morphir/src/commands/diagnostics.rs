@@ -89,7 +89,7 @@ fn contains_sensitive_assignment(value: &str) -> bool {
         .any(|(separator, _)| {
             let key = value[..separator]
                 .trim_end()
-                .trim_end_matches(['\'', '"', '\\'])
+                .trim_end_matches(['\'', '"', '\\', ']', ')', '}'])
                 .chars()
                 .rev()
                 .take_while(|character| {
@@ -809,6 +809,7 @@ mod tests {
             "client-secret: LIVE_SECRET",
             r#"request body: {"password":"hunter2"}"#,
             r#"request body: {\"password\":\"hunter2\"}"#,
+            r#"request[\"password\"]=\"hunter2\""#,
             "request failed: --api-key LIVE_SECRET",
             r#"debug args: "--password" "hunter2""#,
             "Authorization:Basic dXNlcjpwYXNz",
