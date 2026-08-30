@@ -50,6 +50,7 @@ stacker = "0.1"
 toml = "1.0.0"
 tempfile = "3"
 semver = "1"
+uuid = { version = "1", features = ["v4"] }
 
 [profile.release]
 opt-level = 3

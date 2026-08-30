@@ -10,7 +10,8 @@
 //!
 //! ```ignore
 //! // Initialize from defaults and environment variables.
-//! let _guard = logging::init_from_env();
+//! let operation_id = observability::OperationId::new();
+//! let _guard = logging::init_from_env(&operation_id);
 //! ```
 
 mod retention;
@@ -50,6 +51,19 @@ pub struct LogGuard {
     worker: Option<WorkerGuard>,
     marker_file: Option<fs::File>,
     active_marker: PathBuf,
+    log_path: PathBuf,
+    session_id: String,
+}
+
+impl LogGuard {
+    /// Exact JSON Lines file for the current CLI process.
+    pub fn log_path(&self) -> &Path {
+        &self.log_path
+    }
+
+    fn session_id(&self) -> &str {
+        &self.session_id
+    }
 }
 
 impl Drop for LogGuard {
@@ -194,7 +208,10 @@ fn configured_bool(value: Option<&str>, fallback: bool) -> bool {
 ///
 /// Returns a guard that must be kept alive for the duration of the program
 /// to ensure file logs are flushed.
-pub fn init(config: LogConfig) -> Option<LogGuard> {
+pub fn init(
+    config: LogConfig,
+    operation_id: &crate::observability::OperationId,
+) -> Option<LogGuard> {
     let console_filter = EnvFilter::new(format!("morphir={}", config.console_level));
 
     // Build the console layer (writes to stderr)
@@ -296,6 +313,7 @@ pub fn init(config: LogConfig) -> Option<LogGuard> {
         component = "cli",
         process_id,
         session_id = %session.session_id,
+        operation_id = %operation_id,
         event_name = "cli.session.start",
         log_path = %log_path.display(),
         "CLI file logging initialized"
@@ -306,6 +324,7 @@ pub fn init(config: LogConfig) -> Option<LogGuard> {
         component = "cli",
         process_id,
         session_id = %session.session_id,
+        operation_id = %operation_id,
         event_name = "cli.logs.retention",
         removed_files = retention.removed_files,
         removed_bytes = retention.removed_bytes,
@@ -317,7 +336,32 @@ pub fn init(config: LogConfig) -> Option<LogGuard> {
         worker: Some(guard),
         marker_file: Some(marker_file),
         active_marker,
+        log_path,
+        session_id: session.session_id,
     })
+}
+
+/// Record the terminal result of a CLI operation using stable searchable fields.
+pub fn record_operation_finish(
+    operation_id: &crate::observability::OperationId,
+    log_guard: Option<&LogGuard>,
+    exit_code: u8,
+    failed: bool,
+) {
+    let session_id = log_guard
+        .map(LogGuard::session_id)
+        .unwrap_or("console-only");
+    tracing::debug!(
+        schema_version = 1,
+        component = "cli",
+        process_id = std::process::id(),
+        session_id,
+        operation_id = %operation_id,
+        event_name = "cli.operation.finish",
+        outcome = if failed { "failure" } else { "success" },
+        exit_code,
+        "CLI operation finished"
+    );
 }
 
 /// Initialize logging from environment variables.
@@ -329,7 +373,7 @@ pub fn init(config: LogConfig) -> Option<LogGuard> {
 /// - MORPHIR_LOG_FILE: Enable file logging (true/false)
 ///
 /// `MORPHIR_LOG_LEVEL` and `MORPHIR_LOG_FILE_LEVEL` remain compatibility aliases.
-pub fn init_from_env() -> Option<LogGuard> {
+pub fn init_from_env(operation_id: &crate::observability::OperationId) -> Option<LogGuard> {
     let mut config = LogConfig::default();
 
     let console_level = std::env::var("MORPHIR_LOGGING__LEVEL").ok();
@@ -356,7 +400,7 @@ pub fn init_from_env() -> Option<LogGuard> {
     let file_logging = std::env::var("MORPHIR_LOG_FILE").ok();
     config.file_logging = configured_bool(file_logging.as_deref(), config.file_logging);
 
-    init(config)
+    init(config, operation_id)
 }
 
 #[cfg(test)]

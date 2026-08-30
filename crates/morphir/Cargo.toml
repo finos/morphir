@@ -40,6 +40,7 @@ morphir-distribution = { path = "../../ecosystem/morphir-rust/crates/morphir-dis
 morphir-okf = { path = "../../ecosystem/morphir-rust/crates/morphir-okf" }
 morphir-kb = { path = "../../ecosystem/morphir-rust/crates/morphir-kb" }
 semver = { workspace = true }
+uuid = { workspace = true }
 chrono = "0.4"
 walkdir = "2"
 fs2 = { workspace = true }

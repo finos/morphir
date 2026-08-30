@@ -8,19 +8,22 @@ pub mod home;
 mod logging;
 pub mod output;
 
+use morphir::observability;
+
 use commands::{
     MigrateCommandOptions, OutputLayout, compile::CompileOptions, run_compile, run_config_get,
-    run_config_path, run_config_show, run_dist_install, run_dist_list, run_dist_uninstall,
-    run_dist_update, run_extension_install, run_extension_list, run_extension_uninstall,
-    run_extension_update, run_generate, run_gleam_compile, run_gleam_generate, run_gleam_roundtrip,
-    run_kb_add_concept, run_kb_check, run_kb_decision_list, run_kb_decision_show, run_kb_index,
-    run_kb_intent_cancel, run_kb_intent_check, run_kb_intent_init, run_kb_intent_list,
-    run_kb_intent_move, run_kb_intent_new, run_kb_intent_refine, run_kb_intent_release,
-    run_kb_intent_show, run_kb_intent_start, run_kb_intent_supersede, run_kb_list,
-    run_kb_new_bundle, run_kb_query, run_kb_refresh, run_kb_refresh_db, run_kb_refresh_markdown,
-    run_kb_search, run_kb_show, run_kb_sync_diff, run_kb_sync_pull, run_kb_sync_push,
-    run_kb_sync_status, run_migrate, run_tool_install, run_tool_list, run_tool_uninstall,
-    run_tool_update, run_transform, run_validate, run_version,
+    run_config_path, run_config_show, run_diagnostics_path, run_dist_install, run_dist_list,
+    run_dist_uninstall, run_dist_update, run_extension_install, run_extension_list,
+    run_extension_uninstall, run_extension_update, run_generate, run_gleam_compile,
+    run_gleam_generate, run_gleam_roundtrip, run_kb_add_concept, run_kb_check,
+    run_kb_decision_list, run_kb_decision_show, run_kb_index, run_kb_intent_cancel,
+    run_kb_intent_check, run_kb_intent_init, run_kb_intent_list, run_kb_intent_move,
+    run_kb_intent_new, run_kb_intent_refine, run_kb_intent_release, run_kb_intent_show,
+    run_kb_intent_start, run_kb_intent_supersede, run_kb_list, run_kb_new_bundle, run_kb_query,
+    run_kb_refresh, run_kb_refresh_db, run_kb_refresh_markdown, run_kb_search, run_kb_show,
+    run_kb_sync_diff, run_kb_sync_pull, run_kb_sync_push, run_kb_sync_status, run_migrate,
+    run_tool_install, run_tool_list, run_tool_uninstall, run_tool_update, run_transform,
+    run_validate, run_version,
 };
 
 /// Morphir CLI - Tools for functional domain modeling and business logic
@@ -149,6 +152,11 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
         #[command(subcommand)]
         action: ConfigAction,
     },
+    /// Locate Morphir logs and collect troubleshooting information
+    Diagnostics {
+        #[command(subcommand)]
+        action: DiagnosticsAction,
+    },
     /// Manage Morphir tools, distributions, and extensions
     Tool {
         #[command(subcommand)]
@@ -243,6 +251,16 @@ enum ConfigAction {
         /// Ignore machine-level and user-level configuration sources
         #[arg(long, hide = true)]
         isolated: bool,
+    },
+}
+
+#[derive(Clone, Subcommand)]
+enum DiagnosticsAction {
+    /// Show the local Morphir log locations
+    Path {
+        /// Output paths as JSON
+        #[arg(long)]
+        json: bool,
     },
 }
 
@@ -659,6 +677,9 @@ impl AppSession for MorphirSession {
                     isolated,
                 } => run_config_path(config.clone(), *json, *isolated),
             },
+            Commands::Diagnostics { action } => match action {
+                DiagnosticsAction::Path { json } => run_diagnostics_path(*json),
+            },
             Commands::Tool { action } => match action {
                 ToolAction::Install { name, version } => {
                     run_tool_install(name.clone(), version.clone())
@@ -821,8 +842,9 @@ impl AppSession for MorphirSession {
 async fn main() -> starbase::MainResult {
     use clap::CommandFactory;
 
+    let operation_id = observability::OperationId::new();
     // Keep the guard alive until process exit so non-blocking file logs flush.
-    let _logging_guard = logging::init_from_env();
+    let logging_guard = logging::init_from_env(&operation_id);
 
     // Check for help/version flags first to print our custom banner
     let args: Vec<String> = std::env::args().collect();
@@ -896,11 +918,24 @@ async fn main() -> starbase::MainResult {
     // As of starbase 0.13, run() returns AppRunOutcome rather than a Result;
     // into_miette_result() preserves the real exit code instead of miette's
     // default of always reporting 1 on error.
-    App::default()
+    let outcome = App::default()
         .run(
             session,
             |_session| async move { Ok::<_, miette::Report>(None) },
         )
-        .await
-        .into_miette_result()
+        .await;
+    let failed = outcome.error.is_some() || outcome.exit_code != 0;
+    logging::record_operation_finish(
+        &operation_id,
+        logging_guard.as_ref(),
+        outcome.exit_code,
+        failed,
+    );
+    if failed {
+        eprintln!("Operation ID: {operation_id}");
+        if let Some(log) = logging_guard.as_ref().map(logging::LogGuard::log_path) {
+            eprintln!("Log: {}", log.display());
+        }
+    }
+    outcome.into_miette_result()
 }

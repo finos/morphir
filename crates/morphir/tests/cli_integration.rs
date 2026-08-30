@@ -758,6 +758,88 @@ fn test_morphir_home_env_var_relocates_home_directory() {
 }
 
 #[test]
+fn diagnostics_path_reports_shared_log_locations() {
+    let temp_dir = TempDir::new().unwrap();
+    let morphir_home = temp_dir.path().join("relocated-home");
+
+    let output = morphir_command()
+        .args(["diagnostics", "path", "--json"])
+        .env("MORPHIR_HOME", &morphir_home)
+        .output()
+        .expect("failed to run morphir binary");
+
+    assert!(
+        output.status.success(),
+        "diagnostics path failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let paths: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(
+        paths["morphirHome"],
+        morphir_home.to_string_lossy().as_ref()
+    );
+    assert_eq!(
+        paths["logs"],
+        morphir_home.join("logs").to_string_lossy().as_ref()
+    );
+    assert_eq!(
+        paths["cliLogs"],
+        morphir_home
+            .join("logs")
+            .join("cli")
+            .to_string_lossy()
+            .as_ref()
+    );
+    assert_eq!(
+        paths["desktopLogs"],
+        morphir_home
+            .join("logs")
+            .join("desktop")
+            .to_string_lossy()
+            .as_ref()
+    );
+}
+
+#[test]
+fn failed_operation_reports_correlated_id_and_exact_log_path() {
+    let temp_dir = TempDir::new().unwrap();
+    let morphir_home = temp_dir.path().join("relocated-home");
+
+    let output = morphir_command()
+        .args(["tool", "update", "not-installed"])
+        .env("MORPHIR_HOME", &morphir_home)
+        .env_remove("MORPHIR_LOG_DIR")
+        .env("MORPHIR_LOG_FILE", "true")
+        .output()
+        .expect("failed to run morphir binary");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let operation_id = stderr
+        .lines()
+        .find_map(|line| line.strip_prefix("Operation ID: "))
+        .expect("failure should report an operation ID");
+    let log_path = stderr
+        .lines()
+        .find_map(|line| line.strip_prefix("Log: "))
+        .map(PathBuf::from)
+        .expect("failure should report its exact log path");
+
+    assert!(log_path.is_file(), "reported log path should exist");
+    let finish = std::fs::read_to_string(log_path)
+        .unwrap()
+        .lines()
+        .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+        .find(|event| event["fields"]["event_name"] == "cli.operation.finish")
+        .expect("session log should contain the operation finish event");
+    assert_eq!(finish["fields"]["operation_id"], operation_id);
+    assert!(finish["fields"]["session_id"].is_string());
+    assert_eq!(finish["fields"]["outcome"], "failure");
+    assert_eq!(finish["fields"]["exit_code"], 1);
+}
+
+#[test]
 fn migrate_converts_a_real_v3_file_to_concrete_v4() {
     let temp_dir = TempDir::new().unwrap();
     let input = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
