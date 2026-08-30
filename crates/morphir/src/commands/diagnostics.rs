@@ -159,7 +159,16 @@ fn contains_authorization_header(value: &str) -> bool {
 }
 
 fn contains_sensitive_option_pair(value: &str) -> bool {
-    let tokens = value.split_whitespace().collect::<Vec<_>>();
+    let tokens = value
+        .split(|character: char| {
+            character.is_whitespace()
+                || matches!(
+                    character,
+                    '\'' | '"' | '\\' | '[' | ']' | '(' | ')' | '{' | '}' | ','
+                )
+        })
+        .filter(|token| !token.is_empty())
+        .collect::<Vec<_>>();
     tokens.windows(2).any(|pair| {
         let value = pair[1].trim_matches(|character| {
             matches!(
@@ -615,6 +624,25 @@ where
     }
 }
 
+fn bounded_tail_reader(
+    mut file: File,
+    snapshot_bytes: u64,
+    scan_bytes: u64,
+) -> std::io::Result<(BufReader<std::io::Take<File>>, bool)> {
+    let scan_bytes = snapshot_bytes.min(scan_bytes);
+    let start = snapshot_bytes.saturating_sub(scan_bytes);
+    let starts_inside_line = if start > 0 {
+        file.seek(SeekFrom::Start(start - 1))?;
+        let mut previous = [0_u8; 1];
+        file.read_exact(&mut previous)?;
+        previous[0] != b'\n'
+    } else {
+        false
+    };
+    file.seek(SeekFrom::Start(start))?;
+    Ok((BufReader::new(file.take(scan_bytes)), starts_inside_line))
+}
+
 fn read_operation_events(log_roots: &[PathBuf], operation_id: &str) -> DiagnosticEvents {
     read_operation_events_with_limits(
         log_roots,
@@ -668,7 +696,7 @@ fn read_operation_events_with_limits(
             truncated = true;
             break;
         }
-        let Ok(mut file) = File::open(path) else {
+        let Ok(file) = File::open(path) else {
             continue;
         };
         let Ok(file_bytes) = file.metadata().map(|metadata| metadata.len()) else {
@@ -678,26 +706,15 @@ fn read_operation_events_with_limits(
         let file_budget = remaining_scan_bytes.div_ceil(files_remaining);
         let scan_bytes = file_bytes.min(file_budget as u64);
         let start = file_bytes.saturating_sub(scan_bytes);
-        let starts_inside_line = if start > 0 {
-            if file.seek(SeekFrom::Start(start - 1)).is_err() {
-                continue;
-            }
-            let mut previous = [0_u8; 1];
-            if file.read_exact(&mut previous).is_err() {
-                continue;
-            }
-            previous[0] != b'\n'
-        } else {
-            false
+        let Ok((mut reader, starts_inside_line)) =
+            bounded_tail_reader(file, file_bytes, scan_bytes)
+        else {
+            continue;
         };
         if start > 0 {
             truncated = true;
-            if file.seek(SeekFrom::Start(start)).is_err() {
-                continue;
-            }
         }
         remaining_scan_bytes = remaining_scan_bytes.saturating_sub(scan_bytes as usize);
-        let mut reader = BufReader::new(file);
         if starts_inside_line && reader.skip_until(b'\n').is_err() {
             continue;
         }
@@ -961,8 +978,8 @@ pub fn run_diagnostics_collect(operation: &str, output: &Path) -> AppResult<miet
 #[cfg(test)]
 mod tests {
     use super::{
-        for_each_bounded_line, normalize_paths, read_operation_events_with_limits, sanitize,
-        sanitize_text,
+        bounded_tail_reader, for_each_bounded_line, normalize_paths,
+        read_operation_events_with_limits, sanitize, sanitize_text,
     };
     use std::io::{BufReader, Cursor};
     use tempfile::TempDir;
@@ -998,6 +1015,32 @@ mod tests {
     }
 
     #[test]
+    fn bounded_tail_reader_stops_at_the_snapshotted_file_length() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("events.jsonl");
+        std::fs::write(&path, b"snapshotted\n").unwrap();
+        let file = std::fs::File::open(&path).unwrap();
+        let snapshot_bytes = file.metadata().unwrap().len();
+        let mut writer = std::fs::OpenOptions::new()
+            .append(true)
+            .open(&path)
+            .unwrap();
+        std::io::Write::write_all(&mut writer, b"appended\n").unwrap();
+
+        let (reader, starts_inside_line) =
+            bounded_tail_reader(file, snapshot_bytes, snapshot_bytes).unwrap();
+        let mut lines = Vec::new();
+        for_each_bounded_line(reader, 64, |line| {
+            lines.push(line.to_vec());
+            true
+        })
+        .unwrap();
+
+        assert!(!starts_inside_line);
+        assert_eq!(lines, [b"snapshotted".as_slice()]);
+    }
+
+    #[test]
     fn free_form_sensitive_assignments_are_redacted() {
         for value in [
             "api_key=LIVE_SECRET",
@@ -1014,6 +1057,7 @@ mod tests {
             r#"request[\"password\"]=\"hunter2\""#,
             "request failed: --api-key LIVE_SECRET",
             r#"debug args: "--password" "hunter2""#,
+            r#"args=["--password","hunter2"]"#,
             "Authorization:Basic dXNlcjpwYXNz",
             "-----BEGIN PRIVATE KEY-----\nLIVE_SECRET\n-----END PRIVATE KEY-----",
         ] {
