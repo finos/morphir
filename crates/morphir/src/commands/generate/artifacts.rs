@@ -33,32 +33,22 @@ pub(super) fn write_all(
 /// leave the retained transaction directory for manual recovery.
 struct ArtifactWriter<'a, H: ArtifactHooks + ?Sized = NoopHooks> {
     output_root: &'a Path,
-    lock_root: PathBuf,
     hooks: &'a H,
 }
 
 impl<'a> ArtifactWriter<'a, NoopHooks> {
-    fn with_lock_root(output_root: &'a Path, lock_root: PathBuf) -> Self {
+    fn new(output_root: &'a Path) -> Self {
         Self {
             output_root,
-            lock_root,
             hooks: &NOOP_HOOKS,
         }
-    }
-
-    fn new(output_root: &'a Path) -> Self {
-        Self::with_lock_root(output_root, publication_lock_root())
     }
 }
 
 impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
     #[cfg(test)]
     fn with_ops(output_root: &'a Path, hooks: &'a H) -> Self {
-        Self {
-            output_root,
-            lock_root: publication_lock_root(),
-            hooks,
-        }
+        Self { output_root, hooks }
     }
 
     fn write_all(&self, artifacts: &[Artifact]) -> Result<Vec<String>, CliError> {
@@ -70,8 +60,7 @@ impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
         let AcquiredPublication {
             root,
             lock: publication_lock,
-        } = acquire_publication(self.output_root, &self.lock_root, self.hooks)
-            .map_err(file_system_error)?;
+        } = acquire_publication(self.output_root, self.hooks).map_err(file_system_error)?;
         let previous = load_manifest(&root.directory)?;
         if let Err(error) = self.hooks.after_manifest_load() {
             remove_created_output_root(root);
@@ -207,7 +196,11 @@ struct AcquiredOutputRoot {
 
 struct AcquiredPublication {
     root: AcquiredOutputRoot,
-    lock: std::fs::File,
+    lock: PublicationLock,
+}
+
+struct PublicationLock {
+    _files: Vec<std::fs::File>,
 }
 
 struct CreatedOutputDirectory {
@@ -272,81 +265,132 @@ fn acquire_output_root<H: ArtifactHooks + ?Sized>(
 
 fn acquire_publication<H: ArtifactHooks + ?Sized>(
     output_root: &Path,
-    lock_root: &Path,
     hooks: &H,
 ) -> io::Result<AcquiredPublication> {
-    let identity = publication_identity(output_root)?;
-    let lock = acquire_publication_lock(lock_root, &identity)?;
-    let root = acquire_output_root(output_root, hooks)?;
+    let absolute = std::path::absolute(output_root)?;
+    let leaf = absolute
+        .file_name()
+        .ok_or_else(|| io::Error::other("artifact output root must have a final component"))?
+        .to_owned();
+    let parent_path = absolute
+        .parent()
+        .ok_or_else(|| io::Error::other("artifact output root has no parent directory"))?;
+    let parent = acquire_output_root(parent_path, hooks)?;
 
-    Ok(AcquiredPublication { root, lock })
+    #[cfg(unix)]
+    {
+        let parent_lock = lock_directory(&parent.directory)?;
+        hooks.before_output_component_open(&parent.directory, &leaf)?;
+        let root = open_or_create_output_leaf(parent.directory, leaf)?;
+        let root_lock = lock_directory(&root.directory)?;
+        Ok(AcquiredPublication {
+            root,
+            lock: PublicationLock {
+                _files: vec![parent_lock, root_lock],
+            },
+        })
+    }
+
+    #[cfg(not(unix))]
+    {
+        let sibling_lock_path = publication_lock_path(&leaf);
+        let lock = create_or_open_publication_lock(&parent.directory, &sibling_lock_path)?;
+        lock.lock_exclusive()?;
+        hooks.before_output_component_open(&parent.directory, &leaf)?;
+        let root = open_or_create_output_leaf(parent.directory, leaf)?;
+        Ok(AcquiredPublication {
+            root,
+            lock: PublicationLock { _files: vec![lock] },
+        })
+    }
 }
 
-fn acquire_publication_lock(lock_root: &Path, identity: &Path) -> io::Result<std::fs::File> {
-    std::fs::create_dir_all(lock_root)?;
-    let directory = Dir::open_ambient_dir(lock_root, cap_std::ambient_authority())?;
-    let mut options = OpenOptions::new();
-    options
-        .read(true)
-        .write(true)
-        .create(true)
-        .follow(FollowSymlinks::No);
-    let lock_path = publication_lock_path(identity);
-    let lock = directory.open_with(lock_path, &options)?.into_std();
+#[cfg(unix)]
+fn lock_directory(directory: &Dir) -> io::Result<std::fs::File> {
+    let lock = directory.try_clone()?.into_std_file();
     lock.lock_exclusive()?;
     Ok(lock)
 }
 
-fn publication_lock_path(identity: &Path) -> String {
+fn open_or_create_output_leaf(parent: Dir, leaf: OsString) -> io::Result<AcquiredOutputRoot> {
+    let mut created = Vec::new();
+    let directory = match parent.open_dir_nofollow(&leaf) {
+        Ok(directory) => directory,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            let creator_parent = parent.try_clone()?;
+            let newly_created = match parent.create_dir(&leaf) {
+                Ok(()) => true,
+                Err(error) if error.kind() == io::ErrorKind::AlreadyExists => false,
+                Err(error) => return Err(error),
+            };
+            if newly_created {
+                created.push(CreatedOutputDirectory {
+                    parent: creator_parent,
+                    leaf: leaf.clone(),
+                });
+            }
+            match parent.open_dir_nofollow(&leaf) {
+                Ok(directory) => directory,
+                Err(error) => {
+                    remove_created_output_directories(&created);
+                    return Err(error);
+                }
+            }
+        }
+        Err(error) => return Err(error),
+    };
+    Ok(AcquiredOutputRoot { directory, created })
+}
+
+#[cfg(not(unix))]
+fn open_publication_lock(directory: &Dir, path: &Path) -> io::Result<Option<std::fs::File>> {
+    let mut options = OpenOptions::new();
+    options.read(true).follow(FollowSymlinks::No);
+    match directory.open_with(path, &options) {
+        Ok(lock) => Ok(Some(lock.into_std())),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+
+#[cfg(not(unix))]
+fn create_or_open_publication_lock(directory: &Dir, path: &Path) -> io::Result<std::fs::File> {
+    let mut create = OpenOptions::new();
+    create
+        .read(true)
+        .write(true)
+        .create_new(true)
+        .follow(FollowSymlinks::No);
+    match directory.open_with(path, &create) {
+        Ok(lock) => Ok(lock.into_std()),
+        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
+            open_publication_lock(directory, path)?.ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::NotFound,
+                    "publication lock disappeared while opening it",
+                )
+            })
+        }
+        Err(error) => Err(error),
+    }
+}
+
+#[cfg(not(unix))]
+fn publication_lock_path(output_leaf: &OsStr) -> PathBuf {
     const FNV_OFFSET_BASIS: u64 = 0xcbf29ce484222325;
     const FNV_PRIME: u64 = 0x100000001b3;
 
-    // The lock lives in Morphir-owned state rather than the generated tree, so a
-    // provider cannot replace its inode. Keep it permanently: removing and
-    // recreating it could let two writers lock different inodes for the same root.
-    let portable_path = portable_path_key(&identity.to_string_lossy());
+    // Windows cannot lock directory handles, so keep a permanent sibling file on
+    // the shared output filesystem. The reserved namespace prevents a provider
+    // publishing to an ancestor from replacing its inode.
+    let portable_path = portable_path_key(&output_leaf.to_string_lossy());
     let hash = portable_path
         .as_bytes()
         .iter()
         .fold(FNV_OFFSET_BASIS, |hash, byte| {
             (hash ^ u64::from(*byte)).wrapping_mul(FNV_PRIME)
         });
-    format!("{PUBLICATION_LOCK_PREFIX}{hash:016x}.lock")
-}
-
-fn publication_lock_root() -> PathBuf {
-    dirs::runtime_dir()
-        .unwrap_or_else(std::env::temp_dir)
-        .join("morphir")
-        .join("artifact-publication")
-}
-
-fn publication_identity(output_root: &Path) -> io::Result<PathBuf> {
-    let mut candidate = std::path::absolute(output_root)?;
-    let mut missing = Vec::new();
-    loop {
-        match std::fs::canonicalize(&candidate) {
-            Ok(mut identity) => {
-                for component in missing.iter().rev() {
-                    identity.push(component);
-                }
-                return Ok(identity);
-            }
-            Err(error) if error.kind() == io::ErrorKind::NotFound => {
-                let leaf = candidate.file_name().ok_or_else(|| {
-                    io::Error::other("artifact output root has no existing ancestor")
-                })?;
-                missing.push(leaf.to_owned());
-                candidate = candidate
-                    .parent()
-                    .ok_or_else(|| {
-                        io::Error::other("artifact output root has no existing ancestor")
-                    })?
-                    .to_path_buf();
-            }
-            Err(error) => return Err(error),
-        }
-    }
+    PathBuf::from(format!("{PUBLICATION_LOCK_PREFIX}{hash:016x}.lock"))
 }
 
 fn output_root_anchor(output_root: &Path) -> io::Result<(Dir, Vec<OsString>)> {
@@ -1181,7 +1225,9 @@ fn portable_path_is_descendant(path: &Path, ancestor: &Path) -> bool {
 }
 
 fn is_reserved_internal_path(path: &str) -> bool {
-    is_reserved_manifest_path(path) || is_reserved_transaction_path(path)
+    is_reserved_manifest_path(path)
+        || is_reserved_transaction_path(path)
+        || is_reserved_publication_lock_path(path)
 }
 
 fn is_reserved_manifest_path(path: &str) -> bool {
@@ -1196,6 +1242,14 @@ fn is_reserved_manifest_path(path: &str) -> bool {
 fn is_reserved_transaction_path(path: &str) -> bool {
     path.split('/').next().is_some_and(|root_segment| {
         portable_path_key(root_segment).starts_with(&portable_path_key(TRANSACTION_PATH_PREFIX))
+    })
+}
+
+fn is_reserved_publication_lock_path(path: &str) -> bool {
+    let prefix = portable_path_key(PUBLICATION_LOCK_PREFIX);
+    path.split('/').any(|segment| {
+        let segment = portable_path_key(segment);
+        segment.starts_with(&prefix)
     })
 }
 
@@ -1310,29 +1364,21 @@ mod tests {
     }
 
     #[test]
-    fn publication_lock_is_kept_outside_the_generated_tree() {
+    fn publication_lock_does_not_leave_an_internal_artifact() {
         let parent = tempdir().unwrap();
         let output = parent.path().join("generated");
-        let lock_root = tempdir().unwrap();
 
-        ArtifactWriter::with_lock_root(&output, lock_root.path().to_path_buf())
+        ArtifactWriter::new(&output)
             .write_all(&[text("schema.avsc", "generated")])
             .unwrap();
 
-        assert!(lock_root.path().read_dir().unwrap().any(|entry| {
-            entry
+        assert_eq!(
+            fs::read_dir(&output)
                 .unwrap()
-                .file_name()
-                .to_string_lossy()
-                .starts_with(PUBLICATION_LOCK_PREFIX)
-        }));
-        assert!(!parent.path().read_dir().unwrap().any(|entry| {
-            entry
-                .unwrap()
-                .file_name()
-                .to_string_lossy()
-                .starts_with(PUBLICATION_LOCK_PREFIX)
-        }));
+                .map(|entry| entry.unwrap().file_name())
+                .collect::<BTreeSet<_>>(),
+            BTreeSet::from([OsString::from(MANIFEST_PATH), OsString::from("schema.avsc"),])
+        );
     }
 
     #[cfg(unix)]
@@ -1342,13 +1388,11 @@ mod tests {
 
         let parent = tempdir().unwrap();
         let output = parent.path().join("generated");
-        let lock_root = tempdir().unwrap();
         fs::create_dir(&output).unwrap();
         fs::set_permissions(&output, fs::Permissions::from_mode(0o700)).unwrap();
         fs::set_permissions(parent.path(), fs::Permissions::from_mode(0o500)).unwrap();
 
-        let result = ArtifactWriter::with_lock_root(&output, lock_root.path().to_path_buf())
-            .write_all(&[text("schema.avsc", "generated")]);
+        let result = ArtifactWriter::new(&output).write_all(&[text("schema.avsc", "generated")]);
 
         fs::set_permissions(parent.path(), fs::Permissions::from_mode(0o700)).unwrap();
         result.unwrap();
@@ -1471,6 +1515,21 @@ mod tests {
 
         let error = ArtifactWriter::new(output.path())
             .write_all(&[text(".MORPHIR-ARTIFACTS-provider/schema.avsc", "{}")])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("reserved"));
+        assert!(output.path().read_dir().unwrap().next().is_none());
+    }
+
+    #[test]
+    fn rejects_the_reserved_publication_lock_namespace_at_any_depth() {
+        let output = tempdir().unwrap();
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&[text(
+                "nested/.MORPHIR-ARTIFACT-PUBLICATION-provider.lock",
+                "{}",
+            )])
             .unwrap_err();
 
         assert!(error.to_string().contains("reserved"));
