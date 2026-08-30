@@ -26,7 +26,7 @@ impl DiagnosticPaths {
         Ok(Self {
             morphir_home: home.root().to_path_buf(),
             logs: home.logs_dir(),
-            cli_logs: home.cli_logs_dir(),
+            cli_logs: crate::home::effective_cli_logs_dir(&home),
             desktop_logs: home.desktop_logs_dir(),
         })
     }
@@ -59,10 +59,23 @@ struct OperationEvents {
 }
 
 fn sensitive_key(key: &str) -> bool {
-    let key = key.to_ascii_lowercase();
-    ["token", "password", "secret", "authorization", "cookie"]
-        .iter()
-        .any(|needle| key.contains(needle))
+    let key = key
+        .chars()
+        .filter(|character| character.is_ascii_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect::<String>();
+    [
+        "token",
+        "password",
+        "secret",
+        "authorization",
+        "cookie",
+        "apikey",
+        "accesskey",
+        "credential",
+    ]
+    .iter()
+    .any(|needle| key.contains(needle))
 }
 
 fn redact_text(value: &str) -> String {
@@ -125,23 +138,28 @@ fn sanitize(value: serde_json::Value) -> serde_json::Value {
     }
 }
 
-fn normalize_home(value: serde_json::Value, home: &str) -> serde_json::Value {
+fn normalize_paths(
+    value: serde_json::Value,
+    replacements: &[(&str, &'static str)],
+) -> serde_json::Value {
     match value {
         serde_json::Value::Object(values) => serde_json::Value::Object(
             values
                 .into_iter()
-                .map(|(key, value)| (key, normalize_home(value, home)))
+                .map(|(key, value)| (key, normalize_paths(value, replacements)))
                 .collect(),
         ),
         serde_json::Value::Array(values) => serde_json::Value::Array(
             values
                 .into_iter()
-                .map(|value| normalize_home(value, home))
+                .map(|value| normalize_paths(value, replacements))
                 .collect(),
         ),
-        serde_json::Value::String(value) => {
-            serde_json::Value::String(value.replace(home, "$MORPHIR_HOME"))
-        }
+        serde_json::Value::String(value) => serde_json::Value::String(
+            replacements
+                .iter()
+                .fold(value, |value, (path, label)| value.replace(path, label)),
+        ),
         value => value,
     }
 }
@@ -260,11 +278,26 @@ fn included(path: &'static str, bytes: &[u8]) -> IncludedFile {
     }
 }
 
-fn bundle_events(events: Vec<serde_json::Value>, home: &Path) -> miette::Result<Vec<u8>> {
-    let home = home.to_string_lossy();
+fn bundle_events(
+    events: Vec<serde_json::Value>,
+    home: &Path,
+    log_roots: &[PathBuf],
+) -> miette::Result<Vec<u8>> {
+    let home = home.to_string_lossy().into_owned();
+    let external_log_roots = log_roots
+        .iter()
+        .filter(|root| !root.starts_with(home.as_str()))
+        .map(|root| root.to_string_lossy().into_owned())
+        .collect::<Vec<_>>();
+    let mut replacements = vec![(home.as_str(), "$MORPHIR_HOME")];
+    replacements.extend(
+        external_log_roots
+            .iter()
+            .map(|root| (root.as_str(), "$MORPHIR_LOG_DIR")),
+    );
     let mut bytes = Vec::new();
     for event in events {
-        serde_json::to_writer(&mut bytes, &normalize_home(event, &home))
+        serde_json::to_writer(&mut bytes, &normalize_paths(event, &replacements))
             .map_err(|error| miette::miette!("Failed to serialize diagnostic event: {error}"))?;
         bytes.push(b'\n');
     }
@@ -303,6 +336,7 @@ pub fn run_diagnostics_collect(operation: &str, output: &Path) -> AppResult<miet
     let events = bundle_events(
         read_operation_events(&log_roots, operation_id.as_str()),
         home.root(),
+        &log_roots,
     )?;
     let system = serde_json::to_vec_pretty(&BundleSystem {
         schema_version: 1,

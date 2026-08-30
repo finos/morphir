@@ -802,6 +802,24 @@ fn diagnostics_path_reports_shared_log_locations() {
 }
 
 #[test]
+fn diagnostics_path_reports_the_effective_cli_log_directory() {
+    let temp_dir = TempDir::new().unwrap();
+    let morphir_home = temp_dir.path().join("relocated-home");
+    let cli_logs = temp_dir.path().join("managed-cli-logs");
+
+    let output = morphir_command()
+        .args(["diagnostics", "path", "--json"])
+        .env("MORPHIR_HOME", &morphir_home)
+        .env("MORPHIR_LOG_DIR", &cli_logs)
+        .output()
+        .expect("failed to run morphir binary");
+
+    assert!(output.status.success());
+    let paths: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(paths["cliLogs"], cli_logs.to_string_lossy().as_ref());
+}
+
+#[test]
 fn diagnostics_show_finds_correlated_events_and_redacts_legacy_secrets() {
     let temp_dir = TempDir::new().unwrap();
     let morphir_home = temp_dir.path().join("relocated-home");
@@ -815,7 +833,11 @@ fn diagnostics_show_finds_correlated_events_and_redacts_legacy_secrets() {
             "fields": {
                 "operation_id": operation_id,
                 "event_name": "desktop.session.start",
-                "authorization": "Bearer SHOULD_NOT_ESCAPE"
+                "authorization": "Bearer SHOULD_NOT_ESCAPE",
+                "apiKey": "CAMEL_API_KEY_SHOULD_NOT_ESCAPE",
+                "api_key": "SNAKE_API_KEY_SHOULD_NOT_ESCAPE",
+                "accessKey": "ACCESS_KEY_SHOULD_NOT_ESCAPE",
+                "credential": "CREDENTIAL_SHOULD_NOT_ESCAPE"
             }
         }),
         serde_json::json!({
@@ -857,6 +879,9 @@ fn diagnostics_show_finds_correlated_events_and_redacts_legacy_secrets() {
         "desktop.session.start"
     );
     assert_eq!(shown["events"][0]["fields"]["authorization"], "[REDACTED]");
+    for field in ["apiKey", "api_key", "accessKey", "credential"] {
+        assert_eq!(shown["events"][0]["fields"][field], "[REDACTED]");
+    }
     assert!(!String::from_utf8_lossy(&output.stdout).contains("SHOULD_NOT_ESCAPE"));
 }
 
@@ -904,7 +929,8 @@ fn diagnostics_collect_creates_an_inspectable_sanitized_archive() {
 
     let temp_dir = TempDir::new().unwrap();
     let morphir_home = temp_dir.path().join("private-user-home").join(".morphir");
-    let log_dir = morphir_home.join("logs").join("cli").join("2026-08-30");
+    let cli_log_root = temp_dir.path().join("private-user-logs");
+    let log_dir = cli_log_root.join("2026-08-30");
     std::fs::create_dir_all(&log_dir).unwrap();
     let operation_id = "op-123e4567-e89b-42d3-a456-426614174000";
     std::fs::write(
@@ -916,6 +942,7 @@ fn diagnostics_collect_creates_an_inspectable_sanitized_archive() {
                 "operation_id": operation_id,
                 "event_name": "tool.resolve",
                 "path": morphir_home.join("store/tools").to_string_lossy(),
+                "log_path": log_dir.join("fixture.jsonl").to_string_lossy(),
                 "token": "BUNDLE_SECRET_SENTINEL",
                 "source_url": "https://alice:hunter2@example.com/artifact"
             }
@@ -935,6 +962,7 @@ fn diagnostics_collect_creates_an_inspectable_sanitized_archive() {
             bundle.to_str().unwrap(),
         ])
         .env("MORPHIR_HOME", &morphir_home)
+        .env("MORPHIR_LOG_DIR", &cli_log_root)
         .output()
         .expect("failed to run morphir binary");
 
@@ -964,6 +992,8 @@ fn diagnostics_collect_creates_an_inspectable_sanitized_archive() {
     assert!(combined.contains("https://[REDACTED]@example.com/artifact"));
     assert!(!combined.contains(&morphir_home.to_string_lossy().to_string()));
     assert!(combined.contains("$MORPHIR_HOME"));
+    assert!(!combined.contains(&cli_log_root.to_string_lossy().to_string()));
+    assert!(combined.contains("$MORPHIR_LOG_DIR"));
 
     let manifest: serde_json::Value = serde_json::from_slice(&entries["manifest.json"]).unwrap();
     assert_eq!(manifest["operationId"], operation_id);
