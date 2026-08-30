@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 const MAX_DIAGNOSTIC_EVENTS: usize = 10_000;
+const MAX_DIAGNOSTIC_EVENT_BYTES: usize = 16 * 1024 * 1024;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -73,6 +74,8 @@ fn sensitive_key(key: &str) -> bool {
         "apikey",
         "accesskey",
         "credential",
+        "privatekey",
+        "passphrase",
     ]
     .iter()
     .any(|needle| key.contains(needle))
@@ -173,6 +176,7 @@ pub(crate) fn sanitize_text(value: &str) -> String {
         || contains_authorization_header(value)
         || lower.contains("ghp_")
         || lower.contains("github_pat_")
+        || (lower.contains("-----begin ") && lower.contains("private key-----"))
         || lower.contains("password=")
         || lower.contains("token=")
         || lower.contains("secret=")
@@ -225,11 +229,10 @@ fn redact_unknown_absolute_paths(value: &str) -> String {
             .char_indices()
             .skip(1)
             .find(|(_, character)| {
-                character.is_whitespace()
-                    || matches!(
-                        character,
-                        '\'' | '"' | ',' | ';' | ')' | ']' | '}' | '<' | '>'
-                    )
+                matches!(
+                    character,
+                    '\r' | '\n' | '\'' | '"' | ',' | ';' | ')' | ']' | '}' | '<' | '>'
+                )
             })
             .map(|(offset, _)| start + offset)
             .unwrap_or(value.len());
@@ -343,6 +346,20 @@ where
 }
 
 fn read_operation_events(log_roots: &[PathBuf], operation_id: &str) -> Vec<serde_json::Value> {
+    read_operation_events_with_limits(
+        log_roots,
+        operation_id,
+        MAX_DIAGNOSTIC_EVENTS,
+        MAX_DIAGNOSTIC_EVENT_BYTES,
+    )
+}
+
+fn read_operation_events_with_limits(
+    log_roots: &[PathBuf],
+    operation_id: &str,
+    max_events: usize,
+    max_bytes: usize,
+) -> Vec<serde_json::Value> {
     let log_files = log_roots
         .iter()
         .flat_map(|root| WalkDir::new(root).follow_links(false).into_iter())
@@ -356,23 +373,32 @@ fn read_operation_events(log_roots: &[PathBuf], operation_id: &str) -> Vec<serde
         })
         .map(|entry| entry.into_path());
     let mut events = Vec::new();
+    let mut retained_bytes = 0usize;
+    let mut budget_exhausted = max_events == 0 || max_bytes == 0;
     for path in log_files {
-        if events.len() >= MAX_DIAGNOSTIC_EVENTS {
+        if events.len() >= max_events || budget_exhausted {
             break;
         }
         let Ok(file) = File::open(path) else {
             continue;
         };
         let _ = for_each_bounded_line(BufReader::new(file), 1024 * 1024, |line| {
-            if events.len() >= MAX_DIAGNOSTIC_EVENTS {
+            if events.len() >= max_events || budget_exhausted {
                 return false;
             }
             if let Ok(event) = serde_json::from_slice::<serde_json::Value>(line)
                 && belongs_to_operation(&event, operation_id)
             {
+                let next_size = retained_bytes.saturating_add(line.len());
+                if next_size > max_bytes {
+                    budget_exhausted = true;
+                    return false;
+                }
+                retained_bytes = next_size;
                 events.push(sanitize(event));
+                budget_exhausted = retained_bytes >= max_bytes;
             }
-            events.len() < MAX_DIAGNOSTIC_EVENTS
+            events.len() < max_events && !budget_exhausted
         });
     }
     events.sort_by(|left, right| left["timestamp"].as_str().cmp(&right["timestamp"].as_str()));
@@ -597,8 +623,12 @@ pub fn run_diagnostics_collect(operation: &str, output: &Path) -> AppResult<miet
 
 #[cfg(test)]
 mod tests {
-    use super::{for_each_bounded_line, normalize_paths, sanitize_text};
+    use super::{
+        for_each_bounded_line, normalize_paths, read_operation_events_with_limits, sanitize,
+        sanitize_text,
+    };
     use std::io::{BufReader, Cursor};
+    use tempfile::TempDir;
 
     #[test]
     fn bounded_reader_discards_an_oversized_record_and_resumes() {
@@ -641,8 +671,16 @@ mod tests {
             "api_key: LIVE_SECRET",
             "client-secret: LIVE_SECRET",
             "Authorization:Basic dXNlcjpwYXNz",
+            "-----BEGIN PRIVATE KEY-----\nLIVE_SECRET\n-----END PRIVATE KEY-----",
         ] {
             assert_eq!(sanitize_text(value), "[REDACTED]");
+        }
+
+        for key in ["privateKey", "private_key", "passphrase"] {
+            assert_eq!(
+                sanitize(serde_json::json!({ key: "LIVE_SECRET" }))[key],
+                "[REDACTED]"
+            );
         }
     }
 
@@ -664,18 +702,50 @@ mod tests {
     fn diagnostic_bundles_redact_unknown_absolute_paths_on_all_platforms() {
         let value = serde_json::json!({
             "posix": "failed to open /Users/alice/company/model.json",
+            "spaces": "failed to open /Users/alice/Client Merger/model.json",
             "drive": r"failed to open C:\Users\alice\company\model.json",
             "unc": r"failed to open \\fileserver\private\model.json",
             "known": r"C:\Users\alice\.morphir\store\tools",
         });
         let normalized = normalize_paths(value, &[(r"C:\Users\alice\.morphir", "$MORPHIR_HOME")]);
 
-        for field in ["posix", "drive", "unc"] {
+        for field in ["posix", "spaces", "drive", "unc"] {
             assert_eq!(
                 normalized[field], "failed to open $ABSOLUTE_PATH",
                 "field {field} should not expose an absolute path"
             );
         }
         assert_eq!(normalized["known"], r"$MORPHIR_HOME\store\tools");
+    }
+
+    #[test]
+    fn diagnostic_event_ingestion_stops_at_the_aggregate_byte_budget() {
+        let temp_dir = TempDir::new().unwrap();
+        let operation_id = "op-123e4567-e89b-42d3-a456-426614174000";
+        let first = serde_json::json!({
+            "timestamp": "2026-08-30T03:04:05Z",
+            "fields": { "operation_id": operation_id, "message": "first" }
+        })
+        .to_string();
+        let second = serde_json::json!({
+            "timestamp": "2026-08-30T03:04:06Z",
+            "fields": { "operation_id": operation_id, "message": "second" }
+        })
+        .to_string();
+        std::fs::write(
+            temp_dir.path().join("events.jsonl"),
+            format!("{first}\n{second}\n"),
+        )
+        .unwrap();
+
+        let events = read_operation_events_with_limits(
+            &[temp_dir.path().to_path_buf()],
+            operation_id,
+            10,
+            first.len(),
+        );
+
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0]["fields"]["message"], "first");
     }
 }
