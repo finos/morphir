@@ -144,19 +144,63 @@ fn sensitive_long_option(value: &str) -> bool {
         .is_some_and(sensitive_key)
 }
 
+fn sensitive_long_option_consumes_next(value: &str) -> bool {
+    let option = value.trim_matches(|character| {
+        matches!(
+            character,
+            '\'' | '"' | '[' | ']' | '(' | ')' | '{' | '}' | ','
+        )
+    });
+    sensitive_long_option(option) && !option.contains('=')
+}
+
+fn url_scheme_start_before(value: &str, marker: usize) -> Option<usize> {
+    let start = value[..marker]
+        .char_indices()
+        .rev()
+        .find(|(_, character)| {
+            !(character.is_ascii_alphanumeric() || matches!(character, '+' | '-' | '.'))
+        })
+        .map(|(index, character)| index + character.len_utf8())
+        .unwrap_or(0);
+    let scheme = &value[start..marker];
+    scheme
+        .chars()
+        .next()
+        .is_some_and(|first| first.is_ascii_alphabetic())
+        .then_some(start)
+}
+
+fn url_token_end(value: &str, authority_start: usize) -> usize {
+    let delimiter = value[authority_start..]
+        .char_indices()
+        .find(|(_, character)| {
+            character.is_whitespace() || matches!(character, '\'' | '"' | '<' | '>')
+        })
+        .map(|(index, _)| authority_start + index)
+        .unwrap_or(value.len());
+    value[authority_start..delimiter]
+        .match_indices("://")
+        .find_map(|(index, _)| {
+            url_scheme_start_before(value, authority_start + index)
+                .filter(|start| *start >= authority_start)
+        })
+        .unwrap_or(delimiter)
+}
+
+fn url_scheme_starts_at(value: &str, start: usize) -> bool {
+    value[start..]
+        .find("://")
+        .is_some_and(|marker| url_scheme_start_before(value, start + marker) == Some(start))
+}
+
 fn redact_urls(value: &str) -> String {
     let mut redacted = value.to_owned();
     let mut search_from = 0;
 
     while let Some(marker) = redacted[search_from..].find("://") {
         let authority_start = search_from + marker + 3;
-        let token_end = redacted[authority_start..]
-            .char_indices()
-            .find(|(_, character)| {
-                character.is_whitespace() || matches!(character, '\'' | '"' | '<' | '>')
-            })
-            .map(|(index, _)| authority_start + index)
-            .unwrap_or(redacted.len());
+        let token_end = url_token_end(&redacted, authority_start);
         let authority_end = redacted[authority_start..token_end]
             .char_indices()
             .find(|(_, character)| matches!(character, '/' | '?' | '#'))
@@ -172,19 +216,20 @@ fn redact_urls(value: &str) -> String {
                 authority_start
             };
 
-        let token_end = redacted[authority_start..]
-            .char_indices()
-            .find(|(_, character)| {
-                character.is_whitespace() || matches!(character, '\'' | '"' | '<' | '>')
-            })
-            .map(|(index, _)| authority_start + index)
-            .unwrap_or(redacted.len());
+        let token_end = url_token_end(&redacted, authority_start);
         if let Some(boundary) = redacted[authority_start..token_end]
             .char_indices()
             .find(|(_, character)| matches!(character, '?' | '#'))
             .map(|(index, _)| authority_start + index)
         {
-            redacted.replace_range(boundary..token_end, "");
+            let replacement_end = if url_scheme_starts_at(&redacted, token_end)
+                && redacted[..token_end].ends_with('|')
+            {
+                token_end - 1
+            } else {
+                token_end
+            };
+            redacted.replace_range(boundary..replacement_end, "");
             search_from = boundary;
         } else {
             // Resume inside the current URL so every later scheme is inspected,
@@ -309,7 +354,9 @@ fn sanitize_array(values: Vec<serde_json::Value>) -> Vec<serde_json::Value> {
                 redact_next = false;
                 return serde_json::Value::String("[REDACTED]".to_owned());
             }
-            redact_next = value.as_str().is_some_and(sensitive_long_option);
+            redact_next = value
+                .as_str()
+                .is_some_and(sensitive_long_option_consumes_next);
             sanitize(value)
         })
         .collect()
@@ -333,13 +380,41 @@ fn normalize_paths(
                 .collect(),
         ),
         serde_json::Value::String(value) => {
-            let normalized = replacements
-                .iter()
-                .fold(value, |value, (path, label)| value.replace(path, label));
+            let normalized = replacements.iter().fold(value, |value, (path, label)| {
+                replace_known_path(&value, path, label)
+            });
             serde_json::Value::String(redact_unknown_absolute_paths(&normalized))
         }
         value => value,
     }
+}
+
+fn replace_known_path(value: &str, path: &str, label: &str) -> String {
+    if path.is_empty() {
+        return value.to_owned();
+    }
+    let mut result = String::with_capacity(value.len());
+    let mut copied_through = 0;
+    let mut search_from = 0;
+
+    while let Some(relative_start) = value[search_from..].find(path) {
+        let start = search_from + relative_start;
+        let end = start + path.len();
+        let boundary_after = end == value.len()
+            || value[end..]
+                .chars()
+                .next()
+                .is_some_and(|character| matches!(character, '/' | '\\'));
+        if path_boundary_before(value, start) && boundary_after {
+            result.push_str(&value[copied_through..start]);
+            result.push_str(label);
+            copied_through = end;
+        }
+        search_from = end;
+    }
+
+    result.push_str(&value[copied_through..]);
+    result
 }
 
 fn belongs_to_operation(event: &serde_json::Value, operation_id: &str) -> bool {
@@ -748,7 +823,9 @@ mod tests {
                 "--password",
                 1234,
                 "--token",
-                "--verbose"
+                "--verbose",
+                "--api-key=INLINE_SECRET",
+                "input.json"
             ]
         }));
 
@@ -757,6 +834,8 @@ mod tests {
         assert_eq!(sanitized["args"][3], "public.json");
         assert_eq!(sanitized["args"][5], "[REDACTED]");
         assert_eq!(sanitized["args"][7], "--verbose");
+        assert_eq!(sanitized["args"][8], "[REDACTED]");
+        assert_eq!(sanitized["args"][9], "input.json");
     }
 
     #[test]
@@ -771,6 +850,10 @@ mod tests {
             sanitize_text("https://alice:hunter,2@example.com/artifact"),
             "https://[REDACTED]@example.com/artifact"
         );
+        assert_eq!(
+            sanitize_text("https://first.example?a=1|https://second.example/status"),
+            "https://first.example|https://second.example/status"
+        );
     }
 
     #[test]
@@ -782,9 +865,16 @@ mod tests {
             "drive": r"failed to open C:\Users\alice\company\model.json",
             "unc": r"failed to open \\fileserver\private\model.json",
             "known": r"C:\Users\alice\.morphir\store\tools",
+            "near_prefix": "/Users/alice/.morphir-project/client/model.json",
             "with_error": "failed to open /Users/alice/company/model.json: permission denied",
         });
-        let normalized = normalize_paths(value, &[(r"C:\Users\alice\.morphir", "$MORPHIR_HOME")]);
+        let normalized = normalize_paths(
+            value,
+            &[
+                (r"C:\Users\alice\.morphir", "$MORPHIR_HOME"),
+                ("/Users/alice/.morphir", "$MORPHIR_HOME"),
+            ],
+        );
 
         for field in ["posix", "spaces", "punctuation", "drive", "unc"] {
             assert_eq!(
@@ -793,6 +883,7 @@ mod tests {
             );
         }
         assert_eq!(normalized["known"], r"$MORPHIR_HOME\store\tools");
+        assert_eq!(normalized["near_prefix"], "$ABSOLUTE_PATH");
         assert_eq!(
             normalized["with_error"],
             "failed to open $ABSOLUTE_PATH: permission denied"
