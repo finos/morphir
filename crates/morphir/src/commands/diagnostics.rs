@@ -68,6 +68,7 @@ fn sensitive_key(key: &str) -> bool {
     [
         "token",
         "password",
+        "passwd",
         "secret",
         "authorization",
         "cookie",
@@ -691,6 +692,8 @@ mod tests {
             "access-key=LIVE_SECRET",
             "credential=LIVE_SECRET",
             "password: hunter2",
+            "passwd=hunter2",
+            "request failed: --passwd hunter2",
             "api_key: LIVE_SECRET",
             "client-secret: LIVE_SECRET",
             r#"request body: {"password":"hunter2"}"#,
