@@ -307,9 +307,9 @@ Contains definitions directly:
     "ExpressionBody": {
       "inputTypes": {
         "email": "morphir/SDK:string#string",
-        "users": ["morphir/SDK:list#list", "my-org/domain:types#user"]
+        "users": { "Reference": ["morphir/SDK:list#list", "my-org/domain:types#user"] }
       },
-      "outputType": ["morphir/SDK:maybe#maybe", "my-org/domain:types#user"],
+      "outputType": { "Reference": ["morphir/SDK:maybe#maybe", "my-org/domain:types#user"] },
       "body": {
         "Apply": {
           "attributes": {},
@@ -335,11 +335,11 @@ Contains definitions directly:
 
 > **Note on Type Reference Formats:**
 >
-> Type references in `inputTypes`, `outputType`, and `typeExp` fields can use either:
-> - **Canonical string format**: `"morphir/SDK:string#string"` (preferred, more compact)
-> - **Array format**: `["morphir/SDK:list#list", "my-org/domain:types#user"]` (for parameterized types)
+> Type references in `inputTypes`, `outputType`, and `typeExp` fields are written as:
+> - **Bare FQName string** for a reference with no type arguments: `"morphir/SDK:string#string"`
+> - **`Reference` wrapper** for a parameterized reference: `{ "Reference": ["morphir/SDK:list#list", "my-org/domain:types#user"] }`, where the first element is the type constructor and the rest are its arguments
 >
-> Both formats are valid. The canonical string format is preferred for simple types, while array format is used for parameterized types where the first element is the type constructor and subsequent elements are type arguments.
+> A **bare array is a tuple**, not a reference. `["morphir/SDK:basics#int", "morphir/SDK:string#string"]` is the pair `(Int, String)`. That is what keeps the two forms unambiguous: a tuple of two plain types and a reference with one argument would otherwise have the same shape, so a parameterized reference always carries the wrapper.
 
 **Example (Definition with NativeBody)**:
 ```json
@@ -626,7 +626,7 @@ When type/value files are part of a PackageSpecification:
         "url": "morphir/SDK:string#string",
         "payload": "morphir/SDK:json#json"
       },
-      "outputType": ["morphir/SDK:result#result", "morphir/SDK:json#json", "morphir/SDK:string#string"],
+      "outputType": { "Reference": ["morphir/SDK:result#result", "morphir/SDK:json#json", "morphir/SDK:string#string"] },
       "externalInfo": {
         "provider": "http",
         "endpoint": "/api/v1/data",
@@ -888,9 +888,9 @@ When type/value files are part of a PackageSpecification:
     "ExpressionBody": {
       "inputTypes": {
         "email": "morphir/SDK:string#string",
-        "users": ["morphir/SDK:list#list", "my-org/domain:types#user"]
+        "users": { "Reference": ["morphir/SDK:list#list", "my-org/domain:types#user"] }
       },
-      "outputType": ["morphir/SDK:maybe#maybe", "my-org/domain:types#user"],
+      "outputType": { "Reference": ["morphir/SDK:maybe#maybe", "my-org/domain:types#user"] },
       "body": {
         "Apply": {
           "attributes": {},

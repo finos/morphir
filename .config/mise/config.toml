@@ -43,6 +43,28 @@ else
     echo "Initializing development environment..."
     git submodule update --init --recursive
 fi
+
+# Long path support. An IR v4 document tree nests package, module and definition
+# names, and the default path budget assumes long paths are available. On Windows
+# two separate switches gate that, and both are off by default.
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+    if [[ "$(git config --get core.longpaths)" != "true" ]]; then
+        echo ""
+        echo "warning: git core.longpaths is not enabled."
+        echo "  Git for Windows ships with it off, so a checkout fails past 260 characters"
+        echo "  even when Windows itself allows long paths. Enable it with:"
+        echo ""
+        echo "    git config --global core.longpaths true"
+        echo ""
+        echo "  Windows also needs LongPathsEnabled, set once per machine as administrator:"
+        echo ""
+        echo "    Set-ItemProperty 'HKLM:\\\\SYSTEM\\\\CurrentControlSet\\\\Control\\\\FileSystem' \\\\"
+        echo "      -Name LongPathsEnabled -Value 1"
+        echo ""
+        echo "  Without both, write document trees with the portable path budget:"
+        echo "  set pathBudget to 200 in the distribution manifest. See docs/spec/draft/names.md."
+    fi
+fi
 """
 
 # ===== Formatting Tasks =====
