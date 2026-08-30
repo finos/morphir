@@ -22,9 +22,8 @@ impl OperationId {
 
     /// Parse an identifier previously reported by Morphir.
     pub fn parse(value: &str) -> Option<Self> {
-        let uuid = value.strip_prefix("op-")?;
-        uuid::Uuid::parse_str(uuid).ok()?;
-        Some(Self(value.to_owned()))
+        let uuid = uuid::Uuid::parse_str(value.strip_prefix("op-")?).ok()?;
+        Some(Self(format!("op-{uuid}")))
     }
 }
 
@@ -54,5 +53,13 @@ mod tests {
         uuid::Uuid::parse_str(first.as_str().trim_start_matches("op-")).unwrap();
         assert_eq!(OperationId::parse(first.as_str()), Some(first));
         assert!(OperationId::parse("bad-operation").is_none());
+    }
+
+    #[test]
+    fn parsed_operation_ids_use_the_canonical_logged_spelling() {
+        let canonical = "op-123e4567-e89b-42d3-a456-426614174abc";
+        let uppercase = "op-123E4567-E89B-42D3-A456-426614174ABC";
+
+        assert_eq!(OperationId::parse(uppercase).unwrap().as_str(), canonical);
     }
 }

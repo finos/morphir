@@ -473,7 +473,8 @@ fn sanitize(value: serde_json::Value) -> serde_json::Value {
                     .into_iter()
                     .map(|(key, value)| {
                         let value = if sensitive_key(&key)
-                            || (redact_named_value && normalized_key(&key) == "value")
+                            || (redact_named_value
+                                && matches!(normalized_key(&key).as_str(), "value" | "values"))
                         {
                             serde_json::Value::String("[REDACTED]".to_owned())
                         } else {
@@ -527,7 +528,12 @@ fn normalize_paths(
         serde_json::Value::Object(values) => serde_json::Value::Object(
             values
                 .into_iter()
-                .map(|(key, value)| (key, normalize_paths(value, replacements)))
+                .map(|(key, value)| {
+                    (
+                        normalize_path_text(&key, replacements),
+                        normalize_paths(value, replacements),
+                    )
+                })
                 .collect(),
         ),
         serde_json::Value::Array(values) => serde_json::Value::Array(
@@ -537,13 +543,19 @@ fn normalize_paths(
                 .collect(),
         ),
         serde_json::Value::String(value) => {
-            let normalized = replacements.iter().fold(value, |value, (path, label)| {
-                replace_known_path(&value, path, label)
-            });
-            serde_json::Value::String(redact_unknown_absolute_paths(&normalized))
+            serde_json::Value::String(normalize_path_text(&value, replacements))
         }
         value => value,
     }
+}
+
+fn normalize_path_text(value: &str, replacements: &[(&str, &'static str)]) -> String {
+    let normalized = replacements
+        .iter()
+        .fold(value.to_owned(), |value, (path, label)| {
+            replace_known_path(&value, path, label)
+        });
+    redact_unknown_absolute_paths(&normalized)
 }
 
 fn replace_known_path(value: &str, path: &str, label: &str) -> String {
@@ -586,12 +598,13 @@ fn operation_log_roots(home: &crate::home::MorphirHome) -> [PathBuf; 2] {
     ]
 }
 
-fn for_each_bounded_line<R, F>(mut reader: R, max_len: usize, mut visit: F) -> std::io::Result<()>
+fn for_each_bounded_line<R, F>(mut reader: R, max_len: usize, mut visit: F) -> std::io::Result<bool>
 where
     R: BufRead,
     F: FnMut(&[u8]) -> bool,
 {
     let read_limit = u64::try_from(max_len).unwrap_or(u64::MAX).saturating_add(2);
+    let mut omitted = false;
     loop {
         let mut line = Vec::with_capacity(max_len.min(8 * 1024));
         let read = reader
@@ -599,7 +612,7 @@ where
             .take(read_limit)
             .read_until(b'\n', &mut line)?;
         if read == 0 {
-            return Ok(());
+            return Ok(omitted);
         }
 
         let terminated = line.last() == Some(&b'\n');
@@ -610,6 +623,7 @@ where
             }
         }
         if line.len() > max_len {
+            omitted = true;
             if !terminated {
                 reader.skip_until(b'\n')?;
             }
@@ -617,10 +631,10 @@ where
         }
 
         if !visit(&line) {
-            return Ok(());
+            return Ok(omitted);
         }
         if !terminated {
-            return Ok(());
+            return Ok(omitted);
         }
     }
 }
@@ -719,7 +733,7 @@ fn read_operation_events_with_limits(
         if starts_inside_line && reader.skip_until(b'\n').is_err() {
             continue;
         }
-        let _ = for_each_bounded_line(reader, 1024 * 1024, |line| {
+        let scan_result = for_each_bounded_line(reader, 1024 * 1024, |line| {
             if let Ok(event) = serde_json::from_slice::<serde_json::Value>(line)
                 && belongs_to_operation(&event, operation_id)
             {
@@ -744,6 +758,9 @@ fn read_operation_events_with_limits(
             }
             true
         });
+        if scan_result.is_err() || scan_result.is_ok_and(|omitted| omitted) {
+            truncated = true;
+        }
     }
     let mut events = events
         .into_iter()
@@ -1005,12 +1022,13 @@ mod tests {
         let reader = BufReader::with_capacity(8, Cursor::new(input));
         let mut lines = Vec::new();
 
-        for_each_bounded_line(reader, 16, |line| {
+        let omitted = for_each_bounded_line(reader, 16, |line| {
             lines.push(line.to_vec());
             true
         })
         .unwrap();
 
+        assert!(omitted);
         assert_eq!(lines, [b"kept".as_slice()]);
     }
 
@@ -1019,12 +1037,13 @@ mod tests {
         let reader = BufReader::new(Cursor::new(b"first\nsecond\nthird\n"));
         let mut lines = Vec::new();
 
-        for_each_bounded_line(reader, 16, |line| {
+        let omitted = for_each_bounded_line(reader, 16, |line| {
             lines.push(line.to_vec());
             false
         })
         .unwrap();
 
+        assert!(!omitted);
         assert_eq!(lines, [b"first".as_slice()]);
     }
 
@@ -1152,6 +1171,7 @@ mod tests {
             "headers": [
                 { "name": "x-api-key", "value": "LIVE_SECRET" },
                 { "key": "authorization", "value": "Bearer LIVE_SECRET" },
+                { "name": "x-api-key", "values": ["LIVE_SECRET"] },
                 { "name": "content-type", "value": "application/json" }
             ]
         }));
@@ -1160,7 +1180,8 @@ mod tests {
         assert_eq!(sanitized["headers"][0]["value"], "[REDACTED]");
         assert_eq!(sanitized["headers"][1]["key"], "authorization");
         assert_eq!(sanitized["headers"][1]["value"], "[REDACTED]");
-        assert_eq!(sanitized["headers"][2]["value"], "application/json");
+        assert_eq!(sanitized["headers"][2]["values"], "[REDACTED]");
+        assert_eq!(sanitized["headers"][3]["value"], "application/json");
     }
 
     #[test]
@@ -1231,6 +1252,10 @@ mod tests {
             "known": r"C:\Users\alice\.morphir\store\tools",
             "near_prefix": "/Users/alice/.morphir-project/client/model.json",
             "with_error": "failed to open /Users/alice/company/model.json: permission denied",
+            "files": {
+                "/Users/alice/private/model.json": "failed",
+                r"C:\Users\alice\.morphir\store\tools": "known"
+            },
         });
         let normalized = normalize_paths(
             value,
@@ -1263,6 +1288,38 @@ mod tests {
             normalized["wrapped"],
             "failed to open ($ABSOLUTE_PATH): permission denied"
         );
+        assert_eq!(normalized["files"]["$ABSOLUTE_PATH"], "failed");
+        assert_eq!(normalized["files"][r"$MORPHIR_HOME\store\tools"], "known");
+    }
+
+    #[test]
+    fn diagnostic_event_ingestion_marks_oversized_records_as_truncated() {
+        let temp_dir = TempDir::new().unwrap();
+        let operation_id = "op-123e4567-e89b-42d3-a456-426614174000";
+        let oversized = serde_json::json!({
+            "timestamp": "2026-08-30T03:04:06Z",
+            "fields": {
+                "operation_id": operation_id,
+                "message": "x".repeat(1024 * 1024)
+            }
+        })
+        .to_string();
+        std::fs::write(
+            temp_dir.path().join("events.jsonl"),
+            format!("{oversized}\n"),
+        )
+        .unwrap();
+
+        let selected = read_operation_events_with_limits(
+            &[temp_dir.path().to_path_buf()],
+            operation_id,
+            10,
+            usize::MAX,
+            usize::MAX,
+        );
+
+        assert!(selected.truncated);
+        assert!(selected.events.is_empty());
     }
 
     #[test]
