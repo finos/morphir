@@ -1,7 +1,9 @@
 use chrono::{DateTime, Utc};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+use morphir_common::home::MorphirHome;
 use morphir_distribution::{
-    Channel, Platform, Selection, Sha256Digest, ToolId, TrustedToolRepository,
+    Channel, Platform, Selection, Sha256Digest, ToolId, ToolInstaller, ToolPackageStore,
+    TrustedToolRepository, activate_installed_tool,
 };
 use semver::{Version, VersionReq};
 use serde_json::Value;
@@ -451,6 +453,25 @@ async fn signed_fixture_drives_the_runtime_tuf_client_and_verified_download() {
     let bytes = std::fs::read(downloaded.path()).unwrap();
     assert_eq!(Sha256Digest::of_bytes(&bytes), *resolved.digest());
     assert_eq!(bytes.len() as u64, resolved.length());
+
+    let home_path = repository_root.path().join("home");
+    let home = MorphirHome::resolve_from(Some(home_path.as_os_str()), None).unwrap();
+    let package = ToolPackageStore::new(&home)
+        .prepare(resolved, downloaded)
+        .unwrap();
+    let installed = ToolInstaller::new(&home).install(package).unwrap();
+    assert_eq!(installed.version(), &Version::parse("1.0.0").unwrap());
+
+    drop(repository);
+    std::fs::remove_dir_all(&metadata).unwrap();
+    std::fs::remove_dir_all(&targets).unwrap();
+    std::fs::remove_dir_all(&downloads).unwrap();
+    let launch = activate_installed_tool(&home, &ToolId::parse("desktop").unwrap()).unwrap();
+    assert!(
+        std::fs::read(launch.program())
+            .unwrap()
+            .starts_with(b"fixture signed desktop executable ")
+    );
 }
 
 fn write_canonical_json(path: &std::path::Path, value: &Value) {

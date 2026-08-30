@@ -199,7 +199,7 @@
       "signatures": [
         {
           "keyid": "33d640627f662f5d8685bd81f41b17429e8c75069ddae1d70f2d324bef86f608",
-          "sig": "59816e1a1a2292fbd930d47281a53ec8d4f1f44a534a28e66767d3a46f1a2df940b92426afc8a5ed718666ba953a26da1ade17df28320ed418a0796d032cce07"
+          "sig": "d3c95cb9d64b4aaaecf477378ef266aa98272af4dfcdef84c19631c607fe3391c70ebb5f0dadf8ea08c1436896c3cc238ba802763cb2f6a965c87e23a9c2930b"
         }
       ],
       "signed": {
@@ -212,7 +212,7 @@
             "version": 1,
             "length": 468,
             "hashes": {
-              "sha256": "bfd6cc27f2bdcde54f39d674e67602183b629f3d9d3e984a0470b2bf1c5e7b68"
+              "sha256": "9e72c6d42bfcda31b6a7c26c469a44113e9a235151b1e13c33cbf2cb9d76f565"
             }
           }
         }
@@ -222,7 +222,7 @@
       "signatures": [
         {
           "keyid": "fcc01ce3c4a0930ae0d007ff151a49f7a8a86409c23c937924ac53a8a1f9ac8b",
-          "sig": "3c50c1444f3c64cb05241ec2f65cd0a18dda7d103e9416138b043404348ecdab6fa090166b1d8bf1bee2a21f19afb00f4f8ab521cb09fa25b36d01cc4f561c02"
+          "sig": "05301accde30a69d9f5a839041fc4acaada5daaf73291fccfd4d2f521d406ba03a2fa062feb841bcc81b71480044a29e3c09da06c5d9fc0ec40b341ab2c8b108"
         }
       ],
       "signed": {
@@ -233,9 +233,9 @@
         "meta": {
           "targets.json": {
             "version": 1,
-            "length": 2712,
+            "length": 2713,
             "hashes": {
-              "sha256": "6f530c37cd8f054b55283a825e8cc1dc5b9e901c058a90209b965fde8f55014a"
+              "sha256": "5a49d79649dfddac3430612fd389bb624067c85e237553623ee967ee958d225a"
             }
           }
         }
@@ -245,7 +245,7 @@
       "signatures": [
         {
           "keyid": "48fb161d03445e4d97155a96ee648f3af8dfe3ad562c76e582dd665b42eb913b",
-          "sig": "8181cef5581dd9f7717646d069df6def6c9306a51cedd289cc2cc25ad43e99fb8a52a8b23c1d2070bea5669e4ce4b6c622c74a506e756a672903fab11fcd1000"
+          "sig": "dcb484ae7a0655a41f23291bccf2e9a8be2db395c96c2e434713578844534ebdea76f9d785539334cdc5ed3b3b0bbb1467020f5223e9f02d905067b34ef3400b"
         }
       ],
       "signed": {
@@ -338,9 +338,9 @@
             }
           },
           "artifacts/desktop/1.0.0/windows-x86_64.zip": {
-            "length": 37,
+            "length": 173,
             "hashes": {
-              "sha256": "01927af6444604d34547f8e427a8bf923f55398c4e2bc45bcea78e075c5a91b0"
+              "sha256": "05922da261be12028a200e541109e2b2baedc1181b3826855e28ed3296cb074d"
             },
             "custom": {
               "morphir": {
@@ -417,7 +417,7 @@
     "releases/desktop/0.9.0.json": "{\"artifacts\":[],\"channels\":[],\"compatibility\":{\"morphirCli\":\">=0.4.0-alpha.5, <0.5.0\"},\"kind\":\"morphir-tool-release\",\"schemaVersion\":1,\"status\":\"revoked\",\"tool\":{\"id\":\"desktop\",\"name\":\"Morphir Desktop\"},\"version\":\"0.9.0\"}",
     "releases/desktop/1.0.0.json": "{\"artifacts\":[{\"archive\":{\"entryPoint\":\"Morphir Desktop.exe\",\"format\":\"zip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"Morphir Desktop.exe\"},\"platform\":{\"arch\":\"x86_64\",\"os\":\"windows\"},\"targetPath\":\"artifacts/desktop/1.0.0/windows-x86_64.zip\"},{\"archive\":{\"entryPoint\":\"Morphir Desktop.app/Contents/MacOS/Morphir Desktop\",\"format\":\"zip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"Morphir Desktop.app/Contents/MacOS/Morphir Desktop\"},\"platform\":{\"arch\":\"aarch64\",\"os\":\"macos\"},\"targetPath\":\"artifacts/desktop/1.0.0/macos-aarch64.zip\"},{\"archive\":{\"entryPoint\":\"morphir-desktop\",\"format\":\"tar-gzip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"morphir-desktop\"},\"platform\":{\"arch\":\"x86_64\",\"os\":\"linux\"},\"targetPath\":\"artifacts/desktop/1.0.0/linux-x86_64.tar.gz\"}],\"channels\":[\"stable\"],\"compatibility\":{\"morphirCli\":\">=0.4.0-alpha.5, <0.5.0\"},\"kind\":\"morphir-tool-release\",\"schemaVersion\":1,\"status\":\"active\",\"tool\":{\"id\":\"desktop\",\"name\":\"Morphir Desktop\"},\"version\":\"1.0.0\"}",
     "releases/desktop/1.1.0-preview.1.json": "{\"artifacts\":[{\"archive\":{\"entryPoint\":\"Morphir Desktop.exe\",\"format\":\"zip\"},\"launch\":{\"args\":[],\"kind\":\"executable\",\"path\":\"Morphir Desktop.exe\"},\"platform\":{\"arch\":\"x86_64\",\"os\":\"windows\"},\"targetPath\":\"artifacts/desktop/1.1.0-preview.1/windows-x86_64.zip\"}],\"channels\":[\"preview\",\"preview/nightly\"],\"compatibility\":{\"morphirCli\":\">=0.4.0-alpha.5, <0.5.0\"},\"kind\":\"morphir-tool-release\",\"schemaVersion\":1,\"status\":\"active\",\"tool\":{\"id\":\"desktop\",\"name\":\"Morphir Desktop\"},\"version\":\"1.1.0-preview.1\"}",
-    "artifacts/desktop/1.0.0/windows-x86_64.zip": "fixture desktop 1.0.0 windows x86_64\n",
+    "artifacts/desktop/1.0.0/windows-x86_64.zip": "PK\u0003\u0004\u0014\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000i3\u001fC%\u0000\u0000\u0000%\u0000\u0000\u0000\u0013\u0000\u0000\u0000Morphir Desktop.exefixture signed desktop executable 12\nPK\u0001\u0002\u0014\u0000\u0014\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000i3\u001fC%\u0000\u0000\u0000%\u0000\u0000\u0000\u0013\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000Morphir Desktop.exePK\u0005\u0006\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000A\u0000\u0000\u0000V\u0000\u0000\u0000\u0000\u0000",
     "artifacts/desktop/1.0.0/macos-aarch64.zip": "fixture desktop 1.0.0 macos aarch64\n",
     "artifacts/desktop/1.0.0/linux-x86_64.tar.gz": "fixture desktop 1.0.0 linux x86_64\n",
     "artifacts/desktop/1.1.0-preview.1/windows-x86_64.zip": "fixture desktop 1.1.0-preview.1 windows x86_64\n"
