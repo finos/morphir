@@ -743,8 +743,12 @@ fn test_morphir_home_env_var_relocates_home_directory() {
                 cli_log_root.display()
             )
         });
-    let first_record = std::fs::read_to_string(&session_log)
-        .unwrap()
+    let log = std::fs::read_to_string(&session_log).unwrap();
+    let events = log
+        .lines()
+        .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+        .collect::<Vec<_>>();
+    let first_record = log
         .lines()
         .next()
         .map(str::to_owned)
@@ -755,6 +759,26 @@ fn test_morphir_home_env_var_relocates_home_directory() {
     assert_eq!(event["fields"]["event_name"], "cli.session.start");
     assert!(event["fields"]["process_id"].is_number());
     assert!(event["fields"]["session_id"].is_string());
+    let operation_id = event["fields"]["operation_id"].as_str().unwrap();
+    let dispatch = events
+        .iter()
+        .find(|event| event["fields"]["event_name"] == "cli.command.dispatch")
+        .expect("session log should contain an ordinary command event");
+    assert!(dispatch["fields"].get("operation_id").is_none());
+    assert_eq!(dispatch["span"]["operation_id"], operation_id);
+
+    let shown = morphir_command()
+        .args(["diagnostics", "show", "--operation", operation_id, "--json"])
+        .env("MORPHIR_HOME", &morphir_home)
+        .env("MORPHIR_LOG_FILE", "false")
+        .output()
+        .expect("failed to query correlated diagnostic events");
+    assert!(shown.status.success());
+    let shown: serde_json::Value = serde_json::from_slice(&shown.stdout).unwrap();
+    assert!(shown["events"].as_array().unwrap().iter().any(|event| {
+        event["fields"]["event_name"] == "cli.command.dispatch"
+            && event["span"]["operation_id"] == operation_id
+    }));
 }
 
 #[test]

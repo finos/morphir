@@ -468,26 +468,43 @@ fn sanitize(value: serde_json::Value) -> serde_json::Value {
                 matches!(normalized_key(field).as_str(), "name" | "key")
                     && value.as_str().is_some_and(sensitive_key)
             });
-            serde_json::Value::Object(
-                values
-                    .into_iter()
-                    .map(|(key, value)| {
-                        let value = if sensitive_key(&key)
-                            || (redact_named_value
-                                && matches!(normalized_key(&key).as_str(), "value" | "values"))
-                        {
-                            serde_json::Value::String("[REDACTED]".to_owned())
-                        } else {
-                            sanitize(value)
-                        };
-                        (key, value)
-                    })
-                    .collect(),
-            )
+            let mut sanitized = serde_json::Map::new();
+            for (key, value) in values {
+                let value = if sensitive_key(&key)
+                    || (redact_named_value
+                        && matches!(normalized_key(&key).as_str(), "value" | "values"))
+                {
+                    serde_json::Value::String("[REDACTED]".to_owned())
+                } else {
+                    sanitize(value)
+                };
+                insert_unique_json_key(&mut sanitized, sanitize_text(&key), value);
+            }
+            serde_json::Value::Object(sanitized)
         }
         serde_json::Value::Array(values) => serde_json::Value::Array(sanitize_array(values)),
         serde_json::Value::String(value) => serde_json::Value::String(sanitize_text(&value)),
         value => value,
+    }
+}
+
+fn insert_unique_json_key(
+    values: &mut serde_json::Map<String, serde_json::Value>,
+    key: String,
+    value: serde_json::Value,
+) {
+    if !values.contains_key(&key) {
+        values.insert(key, value);
+        return;
+    }
+    let mut suffix = 2_u64;
+    loop {
+        let candidate = format!("{key}#{suffix}");
+        if !values.contains_key(&candidate) {
+            values.insert(candidate, value);
+            return;
+        }
+        suffix = suffix.saturating_add(1);
     }
 }
 
@@ -525,17 +542,17 @@ fn normalize_paths(
     replacements: &[(&str, &'static str)],
 ) -> serde_json::Value {
     match value {
-        serde_json::Value::Object(values) => serde_json::Value::Object(
-            values
-                .into_iter()
-                .map(|(key, value)| {
-                    (
-                        normalize_path_text(&key, replacements),
-                        normalize_paths(value, replacements),
-                    )
-                })
-                .collect(),
-        ),
+        serde_json::Value::Object(values) => {
+            let mut normalized = serde_json::Map::new();
+            for (key, value) in values {
+                insert_unique_json_key(
+                    &mut normalized,
+                    normalize_path_text(&key, replacements),
+                    normalize_paths(value, replacements),
+                );
+            }
+            serde_json::Value::Object(normalized)
+        }
         serde_json::Value::Array(values) => serde_json::Value::Array(
             values
                 .into_iter()
@@ -588,7 +605,14 @@ fn replace_known_path(value: &str, path: &str, label: &str) -> String {
 
 fn belongs_to_operation(event: &serde_json::Value, operation_id: &str) -> bool {
     let fields = &event["fields"];
-    fields["operation_id"] == operation_id || fields["parent_operation_id"] == operation_id
+    fields["operation_id"] == operation_id
+        || fields["parent_operation_id"] == operation_id
+        || event["span"]["operation_id"] == operation_id
+        || event["spans"].as_array().is_some_and(|spans| {
+            spans
+                .iter()
+                .any(|span| span["operation_id"] == operation_id)
+        })
 }
 
 fn operation_log_roots(home: &crate::home::MorphirHome) -> [PathBuf; 2] {
@@ -675,31 +699,54 @@ fn read_operation_events_with_limits(
     max_bytes: usize,
     max_scan_bytes: usize,
 ) -> DiagnosticEvents {
-    let log_files = log_roots
-        .iter()
-        .flat_map(|root| WalkDir::new(root).follow_links(false).into_iter())
-        .filter_map(Result::ok)
-        .filter(|entry| entry.file_type().is_file())
-        .filter(|entry| {
-            entry
-                .path()
-                .extension()
-                .is_some_and(|extension| extension == "jsonl")
-        })
-        .map(|entry| {
+    let mut discovery_truncated = false;
+    let mut log_files = BTreeSet::new();
+    for root in log_roots {
+        for entry in WalkDir::new(root).follow_links(false) {
+            let entry = match entry {
+                Ok(entry) => entry,
+                Err(_) => {
+                    discovery_truncated = true;
+                    continue;
+                }
+            };
+            if !entry.file_type().is_file()
+                || !entry
+                    .path()
+                    .extension()
+                    .is_some_and(|extension| extension == "jsonl")
+            {
+                continue;
+            }
             let path = entry.into_path();
-            path.canonicalize().unwrap_or(path)
-        })
-        .collect::<BTreeSet<_>>()
-        .into_iter()
-        .collect::<Vec<_>>();
-    let mut log_files = log_files;
+            log_files.insert(path.canonicalize().unwrap_or(path));
+        }
+    }
+    let mut log_files = log_files.into_iter().collect::<Vec<_>>();
     log_files.sort_by(|left, right| {
         let modified = |path: &Path| path.metadata().and_then(|value| value.modified()).ok();
         modified(right)
             .cmp(&modified(left))
             .then_with(|| right.cmp(left))
     });
+    let mut selected = read_operation_events_from_files(
+        log_files,
+        operation_id,
+        max_events,
+        max_bytes,
+        max_scan_bytes,
+    );
+    selected.truncated |= discovery_truncated;
+    selected
+}
+
+fn read_operation_events_from_files(
+    log_files: Vec<PathBuf>,
+    operation_id: &str,
+    max_events: usize,
+    max_bytes: usize,
+    max_scan_bytes: usize,
+) -> DiagnosticEvents {
     let mut events = BinaryHeap::new();
     let mut retained_bytes = 0usize;
     let mut matched_events = 0usize;
@@ -712,9 +759,11 @@ fn read_operation_events_with_limits(
             break;
         }
         let Ok(file) = File::open(path) else {
+            truncated = true;
             continue;
         };
         let Ok(file_bytes) = file.metadata().map(|metadata| metadata.len()) else {
+            truncated = true;
             continue;
         };
         let files_remaining = total_log_files - file_index;
@@ -724,6 +773,7 @@ fn read_operation_events_with_limits(
         let Ok((mut reader, starts_inside_line)) =
             bounded_tail_reader(file, file_bytes, scan_bytes)
         else {
+            truncated = true;
             continue;
         };
         if start > 0 {
@@ -731,6 +781,7 @@ fn read_operation_events_with_limits(
         }
         remaining_scan_bytes = remaining_scan_bytes.saturating_sub(scan_bytes as usize);
         if starts_inside_line && reader.skip_until(b'\n').is_err() {
+            truncated = true;
             continue;
         }
         let scan_result = for_each_bounded_line(reader, 1024 * 1024, |line| {
@@ -1009,8 +1060,9 @@ pub fn run_diagnostics_collect(operation: &str, output: &Path) -> AppResult<miet
 #[cfg(test)]
 mod tests {
     use super::{
-        OperationEvents, bounded_tail_reader, for_each_bounded_line, human_operation_event_lines,
-        normalize_paths, read_operation_events_with_limits, sanitize, sanitize_text,
+        OperationEvents, belongs_to_operation, bounded_tail_reader, for_each_bounded_line,
+        human_operation_event_lines, normalize_paths, read_operation_events_from_files,
+        read_operation_events_with_limits, sanitize, sanitize_text,
     };
     use std::io::{BufReader, Cursor};
     use tempfile::TempDir;
@@ -1185,6 +1237,32 @@ mod tests {
     }
 
     #[test]
+    fn structured_object_keys_are_sanitized_without_losing_collisions() {
+        let sanitized = sanitize(serde_json::json!({
+            "requests": {
+                "https://alice:hunter2@private.example/path": 200,
+                "https://bob:swordfish@private.example/path": 201
+            }
+        }));
+        let requests = sanitized["requests"].as_object().unwrap();
+
+        assert_eq!(requests.len(), 2);
+        assert_eq!(requests["https://[REDACTED]@private.example/path"], 200);
+        assert_eq!(requests["https://[REDACTED]@private.example/path#2"], 201);
+    }
+
+    #[test]
+    fn operation_events_match_the_current_tracing_span() {
+        let operation_id = "op-123e4567-e89b-42d3-a456-426614174000";
+        let event = serde_json::json!({
+            "fields": { "message": "backup cleanup failed" },
+            "span": { "name": "cli.operation", "operation_id": operation_id }
+        });
+
+        assert!(belongs_to_operation(&event, operation_id));
+    }
+
+    #[test]
     fn structured_auth_keys_are_redacted_without_redacting_author_fields() {
         let sanitized = sanitize(serde_json::json!({
             "_auth": "BASE64_CREDENTIAL",
@@ -1313,6 +1391,21 @@ mod tests {
         let selected = read_operation_events_with_limits(
             &[temp_dir.path().to_path_buf()],
             operation_id,
+            10,
+            usize::MAX,
+            usize::MAX,
+        );
+
+        assert!(selected.truncated);
+        assert!(selected.events.is_empty());
+    }
+
+    #[test]
+    fn diagnostic_event_ingestion_marks_unreadable_candidates_as_truncated() {
+        let temp_dir = TempDir::new().unwrap();
+        let selected = read_operation_events_from_files(
+            vec![temp_dir.path().join("vanished.jsonl")],
+            "op-123e4567-e89b-42d3-a456-426614174000",
             10,
             usize::MAX,
             usize::MAX,

@@ -893,118 +893,134 @@ fn operation_diagnostic(raw: Option<String>, exit_code: u8) -> Option<String> {
 #[tokio::main]
 async fn main() -> starbase::MainResult {
     use clap::CommandFactory;
+    use tracing::Instrument as _;
 
     let operation_id = observability::OperationId::new();
     // Keep the guard alive until process exit so non-blocking file logs flush.
     let logging_guard = logging::init_from_env(&operation_id);
+    let operation_span = tracing::debug_span!(
+        target: "morphir::correlation",
+        "cli.operation",
+        operation_id = %operation_id
+    );
 
-    // Check for help/version flags first to print our custom banner
-    let args: Vec<String> = std::env::args().collect();
+    async move {
+        tracing::debug!(
+            schema_version = 1,
+            component = "cli",
+            event_name = "cli.command.dispatch",
+            "CLI command dispatch started"
+        );
+        // Check for help/version flags first to print our custom banner
+        let args: Vec<String> = std::env::args().collect();
 
-    if help::should_show_banner(&args) {
-        help::print_banner();
-    }
-
-    // Handle full help variants
-    if help::should_show_full_help(&args) {
-        help::print_full_help::<Cli>();
-        return Ok(std::process::ExitCode::SUCCESS);
-    }
-
-    // Handle version subcommand early (before starbase) to avoid double execution
-    if args.len() >= 2 && args[1] == "version" {
-        let json = args.iter().any(|a| a == "--json");
-        if let Some(code) = run_version(json)? {
-            return Ok(std::process::ExitCode::from(code));
+        if help::should_show_banner(&args) {
+            help::print_banner();
         }
-        return Ok(std::process::ExitCode::SUCCESS);
-    }
 
-    // Handle usage subcommand early (before starbase) to avoid double execution
-    if args.len() >= 2 && args[1] == "usage" {
-        use clap::CommandFactory;
-        let cli = Cli::command();
-        let spec: usage::Spec = cli.into();
-        println!("{}", spec);
-        return Ok(std::process::ExitCode::SUCCESS);
-    }
-
-    let cli = match Cli::try_parse_from(&args) {
-        Ok(cli) => cli,
-        Err(error) => {
-            let exit_code = u8::try_from(error.exit_code()).unwrap_or(1);
-            let failed = exit_code != 0;
-            let diagnostic = operation_diagnostic(Some(error.to_string()), exit_code);
-            let _ = error.print();
-            report_operation_outcome(
-                &operation_id,
-                logging_guard.as_ref(),
-                exit_code,
-                failed,
-                diagnostic.as_deref(),
-            );
-            return Ok(std::process::ExitCode::from(exit_code));
-        }
-    };
-
-    // Handle case where no command is provided.
-    let command = match cli.command {
-        Some(cmd) => cmd,
-        None => {
-            Cli::command().print_help().ok();
+        // Handle full help variants
+        if help::should_show_full_help(&args) {
+            help::print_full_help::<Cli>();
             return Ok(std::process::ExitCode::SUCCESS);
         }
-    };
 
-    // Handle migration subcommands early (before starbase) to avoid double execution.
-    let command = match command {
-        Commands::Migrate(migrate_args)
-        | Commands::Ir {
-            action: IrAction::Migrate(migrate_args),
-        } => {
-            let (exit_code, failed, diagnostic) = match migrate_args.run() {
-                Ok(Some(code)) => (code, code != 0, operation_diagnostic(None, code)),
-                Ok(None) => (0, false, None),
-                Err(error) => (1, true, operation_diagnostic(Some(error.to_string()), 1)),
-            };
-            report_operation_outcome(
-                &operation_id,
-                logging_guard.as_ref(),
-                exit_code,
-                failed,
-                diagnostic.as_deref(),
-            );
-            return Ok(std::process::ExitCode::from(exit_code));
+        // Handle version subcommand early (before starbase) to avoid double execution
+        if args.len() >= 2 && args[1] == "version" {
+            let json = args.iter().any(|a| a == "--json");
+            if let Some(code) = run_version(json)? {
+                return Ok(std::process::ExitCode::from(code));
+            }
+            return Ok(std::process::ExitCode::SUCCESS);
         }
-        command => command,
-    };
 
-    // Create session with command
-    let session = MorphirSession { command };
+        // Handle usage subcommand early (before starbase) to avoid double execution
+        if args.len() >= 2 && args[1] == "usage" {
+            use clap::CommandFactory;
+            let cli = Cli::command();
+            let spec: usage::Spec = cli.into();
+            println!("{}", spec);
+            return Ok(std::process::ExitCode::SUCCESS);
+        }
 
-    // Initialize and run starbase App.
-    // As of starbase 0.13, run() returns AppRunOutcome rather than a Result;
-    // into_miette_result() preserves the real exit code instead of miette's
-    // default of always reporting 1 on error.
-    let outcome = App::default()
-        .run(
-            session,
-            |_session| async move { Ok::<_, miette::Report>(None) },
-        )
-        .await;
-    let failed = outcome.error.is_some() || outcome.exit_code != 0;
-    let diagnostic = operation_diagnostic(
-        outcome.error.as_ref().map(ToString::to_string),
-        outcome.exit_code,
-    );
-    report_operation_outcome(
-        &operation_id,
-        logging_guard.as_ref(),
-        outcome.exit_code,
-        failed,
-        diagnostic.as_deref(),
-    );
-    outcome.into_miette_result()
+        let cli = match Cli::try_parse_from(&args) {
+            Ok(cli) => cli,
+            Err(error) => {
+                let exit_code = u8::try_from(error.exit_code()).unwrap_or(1);
+                let failed = exit_code != 0;
+                let diagnostic = operation_diagnostic(Some(error.to_string()), exit_code);
+                let _ = error.print();
+                report_operation_outcome(
+                    &operation_id,
+                    logging_guard.as_ref(),
+                    exit_code,
+                    failed,
+                    diagnostic.as_deref(),
+                );
+                return Ok(std::process::ExitCode::from(exit_code));
+            }
+        };
+
+        // Handle case where no command is provided.
+        let command = match cli.command {
+            Some(cmd) => cmd,
+            None => {
+                Cli::command().print_help().ok();
+                return Ok(std::process::ExitCode::SUCCESS);
+            }
+        };
+
+        // Handle migration subcommands early (before starbase) to avoid double execution.
+        let command = match command {
+            Commands::Migrate(migrate_args)
+            | Commands::Ir {
+                action: IrAction::Migrate(migrate_args),
+            } => {
+                let (exit_code, failed, diagnostic) = match migrate_args.run() {
+                    Ok(Some(code)) => (code, code != 0, operation_diagnostic(None, code)),
+                    Ok(None) => (0, false, None),
+                    Err(error) => (1, true, operation_diagnostic(Some(error.to_string()), 1)),
+                };
+                report_operation_outcome(
+                    &operation_id,
+                    logging_guard.as_ref(),
+                    exit_code,
+                    failed,
+                    diagnostic.as_deref(),
+                );
+                return Ok(std::process::ExitCode::from(exit_code));
+            }
+            command => command,
+        };
+
+        // Create session with command
+        let session = MorphirSession { command };
+
+        // Initialize and run starbase App.
+        // As of starbase 0.13, run() returns AppRunOutcome rather than a Result;
+        // into_miette_result() preserves the real exit code instead of miette's
+        // default of always reporting 1 on error.
+        let outcome = App::default()
+            .run(
+                session,
+                |_session| async move { Ok::<_, miette::Report>(None) },
+            )
+            .await;
+        let failed = outcome.error.is_some() || outcome.exit_code != 0;
+        let diagnostic = operation_diagnostic(
+            outcome.error.as_ref().map(ToString::to_string),
+            outcome.exit_code,
+        );
+        report_operation_outcome(
+            &operation_id,
+            logging_guard.as_ref(),
+            outcome.exit_code,
+            failed,
+            diagnostic.as_deref(),
+        );
+        outcome.into_miette_result()
+    }
+    .instrument(operation_span)
+    .await
 }
 
 #[cfg(test)]
