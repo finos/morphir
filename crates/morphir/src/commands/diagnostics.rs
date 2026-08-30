@@ -542,6 +542,9 @@ fn sanitize(value: serde_json::Value) -> serde_json::Value {
             });
             let mut sanitized = serde_json::Map::new();
             for (key, value) in values {
+                if excluded_sensitive_container(&key, &value) {
+                    continue;
+                }
                 let value = if sensitive_key(&key)
                     || (redact_named_value
                         && matches!(normalized_key(&key).as_str(), "value" | "values"))
@@ -558,6 +561,16 @@ fn sanitize(value: serde_json::Value) -> serde_json::Value {
         serde_json::Value::String(value) => serde_json::Value::String(sanitize_text(&value)),
         value => value,
     }
+}
+
+fn excluded_sensitive_container(key: &str, value: &serde_json::Value) -> bool {
+    matches!(
+        value,
+        serde_json::Value::Object(_) | serde_json::Value::Array(_)
+    ) && matches!(
+        normalized_key(key).as_str(),
+        "env" | "environment" | "environmentvariables" | "config" | "configuration"
+    )
 }
 
 fn insert_unique_json_key(
@@ -794,9 +807,12 @@ fn discover_log_files(
     max_files: usize,
 ) -> DiscoveredLogFiles {
     let mut truncated = false;
-    let mut visited_entries = 0usize;
     let mut log_files = BTreeSet::new();
-    'roots: for root in log_roots {
+    for (root_index, root) in log_roots.iter().enumerate() {
+        let root_entry_limit = fair_share(max_entries, root_index, log_roots.len());
+        let root_file_limit = fair_share(max_files, root_index, log_roots.len());
+        let mut visited_entries = 0usize;
+        let mut retained_files = 0usize;
         let root = match root.canonicalize() {
             Ok(root) => root,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
@@ -813,9 +829,9 @@ fn discover_log_files(
             }
         }
         for entry in WalkDir::new(&root).follow_links(false) {
-            if visited_entries >= max_entries {
+            if visited_entries >= root_entry_limit {
                 truncated = true;
-                break 'roots;
+                break;
             }
             visited_entries = visited_entries.saturating_add(1);
             let entry = match entry {
@@ -835,11 +851,13 @@ fn discover_log_files(
             }
             let path = entry.into_path();
             let path = path.canonicalize().unwrap_or(path);
-            if !log_files.contains(&path) && log_files.len() >= max_files {
+            if !log_files.contains(&path) && retained_files >= root_file_limit {
                 truncated = true;
-                break 'roots;
+                break;
             }
-            log_files.insert(path);
+            if log_files.insert(path) {
+                retained_files = retained_files.saturating_add(1);
+            }
         }
     }
     let mut log_files = log_files.into_iter().collect::<Vec<_>>();
@@ -853,6 +871,13 @@ fn discover_log_files(
         paths: log_files,
         truncated,
     }
+}
+
+fn fair_share(total: usize, index: usize, parts: usize) -> usize {
+    if parts == 0 {
+        return 0;
+    }
+    total / parts + usize::from(index < total % parts)
 }
 
 fn read_operation_events_from_files(
@@ -1419,13 +1444,18 @@ mod tests {
         let sanitized = sanitize(serde_json::json!({
             "_auth": "BASE64_CREDENTIAL",
             "environment": {
-                "NPM_CONFIG__AUTH": "NAMESPACED_CREDENTIAL"
+                "NPM_CONFIG__AUTH": "NAMESPACED_CREDENTIAL",
+                "DEPLOYMENT_LICENSE": "LIVE_SECRET"
+            },
+            "configuration": {
+                "endpoint": "internal.example.test"
             },
             "author": "Ada"
         }));
 
         assert_eq!(sanitized["_auth"], "[REDACTED]");
-        assert_eq!(sanitized["environment"]["NPM_CONFIG__AUTH"], "[REDACTED]");
+        assert!(sanitized.get("environment").is_none());
+        assert!(sanitized.get("configuration").is_none());
         assert_eq!(sanitized["author"], "Ada");
     }
 
@@ -1580,6 +1610,43 @@ mod tests {
         let entry_limited = discover_log_files(&[temp_dir.path().to_path_buf()], 1, 10);
         assert!(entry_limited.truncated);
         assert!(entry_limited.paths.is_empty());
+    }
+
+    #[test]
+    fn diagnostic_log_discovery_reserves_capacity_for_each_root() {
+        let first_root = TempDir::new().unwrap();
+        let second_root = TempDir::new().unwrap();
+        for root in [&first_root, &second_root] {
+            for name in ["first.jsonl", "second.jsonl"] {
+                std::fs::write(root.path().join(name), b"\n").unwrap();
+            }
+        }
+
+        let discovered = discover_log_files(
+            &[
+                first_root.path().to_path_buf(),
+                second_root.path().to_path_buf(),
+            ],
+            usize::MAX,
+            2,
+        );
+
+        assert!(discovered.truncated);
+        assert_eq!(discovered.paths.len(), 2);
+        let first_root = first_root.path().canonicalize().unwrap();
+        let second_root = second_root.path().canonicalize().unwrap();
+        assert!(
+            discovered
+                .paths
+                .iter()
+                .any(|path| path.starts_with(&first_root))
+        );
+        assert!(
+            discovered
+                .paths
+                .iter()
+                .any(|path| path.starts_with(&second_root))
+        );
     }
 
     #[test]
