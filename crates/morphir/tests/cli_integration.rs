@@ -949,6 +949,7 @@ fn diagnostics_collect_creates_an_inspectable_sanitized_archive() {
     let temp_dir = TempDir::new().unwrap();
     let morphir_home = temp_dir.path().join("private-user-home").join(".morphir");
     let cli_log_root = temp_dir.path().join("private-user-logs");
+    let private_workspace = temp_dir.path().join("private-workspace").join("model.json");
     let log_dir = cli_log_root.join("2026-08-30");
     std::fs::create_dir_all(&log_dir).unwrap();
     let operation_id = "op-123e4567-e89b-42d3-a456-426614174000";
@@ -962,6 +963,7 @@ fn diagnostics_collect_creates_an_inspectable_sanitized_archive() {
                 "event_name": "tool.resolve",
                 "path": morphir_home.join("store/tools").to_string_lossy(),
                 "log_path": log_dir.join("fixture.jsonl").to_string_lossy(),
+                "diagnostic": format!("failed to open {}", private_workspace.display()),
                 "token": "BUNDLE_SECRET_SENTINEL",
                 "source_url": "https://alice:hunter2@example.com/artifact"
             }
@@ -1013,6 +1015,8 @@ fn diagnostics_collect_creates_an_inspectable_sanitized_archive() {
     assert!(combined.contains("$MORPHIR_HOME"));
     assert!(!combined.contains(&cli_log_root.to_string_lossy().to_string()));
     assert!(combined.contains("$MORPHIR_LOG_DIR"));
+    assert!(!combined.contains(&private_workspace.to_string_lossy().to_string()));
+    assert!(combined.contains("$ABSOLUTE_PATH"));
 
     let manifest: serde_json::Value = serde_json::from_slice(&entries["manifest.json"]).unwrap();
     assert_eq!(manifest["operationId"], operation_id);

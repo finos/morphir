@@ -95,6 +95,22 @@ fn contains_sensitive_assignment(value: &str) -> bool {
     })
 }
 
+fn contains_authorization_header(value: &str) -> bool {
+    let lower = value.to_ascii_lowercase();
+    lower.match_indices("authorization").any(|(start, _)| {
+        let rest = lower[start + "authorization".len()..].trim_start();
+        let Some(rest) = rest.strip_prefix(':').or_else(|| rest.strip_prefix('=')) else {
+            return false;
+        };
+        let scheme = rest.trim_start();
+        ["basic", "bearer"].iter().any(|candidate| {
+            scheme.strip_prefix(candidate).is_some_and(|remainder| {
+                remainder.is_empty() || remainder.chars().next().is_some_and(char::is_whitespace)
+            })
+        })
+    })
+}
+
 fn redact_urls(value: &str) -> String {
     let mut redacted = value.to_owned();
     let mut search_from = 0;
@@ -104,11 +120,7 @@ fn redact_urls(value: &str) -> String {
         let token_end = redacted[authority_start..]
             .char_indices()
             .find(|(_, character)| {
-                character.is_whitespace()
-                    || matches!(
-                        character,
-                        ',' | ';' | '(' | ')' | '[' | ']' | '{' | '}' | '<' | '>'
-                    )
+                character.is_whitespace() || matches!(character, '\'' | '"' | '<' | '>')
             })
             .map(|(index, _)| authority_start + index)
             .unwrap_or(redacted.len());
@@ -130,11 +142,7 @@ fn redact_urls(value: &str) -> String {
         let token_end = redacted[authority_start..]
             .char_indices()
             .find(|(_, character)| {
-                character.is_whitespace()
-                    || matches!(
-                        character,
-                        ',' | ';' | '(' | ')' | '[' | ']' | '{' | '}' | '<' | '>'
-                    )
+                character.is_whitespace() || matches!(character, '\'' | '"' | '<' | '>')
             })
             .map(|(index, _)| authority_start + index)
             .unwrap_or(redacted.len());
@@ -159,8 +167,7 @@ fn redact_urls(value: &str) -> String {
 pub(crate) fn sanitize_text(value: &str) -> String {
     let lower = value.to_ascii_lowercase();
     if lower.contains("bearer ")
-        || lower.contains("authorization: basic ")
-        || lower.contains("authorization=basic ")
+        || contains_authorization_header(value)
         || lower.contains("ghp_")
         || lower.contains("github_pat_")
         || lower.contains("password=")
@@ -174,6 +181,61 @@ pub(crate) fn sanitize_text(value: &str) -> String {
         return redact_urls(value);
     }
     value.to_owned()
+}
+
+fn path_boundary_before(value: &str, start: usize) -> bool {
+    start == 0
+        || value[..start].chars().next_back().is_some_and(|character| {
+            !character.is_ascii_alphanumeric() && !matches!(character, '$' | '_')
+        })
+}
+
+fn absolute_path_start(value: &str, start: usize) -> bool {
+    let bytes = value.as_bytes();
+    let posix = bytes[start] == b'/'
+        && bytes.get(start + 1) != Some(&b'/')
+        && !(start > 0 && bytes[start - 1] == b':')
+        && !(start > 1 && bytes[start - 1] == b'/' && bytes[start - 2] == b':')
+        && path_boundary_before(value, start);
+    let windows_drive = bytes[start].is_ascii_alphabetic()
+        && bytes.get(start + 1) == Some(&b':')
+        && bytes
+            .get(start + 2)
+            .is_some_and(|separator| matches!(separator, b'/' | b'\\'))
+        && path_boundary_before(value, start);
+    let windows_unc = bytes[start] == b'\\'
+        && bytes.get(start + 1) == Some(&b'\\')
+        && path_boundary_before(value, start);
+    posix || windows_drive || windows_unc
+}
+
+fn redact_unknown_absolute_paths(value: &str) -> String {
+    let mut result = String::with_capacity(value.len());
+    let mut cursor = 0;
+
+    while let Some(start) = (cursor..value.len())
+        .filter(|index| value.is_char_boundary(*index))
+        .find(|index| absolute_path_start(value, *index))
+    {
+        result.push_str(&value[cursor..start]);
+        let end = value[start..]
+            .char_indices()
+            .skip(1)
+            .find(|(_, character)| {
+                character.is_whitespace()
+                    || matches!(
+                        character,
+                        '\'' | '"' | ',' | ';' | ')' | ']' | '}' | '<' | '>'
+                    )
+            })
+            .map(|(offset, _)| start + offset)
+            .unwrap_or(value.len());
+        result.push_str("$ABSOLUTE_PATH");
+        cursor = end;
+    }
+
+    result.push_str(&value[cursor..]);
+    result
 }
 
 fn sanitize(value: serde_json::Value) -> serde_json::Value {
@@ -216,11 +278,12 @@ fn normalize_paths(
                 .map(|value| normalize_paths(value, replacements))
                 .collect(),
         ),
-        serde_json::Value::String(value) => serde_json::Value::String(
-            replacements
+        serde_json::Value::String(value) => {
+            let normalized = replacements
                 .iter()
-                .fold(value, |value, (path, label)| value.replace(path, label)),
-        ),
+                .fold(value, |value, (path, label)| value.replace(path, label));
+            serde_json::Value::String(redact_unknown_absolute_paths(&normalized))
+        }
         value => value,
     }
 }
@@ -528,7 +591,7 @@ pub fn run_diagnostics_collect(operation: &str, output: &Path) -> AppResult<miet
 
 #[cfg(test)]
 mod tests {
-    use super::{for_each_bounded_line, sanitize_text};
+    use super::{for_each_bounded_line, normalize_paths, sanitize_text};
     use std::io::{BufReader, Cursor};
 
     #[test]
@@ -550,6 +613,7 @@ mod tests {
             "apiKey=LIVE_SECRET",
             "access-key=LIVE_SECRET",
             "credential=LIVE_SECRET",
+            "Authorization:Basic dXNlcjpwYXNz",
         ] {
             assert_eq!(sanitize_text(value), "[REDACTED]");
         }
@@ -563,5 +627,28 @@ mod tests {
             ),
             "https://public.example/status|https://[REDACTED]@private.example/artifact"
         );
+        assert_eq!(
+            sanitize_text("https://alice:hunter,2@example.com/artifact"),
+            "https://[REDACTED]@example.com/artifact"
+        );
+    }
+
+    #[test]
+    fn diagnostic_bundles_redact_unknown_absolute_paths_on_all_platforms() {
+        let value = serde_json::json!({
+            "posix": "failed to open /Users/alice/company/model.json",
+            "drive": r"failed to open C:\Users\alice\company\model.json",
+            "unc": r"failed to open \\fileserver\private\model.json",
+            "known": r"C:\Users\alice\.morphir\store\tools",
+        });
+        let normalized = normalize_paths(value, &[(r"C:\Users\alice\.morphir", "$MORPHIR_HOME")]);
+
+        for field in ["posix", "drive", "unc"] {
+            assert_eq!(
+                normalized[field], "failed to open $ABSOLUTE_PATH",
+                "field {field} should not expose an absolute path"
+            );
+        }
+        assert_eq!(normalized["known"], r"$MORPHIR_HOME\store\tools");
     }
 }
