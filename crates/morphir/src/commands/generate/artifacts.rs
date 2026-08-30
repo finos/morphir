@@ -20,11 +20,10 @@ const PUBLICATION_LOCK_PREFIX: &str = ".morphir-artifact-publication-";
 const TRANSACTION_PATH_PREFIX: &str = ".morphir-artifacts-";
 
 pub(super) fn write_all(
-    lock_root: &Path,
     output_root: &Path,
     artifacts: &[Artifact],
 ) -> Result<Vec<String>, CliError> {
-    ArtifactWriter::with_lock_root(output_root, lock_root.to_path_buf()).write_all(artifacts)
+    ArtifactWriter::new(output_root).write_all(artifacts)
 }
 
 /// Publishes one returned artifact set with in-process failure rollback.
@@ -47,12 +46,8 @@ impl<'a> ArtifactWriter<'a, NoopHooks> {
         }
     }
 
-    #[cfg(test)]
     fn new(output_root: &'a Path) -> Self {
-        Self::with_lock_root(
-            output_root,
-            std::env::temp_dir().join("morphir-artifact-publication-test-locks"),
-        )
+        Self::with_lock_root(output_root, publication_lock_root())
     }
 }
 
@@ -61,7 +56,7 @@ impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
     fn with_ops(output_root: &'a Path, hooks: &'a H) -> Self {
         Self {
             output_root,
-            lock_root: std::env::temp_dir().join("morphir-artifact-publication-test-locks"),
+            lock_root: publication_lock_root(),
             hooks,
         }
     }
@@ -317,6 +312,13 @@ fn publication_lock_path(identity: &Path) -> String {
             (hash ^ u64::from(*byte)).wrapping_mul(FNV_PRIME)
         });
     format!("{PUBLICATION_LOCK_PREFIX}{hash:016x}.lock")
+}
+
+fn publication_lock_root() -> PathBuf {
+    dirs::runtime_dir()
+        .unwrap_or_else(std::env::temp_dir)
+        .join("morphir")
+        .join("artifact-publication")
 }
 
 fn publication_identity(output_root: &Path) -> io::Result<PathBuf> {

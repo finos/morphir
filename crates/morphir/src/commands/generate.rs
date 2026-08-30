@@ -151,7 +151,7 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
         .into());
     }
 
-    let artifacts = publish_returned_artifacts(&home, &output_path, &result.artifacts)?;
+    let artifacts = publish_returned_artifacts(&output_path, &result.artifacts)?;
 
     let output = GenerateOutput {
         success: true,
@@ -207,15 +207,10 @@ async fn invoke_builtin(
 }
 
 fn publish_returned_artifacts(
-    home: &MorphirHome,
     output_path: &Path,
     returned: &[morphir_extension_sdk::Artifact],
 ) -> Result<Vec<String>, CliError> {
-    artifacts::write_all(
-        &home.locks_dir().join("artifact-publication"),
-        output_path,
-        returned,
-    )
+    artifacts::write_all(output_path, returned)
 }
 
 #[cfg(test)]
@@ -228,15 +223,13 @@ mod tests {
     fn returned_legacy_artifacts_are_published_by_the_host_writer() {
         let root = tempdir().unwrap();
         let output = root.path().join("output");
-        let home =
-            MorphirHome::resolve_from(Some(root.path().join("home").as_os_str()), None).unwrap();
         let returned = vec![Artifact {
             path: "nested/schema.avsc".to_owned(),
             content: "{\"type\":\"record\"}".to_owned(),
             binary: false,
         }];
 
-        let paths = publish_returned_artifacts(&home, &output, &returned).unwrap();
+        let paths = publish_returned_artifacts(&output, &returned).unwrap();
 
         assert_eq!(paths, ["nested/schema.avsc"]);
         assert_eq!(
