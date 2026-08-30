@@ -1,6 +1,8 @@
 use chrono::{DateTime, Utc};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
-use morphir_distribution::Sha256Digest;
+use morphir_distribution::{
+    Channel, Platform, Selection, Sha256Digest, ToolId, TrustedToolRepository,
+};
 use semver::{Version, VersionReq};
 use serde_json::Value;
 use std::collections::BTreeSet;
@@ -385,4 +387,84 @@ fn signed_tool_metadata_fixture_is_authenticated_and_deterministic() {
         Sha256Digest::of_bytes(&canonical_json(&trusted_root["signed"])).to_string();
     assert_eq!(fixture["repositoryId"], repository_id);
     assert!(fixture["mirrors"].as_array().unwrap().len() >= 2);
+}
+
+#[tokio::test]
+async fn signed_fixture_drives_the_runtime_tuf_client_and_verified_download() {
+    let fixture = fixture();
+    let repository_root = tempfile::tempdir().unwrap();
+    let metadata = repository_root.path().join("metadata");
+    let targets = repository_root.path().join("targets");
+    let datastore = repository_root.path().join("datastore");
+    let downloads = repository_root.path().join("downloads");
+    std::fs::create_dir_all(&metadata).unwrap();
+    std::fs::create_dir_all(&targets).unwrap();
+    std::fs::create_dir_all(&datastore).unwrap();
+    std::fs::create_dir_all(&downloads).unwrap();
+
+    write_canonical_json(&metadata.join("1.root.json"), &fixture["trustedRoot"]);
+    for root in fixture["rootUpdates"].as_array().unwrap() {
+        let version = root["signed"]["version"].as_u64().unwrap();
+        write_canonical_json(&metadata.join(format!("{version}.root.json")), root);
+    }
+    write_canonical_json(
+        &metadata.join("timestamp.json"),
+        &fixture["metadata"]["timestamp"],
+    );
+    let snapshot_version = fixture["metadata"]["snapshot"]["signed"]["version"]
+        .as_u64()
+        .unwrap();
+    write_canonical_json(
+        &metadata.join(format!("{snapshot_version}.snapshot.json")),
+        &fixture["metadata"]["snapshot"],
+    );
+    let targets_version = fixture["metadata"]["targets"]["signed"]["version"]
+        .as_u64()
+        .unwrap();
+    write_canonical_json(
+        &metadata.join(format!("{targets_version}.targets.json")),
+        &fixture["metadata"]["targets"],
+    );
+    write_consistent_targets(&fixture, &targets);
+
+    let trusted_root = canonical_json(&fixture["trustedRoot"]);
+    let repository =
+        TrustedToolRepository::load_filesystem(&trusted_root, &metadata, &targets, &datastore)
+            .await
+            .unwrap();
+    let resolved = repository
+        .resolve(
+            &ToolId::parse("desktop").unwrap(),
+            &Selection::Channel(Channel::Stable),
+            &Platform::new("windows", "x86_64").unwrap(),
+            &Version::parse("0.4.0").unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resolved.release().version().to_string(), "1.0.0");
+    assert_eq!(
+        resolved.artifact().target_path().as_str(),
+        "artifacts/desktop/1.0.0/windows-x86_64.zip"
+    );
+    let downloaded = repository.download(&resolved, &downloads).await.unwrap();
+    let bytes = std::fs::read(downloaded.path()).unwrap();
+    assert_eq!(Sha256Digest::of_bytes(&bytes), *resolved.digest());
+    assert_eq!(bytes.len() as u64, resolved.length());
+}
+
+fn write_canonical_json(path: &std::path::Path, value: &Value) {
+    std::fs::write(path, canonical_json(value)).unwrap();
+}
+
+fn write_consistent_targets(fixture: &Value, targets_root: &std::path::Path) {
+    let trusted = fixture["metadata"]["targets"]["signed"]["targets"]
+        .as_object()
+        .unwrap();
+    for (target_name, content) in fixture["targetFiles"].as_object().unwrap() {
+        let digest = trusted[target_name]["hashes"]["sha256"].as_str().unwrap();
+        let destination = targets_root.join(format!("{digest}.{target_name}"));
+        std::fs::create_dir_all(destination.parent().unwrap()).unwrap();
+        std::fs::write(destination, content.as_str().unwrap().as_bytes()).unwrap();
+    }
 }
