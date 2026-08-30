@@ -2,7 +2,8 @@
 
 use serde::Serialize;
 use starbase::AppResult;
-use std::collections::BTreeSet;
+use std::cmp::{Ordering, Reverse};
+use std::collections::{BTreeSet, BinaryHeap};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read as _, Write as _};
 use std::path::{Path, PathBuf};
@@ -57,7 +58,39 @@ pub fn run_diagnostics_path(json: bool) -> AppResult<miette::Report> {
 #[serde(rename_all = "camelCase")]
 struct OperationEvents {
     operation_id: String,
+    truncated: bool,
     events: Vec<serde_json::Value>,
+}
+
+struct DiagnosticEvents {
+    events: Vec<serde_json::Value>,
+    truncated: bool,
+}
+
+struct RetainedEvent {
+    order: (Option<String>, usize),
+    bytes: usize,
+    value: serde_json::Value,
+}
+
+impl PartialEq for RetainedEvent {
+    fn eq(&self, other: &Self) -> bool {
+        self.order == other.order
+    }
+}
+
+impl Eq for RetainedEvent {}
+
+impl PartialOrd for RetainedEvent {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for RetainedEvent {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.order.cmp(&other.order)
+    }
 }
 
 fn sensitive_key(key: &str) -> bool {
@@ -541,7 +574,7 @@ where
     }
 }
 
-fn read_operation_events(log_roots: &[PathBuf], operation_id: &str) -> Vec<serde_json::Value> {
+fn read_operation_events(log_roots: &[PathBuf], operation_id: &str) -> DiagnosticEvents {
     read_operation_events_with_limits(
         log_roots,
         operation_id,
@@ -555,7 +588,7 @@ fn read_operation_events_with_limits(
     operation_id: &str,
     max_events: usize,
     max_bytes: usize,
-) -> Vec<serde_json::Value> {
+) -> DiagnosticEvents {
     let log_files = log_roots
         .iter()
         .flat_map(|root| WalkDir::new(root).follow_links(false).into_iter())
@@ -572,37 +605,49 @@ fn read_operation_events_with_limits(
             path.canonicalize().unwrap_or(path)
         })
         .collect::<BTreeSet<_>>();
-    let mut events = Vec::new();
+    let mut events = BinaryHeap::new();
     let mut retained_bytes = 0usize;
-    let mut budget_exhausted = max_events == 0 || max_bytes == 0;
+    let mut matched_events = 0usize;
+    let mut truncated = false;
     for path in log_files {
-        if events.len() >= max_events || budget_exhausted {
-            break;
-        }
         let Ok(file) = File::open(path) else {
             continue;
         };
         let _ = for_each_bounded_line(BufReader::new(file), 1024 * 1024, |line| {
-            if events.len() >= max_events || budget_exhausted {
-                return false;
-            }
             if let Ok(event) = serde_json::from_slice::<serde_json::Value>(line)
                 && belongs_to_operation(&event, operation_id)
             {
-                let next_size = retained_bytes.saturating_add(line.len());
-                if next_size > max_bytes {
-                    budget_exhausted = true;
-                    return false;
+                let order = (
+                    event["timestamp"].as_str().map(ToOwned::to_owned),
+                    matched_events,
+                );
+                matched_events = matched_events.saturating_add(1);
+                retained_bytes = retained_bytes.saturating_add(line.len());
+                events.push(Reverse(RetainedEvent {
+                    order,
+                    bytes: line.len(),
+                    value: sanitize(event),
+                }));
+                while events.len() > max_events || retained_bytes > max_bytes {
+                    let Some(Reverse(removed)) = events.pop() else {
+                        break;
+                    };
+                    retained_bytes = retained_bytes.saturating_sub(removed.bytes);
+                    truncated = true;
                 }
-                retained_bytes = next_size;
-                events.push(sanitize(event));
-                budget_exhausted = retained_bytes >= max_bytes;
             }
-            events.len() < max_events && !budget_exhausted
+            true
         });
     }
-    events.sort_by(|left, right| left["timestamp"].as_str().cmp(&right["timestamp"].as_str()));
-    events
+    let mut events = events
+        .into_iter()
+        .map(|Reverse(event)| event)
+        .collect::<Vec<_>>();
+    events.sort_by(|left, right| left.order.cmp(&right.order));
+    DiagnosticEvents {
+        events: events.into_iter().map(|event| event.value).collect(),
+        truncated,
+    }
 }
 
 /// Show sanitized CLI and Desktop events for one reported operation ID.
@@ -612,9 +657,11 @@ pub fn run_diagnostics_show(operation: &str, json: bool) -> AppResult<miette::Re
     let home = crate::home::MorphirHome::resolve()
         .map_err(|error| miette::miette!("Failed to resolve Morphir Home: {error}"))?;
     let log_roots = operation_log_roots(&home);
+    let selected = read_operation_events(&log_roots, operation_id.as_str());
     let result = OperationEvents {
         operation_id: operation_id.to_string(),
-        events: read_operation_events(&log_roots, operation_id.as_str()),
+        truncated: selected.truncated,
+        events: selected.events,
     };
 
     if json {
@@ -627,6 +674,9 @@ pub fn run_diagnostics_show(operation: &str, json: bool) -> AppResult<miette::Re
     } else if result.events.is_empty() {
         println!("No local events found for {operation_id}");
     } else {
+        if result.truncated {
+            println!("Older diagnostic events were omitted because the display limit was reached.");
+        }
         for event in &result.events {
             let timestamp = event["timestamp"].as_str().unwrap_or("unknown-time");
             let level = event["level"].as_str().unwrap_or("UNKNOWN");
@@ -671,6 +721,7 @@ struct ExcludedContent {
 struct BundleManifest {
     schema_version: u8,
     operation_id: String,
+    diagnostic_events_truncated: bool,
     included_files: Vec<IncludedFile>,
     exclusions: Vec<ExcludedContent>,
 }
@@ -738,11 +789,8 @@ pub fn run_diagnostics_collect(operation: &str, output: &Path) -> AppResult<miet
     let home = crate::home::MorphirHome::resolve()
         .map_err(|error| miette::miette!("Failed to resolve Morphir Home: {error}"))?;
     let log_roots = operation_log_roots(&home);
-    let events = bundle_events(
-        read_operation_events(&log_roots, operation_id.as_str()),
-        home.root(),
-        &log_roots,
-    )?;
+    let selected = read_operation_events(&log_roots, operation_id.as_str());
+    let events = bundle_events(selected.events, home.root(), &log_roots)?;
     let system = serde_json::to_vec_pretty(&BundleSystem {
         schema_version: 1,
         cli_version: env!("CARGO_PKG_VERSION"),
@@ -756,6 +804,7 @@ pub fn run_diagnostics_collect(operation: &str, output: &Path) -> AppResult<miet
     let manifest = BundleManifest {
         schema_version: 1,
         operation_id: operation_id.to_string(),
+        diagnostic_events_truncated: selected.truncated,
         included_files: vec![
             included("events.jsonl", &events),
             included("system.json", &system),
@@ -987,7 +1036,7 @@ mod tests {
     }
 
     #[test]
-    fn diagnostic_event_ingestion_stops_at_the_aggregate_byte_budget() {
+    fn diagnostic_event_ingestion_retains_the_newest_event_at_the_byte_budget() {
         let temp_dir = TempDir::new().unwrap();
         let operation_id = "op-123e4567-e89b-42d3-a456-426614174000";
         let first = serde_json::json!({
@@ -1006,15 +1055,45 @@ mod tests {
         )
         .unwrap();
 
-        let events = read_operation_events_with_limits(
+        let selected = read_operation_events_with_limits(
             &[temp_dir.path().to_path_buf()],
             operation_id,
             10,
-            first.len(),
+            first.len().max(second.len()),
         );
 
-        assert_eq!(events.len(), 1);
-        assert_eq!(events[0]["fields"]["message"], "first");
+        assert!(selected.truncated);
+        assert_eq!(selected.events.len(), 1);
+        assert_eq!(selected.events[0]["fields"]["message"], "second");
+    }
+
+    #[test]
+    fn diagnostic_event_ingestion_keeps_terminal_events_across_log_roots() {
+        let temp_dir = TempDir::new().unwrap();
+        let operation_id = "op-123e4567-e89b-42d3-a456-426614174000";
+        let cli = temp_dir.path().join("a-cli");
+        let desktop = temp_dir.path().join("z-desktop");
+        std::fs::create_dir_all(&cli).unwrap();
+        std::fs::create_dir_all(&desktop).unwrap();
+        let started = serde_json::json!({
+            "timestamp": "2026-08-30T03:04:05Z",
+            "fields": { "operation_id": operation_id, "message": "started" }
+        })
+        .to_string();
+        let failed = serde_json::json!({
+            "timestamp": "2026-08-30T03:04:06Z",
+            "fields": { "operation_id": operation_id, "message": "failed" }
+        })
+        .to_string();
+        std::fs::write(cli.join("events.jsonl"), format!("{started}\n")).unwrap();
+        std::fs::write(desktop.join("events.jsonl"), format!("{failed}\n")).unwrap();
+
+        let selected =
+            read_operation_events_with_limits(&[cli, desktop], operation_id, 1, usize::MAX);
+
+        assert!(selected.truncated);
+        assert_eq!(selected.events.len(), 1);
+        assert_eq!(selected.events[0]["fields"]["message"], "failed");
     }
 
     #[test]
@@ -1030,14 +1109,15 @@ mod tests {
         .to_string();
         std::fs::write(desktop.join("events.jsonl"), format!("{event}\n")).unwrap();
 
-        let events = read_operation_events_with_limits(
+        let selected = read_operation_events_with_limits(
             &[temp_dir.path().join("logs"), desktop],
             operation_id,
             10,
             event.len() * 2,
         );
 
-        assert_eq!(events.len(), 1);
-        assert_eq!(events[0]["fields"]["message"], "once");
+        assert!(!selected.truncated);
+        assert_eq!(selected.events.len(), 1);
+        assert_eq!(selected.events[0]["fields"]["message"], "once");
     }
 }
