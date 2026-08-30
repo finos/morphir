@@ -252,11 +252,15 @@ fn redact_unknown_absolute_paths(value: &str) -> String {
         let end = value[start..]
             .char_indices()
             .skip(1)
-            .find(|(_, character)| {
+            .find(|(offset, character)| {
                 matches!(
                     character,
                     '\r' | '\n' | '\'' | '"' | ')' | ']' | '}' | '<' | '>'
-                )
+                ) || (*character == ':'
+                    && value[start + offset + character.len_utf8()..]
+                        .chars()
+                        .next()
+                        .is_some_and(char::is_whitespace))
             })
             .map(|(offset, _)| start + offset)
             .unwrap_or(value.len());
@@ -736,6 +740,7 @@ mod tests {
             "drive": r"failed to open C:\Users\alice\company\model.json",
             "unc": r"failed to open \\fileserver\private\model.json",
             "known": r"C:\Users\alice\.morphir\store\tools",
+            "with_error": "failed to open /Users/alice/company/model.json: permission denied",
         });
         let normalized = normalize_paths(value, &[(r"C:\Users\alice\.morphir", "$MORPHIR_HOME")]);
 
@@ -746,6 +751,10 @@ mod tests {
             );
         }
         assert_eq!(normalized["known"], r"$MORPHIR_HOME\store\tools");
+        assert_eq!(
+            normalized["with_error"],
+            "failed to open $ABSOLUTE_PATH: permission denied"
+        );
     }
 
     #[test]
