@@ -100,21 +100,22 @@ fn sensitive_key(key: &str) -> bool {
         .filter(|character| character.is_ascii_alphanumeric())
         .flat_map(char::to_lowercase)
         .collect::<String>();
-    [
-        "token",
-        "password",
-        "passwd",
-        "secret",
-        "authorization",
-        "cookie",
-        "apikey",
-        "accesskey",
-        "credential",
-        "privatekey",
-        "passphrase",
-    ]
-    .iter()
-    .any(|needle| key.contains(needle))
+    key == "auth"
+        || [
+            "token",
+            "password",
+            "passwd",
+            "secret",
+            "authorization",
+            "cookie",
+            "apikey",
+            "accesskey",
+            "credential",
+            "privatekey",
+            "passphrase",
+        ]
+        .iter()
+        .any(|needle| key.contains(needle))
 }
 
 fn contains_sensitive_assignment(value: &str) -> bool {
@@ -283,13 +284,22 @@ fn redact_urls(value: &str) -> String {
 }
 
 fn reference_token_end(value: &str, authority_start: usize) -> usize {
-    value[authority_start..]
+    let delimiter = value[authority_start..]
         .char_indices()
         .find(|(_, character)| {
             character.is_whitespace() || matches!(character, '\'' | '"' | '<' | '>' | '|')
         })
         .map(|(index, _)| authority_start + index)
-        .unwrap_or(value.len())
+        .unwrap_or(value.len());
+    value[authority_start..delimiter]
+        .match_indices("//")
+        .find_map(|(index, _)| {
+            let start = authority_start + index;
+            url_separator_before(value, start)
+                .is_some()
+                .then_some(start)
+        })
+        .unwrap_or(delimiter)
 }
 
 fn redact_scheme_relative_urls(value: &str) -> String {
@@ -326,7 +336,12 @@ fn redact_scheme_relative_urls(value: &str) -> String {
             .find(|(_, character)| matches!(character, '?' | '#'))
             .map(|(index, _)| authority_start + index)
         {
-            redacted.replace_range(boundary..token_end, "");
+            let replacement_end = redacted[token_end..]
+                .starts_with("//")
+                .then(|| url_separator_before(&redacted, token_end))
+                .flatten()
+                .unwrap_or(token_end);
+            redacted.replace_range(boundary..replacement_end, "");
             search_from = boundary;
         } else {
             search_from = scan_after;
@@ -636,7 +651,8 @@ fn read_operation_events_with_limits(
     let mut matched_events = 0usize;
     let mut truncated = false;
     let mut remaining_scan_bytes = max_scan_bytes;
-    for path in log_files {
+    let total_log_files = log_files.len();
+    for (file_index, path) in log_files.into_iter().enumerate() {
         if remaining_scan_bytes == 0 {
             truncated = true;
             break;
@@ -647,7 +663,9 @@ fn read_operation_events_with_limits(
         let Ok(file_bytes) = file.metadata().map(|metadata| metadata.len()) else {
             continue;
         };
-        let scan_bytes = file_bytes.min(remaining_scan_bytes as u64);
+        let files_remaining = total_log_files - file_index;
+        let file_budget = remaining_scan_bytes.div_ceil(files_remaining);
+        let scan_bytes = file_bytes.min(file_budget as u64);
         let start = file_bytes.saturating_sub(scan_bytes);
         if start > 0 {
             truncated = true;
@@ -1028,6 +1046,17 @@ mod tests {
     }
 
     #[test]
+    fn structured_auth_keys_are_redacted_without_redacting_author_fields() {
+        let sanitized = sanitize(serde_json::json!({
+            "_auth": "BASE64_CREDENTIAL",
+            "author": "Ada"
+        }));
+
+        assert_eq!(sanitized["_auth"], "[REDACTED]");
+        assert_eq!(sanitized["author"], "Ada");
+    }
+
+    #[test]
     fn every_url_in_free_form_text_is_sanitized() {
         assert_eq!(
             sanitize_text(
@@ -1064,6 +1093,10 @@ mod tests {
                 "https://first.example?redirect=https://nested.example/path;https://second.example?download=private"
             ),
             "https://first.example;https://second.example"
+        );
+        assert_eq!(
+            sanitize_text("//first.example?a=1,//second.example/status"),
+            "//first.example,//second.example/status"
         );
     }
 
@@ -1228,6 +1261,33 @@ mod tests {
             10,
             usize::MAX,
             terminal.len() + 2,
+        );
+
+        assert!(selected.truncated);
+        assert_eq!(selected.events.len(), 1);
+        assert_eq!(selected.events[0]["fields"]["message"], "terminal");
+    }
+
+    #[test]
+    fn diagnostic_scan_budget_reserves_a_tail_for_each_log() {
+        let temp_dir = TempDir::new().unwrap();
+        let operation_id = "op-123e4567-e89b-42d3-a456-426614174000";
+        let older = temp_dir.path().join("older.jsonl");
+        let newer = temp_dir.path().join("newer.jsonl");
+        let terminal = serde_json::json!({
+            "timestamp": "2026-08-30T03:04:06Z",
+            "fields": { "operation_id": operation_id, "message": "terminal" }
+        })
+        .to_string();
+        std::fs::write(&older, format!("{terminal}\n")).unwrap();
+        std::fs::write(&newer, format!("{}\n", "x".repeat(4096))).unwrap();
+
+        let selected = read_operation_events_with_limits(
+            &[temp_dir.path().to_path_buf()],
+            operation_id,
+            10,
+            usize::MAX,
+            (terminal.len() + 2) * 2,
         );
 
         assert!(selected.truncated);
