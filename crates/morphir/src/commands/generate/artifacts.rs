@@ -680,7 +680,7 @@ fn sync_file_and_parent(parent: &Dir, leaf: &OsStr) -> io::Result<()> {
 }
 
 fn sync_dir(directory: &Dir) -> io::Result<()> {
-    directory.try_clone()?.into_std_file().sync_all()
+    directory.open(".")?.sync_all()
 }
 
 struct ValidatedArtifact {
