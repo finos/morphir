@@ -115,6 +115,7 @@ struct Transaction {
 
 struct Destination {
     parent: Dir,
+    relative_path: PathBuf,
     leaf: OsString,
     staged: Option<PathBuf>,
     backup: PathBuf,
@@ -346,24 +347,39 @@ fn run_transaction<H: ArtifactHooks + ?Sized>(
         };
         staged.map_err(TransactionFailure::RolledBack)?;
     }
-    for artifact in artifacts {
-        preflight_destination(root, &artifact.relative_path)
-            .map_err(TransactionFailure::RolledBack)?;
-    }
     for artifact in stale {
         preflight_destination(root, &artifact.relative_path)
             .map_err(TransactionFailure::RolledBack)?;
     }
     let mut created_directories = Vec::new();
-    let destinations = match prepare_destinations(root, artifacts, stale, &mut created_directories)
-    {
+    let mut destinations = match prepare_stale_destinations(root, artifacts.len(), stale) {
         Ok(destinations) => destinations,
         Err(error) => {
-            remove_created_directories(root, &created_directories);
             return Err(TransactionFailure::RolledBack(error));
         }
     };
-    let result = commit_destinations(transaction, &destinations, hooks);
+    let mut records = Vec::new();
+    commit_destinations(root, transaction, &destinations, &mut records, hooks)?;
+    if let Err(error) = remove_blocking_managed_directories(root, artifacts, stale) {
+        return rollback_failure(error, root, transaction, &destinations, &records, hooks);
+    }
+    for artifact in artifacts {
+        if let Err(error) = preflight_destination(root, &artifact.relative_path) {
+            return rollback_failure(error, root, transaction, &destinations, &records, hooks);
+        }
+    }
+    let artifact_destinations =
+        match prepare_artifact_destinations(root, artifacts, &mut created_directories) {
+            Ok(destinations) => destinations,
+            Err(error) => {
+                let result =
+                    rollback_failure(error, root, transaction, &destinations, &records, hooks);
+                remove_created_directories(root, &created_directories);
+                return result;
+            }
+        };
+    destinations.extend(artifact_destinations);
+    let result = commit_destinations(root, transaction, &destinations, &mut records, hooks);
     drop(destinations);
     if result.is_err() {
         remove_created_directories(root, &created_directories);
@@ -404,13 +420,49 @@ fn preflight_destination(root: &Dir, path: &Path) -> io::Result<()> {
     .map(|_| ())
 }
 
-fn prepare_destinations(
+fn prepare_stale_destinations(
+    root: &Dir,
+    artifact_count: usize,
+    stale: &[ValidatedRemoval],
+) -> io::Result<Vec<Destination>> {
+    let mut destinations = Vec::with_capacity(stale.len());
+    for (offset, artifact) in stale.iter().enumerate() {
+        let Some(parent) = open_existing_directory_path(
+            root,
+            artifact.relative_path.parent().unwrap_or(Path::new("")),
+        )?
+        else {
+            continue;
+        };
+        let leaf = artifact
+            .relative_path
+            .file_name()
+            .expect("validated artifact has a leaf")
+            .to_owned();
+        match validate_leaf(&parent, &leaf)? {
+            LeafState::Absent => continue,
+            LeafState::Regular => {}
+        }
+        let index = artifact_count + offset;
+        destinations.push(Destination {
+            parent,
+            relative_path: artifact.relative_path.clone(),
+            leaf,
+            staged: None,
+            backup: PathBuf::from("backups").join(&artifact.relative_path),
+            rollback: PathBuf::from("rollback").join(index.to_string()),
+            hook_index: Some(index),
+        });
+    }
+    Ok(destinations)
+}
+
+fn prepare_artifact_destinations(
     root: &Dir,
     artifacts: &[ValidatedArtifact],
-    stale: &[ValidatedRemoval],
     created: &mut Vec<PathBuf>,
 ) -> io::Result<Vec<Destination>> {
-    let mut destinations = Vec::with_capacity(artifacts.len() + stale.len());
+    let mut destinations = Vec::with_capacity(artifacts.len());
     for (index, artifact) in artifacts.iter().enumerate() {
         let parent = ensure_directory_path(
             root,
@@ -419,6 +471,7 @@ fn prepare_destinations(
         )?;
         destinations.push(Destination {
             parent,
+            relative_path: artifact.relative_path.clone(),
             leaf: artifact
                 .relative_path
                 .file_name()
@@ -430,36 +483,66 @@ fn prepare_destinations(
             hook_index: (!artifact.internal).then_some(index),
         });
     }
-    for (offset, artifact) in stale.iter().enumerate() {
-        let index = artifacts.len() + offset;
-        let parent = ensure_directory_path(
-            root,
-            artifact.relative_path.parent().unwrap_or(Path::new("")),
-            created,
-        )?;
-        destinations.push(Destination {
-            parent,
-            leaf: artifact
-                .relative_path
-                .file_name()
-                .expect("validated artifact has a leaf")
-                .to_owned(),
-            staged: None,
-            backup: PathBuf::from("backups").join(&artifact.relative_path),
-            rollback: PathBuf::from("rollback").join(index.to_string()),
-            hook_index: Some(index),
-        });
-    }
     Ok(destinations)
 }
 
+fn remove_blocking_managed_directories(
+    root: &Dir,
+    artifacts: &[ValidatedArtifact],
+    stale: &[ValidatedRemoval],
+) -> io::Result<()> {
+    let mut directories = BTreeSet::new();
+    for artifact in artifacts.iter().filter(|artifact| !artifact.internal) {
+        for removed in stale.iter().filter(|removed| {
+            removed.relative_path != artifact.relative_path
+                && removed.relative_path.starts_with(&artifact.relative_path)
+        }) {
+            let mut candidate = removed.relative_path.parent();
+            while let Some(directory) = candidate {
+                if !directory.starts_with(&artifact.relative_path) {
+                    break;
+                }
+                directories.insert(directory.to_path_buf());
+                if directory == artifact.relative_path {
+                    break;
+                }
+                candidate = directory.parent();
+            }
+        }
+    }
+    let mut directories = directories.into_iter().collect::<Vec<_>>();
+    directories.sort_by(|left, right| {
+        right
+            .components()
+            .count()
+            .cmp(&left.components().count())
+            .then_with(|| right.cmp(left))
+    });
+    for directory in directories {
+        let parent_path = directory.parent().unwrap_or(Path::new(""));
+        let Some(parent) = open_existing_directory_path(root, parent_path)? else {
+            continue;
+        };
+        let leaf = directory
+            .file_name()
+            .expect("blocking managed directory has a leaf");
+        match parent.remove_dir(leaf) {
+            Ok(()) => sync_dir(&parent)?,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(())
+}
+
 fn commit_destinations<H: ArtifactHooks + ?Sized>(
+    root: &Dir,
     transaction: &Dir,
     destinations: &[Destination],
+    records: &mut Vec<CommitRecord>,
     hooks: &H,
 ) -> Result<(), TransactionFailure> {
-    let mut records = Vec::new();
-    for (index, destination) in destinations.iter().enumerate() {
+    for (index, destination) in destinations.iter().enumerate().skip(records.len()) {
         records.push(CommitRecord {
             index,
             backup: false,
@@ -469,7 +552,14 @@ fn commit_destinations<H: ArtifactHooks + ?Sized>(
             Ok(LeafState::Absent) => {}
             Ok(LeafState::Regular) => {
                 if let Err(error) = move_destination_to_backup(transaction, destination) {
-                    return rollback_failure(error, transaction, destinations, &records, hooks);
+                    return rollback_failure(
+                        error,
+                        root,
+                        transaction,
+                        destinations,
+                        records,
+                        hooks,
+                    );
                 }
                 records.last_mut().expect("record exists").backup = true;
                 let verified = destination
@@ -477,11 +567,18 @@ fn commit_destinations<H: ArtifactHooks + ?Sized>(
                     .map_or_else(|| Ok(()), |index| hooks.after_backup_move(index))
                     .and_then(|()| verify_moved_backup(transaction, destination));
                 if let Err(error) = verified {
-                    return rollback_failure(error, transaction, destinations, &records, hooks);
+                    return rollback_failure(
+                        error,
+                        root,
+                        transaction,
+                        destinations,
+                        records,
+                        hooks,
+                    );
                 }
             }
             Err(error) => {
-                return rollback_failure(error, transaction, destinations, &records, hooks);
+                return rollback_failure(error, root, transaction, destinations, records, hooks);
             }
         }
         if let Some(staged) = &destination.staged {
@@ -490,16 +587,16 @@ fn commit_destinations<H: ArtifactHooks + ?Sized>(
                 |index| hooks.before_install(index, &destination.parent, &destination.leaf),
             );
             if let Err(error) = hook {
-                return rollback_failure(error, transaction, destinations, &records, hooks);
+                return rollback_failure(error, root, transaction, destinations, records, hooks);
             }
             if let Err(error) =
                 transaction.hard_link(staged, &destination.parent, &destination.leaf)
             {
-                return rollback_failure(error, transaction, destinations, &records, hooks);
+                return rollback_failure(error, root, transaction, destinations, records, hooks);
             }
             records.last_mut().expect("record exists").installed = true;
             if let Err(error) = sync_file_and_parent(&destination.parent, &destination.leaf) {
-                return rollback_failure(error, transaction, destinations, &records, hooks);
+                return rollback_failure(error, root, transaction, destinations, records, hooks);
             }
         }
     }
@@ -537,12 +634,13 @@ fn verify_moved_backup(transaction: &Dir, destination: &Destination) -> io::Resu
 
 fn rollback_failure<H: ArtifactHooks + ?Sized>(
     error: io::Error,
+    root: &Dir,
     transaction: &Dir,
     destinations: &[Destination],
     records: &[CommitRecord],
     hooks: &H,
 ) -> Result<(), TransactionFailure> {
-    match rollback(transaction, destinations, records, hooks) {
+    match rollback(root, transaction, destinations, records, hooks) {
         Ok(()) => Err(TransactionFailure::RolledBack(error)),
         Err(rollback) => Err(TransactionFailure::RecoveryRequired(io::Error::other(
             format!("{error}; rollback failed: {rollback}"),
@@ -551,6 +649,7 @@ fn rollback_failure<H: ArtifactHooks + ?Sized>(
 }
 
 fn rollback<H: ArtifactHooks + ?Sized>(
+    root: &Dir,
     transaction: &Dir,
     destinations: &[Destination],
     records: &[CommitRecord],
@@ -576,12 +675,24 @@ fn rollback<H: ArtifactHooks + ?Sized>(
                 )?;
             }
             if record.backup {
-                transaction.hard_link(
-                    &destination.backup,
-                    &destination.parent,
-                    &destination.leaf,
+                match root.symlink_metadata(&destination.relative_path) {
+                    Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => {
+                        root.remove_dir(&destination.relative_path)?;
+                    }
+                    Ok(_) => {}
+                    Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+                    Err(error) => return Err(error),
+                }
+                let parent = ensure_directory_path(
+                    root,
+                    destination
+                        .relative_path
+                        .parent()
+                        .expect("destination has a parent"),
+                    &mut Vec::new(),
                 )?;
-                sync_file_and_parent(&destination.parent, &destination.leaf)?;
+                transaction.hard_link(&destination.backup, &parent, &destination.leaf)?;
+                sync_file_and_parent(&parent, &destination.leaf)?;
             }
             Ok(())
         })();
@@ -1090,6 +1201,81 @@ mod tests {
         assert_eq!(
             fs::read_to_string(output.path().join("keep.txt")).unwrap(),
             "user-owned"
+        );
+    }
+
+    #[test]
+    fn reconciles_a_managed_file_into_a_directory() {
+        let output = tempdir().unwrap();
+        let writer = ArtifactWriter::new(output.path());
+
+        writer.write_all(&[text("schema", "old")]).unwrap();
+        let paths = writer
+            .write_all(&[text("schema/item.avsc", "new")])
+            .unwrap();
+
+        assert_eq!(paths, ["schema/item.avsc"]);
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema/item.avsc")).unwrap(),
+            "new"
+        );
+    }
+
+    #[test]
+    fn reconciles_a_managed_directory_into_a_file() {
+        let output = tempdir().unwrap();
+        let writer = ArtifactWriter::new(output.path());
+
+        writer
+            .write_all(&[text("schema/item.avsc", "old")])
+            .unwrap();
+        let paths = writer.write_all(&[text("schema", "new")]).unwrap();
+
+        assert_eq!(paths, ["schema"]);
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema")).unwrap(),
+            "new"
+        );
+    }
+
+    #[test]
+    fn refuses_to_replace_a_directory_containing_user_files() {
+        let output = tempdir().unwrap();
+        let writer = ArtifactWriter::new(output.path());
+
+        writer
+            .write_all(&[text("schema/item.avsc", "managed")])
+            .unwrap();
+        fs::write(output.path().join("schema/keep.txt"), "user-owned").unwrap();
+
+        assert!(writer.write_all(&[text("schema", "new")]).is_err());
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema/item.avsc")).unwrap(),
+            "managed"
+        );
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema/keep.txt")).unwrap(),
+            "user-owned"
+        );
+    }
+
+    #[test]
+    fn failed_file_to_directory_transition_restores_the_managed_file() {
+        let output = tempdir().unwrap();
+        ArtifactWriter::new(output.path())
+            .write_all(&[text("schema", "old")])
+            .unwrap();
+        let ops = FailingOps::on_install(0);
+
+        assert!(
+            ArtifactWriter::with_ops(output.path(), &ops)
+                .write_all(&[text("schema/item.avsc", "new")])
+                .is_err()
+        );
+
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema")).unwrap(),
+            "old"
         );
     }
 
