@@ -89,7 +89,7 @@ fn contains_sensitive_assignment(value: &str) -> bool {
         .any(|(separator, _)| {
             let key = value[..separator]
                 .trim_end()
-                .trim_end_matches(['\'', '"'])
+                .trim_end_matches(['\'', '"', '\\'])
                 .chars()
                 .rev()
                 .take_while(|character| {
@@ -298,18 +298,30 @@ fn redact_unknown_absolute_paths(value: &str) -> String {
         .find(|index| absolute_path_start(value, *index))
     {
         result.push_str(&value[cursor..start]);
+        let closing_delimiter =
+            value[..start]
+                .chars()
+                .next_back()
+                .and_then(|character| match character {
+                    '\'' => Some('\''),
+                    '"' => Some('"'),
+                    '(' => Some(')'),
+                    '[' => Some(']'),
+                    '{' => Some('}'),
+                    '<' => Some('>'),
+                    _ => None,
+                });
         let end = value[start..]
             .char_indices()
             .skip(1)
             .find(|(offset, character)| {
-                matches!(
-                    character,
-                    '\r' | '\n' | '\'' | '"' | ')' | ']' | '}' | '<' | '>'
-                ) || (*character == ':'
-                    && value[start + offset + character.len_utf8()..]
-                        .chars()
-                        .next()
-                        .is_some_and(char::is_whitespace))
+                matches!(character, '\r' | '\n')
+                    || Some(*character) == closing_delimiter
+                    || (*character == ':'
+                        && value[start + offset + character.len_utf8()..]
+                            .chars()
+                            .next()
+                            .is_some_and(char::is_whitespace))
             })
             .map(|(offset, _)| start + offset)
             .unwrap_or(value.len());
@@ -796,6 +808,7 @@ mod tests {
             "api_key: LIVE_SECRET",
             "client-secret: LIVE_SECRET",
             r#"request body: {"password":"hunter2"}"#,
+            r#"request body: {\"password\":\"hunter2\"}"#,
             "request failed: --api-key LIVE_SECRET",
             r#"debug args: "--password" "hunter2""#,
             "Authorization:Basic dXNlcjpwYXNz",
@@ -862,6 +875,8 @@ mod tests {
             "posix": "failed to open /Users/alice/company/model.json",
             "spaces": "failed to open /Users/alice/Client Merger/model.json",
             "punctuation": "failed to open /Users/alice/Client, Inc/model;v2.json",
+            "closing_delimiters": "failed to open /Users/alice/Client) Merger/model].json",
+            "wrapped": "failed to open (/Users/alice/company/model.json): permission denied",
             "drive": r"failed to open C:\Users\alice\company\model.json",
             "unc": r"failed to open \\fileserver\private\model.json",
             "known": r"C:\Users\alice\.morphir\store\tools",
@@ -876,7 +891,14 @@ mod tests {
             ],
         );
 
-        for field in ["posix", "spaces", "punctuation", "drive", "unc"] {
+        for field in [
+            "posix",
+            "spaces",
+            "punctuation",
+            "closing_delimiters",
+            "drive",
+            "unc",
+        ] {
             assert_eq!(
                 normalized[field], "failed to open $ABSOLUTE_PATH",
                 "field {field} should not expose an absolute path"
@@ -887,6 +909,10 @@ mod tests {
         assert_eq!(
             normalized["with_error"],
             "failed to open $ABSOLUTE_PATH: permission denied"
+        );
+        assert_eq!(
+            normalized["wrapped"],
+            "failed to open ($ABSOLUTE_PATH): permission denied"
         );
     }
 
