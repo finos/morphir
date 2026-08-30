@@ -272,7 +272,7 @@ fn acquire_publication<H: ArtifactHooks + ?Sized>(
         .parent()
         .ok_or_else(|| io::Error::other("artifact output root has no parent directory"))?;
     let parent = acquire_output_root(parent_path, hooks)?;
-    let lock = acquire_publication_lock(&parent.directory, &absolute)?;
+    let lock = acquire_publication_lock(&parent.directory, &leaf)?;
 
     hooks.before_output_component_open(&parent.directory, &leaf)?;
     let mut created = Vec::new();
@@ -308,26 +308,27 @@ fn acquire_publication<H: ArtifactHooks + ?Sized>(
     })
 }
 
-fn acquire_publication_lock(parent: &Dir, output_root: &Path) -> io::Result<std::fs::File> {
+fn acquire_publication_lock(parent: &Dir, output_leaf: &OsStr) -> io::Result<std::fs::File> {
     let mut options = OpenOptions::new();
     options
         .read(true)
         .write(true)
         .create(true)
         .follow(FollowSymlinks::No);
-    let lock_path = publication_lock_path(output_root);
+    let lock_path = publication_lock_path(output_leaf);
     let lock = parent.open_with(lock_path, &options)?.into_std();
     lock.lock_exclusive()?;
     Ok(lock)
 }
 
-fn publication_lock_path(output_root: &Path) -> String {
+fn publication_lock_path(output_leaf: &OsStr) -> String {
     const FNV_OFFSET_BASIS: u64 = 0xcbf29ce484222325;
     const FNV_PRIME: u64 = 0x100000001b3;
 
-    // Keep this target-specific lock file in the parent permanently. Removing and
+    // The file is addressed relative to the acquired parent capability, so aliases
+    // for that parent converge on one inode. Keep it permanently: removing and
     // recreating it could let two writers lock different inodes for the same root.
-    let portable_path = portable_path_key(&output_root.to_string_lossy());
+    let portable_path = portable_path_key(&output_leaf.to_string_lossy());
     let hash = portable_path
         .as_bytes()
         .iter()
@@ -2008,6 +2009,53 @@ mod tests {
         assert!(!output.join("first.avsc").exists());
         assert_eq!(
             fs::read_to_string(output.join("second.avsc")).unwrap(),
+            "second"
+        );
+    }
+
+    #[test]
+    fn concurrent_writers_serialize_lexical_output_aliases() {
+        let parent = tempdir().unwrap();
+        fs::create_dir(parent.path().join("existing")).unwrap();
+        let output = parent.path().join("output");
+        fs::create_dir(&output).unwrap();
+        let alias = parent.path().join("existing/../output");
+        let (loaded_tx, loaded_rx) = mpsc::sync_channel(0);
+        let (resume_tx, resume_rx) = mpsc::sync_channel(0);
+        let first = thread::spawn(move || {
+            let hooks = PauseAfterManifestLoad {
+                loaded: loaded_tx,
+                resume: Mutex::new(resume_rx),
+            };
+            ArtifactWriter::with_ops(&output, &hooks).write_all(&[text("first.avsc", "first")])
+        });
+        loaded_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("first writer should reach manifest reconciliation");
+
+        let (finished_tx, finished_rx) = mpsc::sync_channel(1);
+        let second = thread::spawn(move || {
+            let result = ArtifactWriter::new(&alias).write_all(&[text("second.avsc", "second")]);
+            finished_tx.send(result).unwrap();
+        });
+        assert!(
+            finished_rx
+                .recv_timeout(Duration::from_millis(100))
+                .is_err(),
+            "lexical aliases for one output root must share a publication lock"
+        );
+
+        resume_tx.send(()).unwrap();
+        first.join().unwrap().unwrap();
+        finished_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("second writer should finish after the lock is released")
+            .unwrap();
+        second.join().unwrap();
+
+        assert!(!parent.path().join("output/first.avsc").exists());
+        assert_eq!(
+            fs::read_to_string(parent.path().join("output/second.avsc")).unwrap(),
             "second"
         );
     }

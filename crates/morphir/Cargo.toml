@@ -27,9 +27,9 @@ owo-colors = "4"
 termimad = "0.35"
 syntect = "5"
 anyhow = { workspace = true }
-base64 = "0.23"
-cap-fs-ext = "3.4.5"
-cap-std = "3.4.5"
+base64 = { workspace = true }
+cap-fs-ext = { workspace = true }
+cap-std = { workspace = true }
 thiserror = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 async-trait = "0.1"
