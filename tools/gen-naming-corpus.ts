@@ -155,9 +155,15 @@ const render = (segs: Name): Rendered => ({
 	screamingSnakeCase: segs.map((s) => s.text.toUpperCase()).join("_"),
 });
 
+const isSingleLetter = (word: string): boolean => /^[a-z]$/.test(word);
+
 /**
  * Decision 0001: a maximal run of two or more single-letter words collapses to
  * one initialism; a run of one stays a word.
+ *
+ * Only *letters* collapse. The canonical encoding uppercases an initialism, and
+ * uppercasing digits is a no-op, so a digits-only initialism would decode back
+ * as a word and silently change identity.
  */
 const legacyDecode = (words: readonly string[]): Segment[] => {
 	const out: Segment[] = [];
@@ -168,7 +174,7 @@ const legacyDecode = (words: readonly string[]): Segment[] => {
 		run = [];
 	};
 	for (const word of words) {
-		if (word.length === 1) run.push(word);
+		if (isSingleLetter(word)) run.push(word);
 		else {
 			flush();
 			out.push(w(word));
@@ -218,6 +224,9 @@ const LEGACY: readonly (readonly string[])[] = [
 	["get", "h", "t", "m", "l"],
 	["u", "s"],
 	["f", "r", "2052", "a"],
+	["1", "2"],
+	["u", "1"],
+	["v", "2", "api"],
 ];
 
 const REJECT: readonly string[] = [
@@ -285,6 +294,32 @@ function build(): string {
 		};
 	});
 
+	const legacyDecodeCases: LegacyDecodeCase[] = LEGACY.map((legacyArray) => {
+		const segments = legacyDecode(legacyArray);
+		return {
+			legacyArray,
+			segments,
+			canonical: {
+				uppercase: encUpper(segments),
+				doubledHyphen: encDouble(segments),
+			},
+		};
+	});
+
+	// An initialism with no letter cannot survive a round trip: the uppercase
+	// encoding uppercases it, which does nothing to digits, so decoding
+	// classifies it as a word. Nothing in the corpus may contain one.
+	for (const segs of [
+		...roundTripCases.map((c) => c.segments),
+		...legacyDecodeCases.map((c) => c.segments),
+	]) {
+		for (const segment of segs) {
+			if (segment.kind === "initialism" && !/[a-z]/.test(segment.text)) {
+				failures.push(`digits-only initialism: ${segment.text}`);
+			}
+		}
+	}
+
 	const doc: Corpus = {
 		contractVersion: 1,
 		description:
@@ -300,17 +335,7 @@ function build(): string {
 		patterns: { name: { uppercase: P_UP, doubledHyphen: P_DB }, fileStem: P_ST },
 		reservedDeviceStems: RESERVED,
 		roundTripCases,
-		legacyDecodeCases: LEGACY.map((legacyArray) => {
-			const segments = legacyDecode(legacyArray);
-			return {
-				legacyArray,
-				segments,
-				canonical: {
-					uppercase: encUpper(segments),
-					doubledHyphen: encDouble(segments),
-				},
-			};
-		}),
+		legacyDecodeCases,
 		rejectCases: REJECT.map((input) => ({
 			input,
 			validAs: { uppercase: reUp.test(input), doubledHyphen: reDb.test(input) },

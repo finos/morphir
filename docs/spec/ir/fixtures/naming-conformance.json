@@ -724,6 +724,71 @@
         "uppercase": "FR-2052-a",
         "doubledHyphen": "--fr-2052-a"
       }
+    },
+    {
+      "legacyArray": [
+        "1",
+        "2"
+      ],
+      "segments": [
+        {
+          "kind": "word",
+          "text": "1"
+        },
+        {
+          "kind": "word",
+          "text": "2"
+        }
+      ],
+      "canonical": {
+        "uppercase": "1-2",
+        "doubledHyphen": "1-2"
+      }
+    },
+    {
+      "legacyArray": [
+        "u",
+        "1"
+      ],
+      "segments": [
+        {
+          "kind": "word",
+          "text": "u"
+        },
+        {
+          "kind": "word",
+          "text": "1"
+        }
+      ],
+      "canonical": {
+        "uppercase": "u-1",
+        "doubledHyphen": "u-1"
+      }
+    },
+    {
+      "legacyArray": [
+        "v",
+        "2",
+        "api"
+      ],
+      "segments": [
+        {
+          "kind": "word",
+          "text": "v"
+        },
+        {
+          "kind": "word",
+          "text": "2"
+        },
+        {
+          "kind": "word",
+          "text": "api"
+        }
+      ],
+      "canonical": {
+        "uppercase": "v-2-api",
+        "doubledHyphen": "v-2-api"
+      }
     }
   ],
   "rejectCases": [
