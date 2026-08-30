@@ -125,10 +125,11 @@ fn contains_sensitive_assignment(value: &str) -> bool {
     value
         .char_indices()
         .filter(|(_, character)| matches!(character, '=' | ':'))
-        .any(|(separator, _)| {
-            let key = value[..separator]
+        .any(|(separator, separator_character)| {
+            let prefix = value[..separator]
                 .trim_end()
-                .trim_end_matches(['\'', '"', '\\', ']', ')', '}'])
+                .trim_end_matches(['\'', '"', '\\', ']', ')', '}']);
+            let key = prefix
                 .chars()
                 .rev()
                 .take_while(|character| {
@@ -138,7 +139,16 @@ fn contains_sensitive_assignment(value: &str) -> bool {
                 .chars()
                 .rev()
                 .collect::<String>();
-            !key.is_empty() && sensitive_key(&key)
+            let key_start = prefix.len().saturating_sub(key.len());
+            let colon_has_assignment_boundary = separator_character != ':'
+                || key_start == 0
+                || prefix[..key_start]
+                    .chars()
+                    .next_back()
+                    .is_some_and(|character| {
+                        matches!(character, '\'' | '"' | '\\' | '[' | '(' | '{' | ',' | ';')
+                    });
+            !key.is_empty() && sensitive_key(&key) && colon_has_assignment_boundary
         })
 }
 
@@ -240,10 +250,14 @@ fn url_scheme_start_before(value: &str, marker: usize) -> Option<usize> {
 }
 
 fn url_token_end(value: &str, authority_start: usize) -> usize {
+    let token_start = url_scheme_start_before(value, authority_start.saturating_sub(3))
+        .unwrap_or(authority_start.saturating_sub(3));
     let delimiter = value[authority_start..]
         .char_indices()
         .find(|(_, character)| {
-            character.is_whitespace() || matches!(character, '\'' | '"' | '<' | '>')
+            character.is_whitespace()
+                || matches!(character, '\'' | '"' | '<' | '>')
+                || closes_wrapped_token(value, token_start, *character)
         })
         .map(|(index, _)| authority_start + index)
         .unwrap_or(value.len());
@@ -255,6 +269,13 @@ fn url_token_end(value: &str, authority_start: usize) -> usize {
                 .then_some(start)
         })
         .unwrap_or(delimiter)
+}
+
+fn closes_wrapped_token(value: &str, token_start: usize, character: char) -> bool {
+    matches!(
+        (value[..token_start].chars().next_back(), character),
+        (Some('('), ')') | (Some('['), ']') | (Some('{'), '}')
+    )
 }
 
 fn url_separator_before(value: &str, start: usize) -> Option<usize> {
@@ -316,10 +337,13 @@ fn redact_urls(value: &str) -> String {
 }
 
 fn reference_token_end(value: &str, authority_start: usize) -> usize {
+    let token_start = authority_start.saturating_sub(2);
     let delimiter = value[authority_start..]
         .char_indices()
         .find(|(_, character)| {
-            character.is_whitespace() || matches!(character, '\'' | '"' | '<' | '>' | '|')
+            character.is_whitespace()
+                || matches!(character, '\'' | '"' | '<' | '>' | '|')
+                || closes_wrapped_token(value, token_start, *character)
         })
         .map(|(index, _)| authority_start + index)
         .unwrap_or(value.len());
@@ -385,31 +409,32 @@ fn redact_scheme_relative_urls(value: &str) -> String {
 
 /// Sanitize free-form text before writing it to a correlated diagnostic event.
 pub(crate) fn sanitize_text(value: &str) -> String {
+    let value = if value.contains("://") {
+        redact_urls(value)
+    } else {
+        value.to_owned()
+    };
+    let value = if value.contains("//") {
+        redact_scheme_relative_urls(&value)
+    } else {
+        value
+    };
     let lower = value.to_ascii_lowercase();
     if lower.contains("bearer ")
-        || contains_authorization_header(value)
+        || contains_authorization_header(&value)
         || lower.contains("ghp_")
         || lower.contains("github_pat_")
         || (lower.contains("-----begin ") && lower.contains("private key-----"))
         || lower.contains("password=")
         || lower.contains("token=")
         || lower.contains("secret=")
-        || contains_sensitive_assignment(value)
-        || contains_sensitive_option_pair(value)
-        || contains_serialized_sensitive_named_value(value)
+        || contains_sensitive_assignment(&value)
+        || contains_sensitive_option_pair(&value)
+        || contains_serialized_sensitive_named_value(&value)
     {
         return "[REDACTED]".to_owned();
     }
-    let value = if value.contains("://") {
-        redact_urls(value)
-    } else {
-        value.to_owned()
-    };
-    if value.contains("//") {
-        redact_scheme_relative_urls(&value)
-    } else {
-        value
-    }
+    value
 }
 
 fn path_boundary_before(value: &str, start: usize) -> bool {
@@ -870,7 +895,7 @@ fn human_operation_event_lines(result: &OperationEvents) -> Vec<String> {
     let mut lines = Vec::with_capacity(result.events.len().saturating_add(1));
     if result.truncated {
         lines.push(
-            "Older diagnostic events were omitted because the display limit was reached."
+            "Diagnostic results are incomplete because some local events could not be read or retained."
                 .to_owned(),
         );
     }
@@ -1215,6 +1240,10 @@ mod tests {
         }
         let public_header = r#"headers=[{"name":"content-type","value":"application/json"}]"#;
         assert_eq!(sanitize_text(public_header), public_header);
+        assert_eq!(
+            sanitize_text("unexpected token: ')'"),
+            "unexpected token: ')'"
+        );
     }
 
     #[test]
@@ -1257,7 +1286,7 @@ mod tests {
         assert_eq!(
             lines,
             [
-                "Older diagnostic events were omitted because the display limit was reached.",
+                "Diagnostic results are incomplete because some local events could not be read or retained.",
                 "No local events found for op-123e4567-e89b-42d3-a456-426614174000"
             ]
         );
@@ -1373,6 +1402,10 @@ mod tests {
                 "https://first.example?redirect=https://nested.example/path;https://second.example?download=private"
             ),
             "https://first.example;https://second.example"
+        );
+        assert_eq!(
+            sanitize_text("request (https://example.test/status?token=x),retrying"),
+            "request (https://example.test/status),retrying"
         );
         assert_eq!(
             sanitize_text("//first.example?a=1,//second.example/status"),
