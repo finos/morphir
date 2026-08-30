@@ -151,9 +151,16 @@ fn belongs_to_operation(event: &serde_json::Value, operation_id: &str) -> bool {
     fields["operation_id"] == operation_id || fields["parent_operation_id"] == operation_id
 }
 
-fn read_operation_events(logs: &std::path::Path, operation_id: &str) -> Vec<serde_json::Value> {
-    let mut events = [logs.join("cli"), logs.join("desktop")]
-        .into_iter()
+fn operation_log_roots(home: &crate::home::MorphirHome) -> [PathBuf; 2] {
+    [
+        crate::home::effective_cli_logs_dir(home),
+        home.desktop_logs_dir(),
+    ]
+}
+
+fn read_operation_events(log_roots: &[PathBuf], operation_id: &str) -> Vec<serde_json::Value> {
+    let mut events = log_roots
+        .iter()
         .flat_map(|root| WalkDir::new(root).follow_links(false).into_iter())
         .filter_map(Result::ok)
         .filter(|entry| entry.file_type().is_file())
@@ -181,9 +188,10 @@ pub fn run_diagnostics_show(operation: &str, json: bool) -> AppResult<miette::Re
         .ok_or_else(|| miette::miette!("Invalid Morphir operation ID: {operation}"))?;
     let home = crate::home::MorphirHome::resolve()
         .map_err(|error| miette::miette!("Failed to resolve Morphir Home: {error}"))?;
+    let log_roots = operation_log_roots(&home);
     let result = OperationEvents {
         operation_id: operation_id.to_string(),
-        events: read_operation_events(&home.logs_dir(), operation_id.as_str()),
+        events: read_operation_events(&log_roots, operation_id.as_str()),
     };
 
     if json {
@@ -291,8 +299,9 @@ pub fn run_diagnostics_collect(operation: &str, output: &Path) -> AppResult<miet
     }
     let home = crate::home::MorphirHome::resolve()
         .map_err(|error| miette::miette!("Failed to resolve Morphir Home: {error}"))?;
+    let log_roots = operation_log_roots(&home);
     let events = bundle_events(
-        read_operation_events(&home.logs_dir(), operation_id.as_str()),
+        read_operation_events(&log_roots, operation_id.as_str()),
         home.root(),
     )?;
     let system = serde_json::to_vec_pretty(&BundleSystem {
@@ -302,7 +311,7 @@ pub fn run_diagnostics_collect(operation: &str, output: &Path) -> AppResult<miet
         architecture: std::env::consts::ARCH,
         morphir_home: "$MORPHIR_HOME",
         home_exists: home.root().is_dir(),
-        logs_exist: home.logs_dir().is_dir(),
+        logs_exist: log_roots.iter().any(|path| path.is_dir()),
     })
     .map_err(|error| miette::miette!("Failed to serialize bundle system summary: {error}"))?;
     let manifest = BundleManifest {

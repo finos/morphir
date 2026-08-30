@@ -861,6 +861,44 @@ fn diagnostics_show_finds_correlated_events_and_redacts_legacy_secrets() {
 }
 
 #[test]
+fn diagnostics_show_honors_the_cli_log_directory_override() {
+    let temp_dir = TempDir::new().unwrap();
+    let morphir_home = temp_dir.path().join("relocated-home");
+    let log_dir = temp_dir.path().join("managed-cli-logs");
+    let session_dir = log_dir.join("2026-08-30");
+    std::fs::create_dir_all(&session_dir).unwrap();
+    let operation_id = "op-123e4567-e89b-42d3-a456-426614174000";
+    std::fs::write(
+        session_dir.join("fixture.jsonl"),
+        serde_json::json!({
+            "timestamp": "2026-08-30T03:04:05Z",
+            "level": "INFO",
+            "fields": {
+                "operation_id": operation_id,
+                "event_name": "cli.operation.finish"
+            }
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    let output = morphir_command()
+        .args(["diagnostics", "show", "--operation", operation_id, "--json"])
+        .env("MORPHIR_HOME", &morphir_home)
+        .env("MORPHIR_LOG_DIR", &log_dir)
+        .output()
+        .expect("failed to run morphir binary");
+
+    assert!(output.status.success());
+    let shown: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(shown["events"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        shown["events"][0]["fields"]["event_name"],
+        "cli.operation.finish"
+    );
+}
+
+#[test]
 fn diagnostics_collect_creates_an_inspectable_sanitized_archive() {
     use std::io::Read as _;
 
@@ -1102,6 +1140,7 @@ fn migrate_selects_compact_or_expanded_v4_type_encoding() {
 #[test]
 fn migrate_failure_does_not_replace_an_existing_output() {
     let temp_dir = TempDir::new().unwrap();
+    let morphir_home = temp_dir.path().join("home");
     let input = temp_dir.path().join("v2.json");
     let output_path = temp_dir.path().join("result.json");
     let mut source: serde_json::Value = serde_json::from_str(include_str!(
@@ -1122,11 +1161,33 @@ fn migrate_failure_does_not_replace_an_existing_output() {
             "--target-version",
             "v4",
         ])
+        .env("MORPHIR_HOME", &morphir_home)
+        .env_remove("MORPHIR_LOG_DIR")
+        .env("MORPHIR_LOG_FILE", "true")
+        .env("MORPHIR_LOGGING__FILE_LEVEL", "error")
         .output()
         .expect("failed to run morphir binary");
 
     assert!(!output.status.success());
     assert_eq!(std::fs::read_to_string(output_path).unwrap(), "unchanged");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let operation_id = stderr
+        .lines()
+        .find_map(|line| line.strip_prefix("Operation ID: "))
+        .expect("migration failure should report its operation ID");
+    let log_path = stderr
+        .lines()
+        .find_map(|line| line.strip_prefix("Log: "))
+        .map(PathBuf::from)
+        .expect("migration failure should report its log path");
+    let events = std::fs::read_to_string(log_path).unwrap();
+    assert!(events.lines().any(|line| {
+        serde_json::from_str::<serde_json::Value>(line).is_ok_and(|event| {
+            event["fields"]["operation_id"] == operation_id
+                && event["fields"]["event_name"] == "cli.operation.finish"
+                && event["fields"]["outcome"] == "failure"
+        })
+    }));
 }
 
 #[test]

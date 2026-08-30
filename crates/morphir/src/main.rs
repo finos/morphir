@@ -862,6 +862,21 @@ impl AppSession for MorphirSession {
     }
 }
 
+fn report_operation_outcome(
+    operation_id: &observability::OperationId,
+    logging_guard: Option<&logging::LogGuard>,
+    exit_code: u8,
+    failed: bool,
+) {
+    logging::record_operation_finish(operation_id, logging_guard, exit_code, failed);
+    if failed {
+        eprintln!("Operation ID: {operation_id}");
+        if let Some(log) = logging_guard.map(logging::LogGuard::log_path) {
+            eprintln!("Log: {}", log.display());
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> starbase::MainResult {
     use clap::CommandFactory;
@@ -912,15 +927,16 @@ async fn main() -> starbase::MainResult {
             _ => None,
         };
         if let Some(migrate_args) = migrate_args {
-            let result = migrate_args.run();
-            match result {
-                Ok(Some(code)) => return Ok(std::process::ExitCode::from(code)),
-                Ok(None) => return Ok(std::process::ExitCode::SUCCESS),
+            let (exit_code, failed) = match migrate_args.run() {
+                Ok(Some(code)) => (code, code != 0),
+                Ok(None) => (0, false),
                 Err(e) => {
                     eprintln!("Error: {}", e);
-                    return Ok(std::process::ExitCode::from(1));
+                    (1, true)
                 }
-            }
+            };
+            report_operation_outcome(&operation_id, logging_guard.as_ref(), exit_code, failed);
+            return Ok(std::process::ExitCode::from(exit_code));
         }
     }
 
@@ -949,17 +965,11 @@ async fn main() -> starbase::MainResult {
         )
         .await;
     let failed = outcome.error.is_some() || outcome.exit_code != 0;
-    logging::record_operation_finish(
+    report_operation_outcome(
         &operation_id,
         logging_guard.as_ref(),
         outcome.exit_code,
         failed,
     );
-    if failed {
-        eprintln!("Operation ID: {operation_id}");
-        if let Some(log) = logging_guard.as_ref().map(logging::LogGuard::log_path) {
-            eprintln!("Log: {}", log.display());
-        }
-    }
     outcome.into_miette_result()
 }

@@ -225,9 +225,9 @@ fn channel_matches(channel: &str, version: &Version, channels: &[Value]) -> bool
     match channel {
         "stable" => version.pre.is_empty() && channels.iter().any(|value| value == "stable"),
         "preview" | "insiders" => channels.iter().any(|value| {
-            value
-                .as_str()
-                .is_some_and(|value| value == "preview" || value.starts_with("preview/"))
+            value.as_str().is_some_and(|value| {
+                value == "preview" || value == "insiders" || value.starts_with("preview/")
+            })
         }),
         segmented if segmented.starts_with("preview/") => {
             channels.iter().any(|value| value == segmented)
@@ -268,6 +268,9 @@ fn resolve(targets: &Value, case: &Value) -> Result<Version, &'static str> {
             }
             continue;
         }
+        if metadata["status"] == "yanked" && exact.is_none() {
+            continue;
+        }
         if !supports_platform(target, os, arch) {
             continue;
         }
@@ -292,6 +295,50 @@ fn resolve(targets: &Value, case: &Value) -> Result<Version, &'static str> {
     }
 
     candidates.into_iter().max().ok_or("no_compatible_release")
+}
+
+#[test]
+fn reference_resolver_excludes_yanked_releases_from_moving_channels() {
+    let fixture = fixture();
+    let mut targets = fixture["metadata"]["targets"].clone();
+    targets["signed"]["targets"]["releases/desktop/1.0.0.json"]["custom"]["morphir"]["status"] =
+        Value::from("yanked");
+    let moving = serde_json::json!({
+        "toolId": "desktop",
+        "selection": { "channel": "stable" },
+        "cliVersion": "0.4.0",
+        "platform": { "os": "windows", "arch": "x86_64" }
+    });
+    let exact = serde_json::json!({
+        "toolId": "desktop",
+        "selection": { "version": "1.0.0" },
+        "cliVersion": "0.4.0",
+        "platform": { "os": "windows", "arch": "x86_64" }
+    });
+
+    assert_eq!(resolve(&targets, &moving), Err("no_compatible_release"));
+    assert_eq!(resolve(&targets, &exact).unwrap(), Version::new(1, 0, 0));
+}
+
+#[test]
+fn reference_resolver_accepts_metadata_published_as_insiders() {
+    let fixture = fixture();
+    let mut targets = fixture["metadata"]["targets"].clone();
+    targets["signed"]["targets"]["releases/desktop/1.1.0-preview.1.json"]["custom"]["morphir"]["channels"] =
+        serde_json::json!(["insiders"]);
+
+    for channel in ["preview", "insiders"] {
+        let case = serde_json::json!({
+            "toolId": "desktop",
+            "selection": { "channel": channel },
+            "cliVersion": "0.4.0",
+            "platform": { "os": "windows", "arch": "x86_64" }
+        });
+        assert_eq!(
+            resolve(&targets, &case).unwrap(),
+            Version::parse("1.1.0-preview.1").unwrap()
+        );
+    }
 }
 
 #[test]
