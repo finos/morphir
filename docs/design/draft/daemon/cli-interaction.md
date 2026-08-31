@@ -561,109 +561,19 @@ idle_timeout = "30m"       # Stop after idle period (0 = never)
 
 ## Extension Management
 
-The CLI provides commands to discover, inspect, and manage extensions.
+The current CLI manages verified local extension state. Installation and update
+use a controlled index. They do not send a daemon or MEP request.
 
-### List Extensions
-
-```bash
-# List all registered extensions
+```console
+morphir extension install --index <INDEX> <NAME>
 morphir extension list
-
-# Output:
-# NAME              VERSION   TYPE      STATUS   CAPABILITIES
-# spark-codegen     1.2.0     codegen   ready    generate, streaming, incremental
-# elm-frontend      0.19.1    frontend  ready    compile, diagnostics
-# my-extension      0.1.0     -         ready    (info only)
-
-# List with details
-morphir extension list --verbose
-
-# Filter by type
-morphir extension list --type codegen
-morphir extension list --type frontend
+morphir extension update --index <INDEX> <NAME>
+morphir extension uninstall <NAME>
 ```
 
-### Inspect Extension
-
-```bash
-# Get detailed info about an extension
-morphir extension info spark-codegen
-
-# Output:
-# spark-codegen v1.2.0
-# ═══════════════════════════════════════════════════════
-#   Type:         codegen
-#   Description:  Generate Apache Spark DataFrame code from Morphir IR
-#   Author:       Morphir Contributors
-#   Homepage:     https://github.com/finos/morphir-spark
-#   License:      Apache-2.0
-#   Source:       ./extensions/spark-codegen.wasm
-#
-#   Capabilities:
-#     ✓ codegen/generate
-#     ✓ codegen/generate-streaming
-#     ✓ codegen/generate-incremental
-#     ✓ codegen/generate-module
-#     ✓ codegen/options-schema
-#
-#   Targets: spark
-#
-#   Options:
-#     spark_version  string  "3.5"   Spark version to target
-#     scala_version  string  "2.13"  Scala version to target
-
-# Output as JSON
-morphir extension info spark-codegen --json
-```
-
-### Verify Extension Health
-
-```bash
-# Ping single extension
-morphir extension ping spark-codegen
-# spark-codegen: OK (2ms)
-
-# Ping all extensions
-morphir extension ping --all
-# spark-codegen:  OK (2ms)
-# elm-frontend:   OK (1ms)
-# my-extension:   OK (1ms)
-
-# Ping with timeout
-morphir extension ping spark-codegen --timeout 5s
-```
-
-### Extension Installation
-
-```bash
-# Install from URL
-morphir extension install https://extensions.morphir.dev/spark-codegen-1.2.0.wasm
-
-# Install from local file
-morphir extension install ./my-extension.wasm
-
-# Install from registry (future)
-morphir extension install morphir/spark-codegen@1.2.0
-
-# Uninstall
-morphir extension uninstall spark-codegen
-
-# Update
-morphir extension update spark-codegen
-```
-
-### Extension Configuration
-
-```bash
-# Show extension config
-morphir extension config spark-codegen
-
-# Set extension option
-morphir extension config spark-codegen --set spark_version=3.5
-
-# Reset to defaults
-morphir extension config spark-codegen --reset
-```
+The CLI does not install a raw WASM file, archive, URL, or directory. See the
+[extension overview](../extensions/README.mdx) for the index, lock, catalog, and
+runtime contract.
 
 ## CLI Command Mapping
 
@@ -687,11 +597,6 @@ morphir extension config spark-codegen --reset
 | `morphir compile <files...>` | `compile/files` | Compile multiple files (no project) |
 | `morphir eval <expr>` | `compile/expression` | Evaluate inline expression |
 | `morphir check --expr <expr>` | `compile/expression` | Type-check inline expression |
-| `morphir extension list` | `extension/list` | List registered extensions |
-| `morphir extension info <ext>` | `extension/info` | Get extension details |
-| `morphir extension ping <ext>` | `extension/ping` | Verify extension connectivity |
-| `morphir extension install` | `extension/install` | Install extension |
-| `morphir extension uninstall` | `extension/uninstall` | Remove extension |
 
 ### Streaming Operations
 

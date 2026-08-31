@@ -27,6 +27,9 @@ owo-colors = "4"
 termimad = "0.35"
 syntect = "5"
 anyhow = { workspace = true }
+base64 = { workspace = true }
+cap-fs-ext = { workspace = true }
+cap-std = { workspace = true }
 thiserror = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 async-trait = "0.1"
@@ -43,6 +46,7 @@ semver = { workspace = true }
 chrono = "0.4"
 walkdir = "2"
 fs2 = { workspace = true }
+same-file = { workspace = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde-saphyr = { workspace = true }
@@ -52,6 +56,8 @@ dirs = "6.0"
 schemars = "1.0"
 indexmap = { version = "2", features = ["serde"] }
 usage-lib = { version = "6", features = ["clap", "docs"] }
+unicode-casefold = { workspace = true }
+unicode-normalization = { workspace = true }
 
 # TUI
 ratatui = { workspace = true }
@@ -64,6 +70,12 @@ tui-realm-textarea = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-appender = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+rustix = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true }
 
 [dev-dependencies]
 cucumber = { workspace = true }

@@ -56,9 +56,10 @@ morphir run integration    # Custom task
 morphir run test           # Runs overridden test task
 ```
 
-### Extension-Provided Tasks
+### Future extension-provided tasks
 
-Extensions (via WASM components) can register additional intrinsic tasks:
+This section explores a future integration. The current MEP capability model
+does not let extensions register tasks.
 
 ```bash
 # Tasks provided by a TypeScript codegen extension
@@ -68,7 +69,8 @@ morphir run codegen:typescript
 morphir run codegen:scala
 ```
 
-See [WASM Components](../../../spec/webassembly/wasm-components.md) for how extensions register tasks.
+See the [extension overview](./README.mdx) for the current runtime and protocol
+boundary.
 
 ## Task Definition
 
@@ -437,4 +439,6 @@ run = "morphir-elm make"
 4. **Compatibility**: File-based tasks work with any scripting language
 5. **Incremental**: Source/output tracking avoids unnecessary work
 
-For extension points beyond tasks (custom commands, protocol extensions), see [WASM Components](../../../spec/webassembly/wasm-components.md) for the WASM Component Model approach.
+For current frontend, backend, validator, and transform extension points, see
+the [extension overview](./README.mdx). The archived Component Model page is not
+the current ABI.

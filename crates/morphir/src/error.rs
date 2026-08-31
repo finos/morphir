@@ -28,6 +28,14 @@ pub enum CliError {
         error: std::io::Error,
     },
 
+    #[error("Artifact publication error: {message}")]
+    #[diagnostic(code(cli::artifact_publication_error))]
+    ArtifactPublication {
+        message: String,
+        #[source]
+        error: std::io::Error,
+    },
+
     #[error("Validation error: {message}")]
     #[diagnostic(code(cli::validation_error))]
     Validation { message: String },

@@ -49,6 +49,9 @@ cmd generate display_order=3 args_override_self=#false help="Generate code from 
     flag --project help="Project name (for workspaces)" {
         arg <PROJECT>
     }
+    flag --option help="Override a backend option as KEY=VALUE. May be repeated" var=#true {
+        arg "<KEY=VALUE>…" var=#true
+    }
     flag --json help="Output as JSON"
     flag --json-lines help="Output as JSON Lines (streaming)"
 }

@@ -3615,6 +3615,9 @@ version = "0.4.0-alpha.5"
 dependencies = [
  "anyhow",
  "async-trait",
+ "base64 0.23.1",
+ "cap-fs-ext",
+ "cap-std",
  "chrono",
  "clap",
  "crossterm",
@@ -3633,6 +3636,8 @@ dependencies = [
  "morphir-okf",
  "owo-colors",
  "ratatui",
+ "rustix 1.1.4",
+ "same-file",
  "schemars 1.2.2",
  "semver",
  "serde",
@@ -3651,8 +3656,11 @@ dependencies = [
  "tui-realm-stdlib",
  "tui-realm-textarea",
  "tuirealm",
+ "unicode-casefold",
+ "unicode-normalization",
  "usage-lib",
  "walkdir",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3730,6 +3738,7 @@ dependencies = [
  "morphir-common",
  "morphir-core",
  "morphir-devkit",
+ "morphir-distribution",
  "morphir-extension-sdk",
  "morphir-workspace",
  "notify",
@@ -3741,6 +3750,9 @@ dependencies = [
  "tokio",
  "toml 1.1.4+spec-1.1.0",
  "tracing",
+ "unicode-casefold",
+ "unicode-normalization",
+ "wat",
 ]
 
 [[package]]

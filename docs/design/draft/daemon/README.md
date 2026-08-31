@@ -130,4 +130,4 @@ morphir publish                 # Publish to registry
 ## Related
 
 - **[IR v4](../ir/README.md)** - Intermediate representation format
-- **[Extensions](../extensions/README.mdx)** - WASM components and task system
+- **[Extensions](../extensions/README.mdx)** - MEP runtimes and verified installation

@@ -61,6 +61,12 @@ const sidebars = {
     },
     {
       type: 'category',
+      label: 'Generate',
+      collapsed: true,
+      items: ['generate/avro'],
+    },
+    {
+      type: 'category',
       label: 'CLI Preview (Archived)',
       collapsed: true,
       items: [
