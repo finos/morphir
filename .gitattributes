@@ -3,5 +3,8 @@
 
 *.lockb binary diff=lockb
 
+# Vendored web bundles are byte-for-byte build artifacts with provenance hashes.
+crates/morphir/src/commands/ui/assets/assets/* binary
+
 # Use bd merge for beads JSONL files
 .beads/issues.jsonl merge=beads

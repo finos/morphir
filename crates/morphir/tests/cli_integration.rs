@@ -133,6 +133,35 @@ fn run_morphir(
 }
 
 #[test]
+fn ui_help_documents_workspace_and_host_options() {
+    let temp = TempDir::new().unwrap();
+    let output = run_morphir(&["ui", "--help"], &temp.path().join("home"), temp.path());
+    let help = String::from_utf8_lossy(&output.stdout);
+
+    assert!(output.status.success());
+    assert!(help.contains("Usage: morphir ui [OPTIONS] [WORKSPACE]"));
+    assert!(help.contains("--workspace-extension <ID>"));
+    assert!(help.contains("--no-open"));
+}
+
+#[test]
+fn ui_rejects_files_before_printing_a_launch_url() {
+    let temp = TempDir::new().unwrap();
+    let file = temp.path().join("morphir.json");
+    std::fs::write(&file, "{}").unwrap();
+    let output = run_morphir(
+        &["ui", file.to_str().unwrap(), "--no-open"],
+        &temp.path().join("home"),
+        temp.path(),
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert!(!output.status.success());
+    assert!(stderr.contains("must be an existing directory"));
+    assert!(!stderr.contains("/launch?token="));
+}
+
+#[test]
 fn compile_help_documents_explicit_extension_selection() {
     let temp = TempDir::new().unwrap();
     let output = run_morphir(

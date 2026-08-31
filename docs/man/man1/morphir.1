@@ -24,6 +24,9 @@ Generate code from Morphir IR
 \fBmigrate\fR
 Migrate IR between versions
 .TP
+\fBui\fR
+Open the Morphir development workbench in a browser
+.TP
 \fBconfig\fR
 Inspect the effective Morphir configuration
 .TP
@@ -333,6 +336,24 @@ Output serialization profile (json or yaml; extension then YAML default when omi
 .TP
 \fB<INPUT>\fR
 Input file, directory, or remote source (e.g., github:owner/repo, URL)
+.SH "MORPHIR UI"
+Open the Morphir development workbench in a browser
+.PP
+\fBUsage:\fR morphir ui [OPTIONS] [<WORKSPACE>]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-workspace\-extension\fR \fI<ID>\fR
+Use one installed workspace\-capability extension by ID
+.TP
+\fB\-\-no\-open\fR
+Print the one\-time launch URL instead of opening a browser
+\fBArguments:\fR
+.PP
+.TP
+\fB<WORKSPACE>\fR
+Morphir development workspace to open. Defaults to the current directory
 .SH "MORPHIR CONFIG GET"
 Get one value from the effective configuration
 .PP

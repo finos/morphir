@@ -151,6 +151,9 @@ morphir migrate ./morphir-ir.json -o ./morphir-ir-v4/ --output-layout vfs
 See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tools/ir-migrate) for detailed real-world examples including the US Federal Reserve FR 2052a regulation model.")]
     Migrate(MigrateArgs),
 
+    /// Open the Morphir development workbench in a browser
+    Ui(commands::ui::UiArgs),
+
     // ===== Management Commands =====
     /// Inspect the effective Morphir configuration
     Config {
@@ -651,6 +654,7 @@ impl AppSession for MorphirSession {
             }
             Commands::Transform { input, output } => run_transform(input.clone(), output.clone()),
             Commands::Migrate(args) => args.run(),
+            Commands::Ui(args) => commands::ui::run_ui(args.clone()).await,
             Commands::Config { action } => match action {
                 ConfigAction::Get {
                     key,
