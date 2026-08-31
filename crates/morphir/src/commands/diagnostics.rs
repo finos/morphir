@@ -113,6 +113,7 @@ fn sensitive_key(key: &str) -> bool {
             "token",
             "password",
             "passwd",
+            "pwd",
             "secret",
             "authorization",
             "cookie",
@@ -565,11 +566,10 @@ fn sanitize(value: serde_json::Value) -> serde_json::Value {
 
 fn excluded_sensitive_container(key: &str) -> bool {
     let mut word = String::new();
+    let mut previous: Option<char> = None;
     for character in key.chars() {
         let starts_camel_word = character.is_ascii_uppercase()
-            && word
-                .chars()
-                .next_back()
+            && previous
                 .is_some_and(|previous| previous.is_ascii_lowercase() || previous.is_ascii_digit());
         if (!character.is_ascii_alphanumeric() || starts_camel_word)
             && sensitive_container_word(&word)
@@ -581,6 +581,9 @@ fn excluded_sensitive_container(key: &str) -> bool {
         }
         if character.is_ascii_alphanumeric() {
             word.push(character.to_ascii_lowercase());
+            previous = Some(character);
+        } else {
+            previous = None;
         }
     }
     sensitive_container_word(&word)
@@ -1340,7 +1343,9 @@ mod tests {
             "credential=LIVE_SECRET",
             "password: hunter2",
             "passwd=hunter2",
+            "pwd=hunter2",
             "request failed: --passwd hunter2",
+            "request failed: --pwd hunter2",
             "api_key: LIVE_SECRET",
             "client-secret: LIVE_SECRET",
             r#"request body: {"password":"hunter2"}"#,
@@ -1498,6 +1503,9 @@ mod tests {
             "process.env": {
                 "DEPLOYMENT_LICENSE": "NAMESPACED_SECRET"
             },
+            "ENV": {
+                "DEPLOYMENT_LICENSE": "UPPERCASE_SECRET"
+            },
             "configuration": {
                 "endpoint": "internal.example.test"
             },
@@ -1515,6 +1523,7 @@ mod tests {
         assert_eq!(sanitized["_auth"], "[REDACTED]");
         assert!(sanitized.get("environment").is_none());
         assert!(sanitized.get("process.env").is_none());
+        assert!(sanitized.get("ENV").is_none());
         assert!(sanitized.get("configuration").is_none());
         assert!(sanitized.get("runtimeConfig").is_none());
         assert!(sanitized.get("env").is_none());
