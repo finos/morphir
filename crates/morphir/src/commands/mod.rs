@@ -9,6 +9,7 @@ pub mod migrate;
 pub mod schema;
 pub mod tool;
 pub mod transform;
+pub mod ui;
 pub mod validate;
 pub mod version;
 

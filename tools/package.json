@@ -6,6 +6,7 @@
 	"scripts": {
 		"gen:naming-corpus": "bun run gen-naming-corpus.ts",
 		"check:naming-corpus": "bun run gen-naming-corpus.ts --check",
+		"vendor:morphir-web": "bun run vendor-morphir-web.ts",
 		"typecheck": "tsc"
 	},
 	"devDependencies": {
