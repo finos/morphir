@@ -503,7 +503,9 @@ fn path_boundary_before(value: &str, start: usize) -> bool {
 fn absolute_path_start(value: &str, start: usize) -> bool {
     let bytes = value.as_bytes();
     let posix = bytes[start] == b'/'
-        && bytes.get(start + 1) != Some(&b'/')
+        && bytes
+            .get(start + 1)
+            .is_some_and(|next| !next.is_ascii_whitespace() && *next != b'/')
         && !(start > 0 && bytes[start - 1] == b':')
         && !(start > 1 && bytes[start - 1] == b'/' && bytes[start - 2] == b':')
         && path_boundary_before(value, start);
@@ -572,7 +574,7 @@ fn sanitize(value: serde_json::Value) -> serde_json::Value {
             });
             let mut sanitized = serde_json::Map::new();
             for (key, value) in values {
-                if excluded_sensitive_container(&key) {
+                if excluded_diagnostic_container(&key) {
                     continue;
                 }
                 let value = if sensitive_key(&key)
@@ -591,6 +593,25 @@ fn sanitize(value: serde_json::Value) -> serde_json::Value {
         serde_json::Value::String(value) => serde_json::Value::String(sanitize_text(&value)),
         value => value,
     }
+}
+
+fn excluded_diagnostic_container(key: &str) -> bool {
+    excluded_sensitive_container(key) || excluded_project_payload_container(key)
+}
+
+fn excluded_project_payload_container(key: &str) -> bool {
+    matches!(
+        normalized_key(key).as_str(),
+        "morphirir"
+            | "irpayload"
+            | "sourcecode"
+            | "sourcefiles"
+            | "projectsources"
+            | "generatedoutput"
+            | "generatedcode"
+            | "generatedfiles"
+            | "generatedsources"
+    )
 }
 
 fn excluded_sensitive_container(key: &str) -> bool {
@@ -1570,6 +1591,36 @@ mod tests {
     }
 
     #[test]
+    fn structured_project_payload_containers_are_excluded() {
+        let sanitized = sanitize(serde_json::json!({
+            "morphirIr": { "formatVersion": 3, "distribution": "PRIVATE_IR" },
+            "ir_payload": "PRIVATE_IR_PAYLOAD",
+            "sourceCode": "module Private exposing (..)",
+            "projectSources": ["PRIVATE_SOURCE"],
+            "generatedOutput": { "Private.java": "PRIVATE_GENERATED_OUTPUT" },
+            "generatedCode": "PRIVATE_GENERATED_CODE",
+            "sourceUrl": "https://public.example/status",
+            "outputPath": "dist"
+        }));
+
+        for field in [
+            "morphirIr",
+            "ir_payload",
+            "sourceCode",
+            "projectSources",
+            "generatedOutput",
+            "generatedCode",
+        ] {
+            assert!(
+                sanitized.get(field).is_none(),
+                "field {field} should be excluded"
+            );
+        }
+        assert_eq!(sanitized["sourceUrl"], "https://public.example");
+        assert_eq!(sanitized["outputPath"], "dist");
+    }
+
+    #[test]
     fn every_url_in_free_form_text_is_sanitized() {
         assert_eq!(
             sanitize_text("reset link: https://private.example/reset/LIVE_SECRET"),
@@ -1648,6 +1699,7 @@ mod tests {
             "known": r"C:\Users\alice\.morphir\store\tools",
             "near_prefix": "/Users/alice/.morphir-project/client/model.json",
             "with_error": "failed to open /Users/alice/company/model.json: permission denied",
+            "prose": "completed 1 / 2 phases; retrying",
             "files": {
                 "/Users/alice/private/model.json": "failed",
                 r"C:\Users\alice\.morphir\store\tools": "known"
@@ -1676,6 +1728,7 @@ mod tests {
         }
         assert_eq!(normalized["known"], r"$MORPHIR_HOME\store\tools");
         assert_eq!(normalized["near_prefix"], "$ABSOLUTE_PATH");
+        assert_eq!(normalized["prose"], "completed 1 / 2 phases; retrying");
         assert_eq!(
             normalized["with_error"],
             "failed to open $ABSOLUTE_PATH: permission denied"
