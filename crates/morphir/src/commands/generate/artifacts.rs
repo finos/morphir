@@ -304,24 +304,46 @@ fn acquire_publication<H: ArtifactHooks + ?Sized>(
                     )));
                 }
             };
-            if !directory_matches_path(parent_path, &parent.directory).map_err(|error| {
-                io::Error::other(format!("cannot verify locked output parent: {error}"))
-            })? {
+            let parent_matches = match directory_matches_path(parent_path, &parent.directory) {
+                Ok(matches) => matches,
+                Err(error) => {
+                    remove_created_output_root(parent);
+                    return Err(io::Error::other(format!(
+                        "cannot verify locked output parent: {error}"
+                    )));
+                }
+            };
+            if !parent_matches {
                 remove_created_output_root(parent);
                 drop(locks);
                 continue;
             }
-            hooks.before_output_component_open(&parent.directory, &leaf)?;
+            if let Err(error) = hooks.before_output_component_open(&parent.directory, &leaf) {
+                remove_created_output_root(parent);
+                return Err(error);
+            }
             let root = open_or_create_output_leaf(parent, leaf.clone())
                 .map_err(|error| io::Error::other(format!("cannot open output root: {error}")))?;
-            locks.push(
-                lock_directory(&root.directory).map_err(|error| {
-                    io::Error::other(format!("cannot lock output root: {error}"))
-                })?,
-            );
-            if !directory_matches_path(&absolute, &root.directory).map_err(|error| {
-                io::Error::other(format!("cannot verify locked output root: {error}"))
-            })? {
+            let root_lock = match lock_directory(&root.directory) {
+                Ok(lock) => lock,
+                Err(error) => {
+                    remove_created_output_root(root);
+                    return Err(io::Error::other(format!(
+                        "cannot lock output root: {error}"
+                    )));
+                }
+            };
+            locks.push(root_lock);
+            let root_matches = match directory_matches_path(&absolute, &root.directory) {
+                Ok(matches) => matches,
+                Err(error) => {
+                    remove_created_output_root(root);
+                    return Err(io::Error::other(format!(
+                        "cannot verify locked output root: {error}"
+                    )));
+                }
+            };
+            if !root_matches {
                 remove_created_output_root(root);
                 drop(locks);
                 continue;
@@ -362,9 +384,18 @@ fn acquire_locked_output_root<H: ArtifactHooks + ?Sized>(
         created: Vec::new(),
     };
     for component in components {
-        hooks.before_output_component_open(&current.directory, &component)?;
+        if let Err(error) = hooks.before_output_component_open(&current.directory, &component) {
+            remove_created_output_root(current);
+            return Err(error);
+        }
         current = open_or_create_output_leaf(current, component)?;
-        locks.push(lock_directory(&current.directory)?);
+        match lock_directory(&current.directory) {
+            Ok(lock) => locks.push(lock),
+            Err(error) => {
+                remove_created_output_root(current);
+                return Err(error);
+            }
+        }
     }
     Ok((current, locks))
 }
@@ -395,11 +426,20 @@ fn open_or_create_output_leaf(
     let directory = match parent.open_dir_nofollow(&leaf) {
         Ok(directory) => directory,
         Err(error) if error.kind() == io::ErrorKind::NotFound => {
-            let creator_parent = parent.try_clone()?;
+            let creator_parent = match parent.try_clone() {
+                Ok(parent) => parent,
+                Err(error) => {
+                    remove_created_output_directories(&created);
+                    return Err(error);
+                }
+            };
             let newly_created = match parent.create_dir(&leaf) {
                 Ok(()) => true,
                 Err(error) if error.kind() == io::ErrorKind::AlreadyExists => false,
-                Err(error) => return Err(error),
+                Err(error) => {
+                    remove_created_output_directories(&created);
+                    return Err(error);
+                }
             };
             if newly_created {
                 created.push(CreatedOutputDirectory {
@@ -415,7 +455,10 @@ fn open_or_create_output_leaf(
                 }
             }
         }
-        Err(error) => return Err(error),
+        Err(error) => {
+            remove_created_output_directories(&created);
+            return Err(error);
+        }
     };
     Ok(AcquiredOutputRoot { directory, created })
 }
@@ -2708,6 +2751,21 @@ mod tests {
             fs::read_to_string(output.join("schema.avsc")).unwrap(),
             "generated"
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn failed_nested_output_acquisition_removes_created_ancestors() {
+        let parent = tempdir().unwrap();
+        let created_ancestor = parent.path().join("first");
+        let oversized_component = "x".repeat(300);
+        let output = created_ancestor.join(oversized_component).join("output");
+
+        ArtifactWriter::new(&output)
+            .write_all(&[text("schema.avsc", "generated")])
+            .unwrap_err();
+
+        assert!(!created_ancestor.exists());
     }
 
     #[cfg(unix)]
