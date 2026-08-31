@@ -354,6 +354,17 @@ mod tests {
         select_provider,
     };
 
+    #[test]
+    fn the_request_states_the_selected_target() {
+        let request = GenerateRequest {
+            ir: serde_json::json!({"formatVersion": 4}),
+            target: "json-schema".into(),
+            options: Default::default(),
+        };
+
+        assert_eq!(request.target, "json-schema");
+    }
+
     #[derive(Default)]
     struct TransportStateMother {
         requests: Vec<ExtensionRequest>,
@@ -662,6 +673,7 @@ mod tests {
         });
         let request = GenerateRequest {
             ir: json!({"formatVersion": 4}),
+            target: "avro".into(),
             options: [("representation".into(), json!("idl"))]
                 .into_iter()
                 .collect(),
@@ -687,6 +699,7 @@ mod tests {
             state.requests[1].params,
             json!({
                 "ir": {"formatVersion": 4},
+                "target": "avro",
                 "options": {"representation": "idl"}
             })
         );
@@ -709,7 +722,11 @@ mod tests {
             &installed,
             "json-schema",
             "4",
-            GenerateRequest::default(),
+            GenerateRequest {
+                ir: serde_json::Value::Null,
+                target: "avro".into(),
+                options: Default::default(),
+            },
         )
         .await
         .unwrap_err();
@@ -738,9 +755,19 @@ mod tests {
         });
         let installed = selected_backend();
 
-        let error = invoke_loaded(loaded, &installed, "avro", "4", GenerateRequest::default())
-            .await
-            .unwrap_err();
+        let error = invoke_loaded(
+            loaded,
+            &installed,
+            "avro",
+            "4",
+            GenerateRequest {
+                ir: serde_json::Value::Null,
+                target: "avro".into(),
+                options: Default::default(),
+            },
+        )
+        .await
+        .unwrap_err();
 
         assert!(
             error.to_string().contains("bad generation request"),
@@ -769,9 +796,19 @@ mod tests {
         });
         let installed = selected_backend();
 
-        let error = invoke_loaded(loaded, &installed, "avro", "4", GenerateRequest::default())
-            .await
-            .unwrap_err();
+        let error = invoke_loaded(
+            loaded,
+            &installed,
+            "avro",
+            "4",
+            GenerateRequest {
+                ir: serde_json::Value::Null,
+                target: "avro".into(),
+                options: Default::default(),
+            },
+        )
+        .await
+        .unwrap_err();
         let message = error.to_string();
 
         assert!(message.contains("bad generation request"), "{message}");
@@ -789,9 +826,19 @@ mod tests {
         });
         let installed = selected_backend();
 
-        let error = invoke_loaded(loaded, &installed, "avro", "4", GenerateRequest::default())
-            .await
-            .unwrap_err();
+        let error = invoke_loaded(
+            loaded,
+            &installed,
+            "avro",
+            "4",
+            GenerateRequest {
+                ir: serde_json::Value::Null,
+                target: "avro".into(),
+                options: Default::default(),
+            },
+        )
+        .await
+        .unwrap_err();
 
         assert!(
             error.to_string().contains("provider transport failed"),
@@ -819,6 +866,7 @@ mod tests {
             "4",
             GenerateRequest {
                 ir: json!({"formatVersion": 4}),
+                target: "avro".into(),
                 options: [("representation".into(), json!("idl"))]
                     .into_iter()
                     .collect(),

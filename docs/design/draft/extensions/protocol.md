@@ -348,9 +348,15 @@ Lines and characters are zero-based. Ranges use an inclusive start and exclusive
 ## Backend generation
 
 `morphir.backend.generate` accepts one IR distribution and returns artifacts by
-value. Its parameters are exactly `GenerateRequest { ir, options }`. Input
-paths, output paths, target selection, and IR-version detection are host
-concerns. They do not appear in the guest request.
+value. Its parameters are exactly `GenerateRequest { ir, target, options }`.
+`target` is required. The host selects the target, and states the selected
+target ID in the request so that an extension advertising more than one target
+can dispatch on it. Input paths, output paths, and IR-version detection remain
+host concerns and do not appear in the guest request.
+
+A backend that advertises one target may ignore `target`. A backend that
+advertises several targets must fail with a diagnostic when `target` is not one
+of its advertised targets. It must not fall back to a default target.
 
 ```json
 {
@@ -359,6 +365,7 @@ concerns. They do not appear in the guest request.
   "method": "morphir.backend.generate",
   "params": {
     "ir": {},
+    "target": "avro",
     "options": {}
   }
 }

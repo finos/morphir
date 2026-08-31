@@ -115,6 +115,7 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
         .unwrap_or_else(|| ctx.config_path.parent().unwrap().to_path_buf());
     let request = GenerateRequest {
         ir: ir_data,
+        target: target_lang.clone(),
         options: serde_json::from_value(backend_options).map_err(|error| CliError::Config {
             error: error.into(),
         })?,
