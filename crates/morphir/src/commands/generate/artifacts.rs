@@ -232,7 +232,7 @@ struct AcquiredPublication {
 
 struct PublicationLock {
     files: Vec<std::fs::File>,
-    cleanup_on_abandon: Option<PublicationLockCleanup>,
+    cleanup_on_abandon: Vec<PublicationLockCleanup>,
 }
 
 struct PublicationLockCleanup {
@@ -244,7 +244,7 @@ impl PublicationLock {
     fn new(files: Vec<std::fs::File>) -> Self {
         Self {
             files,
-            cleanup_on_abandon: None,
+            cleanup_on_abandon: Vec::new(),
         }
     }
 
@@ -252,8 +252,15 @@ impl PublicationLock {
     fn with_cleanup(file: std::fs::File, directory: Dir, path: PathBuf) -> Self {
         Self {
             files: vec![file],
-            cleanup_on_abandon: Some(PublicationLockCleanup { directory, path }),
+            cleanup_on_abandon: vec![PublicationLockCleanup { directory, path }],
         }
+    }
+
+    #[cfg(any(not(unix), test))]
+    fn extend(&mut self, mut other: Self) {
+        self.files.append(&mut other.files);
+        self.cleanup_on_abandon
+            .append(&mut other.cleanup_on_abandon);
     }
 
     fn abandon(self) {
@@ -261,17 +268,19 @@ impl PublicationLock {
             files,
             cleanup_on_abandon,
         } = self;
-        let Some(cleanup) = cleanup_on_abandon else {
-            drop(files);
-            return;
-        };
-
-        let removed_while_locked = cleanup.directory.remove_file(&cleanup.path).is_ok();
-        drop(files);
-        if !removed_while_locked {
-            let _ = cleanup.directory.remove_file(&cleanup.path);
+        let mut retry = Vec::new();
+        for cleanup in cleanup_on_abandon.into_iter().rev() {
+            if cleanup.directory.remove_file(&cleanup.path).is_err() {
+                retry.push(cleanup);
+            } else {
+                let _ = sync_dir(&cleanup.directory);
+            }
         }
-        let _ = sync_dir(&cleanup.directory);
+        drop(files);
+        for cleanup in retry {
+            let _ = cleanup.directory.remove_file(&cleanup.path);
+            let _ = sync_dir(&cleanup.directory);
+        }
     }
 }
 
@@ -435,8 +444,38 @@ fn acquire_publication<H: ArtifactHooks + ?Sized>(
 
     #[cfg(not(unix))]
     {
-        let parent = acquire_output_root(parent_path, hooks)?;
-        acquire_file_publication(parent, leaf, hooks)
+        acquire_file_locked_publication(&absolute, hooks)
+    }
+}
+
+#[cfg(any(not(unix), test))]
+fn acquire_file_locked_publication<H: ArtifactHooks + ?Sized>(
+    output_root: &Path,
+    hooks: &H,
+) -> io::Result<AcquiredPublication> {
+    let (parent_path, leaf) = publication_parent_and_leaf(output_root)?;
+    let (grandparent_path, parent_leaf) = publication_parent_and_leaf(parent_path)?;
+    let grandparent = acquire_output_root(grandparent_path, hooks)?;
+    let AcquiredPublication {
+        root: parent,
+        lock: mut locks,
+    } = match acquire_file_publication(grandparent, parent_leaf, hooks) {
+        Ok(acquired) => acquired,
+        Err(error) if error.kind() == io::ErrorKind::PermissionDenied => {
+            let parent = acquire_output_root(parent_path, hooks)?;
+            return acquire_file_publication(parent, leaf, hooks);
+        }
+        Err(error) => return Err(error),
+    };
+    match acquire_file_publication(parent, leaf, hooks) {
+        Ok(AcquiredPublication { root, lock }) => {
+            locks.extend(lock);
+            Ok(AcquiredPublication { root, lock: locks })
+        }
+        Err(error) => {
+            locks.abandon();
+            Err(error)
+        }
     }
 }
 
@@ -2274,6 +2313,35 @@ mod tests {
                 .exists()
         );
         drop(acquired);
+    }
+
+    #[test]
+    fn regular_file_locks_serialize_nested_output_roots() {
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("generated");
+        let nested = output.join("child");
+        fs::create_dir_all(&nested).unwrap();
+
+        let first = acquire_file_locked_publication(&output, &NOOP_HOOKS).unwrap();
+        let (finished_tx, finished_rx) = mpsc::sync_channel(1);
+        let second = thread::spawn(move || {
+            let acquired = acquire_file_locked_publication(&nested, &NOOP_HOOKS);
+            finished_tx.send(acquired.map(|_| ())).unwrap();
+        });
+
+        assert!(
+            finished_rx
+                .recv_timeout(Duration::from_millis(100))
+                .is_err(),
+            "a nested output writer must wait for its ancestor publication lock"
+        );
+
+        drop(first);
+        finished_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("nested writer should finish after the ancestor lock is released")
+            .unwrap();
+        second.join().unwrap();
     }
 
     #[test]
