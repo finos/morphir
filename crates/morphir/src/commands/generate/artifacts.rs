@@ -63,11 +63,8 @@ impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
             lock: publication_lock,
         } = acquire_publication(self.output_root, self.hooks).map_err(file_system_error)?;
         let previous = load_manifest(&root.directory)?;
-        reject_unmanaged_artifact_replacements(
-            &root.directory,
-            &validated,
-            previous.as_deref().unwrap_or_default(),
-        )?;
+        let managed = previous.as_deref().unwrap_or_default();
+        reject_unmanaged_artifact_replacements(&root.directory, &validated, managed)?;
         if let Err(error) = self.hooks.after_manifest_load() {
             remove_created_output_root(root);
             drop(publication_lock);
@@ -79,13 +76,16 @@ impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
             return Ok(Vec::new());
         }
         let current_paths = display_paths.iter().cloned().collect::<BTreeSet<_>>();
-        let stale = previous
-            .unwrap_or_default()
-            .into_iter()
+        let stale = managed
+            .iter()
             .filter(|artifact| !current_paths.contains(&artifact.display_path))
+            .map(|artifact| ValidatedRemoval {
+                relative_path: artifact.relative_path.clone(),
+                display_path: artifact.display_path.clone(),
+            })
             .collect::<Vec<_>>();
         validated.push(manifest_artifact(&display_paths)?);
-        let result = self.run(&root.directory, &validated, &stale);
+        let result = self.run(&root.directory, &validated, &stale, managed);
         if result.is_err() {
             remove_created_output_root(root);
         } else {
@@ -100,10 +100,18 @@ impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
         root: &Dir,
         artifacts: &[ValidatedArtifact],
         stale: &[ValidatedRemoval],
+        managed: &[ValidatedRemoval],
     ) -> Result<(), CliError> {
         let transaction = create_transaction(root).map_err(file_system_error)?;
         let recovery_path = self.output_root.join(&transaction.relative_path);
-        let result = run_transaction(root, &transaction.directory, artifacts, stale, self.hooks);
+        let result = run_transaction(
+            root,
+            &transaction.directory,
+            artifacts,
+            stale,
+            managed,
+            self.hooks,
+        );
         match result {
             // All destination files are installed and synced here. This is the
             // publication commit point; subsequent maintenance never rolls them back.
@@ -144,6 +152,7 @@ struct Destination {
     backup: PathBuf,
     rollback: PathBuf,
     hook_index: Option<usize>,
+    replace_existing: bool,
 }
 
 struct CommitRecord {
@@ -673,6 +682,7 @@ fn run_transaction<H: ArtifactHooks + ?Sized>(
     transaction: &Dir,
     artifacts: &[ValidatedArtifact],
     stale: &[ValidatedRemoval],
+    managed: &[ValidatedRemoval],
     hooks: &H,
 ) -> Result<(), TransactionFailure> {
     transaction
@@ -715,7 +725,7 @@ fn run_transaction<H: ArtifactHooks + ?Sized>(
         }
     }
     let artifact_destinations =
-        match prepare_artifact_destinations(root, artifacts, &mut created_directories) {
+        match prepare_artifact_destinations(root, artifacts, managed, &mut created_directories) {
             Ok(destinations) => destinations,
             Err(error) => {
                 let result =
@@ -798,6 +808,7 @@ fn prepare_stale_destinations(
             backup: PathBuf::from("backups").join(&artifact.relative_path),
             rollback: PathBuf::from("rollback").join(index.to_string()),
             hook_index: Some(index),
+            replace_existing: true,
         });
     }
     Ok(destinations)
@@ -806,6 +817,7 @@ fn prepare_stale_destinations(
 fn prepare_artifact_destinations(
     root: &Dir,
     artifacts: &[ValidatedArtifact],
+    managed: &[ValidatedRemoval],
     created: &mut Vec<PathBuf>,
 ) -> io::Result<Vec<Destination>> {
     let mut destinations = Vec::with_capacity(artifacts.len());
@@ -827,6 +839,10 @@ fn prepare_artifact_destinations(
             backup: PathBuf::from("backups").join(&artifact.relative_path),
             rollback: PathBuf::from("rollback").join(index.to_string()),
             hook_index: (!artifact.internal).then_some(index),
+            replace_existing: artifact.internal
+                || managed.iter().any(|owned| {
+                    portable_paths_equal(&owned.relative_path, &artifact.relative_path)
+                }),
         });
     }
     Ok(destinations)
@@ -936,6 +952,22 @@ fn commit_destinations<H: ArtifactHooks + ?Sized>(
         match validate_leaf(&destination.parent, &destination.leaf) {
             Ok(LeafState::Absent) => {}
             Ok(LeafState::Regular) => {
+                if !destination.replace_existing {
+                    return rollback_failure(
+                        io::Error::new(
+                            io::ErrorKind::AlreadyExists,
+                            format!(
+                                "artifact destination '{}' already exists but is not managed by Morphir",
+                                destination.relative_path.display()
+                            ),
+                        ),
+                        root,
+                        transaction,
+                        destinations,
+                        records,
+                        hooks,
+                    );
+                }
                 if let Err(error) = move_destination_to_backup(transaction, destination) {
                     return rollback_failure(
                         error,
@@ -2606,6 +2638,37 @@ mod tests {
         assert_eq!(
             fs::read_to_string(output.path().join("schema.avsc")).unwrap(),
             "concurrent"
+        );
+    }
+
+    struct CreateAfterManifestLoad {
+        path: PathBuf,
+    }
+
+    impl ArtifactHooks for CreateAfterManifestLoad {
+        fn after_manifest_load(&self) -> io::Result<()> {
+            fs::write(&self.path, "user-owned")
+        }
+    }
+
+    #[test]
+    fn destination_created_after_ownership_preflight_is_not_backed_up() {
+        let output = tempdir().unwrap();
+        let hooks = CreateAfterManifestLoad {
+            path: output.path().join("schema.avsc"),
+        };
+
+        let error = ArtifactWriter::with_ops(output.path(), &hooks)
+            .write_all(&[text("schema.avsc", "generated")])
+            .unwrap_err();
+
+        let CliError::FileSystem { error } = error else {
+            panic!("expected a file-system error");
+        };
+        assert!(error.to_string().contains("not managed by Morphir"));
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema.avsc")).unwrap(),
+            "user-owned"
         );
     }
 
