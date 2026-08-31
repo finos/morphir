@@ -3750,6 +3750,7 @@ dependencies = [
  "fs2",
  "glob",
  "indexmap 2.14.0",
+ "morphir-config",
  "morphir-core",
  "nbformat",
  "reqwest",
@@ -3770,6 +3771,18 @@ dependencies = [
  "uuid",
  "vfs",
  "zip",
+]
+
+[[package]]
+name = "morphir-config"
+version = "0.4.0-alpha.5"
+dependencies = [
+ "secrecy",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "thiserror 2.0.20",
+ "toml 1.1.4+spec-1.1.0",
 ]
 
 [[package]]
@@ -3800,6 +3813,7 @@ dependencies = [
  "morphir-core",
  "morphir-devkit",
  "morphir-extension-sdk",
+ "morphir-workspace",
  "notify",
  "reqwest",
  "serde",
@@ -3816,9 +3830,13 @@ name = "morphir-devkit"
 version = "0.4.0-alpha.5"
 dependencies = [
  "anyhow",
+ "cap-std",
  "dirs",
  "keyring",
  "morphir-common",
+ "morphir-config",
+ "morphir-workspace",
+ "same-file",
  "secrecy",
  "serde",
  "serde_json",
@@ -3885,6 +3903,17 @@ dependencies = [
  "serde",
  "serde_yaml",
  "tempfile",
+ "thiserror 2.0.20",
+]
+
+[[package]]
+name = "morphir-workspace"
+version = "0.4.0-alpha.5"
+dependencies = [
+ "globset",
+ "morphir-config",
+ "serde",
+ "serde_json",
  "thiserror 2.0.20",
 ]
 
