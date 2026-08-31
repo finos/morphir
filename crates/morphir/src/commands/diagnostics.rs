@@ -798,6 +798,25 @@ struct DiscoveredLogFiles {
     truncated: bool,
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct DiscoveredLogFile {
+    modified: Option<std::time::SystemTime>,
+    path: PathBuf,
+}
+
+fn retain_newest_log_file(
+    retained: &mut BinaryHeap<Reverse<DiscoveredLogFile>>,
+    candidate: DiscoveredLogFile,
+    limit: usize,
+) -> bool {
+    retained.push(Reverse(candidate));
+    if retained.len() <= limit {
+        return false;
+    }
+    retained.pop();
+    true
+}
+
 fn discover_log_files(
     log_roots: &[PathBuf],
     max_entries: usize,
@@ -809,7 +828,7 @@ fn discover_log_files(
         let root_entry_limit = fair_share(max_entries, root_index, log_roots.len());
         let root_file_limit = fair_share(max_files, root_index, log_roots.len());
         let mut visited_entries = 0usize;
-        let mut retained_files = 0usize;
+        let mut retained_files = BinaryHeap::new();
         let root = match root.canonicalize() {
             Ok(root) => root,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
@@ -848,14 +867,20 @@ fn discover_log_files(
             }
             let path = entry.into_path();
             let path = path.canonicalize().unwrap_or(path);
-            if !log_files.contains(&path) && retained_files >= root_file_limit {
+            let modified = path.metadata().and_then(|value| value.modified()).ok();
+            if retain_newest_log_file(
+                &mut retained_files,
+                DiscoveredLogFile { modified, path },
+                root_file_limit,
+            ) {
                 truncated = true;
-                break;
-            }
-            if log_files.insert(path) {
-                retained_files = retained_files.saturating_add(1);
             }
         }
+        log_files.extend(
+            retained_files
+                .into_iter()
+                .map(|Reverse(candidate)| candidate.path),
+        );
     }
     let mut log_files = log_files.into_iter().collect::<Vec<_>>();
     log_files.sort_by(|left, right| {
@@ -1200,12 +1225,15 @@ pub fn run_diagnostics_collect(operation: &str, output: &Path) -> AppResult<miet
 #[cfg(test)]
 mod tests {
     use super::{
-        OperationEvents, belongs_to_operation, bounded_tail_reader, discover_log_files,
-        for_each_bounded_line, human_operation_event_lines, normalize_paths,
-        read_operation_events_from_files, read_operation_events_with_limits, sanitize,
-        sanitize_text,
+        DiscoveredLogFile, OperationEvents, belongs_to_operation, bounded_tail_reader,
+        discover_log_files, for_each_bounded_line, human_operation_event_lines, normalize_paths,
+        read_operation_events_from_files, read_operation_events_with_limits,
+        retain_newest_log_file, sanitize, sanitize_text,
     };
+    use std::cmp::Reverse;
+    use std::collections::{BTreeSet, BinaryHeap};
     use std::io::{BufReader, Cursor};
+    use std::time::{Duration, SystemTime};
     use tempfile::TempDir;
 
     fn create_directory_link(
@@ -1647,6 +1675,30 @@ mod tests {
                 .paths
                 .iter()
                 .any(|path| path.starts_with(&second_root))
+        );
+    }
+
+    #[test]
+    fn diagnostic_log_discovery_keeps_the_newest_candidates_within_each_limit() {
+        let mut retained = BinaryHeap::new();
+        for (name, age) in [("old.jsonl", 1), ("new.jsonl", 3), ("middle.jsonl", 2)] {
+            retain_newest_log_file(
+                &mut retained,
+                DiscoveredLogFile {
+                    modified: Some(SystemTime::UNIX_EPOCH + Duration::from_secs(age)),
+                    path: name.into(),
+                },
+                2,
+            );
+        }
+
+        let paths = retained
+            .into_iter()
+            .map(|Reverse(file)| file.path)
+            .collect::<BTreeSet<_>>();
+        assert_eq!(
+            paths,
+            BTreeSet::from(["middle.jsonl".into(), "new.jsonl".into()])
         );
     }
 
