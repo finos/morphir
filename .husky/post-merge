@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# Chain the beads-managed hook, which brings the local database in step with what
+# a pull just brought in. bd installs its shims under .beads/hooks and they are
+# committed, but core.hooksPath points at this directory, so they only run if we
+# call them.
+if [ -x .beads/hooks/post-merge ]; then
+    .beads/hooks/post-merge "$@" || exit $?
+fi

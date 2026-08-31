@@ -1,5 +1,13 @@
 #!/bin/sh
 
+# Chain the beads-managed hook. bd installs its shims under .beads/hooks (its
+# recommended location for the Dolt backend) and they are committed, but nothing
+# ran them: core.hooksPath now points at this directory, so bd's copies are only
+# reachable if we call them.
+if [ -x .beads/hooks/pre-commit ]; then
+    .beads/hooks/pre-commit "$@" || exit $?
+fi
+
 # Prevent committing .beads as a symlink
 # This can happen when using git worktrees where .beads becomes a symlink
 # to the main worktree's .beads directory
@@ -46,4 +54,20 @@ if [ -L ".beads" ]; then
         echo ""
         exit 1
     fi
+fi
+
+# Issue data no longer belongs in an ordinary commit: it is published to the
+# beads-sync branch (sync.branch in .beads/config.yaml) and ignored elsewhere.
+# Catch a re-added copy, which would put the churn and the drift back on main.
+# --diff-filter=d excludes deletions: removing these files from a branch is
+# exactly what the switch to beads-sync required, and must stay possible.
+if git diff --cached --name-only --diff-filter=d | grep -qE "^\.beads/(issues|interactions)\.jsonl$"; then
+    echo "ERROR: .beads issue data is staged."
+    echo ""
+    echo "That data lives on the beads-sync branch, not here. Unstage it and"
+    echo "publish instead:"
+    echo "    git restore --staged .beads/issues.jsonl .beads/interactions.jsonl"
+    echo "    mise run beads:publish"
+    echo ""
+    exit 1
 fi

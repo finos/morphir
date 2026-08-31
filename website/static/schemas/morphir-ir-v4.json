@@ -1384,37 +1384,21 @@
           "required": [ "OpaqueTypeSpecification" ],
           "properties": {
             "OpaqueTypeSpecification": {
-              "oneOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "annotations": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/definitions/Annotation"
-                      }
-                    },
-                    "typeParams": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/definitions/Name"
-                      }
-                    }
+              "type": "object",
+              "properties": {
+                "annotations": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Annotation"
                   }
                 },
-                {
-                  "type": "object",
-                  "properties": {
-                    "annotations": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/definitions/Annotation"
-                      }
-                    }
-                  },
-                  "additionalProperties": false
+                "typeParams": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Name"
+                  }
                 }
-              ]
+              }
             }
           },
           "additionalProperties": false
