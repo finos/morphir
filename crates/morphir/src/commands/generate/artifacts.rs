@@ -347,17 +347,26 @@ fn acquire_publication<H: ArtifactHooks + ?Sized>(
     output_root: &Path,
     hooks: &H,
 ) -> io::Result<AcquiredPublication> {
-    let absolute = std::path::absolute(output_root)?;
-    let leaf = absolute
-        .file_name()
-        .ok_or_else(|| io::Error::other("artifact output root must have a final component"))?
-        .to_owned();
-    let parent_path = absolute
-        .parent()
-        .ok_or_else(|| io::Error::other("artifact output root has no parent directory"))?;
+    let absolute = normalize_existing_output_root(output_root)?;
+    let (parent_path, leaf) = publication_parent_and_leaf(&absolute)?;
 
     #[cfg(unix)]
     {
+        if leaf == OsStr::new(".") {
+            let (root, locks) = acquire_locked_output_root(&absolute, hooks)
+                .map_err(|error| io::Error::other(format!("cannot lock output root: {error}")))?;
+            if !directory_matches_path(&absolute, &root.directory)? {
+                remove_created_output_root(root);
+                drop(locks);
+                return Err(io::Error::other(
+                    "artifact output root changed during publication lock acquisition",
+                ));
+            }
+            return Ok(AcquiredPublication {
+                root,
+                lock: PublicationLock::new(locks),
+            });
+        }
         for _ in 0..100 {
             let (parent, mut locks) = match acquire_locked_output_root(parent_path, hooks) {
                 Ok(acquired) => acquired,
@@ -426,6 +435,28 @@ fn acquire_publication<H: ArtifactHooks + ?Sized>(
     {
         let parent = acquire_output_root(parent_path, hooks)?;
         acquire_file_publication(parent, leaf, hooks)
+    }
+}
+
+fn normalize_existing_output_root(output_root: &Path) -> io::Result<PathBuf> {
+    let absolute = std::path::absolute(output_root)?;
+    match std::fs::symlink_metadata(&absolute) {
+        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => {
+            std::fs::canonicalize(absolute)
+        }
+        Ok(_) => Ok(absolute),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(absolute),
+        Err(error) => Err(error),
+    }
+}
+
+fn publication_parent_and_leaf(absolute: &Path) -> io::Result<(&Path, OsString)> {
+    match (absolute.parent(), absolute.file_name()) {
+        (Some(parent), Some(leaf)) => Ok((parent, leaf.to_owned())),
+        (None, None) if absolute.has_root() => Ok((absolute, OsString::from("."))),
+        _ => Err(io::Error::other(
+            "artifact output root must identify an absolute filesystem location",
+        )),
     }
 }
 
@@ -2373,6 +2404,52 @@ mod tests {
                 .next()
                 .is_none()
         );
+    }
+
+    #[test]
+    fn publishes_to_an_existing_output_ending_in_parent_component() {
+        let output = tempdir().unwrap();
+        fs::create_dir(output.path().join("child")).unwrap();
+        let parent_spelling = output.path().join("child").join("..");
+
+        ArtifactWriter::new(&parent_spelling)
+            .write_all(&[text("schema.avsc", "{}")])
+            .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema.avsc")).unwrap(),
+            "{}"
+        );
+    }
+
+    #[test]
+    fn filesystem_root_is_its_own_publication_lock_parent() {
+        let output = tempdir().unwrap();
+        let root = output
+            .path()
+            .ancestors()
+            .last()
+            .expect("an absolute temporary path has a filesystem root");
+
+        let (parent, leaf) = publication_parent_and_leaf(root).unwrap();
+
+        assert_eq!(parent, root);
+        assert_eq!(leaf, OsStr::new("."));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn filesystem_root_can_be_acquired_without_a_final_component() {
+        let output = tempdir().unwrap();
+        let root = output
+            .path()
+            .ancestors()
+            .last()
+            .expect("an absolute temporary path has a filesystem root");
+
+        let publication = acquire_publication(root, &NOOP_HOOKS).unwrap();
+
+        assert!(directory_matches_path(root, &publication.root.directory).unwrap());
     }
 
     #[test]
