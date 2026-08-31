@@ -1483,12 +1483,9 @@ fn is_reserved_internal_path(path: &str) -> bool {
 }
 
 fn is_reserved_manifest_path(path: &str) -> bool {
-    let path_key = portable_path_key(path);
     let manifest_key = portable_path_key(MANIFEST_PATH);
-    path_key == manifest_key
-        || path_key
-            .strip_prefix(&manifest_key)
-            .is_some_and(|suffix| suffix.starts_with('/'))
+    path.split('/')
+        .any(|segment| portable_path_key(segment) == manifest_key)
 }
 
 fn is_reserved_transaction_path(path: &str) -> bool {
@@ -1868,6 +1865,26 @@ mod tests {
 
         assert!(error.to_string().contains("reserved"));
         assert!(output.path().read_dir().unwrap().next().is_none());
+    }
+
+    #[test]
+    fn rejects_the_reserved_manifest_at_any_depth() {
+        let output = tempdir().unwrap();
+        fs::create_dir(output.path().join("child")).unwrap();
+        fs::write(output.path().join("child/keep.txt"), "user-owned").unwrap();
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&[text(
+                "child/.MORPHIR-GENERATED-ARTIFACTS.JSON",
+                r#"{"schemaVersion":1,"artifacts":["keep.txt"]}"#,
+            )])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("reserved"));
+        assert_eq!(
+            fs::read_to_string(output.path().join("child/keep.txt")).unwrap(),
+            "user-owned"
+        );
     }
 
     #[test]
