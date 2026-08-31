@@ -1,6 +1,6 @@
 //! Native Morphir workspace discovery provider.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
 use chrono::{SecondsFormat, Utc};
@@ -20,7 +20,7 @@ use crate::commands::ui::protocol::{
 pub struct NativeWorkspaceProvider {
     manifest: ProviderManifest,
     source: WorkbenchSourceRef,
-    snapshot: WorkspaceSnapshot,
+    workspace: PathBuf,
 }
 
 impl NativeWorkspaceProvider {
@@ -45,7 +45,7 @@ impl NativeWorkspaceProvider {
             display_name,
             persistence: None,
         };
-        let snapshot = qualify_snapshot(&source, discovery.snapshot);
+        let workspace = discovery.canonical_root;
         Ok(Self {
             manifest: ProviderManifest {
                 id: provider_id,
@@ -60,7 +60,7 @@ impl NativeWorkspaceProvider {
                 provenance: None,
             },
             source,
-            snapshot,
+            workspace,
         })
     }
 
@@ -109,7 +109,9 @@ impl WorkspaceCapability for NativeWorkspaceProvider {
 
     async fn open(&self, source: &WorkbenchSourceRef) -> Result<WorkspaceSnapshot, CliError> {
         self.validate_source(source)?;
-        Ok(self.snapshot.clone())
+        let discovery = discover_workspace_detailed(&self.workspace, &ConfigLoadOptions::default())
+            .map_err(|error| CliError::Config { error })?;
+        Ok(qualify_snapshot(&self.source, discovery.snapshot))
     }
 }
 
@@ -235,5 +237,29 @@ mod tests {
         let mut unknown = source;
         unknown.locator = "workspace:/private/path".into();
         assert!(provider.open(&unknown).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn open_rediscovers_workspace_changes() {
+        let root = tempfile::tempdir().unwrap();
+        let config = root.path().join("morphir.toml");
+        std::fs::write(
+            &config,
+            "[project]\nname = \"acme/first\"\nsource_directory = \"src\"\n",
+        )
+        .unwrap();
+        let provider = NativeWorkspaceProvider::discover(root.path(), "session-1").unwrap();
+        let source = provider.initial_sources().pop().unwrap();
+
+        std::fs::write(
+            &config,
+            "[project]\nname = \"acme/second\"\nsource_directory = \"src\"\n",
+        )
+        .unwrap();
+
+        assert_eq!(
+            provider.open(&source).await.unwrap().projects[0].name,
+            "acme/second"
+        );
     }
 }
