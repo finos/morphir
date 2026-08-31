@@ -162,6 +162,75 @@ fn ui_rejects_files_before_printing_a_launch_url() {
 }
 
 #[test]
+fn cache_status_reports_registered_namespaces_and_default_policy() {
+    let temp = TempDir::new().unwrap();
+    let morphir_home = temp.path().join("home");
+
+    let output = run_morphir(&["cache", "status", "--json"], &morphir_home, temp.path());
+
+    assert!(
+        output.status.success(),
+        "cache status failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let status: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(status["policy"]["maxAgeSeconds"], 30 * 24 * 60 * 60);
+    assert_eq!(status["policy"]["maxSizeBytes"], 2_u64 * 1024 * 1024 * 1024);
+    assert_eq!(
+        status["namespaces"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|namespace| namespace["name"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        ["desktop", "downloads", "extensions", "indexes"]
+    );
+    assert_eq!(status["totals"]["knownBytes"], 0);
+    assert_eq!(status["totals"]["unclassifiedBytes"], 0);
+}
+
+#[test]
+fn cache_clean_dry_run_preserves_and_explains_unclassified_content() {
+    let temp = TempDir::new().unwrap();
+    let morphir_home = temp.path().join("home");
+    let unknown = morphir_home
+        .join("cache")
+        .join("downloads")
+        .join("unknown.pkg");
+    std::fs::create_dir_all(unknown.parent().unwrap()).unwrap();
+    std::fs::write(&unknown, b"unknown").unwrap();
+
+    let output = run_morphir(
+        &[
+            "cache",
+            "clean",
+            "--dry-run",
+            "--all",
+            "--component",
+            "downloads",
+            "--json",
+        ],
+        &morphir_home,
+        temp.path(),
+    );
+
+    assert!(
+        output.status.success(),
+        "cache clean failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(unknown.exists(), "dry-run must not remove unknown content");
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(report["dryRun"], true);
+    assert_eq!(report["plan"]["mode"], "all");
+    assert_eq!(report["plan"]["unclassifiedBytes"], 7);
+    assert_eq!(report["plan"]["reclaimableBytes"], 0);
+    assert_eq!(report["plan"]["decisions"][0]["reason"], "unclassified");
+}
+
+#[test]
 fn compile_help_documents_explicit_extension_selection() {
     let temp = TempDir::new().unwrap();
     let output = run_morphir(

@@ -195,6 +195,19 @@ cmd diagnostics display_order=9 subcommand_required=#true arg_required_else_help
         flag --json help="Output events as JSON"
     }
 }
+cmd cache display_order=9 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect and clean disposable Morphir caches" unknown_flags=error {
+    cmd status display_order=0 args_override_self=#false help="Report owned and unclassified cache usage" unknown_flags=error {
+        flag --json help="Output status as JSON"
+    }
+    cmd clean display_order=1 args_override_self=#false help="Remove known disposable cache entries" unknown_flags=error {
+        flag --dry-run help="Report the cleanup plan without changing files"
+        flag --all help="Remove every known disposable entry instead of applying policy"
+        flag --component help="Limit cleanup to one registered cache component" {
+            arg <COMPONENT>
+        }
+        flag --json help="Output the plan and execution report as JSON"
+    }
+}
 cmd tool display_order=10 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir tools, distributions, and extensions" unknown_flags=error {
     cmd install display_order=0 args_override_self=#false help="Install a Morphir tool or extension" unknown_flags=error {
         flag "-v --version" help="Version to install (defaults to latest)" {
