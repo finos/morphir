@@ -564,8 +564,31 @@ fn sanitize(value: serde_json::Value) -> serde_json::Value {
 }
 
 fn excluded_sensitive_container(key: &str) -> bool {
+    let mut word = String::new();
+    for character in key.chars() {
+        let starts_camel_word = character.is_ascii_uppercase()
+            && word
+                .chars()
+                .next_back()
+                .is_some_and(|previous| previous.is_ascii_lowercase() || previous.is_ascii_digit());
+        if (!character.is_ascii_alphanumeric() || starts_camel_word)
+            && sensitive_container_word(&word)
+        {
+            return true;
+        }
+        if !character.is_ascii_alphanumeric() || starts_camel_word {
+            word.clear();
+        }
+        if character.is_ascii_alphanumeric() {
+            word.push(character.to_ascii_lowercase());
+        }
+    }
+    sensitive_container_word(&word)
+}
+
+fn sensitive_container_word(word: &str) -> bool {
     matches!(
-        normalized_key(key).as_str(),
+        word,
         "env" | "environment" | "environmentvariables" | "config" | "configuration"
     )
 }
@@ -1472,19 +1495,31 @@ mod tests {
                 "NPM_CONFIG__AUTH": "NAMESPACED_CREDENTIAL",
                 "DEPLOYMENT_LICENSE": "LIVE_SECRET"
             },
+            "process.env": {
+                "DEPLOYMENT_LICENSE": "NAMESPACED_SECRET"
+            },
             "configuration": {
+                "endpoint": "internal.example.test"
+            },
+            "runtimeConfig": {
                 "endpoint": "internal.example.test"
             },
             "env": "DEPLOYMENT_LICENSE=SCALAR_SECRET",
             "config": "endpoint=internal.example.test",
+            "envelope": {
+                "message": "public"
+            },
             "author": "Ada"
         }));
 
         assert_eq!(sanitized["_auth"], "[REDACTED]");
         assert!(sanitized.get("environment").is_none());
+        assert!(sanitized.get("process.env").is_none());
         assert!(sanitized.get("configuration").is_none());
+        assert!(sanitized.get("runtimeConfig").is_none());
         assert!(sanitized.get("env").is_none());
         assert!(sanitized.get("config").is_none());
+        assert_eq!(sanitized["envelope"]["message"], "public");
         assert_eq!(sanitized["author"], "Ada");
     }
 
