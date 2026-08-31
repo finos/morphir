@@ -58,9 +58,6 @@ usage-lib = { version = "6", features = ["clap", "docs"] }
 unicode-casefold = { workspace = true }
 unicode-normalization = { workspace = true }
 
-[target.'cfg(unix)'.dependencies]
-rustix = { workspace = true }
-
 # TUI
 ratatui = { workspace = true }
 crossterm = { workspace = true }
@@ -72,6 +69,12 @@ tui-realm-textarea = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-appender = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+rustix = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true }
 
 [dev-dependencies]
 cucumber = { workspace = true }

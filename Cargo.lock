@@ -3659,6 +3659,7 @@ dependencies = [
  "unicode-normalization",
  "usage-lib",
  "walkdir",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

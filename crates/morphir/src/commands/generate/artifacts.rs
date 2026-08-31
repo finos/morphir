@@ -1014,7 +1014,68 @@ fn move_file_no_replace(
     .map_err(Into::into)
 }
 
-#[cfg(not(unix))]
+#[cfg(windows)]
+fn move_file_no_replace(
+    source_parent: &Dir,
+    source: &Path,
+    destination_parent: &Dir,
+    destination: &OsStr,
+) -> io::Result<()> {
+    use cap_std::fs::OpenOptionsExt as _;
+    use std::mem::{offset_of, size_of};
+    use std::os::windows::ffi::OsStrExt as _;
+    use std::os::windows::io::AsRawHandle as _;
+    use std::ptr;
+    use windows_sys::Win32::Storage::FileSystem::{
+        DELETE, FILE_RENAME_INFO, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
+        FileRenameInfo, SetFileInformationByHandle,
+    };
+
+    let mut options = OpenOptions::new();
+    options
+        .access_mode(DELETE)
+        .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)
+        .follow(FollowSymlinks::No);
+    let source_file = source_parent.open_with(source, &options)?;
+    let destination = destination.encode_wide().collect::<Vec<_>>();
+    let filename_bytes = destination
+        .len()
+        .checked_mul(size_of::<u16>())
+        .and_then(|length| u32::try_from(length).ok())
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "destination is too long"))?;
+    let buffer_bytes = offset_of!(FILE_RENAME_INFO, FileName)
+        .checked_add(filename_bytes as usize)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "destination is too long"))?;
+    let mut buffer = vec![0_usize; buffer_bytes.div_ceil(size_of::<usize>())];
+    let rename_info = buffer.as_mut_ptr().cast::<FILE_RENAME_INFO>();
+
+    // SAFETY: `buffer` is word-aligned and sized for the fixed header plus the
+    // complete UTF-16 filename. Both handles remain open for the duration of
+    // the synchronous call, and the API only reads the supplied buffer.
+    let renamed = unsafe {
+        (*rename_info).Anonymous.ReplaceIfExists = false;
+        (*rename_info).RootDirectory = destination_parent.as_raw_handle();
+        (*rename_info).FileNameLength = filename_bytes;
+        ptr::copy_nonoverlapping(
+            destination.as_ptr(),
+            ptr::addr_of_mut!((*rename_info).FileName).cast::<u16>(),
+            destination.len(),
+        );
+        SetFileInformationByHandle(
+            source_file.as_raw_handle(),
+            FileRenameInfo,
+            rename_info.cast(),
+            u32::try_from(buffer_bytes).expect("rename buffer length was validated"),
+        )
+    };
+    if renamed == 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(())
+    }
+}
+
+#[cfg(all(not(unix), not(windows)))]
 fn move_file_no_replace(
     source_parent: &Dir,
     source: &Path,
