@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# Chain the beads-managed hook, which reconciles the database after a branch
+# switch. See .husky/post-merge for why the chaining is explicit.
+if [ -x .beads/hooks/post-checkout ]; then
+    .beads/hooks/post-checkout "$@" || exit $?
+fi

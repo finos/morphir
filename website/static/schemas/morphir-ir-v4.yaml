@@ -827,22 +827,20 @@ definitions:
         required: ["OpaqueTypeSpecification"]
         additionalProperties: false
         properties:
+          # One schema rather than a oneOf. The previous second branch, an object
+          # carrying only "annotations", was a strict subset of this one, so any
+          # value matching it matched both and "exactly one" could never hold.
+          # That rejected { "OpaqueTypeSpecification": {} }, the canonical form
+          # this definition documents and gives as its first example.
           OpaqueTypeSpecification:
-            oneOf:
-              - type: object
-                properties:
-                  annotations:
-                    type: array
-                    items: { $ref: "#/definitions/Annotation" }
-                  typeParams:
-                    type: array
-                    items: { $ref: "#/definitions/Name" }
-              - type: object
-                additionalProperties: false
-                properties:
-                  annotations:
-                    type: array
-                    items: { $ref: "#/definitions/Annotation" }
+            type: object
+            properties:
+              annotations:
+                type: array
+                items: { $ref: "#/definitions/Annotation" }
+              typeParams:
+                type: array
+                items: { $ref: "#/definitions/Name" }
       # Legacy tagged array format
       - type: array
         items:
