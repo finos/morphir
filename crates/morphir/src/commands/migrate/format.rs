@@ -180,7 +180,7 @@ fn yaml_root_scalar(source: &str, requested_key: &str) -> Option<String> {
             TokenType::Value if at_root_mapping => slot = RootMappingSlot::Value,
             TokenType::Scalar(_, value) if at_root_mapping => match slot {
                 RootMappingSlot::Key => {
-                    requested_value = value.as_ref() == requested_key;
+                    requested_value = AsRef::<str>::as_ref(&value) == requested_key;
                 }
                 RootMappingSlot::Value => {
                     if requested_value {
