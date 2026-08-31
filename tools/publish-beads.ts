@@ -9,8 +9,8 @@
 //
 // The branch is written with git plumbing rather than by checking it out, so
 // publishing never disturbs the working tree and works the same from a linked
-// worktree. The branch holds only the beads data files: it shares no history
-// with main and is not meant to be merged.
+// worktree. It holds only the issue export, shares no history with main, and is
+// not meant to be merged.
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -40,6 +40,54 @@ function git(args: string[], options: { env?: Record<string, string> } = {}) {
 	return result.stdout.toString().trim();
 }
 
+// Returns null rather than exiting, for refs that legitimately may not exist.
+function resolve(ref: string): string | null {
+	const result = Bun.spawnSync(["git", "rev-parse", "--verify", "-q", ref], {
+		cwd: repositoryRoot,
+		stderr: "pipe",
+	});
+	return result.exitCode === 0 ? result.stdout.toString().trim() : null;
+}
+
+function isAncestor(maybeAncestor: string, descendant: string): boolean {
+	const result = Bun.spawnSync(
+		["git", "merge-base", "--is-ancestor", maybeAncestor, descendant],
+		{ cwd: repositoryRoot, stderr: "pipe" },
+	);
+	return result.exitCode === 0;
+}
+
+// The published branch may exist only as a remote-tracking ref, in a fresh clone
+// that never checked it out, or the local ref may be behind after someone else
+// published. Parenting on a local-only lookup would build an unrelated root
+// commit whose push is rejected as non-fast-forward.
+function resolveParent(): string | null {
+	// Best effort: a publish should still work offline.
+	Bun.spawnSync(["git", "fetch", "--quiet", "origin", BRANCH], {
+		cwd: repositoryRoot,
+		stderr: "pipe",
+	});
+
+	const local = resolve(`refs/heads/${BRANCH}`);
+	const remote = resolve(`refs/remotes/origin/${BRANCH}`);
+
+	if (local === null) return remote;
+	if (remote === null) return local;
+	if (local === remote) return local;
+	if (isAncestor(local, remote)) return remote;
+	if (isAncestor(remote, local)) return local;
+
+	console.error(
+		`error: ${BRANCH} and origin/${BRANCH} have diverged, so publishing would`,
+	);
+	console.error("discard one of them. Reconcile them first:");
+	console.error(`    git log --oneline ${BRANCH} origin/${BRANCH}`);
+	console.error(
+		`    git update-ref refs/heads/${BRANCH} origin/${BRANCH}   # keep the remote`,
+	);
+	process.exit(1);
+}
+
 // Export straight from the database, so what gets published is never a stale
 // working copy someone edited by hand.
 const exported = Bun.spawnSync(["bd", "export"], {
@@ -60,33 +108,27 @@ try {
 
 	const entries: Array<[string, string]> = [[EXPORT_PATH, issuesBlob]];
 
-	// The interaction log is bd's audit trail. It is data of the same kind, so it
-	// travels with the export rather than staying behind on main.
-	const interactions = Bun.file(path.join(repositoryRoot, INTERACTIONS_PATH));
-	if (await interactions.exists()) {
-		const interactionsBlob = git([
-			"hash-object",
-			"-w",
-			"--path",
-			INTERACTIONS_PATH,
-			path.join(repositoryRoot, INTERACTIONS_PATH),
-		]);
-		entries.push([INTERACTIONS_PATH, interactionsBlob]);
-	}
+	const parentCommit = resolveParent();
 
-	// Build the tree in a scratch index so the real one is untouched.
+	// Build the tree in a scratch index so the real one is untouched. Seeding it
+	// from the parent means anything this machine has no local copy of carries
+	// forward instead of being dropped from the branch: a fresh clone has no
+	// interaction log, and rebuilding the tree from scratch would silently delete
+	// the published one.
 	const indexFile = path.join(scratch, "index");
 	const env = { GIT_INDEX_FILE: indexFile };
+	if (parentCommit) {
+		git(["read-tree", parentCommit], { env });
+		// Earlier publications carried bd's interaction log. bd rotates that file,
+		// dropping older records as it appends newer ones, so republishing it made
+		// the branch tip appear to lose audit history. It is derived from the
+		// database and is not issue data, so the branch no longer carries it.
+		git(["update-index", "--force-remove", INTERACTIONS_PATH], { env });
+	}
 	for (const [file, blob] of entries) {
 		git(["update-index", "--add", "--cacheinfo", `100644,${blob},${file}`], { env });
 	}
 	const tree = git(["write-tree"], { env });
-
-	const parent = Bun.spawnSync(["git", "rev-parse", "--verify", "-q", `refs/heads/${BRANCH}`], {
-		cwd: repositoryRoot,
-		stderr: "pipe",
-	});
-	const parentCommit = parent.exitCode === 0 ? parent.stdout.toString().trim() : null;
 
 	if (parentCommit) {
 		const parentTree = git(["rev-parse", `${parentCommit}^{tree}`]);

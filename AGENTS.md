@@ -214,8 +214,12 @@ git push origin beads-sync
 your working tree or needs the branch checked out, and it works the same from a linked worktree. It is a no-op
 when the branch already matches.
 
-`.beads/issues.jsonl` and `.beads/interactions.jsonl` are ignored outside that branch, and `pre-commit` rejects
-them if staged. Never hand-edit the export: republish it instead. To check the mirror:
+The branch carries only `.beads/issues.jsonl`. `.beads/interactions.jsonl` is bd's interaction log: bd rotates it,
+dropping older records as it appends newer ones, so publishing it made the branch tip look like it was losing
+audit history. It is derived from the database, so it is ignored and not published. Both files are ignored
+everywhere else and `pre-commit` rejects either if staged. Never hand-edit the export: republish it instead.
+
+To check the mirror:
 
 ```shell
 mise run beads:drift-check      # database against beads-sync
