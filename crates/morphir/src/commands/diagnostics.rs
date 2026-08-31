@@ -268,10 +268,10 @@ fn url_token_end(value: &str, authority_start: usize) -> usize {
         .unwrap_or(authority_start.saturating_sub(3));
     let delimiter = value[authority_start..]
         .char_indices()
-        .find(|(_, character)| {
+        .find(|(offset, character)| {
             character.is_whitespace()
                 || matches!(character, '\'' | '"' | '<' | '>')
-                || closes_wrapped_token(value, token_start, *character)
+                || closes_wrapped_token(value, token_start, authority_start + offset, *character)
         })
         .map(|(index, _)| authority_start + index)
         .unwrap_or(value.len());
@@ -286,11 +286,36 @@ fn url_token_end(value: &str, authority_start: usize) -> usize {
         .unwrap_or(delimiter)
 }
 
-fn closes_wrapped_token(value: &str, token_start: usize, character: char) -> bool {
-    matches!(
-        (value[..token_start].chars().next_back(), character),
-        (Some('('), ')') | (Some('['), ']') | (Some('{'), '}')
-    )
+fn closes_wrapped_token(
+    value: &str,
+    token_start: usize,
+    candidate: usize,
+    character: char,
+) -> bool {
+    let Some((opening, closing)) = value[..token_start]
+        .chars()
+        .next_back()
+        .and_then(|opening| match opening {
+            '(' => Some(('(', ')')),
+            '[' => Some(('[', ']')),
+            '{' => Some(('{', '}')),
+            _ => None,
+        })
+    else {
+        return false;
+    };
+    if character != closing {
+        return false;
+    }
+
+    value[token_start..candidate]
+        .chars()
+        .fold(0_i64, |depth, nested| match nested {
+            nested if nested == opening => depth.saturating_add(1),
+            nested if nested == closing => depth.saturating_sub(1),
+            _ => depth,
+        })
+        == 0
 }
 
 fn url_separator_before(value: &str, start: usize) -> Option<usize> {
@@ -367,10 +392,10 @@ fn reference_token_end(value: &str, authority_start: usize) -> usize {
     let token_start = authority_start.saturating_sub(2);
     let delimiter = value[authority_start..]
         .char_indices()
-        .find(|(_, character)| {
+        .find(|(offset, character)| {
             character.is_whitespace()
                 || matches!(character, '\'' | '"' | '<' | '>' | '|')
-                || closes_wrapped_token(value, token_start, *character)
+                || closes_wrapped_token(value, token_start, authority_start + offset, *character)
         })
         .map(|(index, _)| authority_start + index)
         .unwrap_or(value.len());
@@ -1583,6 +1608,10 @@ mod tests {
         assert_eq!(
             sanitize_text("request (https://example.test/status?token=x),retrying"),
             "request (https://example.test),retrying"
+        );
+        assert_eq!(
+            sanitize_text("request (https://private.example/reset(foo)/LIVE_SECRET),retrying"),
+            "request (https://private.example),retrying"
         );
         assert_eq!(
             sanitize_text("//first.example?a=1,//second.example/status"),
