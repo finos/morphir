@@ -656,6 +656,42 @@ fn acquire_locked_output_root<H: ArtifactHooks + ?Sized>(
     hooks: &H,
     target_mode: DirectoryLockMode,
 ) -> io::Result<(AcquiredOutputRoot, Vec<std::fs::File>)> {
+    match acquire_locked_output_root_from_boundary(output_root, hooks, target_mode) {
+        Err(error) if error.kind() == io::ErrorKind::PermissionDenied => {
+            acquire_locked_existing_output_root(output_root, target_mode)
+        }
+        result => result,
+    }
+}
+
+#[cfg(unix)]
+fn acquire_locked_existing_output_root(
+    output_root: &Path,
+    target_mode: DirectoryLockMode,
+) -> io::Result<(AcquiredOutputRoot, Vec<std::fs::File>)> {
+    let metadata = std::fs::symlink_metadata(output_root)?;
+    if !metadata.is_dir() || metadata.file_type().is_symlink() {
+        return Err(io::Error::other(
+            "artifact output root is not an existing directory",
+        ));
+    }
+    let directory = Dir::open_ambient_dir(output_root, cap_std::ambient_authority())?;
+    let lock = lock_directory(&directory, target_mode)?;
+    Ok((
+        AcquiredOutputRoot {
+            directory,
+            created: Vec::new(),
+        },
+        vec![lock],
+    ))
+}
+
+#[cfg(unix)]
+fn acquire_locked_output_root_from_boundary<H: ArtifactHooks + ?Sized>(
+    output_root: &Path,
+    hooks: &H,
+    target_mode: DirectoryLockMode,
+) -> io::Result<(AcquiredOutputRoot, Vec<std::fs::File>)> {
     let (anchor, components) = locked_output_root_anchor(output_root)?;
     let component_count = components.len();
     let anchor_mode = if component_count == 0 {
@@ -2427,6 +2463,28 @@ mod tests {
         let result = ArtifactWriter::new(&output).write_all(&[text("schema.avsc", "generated")]);
 
         fs::set_permissions(parent.path(), fs::Permissions::from_mode(0o700)).unwrap();
+        result.unwrap();
+        assert_eq!(
+            fs::read_to_string(output.join("schema.avsc")).unwrap(),
+            "generated"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn existing_writable_output_allows_a_search_only_ancestor() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let parent = tempdir().unwrap();
+        let search_only = parent.path().join("search-only");
+        let writable = search_only.join("writable");
+        let output = writable.join("generated");
+        fs::create_dir_all(&output).unwrap();
+        fs::set_permissions(&search_only, fs::Permissions::from_mode(0o111)).unwrap();
+
+        let result = ArtifactWriter::new(&output).write_all(&[text("schema.avsc", "generated")]);
+
+        fs::set_permissions(&search_only, fs::Permissions::from_mode(0o700)).unwrap();
         result.unwrap();
         assert_eq!(
             fs::read_to_string(output.join("schema.avsc")).unwrap(),
