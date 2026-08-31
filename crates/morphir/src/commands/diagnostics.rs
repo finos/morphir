@@ -104,11 +104,9 @@ fn normalized_key(key: &str) -> String {
 }
 
 fn sensitive_key(key: &str) -> bool {
-    let has_auth_segment = key
-        .split(|character: char| !character.is_ascii_alphanumeric())
-        .any(|segment| segment.eq_ignore_ascii_case("auth"));
+    let has_auth_word = contains_auth_key_word(key);
     let key = normalized_key(key);
-    has_auth_segment
+    has_auth_word
         || [
             "token",
             "password",
@@ -125,6 +123,31 @@ fn sensitive_key(key: &str) -> bool {
         ]
         .iter()
         .any(|needle| key.contains(needle))
+}
+
+fn contains_auth_key_word(key: &str) -> bool {
+    let mut word = String::new();
+    let mut previous: Option<char> = None;
+    for character in key.chars() {
+        let starts_camel_word = character.is_ascii_uppercase()
+            && previous
+                .is_some_and(|previous| previous.is_ascii_lowercase() || previous.is_ascii_digit());
+        if (!character.is_ascii_alphanumeric() || starts_camel_word)
+            && matches!(word.as_str(), "auth" | "authentication")
+        {
+            return true;
+        }
+        if !character.is_ascii_alphanumeric() || starts_camel_word {
+            word.clear();
+        }
+        if character.is_ascii_alphanumeric() {
+            word.push(character.to_ascii_lowercase());
+            previous = Some(character);
+        } else {
+            previous = None;
+        }
+    }
+    matches!(word.as_str(), "auth" | "authentication")
 }
 
 fn contains_sensitive_assignment(value: &str) -> bool {
@@ -146,6 +169,23 @@ fn contains_sensitive_assignment(value: &str) -> bool {
                 .rev()
                 .collect::<String>();
             let key_start = prefix.len().saturating_sub(key.len());
+            let key_context = prefix[..key_start].trim_end();
+            let ordinary_token_diagnostic = normalized_key(&key) == "token"
+                && key_context
+                    .split_whitespace()
+                    .next_back()
+                    .is_some_and(|word| {
+                        matches!(
+                            word.to_ascii_lowercase().as_str(),
+                            "expected" | "unexpected"
+                        )
+                    });
+            let colon_value_looks_like_scalar = value[separator + 1..]
+                .trim_start()
+                .trim_start_matches(['\'', '"'])
+                .chars()
+                .next()
+                .is_some_and(|character| !matches!(character, ')' | ']' | '}' | ',' | ';'));
             let colon_has_assignment_boundary = separator_character != ':'
                 || key_start == 0
                 || prefix[..key_start]
@@ -153,7 +193,8 @@ fn contains_sensitive_assignment(value: &str) -> bool {
                     .next_back()
                     .is_some_and(|character| {
                         matches!(character, '\'' | '"' | '\\' | '[' | '(' | '{' | ',' | ';')
-                    });
+                    })
+                || (colon_value_looks_like_scalar && !ordinary_token_diagnostic);
             !key.is_empty() && sensitive_key(&key) && colon_has_assignment_boundary
         })
 }
@@ -1392,6 +1433,7 @@ mod tests {
             "access-key=LIVE_SECRET",
             "credential=LIVE_SECRET",
             "password: hunter2",
+            "request password: hunter2",
             "passwd=hunter2",
             "pwd=hunter2",
             "request failed: --passwd hunter2",
@@ -1423,6 +1465,10 @@ mod tests {
         assert_eq!(
             sanitize_text("unexpected token: ')'"),
             "unexpected token: ')'"
+        );
+        assert_eq!(
+            sanitize_text("unexpected token: Identifier"),
+            "unexpected token: Identifier"
         );
     }
 
@@ -1546,6 +1592,8 @@ mod tests {
     fn structured_auth_keys_are_redacted_without_redacting_author_fields() {
         let sanitized = sanitize(serde_json::json!({
             "_auth": "BASE64_CREDENTIAL",
+            "proxyAuth": "PROXY_CREDENTIAL",
+            "serviceAuthentication": "SERVICE_CREDENTIAL",
             "environment": {
                 "NPM_CONFIG__AUTH": "NAMESPACED_CREDENTIAL",
                 "DEPLOYMENT_LICENSE": "LIVE_SECRET"
@@ -1577,6 +1625,8 @@ mod tests {
         }));
 
         assert_eq!(sanitized["_auth"], "[REDACTED]");
+        assert_eq!(sanitized["proxyAuth"], "[REDACTED]");
+        assert_eq!(sanitized["serviceAuthentication"], "[REDACTED]");
         assert!(sanitized.get("environment").is_none());
         assert!(sanitized.get("process.env").is_none());
         assert!(sanitized.get("ENV").is_none());
