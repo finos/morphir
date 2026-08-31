@@ -912,15 +912,15 @@ fn diagnostics_show_finds_correlated_events_and_redacts_legacy_secrets() {
     }
     assert_eq!(
         shown["events"][0]["fields"]["message"],
-        "retry failed? see https://example.com/status"
+        "retry failed? see https://example.com"
     );
     assert_eq!(
         shown["events"][0]["fields"]["urls"],
-        "https://public.example/status then https://[REDACTED]@private.example/artifact"
+        "https://public.example then https://[REDACTED]@private.example"
     );
     assert_eq!(
         shown["events"][0]["fields"]["punctuated_urls"],
-        "https://public.example/status,https://[REDACTED]@private.example/artifact"
+        "https://public.example,https://[REDACTED]@private.example"
     );
     assert_eq!(shown["events"][0]["fields"]["auth_message"], "[REDACTED]");
     assert!(!String::from_utf8_lossy(&output.stdout).contains("SHOULD_NOT_ESCAPE"));
@@ -1034,7 +1034,7 @@ fn diagnostics_collect_creates_an_inspectable_sanitized_archive() {
     assert!(!combined.contains("BUNDLE_SECRET_SENTINEL"));
     assert!(!combined.contains("alice"));
     assert!(!combined.contains("hunter2"));
-    assert!(combined.contains("https://[REDACTED]@example.com/artifact"));
+    assert!(combined.contains("https://[REDACTED]@example.com"));
     assert!(!combined.contains(&morphir_home.to_string_lossy().to_string()));
     assert!(combined.contains("$MORPHIR_HOME"));
     assert!(!combined.contains(&cli_log_root.to_string_lossy().to_string()));

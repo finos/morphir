@@ -344,7 +344,7 @@ fn redact_urls(value: &str) -> String {
         let token_end = url_token_end(&redacted, authority_start);
         if let Some(boundary) = redacted[authority_start..token_end]
             .char_indices()
-            .find(|(_, character)| matches!(character, '?' | '#'))
+            .find(|(_, character)| matches!(character, '/' | '?' | '#'))
             .map(|(index, _)| authority_start + index)
         {
             let replacement_end = url_scheme_starts_at(&redacted, token_end)
@@ -416,7 +416,7 @@ fn redact_scheme_relative_urls(value: &str) -> String {
         let token_end = reference_token_end(&redacted, authority_start);
         if let Some(boundary) = redacted[authority_start..token_end]
             .char_indices()
-            .find(|(_, character)| matches!(character, '?' | '#'))
+            .find(|(_, character)| matches!(character, '/' | '?' | '#'))
             .map(|(index, _)| authority_start + index)
         {
             let replacement_end = redacted[token_end..]
@@ -1477,8 +1477,8 @@ mod tests {
         let requests = sanitized["requests"].as_object().unwrap();
 
         assert_eq!(requests.len(), 2);
-        assert_eq!(requests["https://[REDACTED]@private.example/path"], 200);
-        assert_eq!(requests["https://[REDACTED]@private.example/path#2"], 201);
+        assert_eq!(requests["https://[REDACTED]@private.example"], 200);
+        assert_eq!(requests["https://[REDACTED]@private.example#2"], 201);
     }
 
     #[test]
@@ -1535,14 +1535,18 @@ mod tests {
     #[test]
     fn every_url_in_free_form_text_is_sanitized() {
         assert_eq!(
+            sanitize_text("reset link: https://private.example/reset/LIVE_SECRET"),
+            "reset link: https://private.example"
+        );
+        assert_eq!(
             sanitize_text(
                 "https://public.example/status|https://alice:hunter2@private.example/artifact"
             ),
-            "https://public.example/status|https://[REDACTED]@private.example/artifact"
+            "https://public.example|https://[REDACTED]@private.example"
         );
         assert_eq!(
             sanitize_text("https://alice:hunter,2@example.com/artifact"),
-            "https://[REDACTED]@example.com/artifact"
+            "https://[REDACTED]@example.com"
         );
         assert_eq!(
             sanitize_text("https://first.example?a=1|https://second.example/status"),
@@ -1550,13 +1554,13 @@ mod tests {
         );
         assert_eq!(
             sanitize_text("fetch //alice:hunter2@private.example/artifact?download=secret"),
-            "fetch //[REDACTED]@private.example/artifact"
+            "fetch //[REDACTED]@private.example"
         );
         assert_eq!(
             sanitize_text(
                 "https://public.example/continue?redirect=https://private.example/reset/LIVE_SECRET"
             ),
-            "https://public.example/continue"
+            "https://public.example"
         );
         assert_eq!(
             sanitize_text(
@@ -1574,11 +1578,11 @@ mod tests {
             sanitize_text(
                 "https://public.example/continue?urls=https://a.test/x,https://private.example/reset/LIVE_SECRET"
             ),
-            "https://public.example/continue"
+            "https://public.example"
         );
         assert_eq!(
             sanitize_text("request (https://example.test/status?token=x),retrying"),
-            "request (https://example.test/status),retrying"
+            "request (https://example.test),retrying"
         );
         assert_eq!(
             sanitize_text("//first.example?a=1,//second.example/status"),
