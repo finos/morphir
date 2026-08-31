@@ -607,7 +607,7 @@ fn acquire_locked_output_root<H: ArtifactHooks + ?Sized>(
     output_root: &Path,
     hooks: &H,
 ) -> io::Result<(AcquiredOutputRoot, Vec<std::fs::File>)> {
-    let (anchor, components) = output_root_anchor(output_root)?;
+    let (anchor, components) = locked_output_root_anchor(output_root)?;
     let mut locks = vec![lock_directory(&anchor)?];
     let mut current = AcquiredOutputRoot {
         directory: anchor,
@@ -628,6 +628,29 @@ fn acquire_locked_output_root<H: ArtifactHooks + ?Sized>(
         }
     }
     Ok((current, locks))
+}
+
+#[cfg(unix)]
+fn locked_output_root_anchor(output_root: &Path) -> io::Result<(Dir, Vec<OsString>)> {
+    let absolute = std::path::absolute(output_root)?;
+    let boundary = absolute
+        .ancestors()
+        .last()
+        .ok_or_else(|| io::Error::other("artifact output root has no filesystem boundary"))?;
+    let relative = absolute.strip_prefix(boundary).map_err(|_| {
+        io::Error::other("artifact output root is not beneath its filesystem boundary")
+    })?;
+    let components = relative
+        .components()
+        .map(|component| match component {
+            std::path::Component::Normal(component) => Ok(component.to_owned()),
+            _ => Err(io::Error::other(
+                "artifact output root contains a non-normal path component",
+            )),
+        })
+        .collect::<io::Result<Vec<_>>>()?;
+    let anchor = Dir::open_ambient_dir(boundary, cap_std::ambient_authority())?;
+    Ok((anchor, components))
 }
 
 #[cfg(unix)]
@@ -857,6 +880,7 @@ fn publication_lock_path(output_leaf: &OsStr) -> PathBuf {
     PathBuf::from(format!("{PUBLICATION_LOCK_PREFIX}{hash:016x}.lock"))
 }
 
+#[cfg(any(not(unix), test))]
 fn output_root_anchor(output_root: &Path) -> io::Result<(Dir, Vec<OsString>)> {
     let absolute = std::path::absolute(output_root)?;
     let Some(leaf) = absolute.file_name() else {
@@ -3624,6 +3648,35 @@ mod tests {
             fs::read_to_string(parent.path().join("output/second.avsc")).unwrap(),
             "second"
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn directory_locks_serialize_deeply_nested_output_roots() {
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("generated");
+        let nested = output.join("a/b/output");
+        fs::create_dir_all(&nested).unwrap();
+        let first = acquire_publication(&output, &NOOP_HOOKS).unwrap();
+        let (finished_tx, finished_rx) = mpsc::sync_channel(1);
+        let second = thread::spawn(move || {
+            let acquired = acquire_publication(&nested, &NOOP_HOOKS);
+            finished_tx.send(acquired.map(|_| ())).unwrap();
+        });
+
+        assert!(
+            finished_rx
+                .recv_timeout(Duration::from_millis(100))
+                .is_err(),
+            "a deeply nested output writer must wait for its ancestor publication lock"
+        );
+
+        drop(first);
+        finished_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("nested writer should finish after the ancestor lock is released")
+            .unwrap();
+        second.join().unwrap();
     }
 
     #[test]
