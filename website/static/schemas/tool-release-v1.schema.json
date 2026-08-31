@@ -114,6 +114,7 @@
       "$ref": "#/$defs/semanticVersion"
     },
     "channels": {
+      "description": "Channel memberships at initial descriptor publication; current signed targets metadata is authoritative",
       "type": "array",
       "uniqueItems": true,
       "items": {
@@ -121,6 +122,7 @@
       }
     },
     "status": {
+      "description": "Release status at initial descriptor publication; current signed targets metadata is authoritative",
       "enum": [ "active", "yanked", "revoked" ]
     },
     "compatibility": {

@@ -101,7 +101,9 @@ Each release descriptor target has a `custom.morphir` object:
 }
 ```
 
-This small record is enough to resolve a release before downloading its descriptor. The descriptor must repeat the identity, version, channels, status, and compatibility values. A mismatch is `release_descriptor_mismatch`.
+This small record is enough to resolve a release before downloading its descriptor. Its channel membership and status are the current authenticated release state and are authoritative for resolution and revocation. The descriptor repeats the identity, version, compatibility, and immutable artifact contract. A mismatch in those immutable values is `release_descriptor_mismatch`.
+
+Version 1 descriptors also carry `channels` and `status`. Those fields record the state at initial publication. Clients validate their shape but do not compare them with current targets metadata or use them for selection. This keeps the descriptor bytes immutable when a publisher moves a release between channels, yanks it, or revokes it.
 
 An artifact target uses `kind: "tool-artifact"` and records its tool, version, and platform in the same namespace. The release descriptor references artifact target paths. Length and hashes come only from authenticated TUF target metadata, even if another publication format repeats them.
 
@@ -116,6 +118,8 @@ The release descriptor schema is published as [tool-release-v1.schema.json](/sch
 | `revoked` | Excluded | Rejected | Launch is rejected after the revocation is learned and persisted |
 
 Revocation is monotonic for a repository metadata history. A later targets version must not return the same tool version to `active` or `yanked`. Republishing different bytes under an existing tool version is forbidden. A corrected build receives a new semantic version.
+
+Publishers change channel membership and release status only in a later signed targets version. A `yanked` or `revoked` release has no channel memberships in current targets metadata.
 
 When a refresh learns that an installed release is revoked, the catalog records the trusted targets version and revocation reason before reporting the failure. Offline launch then enforces the known revocation without consulting a mirror.
 
@@ -142,7 +146,7 @@ A resolver performs these steps without network or filesystem effects:
 6. For a segmented preview, keep only the exact segment.
 7. Select the greatest semantic-version precedence.
 
-An exact request ignores channel membership and may select a prerelease or yanked release. It still enforces status, CLI compatibility, platform availability, and descriptor consistency.
+An exact request ignores channel membership and may select a prerelease or yanked release. It still enforces the current authenticated status, CLI compatibility, platform availability, and immutable descriptor consistency.
 
 One repository cannot contain two records with the same exact version. It also cannot contain versions with equal semantic precedence but different build metadata. Both would make the selected record depend on document order.
 

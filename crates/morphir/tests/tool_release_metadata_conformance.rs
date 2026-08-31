@@ -168,8 +168,6 @@ fn assert_release_descriptors_match_targets(fixture: &Value, targets: &Value) {
         assert_eq!(descriptor["schemaVersion"], custom["schemaVersion"]);
         assert_eq!(descriptor["tool"]["id"], custom["toolId"]);
         assert_eq!(descriptor["version"], custom["version"]);
-        assert_eq!(descriptor["channels"], custom["channels"]);
-        assert_eq!(descriptor["status"], custom["status"]);
         assert_eq!(descriptor["compatibility"], custom["compatibility"]);
 
         let declared_platforms = descriptor["artifacts"]
@@ -303,6 +301,8 @@ fn reference_resolver_excludes_yanked_releases_from_moving_channels() {
     let mut targets = fixture["metadata"]["targets"].clone();
     targets["signed"]["targets"]["releases/desktop/1.0.0.json"]["custom"]["morphir"]["status"] =
         Value::from("yanked");
+    targets["signed"]["targets"]["releases/desktop/1.0.0.json"]["custom"]["morphir"]["channels"] =
+        serde_json::json!([]);
     let moving = serde_json::json!({
         "toolId": "desktop",
         "selection": { "channel": "stable" },
@@ -316,6 +316,15 @@ fn reference_resolver_excludes_yanked_releases_from_moving_channels() {
         "platform": { "os": "windows", "arch": "x86_64" }
     });
 
+    assert_release_descriptors_match_targets(&fixture, &targets);
+    let descriptor: Value = serde_json::from_str(
+        fixture["targetFiles"]["releases/desktop/1.0.0.json"]
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(descriptor["status"], "active");
+    assert_eq!(descriptor["channels"], serde_json::json!(["stable"]));
     assert_eq!(resolve(&targets, &moving), Err("no_compatible_release"));
     assert_eq!(resolve(&targets, &exact).unwrap(), Version::new(1, 0, 0));
 }
