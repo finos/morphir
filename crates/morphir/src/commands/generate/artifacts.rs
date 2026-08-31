@@ -15,7 +15,8 @@ use unicode_normalization::UnicodeNormalization as _;
 
 static NEXT_TRANSACTION_ID: AtomicU64 = AtomicU64::new(0);
 const MANIFEST_PATH: &str = ".morphir-generated-artifacts.json";
-const MANIFEST_SCHEMA_VERSION: u32 = 1;
+const MANIFEST_SCHEMA_VERSION: u32 = 2;
+const LEGACY_MANIFEST_SCHEMA_VERSION: u32 = 1;
 const PUBLICATION_LOCK_PREFIX: &str = ".morphir-artifact-publication-";
 const INTERNAL_PUBLICATION_LOCK_PATH: &str = ".morphir-artifact-publication-lock";
 const TRANSACTION_PATH_PREFIX: &str = ".morphir-artifacts-";
@@ -63,7 +64,14 @@ impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
             lock: publication_lock,
         } = acquire_publication(self.output_root, self.hooks).map_err(file_system_error)?;
         let previous = load_manifest(&root.directory)?;
-        let managed = previous.as_deref().unwrap_or_default();
+        let managed = previous
+            .as_ref()
+            .map(|manifest| manifest.artifacts.as_slice())
+            .unwrap_or_default();
+        let managed_directories = previous
+            .as_ref()
+            .map(|manifest| manifest.created_directories.as_slice())
+            .unwrap_or_default();
         reject_unmanaged_artifact_replacements(&root.directory, &validated, managed)?;
         if let Err(error) = self.hooks.after_manifest_load() {
             abandon_publication(root, publication_lock);
@@ -82,8 +90,14 @@ impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
                 display_path: artifact.display_path.clone(),
             })
             .collect::<Vec<_>>();
-        validated.push(manifest_artifact(&display_paths)?);
-        let result = self.run(&root.directory, &validated, &stale, managed);
+        validated.push(manifest_artifact(&display_paths, managed_directories)?);
+        let result = self.run(
+            &root.directory,
+            &validated,
+            &stale,
+            managed,
+            managed_directories,
+        );
         if result.is_err() {
             abandon_publication(root, publication_lock);
         } else {
@@ -99,6 +113,7 @@ impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
         artifacts: &[ValidatedArtifact],
         stale: &[ValidatedRemoval],
         managed: &[ValidatedRemoval],
+        managed_directories: &[ValidatedRemoval],
     ) -> Result<(), CliError> {
         let transaction = create_transaction(root).map_err(file_system_error)?;
         let recovery_path = self.output_root.join(&transaction.relative_path);
@@ -108,6 +123,7 @@ impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
             artifacts,
             stale,
             managed,
+            managed_directories,
             self.hooks,
         );
         match result {
@@ -788,6 +804,7 @@ fn run_transaction<H: ArtifactHooks + ?Sized>(
     artifacts: &[ValidatedArtifact],
     stale: &[ValidatedRemoval],
     managed: &[ValidatedRemoval],
+    managed_directories: &[ValidatedRemoval],
     hooks: &H,
 ) -> Result<(), TransactionFailure> {
     transaction
@@ -818,10 +835,12 @@ fn run_transaction<H: ArtifactHooks + ?Sized>(
     };
     let mut records = Vec::new();
     commit_destinations(root, transaction, &destinations, &mut records, hooks)?;
-    if let Err(error) = remove_vacated_managed_directories(root, stale) {
+    if let Err(error) = remove_vacated_managed_directories(root, stale, managed_directories) {
         return rollback_failure(error, root, transaction, &destinations, &records, hooks);
     }
-    if let Err(error) = remove_blocking_managed_directories(root, artifacts, stale) {
+    if let Err(error) =
+        remove_blocking_managed_directories(root, artifacts, stale, managed_directories)
+    {
         return rollback_failure(error, root, transaction, &destinations, &records, hooks);
     }
     for artifact in artifacts {
@@ -833,12 +852,28 @@ fn run_transaction<H: ArtifactHooks + ?Sized>(
         match prepare_artifact_destinations(root, artifacts, managed, &mut created_directories) {
             Ok(destinations) => destinations,
             Err(error) => {
-                let result =
-                    rollback_failure(error, root, transaction, &destinations, &records, hooks);
                 remove_created_directories(root, &created_directories);
-                return result;
+                return rollback_failure(error, root, transaction, &destinations, &records, hooks);
             }
         };
+    let created_manifest_directories = match retained_created_directories(
+        root,
+        artifacts,
+        managed_directories,
+        &created_directories,
+    ) {
+        Ok(directories) => directories,
+        Err(error) => {
+            remove_created_directories(root, &created_directories);
+            return rollback_failure(error, root, transaction, &destinations, &records, hooks);
+        }
+    };
+    if let Err(error) =
+        rewrite_staged_manifest(transaction, artifacts, &created_manifest_directories)
+    {
+        remove_created_directories(root, &created_directories);
+        return rollback_failure(error, root, transaction, &destinations, &records, hooks);
+    }
     destinations.extend(artifact_destinations);
     let result = commit_destinations(root, transaction, &destinations, &mut records, hooks);
     drop(destinations);
@@ -953,7 +988,15 @@ fn prepare_artifact_destinations(
     Ok(destinations)
 }
 
-fn remove_vacated_managed_directories(root: &Dir, stale: &[ValidatedRemoval]) -> io::Result<()> {
+fn remove_vacated_managed_directories(
+    root: &Dir,
+    stale: &[ValidatedRemoval],
+    managed_directories: &[ValidatedRemoval],
+) -> io::Result<()> {
+    let managed_directory_keys = managed_directories
+        .iter()
+        .map(|directory| portable_path_components(&directory.relative_path))
+        .collect::<BTreeSet<_>>();
     let mut directories = BTreeSet::new();
     for artifact in stale {
         let mut candidate = artifact.relative_path.parent();
@@ -961,7 +1004,9 @@ fn remove_vacated_managed_directories(root: &Dir, stale: &[ValidatedRemoval]) ->
             if directory.as_os_str().is_empty() {
                 break;
             }
-            directories.insert(directory.to_path_buf());
+            if managed_directory_keys.contains(&portable_path_components(directory)) {
+                directories.insert(directory.to_path_buf());
+            }
             candidate = directory.parent();
         }
     }
@@ -996,7 +1041,12 @@ fn remove_blocking_managed_directories(
     root: &Dir,
     artifacts: &[ValidatedArtifact],
     stale: &[ValidatedRemoval],
+    managed_directories: &[ValidatedRemoval],
 ) -> io::Result<()> {
+    let managed_directory_keys = managed_directories
+        .iter()
+        .map(|directory| portable_path_components(&directory.relative_path))
+        .collect::<BTreeSet<_>>();
     let mut directories = BTreeSet::new();
     for artifact in artifacts.iter().filter(|artifact| !artifact.internal) {
         for removed in stale.iter().filter(|removed| {
@@ -1008,7 +1058,9 @@ fn remove_blocking_managed_directories(
                 if !directory.starts_with(&artifact.relative_path) {
                     break;
                 }
-                directories.insert(directory.to_path_buf());
+                if managed_directory_keys.contains(&portable_path_components(directory)) {
+                    directories.insert(directory.to_path_buf());
+                }
                 if directory == artifact.relative_path {
                     break;
                 }
@@ -1450,6 +1502,86 @@ fn remove_created_directories(root: &Dir, directories: &[PathBuf]) {
     }
 }
 
+fn retained_created_directories(
+    root: &Dir,
+    artifacts: &[ValidatedArtifact],
+    managed_directories: &[ValidatedRemoval],
+    created_directories: &[PathBuf],
+) -> io::Result<Vec<ValidatedRemoval>> {
+    let artifact_paths = artifacts
+        .iter()
+        .filter(|artifact| !artifact.internal)
+        .map(|artifact| artifact.relative_path.as_path())
+        .collect::<Vec<_>>();
+    let mut candidates = managed_directories
+        .iter()
+        .map(|directory| {
+            (
+                portable_path_components(&directory.relative_path),
+                ValidatedRemoval {
+                    relative_path: directory.relative_path.clone(),
+                    display_path: directory.display_path.clone(),
+                },
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+    for relative_path in created_directories {
+        let display_path = relative_path
+            .components()
+            .map(|component| match component {
+                Component::Normal(segment) => Ok(segment.to_string_lossy()),
+                _ => Err(io::Error::other(
+                    "created artifact directory contains a non-normal component",
+                )),
+            })
+            .collect::<io::Result<Vec<_>>>()?
+            .join("/");
+        candidates.insert(
+            portable_path_components(relative_path),
+            ValidatedRemoval {
+                relative_path: relative_path.clone(),
+                display_path,
+            },
+        );
+    }
+
+    let mut retained = Vec::new();
+    for directory in candidates.into_values() {
+        if artifact_paths
+            .iter()
+            .any(|artifact| portable_path_is_descendant(artifact, &directory.relative_path))
+            && open_existing_directory_path(root, &directory.relative_path)?.is_some()
+        {
+            retained.push(directory);
+        }
+    }
+    retained.sort_by(|left, right| left.display_path.cmp(&right.display_path));
+    Ok(retained)
+}
+
+fn rewrite_staged_manifest(
+    transaction: &Dir,
+    artifacts: &[ValidatedArtifact],
+    created_directories: &[ValidatedRemoval],
+) -> io::Result<()> {
+    let paths = artifacts
+        .iter()
+        .filter(|artifact| !artifact.internal)
+        .map(|artifact| artifact.display_path.clone())
+        .collect::<Vec<_>>();
+    let bytes = manifest_bytes(&paths, created_directories).map_err(io::Error::other)?;
+    let staged_path = PathBuf::from("staged").join(MANIFEST_PATH);
+    let mut options = OpenOptions::new();
+    options
+        .write(true)
+        .truncate(true)
+        .follow(FollowSymlinks::No);
+    let mut manifest = transaction.open_with(&staged_path, &options)?;
+    manifest.write_all(&bytes)?;
+    manifest.sync_all()?;
+    sync_dir(&transaction.open_dir("staged")?)
+}
+
 #[cfg(unix)]
 fn sync_file_and_parent(parent: &Dir, leaf: &OsStr) -> io::Result<()> {
     let mut options = OpenOptions::new();
@@ -1488,14 +1620,21 @@ struct ValidatedRemoval {
     display_path: String,
 }
 
+struct LoadedManifest {
+    artifacts: Vec<ValidatedRemoval>,
+    created_directories: Vec<ValidatedRemoval>,
+}
+
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct ArtifactManifest {
     schema_version: u32,
     artifacts: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    created_directories: Vec<String>,
 }
 
-fn load_manifest(root: &Dir) -> Result<Option<Vec<ValidatedRemoval>>, CliError> {
+fn load_manifest(root: &Dir) -> Result<Option<LoadedManifest>, CliError> {
     let mut options = OpenOptions::new();
     options.read(true).follow(FollowSymlinks::No);
     let mut source = match root.open_with(MANIFEST_PATH, &options) {
@@ -1508,7 +1647,10 @@ fn load_manifest(root: &Dir) -> Result<Option<Vec<ValidatedRemoval>>, CliError> 
     let manifest: ArtifactManifest = serde_json::from_slice(&bytes).map_err(|error| {
         validation_error(format!("invalid generated-artifact manifest: {error}"))
     })?;
-    if manifest.schema_version != MANIFEST_SCHEMA_VERSION {
+    if !matches!(
+        manifest.schema_version,
+        LEGACY_MANIFEST_SCHEMA_VERSION | MANIFEST_SCHEMA_VERSION
+    ) {
         return Err(validation_error(format!(
             "unsupported generated-artifact manifest schema version {}",
             manifest.schema_version
@@ -1537,7 +1679,42 @@ fn load_manifest(root: &Dir) -> Result<Option<Vec<ValidatedRemoval>>, CliError> 
             display_path,
         });
     }
-    Ok(Some(validated))
+    let mut directory_keys = BTreeMap::<String, String>::new();
+    let mut created_directories = Vec::with_capacity(manifest.created_directories.len());
+    for path in manifest.created_directories {
+        if is_reserved_internal_path(&path) {
+            return Err(validation_error(
+                "generated-artifact manifest cannot own Morphir generation state".to_owned(),
+            ));
+        }
+        let (relative_path, display_path) = validate_path(&path)?;
+        let case_key = portable_path_key(&display_path);
+        if directory_keys
+            .insert(case_key, display_path.clone())
+            .is_some()
+        {
+            return Err(validation_error(format!(
+                "duplicate directory '{display_path}' in generated-artifact manifest"
+            )));
+        }
+        if !validated
+            .iter()
+            .any(|artifact| portable_path_is_descendant(&artifact.relative_path, &relative_path))
+        {
+            return Err(validation_error(format!(
+                "generated-artifact directory '{display_path}' is not an artifact parent"
+            )));
+        }
+        created_directories.push(ValidatedRemoval {
+            relative_path,
+            display_path,
+        });
+    }
+    created_directories.sort_by(|left, right| left.display_path.cmp(&right.display_path));
+    Ok(Some(LoadedManifest {
+        artifacts: validated,
+        created_directories,
+    }))
 }
 
 fn reject_unmanaged_artifact_replacements(
@@ -1581,13 +1758,28 @@ fn reject_unmanaged_artifact_replacements(
     Ok(())
 }
 
-fn manifest_artifact(paths: &[String]) -> Result<ValidatedArtifact, CliError> {
+fn manifest_bytes(
+    paths: &[String],
+    created_directories: &[ValidatedRemoval],
+) -> Result<Vec<u8>, serde_json::Error> {
     let mut bytes = serde_json::to_vec_pretty(&ArtifactManifest {
         schema_version: MANIFEST_SCHEMA_VERSION,
         artifacts: paths.to_vec(),
-    })
-    .map_err(|error| validation_error(format!("cannot encode artifact manifest: {error}")))?;
+        created_directories: created_directories
+            .iter()
+            .map(|directory| directory.display_path.clone())
+            .collect(),
+    })?;
     bytes.push(b'\n');
+    Ok(bytes)
+}
+
+fn manifest_artifact(
+    paths: &[String],
+    created_directories: &[ValidatedRemoval],
+) -> Result<ValidatedArtifact, CliError> {
+    let bytes = manifest_bytes(paths, created_directories)
+        .map_err(|error| validation_error(format!("cannot encode artifact manifest: {error}")))?;
     Ok(ValidatedArtifact {
         relative_path: PathBuf::from(MANIFEST_PATH),
         display_path: MANIFEST_PATH.to_owned(),
@@ -2326,6 +2518,20 @@ mod tests {
     }
 
     #[test]
+    fn preserves_pre_existing_empty_artifact_parent_directories() {
+        let output = tempdir().unwrap();
+        fs::create_dir(output.path().join("userdir")).unwrap();
+        let writer = ArtifactWriter::new(output.path());
+
+        writer
+            .write_all(&[text("userdir/generated.avsc", "generated")])
+            .unwrap();
+        writer.write_all(&[]).unwrap();
+
+        assert!(output.path().join("userdir").is_dir());
+    }
+
+    #[test]
     fn removes_vacated_managed_directories_across_portable_case_changes() {
         let output = tempdir().unwrap();
         let writer = ArtifactWriter::new(output.path());
@@ -2405,6 +2611,42 @@ mod tests {
             "old"
         );
         assert!(!output.path().join("schema/nested").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn preparation_failure_prunes_new_directories_before_rollback() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let output = tempdir().unwrap();
+        ArtifactWriter::new(output.path())
+            .write_all(&[text("foo", "old")])
+            .unwrap();
+        fs::create_dir(output.path().join("z-blocked")).unwrap();
+        fs::set_permissions(
+            output.path().join("z-blocked"),
+            fs::Permissions::from_mode(0o500),
+        )
+        .unwrap();
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&[
+                text("foo/nested/item.avsc", "new"),
+                text("z-blocked/missing/item.avsc", "unreachable"),
+            ])
+            .unwrap_err();
+        fs::set_permissions(
+            output.path().join("z-blocked"),
+            fs::Permissions::from_mode(0o700),
+        )
+        .unwrap();
+
+        assert!(matches!(error, CliError::FileSystem { .. }));
+        assert_eq!(
+            fs::read_to_string(output.path().join("foo")).unwrap(),
+            "old"
+        );
+        assert!(transaction_directory(output.path()).is_none());
     }
 
     #[test]
