@@ -670,7 +670,8 @@ fn excluded_project_payload_container(key: &str) -> bool {
             | "generatedfiles"
             | "generatedsources"
     );
-    let contains_payload_words = key_words(key).windows(2).any(|words| {
+    let words = key_words(key);
+    let contains_payload_words = words.windows(2).any(|words| {
         matches!(
             (words[0].as_str(), words[1].as_str()),
             ("morphir", "ir")
@@ -684,7 +685,8 @@ fn excluded_project_payload_container(key: &str) -> bool {
                 | ("generated", "sources")
         )
     });
-    exact_match || contains_payload_words
+    let contains_clipboard_word = words.iter().any(|word| word.as_str() == "clipboard");
+    exact_match || contains_payload_words || contains_clipboard_word
 }
 
 fn excluded_sensitive_container(key: &str) -> bool {
@@ -1684,6 +1686,8 @@ mod tests {
             "generatedOutput": { "Private.java": "PRIVATE_GENERATED_OUTPUT" },
             "backendGeneratedOutput": { "Private.scala": "PRIVATE_GENERATED_OUTPUT" },
             "generatedCode": "PRIVATE_GENERATED_CODE",
+            "clipboard": "PRIVATE_COPIED_TEXT",
+            "desktopClipboardText": "PRIVATE_COPIED_TEXT",
             "sourceUrl": "https://public.example/status",
             "outputPath": "dist"
         }));
@@ -1698,6 +1702,8 @@ mod tests {
             "generatedOutput",
             "backendGeneratedOutput",
             "generatedCode",
+            "clipboard",
+            "desktopClipboardText",
         ] {
             assert!(
                 sanitized.get(field).is_none(),
