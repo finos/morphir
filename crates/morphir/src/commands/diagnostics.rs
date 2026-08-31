@@ -103,6 +103,42 @@ fn normalized_key(key: &str) -> String {
         .collect()
 }
 
+fn key_words(key: &str) -> Vec<String> {
+    let characters = key.chars().collect::<Vec<_>>();
+    let mut words = Vec::new();
+    let mut word = String::new();
+
+    for (index, character) in characters.iter().copied().enumerate() {
+        if !character.is_ascii_alphanumeric() {
+            if !word.is_empty() {
+                words.push(std::mem::take(&mut word));
+            }
+            continue;
+        }
+
+        let previous = index
+            .checked_sub(1)
+            .and_then(|previous| characters.get(previous))
+            .copied();
+        let next = characters.get(index + 1).copied();
+        let starts_camel_word = character.is_ascii_uppercase()
+            && (previous.is_some_and(|previous| {
+                previous.is_ascii_lowercase() || previous.is_ascii_digit()
+            }) || (previous.is_some_and(|previous| previous.is_ascii_uppercase())
+                && next.is_some_and(|next| next.is_ascii_lowercase())));
+
+        if starts_camel_word && !word.is_empty() {
+            words.push(std::mem::take(&mut word));
+        }
+        word.push(character.to_ascii_lowercase());
+    }
+
+    if !word.is_empty() {
+        words.push(word);
+    }
+    words
+}
+
 fn sensitive_key(key: &str) -> bool {
     let has_auth_word = contains_auth_key_word(key);
     let key = normalized_key(key);
@@ -126,28 +162,9 @@ fn sensitive_key(key: &str) -> bool {
 }
 
 fn contains_auth_key_word(key: &str) -> bool {
-    let mut word = String::new();
-    let mut previous: Option<char> = None;
-    for character in key.chars() {
-        let starts_camel_word = character.is_ascii_uppercase()
-            && previous
-                .is_some_and(|previous| previous.is_ascii_lowercase() || previous.is_ascii_digit());
-        if (!character.is_ascii_alphanumeric() || starts_camel_word)
-            && matches!(word.as_str(), "auth" | "authentication")
-        {
-            return true;
-        }
-        if !character.is_ascii_alphanumeric() || starts_camel_word {
-            word.clear();
-        }
-        if character.is_ascii_alphanumeric() {
-            word.push(character.to_ascii_lowercase());
-            previous = Some(character);
-        } else {
-            previous = None;
-        }
-    }
-    matches!(word.as_str(), "auth" | "authentication")
+    key_words(key)
+        .iter()
+        .any(|word| matches!(word.as_str(), "auth" | "authentication"))
 }
 
 fn contains_sensitive_assignment(value: &str) -> bool {
@@ -641,7 +658,7 @@ fn excluded_diagnostic_container(key: &str) -> bool {
 }
 
 fn excluded_project_payload_container(key: &str) -> bool {
-    matches!(
+    let exact_match = matches!(
         normalized_key(key).as_str(),
         "morphirir"
             | "irpayload"
@@ -652,7 +669,22 @@ fn excluded_project_payload_container(key: &str) -> bool {
             | "generatedcode"
             | "generatedfiles"
             | "generatedsources"
-    )
+    );
+    let contains_payload_words = key_words(key).windows(2).any(|words| {
+        matches!(
+            (words[0].as_str(), words[1].as_str()),
+            ("morphir", "ir")
+                | ("ir", "payload")
+                | ("source", "code")
+                | ("source", "files")
+                | ("project", "sources")
+                | ("generated", "output")
+                | ("generated", "code")
+                | ("generated", "files")
+                | ("generated", "sources")
+        )
+    });
+    exact_match || contains_payload_words
 }
 
 fn excluded_sensitive_container(key: &str) -> bool {
@@ -1644,10 +1676,13 @@ mod tests {
     fn structured_project_payload_containers_are_excluded() {
         let sanitized = sanitize(serde_json::json!({
             "morphirIr": { "formatVersion": 3, "distribution": "PRIVATE_IR" },
+            "frontend.morphirIR": "PRIVATE_NAMESPACED_IR",
             "ir_payload": "PRIVATE_IR_PAYLOAD",
             "sourceCode": "module Private exposing (..)",
+            "compilerSourceCode": "module AlsoPrivate exposing (..)",
             "projectSources": ["PRIVATE_SOURCE"],
             "generatedOutput": { "Private.java": "PRIVATE_GENERATED_OUTPUT" },
+            "backendGeneratedOutput": { "Private.scala": "PRIVATE_GENERATED_OUTPUT" },
             "generatedCode": "PRIVATE_GENERATED_CODE",
             "sourceUrl": "https://public.example/status",
             "outputPath": "dist"
@@ -1655,10 +1690,13 @@ mod tests {
 
         for field in [
             "morphirIr",
+            "frontend.morphirIR",
             "ir_payload",
             "sourceCode",
+            "compilerSourceCode",
             "projectSources",
             "generatedOutput",
+            "backendGeneratedOutput",
             "generatedCode",
         ] {
             assert!(
