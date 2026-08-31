@@ -28,9 +28,6 @@ thiserror = "2.0.18"
 miette = { version = "7", features = ["fancy"] }
 cucumber = "0.22"
 vfs = "0.13"
-cap-std = "3.4.5"
-cap-fs-ext = "3.4.5"
-same-file = "1"
 
 # TUI
 ratatui = "0.30"
@@ -45,6 +42,13 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tracing-appender = "0.2"
 fs2 = "0.4"
 
+# Filesystem and path handling shared with morphir-rust crates
+cap-std = "3.4.5"
+cap-fs-ext = "3.4.5"
+same-file = "1.0.6"
+unicode-casefold = "0.2"
+unicode-normalization = "0.1"
+
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -53,8 +57,6 @@ stacker = "0.1"
 toml = "1.0.0"
 tempfile = "3"
 semver = "1"
-unicode-casefold = "0.2"
-unicode-normalization = "0.1"
 uuid = { version = "1", features = ["v4"] }
 zip = { version = "8.6", default-features = false, features = ["deflate"] }
 ed25519-dalek = "2"
