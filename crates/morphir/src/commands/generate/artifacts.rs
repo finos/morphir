@@ -555,8 +555,33 @@ fn normalize_existing_output_root(output_root: &Path) -> io::Result<PathBuf> {
             std::fs::canonicalize(absolute)
         }
         Ok(_) => Ok(absolute),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(absolute),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            normalize_missing_output_root(absolute)
+        }
         Err(error) => Err(error),
+    }
+}
+
+fn normalize_missing_output_root(absolute: PathBuf) -> io::Result<PathBuf> {
+    let mut ancestor = absolute.as_path();
+    let mut missing = Vec::new();
+    loop {
+        let (Some(parent), Some(leaf)) = (ancestor.parent(), ancestor.file_name()) else {
+            return Ok(absolute);
+        };
+        missing.push(leaf.to_owned());
+        match std::fs::symlink_metadata(parent) {
+            Ok(_) => {
+                let mut normalized = std::fs::canonicalize(parent)?;
+                if !normalized.is_dir() {
+                    return Ok(absolute);
+                }
+                normalized.extend(missing.iter().rev());
+                return Ok(normalized);
+            }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => ancestor = parent,
+            Err(error) => return Err(error),
+        }
     }
 }
 
@@ -3733,6 +3758,27 @@ mod tests {
         assert!(error.to_string().contains("File system"));
         assert!(!outside.path().join("schema.avsc").exists());
         assert!(moved.read_dir().unwrap().next().is_none());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn missing_output_beneath_a_symlinked_parent_is_published() {
+        use std::os::unix::fs::symlink;
+
+        let parent = tempdir().unwrap();
+        let target = tempdir().unwrap();
+        let linked_parent = parent.path().join("workspace-link");
+        symlink(target.path(), &linked_parent).unwrap();
+        let output = linked_parent.join("generated");
+
+        ArtifactWriter::new(&output)
+            .write_all(&[text("schema.avsc", "generated")])
+            .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(target.path().join("generated/schema.avsc")).unwrap(),
+            "generated"
+        );
     }
 
     #[cfg(unix)]
