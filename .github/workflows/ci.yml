@@ -235,12 +235,23 @@ jobs:
 
       - name: Prepare Scala extension
         run: |
-          chmod +x /tmp/morphir-scala-extension/native-executable
-          ls -la /tmp/morphir-scala-extension/
-          if [ -f /tmp/morphir-scala-extension/morphir-scala-version.txt ]; then
-            ver=$(cat /tmp/morphir-scala-extension/morphir-scala-version.txt)
+          echo "Listing downloaded artifact:"
+          ls -R /tmp/morphir-scala-extension || true
+          SCALA_BIN=$(find /tmp/morphir-scala-extension -name "native-executable" -type f | head -n 1)
+          if [ -z "$SCALA_BIN" ]; then
+            echo "::error::native-executable not found under /tmp/morphir-scala-extension"
+            find /tmp/morphir-scala-extension -type f | head -n 20
+            exit 1
+          fi
+          chmod +x "$SCALA_BIN"
+          echo "SCALA_BIN=$SCALA_BIN" >> "$GITHUB_ENV"
+          echo "Found Scala binary at: $SCALA_BIN"
+          ls -la "$SCALA_BIN"
+          VER_FILE=$(find /tmp/morphir-scala-extension -name "morphir-scala-version.txt" -type f | head -n 1)
+          if [ -f "$VER_FILE" ]; then
+            ver=$(cat "$VER_FILE")
             printf 'MORPHIR_SCALA_ELM_EXTENSION_VERSION=%s\n' "$ver" >> "$GITHUB_ENV"
-            echo "Restored Scala version: $ver"
+            echo "Restored Scala version: $ver from $VER_FILE"
           fi
 
       - name: Cache cargo
@@ -268,8 +279,7 @@ jobs:
 
       - name: Run Morphir Scala Elm CLI integration test
         env:
-          MORPHIR_SCALA_ELM_EXTENSION_BIN: >-
-            /tmp/morphir-scala-extension/native-executable
+          MORPHIR_SCALA_ELM_EXTENSION_BIN: ${{ env.SCALA_BIN }}
         run: >-
           cargo test --locked --package morphir --test cli_integration
           real_installed_morphir_scala_elm_is_selected_and_activates_offline
