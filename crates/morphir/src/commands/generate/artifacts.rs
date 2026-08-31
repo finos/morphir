@@ -364,8 +364,11 @@ fn acquire_publication<H: ArtifactHooks + ?Sized>(
     #[cfg(unix)]
     {
         if leaf == OsStr::new(".") {
-            let (root, locks) = acquire_locked_output_root(&absolute, hooks)
-                .map_err(|error| io::Error::other(format!("cannot lock output root: {error}")))?;
+            let (root, locks) =
+                acquire_locked_output_root(&absolute, hooks, DirectoryLockMode::Exclusive)
+                    .map_err(|error| {
+                        io::Error::other(format!("cannot lock output root: {error}"))
+                    })?;
             if !directory_matches_path(&absolute, &root.directory)? {
                 remove_created_output_root(root);
                 drop(locks);
@@ -379,15 +382,16 @@ fn acquire_publication<H: ArtifactHooks + ?Sized>(
             });
         }
         for _ in 0..100 {
-            let (parent, mut locks) = match acquire_locked_output_root(parent_path, hooks) {
-                Ok(acquired) => acquired,
-                Err(error) if error.kind() == io::ErrorKind::NotFound => continue,
-                Err(error) => {
-                    return Err(io::Error::other(format!(
-                        "cannot lock output parent: {error}"
-                    )));
-                }
-            };
+            let (parent, mut locks) =
+                match acquire_locked_output_root(parent_path, hooks, DirectoryLockMode::Shared) {
+                    Ok(acquired) => acquired,
+                    Err(error) if error.kind() == io::ErrorKind::NotFound => continue,
+                    Err(error) => {
+                        return Err(io::Error::other(format!(
+                            "cannot lock output parent: {error}"
+                        )));
+                    }
+                };
             let parent_matches = match directory_matches_path(parent_path, &parent.directory) {
                 Ok(matches) => matches,
                 Err(error) => {
@@ -406,10 +410,25 @@ fn acquire_publication<H: ArtifactHooks + ?Sized>(
                 remove_created_output_root(parent);
                 return Err(error);
             }
-            let root = open_or_create_output_leaf(parent, leaf.clone())
-                .map_err(|error| io::Error::other(format!("cannot open output root: {error}")))?;
-            let root_lock = match lock_directory(&root.directory) {
+            let root = match open_or_create_output_leaf(parent, leaf.clone()) {
+                Ok(root) => root,
+                Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                    drop(locks);
+                    continue;
+                }
+                Err(error) => {
+                    return Err(io::Error::other(format!(
+                        "cannot open output root: {error}"
+                    )));
+                }
+            };
+            let root_lock = match lock_directory(&root.directory, DirectoryLockMode::Exclusive) {
                 Ok(lock) => lock,
+                Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                    remove_created_output_root(root);
+                    drop(locks);
+                    continue;
+                }
                 Err(error) => {
                     remove_created_output_root(root);
                     return Err(io::Error::other(format!(
@@ -615,9 +634,19 @@ fn publication_parent_and_leaf(absolute: &Path) -> io::Result<(&Path, OsString)>
 }
 
 #[cfg(unix)]
-fn lock_directory(directory: &Dir) -> io::Result<std::fs::File> {
+#[derive(Clone, Copy)]
+enum DirectoryLockMode {
+    Shared,
+    Exclusive,
+}
+
+#[cfg(unix)]
+fn lock_directory(directory: &Dir, mode: DirectoryLockMode) -> io::Result<std::fs::File> {
     let lock = directory.open(".")?.into_std();
-    lock.lock_exclusive()?;
+    match mode {
+        DirectoryLockMode::Shared => lock.lock_shared()?,
+        DirectoryLockMode::Exclusive => lock.lock_exclusive()?,
+    }
     Ok(lock)
 }
 
@@ -625,20 +654,32 @@ fn lock_directory(directory: &Dir) -> io::Result<std::fs::File> {
 fn acquire_locked_output_root<H: ArtifactHooks + ?Sized>(
     output_root: &Path,
     hooks: &H,
+    target_mode: DirectoryLockMode,
 ) -> io::Result<(AcquiredOutputRoot, Vec<std::fs::File>)> {
     let (anchor, components) = locked_output_root_anchor(output_root)?;
-    let mut locks = vec![lock_directory(&anchor)?];
+    let component_count = components.len();
+    let anchor_mode = if component_count == 0 {
+        target_mode
+    } else {
+        DirectoryLockMode::Shared
+    };
+    let mut locks = vec![lock_directory(&anchor, anchor_mode)?];
     let mut current = AcquiredOutputRoot {
         directory: anchor,
         created: Vec::new(),
     };
-    for component in components {
+    for (index, component) in components.into_iter().enumerate() {
         if let Err(error) = hooks.before_output_component_open(&current.directory, &component) {
             remove_created_output_root(current);
             return Err(error);
         }
         current = open_or_create_output_leaf(current, component)?;
-        match lock_directory(&current.directory) {
+        let mode = if index + 1 == component_count {
+            target_mode
+        } else {
+            DirectoryLockMode::Shared
+        };
+        match lock_directory(&current.directory, mode) {
             Ok(lock) => locks.push(lock),
             Err(error) => {
                 remove_created_output_root(current);
@@ -680,7 +721,11 @@ fn directory_matches_path(path: &Path, directory: &Dir) -> io::Result<bool> {
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(false),
         Err(error) => return Err(error),
     };
-    let directory_metadata = directory.metadata(".")?;
+    let directory_metadata = match directory.metadata(".") {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(false),
+        Err(error) => return Err(error),
+    };
     Ok(std::os::unix::fs::MetadataExt::dev(&path_metadata)
         == cap_fs_ext::MetadataExt::dev(&directory_metadata)
         && std::os::unix::fs::MetadataExt::ino(&path_metadata)
@@ -942,6 +987,11 @@ fn remove_created_output_root(root: AcquiredOutputRoot) {
 fn abandon_publication(root: AcquiredOutputRoot, lock: PublicationLock) {
     let AcquiredOutputRoot { directory, created } = root;
     drop(directory);
+    // Directory-locking platforms must unlink newly created output ancestors
+    // before releasing the target lock, so a waiting writer cannot validate a
+    // path that cleanup removes immediately afterward. File-locking platforms
+    // may need the post-unlock pass after removing their lock file.
+    remove_created_output_directories(&created);
     lock.abandon();
     remove_created_output_directories(&created);
 }
@@ -3679,6 +3729,37 @@ mod tests {
         assert_eq!(
             fs::read_to_string(parent.path().join("output/second.avsc")).unwrap(),
             "second"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn directory_locks_allow_sibling_output_roots_to_publish_concurrently() {
+        let parent = tempdir().unwrap();
+        let first_output = parent.path().join("first");
+        let second_output = parent.path().join("second");
+        fs::create_dir_all(&first_output).unwrap();
+        fs::create_dir_all(&second_output).unwrap();
+        let first = acquire_publication(&first_output, &NOOP_HOOKS).unwrap();
+        let (finished_tx, finished_rx) = mpsc::sync_channel(1);
+        let second = thread::spawn(move || {
+            let acquired = acquire_publication(&second_output, &NOOP_HOOKS);
+            finished_tx.send(acquired.map(|_| ())).unwrap();
+        });
+
+        let concurrent = finished_rx.recv_timeout(Duration::from_millis(100));
+        drop(first);
+        if concurrent.is_err() {
+            finished_rx
+                .recv_timeout(Duration::from_secs(5))
+                .expect("sibling writer should finish after the first lock is released")
+                .unwrap();
+        }
+        second.join().unwrap();
+
+        assert!(
+            concurrent.is_ok(),
+            "sibling output writers must not share an exclusive ancestor lock"
         );
     }
 
