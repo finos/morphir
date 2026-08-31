@@ -58,6 +58,9 @@ usage-lib = { version = "6", features = ["clap", "docs"] }
 unicode-casefold = { workspace = true }
 unicode-normalization = { workspace = true }
 
+[target.'cfg(unix)'.dependencies]
+rustix = { workspace = true }
+
 # TUI
 ratatui = { workspace = true }
 crossterm = { workspace = true }

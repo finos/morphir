@@ -975,7 +975,7 @@ fn commit_destinations<H: ArtifactHooks + ?Sized>(
                 return rollback_failure(error, root, transaction, destinations, records, hooks);
             }
             if let Err(error) =
-                transaction.hard_link(staged, &destination.parent, &destination.leaf)
+                install_staged_file(transaction, staged, &destination.parent, &destination.leaf)
             {
                 return rollback_failure(error, root, transaction, destinations, records, hooks);
             }
@@ -986,6 +986,42 @@ fn commit_destinations<H: ArtifactHooks + ?Sized>(
         }
     }
     Ok(())
+}
+
+fn install_staged_file(
+    transaction: &Dir,
+    staged: &Path,
+    parent: &Dir,
+    leaf: &OsStr,
+) -> io::Result<()> {
+    move_file_no_replace(transaction, staged, parent, leaf)
+}
+
+#[cfg(unix)]
+fn move_file_no_replace(
+    source_parent: &Dir,
+    source: &Path,
+    destination_parent: &Dir,
+    destination: &OsStr,
+) -> io::Result<()> {
+    rustix::fs::renameat_with(
+        source_parent,
+        source,
+        destination_parent,
+        destination,
+        rustix::fs::RenameFlags::NOREPLACE,
+    )
+    .map_err(Into::into)
+}
+
+#[cfg(not(unix))]
+fn move_file_no_replace(
+    source_parent: &Dir,
+    source: &Path,
+    destination_parent: &Dir,
+    destination: &OsStr,
+) -> io::Result<()> {
+    source_parent.rename(source, destination_parent, destination)
 }
 
 fn move_destination_to_backup(transaction: &Dir, destination: &Destination) -> io::Result<()> {
@@ -1081,7 +1117,7 @@ fn rollback<H: ArtifactHooks + ?Sized>(
                         .expect("destination has a parent"),
                     &mut Vec::new(),
                 )?;
-                transaction.hard_link(&destination.backup, &parent, &destination.leaf)?;
+                move_file_no_replace(transaction, &destination.backup, &parent, &destination.leaf)?;
                 sync_file_and_parent(&parent, &destination.leaf)?;
             }
             Ok(())
@@ -1578,6 +1614,33 @@ mod tests {
             content: content.to_owned(),
             binary: true,
         }
+    }
+
+    #[test]
+    fn installation_moves_the_staged_file_into_place() {
+        let root = tempdir().unwrap();
+        let staged = root.path().join("staged");
+        let destination = root.path().join("destination");
+        fs::create_dir(&staged).unwrap();
+        fs::create_dir(&destination).unwrap();
+        fs::write(staged.join("schema.avsc"), "generated").unwrap();
+        let transaction = Dir::open_ambient_dir(root.path(), cap_std::ambient_authority()).unwrap();
+        let destination =
+            Dir::open_ambient_dir(&destination, cap_std::ambient_authority()).unwrap();
+
+        install_staged_file(
+            &transaction,
+            Path::new("staged/schema.avsc"),
+            &destination,
+            OsStr::new("schema.avsc"),
+        )
+        .unwrap();
+
+        assert!(!staged.join("schema.avsc").exists());
+        assert_eq!(
+            destination.read_to_string("schema.avsc").unwrap(),
+            "generated"
+        );
     }
 
     #[test]

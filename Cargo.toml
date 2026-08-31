@@ -45,6 +45,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tracing-appender = "0.2"
 fs2 = "0.4"
+rustix = { version = "1.1", features = ["fs"] }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

@@ -3636,6 +3636,7 @@ dependencies = [
  "morphir-okf",
  "owo-colors",
  "ratatui",
+ "rustix 1.1.4",
  "schemars 1.2.2",
  "semver",
  "serde",
