@@ -1790,6 +1790,7 @@ fn manifest_artifact(
 
 fn validate_complete_set(artifacts: &[Artifact]) -> Result<Vec<ValidatedArtifact>, CliError> {
     let mut paths_by_case_key = BTreeMap::<String, String>::new();
+    let mut parents_by_portable_key = BTreeMap::<Vec<String>, String>::new();
     let mut validated = Vec::with_capacity(artifacts.len());
 
     for artifact in artifacts {
@@ -1810,6 +1811,23 @@ fn validate_complete_set(artifacts: &[Artifact]) -> Result<Vec<ValidatedArtifact
             return Err(validation_error(problem));
         }
         paths_by_case_key.insert(case_key, display_path.clone());
+
+        let segments = display_path.split('/').collect::<Vec<_>>();
+        let mut parent_key = Vec::with_capacity(segments.len().saturating_sub(1));
+        let mut parent_segments = Vec::with_capacity(segments.len().saturating_sub(1));
+        for segment in segments.iter().take(segments.len().saturating_sub(1)) {
+            parent_key.push(portable_path_key(segment));
+            parent_segments.push(*segment);
+            let parent_path = parent_segments.join("/");
+            if let Some(previous) = parents_by_portable_key.get(&parent_key)
+                && previous != &parent_path
+            {
+                return Err(validation_error(format!(
+                    "case-colliding artifact parent directories '{previous}' and '{parent_path}'"
+                )));
+            }
+            parents_by_portable_key.insert(parent_key.clone(), parent_path);
+        }
 
         let bytes = if artifact.binary {
             STANDARD.decode(&artifact.content).map_err(|error| {
@@ -2332,6 +2350,29 @@ mod tests {
 
         assert!(error.to_string().contains("case-colliding"));
         assert!(output.path().read_dir().unwrap().next().is_none());
+    }
+
+    #[test]
+    fn rejects_case_colliding_artifact_parent_directories_before_writing() {
+        let output = tempdir().unwrap();
+        fs::create_dir(output.path().join("foo")).unwrap();
+        let artifacts = vec![text("foo/a.avsc", "{}"), text("FOO/b.avsc", "{}")];
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&artifacts)
+            .unwrap_err();
+
+        assert!(error.to_string().contains("case-colliding"));
+        assert!(output.path().join("foo").is_dir());
+        assert!(
+            output
+                .path()
+                .join("foo")
+                .read_dir()
+                .unwrap()
+                .next()
+                .is_none()
+        );
     }
 
     #[test]
