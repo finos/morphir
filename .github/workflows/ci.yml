@@ -227,6 +227,19 @@ jobs:
           name: morphir-elm-extension
           path: ecosystem/morphir-elm/dist/morphir-elm-extension
 
+      - name: Prepare Elm extension
+        run: |
+          echo "Listing Elm artifact:"
+          ls -R ecosystem/morphir-elm/dist/morphir-elm-extension || true
+          ELM_BIN=$(find ecosystem/morphir-elm/dist/morphir-elm-extension -name "morphir-elm-extension" -type f | head -n 1)
+          if [ -z "$ELM_BIN" ]; then
+            echo "::error::morphir-elm-extension not found"
+            exit 1
+          fi
+          chmod +x "$ELM_BIN"
+          echo "Elm binary at $ELM_BIN:"
+          ls -la "$ELM_BIN"
+
       - name: Download Scala extension
         uses: actions/download-artifact@v8
         with:
