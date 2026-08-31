@@ -344,6 +344,10 @@ fn url_scheme_starts_at(value: &str, start: usize) -> bool {
         .is_some_and(|marker| url_scheme_start_before(value, start + marker) == Some(start))
 }
 
+fn is_url_path_boundary(character: char) -> bool {
+    matches!(character, '/' | '\\' | '?' | '#')
+}
+
 fn redact_urls(value: &str) -> String {
     let mut redacted = value.to_owned();
     let mut search_from = 0;
@@ -353,7 +357,7 @@ fn redact_urls(value: &str) -> String {
         let token_end = url_token_end(&redacted, authority_start);
         let authority_end = redacted[authority_start..token_end]
             .char_indices()
-            .find(|(_, character)| matches!(character, '/' | '?' | '#'))
+            .find(|(_, character)| is_url_path_boundary(*character))
             .map(|(index, _)| authority_start + index)
             .unwrap_or(token_end);
 
@@ -369,7 +373,7 @@ fn redact_urls(value: &str) -> String {
         let token_end = url_token_end(&redacted, authority_start);
         if let Some(boundary) = redacted[authority_start..token_end]
             .char_indices()
-            .find(|(_, character)| matches!(character, '/' | '?' | '#'))
+            .find(|(_, character)| is_url_path_boundary(*character))
             .map(|(index, _)| authority_start + index)
         {
             let replacement_end = url_scheme_starts_at(&redacted, token_end)
@@ -426,7 +430,7 @@ fn redact_scheme_relative_urls(value: &str) -> String {
         let token_end = reference_token_end(&redacted, authority_start);
         let authority_end = redacted[authority_start..token_end]
             .char_indices()
-            .find(|(_, character)| matches!(character, '/' | '?' | '#'))
+            .find(|(_, character)| is_url_path_boundary(*character))
             .map(|(index, _)| authority_start + index)
             .unwrap_or(token_end);
         let scan_after =
@@ -441,7 +445,7 @@ fn redact_scheme_relative_urls(value: &str) -> String {
         let token_end = reference_token_end(&redacted, authority_start);
         if let Some(boundary) = redacted[authority_start..token_end]
             .char_indices()
-            .find(|(_, character)| matches!(character, '/' | '?' | '#'))
+            .find(|(_, character)| is_url_path_boundary(*character))
             .map(|(index, _)| authority_start + index)
         {
             let replacement_end = redacted[token_end..]
@@ -1569,6 +1573,10 @@ mod tests {
     fn every_url_in_free_form_text_is_sanitized() {
         assert_eq!(
             sanitize_text("reset link: https://private.example/reset/LIVE_SECRET"),
+            "reset link: https://private.example"
+        );
+        assert_eq!(
+            sanitize_text(r"reset link: https://private.example\reset\LIVE_SECRET"),
             "reset link: https://private.example"
         );
         assert_eq!(
