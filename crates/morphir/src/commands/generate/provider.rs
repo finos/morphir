@@ -1,5 +1,6 @@
 use crate::error::CliError;
 use morphir_common::home::MorphirHome;
+use morphir_core::format_version::{NormalizedFormatVersion, ScalarValue, SupportTable};
 use morphir_daemon::extensions::{
     InvokeOutcome, Loaded, MepTransport, Ready, Session, activate_transport,
     protocol::{InitializeParams, MEP_VERSION, PeerInfo, methods},
@@ -200,21 +201,40 @@ impl ProviderMetadata for InstalledExtensionSnapshot {
 
 pub(super) fn detect_ir_major(ir: &Value) -> Result<String, CliError> {
     let format_version = ir.get("formatVersion");
-    if format_version == Some(&Value::from(4)) || format_version == Some(&Value::from("4.0.0")) {
+    if format_version == Some(&Value::from(4)) {
         return Ok("4".into());
     }
     let classic_ir = match format_version.and_then(Value::as_str) {
-        Some("3.0.0") => {
-            let mut normalized = ir.clone();
-            normalized["formatVersion"] = Value::from(3);
-            normalized
-        }
         Some(version) => {
-            return Err(CliError::Extension {
+            let scalar = ScalarValue::from_json(format_version.expect("string version exists"))
+                .map_err(|_| CliError::Extension {
+                    message: format!(
+                        "Cannot detect a supported Morphir IR version: unsupported formatVersion {version}"
+                    ),
+                })?;
+            let normalized = NormalizedFormatVersion::from_scalar(
+                &scalar,
+                &SupportTable::reference(),
+            )
+            .map_err(|_| CliError::Extension {
                 message: format!(
                     "Cannot detect a supported Morphir IR version: unsupported formatVersion {version}"
                 ),
-            });
+            })?;
+            match normalized.release.major() {
+                4 => return Ok("4".into()),
+                3 => {}
+                _ => {
+                    return Err(CliError::Extension {
+                        message: format!(
+                            "Cannot detect a supported Morphir IR version: unsupported formatVersion {version}"
+                        ),
+                    });
+                }
+            }
+            let mut normalized = ir.clone();
+            normalized["formatVersion"] = Value::from(3);
+            normalized
         }
         None => ir.clone(),
     };
@@ -550,8 +570,15 @@ mod tests {
     }
 
     #[test]
-    fn rejects_unsupported_or_malformed_dotted_v4_versions() {
-        for version in ["4.2.1", "4."] {
+    fn detects_later_valid_v4_release_strings_for_provider_routing() {
+        let ir = json!({"formatVersion": "4.1.0", "distribution": {"Library": {}}});
+
+        assert_eq!(detect_ir_major(&ir).unwrap(), "4");
+    }
+
+    #[test]
+    fn rejects_malformed_dotted_v4_versions() {
+        for version in ["4.", "4.01.0", "4.1.0-alpha"] {
             let ir = json!({"formatVersion": version, "distribution": {"Library": {}}});
 
             let error = detect_ir_major(&ir).unwrap_err();
