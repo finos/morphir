@@ -52,7 +52,7 @@ impl BoundUiHost {
                 message: format!("UI host refused non-loopback bind address {address}"),
             });
         }
-        let (auth, launch_token) = SessionAuth::generate()?;
+        let (auth, launch_token) = SessionAuth::generate(&session_id)?;
         let manifest = SessionManifest {
             protocol_version: CONNECTED_PROTOCOL_VERSION,
             web_socket_path: "/rpc".into(),
@@ -275,5 +275,65 @@ mod tests {
         assert_eq!(manifest.headers()[header::CACHE_CONTROL], "no-store");
 
         server.abort();
+    }
+
+    #[tokio::test]
+    async fn concurrent_hosts_accept_distinct_session_cookies() {
+        let first = BoundUiHost::bind(
+            "session-1".into(),
+            Arc::new(NativeWorkspaceProvider::discover(&fixture(), "session-1").unwrap()),
+        )
+        .await
+        .unwrap();
+        let second = BoundUiHost::bind(
+            "session-2".into(),
+            Arc::new(NativeWorkspaceProvider::discover(&fixture(), "session-2").unwrap()),
+        )
+        .await
+        .unwrap();
+        let launches = [first.launch_url(), second.launch_url()];
+        let bases = [first.base_url(), second.base_url()];
+        let (first_listener, first_router) = first.into_parts();
+        let (second_listener, second_router) = second.into_parts();
+        let first_task =
+            tokio::spawn(async move { axum::serve(first_listener, first_router).await.unwrap() });
+        let second_task =
+            tokio::spawn(async move { axum::serve(second_listener, second_router).await.unwrap() });
+        let client = reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .unwrap();
+
+        let mut pairs = Vec::new();
+        for launch in launches {
+            let response = client.get(launch).send().await.unwrap();
+            pairs.push(
+                response.headers()[header::SET_COOKIE]
+                    .to_str()
+                    .unwrap()
+                    .split(';')
+                    .next()
+                    .unwrap()
+                    .to_owned(),
+            );
+        }
+        assert_ne!(pairs[0].split('=').next(), pairs[1].split('=').next());
+
+        let combined = pairs.join("; ");
+        for base in bases {
+            assert_eq!(
+                client
+                    .get(format!("{base}/api/session"))
+                    .header(header::COOKIE, &combined)
+                    .send()
+                    .await
+                    .unwrap()
+                    .status(),
+                StatusCode::OK,
+            );
+        }
+
+        first_task.abort();
+        second_task.abort();
     }
 }

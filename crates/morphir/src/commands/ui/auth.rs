@@ -8,15 +8,16 @@ use subtle::ConstantTimeEq as _;
 use crate::error::CliError;
 
 const SECRET_BYTES: usize = 32;
-pub const SESSION_COOKIE_NAME: &str = "morphir_session";
+const SESSION_COOKIE_PREFIX: &str = "morphir_session_";
 
 pub struct SessionAuth {
+    cookie_name: String,
     launch_secret: Mutex<Option<[u8; SECRET_BYTES]>>,
     session_secret: [u8; SECRET_BYTES],
 }
 
 impl SessionAuth {
-    pub fn generate() -> Result<(Self, String), CliError> {
+    pub fn generate(session_id: &str) -> Result<(Self, String), CliError> {
         let mut launch_secret = [0_u8; SECRET_BYTES];
         let mut session_secret = [0_u8; SECRET_BYTES];
         getrandom::fill(&mut launch_secret).map_err(|error| CliError::Validation {
@@ -28,6 +29,7 @@ impl SessionAuth {
         let launch_token = URL_SAFE_NO_PAD.encode(launch_secret);
         Ok((
             Self {
+                cookie_name: cookie_name(session_id),
                 launch_secret: Mutex::new(Some(launch_secret)),
                 session_secret,
             },
@@ -37,12 +39,14 @@ impl SessionAuth {
 
     #[cfg(test)]
     fn from_secrets(
+        session_id: &str,
         launch_secret: [u8; SECRET_BYTES],
         session_secret: [u8; SECRET_BYTES],
     ) -> (Self, String) {
         let token = URL_SAFE_NO_PAD.encode(launch_secret);
         (
             Self {
+                cookie_name: cookie_name(session_id),
                 launch_secret: Mutex::new(Some(launch_secret)),
                 session_secret,
             },
@@ -69,7 +73,8 @@ impl SessionAuth {
 
     pub fn session_cookie(&self) -> String {
         format!(
-            "{SESSION_COOKIE_NAME}={}; HttpOnly; SameSite=Strict; Path=/",
+            "{}={}; HttpOnly; SameSite=Strict; Path=/",
+            self.cookie_name,
             URL_SAFE_NO_PAD.encode(self.session_secret)
         )
     }
@@ -79,12 +84,16 @@ impl SessionAuth {
             let Some((name, value)) = part.trim().split_once('=') else {
                 return false;
             };
-            if name != SESSION_COOKIE_NAME {
+            if name != self.cookie_name {
                 return false;
             }
             decode_secret(value).is_ok_and(|candidate| self.session_secret.ct_eq(&candidate).into())
         })
     }
+}
+
+fn cookie_name(session_id: &str) -> String {
+    format!("{SESSION_COOKIE_PREFIX}{session_id}")
 }
 
 fn decode_secret(encoded: &str) -> Result<[u8; SECRET_BYTES], ()> {
@@ -98,7 +107,8 @@ mod tests {
 
     #[test]
     fn launch_token_is_single_use_and_wrong_values_do_not_consume_it() {
-        let (auth, token) = SessionAuth::from_secrets([7; SECRET_BYTES], [9; SECRET_BYTES]);
+        let (auth, token) =
+            SessionAuth::from_secrets("session-1", [7; SECRET_BYTES], [9; SECRET_BYTES]);
 
         assert!(!auth.exchange_launch_token("wrong"));
         assert!(auth.exchange_launch_token(&token));
@@ -107,7 +117,8 @@ mod tests {
 
     #[test]
     fn session_cookie_is_strict_http_only_and_path_scoped() {
-        let (auth, _) = SessionAuth::from_secrets([7; SECRET_BYTES], [9; SECRET_BYTES]);
+        let (auth, _) =
+            SessionAuth::from_secrets("session-1", [7; SECRET_BYTES], [9; SECRET_BYTES]);
         let cookie = auth.session_cookie();
 
         assert!(cookie.contains("HttpOnly"));
@@ -117,5 +128,26 @@ mod tests {
         assert!(auth.authenticate_cookie_header(pair));
         assert!(auth.authenticate_cookie_header(&format!("other=value; {pair}")));
         assert!(!auth.authenticate_cookie_header("morphir_session=wrong"));
+    }
+
+    #[test]
+    fn session_cookie_names_are_isolated_by_session_id() {
+        let (first, _) =
+            SessionAuth::from_secrets("session-1", [7; SECRET_BYTES], [9; SECRET_BYTES]);
+        let (second, _) =
+            SessionAuth::from_secrets("session-2", [7; SECRET_BYTES], [8; SECRET_BYTES]);
+
+        let first_pair = first.session_cookie().split(';').next().unwrap().to_owned();
+        let second_pair = second
+            .session_cookie()
+            .split(';')
+            .next()
+            .unwrap()
+            .to_owned();
+        let combined = format!("{first_pair}; {second_pair}");
+
+        assert_ne!(first_pair.split('=').next(), second_pair.split('=').next());
+        assert!(first.authenticate_cookie_header(&combined));
+        assert!(second.authenticate_cookie_header(&combined));
     }
 }
