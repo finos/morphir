@@ -66,13 +66,11 @@ impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
         let managed = previous.as_deref().unwrap_or_default();
         reject_unmanaged_artifact_replacements(&root.directory, &validated, managed)?;
         if let Err(error) = self.hooks.after_manifest_load() {
-            remove_created_output_root(root);
-            drop(publication_lock);
+            abandon_publication(root, publication_lock);
             return Err(file_system_error(error));
         }
         if validated.is_empty() && previous.is_none() {
-            remove_created_output_root(root);
-            drop(publication_lock);
+            abandon_publication(root, publication_lock);
             return Ok(Vec::new());
         }
         let current_paths = display_paths.iter().cloned().collect::<BTreeSet<_>>();
@@ -87,11 +85,11 @@ impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
         validated.push(manifest_artifact(&display_paths)?);
         let result = self.run(&root.directory, &validated, &stale, managed);
         if result.is_err() {
-            remove_created_output_root(root);
+            abandon_publication(root, publication_lock);
         } else {
             drop(root);
+            drop(publication_lock);
         }
-        drop(publication_lock);
         result.map(|()| display_paths)
     }
 
@@ -215,7 +213,48 @@ struct AcquiredPublication {
 }
 
 struct PublicationLock {
-    _files: Vec<std::fs::File>,
+    files: Vec<std::fs::File>,
+    cleanup_on_abandon: Option<PublicationLockCleanup>,
+}
+
+struct PublicationLockCleanup {
+    directory: Dir,
+    path: PathBuf,
+}
+
+impl PublicationLock {
+    fn new(files: Vec<std::fs::File>) -> Self {
+        Self {
+            files,
+            cleanup_on_abandon: None,
+        }
+    }
+
+    #[cfg(any(not(unix), test))]
+    fn with_cleanup(file: std::fs::File, directory: Dir, path: PathBuf) -> Self {
+        Self {
+            files: vec![file],
+            cleanup_on_abandon: Some(PublicationLockCleanup { directory, path }),
+        }
+    }
+
+    fn abandon(self) {
+        let Self {
+            files,
+            cleanup_on_abandon,
+        } = self;
+        let Some(cleanup) = cleanup_on_abandon else {
+            drop(files);
+            return;
+        };
+
+        let removed_while_locked = cleanup.directory.remove_file(&cleanup.path).is_ok();
+        drop(files);
+        if !removed_while_locked {
+            let _ = cleanup.directory.remove_file(&cleanup.path);
+        }
+        let _ = sync_dir(&cleanup.directory);
+    }
 }
 
 struct CreatedOutputDirectory {
@@ -359,7 +398,7 @@ fn acquire_publication<H: ArtifactHooks + ?Sized>(
             }
             return Ok(AcquiredPublication {
                 root,
-                lock: PublicationLock { _files: locks },
+                lock: PublicationLock::new(locks),
             });
         }
         Err(io::Error::other(
@@ -485,7 +524,7 @@ fn acquire_file_publication<H: ArtifactHooks + ?Sized>(
         let root = open_or_create_output_leaf(parent, leaf)?;
         return Ok(AcquiredPublication {
             root,
-            lock: PublicationLock { _files: vec![lock] },
+            lock: PublicationLock::new(vec![lock]),
         });
     }
 
@@ -497,10 +536,10 @@ fn acquire_file_publication<H: ArtifactHooks + ?Sized>(
                 let root = open_or_create_output_leaf(parent, leaf)?;
                 return Ok(AcquiredPublication {
                     root,
-                    lock: PublicationLock { _files: vec![lock] },
+                    lock: PublicationLock::new(vec![lock]),
                 });
             }
-            let lock = create_or_open_publication_lock(
+            let (lock, _) = create_or_open_publication_lock(
                 &directory,
                 Path::new(INTERNAL_PUBLICATION_LOCK_PATH),
             )?;
@@ -510,16 +549,55 @@ fn acquire_file_publication<H: ArtifactHooks + ?Sized>(
                     directory,
                     created: parent.created,
                 },
-                lock: PublicationLock { _files: vec![lock] },
+                lock: PublicationLock::new(vec![lock]),
             })
         }
         Err(error) if error.kind() == io::ErrorKind::NotFound => {
-            let lock = create_or_open_publication_lock(&parent.directory, &sibling_lock_path)?;
-            lock.lock_exclusive()?;
-            let root = open_or_create_output_leaf(parent, leaf)?;
+            let (lock, created) =
+                create_or_open_publication_lock(&parent.directory, &sibling_lock_path)?;
+            let cleanup_directory = if created && !parent.created.is_empty() {
+                match parent.directory.try_clone() {
+                    Ok(directory) => Some(directory),
+                    Err(error) => {
+                        drop(lock);
+                        let _ = parent.directory.remove_file(&sibling_lock_path);
+                        remove_created_output_root(parent);
+                        return Err(error);
+                    }
+                }
+            } else {
+                None
+            };
+            let publication_lock = match cleanup_directory {
+                Some(directory) => {
+                    PublicationLock::with_cleanup(lock, directory, sibling_lock_path)
+                }
+                None => PublicationLock::new(vec![lock]),
+            };
+            if let Err(error) = publication_lock.files[0].lock_exclusive() {
+                publication_lock.abandon();
+                remove_created_output_root(parent);
+                return Err(error);
+            }
+            let cleanup_journal = match clone_created_output_directories(&parent.created) {
+                Ok(journal) => journal,
+                Err(error) => {
+                    publication_lock.abandon();
+                    remove_created_output_root(parent);
+                    return Err(error);
+                }
+            };
+            let root = match open_or_create_output_leaf(parent, leaf) {
+                Ok(root) => root,
+                Err(error) => {
+                    publication_lock.abandon();
+                    remove_created_output_directories(&cleanup_journal);
+                    return Err(error);
+                }
+            };
             Ok(AcquiredPublication {
                 root,
-                lock: PublicationLock { _files: vec![lock] },
+                lock: publication_lock,
             })
         }
         Err(error) => Err(error),
@@ -538,7 +616,10 @@ fn open_publication_lock(directory: &Dir, path: &Path) -> io::Result<Option<std:
 }
 
 #[cfg(any(not(unix), test))]
-fn create_or_open_publication_lock(directory: &Dir, path: &Path) -> io::Result<std::fs::File> {
+fn create_or_open_publication_lock(
+    directory: &Dir,
+    path: &Path,
+) -> io::Result<(std::fs::File, bool)> {
     let mut create = OpenOptions::new();
     create
         .read(true)
@@ -546,17 +627,34 @@ fn create_or_open_publication_lock(directory: &Dir, path: &Path) -> io::Result<s
         .create_new(true)
         .follow(FollowSymlinks::No);
     match directory.open_with(path, &create) {
-        Ok(lock) => Ok(lock.into_std()),
+        Ok(lock) => Ok((lock.into_std(), true)),
         Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
-            open_publication_lock(directory, path)?.ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::NotFound,
-                    "publication lock disappeared while opening it",
-                )
-            })
+            open_publication_lock(directory, path)?
+                .map(|lock| (lock, false))
+                .ok_or_else(|| {
+                    io::Error::new(
+                        io::ErrorKind::NotFound,
+                        "publication lock disappeared while opening it",
+                    )
+                })
         }
         Err(error) => Err(error),
     }
+}
+
+#[cfg(any(not(unix), test))]
+fn clone_created_output_directories(
+    directories: &[CreatedOutputDirectory],
+) -> io::Result<Vec<CreatedOutputDirectory>> {
+    directories
+        .iter()
+        .map(|directory| {
+            Ok(CreatedOutputDirectory {
+                parent: directory.parent.try_clone()?,
+                leaf: directory.leaf.clone(),
+            })
+        })
+        .collect()
 }
 
 #[cfg(any(not(unix), test))]
@@ -613,6 +711,13 @@ fn remove_created_output_directories(directories: &[CreatedOutputDirectory]) {
 fn remove_created_output_root(root: AcquiredOutputRoot) {
     let AcquiredOutputRoot { directory, created } = root;
     drop(directory);
+    remove_created_output_directories(&created);
+}
+
+fn abandon_publication(root: AcquiredOutputRoot, lock: PublicationLock) {
+    let AcquiredOutputRoot { directory, created } = root;
+    drop(directory);
+    lock.abandon();
     remove_created_output_directories(&created);
 }
 
@@ -1851,6 +1956,23 @@ mod tests {
                 .exists()
         );
         drop(acquired);
+    }
+
+    #[test]
+    fn abandoned_regular_file_publication_removes_lock_before_new_ancestors() {
+        let parent = tempdir().unwrap();
+        let new_parent = parent.path().join("new/nested");
+        let acquired_parent = acquire_output_root(&new_parent, &NOOP_HOOKS).unwrap();
+        let output_leaf = OsString::from("generated");
+        let lock_path = new_parent.join(publication_lock_path(&output_leaf));
+        let AcquiredPublication { root, lock } =
+            acquire_file_publication(acquired_parent, output_leaf, &NOOP_HOOKS).unwrap();
+
+        assert!(lock_path.is_file());
+
+        abandon_publication(root, lock);
+
+        assert!(!parent.path().join("new").exists());
     }
 
     #[test]
