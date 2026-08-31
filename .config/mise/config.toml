@@ -124,8 +124,12 @@ run = "bun run tools/install-git-hooks.ts"
 description = "Verify the git hooks are active"
 run = "bun run tools/install-git-hooks.ts --check"
 
+[tasks."beads:publish"]
+description = "Publish the beads export to the beads-sync branch"
+run = "bun run tools/publish-beads.ts"
+
 [tasks."beads:drift-check"]
-description = "Verify the beads database and .beads/issues.jsonl agree"
+description = "Verify the beads database and the published export agree"
 run = "bun run tools/check-beads-drift.ts"
 
 # The generator imports only node: builtins, so bun runs it without an install.

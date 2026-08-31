@@ -56,27 +56,18 @@ if [ -L ".beads" ]; then
     fi
 fi
 
-# Confirm the beads export still agrees with the database. The two drifted apart
-# in both directions before this check existed (morphir-5uau), because the export
-# is passive: issues committed to Dolt without a re-export, or an export edited
-# and committed to git without a dolt push, both go unnoticed until someone
-# compares them.
-#
-# This runs on every commit, not only when the export is staged. The commoner
-# failure is the one where it is *not* staged: issues are created through bd and
-# nobody re-exports, which is how 17 records came to exist only in the database.
-# Checking only staged exports would miss precisely that case. The check costs
-# about half a second.
-#
-# --staged compares the index rather than the working tree, because a commit
-# records what is staged.
-if [ "$MORPHIR_SKIP_HOOKS" != "1" ]; then
-    if command -v bun > /dev/null 2>&1 && command -v bd > /dev/null 2>&1; then
-        if ! bun run tools/check-beads-drift.ts --staged; then
-            echo "To commit anyway: MORPHIR_SKIP_HOOKS=1 git commit ..."
-            exit 1
-        fi
-    else
-        echo "pre-commit: bun or bd not found, skipping the beads drift check."
-    fi
+# Issue data no longer belongs in an ordinary commit: it is published to the
+# beads-sync branch (sync.branch in .beads/config.yaml) and ignored elsewhere.
+# Catch a re-added copy, which would put the churn and the drift back on main.
+# --diff-filter=d excludes deletions: removing these files from a branch is
+# exactly what the switch to beads-sync required, and must stay possible.
+if git diff --cached --name-only --diff-filter=d | grep -qE "^\.beads/(issues|interactions)\.jsonl$"; then
+    echo "ERROR: .beads issue data is staged."
+    echo ""
+    echo "That data lives on the beads-sync branch, not here. Unstage it and"
+    echo "publish instead:"
+    echo "    git restore --staged .beads/issues.jsonl .beads/interactions.jsonl"
+    echo "    mise run beads:publish"
+    echo ""
+    exit 1
 fi

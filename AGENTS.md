@@ -198,17 +198,34 @@ one, check `git ls-files -s .husky` and use `git update-index --chmod=+x` when n
 
 ### Keeping beads in sync
 
-The Dolt database is authoritative and `.beads/issues.jsonl` is a passive export, so the two drift apart whenever
-issues reach one side only. Both directions have happened (morphir-5uau). Never hand-edit the export. After
-changing issues, run `bd export -o .beads/issues.jsonl`, and commit that alongside `bd dolt push`.
+The Dolt database is authoritative and syncs over `refs/dolt/data`. The JSONL export is a readable mirror of it,
+and it lives on its own branch, **`beads-sync`**, rather than on `main`. Keeping it on `main` meant churn on every
+issue change and let the two drift apart in both directions (morphir-5uau).
+
+After changing issues:
 
 ```shell
-mise run beads:drift-check
+bd dolt commit -m "..." && bd dolt push   # publish the database, the real sync
+mise run beads:publish                    # refresh the mirror on beads-sync
+git push origin beads-sync
 ```
 
-The `pre-commit` hook runs this automatically when the export is staged. Note that `bd` resolves `.beads` to the
-**main checkout** even when the working directory is a linked worktree, so a worktree edits its own tracked copy
-while `bd` reads and writes the main checkout's. Keep the main checkout current when working from a worktree.
+`beads:publish` exports straight from the database and writes the branch with git plumbing, so it never touches
+your working tree or needs the branch checked out, and it works the same from a linked worktree. It is a no-op
+when the branch already matches.
+
+`.beads/issues.jsonl` and `.beads/interactions.jsonl` are ignored outside that branch, and `pre-commit` rejects
+them if staged. Never hand-edit the export: republish it instead. To check the mirror:
+
+```shell
+mise run beads:drift-check      # database against beads-sync
+```
+
+`pre-push` reports a stale mirror as a notice rather than blocking, since a mirror lagging an authoritative
+database is untidy rather than wrong.
+
+Note that `bd` resolves `.beads` to the **main checkout** even when the working directory is a linked worktree, so
+keep the main checkout current when working from a worktree.
 
 ### Long paths on Windows
 
@@ -371,9 +388,9 @@ After changing issues, refresh the export and push the database. There is no
 you to run one, and it has never existed in the bd version this project uses:
 
 ```bash
-bd export -o .beads/issues.jsonl   # refresh the passive export for git
 bd dolt commit -m "..."            # commit the database
-bd dolt push                       # publish it over refs/dolt/data
+bd dolt push                       # publish it over refs/dolt/data, the real sync
+mise run beads:publish             # refresh the mirror on the beads-sync branch
 ```
 
 ### Session Protocol
@@ -399,11 +416,11 @@ apply to every session; step 4 depends on the active profile.
      succeeds:
      ```bash
      git status                        # review what changed
-     bd export -o .beads/issues.jsonl  # refresh the export before staging
-     git add <files>                   # stage code and the export together
+     git add <files>                   # stage code only; issue data is not committed here
      git commit -m "..."
      git pull --rebase
      bd dolt commit -m "..." && bd dolt push
+     mise run beads:publish && git push origin beads-sync
      git push
      git status  # MUST show "up to date with origin"
      ```
