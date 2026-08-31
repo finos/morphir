@@ -3,11 +3,11 @@
 use crate::home::MorphirHome;
 use morphir_common::cache_maintenance::{
     CacheEntry, CacheEntryState, CacheExecutionLimits, CacheExecutionReport, CacheInventoryLimits,
-    CacheNamespace, CachePolicy, CleanupMode, CleanupPlan, execute_cache_cleanup,
-    inventory_cache_namespace, plan_cache_cleanup,
+    CacheMaintenanceSession, CachePolicy, CleanupMode, CleanupPlan, plan_cache_cleanup,
 };
 use serde::Serialize;
 use starbase::AppResult;
+use std::collections::BTreeMap;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tracing::info;
 
@@ -150,8 +150,7 @@ struct CacheCleanResult {
 pub fn run_cache_status(json: bool) -> AppResult<miette::Report> {
     let home = MorphirHome::resolve()
         .map_err(|error| miette::miette!("Failed to resolve Morphir Home: {error}"))?;
-    let ownership = default_cache_namespaces()?;
-    let status = cache_status(&home, &ownership)?;
+    let status = cache_status(&home, &CACHE_NAMESPACES)?;
 
     info!(
         event = "cache_status_finished",
@@ -181,14 +180,14 @@ pub fn run_cache_clean(
 ) -> AppResult<miette::Report> {
     let home = MorphirHome::resolve()
         .map_err(|error| miette::miette!("Failed to resolve Morphir Home: {error}"))?;
-    let ownership = selected_cache_namespaces(component.as_deref())?;
-    let result = clean_cache(&home, &ownership, dry_run, all, unix_timestamp()?)?;
+    let namespace_names = selected_cache_namespace_names(component.as_deref())?;
+    let result = clean_cache(&home, &namespace_names, dry_run, all, unix_timestamp()?)?;
 
     info!(
         event = "cache_cleanup_planned",
         dry_run,
         remove_all = all,
-        namespace_count = ownership.len(),
+        namespace_count = namespace_names.len(),
         selected_entries = result
             .plan
             .decisions()
@@ -225,61 +224,55 @@ fn unix_timestamp() -> miette::Result<u64> {
         .map_err(|error| miette::miette!("System clock is before the Unix epoch: {error}"))
 }
 
-fn default_cache_namespaces() -> miette::Result<Vec<CacheNamespace>> {
-    CACHE_NAMESPACES
-        .iter()
-        .map(|name| {
-            CacheNamespace::new(*name).map_err(|error| {
-                miette::miette!("Invalid built-in cache namespace {name}: {error}")
-            })
-        })
-        .collect()
-}
-
-fn selected_cache_namespaces(component: Option<&str>) -> miette::Result<Vec<CacheNamespace>> {
-    let ownership = default_cache_namespaces()?;
+fn selected_cache_namespace_names(component: Option<&str>) -> miette::Result<Vec<&'static str>> {
     match component {
-        None => Ok(ownership),
+        None => Ok(CACHE_NAMESPACES.to_vec()),
         Some(component) => {
-            let selected = ownership
-                .into_iter()
-                .filter(|namespace| namespace.name() == component)
-                .collect::<Vec<_>>();
-            if selected.is_empty() {
-                return Err(miette::miette!(
-                    "Unknown cache component {component}. Available components: {}",
-                    CACHE_NAMESPACES.join(", ")
-                ));
-            }
-            Ok(selected)
+            let selected = CACHE_NAMESPACES
+                .iter()
+                .copied()
+                .find(|name| *name == component)
+                .ok_or_else(|| {
+                    miette::miette!(
+                        "Unknown cache component {component}. Available components: {}",
+                        CACHE_NAMESPACES.join(", ")
+                    )
+                })?;
+            Ok(vec![selected])
         }
     }
 }
 
 fn inventory_namespaces(
-    home: &MorphirHome,
-    ownership: &[CacheNamespace],
+    session: &mut CacheMaintenanceSession<'_>,
+    namespace_names: &[&str],
 ) -> miette::Result<Vec<NamespaceInventory>> {
-    ownership
+    let entries = session
+        .inventory(namespace_names, CacheInventoryLimits::default())
+        .map_err(|error| miette::miette!("Failed to inventory Morphir caches: {error}"))?;
+    let mut grouped = namespace_names
         .iter()
-        .map(|namespace| {
-            inventory_cache_namespace(home, namespace, CacheInventoryLimits::default())
-                .map(|entries| NamespaceInventory {
-                    name: namespace.name().to_owned(),
-                    entries,
-                })
-                .map_err(|error| {
-                    miette::miette!(
-                        "Failed to inventory cache component {}: {error}",
-                        namespace.name()
-                    )
-                })
+        .map(|name| ((*name).to_owned(), Vec::new()))
+        .collect::<BTreeMap<_, _>>();
+    for entry in entries {
+        grouped
+            .get_mut(entry.namespace())
+            .expect("session inventory returns only requested namespaces")
+            .push(entry);
+    }
+    Ok(namespace_names
+        .iter()
+        .map(|name| NamespaceInventory {
+            name: (*name).to_owned(),
+            entries: grouped.remove(*name).unwrap_or_default(),
         })
-        .collect()
+        .collect())
 }
 
-fn cache_status(home: &MorphirHome, ownership: &[CacheNamespace]) -> miette::Result<CacheStatus> {
-    let namespaces = inventory_namespaces(home, ownership)?
+fn cache_status(home: &MorphirHome, namespace_names: &[&str]) -> miette::Result<CacheStatus> {
+    let mut session = CacheMaintenanceSession::begin(home)
+        .map_err(|error| miette::miette!("Failed to begin cache maintenance: {error}"))?;
+    let namespaces = inventory_namespaces(&mut session, namespace_names)?
         .iter()
         .map(CacheNamespaceStatus::from_inventory)
         .collect::<miette::Result<Vec<_>>>()?;
@@ -297,12 +290,14 @@ fn cache_status(home: &MorphirHome, ownership: &[CacheNamespace]) -> miette::Res
 
 fn clean_cache(
     home: &MorphirHome,
-    ownership: &[CacheNamespace],
+    namespace_names: &[&str],
     dry_run: bool,
     all: bool,
     now: u64,
 ) -> miette::Result<CacheCleanResult> {
-    let entries = inventory_namespaces(home, ownership)?
+    let mut session = CacheMaintenanceSession::begin(home)
+        .map_err(|error| miette::miette!("Failed to begin cache maintenance: {error}"))?;
+    let entries = inventory_namespaces(&mut session, namespace_names)?
         .into_iter()
         .flat_map(|namespace| namespace.entries)
         .collect();
@@ -317,15 +312,15 @@ fn clean_cache(
         None
     } else {
         Some(
-            execute_cache_cleanup(
-                home,
-                &plan,
-                ownership,
-                CacheInventoryLimits::default(),
-                CacheExecutionLimits::new(MANUAL_MAX_REMOVALS, MANUAL_MAX_BYTES)
-                    .map_err(|error| miette::miette!("Invalid cache cleanup limits: {error}"))?,
-            )
-            .map_err(|error| miette::miette!("Failed to execute cache cleanup: {error}"))?,
+            session
+                .execute_cleanup(
+                    &plan,
+                    CacheInventoryLimits::default(),
+                    CacheExecutionLimits::new(MANUAL_MAX_REMOVALS, MANUAL_MAX_BYTES).map_err(
+                        |error| miette::miette!("Invalid cache cleanup limits: {error}"),
+                    )?,
+                )
+                .map_err(|error| miette::miette!("Failed to execute cache cleanup: {error}"))?,
         )
     };
     Ok(CacheCleanResult {
@@ -384,7 +379,9 @@ fn print_cache_clean_result(result: &CacheCleanResult) {
 #[cfg(test)]
 mod tests {
     use super::clean_cache;
-    use morphir_common::cache_maintenance::{CacheExecutionDisposition, CacheNamespace};
+    use morphir_common::cache_maintenance::{
+        CacheExecutionDisposition, CacheOwnershipMutationGuard,
+    };
     use morphir_common::home::MorphirHome;
 
     #[test]
@@ -393,20 +390,17 @@ mod tests {
         let home = MorphirHome::resolve_from(Some(directory.path().as_os_str()), None).unwrap();
         let artifact = home.downloads_cache_dir().join("desktop.pkg");
         std::fs::create_dir_all(artifact.parent().unwrap()).unwrap();
+        let mutation =
+            CacheOwnershipMutationGuard::begin(&home, "downloads", "desktop.pkg").unwrap();
         std::fs::write(&artifact, b"owned").unwrap();
-        let ownership = vec![
-            CacheNamespace::new("downloads")
-                .unwrap()
-                .with_disposable("desktop.pkg", 1)
-                .unwrap(),
-        ];
+        mutation.finish(1).unwrap();
 
-        let dry_run = clean_cache(&home, &ownership, true, true, 2).unwrap();
+        let dry_run = clean_cache(&home, &["downloads"], true, true, 2).unwrap();
         assert_eq!(dry_run.plan.reclaimable_bytes(), 5);
         assert!(dry_run.execution.is_none());
         assert!(artifact.exists());
 
-        let executed = clean_cache(&home, &ownership, false, true, 2).unwrap();
+        let executed = clean_cache(&home, &["downloads"], false, true, 2).unwrap();
         assert_eq!(executed.plan, dry_run.plan);
         let report = executed.execution.unwrap();
         assert_eq!(report.removed_bytes(), 5);

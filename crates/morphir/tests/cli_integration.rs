@@ -231,6 +231,55 @@ fn cache_clean_dry_run_preserves_and_explains_unclassified_content() {
 }
 
 #[test]
+fn cache_clean_reclaims_durably_registered_content() {
+    let temp = TempDir::new().unwrap();
+    let morphir_home = temp.path().join("home");
+    let home =
+        morphir_common::home::MorphirHome::resolve_from(Some(morphir_home.as_os_str()), None)
+            .unwrap();
+    let owned = home.downloads_cache_dir().join("owned.pkg");
+    std::fs::create_dir_all(owned.parent().unwrap()).unwrap();
+    let mutation = morphir_common::cache_maintenance::CacheOwnershipMutationGuard::begin(
+        &home,
+        "downloads",
+        "owned.pkg",
+    )
+    .unwrap();
+    std::fs::write(&owned, b"owned").unwrap();
+    mutation.finish(1).unwrap();
+
+    let output = run_morphir(
+        &[
+            "cache",
+            "clean",
+            "--all",
+            "--component",
+            "downloads",
+            "--json",
+        ],
+        &morphir_home,
+        temp.path(),
+    );
+
+    assert!(
+        output.status.success(),
+        "cache clean failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(!owned.exists());
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(report["plan"]["reclaimableBytes"], 5);
+    assert_eq!(report["execution"]["removedBytes"], 5);
+    assert_eq!(report["execution"]["items"][0]["disposition"], "removed");
+    assert!(
+        morphir_common::cache_maintenance::load_cache_ownership_registry(&home)
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[test]
 fn compile_help_documents_explicit_extension_selection() {
     let temp = TempDir::new().unwrap();
     let output = run_morphir(
