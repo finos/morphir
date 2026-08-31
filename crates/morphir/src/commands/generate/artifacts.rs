@@ -367,7 +367,7 @@ fn acquire_publication<H: ArtifactHooks + ?Sized>(
 
 #[cfg(unix)]
 fn lock_directory(directory: &Dir) -> io::Result<std::fs::File> {
-    let lock = directory.try_clone()?.into_std_file();
+    let lock = directory.open(".")?.into_std();
     lock.lock_exclusive()?;
     Ok(lock)
 }
