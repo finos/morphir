@@ -15,18 +15,19 @@
 // which bd derives from those entries; and updated_at, which moves for reasons
 // that do not change the issue's content.
 //
-// Pass --staged to compare the index rather than the working tree, which is what
-// the pre-commit hook wants: a commit records what is staged, so a repaired
-// working copy must not excuse a drifted staged one.
+// The export is compared as published on the beads-sync branch, which is the
+// only copy git tracks. Pass --worktree to compare the local file instead, which
+// is useful when diagnosing a publish that has not happened yet.
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repositoryRoot = path.dirname(
 	path.dirname(fileURLToPath(import.meta.url)),
 );
+const BRANCH = "beads-sync";
 const exportRelativePath = ".beads/issues.jsonl";
 const exportPath = path.join(repositoryRoot, ".beads", "issues.jsonl");
-const useStaged = process.argv.includes("--staged");
+const useWorktree = process.argv.includes("--worktree");
 
 type Issue = Record<string, unknown> & { id: string };
 
@@ -74,28 +75,38 @@ const database = parse(exported.stdout.toString(), "bd export");
 let trackedText: string;
 let trackedSource: string;
 
-if (useStaged) {
-	// git show :<path> prints the staged blob. A file that is tracked but not
-	// staged in this commit still resolves, so this covers both cases.
-	const staged = Bun.spawnSync(["git", "show", `:${exportRelativePath}`], {
-		cwd: repositoryRoot,
-		stderr: "pipe",
-	});
-	if (staged.exitCode !== 0) {
-		console.error(`error: could not read ${exportRelativePath} from the index`);
-		console.error(staged.stderr.toString().trim());
-		process.exit(2);
-	}
-	trackedText = staged.stdout.toString();
-	trackedSource = `${exportRelativePath} (staged)`;
-} else {
+if (useWorktree) {
 	const file = Bun.file(exportPath);
 	if (!(await file.exists())) {
 		console.error(`error: ${exportPath} does not exist`);
 		process.exit(2);
 	}
 	trackedText = await file.text();
-	trackedSource = exportRelativePath;
+	trackedSource = `${exportRelativePath} (working tree)`;
+} else {
+	// Prefer the local branch; fall back to the remote so the check still works
+	// in a fresh clone that has not fetched the branch into a local ref.
+	const candidates = [BRANCH, `origin/${BRANCH}`];
+	let found: { ref: string; text: string } | null = null;
+	for (const ref of candidates) {
+		const show = Bun.spawnSync(["git", "show", `${ref}:${exportRelativePath}`], {
+			cwd: repositoryRoot,
+			stderr: "pipe",
+		});
+		if (show.exitCode === 0) {
+			found = { ref, text: show.stdout.toString() };
+			break;
+		}
+	}
+	if (found === null) {
+		console.error(
+			`error: could not read ${exportRelativePath} from ${candidates.join(" or ")}.`,
+		);
+		console.error("Fetch the branch, or publish it with: mise run beads:publish");
+		process.exit(2);
+	}
+	trackedText = found.text;
+	trackedSource = `${found.ref}:${exportRelativePath}`;
 }
 
 const tracked = parse(trackedText, trackedSource);
@@ -138,12 +149,12 @@ const drifted =
 
 if (drifted === 0) {
 	console.log(
-		`beads in sync: ${database.size} issue(s) match between the database and .beads/issues.jsonl`,
+		`beads in sync: ${database.size} issue(s) match between the database and ${trackedSource}`,
 	);
 	process.exit(0);
 }
 
-console.error("error: the beads database and .beads/issues.jsonl disagree.\n");
+console.error(`error: the beads database and ${trackedSource} disagree.\n`);
 
 if (missingFromExport.length > 0) {
 	console.error(
@@ -167,23 +178,20 @@ if (disagreements.length > 0) {
 	console.error("");
 }
 
-console.error("To resolve:");
-console.error(
-	"  If the database is right (the usual case, including every issue created",
-);
-console.error("  through bd), refresh the export and commit it:");
-console.error("    bd export -o .beads/issues.jsonl");
+console.error("To resolve, republish the export from the database:");
+console.error("    mise run beads:publish");
 console.error("");
 console.error(
-	"  If the export is right, meaning it carries a change that never reached",
+	"The database is authoritative and syncs over refs/dolt/data, so it is",
 );
-console.error("  Dolt, import it first, then re-export:");
-console.error("    bd import .beads/issues.jsonl && bd export -o .beads/issues.jsonl");
+console.error(
+	"almost always the side that is right. The export is a mirror: publish it",
+);
+console.error("rather than editing it.");
 console.error("");
 console.error(
-	"  Compare updated_at on each side when they conflict. Never hand-edit the",
+	"If the export carries a change that never reached Dolt, import it first:",
 );
-console.error("  export: the database is authoritative and sync travels over");
-console.error("  refs/dolt/data.");
+console.error(`    git show ${BRANCH}:${exportRelativePath} | bd import -`);
 
 process.exit(1);

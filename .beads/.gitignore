@@ -1,3 +1,11 @@
+# Issue data lives on the beads-sync branch, not on main (sync.branch in
+# config.yaml). The database is authoritative and syncs over refs/dolt/data;
+# these are its readable mirror, published with: mise run beads:publish
+# They stay ignored here so nobody re-commits them to a feature branch, and are
+# tracked on beads-sync, where an ignore rule has no effect on a tracked file.
+issues.jsonl
+interactions.jsonl
+
 # Dolt database (managed by Dolt, not git)
 dolt/
 embeddeddolt/

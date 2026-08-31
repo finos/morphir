@@ -42,3 +42,11 @@
 # - github.repo
 
 sync.remote: "git+https://github.com/finos/morphir.git"
+
+# Issue data is published to its own branch instead of main. The Dolt database is
+# authoritative and syncs over refs/dolt/data; the JSONL export is a readable
+# mirror, and keeping it on main meant churn on every issue change plus drift in
+# both directions (morphir-5uau). Publish with: mise run beads:publish
+# bd also records this in the database; it is repeated here so the choice is
+# visible in git and survives a database rebuild.
+sync.branch: "beads-sync"

@@ -27,6 +27,16 @@ if ! command -v mise > /dev/null 2>&1; then
     exit 0
 fi
 
+# Notice, not a gate. The published export is a mirror of an authoritative
+# database, so a stale mirror is untidy rather than wrong, and blocking a code
+# push over it would be disproportionate.
+if command -v bun > /dev/null 2>&1 && command -v bd > /dev/null 2>&1; then
+    if ! bun run tools/check-beads-drift.ts > /dev/null 2>&1; then
+        echo "pre-push: the beads export on beads-sync is behind the database."
+        echo "  Publish it with: mise run beads:publish"
+    fi
+fi
+
 echo "pre-push: checking formatting..."
 if ! mise run fmt-check; then
     echo ""
