@@ -139,7 +139,12 @@ class ReleaseWorkflowTests(unittest.TestCase):
 
     def test_ci_requires_only_the_cli_rust_job(self) -> None:
         self.assertNotIn("\n  morphir-live:\n", self.ci_workflow)
+        # Parallelized Rust jobs: lint + two extension builds + test job feed into check
         self.assertIn(
+            "needs: [changes, lint, build-elm-extension, build-scala-extension, morphir-cli-test, docs, release-workflow]",
+            self.ci_workflow,
+        )
+        self.assertNotIn(
             "needs: [changes, morphir-cli, docs, release-workflow]",
             self.ci_workflow,
         )
