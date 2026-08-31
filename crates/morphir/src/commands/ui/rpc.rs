@@ -1,6 +1,6 @@
 //! Authenticated JSON-RPC v1-over-WebSocket handling.
 
-use std::{collections::BTreeMap, time::Duration};
+use std::collections::BTreeMap;
 
 use axum::{
     extract::{
@@ -21,11 +21,7 @@ use super::{
     server::{UiHostState, authenticated, unauthorized},
 };
 
-const MAX_MESSAGE_BYTES: usize = 1024 * 1024;
-#[cfg(not(test))]
-const WATCH_POLL_INTERVAL: Duration = Duration::from_millis(500);
-#[cfg(test)]
-const WATCH_POLL_INTERVAL: Duration = Duration::from_millis(25);
+const MAX_INBOUND_MESSAGE_BYTES: usize = 1024 * 1024;
 
 pub(crate) async fn upgrade(
     State(state): State<UiHostState>,
@@ -39,8 +35,8 @@ pub(crate) async fn upgrade(
         return StatusCode::FORBIDDEN.into_response();
     }
     upgrade
-        .max_message_size(MAX_MESSAGE_BYTES)
-        .max_frame_size(MAX_MESSAGE_BYTES)
+        .max_message_size(MAX_INBOUND_MESSAGE_BYTES)
+        .max_frame_size(MAX_INBOUND_MESSAGE_BYTES)
         .on_upgrade(move |socket| serve_socket(socket, state))
         .into_response()
 }
@@ -85,6 +81,7 @@ struct ConnectionState {
 struct WatchSubscription {
     source: WorkbenchSourceRef,
     last_snapshot: WorkspaceSnapshot,
+    refresh_failed: bool,
 }
 
 impl Default for ConnectionState {
@@ -100,7 +97,7 @@ impl Default for ConnectionState {
 
 async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
     let mut state = ConnectionState::default();
-    let mut watch_interval = tokio::time::interval(WATCH_POLL_INTERVAL);
+    let mut watch_interval = tokio::time::interval(host.provider.watch_refresh_interval());
     watch_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     loop {
         tokio::select! {
@@ -115,7 +112,7 @@ async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
                     let _ = socket.send(Message::Close(None)).await;
                     break;
                 };
-                if text.len() > MAX_MESSAGE_BYTES {
+                if text.len() > MAX_INBOUND_MESSAGE_BYTES {
                     let _ = socket.send(Message::Close(None)).await;
                     break;
                 }
@@ -186,19 +183,43 @@ async fn refresh_subscriptions(
         .map(|(id, subscription)| (id.clone(), subscription.source.clone()))
         .collect::<Vec<_>>();
     for (subscription_id, source) in pending {
-        let Ok(snapshot) = host.provider.open(&source).await else {
-            continue;
-        };
-        let changed = state
-            .subscriptions
-            .get(&subscription_id)
-            .is_some_and(|subscription| subscription.last_snapshot != snapshot);
-        if !changed {
-            continue;
-        }
-        send_workspace_event(socket, &subscription_id, snapshot.clone()).await?;
-        if let Some(subscription) = state.subscriptions.get_mut(&subscription_id) {
-            subscription.last_snapshot = snapshot;
+        match host.provider.open(&source).await {
+            Ok(snapshot) => {
+                let should_emit =
+                    state
+                        .subscriptions
+                        .get(&subscription_id)
+                        .is_some_and(|subscription| {
+                            subscription.refresh_failed || subscription.last_snapshot != snapshot
+                        });
+                if !should_emit {
+                    continue;
+                }
+                send_workspace_event(socket, &subscription_id, snapshot.clone()).await?;
+                if let Some(subscription) = state.subscriptions.get_mut(&subscription_id) {
+                    subscription.last_snapshot = snapshot;
+                    subscription.refresh_failed = false;
+                }
+            }
+            Err(error) => {
+                let should_emit = state
+                    .subscriptions
+                    .get(&subscription_id)
+                    .is_some_and(|subscription| !subscription.refresh_failed);
+                if !should_emit {
+                    continue;
+                }
+                send_provider_disconnected_event(
+                    socket,
+                    &subscription_id,
+                    &source.provider_id,
+                    &error.to_string(),
+                )
+                .await?;
+                if let Some(subscription) = state.subscriptions.get_mut(&subscription_id) {
+                    subscription.refresh_failed = true;
+                }
+            }
         }
     }
     Ok(())
@@ -217,6 +238,30 @@ async fn send_workspace_event(
             "params": {
                 "subscriptionId": subscription_id,
                 "event": {"tag": "snapshot", "snapshot": snapshot}
+            }
+        }),
+    )
+    .await
+}
+
+async fn send_provider_disconnected_event(
+    socket: &mut WebSocket,
+    subscription_id: &str,
+    provider_id: &str,
+    message: &str,
+) -> Result<(), ()> {
+    send_value(
+        socket,
+        json!({
+            "jsonrpc": "2.0",
+            "method": "morphir.workspace.event",
+            "params": {
+                "subscriptionId": subscription_id,
+                "event": {
+                    "tag": "provider-disconnected",
+                    "providerId": provider_id,
+                    "message": message
+                }
             }
         }),
     )
@@ -307,6 +352,7 @@ async fn dispatch(
                         WatchSubscription {
                             source: params.source,
                             last_snapshot: snapshot.clone(),
+                            refresh_failed: false,
                         },
                     );
                     DispatchResult {
@@ -344,9 +390,6 @@ fn rpc_error(id: Value, code: i64, message: &str) -> Value {
 
 async fn send_value(socket: &mut WebSocket, value: Value) -> Result<(), ()> {
     let encoded = serde_json::to_string(&value).map_err(|_| ())?;
-    if encoded.len() > MAX_MESSAGE_BYTES {
-        return Err(());
-    }
     socket
         .send(Message::Text(encoded.into()))
         .await
@@ -410,6 +453,7 @@ mod tests {
     struct MutableWorkspaceProvider {
         delegate: NativeWorkspaceProvider,
         snapshot: std::sync::RwLock<WorkspaceSnapshot>,
+        fail_open: std::sync::atomic::AtomicBool,
     }
 
     impl MutableWorkspaceProvider {
@@ -420,16 +464,26 @@ mod tests {
             Self {
                 delegate,
                 snapshot: std::sync::RwLock::new(snapshot),
+                fail_open: std::sync::atomic::AtomicBool::new(false),
             }
         }
 
         fn replace_name(&self, name: &str) {
             self.snapshot.write().unwrap().name = Some(name.into());
         }
+
+        fn set_open_failure(&self, fail: bool) {
+            self.fail_open
+                .store(fail, std::sync::atomic::Ordering::SeqCst);
+        }
     }
 
     #[async_trait::async_trait]
     impl WorkspaceCapability for MutableWorkspaceProvider {
+        fn watch_refresh_interval(&self) -> std::time::Duration {
+            std::time::Duration::from_millis(25)
+        }
+
         fn manifest(&self) -> ProviderManifest {
             self.delegate.manifest()
         }
@@ -444,6 +498,11 @@ mod tests {
 
         async fn open(&self, source: &WorkbenchSourceRef) -> Result<WorkspaceSnapshot, CliError> {
             self.delegate.inspect(source).await?;
+            if self.fail_open.load(std::sync::atomic::Ordering::SeqCst) {
+                return Err(CliError::Extension {
+                    message: "controlled provider failure".into(),
+                });
+            }
             Ok(self.snapshot.read().unwrap().clone())
         }
     }
@@ -611,7 +670,7 @@ mod tests {
         ));
 
         let mut oversized = initialize_socket(&base_url, &cookie).await;
-        let payload = "x".repeat(MAX_MESSAGE_BYTES + 1);
+        let payload = "x".repeat(MAX_INBOUND_MESSAGE_BYTES + 1);
         let sent = oversized
             .send(tokio_tungstenite::tungstenite::Message::Text(
                 payload.into(),
@@ -659,6 +718,49 @@ mod tests {
         assert_eq!(
             event["params"]["event"]["snapshot"]["root"]["providerId"],
             "cli:session-1"
+        );
+
+        task.abort();
+    }
+
+    #[tokio::test]
+    async fn sends_workspace_responses_larger_than_inbound_limit() {
+        let provider = std::sync::Arc::new(MutableWorkspaceProvider::new().await);
+        let oversized_name = "x".repeat(MAX_INBOUND_MESSAGE_BYTES + 1);
+        provider.replace_name(&oversized_name);
+        let (base_url, cookie, task) = launched_host_with_provider(provider).await;
+        let mut socket = initialize_socket(&base_url, &cookie).await;
+
+        socket
+            .send(tokio_tungstenite::tungstenite::Message::Text(
+                json!({
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "morphir.workspace.open",
+                    "params": {"source": {
+                        "providerId": "cli:session-1",
+                        "locator": "workspace:initial",
+                        "displayName": "valid-monorepo"
+                    }}
+                })
+                .to_string()
+                .into(),
+            ))
+            .await
+            .unwrap();
+
+        let response = tokio::time::timeout(std::time::Duration::from_secs(2), socket.next())
+            .await
+            .expect("the host should send a workspace response larger than the inbound limit")
+            .expect("the socket should remain open")
+            .expect("the response should be a valid WebSocket message");
+        let response: Value = serde_json::from_str(response.to_text().unwrap()).unwrap();
+        assert_eq!(
+            response["result"]["snapshot"]["name"]
+                .as_str()
+                .unwrap()
+                .len(),
+            oversized_name.len()
         );
 
         task.abort();
@@ -734,6 +836,70 @@ mod tests {
                 .is_err(),
             "unwatched subscriptions must not emit later events"
         );
+
+        task.abort();
+    }
+
+    #[tokio::test]
+    async fn watch_reports_disconnect_once_and_emits_recovery_snapshot() {
+        let provider = std::sync::Arc::new(MutableWorkspaceProvider::new().await);
+        let (base_url, cookie, task) = launched_host_with_provider(provider.clone()).await;
+        let mut socket = initialize_socket(&base_url, &cookie).await;
+
+        socket
+            .send(tokio_tungstenite::tungstenite::Message::Text(
+                json!({
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "morphir.workspace.watch",
+                    "params": {"source": {
+                        "providerId": "cli:session-1",
+                        "locator": "workspace:initial",
+                        "displayName": "valid-monorepo"
+                    }}
+                })
+                .to_string()
+                .into(),
+            ))
+            .await
+            .unwrap();
+        let _watched = socket.next().await.unwrap().unwrap();
+        let initial: Value =
+            serde_json::from_str(socket.next().await.unwrap().unwrap().to_text().unwrap()).unwrap();
+        let initial_name = initial["params"]["event"]["snapshot"]["name"].clone();
+
+        provider.set_open_failure(true);
+        let disconnected = tokio::time::timeout(std::time::Duration::from_secs(2), socket.next())
+            .await
+            .expect("the first failed refresh should emit a disconnect event")
+            .unwrap()
+            .unwrap();
+        let event: Value = serde_json::from_str(disconnected.to_text().unwrap()).unwrap();
+        assert_eq!(event["params"]["event"]["tag"], "provider-disconnected");
+        assert_eq!(event["params"]["event"]["providerId"], "cli:session-1");
+        assert!(
+            event["params"]["event"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("controlled provider failure")
+        );
+
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_millis(100), socket.next())
+                .await
+                .is_err(),
+            "repeated refresh failures must not emit duplicate disconnect events"
+        );
+
+        provider.set_open_failure(false);
+        let recovered = tokio::time::timeout(std::time::Duration::from_secs(2), socket.next())
+            .await
+            .expect("the first successful refresh should emit a recovery snapshot")
+            .unwrap()
+            .unwrap();
+        let event: Value = serde_json::from_str(recovered.to_text().unwrap()).unwrap();
+        assert_eq!(event["params"]["event"]["tag"], "snapshot");
+        assert_eq!(event["params"]["event"]["snapshot"]["name"], initial_name);
 
         task.abort();
     }

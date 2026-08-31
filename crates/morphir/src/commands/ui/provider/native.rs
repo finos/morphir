@@ -225,6 +225,16 @@ mod tests {
         );
     }
 
+    #[test]
+    fn watch_refresh_interval_is_responsive() {
+        let provider = NativeWorkspaceProvider::discover(&fixture(), "session-1").unwrap();
+
+        assert_eq!(
+            provider.watch_refresh_interval(),
+            std::time::Duration::from_millis(500)
+        );
+    }
+
     #[tokio::test]
     async fn rejects_foreign_providers_and_unknown_opaque_locators() {
         let provider = NativeWorkspaceProvider::discover(&fixture(), "session-1").unwrap();

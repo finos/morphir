@@ -159,6 +159,10 @@ impl ExtensionWorkspaceProvider {
 
 #[async_trait]
 impl WorkspaceCapability for ExtensionWorkspaceProvider {
+    fn watch_refresh_interval(&self) -> std::time::Duration {
+        std::time::Duration::from_secs(5)
+    }
+
     fn manifest(&self) -> ProviderManifest {
         self.manifest.clone()
     }
@@ -327,5 +331,18 @@ mod tests {
             "fixture-workspace"
         );
         assert!(native.manifest().provenance.is_none());
+    }
+
+    #[test]
+    fn watch_refresh_interval_avoids_restarting_extensions_too_often() {
+        let portable = discover_workspace_detailed(&fixture(), &ConfigLoadOptions::default())
+            .unwrap()
+            .snapshot;
+        let extension = ExtensionWorkspaceProvider::from_fixture(&fixture(), "session-1", portable);
+
+        assert_eq!(
+            extension.watch_refresh_interval(),
+            std::time::Duration::from_secs(5)
+        );
     }
 }
