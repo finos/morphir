@@ -77,9 +77,9 @@ jobs:
               - '.github/scripts/select_release_assets.py'
               - '.github/workflows/ci.yml'
 
-  # morphir: CLI tool (depends on extism via morphir-daemon)
-  morphir-cli:
-    name: morphir CLI
+  # Fast feedback: formatting + lint (no GraalVM, no Elm build)
+  lint:
+    name: Lint (fmt + clippy)
     runs-on: ubuntu-latest
     needs: changes
     if: ${{ needs.changes.outputs.rust == 'true' }}
@@ -96,16 +96,33 @@ jobs:
       - name: Add Rust components
         run: rustup component add rustfmt clippy
 
-      - name: Set up GraalVM for the Morphir Scala provider
-        uses: graalvm/setup-graalvm@v1
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
         with:
-          java-version: "25"
-          distribution: graalvm-community
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          native-image-job-reports: "true"
+          workspaces: ". -> target"
+          key: morphir-lint
 
-      - name: Cache Scala dependencies
-        uses: coursier/cache-action@v8
+      - name: Check formatting
+        run: cargo fmt --package morphir --package integration-tests --check
+
+      - name: Run clippy
+        run: cargo clippy --locked --package morphir --package integration-tests --all-targets -- -D warnings
+
+  # Build Morphir Elm process extension — parallel with lint + Scala
+  build-elm-extension:
+    name: Build Elm extension
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.rust == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install mise
+        uses: jdx/mise-action@v4
+
+      - name: Initialize environment
+        run: mise run init -- --ci
 
       - name: Install Morphir Elm tools
         env:
@@ -127,6 +144,41 @@ jobs:
           MISE_AUTO_INSTALL: "false"
         run: mise -C ecosystem/morphir-elm run build:mep-extension
 
+      - name: Upload Elm extension artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: morphir-elm-extension
+          path: ecosystem/morphir-elm/dist/morphir-elm-extension/
+          if-no-files-found: error
+          retention-days: 1
+
+  # Build Morphir Scala Elm process extension — parallel with lint + Elm
+  build-scala-extension:
+    name: Build Scala extension
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.rust == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install mise
+        uses: jdx/mise-action@v4
+
+      - name: Initialize environment
+        run: mise run init -- --ci
+
+      - name: Set up GraalVM for the Morphir Scala provider
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: "25"
+          distribution: graalvm-community
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          native-image-job-reports: "true"
+
+      - name: Cache Scala dependencies
+        uses: coursier/cache-action@v8
+
       - name: Build Morphir Scala Elm process extension
         working-directory: ecosystem/morphir-scala
         run: |
@@ -137,18 +189,89 @@ jobs:
             python3 -c 'import json, sys; print(json.load(sys.stdin))')
           printf 'MORPHIR_SCALA_ELM_EXTENSION_VERSION=%s\n' \
             "$provider_version" >> "$GITHUB_ENV"
+          # Persist version for downstream job via artifact
+          printf '%s' "$provider_version" > "$GITHUB_WORKSPACE/morphir-scala-version.txt"
+
+      - name: Upload Scala extension artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: morphir-scala-extension
+          path: |
+            ecosystem/morphir-scala/out/morphir/langkit/elm/compiler/mep/jvm/nativeImage.dest/native-executable
+            morphir-scala-version.txt
+          if-no-files-found: error
+          retention-days: 1
+
+  # Main Rust build + integration tests — needs both extensions + lint
+  morphir-cli-test:
+    name: morphir CLI (test + integration)
+    runs-on: ubuntu-latest
+    needs: [changes, lint, build-elm-extension, build-scala-extension]
+    if: ${{ needs.changes.outputs.rust == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install mise
+        uses: jdx/mise-action@v4
+
+      - name: Initialize environment
+        run: mise run init -- --ci
+
+      - name: Add Rust components
+        run: rustup component add rustfmt clippy
+
+      - name: Download Elm extension
+        uses: actions/download-artifact@v8
+        with:
+          name: morphir-elm-extension
+          path: ecosystem/morphir-elm/dist/morphir-elm-extension
+
+      - name: Prepare Elm extension
+        run: |
+          echo "Listing Elm artifact:"
+          ls -R ecosystem/morphir-elm/dist/morphir-elm-extension || true
+          ELM_BIN=$(find ecosystem/morphir-elm/dist/morphir-elm-extension -name "morphir-elm-extension" -type f | head -n 1)
+          if [ -z "$ELM_BIN" ]; then
+            echo "::error::morphir-elm-extension not found"
+            exit 1
+          fi
+          chmod +x "$ELM_BIN"
+          echo "Elm binary at $ELM_BIN:"
+          ls -la "$ELM_BIN"
+
+      - name: Download Scala extension
+        uses: actions/download-artifact@v8
+        with:
+          name: morphir-scala-extension
+          path: /tmp/morphir-scala-extension
+
+      - name: Prepare Scala extension
+        run: |
+          echo "Listing downloaded artifact:"
+          ls -R /tmp/morphir-scala-extension || true
+          SCALA_BIN=$(find /tmp/morphir-scala-extension -name "native-executable" -type f | head -n 1)
+          if [ -z "$SCALA_BIN" ]; then
+            echo "::error::native-executable not found under /tmp/morphir-scala-extension"
+            find /tmp/morphir-scala-extension -type f | head -n 20
+            exit 1
+          fi
+          chmod +x "$SCALA_BIN"
+          echo "SCALA_BIN=$SCALA_BIN" >> "$GITHUB_ENV"
+          echo "Found Scala binary at: $SCALA_BIN"
+          ls -la "$SCALA_BIN"
+          VER_FILE=$(find /tmp/morphir-scala-extension -name "morphir-scala-version.txt" -type f | head -n 1)
+          if [ -f "$VER_FILE" ]; then
+            ver=$(cat "$VER_FILE")
+            printf 'MORPHIR_SCALA_ELM_EXTENSION_VERSION=%s\n' "$ver" >> "$GITHUB_ENV"
+            echo "Restored Scala version: $ver from $VER_FILE"
+          fi
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: ". -> target"
-          key: morphir-cli
-
-      - name: Check formatting
-        run: cargo fmt --package morphir --package integration-tests --check
-
-      - name: Run clippy
-        run: cargo clippy --locked --package morphir --package integration-tests --all-targets -- -D warnings
+          key: morphir-cli-test
 
       - name: Run tests
         run: cargo test --locked --package morphir
@@ -169,8 +292,7 @@ jobs:
 
       - name: Run Morphir Scala Elm CLI integration test
         env:
-          MORPHIR_SCALA_ELM_EXTENSION_BIN: >-
-            ${{ github.workspace }}/ecosystem/morphir-scala/out/morphir/langkit/elm/compiler/mep/jvm/nativeImage.dest/native-executable
+          MORPHIR_SCALA_ELM_EXTENSION_BIN: ${{ env.SCALA_BIN }}
         run: >-
           cargo test --locked --package morphir --test cli_integration
           real_installed_morphir_scala_elm_is_selected_and_activates_offline
@@ -224,15 +346,27 @@ jobs:
   check:
     name: All Checks
     runs-on: ubuntu-latest
-    needs: [changes, morphir-cli, docs, release-workflow]
+    needs: [changes, lint, build-elm-extension, build-scala-extension, morphir-cli-test, docs, release-workflow]
     if: always()
     steps:
       - name: Check results
         run: |
           # Check if rust jobs were required and passed
           if [[ "${{ needs.changes.outputs.rust }}" == "true" ]]; then
-            if [[ "${{ needs.morphir-cli.result }}" != "success" ]]; then
-              echo "morphir-cli failed"
+            if [[ "${{ needs.lint.result }}" != "success" ]]; then
+              echo "lint failed (result: ${{ needs.lint.result }})"
+              exit 1
+            fi
+            if [[ "${{ needs.build-elm-extension.result }}" != "success" ]]; then
+              echo "build-elm-extension failed (result: ${{ needs.build-elm-extension.result }})"
+              exit 1
+            fi
+            if [[ "${{ needs.build-scala-extension.result }}" != "success" ]]; then
+              echo "build-scala-extension failed (result: ${{ needs.build-scala-extension.result }})"
+              exit 1
+            fi
+            if [[ "${{ needs.morphir-cli-test.result }}" != "success" ]]; then
+              echo "morphir-cli-test failed (result: ${{ needs.morphir-cli-test.result }})"
               exit 1
             fi
           fi
