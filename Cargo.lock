@@ -3637,6 +3637,7 @@ dependencies = [
  "owo-colors",
  "ratatui",
  "rustix 1.1.4",
+ "same-file",
  "schemars 1.2.2",
  "semver",
  "serde",

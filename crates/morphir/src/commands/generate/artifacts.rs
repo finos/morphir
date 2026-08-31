@@ -5,6 +5,7 @@ use cap_fs_ext::{DirExt, FollowSymlinks, OpenOptionsFollowExt};
 use cap_std::fs::{Dir, OpenOptions};
 use fs2::FileExt as _;
 use morphir_extension_sdk::Artifact;
+use same_file::Handle;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::{OsStr, OsString};
 use std::io::{self, Read, Write};
@@ -72,6 +73,7 @@ impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
             .as_ref()
             .map(|manifest| manifest.created_directories.as_slice())
             .unwrap_or_default();
+        reject_unowned_directory_replacements(&validated, managed, managed_directories)?;
         reject_unmanaged_artifact_replacements(&root.directory, &validated, managed)?;
         if let Err(error) = self.hooks.after_manifest_load() {
             abandon_publication(root, publication_lock);
@@ -993,6 +995,8 @@ fn prepare_artifact_destinations(
 ) -> io::Result<Vec<Destination>> {
     let mut destinations = Vec::with_capacity(artifacts.len());
     for (index, artifact) in artifacts.iter().enumerate() {
+        let replace_existing = artifact.internal
+            || managed_destination_matches(root, &artifact.relative_path, managed)?;
         let parent = ensure_directory_path(
             root,
             artifact.relative_path.parent().unwrap_or(Path::new("")),
@@ -1010,10 +1014,7 @@ fn prepare_artifact_destinations(
             backup: PathBuf::from("backups").join(&artifact.relative_path),
             rollback: PathBuf::from("rollback").join(index.to_string()),
             hook_index: (!artifact.internal).then_some(index),
-            replace_existing: artifact.internal
-                || managed.iter().any(|owned| {
-                    portable_paths_equal(&owned.relative_path, &artifact.relative_path)
-                }),
+            replace_existing,
         });
     }
     Ok(destinations)
@@ -1753,16 +1754,12 @@ fn reject_unmanaged_artifact_replacements(
     artifacts: &[ValidatedArtifact],
     managed: &[ValidatedRemoval],
 ) -> Result<(), CliError> {
-    let managed_keys = managed
-        .iter()
-        .map(|artifact| portable_path_key(&artifact.display_path))
-        .collect::<BTreeSet<_>>();
     for artifact in artifacts {
-        if managed_keys.contains(&portable_path_key(&artifact.display_path))
-            || managed.iter().any(|owned| {
-                portable_path_is_descendant(&artifact.relative_path, &owned.relative_path)
-                    || portable_path_is_descendant(&owned.relative_path, &artifact.relative_path)
-            })
+        if managed.iter().any(|owned| {
+            portable_path_is_descendant(&artifact.relative_path, &owned.relative_path)
+                || portable_path_is_descendant(&owned.relative_path, &artifact.relative_path)
+        }) || managed_destination_matches(root, &artifact.relative_path, managed)
+            .map_err(file_system_error)?
         {
             continue;
         }
@@ -1783,6 +1780,86 @@ fn reject_unmanaged_artifact_replacements(
                     "artifact destination '{}' already exists but is not managed by Morphir",
                     artifact.display_path
                 )));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn managed_destination_matches(
+    root: &Dir,
+    destination: &Path,
+    managed: &[ValidatedRemoval],
+) -> io::Result<bool> {
+    if managed
+        .iter()
+        .any(|owned| owned.relative_path == destination)
+    {
+        return Ok(true);
+    }
+    let Some(destination_handle) = existing_regular_file_handle(root, destination)? else {
+        return Ok(false);
+    };
+    for owned in managed
+        .iter()
+        .filter(|owned| portable_paths_equal(&owned.relative_path, destination))
+    {
+        if existing_regular_file_handle(root, &owned.relative_path)?
+            .is_some_and(|owned_handle| owned_handle == destination_handle)
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn existing_regular_file_handle(root: &Dir, path: &Path) -> io::Result<Option<Handle>> {
+    let Some(parent) = open_existing_directory_path(root, path.parent().unwrap_or(Path::new("")))?
+    else {
+        return Ok(None);
+    };
+    let leaf = path.file_name().expect("validated artifact has a leaf");
+    match validate_leaf(&parent, leaf)? {
+        LeafState::Absent => Ok(None),
+        LeafState::Regular => {
+            let mut options = OpenOptions::new();
+            options.read(true).follow(FollowSymlinks::No);
+            let file = parent.open_with(leaf, &options)?.into_std();
+            Handle::from_file(file).map(Some)
+        }
+    }
+}
+
+fn reject_unowned_directory_replacements(
+    artifacts: &[ValidatedArtifact],
+    managed: &[ValidatedRemoval],
+    managed_directories: &[ValidatedRemoval],
+) -> Result<(), CliError> {
+    let managed_directory_keys = managed_directories
+        .iter()
+        .map(|directory| portable_path_components(&directory.relative_path))
+        .collect::<BTreeSet<_>>();
+    for artifact in artifacts {
+        for owned in managed.iter().filter(|owned| {
+            portable_path_is_descendant(&owned.relative_path, &artifact.relative_path)
+        }) {
+            let mut candidate = owned.relative_path.parent();
+            while let Some(directory) = candidate {
+                if !portable_paths_equal(directory, &artifact.relative_path)
+                    && !portable_path_is_descendant(directory, &artifact.relative_path)
+                {
+                    break;
+                }
+                if !managed_directory_keys.contains(&portable_path_components(directory)) {
+                    return Err(validation_error(format!(
+                        "cannot replace directory '{}' with an artifact because its directory ownership is not recorded by Morphir",
+                        artifact.display_path
+                    )));
+                }
+                if portable_paths_equal(directory, &artifact.relative_path) {
+                    break;
+                }
+                candidate = directory.parent();
             }
         }
     }
@@ -2584,6 +2661,35 @@ mod tests {
     }
 
     #[test]
+    fn preserves_an_unmanaged_portable_case_alias() {
+        let output = tempdir().unwrap();
+        let writer = ArtifactWriter::new(output.path());
+        writer.write_all(&[text("schema.avsc", "managed")]).unwrap();
+        fs::write(output.path().join("SCHEMA.AVSC"), "user-owned").unwrap();
+
+        if fs::read_to_string(output.path().join("schema.avsc")).unwrap() != "managed" {
+            // The filesystem folded the second spelling onto the managed file,
+            // so it cannot model two distinct directory entries for this test.
+            return;
+        }
+
+        let error = writer
+            .write_all(&[text("SCHEMA.AVSC", "replacement")])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("not managed"), "{error}");
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema.avsc")).unwrap(),
+            "managed"
+        );
+        assert_eq!(
+            fs::read_to_string(output.path().join("SCHEMA.AVSC")).unwrap(),
+            "user-owned"
+        );
+        assert!(transaction_directory(output.path()).is_none());
+    }
+
+    #[test]
     fn reconciles_a_managed_file_into_a_directory() {
         let output = tempdir().unwrap();
         let writer = ArtifactWriter::new(output.path());
@@ -2615,6 +2721,30 @@ mod tests {
             fs::read_to_string(output.path().join("schema")).unwrap(),
             "new"
         );
+    }
+
+    #[test]
+    fn rejects_a_legacy_directory_to_file_transition_without_ownership_evidence() {
+        let output = tempdir().unwrap();
+        fs::create_dir(output.path().join("schema")).unwrap();
+        fs::write(output.path().join("schema/item.avsc"), "old").unwrap();
+        let legacy_manifest = r#"{"schemaVersion":1,"artifacts":["schema/item.avsc"]}"#;
+        fs::write(output.path().join(MANIFEST_PATH), legacy_manifest).unwrap();
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&[text("schema", "new")])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("directory ownership"), "{error}");
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema/item.avsc")).unwrap(),
+            "old"
+        );
+        assert_eq!(
+            fs::read_to_string(output.path().join(MANIFEST_PATH)).unwrap(),
+            legacy_manifest
+        );
+        assert!(transaction_directory(output.path()).is_none());
     }
 
     #[test]
