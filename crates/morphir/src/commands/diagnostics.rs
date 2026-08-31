@@ -664,11 +664,15 @@ fn excluded_project_payload_container(key: &str) -> bool {
             | "irpayload"
             | "sourcecode"
             | "sourcefiles"
+            | "sourcedocument"
+            | "sourcedocuments"
             | "projectsources"
             | "generatedoutput"
             | "generatedcode"
             | "generatedfiles"
             | "generatedsources"
+            | "generatedartifact"
+            | "generatedartifacts"
     );
     let words = key_words(key);
     let contains_payload_words = words.windows(2).any(|words| {
@@ -678,11 +682,15 @@ fn excluded_project_payload_container(key: &str) -> bool {
                 | ("ir", "payload")
                 | ("source", "code")
                 | ("source", "files")
+                | ("source", "document")
+                | ("source", "documents")
                 | ("project", "sources")
                 | ("generated", "output")
                 | ("generated", "code")
                 | ("generated", "files")
                 | ("generated", "sources")
+                | ("generated", "artifact")
+                | ("generated", "artifacts")
         )
     });
     let contains_clipboard_word = words.iter().any(|word| word.as_str() == "clipboard");
@@ -1682,10 +1690,12 @@ mod tests {
             "ir_payload": "PRIVATE_IR_PAYLOAD",
             "sourceCode": "module Private exposing (..)",
             "compilerSourceCode": "module AlsoPrivate exposing (..)",
+            "compilerSourceDocuments": ["PRIVATE_SOURCE_DOCUMENT"],
             "projectSources": ["PRIVATE_SOURCE"],
             "generatedOutput": { "Private.java": "PRIVATE_GENERATED_OUTPUT" },
             "backendGeneratedOutput": { "Private.scala": "PRIVATE_GENERATED_OUTPUT" },
             "generatedCode": "PRIVATE_GENERATED_CODE",
+            "backendGeneratedArtifacts": ["PRIVATE_GENERATED_ARTIFACT"],
             "clipboard": "PRIVATE_COPIED_TEXT",
             "desktopClipboardText": "PRIVATE_COPIED_TEXT",
             "sourceUrl": "https://public.example/status",
@@ -1698,10 +1708,12 @@ mod tests {
             "ir_payload",
             "sourceCode",
             "compilerSourceCode",
+            "compilerSourceDocuments",
             "projectSources",
             "generatedOutput",
             "backendGeneratedOutput",
             "generatedCode",
+            "backendGeneratedArtifacts",
             "clipboard",
             "desktopClipboardText",
         ] {
