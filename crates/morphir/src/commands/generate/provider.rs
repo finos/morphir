@@ -241,10 +241,9 @@ pub(super) fn select_provider<'a, T: ProviderMetadata>(
     let target_matches = installed
         .iter()
         .filter(|provider| {
-            provider
-                .installed()
-                .backend()
-                .is_some_and(|backend| backend.targets().iter().any(|value| value == target))
+            provider.installed().backend().is_some_and(|backend| {
+                backend.generate() && backend.targets().iter().any(|value| value == target)
+            })
         })
         .collect::<Vec<_>>();
     if target_matches.is_empty() {
@@ -289,10 +288,9 @@ pub(super) fn resolve_provider<'a, T: ProviderMetadata>(
     ir_version: &str,
 ) -> Result<ProviderRoute<'a, T>, CliError> {
     let target_is_advertised = installed.iter().any(|provider| {
-        provider
-            .installed()
-            .backend()
-            .is_some_and(|backend| backend.targets().iter().any(|value| value == target))
+        provider.installed().backend().is_some_and(|backend| {
+            backend.generate() && backend.targets().iter().any(|value| value == target)
+        })
     });
     if !target_is_advertised {
         return Ok(ProviderRoute::LegacyBuiltin);
@@ -420,6 +418,15 @@ mod tests {
     }
 
     fn backend(id: &str, targets: &[&str], ir_versions: &[&str]) -> InstalledExtension {
+        backend_with_generate(id, targets, ir_versions, true)
+    }
+
+    fn backend_with_generate(
+        id: &str,
+        targets: &[&str],
+        ir_versions: &[&str],
+        generate: bool,
+    ) -> InstalledExtension {
         serde_json::from_value(json!({
             "extensionId": id,
             "name": "Test backend",
@@ -438,7 +445,8 @@ mod tests {
             },
             "backend": {
                 "targets": targets,
-                "irVersions": ir_versions
+                "irVersions": ir_versions,
+                "generate": generate
             },
             "executable": false
         }))
@@ -471,6 +479,32 @@ mod tests {
         let error = select_provider(&installed, "avro", "4").unwrap_err();
 
         assert!(error.to_string().contains("more than one"), "{error}");
+    }
+
+    #[test]
+    fn ignores_non_generating_backends_during_provider_selection() {
+        let installed = vec![
+            backend_with_generate("disabled-avro", &["avro"], &["4"], false),
+            backend("enabled-avro", &["avro"], &["4"]),
+        ];
+
+        let selected = select_provider(&installed, "avro", "4").unwrap();
+
+        assert_eq!(selected.extension_id().as_str(), "enabled-avro");
+    }
+
+    #[test]
+    fn non_generating_backends_do_not_block_legacy_fallback() {
+        let installed = vec![backend_with_generate(
+            "disabled-avro",
+            &["avro"],
+            &["4"],
+            false,
+        )];
+
+        let route = resolve_provider(&installed, "avro", "4").unwrap();
+
+        assert!(matches!(route, ProviderRoute::LegacyBuiltin));
     }
 
     #[test]

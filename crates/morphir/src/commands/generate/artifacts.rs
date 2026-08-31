@@ -427,19 +427,27 @@ fn acquire_file_publication<H: ArtifactHooks + ?Sized>(
     hooks: &H,
 ) -> io::Result<AcquiredPublication> {
     let sibling_lock_path = publication_lock_path(&leaf);
-    match create_or_open_publication_lock(&parent.directory, &sibling_lock_path) {
-        Ok(lock) => {
-            lock.lock_exclusive()?;
-            hooks.before_output_component_open(&parent.directory, &leaf)?;
-            let root = open_or_create_output_leaf(parent, leaf)?;
-            Ok(AcquiredPublication {
-                root,
-                lock: PublicationLock { _files: vec![lock] },
-            })
-        }
-        Err(lock_error) if lock_error.kind() == io::ErrorKind::PermissionDenied => {
-            hooks.before_output_component_open(&parent.directory, &leaf)?;
-            let directory = parent.directory.open_dir_nofollow(&leaf)?;
+    if let Some(lock) = open_publication_lock(&parent.directory, &sibling_lock_path)? {
+        lock.lock_exclusive()?;
+        hooks.before_output_component_open(&parent.directory, &leaf)?;
+        let root = open_or_create_output_leaf(parent, leaf)?;
+        return Ok(AcquiredPublication {
+            root,
+            lock: PublicationLock { _files: vec![lock] },
+        });
+    }
+
+    hooks.before_output_component_open(&parent.directory, &leaf)?;
+    match parent.directory.open_dir_nofollow(&leaf) {
+        Ok(directory) => {
+            if let Some(lock) = open_publication_lock(&parent.directory, &sibling_lock_path)? {
+                lock.lock_exclusive()?;
+                let root = open_or_create_output_leaf(parent, leaf)?;
+                return Ok(AcquiredPublication {
+                    root,
+                    lock: PublicationLock { _files: vec![lock] },
+                });
+            }
             let lock = create_or_open_publication_lock(
                 &directory,
                 Path::new(INTERNAL_PUBLICATION_LOCK_PATH),
@@ -450,6 +458,15 @@ fn acquire_file_publication<H: ArtifactHooks + ?Sized>(
                     directory,
                     created: parent.created,
                 },
+                lock: PublicationLock { _files: vec![lock] },
+            })
+        }
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            let lock = create_or_open_publication_lock(&parent.directory, &sibling_lock_path)?;
+            lock.lock_exclusive()?;
+            let root = open_or_create_output_leaf(parent, leaf)?;
+            Ok(AcquiredPublication {
+                root,
                 lock: PublicationLock { _files: vec![lock] },
             })
         }
@@ -1584,6 +1601,8 @@ mod tests {
 
     impl ArtifactHooks for OutputAppearsBeforeLockSelection {
         fn before_output_component_open(&self, parent: &Dir, leaf: &OsStr) -> io::Result<()> {
+            let lock_path = publication_lock_path(leaf);
+            create_or_open_publication_lock(parent, &lock_path)?;
             match parent.create_dir(leaf) {
                 Ok(()) => Ok(()),
                 Err(error) if error.kind() == io::ErrorKind::AlreadyExists => Ok(()),
@@ -1612,6 +1631,27 @@ mod tests {
                 .path()
                 .join("generated")
                 .join(INTERNAL_PUBLICATION_LOCK_PATH)
+                .exists()
+        );
+        drop(acquired);
+    }
+
+    #[test]
+    fn regular_file_lock_for_an_existing_output_is_independent_of_parent_write_access() {
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("generated");
+        fs::create_dir(&output).unwrap();
+        let acquired_parent = acquire_output_root(parent.path(), &NOOP_HOOKS).unwrap();
+
+        let acquired =
+            acquire_file_publication(acquired_parent, OsString::from("generated"), &NOOP_HOOKS)
+                .unwrap();
+
+        assert!(output.join(INTERNAL_PUBLICATION_LOCK_PATH).is_file());
+        assert!(
+            !parent
+                .path()
+                .join(publication_lock_path(OsStr::new("generated")))
                 .exists()
         );
         drop(acquired);
