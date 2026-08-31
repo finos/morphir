@@ -466,7 +466,7 @@ fn acquire_file_locked_publication_from<H: ArtifactHooks + ?Sized>(
     output_root: &Path,
     hooks: &H,
 ) -> io::Result<AcquiredPublication> {
-    acquire_file_locked_publication_chain(boundary, output_root, hooks, Vec::new())
+    acquire_file_locked_publication_chain(boundary, output_root, hooks, Vec::new(), true)
 }
 
 #[cfg(any(not(unix), test))]
@@ -475,6 +475,7 @@ fn acquire_file_locked_publication_chain<H: ArtifactHooks + ?Sized>(
     output_root: &Path,
     hooks: &H,
     mut created: Vec<CreatedOutputDirectory>,
+    lock_boundary: bool,
 ) -> io::Result<AcquiredPublication> {
     if output_root == boundary {
         return acquire_single_file_publication(output_root, hooks, created);
@@ -490,6 +491,9 @@ fn acquire_file_locked_publication_chain<H: ArtifactHooks + ?Sized>(
         return Err(io::Error::other(
             "artifact publication lock boundary is not an ancestor of the output root",
         ));
+    }
+    if lock_boundary {
+        chain.push(boundary.to_path_buf());
     }
     chain.reverse();
 
@@ -513,7 +517,13 @@ fn acquire_file_locked_publication_chain<H: ArtifactHooks + ?Sized>(
             }
             Err(error) if error.kind() == io::ErrorKind::PermissionDenied && index != last => {
                 locks.abandon();
-                return acquire_file_locked_publication_chain(&path, output_root, hooks, recovery);
+                return acquire_file_locked_publication_chain(
+                    &path,
+                    output_root,
+                    hooks,
+                    recovery,
+                    false,
+                );
             }
             Err(error) => {
                 locks.abandon();
@@ -2421,6 +2431,36 @@ mod tests {
             .expect("filesystem-root acquisition must not lock the same file twice")
             .unwrap();
         worker.join().unwrap();
+    }
+
+    #[test]
+    fn regular_file_locks_serialize_filesystem_root_and_descendant() {
+        let root = tempdir().unwrap();
+        let nested = root.path().join("generated/child");
+        fs::create_dir_all(&nested).unwrap();
+
+        let first =
+            acquire_file_locked_publication_from(root.path(), root.path(), &NOOP_HOOKS).unwrap();
+        let (finished_tx, finished_rx) = mpsc::sync_channel(1);
+        let boundary = root.path().to_path_buf();
+        let second = thread::spawn(move || {
+            let acquired = acquire_file_locked_publication_from(&boundary, &nested, &NOOP_HOOKS);
+            finished_tx.send(acquired.map(|_| ())).unwrap();
+        });
+
+        assert!(
+            finished_rx
+                .recv_timeout(Duration::from_millis(100))
+                .is_err(),
+            "a descendant writer must wait for the filesystem-root publication lock"
+        );
+
+        drop(first);
+        finished_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("descendant writer should finish after the root lock is released")
+            .unwrap();
+        second.join().unwrap();
     }
 
     #[test]
