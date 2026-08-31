@@ -15,6 +15,8 @@ pub enum ConnectedMethod {
     Initialize,
     #[serde(rename = "morphir.development.inspect")]
     DevelopmentInspect,
+    #[serde(rename = "morphir.project-model.open")]
+    ProjectModelOpen,
     #[serde(rename = "morphir.workspace.open")]
     WorkspaceOpen,
     #[serde(rename = "morphir.workspace.watch")]
@@ -186,6 +188,61 @@ pub struct InspectResult {
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ProjectModelOpenParams {
+    pub source: WorkbenchSourceRef,
+    pub project_id: String,
+}
+
+impl ProjectModelOpenParams {
+    pub fn validate(self) -> Result<Self, CliError> {
+        if self.project_id.is_empty() {
+            Err(protocol_error("Project ID must not be empty"))
+        } else {
+            Ok(self)
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ModelWorkbenchDescriptor {
+    pub id: String,
+    pub source: WorkbenchSourceRef,
+    pub name: String,
+    pub kind: ModelWorkbenchKind,
+    pub distribution: ModelWorkbenchDistribution,
+    pub route: ModelWorkbenchRoute,
+    pub opened_at: String,
+    pub last_used_at: String,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ModelWorkbenchKind {
+    Model,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ModelWorkbenchDistribution {
+    SingleFile,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ModelWorkbenchRoute {
+    Explorer,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ProjectModelOpenResult {
+    pub descriptor: ModelWorkbenchDescriptor,
+    pub content: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct WorkspaceSnapshot {
     pub id: String,
     pub root: WorkbenchSourceRef,
@@ -323,6 +380,45 @@ mod tests {
         let mut incompatible = manifest();
         incompatible.protocol_version = 2;
         assert!(incompatible.validate().is_err());
+    }
+
+    #[test]
+    fn project_model_open_uses_strict_camel_case_parameters() {
+        let request = serde_json::from_value::<JsonRpcRequest>(serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "morphir.project-model.open",
+            "params": {
+                "source": {
+                    "providerId": "cli:session-1",
+                    "locator": "workspace:initial",
+                    "displayName": "orders"
+                },
+                "projectId": "project-1"
+            }
+        }))
+        .unwrap();
+        assert_eq!(request.method, ConnectedMethod::ProjectModelOpen);
+        let params = serde_json::from_value::<ProjectModelOpenParams>(request.params).unwrap();
+        assert_eq!(params.project_id, "project-1");
+
+        assert!(
+            serde_json::from_value::<ProjectModelOpenParams>(serde_json::json!({
+                "source": params.source,
+                "projectId": "project-1",
+                "path": "/private/workspace/morphir-ir.json"
+            }))
+            .is_err()
+        );
+        assert!(
+            serde_json::from_value::<ProjectModelOpenParams>(serde_json::json!({
+                "source": params.source,
+                "projectId": ""
+            }))
+            .unwrap()
+            .validate()
+            .is_err()
+        );
     }
 
     #[test]
