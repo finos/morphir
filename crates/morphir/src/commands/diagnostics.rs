@@ -617,7 +617,7 @@ fn excluded_sensitive_container(key: &str) -> bool {
 fn sensitive_container_word(word: &str) -> bool {
     matches!(
         word,
-        "env" | "environment" | "environmentvariables" | "config" | "configuration"
+        "env" | "environment" | "environmentvariables" | "config" | "configuration" | "settings"
     )
 }
 
@@ -1537,6 +1537,12 @@ mod tests {
             "runtimeConfig": {
                 "endpoint": "internal.example.test"
             },
+            "settings": {
+                "DEPLOYMENT_LICENSE": "SETTINGS_SECRET"
+            },
+            "appSettings": {
+                "DEPLOYMENT_LICENSE": "NAMESPACED_SETTINGS_SECRET"
+            },
             "env": "DEPLOYMENT_LICENSE=SCALAR_SECRET",
             "config": "endpoint=internal.example.test",
             "envelope": {
@@ -1551,6 +1557,8 @@ mod tests {
         assert!(sanitized.get("ENV").is_none());
         assert!(sanitized.get("configuration").is_none());
         assert!(sanitized.get("runtimeConfig").is_none());
+        assert!(sanitized.get("settings").is_none());
+        assert!(sanitized.get("appSettings").is_none());
         assert!(sanitized.get("env").is_none());
         assert!(sanitized.get("config").is_none());
         assert_eq!(sanitized["envelope"]["message"], "public");
