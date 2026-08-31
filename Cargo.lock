@@ -3750,6 +3750,8 @@ dependencies = [
  "tokio",
  "toml 1.1.4+spec-1.1.0",
  "tracing",
+ "unicode-casefold",
+ "unicode-normalization",
  "wat",
 ]
 

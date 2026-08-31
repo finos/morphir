@@ -563,6 +563,7 @@ fn normalize_existing_output_root(output_root: &Path) -> io::Result<PathBuf> {
 }
 
 fn normalize_missing_output_root(absolute: PathBuf) -> io::Result<PathBuf> {
+    let absolute = lexically_normalize_absolute(&absolute);
     let mut ancestor = absolute.as_path();
     let mut missing = Vec::new();
     loop {
@@ -583,6 +584,24 @@ fn normalize_missing_output_root(absolute: PathBuf) -> io::Result<PathBuf> {
             Err(error) => return Err(error),
         }
     }
+}
+
+fn lexically_normalize_absolute(path: &Path) -> PathBuf {
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                if normalized.file_name().is_some() {
+                    normalized.pop();
+                }
+            }
+            Component::Prefix(_) | Component::RootDir | Component::Normal(_) => {
+                normalized.push(component.as_os_str());
+            }
+        }
+    }
+    normalized
 }
 
 fn publication_parent_and_leaf(absolute: &Path) -> io::Result<(&Path, OsString)> {
@@ -2328,6 +2347,19 @@ mod tests {
                 .map(|entry| entry.unwrap().file_name())
                 .collect::<BTreeSet<_>>(),
             BTreeSet::from([OsString::from(MANIFEST_PATH), OsString::from("schema.avsc"),])
+        );
+    }
+
+    #[test]
+    fn missing_output_root_lexically_normalizes_parent_components() {
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("new/../generated");
+
+        let normalized = normalize_existing_output_root(&output).unwrap();
+
+        assert_eq!(
+            normalized,
+            parent.path().canonicalize().unwrap().join("generated")
         );
     }
 
