@@ -539,6 +539,10 @@ fn generate_rejects_traversal_from_an_installed_provider_without_writing()
         "rejected artifact set must write nothing"
     );
     let stderr = String::from_utf8(generated.stderr).unwrap();
-    assert!(stderr.contains("relative path segments"), "{stderr}");
+    assert!(
+        stderr.contains("Generated artifact path '../escape.avsc'"),
+        "{stderr}"
+    );
+    assert!(stderr.contains("normalized relative path"), "{stderr}");
     Ok(())
 }
