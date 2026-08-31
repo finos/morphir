@@ -26,9 +26,13 @@ bd show <issue-id>
 bd update <issue-id> --status in_progress
 bd update <issue-id> --status done
 
-# Sync with git remote
-bd sync
+# Refresh the export that git tracks, then publish the database
+bd export -o .beads/issues.jsonl
+bd dolt commit -m "..." && bd dolt push
 ```
+
+There is no `bd sync` command in the version this project uses. This file
+previously said there was.
 
 ### Working with Issues
 
@@ -36,7 +40,10 @@ Issues in Beads are:
 - **Git-native**: Stored in `.beads/issues.jsonl` and synced like code
 - **AI-friendly**: CLI-first design works perfectly with AI coding agents
 - **Branch-aware**: Issues can follow your branch workflow
-- **Always in sync**: Auto-syncs with your commits
+- **Kept in sync deliberately**: the Dolt database is authoritative and
+  `issues.jsonl` is a passive export, so refresh the export before committing.
+  The `pre-commit` hook checks the two agree; see the beads section of
+  [AGENTS.md](../AGENTS.md).
 
 ## Why Beads?
 

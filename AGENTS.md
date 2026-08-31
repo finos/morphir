@@ -159,6 +159,57 @@ Use `mise` task runner (`mise run <task>`) for build orchestration:
 - `mise run submodules:status` - Show submodule status
 - `mise run submodules:add -- <name> [url]` - Add a new ecosystem submodule
 
+### Git hooks
+
+The hooks live in `.husky/` and are activated by pointing git at that directory:
+
+```shell
+mise run hooks:install     # sets core.hooksPath to .husky
+mise run hooks:check       # fails if they are not active
+```
+
+`mise run init` does this for you, so a normal setup needs no extra step. Activation is deliberately not left to
+husky's `prepare` script: that only fires on an `npm install`, which nobody runs in a repository built with cargo,
+bun and mise, so the hooks sat dormant in every clone and the EasyCLA guard below never ran (morphir-4ohq).
+
+| Hook | What it does |
+| --- | --- |
+| `commit-msg` | Strips `Co-Authored-By` trailers naming AI assistants. This is the EasyCLA guard. |
+| `pre-commit` | Chains bd, blocks `go.work`, blocks committing `.beads` as a symlink, and checks beads drift. |
+| `pre-push` | Chains bd, then checks formatting and nothing slower. |
+| `post-merge`, `post-checkout` | Chain bd, so the database keeps step with what a pull or branch switch brought in. |
+
+bd installs its own shims under `.beads/hooks/` and they are committed, but
+`core.hooksPath` points at `.husky`, so they are reachable only because each hook
+here calls its `.beads/hooks` counterpart. `bd hooks list` reports a hook as
+installed whenever one exists at the active path, so it can look wired up when it
+is not; check that the `.husky` hook actually calls bd.
+
+`prepare-commit-msg` is deliberately not chained. bd uses it to add agent
+identity trailers, which is the very thing the `commit-msg` guard exists to strip.
+
+`pre-push` does not run lint or tests on purpose. CI gates both on every pull request, and locally they mean
+`cargo clippy --all-targets` plus `cargo test --workspace`, which take minutes and do not link on some machines. A
+hook that slow gets bypassed with `--no-verify`, and a bypassed hook protects nothing. Set `MORPHIR_SKIP_HOOKS=1`
+to skip the checks that honour it.
+
+Hooks must be executable in the index (mode `100755`) or git skips them silently on Linux and macOS. If you add
+one, check `git ls-files -s .husky` and use `git update-index --chmod=+x` when needed.
+
+### Keeping beads in sync
+
+The Dolt database is authoritative and `.beads/issues.jsonl` is a passive export, so the two drift apart whenever
+issues reach one side only. Both directions have happened (morphir-5uau). Never hand-edit the export. After
+changing issues, run `bd export -o .beads/issues.jsonl`, and commit that alongside `bd dolt push`.
+
+```shell
+mise run beads:drift-check
+```
+
+The `pre-commit` hook runs this automatically when the export is staged. Note that `bd` resolves `.beads` to the
+**main checkout** even when the working directory is a linked worktree, so a worktree edits its own tracked copy
+while `bd` reads and writes the main checkout's. Keep the main checkout current when working from a worktree.
+
 ### Long paths on Windows
 
 Working in this repository on Windows needs the same long path setup as using Morphir does, because the checked-in
@@ -313,7 +364,16 @@ bd show <id>          # Full issue details with dependencies
 bd create --title="..." --type=task --priority=2
 bd update <id> --status=in_progress
 bd close <id>
-bd sync               # Commit and push changes
+```
+
+After changing issues, refresh the export and push the database. There is no
+`bd sync` command; earlier revisions of this file and of `.beads/README.md` told
+you to run one, and it has never existed in the bd version this project uses:
+
+```bash
+bd export -o .beads/issues.jsonl   # refresh the passive export for git
+bd dolt commit -m "..."            # commit the database
+bd dolt push                       # publish it over refs/dolt/data
 ```
 
 ### Session Protocol
@@ -338,11 +398,12 @@ apply to every session; step 4 depends on the active profile.
      part of session close — work is then not complete until `git push`
      succeeds:
      ```bash
-     git status              # review what changed
-     git add <files>         # stage code changes
-     git commit -m "..."     # commit code (beads changes go via bd sync)
+     git status                        # review what changed
+     bd export -o .beads/issues.jsonl  # refresh the export before staging
+     git add <files>                   # stage code and the export together
+     git commit -m "..."
      git pull --rebase
-     bd sync
+     bd dolt commit -m "..." && bd dolt push
      git push
      git status  # MUST show "up to date with origin"
      ```
