@@ -1,7 +1,7 @@
 use crate::error::CliError;
 use morphir_common::home::MorphirHome;
 use morphir_daemon::extensions::{
-    InvokeOutcome, Loaded, MepTransport, Session, activate_transport,
+    InvokeOutcome, Loaded, MepTransport, Ready, Session, activate_transport,
     protocol::{InitializeParams, MEP_VERSION, PeerInfo, methods},
 };
 use morphir_distribution::{
@@ -9,6 +9,7 @@ use morphir_distribution::{
 };
 use morphir_extension_sdk::{GenerateRequest, GenerateResult};
 use serde_json::Value;
+use std::collections::{BTreeSet, HashSet};
 use std::path::Path;
 
 fn host_initialize_params() -> InitializeParams {
@@ -23,6 +24,9 @@ fn host_initialize_params() -> InitializeParams {
 
 async fn invoke_loaded<T: MepTransport>(
     loaded: Session<T, Loaded>,
+    installed: &InstalledExtension,
+    target: &str,
+    ir_version: &str,
     request: GenerateRequest,
 ) -> Result<GenerateResult, CliError> {
     let ready = loaded
@@ -31,6 +35,7 @@ async fn invoke_loaded<T: MepTransport>(
         .map_err(|failure| CliError::Extension {
             message: failure.error().to_string(),
         })?;
+    let ready = validate_backend_session(ready, installed, target, ir_version).await?;
     let (ready, result) = match ready
         .invoke::<GenerateResult>(methods::GENERATE, request)
         .await
@@ -61,10 +66,101 @@ async fn invoke_loaded<T: MepTransport>(
     Ok(result)
 }
 
+async fn validate_backend_session<T: MepTransport>(
+    session: Session<T, Ready>,
+    installed: &InstalledExtension,
+    target: &str,
+    ir_version: &str,
+) -> Result<Session<T, Ready>, CliError> {
+    let validation = validate_backend_capabilities(&session, installed, target, ir_version);
+    match validation {
+        Ok(()) => Ok(session),
+        Err(error) => match session.shutdown().await {
+            Ok(_) => Err(error),
+            Err(cleanup) => Err(CliError::Extension {
+                message: format!(
+                    "{}; extension shutdown also failed: {}",
+                    error,
+                    cleanup.error()
+                ),
+            }),
+        },
+    }
+}
+
+fn validate_backend_capabilities<T: MepTransport>(
+    session: &Session<T, Ready>,
+    installed: &InstalledExtension,
+    target: &str,
+    ir_version: &str,
+) -> Result<(), CliError> {
+    let negotiated = session.negotiated();
+    let extension = negotiated.extension();
+    let expected = installed.extension_info();
+    let same_types = extension.types.iter().copied().collect::<HashSet<_>>()
+        == expected.types.iter().copied().collect::<HashSet<_>>();
+    let expected_backend = installed.backend().ok_or_else(|| CliError::Extension {
+        message: format!(
+            "Installed provider '{}' has no backend capability metadata",
+            installed.extension_id()
+        ),
+    })?;
+    let backend =
+        negotiated
+            .capabilities()
+            .backend
+            .as_ref()
+            .ok_or_else(|| CliError::Extension {
+                message: format!(
+                    "Installed provider '{}' did not negotiate backend capability metadata",
+                    installed.extension_id()
+                ),
+            })?;
+    let same_targets = backend.targets.iter().collect::<BTreeSet<_>>()
+        == expected_backend.targets().iter().collect::<BTreeSet<_>>();
+    let same_ir_versions = backend.ir_versions.iter().collect::<BTreeSet<_>>()
+        == expected_backend
+            .ir_versions()
+            .iter()
+            .collect::<BTreeSet<_>>();
+    if extension.id != expected.id
+        || extension.name != expected.name
+        || extension.version != expected.version
+        || !same_types
+        || !same_targets
+        || !same_ir_versions
+        || backend.generate != expected_backend.generate()
+    {
+        return Err(CliError::Extension {
+            message: format!(
+                "Backend provider '{}' initialized with capabilities that differ from its installed record",
+                installed.extension_id()
+            ),
+        });
+    }
+    if !backend.generate
+        || !backend.targets.iter().any(|candidate| candidate == target)
+        || !backend
+            .ir_versions
+            .iter()
+            .any(|candidate| candidate == ir_version)
+    {
+        return Err(CliError::Extension {
+            message: format!(
+                "Backend provider '{}' did not negotiate generation for target '{target}' with Morphir IR {ir_version}",
+                installed.extension_id()
+            ),
+        });
+    }
+    Ok(())
+}
+
 pub async fn invoke_generate(
     home: &MorphirHome,
     provider: &InstalledExtensionSnapshot,
     workspace: &Path,
+    target: &str,
+    ir_version: &str,
     request: GenerateRequest,
 ) -> Result<GenerateResult, CliError> {
     let installed = provider.installed();
@@ -83,7 +179,7 @@ pub async fn invoke_generate(
                 installed.extension_id()
             ),
         })?;
-    invoke_loaded(loaded, request).await
+    invoke_loaded(loaded, installed, target, ir_version, request).await
 }
 
 pub(super) trait ProviderMetadata {
@@ -326,7 +422,7 @@ mod tests {
     fn backend(id: &str, targets: &[&str], ir_versions: &[&str]) -> InstalledExtension {
         serde_json::from_value(json!({
             "extensionId": id,
-            "name": format!("Test provider {id}"),
+            "name": "Test backend",
             "version": "1.0.0",
             "runtime": "wasm",
             "platform": null,
@@ -347,6 +443,10 @@ mod tests {
             "executable": false
         }))
         .unwrap()
+    }
+
+    fn selected_backend() -> InstalledExtension {
+        backend("test-backend", &["avro"], &["3", "4"])
     }
 
     #[test]
@@ -505,8 +605,11 @@ mod tests {
                 .into_iter()
                 .collect(),
         };
+        let installed = selected_backend();
 
-        let result = invoke_loaded(loaded, request).await.unwrap();
+        let result = invoke_loaded(loaded, &installed, "avro", "4", request)
+            .await
+            .unwrap();
 
         assert!(result.success);
         assert_eq!(result.artifacts[0].path, "schema.avsc");
@@ -530,6 +633,40 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn rejects_runtime_backend_metadata_that_differs_from_the_installed_record() {
+        let state = Arc::new(Mutex::new(TransportStateMother::default()));
+        let loaded = Session::loaded(GenerateTransport {
+            state: Arc::clone(&state),
+            rejection: None,
+            generation_failure: false,
+            termination_failure: false,
+        });
+        let installed = backend("test-backend", &["json-schema"], &["4"]);
+
+        let error = invoke_loaded(
+            loaded,
+            &installed,
+            "json-schema",
+            "4",
+            GenerateRequest::default(),
+        )
+        .await
+        .unwrap_err();
+
+        assert!(error.to_string().contains("installed record"), "{error}");
+        let state = state.lock().unwrap();
+        assert_eq!(
+            state
+                .requests
+                .iter()
+                .map(|request| request.method.as_str())
+                .collect::<Vec<_>>(),
+            [methods::INITIALIZE, methods::SHUTDOWN]
+        );
+        assert!(state.terminated);
+    }
+
+    #[tokio::test]
     async fn rejected_generation_still_shuts_down_the_ready_session() {
         let state = Arc::new(Mutex::new(TransportStateMother::default()));
         let loaded = Session::loaded(GenerateTransport {
@@ -538,8 +675,9 @@ mod tests {
             generation_failure: false,
             termination_failure: false,
         });
+        let installed = selected_backend();
 
-        let error = invoke_loaded(loaded, GenerateRequest::default())
+        let error = invoke_loaded(loaded, &installed, "avro", "4", GenerateRequest::default())
             .await
             .unwrap_err();
 
@@ -568,8 +706,9 @@ mod tests {
             generation_failure: false,
             termination_failure: true,
         });
+        let installed = selected_backend();
 
-        let error = invoke_loaded(loaded, GenerateRequest::default())
+        let error = invoke_loaded(loaded, &installed, "avro", "4", GenerateRequest::default())
             .await
             .unwrap_err();
         let message = error.to_string();
@@ -587,8 +726,9 @@ mod tests {
             generation_failure: true,
             termination_failure: false,
         });
+        let installed = selected_backend();
 
-        let error = invoke_loaded(loaded, GenerateRequest::default())
+        let error = invoke_loaded(loaded, &installed, "avro", "4", GenerateRequest::default())
             .await
             .unwrap_err();
 
@@ -614,6 +754,8 @@ mod tests {
             &home,
             &selected,
             &workspace,
+            "avro",
+            "4",
             GenerateRequest {
                 ir: json!({"formatVersion": 4}),
                 options: [("representation".into(), json!("idl"))]

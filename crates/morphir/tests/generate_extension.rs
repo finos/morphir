@@ -88,7 +88,7 @@ fn write_wasm_index(index: &Path, bytes: &[u8]) {
     let record = json!({
         "schemaVersion": 2,
         "id": "morphir-avro",
-        "name": "Morphir Avro Backend",
+        "name": "Morphir Avro",
         "version": "0.1.0",
         "channels": ["stable"],
         "mepVersions": ["0.1"],
@@ -230,9 +230,21 @@ unsupported = "warn-and-skip"
     assert_success(&generated, "generate v4 Avro IDL");
     let report: Value = serde_json::from_slice(&generated.stdout).unwrap();
     assert_generate_shape(&report, true, &output_root);
-    assert_eq!(report["artifacts"], json!(["example/v4Test/Domain.avdl"]));
+    assert_eq!(
+        report["artifacts"],
+        json!([
+            "example/v4Test/Domain.avdl",
+            "example/v4Test/domain/UserIdSchemas.avdl"
+        ])
+    );
     let artifact = output_root.join("example/v4Test/Domain.avdl");
     assert!(artifact.exists(), "reported artifact should be published");
+    assert!(
+        output_root
+            .join("example/v4Test/domain/UserIdSchemas.avdl")
+            .exists(),
+        "standalone named roots should be published alongside protocols"
+    );
     let idl = fs::read_to_string(artifact).unwrap();
     assert!(idl.contains("bytes getUserName("), "{idl}");
     assert!(idl.contains("double nativeAdd("), "{idl}");

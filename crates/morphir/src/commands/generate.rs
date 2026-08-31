@@ -121,7 +121,15 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
     };
     let result = match provider::resolve_provider(&installed, &target_lang, &ir_version)? {
         provider::ProviderRoute::Installed(installed) => {
-            provider::invoke_generate(&home, installed, &workspace, request).await?
+            provider::invoke_generate(
+                &home,
+                installed,
+                &workspace,
+                &target_lang,
+                &ir_version,
+                request,
+            )
+            .await?
         }
         provider::ProviderRoute::LegacyBuiltin => {
             invoke_builtin(&workspace, &target_lang, request).await?
