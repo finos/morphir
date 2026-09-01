@@ -235,7 +235,11 @@ the request body: `path` binds it to a `{name}` path placeholder (which must
 already appear in the resulting path, or the generation fails with `OAS002`),
 `query` binds it to a query parameter, `header` binds it to a request header,
 and `body` leaves it in the request body — useful for restating a field
-explicitly without moving it. Every moved parameter is still required: moving
+explicitly without moving it. The check runs both ways: a `{name}` placeholder
+in the resulting path with no `path`-bound parameter to fill it also fails
+with `OAS002`, since OpenAPI requires every path variable to have its own
+`in: path` parameter. Setting `path` without the matching `parameters` entry
+is the easiest way to trip this. Every moved parameter is still required: moving
 where a value is carried never makes it optional. A `query` or `header`
 binding whose name matches no request field is silently ignored, since
 neither location renders a path placeholder and leaving the field in the
@@ -258,6 +262,11 @@ decides how it becomes HTTP responses:
 - `split` projects the `Ok` member's own type directly as the `200` response
   and the `Err` member's own type as a separate error response, at the status
   code `error_status` names.
+
+Because a discriminated choice writes a `kind` property into every variant,
+`kind` is reserved: a custom-type constructor whose argument projects to the
+property name `kind` has no safe schema and fails with `JSC003` naming the
+constructor. Rename the argument.
 
 `Result` is detected by its exact Morphir source name
 (`morphir/SDK:result#result`), never by shape, so a package-local type that
@@ -315,7 +324,7 @@ survives untouched.
 | `JSC003` | A Morphir type, value signature, or operation has no safe projection |
 | `JSC004` | Two projected declarations claimed the same schema name |
 | `OAS001` | Two synthesized operations claimed the same path and method, or the same `operationId` |
-| `OAS002` | An `operations` override names no declared value specification, or one of its `Path`-bound parameters has no matching `{name}` placeholder in the operation's path |
+| `OAS002` | An `operations` override names no declared value specification, one of its `Path`-bound parameters has no matching `{name}` placeholder in the operation's path, or the operation's path carries a `{name}` placeholder that no `Path`-bound parameter fills |
 
 Under the default `unsupported = "error"`, any `JSC003` fails the whole
 generation and writes no artifact. Under `unsupported = "warn-and-skip"`, an

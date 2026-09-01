@@ -161,6 +161,12 @@ The backend cannot safely project a function used as data, an open
 extensible record, an opaque or incomplete type, an unbound type parameter, an
 unresolved type reference, or a `Dict` with a non-`String` key.
 
+`kind` is reserved for the same reason: a custom type with payload
+constructors carries a `kind` discriminator, so a constructor argument that
+projects to the property name `kind` would have to be both the argument and
+the discriminator. That is a `JSC003` naming the constructor; rename the
+argument.
+
 ## Type mapping
 
 | Morphir form | JSON Schema representation |
