@@ -1,0 +1,4092 @@
+use crate::error::CliError;
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
+use cap_fs_ext::{DirExt, FollowSymlinks, OpenOptionsFollowExt};
+use cap_std::fs::{Dir, OpenOptions};
+use fs2::FileExt as _;
+use morphir_extension_sdk::Artifact;
+use same_file::Handle;
+use std::collections::{BTreeMap, BTreeSet};
+use std::ffi::{OsStr, OsString};
+use std::io::{self, Read, Write};
+use std::path::{Component, Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use unicode_casefold::UnicodeCaseFold as _;
+use unicode_normalization::UnicodeNormalization as _;
+
+static NEXT_TRANSACTION_ID: AtomicU64 = AtomicU64::new(0);
+const MANIFEST_PATH: &str = ".morphir-generated-artifacts.json";
+const MANIFEST_SCHEMA_VERSION: u32 = 2;
+const LEGACY_MANIFEST_SCHEMA_VERSION: u32 = 1;
+const PUBLICATION_LOCK_PREFIX: &str = ".morphir-artifact-publication-";
+const INTERNAL_PUBLICATION_LOCK_PATH: &str = ".morphir-artifact-publication-lock";
+const TRANSACTION_PATH_PREFIX: &str = ".morphir-artifacts-";
+
+pub(super) fn write_all(
+    output_root: &Path,
+    artifacts: &[Artifact],
+) -> Result<Vec<String>, CliError> {
+    ArtifactWriter::new(output_root).write_all(artifacts)
+}
+
+/// Publishes one returned artifact set with in-process failure rollback.
+///
+/// Staged files and destination operations are capability-relative and synced
+/// where supported. This is not crash-atomic: a process or machine failure can
+/// leave the retained transaction directory for manual recovery.
+struct ArtifactWriter<'a, H: ArtifactHooks + ?Sized = NoopHooks> {
+    output_root: &'a Path,
+    hooks: &'a H,
+}
+
+impl<'a> ArtifactWriter<'a, NoopHooks> {
+    fn new(output_root: &'a Path) -> Self {
+        Self {
+            output_root,
+            hooks: &NOOP_HOOKS,
+        }
+    }
+}
+
+impl<'a, H: ArtifactHooks + ?Sized> ArtifactWriter<'a, H> {
+    #[cfg(test)]
+    fn with_ops(output_root: &'a Path, hooks: &'a H) -> Self {
+        Self { output_root, hooks }
+    }
+
+    fn write_all(&self, artifacts: &[Artifact]) -> Result<Vec<String>, CliError> {
+        let mut validated = validate_complete_set(artifacts)?;
+        let display_paths = validated
+            .iter()
+            .map(|artifact| artifact.display_path.clone())
+            .collect::<Vec<_>>();
+        let AcquiredPublication {
+            root,
+            lock: publication_lock,
+        } = acquire_publication(self.output_root, self.hooks).map_err(file_system_error)?;
+        let previous = load_manifest(&root.directory)?;
+        let managed = previous
+            .as_ref()
+            .map(|manifest| manifest.artifacts.as_slice())
+            .unwrap_or_default();
+        let managed_directories = previous
+            .as_ref()
+            .map(|manifest| manifest.created_directories.as_slice())
+            .unwrap_or_default();
+        reject_unowned_directory_replacements(&validated, managed, managed_directories)?;
+        reject_unmanaged_artifact_replacements(&root.directory, &validated, managed)?;
+        if let Err(error) = self.hooks.after_manifest_load() {
+            abandon_publication(root, publication_lock);
+            return Err(file_system_error(error));
+        }
+        if validated.is_empty() && previous.is_none() {
+            abandon_publication(root, publication_lock);
+            return Ok(Vec::new());
+        }
+        let current_paths = display_paths.iter().cloned().collect::<BTreeSet<_>>();
+        let stale = managed
+            .iter()
+            .filter(|artifact| !current_paths.contains(&artifact.display_path))
+            .map(|artifact| ValidatedRemoval {
+                relative_path: artifact.relative_path.clone(),
+                display_path: artifact.display_path.clone(),
+            })
+            .collect::<Vec<_>>();
+        validated.push(manifest_artifact(&display_paths, managed_directories)?);
+        let result = self.run(
+            &root.directory,
+            &validated,
+            &stale,
+            managed,
+            managed_directories,
+        );
+        if result.is_err() {
+            abandon_publication(root, publication_lock);
+        } else {
+            drop(root);
+            drop(publication_lock);
+        }
+        result.map(|()| display_paths)
+    }
+
+    fn run(
+        &self,
+        root: &Dir,
+        artifacts: &[ValidatedArtifact],
+        stale: &[ValidatedRemoval],
+        managed: &[ValidatedRemoval],
+        managed_directories: &[ValidatedRemoval],
+    ) -> Result<(), CliError> {
+        let transaction = create_transaction(root).map_err(file_system_error)?;
+        let recovery_path = self.output_root.join(&transaction.relative_path);
+        let result = run_transaction(
+            root,
+            &transaction.directory,
+            artifacts,
+            stale,
+            managed,
+            managed_directories,
+            self.hooks,
+        );
+        match result {
+            // All destination files are installed and synced here. This is the
+            // publication commit point; subsequent maintenance never rolls them back.
+            Ok(()) => finish_committed_transaction(
+                root,
+                transaction.directory,
+                &recovery_path,
+                self.hooks,
+            ),
+            Err(TransactionFailure::RolledBack(error)) => {
+                let cleanup = transaction.directory.remove_open_dir_all();
+                let error = cleanup
+                    .err()
+                    .map(|cleanup| io::Error::other(format!("{error}; cleanup failed: {cleanup}")))
+                    .unwrap_or(error);
+                Err(file_system_error(error))
+            }
+            Err(TransactionFailure::RecoveryRequired(error)) => {
+                Err(file_system_error(io::Error::other(format!(
+                    "{error}; artifact backup preserved at '{}'",
+                    recovery_path.display()
+                ))))
+            }
+        }
+    }
+}
+
+struct Transaction {
+    directory: Dir,
+    relative_path: PathBuf,
+}
+
+struct Destination {
+    parent: Dir,
+    relative_path: PathBuf,
+    leaf: OsString,
+    staged: Option<PathBuf>,
+    backup: PathBuf,
+    rollback: PathBuf,
+    hook_index: Option<usize>,
+    replace_existing: bool,
+}
+
+struct CommitRecord {
+    index: usize,
+    backup: bool,
+    installed: bool,
+}
+
+enum TransactionFailure {
+    RolledBack(io::Error),
+    RecoveryRequired(io::Error),
+}
+
+trait ArtifactHooks {
+    fn before_output_component_open(&self, _parent: &Dir, _leaf: &OsStr) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn before_stage(&self, _index: usize) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn after_manifest_load(&self) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn after_backup_move(&self, _index: usize) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn before_install(&self, _index: usize, _parent: &Dir, _leaf: &OsStr) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn before_rollback(&self, _index: usize) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn before_post_commit_root_sync(&self) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn before_post_commit_cleanup(&self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+struct NoopHooks;
+static NOOP_HOOKS: NoopHooks = NoopHooks;
+impl ArtifactHooks for NoopHooks {}
+
+struct AcquiredOutputRoot {
+    directory: Dir,
+    created: Vec<CreatedOutputDirectory>,
+}
+
+struct AcquiredPublication {
+    root: AcquiredOutputRoot,
+    lock: PublicationLock,
+}
+
+struct PublicationLock {
+    files: Vec<std::fs::File>,
+    cleanup_on_abandon: Vec<PublicationLockCleanup>,
+}
+
+struct PublicationLockCleanup {
+    directory: Dir,
+    path: PathBuf,
+}
+
+impl PublicationLock {
+    fn new(files: Vec<std::fs::File>) -> Self {
+        Self {
+            files,
+            cleanup_on_abandon: Vec::new(),
+        }
+    }
+
+    #[cfg(any(not(unix), test))]
+    fn with_cleanup(file: std::fs::File, directory: Dir, path: PathBuf) -> Self {
+        Self {
+            files: vec![file],
+            cleanup_on_abandon: vec![PublicationLockCleanup { directory, path }],
+        }
+    }
+
+    #[cfg(any(not(unix), test))]
+    fn extend(&mut self, mut other: Self) {
+        self.files.append(&mut other.files);
+        self.cleanup_on_abandon
+            .append(&mut other.cleanup_on_abandon);
+    }
+
+    fn abandon(self) {
+        let Self {
+            files,
+            cleanup_on_abandon,
+        } = self;
+        let mut retry = Vec::new();
+        for cleanup in cleanup_on_abandon.into_iter().rev() {
+            if cleanup.directory.remove_file(&cleanup.path).is_err() {
+                retry.push(cleanup);
+            } else {
+                let _ = sync_dir(&cleanup.directory);
+            }
+        }
+        drop(files);
+        for cleanup in retry {
+            let _ = cleanup.directory.remove_file(&cleanup.path);
+            let _ = sync_dir(&cleanup.directory);
+        }
+    }
+}
+
+struct CreatedOutputDirectory {
+    parent: Dir,
+    leaf: OsString,
+}
+
+#[cfg(any(not(unix), test))]
+fn acquire_output_root<H: ArtifactHooks + ?Sized>(
+    output_root: &Path,
+    hooks: &H,
+) -> io::Result<AcquiredOutputRoot> {
+    let (anchor, components) = output_root_anchor(output_root)?;
+    acquire_output_root_from(anchor, components, hooks)
+}
+
+#[cfg(any(not(unix), test))]
+fn acquire_output_root_from<H: ArtifactHooks + ?Sized>(
+    anchor: Dir,
+    components: Vec<OsString>,
+    hooks: &H,
+) -> io::Result<AcquiredOutputRoot> {
+    let mut current = anchor;
+    let mut created = Vec::new();
+
+    for component in components {
+        hooks.before_output_component_open(&current, &component)?;
+        current = match current.open_dir_nofollow(&component) {
+            Ok(directory) => directory,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                let parent = match current.try_clone() {
+                    Ok(parent) => parent,
+                    Err(error) => {
+                        remove_created_output_directories(&created);
+                        return Err(error);
+                    }
+                };
+                let newly_created = match current.create_dir(&component) {
+                    Ok(()) => true,
+                    Err(error) if error.kind() == io::ErrorKind::AlreadyExists => false,
+                    Err(error) => {
+                        remove_created_output_directories(&created);
+                        return Err(error);
+                    }
+                };
+                if newly_created {
+                    created.push(CreatedOutputDirectory {
+                        parent,
+                        leaf: component.clone(),
+                    });
+                }
+                match current.open_dir_nofollow(&component) {
+                    Ok(directory) => directory,
+                    Err(error) => {
+                        remove_created_output_directories(&created);
+                        return Err(error);
+                    }
+                }
+            }
+            Err(error) => {
+                remove_created_output_directories(&created);
+                return Err(error);
+            }
+        };
+    }
+
+    Ok(AcquiredOutputRoot {
+        directory: current,
+        created,
+    })
+}
+
+fn acquire_publication<H: ArtifactHooks + ?Sized>(
+    output_root: &Path,
+    hooks: &H,
+) -> io::Result<AcquiredPublication> {
+    let absolute = normalize_existing_output_root(output_root)?;
+    let (parent_path, leaf) = publication_parent_and_leaf(&absolute)?;
+
+    #[cfg(unix)]
+    {
+        if leaf == OsStr::new(".") {
+            let (root, locks) =
+                acquire_locked_output_root(&absolute, hooks, DirectoryLockMode::Exclusive)
+                    .map_err(|error| {
+                        io::Error::other(format!("cannot lock output root: {error}"))
+                    })?;
+            if !directory_matches_path(&absolute, &root.directory)? {
+                remove_created_output_root(root);
+                drop(locks);
+                return Err(io::Error::other(
+                    "artifact output root changed during publication lock acquisition",
+                ));
+            }
+            return Ok(AcquiredPublication {
+                root,
+                lock: PublicationLock::new(locks),
+            });
+        }
+        for _ in 0..100 {
+            let (parent, mut locks) =
+                match acquire_locked_output_root(parent_path, hooks, DirectoryLockMode::Shared) {
+                    Ok(acquired) => acquired,
+                    Err(error) if error.kind() == io::ErrorKind::NotFound => continue,
+                    Err(error) => {
+                        return Err(io::Error::other(format!(
+                            "cannot lock output parent: {error}"
+                        )));
+                    }
+                };
+            let parent_matches = match directory_matches_path(parent_path, &parent.directory) {
+                Ok(matches) => matches,
+                Err(error) => {
+                    remove_created_output_root(parent);
+                    return Err(io::Error::other(format!(
+                        "cannot verify locked output parent: {error}"
+                    )));
+                }
+            };
+            if !parent_matches {
+                remove_created_output_root(parent);
+                drop(locks);
+                continue;
+            }
+            if let Err(error) = hooks.before_output_component_open(&parent.directory, &leaf) {
+                remove_created_output_root(parent);
+                return Err(error);
+            }
+            let root = match open_or_create_output_leaf(parent, leaf.clone()) {
+                Ok(root) => root,
+                Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                    drop(locks);
+                    continue;
+                }
+                Err(error) => {
+                    return Err(io::Error::other(format!(
+                        "cannot open output root: {error}"
+                    )));
+                }
+            };
+            let root_lock = match lock_directory(&root.directory, DirectoryLockMode::Exclusive) {
+                Ok(lock) => lock,
+                Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                    remove_created_output_root(root);
+                    drop(locks);
+                    continue;
+                }
+                Err(error) => {
+                    remove_created_output_root(root);
+                    return Err(io::Error::other(format!(
+                        "cannot lock output root: {error}"
+                    )));
+                }
+            };
+            locks.push(root_lock);
+            let root_matches = match directory_matches_path(&absolute, &root.directory) {
+                Ok(matches) => matches,
+                Err(error) => {
+                    remove_created_output_root(root);
+                    return Err(io::Error::other(format!(
+                        "cannot verify locked output root: {error}"
+                    )));
+                }
+            };
+            if !root_matches {
+                remove_created_output_root(root);
+                drop(locks);
+                continue;
+            }
+            return Ok(AcquiredPublication {
+                root,
+                lock: PublicationLock::new(locks),
+            });
+        }
+        Err(io::Error::other(
+            "artifact output root changed repeatedly during publication lock acquisition",
+        ))
+    }
+
+    #[cfg(not(unix))]
+    {
+        acquire_file_locked_publication(&absolute, hooks)
+    }
+}
+
+#[cfg(not(unix))]
+fn acquire_file_locked_publication<H: ArtifactHooks + ?Sized>(
+    output_root: &Path,
+    hooks: &H,
+) -> io::Result<AcquiredPublication> {
+    let boundary = output_root
+        .ancestors()
+        .last()
+        .ok_or_else(|| io::Error::other("artifact output root has no filesystem root"))?;
+    acquire_file_locked_publication_from(boundary, output_root, hooks)
+}
+
+#[cfg(any(not(unix), test))]
+fn acquire_file_locked_publication_from<H: ArtifactHooks + ?Sized>(
+    boundary: &Path,
+    output_root: &Path,
+    hooks: &H,
+) -> io::Result<AcquiredPublication> {
+    acquire_file_locked_publication_chain(boundary, output_root, hooks, Vec::new(), true)
+}
+
+#[cfg(any(not(unix), test))]
+fn acquire_file_locked_publication_chain<H: ArtifactHooks + ?Sized>(
+    boundary: &Path,
+    output_root: &Path,
+    hooks: &H,
+    mut created: Vec<CreatedOutputDirectory>,
+    lock_boundary: bool,
+) -> io::Result<AcquiredPublication> {
+    if output_root == boundary {
+        return acquire_single_file_publication(output_root, hooks, created);
+    }
+
+    let mut chain = output_root
+        .ancestors()
+        .take_while(|ancestor| *ancestor != boundary)
+        .map(Path::to_path_buf)
+        .collect::<Vec<_>>();
+    let reached_boundary = output_root.ancestors().any(|ancestor| ancestor == boundary);
+    if !reached_boundary {
+        return Err(io::Error::other(
+            "artifact publication lock boundary is not an ancestor of the output root",
+        ));
+    }
+    if lock_boundary {
+        chain.push(boundary.to_path_buf());
+    }
+    chain.reverse();
+
+    let mut locks = PublicationLock::new(Vec::new());
+    let last = chain.len().saturating_sub(1);
+    for (index, path) in chain.into_iter().enumerate() {
+        let recovery = clone_created_output_directories(&created)?;
+        match acquire_single_file_publication(&path, hooks, created) {
+            Ok(AcquiredPublication { root, lock }) if index == last => {
+                locks.extend(lock);
+                return Ok(AcquiredPublication { root, lock: locks });
+            }
+            Ok(AcquiredPublication { root, lock }) => {
+                let AcquiredOutputRoot {
+                    directory,
+                    created: next_created,
+                } = root;
+                drop(directory);
+                created = next_created;
+                locks.extend(lock);
+            }
+            Err(error) if error.kind() == io::ErrorKind::PermissionDenied && index != last => {
+                locks.abandon();
+                return acquire_file_locked_publication_chain(
+                    &path,
+                    output_root,
+                    hooks,
+                    recovery,
+                    false,
+                );
+            }
+            Err(error) => {
+                locks.abandon();
+                remove_created_output_directories(&recovery);
+                return Err(error);
+            }
+        }
+    }
+    unreachable!("non-root output roots always contain a publication component")
+}
+
+#[cfg(any(not(unix), test))]
+fn acquire_single_file_publication<H: ArtifactHooks + ?Sized>(
+    output_root: &Path,
+    hooks: &H,
+    mut created: Vec<CreatedOutputDirectory>,
+) -> io::Result<AcquiredPublication> {
+    let (parent_path, leaf) = publication_parent_and_leaf(output_root)?;
+    let mut parent = acquire_output_root(parent_path, hooks)?;
+    created.append(&mut parent.created);
+    parent.created = created;
+    acquire_file_publication(parent, leaf, hooks)
+}
+
+fn normalize_existing_output_root(output_root: &Path) -> io::Result<PathBuf> {
+    let absolute = std::path::absolute(output_root)?;
+    match std::fs::symlink_metadata(&absolute) {
+        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => {
+            std::fs::canonicalize(absolute)
+        }
+        Ok(_) => Ok(absolute),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            normalize_missing_output_root(absolute)
+        }
+        Err(error) => Err(error),
+    }
+}
+
+fn normalize_missing_output_root(absolute: PathBuf) -> io::Result<PathBuf> {
+    let absolute = lexically_normalize_absolute(&absolute);
+    let mut ancestor = absolute.as_path();
+    let mut missing = Vec::new();
+    loop {
+        let (Some(parent), Some(leaf)) = (ancestor.parent(), ancestor.file_name()) else {
+            return Ok(absolute);
+        };
+        missing.push(leaf.to_owned());
+        match std::fs::symlink_metadata(parent) {
+            Ok(_) => {
+                let mut normalized = std::fs::canonicalize(parent)?;
+                if !normalized.is_dir() {
+                    return Ok(absolute);
+                }
+                normalized.extend(missing.iter().rev());
+                return Ok(normalized);
+            }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => ancestor = parent,
+            Err(error) => return Err(error),
+        }
+    }
+}
+
+fn lexically_normalize_absolute(path: &Path) -> PathBuf {
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                if normalized.file_name().is_some() {
+                    normalized.pop();
+                }
+            }
+            Component::Prefix(_) | Component::RootDir | Component::Normal(_) => {
+                normalized.push(component.as_os_str());
+            }
+        }
+    }
+    normalized
+}
+
+fn publication_parent_and_leaf(absolute: &Path) -> io::Result<(&Path, OsString)> {
+    match (absolute.parent(), absolute.file_name()) {
+        (Some(parent), Some(leaf)) => Ok((parent, leaf.to_owned())),
+        (None, None) if absolute.has_root() => Ok((absolute, OsString::from("."))),
+        _ => Err(io::Error::other(
+            "artifact output root must identify an absolute filesystem location",
+        )),
+    }
+}
+
+#[cfg(unix)]
+#[derive(Clone, Copy)]
+enum DirectoryLockMode {
+    Shared,
+    Exclusive,
+}
+
+#[cfg(unix)]
+fn lock_directory(directory: &Dir, mode: DirectoryLockMode) -> io::Result<std::fs::File> {
+    let lock = directory.open(".")?.into_std();
+    match mode {
+        DirectoryLockMode::Shared => lock.lock_shared()?,
+        DirectoryLockMode::Exclusive => lock.lock_exclusive()?,
+    }
+    Ok(lock)
+}
+
+#[cfg(unix)]
+fn acquire_locked_output_root<H: ArtifactHooks + ?Sized>(
+    output_root: &Path,
+    hooks: &H,
+    target_mode: DirectoryLockMode,
+) -> io::Result<(AcquiredOutputRoot, Vec<std::fs::File>)> {
+    match acquire_locked_output_root_from_boundary(output_root, hooks, target_mode) {
+        Err(error) if error.kind() == io::ErrorKind::PermissionDenied => {
+            acquire_locked_existing_output_root(output_root, target_mode)
+        }
+        result => result,
+    }
+}
+
+#[cfg(unix)]
+fn acquire_locked_existing_output_root(
+    output_root: &Path,
+    target_mode: DirectoryLockMode,
+) -> io::Result<(AcquiredOutputRoot, Vec<std::fs::File>)> {
+    let metadata = std::fs::symlink_metadata(output_root)?;
+    if !metadata.is_dir() || metadata.file_type().is_symlink() {
+        return Err(io::Error::other(
+            "artifact output root is not an existing directory",
+        ));
+    }
+    let directory = Dir::open_ambient_dir(output_root, cap_std::ambient_authority())?;
+    let lock = lock_directory(&directory, target_mode)?;
+    Ok((
+        AcquiredOutputRoot {
+            directory,
+            created: Vec::new(),
+        },
+        vec![lock],
+    ))
+}
+
+#[cfg(unix)]
+fn acquire_locked_output_root_from_boundary<H: ArtifactHooks + ?Sized>(
+    output_root: &Path,
+    hooks: &H,
+    target_mode: DirectoryLockMode,
+) -> io::Result<(AcquiredOutputRoot, Vec<std::fs::File>)> {
+    let (anchor, components) = locked_output_root_anchor(output_root)?;
+    let component_count = components.len();
+    let anchor_mode = if component_count == 0 {
+        target_mode
+    } else {
+        DirectoryLockMode::Shared
+    };
+    let mut locks = vec![lock_directory(&anchor, anchor_mode)?];
+    let mut current = AcquiredOutputRoot {
+        directory: anchor,
+        created: Vec::new(),
+    };
+    for (index, component) in components.into_iter().enumerate() {
+        if let Err(error) = hooks.before_output_component_open(&current.directory, &component) {
+            remove_created_output_root(current);
+            return Err(error);
+        }
+        current = open_or_create_output_leaf(current, component)?;
+        let mode = if index + 1 == component_count {
+            target_mode
+        } else {
+            DirectoryLockMode::Shared
+        };
+        match lock_directory(&current.directory, mode) {
+            Ok(lock) => locks.push(lock),
+            Err(error) => {
+                remove_created_output_root(current);
+                return Err(error);
+            }
+        }
+    }
+    Ok((current, locks))
+}
+
+#[cfg(unix)]
+fn locked_output_root_anchor(output_root: &Path) -> io::Result<(Dir, Vec<OsString>)> {
+    let absolute = std::path::absolute(output_root)?;
+    let boundary = absolute
+        .ancestors()
+        .last()
+        .ok_or_else(|| io::Error::other("artifact output root has no filesystem boundary"))?;
+    let relative = absolute.strip_prefix(boundary).map_err(|_| {
+        io::Error::other("artifact output root is not beneath its filesystem boundary")
+    })?;
+    let components = relative
+        .components()
+        .map(|component| match component {
+            std::path::Component::Normal(component) => Ok(component.to_owned()),
+            _ => Err(io::Error::other(
+                "artifact output root contains a non-normal path component",
+            )),
+        })
+        .collect::<io::Result<Vec<_>>>()?;
+    let anchor = Dir::open_ambient_dir(boundary, cap_std::ambient_authority())?;
+    Ok((anchor, components))
+}
+
+#[cfg(unix)]
+fn directory_matches_path(path: &Path, directory: &Dir) -> io::Result<bool> {
+    let path_metadata = match std::fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => metadata,
+        Ok(_) => return Ok(false),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(false),
+        Err(error) => return Err(error),
+    };
+    let directory_metadata = match directory.metadata(".") {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(false),
+        Err(error) => return Err(error),
+    };
+    Ok(std::os::unix::fs::MetadataExt::dev(&path_metadata)
+        == cap_fs_ext::MetadataExt::dev(&directory_metadata)
+        && std::os::unix::fs::MetadataExt::ino(&path_metadata)
+            == cap_fs_ext::MetadataExt::ino(&directory_metadata))
+}
+
+fn open_or_create_output_leaf(
+    parent: AcquiredOutputRoot,
+    leaf: OsString,
+) -> io::Result<AcquiredOutputRoot> {
+    let AcquiredOutputRoot {
+        directory: parent,
+        mut created,
+    } = parent;
+    let directory = match parent.open_dir_nofollow(&leaf) {
+        Ok(directory) => directory,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            let creator_parent = match parent.try_clone() {
+                Ok(parent) => parent,
+                Err(error) => {
+                    remove_created_output_directories(&created);
+                    return Err(error);
+                }
+            };
+            let newly_created = match parent.create_dir(&leaf) {
+                Ok(()) => true,
+                Err(error) if error.kind() == io::ErrorKind::AlreadyExists => false,
+                Err(error) => {
+                    remove_created_output_directories(&created);
+                    return Err(error);
+                }
+            };
+            if newly_created {
+                created.push(CreatedOutputDirectory {
+                    parent: creator_parent,
+                    leaf: leaf.clone(),
+                });
+            }
+            match parent.open_dir_nofollow(&leaf) {
+                Ok(directory) => directory,
+                Err(error) => {
+                    remove_created_output_directories(&created);
+                    return Err(error);
+                }
+            }
+        }
+        Err(error) => {
+            remove_created_output_directories(&created);
+            return Err(error);
+        }
+    };
+    Ok(AcquiredOutputRoot { directory, created })
+}
+
+#[cfg(any(not(unix), test))]
+fn acquire_file_publication<H: ArtifactHooks + ?Sized>(
+    parent: AcquiredOutputRoot,
+    leaf: OsString,
+    hooks: &H,
+) -> io::Result<AcquiredPublication> {
+    let sibling_lock_path = publication_lock_path(&leaf);
+    if let Some(lock) = open_publication_lock(&parent.directory, &sibling_lock_path)? {
+        lock.lock_exclusive()?;
+        hooks.before_output_component_open(&parent.directory, &leaf)?;
+        let root = open_or_create_output_leaf(parent, leaf)?;
+        return Ok(AcquiredPublication {
+            root,
+            lock: PublicationLock::new(vec![lock]),
+        });
+    }
+
+    hooks.before_output_component_open(&parent.directory, &leaf)?;
+    match parent.directory.open_dir_nofollow(&leaf) {
+        Ok(directory) => {
+            if let Some(lock) = open_publication_lock(&parent.directory, &sibling_lock_path)? {
+                lock.lock_exclusive()?;
+                let root = open_or_create_output_leaf(parent, leaf)?;
+                return Ok(AcquiredPublication {
+                    root,
+                    lock: PublicationLock::new(vec![lock]),
+                });
+            }
+            let (lock, _) = create_or_open_publication_lock(
+                &directory,
+                Path::new(INTERNAL_PUBLICATION_LOCK_PATH),
+            )?;
+            lock.lock_exclusive()?;
+            Ok(AcquiredPublication {
+                root: AcquiredOutputRoot {
+                    directory,
+                    created: parent.created,
+                },
+                lock: PublicationLock::new(vec![lock]),
+            })
+        }
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            let (lock, created) =
+                create_or_open_publication_lock(&parent.directory, &sibling_lock_path)?;
+            let cleanup_directory = if created && !parent.created.is_empty() {
+                match parent.directory.try_clone() {
+                    Ok(directory) => Some(directory),
+                    Err(error) => {
+                        drop(lock);
+                        let _ = parent.directory.remove_file(&sibling_lock_path);
+                        remove_created_output_root(parent);
+                        return Err(error);
+                    }
+                }
+            } else {
+                None
+            };
+            let publication_lock = match cleanup_directory {
+                Some(directory) => {
+                    PublicationLock::with_cleanup(lock, directory, sibling_lock_path)
+                }
+                None => PublicationLock::new(vec![lock]),
+            };
+            if let Err(error) = publication_lock.files[0].lock_exclusive() {
+                publication_lock.abandon();
+                remove_created_output_root(parent);
+                return Err(error);
+            }
+            let cleanup_journal = match clone_created_output_directories(&parent.created) {
+                Ok(journal) => journal,
+                Err(error) => {
+                    publication_lock.abandon();
+                    remove_created_output_root(parent);
+                    return Err(error);
+                }
+            };
+            let root = match open_or_create_output_leaf(parent, leaf) {
+                Ok(root) => root,
+                Err(error) => {
+                    publication_lock.abandon();
+                    remove_created_output_directories(&cleanup_journal);
+                    return Err(error);
+                }
+            };
+            Ok(AcquiredPublication {
+                root,
+                lock: publication_lock,
+            })
+        }
+        Err(error) => Err(error),
+    }
+}
+
+#[cfg(any(not(unix), test))]
+fn open_publication_lock(directory: &Dir, path: &Path) -> io::Result<Option<std::fs::File>> {
+    let mut options = OpenOptions::new();
+    options.read(true).follow(FollowSymlinks::No);
+    match directory.open_with(path, &options) {
+        Ok(lock) => Ok(Some(lock.into_std())),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+
+#[cfg(any(not(unix), test))]
+fn create_or_open_publication_lock(
+    directory: &Dir,
+    path: &Path,
+) -> io::Result<(std::fs::File, bool)> {
+    let mut create = OpenOptions::new();
+    create
+        .read(true)
+        .write(true)
+        .create_new(true)
+        .follow(FollowSymlinks::No);
+    match directory.open_with(path, &create) {
+        Ok(lock) => Ok((lock.into_std(), true)),
+        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
+            open_publication_lock(directory, path)?
+                .map(|lock| (lock, false))
+                .ok_or_else(|| {
+                    io::Error::new(
+                        io::ErrorKind::NotFound,
+                        "publication lock disappeared while opening it",
+                    )
+                })
+        }
+        Err(error) => Err(error),
+    }
+}
+
+#[cfg(any(not(unix), test))]
+fn clone_created_output_directories(
+    directories: &[CreatedOutputDirectory],
+) -> io::Result<Vec<CreatedOutputDirectory>> {
+    directories
+        .iter()
+        .map(|directory| {
+            Ok(CreatedOutputDirectory {
+                parent: directory.parent.try_clone()?,
+                leaf: directory.leaf.clone(),
+            })
+        })
+        .collect()
+}
+
+#[cfg(any(not(unix), test))]
+fn publication_lock_path(output_leaf: &OsStr) -> PathBuf {
+    const FNV_OFFSET_BASIS: u64 = 0xcbf29ce484222325;
+    const FNV_PRIME: u64 = 0x100000001b3;
+
+    // Windows cannot lock directory handles, so keep a permanent sibling file on
+    // the shared output filesystem. The reserved namespace prevents a provider
+    // publishing to an ancestor from replacing its inode.
+    let portable_path = portable_path_key(&output_leaf.to_string_lossy());
+    let hash = portable_path
+        .as_bytes()
+        .iter()
+        .fold(FNV_OFFSET_BASIS, |hash, byte| {
+            (hash ^ u64::from(*byte)).wrapping_mul(FNV_PRIME)
+        });
+    PathBuf::from(format!("{PUBLICATION_LOCK_PREFIX}{hash:016x}.lock"))
+}
+
+#[cfg(any(not(unix), test))]
+fn output_root_anchor(output_root: &Path) -> io::Result<(Dir, Vec<OsString>)> {
+    let absolute = std::path::absolute(output_root)?;
+    let Some(leaf) = absolute.file_name() else {
+        return Dir::open_ambient_dir(&absolute, cap_std::ambient_authority())
+            .map(|directory| (directory, Vec::new()));
+    };
+    let mut components = vec![leaf.to_owned()];
+    let mut candidate = absolute
+        .parent()
+        .ok_or_else(|| io::Error::other("artifact output root has no parent directory"))?;
+
+    loop {
+        match Dir::open_ambient_dir(candidate, cap_std::ambient_authority()) {
+            Ok(directory) => return Ok((directory, components)),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                let missing = candidate.file_name().ok_or(error)?;
+                components.insert(0, missing.to_owned());
+                candidate = candidate.parent().ok_or_else(|| {
+                    io::Error::other("artifact output root has no existing parent directory")
+                })?;
+            }
+            Err(error) => return Err(error),
+        }
+    }
+}
+
+fn remove_created_output_directories(directories: &[CreatedOutputDirectory]) {
+    for directory in directories.iter().rev() {
+        let _ = directory.parent.remove_dir(&directory.leaf);
+        let _ = sync_dir(&directory.parent);
+    }
+}
+
+fn remove_created_output_root(root: AcquiredOutputRoot) {
+    let AcquiredOutputRoot { directory, created } = root;
+    drop(directory);
+    remove_created_output_directories(&created);
+}
+
+fn abandon_publication(root: AcquiredOutputRoot, lock: PublicationLock) {
+    let AcquiredOutputRoot { directory, created } = root;
+    drop(directory);
+    // Directory-locking platforms must unlink newly created output ancestors
+    // before releasing the target lock, so a waiting writer cannot validate a
+    // path that cleanup removes immediately afterward. File-locking platforms
+    // may need the post-unlock pass after removing their lock file.
+    remove_created_output_directories(&created);
+    lock.abandon();
+    remove_created_output_directories(&created);
+}
+
+fn finish_committed_transaction<H: ArtifactHooks + ?Sized>(
+    root: &Dir,
+    transaction: Dir,
+    recovery_path: &Path,
+    hooks: &H,
+) -> Result<(), CliError> {
+    if let Err(error) = hooks
+        .before_post_commit_root_sync()
+        .and_then(|()| sync_dir(root))
+    {
+        return Err(committed_error(
+            error,
+            format!("transaction retained at '{}'", recovery_path.display()),
+        ));
+    }
+    if let Err(error) = hooks.before_post_commit_cleanup() {
+        return Err(committed_error(
+            error,
+            format!("transaction retained at '{}'", recovery_path.display()),
+        ));
+    }
+    if let Err(error) = transaction.remove_open_dir_all() {
+        return Err(committed_error(
+            error,
+            format!(
+                "transaction cleanup incomplete; inspect '{}'",
+                recovery_path.display()
+            ),
+        ));
+    }
+    sync_dir(root).map_err(|error| {
+        committed_error(
+            error,
+            "transaction cleanup completed but the output directory sync failed".to_owned(),
+        )
+    })
+}
+
+fn create_transaction(root: &Dir) -> io::Result<Transaction> {
+    for _ in 0..100 {
+        let id = NEXT_TRANSACTION_ID.fetch_add(1, Ordering::Relaxed);
+        let relative_path = PathBuf::from(format!(
+            "{TRANSACTION_PATH_PREFIX}{}-{id}",
+            std::process::id()
+        ));
+        match root.create_dir(&relative_path) {
+            Ok(()) => {
+                return Ok(Transaction {
+                    directory: root.open_dir_nofollow(&relative_path)?,
+                    relative_path,
+                });
+            }
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error),
+        }
+    }
+    Err(io::Error::other(
+        "unable to allocate artifact transaction directory",
+    ))
+}
+
+fn run_transaction<H: ArtifactHooks + ?Sized>(
+    root: &Dir,
+    transaction: &Dir,
+    artifacts: &[ValidatedArtifact],
+    stale: &[ValidatedRemoval],
+    managed: &[ValidatedRemoval],
+    managed_directories: &[ValidatedRemoval],
+    hooks: &H,
+) -> Result<(), TransactionFailure> {
+    transaction
+        .create_dir("staged")
+        .and_then(|()| transaction.create_dir("backups"))
+        .and_then(|()| transaction.create_dir("rollback"))
+        .map_err(TransactionFailure::RolledBack)?;
+    for (index, artifact) in artifacts.iter().enumerate() {
+        let staged = if artifact.internal {
+            stage_artifact(transaction, artifact)
+        } else {
+            hooks
+                .before_stage(index)
+                .and_then(|()| stage_artifact(transaction, artifact))
+        };
+        staged.map_err(TransactionFailure::RolledBack)?;
+    }
+    for artifact in stale {
+        preflight_destination(root, &artifact.relative_path)
+            .map_err(TransactionFailure::RolledBack)?;
+    }
+    let mut created_directories = Vec::new();
+    let mut destinations = match prepare_stale_destinations(root, artifacts.len(), stale) {
+        Ok(destinations) => destinations,
+        Err(error) => {
+            return Err(TransactionFailure::RolledBack(error));
+        }
+    };
+    let mut records = Vec::new();
+    commit_destinations(root, transaction, &destinations, &mut records, hooks)?;
+    if let Err(error) = remove_vacated_managed_directories(root, stale, managed_directories) {
+        return rollback_failure(error, root, transaction, &destinations, &records, hooks);
+    }
+    if let Err(error) =
+        remove_blocking_managed_directories(root, artifacts, stale, managed_directories)
+    {
+        return rollback_failure(error, root, transaction, &destinations, &records, hooks);
+    }
+    for artifact in artifacts {
+        if let Err(error) = preflight_destination(root, &artifact.relative_path) {
+            return rollback_failure(error, root, transaction, &destinations, &records, hooks);
+        }
+    }
+    let artifact_destinations =
+        match prepare_artifact_destinations(root, artifacts, managed, &mut created_directories) {
+            Ok(destinations) => destinations,
+            Err(error) => {
+                remove_created_directories(root, &created_directories);
+                return rollback_failure(error, root, transaction, &destinations, &records, hooks);
+            }
+        };
+    let created_manifest_directories = match retained_created_directories(
+        root,
+        artifacts,
+        managed_directories,
+        &created_directories,
+    ) {
+        Ok(directories) => directories,
+        Err(error) => {
+            remove_created_directories(root, &created_directories);
+            return rollback_failure(error, root, transaction, &destinations, &records, hooks);
+        }
+    };
+    if let Err(error) =
+        rewrite_staged_manifest(transaction, artifacts, &created_manifest_directories)
+    {
+        remove_created_directories(root, &created_directories);
+        return rollback_failure(error, root, transaction, &destinations, &records, hooks);
+    }
+    destinations.extend(artifact_destinations);
+    let result = commit_destinations(root, transaction, &destinations, &mut records, hooks);
+    drop(destinations);
+    if result.is_err() {
+        remove_created_directories(root, &created_directories);
+    }
+    result
+}
+
+fn stage_artifact(transaction: &Dir, artifact: &ValidatedArtifact) -> io::Result<()> {
+    let staged = PathBuf::from("staged").join(&artifact.relative_path);
+    let parent = ensure_directory_path(
+        transaction,
+        staged.parent().expect("validated artifact has a parent"),
+        &mut Vec::new(),
+    )?;
+    let mut options = OpenOptions::new();
+    options
+        .write(true)
+        .create_new(true)
+        .follow(FollowSymlinks::No);
+    let mut file = parent.open_with(
+        staged.file_name().expect("validated artifact has a leaf"),
+        &options,
+    )?;
+    file.write_all(&artifact.bytes)?;
+    file.sync_all()?;
+    sync_dir(&parent)
+}
+
+fn preflight_destination(root: &Dir, path: &Path) -> io::Result<()> {
+    let Some(parent) = open_existing_directory_path(root, path.parent().unwrap_or(Path::new("")))?
+    else {
+        return Ok(());
+    };
+    validate_leaf(
+        &parent,
+        path.file_name().expect("validated artifact has a leaf"),
+    )
+    .map(|_| ())
+}
+
+fn prepare_stale_destinations(
+    root: &Dir,
+    artifact_count: usize,
+    stale: &[ValidatedRemoval],
+) -> io::Result<Vec<Destination>> {
+    let mut destinations = Vec::with_capacity(stale.len());
+    for (offset, artifact) in stale.iter().enumerate() {
+        let Some(parent) = open_existing_directory_path(
+            root,
+            artifact.relative_path.parent().unwrap_or(Path::new("")),
+        )?
+        else {
+            continue;
+        };
+        let leaf = artifact
+            .relative_path
+            .file_name()
+            .expect("validated artifact has a leaf")
+            .to_owned();
+        match validate_leaf(&parent, &leaf)? {
+            LeafState::Absent => continue,
+            LeafState::Regular => {}
+        }
+        let index = artifact_count + offset;
+        destinations.push(Destination {
+            parent,
+            relative_path: artifact.relative_path.clone(),
+            leaf,
+            staged: None,
+            backup: PathBuf::from("backups").join(&artifact.relative_path),
+            rollback: PathBuf::from("rollback").join(index.to_string()),
+            hook_index: Some(index),
+            replace_existing: true,
+        });
+    }
+    Ok(destinations)
+}
+
+fn prepare_artifact_destinations(
+    root: &Dir,
+    artifacts: &[ValidatedArtifact],
+    managed: &[ValidatedRemoval],
+    created: &mut Vec<PathBuf>,
+) -> io::Result<Vec<Destination>> {
+    let mut destinations = Vec::with_capacity(artifacts.len());
+    for (index, artifact) in artifacts.iter().enumerate() {
+        let replace_existing = artifact.internal
+            || managed_destination_matches(root, &artifact.relative_path, managed)?;
+        let parent = ensure_directory_path(
+            root,
+            artifact.relative_path.parent().unwrap_or(Path::new("")),
+            created,
+        )?;
+        destinations.push(Destination {
+            parent,
+            relative_path: artifact.relative_path.clone(),
+            leaf: artifact
+                .relative_path
+                .file_name()
+                .expect("validated artifact has a leaf")
+                .to_owned(),
+            staged: Some(PathBuf::from("staged").join(&artifact.relative_path)),
+            backup: PathBuf::from("backups").join(&artifact.relative_path),
+            rollback: PathBuf::from("rollback").join(index.to_string()),
+            hook_index: (!artifact.internal).then_some(index),
+            replace_existing,
+        });
+    }
+    Ok(destinations)
+}
+
+fn remove_vacated_managed_directories(
+    root: &Dir,
+    stale: &[ValidatedRemoval],
+    managed_directories: &[ValidatedRemoval],
+) -> io::Result<()> {
+    let managed_directory_keys = managed_directories
+        .iter()
+        .map(|directory| portable_path_components(&directory.relative_path))
+        .collect::<BTreeSet<_>>();
+    let mut directories = BTreeSet::new();
+    for artifact in stale {
+        let mut candidate = artifact.relative_path.parent();
+        while let Some(directory) = candidate {
+            if directory.as_os_str().is_empty() {
+                break;
+            }
+            if managed_directory_keys.contains(&portable_path_components(directory)) {
+                directories.insert(directory.to_path_buf());
+            }
+            candidate = directory.parent();
+        }
+    }
+    let mut directories = directories.into_iter().collect::<Vec<_>>();
+    directories.sort_by(|left, right| {
+        right
+            .components()
+            .count()
+            .cmp(&left.components().count())
+            .then_with(|| right.cmp(left))
+    });
+    for directory in directories {
+        let parent_path = directory.parent().unwrap_or(Path::new(""));
+        let Some(parent) = open_existing_directory_path(root, parent_path)? else {
+            continue;
+        };
+        let leaf = directory.file_name().expect("managed directory has a leaf");
+        match parent.remove_dir(leaf) {
+            Ok(()) => sync_dir(&parent)?,
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    io::ErrorKind::NotFound | io::ErrorKind::DirectoryNotEmpty
+                ) => {}
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(())
+}
+
+fn remove_blocking_managed_directories(
+    root: &Dir,
+    artifacts: &[ValidatedArtifact],
+    stale: &[ValidatedRemoval],
+    managed_directories: &[ValidatedRemoval],
+) -> io::Result<()> {
+    let managed_directory_keys = managed_directories
+        .iter()
+        .map(|directory| portable_path_components(&directory.relative_path))
+        .collect::<BTreeSet<_>>();
+    let mut directories = BTreeSet::new();
+    for artifact in artifacts.iter().filter(|artifact| !artifact.internal) {
+        for removed in stale.iter().filter(|removed| {
+            removed.relative_path != artifact.relative_path
+                && removed.relative_path.starts_with(&artifact.relative_path)
+        }) {
+            let mut candidate = removed.relative_path.parent();
+            while let Some(directory) = candidate {
+                if !directory.starts_with(&artifact.relative_path) {
+                    break;
+                }
+                if managed_directory_keys.contains(&portable_path_components(directory)) {
+                    directories.insert(directory.to_path_buf());
+                }
+                if directory == artifact.relative_path {
+                    break;
+                }
+                candidate = directory.parent();
+            }
+        }
+    }
+    let mut directories = directories.into_iter().collect::<Vec<_>>();
+    directories.sort_by(|left, right| {
+        right
+            .components()
+            .count()
+            .cmp(&left.components().count())
+            .then_with(|| right.cmp(left))
+    });
+    for directory in directories {
+        let parent_path = directory.parent().unwrap_or(Path::new(""));
+        let Some(parent) = open_existing_directory_path(root, parent_path)? else {
+            continue;
+        };
+        let leaf = directory
+            .file_name()
+            .expect("blocking managed directory has a leaf");
+        match parent.remove_dir(leaf) {
+            Ok(()) => sync_dir(&parent)?,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(())
+}
+
+fn commit_destinations<H: ArtifactHooks + ?Sized>(
+    root: &Dir,
+    transaction: &Dir,
+    destinations: &[Destination],
+    records: &mut Vec<CommitRecord>,
+    hooks: &H,
+) -> Result<(), TransactionFailure> {
+    for (index, destination) in destinations.iter().enumerate().skip(records.len()) {
+        records.push(CommitRecord {
+            index,
+            backup: false,
+            installed: false,
+        });
+        match validate_leaf(&destination.parent, &destination.leaf) {
+            Ok(LeafState::Absent) => {}
+            Ok(LeafState::Regular) => {
+                if !destination.replace_existing {
+                    return rollback_failure(
+                        io::Error::new(
+                            io::ErrorKind::AlreadyExists,
+                            format!(
+                                "artifact destination '{}' already exists but is not managed by Morphir",
+                                destination.relative_path.display()
+                            ),
+                        ),
+                        root,
+                        transaction,
+                        destinations,
+                        records,
+                        hooks,
+                    );
+                }
+                if let Err(error) = move_destination_to_backup(transaction, destination) {
+                    return rollback_failure(
+                        error,
+                        root,
+                        transaction,
+                        destinations,
+                        records,
+                        hooks,
+                    );
+                }
+                records.last_mut().expect("record exists").backup = true;
+                let verified = destination
+                    .hook_index
+                    .map_or_else(|| Ok(()), |index| hooks.after_backup_move(index))
+                    .and_then(|()| verify_moved_backup(transaction, destination));
+                if let Err(error) = verified {
+                    return rollback_failure(
+                        error,
+                        root,
+                        transaction,
+                        destinations,
+                        records,
+                        hooks,
+                    );
+                }
+            }
+            Err(error) => {
+                return rollback_failure(error, root, transaction, destinations, records, hooks);
+            }
+        }
+        if let Some(staged) = &destination.staged {
+            let hook = destination.hook_index.map_or_else(
+                || Ok(()),
+                |index| hooks.before_install(index, &destination.parent, &destination.leaf),
+            );
+            if let Err(error) = hook {
+                return rollback_failure(error, root, transaction, destinations, records, hooks);
+            }
+            if let Err(error) =
+                install_staged_file(transaction, staged, &destination.parent, &destination.leaf)
+            {
+                return rollback_failure(error, root, transaction, destinations, records, hooks);
+            }
+            records.last_mut().expect("record exists").installed = true;
+            if let Err(error) = sync_file_and_parent(&destination.parent, &destination.leaf) {
+                return rollback_failure(error, root, transaction, destinations, records, hooks);
+            }
+        }
+    }
+    Ok(())
+}
+
+fn install_staged_file(
+    transaction: &Dir,
+    staged: &Path,
+    parent: &Dir,
+    leaf: &OsStr,
+) -> io::Result<()> {
+    move_file_no_replace(transaction, staged, parent, leaf)
+}
+
+#[cfg(unix)]
+fn move_file_no_replace(
+    source_parent: &Dir,
+    source: &Path,
+    destination_parent: &Dir,
+    destination: &OsStr,
+) -> io::Result<()> {
+    rustix::fs::renameat_with(
+        source_parent,
+        source,
+        destination_parent,
+        destination,
+        rustix::fs::RenameFlags::NOREPLACE,
+    )
+    .map_err(Into::into)
+}
+
+#[cfg(windows)]
+fn move_file_no_replace(
+    source_parent: &Dir,
+    source: &Path,
+    destination_parent: &Dir,
+    destination: &OsStr,
+) -> io::Result<()> {
+    use cap_std::fs::OpenOptionsExt as _;
+    use std::mem::{offset_of, size_of};
+    use std::os::windows::ffi::OsStrExt as _;
+    use std::os::windows::io::AsRawHandle as _;
+    use std::ptr;
+    use windows_sys::Win32::Storage::FileSystem::{
+        DELETE, FILE_RENAME_INFO, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
+        FileRenameInfo, SetFileInformationByHandle,
+    };
+
+    let mut options = OpenOptions::new();
+    options
+        .access_mode(DELETE)
+        .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)
+        .follow(FollowSymlinks::No);
+    let source_file = source_parent.open_with(source, &options)?;
+    let destination = destination.encode_wide().collect::<Vec<_>>();
+    let filename_bytes = destination
+        .len()
+        .checked_mul(size_of::<u16>())
+        .and_then(|length| u32::try_from(length).ok())
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "destination is too long"))?;
+    let buffer_bytes = offset_of!(FILE_RENAME_INFO, FileName)
+        .checked_add(filename_bytes as usize)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "destination is too long"))?;
+    let mut buffer = vec![0_usize; buffer_bytes.div_ceil(size_of::<usize>())];
+    let rename_info = buffer.as_mut_ptr().cast::<FILE_RENAME_INFO>();
+
+    // SAFETY: `buffer` is word-aligned and sized for the fixed header plus the
+    // complete UTF-16 filename. Both handles remain open for the duration of
+    // the synchronous call, and the API only reads the supplied buffer.
+    let renamed = unsafe {
+        (*rename_info).Anonymous.ReplaceIfExists = false;
+        (*rename_info).RootDirectory = destination_parent.as_raw_handle();
+        (*rename_info).FileNameLength = filename_bytes;
+        ptr::copy_nonoverlapping(
+            destination.as_ptr(),
+            ptr::addr_of_mut!((*rename_info).FileName).cast::<u16>(),
+            destination.len(),
+        );
+        SetFileInformationByHandle(
+            source_file.as_raw_handle(),
+            FileRenameInfo,
+            rename_info.cast(),
+            u32::try_from(buffer_bytes).expect("rename buffer length was validated"),
+        )
+    };
+    if renamed == 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(())
+    }
+}
+
+#[cfg(all(not(unix), not(windows)))]
+fn move_file_no_replace(
+    source_parent: &Dir,
+    source: &Path,
+    destination_parent: &Dir,
+    destination: &OsStr,
+) -> io::Result<()> {
+    source_parent.rename(source, destination_parent, destination)
+}
+
+fn move_destination_to_backup(transaction: &Dir, destination: &Destination) -> io::Result<()> {
+    let backup_parent = ensure_directory_path(
+        transaction,
+        destination.backup.parent().expect("backup has parent"),
+        &mut Vec::new(),
+    )?;
+    let backup_leaf = destination.backup.file_name().expect("backup has leaf");
+    destination
+        .parent
+        .rename(&destination.leaf, &backup_parent, backup_leaf)
+}
+
+fn verify_moved_backup(transaction: &Dir, destination: &Destination) -> io::Result<()> {
+    let backup_parent = open_existing_directory_path(
+        transaction,
+        destination.backup.parent().expect("backup has parent"),
+    )?
+    .ok_or_else(|| io::Error::other("artifact backup parent disappeared"))?;
+    let backup_leaf = destination.backup.file_name().expect("backup has leaf");
+    let metadata = backup_parent.symlink_metadata(backup_leaf)?;
+    if !metadata.is_file() || metadata.file_type().is_symlink() {
+        return Err(io::Error::other(
+            "artifact destination is not a regular file",
+        ));
+    }
+    sync_dir(&destination.parent)?;
+    sync_dir(&backup_parent)
+}
+
+fn rollback_failure<H: ArtifactHooks + ?Sized>(
+    error: io::Error,
+    root: &Dir,
+    transaction: &Dir,
+    destinations: &[Destination],
+    records: &[CommitRecord],
+    hooks: &H,
+) -> Result<(), TransactionFailure> {
+    match rollback(root, transaction, destinations, records, hooks) {
+        Ok(()) => Err(TransactionFailure::RolledBack(error)),
+        Err(rollback) => Err(TransactionFailure::RecoveryRequired(io::Error::other(
+            format!("{error}; rollback failed: {rollback}"),
+        ))),
+    }
+}
+
+fn rollback<H: ArtifactHooks + ?Sized>(
+    root: &Dir,
+    transaction: &Dir,
+    destinations: &[Destination],
+    records: &[CommitRecord],
+    hooks: &H,
+) -> io::Result<()> {
+    let mut errors = Vec::new();
+    for record in records.iter().rev() {
+        let destination = &destinations[record.index];
+        let result: io::Result<()> = (|| {
+            if let Some(index) = destination.hook_index {
+                hooks.before_rollback(index)?;
+            }
+            if record.installed {
+                let rollback_parent = ensure_directory_path(
+                    transaction,
+                    destination.rollback.parent().expect("rollback has parent"),
+                    &mut Vec::new(),
+                )?;
+                destination.parent.rename(
+                    &destination.leaf,
+                    &rollback_parent,
+                    destination.rollback.file_name().expect("rollback has leaf"),
+                )?;
+            }
+            if record.backup {
+                match root.symlink_metadata(&destination.relative_path) {
+                    Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => {
+                        remove_empty_destination_descendants(
+                            root,
+                            &destination.relative_path,
+                            destinations,
+                        )?;
+                        root.remove_dir(&destination.relative_path)?;
+                    }
+                    Ok(_) => {}
+                    Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+                    Err(error) => return Err(error),
+                }
+                let parent = ensure_directory_path(
+                    root,
+                    destination
+                        .relative_path
+                        .parent()
+                        .expect("destination has a parent"),
+                    &mut Vec::new(),
+                )?;
+                move_file_no_replace(transaction, &destination.backup, &parent, &destination.leaf)?;
+                sync_file_and_parent(&parent, &destination.leaf)?;
+            }
+            Ok(())
+        })();
+        if let Err(error) = result {
+            errors.push(error.to_string());
+        }
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(io::Error::other(errors.join("; ")))
+    }
+}
+
+fn remove_empty_destination_descendants(
+    root: &Dir,
+    ancestor: &Path,
+    destinations: &[Destination],
+) -> io::Result<()> {
+    let mut directories = BTreeSet::new();
+    for destination in destinations {
+        let mut candidate = destination.relative_path.parent();
+        while let Some(directory) = candidate {
+            if portable_paths_equal(directory, ancestor)
+                || !portable_path_is_descendant(directory, ancestor)
+            {
+                break;
+            }
+            directories.insert(directory.to_path_buf());
+            candidate = directory.parent();
+        }
+    }
+    let mut directories = directories.into_iter().collect::<Vec<_>>();
+    directories.sort_by(|left, right| {
+        right
+            .components()
+            .count()
+            .cmp(&left.components().count())
+            .then_with(|| right.cmp(left))
+    });
+    for directory in directories {
+        let parent_path = directory.parent().unwrap_or(Path::new(""));
+        let Some(parent) = open_existing_directory_path(root, parent_path)? else {
+            continue;
+        };
+        let leaf = directory
+            .file_name()
+            .expect("rollback descendant directory has a leaf");
+        match parent.remove_dir(leaf) {
+            Ok(()) => sync_dir(&parent)?,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(())
+}
+
+fn validate_leaf(parent: &Dir, leaf: &OsStr) -> io::Result<LeafState> {
+    match parent.symlink_metadata(leaf) {
+        Ok(metadata) if metadata.file_type().is_symlink() => {
+            Err(io::Error::other("artifact destination is a symbolic link"))
+        }
+        Ok(metadata) if metadata.is_file() => Ok(LeafState::Regular),
+        Ok(_) => Err(io::Error::other(
+            "artifact destination is not a regular file",
+        )),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(LeafState::Absent),
+        Err(error) => Err(error),
+    }
+}
+
+enum LeafState {
+    Absent,
+    Regular,
+}
+
+fn open_existing_directory_path(root: &Dir, path: &Path) -> io::Result<Option<Dir>> {
+    let mut current = root.try_clone()?;
+    for component in normal_components(path)? {
+        match current.symlink_metadata(component) {
+            Ok(metadata) if metadata.file_type().is_symlink() => {
+                return Err(io::Error::other(
+                    "artifact destination parent is a symbolic link",
+                ));
+            }
+            Ok(metadata) if metadata.is_dir() => current = current.open_dir_nofollow(component)?,
+            Ok(_) => {
+                return Err(io::Error::other(
+                    "artifact destination parent is not a directory",
+                ));
+            }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(Some(current))
+}
+
+fn ensure_directory_path(root: &Dir, path: &Path, created: &mut Vec<PathBuf>) -> io::Result<Dir> {
+    let mut current = root.try_clone()?;
+    let mut relative = PathBuf::new();
+    for component in normal_components(path)? {
+        relative.push(component);
+        current = match current.open_dir_nofollow(component) {
+            Ok(directory) => directory,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                current.create_dir(component)?;
+                created.push(relative.clone());
+                current.open_dir_nofollow(component)?
+            }
+            Err(error) => return Err(error),
+        };
+    }
+    Ok(current)
+}
+
+fn normal_components(path: &Path) -> io::Result<Vec<&OsStr>> {
+    path.components()
+        .map(|component| match component {
+            Component::Normal(segment) => Ok(segment),
+            _ => Err(io::Error::other(
+                "artifact path contains a non-normal component",
+            )),
+        })
+        .collect()
+}
+
+fn remove_created_directories(root: &Dir, directories: &[PathBuf]) {
+    for directory in directories.iter().rev() {
+        let _ = root.remove_dir(directory);
+    }
+}
+
+fn retained_created_directories(
+    root: &Dir,
+    artifacts: &[ValidatedArtifact],
+    managed_directories: &[ValidatedRemoval],
+    created_directories: &[PathBuf],
+) -> io::Result<Vec<ValidatedRemoval>> {
+    let artifact_paths = artifacts
+        .iter()
+        .filter(|artifact| !artifact.internal)
+        .map(|artifact| artifact.relative_path.as_path())
+        .collect::<Vec<_>>();
+    let mut candidates = managed_directories
+        .iter()
+        .map(|directory| {
+            (
+                portable_path_components(&directory.relative_path),
+                ValidatedRemoval {
+                    relative_path: directory.relative_path.clone(),
+                    display_path: directory.display_path.clone(),
+                },
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+    for relative_path in created_directories {
+        let display_path = relative_path
+            .components()
+            .map(|component| match component {
+                Component::Normal(segment) => Ok(segment.to_string_lossy()),
+                _ => Err(io::Error::other(
+                    "created artifact directory contains a non-normal component",
+                )),
+            })
+            .collect::<io::Result<Vec<_>>>()?
+            .join("/");
+        candidates.insert(
+            portable_path_components(relative_path),
+            ValidatedRemoval {
+                relative_path: relative_path.clone(),
+                display_path,
+            },
+        );
+    }
+
+    let mut retained = Vec::new();
+    for directory in candidates.into_values() {
+        if artifact_paths
+            .iter()
+            .any(|artifact| portable_path_is_descendant(artifact, &directory.relative_path))
+            && open_existing_directory_path(root, &directory.relative_path)?.is_some()
+        {
+            retained.push(directory);
+        }
+    }
+    retained.sort_by(|left, right| left.display_path.cmp(&right.display_path));
+    Ok(retained)
+}
+
+fn rewrite_staged_manifest(
+    transaction: &Dir,
+    artifacts: &[ValidatedArtifact],
+    created_directories: &[ValidatedRemoval],
+) -> io::Result<()> {
+    let paths = artifacts
+        .iter()
+        .filter(|artifact| !artifact.internal)
+        .map(|artifact| artifact.display_path.clone())
+        .collect::<Vec<_>>();
+    let bytes = manifest_bytes(&paths, created_directories).map_err(io::Error::other)?;
+    let staged_path = PathBuf::from("staged").join(MANIFEST_PATH);
+    let mut options = OpenOptions::new();
+    options
+        .write(true)
+        .truncate(true)
+        .follow(FollowSymlinks::No);
+    let mut manifest = transaction.open_with(&staged_path, &options)?;
+    manifest.write_all(&bytes)?;
+    manifest.sync_all()?;
+    sync_dir(&transaction.open_dir("staged")?)
+}
+
+#[cfg(unix)]
+fn sync_file_and_parent(parent: &Dir, leaf: &OsStr) -> io::Result<()> {
+    let mut options = OpenOptions::new();
+    options.read(true).follow(FollowSymlinks::No);
+    parent.open_with(leaf, &options)?.sync_all()?;
+    sync_dir(parent)
+}
+
+#[cfg(not(unix))]
+fn sync_file_and_parent(_parent: &Dir, _leaf: &OsStr) -> io::Result<()> {
+    // The staged file was flushed before rename. Rust does not expose a portable
+    // directory flush here, and Windows FlushFileBuffers requires write access.
+    Ok(())
+}
+
+#[cfg(unix)]
+fn sync_dir(directory: &Dir) -> io::Result<()> {
+    directory.open(".")?.sync_all()
+}
+
+#[cfg(not(unix))]
+fn sync_dir(_directory: &Dir) -> io::Result<()> {
+    // Atomic rename still publishes the already-flushed staged file.
+    Ok(())
+}
+
+struct ValidatedArtifact {
+    relative_path: PathBuf,
+    display_path: String,
+    bytes: Vec<u8>,
+    internal: bool,
+}
+
+struct ValidatedRemoval {
+    relative_path: PathBuf,
+    display_path: String,
+}
+
+struct LoadedManifest {
+    artifacts: Vec<ValidatedRemoval>,
+    created_directories: Vec<ValidatedRemoval>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ArtifactManifest {
+    schema_version: u32,
+    artifacts: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    created_directories: Vec<String>,
+}
+
+fn load_manifest(root: &Dir) -> Result<Option<LoadedManifest>, CliError> {
+    let mut options = OpenOptions::new();
+    options.read(true).follow(FollowSymlinks::No);
+    let mut source = match root.open_with(MANIFEST_PATH, &options) {
+        Ok(source) => source,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(file_system_error(error)),
+    };
+    let mut bytes = Vec::new();
+    source.read_to_end(&mut bytes).map_err(file_system_error)?;
+    let manifest: ArtifactManifest = serde_json::from_slice(&bytes).map_err(|error| {
+        validation_error(format!("invalid generated-artifact manifest: {error}"))
+    })?;
+    if !matches!(
+        manifest.schema_version,
+        LEGACY_MANIFEST_SCHEMA_VERSION | MANIFEST_SCHEMA_VERSION
+    ) {
+        return Err(validation_error(format!(
+            "unsupported generated-artifact manifest schema version {}",
+            manifest.schema_version
+        )));
+    }
+    let mut paths_by_case_key = BTreeMap::<String, String>::new();
+    let mut validated = Vec::with_capacity(manifest.artifacts.len());
+    for path in manifest.artifacts {
+        if is_reserved_internal_path(&path) {
+            return Err(validation_error(
+                "generated-artifact manifest cannot list Morphir generation state".to_owned(),
+            ));
+        }
+        let (relative_path, display_path) = validate_path(&path)?;
+        let case_key = portable_path_key(&display_path);
+        if paths_by_case_key
+            .insert(case_key, display_path.clone())
+            .is_some()
+        {
+            return Err(validation_error(format!(
+                "duplicate path '{display_path}' in generated-artifact manifest"
+            )));
+        }
+        validated.push(ValidatedRemoval {
+            relative_path,
+            display_path,
+        });
+    }
+    let mut directory_keys = BTreeMap::<String, String>::new();
+    let mut created_directories = Vec::with_capacity(manifest.created_directories.len());
+    for path in manifest.created_directories {
+        if is_reserved_internal_path(&path) {
+            return Err(validation_error(
+                "generated-artifact manifest cannot own Morphir generation state".to_owned(),
+            ));
+        }
+        let (relative_path, display_path) = validate_path(&path)?;
+        let case_key = portable_path_key(&display_path);
+        if directory_keys
+            .insert(case_key, display_path.clone())
+            .is_some()
+        {
+            return Err(validation_error(format!(
+                "duplicate directory '{display_path}' in generated-artifact manifest"
+            )));
+        }
+        if !validated
+            .iter()
+            .any(|artifact| portable_path_is_descendant(&artifact.relative_path, &relative_path))
+        {
+            return Err(validation_error(format!(
+                "generated-artifact directory '{display_path}' is not an artifact parent"
+            )));
+        }
+        created_directories.push(ValidatedRemoval {
+            relative_path,
+            display_path,
+        });
+    }
+    created_directories.sort_by(|left, right| left.display_path.cmp(&right.display_path));
+    Ok(Some(LoadedManifest {
+        artifacts: validated,
+        created_directories,
+    }))
+}
+
+fn reject_unmanaged_artifact_replacements(
+    root: &Dir,
+    artifacts: &[ValidatedArtifact],
+    managed: &[ValidatedRemoval],
+) -> Result<(), CliError> {
+    for artifact in artifacts {
+        if managed.iter().any(|owned| {
+            portable_path_is_descendant(&artifact.relative_path, &owned.relative_path)
+                || portable_path_is_descendant(&owned.relative_path, &artifact.relative_path)
+        }) || managed_destination_matches(root, &artifact.relative_path, managed)
+            .map_err(file_system_error)?
+        {
+            continue;
+        }
+        let parent_path = artifact.relative_path.parent().unwrap_or(Path::new(""));
+        let Some(parent) =
+            open_existing_directory_path(root, parent_path).map_err(file_system_error)?
+        else {
+            continue;
+        };
+        let leaf = artifact
+            .relative_path
+            .file_name()
+            .expect("validated artifact path has a leaf");
+        match validate_leaf(&parent, leaf).map_err(file_system_error)? {
+            LeafState::Absent => {}
+            LeafState::Regular => {
+                return Err(validation_error(format!(
+                    "artifact destination '{}' already exists but is not managed by Morphir",
+                    artifact.display_path
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn managed_destination_matches(
+    root: &Dir,
+    destination: &Path,
+    managed: &[ValidatedRemoval],
+) -> io::Result<bool> {
+    if managed
+        .iter()
+        .any(|owned| owned.relative_path == destination)
+    {
+        return Ok(true);
+    }
+    let Some(destination_handle) = existing_regular_file_handle(root, destination)? else {
+        return Ok(false);
+    };
+    for owned in managed
+        .iter()
+        .filter(|owned| portable_paths_equal(&owned.relative_path, destination))
+    {
+        if existing_regular_file_handle(root, &owned.relative_path)?
+            .is_some_and(|owned_handle| owned_handle == destination_handle)
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn existing_regular_file_handle(root: &Dir, path: &Path) -> io::Result<Option<Handle>> {
+    let Some(parent) = open_existing_directory_path(root, path.parent().unwrap_or(Path::new("")))?
+    else {
+        return Ok(None);
+    };
+    let leaf = path.file_name().expect("validated artifact has a leaf");
+    match validate_leaf(&parent, leaf)? {
+        LeafState::Absent => Ok(None),
+        LeafState::Regular => {
+            let mut options = OpenOptions::new();
+            options.read(true).follow(FollowSymlinks::No);
+            let file = parent.open_with(leaf, &options)?.into_std();
+            Handle::from_file(file).map(Some)
+        }
+    }
+}
+
+fn reject_unowned_directory_replacements(
+    artifacts: &[ValidatedArtifact],
+    managed: &[ValidatedRemoval],
+    managed_directories: &[ValidatedRemoval],
+) -> Result<(), CliError> {
+    let managed_directory_keys = managed_directories
+        .iter()
+        .map(|directory| portable_path_components(&directory.relative_path))
+        .collect::<BTreeSet<_>>();
+    for artifact in artifacts {
+        for owned in managed.iter().filter(|owned| {
+            portable_path_is_descendant(&owned.relative_path, &artifact.relative_path)
+        }) {
+            let mut candidate = owned.relative_path.parent();
+            while let Some(directory) = candidate {
+                if !portable_paths_equal(directory, &artifact.relative_path)
+                    && !portable_path_is_descendant(directory, &artifact.relative_path)
+                {
+                    break;
+                }
+                if !managed_directory_keys.contains(&portable_path_components(directory)) {
+                    return Err(validation_error(format!(
+                        "cannot replace directory '{}' with an artifact because its directory ownership is not recorded by Morphir",
+                        artifact.display_path
+                    )));
+                }
+                if portable_paths_equal(directory, &artifact.relative_path) {
+                    break;
+                }
+                candidate = directory.parent();
+            }
+        }
+    }
+    Ok(())
+}
+
+fn manifest_bytes(
+    paths: &[String],
+    created_directories: &[ValidatedRemoval],
+) -> Result<Vec<u8>, serde_json::Error> {
+    let mut bytes = serde_json::to_vec_pretty(&ArtifactManifest {
+        schema_version: MANIFEST_SCHEMA_VERSION,
+        artifacts: paths.to_vec(),
+        created_directories: created_directories
+            .iter()
+            .map(|directory| directory.display_path.clone())
+            .collect(),
+    })?;
+    bytes.push(b'\n');
+    Ok(bytes)
+}
+
+fn manifest_artifact(
+    paths: &[String],
+    created_directories: &[ValidatedRemoval],
+) -> Result<ValidatedArtifact, CliError> {
+    let bytes = manifest_bytes(paths, created_directories)
+        .map_err(|error| validation_error(format!("cannot encode artifact manifest: {error}")))?;
+    Ok(ValidatedArtifact {
+        relative_path: PathBuf::from(MANIFEST_PATH),
+        display_path: MANIFEST_PATH.to_owned(),
+        bytes,
+        internal: true,
+    })
+}
+
+fn validate_complete_set(artifacts: &[Artifact]) -> Result<Vec<ValidatedArtifact>, CliError> {
+    let mut paths_by_case_key = BTreeMap::<String, String>::new();
+    let mut parents_by_portable_key = BTreeMap::<Vec<String>, String>::new();
+    let mut validated = Vec::with_capacity(artifacts.len());
+
+    for artifact in artifacts {
+        if is_reserved_internal_path(&artifact.path) {
+            return Err(validation_error(format!(
+                "artifact path '{}' is reserved for Morphir generation state",
+                artifact.path
+            )));
+        }
+        let (relative_path, display_path) = validate_path(&artifact.path)?;
+        let case_key = portable_path_key(&display_path);
+        if let Some(previous) = paths_by_case_key.get(&case_key) {
+            let problem = if previous == &display_path {
+                format!("duplicate artifact path '{display_path}'")
+            } else {
+                format!("case-colliding artifact paths '{previous}' and '{display_path}'")
+            };
+            return Err(validation_error(problem));
+        }
+        paths_by_case_key.insert(case_key, display_path.clone());
+
+        let segments = display_path.split('/').collect::<Vec<_>>();
+        let mut parent_key = Vec::with_capacity(segments.len().saturating_sub(1));
+        let mut parent_segments = Vec::with_capacity(segments.len().saturating_sub(1));
+        for segment in segments.iter().take(segments.len().saturating_sub(1)) {
+            parent_key.push(portable_path_key(segment));
+            parent_segments.push(*segment);
+            let parent_path = parent_segments.join("/");
+            if let Some(previous) = parents_by_portable_key.get(&parent_key)
+                && previous != &parent_path
+            {
+                return Err(validation_error(format!(
+                    "case-colliding artifact parent directories '{previous}' and '{parent_path}'"
+                )));
+            }
+            parents_by_portable_key.insert(parent_key.clone(), parent_path);
+        }
+
+        let bytes = if artifact.binary {
+            STANDARD.decode(&artifact.content).map_err(|error| {
+                validation_error(format!(
+                    "artifact '{display_path}' contains invalid Base64: {error}"
+                ))
+            })?
+        } else {
+            artifact.content.as_bytes().to_vec()
+        };
+        validated.push(ValidatedArtifact {
+            relative_path,
+            display_path,
+            bytes,
+            internal: false,
+        });
+    }
+
+    for (case_key, display_path) in &paths_by_case_key {
+        for (separator, _) in case_key.match_indices('/') {
+            let ancestor = &case_key[..separator];
+            if let Some(ancestor_path) = paths_by_case_key.get(ancestor) {
+                return Err(validation_error(format!(
+                    "artifact path prefix conflict between '{ancestor_path}' and '{display_path}'"
+                )));
+            }
+        }
+    }
+
+    validated.sort_by(|left, right| left.display_path.cmp(&right.display_path));
+    Ok(validated)
+}
+
+fn portable_path_key(path: &str) -> String {
+    path.nfkc().case_fold().nfc().collect()
+}
+
+fn portable_path_components(path: &Path) -> Vec<String> {
+    path.components()
+        .filter_map(|component| match component {
+            Component::Normal(segment) => Some(portable_path_key(&segment.to_string_lossy())),
+            _ => None,
+        })
+        .collect()
+}
+
+fn portable_paths_equal(left: &Path, right: &Path) -> bool {
+    portable_path_components(left) == portable_path_components(right)
+}
+
+fn portable_path_is_descendant(path: &Path, ancestor: &Path) -> bool {
+    let path = portable_path_components(path);
+    let ancestor = portable_path_components(ancestor);
+    path.len() > ancestor.len() && path.starts_with(&ancestor)
+}
+
+fn is_reserved_internal_path(path: &str) -> bool {
+    is_reserved_manifest_path(path)
+        || is_reserved_transaction_path(path)
+        || is_reserved_publication_lock_path(path)
+}
+
+fn is_reserved_manifest_path(path: &str) -> bool {
+    let manifest_key = portable_path_key(MANIFEST_PATH);
+    path.split('/')
+        .any(|segment| portable_path_key(segment) == manifest_key)
+}
+
+fn is_reserved_transaction_path(path: &str) -> bool {
+    path.split('/').next().is_some_and(|root_segment| {
+        portable_path_key(root_segment).starts_with(&portable_path_key(TRANSACTION_PATH_PREFIX))
+    })
+}
+
+fn is_reserved_publication_lock_path(path: &str) -> bool {
+    let prefix = portable_path_key(PUBLICATION_LOCK_PREFIX);
+    let internal = portable_path_key(INTERNAL_PUBLICATION_LOCK_PATH);
+    path.split('/').any(|segment| {
+        let segment = portable_path_key(segment);
+        segment == internal || segment.starts_with(&prefix)
+    })
+}
+
+fn validate_path(path: &str) -> Result<(PathBuf, String), CliError> {
+    let raw_segments = path.split('/').collect::<Vec<_>>();
+    if raw_segments
+        .iter()
+        .any(|segment| segment.is_empty() || matches!(*segment, "." | ".."))
+        || has_windows_drive_prefix(path)
+        || path.contains('\\')
+    {
+        return Err(invalid_path(path));
+    }
+
+    let mut segments = Vec::with_capacity(raw_segments.len());
+    for segment in raw_segments {
+        if !portable_segment_is_valid(segment) {
+            return Err(invalid_path(path));
+        }
+        let mut components = Path::new(segment).components();
+        match (components.next(), components.next()) {
+            (Some(Component::Normal(normal)), None) => segments.push(normal.to_owned()),
+            _ => return Err(invalid_path(path)),
+        }
+    }
+
+    let relative_path = segments.iter().collect::<PathBuf>();
+    let display_path = segments
+        .iter()
+        .map(|segment| segment.to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("/");
+    Ok((relative_path, display_path))
+}
+
+fn portable_segment_is_valid(segment: &str) -> bool {
+    if segment
+        .chars()
+        .any(|character| character.is_control() || r#"<>:"/\|?*"#.contains(character))
+        || segment.ends_with(['.', ' '])
+    {
+        return false;
+    }
+    let stem = segment.split('.').next().unwrap_or(segment);
+    let upper = stem.to_ascii_uppercase();
+    !matches!(
+        upper.as_str(),
+        "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$"
+    ) && !windows_numbered_device(&upper, "COM")
+        && !windows_numbered_device(&upper, "LPT")
+}
+
+fn windows_numbered_device(segment: &str, prefix: &str) -> bool {
+    segment.strip_prefix(prefix).is_some_and(|suffix| {
+        let mut characters = suffix.chars();
+        matches!(characters.next(), Some('1'..='9' | '¹' | '²' | '³'))
+            && characters.next().is_none()
+    })
+}
+
+fn has_windows_drive_prefix(path: &str) -> bool {
+    let bytes = path.as_bytes();
+    bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':'
+}
+
+fn invalid_path(path: &str) -> CliError {
+    validation_error(format!(
+        "artifact path '{path}' must contain only non-empty relative path segments"
+    ))
+}
+
+fn validation_error(message: String) -> CliError {
+    CliError::Validation { message }
+}
+
+fn file_system_error(error: io::Error) -> CliError {
+    CliError::FileSystem { error }
+}
+
+fn committed_error(error: io::Error, state: String) -> CliError {
+    CliError::ArtifactPublication {
+        message: format!("outputs committed; {state}"),
+        error,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use morphir_extension_sdk::Artifact;
+    use std::fs;
+    use std::io;
+    use std::sync::{Arc, Mutex, mpsc};
+    use std::thread;
+    use std::time::Duration;
+    use tempfile::tempdir;
+
+    fn text(path: &str, content: &str) -> Artifact {
+        Artifact {
+            path: path.to_owned(),
+            content: content.to_owned(),
+            binary: false,
+        }
+    }
+
+    fn binary(path: &str, content: &str) -> Artifact {
+        Artifact {
+            path: path.to_owned(),
+            content: content.to_owned(),
+            binary: true,
+        }
+    }
+
+    #[test]
+    fn installation_moves_the_staged_file_into_place() {
+        let root = tempdir().unwrap();
+        let staged = root.path().join("staged");
+        let destination = root.path().join("destination");
+        fs::create_dir(&staged).unwrap();
+        fs::create_dir(&destination).unwrap();
+        fs::write(staged.join("schema.avsc"), "generated").unwrap();
+        let transaction = Dir::open_ambient_dir(root.path(), cap_std::ambient_authority()).unwrap();
+        let destination =
+            Dir::open_ambient_dir(&destination, cap_std::ambient_authority()).unwrap();
+
+        install_staged_file(
+            &transaction,
+            Path::new("staged/schema.avsc"),
+            &destination,
+            OsStr::new("schema.avsc"),
+        )
+        .unwrap();
+
+        assert!(!staged.join("schema.avsc").exists());
+        assert_eq!(
+            destination.read_to_string("schema.avsc").unwrap(),
+            "generated"
+        );
+    }
+
+    #[test]
+    fn publication_lock_does_not_leave_an_internal_artifact() {
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("generated");
+
+        ArtifactWriter::new(&output)
+            .write_all(&[text("schema.avsc", "generated")])
+            .unwrap();
+
+        assert_eq!(
+            fs::read_dir(&output)
+                .unwrap()
+                .map(|entry| entry.unwrap().file_name())
+                .collect::<BTreeSet<_>>(),
+            BTreeSet::from([OsString::from(MANIFEST_PATH), OsString::from("schema.avsc"),])
+        );
+    }
+
+    #[test]
+    fn missing_output_root_lexically_normalizes_parent_components() {
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("new/../generated");
+
+        let normalized = normalize_existing_output_root(&output).unwrap();
+
+        assert_eq!(
+            normalized,
+            parent.path().canonicalize().unwrap().join("generated")
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn existing_writable_output_does_not_require_a_writable_parent_for_locking() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("generated");
+        fs::create_dir(&output).unwrap();
+        fs::set_permissions(&output, fs::Permissions::from_mode(0o700)).unwrap();
+        fs::set_permissions(parent.path(), fs::Permissions::from_mode(0o500)).unwrap();
+
+        let result = ArtifactWriter::new(&output).write_all(&[text("schema.avsc", "generated")]);
+
+        fs::set_permissions(parent.path(), fs::Permissions::from_mode(0o700)).unwrap();
+        result.unwrap();
+        assert_eq!(
+            fs::read_to_string(output.join("schema.avsc")).unwrap(),
+            "generated"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn existing_writable_output_allows_a_search_only_ancestor() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let parent = tempdir().unwrap();
+        let search_only = parent.path().join("search-only");
+        let writable = search_only.join("writable");
+        let output = writable.join("generated");
+        fs::create_dir_all(&output).unwrap();
+        fs::set_permissions(&search_only, fs::Permissions::from_mode(0o111)).unwrap();
+
+        let result = ArtifactWriter::new(&output).write_all(&[text("schema.avsc", "generated")]);
+
+        fs::set_permissions(&search_only, fs::Permissions::from_mode(0o700)).unwrap();
+        result.unwrap();
+        assert_eq!(
+            fs::read_to_string(output.join("schema.avsc")).unwrap(),
+            "generated"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn regular_file_lock_falls_back_inside_an_existing_output_with_read_only_parent() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("generated");
+        fs::create_dir(&output).unwrap();
+        fs::set_permissions(&output, fs::Permissions::from_mode(0o700)).unwrap();
+        let acquired_parent = acquire_output_root(parent.path(), &NOOP_HOOKS).unwrap();
+        fs::set_permissions(parent.path(), fs::Permissions::from_mode(0o500)).unwrap();
+
+        let result =
+            acquire_file_publication(acquired_parent, OsString::from("generated"), &NOOP_HOOKS);
+
+        fs::set_permissions(parent.path(), fs::Permissions::from_mode(0o700)).unwrap();
+        let acquired = result.unwrap();
+        assert!(output.join(INTERNAL_PUBLICATION_LOCK_PATH).is_file());
+        drop(acquired);
+    }
+
+    struct OutputAppearsBeforeLockSelection;
+
+    impl ArtifactHooks for OutputAppearsBeforeLockSelection {
+        fn before_output_component_open(&self, parent: &Dir, leaf: &OsStr) -> io::Result<()> {
+            let lock_path = publication_lock_path(leaf);
+            create_or_open_publication_lock(parent, &lock_path)?;
+            match parent.create_dir(leaf) {
+                Ok(()) => Ok(()),
+                Err(error) if error.kind() == io::ErrorKind::AlreadyExists => Ok(()),
+                Err(error) => Err(error),
+            }
+        }
+    }
+
+    #[test]
+    fn regular_file_lock_does_not_change_when_output_appears_during_acquisition() {
+        let parent = tempdir().unwrap();
+        let acquired_parent = acquire_output_root(parent.path(), &NOOP_HOOKS).unwrap();
+        let output_leaf = OsString::from("generated");
+        let lock_path = publication_lock_path(&output_leaf);
+
+        let acquired = acquire_file_publication(
+            acquired_parent,
+            output_leaf,
+            &OutputAppearsBeforeLockSelection,
+        )
+        .unwrap();
+
+        assert!(parent.path().join(lock_path).is_file());
+        assert!(
+            !parent
+                .path()
+                .join("generated")
+                .join(INTERNAL_PUBLICATION_LOCK_PATH)
+                .exists()
+        );
+        drop(acquired);
+    }
+
+    #[test]
+    fn regular_file_lock_for_an_existing_output_is_independent_of_parent_write_access() {
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("generated");
+        fs::create_dir(&output).unwrap();
+        let acquired_parent = acquire_output_root(parent.path(), &NOOP_HOOKS).unwrap();
+
+        let acquired =
+            acquire_file_publication(acquired_parent, OsString::from("generated"), &NOOP_HOOKS)
+                .unwrap();
+
+        assert!(output.join(INTERNAL_PUBLICATION_LOCK_PATH).is_file());
+        assert!(
+            !parent
+                .path()
+                .join(publication_lock_path(OsStr::new("generated")))
+                .exists()
+        );
+        drop(acquired);
+    }
+
+    #[test]
+    fn regular_file_locks_serialize_nested_output_roots() {
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("generated");
+        let nested = output.join("child/output");
+        fs::create_dir_all(&nested).unwrap();
+
+        let first =
+            acquire_file_locked_publication_from(parent.path(), &output, &NOOP_HOOKS).unwrap();
+        let (finished_tx, finished_rx) = mpsc::sync_channel(1);
+        let boundary = parent.path().to_path_buf();
+        let second = thread::spawn(move || {
+            let acquired = acquire_file_locked_publication_from(&boundary, &nested, &NOOP_HOOKS);
+            finished_tx.send(acquired.map(|_| ())).unwrap();
+        });
+
+        assert!(
+            finished_rx
+                .recv_timeout(Duration::from_millis(100))
+                .is_err(),
+            "a deeply nested output writer must wait for its ancestor publication lock"
+        );
+
+        drop(first);
+        finished_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("nested writer should finish after the ancestor lock is released")
+            .unwrap();
+        second.join().unwrap();
+    }
+
+    #[test]
+    fn regular_file_lock_acquires_a_filesystem_root_once() {
+        let root = tempdir().unwrap();
+        let root_path = root.path().to_path_buf();
+        let (finished_tx, finished_rx) = mpsc::sync_channel(1);
+        let worker = thread::spawn(move || {
+            let acquired =
+                acquire_file_locked_publication_from(&root_path, &root_path, &NOOP_HOOKS);
+            finished_tx.send(acquired.map(|_| ())).unwrap();
+        });
+
+        finished_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("filesystem-root acquisition must not lock the same file twice")
+            .unwrap();
+        worker.join().unwrap();
+    }
+
+    #[test]
+    fn regular_file_locks_serialize_filesystem_root_and_descendant() {
+        let root = tempdir().unwrap();
+        let nested = root.path().join("generated/child");
+        fs::create_dir_all(&nested).unwrap();
+
+        let first =
+            acquire_file_locked_publication_from(root.path(), root.path(), &NOOP_HOOKS).unwrap();
+        let (finished_tx, finished_rx) = mpsc::sync_channel(1);
+        let boundary = root.path().to_path_buf();
+        let second = thread::spawn(move || {
+            let acquired = acquire_file_locked_publication_from(&boundary, &nested, &NOOP_HOOKS);
+            finished_tx.send(acquired.map(|_| ())).unwrap();
+        });
+
+        assert!(
+            finished_rx
+                .recv_timeout(Duration::from_millis(100))
+                .is_err(),
+            "a descendant writer must wait for the filesystem-root publication lock"
+        );
+
+        drop(first);
+        finished_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("descendant writer should finish after the root lock is released")
+            .unwrap();
+        second.join().unwrap();
+    }
+
+    #[test]
+    fn abandoned_regular_file_lock_chain_removes_created_ancestors() {
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("new/child/output");
+        let AcquiredPublication { root, lock } =
+            acquire_file_locked_publication_from(parent.path(), &output, &NOOP_HOOKS).unwrap();
+
+        abandon_publication(root, lock);
+
+        assert!(!parent.path().join("new").exists());
+    }
+
+    #[test]
+    fn abandoned_regular_file_publication_removes_lock_before_new_ancestors() {
+        let parent = tempdir().unwrap();
+        let new_parent = parent.path().join("new/nested");
+        let acquired_parent = acquire_output_root(&new_parent, &NOOP_HOOKS).unwrap();
+        let output_leaf = OsString::from("generated");
+        let lock_path = new_parent.join(publication_lock_path(&output_leaf));
+        let AcquiredPublication { root, lock } =
+            acquire_file_publication(acquired_parent, output_leaf, &NOOP_HOOKS).unwrap();
+
+        assert!(lock_path.is_file());
+
+        abandon_publication(root, lock);
+
+        assert!(!parent.path().join("new").exists());
+    }
+
+    #[test]
+    fn portable_descendant_relationships_fold_case_and_unicode() {
+        assert!(portable_path_is_descendant(
+            Path::new("SCHEMA/nested"),
+            Path::new("schema")
+        ));
+        assert!(portable_path_is_descendant(
+            Path::new("e\u{301}/nested"),
+            Path::new("É")
+        ));
+        assert!(portable_paths_equal(
+            Path::new("SCHEMA"),
+            Path::new("schema")
+        ));
+        assert!(!portable_path_is_descendant(
+            Path::new("schemas/nested"),
+            Path::new("schema")
+        ));
+    }
+
+    #[test]
+    fn rejects_unsafe_paths_before_writing() {
+        for path in [
+            "/absolute",
+            "C:/absolute",
+            "../escape",
+            "a/../escape",
+            "",
+            "a//empty",
+            "trailing/",
+            ".",
+            "a/./normalized",
+            "CON.avsc",
+            "nested/aux.json",
+            "CONIN$",
+            "conout$.txt",
+            "COM¹.log",
+            "lpt²",
+            "COM³",
+            "name:stream.avsc",
+            "less<than.avsc",
+            "greater>than.avsc",
+            "quote\"name.avsc",
+            "pipe|name.avsc",
+            "question?.avsc",
+            "star*.avsc",
+            "control\u{1f}.avsc",
+            "delete\u{7f}.avsc",
+            "trailing-dot./file.avsc",
+            "trailing-space /file.avsc",
+        ] {
+            let output = tempdir().unwrap();
+
+            let error = ArtifactWriter::new(output.path())
+                .write_all(&[text(path, "unsafe")])
+                .unwrap_err();
+
+            assert!(
+                error.to_string().contains("path"),
+                "unexpected error for {path:?}: {error}"
+            );
+            assert!(output.path().read_dir().unwrap().next().is_none());
+        }
+    }
+
+    #[test]
+    fn rejects_existing_non_regular_destination_without_touching_its_children() {
+        let output = tempdir().unwrap();
+        fs::create_dir(output.path().join("schemas")).unwrap();
+        fs::write(output.path().join("schemas/keep.txt"), "keep").unwrap();
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&[text("schemas", "replacement")])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("File system"));
+        assert_eq!(
+            fs::read_to_string(output.path().join("schemas/keep.txt")).unwrap(),
+            "keep"
+        );
+    }
+
+    #[test]
+    fn rejects_duplicate_paths_before_writing() {
+        let output = tempdir().unwrap();
+        let artifacts = vec![text("same.avsc", "one"), text("same.avsc", "two")];
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&artifacts)
+            .unwrap_err();
+
+        assert!(error.to_string().contains("duplicate"));
+        assert!(output.path().read_dir().unwrap().next().is_none());
+    }
+
+    #[test]
+    fn rejects_descendants_of_the_reserved_manifest_before_writing() {
+        let output = tempdir().unwrap();
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&[text(".MORPHIR-GENERATED-ARTIFACTS.JSON/nested.avsc", "{}")])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("reserved"));
+        assert!(output.path().read_dir().unwrap().next().is_none());
+    }
+
+    #[test]
+    fn rejects_the_reserved_manifest_at_any_depth() {
+        let output = tempdir().unwrap();
+        fs::create_dir(output.path().join("child")).unwrap();
+        fs::write(output.path().join("child/keep.txt"), "user-owned").unwrap();
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&[text(
+                "child/.MORPHIR-GENERATED-ARTIFACTS.JSON",
+                r#"{"schemaVersion":1,"artifacts":["keep.txt"]}"#,
+            )])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("reserved"));
+        assert_eq!(
+            fs::read_to_string(output.path().join("child/keep.txt")).unwrap(),
+            "user-owned"
+        );
+    }
+
+    #[test]
+    fn rejects_the_reserved_transaction_directory_namespace_before_writing() {
+        let output = tempdir().unwrap();
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&[text(".MORPHIR-ARTIFACTS-provider/schema.avsc", "{}")])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("reserved"));
+        assert!(output.path().read_dir().unwrap().next().is_none());
+    }
+
+    #[test]
+    fn rejects_the_reserved_publication_lock_namespace_at_any_depth() {
+        let output = tempdir().unwrap();
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&[text(
+                "nested/.MORPHIR-ARTIFACT-PUBLICATION-provider.lock",
+                "{}",
+            )])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("reserved"));
+        assert!(output.path().read_dir().unwrap().next().is_none());
+    }
+
+    #[test]
+    fn rejects_case_collisions_before_writing() {
+        let output = tempdir().unwrap();
+        let artifacts = vec![text("Foo.avsc", "{}"), text("foo.avsc", "{}")];
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&artifacts)
+            .unwrap_err();
+
+        assert!(error.to_string().contains("case-colliding"));
+        assert!(output.path().read_dir().unwrap().next().is_none());
+    }
+
+    #[test]
+    fn rejects_case_colliding_artifact_parent_directories_before_writing() {
+        let output = tempdir().unwrap();
+        fs::create_dir(output.path().join("foo")).unwrap();
+        let artifacts = vec![text("foo/a.avsc", "{}"), text("FOO/b.avsc", "{}")];
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&artifacts)
+            .unwrap_err();
+
+        assert!(error.to_string().contains("case-colliding"));
+        assert!(output.path().join("foo").is_dir());
+        assert!(
+            output
+                .path()
+                .join("foo")
+                .read_dir()
+                .unwrap()
+                .next()
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn publishes_to_an_existing_output_ending_in_parent_component() {
+        let output = tempdir().unwrap();
+        fs::create_dir(output.path().join("child")).unwrap();
+        let parent_spelling = output.path().join("child").join("..");
+
+        ArtifactWriter::new(&parent_spelling)
+            .write_all(&[text("schema.avsc", "{}")])
+            .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema.avsc")).unwrap(),
+            "{}"
+        );
+    }
+
+    #[test]
+    fn filesystem_root_is_its_own_publication_lock_parent() {
+        let output = tempdir().unwrap();
+        let root = output
+            .path()
+            .ancestors()
+            .last()
+            .expect("an absolute temporary path has a filesystem root");
+
+        let (parent, leaf) = publication_parent_and_leaf(root).unwrap();
+
+        assert_eq!(parent, root);
+        assert_eq!(leaf, OsStr::new("."));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn filesystem_root_can_be_acquired_without_a_final_component() {
+        let output = tempdir().unwrap();
+        let root = output
+            .path()
+            .ancestors()
+            .last()
+            .expect("an absolute temporary path has a filesystem root");
+
+        let publication = acquire_publication(root, &NOOP_HOOKS).unwrap();
+
+        assert!(directory_matches_path(root, &publication.root.directory).unwrap());
+    }
+
+    #[test]
+    fn rejects_unicode_case_and_normalization_collisions_before_writing() {
+        for artifacts in [
+            vec![text("Ä.avsc", "{}"), text("ä.avsc", "{}")],
+            vec![text("é.avsc", "{}"), text("e\u{301}.avsc", "{}")],
+        ] {
+            let output = tempdir().unwrap();
+
+            let error = ArtifactWriter::new(output.path())
+                .write_all(&artifacts)
+                .unwrap_err();
+
+            assert!(error.to_string().contains("colliding"));
+            assert!(output.path().read_dir().unwrap().next().is_none());
+        }
+    }
+
+    #[test]
+    fn rejects_unicode_collisions_in_the_previous_manifest() {
+        let output = tempdir().unwrap();
+        fs::write(
+            output.path().join(MANIFEST_PATH),
+            r#"{"schemaVersion":1,"artifacts":["é.avsc","e\u0301.avsc"]}"#,
+        )
+        .unwrap();
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&[])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("duplicate path"));
+    }
+
+    #[test]
+    fn rejects_file_directory_prefix_conflicts_before_writing() {
+        let output = tempdir().unwrap();
+        let artifacts = vec![text("schema", "file"), text("schema/nested.avsc", "nested")];
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&artifacts)
+            .unwrap_err();
+
+        assert!(error.to_string().contains("prefix conflict"));
+        assert!(output.path().read_dir().unwrap().next().is_none());
+    }
+
+    #[test]
+    fn rejects_prefix_conflicts_even_when_an_unrelated_path_sorts_between_them() {
+        let output = tempdir().unwrap();
+        let artifacts = vec![
+            text("a", "file"),
+            text("a-elsewhere", "other"),
+            text("a/nested.avsc", "nested"),
+        ];
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&artifacts)
+            .unwrap_err();
+
+        assert!(error.to_string().contains("prefix conflict"));
+        assert!(output.path().read_dir().unwrap().next().is_none());
+    }
+
+    #[test]
+    fn writes_text_and_strict_base64_binary_then_returns_sorted_paths() {
+        let output = tempdir().unwrap();
+        let artifacts = vec![
+            binary("z/data.bin", "AP+A"),
+            text("a/schema.avsc", "{\"type\":\"record\"}"),
+        ];
+
+        let paths = ArtifactWriter::new(output.path())
+            .write_all(&artifacts)
+            .unwrap();
+
+        assert_eq!(paths, ["a/schema.avsc", "z/data.bin"]);
+        assert_eq!(
+            fs::read(output.path().join("a/schema.avsc")).unwrap(),
+            b"{\"type\":\"record\"}"
+        );
+        assert_eq!(
+            fs::read(output.path().join("z/data.bin")).unwrap(),
+            [0, 255, 128]
+        );
+    }
+
+    #[test]
+    fn reconciles_the_previous_generated_set_without_removing_user_files() {
+        let output = tempdir().unwrap();
+        fs::write(output.path().join("keep.txt"), "user-owned").unwrap();
+        let writer = ArtifactWriter::new(output.path());
+
+        writer
+            .write_all(&[
+                text("schemas/obsolete.avsc", "old"),
+                text("schemas/current.avsc", "first"),
+            ])
+            .unwrap();
+        let paths = writer
+            .write_all(&[text("schemas/current.avsc", "second")])
+            .unwrap();
+
+        assert_eq!(paths, ["schemas/current.avsc"]);
+        assert!(!output.path().join("schemas/obsolete.avsc").exists());
+        assert_eq!(
+            fs::read_to_string(output.path().join("schemas/current.avsc")).unwrap(),
+            "second"
+        );
+        assert_eq!(
+            fs::read_to_string(output.path().join("keep.txt")).unwrap(),
+            "user-owned"
+        );
+    }
+
+    #[test]
+    fn refuses_to_replace_an_unmanaged_regular_file() {
+        let output = tempdir().unwrap();
+        fs::write(output.path().join("schema.avsc"), "user-owned").unwrap();
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&[text("schema.avsc", "generated")])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("not managed"), "{error}");
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema.avsc")).unwrap(),
+            "user-owned"
+        );
+        assert!(transaction_directory(output.path()).is_none());
+    }
+
+    #[test]
+    fn preserves_an_unmanaged_portable_case_alias() {
+        let output = tempdir().unwrap();
+        let writer = ArtifactWriter::new(output.path());
+        writer.write_all(&[text("schema.avsc", "managed")]).unwrap();
+        fs::write(output.path().join("SCHEMA.AVSC"), "user-owned").unwrap();
+
+        if fs::read_to_string(output.path().join("schema.avsc")).unwrap() != "managed" {
+            // The filesystem folded the second spelling onto the managed file,
+            // so it cannot model two distinct directory entries for this test.
+            return;
+        }
+
+        let error = writer
+            .write_all(&[text("SCHEMA.AVSC", "replacement")])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("not managed"), "{error}");
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema.avsc")).unwrap(),
+            "managed"
+        );
+        assert_eq!(
+            fs::read_to_string(output.path().join("SCHEMA.AVSC")).unwrap(),
+            "user-owned"
+        );
+        assert!(transaction_directory(output.path()).is_none());
+    }
+
+    #[test]
+    fn reconciles_a_managed_file_into_a_directory() {
+        let output = tempdir().unwrap();
+        let writer = ArtifactWriter::new(output.path());
+
+        writer.write_all(&[text("schema", "old")]).unwrap();
+        let paths = writer
+            .write_all(&[text("schema/item.avsc", "new")])
+            .unwrap();
+
+        assert_eq!(paths, ["schema/item.avsc"]);
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema/item.avsc")).unwrap(),
+            "new"
+        );
+    }
+
+    #[test]
+    fn reconciles_a_managed_directory_into_a_file() {
+        let output = tempdir().unwrap();
+        let writer = ArtifactWriter::new(output.path());
+
+        writer
+            .write_all(&[text("schema/item.avsc", "old")])
+            .unwrap();
+        let paths = writer.write_all(&[text("schema", "new")]).unwrap();
+
+        assert_eq!(paths, ["schema"]);
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema")).unwrap(),
+            "new"
+        );
+    }
+
+    #[test]
+    fn rejects_a_legacy_directory_to_file_transition_without_ownership_evidence() {
+        let output = tempdir().unwrap();
+        fs::create_dir(output.path().join("schema")).unwrap();
+        fs::write(output.path().join("schema/item.avsc"), "old").unwrap();
+        let legacy_manifest = r#"{"schemaVersion":1,"artifacts":["schema/item.avsc"]}"#;
+        fs::write(output.path().join(MANIFEST_PATH), legacy_manifest).unwrap();
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&[text("schema", "new")])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("directory ownership"), "{error}");
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema/item.avsc")).unwrap(),
+            "old"
+        );
+        assert_eq!(
+            fs::read_to_string(output.path().join(MANIFEST_PATH)).unwrap(),
+            legacy_manifest
+        );
+        assert!(transaction_directory(output.path()).is_none());
+    }
+
+    #[test]
+    fn removes_vacated_managed_directories_before_forgetting_them() {
+        let output = tempdir().unwrap();
+        let writer = ArtifactWriter::new(output.path());
+
+        writer
+            .write_all(&[text("nested/item.avsc", "old")])
+            .unwrap();
+        writer.write_all(&[]).unwrap();
+        let paths = writer.write_all(&[text("nested", "new")]).unwrap();
+
+        assert_eq!(paths, ["nested"]);
+        assert_eq!(
+            fs::read_to_string(output.path().join("nested")).unwrap(),
+            "new"
+        );
+    }
+
+    #[test]
+    fn preserves_pre_existing_empty_artifact_parent_directories() {
+        let output = tempdir().unwrap();
+        fs::create_dir(output.path().join("userdir")).unwrap();
+        let writer = ArtifactWriter::new(output.path());
+
+        writer
+            .write_all(&[text("userdir/generated.avsc", "generated")])
+            .unwrap();
+        writer.write_all(&[]).unwrap();
+
+        assert!(output.path().join("userdir").is_dir());
+    }
+
+    #[test]
+    fn removes_vacated_managed_directories_across_portable_case_changes() {
+        let output = tempdir().unwrap();
+        let writer = ArtifactWriter::new(output.path());
+
+        writer
+            .write_all(&[text("schema/item.avsc", "old")])
+            .unwrap();
+        let paths = writer.write_all(&[text("SCHEMA", "new")]).unwrap();
+
+        assert_eq!(paths, ["SCHEMA"]);
+        assert_eq!(
+            fs::read_to_string(output.path().join("SCHEMA")).unwrap(),
+            "new"
+        );
+        assert!(!output.path().join("schema").is_dir());
+    }
+
+    #[test]
+    fn refuses_to_replace_a_directory_containing_user_files() {
+        let output = tempdir().unwrap();
+        let writer = ArtifactWriter::new(output.path());
+
+        writer
+            .write_all(&[text("schema/item.avsc", "managed")])
+            .unwrap();
+        fs::write(output.path().join("schema/keep.txt"), "user-owned").unwrap();
+
+        assert!(writer.write_all(&[text("schema", "new")]).is_err());
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema/item.avsc")).unwrap(),
+            "managed"
+        );
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema/keep.txt")).unwrap(),
+            "user-owned"
+        );
+    }
+
+    #[test]
+    fn failed_file_to_directory_transition_restores_the_managed_file() {
+        let output = tempdir().unwrap();
+        ArtifactWriter::new(output.path())
+            .write_all(&[text("schema", "old")])
+            .unwrap();
+        let ops = FailingOps::on_install(0);
+
+        assert!(
+            ArtifactWriter::with_ops(output.path(), &ops)
+                .write_all(&[text("schema/item.avsc", "new")])
+                .is_err()
+        );
+
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema")).unwrap(),
+            "old"
+        );
+    }
+
+    #[test]
+    fn failed_deep_file_to_directory_transition_restores_the_managed_file() {
+        let output = tempdir().unwrap();
+        ArtifactWriter::new(output.path())
+            .write_all(&[text("schema", "old")])
+            .unwrap();
+        let ops = FailingOps::on_install(1);
+
+        let error = ArtifactWriter::with_ops(output.path(), &ops)
+            .write_all(&[
+                text("schema/nested/item.avsc", "new"),
+                text("z.avsc", "later"),
+            ])
+            .unwrap_err();
+
+        assert!(matches!(error, CliError::FileSystem { .. }));
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema")).unwrap(),
+            "old"
+        );
+        assert!(!output.path().join("schema/nested").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn preparation_failure_prunes_new_directories_before_rollback() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let output = tempdir().unwrap();
+        ArtifactWriter::new(output.path())
+            .write_all(&[text("foo", "old")])
+            .unwrap();
+        fs::create_dir(output.path().join("z-blocked")).unwrap();
+        fs::set_permissions(
+            output.path().join("z-blocked"),
+            fs::Permissions::from_mode(0o500),
+        )
+        .unwrap();
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&[
+                text("foo/nested/item.avsc", "new"),
+                text("z-blocked/missing/item.avsc", "unreachable"),
+            ])
+            .unwrap_err();
+        fs::set_permissions(
+            output.path().join("z-blocked"),
+            fs::Permissions::from_mode(0o700),
+        )
+        .unwrap();
+
+        assert!(matches!(error, CliError::FileSystem { .. }));
+        assert_eq!(
+            fs::read_to_string(output.path().join("foo")).unwrap(),
+            "old"
+        );
+        assert!(transaction_directory(output.path()).is_none());
+    }
+
+    #[test]
+    fn failed_case_changed_file_to_directory_transition_restores_the_managed_file() {
+        let output = tempdir().unwrap();
+        ArtifactWriter::new(output.path())
+            .write_all(&[text("schema", "old")])
+            .unwrap();
+        let ops = FailingOps::on_install(1);
+
+        let error = ArtifactWriter::with_ops(output.path(), &ops)
+            .write_all(&[
+                text("SCHEMA/nested/item.avsc", "new"),
+                text("z.avsc", "later"),
+            ])
+            .unwrap_err();
+
+        assert!(matches!(error, CliError::FileSystem { .. }));
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema")).unwrap(),
+            "old"
+        );
+        assert!(!output.path().join("SCHEMA/nested").exists());
+    }
+
+    #[test]
+    fn failed_publish_restores_a_file_after_pruning_its_vacated_ancestors() {
+        let output = tempdir().unwrap();
+        ArtifactWriter::new(output.path())
+            .write_all(&[text("nested/item.avsc", "old")])
+            .unwrap();
+        let ops = FailingOps::on_install(0);
+
+        assert!(
+            ArtifactWriter::with_ops(output.path(), &ops)
+                .write_all(&[text("replacement.avsc", "new")])
+                .is_err()
+        );
+
+        assert_eq!(
+            fs::read_to_string(output.path().join("nested/item.avsc")).unwrap(),
+            "old"
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_base64_before_writing() {
+        let output = tempdir().unwrap();
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&[binary("bad.bin", "not base64")])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("Base64"));
+        assert!(output.path().read_dir().unwrap().next().is_none());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rejects_a_symlinked_destination_parent() {
+        use std::os::unix::fs::symlink;
+
+        let output = tempdir().unwrap();
+        let outside = tempdir().unwrap();
+        symlink(outside.path(), output.path().join("linked")).unwrap();
+
+        let error = ArtifactWriter::new(output.path())
+            .write_all(&[text("linked/escape.avsc", "escaped")])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("File system"));
+        assert!(!outside.path().join("escape.avsc").exists());
+    }
+
+    #[test]
+    fn failed_publish_restores_the_previous_set() {
+        let output = tempdir().unwrap();
+        fs::write(output.path().join("one.avsc"), "old one").unwrap();
+        fs::write(output.path().join("two.avsc"), "old two").unwrap();
+        let ops = FailingOps::on_install(1);
+        let writer = ArtifactWriter::with_ops(output.path(), &ops);
+
+        assert!(
+            writer
+                .write_all(&[text("one.avsc", "new one"), text("two.avsc", "new two"),])
+                .is_err()
+        );
+
+        assert_eq!(
+            fs::read_to_string(output.path().join("one.avsc")).unwrap(),
+            "old one"
+        );
+        assert_eq!(
+            fs::read_to_string(output.path().join("two.avsc")).unwrap(),
+            "old two"
+        );
+        let visible = fs::read_dir(output.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+        assert_eq!(visible.len(), 2, "temporary paths leaked: {visible:?}");
+    }
+
+    struct FailAfterBackupMove;
+
+    impl ArtifactHooks for FailAfterBackupMove {
+        fn after_backup_move(&self, _index: usize) -> io::Result<()> {
+            Err(io::Error::other("injected post-backup failure"))
+        }
+    }
+
+    #[test]
+    fn failure_after_backup_move_restores_the_moved_destination() {
+        let output = tempdir().unwrap();
+        ArtifactWriter::new(output.path())
+            .write_all(&[text("schema.avsc", "old")])
+            .unwrap();
+        let writer = ArtifactWriter::with_ops(output.path(), &FailAfterBackupMove);
+
+        let error = writer.write_all(&[text("schema.avsc", "new")]).unwrap_err();
+
+        let CliError::FileSystem { error } = error else {
+            panic!("expected a pre-commit file-system failure");
+        };
+        assert!(error.to_string().contains("post-backup"));
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema.avsc")).unwrap(),
+            "old"
+        );
+        assert_eq!(output.path().read_dir().unwrap().count(), 2);
+    }
+
+    struct FailPostCommitRootSync;
+
+    impl ArtifactHooks for FailPostCommitRootSync {
+        fn before_post_commit_root_sync(&self) -> io::Result<()> {
+            Err(io::Error::other("injected root sync failure"))
+        }
+    }
+
+    #[test]
+    fn post_commit_root_sync_failure_reports_committed_outputs_and_retained_recovery() {
+        let output = tempdir().unwrap();
+        let writer = ArtifactWriter::with_ops(output.path(), &FailPostCommitRootSync);
+
+        let error = writer
+            .write_all(&[text("schema.avsc", "generated")])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("outputs committed"));
+        assert!(error.to_string().contains("transaction retained"));
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema.avsc")).unwrap(),
+            "generated"
+        );
+        assert!(transaction_directory(output.path()).is_some());
+    }
+
+    struct FailPostCommitCleanup;
+
+    impl ArtifactHooks for FailPostCommitCleanup {
+        fn before_post_commit_cleanup(&self) -> io::Result<()> {
+            Err(io::Error::other("injected cleanup failure"))
+        }
+    }
+
+    #[test]
+    fn post_commit_cleanup_failure_reports_committed_outputs_and_retained_recovery() {
+        let output = tempdir().unwrap();
+        let writer = ArtifactWriter::with_ops(output.path(), &FailPostCommitCleanup);
+
+        let error = writer
+            .write_all(&[text("schema.avsc", "generated")])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("outputs committed"));
+        assert!(error.to_string().contains("transaction retained"));
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema.avsc")).unwrap(),
+            "generated"
+        );
+        assert!(transaction_directory(output.path()).is_some());
+    }
+
+    fn transaction_directory(output: &Path) -> Option<PathBuf> {
+        fs::read_dir(output)
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .find(|path| {
+                path.file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .starts_with(".morphir-artifacts-")
+            })
+    }
+
+    #[test]
+    fn failed_publish_removes_new_parent_directories() {
+        let output = tempdir().unwrap();
+        let ops = FailingOps::on_install(1);
+        let writer = ArtifactWriter::with_ops(output.path(), &ops);
+
+        assert!(
+            writer
+                .write_all(&[
+                    text("nested/one.avsc", "one"),
+                    text("second/two.avsc", "two"),
+                ])
+                .is_err()
+        );
+
+        assert!(output.path().read_dir().unwrap().next().is_none());
+    }
+
+    #[test]
+    fn failed_publication_removes_a_newly_created_output_root() {
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("new-output");
+        let ops = FailingOps::on_install(0);
+        let writer = ArtifactWriter::with_ops(&output, &ops);
+
+        assert!(writer.write_all(&[text("one.avsc", "one")]).is_err());
+
+        assert!(!output.exists());
+    }
+
+    #[test]
+    fn failed_staging_removes_a_newly_created_output_root() {
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("new-output");
+        let ops = FailingWriteOps;
+        let writer = ArtifactWriter::with_ops(&output, &ops);
+
+        assert!(writer.write_all(&[text("one.avsc", "one")]).is_err());
+
+        assert!(!output.exists());
+    }
+
+    #[test]
+    fn empty_publication_removes_all_new_output_ancestors() {
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("new/nested/output");
+
+        ArtifactWriter::new(&output).write_all(&[]).unwrap();
+
+        assert!(!parent.path().join("new").exists());
+    }
+
+    #[test]
+    fn failed_restore_preserves_the_backup_tree() {
+        let output = tempdir().unwrap();
+        ArtifactWriter::new(output.path())
+            .write_all(&[text("one.avsc", "old one"), text("two.avsc", "old two")])
+            .unwrap();
+        let ops = FailingOps::on_install_and_rollback(1, 0);
+        let writer = ArtifactWriter::with_ops(output.path(), &ops);
+
+        let error = writer
+            .write_all(&[text("one.avsc", "new one"), text("two.avsc", "new two")])
+            .unwrap_err();
+
+        let CliError::FileSystem { error } = error else {
+            panic!("expected a file-system error");
+        };
+        assert!(error.to_string().contains("backup preserved"));
+        let backup = fs::read_dir(output.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .find(|path| {
+                path.file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .starts_with(".morphir-artifacts-")
+            })
+            .expect("rollback failure should retain its backup tree");
+        assert_eq!(
+            fs::read_to_string(backup.join("backups/one.avsc")).unwrap(),
+            "old one"
+        );
+    }
+
+    struct FailingOps {
+        fail_install: Option<usize>,
+        fail_rollback: Option<usize>,
+    }
+
+    impl FailingOps {
+        fn on_install(index: usize) -> Self {
+            Self {
+                fail_install: Some(index),
+                fail_rollback: None,
+            }
+        }
+
+        fn on_install_and_rollback(install: usize, rollback: usize) -> Self {
+            Self {
+                fail_install: Some(install),
+                fail_rollback: Some(rollback),
+            }
+        }
+    }
+
+    impl ArtifactHooks for FailingOps {
+        fn before_install(&self, index: usize, _parent: &Dir, _leaf: &OsStr) -> io::Result<()> {
+            if self.fail_install == Some(index) {
+                return Err(io::Error::other("injected publish failure"));
+            }
+            Ok(())
+        }
+
+        fn before_rollback(&self, index: usize) -> io::Result<()> {
+            if self.fail_rollback == Some(index) {
+                return Err(io::Error::other("injected rollback failure"));
+            }
+            Ok(())
+        }
+    }
+
+    struct FailingWriteOps;
+
+    impl ArtifactHooks for FailingWriteOps {
+        fn before_stage(&self, _index: usize) -> io::Result<()> {
+            Err(io::Error::other("injected staging failure"))
+        }
+    }
+
+    struct ConcurrentCreateOps;
+
+    impl ArtifactHooks for ConcurrentCreateOps {
+        fn before_install(&self, _index: usize, parent: &Dir, leaf: &OsStr) -> io::Result<()> {
+            let mut options = OpenOptions::new();
+            options
+                .write(true)
+                .create_new(true)
+                .follow(FollowSymlinks::No);
+            let mut file = parent.open_with(leaf, &options)?;
+            file.write_all(b"concurrent")?;
+            file.sync_all()
+        }
+    }
+
+    #[test]
+    fn concurrent_destination_creation_is_not_overwritten() {
+        let output = tempdir().unwrap();
+        let writer = ArtifactWriter::with_ops(output.path(), &ConcurrentCreateOps);
+
+        assert!(
+            writer
+                .write_all(&[text("schema.avsc", "generated")])
+                .is_err()
+        );
+
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema.avsc")).unwrap(),
+            "concurrent"
+        );
+    }
+
+    struct CreateAfterManifestLoad {
+        path: PathBuf,
+    }
+
+    impl ArtifactHooks for CreateAfterManifestLoad {
+        fn after_manifest_load(&self) -> io::Result<()> {
+            fs::write(&self.path, "user-owned")
+        }
+    }
+
+    #[test]
+    fn destination_created_after_ownership_preflight_is_not_backed_up() {
+        let output = tempdir().unwrap();
+        let hooks = CreateAfterManifestLoad {
+            path: output.path().join("schema.avsc"),
+        };
+
+        let error = ArtifactWriter::with_ops(output.path(), &hooks)
+            .write_all(&[text("schema.avsc", "generated")])
+            .unwrap_err();
+
+        let CliError::FileSystem { error } = error else {
+            panic!("expected a file-system error");
+        };
+        assert!(error.to_string().contains("not managed by Morphir"));
+        assert_eq!(
+            fs::read_to_string(output.path().join("schema.avsc")).unwrap(),
+            "user-owned"
+        );
+    }
+
+    struct PauseAfterManifestLoad {
+        loaded: mpsc::SyncSender<()>,
+        resume: Mutex<mpsc::Receiver<()>>,
+    }
+
+    impl ArtifactHooks for PauseAfterManifestLoad {
+        fn after_manifest_load(&self) -> io::Result<()> {
+            self.loaded
+                .send(())
+                .map_err(|error| io::Error::other(error.to_string()))?;
+            self.resume
+                .lock()
+                .unwrap()
+                .recv()
+                .map_err(|error| io::Error::other(error.to_string()))
+        }
+    }
+
+    #[test]
+    fn concurrent_writers_serialize_manifest_reconciliation() {
+        let output = tempdir().unwrap();
+        let output = Arc::new(output.path().to_path_buf());
+        let (loaded_tx, loaded_rx) = mpsc::sync_channel(0);
+        let (resume_tx, resume_rx) = mpsc::sync_channel(0);
+        let first_output = Arc::clone(&output);
+        let first = thread::spawn(move || {
+            let hooks = PauseAfterManifestLoad {
+                loaded: loaded_tx,
+                resume: Mutex::new(resume_rx),
+            };
+            ArtifactWriter::with_ops(&first_output, &hooks)
+                .write_all(&[text("first.avsc", "first")])
+        });
+        loaded_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("first writer should reach manifest reconciliation");
+
+        let second_output = Arc::clone(&output);
+        let (started_tx, started_rx) = mpsc::sync_channel(0);
+        let (finished_tx, finished_rx) = mpsc::sync_channel(1);
+        let second = thread::spawn(move || {
+            started_tx.send(()).unwrap();
+            let result =
+                ArtifactWriter::new(&second_output).write_all(&[text("second.avsc", "second")]);
+            finished_tx.send(result).unwrap();
+        });
+        started_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("second writer should start");
+
+        assert!(
+            finished_rx
+                .recv_timeout(Duration::from_millis(100))
+                .is_err(),
+            "second writer must wait while the first reconciles its manifest"
+        );
+        resume_tx.send(()).unwrap();
+        first.join().unwrap().unwrap();
+        finished_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("second writer should finish after the lock is released")
+            .unwrap();
+        second.join().unwrap();
+
+        assert!(!output.join("first.avsc").exists());
+        assert_eq!(
+            fs::read_to_string(output.join("second.avsc")).unwrap(),
+            "second"
+        );
+    }
+
+    #[test]
+    fn concurrent_writers_serialize_lexical_output_aliases() {
+        let parent = tempdir().unwrap();
+        fs::create_dir(parent.path().join("existing")).unwrap();
+        let output = parent.path().join("output");
+        fs::create_dir(&output).unwrap();
+        let alias = parent.path().join("existing/../output");
+        let (loaded_tx, loaded_rx) = mpsc::sync_channel(0);
+        let (resume_tx, resume_rx) = mpsc::sync_channel(0);
+        let first = thread::spawn(move || {
+            let hooks = PauseAfterManifestLoad {
+                loaded: loaded_tx,
+                resume: Mutex::new(resume_rx),
+            };
+            ArtifactWriter::with_ops(&output, &hooks).write_all(&[text("first.avsc", "first")])
+        });
+        loaded_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("first writer should reach manifest reconciliation");
+
+        let (finished_tx, finished_rx) = mpsc::sync_channel(1);
+        let second = thread::spawn(move || {
+            let result = ArtifactWriter::new(&alias).write_all(&[text("second.avsc", "second")]);
+            finished_tx.send(result).unwrap();
+        });
+        assert!(
+            finished_rx
+                .recv_timeout(Duration::from_millis(100))
+                .is_err(),
+            "lexical aliases for one output root must share a publication lock"
+        );
+
+        resume_tx.send(()).unwrap();
+        first.join().unwrap().unwrap();
+        finished_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("second writer should finish after the lock is released")
+            .unwrap();
+        second.join().unwrap();
+
+        assert!(!parent.path().join("output/first.avsc").exists());
+        assert_eq!(
+            fs::read_to_string(parent.path().join("output/second.avsc")).unwrap(),
+            "second"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn directory_locks_allow_sibling_output_roots_to_publish_concurrently() {
+        let parent = tempdir().unwrap();
+        let first_output = parent.path().join("first");
+        let second_output = parent.path().join("second");
+        fs::create_dir_all(&first_output).unwrap();
+        fs::create_dir_all(&second_output).unwrap();
+        let first = acquire_publication(&first_output, &NOOP_HOOKS).unwrap();
+        let (finished_tx, finished_rx) = mpsc::sync_channel(1);
+        let second = thread::spawn(move || {
+            let acquired = acquire_publication(&second_output, &NOOP_HOOKS);
+            finished_tx.send(acquired.map(|_| ())).unwrap();
+        });
+
+        let concurrent = finished_rx.recv_timeout(Duration::from_millis(100));
+        drop(first);
+        if concurrent.is_err() {
+            finished_rx
+                .recv_timeout(Duration::from_secs(5))
+                .expect("sibling writer should finish after the first lock is released")
+                .unwrap();
+        }
+        second.join().unwrap();
+
+        assert!(
+            concurrent.is_ok(),
+            "sibling output writers must not share an exclusive ancestor lock"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn directory_locks_serialize_deeply_nested_output_roots() {
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("generated");
+        let nested = output.join("a/b/output");
+        fs::create_dir_all(&nested).unwrap();
+        let first = acquire_publication(&output, &NOOP_HOOKS).unwrap();
+        let (finished_tx, finished_rx) = mpsc::sync_channel(1);
+        let second = thread::spawn(move || {
+            let acquired = acquire_publication(&nested, &NOOP_HOOKS);
+            finished_tx.send(acquired.map(|_| ())).unwrap();
+        });
+
+        assert!(
+            finished_rx
+                .recv_timeout(Duration::from_millis(100))
+                .is_err(),
+            "a deeply nested output writer must wait for its ancestor publication lock"
+        );
+
+        drop(first);
+        finished_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("nested writer should finish after the ancestor lock is released")
+            .unwrap();
+        second.join().unwrap();
+    }
+
+    #[test]
+    fn waiting_writer_opens_a_nested_output_root_after_creator_cleanup() {
+        let parent = tempdir().unwrap();
+        let output = Arc::new(parent.path().join("new/nested/output"));
+        let (loaded_tx, loaded_rx) = mpsc::sync_channel(0);
+        let (resume_tx, resume_rx) = mpsc::sync_channel(0);
+        let first_output = Arc::clone(&output);
+        let first = thread::spawn(move || {
+            let hooks = PauseAfterManifestLoad {
+                loaded: loaded_tx,
+                resume: Mutex::new(resume_rx),
+            };
+            ArtifactWriter::with_ops(&first_output, &hooks).write_all(&[])
+        });
+        loaded_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("first writer should create and lock the output root");
+
+        let second_output = Arc::clone(&output);
+        let (started_tx, started_rx) = mpsc::sync_channel(0);
+        let (finished_tx, finished_rx) = mpsc::sync_channel(1);
+        let second = thread::spawn(move || {
+            started_tx.send(()).unwrap();
+            let result =
+                ArtifactWriter::new(&second_output).write_all(&[text("schema.avsc", "second")]);
+            finished_tx.send(result).unwrap();
+        });
+        started_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("second writer should start");
+        assert!(
+            finished_rx
+                .recv_timeout(Duration::from_millis(100))
+                .is_err(),
+            "second writer must wait while the creator owns the publication lock"
+        );
+
+        resume_tx.send(()).unwrap();
+        first.join().unwrap().unwrap();
+        finished_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("second writer should finish after creator cleanup")
+            .unwrap();
+        second.join().unwrap();
+
+        assert_eq!(
+            fs::read_to_string(output.join("schema.avsc")).unwrap(),
+            "second"
+        );
+    }
+
+    #[cfg(unix)]
+    struct RootSwapOps {
+        root: PathBuf,
+        moved: PathBuf,
+        outside: PathBuf,
+    }
+
+    #[cfg(unix)]
+    impl ArtifactHooks for RootSwapOps {
+        fn before_install(&self, _index: usize, _parent: &Dir, _leaf: &OsStr) -> io::Result<()> {
+            use std::os::unix::fs::symlink;
+            fs::rename(&self.root, &self.moved)?;
+            symlink(&self.outside, &self.root)
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn output_root_swap_cannot_redirect_publication() {
+        let parent = tempdir().unwrap();
+        let outside = tempdir().unwrap();
+        let root = parent.path().join("output");
+        let moved = parent.path().join("moved-output");
+        fs::create_dir(&root).unwrap();
+        let ops = RootSwapOps {
+            root: root.clone(),
+            moved: moved.clone(),
+            outside: outside.path().to_path_buf(),
+        };
+
+        ArtifactWriter::with_ops(&root, &ops)
+            .write_all(&[text("schema.avsc", "generated")])
+            .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(moved.join("schema.avsc")).unwrap(),
+            "generated"
+        );
+        assert!(!outside.path().join("schema.avsc").exists());
+    }
+
+    #[cfg(unix)]
+    struct AcquisitionSwapOps {
+        root: PathBuf,
+        moved: PathBuf,
+        outside: PathBuf,
+    }
+
+    #[cfg(unix)]
+    impl ArtifactHooks for AcquisitionSwapOps {
+        fn before_output_component_open(&self, _parent: &Dir, leaf: &OsStr) -> io::Result<()> {
+            if leaf == self.root.file_name().unwrap() {
+                use std::os::unix::fs::symlink;
+                fs::rename(&self.root, &self.moved)?;
+                symlink(&self.outside, &self.root)?;
+            }
+            Ok(())
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn output_root_swap_during_capability_acquisition_is_rejected() {
+        let parent = tempdir().unwrap();
+        let outside = tempdir().unwrap();
+        let root = parent.path().join("output");
+        let moved = parent.path().join("moved-output");
+        fs::create_dir(&root).unwrap();
+        let ops = AcquisitionSwapOps {
+            root: root.clone(),
+            moved: moved.clone(),
+            outside: outside.path().to_path_buf(),
+        };
+
+        let error = ArtifactWriter::with_ops(&root, &ops)
+            .write_all(&[text("schema.avsc", "generated")])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("File system"));
+        assert!(!outside.path().join("schema.avsc").exists());
+        assert!(moved.read_dir().unwrap().next().is_none());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn missing_output_beneath_a_symlinked_parent_is_published() {
+        use std::os::unix::fs::symlink;
+
+        let parent = tempdir().unwrap();
+        let target = tempdir().unwrap();
+        let linked_parent = parent.path().join("workspace-link");
+        symlink(target.path(), &linked_parent).unwrap();
+        let output = linked_parent.join("generated");
+
+        ArtifactWriter::new(&output)
+            .write_all(&[text("schema.avsc", "generated")])
+            .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(target.path().join("generated/schema.avsc")).unwrap(),
+            "generated"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlinked_output_root_is_rejected_during_capability_acquisition() {
+        use std::os::unix::fs::symlink;
+
+        let parent = tempdir().unwrap();
+        let outside = tempdir().unwrap();
+        let root = parent.path().join("output");
+        symlink(outside.path(), &root).unwrap();
+
+        let error = ArtifactWriter::new(&root)
+            .write_all(&[text("schema.avsc", "generated")])
+            .unwrap_err();
+
+        assert!(error.to_string().contains("File system"));
+        assert!(!outside.path().join("schema.avsc").exists());
+    }
+
+    #[test]
+    fn nested_missing_output_root_is_created_and_published() {
+        let parent = tempdir().unwrap();
+        let output = parent.path().join("first/second/output");
+
+        ArtifactWriter::new(&output)
+            .write_all(&[text("schema.avsc", "generated")])
+            .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(output.join("schema.avsc")).unwrap(),
+            "generated"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn failed_nested_output_acquisition_removes_created_ancestors() {
+        let parent = tempdir().unwrap();
+        let created_ancestor = parent.path().join("first");
+        let oversized_component = "x".repeat(300);
+        let output = created_ancestor.join(oversized_component).join("output");
+
+        ArtifactWriter::new(&output)
+            .write_all(&[text("schema.avsc", "generated")])
+            .unwrap_err();
+
+        assert!(!created_ancestor.exists());
+    }
+
+    #[cfg(unix)]
+    struct ParentSwapOps {
+        root: PathBuf,
+        outside: PathBuf,
+    }
+
+    #[cfg(unix)]
+    impl ArtifactHooks for ParentSwapOps {
+        fn before_install(&self, _index: usize, _parent: &Dir, _leaf: &OsStr) -> io::Result<()> {
+            use std::os::unix::fs::symlink;
+            fs::rename(self.root.join("nested"), self.root.join("moved-nested"))?;
+            symlink(&self.outside, self.root.join("nested"))
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn destination_parent_swap_cannot_redirect_publication() {
+        let output = tempdir().unwrap();
+        let outside = tempdir().unwrap();
+        fs::create_dir(output.path().join("nested")).unwrap();
+        let ops = ParentSwapOps {
+            root: output.path().to_path_buf(),
+            outside: outside.path().to_path_buf(),
+        };
+
+        ArtifactWriter::with_ops(output.path(), &ops)
+            .write_all(&[text("nested/schema.avsc", "generated")])
+            .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(output.path().join("moved-nested/schema.avsc")).unwrap(),
+            "generated"
+        );
+        assert!(!outside.path().join("schema.avsc").exists());
+    }
+}

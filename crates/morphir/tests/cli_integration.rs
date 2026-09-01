@@ -69,6 +69,56 @@ fn write_test_index(
     }
 }
 
+#[cfg(unix)]
+fn write_backend_test_index(directory: &std::path::Path, bytes: &[u8]) -> TestIndex {
+    let root = directory.join("backend-index");
+    let filename = "morphir-avro".to_owned();
+    let relative_source = format!("artifacts/{filename}");
+    let source = root.join(&relative_source);
+    std::fs::create_dir_all(source.parent().unwrap()).unwrap();
+    std::fs::create_dir_all(root.join("extensions")).unwrap();
+    std::fs::write(&source, bytes).unwrap();
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(&source, std::fs::Permissions::from_mode(0o700)).unwrap();
+    let digest = morphir_distribution::Sha256Digest::of_bytes(bytes).to_string();
+    let record = serde_json::json!({
+        "schemaVersion": 2,
+        "id": "morphir-avro",
+        "name": "Morphir Avro",
+        "version": "1.2.3",
+        "channels": ["stable"],
+        "mepVersions": ["0.1"],
+        "capabilities": ["backend"],
+        "backend": {
+            "targets": ["avro"],
+            "irVersions": ["3"]
+        },
+        "artifacts": [{
+            "runtime": "process",
+            "platform": {
+                "os": std::env::consts::OS,
+                "arch": std::env::consts::ARCH,
+            },
+            "source": {"kind": "local-file", "path": relative_source},
+            "sha256": digest,
+            "filename": filename,
+            "args": [],
+            "executable": true,
+        }],
+    });
+    std::fs::write(
+        root.join("extensions/morphir-avro.jsonl"),
+        format!("{record}\n"),
+    )
+    .unwrap();
+    TestIndex {
+        root,
+        source,
+        digest,
+        filename,
+    }
+}
+
 fn run_morphir(
     arguments: &[&str],
     morphir_home: &std::path::Path,
@@ -80,6 +130,35 @@ fn run_morphir(
         .current_dir(working_directory)
         .output()
         .expect("failed to run morphir binary")
+}
+
+#[test]
+fn ui_help_documents_workspace_and_host_options() {
+    let temp = TempDir::new().unwrap();
+    let output = run_morphir(&["ui", "--help"], &temp.path().join("home"), temp.path());
+    let help = String::from_utf8_lossy(&output.stdout);
+
+    assert!(output.status.success());
+    assert!(help.contains("Usage: morphir ui [OPTIONS] [WORKSPACE]"));
+    assert!(help.contains("--workspace-extension <ID>"));
+    assert!(help.contains("--no-open"));
+}
+
+#[test]
+fn ui_rejects_files_before_printing_a_launch_url() {
+    let temp = TempDir::new().unwrap();
+    let file = temp.path().join("morphir.json");
+    std::fs::write(&file, "{}").unwrap();
+    let output = run_morphir(
+        &["ui", file.to_str().unwrap(), "--no-open"],
+        &temp.path().join("home"),
+        temp.path(),
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert!(!output.status.success());
+    assert!(stderr.contains("must be an existing directory"));
+    assert!(!stderr.contains("/launch?token="));
 }
 
 #[test]
@@ -108,6 +187,25 @@ fn compile_help_documents_explicit_extension_selection() {
     assert!(
         !flowed.contains("morphir-{"),
         "braces in prose help become a JSX expression in the generated docs: {stdout}"
+    );
+}
+
+#[test]
+fn generate_help_documents_repeated_backend_options() {
+    let temp = TempDir::new().unwrap();
+    let output = run_morphir(
+        &["generate", "--help"],
+        &temp.path().join("home"),
+        temp.path(),
+    );
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("--option <KEY=VALUE>"), "{stdout}");
+    let flowed = stdout.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(
+        flowed.contains("Override a backend option as KEY=VALUE. May be repeated"),
+        "{stdout}"
     );
 }
 
@@ -613,6 +711,147 @@ async fn test_generate_command_basic() {
 
     assert!(ir_dir.exists());
     assert!(ir_dir.join("format.json").exists());
+}
+
+#[test]
+#[cfg(unix)]
+fn generate_routes_exact_v3_string_ir_to_an_installed_provider() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let index = write_backend_test_index(temp.path(), backend_process_script().as_bytes());
+    let install = run_morphir(
+        &[
+            "extension",
+            "install",
+            "morphir-avro",
+            "--index",
+            index.root.to_str().unwrap(),
+        ],
+        &home,
+        temp.path(),
+    );
+    assert!(
+        install.status.success(),
+        "install failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
+    );
+    let mut ir: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../website/static/ir/examples/v3/greeting-example.json"
+    ))
+    .unwrap();
+    ir["formatVersion"] = "3.0.0".into();
+    let input = temp.path().join("morphir-ir.json");
+    std::fs::write(&input, serde_json::to_vec(&ir).unwrap()).unwrap();
+    let config = temp.path().join("morphir.toml");
+    std::fs::write(
+        &config,
+        "[project]\nname = \"test-project\"\nversion = \"1.0.0\"\n\n[codegen]\ntargets = [\"avro\"]\n",
+    )
+    .unwrap();
+
+    let generated = run_morphir(
+        &[
+            "generate",
+            "--target",
+            "avro",
+            "--input",
+            input.to_str().unwrap(),
+            "--config",
+            config.to_str().unwrap(),
+            "--json",
+        ],
+        &home,
+        temp.path(),
+    );
+
+    assert!(
+        generated.status.success(),
+        "generation failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&generated.stdout),
+        String::from_utf8_lossy(&generated.stderr)
+    );
+    let output: serde_json::Value = serde_json::from_slice(&generated.stdout).unwrap();
+    assert_eq!(output["success"], true);
+    assert_eq!(output["artifacts"], serde_json::json!(["v3-string.avsc"]));
+}
+
+#[cfg(unix)]
+fn backend_process_script() -> String {
+    let python = std::process::Command::new("sh")
+        .args(["-c", "command -v python3"])
+        .output()
+        .unwrap();
+    assert!(python.status.success(), "python3 is required for this test");
+    let python = String::from_utf8(python.stdout).unwrap();
+    format!(
+        r#"#!{python}
+import json
+import sys
+
+def receive():
+    length = None
+    while True:
+        line = sys.stdin.buffer.readline()
+        if line in (b"\n", b"\r\n"):
+            break
+        if not line:
+            raise SystemExit(0)
+        name, value = line.decode("ascii").split(":", 1)
+        if name.lower() == "content-length":
+            length = int(value.strip())
+    return json.loads(sys.stdin.buffer.read(length))
+
+def send(identifier, result):
+    body = json.dumps(
+        {{"jsonrpc": "2.0", "id": identifier, "result": result}},
+        separators=(",", ":"),
+    ).encode()
+    sys.stdout.buffer.write(
+        b"Content-Length: " + str(len(body)).encode() + b"\r\n\r\n" + body
+    )
+    sys.stdout.buffer.flush()
+
+while True:
+    request = receive()
+    method = request["method"]
+    if method == "morphir.initialize":
+        result = {{
+            "protocolVersion": "0.1",
+            "extension": {{
+                "id": "morphir-avro",
+                "name": "Morphir Avro",
+                "version": "1.2.3",
+                "types": ["backend"],
+            }},
+            "capabilities": {{
+                "backend": {{
+                    "targets": ["avro"],
+                    "irVersions": ["3"],
+                    "generate": True,
+                }}
+            }},
+        }}
+    elif method == "morphir.backend.generate":
+        normalized = request["params"]["ir"]["formatVersion"] == 3
+        result = {{
+            "success": normalized,
+            "artifacts": [
+                {{"path": "v3-string.avsc", "content": "{{}}", "binary": False}}
+            ] if normalized else [],
+            "diagnostics": [],
+        }}
+    elif method == "morphir.shutdown":
+        result = {{}}
+    elif method == "morphir.exit":
+        break
+    else:
+        raise RuntimeError("unexpected method " + method)
+    if "id" in request:
+        send(request["id"], result)
+"#,
+        python = python.trim()
+    )
 }
 
 #[test]

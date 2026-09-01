@@ -11,9 +11,9 @@ pub mod output;
 use morphir::observability;
 
 use commands::{
-    MigrateCommandOptions, OutputLayout, compile::CompileOptions, run_compile, run_config_get,
-    run_config_path, run_config_show, run_diagnostics_path, run_dist_install, run_dist_list,
-    run_dist_uninstall, run_dist_update, run_extension_install, run_extension_list,
+    GenerateOptions, MigrateCommandOptions, OutputLayout, compile::CompileOptions, run_compile,
+    run_config_get, run_config_path, run_config_show, run_diagnostics_path, run_dist_install,
+    run_dist_list, run_dist_uninstall, run_dist_update, run_extension_install, run_extension_list,
     run_extension_uninstall, run_extension_update, run_generate, run_gleam_compile,
     run_gleam_generate, run_gleam_roundtrip, run_kb_add_concept, run_kb_check,
     run_kb_decision_list, run_kb_decision_show, run_kb_index, run_kb_intent_cancel,
@@ -95,6 +95,13 @@ enum Commands {
         /// Project name (for workspaces)
         #[arg(long)]
         project: Option<String>,
+        /// Override a backend option as KEY=VALUE. May be repeated.
+        #[arg(
+            long = "option",
+            value_name = "KEY=VALUE",
+            action = clap::ArgAction::Append
+        )]
+        option: Vec<String>,
         /// Output as JSON
         #[arg(long)]
         json: bool,
@@ -145,6 +152,9 @@ morphir migrate ./morphir-ir.json -o ./morphir-ir-v4/ --output-layout vfs
 
 See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tools/ir-migrate) for detailed real-world examples including the US Federal Reserve FR 2052a regulation model.")]
     Migrate(MigrateArgs),
+
+    /// Open the Morphir development workbench in a browser
+    Ui(commands::ui::UiArgs),
 
     // ===== Management Commands =====
     /// Inspect the effective Morphir configuration
@@ -661,22 +671,25 @@ impl AppSession for MorphirSession {
                 output,
                 config,
                 project,
+                option,
                 json,
                 json_lines,
             } => {
-                run_generate(
-                    target.clone(),
-                    input.clone(),
-                    output.clone(),
-                    config.clone(),
-                    project.clone(),
-                    *json,
-                    *json_lines,
-                )
+                run_generate(GenerateOptions {
+                    target: target.clone(),
+                    input: input.clone(),
+                    output: output.clone(),
+                    config_path: config.clone(),
+                    project: project.clone(),
+                    backend_options: option.clone(),
+                    json: *json,
+                    json_lines: *json_lines,
+                })
                 .await
             }
             Commands::Transform { input, output } => run_transform(input.clone(), output.clone()),
             Commands::Migrate(args) => args.run(),
+            Commands::Ui(args) => commands::ui::run_ui(args.clone()).await,
             Commands::Config { action } => match action {
                 ConfigAction::Get {
                     key,

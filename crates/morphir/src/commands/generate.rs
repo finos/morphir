@@ -1,26 +1,36 @@
 //! Generate command for code generation from Morphir IR
 
-use crate::error::CliError;
-use crate::output::Diagnostic;
+mod artifacts;
+mod options;
+mod provider;
+
+pub use options::GenerateOptions;
+
+use crate::error::{CliError, convert_extension_diagnostics};
+use crate::home::MorphirHome;
 use morphir_common::loader::load_ir;
 use morphir_daemon::extensions::registry::ExtensionRegistry;
 use morphir_devkit::{
     discover_config, ensure_morphir_structure, load_config_context, resolve_generate_output,
 };
+use morphir_distribution::list_installed;
+use morphir_extension_sdk::{GenerateRequest, GenerateResult, protocol::methods};
 use starbase::AppResult;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Run the generate command
-pub async fn run_generate(
-    target: Option<String>,
-    input: Option<String>,
-    output: Option<String>,
-    config_path: Option<String>,
-    _project: Option<String>,
-    json: bool,
-    json_lines: bool,
-) -> AppResult<miette::Report> {
-    use crate::output::{GenerateOutput, OutputFormat, write_output};
+pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report> {
+    use crate::output::{GenerateOutput, OutputFormat, write_generate_human, write_output};
+    let GenerateOptions {
+        target,
+        input,
+        output,
+        config_path,
+        project: _project,
+        backend_options,
+        json,
+        json_lines,
+    } = options;
     // Discover config if not provided
     let start_dir = std::env::current_dir().map_err(|e| CliError::FileSystem { error: e })?;
 
@@ -51,6 +61,11 @@ pub async fn run_generate(
         .ok_or_else(|| CliError::Config {
             error: anyhow::anyhow!("Target not specified and not found in config"),
         })?;
+
+    let configured_options = options::target_options(ctx.config.codegen.as_ref(), &target_lang)
+        .map_err(|error| CliError::Config { error })?;
+    let backend_options = options::merge_options(configured_options, &backend_options)
+        .map_err(|error| CliError::Config { error })?;
 
     // Determine project name
     let proj_name = ctx
@@ -85,93 +100,58 @@ pub async fn run_generate(
         resolve_generate_output(&proj_name, &target_lang, &ctx.morphir_dir)
     };
 
-    // Create extension registry
-    let registry = ExtensionRegistry::new(
-        ctx.project_root
-            .unwrap_or_else(|| ctx.config_path.parent().unwrap().to_path_buf()),
-        output_path.clone(),
-    )
-    .map_err(|e| CliError::Extension {
-        message: format!("Failed to create extension registry: {}", e),
-    })?;
-
-    // Register builtin extensions
-    let builtins = morphir_devkit::discover_builtin_extensions();
-    for builtin in builtins {
-        if let Some(path) = builtin.path {
-            registry
-                .register_builtin(&builtin.id, path)
-                .await
-                .map_err(|e| CliError::Extension {
-                    message: format!("Failed to register builtin extension {}: {}", builtin.id, e),
-                })?;
-        }
-    }
-
-    // Find and load extension by target
-    let extension = registry
-        .find_extension_by_target(&target_lang)
-        .await
-        .ok_or_else(|| CliError::Extension {
-            message: format!("No extension found for target: {}", target_lang),
-        })?;
-
     // Load IR (detect format)
     let ir_data = load_ir(&input_path).map_err(|e| CliError::FileSystem {
         error: std::io::Error::other(e),
     })?;
-
-    // Call extension's generate method
-    let generate_params = serde_json::json!({
-        "input": input_path.to_string_lossy(),
-        "output": output_path.to_string_lossy(),
-        "ir": ir_data,
-    });
-
-    let result: serde_json::Value = extension
-        .call("morphir.backend.generate", generate_params)
-        .await
-        .map_err(|e| CliError::Extension {
-            message: format!("Extension generate call failed: {}", e),
-        })?;
+    let ir_version = provider::detect_ir_major(&ir_data)?;
+    let home = MorphirHome::resolve().map_err(|error| CliError::Config { error })?;
+    let installed = list_installed(&home).map_err(|error| CliError::Extension {
+        message: format!("Failed to list installed backend providers: {error}"),
+    })?;
+    let workspace = ctx
+        .project_root
+        .clone()
+        .unwrap_or_else(|| ctx.config_path.parent().unwrap().to_path_buf());
+    let request = GenerateRequest {
+        ir: ir_data,
+        options: serde_json::from_value(backend_options).map_err(|error| CliError::Config {
+            error: error.into(),
+        })?,
+    };
+    let result = match provider::resolve_provider(&installed, &target_lang, &ir_version)? {
+        provider::ProviderRoute::Installed(installed) => {
+            provider::invoke_generate(
+                &home,
+                installed,
+                &workspace,
+                &target_lang,
+                &ir_version,
+                request,
+            )
+            .await?
+        }
+        provider::ProviderRoute::LegacyBuiltin => {
+            invoke_builtin(&workspace, &target_lang, request).await?
+        }
+    };
 
     let format = OutputFormat::from_flags(json, json_lines);
 
-    // Extract diagnostics and artifacts from result
-    let diagnostics: Vec<Diagnostic> = result
-        .get("diagnostics")
-        .and_then(|d| serde_json::from_value(d.clone()).ok())
-        .unwrap_or_default();
+    let diagnostics = convert_extension_diagnostics(&result.diagnostics);
 
-    let artifacts: Vec<String> = result
-        .get("artifacts")
-        .and_then(|a| serde_json::from_value(a.clone()).ok())
-        .unwrap_or_default();
-
-    let success = result
-        .get("success")
-        .and_then(|s| s.as_bool())
-        .unwrap_or(true);
-
-    if !success {
-        let error_msg = result
-            .get("error")
-            .and_then(|e| e.as_str())
-            .unwrap_or("Code generation failed");
-
-        if format != OutputFormat::Human {
-            let output = GenerateOutput {
-                success: false,
-                artifacts: vec![],
-                diagnostics: diagnostics.clone(),
-                output_path: output_path.to_string_lossy().to_string(),
-            };
-            write_output(format, &output).map_err(CliError::from)?;
+    if !result.success {
+        let error_msg = "Code generation failed";
+        let output = GenerateOutput {
+            success: false,
+            artifacts: vec![],
+            diagnostics,
+            output_path: output_path.to_string_lossy().to_string(),
+        };
+        if format == OutputFormat::Human {
+            write_generate_human(&output).map_err(CliError::from)?;
         } else {
-            let err = CliError::Compilation {
-                message: error_msg.to_string(),
-            };
-            err.report();
+            write_output(format, &output).map_err(CliError::from)?;
         }
         return Err(CliError::Compilation {
             message: error_msg.to_string(),
@@ -179,24 +159,90 @@ pub async fn run_generate(
         .into());
     }
 
-    if format != OutputFormat::Human {
-        let output = GenerateOutput {
-            success: true,
-            artifacts,
-            diagnostics,
-            output_path: output_path.to_string_lossy().to_string(),
-        };
-        write_output(format, &output).map_err(CliError::from)?;
+    let artifacts = publish_returned_artifacts(&output_path, &result.artifacts)?;
+
+    let output = GenerateOutput {
+        success: true,
+        artifacts,
+        diagnostics,
+        output_path: output_path.to_string_lossy().to_string(),
+    };
+    if format == OutputFormat::Human {
+        write_generate_human(&output).map_err(CliError::from)?;
     } else {
-        println!("Code generation successful!");
-        println!("Output: {:?}", output_path);
-        if !diagnostics.is_empty() {
-            println!("\nDiagnostics:");
-            for diag in &diagnostics {
-                println!("  {}: {}", diag.level, diag.message);
-            }
-        }
+        write_output(format, &output).map_err(CliError::from)?;
     }
 
     Ok(None)
+}
+
+async fn invoke_builtin(
+    workspace: &Path,
+    target: &str,
+    request: GenerateRequest,
+) -> Result<GenerateResult, CliError> {
+    let registry =
+        ExtensionRegistry::for_restricted_generation(workspace.to_path_buf()).map_err(|error| {
+            CliError::Extension {
+                message: format!("Failed to create extension registry: {error}"),
+            }
+        })?;
+    for builtin in morphir_devkit::discover_builtin_extensions() {
+        if let Some(path) = builtin.path {
+            registry
+                .register_builtin(&builtin.id, path)
+                .await
+                .map_err(|error| CliError::Extension {
+                    message: format!(
+                        "Failed to register builtin extension '{}': {error}",
+                        builtin.id
+                    ),
+                })?;
+        }
+    }
+    let extension = registry
+        .find_extension_by_target(target)
+        .await
+        .ok_or_else(|| CliError::Extension {
+            message: format!("No extension found for target: {target}"),
+        })?;
+    extension
+        .call(methods::GENERATE, request)
+        .await
+        .map_err(|error| CliError::Extension {
+            message: format!("Extension generate call failed: {error}"),
+        })
+}
+
+fn publish_returned_artifacts(
+    output_path: &Path,
+    returned: &[morphir_extension_sdk::Artifact],
+) -> Result<Vec<String>, CliError> {
+    artifacts::write_all(output_path, returned)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use morphir_extension_sdk::Artifact;
+    use tempfile::tempdir;
+
+    #[test]
+    fn returned_legacy_artifacts_are_published_by_the_host_writer() {
+        let root = tempdir().unwrap();
+        let output = root.path().join("output");
+        let returned = vec![Artifact {
+            path: "nested/schema.avsc".to_owned(),
+            content: "{\"type\":\"record\"}".to_owned(),
+            binary: false,
+        }];
+
+        let paths = publish_returned_artifacts(&output, &returned).unwrap();
+
+        assert_eq!(paths, ["nested/schema.avsc"]);
+        assert_eq!(
+            std::fs::read_to_string(output.join("nested/schema.avsc")).unwrap(),
+            "{\"type\":\"record\"}"
+        );
+    }
 }

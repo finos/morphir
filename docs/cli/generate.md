@@ -11,5 +11,6 @@ Generate code from Morphir IR
 - **`-o --output <OUTPUT>`** — Output directory
 - **`--config <CONFIG>`** — Explicit config file path
 - **`--project <PROJECT>`** — Project name (for workspaces)
+- **`--option <KEY=VALUE>…`** — Override a backend option as KEY=VALUE. May be repeated
 - **`--json`** — Output as JSON
 - **`--json-lines`** — Output as JSON Lines (streaming)

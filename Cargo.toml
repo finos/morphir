@@ -24,6 +24,10 @@ categories = ["development-tools", "parsers"]
 starbase = { version = "0.13", features = ["miette"] }
 clap = { version = "4.5.57", features = ["derive", "color"] }
 anyhow = "1.0"
+base64 = "0.23"
+cap-fs-ext = "3.4.5"
+cap-std = "3.4.5"
+same-file = "1.0.6"
 thiserror = "2.0.18"
 miette = { version = "7", features = ["fancy"] }
 cucumber = "0.22"
@@ -41,13 +45,11 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tracing-appender = "0.2"
 fs2 = "0.4"
-
-# Filesystem and path handling shared with morphir-rust crates
-cap-std = "3.4.5"
-cap-fs-ext = "3.4.5"
-same-file = "1.0.6"
-unicode-casefold = "0.2"
-unicode-normalization = "0.1"
+rustix = { version = "1.1", features = ["fs"] }
+windows-sys = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_Storage_FileSystem",
+] }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -60,6 +62,8 @@ semver = "1"
 uuid = { version = "1", features = ["v4"] }
 zip = { version = "8.6", default-features = false, features = ["deflate"] }
 ed25519-dalek = "2"
+unicode-casefold = "0.2"
+unicode-normalization = "0.1"
 
 [profile.release]
 opt-level = 3

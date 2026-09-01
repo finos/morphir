@@ -200,5 +200,6 @@ The following issues are closed as "will not do":
 ## References
 
 - [Tasks Design](../draft/configuration/tasks.md) - New task system
-- [WASM Components](../../spec/webassembly/wasm-components.md) - Extension model
+- [Historical WASM Components source](https://github.com/finos/morphir/blob/main/docs/spec/webassembly/wasm-components.md)
+  records the superseded extension model.
 - [mise tasks](https://mise.jdx.dev/tasks/) - Inspiration for new approach

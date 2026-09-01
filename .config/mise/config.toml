@@ -153,6 +153,10 @@ run = "bun run typecheck"
 dir = "tools"
 depends = ["tools:install"]
 
+[tasks."vendor:morphir-web"]
+description = "Build and vendor a clean morphir-web worktree twice with provenance"
+run = "bun run tools/vendor-morphir-web.ts"
+
 [tasks.check]
 description = "Run all checks"
 depends = [

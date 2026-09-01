@@ -32,7 +32,7 @@ import re
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Set
-from urllib.parse import quote
+from urllib.parse import quote, unquote, urlsplit
 
 # Try to import yaml for frontmatter parsing
 try:
@@ -63,6 +63,11 @@ DOC_SECTIONS = {
     "user-guides": {
         "title": "User Guides",
         "description": "Practical guides for using Morphir",
+        "priority": 2,
+    },
+    "generate": {
+        "title": "Generation Guides",
+        "description": "Guides for generating target artifacts from Morphir IR",
         "priority": 2,
     },
     "cli-preview": {
@@ -113,6 +118,9 @@ KEY_DOCUMENTS = [
     "docs/spec/ir/morphir-ir-specification.md",
     "docs/getting-started/README.md",
     "docs/concepts/README.md",
+    "docs/design/draft/extensions/README.mdx",
+    "docs/design/proposals/wasm-extension-runtime-and-avro-backend.md",
+    "docs/generate/avro.md",
 ]
 
 
@@ -151,7 +159,14 @@ def extract_frontmatter(content: str) -> Tuple[Dict, str]:
         for line in frontmatter_text.split('\n'):
             if ':' in line:
                 key, value = line.split(':', 1)
-                frontmatter[key.strip()] = value.strip().strip('"\'')
+                value = value.strip().strip('"\'')
+                if value.lower() == 'true':
+                    parsed_value = True
+                elif value.lower() == 'false':
+                    parsed_value = False
+                else:
+                    parsed_value = value
+                frontmatter[key.strip()] = parsed_value
         return frontmatter, body
 
 
@@ -294,7 +309,46 @@ def extract_description(content: str, frontmatter: Dict, max_length: int = 200) 
     return description
 
 
-def clean_content_for_llm(content: str) -> str:
+def doc_route_path(
+    doc_path: Path,
+    docs_dir: Path,
+    frontmatter: Optional[Dict] = None,
+) -> str:
+    """Return a document's Docusaurus route relative to /docs/."""
+    relative_path = doc_path.resolve().relative_to(docs_dir.resolve())
+    metadata = frontmatter
+    if metadata is None and doc_path.is_file():
+        content = doc_path.read_text(encoding='utf-8')
+        metadata, _ = extract_frontmatter(content)
+
+    slug = metadata.get('slug') if metadata else None
+    if isinstance(slug, str):
+        if slug.startswith('/'):
+            route = slug.lstrip('/')
+        else:
+            route = (relative_path.parent / slug).as_posix()
+        return '' if route == '.' else encode_url_path(route)
+
+    source_name = relative_path.stem.lower()
+    if source_name in ('readme', 'index'):
+        parent = relative_path.parent.as_posix()
+        route = '' if parent == '.' else f'{parent}/'
+        return encode_url_path(route)
+
+    doc_id = metadata.get('id') if metadata else None
+    if isinstance(doc_id, str):
+        route = (relative_path.parent / doc_id).as_posix()
+        return encode_url_path(route)
+
+    route = re.sub(r'\.mdx?$', '', relative_path.as_posix())
+    return encode_url_path(route)
+
+
+def clean_content_for_llm(
+    content: str,
+    source_path: Optional[Path] = None,
+    docs_dir: Optional[Path] = None,
+) -> str:
     """Clean markdown content for LLM consumption."""
     # Remove frontmatter
     _, body = extract_frontmatter(content)
@@ -326,13 +380,25 @@ def clean_content_for_llm(content: str) -> str:
         text = match.group(1)
         path = match.group(2)
         # Skip external links, anchors, and already absolute links
-        if path.startswith(('http://', 'https://', '#', 'mailto:')):
+        if path.startswith(('http://', 'https://', '#', 'mailto:', '/')):
             return match.group(0)
-        # Clean up the path
-        clean_path = path.lstrip('./')
-        if clean_path.endswith('.md'):
-            clean_path = clean_path[:-3]
-        return f'[{text}]({BASE_URL}/docs/{clean_path}/)'
+        link = urlsplit(path)
+        path = unquote(link.path)
+        if source_path is not None and docs_dir is not None:
+            target = (source_path.parent / path).resolve()
+            try:
+                clean_path = doc_route_path(target, docs_dir)
+            except ValueError:
+                return match.group(0)
+        else:
+            clean_path = path.lstrip('./')
+            clean_path = re.sub(r'\.mdx?$', '', clean_path)
+            if clean_path.rsplit('/', 1)[-1].lower() in ('readme', 'index'):
+                parent = clean_path.rsplit('/', 1)[0] if '/' in clean_path else ''
+                clean_path = f'{parent}/'
+        query_suffix = f'?{link.query}' if link.query else ''
+        fragment_suffix = f'#{link.fragment}' if link.fragment else ''
+        return f'[{text}]({BASE_URL}/docs/{clean_path}{query_suffix}{fragment_suffix})'
 
     body = re.sub(r'\[([^\]]+)\]\(([^\)]+)\)', convert_relative_link, body)
 
@@ -359,10 +425,13 @@ def scan_docs(docs_dir: Path) -> Dict[str, List[Dict]]:
             continue
 
         docs = []
-        seen_titles: Set[str] = set()  # Track titles for deduplication
+        seen_routes: Set[str] = set()
 
-        for md_file in sorted(section_path.rglob('*.md')):
-            # Skip files in hidden directories (relative to docs_dir only —
+        markdown_files = list(section_path.rglob('*.md'))
+        markdown_files.extend(section_path.rglob('*.mdx'))
+
+        for md_file in sorted(markdown_files):
+            # Skip files in hidden directories relative to docs_dir only;
             # absolute paths may contain segments like `.t3` or `.git`).
             rel_parts = md_file.relative_to(docs_dir).parts
             if any(part.startswith('.') for part in rel_parts):
@@ -374,6 +443,13 @@ def scan_docs(docs_dir: Path) -> Dict[str, List[Dict]]:
                 continue
 
             frontmatter, _ = extract_frontmatter(content)
+
+            # Keep the machine-readable corpus aligned with production docs.
+            # Docusaurus drafts have no production route, while unlisted pages
+            # are intentionally absent from discovery surfaces.
+            if frontmatter.get('draft') or frontmatter.get('unlisted'):
+                continue
+
             title = extract_title(content, frontmatter)
             description = extract_description(content, frontmatter)
 
@@ -385,25 +461,17 @@ def scan_docs(docs_dir: Path) -> Dict[str, List[Dict]]:
                     stem = md_file.parent.name
                 title = stem.replace('-', ' ').replace('_', ' ').title()
 
-            # Deduplicate by title (keep first occurrence)
-            title_key = title.lower().strip()
-            if title_key in seen_titles:
-                continue
-            seen_titles.add(title_key)
-
             # Build URL path with proper encoding
             rel_path = md_file.relative_to(docs_dir)
-            url_path = rel_path.as_posix().replace('.md', '').replace('/README', '')
-            if url_path.endswith('/index'):
-                url_path = url_path[:-6]
-
-            # Encode spaces and special characters in URL
-            url_path = encode_url_path(url_path)
+            url_path = doc_route_path(md_file, docs_dir, frontmatter)
+            if url_path in seen_routes:
+                continue
+            seen_routes.add(url_path)
 
             docs.append({
                 'title': title,
                 'description': description,
-                'url': f"{BASE_URL}/docs/{url_path}/",
+                'url': f"{BASE_URL}/docs/{url_path}",
                 'path': str(rel_path),
                 'priority': section_info['priority'],
             })
@@ -458,8 +526,8 @@ def generate_compact(sections: Dict[str, List[Dict]], docs_dir: Path) -> str:
     # Specifications section
     lines.append("## Specifications")
     lines.append("")
-    lines.append(f"- [Morphir IR Specification]({BASE_URL}/docs/morphir-ir-specification/): Complete specification of the Morphir Intermediate Representation format")
-    lines.append(f"- [JSON Schemas]({BASE_URL}/docs/spec/schemas/): JSON Schema definitions for validating Morphir IR files")
+    lines.append(f"- [Morphir IR Specification]({BASE_URL}/docs/spec/ir/morphir-ir-specification): Complete specification of the Morphir Intermediate Representation format")
+    lines.append(f"- [JSON Schemas]({BASE_URL}/docs/spec/ir/schemas/): JSON Schema definitions for validating Morphir IR files")
     lines.append(f"- [Schema v3 (YAML)]({BASE_URL}/schemas/morphir-ir-v3.yaml): Current IR schema in YAML format")
     lines.append(f"- [Schema v3 (JSON)]({BASE_URL}/schemas/morphir-ir-v3.json): Current IR schema in JSON format")
     lines.append("")
@@ -509,7 +577,11 @@ def generate_full(sections: Dict[str, List[Dict]], docs_dir: Path) -> str:
                 content = full_path.read_text(encoding='utf-8')
                 frontmatter, _ = extract_frontmatter(content)
                 title = extract_title(content, frontmatter)
-                cleaned = clean_content_for_llm(content)
+                cleaned = clean_content_for_llm(
+                    content,
+                    source_path=full_path,
+                    docs_dir=docs_dir,
+                )
 
                 lines.append(f"### {title}")
                 lines.append("")
