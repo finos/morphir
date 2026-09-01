@@ -6,7 +6,8 @@ use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use clap::Args;
 
 use provider::{
-    WorkspaceCapability, extension::ExtensionWorkspaceProvider, native::NativeWorkspaceProvider,
+    SessionCapabilities, WorkspaceCapability, extension::ExtensionWorkspaceProvider,
+    native::NativeWorkspaceProvider,
 };
 use server::BoundUiHost;
 
@@ -65,9 +66,15 @@ pub async fn run_ui(args: UiArgs) -> Result<Option<u8>, miette::Report> {
                 .map_err(miette::Report::new)?,
         ),
     };
-    let host = BoundUiHost::bind(session_id, provider)
-        .await
-        .map_err(miette::Report::new)?;
+    let host = BoundUiHost::bind(
+        session_id,
+        SessionCapabilities {
+            workspace: Some(provider),
+            ..Default::default()
+        },
+    )
+    .await
+    .map_err(miette::Report::new)?;
     let base_url = host.base_url();
     let launch_url = host.launch_url();
     tracing::info!(url = %base_url, "Morphir UI listening");
@@ -86,7 +93,7 @@ pub async fn run_ui(args: UiArgs) -> Result<Option<u8>, miette::Report> {
     Ok(None)
 }
 
-fn generate_session_id() -> Result<String, miette::Report> {
+pub(super) fn generate_session_id() -> Result<String, miette::Report> {
     let mut bytes = [0_u8; 16];
     getrandom::fill(&mut bytes)
         .map_err(|error| miette::miette!("Unable to generate Morphir UI session ID: {error}"))?;
