@@ -8,6 +8,7 @@ pub mod generate;
 pub mod gleam;
 pub mod kb;
 pub mod migrate;
+pub mod playground;
 pub mod schema;
 pub mod tool;
 pub mod transform;
