@@ -9,6 +9,6 @@ Install a Morphir extension
 - **`<NAME>`** — Name of the extension to install
 
 ## Flags
-- **`--index <INDEX>`** — Controlled local extension index directory
+- **`--repository <REPOSITORY>`** — Named extension repository configured in Morphir Home
 - **`--channel <CHANNEL>`** — Moving release channel (defaults to stable)
 - **`--version <VERSION>`** — Exact semantic version

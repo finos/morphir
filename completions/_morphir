@@ -243,8 +243,8 @@ cmd dist display_order=12 subcommand_required=#true arg_required_else_help=#true
 }
 cmd extension display_order=13 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir extensions" unknown_flags=error {
     cmd install display_order=0 args_override_self=#false help="Install a Morphir extension" unknown_flags=error {
-        flag --index help="Controlled local extension index directory" required=#true {
-            arg <INDEX>
+        flag --repository help="Named extension repository configured in Morphir Home" required=#true {
+            arg <REPOSITORY>
         }
         flag --channel help="Moving release channel (defaults to stable)" conflicts=--version {
             arg <CHANNEL>
@@ -253,12 +253,36 @@ cmd extension display_order=13 subcommand_required=#true arg_required_else_help=
             arg <VERSION>
         }
         arg <NAME> help="Name of the extension to install"
-        complete index type=path
     }
     cmd list display_order=1 args_override_self=#false help="List installed Morphir extensions" unknown_flags=error
-    cmd update display_order=2 args_override_self=#false help="Update an installed Morphir extension" unknown_flags=error {
-        flag --index help="Controlled local extension index directory" required=#true {
-            arg <INDEX>
+    cmd repository display_order=2 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage named extension repositories" unknown_flags=error {
+        cmd add display_order=0 args_override_self=#false help="Add an enabled local-directory repository" unknown_flags=error {
+            flag --directory help="Existing local repository directory" required=#true {
+                arg <DIRECTORY>
+            }
+            arg <NAME> help="Stable repository name"
+            complete directory type=path
+        }
+        cmd list display_order=1 args_override_self=#false help="List configured repositories without contacting their endpoints" unknown_flags=error
+        cmd inspect display_order=2 args_override_self=#false help="Inspect one repository without contacting its endpoint" unknown_flags=error {
+            arg <NAME> help="Repository name"
+        }
+        cmd enable display_order=3 args_override_self=#false help="Enable a configured repository" unknown_flags=error {
+            arg <NAME> help="Repository name"
+        }
+        cmd disable display_order=4 args_override_self=#false help="Disable a configured repository" unknown_flags=error {
+            arg <NAME> help="Repository name"
+        }
+        cmd remove display_order=5 args_override_self=#false help="Remove configuration without deleting endpoint content" unknown_flags=error {
+            arg <NAME> help="Repository name"
+        }
+        cmd verify display_order=6 args_override_self=#false help="Validate repository metadata without installing anything" unknown_flags=error {
+            arg <NAME> help="Repository name"
+        }
+    }
+    cmd update display_order=3 args_override_self=#false help="Update an installed Morphir extension" unknown_flags=error {
+        flag --repository help="Named extension repository configured in Morphir Home" required=#true {
+            arg <REPOSITORY>
         }
         flag --channel help="Moving release channel (defaults to stable)" conflicts=--version {
             arg <CHANNEL>
@@ -267,9 +291,8 @@ cmd extension display_order=13 subcommand_required=#true arg_required_else_help=
             arg <VERSION>
         }
         arg <NAME> help="Name of the extension to update"
-        complete index type=path
     }
-    cmd uninstall display_order=3 args_override_self=#false help="Uninstall a Morphir extension" unknown_flags=error {
+    cmd uninstall display_order=4 args_override_self=#false help="Uninstall a Morphir extension" unknown_flags=error {
         arg <NAME> help="Name of the extension to uninstall"
     }
 }
