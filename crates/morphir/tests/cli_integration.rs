@@ -58,7 +58,7 @@ fn write_test_index_with_frontend(
     std::fs::write(&source, bytes).unwrap();
     let digest = morphir_distribution::Sha256Digest::of_bytes(bytes).to_string();
     let record = serde_json::json!({
-        "schemaVersion": 3,
+        "schemaVersion": "1.0",
         "id": id,
         "name": name,
         "version": version,
@@ -143,7 +143,7 @@ fn write_backend_test_index(directory: &std::path::Path, bytes: &[u8]) -> TestIn
     std::fs::set_permissions(&source, std::fs::Permissions::from_mode(0o700)).unwrap();
     let digest = morphir_distribution::Sha256Digest::of_bytes(bytes).to_string();
     let record = serde_json::json!({
-        "schemaVersion": 2,
+        "schemaVersion": "1.0",
         "id": "morphir-avro",
         "name": "Morphir Avro",
         "version": "1.2.3",
@@ -193,7 +193,7 @@ fn write_gleam_frontend_test_index(directory: &std::path::Path, bytes: &[u8]) ->
     std::fs::set_permissions(&source, std::fs::Permissions::from_mode(0o700)).unwrap();
     let digest = morphir_distribution::Sha256Digest::of_bytes(bytes).to_string();
     let record = serde_json::json!({
-        "schemaVersion": 3,
+        "schemaVersion": "1.0",
         "id": "morphir-installed-gleam",
         "name": "Installed Gleam override",
         "version": "1.2.3",
