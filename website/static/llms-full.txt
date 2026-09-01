@@ -1299,18 +1299,20 @@ validates returned relative artifact paths, and writes output files.
 
 ## Install an extension
 
-The CLI installs from a controlled local extension index. It does not accept a
-raw `.wasm` file, an archive, a URL, or a directory:
+The CLI installs from a named local extension repository. It does not accept a
+raw `.wasm` file, an archive, a URL, or an unregistered directory:
 
 ```console
-morphir extension install --index <INDEX> <NAME>
+morphir extension repository add <REPOSITORY> --directory <DIRECTORY>
+morphir extension install --repository <REPOSITORY> <NAME>
 morphir extension list
-morphir extension update --index <INDEX> <NAME>
+morphir extension update --repository <REPOSITORY> <NAME>
 morphir extension uninstall <NAME>
 ```
 
-`<NAME>` is the stable extension ID. `<INDEX>` contains JSONL release histories
-under `extensions/` and artifact bytes below the same controlled root.
+`<NAME>` is the stable extension ID. `<REPOSITORY>` is the stable name recorded
+in Morphir Home for `<DIRECTORY>`. The directory contains JSONL release
+histories under `extensions/` and artifact bytes below the same controlled root.
 Installation defaults to the `stable` channel. `--channel <CHANNEL>` selects a
 different channel, while `--version <VERSION>` selects an exact semantic
 version. The two selection options are mutually exclusive.
@@ -1325,9 +1327,9 @@ The CLI has no `--global` install mode. Contributors can set `MORPHIR_HOME` to
 an isolated directory when testing installation.
 
 The [Avro generation guide](https://morphir.finos.org/docs/generate/avro#build-and-install-the-local-extension)
-has a complete local build, schema-v2 index, and install example. The generated
-[CLI install reference](https://morphir.finos.org/docs/cli/extension/install) documents the current
-arguments and flags.
+has a complete local build, schema-v2 repository, and install example. The
+generated [CLI install reference](https://morphir.finos.org/docs/cli/extension/install) documents
+the current arguments and flags.
 
 ## Use a backend
 
@@ -1691,8 +1693,8 @@ and v4. It does not evaluate Morphir values or translate computation.
 ## Build and install the local extension
 
 There is no published Avro extension to install yet. Contributors can build the
-WASM guest, create a schema-v2 local index, and install from that index. From the
-`ecosystem/morphir-rust` directory, run:
+WASM guest, create a schema-v2 local repository, and install from that
+repository. From the `ecosystem/morphir-rust` directory, run:
 
 ```console
 mise run extension:artifact:avro
@@ -1738,12 +1740,17 @@ PY
 
 `release.json` describes the release bundle. The install command needs the
 schema-v2 JSONL record created above, so the descriptor cannot be passed to the
-CLI directly. Install into an isolated contributor home with the root CLI:
+CLI directly. Register the directory as a named repository in an isolated
+contributor home, then install with the root CLI:
 
 ```console
 MORPHIR_HOME="$PWD/.morphir/local-home" \
   mise exec -- cargo run --manifest-path ../../Cargo.toml -p morphir -- \
-  extension install --index "$PWD/.morphir/build/index" morphir-avro
+  extension repository add local-avro --directory "$PWD/.morphir/build/index"
+
+MORPHIR_HOME="$PWD/.morphir/local-home" \
+  mise exec -- cargo run --manifest-path ../../Cargo.toml -p morphir -- \
+  extension install --repository local-avro morphir-avro
 
 MORPHIR_HOME="$PWD/.morphir/local-home" \
   mise exec -- cargo run --manifest-path ../../Cargo.toml -p morphir -- \
@@ -1751,8 +1758,8 @@ MORPHIR_HOME="$PWD/.morphir/local-home" \
 ```
 
 Keep the same `MORPHIR_HOME` value when running generation. Installation
-verifies the SHA-256 from the index, stores the module by content digest, and
-writes matching lock and catalog state. These commands do not publish the
+verifies the SHA-256 from the repository, stores the module by content digest,
+and writes matching lock and catalog state. These commands do not publish the
 extension.
 
 ## Run the generator
@@ -1988,24 +1995,24 @@ runtime and Avro backend proposal](https://morphir.finos.org/docs/design/proposa
 
 Installation and first steps with Morphir
 
-- [Morphir Web UI](https://morphir.finos.org/docs/getting-started/Morphir%20Web%20UI): This document details the purpose of the various functions of the Morphir UI, and how to use them and navigate between them.
-- [Getting Started with Morphir](https://morphir.finos.org/docs/getting-started/): Welcome! This section will help you get started with Morphir quickly.
 - [Editor Setup](https://morphir.finos.org/docs/getting-started/editor-setup): Morphir is designed to allow users to write business logic in multiple ways. That currently includes the following:
 - [Installation And Usage](https://morphir.finos.org/docs/getting-started/installation-and-usage): Morphir is provided as a set of command-line tools that are distribution through the NPM packaging system. The current version is:
 - [Installation](https://morphir.finos.org/docs/getting-started/installation): Morphir provides command line tools for executing morphir tasks. These tools are delivered by the ``npm` package management system.
 - [Introduction to Morphir](https://morphir.finos.org/docs/getting-started/intro): Data and rules reign supreme. The rest is implementation detail.
+- [Morphir Web UI](https://morphir.finos.org/docs/getting-started/Morphir%20Web%20UI): This document details the purpose of the various functions of the Morphir UI, and how to use them and navigate between them.
 - [Morphir CLI](https://morphir.finos.org/docs/getting-started/morphir-cli): The Morphir CLI shipped from this repository is a Rust command-line tool for working with Morphir IR, configuration, distributions, and language bindings.
 - [Morphir Go](https://morphir.finos.org/docs/getting-started/morphir-go-preview): Morphir Go is a Go implementation of Morphir tooling. It provides a CLI and libraries for working with Morphir IR, including WebAssembly Interface Types (WIT) support and Go code generation.
+- [Getting Started with Morphir](https://morphir.finos.org/docs/getting-started/): Welcome! This section will help you get started with Morphir quickly.
 - [Morphir Quick Start](https://morphir.finos.org/docs/getting-started/morphir-quick-start): The first step to using Morphir is installing. For this example we'll use the Elm front end for our modeling and generator into the JSON representation of the Morphir IR.
 
 ### Core Concepts
 
 Fundamental concepts and theory behind Morphir
 
-- [Core Concepts](https://morphir.finos.org/docs/concepts/): This section explains the fundamental concepts behind Morphir and how it works.
 - [Introducing Morphir](https://morphir.finos.org/docs/concepts/introduction-to-morphir): Morphir is a library of tools that works to capture business logic as data.
 - [The Morphir IR](https://morphir.finos.org/docs/concepts/morphir-ir): The Morphir.IR module defines a type-safe API to work with Morphir's intermediate representation. The module structure follows the structure of the IR.
 - [The Morphir SDK](https://morphir.finos.org/docs/concepts/morphir-sdk): The goal of the Morphir.SDK module is to provide you the basic building blocks to build your domain model and business logic.
+- [Core Concepts](https://morphir.finos.org/docs/concepts/): This section explains the fundamental concepts behind Morphir and how it works.
 - [I Have an Application](https://morphir.finos.org/docs/concepts/what-is-it-about): As you're reading this, what do you consider to be the most important information in my description? Is it the Kafka stream processing? The standard microservices architecture? Or the fact that we're...
 - [Why Functional Programming?](https://morphir.finos.org/docs/concepts/functional-programming): The core of Morphir is the idea your business concepts (data and logic) are valuable assets that deserve to be stored independently.
 
@@ -2013,7 +2020,6 @@ Fundamental concepts and theory behind Morphir
 
 Practical guides for using Morphir
 
-- [User Guides](https://morphir.finos.org/docs/user-guides/): Learn how to use Morphir to model business logic and build applications.
 - [Morphir Command Line Tools](https://morphir.finos.org/docs/user-guides/cli-tools/command-line-tools): The canonical Morphir CLI is the morphir executable released from the finos/morphir repository. See the CLI Reference for the generated command documentation, and Installing Morphir for installation...
 - [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tools/ir-migrate): morphir migrate converts concrete Morphir IR version 3 and version 4 between native JSON and YAML storage. The equivalent nested command, morphir ir migrate, has the same behavior.
 - [Morphir-elm Commands Processing](https://morphir.finos.org/docs/user-guides/cli-tools/morphir-commands-processing): The purpose of the document is to explain what happens when morphir-elm commands are run. This documents also describes each morphir-elm command, options and output/result of the command.
@@ -2029,6 +2035,7 @@ Practical guides for using Morphir
 - [Morphir Testing Setup](https://morphir.finos.org/docs/user-guides/modeling-guides/morphir-testing-setup): Elm's standard testing library is elm-test. You can install it by running the following command \ in your project. It will ask questions, just say yes to everything:
 - [Soul of your Application](https://morphir.finos.org/docs/user-guides/modeling-guides/soul-application): Morphir approaches application development from the perspective that the application's business knowledge should be enshrined. Adopting this knowledge-first has brought us great benefits, including:
 - [What Makes a Good Model?](https://morphir.finos.org/docs/user-guides/modeling-guides/domain-model): We all strive to build high-quality software and that begins with a clean and well-defined domain model.
+- [User Guides](https://morphir.finos.org/docs/user-guides/): Learn how to use Morphir to model business logic and build applications.
 
 ### Generation Guides
 
@@ -2094,12 +2101,10 @@ Technical specifications including IR format and schemas
 Design documents, proposals, and RFCs for Morphir features
 
 - [ADR-0003: Toolchain Integration Framework](https://morphir.finos.org/docs/design/deprecated/ADR-0003-toolchain-integration): Status: Proposed Date: 2026-01-08 Authors: Morphir Team
-- [Deprecated Designs](https://morphir.finos.org/docs/design/deprecated/): This folder contains design documents for approaches that have been superseded or abandoned. These documents are preserved for historical reference and to document decision-making rationale.
 - [Design Pivot: Toolchain to Tasks](https://morphir.finos.org/docs/design/deprecated/design-pivot-toolchain-to-tasks): Date: 2026-01-16 Status: Active Affects: Toolchain framework, workflow configuration, tool acquisition
+- [Deprecated Designs](https://morphir.finos.org/docs/design/deprecated/): This folder contains design documents for approaches that have been superseded or abandoned. These documents are preserved for historical reference and to document decision-making rationale.
 - [Toolchain Enablement and Target Resolution Design](https://morphir.finos.org/docs/design/deprecated/toolchain-enablement): This document captures the design decisions for how toolchains are enabled and how targets are resolved to tasks in workflows.
 - [Toolchain Integration Framework Design](https://morphir.finos.org/docs/design/deprecated/toolchain-integration-design): Status: Draft Authors: Morphir Team Created: 2026-01-08 Epic: morphir-pfi
-- [Design Drafts](https://morphir.finos.org/docs/design/draft/): This section contains the design documents for Morphir v4, organized into three primary themes.
-- [Morphir Daemon](https://morphir.finos.org/docs/design/draft/daemon/): The Morphir Daemon is a long-running service that manages workspaces, projects, builds, and provides IDE integration.
 - [Build Operations](https://morphir.finos.org/docs/design/draft/daemon/build): This document defines build orchestration, cleaning, and diagnostic operations for Morphir workspaces.
 - [CLI-Daemon Interaction](https://morphir.finos.org/docs/design/draft/daemon/cli-interaction): This document defines how the Morphir CLI communicates with the Morphir Daemon, including connection modes, transport protocols, and lifecycle management.
 - [Configuration System](https://morphir.finos.org/docs/design/draft/daemon/configuration): This module describes the Morphir configuration system design, covering project configuration, workspace configuration, and the merge/resolution rules.
@@ -2110,17 +2115,17 @@ Design documents, proposals, and RFCs for Morphir features
 - [morphir.toml Specification](https://morphir.finos.org/docs/design/draft/daemon/morphir-toml): This document provides the complete specification for the morphir.toml configuration file format.
 - [Package Management](https://morphir.finos.org/docs/design/draft/daemon/packages): This document defines the package format, registry backends, and publishing workflow for Morphir packages.
 - [Project Management](https://morphir.finos.org/docs/design/draft/daemon/projects): This document defines operations for managing projects within a Morphir workspace.
+- [Morphir Daemon](https://morphir.finos.org/docs/design/draft/daemon/): The Morphir Daemon is a long-running service that manages workspaces, projects, builds, and provides IDE integration.
 - [File Watching](https://morphir.finos.org/docs/design/draft/daemon/watching): This document defines the file watching system for Morphir workspaces, enabling automatic recompilation on source changes.
 - [Workspace Mode](https://morphir.finos.org/docs/design/draft/daemon/workspace-config): This document describes workspace-specific configuration in morphir.toml.
-- [Document Tree Protocol Design (v4)](https://morphir.finos.org/docs/design/draft/document-tree-protocol/): This is a DRAFT design document. All types and protocols are subject to change.
 - [Document Tree Protocol (JSON-RPC 2.0)](https://morphir.finos.org/docs/design/draft/document-tree-protocol/protocol): This document details the JSON-RPC 2.0 methods and notifications used by the Morphir Core Daemon to manage the Document Tree and coordinate with backends.
+- [Document Tree Protocol Design (v4)](https://morphir.finos.org/docs/design/draft/document-tree-protocol/): This is a DRAFT design document. All types and protocols are subject to change.
 - [Workflows](https://morphir.finos.org/docs/design/draft/document-tree-protocol/workflows): (TODO: This document will describe common workflows for Document Tree Protocol.)
-- [Morphir Extensions](https://morphir.finos.org/docs/design/draft/extensions/): Morphir extensions add frontends, backends, validators, and transforms without putting every provider in the CLI process. This draft describes the current implementation boundary.
 - [Extension distribution and package acquisition](https://morphir.finos.org/docs/design/draft/extensions/distribution-and-acquisition): Morphir needs two related distribution systems. Morphir packages distribute reusable logic and types for frontends to compile.
 - [Morphir Extension Protocol](https://morphir.finos.org/docs/design/draft/extensions/protocol): The Morphir Extension Protocol, abbreviated MEP, defines how a Morphir host discovers and calls independently packaged functionality.
+- [Morphir Extensions](https://morphir.finos.org/docs/design/draft/extensions/): Morphir extensions add frontends, backends, validators, and transforms without putting every provider in the CLI process. This draft describes the current implementation boundary.
 - [Tasks](https://morphir.finos.org/docs/design/draft/extensions/tasks): This document defines the task system for Morphir, modeled after mise tasks.
 - [Design Agent Guidelines](https://morphir.finos.org/docs/design/draft/ir/AGENTS): Working agreement for AI agents and contributors working on Morphir v4 IR design documents.
-- [IR v4 Format](https://morphir.finos.org/docs/design/draft/ir/): This is a DRAFT design document. All types and protocols are subject to change.
 - [Annotations](https://morphir.finos.org/docs/design/draft/ir/annotations): Annotations provide a way to attach structured metadata to IR specification types. Unlike attributes, which are used for implementation-level metadata (like source locations or inferred types),...
 - [Attributes System](https://morphir.finos.org/docs/design/draft/ir/attributes): This document defines the attributes system for Morphir IR v4, replacing the generic type parameter approach with structured, semantic attributes.
 - [Decorations](https://morphir.finos.org/docs/design/draft/ir/decorations): Decorations provide a way to attach additional metadata to IR nodes without modifying the core IR structure. They are stored separately from the IR in a layered, composable system.
@@ -2130,9 +2135,11 @@ Design documents, proposals, and RFCs for Morphir features
 - [Module Structure](https://morphir.finos.org/docs/design/draft/ir/modules): Modules are containers for types and values within a package. They follow the specification/definition split pattern.
 - [Naming Module](https://morphir.finos.org/docs/design/draft/ir/naming): The naming module uses newtype wrappers for type safety, smart constructors for validation, and a canonical string format for serialization.
 - [Package Structure](https://morphir.finos.org/docs/design/draft/ir/packages): Packages are versioned collections of modules that form a distributable unit.
+- [IR v4 Format](https://morphir.finos.org/docs/design/draft/ir/): This is a DRAFT design document. All types and protocols are subject to change.
 - [Node References ($ref)](https://morphir.finos.org/docs/design/draft/ir/refs): The $ref mechanism provides structural deduplication within VFS JSON files, reducing repetition of common node patterns.
 - [Types Module](https://morphir.finos.org/docs/design/draft/ir/types): This module defines the type system for Morphir IR, including type expressions, specifications, and definitions.
 - [Values Module](https://morphir.finos.org/docs/design/draft/ir/values): This module defines the value expressions, literals, patterns, and value definitions for Morphir IR.
+- [Design Drafts](https://morphir.finos.org/docs/design/draft/): This section contains the design documents for Morphir v4, organized into three primary themes.
 - [CLI-managed Desktop acquisition and launch](https://morphir.finos.org/docs/design/proposals/desktop-acquisition-and-launch): Morphir users should be able to install the CLI and then run morphir desktop. The CLI acquires a compatible Desktop release from the configured channel when needed, activates it safely, and launches...
 - [Proposals](https://morphir.finos.org/docs/design/proposals/): This section contains design proposals for new Morphir features and capabilities.
 - [IR v4 name canonicalization and initialism encoding](https://morphir.finos.org/docs/design/proposals/ir-v4-name-encoding): Proposed replacement for the naming sections of the v4 specification, with the exact schema patches.
@@ -2143,7 +2150,6 @@ Design documents, proposals, and RFCs for Morphir features
 
 API reference and backend documentation
 
-- [Reference Documentation](https://morphir.finos.org/docs/reference/): Technical reference documentation for Morphir backends, APIs, and tools.
 - [Morphir-TypeSpec Mapping](https://morphir.finos.org/docs/reference/backends/other-platforms/morphir-typespec-mapping): This is a documentation of the mapping strategy from Morphir types to Typespec types. This document describes how types in Morphir Models are represented in Typespec.
 - [TypeScript - Morphir API](https://morphir.finos.org/docs/reference/backends/other-platforms/morphir-typescript): The purpose of this documentation is to give a user an understanding of how to use the Morphir API created for Typescript.
 - [Relational Backend](https://morphir.finos.org/docs/reference/backends/other-platforms/relational-backend): The purpose of joins is to look up extra information for each record in some relation and then use it to enrich or filter the original relation.
@@ -2173,6 +2179,7 @@ API reference and backend documentation
 - [json-schema-enabled Decorator](https://morphir.finos.org/docs/reference/json-schema/json-schema-enabled-decorator): This is a developer's guide on how the json-schema-enabled decorator works and how it is applied to:
 - [Json Schema Mappings](https://morphir.finos.org/docs/reference/json-schema/json-schema-mappings): This is a documentation of the mapping strategy from Morphir types to Json Schema. This document describes how Morphir Models maps to Json Schema. Json Schema Reference can be found here
 - [Json Schema Sample](https://morphir.finos.org/docs/reference/json-schema/json-schema-sample): Documentation for this topic.
+- [Reference Documentation](https://morphir.finos.org/docs/reference/): Technical reference documentation for Morphir backends, APIs, and tools.
 - [Table Template](https://morphir.finos.org/docs/reference/table-template): Documentation for this topic.
 - [Testing Framework Guide](https://morphir.finos.org/docs/reference/testing-framework): The purpose of this document is how we can use Testing Framework within developer server.
 - [Morphir Users' Guide](https://morphir.finos.org/docs/reference/user-guide-readme): Morphir's core purpose is to collect and store the vital business logic of an application. To fulfill that goal, Morphir provides tools to write business logic, visualize and interact with it, and...
@@ -2192,7 +2199,6 @@ Archived Go CLI preview docs; current Go tooling is in finos/morphir-go
 
 Contributing to Morphir development
 
-- [Developer Guides](https://morphir.finos.org/docs/developers/): Documentation for contributing to Morphir and advanced development topics.
 - [Governance Policies](https://morphir.finos.org/docs/developers/contribution-and-governance-policies): This document describes the contribution process and governance policies of the FINOS Morphir project.
 - [Contributing to Morphir](https://morphir.finos.org/docs/developers/contributing-to-morphir): Morphir contains a few components for different aspects of the development process. These can be organized into the following:
 - [Contribution Guide](https://morphir.finos.org/docs/developers/contribution-guide): The purpose of this document is to make it easier for new contributors to get up-to-speed on the project.
@@ -2204,6 +2210,7 @@ Contributing to Morphir development
 - [JVM: Executing morphir-cli](https://morphir.finos.org/docs/developers/integrating-morphir-and-jvm-projects): This document specifies all the necessary steps required to execute morphir-cli commands in a JVM project.
 - [Morphir Developers' Guide](https://morphir.finos.org/docs/developers/morphir-developers-guide): The purpose of the document is to provide a detailed explanation of how various Morphir code artefacts work. It also documents the standard coding practices adopted for the Morphir project.
 - [Publishing the Elm package](https://morphir.finos.org/docs/developers/publishing-elm-package): This document describes how maintainers can push new releases of morphir-elm into NPM and the Elm package repo.
+- [Developer Guides](https://morphir.finos.org/docs/developers/): Documentation for contributing to Morphir and advanced development topics.
 - [Release Retrospective: v0.4.0-alpha.1](https://morphir.finos.org/docs/developers/release-retrospective-v0.4.0-alpha.1): This retrospective covers a Go-based Morphir CLI alpha release when Go tooling was published from finos/morphir. Go CLI releases are now tracked in finos/morphir-go.
 
 ### Architecture Decisions
@@ -2217,24 +2224,25 @@ Architecture Decision Records (ADRs)
 - [ADR-0005: Manage Morphir Desktop as a tool from Morphir Home](https://morphir.finos.org/docs/adr/ADR-0005-cli-managed-desktop): Morphir Desktop is the well-known user-launched tool desktop, not an extension. The CLI acquires, verifies, activates, updates, repairs, and launches it through the same distribution kernel used by...
 - [ADR-0006: Keep Morphir observability local by default](https://morphir.finos.org/docs/adr/ADR-0006-local-observability-by-default): Morphir CLI and Desktop enable bounded structured file logging by default beneath Morphir Home and correlate acquisition, activation, launch, and crash events with user-visible operation IDs.
 - [ADR-0007: Use TUF for tool release trust](https://morphir.finos.org/docs/adr/ADR-0007-tuf-tool-release-trust): Morphir tool repositories use The Update Framework 1.0 for publisher authentication, root rotation, metadata expiry, rollback protection, and artifact integrity.
+- [ADR-0008: Distinguish repositories, registries, catalogs, and installed inventory](https://morphir.finos.org/docs/adr/ADR-0008-repository-catalog-and-inventory-language): Morphir calls a logical collection of published releases, metadata, and artifacts a repository. A configured access location is a repository endpoint, a network service that hosts repositories is a...
 
 ### Community
 
 Community resources and guidelines
 
-- [Community](https://morphir.finos.org/docs/community/): Join the Morphir community and access helpful resources.
 - [Code of Conduct](https://morphir.finos.org/docs/community/code-of-conduct): In the interest of fostering an open and welcoming environment, we as contributors and maintainers pledge to making participation in our project and our community a harassment-free experience for...
 - [FAQs](https://morphir.finos.org/docs/community/faqs): Documentation for this topic.
 - [LLM-Friendly Documentation](https://morphir.finos.org/docs/community/llms-txt): Access Morphir documentation in LLM-optimized formats
 - [Media About Morphir](https://morphir.finos.org/docs/community/media-about-morphir): If you're interested in learning more about the project, Morphir Resource Centre, has many links.
 - [Morphir Community](https://morphir.finos.org/docs/community/morphir-community): Morphir's success will depend on its community.
+- [Community](https://morphir.finos.org/docs/community/): Join the Morphir community and access helpful resources.
 
 ### Use Cases
 
 Real-world examples and applications
 
-- [Use Cases](https://morphir.finos.org/docs/use-cases/): Real-world applications and domain-specific examples of Morphir.
 - [The Morphir Background Story](https://morphir.finos.org/docs/use-cases/background-story): Morphir evolved from years of frustration trying to work around technical limitations to adequately model business concepts.
+- [Use Cases](https://morphir.finos.org/docs/use-cases/): Real-world applications and domain-specific examples of Morphir.
 - [Automating RegTech](https://morphir.finos.org/docs/use-cases/regtech-modeling): There are a number of highly regulated industries that must adhere to complex regulations from various regulatory bodies.
 
 ## JSON Schema Specifications

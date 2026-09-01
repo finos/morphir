@@ -141,13 +141,28 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertNotIn("\n  morphir-live:\n", self.ci_workflow)
         # Parallelized Rust jobs: lint + two extension builds + test job feed into check
         self.assertIn(
-            "needs: [changes, lint, build-elm-extension, build-scala-extension, morphir-cli-test, docs, release-workflow]",
+            "needs: [changes, lint, build-elm-extension, build-scala-extension, morphir-cli-test, check-cli-docs, docs, release-workflow]",
             self.ci_workflow,
         )
         self.assertNotIn(
             "needs: [changes, morphir-cli, docs, release-workflow]",
             self.ci_workflow,
         )
+
+    def test_cli_docs_job_runs_in_parallel_with_integration_tests(self) -> None:
+        cli_docs_job = self.ci_workflow.split(
+            "  check-cli-docs:\n", maxsplit=1
+        )[1].split("  docs:\n", maxsplit=1)[0]
+        cli_test_job = self.ci_workflow.split(
+            "  morphir-cli-test:\n", maxsplit=1
+        )[1].split("  check-cli-docs:\n", maxsplit=1)[0]
+
+        self.assertIn("needs: changes", cli_docs_job)
+        self.assertNotIn("needs: [changes, lint", cli_docs_job)
+        self.assertIn("mise run docs:cli", cli_docs_job)
+        self.assertIn("git status --porcelain --ignored=matching", cli_docs_job)
+        self.assertNotIn("Generate CLI docs", cli_test_job)
+        self.assertNotIn("Check CLI docs are up to date", cli_test_job)
 
 
 if __name__ == "__main__":

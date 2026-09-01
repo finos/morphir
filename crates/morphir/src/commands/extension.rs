@@ -1,13 +1,14 @@
 //! Verified extension artifact management.
 
 use crate::home::MorphirHome;
+use crate::observability::OperationId;
 use morphir_distribution::{
-    Channel, ExtensionId, ExtensionInstaller, InstalledCatalog, LocalIndex, Platform, Selection,
-    list_installed, uninstall_extension,
+    Channel, ExtensionId, ExtensionInstaller, ExtensionRepositories, ExtensionRepository,
+    InstalledCatalog, Platform, RepositoryEndpoint, RepositoryName, Selection, list_installed,
+    uninstall_extension,
 };
 use semver::Version;
 use starbase::AppResult;
-use std::path::Path;
 
 fn selection(channel: Option<&str>, version: Option<&str>) -> miette::Result<Selection> {
     match (channel, version) {
@@ -31,26 +32,34 @@ fn extension_id(name: &str) -> miette::Result<ExtensionId> {
     ExtensionId::parse(name).map_err(|error| miette::miette!("Invalid extension id: {error}"))
 }
 
+fn repository_name(name: &str) -> miette::Result<RepositoryName> {
+    RepositoryName::parse(name).map_err(|error| miette::miette!("Invalid repository name: {error}"))
+}
+
 fn install_selected(
     home: &MorphirHome,
-    index_path: &Path,
+    repository: &str,
     id: &ExtensionId,
     requested: Selection,
 ) -> miette::Result<morphir_distribution::InstalledExtension> {
-    let index = LocalIndex::open(index_path)
-        .map_err(|error| miette::miette!("Failed to open extension index: {error}"))?;
-    let selected = index
-        .resolve(id, requested, &Platform::current())
-        .map_err(|error| miette::miette!("Failed to resolve extension '{id}': {error}"))?;
+    let repository = repository_name(repository)?;
+    let selected = ExtensionRepositories::new(home)
+        .resolve(&repository, id, requested, &Platform::current())
+        .map_err(|error| {
+            miette::miette!(
+                "Failed to resolve extension '{id}' from repository '{repository}': {error}"
+            )
+        })?;
     ExtensionInstaller::new(home)
         .install(selected)
         .map_err(|error| miette::miette!("Failed to install extension '{id}': {error}"))
 }
 
-/// Resolve, verify, and install one extension from a controlled local index.
+/// Resolve, verify, and install one extension from a configured repository.
 pub fn run_extension_install(
+    operation_id: &OperationId,
     name: String,
-    index: std::path::PathBuf,
+    repository: String,
     channel: Option<String>,
     version: Option<String>,
 ) -> AppResult<miette::Report> {
@@ -66,7 +75,18 @@ pub fn run_extension_install(
         ));
     }
     let requested = selection(channel.as_deref(), version.as_deref())?;
-    let entry = install_selected(&home, &index, &id, requested.clone())?;
+    let entry = install_selected(&home, &repository, &id, requested.clone())?;
+    tracing::info!(
+        schema_version = 1,
+        component = "cli",
+        operation_id = %operation_id,
+        event_name = "extension.install",
+        extension = %entry.extension_id(),
+        repository,
+        version = %entry.version(),
+        selection = %requested,
+        "extension installed from configured repository"
+    );
     println!(
         "Installed {} {} ({})",
         entry.extension_id(),
@@ -124,8 +144,9 @@ pub fn run_extension_list() -> AppResult<miette::Report> {
 
 /// Re-resolve and replace an installed extension through the verified pipeline.
 pub fn run_extension_update(
+    operation_id: &OperationId,
     name: String,
-    index: std::path::PathBuf,
+    repository: String,
     channel: Option<String>,
     version: Option<String>,
 ) -> AppResult<miette::Report> {
@@ -140,15 +161,245 @@ pub fn run_extension_update(
     let previous_version = previous.version().clone();
     let entry = install_selected(
         &home,
-        &index,
+        &repository,
         &id,
         selection(channel.as_deref(), version.as_deref())?,
     )?;
+    tracing::info!(
+        schema_version = 1,
+        component = "cli",
+        operation_id = %operation_id,
+        event_name = "extension.update",
+        extension = %entry.extension_id(),
+        repository,
+        previous_version = %previous_version,
+        version = %entry.version(),
+        "extension updated from configured repository"
+    );
     println!(
         "Updated {} from {} to {}",
         entry.extension_id(),
         previous_version,
         entry.version()
+    );
+    Ok(None)
+}
+
+fn repositories(home: &MorphirHome) -> ExtensionRepositories<'_> {
+    ExtensionRepositories::new(home)
+}
+
+fn endpoint_display(repository: &ExtensionRepository) -> String {
+    repository
+        .endpoint()
+        .local_directory_path()
+        .map(|path| path.display().to_string())
+        .unwrap_or_else(|| "<unsupported>".to_owned())
+}
+
+/// Add a named local-directory extension repository to Morphir Home.
+pub fn run_extension_repository_add(
+    operation_id: &OperationId,
+    name: String,
+    directory: std::path::PathBuf,
+) -> AppResult<miette::Report> {
+    let home = MorphirHome::resolve()
+        .map_err(|error| miette::miette!("Failed to resolve Morphir home: {error}"))?;
+    let name = repository_name(&name)?;
+    let endpoint = RepositoryEndpoint::local_directory(&directory)
+        .map_err(|error| miette::miette!("Failed to open extension repository: {error}"))?;
+    let added = repositories(&home)
+        .add(name, endpoint)
+        .map_err(|error| miette::miette!("Failed to add extension repository: {error}"))?;
+    tracing::info!(
+        schema_version = 1,
+        component = "cli",
+        operation_id = %operation_id,
+        event_name = "extension.repository.add",
+        repository = %added.name(),
+        endpoint_kind = added.endpoint().kind(),
+        state = added.state().as_str(),
+        "extension repository configured"
+    );
+    println!(
+        "Added extension repository {} ({}) at {}",
+        added.name(),
+        added.endpoint().kind(),
+        endpoint_display(&added)
+    );
+    Ok(None)
+}
+
+/// List configured extension repositories without contacting their endpoints.
+pub fn run_extension_repository_list(operation_id: &OperationId) -> AppResult<miette::Report> {
+    let home = MorphirHome::resolve()
+        .map_err(|error| miette::miette!("Failed to resolve Morphir home: {error}"))?;
+    let configured = repositories(&home)
+        .list()
+        .map_err(|error| miette::miette!("Failed to list extension repositories: {error}"))?;
+    tracing::info!(
+        schema_version = 1,
+        component = "cli",
+        operation_id = %operation_id,
+        event_name = "extension.repository.list",
+        repository_count = configured.len(),
+        "extension repositories listed"
+    );
+    if configured.is_empty() {
+        println!("No extension repositories configured.");
+        return Ok(None);
+    }
+    println!(
+        "{:<24} {:<10} {:<18} Endpoint",
+        "Repository", "State", "Kind"
+    );
+    for repository in configured {
+        println!(
+            "{:<24} {:<10} {:<18} {}",
+            repository.name(),
+            repository.state().as_str(),
+            repository.endpoint().kind(),
+            endpoint_display(&repository)
+        );
+    }
+    Ok(None)
+}
+
+/// Inspect one configured extension repository without contacting its endpoint.
+pub fn run_extension_repository_inspect(
+    operation_id: &OperationId,
+    name: String,
+) -> AppResult<miette::Report> {
+    let home = MorphirHome::resolve()
+        .map_err(|error| miette::miette!("Failed to resolve Morphir home: {error}"))?;
+    let name = repository_name(&name)?;
+    let repository = repositories(&home)
+        .get(&name)
+        .map_err(|error| miette::miette!("Failed to inspect extension repository: {error}"))?;
+    tracing::info!(
+        schema_version = 1,
+        component = "cli",
+        operation_id = %operation_id,
+        event_name = "extension.repository.inspect",
+        repository = %repository.name(),
+        endpoint_kind = repository.endpoint().kind(),
+        state = repository.state().as_str(),
+        "extension repository inspected"
+    );
+    println!("Repository: {}", repository.name());
+    println!("State: {}", repository.state().as_str());
+    println!("Kind: {}", repository.endpoint().kind());
+    println!("Endpoint: {}", endpoint_display(&repository));
+    Ok(None)
+}
+
+fn run_extension_repository_state(
+    operation_id: &OperationId,
+    name: String,
+    enabled: bool,
+) -> AppResult<miette::Report> {
+    let home = MorphirHome::resolve()
+        .map_err(|error| miette::miette!("Failed to resolve Morphir home: {error}"))?;
+    let name = repository_name(&name)?;
+    let repository = if enabled {
+        repositories(&home).enable(&name)
+    } else {
+        repositories(&home).disable(&name)
+    }
+    .map_err(|error| miette::miette!("Failed to change extension repository state: {error}"))?;
+    tracing::info!(
+        schema_version = 1,
+        component = "cli",
+        operation_id = %operation_id,
+        event_name = "extension.repository.state_change",
+        repository = %repository.name(),
+        endpoint_kind = repository.endpoint().kind(),
+        state = repository.state().as_str(),
+        "extension repository state changed"
+    );
+    println!(
+        "{} extension repository {}",
+        if enabled { "Enabled" } else { "Disabled" },
+        repository.name()
+    );
+    Ok(None)
+}
+
+/// Enable one configured extension repository.
+pub fn run_extension_repository_enable(
+    operation_id: &OperationId,
+    name: String,
+) -> AppResult<miette::Report> {
+    run_extension_repository_state(operation_id, name, true)
+}
+
+/// Disable one configured extension repository.
+pub fn run_extension_repository_disable(
+    operation_id: &OperationId,
+    name: String,
+) -> AppResult<miette::Report> {
+    run_extension_repository_state(operation_id, name, false)
+}
+
+/// Remove repository configuration without touching endpoint content.
+pub fn run_extension_repository_remove(
+    operation_id: &OperationId,
+    name: String,
+) -> AppResult<miette::Report> {
+    let home = MorphirHome::resolve()
+        .map_err(|error| miette::miette!("Failed to resolve Morphir home: {error}"))?;
+    let name = repository_name(&name)?;
+    let removed = repositories(&home)
+        .remove(&name)
+        .map_err(|error| miette::miette!("Failed to remove extension repository: {error}"))?;
+    tracing::info!(
+        schema_version = 1,
+        component = "cli",
+        operation_id = %operation_id,
+        event_name = "extension.repository.remove",
+        repository = %removed.name(),
+        endpoint_kind = removed.endpoint().kind(),
+        "extension repository configuration removed"
+    );
+    println!("Removed extension repository {}", removed.name());
+    Ok(None)
+}
+
+/// Validate repository metadata without installing extension bytes.
+pub fn run_extension_repository_verify(
+    operation_id: &OperationId,
+    name: String,
+) -> AppResult<miette::Report> {
+    let home = MorphirHome::resolve()
+        .map_err(|error| miette::miette!("Failed to resolve Morphir home: {error}"))?;
+    let name = repository_name(&name)?;
+    let report = repositories(&home)
+        .verify(&name)
+        .map_err(|error| miette::miette!("Failed to verify extension repository: {error}"))?;
+    tracing::info!(
+        schema_version = 1,
+        component = "cli",
+        operation_id = %operation_id,
+        event_name = "extension.repository.verify",
+        repository = %name,
+        histories = report.history_count(),
+        releases = report.release_count(),
+        "extension repository metadata verified"
+    );
+    let history_label = if report.history_count() == 1 {
+        "history"
+    } else {
+        "histories"
+    };
+    let release_label = if report.release_count() == 1 {
+        "release"
+    } else {
+        "releases"
+    };
+    println!(
+        "Verified extension repository {name}: {} {history_label}, {} {release_label}",
+        report.history_count(),
+        report.release_count()
     );
     Ok(None)
 }

@@ -349,10 +349,9 @@ mod tests {
     use std::process::Command;
     use std::sync::{Arc, Mutex};
 
-    use super::{
-        ProviderRoute, detect_ir_major, invoke_generate, invoke_loaded, resolve_provider,
-        select_provider,
-    };
+    #[cfg(unix)]
+    use super::invoke_generate;
+    use super::{ProviderRoute, detect_ir_major, invoke_loaded, resolve_provider, select_provider};
 
     #[test]
     fn the_request_states_the_selected_target() {

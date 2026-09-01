@@ -43,18 +43,20 @@ validates returned relative artifact paths, and writes output files.
 
 ## Install an extension
 
-The CLI installs from a controlled local extension index. It does not accept a
-raw `.wasm` file, an archive, a URL, or a directory:
+The CLI installs from a named local extension repository. It does not accept a
+raw `.wasm` file, an archive, a URL, or an unregistered directory:
 
 ```console
-morphir extension install --index <INDEX> <NAME>
+morphir extension repository add <REPOSITORY> --directory <DIRECTORY>
+morphir extension install --repository <REPOSITORY> <NAME>
 morphir extension list
-morphir extension update --index <INDEX> <NAME>
+morphir extension update --repository <REPOSITORY> <NAME>
 morphir extension uninstall <NAME>
 ```
 
-`<NAME>` is the stable extension ID. `<INDEX>` contains JSONL release histories
-under `extensions/` and artifact bytes below the same controlled root.
+`<NAME>` is the stable extension ID. `<REPOSITORY>` is the stable name recorded
+in Morphir Home for `<DIRECTORY>`. The directory contains JSONL release
+histories under `extensions/` and artifact bytes below the same controlled root.
 Installation defaults to the `stable` channel. `--channel <CHANNEL>` selects a
 different channel, while `--version <VERSION>` selects an exact semantic
 version. The two selection options are mutually exclusive.
@@ -69,9 +71,9 @@ The CLI has no `--global` install mode. Contributors can set `MORPHIR_HOME` to
 an isolated directory when testing installation.
 
 The [Avro generation guide](../../../generate/avro.md#build-and-install-the-local-extension)
-has a complete local build, schema-v2 index, and install example. The generated
-[CLI install reference](../../../cli/extension/install.md) documents the current
-arguments and flags.
+has a complete local build, schema-v2 repository, and install example. The
+generated [CLI install reference](../../../cli/extension/install.md) documents
+the current arguments and flags.
 
 ## Use a backend
 

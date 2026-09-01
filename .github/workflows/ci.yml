@@ -19,6 +19,8 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: sccache
 
 jobs:
   # Detect what files changed to enable fast-path for docs-only changes
@@ -62,6 +64,8 @@ jobs:
               # asserts every workspace package follows the current Rust baseline
               - 'tests/rust/test_workspace_rust_baseline.py'
               - '.github/workflows/ci.yml'
+              - '.github/actions/setup-rust-ci/**'
+              - '.github/actions/cache-scala-native-image/**'
             docs:
               - 'website/**'
               - 'docs/**'
@@ -76,6 +80,7 @@ jobs:
               - 'crates/morphir/Cargo.toml'
               - 'tests/ci/test_release_workflow.py'
               - 'tests/ci/test_scala_extension_workflow.py'
+              - 'tests/ci/test_ci_rust_optimizations.py'
               - 'tests/ci/test_select_release_assets.py'
               - '.github/scripts/select_release_assets.py'
               - '.github/workflows/ci.yml'
@@ -99,11 +104,8 @@ jobs:
       - name: Add Rust components
         run: rustup component add rustfmt clippy
 
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: ". -> target"
-          key: morphir-lint
+      - name: Set up Rust CI
+        uses: ./.github/actions/setup-rust-ci
 
       - name: Check formatting
         run: cargo fmt --package morphir --package integration-tests --check
@@ -181,6 +183,9 @@ jobs:
 
       - name: Cache Scala dependencies
         uses: coursier/cache-action@v8
+
+      - name: Cache Scala native image
+        uses: ./.github/actions/cache-scala-native-image
 
       - name: Build Morphir Scala Elm process extension
         working-directory: ecosystem/morphir-scala
@@ -270,11 +275,8 @@ jobs:
             echo "Restored Scala version: $ver from $VER_FILE"
           fi
 
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: ". -> target"
-          key: morphir-cli-test
+      - name: Set up Rust CI
+        uses: ./.github/actions/setup-rust-ci
 
       - name: Run tests
         run: cargo test --locked --package morphir
@@ -307,6 +309,26 @@ jobs:
       - name: Run CLI integration tests
         # integration-tests finds the CLI binary in target/release/morphir
         run: cargo test --locked --package integration-tests
+
+  # Generate and diff-check CLI reference docs — parallel with extension builds
+  # and integration tests (only needs a debug morphir build, not extensions).
+  check-cli-docs:
+    name: Check CLI docs
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.rust == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install mise
+        uses: jdx/mise-action@v4
+
+      - name: Initialize environment
+        run: mise run init -- --ci
+
+      - name: Set up Rust CI
+        uses: ./.github/actions/setup-rust-ci
 
       - name: Generate CLI docs
         run: mise run docs:cli
@@ -352,7 +374,7 @@ jobs:
   check:
     name: All Checks
     runs-on: ubuntu-latest
-    needs: [changes, lint, build-elm-extension, build-scala-extension, morphir-cli-test, docs, release-workflow]
+    needs: [changes, lint, build-elm-extension, build-scala-extension, morphir-cli-test, check-cli-docs, docs, release-workflow]
     if: always()
     steps:
       - name: Check results
@@ -373,6 +395,10 @@ jobs:
             fi
             if [[ "${{ needs.morphir-cli-test.result }}" != "success" ]]; then
               echo "morphir-cli-test failed (result: ${{ needs.morphir-cli-test.result }})"
+              exit 1
+            fi
+            if [[ "${{ needs.check-cli-docs.result }}" != "success" ]]; then
+              echo "check-cli-docs failed (result: ${{ needs.check-cli-docs.result }})"
               exit 1
             fi
           fi

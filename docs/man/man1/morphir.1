@@ -99,6 +99,30 @@ Install a Morphir extension
 \fBextension list\fR
 List installed Morphir extensions
 .TP
+\fBextension repository\fR
+Manage named extension repositories
+.TP
+\fBextension repository add\fR
+Add an enabled local\-directory repository
+.TP
+\fBextension repository list\fR
+List configured repositories without contacting their endpoints
+.TP
+\fBextension repository inspect\fR
+Inspect one repository without contacting its endpoint
+.TP
+\fBextension repository enable\fR
+Enable a configured repository
+.TP
+\fBextension repository disable\fR
+Disable a configured repository
+.TP
+\fBextension repository remove\fR
+Remove configuration without deleting endpoint content
+.TP
+\fBextension repository verify\fR
+Validate repository metadata without installing anything
+.TP
 \fBextension update\fR
 Update an installed Morphir extension
 .TP
@@ -581,8 +605,8 @@ Install a Morphir extension
 \fBOptions:\fR
 .PP
 .TP
-\fB\-\-index\fR \fI<INDEX>\fR
-Controlled local extension index directory
+\fB\-\-repository\fR \fI<REPOSITORY>\fR
+Named extension repository configured in Morphir Home
 .TP
 \fB\-\-channel\fR \fI<CHANNEL>\fR
 Moving release channel (defaults to stable)
@@ -594,6 +618,71 @@ Exact semantic version
 .TP
 \fB<NAME>\fR
 Name of the extension to install
+.SH "MORPHIR EXTENSION REPOSITORY ADD"
+Add an enabled local\-directory repository
+.PP
+\fBUsage:\fR morphir extension repository add [OPTIONS] <NAME>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-directory\fR \fI<DIRECTORY>\fR
+Existing local repository directory
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Stable repository name
+.SH "MORPHIR EXTENSION REPOSITORY INSPECT"
+Inspect one repository without contacting its endpoint
+.PP
+\fBUsage:\fR morphir extension repository inspect <NAME>
+.PP
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Repository name
+.SH "MORPHIR EXTENSION REPOSITORY ENABLE"
+Enable a configured repository
+.PP
+\fBUsage:\fR morphir extension repository enable <NAME>
+.PP
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Repository name
+.SH "MORPHIR EXTENSION REPOSITORY DISABLE"
+Disable a configured repository
+.PP
+\fBUsage:\fR morphir extension repository disable <NAME>
+.PP
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Repository name
+.SH "MORPHIR EXTENSION REPOSITORY REMOVE"
+Remove configuration without deleting endpoint content
+.PP
+\fBUsage:\fR morphir extension repository remove <NAME>
+.PP
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Repository name
+.SH "MORPHIR EXTENSION REPOSITORY VERIFY"
+Validate repository metadata without installing anything
+.PP
+\fBUsage:\fR morphir extension repository verify <NAME>
+.PP
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Repository name
 .SH "MORPHIR EXTENSION UPDATE"
 Update an installed Morphir extension
 .PP
@@ -602,8 +691,8 @@ Update an installed Morphir extension
 \fBOptions:\fR
 .PP
 .TP
-\fB\-\-index\fR \fI<INDEX>\fR
-Controlled local extension index directory
+\fB\-\-repository\fR \fI<REPOSITORY>\fR
+Named extension repository configured in Morphir Home
 .TP
 \fB\-\-channel\fR \fI<CHANNEL>\fR
 Moving release channel (defaults to stable)

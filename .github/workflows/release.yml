@@ -83,10 +83,12 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+      - name: Set up Rust CI
+        uses: ./.github/actions/setup-rust-ci
         with:
-          key: morphir-cli-${{ matrix.target }}
+          install-mold: ${{ runner.os == 'Linux' }}
+          enable-sccache: ${{ runner.arch != 'ARM64' }}
+          shared-key: morphir-release-${{ matrix.target }}
 
       - name: Build CLI
         run: cargo build --locked --release --package morphir --target ${{ matrix.target }}

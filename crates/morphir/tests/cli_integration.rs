@@ -132,14 +132,39 @@ fn run_morphir(
         .expect("failed to run morphir binary")
 }
 
+fn add_test_repository(
+    name: &str,
+    index: &std::path::Path,
+    morphir_home: &std::path::Path,
+    working_directory: &std::path::Path,
+) -> std::process::Output {
+    run_morphir(
+        &[
+            "extension",
+            "repository",
+            "add",
+            name,
+            "--directory",
+            index.to_str().unwrap(),
+        ],
+        morphir_home,
+        working_directory,
+    )
+}
+
 #[test]
 fn ui_help_documents_workspace_and_host_options() {
     let temp = TempDir::new().unwrap();
     let output = run_morphir(&["ui", "--help"], &temp.path().join("home"), temp.path());
     let help = String::from_utf8_lossy(&output.stdout);
+    let executable = if cfg!(windows) {
+        "morphir.exe"
+    } else {
+        "morphir"
+    };
 
     assert!(output.status.success());
-    assert!(help.contains("Usage: morphir ui [OPTIONS] [WORKSPACE]"));
+    assert!(help.contains(&format!("Usage: {executable} ui [OPTIONS] [WORKSPACE]")));
     assert!(help.contains("--workspace-extension <ID>"));
     assert!(help.contains("--no-open"));
 }
@@ -406,7 +431,7 @@ fn compile_rejects_explicit_extension_selection_on_the_legacy_path() {
 }
 
 #[test]
-fn extension_install_uses_verified_index_and_list_reports_the_exact_version() {
+fn extension_install_uses_verified_repository_and_list_reports_the_exact_version() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let index = write_test_index(
@@ -416,14 +441,19 @@ fn extension_install_uses_verified_index_and_list_reports_the_exact_version() {
         "1.2.3",
         b"verified executable bytes",
     );
+    assert!(
+        add_test_repository("local-dev", &index.root, &home, temp.path())
+            .status
+            .success()
+    );
 
     let install = run_morphir(
         &[
             "extension",
             "install",
             "morphir-test",
-            "--index",
-            index.root.to_str().unwrap(),
+            "--repository",
+            "local-dev",
         ],
         &home,
         temp.path(),
@@ -450,6 +480,211 @@ fn extension_install_uses_verified_index_and_list_reports_the_exact_version() {
     assert!(stdout.contains("morphir-test"), "{stdout}");
     assert!(stdout.contains("1.2.3"), "{stdout}");
     assert!(stdout.contains("stable"), "{stdout}");
+}
+
+#[test]
+fn extension_repository_lifecycle_is_persisted_in_morphir_home() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let index = write_test_index(
+        temp.path(),
+        "morphir-test",
+        "Morphir test frontend",
+        "1.2.3",
+        b"verified executable bytes",
+    );
+
+    let add = run_morphir(
+        &[
+            "extension",
+            "repository",
+            "add",
+            "local-dev",
+            "--directory",
+            index.root.to_str().unwrap(),
+        ],
+        &home,
+        temp.path(),
+    );
+    assert!(
+        add.status.success(),
+        "add failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&add.stdout),
+        String::from_utf8_lossy(&add.stderr)
+    );
+    assert!(home.join("config/extensions/repositories.json").is_file());
+
+    let list = run_morphir(&["extension", "repository", "list"], &home, temp.path());
+    let stdout = String::from_utf8_lossy(&list.stdout);
+    assert!(list.status.success());
+    assert!(stdout.contains("local-dev"), "{stdout}");
+    assert!(stdout.contains("enabled"), "{stdout}");
+    assert!(stdout.contains("local-directory"), "{stdout}");
+
+    let verify = run_morphir(
+        &["extension", "repository", "verify", "local-dev"],
+        &home,
+        temp.path(),
+    );
+    assert!(
+        verify.status.success(),
+        "verify failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&verify.stdout),
+        String::from_utf8_lossy(&verify.stderr)
+    );
+    assert!(String::from_utf8_lossy(&verify.stdout).contains("1 release"));
+
+    for action in ["disable", "enable"] {
+        let output = run_morphir(
+            &["extension", "repository", action, "local-dev"],
+            &home,
+            temp.path(),
+        );
+        assert!(output.status.success(), "{action} failed");
+    }
+
+    std::fs::remove_dir_all(&index.root).unwrap();
+    let inspect = run_morphir(
+        &["extension", "repository", "inspect", "local-dev"],
+        &home,
+        temp.path(),
+    );
+    assert!(
+        inspect.status.success(),
+        "inspect should be offline: {}",
+        String::from_utf8_lossy(&inspect.stderr)
+    );
+    assert!(String::from_utf8_lossy(&inspect.stdout).contains("local-dev"));
+
+    let remove = run_morphir(
+        &["extension", "repository", "remove", "local-dev"],
+        &home,
+        temp.path(),
+    );
+    assert!(remove.status.success());
+    assert!(
+        !index.root.exists(),
+        "remove must not recreate endpoint content"
+    );
+}
+
+#[test]
+fn extension_repository_operations_write_correlated_structured_events() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let index = write_test_index(
+        temp.path(),
+        "morphir-test",
+        "Morphir test frontend",
+        "1.2.3",
+        b"verified executable bytes",
+    );
+    let output = morphir_command()
+        .args([
+            "extension",
+            "repository",
+            "add",
+            "local-dev",
+            "--directory",
+            index.root.to_str().unwrap(),
+        ])
+        .env("MORPHIR_HOME", &home)
+        .env("MORPHIR_LOG_FILE", "true")
+        .env("MORPHIR_LOGGING__FILE_LEVEL", "info")
+        .current_dir(temp.path())
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+
+    let event = std::fs::read_dir(home.join("logs/cli"))
+        .unwrap()
+        .filter_map(Result::ok)
+        .flat_map(|entry| std::fs::read_dir(entry.path()).into_iter().flatten())
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.extension()
+                .is_some_and(|extension| extension == "jsonl")
+        })
+        .flat_map(|path| {
+            std::fs::read_to_string(path)
+                .unwrap()
+                .lines()
+                .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+                .collect::<Vec<_>>()
+        })
+        .find(|event| {
+            event["fields"]["event_name"] == "extension.repository.add"
+                && event["fields"]["operation_id"].is_string()
+        })
+        .expect("repository add should emit a structured event");
+    assert_eq!(event["fields"]["repository"], "local-dev");
+    assert_eq!(event["fields"]["endpoint_kind"], "local-directory");
+    assert_eq!(event["fields"]["state"], "enabled");
+    assert!(event["fields"]["operation_id"].is_string());
+}
+
+#[test]
+fn extension_install_resolves_from_a_named_repository() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let index = write_test_index(
+        temp.path(),
+        "morphir-test",
+        "Morphir test frontend",
+        "1.2.3",
+        b"verified executable bytes",
+    );
+    let add = run_morphir(
+        &[
+            "extension",
+            "repository",
+            "add",
+            "local-dev",
+            "--directory",
+            index.root.to_str().unwrap(),
+        ],
+        &home,
+        temp.path(),
+    );
+    assert!(add.status.success());
+
+    let install = run_morphir(
+        &[
+            "extension",
+            "install",
+            "morphir-test",
+            "--repository",
+            "local-dev",
+        ],
+        &home,
+        temp.path(),
+    );
+
+    assert!(
+        install.status.success(),
+        "install failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
+    );
+    assert!(home.join("catalog/extensions.json").is_file());
+}
+
+#[test]
+fn extension_install_requires_one_unambiguous_source() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let no_source = run_morphir(
+        &["extension", "install", "morphir-test"],
+        &home,
+        temp.path(),
+    );
+    assert!(!no_source.status.success());
+    assert!(
+        String::from_utf8_lossy(&no_source.stderr).contains("--repository"),
+        "{}",
+        String::from_utf8_lossy(&no_source.stderr)
+    );
 }
 
 #[test]
@@ -482,14 +717,19 @@ fn extension_install_rejects_source_tampering_without_activating_a_catalog_entry
         b"original bytes",
     );
     std::fs::write(&index.source, b"tampered bytes").unwrap();
+    assert!(
+        add_test_repository("local-dev", &index.root, &home, temp.path())
+            .status
+            .success()
+    );
 
     let install = run_morphir(
         &[
             "extension",
             "install",
             "morphir-test",
-            "--index",
-            index.root.to_str().unwrap(),
+            "--repository",
+            "local-dev",
         ],
         &home,
         temp.path(),
@@ -503,19 +743,32 @@ fn extension_install_rejects_source_tampering_without_activating_a_catalog_entry
 #[test]
 fn extension_selection_flags_are_mutually_exclusive() {
     let temp = TempDir::new().unwrap();
+    let index = write_test_index(
+        temp.path(),
+        "morphir-test",
+        "Morphir test frontend",
+        "1.0.0",
+        b"extension bytes",
+    );
+    let home = temp.path().join("home");
+    assert!(
+        add_test_repository("local-dev", &index.root, &home, temp.path())
+            .status
+            .success()
+    );
     let output = run_morphir(
         &[
             "extension",
             "install",
             "morphir-test",
-            "--index",
-            temp.path().to_str().unwrap(),
+            "--repository",
+            "local-dev",
             "--channel",
             "preview",
             "--version",
             "1.0.0",
         ],
-        &temp.path().join("home"),
+        &home,
         temp.path(),
     );
     assert!(!output.status.success());
@@ -544,13 +797,23 @@ fn extension_update_re_resolves_to_an_exact_version() {
         "2.0.0",
         b"version two",
     );
+    assert!(
+        add_test_repository("first", &first.root, &home, temp.path())
+            .status
+            .success()
+    );
+    assert!(
+        add_test_repository("second", &second.root, &home, temp.path())
+            .status
+            .success()
+    );
     let install = run_morphir(
         &[
             "extension",
             "install",
             "morphir-test",
-            "--index",
-            first.root.to_str().unwrap(),
+            "--repository",
+            "first",
             "--version",
             "1.2.3",
         ],
@@ -564,8 +827,8 @@ fn extension_update_re_resolves_to_an_exact_version() {
             "extension",
             "update",
             "morphir-test",
-            "--index",
-            second.root.to_str().unwrap(),
+            "--repository",
+            "second",
             "--version",
             "2.0.0",
         ],
@@ -596,13 +859,18 @@ fn extension_uninstall_removes_active_state_but_retains_store_bytes() {
         "1.2.3",
         b"verified executable bytes",
     );
+    assert!(
+        add_test_repository("local-dev", &index.root, &home, temp.path())
+            .status
+            .success()
+    );
     let install = run_morphir(
         &[
             "extension",
             "install",
             "morphir-test",
-            "--index",
-            index.root.to_str().unwrap(),
+            "--repository",
+            "local-dev",
         ],
         &home,
         temp.path(),
@@ -676,13 +944,23 @@ fn verify_real_installed_elm_provider(
     let tampered_index =
         write_test_index(&tamper_case, extension_id, extension_name, version, &bytes);
     std::fs::write(&tampered_index.source, b"tampered source bytes").unwrap();
+    assert!(
+        add_test_repository(
+            "tampered",
+            &tampered_index.root,
+            &tampered_home,
+            &tamper_case,
+        )
+        .status
+        .success()
+    );
     let rejected = run_morphir(
         &[
             "extension",
             "install",
             extension_id,
-            "--index",
-            tampered_index.root.to_str().unwrap(),
+            "--repository",
+            "tampered",
             "--version",
             version,
         ],
@@ -696,13 +974,18 @@ fn verify_real_installed_elm_provider(
     let home = project.join("home");
     std::fs::create_dir_all(&project).unwrap();
     let index = write_test_index(&project, extension_id, extension_name, version, &bytes);
+    assert!(
+        add_test_repository("local-dev", &index.root, &home, &project)
+            .status
+            .success()
+    );
     let install = run_morphir(
         &[
             "extension",
             "install",
             extension_id,
-            "--index",
-            index.root.to_str().unwrap(),
+            "--repository",
+            "local-dev",
             "--version",
             version,
         ],
@@ -837,13 +1120,18 @@ fn generate_routes_exact_v3_string_ir_to_an_installed_provider() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let index = write_backend_test_index(temp.path(), backend_process_script().as_bytes());
+    assert!(
+        add_test_repository("local-dev", &index.root, &home, temp.path())
+            .status
+            .success()
+    );
     let install = run_morphir(
         &[
             "extension",
             "install",
             "morphir-avro",
-            "--index",
-            index.root.to_str().unwrap(),
+            "--repository",
+            "local-dev",
         ],
         &home,
         temp.path(),

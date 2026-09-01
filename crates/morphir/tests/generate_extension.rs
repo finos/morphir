@@ -394,12 +394,21 @@ fn generate_rejects_traversal_from_an_installed_provider_without_writing()
             .output()
             .unwrap()
     };
+    let add = run(&[
+        "extension",
+        "repository",
+        "add",
+        "local-dev",
+        "--directory",
+        index.to_str().unwrap(),
+    ]);
+    assert_success(&add, "add traversal provider repository");
     let install = run(&[
         "extension",
         "install",
         "traversal-provider",
-        "--index",
-        index.to_str().unwrap(),
+        "--repository",
+        "local-dev",
     ]);
     assert_success(&install, "install traversal provider");
     let config = project.join("morphir.toml");

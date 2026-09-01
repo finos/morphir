@@ -84,12 +84,21 @@ impl CliMother {
     }
 
     pub fn install_verified_wasm(&self) {
+        let add = self.run(&[
+            "extension",
+            "repository",
+            "add",
+            "local-dev",
+            "--directory",
+            self.index.to_str().unwrap(),
+        ]);
+        assert_success(&add, "add local extension repository");
         let output = self.run(&[
             "extension",
             "install",
             self.extension_id,
-            "--index",
-            self.index.to_str().unwrap(),
+            "--repository",
+            "local-dev",
         ]);
         assert_success(&output, "install release WASM guest");
     }
