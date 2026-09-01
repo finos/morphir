@@ -2,7 +2,10 @@
 
 use crate::commands::compile::CompileOptions;
 use crate::commands::{GenerateOptions, run_compile, run_generate};
+use crate::error::CliError;
+use morphir_devkit::{discover_config, load_config_context, resolve_compile_output};
 use starbase::AppResult;
+use std::path::PathBuf;
 
 /// Run Gleam compile command (convenience wrapper)
 pub async fn run_gleam_compile(
@@ -60,16 +63,15 @@ pub async fn run_gleam_roundtrip(
     json: bool,
     json_lines: bool,
 ) -> AppResult<miette::Report> {
-    // First compile
-    let compile_output = output.clone().or_else(|| {
-        // Use default compile output path
-        Some(".morphir/out/default/compile/gleam".to_string())
-    });
-
+    let generate_input = package_name
+        .as_deref()
+        .map(|package_name| roundtrip_compile_output(package_name, config_path.as_deref()))
+        .transpose()?
+        .map(|path| path.to_string_lossy().into_owned());
     run_gleam_compile(
-        input.clone(),
-        compile_output.clone(),
-        package_name.clone(),
+        input,
+        None,
+        package_name,
         config_path.clone(),
         project.clone(),
         json,
@@ -77,9 +79,8 @@ pub async fn run_gleam_roundtrip(
     )
     .await?;
 
-    // Then generate from the compile output
     run_gleam_generate(
-        compile_output,
+        generate_input,
         output,
         config_path,
         project,
@@ -87,4 +88,26 @@ pub async fn run_gleam_roundtrip(
         json_lines,
     )
     .await
+}
+
+fn roundtrip_compile_output(
+    package_name: &str,
+    config_path: Option<&str>,
+) -> Result<PathBuf, CliError> {
+    let start_dir = std::env::current_dir().map_err(|error| CliError::FileSystem { error })?;
+    let config_file = if let Some(config_path) = config_path {
+        PathBuf::from(config_path)
+    } else {
+        discover_config(&start_dir)
+            .map_err(|error| CliError::Config { error })?
+            .ok_or_else(|| CliError::Config {
+                error: anyhow::anyhow!("No morphir.toml, morphir.yaml, or morphir.json found"),
+            })?
+    };
+    let context = load_config_context(&config_file).map_err(|error| CliError::Config { error })?;
+    Ok(resolve_compile_output(
+        package_name,
+        "gleam",
+        &context.morphir_dir,
+    ))
 }

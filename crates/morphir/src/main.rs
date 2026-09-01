@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 pub mod commands;
 pub mod error;
+pub mod extensions;
 mod help;
 pub mod home;
 mod log_lock;

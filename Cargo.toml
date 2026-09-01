@@ -64,6 +64,8 @@ zip = { version = "8.6", default-features = false, features = ["deflate"] }
 ed25519-dalek = "2"
 unicode-casefold = "0.2"
 unicode-normalization = "0.1"
+url = "2.5.8"
+percent-encoding = "2.3.2"
 
 [profile.release]
 opt-level = 3

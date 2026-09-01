@@ -4,6 +4,7 @@
 
 pub mod commands;
 pub mod error;
+pub mod extensions;
 pub mod home;
 mod log_lock;
 pub mod observability;

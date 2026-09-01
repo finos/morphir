@@ -146,16 +146,18 @@ flowchart LR
 The installed extension inventory is local state, not a repository or catalog.
 It records the extension ID, name, version, runtime, platform, arguments,
 artifact digest, content-addressed store path, capabilities, MEP versions,
-repository provenance, backend metadata, and executable mode. The matching lock also
-records the requested selection and artifact source; the inventory does not. The
-host uses the inventory and lock together to select an artifact and runtime
-without contacting a registry during normal execution.
+repository provenance, frontend metadata, backend metadata, and executable
+mode. The matching lock also records the requested selection and artifact
+source; the inventory does not. Both records persist matching frontend or
+backend metadata whenever that capability is declared. The host uses the
+inventory and lock together to select an artifact and runtime without contacting
+a registry during normal execution.
 
 An extension manifest needs:
 
 - extension identity and version;
 - supported MEP versions;
-- declared capabilities and languages or targets;
+- declared capabilities and matching frontend languages or backend targets;
 - requested permissions;
 - one or more artifacts;
 - each artifact's runtime kind, source, digest, and platform constraints;
@@ -164,7 +166,9 @@ An extension manifest needs:
 
 The runtime kind is independent from the acquisition source. A GitHub Release may contain a portable WASM module, a native process, or a JVM process. A daemon entry may require no artifact at all when policy permits connecting to an existing endpoint.
 
-Schema-v2 extension records use these rules for runnable artifacts:
+The `schemaVersion` field is a quoted `"major.minor"` JSON string. Schema `"1.0"`
+extension records require matching metadata for every declared frontend or
+backend capability and use these rules for runnable artifacts:
 
 | Runtime | Platform | Arguments and executable bit | Rights |
 |---|---|---|---|
@@ -177,22 +181,25 @@ it without changing an extension record or the MEP methods.
 
 Installation verifies the selected artifact's SHA-256 before publishing it to
 the content-addressed store. It then records the exact artifact in both the
-inventory and lock. Backend records also lock target IDs and supported Morphir IR
-versions. Normal activation is offline. It loads one inventory and lock snapshot,
-checks that they agree, canonicalizes the stored artifact under Morphir home,
-rehashes it, and verifies its runtime-specific mode before starting a session.
+inventory and lock. Frontend records lock language IDs, file extensions,
+supported Morphir IR versions, and compile support. Backend records lock target
+IDs, supported Morphir IR versions, and generate support. Normal activation is
+offline. It loads one inventory and lock snapshot, checks that they agree,
+canonicalizes the stored artifact under Morphir home, rehashes it, and verifies
+its runtime-specific mode before starting a session.
 
 The MEP handshake is a second check, not a replacement for the lock:
 
 | Stage | Compared values | Result on mismatch |
 |---|---|---|
-| Inventory against lock | Extension ID, name, version, runtime, platform, arguments, digest, capabilities, MEP versions, repository provenance, complete backend metadata, and executable mode | Activation stops before guest code runs. |
-| Installed record against initialization | Extension ID, name, version, capability kinds, and the complete backend capability, including targets, IR versions, and `generate` | The host rejects initialization and does not call the backend. |
-| Requested operation against negotiated capability | Target ID, input IR version, and `generate` support | The host does not send `morphir.backend.generate`. |
+| Inventory against lock | Extension ID, name, version, runtime, platform, arguments, digest, capabilities, MEP versions, repository provenance, complete frontend and backend metadata, and executable mode | Activation stops before guest code runs. |
+| Installed record against initialization | Extension ID, name, version, capability kinds, complete frontend metadata including languages, file extensions, IR versions, and `compile`, and complete backend metadata including targets, IR versions, and `generate` | The host rejects initialization and does not call the provider. |
+| Requested operation against negotiated capability | Frontend language, requested IR version, and `compile`, or backend target, input IR version, and `generate` | The host does not send `morphir.frontend.compile` or `morphir.backend.generate`. |
 
 This comparison prevents a verified file from silently advertising a different
-backend after installation. Artifact integrity proves which bytes the host
-loaded. The handshake proves what those bytes claim in the current session.
+frontend or backend after installation. Artifact integrity proves which bytes
+the host loaded. The handshake proves what those bytes claim in the current
+session.
 
 The host supports these activation modes behind one session contract:
 

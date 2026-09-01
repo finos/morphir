@@ -47,7 +47,7 @@ input files and writing output files belong to the host, not the guest.
 
 ## Portable extensions and safety boundary
 
-A schema-v2 WASM record retains the artifact source, digest, and filename. It
+A schema `"1.0"` WASM record retains the artifact source, digest, and filename. It
 omits a platform, requires empty arguments, and rejects `executable = true`.
 Materialization verifies the declared SHA-256 and atomically publishes the bytes
 to the content-addressed store. Transactional installation writes the lock and

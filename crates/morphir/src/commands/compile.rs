@@ -3,12 +3,14 @@
 use crate::error::CliError;
 use crate::error::convert_extension_diagnostics;
 use crate::home::MorphirHome;
-use crate::output::Diagnostic;
 use morphir_common::config::model::MorphirConfig;
+use morphir_core::format_version::{
+    NormalizedFormatVersion, ReleaseTriplet, ScalarValue, SupportTable,
+};
 use morphir_daemon::DaemonError;
 use morphir_daemon::extensions::{
-    InvokeOutcome, MepTransport, ProcessLaunch, Ready, Session, SpawnedProcessSession,
-    protocol::methods,
+    InvokeOutcome, MepTransport, PersistedExtensionCapabilities, ProcessLaunch, Ready, Session,
+    SpawnedProcessSession, protocol::methods,
 };
 use morphir_devkit::{
     discover_config, ensure_morphir_structure, load_config_context, resolve_compile_output,
@@ -62,7 +64,7 @@ pub async fn run_compile(options: CompileOptions) -> AppResult<miette::Report> {
         .into());
     }
 
-    run_legacy_compile(options).await
+    run_provider_compile(options).await
 }
 
 fn should_use_single_file_process(options: &CompileOptions) -> bool {
@@ -330,7 +332,13 @@ fn unix_file_uri(path: &str) -> Result<String, CliError> {
 }
 
 fn windows_file_uri(path: &str) -> Result<String, CliError> {
-    let normalized = path.replace('\\', "/");
+    let normalized = if let Some(network_path) = path.strip_prefix(r"\\?\UNC\") {
+        format!("//{}", network_path.replace('\\', "/"))
+    } else if let Some(drive_path) = path.strip_prefix(r"\\?\") {
+        drive_path.replace('\\', "/")
+    } else {
+        path.replace('\\', "/")
+    };
     if let Some(network_path) = normalized.strip_prefix("//") {
         let (authority, path) = network_path
             .split_once('/')
@@ -439,15 +447,31 @@ fn installed_process(
             });
         }
     };
-    let launch = process.args().iter().fold(
-        ProcessLaunch::from_verified_bytes(
+    let capabilities = process.extension_capabilities();
+    let persisted_capabilities =
+        PersistedExtensionCapabilities::new(capabilities.frontend, capabilities.backend);
+    let launch = if process.frontend().is_some() || process.backend().is_some() {
+        ProcessLaunch::from_verified_bytes_with_persisted_capabilities_in(
+            process.extension_info().clone(),
+            persisted_capabilities,
+            process.filename(),
+            process.bytes(),
+            process.staging_directory(),
+            working_directory,
+        )
+    } else {
+        ProcessLaunch::from_verified_bytes_in(
             process.extension_info().clone(),
             process.filename(),
             process.bytes(),
+            process.staging_directory(),
             working_directory,
-        ),
-        |launch, argument| launch.arg(argument),
-    );
+        )
+    };
+    let launch = process
+        .args()
+        .iter()
+        .fold(launch, |launch, argument| launch.arg(argument));
     Ok(environment
         .iter()
         .fold(launch, |launch, (key, value)| launch.env(key, value)))
@@ -923,7 +947,9 @@ fn write_compile_output(
     }
 }
 
-async fn run_legacy_compile(options: CompileOptions) -> AppResult<miette::Report> {
+async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Report> {
+    use crate::output::{CompileOutput, OutputFormat};
+
     let CompileOptions {
         language,
         extension: _,
@@ -935,12 +961,9 @@ async fn run_legacy_compile(options: CompileOptions) -> AppResult<miette::Report
         json,
         json_lines,
     } = options;
-    use crate::output::{CompileOutput, OutputFormat, write_output};
-    // Discover config if not provided
-    let start_dir = std::env::current_dir().map_err(|e| CliError::FileSystem { error: e })?;
-
-    let config_file = if let Some(cfg) = config_path {
-        PathBuf::from(cfg)
+    let start_dir = std::env::current_dir().map_err(|error| CliError::FileSystem { error })?;
+    let config_file = if let Some(config) = config_path {
+        PathBuf::from(config)
     } else {
         discover_config(&start_dir)
             .map_err(|error| CliError::Config { error })?
@@ -948,243 +971,325 @@ async fn run_legacy_compile(options: CompileOptions) -> AppResult<miette::Report
                 error: anyhow::anyhow!("No morphir.toml, morphir.yaml, or morphir.json found"),
             })?
     };
-
-    // Load config context
-    let ctx = load_config_context(&config_file).map_err(|e| CliError::Config { error: e })?;
-
-    // Ensure .morphir/ structure exists
-    ensure_morphir_structure(&ctx.morphir_dir).map_err(|e| CliError::Config { error: e })?;
-
-    // Determine language (from CLI or config)
-    let lang = language
+    let context = load_config_context(&config_file).map_err(|error| CliError::Config { error })?;
+    ensure_morphir_structure(&context.morphir_dir).map_err(|error| CliError::Config { error })?;
+    let language = language
         .or_else(|| {
-            ctx.config
+            context
+                .config
                 .frontend
                 .as_ref()
-                .and_then(|f| f.language.clone())
+                .and_then(|frontend| frontend.language.clone())
         })
         .ok_or_else(|| CliError::Config {
             error: anyhow::anyhow!("Language not specified and not found in config"),
         })?;
-
-    // Determine project name
-    let proj_name = package_name
-        .or_else(|| ctx.current_project.as_ref().map(|p| p.name.clone()))
-        .or_else(|| ctx.config.project.as_ref().map(|p| p.name.clone()))
-        .unwrap_or_else(|| "default".to_string());
-
-    // Determine input path (resolve relative to config file location)
-    let input_path = if let Some(inp) = input {
-        // CLI-provided input is resolved relative to current working directory
-        let inp_path = PathBuf::from(inp);
-        if inp_path.is_absolute() {
-            inp_path
-        } else {
-            start_dir.join(inp_path)
-        }
+    let package_name = package_name
+        .or_else(|| {
+            context
+                .current_project
+                .as_ref()
+                .map(|project| project.name.clone())
+        })
+        .or_else(|| {
+            context
+                .config
+                .project
+                .as_ref()
+                .map(|project| project.name.clone())
+        })
+        .unwrap_or_else(|| "default".into());
+    let input_path = if let Some(input) = input {
+        absolute_from(&start_dir, Path::new(&input))
     } else {
-        // Config-provided source_directory is resolved relative to config file
-        let raw_path = ctx
+        let configured = context
             .config
             .project
             .as_ref()
-            .map(|p| PathBuf::from(&p.source_directory))
+            .map(|project| PathBuf::from(&project.source_directory))
             .or_else(|| {
-                ctx.config.frontend.as_ref().and_then(|f| {
-                    f.settings
+                context.config.frontend.as_ref().and_then(|frontend| {
+                    frontend
+                        .settings
                         .get("source_directory")
-                        .and_then(|v| v.as_str())
+                        .and_then(|value| value.as_str())
                         .map(PathBuf::from)
                 })
             })
             .unwrap_or_else(|| PathBuf::from("src"));
-
-        resolve_path_relative_to_config(&raw_path, &ctx.config_path)
+        resolve_path_relative_to_config(&configured, &context.config_path)
     };
-
-    // Determine output path
-    let output_path = if let Some(out) = output {
-        PathBuf::from(out)
-    } else {
-        resolve_compile_output(&proj_name, &lang, &ctx.morphir_dir)
-    };
-
-    // Create extension registry
-    let registry = morphir_daemon::extensions::registry::ExtensionRegistry::new(
-        ctx.project_root
-            .unwrap_or_else(|| ctx.config_path.parent().unwrap().to_path_buf()),
-        output_path.clone(),
-    )
-    .map_err(|e| CliError::Extension {
-        message: format!("Failed to create extension registry: {}", e),
-    })?;
-
-    // Register builtin extensions
-    let builtins = morphir_devkit::discover_builtin_extensions();
-    for builtin in builtins {
-        if let Some(path) = builtin.path {
-            registry
-                .register_builtin(&builtin.id, path)
-                .await
-                .map_err(|e| CliError::Extension {
-                    message: format!("Failed to register builtin extension {}: {}", builtin.id, e),
-                })?;
-        }
-    }
-
-    // Find and load extension by language
-    let extension = registry
-        .find_extension_by_language(&lang)
-        .await
-        .ok_or_else(|| CliError::Extension {
-            message: format!("No extension found for language: {}", lang),
-        })?;
-
-    // Collect source files
-    let source_files =
-        collect_source_files(&input_path, &lang).map_err(|e| CliError::FileSystem {
-            error: std::io::Error::other(e),
-        })?;
-
-    // Get emit_parse_stage setting from config (default: true)
-    let emit_parse_stage = ctx
+    let output_dir = output
+        .map(PathBuf::from)
+        .unwrap_or_else(|| resolve_compile_output(&package_name, &language, &context.morphir_dir));
+    let output_path = output_dir.join("morphir-ir.json");
+    let (documents, source_root_uri) = collect_source_documents(&input_path, &language)?;
+    let emit_parse_stage = context
         .config
         .frontend
         .as_ref()
-        .map(|f| f.emit_parse_stage)
+        .map(|frontend| frontend.emit_parse_stage)
         .unwrap_or(true);
-
-    // Get emit_parse_stage_fatal setting from config (default: false)
-    let emit_parse_stage_fatal = ctx
+    let emit_parse_stage_fatal = context
         .config
         .frontend
         .as_ref()
-        .map(|f| f.emit_parse_stage_fatal)
+        .map(|frontend| frontend.emit_parse_stage_fatal)
         .unwrap_or(false);
-
-    // Call extension's compile method
-    let compile_params = serde_json::json!({
-        "input": input_path.to_string_lossy(),
-        "output": output_path.to_string_lossy(),
-        "package_name": proj_name,
-        "files": source_files,
-        "emitParseStage": emit_parse_stage,
-        "emitParseStageFatal": emit_parse_stage_fatal,
-    });
-
-    let result: serde_json::Value = extension
-        .call("morphir.frontend.compile", compile_params)
-        .await
-        .map_err(|e| CliError::Extension {
-            message: format!("Extension compile call failed: {}", e),
+    let home = MorphirHome::resolve().map_err(|error| CliError::Config { error })?;
+    let installed =
+        morphir_distribution::list_installed(&home).map_err(|error| CliError::Extension {
+            message: format!("Failed to list installed frontend providers: {error}"),
         })?;
-
+    let registry = crate::extensions::extension_registry(installed)?;
+    let resolved = registry
+        .resolve_frontend(
+            &language,
+            "4.0.0",
+            morphir_daemon::InvocationPolicy::PreferDirect,
+        )
+        .map_err(|error| CliError::Extension {
+            message: format!("Failed to resolve frontend for '{language}': {error}"),
+        })?;
+    let request = CompileRequest {
+        language_id: language,
+        documents,
+        package: CompilePackage {
+            name: package_name,
+            exposed_modules: vec![],
+        },
+        dependencies: vec![],
+        options: ExtensionCompileOptions {
+            types_only: false,
+            ir_version: "4.0.0".into(),
+            extra: HashMap::from([
+                ("outputDir".into(), serde_json::json!(output_dir)),
+                ("sourceRootUri".into(), serde_json::json!(source_root_uri)),
+                ("emitParseStage".into(), serde_json::json!(emit_parse_stage)),
+                (
+                    "emitParseStageFatal".into(),
+                    serde_json::json!(emit_parse_stage_fatal),
+                ),
+            ]),
+        },
+    };
+    let workspace = context
+        .project_root
+        .as_deref()
+        .or_else(|| context.config_path.parent())
+        .unwrap_or(&start_dir);
+    let result = crate::extensions::invoke_frontend(&home, workspace, &resolved, request).await?;
+    let diagnostics = convert_extension_diagnostics(&result.diagnostics);
     let format = OutputFormat::from_flags(json, json_lines);
-
-    // Extract diagnostics and modules from result
-    let diagnostics: Vec<Diagnostic> = result
-        .get("diagnostics")
-        .and_then(|d| serde_json::from_value(d.clone()).ok())
-        .unwrap_or_default();
-
-    let modules: Vec<String> = result
-        .get("modules")
-        .and_then(|m| serde_json::from_value(m.clone()).ok())
-        .unwrap_or_default();
-
-    let success = result
-        .get("success")
-        .and_then(|s| s.as_bool())
-        .unwrap_or(true);
-
-    if !success {
-        let error_msg = result
-            .get("error")
-            .and_then(|e| e.as_str())
-            .unwrap_or("Compilation failed");
-
-        if format != OutputFormat::Human {
-            let output = CompileOutput {
-                success: false,
-                ir: None,
-                diagnostics: diagnostics.clone(),
-                modules: vec![],
-                output_path: output_path.to_string_lossy().to_string(),
-            };
-            write_output(format, &output).map_err(CliError::from)?;
-        } else {
-            let err = CliError::Compilation {
-                message: error_msg.to_string(),
-            };
-            err.report();
-        }
-        return Err(CliError::Compilation {
-            message: error_msg.to_string(),
-        }
-        .into());
-    }
-
-    if format != OutputFormat::Human {
+    let has_error = result
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.severity == DiagnosticSeverity::Error);
+    if !result.success || has_error {
         let output = CompileOutput {
-            success: true,
-            ir: result.get("ir").cloned(),
+            success: false,
+            ir: None,
             diagnostics,
-            modules,
-            output_path: output_path.to_string_lossy().to_string(),
+            modules: vec![],
+            output_path: output_path.to_string_lossy().into_owned(),
         };
-        write_output(format, &output).map_err(CliError::from)?;
-    } else {
-        println!("Compilation successful!");
-        println!("Output: {:?}", output_path);
-        if !diagnostics.is_empty() {
-            println!("\nDiagnostics:");
-            for diag in &diagnostics {
-                println!("  {}: {}", diag.level, diag.message);
-            }
-        }
+        let message = compilation_failure_message(&result);
+        write_compile_output(format, &output)?;
+        return Err(CliError::Compilation { message }.into());
     }
-
+    let ir_file = validate_v4_compile_result(&result)?;
+    write_v4_ir(&output_path, &ir_file)?;
+    let ir = serde_json::to_value(&ir_file).map_err(|error| CliError::Extension {
+        message: format!("Failed to serialize validated Morphir IR v4: {error}"),
+    })?;
+    let output = CompileOutput {
+        success: true,
+        ir: Some(ir),
+        diagnostics,
+        modules: result.modules,
+        output_path: output_path.to_string_lossy().into_owned(),
+    };
+    write_compile_output(format, &output)?;
     Ok(None)
 }
 
-/// Collect source files from input directory
-fn collect_source_files(input_path: &Path, language: &str) -> anyhow::Result<Vec<String>> {
-    let mut files = Vec::new();
-
-    if !input_path.exists() {
-        return Ok(files);
-    }
-
-    if input_path.is_file() {
-        files.push(input_path.to_string_lossy().to_string());
-        return Ok(files);
-    }
-
-    // Determine file extension based on language
-    let ext = match language {
-        "gleam" => "gleam",
-        "elm" => "elm",
-        "python" => "py",
-        _ => {
-            return Err(CliError::Validation {
-                message: format!("Unknown language: {}", language),
-            }
-            .into());
-        }
+fn collect_source_documents(
+    input_path: &Path,
+    language: &str,
+) -> Result<(Vec<SourceDocument>, String), CliError> {
+    let extension = language_file_extension(language)?;
+    let metadata = std::fs::metadata(input_path).map_err(|error| CliError::FileSystem { error })?;
+    let canonical_input = input_path
+        .canonicalize()
+        .map_err(|error| CliError::FileSystem { error })?;
+    let source_root = if metadata.is_file() {
+        canonical_input
+            .parent()
+            .ok_or_else(|| CliError::Validation {
+                message: format!(
+                    "Source file '{}' has no parent directory",
+                    input_path.display()
+                ),
+            })?
+    } else if metadata.is_dir() {
+        canonical_input.as_path()
+    } else {
+        return Err(CliError::Validation {
+            message: format!(
+                "Source input '{}' must be a file or directory",
+                input_path.display()
+            ),
+        });
     };
-
-    // Walk directory and collect files
-    for entry in walkdir::WalkDir::new(input_path) {
-        let entry = entry?;
-        if entry.file_type().is_file()
-            && let Some(file_ext) = entry.path().extension()
-            && file_ext == ext
-        {
-            files.push(entry.path().to_string_lossy().to_string());
-        }
+    let mut paths = if metadata.is_file() {
+        canonical_input
+            .extension()
+            .is_some_and(|candidate| candidate == extension)
+            .then_some(canonical_input.clone())
+            .into_iter()
+            .collect::<Vec<_>>()
+    } else {
+        walkdir::WalkDir::new(&canonical_input)
+            .into_iter()
+            .map(|entry| entry.map_err(std::io::Error::other))
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .filter(|entry| entry.file_type().is_file())
+            .filter(|entry| {
+                entry
+                    .path()
+                    .extension()
+                    .is_some_and(|candidate| candidate == extension)
+            })
+            .map(|entry| {
+                entry
+                    .path()
+                    .canonicalize()
+                    .map_err(|error| CliError::FileSystem { error })
+            })
+            .collect::<Result<Vec<_>, _>>()?
+    };
+    paths.sort();
+    if paths.is_empty() {
+        return Err(CliError::Validation {
+            message: format!(
+                "The {language} source set is empty below '{}'",
+                input_path.display()
+            ),
+        });
     }
+    let documents = paths
+        .into_iter()
+        .map(|path| {
+            let text =
+                std::fs::read_to_string(&path).map_err(|error| CliError::FileSystem { error })?;
+            Ok(SourceDocument {
+                uri: file_uri(&path)?,
+                language_id: language.to_owned(),
+                version: 1,
+                text,
+            })
+        })
+        .collect::<Result<Vec<_>, CliError>>()?;
+    Ok((documents, file_uri(source_root)?))
+}
 
-    Ok(files)
+fn language_file_extension(language: &str) -> Result<&'static str, CliError> {
+    match language {
+        "gleam" => Ok("gleam"),
+        "elm" => Ok("elm"),
+        "python" => Ok("py"),
+        _ => Err(CliError::Validation {
+            message: format!("Unknown language: {language}"),
+        }),
+    }
+}
+
+fn compilation_failure_message(result: &CompileResult) -> String {
+    let messages = result
+        .diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.severity == DiagnosticSeverity::Error)
+        .map(|diagnostic| diagnostic.message.as_str())
+        .collect::<Vec<_>>();
+    if messages.is_empty() {
+        "Compilation failed".into()
+    } else {
+        messages.join("; ")
+    }
+}
+
+fn validate_v4_compile_result(
+    result: &CompileResult,
+) -> Result<morphir_core::ir::v4::IRFile, CliError> {
+    let version = result
+        .ir_version
+        .as_deref()
+        .ok_or_else(|| CliError::Compilation {
+            message: "Frontend returned successful compilation without an IR version".into(),
+        })?;
+    if !is_semantic_v4(version) {
+        return Err(CliError::Compilation {
+            message: format!("Frontend returned unsupported Morphir IR version '{version}'"),
+        });
+    }
+    let result_release = ReleaseTriplet::new(4, 0, 0);
+    let ir = result.ir.as_ref().ok_or_else(|| CliError::Compilation {
+        message: "Frontend returned successful compilation without Morphir IR".into(),
+    })?;
+    let ir_file: morphir_core::ir::v4::IRFile =
+        serde_json::from_value(ir.clone()).map_err(|error| CliError::Compilation {
+            message: format!("Frontend returned invalid Morphir IR v4: {error}"),
+        })?;
+    let embedded = ir_file
+        .format_version
+        .normalize()
+        .map_err(|error| CliError::Compilation {
+            message: format!("Frontend returned invalid embedded Morphir IR version: {error}"),
+        })?;
+    if !embedded.is_supported() {
+        return Err(CliError::Compilation {
+            message: format!(
+                "Frontend returned unsupported embedded Morphir IR version '{}'",
+                embedded.release
+            ),
+        });
+    }
+    if embedded.release != result_release {
+        return Err(CliError::Compilation {
+            message: format!(
+                "Frontend returned embedded Morphir IR version '{}' did not match result/request version '{}'",
+                embedded.release, result_release
+            ),
+        });
+    }
+    Ok(ir_file)
+}
+
+fn is_semantic_v4(version: &str) -> bool {
+    normalize_ir_version_text(version).is_some_and(|normalized| {
+        normalized.is_supported() && normalized.release == ReleaseTriplet::new(4, 0, 0)
+    })
+}
+
+fn normalize_ir_version_text(version: &str) -> Option<NormalizedFormatVersion> {
+    let scalar = if !version.is_empty() && version.bytes().all(|byte| byte.is_ascii_digit()) {
+        ScalarValue::Integer(version.parse().ok()?)
+    } else {
+        ScalarValue::String(version.to_owned())
+    };
+    NormalizedFormatVersion::from_scalar(&scalar, &SupportTable::reference()).ok()
+}
+
+fn write_v4_ir(output_path: &Path, ir: &morphir_core::ir::v4::IRFile) -> Result<(), CliError> {
+    let output_dir = output_path.parent().ok_or_else(|| CliError::Validation {
+        message: format!("Compile output '{}' has no parent", output_path.display()),
+    })?;
+    std::fs::create_dir_all(output_dir).map_err(|error| CliError::FileSystem { error })?;
+    let bytes = serde_json::to_vec_pretty(ir).map_err(|error| CliError::Extension {
+        message: format!("Failed to serialize validated Morphir IR v4: {error}"),
+    })?;
+    std::fs::write(output_path, bytes).map_err(|error| CliError::FileSystem { error })
 }
 
 #[cfg(test)]
@@ -1205,6 +1310,71 @@ mod tests {
     use tempfile::TempDir;
 
     const ELM_SOURCE: &str = "module Example exposing (add)\n\nadd left right = left + right\n";
+
+    #[test]
+    fn compile_result_version_accepts_only_supported_v4_spellings() {
+        assert!(is_semantic_v4("4"));
+        assert!(is_semantic_v4("4.0.0"));
+        assert!(!is_semantic_v4("4.0"));
+        assert!(!is_semantic_v4("4.0.1"));
+    }
+
+    fn v4_compile_result(
+        result_version: &str,
+        embedded_version: serde_json::Value,
+    ) -> CompileResult {
+        CompileResult {
+            success: true,
+            ir_version: Some(result_version.into()),
+            ir: Some(serde_json::json!({
+                "formatVersion": embedded_version,
+                "distribution": {
+                    "Library": {
+                        "packageName": "example/package",
+                        "dependencies": {},
+                        "def": {"modules": {}}
+                    }
+                }
+            })),
+            diagnostics: Vec::new(),
+            modules: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn direct_compile_accepts_numeric_and_canonical_embedded_v4_versions() {
+        for embedded_version in [serde_json::json!(4), serde_json::json!("4.0.0")] {
+            validate_v4_compile_result(&v4_compile_result("4", embedded_version))
+                .expect("numeric and canonical embedded v4 versions are equivalent");
+        }
+    }
+
+    #[test]
+    fn direct_compile_rejects_an_unsupported_embedded_v4_revision() {
+        let error =
+            validate_v4_compile_result(&v4_compile_result("4.0.0", serde_json::json!("4.1.0")))
+                .expect_err("unsupported embedded revisions must fail direct validation");
+
+        assert!(
+            error
+                .to_string()
+                .contains("unsupported embedded Morphir IR version '4.1.0'"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn direct_compile_rejects_an_embedded_version_mismatch() {
+        let error = validate_v4_compile_result(&v4_compile_result("4.0.0", serde_json::json!(3)))
+            .expect_err("embedded v3 must not pass as a v4 compile result");
+
+        assert!(
+            error
+                .to_string()
+                .contains("embedded Morphir IR version '3.0.0' did not match"),
+            "{error}"
+        );
+    }
 
     fn extension_id(value: &str) -> ExtensionId {
         ExtensionId::parse(value).unwrap()
@@ -1377,6 +1547,22 @@ mod tests {
     fn windows_unc_file_uri_uses_the_server_as_authority() {
         assert_eq!(
             windows_file_uri(r"\\server\shared files\Example.elm").unwrap(),
+            "file://server/shared%20files/Example.elm"
+        );
+    }
+
+    #[test]
+    fn windows_verbatim_drive_file_uri_discards_the_verbatim_prefix() {
+        assert_eq!(
+            windows_file_uri(r"\\?\C:\Work Files\Example.elm").unwrap(),
+            "file:///C:/Work%20Files/Example.elm"
+        );
+    }
+
+    #[test]
+    fn windows_verbatim_unc_file_uri_uses_the_server_as_authority() {
+        assert_eq!(
+            windows_file_uri(r"\\?\UNC\server\shared files\Example.elm").unwrap(),
             "file://server/shared%20files/Example.elm"
         );
     }
@@ -1647,23 +1833,45 @@ enabled = true
         directory: &Path,
         extension_id: &str,
     ) -> (MorphirHome, PathBuf) {
+        install_test_process_with_metadata(
+            directory,
+            extension_id,
+            b"test process bytes",
+            "elm",
+            ".elm",
+            "3",
+        )
+    }
+
+    fn install_test_process_with_metadata(
+        directory: &Path,
+        extension_id: &str,
+        bytes: &[u8],
+        language: &str,
+        file_extension: &str,
+        ir_version: &str,
+    ) -> (MorphirHome, PathBuf) {
         let home_path = directory.join("home");
         let home = MorphirHome::resolve_from(Some(home_path.as_os_str()), None).unwrap();
         let index_root = directory.join("index");
         let source_path = index_root.join("artifacts").join(extension_id);
         std::fs::create_dir_all(source_path.parent().unwrap()).unwrap();
         std::fs::create_dir_all(index_root.join("extensions")).unwrap();
-        let bytes = b"test process bytes";
         std::fs::write(&source_path, bytes).unwrap();
         let digest = morphir_distribution::Sha256Digest::of_bytes(bytes);
         let record = serde_json::json!({
-            "schemaVersion": 1,
+            "schemaVersion": "1.0",
             "id": extension_id,
             "name": "Test Elm frontend",
             "version": "2.100.0",
             "channels": ["stable"],
             "mepVersions": ["0.1"],
             "capabilities": ["frontend"],
+            "frontend": {
+                "languages": [{"id": language, "fileExtensions": [file_extension]}],
+                "irVersions": [ir_version],
+                "compile": true,
+            },
             "artifacts": [{
                 "runtime": "process",
                 "platform": {
@@ -1698,6 +1906,90 @@ enabled = true
         (home.clone(), home.root().join(installed.store_path()))
     }
 
+    #[cfg(unix)]
+    fn elm_process_script(method_log: &Path) -> String {
+        let python = std::process::Command::new("sh")
+            .args(["-c", "command -v python3"])
+            .output()
+            .unwrap();
+        assert!(python.status.success(), "python3 is required for this test");
+        let python = String::from_utf8(python.stdout).unwrap();
+        let initialize = serde_json::json!({
+            "protocolVersion": "0.1",
+            "extension": {
+                "id": "morphir-elm",
+                "name": "Test Elm frontend",
+                "version": "2.100.0",
+                "types": ["frontend"],
+            },
+            "capabilities": {
+                "frontend": {
+                    "languages": [{"id": "elm", "fileExtensions": [".elm"]}],
+                    "irVersions": ["3"],
+                    "compile": true,
+                    "incremental": false,
+                    "fragments": false,
+                }
+            },
+        });
+        let compile = serde_json::to_value(example_compile_result(vec!["Example".into()])).unwrap();
+        let method_log = serde_json::to_string(&method_log.to_string_lossy()).unwrap();
+        let initialize = serde_json::to_string(&initialize.to_string()).unwrap();
+        let compile = serde_json::to_string(&compile.to_string()).unwrap();
+        format!(
+            r#"#!{python}
+import json
+import sys
+
+METHOD_LOG = {method_log}
+INITIALIZE_RESULT = json.loads({initialize})
+COMPILE_RESULT = json.loads({compile})
+
+def receive():
+    length = None
+    while True:
+        line = sys.stdin.buffer.readline()
+        if line in (b"\n", b"\r\n"):
+            break
+        if not line:
+            raise SystemExit(0)
+        name, value = line.decode("ascii").split(":", 1)
+        if name.lower() == "content-length":
+            length = int(value.strip())
+    return json.loads(sys.stdin.buffer.read(length))
+
+def send(identifier, result):
+    body = json.dumps(
+        {{"jsonrpc": "2.0", "id": identifier, "result": result}},
+        separators=(",", ":"),
+    ).encode()
+    sys.stdout.buffer.write(
+        b"Content-Length: " + str(len(body)).encode() + b"\r\n\r\n" + body
+    )
+    sys.stdout.buffer.flush()
+
+while True:
+    request = receive()
+    method = request["method"]
+    with open(METHOD_LOG, "a", encoding="utf-8") as log:
+        log.write(method + "\n")
+    if method == "morphir.initialize":
+        result = INITIALIZE_RESULT
+    elif method == "morphir.frontend.compile":
+        result = COMPILE_RESULT
+    elif method == "morphir.shutdown":
+        result = {{}}
+    elif method == "morphir.exit":
+        break
+    else:
+        raise RuntimeError("unexpected method " + method)
+    if "id" in request:
+        send(request["id"], result)
+"#,
+            python = python.trim()
+        )
+    }
+
     fn install_test_process(directory: &Path) -> (MorphirHome, PathBuf) {
         install_test_process_with_id(directory, "morphir-elm")
     }
@@ -1714,13 +2006,17 @@ enabled = true
         std::fs::write(&source_path, bytes).unwrap();
         let digest = morphir_distribution::Sha256Digest::of_bytes(bytes);
         let record = serde_json::json!({
-            "schemaVersion": 2,
+            "schemaVersion": "1.0",
             "id": extension_id,
             "name": "Test Elm WASM frontend",
             "version": "2.100.0",
             "channels": ["stable"],
             "mepVersions": ["0.1"],
             "capabilities": ["frontend"],
+            "frontend": {
+                "languages": [{"id": "elm", "fileExtensions": [".elm"]}],
+                "irVersions": ["3"]
+            },
             "artifacts": [{
                 "runtime": "wasm",
                 "source": {"kind": "local-file", "path": "artifacts/morphir-elm.wasm"},
@@ -1760,6 +2056,72 @@ enabled = true
         assert!(debug.contains("discovered: Some"), "{debug}");
         assert!(debug.contains("morphir-elm"), "{debug}");
         assert!(debug.contains("2.100.0"), "{debug}");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn installed_process_rejects_persisted_frontend_drift_before_compile() {
+        let directory = TempDir::new().unwrap();
+        let method_log = directory.path().join("methods.log");
+        let script = elm_process_script(&method_log);
+        let (home, _) = install_test_process_with_metadata(
+            directory.path(),
+            "morphir-elm",
+            script.as_bytes(),
+            "test",
+            ".test",
+            "4",
+        );
+        let launch =
+            installed_process(&home, &extension_id("morphir-elm"), directory.path(), &[]).unwrap();
+
+        let error = invoke_frontend(
+            launch,
+            &example_context_with_output(directory.path().join("morphir-ir.json")),
+        )
+        .await
+        .expect_err("persisted frontend drift must reject initialization");
+
+        assert!(
+            error
+                .to_string()
+                .contains("frontend capabilities disagreed with discovery"),
+            "{error}"
+        );
+        let methods = std::fs::read_to_string(&method_log).unwrap();
+        assert!(methods.contains("morphir.initialize"), "{methods}");
+        assert!(!methods.contains("morphir.frontend.compile"), "{methods}");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn installed_process_accepts_exact_persisted_elm_frontend_metadata() {
+        let directory = TempDir::new().unwrap();
+        let method_log = directory.path().join("methods.log");
+        let script = elm_process_script(&method_log);
+        let (home, _) = install_test_process_with_metadata(
+            directory.path(),
+            "morphir-elm",
+            script.as_bytes(),
+            "elm",
+            ".elm",
+            "3",
+        );
+        let launch =
+            installed_process(&home, &extension_id("morphir-elm"), directory.path(), &[]).unwrap();
+
+        let result = invoke_frontend(
+            launch,
+            &example_context_with_output(directory.path().join("morphir-ir.json")),
+        )
+        .await
+        .expect("matching persisted Elm metadata should compile");
+
+        assert!(result.success);
+        assert_eq!(result.modules, vec!["Example"]);
+        let methods = std::fs::read_to_string(&method_log).unwrap();
+        assert!(methods.contains("morphir.initialize"), "{methods}");
+        assert!(methods.contains("morphir.frontend.compile"), "{methods}");
     }
 
     #[test]
