@@ -12,12 +12,12 @@ pub mod output;
 use morphir::observability;
 
 use commands::{
-    GenerateOptions, MigrateCommandOptions, OutputLayout, compile::CompileOptions, run_compile,
-    run_config_get, run_config_path, run_config_show, run_diagnostics_path, run_dist_install,
-    run_dist_list, run_dist_uninstall, run_dist_update, run_extension_install, run_extension_list,
-    run_extension_uninstall, run_extension_update, run_generate, run_gleam_compile,
-    run_gleam_generate, run_gleam_roundtrip, run_kb_add_concept, run_kb_check,
-    run_kb_decision_list, run_kb_decision_show, run_kb_index, run_kb_intent_cancel,
+    GenerateOptions, MigrateCommandOptions, OutputLayout, compile::CompileOptions, run_cache_clean,
+    run_cache_status, run_compile, run_config_get, run_config_path, run_config_show,
+    run_diagnostics_path, run_dist_install, run_dist_list, run_dist_uninstall, run_dist_update,
+    run_extension_install, run_extension_list, run_extension_uninstall, run_extension_update,
+    run_generate, run_gleam_compile, run_gleam_generate, run_gleam_roundtrip, run_kb_add_concept,
+    run_kb_check, run_kb_decision_list, run_kb_decision_show, run_kb_index, run_kb_intent_cancel,
     run_kb_intent_check, run_kb_intent_init, run_kb_intent_list, run_kb_intent_move,
     run_kb_intent_new, run_kb_intent_refine, run_kb_intent_release, run_kb_intent_show,
     run_kb_intent_start, run_kb_intent_supersede, run_kb_list, run_kb_new_bundle, run_kb_query,
@@ -168,6 +168,11 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
         #[command(subcommand)]
         action: DiagnosticsAction,
     },
+    /// Inspect and clean disposable Morphir caches
+    Cache {
+        #[command(subcommand)]
+        action: CacheAction,
+    },
     /// Manage Morphir tools, distributions, and extensions
     Tool {
         #[command(subcommand)]
@@ -288,6 +293,31 @@ enum DiagnosticsAction {
         #[arg(long)]
         operation: String,
         /// Output events as JSON
+        #[arg(long)]
+        json: bool,
+    },
+}
+
+#[derive(Clone, Subcommand)]
+enum CacheAction {
+    /// Report owned and unclassified cache usage
+    Status {
+        /// Output status as JSON
+        #[arg(long)]
+        json: bool,
+    },
+    /// Remove known disposable cache entries
+    Clean {
+        /// Report the cleanup plan without changing files
+        #[arg(long)]
+        dry_run: bool,
+        /// Remove every known disposable entry instead of applying policy
+        #[arg(long)]
+        all: bool,
+        /// Limit cleanup to one registered cache component
+        #[arg(long)]
+        component: Option<String>,
+        /// Output the plan and execution report as JSON
         #[arg(long)]
         json: bool,
     },
@@ -717,6 +747,15 @@ impl AppSession for MorphirSession {
                 DiagnosticsAction::Collect { operation, output } => {
                     commands::run_diagnostics_collect(operation, output)
                 }
+            },
+            Commands::Cache { action } => match action {
+                CacheAction::Status { json } => run_cache_status(*json),
+                CacheAction::Clean {
+                    dry_run,
+                    all,
+                    component,
+                    json,
+                } => run_cache_clean(*dry_run, *all, component.clone(), *json),
             },
             Commands::Tool { action } => match action {
                 ToolAction::Install { name, version } => {

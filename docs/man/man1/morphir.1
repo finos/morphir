@@ -51,6 +51,15 @@ Create a local sanitized diagnostic archive
 \fBdiagnostics show\fR
 Show events correlated with one operation
 .TP
+\fBcache\fR
+Inspect and clean disposable Morphir caches
+.TP
+\fBcache status\fR
+Report owned and unclassified cache usage
+.TP
+\fBcache clean\fR
+Remove known disposable cache entries
+.TP
 \fBtool\fR
 Manage Morphir tools, distributions, and extensions
 .TP
@@ -455,6 +464,35 @@ Operation ID reported by Morphir
 .TP
 \fB\-\-json\fR
 Output events as JSON
+.SH "MORPHIR CACHE STATUS"
+Report owned and unclassified cache usage
+.PP
+\fBUsage:\fR morphir cache status [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-json\fR
+Output status as JSON
+.SH "MORPHIR CACHE CLEAN"
+Remove known disposable cache entries
+.PP
+\fBUsage:\fR morphir cache clean [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-dry\-run\fR
+Report the cleanup plan without changing files
+.TP
+\fB\-\-all\fR
+Remove every known disposable entry instead of applying policy
+.TP
+\fB\-\-component\fR \fI<COMPONENT>\fR
+Limit cleanup to one registered cache component
+.TP
+\fB\-\-json\fR
+Output the plan and execution report as JSON
 .SH "MORPHIR TOOL INSTALL"
 Install a Morphir tool or extension
 .PP

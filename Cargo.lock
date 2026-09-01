@@ -3872,6 +3872,7 @@ dependencies = [
  "fs2",
  "glob",
  "indexmap 2.14.0",
+ "libc",
  "morphir-config",
  "morphir-core",
  "nbformat",
@@ -3892,6 +3893,7 @@ dependencies = [
  "unicode-normalization",
  "uuid",
  "vfs",
+ "windows-sys 0.61.2",
  "zip",
 ]
 
