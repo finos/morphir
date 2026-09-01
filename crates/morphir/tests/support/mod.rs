@@ -1,6 +1,6 @@
 //! Shared fixture machinery for CLI backend-extension end-to-end tests.
 //!
-//! `generate_extension.rs` (Avro) and `generate_json_schema.rs`
+//! `generate_extension.rs` (Avro) and `generate_openapi_extension.rs`
 //! (morphir-openapi) both build a release WASM guest, write a schema-v2
 //! local extension index, install it into an isolated `MORPHIR_HOME`, and
 //! run the `morphir` CLI against it. This module holds the parts that are

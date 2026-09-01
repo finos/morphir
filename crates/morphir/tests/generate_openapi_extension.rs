@@ -12,24 +12,38 @@ use std::path::{Path, PathBuf};
 use std::process::Output;
 use support::{CliMother, ecosystem_target_directory};
 
-struct OpenApiCliMother(CliMother);
+struct OpenApiCliMother {
+    mother: CliMother,
+    // `generate` may run more than once against the same fixture (for
+    // instance to prove one installed extension serves both targets), but
+    // `install_verified_wasm` errors on a second install into the same
+    // `MORPHIR_HOME`. This tracks whether the first `generate` call already
+    // installed the guest, so a later call reuses it instead of retrying.
+    installed: std::cell::Cell<bool>,
+}
 
 impl OpenApiCliMother {
     fn new(guest_path: impl AsRef<Path>) -> Self {
-        Self(CliMother::new(
-            "morphir-openapi",
-            "morphir_openapi_extension.wasm",
-            "Morphir OpenAPI",
-            json!({ "targets": ["openapi", "json-schema"], "irVersions": ["3", "4"] }),
-            guest_path,
-        ))
+        Self {
+            mother: CliMother::new(
+                "morphir-openapi",
+                "morphir_openapi_extension.wasm",
+                "Morphir OpenAPI",
+                json!({ "targets": ["openapi", "json-schema"], "irVersions": ["3", "4"] }),
+                guest_path,
+            ),
+            installed: std::cell::Cell::new(false),
+        }
     }
 
-    /// Install the guest, write a default project and IR, and run
-    /// `generate` with `arguments` (e.g. `["--target", "json-schema"]`)
-    /// appended to the standard `--input`/`--output`/`--config` flags.
+    /// Install the guest on the first call, write a default project and IR,
+    /// and run `generate` with `arguments` (e.g. `["--target",
+    /// "json-schema"]`) appended to the standard `--input`/`--output`/
+    /// `--config` flags.
     fn generate(&self, arguments: &[&str]) -> Output {
-        self.install_verified_wasm();
+        if !self.installed.replace(true) {
+            self.install_verified_wasm();
+        }
         let config =
             self.write_config("[project]\nname = \"Acme.Customer\"\nversion = \"1.0.0\"\n");
         let input = self.write_ir("classic-schema-library.json", &classic_schema_library());
@@ -60,7 +74,7 @@ impl std::ops::Deref for OpenApiCliMother {
     type Target = CliMother;
 
     fn deref(&self) -> &CliMother {
-        &self.0
+        &self.mother
     }
 }
 
@@ -124,5 +138,48 @@ fn selects_the_extension_by_target_rather_than_by_id() {
     assert!(
         stderr.contains("No extension found for target: not-a-target"),
         "{stderr}"
+    );
+}
+
+#[test]
+#[ignore = "requires the release morphir-openapi WASM guest"]
+fn generates_an_openapi_document_through_the_installed_extension() {
+    let fixture = OpenApiCliMother::new(openapi_guest_path());
+
+    let output = fixture.generate(&[
+        "--target",
+        "openapi",
+        "--option",
+        "projection=operations-entry-points",
+    ]);
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let document = std::fs::read_to_string(fixture.output_dir().join("openapi.json"))
+        .expect("the openapi document is written");
+    let parsed: Value = serde_json::from_str(&document).expect("valid JSON");
+    assert_eq!(parsed["openapi"], "3.1.0");
+}
+
+#[test]
+#[ignore = "requires the release morphir-openapi WASM guest"]
+fn one_installed_extension_serves_both_targets() {
+    let fixture = OpenApiCliMother::new(openapi_guest_path());
+
+    let schema = fixture.generate(&["--target", "json-schema"]);
+    let openapi = fixture.generate(&["--target", "openapi"]);
+
+    assert!(
+        schema.status.success(),
+        "{}",
+        String::from_utf8_lossy(&schema.stderr)
+    );
+    assert!(
+        openapi.status.success(),
+        "{}",
+        String::from_utf8_lossy(&openapi.stderr)
     );
 }
