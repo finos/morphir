@@ -7,7 +7,21 @@ use serde_json::Value;
 
 use crate::error::CliError;
 
-pub const CONNECTED_PROTOCOL_VERSION: u32 = 2;
+/// The connected protocol version the CLI both serves and accepts.
+///
+/// This is pinned to the vendored client in
+/// `crates/morphir/src/commands/ui/assets/`, which validates the session
+/// manifest against a literal version of its own. Serving a version that
+/// bundle does not pin breaks every session, `morphir ui` included, because
+/// the client rejects the manifest before it ever opens the socket.
+///
+/// The playground methods did not need a bump: they are purely additive, and
+/// a client that has never heard of `morphir.playground.catalog` never calls
+/// it. Bumping the version is the one thing that does break an older client,
+/// and it buys nothing until a playground-capable bundle exists. Bump this
+/// only in the same change that vendors a client bundle pinning the new
+/// version — the guard test in [`super::assets`] fails otherwise.
+pub const CONNECTED_PROTOCOL_VERSION: u32 = 1;
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum ConnectedMethod {
@@ -730,8 +744,8 @@ mod tests {
     }
 
     #[test]
-    fn the_protocol_version_is_two() {
-        assert_eq!(CONNECTED_PROTOCOL_VERSION, 2);
+    fn the_protocol_version_is_one() {
+        assert_eq!(CONNECTED_PROTOCOL_VERSION, 1);
     }
 
     #[test]

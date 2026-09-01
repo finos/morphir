@@ -1,7 +1,7 @@
 //! Drives the whole playground pipeline through the real HTTP and WebSocket
 //! surface, so what a human already checked by hand cannot silently
 //! regress: the `/launch` deep link redirects into the playground route and
-//! mints a session cookie, `/api/session` reports protocol version 2 with a
+//! mints a session cookie, `/api/session` reports protocol version 1 with a
 //! `playground` provider, and the three `morphir.playground.*` JSON-RPC
 //! methods work over `/rpc`.
 //!
@@ -235,7 +235,7 @@ async fn the_playground_pipeline_works_end_to_end_over_http_and_websocket() {
         .expect("a cookie name=value pair")
         .to_owned();
 
-    // The manifest the deep link lands on: protocol version 2, with a
+    // The manifest the deep link lands on: protocol version 1, with a
     // playground provider advertised.
     let manifest_response = client
         .get(format!("{base_url}/api/session"))
@@ -248,15 +248,16 @@ async fn the_playground_pipeline_works_end_to_end_over_http_and_websocket() {
         .json()
         .await
         .expect("the manifest is valid JSON");
-    // Pinned to the literal 2, not CONNECTED_PROTOCOL_VERSION. A client in
-    // another repository (morphir-ui, in TypeScript) decodes this field
-    // against a schema that expects exactly 2; comparing against the same
-    // constant the server used to produce it would only prove the server
-    // agrees with itself, not that the wire contract held. Bumping this
-    // literal must be a deliberate edit here, made in lockstep with that
-    // client, not something that happens automatically because someone
-    // changed the constant.
-    assert_eq!(manifest["protocolVersion"], 2);
+    // Pinned to the literal 1, not CONNECTED_PROTOCOL_VERSION. The client that
+    // decodes this field -- the bundle vendored under
+    // crates/morphir/src/commands/ui/assets/, built in another repository
+    // (morphir-ui, in TypeScript) -- validates it against a schema that
+    // expects exactly 1; comparing against the same constant the server used
+    // to produce it would only prove the server agrees with itself, not that
+    // the wire contract held. Bumping this literal must be a deliberate edit
+    // here, made in lockstep with that client, not something that happens
+    // automatically because someone changed the constant.
+    assert_eq!(manifest["protocolVersion"], 1);
     let providers = manifest["providers"].as_array().expect("a providers array");
     assert!(
         providers
@@ -285,7 +286,7 @@ async fn the_playground_pipeline_works_end_to_end_over_http_and_websocket() {
     let initialized = recv_response(&mut socket).await;
     // Same reasoning as the manifest check above: pinned to the literal.
     assert_eq!(
-        initialized["result"]["protocolVersion"], 2,
+        initialized["result"]["protocolVersion"], 1,
         "initialize response: {initialized}"
     );
 
