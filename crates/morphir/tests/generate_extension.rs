@@ -363,7 +363,7 @@ fn generate_rejects_traversal_from_an_installed_provider_without_writing()
     fs::copy(&compiled, &artifact).unwrap();
     let bytes = fs::read(&artifact).unwrap();
     let record = json!({
-        "schemaVersion": 2,
+        "schemaVersion": "1.0",
         "id": "traversal-provider",
         "name": "Traversal Provider",
         "version": "1.0.0",

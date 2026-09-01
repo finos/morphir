@@ -61,7 +61,7 @@ Installation defaults to the `stable` channel. `--channel <CHANNEL>` selects a
 different channel, while `--version <VERSION>` selects an exact semantic
 version. The two selection options are mutually exclusive.
 
-Installation resolves one schema-v2 record, verifies its SHA-256, stores the
+Installation resolves one schema `"1.0"` record, verifies its SHA-256, stores the
 artifact by content digest, and writes matching catalog and lock state. Normal
 activation is offline. The host checks the catalog against the lock, rehashes
 the installed artifact, and compares initialization identity and capabilities
@@ -71,7 +71,7 @@ The CLI has no `--global` install mode. Contributors can set `MORPHIR_HOME` to
 an isolated directory when testing installation.
 
 The [Avro generation guide](../../../generate/avro.md#build-and-install-the-local-extension)
-has a complete local build, schema-v2 repository, and install example. The
+has a complete local build, schema `"1.0"` repository, and install example. The
 generated [CLI install reference](../../../cli/extension/install.md) documents
 the current arguments and flags.
 

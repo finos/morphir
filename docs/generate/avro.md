@@ -17,7 +17,7 @@ and v4. It does not evaluate Morphir values or translate computation.
 ## Build and install the local extension
 
 There is no published Avro extension to install yet. Contributors can build the
-WASM guest, create a schema-v2 local repository, and install from that
+WASM guest, create a schema `"1.0"` local repository, and install from that
 repository. From the `ecosystem/morphir-rust` directory, run:
 
 ```console
@@ -40,7 +40,7 @@ artifact = descriptor["artifact"]
 shutil.copy2(descriptor_path.parent / artifact, index / "artifacts" / artifact)
 
 record = {
-    "schemaVersion": 2,
+    "schemaVersion": "1.0",
     "id": descriptor["extensionId"],
     "name": "Morphir Avro",
     "version": descriptor["version"],
@@ -67,9 +67,10 @@ PY
 ```
 
 `release.json` describes the release bundle. The install command needs the
-schema-v2 JSONL record created above, so the descriptor cannot be passed to the
-CLI directly. Register the directory as a named repository in an isolated
-contributor home, then install with the root CLI:
+JSONL record with the quoted `"schemaVersion": "1.0"` string created above, so
+the descriptor cannot be passed to the CLI directly. Register the directory as
+a named repository in an isolated contributor home, then install with the root
+CLI:
 
 ```console
 MORPHIR_HOME="$PWD/.morphir/local-home" \

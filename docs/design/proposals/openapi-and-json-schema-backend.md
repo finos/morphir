@@ -174,7 +174,7 @@ independent release routing for `morphir-openapi` are checked into
 and `.mise/tasks/extension/artifact/openapi`, invoked as
 `mise run extension:artifact:openapi`. No release has been published and there
 is no public extension index yet, so the guides linked below build the bundle
-with that task and turn its `release.json` into a schema-v2 local index
+with that task and turn its `release.json` into a schema `"1.0"` local index
 record, the same way `morphir-avro-extension`'s guide does.
 
 ## Implementation workstreams
