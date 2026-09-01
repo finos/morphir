@@ -17,21 +17,19 @@ fn morphir_command() -> std::process::Command {
 }
 
 fn write_local_desktop_package(directory: &std::path::Path, version: &str) -> PathBuf {
-    let executable = if cfg!(windows) {
-        "morphir-desktop.exe"
-    } else if cfg!(target_os = "macos") {
-        "Morphir Desktop.app/Contents/MacOS/morphir-desktop"
-    } else {
-        "morphir-desktop"
-    };
     #[cfg(target_os = "linux")]
     {
-        let package = directory.join(executable);
+        let package = directory.join(format!("morphir-desktop-{version}-linux.AppImage"));
         std::fs::write(&package, format!("desktop-{version}")).unwrap();
-        return package;
+        package
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(any(windows, target_os = "macos"))]
     {
+        let executable = if cfg!(windows) {
+            "Morphir Desktop.exe"
+        } else {
+            "Morphir Desktop.app/Contents/MacOS/Morphir Desktop"
+        };
         let package = directory.join(format!("morphir-desktop-{version}.zip"));
         let file = std::fs::File::create(&package).unwrap();
         let mut archive = zip::ZipWriter::new(file);
@@ -179,6 +177,51 @@ fn local_desktop_source_requires_explicit_developer_trust_policy() {
     assert!(!rejected.status.success());
     assert!(String::from_utf8_lossy(&rejected.stderr).contains("--channel developer"));
     assert!(!home.join("catalog/tools.json").exists());
+}
+
+#[test]
+fn local_desktop_install_and_update_enforce_distinct_preconditions() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let package = write_local_desktop_package(temp.path(), "0.1.0");
+    let local_args = [
+        "desktop",
+        "--source",
+        package.to_str().unwrap(),
+        "--channel",
+        "developer",
+        "--version",
+        "0.1.0",
+    ];
+
+    let update_missing = morphir_command()
+        .arg("tool")
+        .arg("update")
+        .args(local_args)
+        .env("MORPHIR_HOME", &home)
+        .output()
+        .unwrap();
+    assert!(!update_missing.status.success());
+    assert!(String::from_utf8_lossy(&update_missing.stderr).contains("not installed"));
+
+    let install = morphir_command()
+        .arg("tool")
+        .arg("install")
+        .args(local_args)
+        .env("MORPHIR_HOME", &home)
+        .output()
+        .unwrap();
+    assert!(install.status.success());
+
+    let install_again = morphir_command()
+        .arg("tool")
+        .arg("install")
+        .args(local_args)
+        .env("MORPHIR_HOME", &home)
+        .output()
+        .unwrap();
+    assert!(!install_again.status.success());
+    assert!(String::from_utf8_lossy(&install_again.stderr).contains("already installed"));
 }
 
 fn write_test_index(

@@ -32,7 +32,13 @@ pub fn run_tool_install(
     source: Option<PathBuf>,
     channel: Option<String>,
 ) -> AppResult<miette::Report> {
-    let installed = install_local(&name, version, source, channel)?;
+    let installed = install_local(
+        &name,
+        version,
+        source,
+        channel,
+        LocalInstallOperation::Install,
+    )?;
     println!(
         "Installed '{}' {} from the unsigned developer channel.\nDigest: {}",
         installed.tool_name(),
@@ -92,7 +98,13 @@ pub fn run_tool_update(
     source: Option<PathBuf>,
     channel: Option<String>,
 ) -> AppResult<miette::Report> {
-    let installed = install_local(&name, version, source, channel)?;
+    let installed = install_local(
+        &name,
+        version,
+        source,
+        channel,
+        LocalInstallOperation::Update,
+    )?;
     println!(
         "Updated '{}' to {}.",
         installed.tool_name(),
@@ -149,6 +161,7 @@ fn install_local(
     version: Option<String>,
     source: Option<PathBuf>,
     channel: Option<String>,
+    operation: LocalInstallOperation,
 ) -> Result<morphir_distribution::InstalledTool> {
     require_desktop(name)?;
     let source = source
@@ -169,10 +182,30 @@ fn install_local(
         .prepare_local(local)
         .into_diagnostic()
         .wrap_err("Failed to verify the local Desktop package")?;
-    ToolInstaller::new(&home)
-        .install(prepared)
+    let installer = ToolInstaller::new(&home);
+    operation
+        .activate(&installer, prepared)
         .into_diagnostic()
         .wrap_err("Failed to activate the local Desktop package")
+}
+
+#[derive(Debug, Clone, Copy)]
+enum LocalInstallOperation {
+    Install,
+    Update,
+}
+
+impl LocalInstallOperation {
+    fn activate(
+        self,
+        installer: &ToolInstaller<'_>,
+        package: morphir_distribution::VerifiedToolPackage,
+    ) -> morphir_distribution::Result<morphir_distribution::InstalledTool> {
+        match self {
+            Self::Install => installer.install_new(package),
+            Self::Update => installer.update(package),
+        }
+    }
 }
 
 fn desktop_package(
@@ -194,28 +227,30 @@ fn desktop_package(
     .into_diagnostic()
 }
 
-fn desktop_archive_contract(source: &Path, os: &str) -> Result<(ArchiveFormat, &'static str)> {
+fn desktop_archive_contract(source: &Path, os: &str) -> Result<(ArchiveFormat, String)> {
     let filename = source
         .file_name()
         .and_then(|name| name.to_str())
         .ok_or_else(|| miette!("Desktop package source must have a UTF-8 filename"))?;
     let lowercase = filename.to_ascii_lowercase();
     match os {
-        "windows" if lowercase.ends_with(".zip") => Ok((ArchiveFormat::Zip, "morphir-desktop.exe")),
-        "windows" if filename == "morphir-desktop.exe" => {
-            Ok((ArchiveFormat::Raw, "morphir-desktop.exe"))
+        "windows" if lowercase.ends_with(".zip") => {
+            Ok((ArchiveFormat::Zip, "Morphir Desktop.exe".to_owned()))
+        }
+        "windows" if filename == "Morphir Desktop.exe" => {
+            Ok((ArchiveFormat::Raw, filename.to_owned()))
         }
         "macos" if lowercase.ends_with(".zip") => Ok((
             ArchiveFormat::Zip,
-            "Morphir Desktop.app/Contents/MacOS/morphir-desktop",
+            "Morphir Desktop.app/Contents/MacOS/Morphir Desktop".to_owned(),
         )),
         "linux" if lowercase.ends_with(".tar.gz") => {
-            Ok((ArchiveFormat::TarGzip, "morphir-desktop"))
+            Ok((ArchiveFormat::TarGzip, "morphir-desktop".to_owned()))
         }
-        "linux" if filename == "morphir-desktop.AppImage" => {
-            Ok((ArchiveFormat::Appimage, "morphir-desktop.AppImage"))
+        "linux" if lowercase.ends_with(".appimage") => {
+            Ok((ArchiveFormat::Appimage, filename.to_owned()))
         }
-        "linux" if filename == "morphir-desktop" => Ok((ArchiveFormat::Raw, "morphir-desktop")),
+        "linux" if filename == "morphir-desktop" => Ok((ArchiveFormat::Raw, filename.to_owned())),
         _ => Err(miette!(
             "Unsupported Desktop package '{}' for host platform {}-{}",
             source.display(),
@@ -243,5 +278,34 @@ fn provenance_labels(provenance: &ToolProvenance) -> (&'static str, &'static str
     match provenance {
         ToolProvenance::LocalDeveloper => ("developer", "local-unsigned"),
         ToolProvenance::AuthenticatedRepository { .. } => ("repository", "tuf-authenticated"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn desktop_archives_use_the_release_contract_entry_points() {
+        assert_eq!(
+            desktop_archive_contract(Path::new("desktop.zip"), "windows").unwrap(),
+            (ArchiveFormat::Zip, "Morphir Desktop.exe".to_owned())
+        );
+        assert_eq!(
+            desktop_archive_contract(Path::new("desktop.zip"), "macos").unwrap(),
+            (
+                ArchiveFormat::Zip,
+                "Morphir Desktop.app/Contents/MacOS/Morphir Desktop".to_owned(),
+            )
+        );
+    }
+
+    #[test]
+    fn versioned_linux_appimage_uses_its_own_filename_as_the_entry_point() {
+        let filename = "morphir-desktop-0.1.0-linux-arm64.AppImage";
+        assert_eq!(
+            desktop_archive_contract(Path::new(filename), "linux").unwrap(),
+            (ArchiveFormat::Appimage, filename.to_owned())
+        );
     }
 }
