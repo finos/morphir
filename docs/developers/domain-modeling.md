@@ -28,7 +28,8 @@ and every allowed or rejected state transition.
 Avoid primitive obsession and stringly typed domain APIs. Two values that share
 a machine representation can still mean different things. Represent those
 distinctions with newtypes, opaque types, branded types, or validated wrappers.
-A type alias is insufficient when it leaves distinct values interchangeable.
+A type alias can document a distinction, but it is insufficient when values remain
+interchangeable and accidental interchange would violate a domain rule.
 
 Put validation in smart constructors and keep unchecked construction private.
 This makes the validated type evidence that its invariants hold. Do not wrap every

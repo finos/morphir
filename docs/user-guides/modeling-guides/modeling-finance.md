@@ -30,7 +30,7 @@ value quantity price =
     (ToDecimal quantity) * price
 ```
 
-This bit of Elm defines a function that takes a `TradeQuantity` and `TradePrice` and calculates the `TradeValue`. This simple act is incredibly effective in avoiding misunderstandings and mistakes.
+This bit of Elm defines a function that takes a `TradeQuantity` and `TradePrice` and calculates the `TradeValue`. The aliases make the business language visible, but they do not create distinct Elm types. Use an alias when that documentation is sufficient. Use a custom type when accidentally interchanging values would violate a domain rule.
 
 ## Keeping Incompatible Concepts Separate
 

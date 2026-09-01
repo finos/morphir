@@ -12,6 +12,7 @@ analysis, optimization, and cross-platform code generation.
 
 ## Docs
 
+- [Domain modeling](https://morphir.finos.org/docs/developers/domain-modeling): Morphir code expresses domain rules in types. At public APIs, domain boundaries, and persistent state, prefer designs where invalid states cannot be represented.
 - [Morphir Web UI](https://morphir.finos.org/docs/getting-started/Morphir%20Web%20UI): This document details the purpose of the various functions of the Morphir UI, and how to use them and navigate between them.
 - [Getting Started with Morphir](https://morphir.finos.org/docs/getting-started/): Welcome! This section will help you get started with Morphir quickly.
 - [Editor Setup](https://morphir.finos.org/docs/getting-started/editor-setup): Morphir is designed to allow users to write business logic in multiple ways. That currently includes the following:
