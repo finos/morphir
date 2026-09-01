@@ -5,7 +5,9 @@ use std::path::{Path, PathBuf};
 use async_trait::async_trait;
 use cap_std::fs::Dir;
 use chrono::{SecondsFormat, Utc};
-use morphir_devkit::{ConfigLoadOptions, discover_workspace_detailed};
+use morphir_devkit::{
+    ConfigLoadOptions, NativeWorkspaceDiscoveryError, discover_workspace_detailed_typed,
+};
 use morphir_workspace as portable;
 
 use crate::error::CliError;
@@ -27,23 +29,26 @@ pub struct NativeWorkspaceProvider {
     source: WorkbenchSourceRef,
     workspace: PathBuf,
     workspace_dir: Dir,
+    config_options: ConfigLoadOptions,
 }
 
 impl NativeWorkspaceProvider {
     pub fn discover(root: &Path, session_id: &str) -> Result<Self, CliError> {
-        let discovery = discover_workspace_detailed(root, &ConfigLoadOptions::default())
-            .map_err(|error| CliError::Config { error })?;
+        Self::discover_with_options(root, session_id, ConfigLoadOptions::default())
+    }
+
+    fn discover_with_options(
+        root: &Path,
+        session_id: &str,
+        config_options: ConfigLoadOptions,
+    ) -> Result<Self, CliError> {
+        let discovery =
+            discover_workspace_detailed_typed(root, &config_options).map_err(discovery_error)?;
+        let workspace = discovery.canonical_root;
         let provider_id = format!("cli:{session_id}");
-        let display_name = discovery
-            .snapshot
-            .name
-            .clone()
-            .or_else(|| {
-                discovery
-                    .canonical_root
-                    .file_name()
-                    .map(|name| name.to_string_lossy().into_owned())
-            })
+        let display_name = workspace
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
             .unwrap_or_else(|| "Morphir workspace".into());
         let source = WorkbenchSourceRef {
             provider_id: provider_id.clone(),
@@ -51,7 +56,6 @@ impl NativeWorkspaceProvider {
             display_name,
             persistence: None,
         };
-        let workspace = discovery.canonical_root;
         let workspace_dir = open_workspace(&workspace)?;
         Ok(Self {
             manifest: ProviderManifest {
@@ -70,7 +74,17 @@ impl NativeWorkspaceProvider {
             source,
             workspace,
             workspace_dir,
+            config_options,
         })
+    }
+
+    #[cfg(test)]
+    pub(super) fn discover_for_test(
+        root: &Path,
+        session_id: &str,
+        config_options: ConfigLoadOptions,
+    ) -> Result<Self, CliError> {
+        Self::discover_with_options(root, session_id, config_options)
     }
 
     fn validate_source(&self, source: &WorkbenchSourceRef) -> Result<(), CliError> {
@@ -118,8 +132,8 @@ impl WorkspaceCapability for NativeWorkspaceProvider {
 
     async fn open(&self, source: &WorkbenchSourceRef) -> Result<WorkspaceSnapshot, CliError> {
         self.validate_source(source)?;
-        let discovery = discover_workspace_detailed(&self.workspace, &ConfigLoadOptions::default())
-            .map_err(|error| CliError::Config { error })?;
+        let discovery = discover_workspace_detailed_typed(&self.workspace, &self.config_options)
+            .map_err(discovery_error)?;
         Ok(qualify_snapshot(&self.source, discovery.snapshot))
     }
 
@@ -138,6 +152,15 @@ fn capability(name: &str) -> WorkbenchCapability {
     WorkbenchCapability {
         name: name.into(),
         version: "1".into(),
+    }
+}
+
+fn discovery_error(error: NativeWorkspaceDiscoveryError) -> CliError {
+    match error {
+        NativeWorkspaceDiscoveryError::Portable(error) => CliError::WorkspaceDiscovery {
+            error: error.into(),
+        },
+        NativeWorkspaceDiscoveryError::Host(error) => CliError::Config { error },
     }
 }
 
@@ -291,6 +314,33 @@ mod tests {
             provider.open(&source).await.unwrap().projects[0].name,
             "acme/second"
         );
+    }
+
+    #[tokio::test]
+    async fn open_reuses_the_initial_configuration_sources() {
+        let root = tempfile::tempdir().unwrap();
+        let morphir_home = tempfile::tempdir().unwrap();
+        let global_config = morphir_home.path().join("morphir.toml");
+        std::fs::write(
+            root.path().join("morphir.toml"),
+            "[project]\nname = \"acme/orders\"\nsource_directory = \"src\"\n",
+        )
+        .unwrap();
+        std::fs::write(&global_config, "[ir]\nmode = \"initial\"\n").unwrap();
+        let mut options = ConfigLoadOptions::project_only();
+        options.global = morphir_devkit::SourceSelection::Explicit(global_config.clone());
+        let provider =
+            NativeWorkspaceProvider::discover_with_options(root.path(), "session-1", options)
+                .unwrap();
+        let source = provider.initial_sources().pop().unwrap();
+
+        std::fs::write(&global_config, "[ir\nmode = \"invalid\"\n").unwrap();
+
+        let error = provider.open(&source).await.unwrap_err();
+        let CliError::WorkspaceDiscovery { error } = error else {
+            panic!("expected workspace discovery failure");
+        };
+        assert!(error.to_string().starts_with("workspace.config.invalid:"));
     }
 
     #[tokio::test]

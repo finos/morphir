@@ -38,6 +38,7 @@ pub struct ExtensionWorkspaceProvider {
     source: WorkbenchSourceRef,
     workspace: PathBuf,
     workspace_dir: Dir,
+    config_options: ConfigLoadOptions,
     implementation: ExtensionImplementation,
 }
 
@@ -47,7 +48,10 @@ enum ExtensionImplementation {
         snapshot: Box<InstalledExtensionSnapshot>,
     },
     #[cfg(test)]
-    Fixture(Arc<portable::WorkspaceSnapshot>),
+    Fixture {
+        expected_request: Arc<portable::DiscoveryRequest>,
+        response: Arc<portable::DiscoveryResponse>,
+    },
 }
 
 impl ExtensionWorkspaceProvider {
@@ -111,6 +115,7 @@ impl ExtensionWorkspaceProvider {
             source,
             workspace,
             workspace_dir,
+            config_options: ConfigLoadOptions::default(),
             implementation: ExtensionImplementation::Installed {
                 home,
                 snapshot: Box::new(snapshot),
@@ -119,10 +124,12 @@ impl ExtensionWorkspaceProvider {
     }
 
     #[cfg(test)]
-    fn from_fixture(
+    pub(super) fn from_fixture(
         workspace: &Path,
         session_id: &str,
-        snapshot: portable::WorkspaceSnapshot,
+        config_options: ConfigLoadOptions,
+        expected_request: portable::DiscoveryRequest,
+        response: portable::DiscoveryResponse,
     ) -> Self {
         let provider_id = format!("cli:{session_id}");
         Self {
@@ -137,7 +144,11 @@ impl ExtensionWorkspaceProvider {
             source: source_for(workspace, &provider_id),
             workspace: workspace.to_path_buf(),
             workspace_dir: open_workspace(workspace).unwrap(),
-            implementation: ExtensionImplementation::Fixture(Arc::new(snapshot)),
+            config_options,
+            implementation: ExtensionImplementation::Fixture {
+                expected_request: Arc::new(expected_request),
+                response: Arc::new(response),
+            },
         }
     }
 
@@ -158,12 +169,24 @@ impl ExtensionWorkspaceProvider {
     }
 
     async fn discover(&self) -> Result<portable::WorkspaceSnapshot, CliError> {
+        let request = build_workspace_discovery_request(&self.workspace, &self.config_options)
+            .map_err(CliError::from)?;
         match &self.implementation {
             ExtensionImplementation::Installed { home, snapshot } => {
-                invoke_installed(home, snapshot, &self.workspace).await
+                invoke_installed(home, snapshot, &self.workspace, request).await
             }
             #[cfg(test)]
-            ExtensionImplementation::Fixture(snapshot) => Ok(snapshot.as_ref().clone()),
+            ExtensionImplementation::Fixture {
+                expected_request,
+                response,
+            } => {
+                if request != **expected_request {
+                    return Err(extension_error(
+                        "Fixture workspace request does not match the provider contract",
+                    ));
+                }
+                discovery_result(response.as_ref().clone())
+            }
         }
     }
 }
@@ -218,9 +241,8 @@ async fn invoke_installed(
     home: &MorphirHome,
     snapshot: &InstalledExtensionSnapshot,
     workspace: &Path,
+    request: portable::DiscoveryRequest,
 ) -> Result<portable::WorkspaceSnapshot, CliError> {
-    let request = build_workspace_discovery_request(workspace, &ConfigLoadOptions::default())
-        .map_err(CliError::from)?;
     let artifact = activate_installed_snapshot(home, snapshot).map_err(|error| {
         extension_error(format!(
             "Failed to activate installed workspace provider '{}': {error}",
@@ -275,9 +297,17 @@ async fn invoke_installed(
         .shutdown()
         .await
         .map_err(|failure| extension_error(failure.error().to_string()))?;
+    discovery_result(response)
+}
+
+fn discovery_result(
+    response: portable::DiscoveryResponse,
+) -> Result<portable::WorkspaceSnapshot, CliError> {
     response
         .into_result()
-        .map_err(|failure| extension_error(format!("{}: {}", failure.code, failure.message)))
+        .map_err(|error| CliError::WorkspaceDiscovery {
+            error: error.into(),
+        })
 }
 
 fn manifest_for(
@@ -335,12 +365,28 @@ mod tests {
             .join("../../ecosystem/morphir-rust/tests/fixtures/workspace-discovery/valid-monorepo")
     }
 
+    fn from_snapshot(
+        workspace: &Path,
+        session_id: &str,
+        snapshot: portable::WorkspaceSnapshot,
+    ) -> ExtensionWorkspaceProvider {
+        let config_options = ConfigLoadOptions::default();
+        let request = build_workspace_discovery_request(workspace, &config_options).unwrap();
+        ExtensionWorkspaceProvider::from_fixture(
+            workspace,
+            session_id,
+            config_options,
+            request,
+            portable::DiscoveryResponse::Success { snapshot },
+        )
+    }
+
     #[tokio::test]
     async fn fake_extension_matches_native_workspace_shape_and_reports_provenance() {
         let portable = discover_workspace_detailed(&fixture(), &ConfigLoadOptions::default())
             .unwrap()
             .snapshot;
-        let extension = ExtensionWorkspaceProvider::from_fixture(&fixture(), "session-1", portable);
+        let extension = from_snapshot(&fixture(), "session-1", portable);
         let native = NativeWorkspaceProvider::discover(&fixture(), "session-1").unwrap();
         let source = extension.initial_sources().pop().unwrap();
 
@@ -360,7 +406,7 @@ mod tests {
         let portable = discover_workspace_detailed(&fixture(), &ConfigLoadOptions::default())
             .unwrap()
             .snapshot;
-        let extension = ExtensionWorkspaceProvider::from_fixture(&fixture(), "session-1", portable);
+        let extension = from_snapshot(&fixture(), "session-1", portable);
 
         assert_eq!(
             extension.watch_refresh_interval(),
@@ -381,8 +427,7 @@ mod tests {
         let portable = discover_workspace_detailed(root.path(), &ConfigLoadOptions::default())
             .unwrap()
             .snapshot;
-        let extension =
-            ExtensionWorkspaceProvider::from_fixture(root.path(), "session-1", portable);
+        let extension = from_snapshot(root.path(), "session-1", portable);
         let source = extension.initial_sources().pop().unwrap();
         let project_id = extension.open(&source).await.unwrap().projects[0]
             .id
