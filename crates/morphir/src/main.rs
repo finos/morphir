@@ -15,16 +15,19 @@ use commands::{
     GenerateOptions, MigrateCommandOptions, OutputLayout, compile::CompileOptions, run_cache_clean,
     run_cache_status, run_compile, run_config_get, run_config_path, run_config_show,
     run_diagnostics_path, run_dist_install, run_dist_list, run_dist_uninstall, run_dist_update,
-    run_extension_install, run_extension_list, run_extension_uninstall, run_extension_update,
-    run_generate, run_gleam_compile, run_gleam_generate, run_gleam_roundtrip, run_kb_add_concept,
-    run_kb_check, run_kb_decision_list, run_kb_decision_show, run_kb_index, run_kb_intent_cancel,
-    run_kb_intent_check, run_kb_intent_init, run_kb_intent_list, run_kb_intent_move,
-    run_kb_intent_new, run_kb_intent_refine, run_kb_intent_release, run_kb_intent_show,
-    run_kb_intent_start, run_kb_intent_supersede, run_kb_list, run_kb_new_bundle, run_kb_query,
-    run_kb_refresh, run_kb_refresh_db, run_kb_refresh_markdown, run_kb_search, run_kb_show,
-    run_kb_sync_diff, run_kb_sync_pull, run_kb_sync_push, run_kb_sync_status, run_migrate,
-    run_tool_install, run_tool_list, run_tool_uninstall, run_tool_update, run_transform,
-    run_validate, run_version,
+    run_extension_install, run_extension_list, run_extension_repository_add,
+    run_extension_repository_disable, run_extension_repository_enable,
+    run_extension_repository_inspect, run_extension_repository_list,
+    run_extension_repository_remove, run_extension_repository_verify, run_extension_uninstall,
+    run_extension_update, run_generate, run_gleam_compile, run_gleam_generate, run_gleam_roundtrip,
+    run_kb_add_concept, run_kb_check, run_kb_decision_list, run_kb_decision_show, run_kb_index,
+    run_kb_intent_cancel, run_kb_intent_check, run_kb_intent_init, run_kb_intent_list,
+    run_kb_intent_move, run_kb_intent_new, run_kb_intent_refine, run_kb_intent_release,
+    run_kb_intent_show, run_kb_intent_start, run_kb_intent_supersede, run_kb_list,
+    run_kb_new_bundle, run_kb_query, run_kb_refresh, run_kb_refresh_db, run_kb_refresh_markdown,
+    run_kb_search, run_kb_show, run_kb_sync_diff, run_kb_sync_pull, run_kb_sync_push,
+    run_kb_sync_status, run_migrate, run_tool_install, run_tool_list, run_tool_uninstall,
+    run_tool_update, run_transform, run_validate, run_version,
 };
 
 /// Morphir CLI - Tools for functional domain modeling and business logic
@@ -383,9 +386,9 @@ enum ExtensionAction {
     Install {
         /// Name of the extension to install
         name: String,
-        /// Controlled local extension index directory
+        /// Named extension repository configured in Morphir Home
         #[arg(long)]
-        index: std::path::PathBuf,
+        repository: String,
         /// Moving release channel (defaults to stable)
         #[arg(long, conflicts_with = "version")]
         channel: Option<String>,
@@ -395,13 +398,18 @@ enum ExtensionAction {
     },
     /// List installed Morphir extensions
     List,
+    /// Manage named extension repositories
+    Repository {
+        #[command(subcommand)]
+        action: ExtensionRepositoryAction,
+    },
     /// Update an installed Morphir extension
     Update {
         /// Name of the extension to update
         name: String,
-        /// Controlled local extension index directory
+        /// Named extension repository configured in Morphir Home
         #[arg(long)]
-        index: std::path::PathBuf,
+        repository: String,
         /// Moving release channel (defaults to stable)
         #[arg(long, conflicts_with = "version")]
         channel: Option<String>,
@@ -412,6 +420,45 @@ enum ExtensionAction {
     /// Uninstall a Morphir extension
     Uninstall {
         /// Name of the extension to uninstall
+        name: String,
+    },
+}
+
+#[derive(Clone, Subcommand)]
+enum ExtensionRepositoryAction {
+    /// Add an enabled local-directory repository
+    Add {
+        /// Stable repository name
+        name: String,
+        /// Existing local repository directory
+        #[arg(long)]
+        directory: std::path::PathBuf,
+    },
+    /// List configured repositories without contacting their endpoints
+    List,
+    /// Inspect one repository without contacting its endpoint
+    Inspect {
+        /// Repository name
+        name: String,
+    },
+    /// Enable a configured repository
+    Enable {
+        /// Repository name
+        name: String,
+    },
+    /// Disable a configured repository
+    Disable {
+        /// Repository name
+        name: String,
+    },
+    /// Remove configuration without deleting endpoint content
+    Remove {
+        /// Repository name
+        name: String,
+    },
+    /// Validate repository metadata without installing anything
+    Verify {
+        /// Repository name
         name: String,
     },
 }
@@ -663,6 +710,7 @@ enum KbDecisionAction {
 #[derive(Clone)]
 struct MorphirSession {
     command: Commands,
+    operation_id: observability::OperationId,
 }
 
 #[async_trait::async_trait]
@@ -780,24 +828,53 @@ impl AppSession for MorphirSession {
             Commands::Extension { action } => match action {
                 ExtensionAction::Install {
                     name,
-                    index,
+                    repository,
                     channel,
                     version,
                 } => run_extension_install(
+                    &self.operation_id,
                     name.clone(),
-                    index.clone(),
+                    repository.clone(),
                     channel.clone(),
                     version.clone(),
                 ),
                 ExtensionAction::List => run_extension_list(),
+                ExtensionAction::Repository { action } => match action {
+                    ExtensionRepositoryAction::Add { name, directory } => {
+                        run_extension_repository_add(
+                            &self.operation_id,
+                            name.clone(),
+                            directory.clone(),
+                        )
+                    }
+                    ExtensionRepositoryAction::List => {
+                        run_extension_repository_list(&self.operation_id)
+                    }
+                    ExtensionRepositoryAction::Inspect { name } => {
+                        run_extension_repository_inspect(&self.operation_id, name.clone())
+                    }
+                    ExtensionRepositoryAction::Enable { name } => {
+                        run_extension_repository_enable(&self.operation_id, name.clone())
+                    }
+                    ExtensionRepositoryAction::Disable { name } => {
+                        run_extension_repository_disable(&self.operation_id, name.clone())
+                    }
+                    ExtensionRepositoryAction::Remove { name } => {
+                        run_extension_repository_remove(&self.operation_id, name.clone())
+                    }
+                    ExtensionRepositoryAction::Verify { name } => {
+                        run_extension_repository_verify(&self.operation_id, name.clone())
+                    }
+                },
                 ExtensionAction::Update {
                     name,
-                    index,
+                    repository,
                     channel,
                     version,
                 } => run_extension_update(
+                    &self.operation_id,
                     name.clone(),
-                    index.clone(),
+                    repository.clone(),
                     channel.clone(),
                     version.clone(),
                 ),
@@ -1069,7 +1146,10 @@ async fn main() -> starbase::MainResult {
         };
 
         // Create session with command
-        let session = MorphirSession { command };
+        let session = MorphirSession {
+            command,
+            operation_id: operation_id.clone(),
+        };
 
         // Initialize and run starbase App.
         // As of starbase 0.13, run() returns AppRunOutcome rather than a Result;
