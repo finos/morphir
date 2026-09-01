@@ -562,18 +562,20 @@ idle_timeout = "30m"       # Stop after idle period (0 = never)
 ## Extension Management
 
 The current CLI manages verified local extension state. Installation and update
-use a controlled index. They do not send a daemon or MEP request.
+resolve releases from a named repository. They do not send a daemon or MEP
+request.
 
 ```console
-morphir extension install --index <INDEX> <NAME>
+morphir extension repository add <REPOSITORY> --directory <DIRECTORY>
+morphir extension install --repository <REPOSITORY> <NAME>
 morphir extension list
-morphir extension update --index <INDEX> <NAME>
+morphir extension update --repository <REPOSITORY> <NAME>
 morphir extension uninstall <NAME>
 ```
 
 The CLI does not install a raw WASM file, archive, URL, or directory. See the
-[extension overview](../extensions/README.mdx) for the index, lock, catalog, and
-runtime contract.
+[extension overview](../extensions/README.mdx) for the repository, lock,
+catalog, and runtime contract.
 
 ## CLI Command Mapping
 

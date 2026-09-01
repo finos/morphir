@@ -17,8 +17,8 @@ and v4. It does not evaluate Morphir values or translate computation.
 ## Build and install the local extension
 
 There is no published Avro extension to install yet. Contributors can build the
-WASM guest, create a schema-v2 local index, and install from that index. From the
-`ecosystem/morphir-rust` directory, run:
+WASM guest, create a schema-v2 local repository, and install from that
+repository. From the `ecosystem/morphir-rust` directory, run:
 
 ```console
 mise run extension:artifact:avro
@@ -68,12 +68,17 @@ PY
 
 `release.json` describes the release bundle. The install command needs the
 schema-v2 JSONL record created above, so the descriptor cannot be passed to the
-CLI directly. Install into an isolated contributor home with the root CLI:
+CLI directly. Register the directory as a named repository in an isolated
+contributor home, then install with the root CLI:
 
 ```console
 MORPHIR_HOME="$PWD/.morphir/local-home" \
   mise exec -- cargo run --manifest-path ../../Cargo.toml -p morphir -- \
-  extension install --index "$PWD/.morphir/build/index" morphir-avro
+  extension repository add local-avro --directory "$PWD/.morphir/build/index"
+
+MORPHIR_HOME="$PWD/.morphir/local-home" \
+  mise exec -- cargo run --manifest-path ../../Cargo.toml -p morphir -- \
+  extension install --repository local-avro morphir-avro
 
 MORPHIR_HOME="$PWD/.morphir/local-home" \
   mise exec -- cargo run --manifest-path ../../Cargo.toml -p morphir -- \
@@ -81,8 +86,8 @@ MORPHIR_HOME="$PWD/.morphir/local-home" \
 ```
 
 Keep the same `MORPHIR_HOME` value when running generation. Installation
-verifies the SHA-256 from the index, stores the module by content digest, and
-writes matching lock and catalog state. These commands do not publish the
+verifies the SHA-256 from the repository, stores the module by content digest,
+and writes matching lock and catalog state. These commands do not publish the
 extension.
 
 ## Run the generator
