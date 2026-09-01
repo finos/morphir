@@ -236,6 +236,26 @@ navigation. When the workspace capability is absent, the manifest says so and
 the app disables workspace navigation, which is the mechanism the shell
 already uses for optional capabilities.
 
+Both of those arrive with the client that can use them, not before. The CLI
+serves a pre-built web bundle checked in under
+`crates/morphir/src/commands/ui/assets/`, and that bundle validates the
+session manifest against a schema requiring *every* provider it lists to
+advertise all four core workspace capabilities at version 1. A playground
+provider advertises `morphir/playground/*` instead, so a manifest carrying
+one is rejected whole — the client does not ignore the provider it does not
+understand, it refuses the session. Attaching the playground provider to
+`morphir ui` therefore breaks `morphir ui`, and a playground-only session,
+whose sole provider is that one, can never connect at all.
+
+So the server side lands first and stays dormant: the protocol methods,
+`SessionCapabilities`, `PlaygroundCapability`, the provider, the JSON-RPC
+dispatch and the `#/playground` launch redirect are all present and tested,
+but nothing in the CLI hands a playground provider to a session. The
+`morphir playground` command, the `morphir ui` navigation entry and the
+`CONNECTED_PROTOCOL_VERSION` bump land together with the vendored bundle
+that understands them. Server and client ship in one artifact here, so the
+manifest contract is only ever as wide as the bundle sitting next to it.
+
 Landing on the Playground rather than the workspace is a routing question,
 and the app has no routing today: its shell route is held in memory and
 nothing reads the URL. So morphir-ui gains a hash router, and every view
