@@ -230,6 +230,40 @@ fn contains_sensitive_assignment(value: &str) -> bool {
         })
 }
 
+fn contains_excluded_container_assignment(value: &str) -> bool {
+    value
+        .char_indices()
+        .filter(|(_, character)| matches!(character, '=' | ':'))
+        .any(|(separator, separator_character)| {
+            let prefix = value[..separator].trim_end();
+            let key = prefix
+                .chars()
+                .rev()
+                .take_while(|character| {
+                    character.is_ascii_alphanumeric() || matches!(character, '_' | '-')
+                })
+                .collect::<String>()
+                .chars()
+                .rev()
+                .collect::<String>();
+            let key_start = prefix.len().saturating_sub(key.len());
+            let has_assignment_boundary = separator_character == '='
+                || key_start == 0
+                || prefix[..key_start]
+                    .chars()
+                    .next_back()
+                    .is_some_and(|character| {
+                        matches!(character, '\'' | '"' | '\\' | '[' | '(' | '{' | ',' | ';')
+                    });
+            !key.is_empty()
+                && !value[separator + separator_character.len_utf8()..]
+                    .trim_start()
+                    .is_empty()
+                && excluded_diagnostic_container(&key)
+                && has_assignment_boundary
+        })
+}
+
 fn contains_authorization_header(value: &str) -> bool {
     let lower = value.to_ascii_lowercase();
     lower.match_indices("authorization").any(|(start, _)| {
@@ -634,6 +668,7 @@ pub(crate) fn sanitize_text(value: &str) -> String {
         || lower.contains("token=")
         || lower.contains("secret=")
         || contains_sensitive_assignment(&value)
+        || contains_excluded_container_assignment(&value)
         || contains_sensitive_option_pair(&value)
         || contains_serialized_sensitive_named_value(&value)
     {
@@ -1011,13 +1046,16 @@ fn bounded_tail_reader(
 }
 
 fn read_operation_events(log_roots: &[PathBuf], operation_id: &str) -> DiagnosticEvents {
-    read_operation_events_with_limits(
+    let leases = crate::log_lock::acquire_log_read_leases(log_roots);
+    let mut selected = read_operation_events_with_limits(
         log_roots,
         operation_id,
         MAX_DIAGNOSTIC_EVENTS,
         MAX_DIAGNOSTIC_EVENT_BYTES,
         MAX_DIAGNOSTIC_SCAN_BYTES,
-    )
+    );
+    selected.truncated |= leases.incomplete();
+    selected
 }
 
 fn read_operation_events_with_limits(
@@ -1602,6 +1640,21 @@ mod tests {
         assert_eq!(
             sanitize_text("unexpected token: Identifier"),
             "unexpected token: Identifier"
+        );
+    }
+
+    #[test]
+    fn free_form_excluded_payload_assignments_are_redacted() {
+        for value in [
+            r#"environment={"DEPLOYMENT_LICENSE":"LIVE_SECRET"}"#,
+            "sourceCode=module Private",
+        ] {
+            assert_eq!(sanitize_text(value), "[REDACTED]");
+        }
+
+        assert_eq!(
+            sanitize_text("environment variable was not configured"),
+            "environment variable was not configured"
         );
     }
 

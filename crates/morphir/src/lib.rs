@@ -5,6 +5,7 @@
 pub mod commands;
 pub mod error;
 pub mod home;
+mod log_lock;
 pub mod observability;
 pub mod output;
 pub mod tui;

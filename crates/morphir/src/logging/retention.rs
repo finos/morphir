@@ -68,6 +68,29 @@ fn session_state(log_path: &Path) -> SessionState {
     }
 }
 
+fn acquire_retention_lock(log_dir: &Path) -> io::Result<Option<fs::File>> {
+    let metadata = match log_dir.metadata() {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    if !metadata.is_dir() {
+        return Err(io::Error::new(
+            io::ErrorKind::NotADirectory,
+            "log root is not a directory",
+        ));
+    }
+
+    let file = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(crate::log_lock::log_root_lock_path(log_dir))?;
+    file.lock_exclusive()?;
+    Ok(Some(file))
+}
+
 fn is_managed_session_log(path: &Path) -> bool {
     let Some(directory) = path
         .parent()
@@ -234,6 +257,16 @@ pub(super) fn enforce_log_retention(
     max_age: Duration,
     max_bytes: u64,
 ) -> RetentionResult {
+    let _retention_lock = match acquire_retention_lock(log_dir) {
+        Ok(Some(lock)) => lock,
+        Ok(None) => return RetentionResult::default(),
+        Err(_) => {
+            return RetentionResult {
+                skipped_entries: 1,
+                ..RetentionResult::default()
+            };
+        }
+    };
     let (entries, skipped_entries) = collect_log_entries(log_dir);
     let (remaining_bytes, candidates) = plan_log_retention(entries, now, max_age);
 

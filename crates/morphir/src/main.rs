@@ -5,6 +5,7 @@ pub mod commands;
 pub mod error;
 mod help;
 pub mod home;
+mod log_lock;
 mod logging;
 pub mod output;
 
