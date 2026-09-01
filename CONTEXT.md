@@ -74,6 +74,26 @@ _Avoid_: Extension when referring to any capability provider
 A named family of operations that an extension can provide.
 _Avoid_: Feature flag, extension type
 
+**Provider registry**:
+The host-local collection of built-in and installed provider snapshots considered during capability resolution.
+_Avoid_: Extension registry, extension catalog, installed extension inventory
+
+**Provider origin**:
+Whether an extension provider is built into the host or comes from the installed extension inventory. Among eligible providers, installed takes precedence over built-in.
+_Avoid_: Invocation mode, transport, runtime
+
+**Invocation mode**:
+The route an extension host selects to call one resolved provider, independent of the provider's origin.
+_Avoid_: Provider origin, capability, extension type
+
+**Native direct**:
+An invocation mode that calls a trusted in-process extension through typed native capability traits without Morphir Extension Protocol serialization.
+_Avoid_: Built-in provider, native MEP
+
+**Native MEP**:
+An invocation mode that calls a trusted in-process extension through the Morphir Extension Protocol, using the same extension instance available to native direct invocation.
+_Avoid_: Native direct, process MEP, WASM MEP
+
 **Extension distribution**:
 A versioned package that describes an extension and provides one or more artifacts that can implement it.
 _Avoid_: Morphir package, loaded extension

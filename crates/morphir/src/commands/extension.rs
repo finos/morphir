@@ -2,6 +2,7 @@
 
 use crate::home::MorphirHome;
 use crate::observability::OperationId;
+use morphir_daemon::{InvocationMode, ProviderOrigin};
 use morphir_distribution::{
     Channel, ExtensionId, ExtensionInstaller, ExtensionRepositories, ExtensionRepository,
     ExtensionSearchQuery, InstalledCatalog, LocalExtensionRepository, Platform, PublicationStatus,
@@ -100,25 +101,63 @@ pub fn run_extension_install(
 pub fn run_extension_list() -> AppResult<miette::Report> {
     let home = MorphirHome::resolve()
         .map_err(|error| miette::miette!("Failed to resolve Morphir home: {error}"))?;
-    let builtins = morphir_devkit::discover_builtin_extensions();
     let installed = list_installed(&home)
         .map_err(|error| miette::miette!("Failed to list installed extensions: {error}"))?;
+    let registry = crate::extensions::extension_registry(installed.clone())?;
+    let builtins = registry
+        .providers()
+        .into_iter()
+        .filter(|provider| provider.origin() == ProviderOrigin::Builtin)
+        .collect::<Vec<_>>();
 
     if !builtins.is_empty() {
         println!("Builtin Extensions:");
-        println!("{:<24} {:<32} Capabilities", "Extension", "Name");
-        for builtin in builtins {
-            let capabilities = match (builtin.languages.is_empty(), builtin.targets.is_empty()) {
+        println!(
+            "{:<24} {:<32} {:<16} Capabilities",
+            "Extension", "Name", "Mode"
+        );
+        for provider in builtins {
+            let info = provider.info();
+            let metadata = provider.capabilities();
+            let languages = metadata
+                .frontend
+                .as_ref()
+                .map(|frontend| {
+                    frontend
+                        .languages
+                        .iter()
+                        .map(|language| language.id.as_str())
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+            let targets = metadata
+                .backend
+                .as_ref()
+                .map(|backend| {
+                    backend
+                        .targets
+                        .iter()
+                        .map(String::as_str)
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+            let capabilities = match (languages.is_empty(), targets.is_empty()) {
                 (false, false) => format!(
                     "frontend: {}; backend: {}",
-                    builtin.languages.join(", "),
-                    builtin.targets.join(", ")
+                    languages.join(", "),
+                    targets.join(", ")
                 ),
-                (false, true) => format!("frontend: {}", builtin.languages.join(", ")),
-                (true, false) => format!("backend: {}", builtin.targets.join(", ")),
+                (false, true) => format!("frontend: {}", languages.join(", ")),
+                (true, false) => format!("backend: {}", targets.join(", ")),
                 (true, true) => "none".to_owned(),
             };
-            println!("{:<24} {:<32} {}", builtin.id, builtin.name, capabilities);
+            println!(
+                "{:<24} {:<32} {:<16} {}",
+                info.id,
+                info.name,
+                invocation_mode_name(provider.preferred_invocation_mode()),
+                capabilities
+            );
         }
         println!();
     }
@@ -140,6 +179,15 @@ pub fn run_extension_list() -> AppResult<miette::Report> {
         );
     }
     Ok(None)
+}
+
+fn invocation_mode_name(mode: InvocationMode) -> &'static str {
+    match mode {
+        InvocationMode::NativeDirect => "native-direct",
+        InvocationMode::NativeMep => "native-mep",
+        InvocationMode::ProcessMep => "process-mep",
+        InvocationMode::WasmMep => "wasm-mep",
+    }
 }
 
 /// Re-resolve and replace an installed extension through the verified pipeline.
