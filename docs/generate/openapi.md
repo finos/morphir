@@ -144,12 +144,25 @@ applies CLI options in command-line order. The last CLI value for a key wins.
 The CLI parses a value as JSON when possible; otherwise it passes a string.
 Option names use `snake_case`.
 
+`version` is the one option where that JSON-first rule bites. Its values are
+the *strings* `"3.1"` and `"3.0"`, but `3.0` and `3.1` are also valid JSON
+numbers, so the CLI hands the backend a number and option decoding fails with
+`JSC002`. Quote the value so it reaches the backend as a string, and quote the
+whole argument so the shell keeps the inner quotes:
+
+```console
+morphir generate --target openapi --option 'version="3.0"'
+```
+
+`--option version=3.0` fails. In `morphir.toml` no extra quoting is needed:
+TOML's `version = "3.0"` is already a string.
+
 ## Options and defaults
 
 | Option | Accepted values | Default |
 |---|---|---|
 | `unsupported` | `error`, `warn-and-skip` | `error` |
-| `version` | `3.1`, `3.0` | `3.1` |
+| `version` | `"3.1"`, `"3.0"` (strings; on the CLI write `--option 'version="3.0"'`) | `"3.1"` |
 | `projection` | `schemas`, `operations-entry-points`, `operations-public` | `schemas` |
 | `result_responses` | `data`, `split` | `data` |
 | `error_status` | Integer from 400 through 599 | `400` |
@@ -257,6 +270,10 @@ only has an effect when `result_responses = "split"` and at least one
 projected operation's output is `Result`-shaped.
 
 ## The `version` option and the OpenAPI 3.0 downgrade
+
+`version` takes the strings `"3.1"` and `"3.0"`, never the bare numbers. On
+the CLI that means `--option 'version="3.0"'`; `--option version=3.0` parses
+as a JSON number and fails with `JSC002`.
 
 `version = "3.1"` (the default) renders `"openapi": "3.1.0"` — the document
 built from the projection, unchanged. `version = "3.0"` renders `"openapi":

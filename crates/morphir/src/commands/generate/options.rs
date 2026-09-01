@@ -91,6 +91,28 @@ mod tests {
         );
     }
 
+    /// `parse_option` tries JSON before falling back to a string, so a
+    /// value that happens to be a valid JSON number reaches the backend as a
+    /// number. `3.0` and `3.1` are exactly that, while the OpenAPI backend's
+    /// `version` option only accepts the strings `"3.1"` and `"3.0"` — so
+    /// `--option version=3.0` fails with `JSC002` and the user has to write
+    /// `--option 'version="3.0"'`. This is deliberate rather than accidental:
+    /// a JSON number cannot tell `3.1` from `3.10`, and the JSON-first rule
+    /// is what lets `error_status=422` and `logical_types=false` arrive as a
+    /// number and a Boolean without per-option knowledge here. Pinned so the
+    /// quoting requirement `docs/generate/openapi.md` documents cannot drift
+    /// away from what the parser actually does.
+    #[test]
+    fn a_bare_version_value_parses_as_a_number_and_a_quoted_one_as_a_string() {
+        assert_eq!(parse_option("version=3.0").unwrap().1, json!(3.0));
+        assert_eq!(parse_option("version=3.1").unwrap().1, json!(3.1));
+        assert_eq!(
+            parse_option("version=\"3.0\"").unwrap().1,
+            json!("3.0"),
+            "quoting the value is what makes it reach the backend as a string"
+        );
+    }
+
     #[test]
     fn cli_options_override_target_config_and_last_duplicate_wins() {
         let configured = json!({"representation": "json", "projection": "schemas"});
