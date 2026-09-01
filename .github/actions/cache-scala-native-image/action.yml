@@ -22,7 +22,7 @@ runs:
         echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
     - name: Cache Scala native image build output
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ${{ inputs.submodule-path }}/out
         key: morphir-scala-native-${{ inputs.graalvm-version }}-${{ steps.scala-submodule.outputs.sha }}
