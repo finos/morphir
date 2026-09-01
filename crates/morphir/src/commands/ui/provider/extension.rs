@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use cap_std::fs::Dir;
 use chrono::{SecondsFormat, Utc};
 use morphir_common::home::MorphirHome;
 use morphir_daemon::extensions::{
@@ -20,17 +21,23 @@ use morphir_workspace as portable;
 
 use crate::error::CliError;
 
-use super::{WorkspaceCapability, native::qualify_snapshot};
+use super::{
+    WorkspaceCapability,
+    native::qualify_snapshot,
+    project_model::{load_project_model, open_workspace},
+};
 use crate::commands::ui::protocol::{
     DevelopmentWorkbenchDescriptor, DevelopmentWorkbenchKind, DevelopmentWorkbenchRoute,
-    InspectResult, ProviderKind, ProviderManifest, ProviderProvenance, ProviderStatus,
-    WorkbenchCapability, WorkbenchSourceRef, WorkspaceSnapshot, protocol_error, source_key,
+    InspectResult, ProjectModelOpenResult, ProviderKind, ProviderManifest, ProviderProvenance,
+    ProviderStatus, WorkbenchCapability, WorkbenchSourceRef, WorkspaceSnapshot, protocol_error,
+    source_key,
 };
 
 pub struct ExtensionWorkspaceProvider {
     manifest: ProviderManifest,
     source: WorkbenchSourceRef,
     workspace: PathBuf,
+    workspace_dir: Dir,
     implementation: ExtensionImplementation,
 }
 
@@ -88,7 +95,9 @@ impl ExtensionWorkspaceProvider {
         let snapshot = candidates.pop().expect("one candidate remains");
         let installed = snapshot.installed();
         let provider_id = format!("cli:{session_id}");
-        let source = source_for(workspace, &provider_id);
+        let workspace = workspace.to_path_buf();
+        let workspace_dir = open_workspace(&workspace)?;
+        let source = source_for(&workspace, &provider_id);
         let manifest = manifest_for(
             &provider_id,
             &format!("{} via Morphir CLI", installed.name()),
@@ -100,7 +109,8 @@ impl ExtensionWorkspaceProvider {
         Ok(Self {
             manifest,
             source,
-            workspace: workspace.to_path_buf(),
+            workspace,
+            workspace_dir,
             implementation: ExtensionImplementation::Installed {
                 home,
                 snapshot: Box::new(snapshot),
@@ -126,6 +136,7 @@ impl ExtensionWorkspaceProvider {
             ),
             source: source_for(workspace, &provider_id),
             workspace: workspace.to_path_buf(),
+            workspace_dir: open_workspace(workspace).unwrap(),
             implementation: ExtensionImplementation::Fixture(Arc::new(snapshot)),
         }
     }
@@ -190,6 +201,16 @@ impl WorkspaceCapability for ExtensionWorkspaceProvider {
     async fn open(&self, source: &WorkbenchSourceRef) -> Result<WorkspaceSnapshot, CliError> {
         self.validate_source(source)?;
         Ok(qualify_snapshot(&self.source, self.discover().await?))
+    }
+
+    async fn load_project_model(
+        &self,
+        source: &WorkbenchSourceRef,
+        project_id: &str,
+    ) -> Result<ProjectModelOpenResult, CliError> {
+        self.validate_source(source)?;
+        let snapshot = self.open(source).await?;
+        load_project_model(&self.workspace_dir, &self.source, snapshot, project_id).await
     }
 }
 
@@ -271,6 +292,7 @@ fn manifest_for(
         status: ProviderStatus::Available,
         capabilities: [
             "morphir/development/inspect",
+            "morphir/project-model/open",
             "morphir/workspace/open",
             "morphir/workspace/watch",
         ]
@@ -344,5 +366,34 @@ mod tests {
             extension.watch_refresh_interval(),
             std::time::Duration::from_secs(5)
         );
+    }
+
+    #[tokio::test]
+    async fn fixture_extension_loads_the_selected_project_through_the_host_boundary() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(
+            root.path().join("morphir.toml"),
+            "[project]\nname = \"acme/orders\"\nsource_directory = \"src\"\n",
+        )
+        .unwrap();
+        let content = r#"{"formatVersion":3,"distribution":["Library",[],[],{"modules":[]}]}"#;
+        std::fs::write(root.path().join("morphir-ir.json"), content).unwrap();
+        let portable = discover_workspace_detailed(root.path(), &ConfigLoadOptions::default())
+            .unwrap()
+            .snapshot;
+        let extension =
+            ExtensionWorkspaceProvider::from_fixture(root.path(), "session-1", portable);
+        let source = extension.initial_sources().pop().unwrap();
+        let project_id = extension.open(&source).await.unwrap().projects[0]
+            .id
+            .clone();
+
+        let model = extension
+            .load_project_model(&source, &project_id)
+            .await
+            .unwrap();
+
+        assert_eq!(model.content, content);
+        assert_eq!(model.descriptor.source.provider_id, "cli:session-1");
     }
 }

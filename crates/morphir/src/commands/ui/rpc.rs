@@ -15,8 +15,8 @@ use serde_json::{Value, json};
 
 use super::{
     protocol::{
-        CONNECTED_PROTOCOL_VERSION, ConnectedMethod, JsonRpcRequest, RequestLedger,
-        WorkbenchSourceRef, WorkspaceSnapshot,
+        CONNECTED_PROTOCOL_VERSION, ConnectedMethod, JsonRpcRequest, ProjectModelOpenParams,
+        RequestLedger, WorkbenchSourceRef, WorkspaceSnapshot,
     },
     server::{UiHostState, authenticated, unauthorized},
 };
@@ -330,6 +330,32 @@ async fn dispatch(
                 Err(error) => DispatchResult::error(request.id, -32602, &error.to_string()),
             }
         }
+        ConnectedMethod::ProjectModelOpen => {
+            let Ok(params) =
+                serde_json::from_value::<ProjectModelOpenParams>(request.params.clone())
+            else {
+                return DispatchResult::error(
+                    request.id,
+                    -32602,
+                    "Invalid project model parameters",
+                );
+            };
+            let Ok(params) = params.validate() else {
+                return DispatchResult::error(
+                    request.id,
+                    -32602,
+                    "Invalid project model parameters",
+                );
+            };
+            match host
+                .provider
+                .load_project_model(&params.source, &params.project_id)
+                .await
+            {
+                Ok(result) => DispatchResult::result(request.id, json!(result)),
+                Err(error) => DispatchResult::error(request.id, -32602, &error.to_string()),
+            }
+        }
         ConnectedMethod::WorkspaceOpen => {
             let Ok(params) = serde_json::from_value::<SourceParams>(request.params.clone()) else {
                 return DispatchResult::error(request.id, -32602, "Invalid source parameters");
@@ -505,6 +531,14 @@ mod tests {
             }
             Ok(self.snapshot.read().unwrap().clone())
         }
+
+        async fn load_project_model(
+            &self,
+            source: &WorkbenchSourceRef,
+            project_id: &str,
+        ) -> Result<super::super::protocol::ProjectModelOpenResult, CliError> {
+            self.delegate.load_project_model(source, project_id).await
+        }
     }
 
     fn socket_request(base_url: &str, cookie: &str) -> axum::http::Request<()> {
@@ -636,6 +670,23 @@ mod tests {
                 })
                 .to_string(),
             ),
+            (
+                Some(4),
+                json!({
+                    "jsonrpc": "2.0",
+                    "id": 4,
+                    "method": "morphir.project-model.open",
+                    "params": {
+                        "source": {
+                            "providerId": "cli:another-session",
+                            "locator": "workspace:initial",
+                            "displayName": "foreign"
+                        },
+                        "projectId": "project-1"
+                    }
+                })
+                .to_string(),
+            ),
         ] {
             socket
                 .send(tokio_tungstenite::tungstenite::Message::Text(text.into()))
@@ -720,6 +771,46 @@ mod tests {
             "cli:session-1"
         );
 
+        task.abort();
+    }
+
+    #[tokio::test]
+    async fn opens_a_selected_project_model_after_initialization() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(
+            root.path().join("morphir.toml"),
+            "[project]\nname = \"acme/orders\"\nsource_directory = \"src\"\n",
+        )
+        .unwrap();
+        let content = r#"{"formatVersion":3,"distribution":["Library",[],[],{"modules":[]}]}"#;
+        std::fs::write(root.path().join("morphir-ir.json"), content).unwrap();
+        let provider = std::sync::Arc::new(
+            NativeWorkspaceProvider::discover(root.path(), "session-1").unwrap(),
+        );
+        let source = provider.initial_sources().pop().unwrap();
+        let project_id = provider.open(&source).await.unwrap().projects[0].id.clone();
+        let (base_url, cookie, task) = launched_host_with_provider(provider).await;
+        let mut socket = initialize_socket(&base_url, &cookie).await;
+
+        socket
+            .send(tokio_tungstenite::tungstenite::Message::Text(
+                json!({
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "morphir.project-model.open",
+                    "params": {"source": source, "projectId": project_id}
+                })
+                .to_string()
+                .into(),
+            ))
+            .await
+            .unwrap();
+        let response: Value =
+            serde_json::from_str(socket.next().await.unwrap().unwrap().to_text().unwrap()).unwrap();
+
+        assert_eq!(response["result"]["content"], content);
+        assert_eq!(response["result"]["descriptor"]["kind"], "model");
+        assert_eq!(response["result"]["descriptor"]["route"], "explorer");
         task.abort();
     }
 
