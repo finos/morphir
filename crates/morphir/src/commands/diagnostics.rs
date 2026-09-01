@@ -1,5 +1,6 @@
 //! Commands for locating local troubleshooting data.
 
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use serde::Serialize;
 use starbase::AppResult;
 use std::cmp::{Ordering, Reverse};
@@ -284,6 +285,35 @@ fn contains_serialized_sensitive_named_value(value: &str) -> bool {
     names_sensitive_key && contains_value
 }
 
+fn contains_json_web_token(value: &str) -> bool {
+    value
+        .split(|character: char| {
+            !(character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.'))
+        })
+        .any(json_web_token_candidate)
+}
+
+fn json_web_token_candidate(candidate: &str) -> bool {
+    let mut segments = candidate.split('.');
+    let (Some(header), Some(payload), Some(_signature), None) = (
+        segments.next(),
+        segments.next(),
+        segments.next(),
+        segments.next(),
+    ) else {
+        return false;
+    };
+    if header.is_empty() || payload.is_empty() {
+        return false;
+    }
+
+    URL_SAFE_NO_PAD
+        .decode(header)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
+        .is_some_and(|header| header.is_object())
+}
+
 fn sensitive_long_option(value: &str) -> bool {
     value
         .trim_matches(|character| {
@@ -549,6 +579,7 @@ pub(crate) fn sanitize_text(value: &str) -> String {
         || ["ghp_", "github_pat_", "gho_", "ghu_", "ghs_", "ghr_"]
             .iter()
             .any(|prefix| lower.contains(prefix))
+        || contains_json_web_token(&value)
         || (lower.contains("-----begin ") && lower.contains("private key-----"))
         || lower.contains("password=")
         || lower.contains("token=")
@@ -1533,6 +1564,24 @@ mod tests {
                 "[REDACTED]"
             );
         }
+    }
+
+    #[test]
+    fn bearer_independent_json_web_tokens_are_redacted() {
+        let token = concat!(
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.",
+            "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IlRlc3QifQ.",
+            "fake-signature"
+        );
+
+        assert_eq!(
+            sanitize_text(&format!("authentication failed for ({token})")),
+            "[REDACTED]"
+        );
+        assert_eq!(
+            sanitize_text("parser saw alpha.beta.gamma"),
+            "parser saw alpha.beta.gamma"
+        );
     }
 
     #[test]
