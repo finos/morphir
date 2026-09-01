@@ -475,8 +475,19 @@ pub struct PlaygroundFrontend {
     pub file_extensions: Vec<String>,
     pub ir_versions: Vec<String>,
     pub compile: bool,
-    pub incremental: bool,
-    pub fragments: bool,
+    /// Whether the provider supports incremental compilation, or `null` when
+    /// the session cannot tell.
+    ///
+    /// An installed provider's capability metadata is rebuilt from what its
+    /// install persisted, and the persisted record carries only the
+    /// languages, IR versions and the compile flag. Reporting `false` there
+    /// would claim the extension refuses a capability it may well have, and a
+    /// picker cannot distinguish a refusal from an absence of information. The
+    /// key is always present so a client can decode it as a nullable boolean.
+    pub incremental: Option<bool>,
+    /// Whether the provider supports compiling source fragments, or `null`
+    /// when the session cannot tell. See [`Self::incremental`].
+    pub fragments: Option<bool>,
     pub provider: PlaygroundProviderRef,
 }
 

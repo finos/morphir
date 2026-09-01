@@ -68,8 +68,8 @@ impl PlaygroundCapability for StubPlayground {
                 file_extensions: vec![".elm".into()],
                 ir_versions: vec!["3".into()],
                 compile: true,
-                incremental: false,
-                fragments: false,
+                incremental: Some(false),
+                fragments: Some(false),
                 provider: PlaygroundProviderRef {
                     extension_id: "builtin.elm".into(),
                     extension_name: "Elm Frontend".into(),

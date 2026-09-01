@@ -60,13 +60,15 @@ unknowable without launching it. `morphir-distribution` gains a
 `FrontendRecord` so the catalog can list installed frontends without
 starting anything.
 
-The record mirrors the whole `FrontendCapability`: the IR versions, the
-`compile`, `incremental`, and `fragments` flags, and a `LanguageRecord` per
+The record carries the part of `FrontendCapability` that survives being
+written down: the IR versions, the `compile` flag, and a `LanguageRecord` per
 language carrying that language's id and its file extensions. Keeping the
 extensions attached to their language is what lets the Playground map an
 editor buffer to a frontend, and lets the code editor choose a syntax mode,
-without launching anything. The wire type refuses unknown fields, so a
-narrower record would have cost another schema version to widen later.
+without launching anything. `incremental` and `fragments` are not persisted —
+only a negotiated MEP session reports them — so an installed provider's
+rebuilt capability snapshot leaves them at their defaults, which the catalog
+must not read as answers.
 
 The record arrives with index schema version 3, following how version 2
 introduced backend metadata. A schema-v3 record that declares the frontend
@@ -114,6 +116,16 @@ its file extensions, the IR versions, the `compile`, `incremental`, and
 provider's id, name, version, origin, and invocation mode. Reading installed
 frontend metadata without launching anything depends on the `FrontendRecord`
 described above.
+
+`incremental` and `fragments` are nullable, because that `FrontendRecord`
+cannot carry them. The registry says which case it is:
+`ProviderMetadata::capability_metadata_scope()` reports `Complete` for a
+provider whose snapshot came from the provider itself, and
+`PersistedFrontendBackend` for one rebuilt from installed state. The catalog
+reports a boolean only under the first, and `null` under the second, so a
+picker can tell a capability the extension refuses from one the session never
+learned about. The key is always present, so the client decodes it as a
+nullable boolean rather than an optional one.
 
 The catalog's entries are ordered installed-before-built-in, matching the
 precedence the registry applies when it resolves, so the picker never names

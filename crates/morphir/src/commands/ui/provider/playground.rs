@@ -24,8 +24,8 @@ use std::time::Duration;
 use async_trait::async_trait;
 use morphir_daemon::ExtensionRegistry;
 use morphir_daemon::extensions::{
-    InvocationMode, InvocationPolicy, ProviderMetadata, ProviderOrigin, ResolvedBackend,
-    ResolvedFrontend,
+    CapabilityMetadataScope, InvocationMode, InvocationPolicy, ProviderMetadata, ProviderOrigin,
+    ResolvedBackend, ResolvedFrontend,
 };
 use morphir_distribution::list_installed;
 use morphir_extension_sdk::{
@@ -312,6 +312,7 @@ fn project_catalog(registry: &ExtensionRegistry) -> PlaygroundCatalog {
     for provider in &providers {
         let reference = provider_ref(provider);
         if let Some(frontend) = provider.capabilities().frontend.as_ref() {
+            let known = capability_metadata_is_complete(provider);
             for language in &frontend.languages {
                 frontends.push(PlaygroundFrontend {
                     language_id: language.id.clone(),
@@ -319,8 +320,8 @@ fn project_catalog(registry: &ExtensionRegistry) -> PlaygroundCatalog {
                     file_extensions: language.file_extensions.clone(),
                     ir_versions: frontend.ir_versions.clone(),
                     compile: frontend.compile,
-                    incremental: frontend.incremental,
-                    fragments: frontend.fragments,
+                    incremental: known.then_some(frontend.incremental),
+                    fragments: known.then_some(frontend.fragments),
                     provider: reference.clone(),
                 });
             }
@@ -338,6 +339,21 @@ fn project_catalog(registry: &ExtensionRegistry) -> PlaygroundCatalog {
         }
     }
     PlaygroundCatalog { frontends, targets }
+}
+
+/// Whether a provider's capability snapshot represents everything it reports.
+///
+/// Only [`CapabilityMetadataScope::Complete`] means the flags on the snapshot
+/// came from the provider itself. Under
+/// [`CapabilityMetadataScope::PersistedFrontendBackend`] the snapshot was
+/// rebuilt from installed state, which persists the languages, the IR versions
+/// and the compile flag and nothing else — so `incremental` and `fragments`
+/// there are defaults, not answers, and the catalog reports them as unknown.
+fn capability_metadata_is_complete(provider: &ProviderMetadata) -> bool {
+    match provider.capability_metadata_scope() {
+        CapabilityMetadataScope::Complete => true,
+        CapabilityMetadataScope::PersistedFrontendBackend => false,
+    }
 }
 
 fn provider_ref(provider: &ProviderMetadata) -> PlaygroundProviderRef {
@@ -508,6 +524,10 @@ fn playground_location(location: &SourceLocation) -> PlaygroundLocation {
 mod tests {
     use super::*;
     use crate::commands::ui::protocol::{PlaygroundPackage, PlaygroundSourceDocument};
+    use morphir_distribution::{
+        Channel, ExtensionId, ExtensionInstaller, InstalledExtensionSnapshot, LocalIndex, Platform,
+        Selection, Sha256Digest,
+    };
     use morphir_extension_sdk::{
         Backend, BackendCapability, Extension, ExtensionCapabilities, ExtensionInfo, Frontend,
         FrontendCapability, LanguageCapability, NativeExtension,
@@ -724,6 +744,87 @@ mod tests {
         let home = MorphirHome::resolve_from(Some(root.path().as_os_str()), None)
             .expect("an explicit Morphir home resolves");
         (root, home)
+    }
+
+    /// Install a real extension into a scratch Morphir home and return its
+    /// snapshot.
+    ///
+    /// Registering a fabricated snapshot would not answer the question these
+    /// tests ask: an installed provider's capability metadata is rebuilt from
+    /// what the install actually persisted, so the snapshot has to come from
+    /// a real index and a real install. This mirrors the `installed` helper in
+    /// morphir-daemon's `provider_registry` integration test.
+    ///
+    /// The returned directory owns the home the snapshot points into and must
+    /// outlive it.
+    fn installed_snapshot(
+        extension_id: &str,
+        language: &str,
+        target: &str,
+    ) -> (tempfile::TempDir, InstalledExtensionSnapshot) {
+        let root = tempfile::tempdir().expect("a temporary install root");
+        let index = root.path().join("index");
+        let artifact = index.join("artifacts").join(extension_id);
+        std::fs::create_dir_all(artifact.parent().expect("the artifact has a parent"))
+            .expect("the artifact directory is created");
+        std::fs::create_dir_all(index.join("extensions")).expect("the index directory is created");
+        let bytes = b"#!/bin/sh\nexit 0\n".as_slice();
+        std::fs::write(&artifact, bytes).expect("the artifact is written");
+        let platform = Platform::current();
+        let record = serde_json::json!({
+            "schemaVersion": "1.0",
+            "id": extension_id,
+            "name": format!("Installed {extension_id}"),
+            "version": "2.0.0",
+            "channels": ["stable"],
+            "mepVersions": ["0.1"],
+            "capabilities": ["frontend", "backend"],
+            "frontend": {
+                "languages": [{
+                    "id": language,
+                    "fileExtensions": [format!(".{language}")]
+                }],
+                "irVersions": [IR_VERSION],
+                "compile": true
+            },
+            "backend": {
+                "targets": [target],
+                "irVersions": [IR_VERSION],
+                "generate": true
+            },
+            "artifacts": [{
+                "runtime": "process",
+                "platform": {"os": platform.os(), "arch": platform.arch()},
+                "source": {"kind": "local-file", "path": format!("artifacts/{extension_id}")},
+                "sha256": Sha256Digest::of_bytes(bytes),
+                "filename": extension_id,
+                "args": [],
+                "executable": true
+            }]
+        });
+        std::fs::write(
+            index
+                .join("extensions")
+                .join(format!("{extension_id}.jsonl")),
+            format!("{record}\n"),
+        )
+        .expect("the index record is written");
+
+        let home = MorphirHome::resolve_from(Some(root.path().join("home").as_os_str()), None)
+            .expect("an explicit Morphir home resolves");
+        let id = ExtensionId::parse(extension_id).expect("the extension ID parses");
+        let selected = LocalIndex::open(&index)
+            .expect("the local index opens")
+            .resolve(&id, Selection::Channel(Channel::Stable), &platform)
+            .expect("the index resolves the extension");
+        ExtensionInstaller::new(&home)
+            .install(selected)
+            .expect("the extension installs");
+        let snapshot = list_installed(&home)
+            .expect("the installed catalog is readable")
+            .pop()
+            .expect("exactly one extension was installed");
+        (root, snapshot)
     }
 
     /// Build a provider over a registry assembled by `register`, invoking
@@ -1163,6 +1264,55 @@ mod tests {
         assert_eq!(
             after, before,
             "the playground must not write files; watched {watched:?}"
+        );
+    }
+
+    /// An installed provider's capability metadata is rebuilt from what the
+    /// install persisted, and the persisted record has no room for
+    /// `incremental` or `fragments`. Reporting them as `false` would tell the
+    /// picker the extension refuses those capabilities when the truth is that
+    /// nobody asked; they go over the wire as `null`.
+    #[tokio::test]
+    async fn capabilities_the_catalog_cannot_know_are_reported_as_unknown() {
+        let (_root, snapshot) = installed_snapshot("installed-elm", "elm", "installed-target");
+        let registry = extension_registry(vec![snapshot]).expect("the registry assembles");
+
+        let catalog = project_catalog(&registry);
+
+        let installed = serde_json::to_value(
+            catalog
+                .frontend("elm")
+                .unwrap_or_else(|| panic!("no installed Elm frontend: {catalog:?}")),
+        )
+        .expect("the catalog entry serializes");
+        assert!(
+            installed.get("incremental").is_some(),
+            "the key stays present so the client can decode it as nullable: {installed}"
+        );
+        assert!(
+            installed["incremental"].is_null(),
+            "an unpersisted capability is unknown, not denied: {installed}"
+        );
+        assert!(
+            installed["fragments"].is_null(),
+            "an unpersisted capability is unknown, not denied: {installed}"
+        );
+
+        let builtin = serde_json::to_value(
+            catalog
+                .frontend("gleam")
+                .unwrap_or_else(|| panic!("no built-in Gleam frontend: {catalog:?}")),
+        )
+        .expect("the catalog entry serializes");
+        assert_eq!(
+            builtin["incremental"],
+            serde_json::json!(false),
+            "a built-in reports its own complete capability metadata: {builtin}"
+        );
+        assert_eq!(
+            builtin["fragments"],
+            serde_json::json!(false),
+            "a built-in reports its own complete capability metadata: {builtin}"
         );
     }
 
