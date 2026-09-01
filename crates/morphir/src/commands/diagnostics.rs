@@ -141,10 +141,11 @@ fn key_words(key: &str) -> Vec<String> {
 
 fn sensitive_key(key: &str) -> bool {
     let has_auth_word = contains_auth_key_word(key);
-    let key = normalized_key(key);
+    let normalized = normalized_key(key);
+    let has_sensitive_token = normalized.contains("token") && !token_metadata_key(key);
     has_auth_word
+        || has_sensitive_token
         || [
-            "token",
             "password",
             "passwd",
             "pwd",
@@ -158,7 +159,16 @@ fn sensitive_key(key: &str) -> bool {
             "passphrase",
         ]
         .iter()
-        .any(|needle| key.contains(needle))
+        .any(|needle| normalized.contains(needle))
+}
+
+fn token_metadata_key(key: &str) -> bool {
+    const METADATA_SUFFIXES: [&str; 3] = ["count", "kind", "position"];
+
+    let normalized = normalized_key(key);
+    METADATA_SUFFIXES
+        .iter()
+        .any(|suffix| normalized.ends_with(&format!("token{suffix}")))
 }
 
 fn contains_auth_key_word(key: &str) -> bool {
@@ -536,8 +546,9 @@ pub(crate) fn sanitize_text(value: &str) -> String {
     let lower = value.to_ascii_lowercase();
     if lower.contains("bearer ")
         || contains_authorization_header(&value)
-        || lower.contains("ghp_")
-        || lower.contains("github_pat_")
+        || ["ghp_", "github_pat_", "gho_", "ghu_", "ghs_", "ghr_"]
+            .iter()
+            .any(|prefix| lower.contains(prefix))
         || (lower.contains("-----begin ") && lower.contains("private key-----"))
         || lower.contains("password=")
         || lower.contains("token=")
@@ -1512,6 +1523,27 @@ mod tests {
             sanitize_text("unexpected token: Identifier"),
             "unexpected token: Identifier"
         );
+    }
+
+    #[test]
+    fn every_github_token_format_is_redacted_from_free_form_text() {
+        for prefix in ["ghp_", "github_pat_", "gho_", "ghu_", "ghs_", "ghr_"] {
+            assert_eq!(
+                sanitize_text(&format!("request failed with {prefix}LIVE_SECRET")),
+                "[REDACTED]"
+            );
+        }
+    }
+
+    #[test]
+    fn structured_token_metadata_preserves_values_and_types() {
+        let input = serde_json::json!({
+            "tokenCount": 42,
+            "tokenKind": "identifier",
+            "tokenPosition": { "line": 3, "column": 14 }
+        });
+
+        assert_eq!(sanitize(input.clone()), input);
     }
 
     #[test]
