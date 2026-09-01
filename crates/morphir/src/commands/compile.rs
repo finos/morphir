@@ -1860,7 +1860,7 @@ enabled = true
         std::fs::write(&source_path, bytes).unwrap();
         let digest = morphir_distribution::Sha256Digest::of_bytes(bytes);
         let record = serde_json::json!({
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "id": extension_id,
             "name": "Test Elm frontend",
             "version": "2.100.0",
@@ -2006,7 +2006,7 @@ while True:
         std::fs::write(&source_path, bytes).unwrap();
         let digest = morphir_distribution::Sha256Digest::of_bytes(bytes);
         let record = serde_json::json!({
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "id": extension_id,
             "name": "Test Elm WASM frontend",
             "version": "2.100.0",
