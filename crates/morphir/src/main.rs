@@ -12,13 +12,12 @@ pub mod output;
 use morphir::observability;
 
 use commands::{
-    GenerateOptions, MigrateCommandOptions, OutputLayout, compile::CompileOptions,
-    run_cache_clean, run_cache_status, run_compile, run_config_get, run_config_path,
-    run_config_show, run_diagnostics_path, run_dist_install, run_dist_list, run_dist_uninstall,
-    run_dist_update, run_extension_install, run_extension_list, run_extension_uninstall,
-    run_extension_update, run_generate, run_gleam_compile, run_gleam_generate,
-    run_gleam_roundtrip, run_kb_add_concept, run_kb_check, run_kb_decision_list,
-    run_kb_decision_show, run_kb_index, run_kb_intent_cancel,
+    GenerateOptions, MigrateCommandOptions, OutputLayout, compile::CompileOptions, run_cache_clean,
+    run_cache_status, run_compile, run_config_get, run_config_path, run_config_show,
+    run_diagnostics_path, run_dist_install, run_dist_list, run_dist_uninstall, run_dist_update,
+    run_extension_install, run_extension_list, run_extension_uninstall, run_extension_update,
+    run_generate, run_gleam_compile, run_gleam_generate, run_gleam_roundtrip, run_kb_add_concept,
+    run_kb_check, run_kb_decision_list, run_kb_decision_show, run_kb_index, run_kb_intent_cancel,
     run_kb_intent_check, run_kb_intent_init, run_kb_intent_list, run_kb_intent_move,
     run_kb_intent_new, run_kb_intent_refine, run_kb_intent_release, run_kb_intent_show,
     run_kb_intent_start, run_kb_intent_supersede, run_kb_list, run_kb_new_bundle, run_kb_query,
