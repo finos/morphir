@@ -10,6 +10,7 @@ Documentation for contributing to Morphir and advanced development topics.
 ## 📋 Contents
 
 - **[Contributing Guide](contributing.md)** - How to contribute to Morphir
+- **[Domain Modeling](domain-modeling.md)** - Make invalid states unrepresentable and give domain values distinct types
 - **[Contribution Guide Index](contribution-guide-index.md)** - Index of contribution resources
 - **[Contribution Guide README](contribution-guide-readme.md)** - Overview of contribution process
 - **[Morphir Developers Guide](morphir-developers-guide.md)** - Comprehensive guide for Morphir developers
@@ -59,6 +60,7 @@ See [Contributing Guide](contributing.md) for detailed instructions.
 When contributing to Morphir:
 
 - **Follow existing patterns** - Maintain consistency with the codebase
+- **Model the domain in types** - Follow the [domain modeling guide](domain-modeling.md)
 - **Write tests** - Ensure your changes are well-tested
 - **Document your code** - Help others understand your contributions
 - **Ask questions** - The community is here to help
