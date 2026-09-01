@@ -33,7 +33,7 @@ cap-std = { workspace = true }
 thiserror = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 async-trait = "0.1"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "sync"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time"] }
 axum = { version = "0.8", features = ["ws"] }
 morphir-core = { path = "../../ecosystem/morphir-rust/crates/morphir-core" }
 morphir-common = { path = "../../ecosystem/morphir-rust/crates/morphir-common" }
@@ -87,6 +87,9 @@ windows-sys = { workspace = true }
 
 [dev-dependencies]
 cucumber = { workspace = true }
+# `test-util` lets the playground provider's timeout test advance a virtual
+# clock instead of waiting two real minutes.
+tokio = { version = "1", features = ["test-util"] }
 ed25519-dalek = { workspace = true }
 futures-util = "0.3"
 reqwest = { version = "0.13", default-features = false, features = ["cookies", "json", "rustls"] }

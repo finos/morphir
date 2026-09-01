@@ -148,7 +148,7 @@ impl WorkspaceCapability for NativeWorkspaceProvider {
     }
 }
 
-fn capability(name: &str) -> WorkbenchCapability {
+pub(super) fn capability(name: &str) -> WorkbenchCapability {
     WorkbenchCapability {
         name: name.into(),
         version: "1".into(),
