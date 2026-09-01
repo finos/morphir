@@ -6,11 +6,13 @@ sidebar_position: 3
 
 # Generate OpenAPI
 
-> The OpenAPI and JSON Schema backend is not released. This guide describes
-> the current contract for testing a locally built and installed extension.
-> Do not treat it as an announcement of an available release. There is no
-> public extension index; installation uses a locally built extension and a
-> local schema-v2 index, as shown below.
+> The OpenAPI and JSON Schema backend has no published release. The
+> extension is registered for independent release and has its own packaging
+> task, but no release has been cut and there is no public extension index,
+> so installation uses a locally built bundle and a local schema-v2 index,
+> as shown below. This guide describes the current contract for testing that
+> locally built and installed extension. Do not treat it as an announcement
+> of an available release.
 
 The `morphir-openapi` WASM extension turns a public Morphir package into an
 OpenAPI document: its public types become `components/schemas`, and,
@@ -26,33 +28,61 @@ specifications. It does not evaluate Morphir values or translate computation.
 ## Build and install the local extension
 
 There is no published `morphir-openapi` extension to install yet, and no
-packaging task for it in `mise` either — that lands with the release
-automation work. Build the WASM guest directly with `cargo`, then hand-write a
-schema-v2 local index record for it. From the repository root, run:
+public extension index to install it from. Contributors build the bundle
+with its packaging task, create a schema-v2 local index, and install from
+that index. From the `ecosystem/morphir-rust` directory, run:
 
 ```console
-cargo build --locked --release \
-  --manifest-path ecosystem/morphir-rust/Cargo.toml \
-  -p morphir-openapi-extension --target wasm32-unknown-unknown
-```
+mise run extension:artifact:openapi
 
-Then, from the `ecosystem/morphir-rust` directory, stage the guest and its
-index record:
-
-```console
-guest=target/wasm32-unknown-unknown/release/morphir_openapi_extension.wasm
+bundle=.morphir/build/extensions/openapi
 index=.morphir/build/index
 mkdir -p "$index/artifacts" "$index/extensions"
-cp "$guest" "$index/artifacts/morphir_openapi_extension.wasm"
-sha256=$(shasum -a 256 "$guest" | cut -d' ' -f1)
 
-cat > "$index/extensions/morphir-openapi.jsonl" <<JSON
-{"schemaVersion":2,"id":"morphir-openapi","name":"Morphir OpenAPI","version":"0.1.0","channels":["stable"],"mepVersions":["0.1"],"capabilities":["backend"],"backend":{"targets":["openapi","json-schema"],"irVersions":["3","4"]},"artifacts":[{"runtime":"wasm","source":{"kind":"local-file","path":"artifacts/morphir_openapi_extension.wasm"},"sha256":"$sha256","filename":"morphir_openapi_extension.wasm","args":[],"executable":false}]}
-JSON
+python3 - "$bundle/release.json" "$index" <<'PY'
+import json
+import pathlib
+import shutil
+import sys
+
+descriptor_path = pathlib.Path(sys.argv[1])
+index = pathlib.Path(sys.argv[2])
+descriptor = json.loads(descriptor_path.read_text(encoding="utf-8"))
+artifact = descriptor["artifact"]
+shutil.copy2(descriptor_path.parent / artifact, index / "artifacts" / artifact)
+
+record = {
+    "schemaVersion": 2,
+    "id": descriptor["extensionId"],
+    "name": "Morphir OpenAPI",
+    "version": descriptor["version"],
+    "channels": ["stable"],
+    "mepVersions": descriptor["mepVersions"],
+    "capabilities": ["backend"],
+    "backend": {
+        "targets": descriptor["targets"],
+        "irVersions": descriptor["irVersions"],
+    },
+    "artifacts": [{
+        "runtime": "wasm",
+        "source": {"kind": "local-file", "path": f"artifacts/{artifact}"},
+        "sha256": descriptor["sha256"],
+        "filename": artifact,
+        "args": [],
+        "executable": False,
+    }],
+}
+
+history = index / "extensions" / "morphir-openapi.jsonl"
+history.write_text(json.dumps(record, separators=(",", ":")) + "\n", encoding="utf-8")
+PY
 ```
 
-The record's `backend.targets` lists both `openapi` and `json-schema`. Install
-it into an isolated contributor home with the root CLI:
+`release.json` describes the release bundle, and its `targets` list carries
+both `openapi` and `json-schema` straight through into the index record: one
+installed extension serves both. The install command needs the schema-v2
+JSONL record created above, so the descriptor cannot be passed to the CLI
+directly. Install into an isolated contributor home with the root CLI:
 
 ```console
 MORPHIR_HOME="$PWD/.morphir/local-home" \

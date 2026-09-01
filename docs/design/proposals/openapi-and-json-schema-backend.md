@@ -167,14 +167,15 @@ cannot exist as written — rather than a form the backend cannot represent.
 
 ## Distribution and release ownership
 
-`morphir-rust` builds the extension and owns its future publication, exactly
-as it does for `morphir-avro-extension`. The registry entry, packaging task,
-and release routing for `morphir-openapi` are follow-on work in this same
-release plan; they are not yet checked into
-`ecosystem/morphir-rust/.github/extensions.toml`. Until they land, the
-guides linked below build the WASM guest directly with `cargo` and hand-write
-a schema-v2 local index record, the same shape `morphir-avro-extension`'s
-guide used before its own packaging task existed.
+`morphir-rust` builds the extension and owns its publication, exactly as it
+does for `morphir-avro-extension`. The registry entry, the packaging task, and
+independent release routing for `morphir-openapi` are checked into
+`ecosystem/morphir-rust`: `[extensions.openapi]` in `.github/extensions.toml`
+and `.mise/tasks/extension/artifact/openapi`, invoked as
+`mise run extension:artifact:openapi`. No release has been published and there
+is no public extension index yet, so the guides linked below build the bundle
+with that task and turn its `release.json` into a schema-v2 local index
+record, the same way `morphir-avro-extension`'s guide does.
 
 ## Implementation workstreams
 
@@ -201,9 +202,12 @@ fixture declares; downgrade coverage proving every 2020-12-only form (`type`
 arrays, the scalar `type: "null"`, `prefixItems`, `$defs`) is absent from a
 3.0 document and that every `$ref` still resolves inside
 `components/schemas`; operation coverage for the default mapping, overrides,
-collisions, and `warn-and-skip` sweep-through; and the full MEP lifecycle
-against an installed real guest through the CLI, proving one installed
-extension serves both targets.
+collisions, and `warn-and-skip` sweep-through; validation of every rendered
+OpenAPI document against the published OpenAPI metaschema for the version it
+claims, 3.1 and 3.0 alike, so a golden is checked by a real parser rather than
+only against its own previous bytes; and the full MEP lifecycle against an
+installed real guest through the CLI, proving one installed extension serves
+both targets.
 
 ## Alternatives and non-goals
 
