@@ -137,6 +137,47 @@ cargo build --locked --release --package morphir
 
 The executable is written to `target/release/morphir` (or `target\release\morphir.exe` on Windows).
 
+## Install an unsigned developer Desktop
+
+Contributors can build and install Morphir Desktop without Apple, Windows, notarization, TUF, or
+network credentials. From a `morphir-ui` checkout, run:
+
+```shell
+bun run --cwd apps/morphir-desktop package:developer
+```
+
+The portable package is written beneath `apps/morphir-desktop/release/`. Choose the host package
+that the CLI can launch directly: `.zip` on Windows or macOS, and `.tar.gz` or `.AppImage` on
+Linux. Read the exact version from `apps/morphir-desktop/package.json`, then install it explicitly:
+
+```shell
+morphir tool install desktop \
+  --source <path-to-portable-package> \
+  --channel developer \
+  --version 0.1.0
+```
+
+`developer` is a local, unsigned trust policy. The CLI still hashes the source, applies package
+size and safe-extraction limits, installs into the content-addressed store in Morphir Home, and
+atomically records the exact version, digest, platform, launch path, and rollback state. It never
+uses this policy for stable, preview, or developer-insider acquisition.
+
+Inspect and maintain the installation with the same verified lifecycle used by later release
+channels:
+
+```shell
+morphir tool list
+morphir tool list --json
+morphir tool update desktop --source <new-package> --channel developer --version <version>
+morphir tool repair desktop --source <original-package>
+morphir tool rollback desktop
+morphir tool uninstall desktop
+```
+
+Repair requires the exact original package bytes. Uninstall removes the active selection and its
+lock; content-addressed package bytes remain cache-owned and can be reclaimed with
+`morphir cache clean`.
+
 ## Related tooling
 
 | Tool | Repository | Use when |

@@ -1,237 +1,311 @@
-//! Tool command for managing Morphir tools, distributions, and extensions
-//!
-//! This module provides functionality for installing, updating, listing, and
-//! uninstalling Morphir tools and extensions, similar to npm or dotnet tool.
+//! Verified lifecycle commands for CLI-managed Morphir tools.
 
-use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
+use crate::home::MorphirHome;
+use miette::{IntoDiagnostic, Result, WrapErr, miette};
+use morphir_distribution::{
+    ArchiveFormat, LocalDeveloperToolPackage, Platform, RelativeArtifactPath, ToolId,
+    ToolInstaller, ToolPackageStore, ToolProvenance, ToolRepairer, list_installed_tools,
+    rollback_tool, uninstall_tool,
+};
+use semver::Version;
+use serde::Serialize;
 use starbase::AppResult;
-use std::collections::HashMap;
-use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-/// Default version to use when no version is specified
-const DEFAULT_VERSION: &str = "latest";
-
-/// Tool registry configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct ToolRegistry {
-    /// Installed tools with their versions
-    tools: HashMap<String, ToolInfo>,
-}
-
-/// Information about an installed tool
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct ToolInfo {
-    /// Tool name
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ListedTool {
+    id: String,
     name: String,
-    /// Tool version
+    version: String,
+    channel: &'static str,
+    trust_policy: &'static str,
+    digest: String,
+    platform: String,
+    launch_path: String,
+    rollback_versions: Vec<String>,
+}
+
+pub fn run_tool_install(
+    name: String,
     version: Option<String>,
-    /// Tool description
-    description: Option<String>,
-    /// Installation path
-    install_path: Option<String>,
+    source: Option<PathBuf>,
+    channel: Option<String>,
+) -> AppResult<miette::Report> {
+    let installed = install_local(
+        &name,
+        version,
+        source,
+        channel,
+        LocalInstallOperation::Install,
+    )?;
+    println!(
+        "Installed '{}' {} from the unsigned developer channel.\nDigest: {}",
+        installed.tool_name(),
+        installed.version(),
+        installed.digest()
+    );
+    Ok(None)
 }
 
-impl ToolRegistry {
-    /// Create a new empty tool registry
-    fn new() -> Self {
-        Self {
-            tools: HashMap::new(),
-        }
-    }
-
-    /// Load tool registry from configuration file
-    fn load() -> Result<Self> {
-        let config_path = Self::config_path()?;
-        if config_path.exists() {
-            let content = fs::read_to_string(&config_path)
-                .context("Failed to read tool registry configuration")?;
-            let registry: ToolRegistry = serde_json::from_str(&content)
-                .context("Failed to parse tool registry configuration")?;
-            Ok(registry)
-        } else {
-            Ok(Self::new())
-        }
-    }
-
-    /// Save tool registry to configuration file
-    fn save(&self) -> Result<()> {
-        let config_path = Self::config_path()?;
-        if let Some(parent) = config_path.parent() {
-            fs::create_dir_all(parent).context("Failed to create config directory")?;
-        }
-        let content =
-            serde_json::to_string_pretty(self).context("Failed to serialize tool registry")?;
-        fs::write(&config_path, content).context("Failed to write tool registry configuration")?;
-        Ok(())
-    }
-
-    /// Get the path to the tool registry configuration file
-    fn config_path() -> Result<PathBuf> {
-        Ok(crate::home::MorphirHome::resolve()?.tools_file())
-    }
-
-    /// Add or update a tool in the registry
-    fn add_tool(&mut self, tool: ToolInfo) {
-        self.tools.insert(tool.name.clone(), tool);
-    }
-
-    /// Remove a tool from the registry
-    fn remove_tool(&mut self, name: &str) -> Option<ToolInfo> {
-        self.tools.remove(name)
-    }
-
-    /// Get a tool from the registry
-    fn get_tool(&self, name: &str) -> Option<&ToolInfo> {
-        self.tools.get(name)
-    }
-
-    /// List all tools in the registry
-    fn list_tools(&self) -> Vec<&ToolInfo> {
-        self.tools.values().collect()
-    }
-}
-
-/// Run the tool install command
-pub fn run_tool_install(name: String, version: Option<String>) -> AppResult<miette::Report> {
-    println!("Installing Morphir tool: {}", name);
-
-    let mut registry = ToolRegistry::load()
-        .map_err(|error| miette::miette!("Failed to load tool registry: {error}"))?;
-
-    // Check if tool is already installed
-    if let Some(existing_tool) = registry.get_tool(&name) {
-        let version_str = existing_tool.version.as_deref().unwrap_or(DEFAULT_VERSION);
+pub fn run_tool_list(json: bool) -> AppResult<miette::Report> {
+    let home = resolve_home()?;
+    let tools = list_installed_tools(&home).into_diagnostic()?;
+    let listed = tools
+        .iter()
+        .map(|snapshot| {
+            let active = snapshot.active();
+            let (channel, trust_policy) = provenance_labels(active.provenance());
+            ListedTool {
+                id: active.tool_id().to_string(),
+                name: active.tool_name().to_owned(),
+                version: active.version().to_string(),
+                channel,
+                trust_policy,
+                digest: active.digest().to_string(),
+                platform: active.platform().to_string(),
+                launch_path: active.store_path().to_string_lossy().into_owned(),
+                rollback_versions: snapshot
+                    .rollback()
+                    .iter()
+                    .map(|release| release.version().to_string())
+                    .collect(),
+            }
+        })
+        .collect::<Vec<_>>();
+    if json {
         println!(
-            "Tool '{}' is already installed (version: {})",
-            name, version_str
+            "{}",
+            serde_json::to_string_pretty(&listed).into_diagnostic()?
         );
-        println!("Use 'morphir tool update' to update to a newer version");
-        return Ok(None);
-    }
-
-    // Create tool info
-    let tool_version = version.or_else(|| Some(DEFAULT_VERSION.to_string()));
-    let display_version = tool_version.as_deref().unwrap_or(DEFAULT_VERSION);
-    let tool = ToolInfo {
-        name: name.clone(),
-        version: tool_version.clone(),
-        description: Some(format!("Morphir tool: {}", name)),
-        install_path: None,
-    };
-
-    // Add tool to registry
-    registry.add_tool(tool);
-    registry
-        .save()
-        .map_err(|error| miette::miette!("Failed to save tool registry: {error}"))?;
-
-    println!(
-        "✓ Successfully installed tool '{}' (version: {})",
-        name, display_version
-    );
-    println!("  Run 'morphir tool list' to see all installed tools");
-
-    Ok(None)
-}
-
-/// Run the tool list command
-pub fn run_tool_list() -> AppResult<miette::Report> {
-    println!("Listing installed Morphir tools...\n");
-
-    let registry = ToolRegistry::load()
-        .map_err(|error| miette::miette!("Failed to load tool registry: {error}"))?;
-
-    let tools = registry.list_tools();
-
-    if tools.is_empty() {
+    } else if listed.is_empty() {
         println!("No tools installed.");
-        println!("Use 'morphir tool install <name>' to install a tool");
     } else {
-        println!("{:<20} {:<15} Description", "Tool Name", "Version");
-        println!("{}", "-".repeat(70));
-        for tool in &tools {
-            let description = tool.description.as_deref().unwrap_or("No description");
-            let version_str = tool.version.as_deref().unwrap_or(DEFAULT_VERSION);
-            println!("{:<20} {:<15} {}", tool.name, version_str, description);
+        println!("{:<16} {:<12} {:<12} Trust", "Tool", "Version", "Channel");
+        for tool in listed {
+            println!(
+                "{:<16} {:<12} {:<12} {}",
+                tool.id, tool.version, tool.channel, tool.trust_policy
+            );
         }
-        println!("\nTotal: {} tool(s) installed", tools.len());
     }
-
     Ok(None)
 }
 
-/// Run the tool update command
-pub fn run_tool_update(name: String, version: Option<String>) -> AppResult<miette::Report> {
-    println!("Updating Morphir tool: {}", name);
-
-    let mut registry = ToolRegistry::load()
-        .map_err(|error| miette::miette!("Failed to load tool registry: {error}"))?;
-
-    // Check if tool exists
-    let existing_tool = registry.get_tool(&name).cloned().ok_or_else(|| {
-        miette::miette!(
-            "Tool '{}' is not installed. Use 'morphir tool install' first",
-            name
-        )
-    })?;
-
-    let old_version = existing_tool
-        .version
-        .as_deref()
-        .unwrap_or(DEFAULT_VERSION)
-        .to_string();
-    let new_version = version.or_else(|| Some(DEFAULT_VERSION.to_string()));
-    let new_version_str = new_version.as_deref().unwrap_or(DEFAULT_VERSION);
-
-    if old_version == new_version_str {
-        println!("Tool '{}' is already at version {}", name, new_version_str);
-        return Ok(None);
-    }
-
-    // Update tool
-    let updated_tool = ToolInfo {
-        name: name.clone(),
-        version: new_version.clone(),
-        description: existing_tool.description.clone(),
-        install_path: existing_tool.install_path.clone(),
-    };
-
-    registry.add_tool(updated_tool);
-    registry
-        .save()
-        .map_err(|error| miette::miette!("Failed to save tool registry: {error}"))?;
-
+pub fn run_tool_update(
+    name: String,
+    version: Option<String>,
+    source: Option<PathBuf>,
+    channel: Option<String>,
+) -> AppResult<miette::Report> {
+    let installed = install_local(
+        &name,
+        version,
+        source,
+        channel,
+        LocalInstallOperation::Update,
+    )?;
     println!(
-        "✓ Successfully updated tool '{}' from {} to {}",
-        name, old_version, new_version_str
+        "Updated '{}' to {}.",
+        installed.tool_name(),
+        installed.version()
     );
-
     Ok(None)
 }
 
-/// Run the tool uninstall command
+pub fn run_tool_repair(name: String, source: PathBuf) -> AppResult<miette::Report> {
+    require_desktop(&name)?;
+    let home = resolve_home()?;
+    let id = ToolId::parse(&name).into_diagnostic()?;
+    let installed = list_installed_tools(&home)
+        .into_diagnostic()?
+        .into_iter()
+        .find(|tool| tool.active().tool_id() == &id)
+        .ok_or_else(|| miette!("Tool '{name}' is not installed"))?;
+    let active = installed.active();
+    let local = desktop_package(source, active.version().clone(), active.platform().clone())?;
+    ToolRepairer::new(&home)
+        .repair_local(&id, local)
+        .into_diagnostic()
+        .wrap_err("Failed to repair the exact local developer package")?;
+    println!("Repaired '{}' {}.", active.tool_name(), active.version());
+    Ok(None)
+}
+
+pub fn run_tool_rollback(name: String) -> AppResult<miette::Report> {
+    let home = resolve_home()?;
+    let id = ToolId::parse(&name).into_diagnostic()?;
+    let restored = rollback_tool(&home, &id).into_diagnostic()?;
+    println!(
+        "Rolled back '{}' to {}.",
+        restored.tool_name(),
+        restored.version()
+    );
+    Ok(None)
+}
+
 pub fn run_tool_uninstall(name: String) -> AppResult<miette::Report> {
-    println!("Uninstalling Morphir tool: {}", name);
-
-    let mut registry = ToolRegistry::load()
-        .map_err(|error| miette::miette!("Failed to load tool registry: {error}"))?;
-
-    // Remove tool from registry
-    let removed_tool = registry
-        .remove_tool(&name)
-        .ok_or_else(|| miette::miette!("Tool '{name}' is not installed"))?;
-
-    registry
-        .save()
-        .map_err(|error| miette::miette!("Failed to save tool registry: {error}"))?;
-
-    let version_str = removed_tool.version.as_deref().unwrap_or(DEFAULT_VERSION);
+    let home = resolve_home()?;
+    let id = ToolId::parse(&name).into_diagnostic()?;
+    let removed = uninstall_tool(&home, &id).into_diagnostic()?;
     println!(
-        "✓ Successfully uninstalled tool '{}' (version: {})",
-        removed_tool.name, version_str
+        "Uninstalled '{}' {}.",
+        removed.tool_name(),
+        removed.version()
     );
-
     Ok(None)
+}
+
+fn install_local(
+    name: &str,
+    version: Option<String>,
+    source: Option<PathBuf>,
+    channel: Option<String>,
+    operation: LocalInstallOperation,
+) -> Result<morphir_distribution::InstalledTool> {
+    require_desktop(name)?;
+    let source = source
+        .ok_or_else(|| miette!("Local developer installation requires --source <package>"))?;
+    if channel.as_deref() != Some("developer") {
+        return Err(miette!(
+            "Local unsigned packages require the explicit --channel developer policy"
+        ));
+    }
+    let version = version
+        .ok_or_else(|| miette!("Local developer installation requires --version <semver>"))?
+        .parse::<Version>()
+        .into_diagnostic()
+        .wrap_err("Invalid local Desktop version")?;
+    let home = resolve_home()?;
+    let local = desktop_package(source, version, Platform::current())?;
+    let prepared = ToolPackageStore::new(&home)
+        .prepare_local(local)
+        .into_diagnostic()
+        .wrap_err("Failed to verify the local Desktop package")?;
+    let installer = ToolInstaller::new(&home);
+    operation
+        .activate(&installer, prepared)
+        .into_diagnostic()
+        .wrap_err("Failed to activate the local Desktop package")
+}
+
+#[derive(Debug, Clone, Copy)]
+enum LocalInstallOperation {
+    Install,
+    Update,
+}
+
+impl LocalInstallOperation {
+    fn activate(
+        self,
+        installer: &ToolInstaller<'_>,
+        package: morphir_distribution::VerifiedToolPackage,
+    ) -> morphir_distribution::Result<morphir_distribution::InstalledTool> {
+        match self {
+            Self::Install => installer.install_new(package),
+            Self::Update => installer.update(package),
+        }
+    }
+}
+
+fn desktop_package(
+    source: PathBuf,
+    version: Version,
+    platform: Platform,
+) -> Result<LocalDeveloperToolPackage> {
+    let (format, entry_point) = desktop_archive_contract(&source, platform.os())?;
+    LocalDeveloperToolPackage::new(
+        source,
+        ToolId::parse("desktop").into_diagnostic()?,
+        "Morphir Desktop",
+        version,
+        platform,
+        format,
+        RelativeArtifactPath::parse(entry_point).into_diagnostic()?,
+        Vec::new(),
+    )
+    .into_diagnostic()
+}
+
+fn desktop_archive_contract(source: &Path, os: &str) -> Result<(ArchiveFormat, String)> {
+    let filename = source
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| miette!("Desktop package source must have a UTF-8 filename"))?;
+    let lowercase = filename.to_ascii_lowercase();
+    match os {
+        "windows" if lowercase.ends_with(".zip") => {
+            Ok((ArchiveFormat::Zip, "Morphir Desktop.exe".to_owned()))
+        }
+        "windows" if filename == "Morphir Desktop.exe" => {
+            Ok((ArchiveFormat::Raw, filename.to_owned()))
+        }
+        "macos" if lowercase.ends_with(".zip") => Ok((
+            ArchiveFormat::Zip,
+            "Morphir Desktop.app/Contents/MacOS/Morphir Desktop".to_owned(),
+        )),
+        "linux" if lowercase.ends_with(".tar.gz") => {
+            Ok((ArchiveFormat::TarGzip, "morphir-desktop".to_owned()))
+        }
+        "linux" if lowercase.ends_with(".appimage") => {
+            Ok((ArchiveFormat::Appimage, filename.to_owned()))
+        }
+        "linux" if filename == "morphir-desktop" => Ok((ArchiveFormat::Raw, filename.to_owned())),
+        _ => Err(miette!(
+            "Unsupported Desktop package '{}' for host platform {}-{}",
+            source.display(),
+            os,
+            std::env::consts::ARCH
+        )),
+    }
+}
+
+fn require_desktop(name: &str) -> Result<()> {
+    if name == "desktop" {
+        Ok(())
+    } else {
+        Err(miette!(
+            "Local developer tool installation currently supports only 'desktop'"
+        ))
+    }
+}
+
+fn resolve_home() -> Result<MorphirHome> {
+    MorphirHome::resolve().map_err(|error| miette!("Failed to resolve Morphir Home: {error}"))
+}
+
+fn provenance_labels(provenance: &ToolProvenance) -> (&'static str, &'static str) {
+    match provenance {
+        ToolProvenance::LocalDeveloper => ("developer", "local-unsigned"),
+        ToolProvenance::AuthenticatedRepository { .. } => ("repository", "tuf-authenticated"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn desktop_archives_use_the_release_contract_entry_points() {
+        assert_eq!(
+            desktop_archive_contract(Path::new("desktop.zip"), "windows").unwrap(),
+            (ArchiveFormat::Zip, "Morphir Desktop.exe".to_owned())
+        );
+        assert_eq!(
+            desktop_archive_contract(Path::new("desktop.zip"), "macos").unwrap(),
+            (
+                ArchiveFormat::Zip,
+                "Morphir Desktop.app/Contents/MacOS/Morphir Desktop".to_owned(),
+            )
+        );
+    }
+
+    #[test]
+    fn versioned_linux_appimage_uses_its_own_filename_as_the_entry_point() {
+        let filename = "morphir-desktop-0.1.0-linux-arm64.AppImage";
+        assert_eq!(
+            desktop_archive_contract(Path::new(filename), "linux").unwrap(),
+            (ArchiveFormat::Appimage, filename.to_owned())
+        );
+    }
 }

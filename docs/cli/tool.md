@@ -3,11 +3,13 @@
 
 - **Usage:** `morphir tool <SUBCOMMAND>`
 
-Manage Morphir tools, distributions, and extensions
+Manage CLI-installed Morphir tools
 
 ## Subcommands
 
-- [`morphir tool install [-v --version <VERSION>] <NAME>`](tool/install.md)
-- [`morphir tool list`](tool/list.md)
+- [`morphir tool install [FLAGS] <NAME>`](tool/install.md)
+- [`morphir tool list [--json]`](tool/list.md)
+- [`morphir tool repair <--source <SOURCE>> <NAME>`](tool/repair.md)
+- [`morphir tool rollback <NAME>`](tool/rollback.md)
 - [`morphir tool uninstall <NAME>`](tool/uninstall.md)
-- [`morphir tool update [-v --version <VERSION>] <NAME>`](tool/update.md)
+- [`morphir tool update [FLAGS] <NAME>`](tool/update.md)

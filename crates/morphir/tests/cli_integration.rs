@@ -16,6 +16,214 @@ fn morphir_command() -> std::process::Command {
     command
 }
 
+fn write_local_desktop_package(directory: &std::path::Path, version: &str) -> PathBuf {
+    #[cfg(target_os = "linux")]
+    {
+        let package = directory.join(format!("morphir-desktop-{version}-linux.AppImage"));
+        std::fs::write(&package, format!("desktop-{version}")).unwrap();
+        package
+    }
+    #[cfg(any(windows, target_os = "macos"))]
+    {
+        let executable = if cfg!(windows) {
+            "Morphir Desktop.exe"
+        } else {
+            "Morphir Desktop.app/Contents/MacOS/Morphir Desktop"
+        };
+        let package = directory.join(format!("morphir-desktop-{version}.zip"));
+        let file = std::fs::File::create(&package).unwrap();
+        let mut archive = zip::ZipWriter::new(file);
+        archive
+            .start_file(executable, zip::write::SimpleFileOptions::default())
+            .unwrap();
+        std::io::Write::write_all(&mut archive, format!("desktop-{version}").as_bytes()).unwrap();
+        archive.finish().unwrap();
+        package
+    }
+}
+
+#[test]
+fn local_developer_desktop_uses_verified_tool_lifecycle() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let first = write_local_desktop_package(temp.path(), "0.1.0");
+    let install = morphir_command()
+        .args([
+            "tool",
+            "install",
+            "desktop",
+            "--source",
+            first.to_str().unwrap(),
+            "--channel",
+            "developer",
+            "--version",
+            "0.1.0",
+        ])
+        .env("MORPHIR_HOME", &home)
+        .output()
+        .unwrap();
+    assert!(
+        install.status.success(),
+        "{}",
+        String::from_utf8_lossy(&install.stderr)
+    );
+    assert!(home.join("catalog/tools.json").exists());
+    assert!(!home.join("tools.json").exists());
+
+    let list = morphir_command()
+        .args(["tool", "list", "--json"])
+        .env("MORPHIR_HOME", &home)
+        .output()
+        .unwrap();
+    assert!(list.status.success());
+    let listed: serde_json::Value = serde_json::from_slice(&list.stdout).unwrap();
+    assert_eq!(listed[0]["id"], "desktop");
+    assert_eq!(listed[0]["version"], "0.1.0");
+    assert_eq!(listed[0]["channel"], "developer");
+    assert_eq!(listed[0]["trustPolicy"], "local-unsigned");
+    assert!(listed[0]["digest"].as_str().unwrap().len() == 64);
+
+    let catalog: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(home.join("catalog/tools.json")).unwrap()).unwrap();
+    let launch_path = catalog["tools"][0]["active"]["storePath"].as_str().unwrap();
+    std::fs::write(home.join(launch_path), b"corrupt").unwrap();
+    let repair = morphir_command()
+        .args([
+            "tool",
+            "repair",
+            "desktop",
+            "--source",
+            first.to_str().unwrap(),
+        ])
+        .env("MORPHIR_HOME", &home)
+        .output()
+        .unwrap();
+    assert!(
+        repair.status.success(),
+        "{}",
+        String::from_utf8_lossy(&repair.stderr)
+    );
+
+    let second = write_local_desktop_package(temp.path(), "0.2.0");
+    let update = morphir_command()
+        .args([
+            "tool",
+            "update",
+            "desktop",
+            "--source",
+            second.to_str().unwrap(),
+            "--channel",
+            "developer",
+            "--version",
+            "0.2.0",
+        ])
+        .env("MORPHIR_HOME", &home)
+        .output()
+        .unwrap();
+    assert!(
+        update.status.success(),
+        "{}",
+        String::from_utf8_lossy(&update.stderr)
+    );
+
+    let rollback = morphir_command()
+        .args(["tool", "rollback", "desktop"])
+        .env("MORPHIR_HOME", &home)
+        .output()
+        .unwrap();
+    assert!(
+        rollback.status.success(),
+        "{}",
+        String::from_utf8_lossy(&rollback.stderr)
+    );
+    assert!(String::from_utf8_lossy(&rollback.stdout).contains("0.1.0"));
+
+    let uninstall = morphir_command()
+        .args(["tool", "uninstall", "desktop"])
+        .env("MORPHIR_HOME", &home)
+        .output()
+        .unwrap();
+    assert!(
+        uninstall.status.success(),
+        "{}",
+        String::from_utf8_lossy(&uninstall.stderr)
+    );
+    let catalog: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(home.join("catalog/tools.json")).unwrap()).unwrap();
+    assert!(catalog["tools"].as_array().unwrap().is_empty());
+}
+
+#[test]
+fn local_desktop_source_requires_explicit_developer_trust_policy() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let package = write_local_desktop_package(temp.path(), "0.1.0");
+    let rejected = morphir_command()
+        .args([
+            "tool",
+            "install",
+            "desktop",
+            "--source",
+            package.to_str().unwrap(),
+            "--channel",
+            "stable",
+            "--version",
+            "0.1.0",
+        ])
+        .env("MORPHIR_HOME", &home)
+        .output()
+        .unwrap();
+
+    assert!(!rejected.status.success());
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains("--channel developer"));
+    assert!(!home.join("catalog/tools.json").exists());
+}
+
+#[test]
+fn local_desktop_install_and_update_enforce_distinct_preconditions() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let package = write_local_desktop_package(temp.path(), "0.1.0");
+    let local_args = [
+        "desktop",
+        "--source",
+        package.to_str().unwrap(),
+        "--channel",
+        "developer",
+        "--version",
+        "0.1.0",
+    ];
+
+    let update_missing = morphir_command()
+        .arg("tool")
+        .arg("update")
+        .args(local_args)
+        .env("MORPHIR_HOME", &home)
+        .output()
+        .unwrap();
+    assert!(!update_missing.status.success());
+    assert!(String::from_utf8_lossy(&update_missing.stderr).contains("not installed"));
+
+    let install = morphir_command()
+        .arg("tool")
+        .arg("install")
+        .args(local_args)
+        .env("MORPHIR_HOME", &home)
+        .output()
+        .unwrap();
+    assert!(install.status.success());
+
+    let install_again = morphir_command()
+        .arg("tool")
+        .arg("install")
+        .args(local_args)
+        .env("MORPHIR_HOME", &home)
+        .output()
+        .unwrap();
+    assert!(!install_again.status.success());
+    assert!(String::from_utf8_lossy(&install_again.stderr).contains("already installed"));
+}
+
 fn write_test_index(
     directory: &std::path::Path,
     id: &str,
@@ -2135,8 +2343,19 @@ fn test_morphir_home_env_var_relocates_home_directory() {
     let temp_dir = TempDir::new().unwrap();
     let morphir_home = temp_dir.path().join("relocated-home");
 
+    let package = write_local_desktop_package(temp_dir.path(), "0.1.0");
     let output = morphir_command()
-        .args(["tool", "install", "example-tool"])
+        .args([
+            "tool",
+            "install",
+            "desktop",
+            "--source",
+            package.to_str().unwrap(),
+            "--channel",
+            "developer",
+            "--version",
+            "0.1.0",
+        ])
         .env("MORPHIR_HOME", &morphir_home)
         .env_remove("MORPHIR_LOG_DIR")
         .env("MORPHIR_LOG_FILE", "true")
@@ -2153,8 +2372,8 @@ fn test_morphir_home_env_var_relocates_home_directory() {
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(
-        morphir_home.join("tools.json").exists(),
-        "expected tool registry at MORPHIR_HOME ({})",
+        morphir_home.join("catalog/tools.json").exists(),
+        "expected verified tool catalog at MORPHIR_HOME ({})",
         morphir_home.display()
     );
     let cli_log_root = morphir_home.join("logs/cli");
