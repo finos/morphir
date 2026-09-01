@@ -16,8 +16,6 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  SCCACHE_GHA_ENABLED: "true"
-  RUSTC_WRAPPER: sccache
 
 jobs:
   release-info:
@@ -89,6 +87,7 @@ jobs:
         uses: ./.github/actions/setup-rust-ci
         with:
           install-mold: ${{ runner.os == 'Linux' }}
+          enable-sccache: ${{ runner.arch != 'ARM64' }}
           shared-key: morphir-release-${{ matrix.target }}
 
       - name: Build CLI

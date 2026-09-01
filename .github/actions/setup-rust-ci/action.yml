@@ -7,6 +7,10 @@ inputs:
     description: Install the mold linker (Linux only).
     required: false
     default: "true"
+  enable-sccache:
+    description: Enable sccache compiler caching.
+    required: false
+    default: "true"
   shared-key:
     description: Shared rust-cache namespace across jobs.
     required: false
@@ -15,7 +19,15 @@ runs:
   using: composite
   steps:
     - name: Run sccache
+      if: inputs.enable-sccache == 'true'
       uses: mozilla-actions/sccache-action@v0.0.10
+
+    - name: Configure sccache
+      if: inputs.enable-sccache == 'true'
+      shell: bash
+      run: |
+        echo 'SCCACHE_GHA_ENABLED=true' >> "$GITHUB_ENV"
+        echo 'RUSTC_WRAPPER=sccache' >> "$GITHUB_ENV"
 
     - name: Install mold linker
       if: inputs.install-mold == 'true'
