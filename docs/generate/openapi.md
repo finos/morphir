@@ -315,6 +315,21 @@ the keys of a `properties` map or a `components/schemas` map, both of which
 hold arbitrary Morphir-derived names. A record field genuinely named `const`
 survives untouched.
 
+### Limitation: a nullable reference
+
+A field or output typed `Maybe SomeNamedType` — a `Maybe` over a named type,
+not a scalar — downgrades to `{"allOf": [{"$ref": ...}], "nullable": true}`.
+OAS 3.0.3 §4.7.24.2 only extends the allowed types when a `type` keyword
+sits in the *same* schema object as `nullable`, and wrapping a `$ref` in
+`allOf` never adds one, so most 3.0 tooling ignores `nullable` there and a
+generated client may reject `null` for a field where Morphir data allows it.
+There is no fully correct 3.0 encoding for this shape: inlining the
+referenced schema would preserve nullability but duplicates schemas and
+breaks on recursive types. The downgrade keeps the `allOf` form and instead
+records a `JSC003` warning naming the schema or property, so the gap is
+visible rather than silent. Generate with `version = "3.1"` instead if a
+consumer must enforce the null case.
+
 ## Diagnostic codes
 
 | Code | Meaning |
@@ -335,7 +350,10 @@ operation that only references a type dropped elsewhere in the document is
 also dropped rather than left pointing at a missing schema. `OAS001` and
 `OAS002` are always errors, regardless of `unsupported`: both name a mistake
 in the Morphir source or the configuration itself, not a form the backend
-cannot represent.
+cannot represent. Under `version = "3.0"`, a nullable reference (see above)
+also emits a `JSC003` warning, unconditionally on `unsupported` — this
+warning never fails generation, since it flags a real limitation of the 3.0
+dialect itself, not a Morphir form the backend refuses to project.
 
 For runtime boundaries and release status, see the accepted [WASM extension
 runtime and Avro backend proposal](../design/proposals/wasm-extension-runtime-and-avro-backend.md)

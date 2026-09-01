@@ -494,6 +494,14 @@ Protocol versions use `major.minor` numbers.
 
 The handshake chooses one exact protocol version. This makes compatibility behavior explicit and keeps extension packages testable against more than one host version.
 
+The additive-only rule for a minor version binds from the first *released*
+protocol version onward, not before it. `GenerateRequest.target` was changed
+from absent to required while MEP 0.1 was still pre-release: no host
+implementing 0.1 had shipped, so no deployed host was broken by the change,
+and the version stayed at 0.1 rather than moving to 0.2. A protocol version
+that has already been released must not repeat this — a required field added
+after release needs a major version, per the rule above.
+
 ## Security and permissions
 
 The host owns access to files, generated outputs, network connections, environment variables, and secrets. It grants only the permissions declared by extension metadata and approved by configuration.
