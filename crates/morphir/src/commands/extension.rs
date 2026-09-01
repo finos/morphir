@@ -4,8 +4,8 @@ use crate::home::MorphirHome;
 use crate::observability::OperationId;
 use morphir_distribution::{
     Channel, ExtensionId, ExtensionInstaller, ExtensionRepositories, ExtensionRepository,
-    InstalledCatalog, Platform, RepositoryEndpoint, RepositoryName, Selection, list_installed,
-    uninstall_extension,
+    ExtensionSearchQuery, InstalledCatalog, LocalExtensionRepository, Platform, PublicationStatus,
+    RepositoryEndpoint, RepositoryName, Selection, list_installed, uninstall_extension,
 };
 use semver::Version;
 use starbase::AppResult;
@@ -195,6 +195,118 @@ fn endpoint_display(repository: &ExtensionRepository) -> String {
         .local_directory_path()
         .map(|path| path.display().to_string())
         .unwrap_or_else(|| "<unsupported>".to_owned())
+}
+
+/// Initialize a local-directory repository ready for verified publication.
+pub fn run_extension_repository_init(
+    operation_id: &OperationId,
+    directory: std::path::PathBuf,
+) -> AppResult<miette::Report> {
+    let repository = LocalExtensionRepository::init(&directory)
+        .map_err(|error| miette::miette!("Failed to initialize extension repository: {error}"))?;
+    tracing::info!(
+        schema_version = 1,
+        component = "cli",
+        operation_id = %operation_id,
+        event_name = "extension.repository.init",
+        path = %repository.root().display(),
+        "local extension repository initialized"
+    );
+    println!(
+        "Initialized extension repository at {}",
+        repository.root().display()
+    );
+    Ok(None)
+}
+
+/// Verify a release bundle and publish it through a configured repository name.
+pub fn run_extension_repository_publish(
+    operation_id: &OperationId,
+    name: String,
+    bundle: std::path::PathBuf,
+) -> AppResult<miette::Report> {
+    let home = MorphirHome::resolve()
+        .map_err(|error| miette::miette!("Failed to resolve Morphir home: {error}"))?;
+    let name = repository_name(&name)?;
+    let configured = repositories(&home)
+        .get(&name)
+        .map_err(|error| miette::miette!("Failed to inspect extension repository: {error}"))?;
+    let directory = configured
+        .endpoint()
+        .local_directory_path()
+        .ok_or_else(|| miette::miette!("Extension repository '{name}' is not local"))?;
+    let repository = LocalExtensionRepository::open(directory)
+        .map_err(|error| miette::miette!("Failed to open extension repository: {error}"))?;
+    let publication = repository
+        .publish(&bundle)
+        .map_err(|error| miette::miette!("Failed to publish extension release: {error}"))?;
+    let status = match publication.status() {
+        PublicationStatus::Published => "published",
+        PublicationStatus::AlreadyPresent => "already-present",
+    };
+    tracing::info!(
+        schema_version = 1,
+        component = "cli",
+        operation_id = %operation_id,
+        event_name = "extension.repository.publish",
+        repository = %name,
+        extension = %publication.release().extension_id(),
+        version = %publication.release().version(),
+        artifact_path = %publication.artifact_path().display(),
+        status,
+        "extension release published to configured repository"
+    );
+    println!(
+        "{} {}/{} {}",
+        match publication.status() {
+            PublicationStatus::Published => "Published",
+            PublicationStatus::AlreadyPresent => "Already present",
+        },
+        name,
+        publication.release().extension_id(),
+        publication.release().version()
+    );
+    Ok(None)
+}
+
+/// Search enabled extension repositories by identity or display name.
+pub fn run_extension_search(
+    operation_id: &OperationId,
+    query: String,
+) -> AppResult<miette::Report> {
+    let home = MorphirHome::resolve()
+        .map_err(|error| miette::miette!("Failed to resolve Morphir home: {error}"))?;
+    let query_text = query;
+    let query = ExtensionSearchQuery::parse(query_text.clone())
+        .map_err(|error| miette::miette!("Invalid extension search query: {error}"))?;
+    let results = repositories(&home)
+        .search(&query)
+        .map_err(|error| miette::miette!("Failed to search extension repositories: {error}"))?;
+    tracing::info!(
+        schema_version = 1,
+        component = "cli",
+        operation_id = %operation_id,
+        event_name = "extension.catalog.search",
+        query = %query_text,
+        result_count = results.len(),
+        "enabled extension repositories searched"
+    );
+    if results.is_empty() {
+        println!("No extensions found for '{query_text}'.");
+        return Ok(None);
+    }
+
+    println!("{:<40} {:<16} Name", "Repository/Extension", "Version");
+    for result in results {
+        let release = result.release();
+        println!(
+            "{:<40} {:<16} {}",
+            format!("{}/{}", result.repository().name(), release.extension_id()),
+            release.version(),
+            release.name()
+        );
+    }
+    Ok(None)
 }
 
 /// Add a named local-directory extension repository to Morphir Home.

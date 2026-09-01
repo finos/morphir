@@ -10,5 +10,6 @@ Manage Morphir extensions
 - [`morphir extension install <FLAGS> <NAME>`](extension/install.md)
 - [`morphir extension list`](extension/list.md)
 - [`morphir extension repository <SUBCOMMAND>`](extension/repository.md)
+- [`morphir extension search <QUERY>`](extension/search.md)
 - [`morphir extension uninstall <NAME>`](extension/uninstall.md)
 - [`morphir extension update <FLAGS> <NAME>`](extension/update.md)
