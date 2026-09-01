@@ -3,6 +3,39 @@
 use crate::output::{Diagnostic, OutputFormat};
 use miette::Diagnostic as MietteDiagnostic;
 
+/// A provider-neutral workspace discovery failure retained at host boundaries.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WorkspaceDiscoveryError {
+    /// Stable machine-readable failure code.
+    pub code: String,
+    /// Human-readable failure explanation.
+    pub message: String,
+    /// Root-confined path associated with the failure, when available.
+    pub path: Option<morphir_workspace::RelativePath>,
+}
+
+impl std::fmt::Display for WorkspaceDiscoveryError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "{}: {}", self.code, self.message)?;
+        if let Some(path) = &self.path {
+            write!(formatter, " at `{}`", path.as_str())?;
+        }
+        Ok(())
+    }
+}
+
+impl std::error::Error for WorkspaceDiscoveryError {}
+
+impl From<morphir_workspace::DiscoveryFailure> for WorkspaceDiscoveryError {
+    fn from(failure: morphir_workspace::DiscoveryFailure) -> Self {
+        Self {
+            code: failure.code,
+            message: failure.message,
+            path: failure.path,
+        }
+    }
+}
+
 /// CLI error that can be formatted for human or JSON output
 #[derive(Debug, thiserror::Error, MietteDiagnostic)]
 pub enum CliError {
@@ -11,6 +44,13 @@ pub enum CliError {
     Config {
         #[source]
         error: anyhow::Error,
+    },
+
+    #[error("{error}")]
+    #[diagnostic(code(cli::workspace_discovery_error))]
+    WorkspaceDiscovery {
+        #[source]
+        error: WorkspaceDiscoveryError,
     },
 
     #[error("Extension error: {message}")]
