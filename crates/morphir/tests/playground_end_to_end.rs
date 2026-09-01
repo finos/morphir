@@ -18,10 +18,17 @@
 //! extension invocation round-trips, which is a different, already-covered
 //! concern.
 //!
-//! The no-write guarantee is checked by running the whole exchange with the
-//! process's working directory pointed at an empty scratch directory and
-//! asserting it is still empty afterward. That is process-wide state, so
-//! this file intentionally contains a single test.
+//! This file does not check the playground's no-write promise. It runs the
+//! exchange with the process's working directory pointed at an empty scratch
+//! directory and asserts the directory is still empty afterward, but the
+//! provider behind that exchange is a stub with no filesystem access at all,
+//! so the assertion only holds the host itself — the routing, session and
+//! dispatch layers — to writing nothing. Whether a real provider keeps the
+//! promise is the question the unit tests in `provider/playground.rs` ask,
+//! against real extensions and every directory one could plausibly write to.
+//!
+//! The working directory is process-wide state, so this file intentionally
+//! contains a single test.
 
 use std::sync::Arc;
 
@@ -356,8 +363,10 @@ async fn the_playground_pipeline_works_end_to_end_over_http_and_websocket() {
         .filter(|entry| entry.file_type().is_file())
         .map(|entry| entry.path().to_path_buf())
         .collect();
+    // The stub provider cannot write, so this holds only the host to writing
+    // nothing; see the file header.
     assert!(
         leftover.is_empty(),
-        "the playground pipeline wrote files to the working directory: {leftover:?}"
+        "the playground host wrote files to the working directory: {leftover:?}"
     );
 }
