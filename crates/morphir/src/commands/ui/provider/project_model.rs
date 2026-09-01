@@ -1,7 +1,10 @@
 //! Confined loading for generated project models shared by every workspace provider.
 
-use std::path::{Path, PathBuf};
+use std::io::Read as _;
+use std::path::{Component, Path};
 
+use cap_fs_ext::{DirExt as _, FollowSymlinks, OpenOptionsFollowExt as _};
+use cap_std::fs::{Dir, File, OpenOptions};
 use chrono::{SecondsFormat, Utc};
 
 use crate::{
@@ -14,6 +17,16 @@ use crate::{
 };
 
 const MAX_PROJECT_MODEL_BYTES: u64 = 64 * 1024 * 1024;
+
+trait ProjectModelHooks {
+    fn after_artifact_open(&self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+struct NoopProjectModelHooks;
+
+impl ProjectModelHooks for NoopProjectModelHooks {}
 
 pub(super) async fn load_project_model(
     workspace: &Path,
@@ -35,21 +48,30 @@ fn load(
     snapshot: WorkspaceSnapshot,
     project_id: &str,
 ) -> Result<ProjectModelOpenResult, CliError> {
+    load_with_hooks(
+        workspace,
+        source,
+        snapshot,
+        project_id,
+        &NoopProjectModelHooks,
+    )
+}
+
+fn load_with_hooks<H: ProjectModelHooks + ?Sized>(
+    workspace: &Path,
+    source: &WorkbenchSourceRef,
+    snapshot: WorkspaceSnapshot,
+    project_id: &str,
+    hooks: &H,
+) -> Result<ProjectModelOpenResult, CliError> {
     let project = snapshot
         .projects
         .into_iter()
         .find(|project| project.id == project_id)
         .ok_or_else(|| protocol_error(format!("Unknown workspace project '{project_id}'")))?;
-    let canonical_root = workspace.canonicalize().map_err(CliError::from)?;
-    let artifact = project_artifact(&canonical_root, &project.relative_path);
-    let canonical_artifact = artifact.canonicalize().map_err(CliError::from)?;
-    if !canonical_artifact.starts_with(&canonical_root) {
-        return Err(protocol_error(format!(
-            "Project model leaves the workspace root: {}/morphir-ir.json",
-            project.relative_path
-        )));
-    }
-    let metadata = canonical_artifact.metadata().map_err(CliError::from)?;
+    let mut artifact = open_project_artifact(workspace, &project.relative_path)?;
+    hooks.after_artifact_open().map_err(CliError::from)?;
+    let metadata = artifact.metadata().map_err(CliError::from)?;
     if !metadata.is_file() {
         return Err(protocol_error(format!(
             "Project model is not a file: {}/morphir-ir.json",
@@ -62,7 +84,12 @@ fn load(
             project.relative_path
         )));
     }
-    let bytes = std::fs::read(&canonical_artifact).map_err(CliError::from)?;
+    let mut bytes = Vec::with_capacity(metadata.len().min(MAX_PROJECT_MODEL_BYTES) as usize);
+    artifact
+        .by_ref()
+        .take(MAX_PROJECT_MODEL_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(CliError::from)?;
     if bytes.is_empty() {
         return Err(protocol_error("Project model must not be empty"));
     }
@@ -96,12 +123,46 @@ fn load(
     })
 }
 
-fn project_artifact(root: &Path, relative_path: &str) -> PathBuf {
-    if relative_path == "." {
-        root.join("morphir-ir.json")
-    } else {
-        root.join(relative_path).join("morphir-ir.json")
+fn open_project_artifact(workspace: &Path, relative_path: &str) -> Result<File, CliError> {
+    let mut directory =
+        Dir::open_ambient_dir(workspace, cap_std::ambient_authority()).map_err(CliError::from)?;
+    if relative_path != "." {
+        let components = Path::new(relative_path).components().collect::<Vec<_>>();
+        if components.is_empty() {
+            return Err(project_confinement_error(relative_path));
+        }
+        for component in components {
+            let Component::Normal(component) = component else {
+                return Err(project_confinement_error(relative_path));
+            };
+            let metadata = directory
+                .symlink_metadata(component)
+                .map_err(CliError::from)?;
+            if metadata.file_type().is_symlink() {
+                return Err(project_confinement_error(relative_path));
+            }
+            directory = directory
+                .open_dir_nofollow(component)
+                .map_err(CliError::from)?;
+        }
     }
+    let metadata = directory
+        .symlink_metadata("morphir-ir.json")
+        .map_err(CliError::from)?;
+    if metadata.file_type().is_symlink() {
+        return Err(project_confinement_error(relative_path));
+    }
+    let mut options = OpenOptions::new();
+    options.read(true).follow(FollowSymlinks::No);
+    directory
+        .open_with("morphir-ir.json", &options)
+        .map_err(CliError::from)
+}
+
+fn project_confinement_error(relative_path: &str) -> CliError {
+    protocol_error(format!(
+        "Project model leaves the workspace root: {relative_path}/morphir-ir.json"
+    ))
 }
 
 #[cfg(all(test, unix))]
@@ -111,6 +172,71 @@ mod tests {
         DiagnosticSeverity, ProjectSnapshot, ProjectState, WorkspaceDiagnostic, WorkspaceState,
         project_key,
     };
+    use std::path::PathBuf;
+
+    struct SwapArtifactAfterOpen {
+        artifact: PathBuf,
+        external: PathBuf,
+    }
+
+    impl ProjectModelHooks for SwapArtifactAfterOpen {
+        fn after_artifact_open(&self) -> std::io::Result<()> {
+            std::fs::remove_file(&self.artifact)?;
+            std::os::unix::fs::symlink(&self.external, &self.artifact)
+        }
+    }
+
+    #[test]
+    fn reads_from_the_confined_handle_when_the_artifact_path_is_replaced() {
+        let root = tempfile::tempdir().unwrap();
+        let artifact = root.path().join("morphir-ir.json");
+        std::fs::write(&artifact, "inside").unwrap();
+        let external = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(external.path(), "outside").unwrap();
+        let source = WorkbenchSourceRef {
+            provider_id: "cli:session-1".into(),
+            locator: "workspace:initial".into(),
+            display_name: "orders".into(),
+            persistence: None,
+        };
+        let project_id = project_key(&source, ".");
+        let snapshot = WorkspaceSnapshot {
+            id: source_key(&source),
+            root: source.clone(),
+            name: Some("orders".into()),
+            config_anchor: Some("morphir.toml".into()),
+            state: WorkspaceState::Open,
+            projects: vec![ProjectSnapshot {
+                id: project_id.clone(),
+                name: "orders".into(),
+                version: None,
+                relative_path: ".".into(),
+                config_anchor: Some("morphir.toml".into()),
+                source_directory: "src".into(),
+                state: ProjectState::Unloaded,
+                model_sources: vec![],
+                knowledge_base_sources: vec![],
+                diagnostics: vec![],
+            }],
+            model_sources: vec![],
+            knowledge_base_sources: vec![],
+            diagnostics: vec![],
+        };
+        let hooks = SwapArtifactAfterOpen {
+            artifact,
+            external: external.path().to_path_buf(),
+        };
+
+        let result = load_with_hooks(root.path(), &source, snapshot, &project_id, &hooks).unwrap();
+
+        assert_eq!(result.content, "inside");
+        assert!(
+            std::fs::symlink_metadata(&hooks.artifact)
+                .unwrap()
+                .file_type()
+                .is_symlink()
+        );
+    }
 
     #[tokio::test]
     async fn rejects_a_project_artifact_symlink_outside_the_workspace() {
