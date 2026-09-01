@@ -63,7 +63,7 @@ const sidebars = {
       type: 'category',
       label: 'Generate',
       collapsed: true,
-      items: ['generate/avro'],
+      items: ['generate/avro', 'generate/json-schema', 'generate/openapi'],
     },
     {
       type: 'category',

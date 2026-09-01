@@ -5,116 +5,41 @@
 //! `cargo build --locked --release --manifest-path ecosystem/morphir-rust/Cargo.toml -p morphir-avro-extension --target wasm32-unknown-unknown`
 //! `cargo test -p morphir --test generate_extension -- --ignored`
 
+#[path = "support/mod.rs"]
+mod support;
+
 use morphir_distribution::Sha256Digest;
 use serde_json::{Value, json};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
-use tempfile::TempDir;
+use std::process::Command;
+use support::{
+    CliMother, assert_success, ecosystem_crate_version, ecosystem_target_directory, v3_library,
+    v4_library,
+};
 
-struct AvroCliMother {
-    _root: TempDir,
-    project: PathBuf,
-    home: PathBuf,
-    index: PathBuf,
-}
+struct AvroCliMother(CliMother);
 
 impl AvroCliMother {
     fn new(guest_path: impl AsRef<Path>) -> Self {
-        let guest_path = guest_path.as_ref();
-        let bytes = fs::read(guest_path).unwrap_or_else(|error| {
-            panic!(
-                "the release Avro WASM guest must exist at {}: {error}",
-                guest_path.display()
-            )
-        });
-        let root = tempfile::tempdir().expect("fixture root should be created");
-        let project = root.path().join("project");
-        let home = root.path().join("home");
-        let index = root.path().join("index");
-        fs::create_dir_all(&project).expect("fixture project should be created");
-        write_wasm_index(&index, &bytes);
-
-        Self {
-            _root: root,
-            project,
-            home,
-            index,
-        }
-    }
-
-    fn write_config(&self, config: &str) -> PathBuf {
-        let path = self.project.join("morphir.toml");
-        fs::write(&path, config).expect("fixture config should be written");
-        path
-    }
-
-    fn write_ir(&self, name: &str, ir: &Value) -> PathBuf {
-        let path = self.project.join(name);
-        fs::write(&path, serde_json::to_vec(ir).unwrap()).expect("fixture IR should be written");
-        path
-    }
-
-    fn install_verified_wasm(&self) {
-        let add = self.run(&[
-            "extension",
-            "repository",
-            "add",
-            "local-dev",
-            "--directory",
-            self.index.to_str().unwrap(),
-        ]);
-        assert_success(&add, "add local extension repository");
-        let output = self.run(&[
-            "extension",
-            "install",
+        Self(CliMother::new(
             "morphir-avro",
-            "--repository",
-            "local-dev",
-        ]);
-        assert_success(&output, "install release Avro guest");
-    }
-
-    fn run(&self, arguments: &[&str]) -> Output {
-        Command::new(env!("CARGO_BIN_EXE_morphir"))
-            .args(arguments)
-            .env("MORPHIR_HOME", &self.home)
-            .current_dir(&self.project)
-            .output()
-            .expect("morphir CLI should start")
+            "morphir_avro_extension.wasm",
+            "Morphir Avro",
+            &ecosystem_crate_version("morphir-avro-extension"),
+            json!({ "targets": ["avro"], "irVersions": ["3", "4"] }),
+            guest_path,
+        ))
     }
 }
 
-fn write_wasm_index(index: &Path, bytes: &[u8]) {
-    let artifact_name = "morphir_avro_extension.wasm";
-    let relative_source = format!("artifacts/{artifact_name}");
-    let artifact_path = index.join(&relative_source);
-    fs::create_dir_all(artifact_path.parent().unwrap()).unwrap();
-    fs::create_dir_all(index.join("extensions")).unwrap();
-    fs::write(&artifact_path, bytes).unwrap();
-    let digest = Sha256Digest::of_bytes(bytes);
-    let record = json!({
-        "schemaVersion": 2,
-        "id": "morphir-avro",
-        "name": "Morphir Avro",
-        "version": "0.1.0",
-        "channels": ["stable"],
-        "mepVersions": ["0.1"],
-        "capabilities": ["backend"],
-        "backend": { "targets": ["avro"], "irVersions": ["3", "4"] },
-        "artifacts": [{
-            "runtime": "wasm",
-            "source": { "kind": "local-file", "path": relative_source },
-            "sha256": digest,
-            "filename": artifact_name
-        }]
-    });
-    fs::write(
-        index.join("extensions/morphir-avro.jsonl"),
-        format!("{record}\n"),
-    )
-    .unwrap();
+impl std::ops::Deref for AvroCliMother {
+    type Target = CliMother;
+
+    fn deref(&self) -> &CliMother {
+        &self.0
+    }
 }
 
 fn avro_guest_path() -> PathBuf {
@@ -122,43 +47,6 @@ fn avro_guest_path() -> PathBuf {
         .join("wasm32-unknown-unknown")
         .join("release")
         .join("morphir_avro_extension.wasm")
-}
-
-fn ecosystem_target_directory() -> PathBuf {
-    let manifest =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../ecosystem/morphir-rust/Cargo.toml");
-    let output = Command::new(std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into()))
-        .args(["metadata", "--locked", "--no-deps", "--format-version", "1"])
-        .arg("--manifest-path")
-        .arg(&manifest)
-        .output()
-        .expect("cargo metadata should start");
-    assert_success(&output, "resolve the ecosystem target directory");
-    let metadata: Value = serde_json::from_slice(&output.stdout).unwrap();
-    PathBuf::from(metadata["target_directory"].as_str().unwrap())
-}
-
-fn v4_library() -> Value {
-    serde_json::from_str(include_str!(
-        "../../../ecosystem/morphir-rust/crates/morphir-core/tests/fixtures/ir/v4/v4-library-distribution.json"
-    ))
-    .unwrap()
-}
-
-fn v3_library() -> Value {
-    serde_json::from_str(include_str!(
-        "../../../website/static/ir/examples/v3/greeting-example.json"
-    ))
-    .unwrap()
-}
-
-fn assert_success(output: &Output, operation: &str) {
-    assert!(
-        output.status.success(),
-        "{operation} failed: stdout={} stderr={}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
 }
 
 fn assert_generate_shape(value: &Value, success: bool, output: &Path) {

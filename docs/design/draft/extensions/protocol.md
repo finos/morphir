@@ -348,9 +348,15 @@ Lines and characters are zero-based. Ranges use an inclusive start and exclusive
 ## Backend generation
 
 `morphir.backend.generate` accepts one IR distribution and returns artifacts by
-value. Its parameters are exactly `GenerateRequest { ir, options }`. Input
-paths, output paths, target selection, and IR-version detection are host
-concerns. They do not appear in the guest request.
+value. Its parameters are exactly `GenerateRequest { ir, target, options }`.
+`target` is required. The host selects the target, and states the selected
+target ID in the request so that an extension advertising more than one target
+can dispatch on it. Input paths, output paths, and IR-version detection remain
+host concerns and do not appear in the guest request.
+
+A backend that advertises one target may ignore `target`. A backend that
+advertises several targets must fail with a diagnostic when `target` is not one
+of its advertised targets. It must not fall back to a default target.
 
 ```json
 {
@@ -359,6 +365,7 @@ concerns. They do not appear in the guest request.
   "method": "morphir.backend.generate",
   "params": {
     "ir": {},
+    "target": "avro",
     "options": {}
   }
 }
@@ -486,6 +493,14 @@ Protocol versions use `major.minor` numbers.
 - An extension must not change negotiated capabilities during a session.
 
 The handshake chooses one exact protocol version. This makes compatibility behavior explicit and keeps extension packages testable against more than one host version.
+
+The additive-only rule for a minor version binds from the first *released*
+protocol version onward, not before it. `GenerateRequest.target` was changed
+from absent to required while MEP 0.1 was still pre-release: no host
+implementing 0.1 had shipped, so no deployed host was broken by the change,
+and the version stayed at 0.1 rather than moving to 0.2. A protocol version
+that has already been released must not repeat this — a required field added
+after release needs a major version, per the rule above.
 
 ## Security and permissions
 
