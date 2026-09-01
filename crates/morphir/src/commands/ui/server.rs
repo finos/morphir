@@ -18,8 +18,8 @@ use crate::error::CliError;
 use super::{
     assets,
     auth::SessionAuth,
-    protocol::{CONNECTED_PROTOCOL_VERSION, SessionManifest},
-    provider::WorkspaceCapability,
+    protocol::{CONNECTED_PROTOCOL_VERSION, InitialView, SessionManifest},
+    provider::SessionCapabilities,
     rpc,
 };
 
@@ -27,7 +27,8 @@ use super::{
 pub(crate) struct UiHostState {
     pub(crate) auth: Arc<SessionAuth>,
     pub(crate) manifest: SessionManifest,
-    pub(crate) provider: Arc<dyn WorkspaceCapability>,
+    pub(crate) capabilities: SessionCapabilities,
+    pub(crate) initial_view: Option<InitialView>,
     pub(crate) authority: String,
 }
 
@@ -36,12 +37,13 @@ pub struct BoundUiHost {
     router: Router,
     address: SocketAddr,
     launch_token: String,
+    manifest: SessionManifest,
 }
 
 impl BoundUiHost {
     pub async fn bind(
         session_id: String,
-        provider: Arc<dyn WorkspaceCapability>,
+        capabilities: SessionCapabilities,
     ) -> Result<Self, CliError> {
         let listener = TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
             .await
@@ -53,18 +55,35 @@ impl BoundUiHost {
             });
         }
         let (auth, launch_token) = SessionAuth::generate(&session_id)?;
+        let mut providers = Vec::new();
+        let mut initial_sources = Vec::new();
+        if let Some(workspace) = &capabilities.workspace {
+            providers.push(workspace.manifest());
+            initial_sources.extend(workspace.initial_sources());
+        }
+        if let Some(playground) = &capabilities.playground {
+            providers.push(playground.manifest());
+        }
+        if providers.is_empty() {
+            return Err(CliError::Validation {
+                message: "A Morphir UI session requires at least one capability".into(),
+            });
+        }
         let manifest = SessionManifest {
             protocol_version: CONNECTED_PROTOCOL_VERSION,
             web_socket_path: "/rpc".into(),
             session_id,
-            providers: vec![provider.manifest()],
-            initial_sources: provider.initial_sources(),
+            providers,
+            initial_sources,
         }
         .validate()?;
+        let initial_view = capabilities.initial_view;
+        let manifest_copy = manifest.clone();
         let state = UiHostState {
             auth: Arc::new(auth),
             manifest,
-            provider,
+            capabilities,
+            initial_view,
             authority: address.to_string(),
         };
         let router = Router::new()
@@ -79,11 +98,16 @@ impl BoundUiHost {
             router,
             address,
             launch_token,
+            manifest: manifest_copy,
         })
     }
 
     pub fn address(&self) -> SocketAddr {
         self.address
+    }
+
+    pub fn manifest(&self) -> &SessionManifest {
+        &self.manifest
     }
 
     pub fn base_url(&self) -> String {
@@ -118,7 +142,10 @@ async fn exchange_launch_token(
     if !state.auth.exchange_launch_token(&query.token) {
         return unauthorized();
     }
-    let mut response = Redirect::to("/").into_response();
+    let target = state
+        .initial_view
+        .map_or_else(|| "/".to_owned(), |view| format!("/{}", view.hash()));
+    let mut response = Redirect::to(&target).into_response();
     response.headers_mut().insert(
         header::SET_COOKIE,
         HeaderValue::from_str(&state.auth.session_cookie())
@@ -204,13 +231,218 @@ fn secure_headers(headers: &mut HeaderMap) {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
-    use crate::commands::ui::provider::native::NativeWorkspaceProvider;
+    use crate::commands::ui::protocol::{
+        InspectResult, PlaygroundCatalog, PlaygroundCompileParams, PlaygroundCompileResult,
+        PlaygroundGenerateParams, PlaygroundGenerateResult, ProjectModelOpenResult, ProviderKind,
+        ProviderManifest, ProviderStatus, WorkbenchSourceRef, WorkspaceSnapshot,
+    };
+    use crate::commands::ui::provider::{
+        PlaygroundCapability, WorkspaceCapability, native::NativeWorkspaceProvider,
+    };
 
     fn fixture() -> std::path::PathBuf {
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../ecosystem/morphir-rust/tests/fixtures/workspace-discovery/valid-monorepo")
+    }
+
+    pub(crate) struct StubWorkspace;
+
+    #[async_trait::async_trait]
+    impl WorkspaceCapability for StubWorkspace {
+        fn manifest(&self) -> ProviderManifest {
+            ProviderManifest {
+                id: "workspace".into(),
+                name: "Stub Workspace".into(),
+                kind: ProviderKind::Connected,
+                status: ProviderStatus::Available,
+                capabilities: Vec::new(),
+                provenance: None,
+            }
+        }
+
+        fn initial_sources(&self) -> Vec<WorkbenchSourceRef> {
+            Vec::new()
+        }
+
+        async fn inspect(&self, _source: &WorkbenchSourceRef) -> Result<InspectResult, CliError> {
+            Err(CliError::Validation {
+                message: "StubWorkspace does not implement inspect".into(),
+            })
+        }
+
+        async fn open(&self, _source: &WorkbenchSourceRef) -> Result<WorkspaceSnapshot, CliError> {
+            Err(CliError::Validation {
+                message: "StubWorkspace does not implement open".into(),
+            })
+        }
+
+        async fn load_project_model(
+            &self,
+            _source: &WorkbenchSourceRef,
+            _project_id: &str,
+        ) -> Result<ProjectModelOpenResult, CliError> {
+            Err(CliError::Validation {
+                message: "StubWorkspace does not implement load_project_model".into(),
+            })
+        }
+    }
+
+    pub(crate) struct StubPlayground;
+
+    #[async_trait::async_trait]
+    impl PlaygroundCapability for StubPlayground {
+        fn manifest(&self) -> ProviderManifest {
+            ProviderManifest {
+                id: "playground".into(),
+                name: "Stub Playground".into(),
+                kind: ProviderKind::Connected,
+                status: ProviderStatus::Available,
+                capabilities: Vec::new(),
+                provenance: None,
+            }
+        }
+
+        async fn catalog(&self) -> Result<PlaygroundCatalog, CliError> {
+            Ok(PlaygroundCatalog::default())
+        }
+
+        async fn compile(
+            &self,
+            _params: PlaygroundCompileParams,
+        ) -> Result<PlaygroundCompileResult, CliError> {
+            Ok(PlaygroundCompileResult {
+                success: true,
+                ir_version: None,
+                ir: None,
+                diagnostics: Vec::new(),
+                modules: Vec::new(),
+            })
+        }
+
+        async fn generate(
+            &self,
+            _params: PlaygroundGenerateParams,
+        ) -> Result<PlaygroundGenerateResult, CliError> {
+            Ok(PlaygroundGenerateResult {
+                success: true,
+                artifacts: Vec::new(),
+                diagnostics: Vec::new(),
+            })
+        }
+    }
+
+    #[tokio::test]
+    async fn a_manifest_lists_only_the_capabilities_present() {
+        let host = BoundUiHost::bind(
+            "test-session".into(),
+            SessionCapabilities {
+                playground: Some(Arc::new(StubPlayground)),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+        let manifest = host.manifest();
+
+        assert_eq!(manifest.providers.len(), 1);
+        assert_eq!(manifest.providers[0].id, "playground");
+        assert!(manifest.initial_sources.is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_session_with_both_capabilities_lists_both_providers() {
+        let host = BoundUiHost::bind(
+            "test-session".into(),
+            SessionCapabilities {
+                workspace: Some(Arc::new(StubWorkspace)),
+                playground: Some(Arc::new(StubPlayground)),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+        let ids: Vec<&str> = host
+            .manifest()
+            .providers
+            .iter()
+            .map(|p| p.id.as_str())
+            .collect();
+
+        assert!(ids.contains(&"playground"));
+        assert_eq!(ids.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn binding_with_no_capabilities_is_rejected() {
+        let error =
+            match BoundUiHost::bind("test-session".into(), SessionCapabilities::default()).await {
+                Ok(_) => panic!("binding with no capabilities should be rejected"),
+                Err(error) => error,
+            };
+
+        assert!(
+            error.to_string().contains("at least one capability"),
+            "unexpected error: {error}"
+        );
+    }
+
+    #[tokio::test]
+    async fn launch_redirects_to_root_with_no_initial_view() {
+        let host = BoundUiHost::bind(
+            "test-session".into(),
+            SessionCapabilities {
+                workspace: Some(Arc::new(StubWorkspace)),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+        let launch_url = host.launch_url();
+        let (listener, router) = host.into_parts();
+        let server = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+        let client = reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .unwrap();
+
+        let exchanged = client.get(&launch_url).send().await.unwrap();
+
+        assert_eq!(exchanged.status(), StatusCode::SEE_OTHER);
+        assert_eq!(exchanged.headers()[header::LOCATION], "/");
+
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn launch_redirects_to_the_initial_view_hash_when_one_is_set() {
+        let host = BoundUiHost::bind(
+            "test-session".into(),
+            SessionCapabilities {
+                workspace: Some(Arc::new(StubWorkspace)),
+                initial_view: Some(InitialView::Playground),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+        let launch_url = host.launch_url();
+        let (listener, router) = host.into_parts();
+        let server = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+        let client = reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .unwrap();
+
+        let exchanged = client.get(&launch_url).send().await.unwrap();
+
+        assert_eq!(exchanged.status(), StatusCode::SEE_OTHER);
+        assert_eq!(exchanged.headers()[header::LOCATION], "/#/playground");
+
+        server.abort();
     }
 
     #[tokio::test]
@@ -219,9 +451,15 @@ mod tests {
             NativeWorkspaceProvider::discover(&fixture(), "session-1")
                 .expect("fixture should discover"),
         );
-        let host = BoundUiHost::bind("session-1".into(), provider)
-            .await
-            .unwrap();
+        let host = BoundUiHost::bind(
+            "session-1".into(),
+            SessionCapabilities {
+                workspace: Some(provider),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
         assert_eq!(host.address().ip(), std::net::Ipv4Addr::LOCALHOST);
         let launch_url = host.launch_url();
         let base_url = host.base_url();
@@ -281,13 +519,23 @@ mod tests {
     async fn concurrent_hosts_accept_distinct_session_cookies() {
         let first = BoundUiHost::bind(
             "session-1".into(),
-            Arc::new(NativeWorkspaceProvider::discover(&fixture(), "session-1").unwrap()),
+            SessionCapabilities {
+                workspace: Some(Arc::new(
+                    NativeWorkspaceProvider::discover(&fixture(), "session-1").unwrap(),
+                )),
+                ..Default::default()
+            },
         )
         .await
         .unwrap();
         let second = BoundUiHost::bind(
             "session-2".into(),
-            Arc::new(NativeWorkspaceProvider::discover(&fixture(), "session-2").unwrap()),
+            SessionCapabilities {
+                workspace: Some(Arc::new(
+                    NativeWorkspaceProvider::discover(&fixture(), "session-2").unwrap(),
+                )),
+                ..Default::default()
+            },
         )
         .await
         .unwrap();

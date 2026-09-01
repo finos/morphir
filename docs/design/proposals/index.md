@@ -16,6 +16,7 @@ This section contains design proposals for new Morphir features and capabilities
 | [IR v4 name canonicalization and initialism encoding](./ir-v4-name-encoding.md) | Active. |
 | [WASM extension runtime and Avro backend](./wasm-extension-runtime-and-avro-backend.md) | Accepted; not released. |
 | [OpenAPI and JSON Schema backend](./openapi-and-json-schema-backend.md) | Accepted; not released. |
+| [Morphir Playground](./morphir-playground.md) | Active. |
 
 ## Contributing
 

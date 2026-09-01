@@ -6,7 +6,8 @@ use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use clap::Args;
 
 use provider::{
-    WorkspaceCapability, extension::ExtensionWorkspaceProvider, native::NativeWorkspaceProvider,
+    SessionCapabilities, WorkspaceCapability, extension::ExtensionWorkspaceProvider,
+    native::NativeWorkspaceProvider,
 };
 use server::BoundUiHost;
 
@@ -45,29 +46,37 @@ pub async fn run_ui(args: UiArgs) -> Result<Option<u8>, miette::Report> {
         ));
     }
     let session_id = generate_session_id()?;
+    let home = crate::home::MorphirHome::resolve()
+        .map_err(|error| miette::miette!("Unable to resolve Morphir Home: {error}"))?;
     let provider: Arc<dyn WorkspaceCapability> = match args.workspace_extension.as_deref() {
-        Some(extension_id) => {
-            let home = crate::home::MorphirHome::resolve().map_err(|error| {
-                miette::miette!("Unable to resolve Morphir Home for workspace extensions: {error}")
-            })?;
-            Arc::new(
-                ExtensionWorkspaceProvider::select(
-                    home,
-                    &workspace,
-                    &session_id,
-                    Some(extension_id),
-                )
+        Some(extension_id) => Arc::new(
+            ExtensionWorkspaceProvider::select(home, &workspace, &session_id, Some(extension_id))
                 .map_err(miette::Report::new)?,
-            )
-        }
+        ),
         None => Arc::new(
             NativeWorkspaceProvider::discover(&workspace, &session_id)
                 .map_err(miette::Report::new)?,
         ),
     };
-    let host = BoundUiHost::bind(session_id, provider)
-        .await
-        .map_err(miette::Report::new)?;
+    let host = BoundUiHost::bind(
+        session_id,
+        SessionCapabilities {
+            workspace: Some(provider),
+            // No playground provider, deliberately. The web client vendored
+            // under `assets/` validates the session manifest against a schema
+            // that requires *every* provider it lists to advertise all four
+            // core workspace capabilities at version 1. A playground provider
+            // advertises `morphir/playground/*` instead, so including one
+            // makes that client reject the whole manifest -- breaking `morphir
+            // ui` itself, not just the playground. The provider stays wired up
+            // and tested; it gets attached here once a client that understands
+            // it is vendored.
+            playground: None,
+            ..Default::default()
+        },
+    )
+    .await
+    .map_err(miette::Report::new)?;
     let base_url = host.base_url();
     let launch_url = host.launch_url();
     tracing::info!(url = %base_url, "Morphir UI listening");
@@ -86,7 +95,7 @@ pub async fn run_ui(args: UiArgs) -> Result<Option<u8>, miette::Report> {
     Ok(None)
 }
 
-fn generate_session_id() -> Result<String, miette::Report> {
+pub(super) fn generate_session_id() -> Result<String, miette::Report> {
     let mut bytes = [0_u8; 16];
     getrandom::fill(&mut bytes)
         .map_err(|error| miette::miette!("Unable to generate Morphir UI session ID: {error}"))?;
