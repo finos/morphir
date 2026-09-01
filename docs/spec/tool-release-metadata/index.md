@@ -24,7 +24,7 @@ The CLI receives its first trusted root through an out-of-band path:
 
 The repository identity is the lowercase SHA-256 digest of the canonical JSON encoding of the initial root's `signed` object. Root signatures do not affect identity because they can be added or reordered without changing the trusted keys and roles. Moving between mirrors preserves this identity. Replacing the initial root changes the repository identity and requires explicit trust bootstrap.
 
-Trusted root state is durable security data beneath Morphir Home. Cached timestamp, snapshot, targets, release descriptors, and artifact bytes are disposable copies. Cache cleanup must never remove the current trusted root or the installed catalog's exact release locks.
+Trusted root state is durable security data beneath Morphir Home. Cached timestamp, snapshot, targets, release descriptors, and artifact bytes are disposable copies. Cache cleanup must never remove the current trusted root or the installed inventory's exact release locks.
 
 ## TUF profile
 
@@ -121,7 +121,7 @@ Revocation is monotonic for a repository metadata history. A later targets versi
 
 Publishers change channel membership and release status only in a later signed targets version. A `yanked` or `revoked` release has no channel memberships in current targets metadata.
 
-When a refresh learns that an installed release is revoked, the catalog records the trusted targets version and revocation reason before reporting the failure. Offline launch then enforces the known revocation without consulting a mirror.
+When a refresh learns that an installed release is revoked, the inventory records the trusted targets version and revocation reason before reporting the failure. Offline launch then enforces the known revocation without consulting a mirror.
 
 ## Channel and exact-version resolution
 
@@ -162,7 +162,7 @@ Proxy, TLS, timeout, and authentication behavior belongs to transport configurat
 
 | Operation | Offline behavior |
 | --- | --- |
-| Launch an installed active release | Use the catalog lock and reverify installed bytes. Do not read repository metadata. |
+| Launch an installed active release | Use the installed inventory lock and reverify installed bytes. Do not read repository metadata. |
 | Repair an installed release | Use a verified content-addressed object when present. Otherwise report that network access is required. |
 | Resolve a moving channel | Use cached metadata only when the complete set is unexpired. |
 | Install an exact release not already locked | Require unexpired cached metadata and cached verified target bytes. |
