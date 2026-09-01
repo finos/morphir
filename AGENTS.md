@@ -48,6 +48,19 @@ The Morphir IR specification and JSON schemas are available in the morphir-dotne
 - **Separation of concerns** - Clearly define I/O boundaries
 - **Functional composition** - Build complex behavior from simple, composable functions
 
+### Domain Modeling
+
+- Make invalid states unrepresentable in public APIs, domain boundaries, and persistent state
+- Use algebraic data types (ADTs), tagged unions, sealed variants, and type-state to represent distinct cases
+- Avoid primitive obsession and stringly typed APIs; use newtypes, opaque types, branded types, or validated wrappers
+- Parse and validate primitives at I/O boundaries before converting them to domain types
+- Use exhaustive matching and smart constructors to preserve invariants
+- Require benchmarks or profiling for private compact representations; contain them behind named helpers, test conversions, and prevent API leaks
+- Inspect and extend existing domain types before adding primitive parameters, boolean flags, or free-form strings
+- Preserve readability; unrelated flags are not an optimization
+
+See the [Domain Modeling guide](docs/developers/domain-modeling.md).
+
 ## Development Practices
 
 ### Test-Driven Development (TDD)
