@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::error::CliError;
 
-pub const CONNECTED_PROTOCOL_VERSION: u32 = 1;
+pub const CONNECTED_PROTOCOL_VERSION: u32 = 2;
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum ConnectedMethod {
@@ -23,6 +23,12 @@ pub enum ConnectedMethod {
     WorkspaceWatch,
     #[serde(rename = "morphir.workspace.unwatch")]
     WorkspaceUnwatch,
+    #[serde(rename = "morphir.playground.catalog")]
+    PlaygroundCatalog,
+    #[serde(rename = "morphir.playground.compile")]
+    PlaygroundCompile,
+    #[serde(rename = "morphir.playground.generate")]
+    PlaygroundGenerate,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -302,6 +308,212 @@ pub enum DiagnosticSeverity {
     Error,
 }
 
+/// Where the `/launch` redirect should land. Not a protocol field: morphir-ui
+/// has real URL routing, so the URL is the single source of truth for which
+/// view is open, and a parallel manifest field would be a second mechanism
+/// for the same thing.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum InitialView {
+    Playground,
+}
+
+impl InitialView {
+    /// The in-app hash this view is addressed by.
+    pub fn hash(self) -> &'static str {
+        match self {
+            Self::Playground => "#/playground",
+        }
+    }
+}
+
+/// Parameters for `morphir.playground.compile`.
+///
+/// Mirrors `morphir_extension_sdk::CompileRequest` minus `dependencies`: the
+/// playground compiles a single in-memory package with no dependency
+/// distributions, and the provider adds an empty dependency list when it
+/// builds the real MEP request. The protocol layer owns this shape
+/// separately from the SDK type so an SDK change cannot silently change the
+/// browser-facing contract.
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PlaygroundCompileParams {
+    pub language_id: String,
+    pub documents: Vec<PlaygroundSourceDocument>,
+    pub package: PlaygroundPackage,
+    pub ir_version: String,
+    pub options: Value,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PlaygroundSourceDocument {
+    pub uri: String,
+    pub language_id: String,
+    pub version: u64,
+    pub text: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PlaygroundPackage {
+    pub name: String,
+    pub exposed_modules: Vec<String>,
+}
+
+/// Result of `morphir.playground.compile`. Omits `deny_unknown_fields` (unlike
+/// the params types) so a future server field does not break an older client
+/// mid-session.
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaygroundCompileResult {
+    pub success: bool,
+    pub ir_version: Option<String>,
+    pub ir: Option<Value>,
+    pub diagnostics: Vec<PlaygroundDiagnostic>,
+    pub modules: Vec<String>,
+}
+
+/// Parameters for `morphir.playground.generate`.
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PlaygroundGenerateParams {
+    pub ir: Value,
+    pub ir_version: String,
+    pub target: String,
+    pub options: Value,
+}
+
+/// Result of `morphir.playground.generate`. Omits `deny_unknown_fields` for
+/// the same forward-compatibility reason as [`PlaygroundCompileResult`].
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaygroundGenerateResult {
+    pub success: bool,
+    pub artifacts: Vec<PlaygroundArtifact>,
+    pub diagnostics: Vec<PlaygroundDiagnostic>,
+}
+
+/// A generated artifact held in memory. `path` is a relative hint for
+/// display and download naming, not a filesystem location: nothing is
+/// written to disk.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PlaygroundArtifact {
+    pub path: String,
+    pub content: String,
+    pub binary: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PlaygroundDiagnostic {
+    pub severity: String,
+    pub code: Option<String>,
+    pub message: String,
+    pub location: Option<PlaygroundLocation>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PlaygroundLocation {
+    pub uri: String,
+    pub range: PlaygroundRange,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PlaygroundRange {
+    pub start: PlaygroundPosition,
+    pub end: PlaygroundPosition,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PlaygroundPosition {
+    pub line: u32,
+    pub character: u32,
+}
+
+/// What one Morphir UI session can compile and generate.
+///
+/// A projection of the CLI's extension registry, not a second source of
+/// truth: the registry decides which provider serves a language or target,
+/// and this only reports what it decided so the browser can populate its
+/// pickers. The browser never names a provider when it compiles — it names a
+/// language and an IR version, and the host resolves those the same way
+/// `morphir compile` does.
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaygroundCatalog {
+    pub frontends: Vec<PlaygroundFrontend>,
+    pub targets: Vec<PlaygroundTarget>,
+}
+
+impl PlaygroundCatalog {
+    /// Look up the first frontend entry offering `language_id`.
+    pub fn frontend(&self, language_id: &str) -> Option<&PlaygroundFrontend> {
+        self.frontends
+            .iter()
+            .find(|frontend| frontend.language_id == language_id)
+    }
+
+    /// Look up the first target entry named `target`.
+    pub fn target(&self, target: &str) -> Option<&PlaygroundTarget> {
+        self.targets.iter().find(|entry| entry.target == target)
+    }
+}
+
+/// One source language the session can compile.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaygroundFrontend {
+    pub language_id: String,
+    pub display_name: String,
+    /// The extensions this language's files usually carry, for the editor's
+    /// language picker. Advisory: the playground compiles in-memory buffers,
+    /// which have no filenames.
+    pub file_extensions: Vec<String>,
+    pub ir_versions: Vec<String>,
+    pub compile: bool,
+    pub incremental: bool,
+    pub fragments: bool,
+    pub provider: PlaygroundProviderRef,
+}
+
+/// One target the session can generate.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaygroundTarget {
+    pub target: String,
+    pub display_name: String,
+    pub ir_versions: Vec<String>,
+    pub generate: bool,
+    pub provider: PlaygroundProviderRef,
+}
+
+/// The extension behind a catalog entry, for display and support reports.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaygroundProviderRef {
+    pub extension_id: String,
+    pub extension_name: String,
+    pub version: String,
+    pub origin: PlaygroundProviderOrigin,
+    /// How the host would invoke this provider, as the registry's own name
+    /// for it. Reported so a bug report can say which transport ran.
+    pub invocation_mode: String,
+}
+
+/// Where a catalog entry's provider came from.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PlaygroundProviderOrigin {
+    /// Linked into the CLI itself.
+    Builtin,
+    /// Installed through the verified extension pipeline.
+    Installed,
+}
+
 pub fn source_key(source: &WorkbenchSourceRef) -> String {
     serde_json::to_string(&[source.provider_id.as_str(), source.locator.as_str()])
         .expect("source keys contain only strings")
@@ -328,7 +540,7 @@ mod tests {
 
     fn manifest() -> SessionManifest {
         SessionManifest {
-            protocol_version: 1,
+            protocol_version: CONNECTED_PROTOCOL_VERSION,
             web_socket_path: "/rpc".into(),
             session_id: "session-1".into(),
             providers: vec![ProviderManifest {
@@ -378,7 +590,7 @@ mod tests {
             .is_err()
         );
         let mut incompatible = manifest();
-        incompatible.protocol_version = 2;
+        incompatible.protocol_version = CONNECTED_PROTOCOL_VERSION + 1;
         assert!(incompatible.validate().is_err());
     }
 
@@ -426,5 +638,106 @@ mod tests {
         let mut ledger = RequestLedger::default();
         ledger.register(7).unwrap();
         assert!(ledger.register(7).is_err());
+    }
+
+    #[test]
+    fn playground_methods_use_their_wire_names() {
+        for (method, wire) in [
+            (
+                ConnectedMethod::PlaygroundCatalog,
+                "morphir.playground.catalog",
+            ),
+            (
+                ConnectedMethod::PlaygroundCompile,
+                "morphir.playground.compile",
+            ),
+            (
+                ConnectedMethod::PlaygroundGenerate,
+                "morphir.playground.generate",
+            ),
+        ] {
+            assert_eq!(
+                serde_json::to_value(method).unwrap(),
+                serde_json::json!(wire)
+            );
+            assert_eq!(
+                serde_json::from_value::<ConnectedMethod>(serde_json::json!(wire)).unwrap(),
+                method
+            );
+        }
+    }
+
+    #[test]
+    fn compile_params_round_trip_in_camel_case() {
+        let params = PlaygroundCompileParams {
+            language_id: "elm".into(),
+            documents: vec![PlaygroundSourceDocument {
+                uri: "morphir-playground:/Main.elm".into(),
+                language_id: "elm".into(),
+                version: 1,
+                text: "module Main exposing (..)".into(),
+            }],
+            package: PlaygroundPackage {
+                name: "local/main".into(),
+                exposed_modules: vec!["Main".into()],
+            },
+            ir_version: "3".into(),
+            options: serde_json::json!({}),
+        };
+
+        let value = serde_json::to_value(&params).unwrap();
+
+        assert_eq!(value["languageId"], "elm");
+        assert_eq!(value["documents"][0]["languageId"], "elm");
+        assert_eq!(value["package"]["exposedModules"][0], "Main");
+        assert_eq!(value["irVersion"], "3");
+        let decoded: PlaygroundCompileParams = serde_json::from_value(value).unwrap();
+        assert_eq!(decoded.package.name, "local/main");
+    }
+
+    #[test]
+    fn generate_results_carry_artifacts_without_a_path_on_disk() {
+        let result = PlaygroundGenerateResult {
+            success: true,
+            artifacts: vec![PlaygroundArtifact {
+                path: "nested/schema.avsc".into(),
+                content: "{}".into(),
+                binary: false,
+            }],
+            diagnostics: vec![],
+        };
+
+        let value = serde_json::to_value(&result).unwrap();
+
+        assert_eq!(value["artifacts"][0]["path"], "nested/schema.avsc");
+        assert_eq!(value["artifacts"][0]["content"], "{}");
+        assert_eq!(value["artifacts"][0]["binary"], false);
+        assert!(
+            value.get("outputPath").is_none(),
+            "artifacts must not reference a filesystem path"
+        );
+    }
+
+    #[test]
+    fn the_protocol_version_is_two() {
+        assert_eq!(CONNECTED_PROTOCOL_VERSION, 2);
+    }
+
+    #[test]
+    fn a_diagnostic_location_uses_zero_based_positions() {
+        let json = serde_json::json!({
+            "severity": "error",
+            "message": "Type mismatch",
+            "location": {
+                "uri": "morphir-playground:/Main.elm",
+                "range": {"start": {"line": 0, "character": 4}, "end": {"line": 0, "character": 9}}
+            }
+        });
+
+        let diagnostic: PlaygroundDiagnostic = serde_json::from_value(json).unwrap();
+
+        let location = diagnostic.location.unwrap();
+        assert_eq!(location.range.start.line, 0);
+        assert_eq!(location.range.end.character, 9);
     }
 }

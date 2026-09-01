@@ -403,6 +403,14 @@ async fn dispatch(
                 json!({"removed": state.subscriptions.remove(&params.subscription_id).is_some()}),
             )
         }
+        // Wire types only land in this task; a later task wires these
+        // methods to the capability catalog and the compile/generate
+        // providers.
+        ConnectedMethod::PlaygroundCatalog
+        | ConnectedMethod::PlaygroundCompile
+        | ConnectedMethod::PlaygroundGenerate => {
+            DispatchResult::error(request.id, -32601, "Method not yet implemented")
+        }
     }
 }
 
@@ -626,7 +634,7 @@ mod tests {
                     "jsonrpc": "2.0",
                     "id": 1,
                     "method": "morphir.session.initialize",
-                    "params": {"protocolVersion": 1, "sessionId": "session-1"}
+                    "params": {"protocolVersion": CONNECTED_PROTOCOL_VERSION, "sessionId": "session-1"}
                 })
                 .to_string()
                 .into(),
@@ -635,7 +643,10 @@ mod tests {
             .unwrap();
         let initialized: Value =
             serde_json::from_str(socket.next().await.unwrap().unwrap().to_text().unwrap()).unwrap();
-        assert_eq!(initialized["result"]["protocolVersion"], 1);
+        assert_eq!(
+            initialized["result"]["protocolVersion"],
+            CONNECTED_PROTOCOL_VERSION
+        );
         socket
     }
 
