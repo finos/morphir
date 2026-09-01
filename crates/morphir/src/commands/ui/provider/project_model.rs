@@ -3,7 +3,7 @@
 use std::io::Read as _;
 use std::path::{Component, Path};
 
-use cap_fs_ext::{DirExt as _, FollowSymlinks, OpenOptionsFollowExt as _};
+use cap_fs_ext::{DirExt as _, FollowSymlinks, OpenOptionsFollowExt as _, OpenOptionsSyncExt as _};
 use cap_std::fs::{Dir, File, OpenOptions};
 use chrono::{SecondsFormat, Utc};
 
@@ -156,7 +156,7 @@ fn open_project_artifact(workspace: &Dir, relative_path: &str) -> Result<File, C
         return Err(project_confinement_error(relative_path));
     }
     let mut options = OpenOptions::new();
-    options.read(true).follow(FollowSymlinks::No);
+    options.read(true).follow(FollowSymlinks::No).nonblock(true);
     directory
         .open_with("morphir-ir.json", &options)
         .map_err(CliError::from)
@@ -240,6 +240,71 @@ mod tests {
                 .file_type()
                 .is_symlink()
         );
+    }
+
+    #[tokio::test]
+    async fn rejects_a_fifo_without_waiting_for_a_writer() {
+        let root = tempfile::tempdir().unwrap();
+        let artifact = root.path().join("morphir-ir.json");
+        assert!(
+            std::process::Command::new("mkfifo")
+                .arg(&artifact)
+                .status()
+                .unwrap()
+                .success()
+        );
+        let source = WorkbenchSourceRef {
+            provider_id: "cli:session-1".into(),
+            locator: "workspace:initial".into(),
+            display_name: "orders".into(),
+            persistence: None,
+        };
+        let project_id = project_key(&source, ".");
+        let snapshot = WorkspaceSnapshot {
+            id: source_key(&source),
+            root: source.clone(),
+            name: Some("orders".into()),
+            config_anchor: Some("morphir.toml".into()),
+            state: WorkspaceState::Open,
+            projects: vec![ProjectSnapshot {
+                id: project_id.clone(),
+                name: "orders".into(),
+                version: None,
+                relative_path: ".".into(),
+                config_anchor: Some("morphir.toml".into()),
+                source_directory: "src".into(),
+                state: ProjectState::Unloaded,
+                model_sources: vec![],
+                knowledge_base_sources: vec![],
+                diagnostics: vec![],
+            }],
+            model_sources: vec![],
+            knowledge_base_sources: vec![],
+            diagnostics: vec![],
+        };
+        let writer_path = artifact.clone();
+        let writer = std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+            let _ = rustix::fs::open(
+                writer_path,
+                rustix::fs::OFlags::WRONLY | rustix::fs::OFlags::NONBLOCK,
+                rustix::fs::Mode::empty(),
+            );
+        });
+        let workspace = open_workspace(root.path()).unwrap();
+
+        let started = std::time::Instant::now();
+        let error = load_project_model(&workspace, &source, snapshot, &project_id)
+            .await
+            .unwrap_err();
+        let elapsed = started.elapsed();
+        writer.join().unwrap();
+
+        assert!(
+            elapsed < std::time::Duration::from_millis(750),
+            "FIFO open blocked for {elapsed:?}"
+        );
+        assert!(error.to_string().contains("not a file"));
     }
 
     #[tokio::test]
