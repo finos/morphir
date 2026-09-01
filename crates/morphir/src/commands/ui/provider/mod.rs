@@ -4,6 +4,9 @@ pub mod extension;
 pub mod native;
 mod project_model;
 
+#[cfg(test)]
+mod conformance;
+
 use std::time::Duration;
 
 use async_trait::async_trait;
