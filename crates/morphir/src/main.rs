@@ -1,5 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 use starbase::{App, AppResult, AppSession};
+use std::path::PathBuf;
 
 pub mod commands;
 pub mod error;
@@ -177,7 +178,7 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
         #[command(subcommand)]
         action: CacheAction,
     },
-    /// Manage Morphir tools, distributions, and extensions
+    /// Manage CLI-installed Morphir tools
     Tool {
         #[command(subcommand)]
         action: ToolAction,
@@ -329,23 +330,52 @@ enum CacheAction {
 
 #[derive(Clone, Subcommand)]
 enum ToolAction {
-    /// Install a Morphir tool or extension
+    /// Install a local developer Morphir tool
     Install {
         /// Name of the tool to install
         name: String,
-        /// Version to install (defaults to latest)
+        /// Exact semantic version recorded for the local package
         #[arg(short, long)]
         version: Option<String>,
+        /// Local unsigned package built for the current machine
+        #[arg(long)]
+        source: Option<PathBuf>,
+        /// Acquisition channel; local sources require developer
+        #[arg(long)]
+        channel: Option<String>,
     },
     /// List installed Morphir tools
-    List,
-    /// Update an installed Morphir tool
+    List {
+        /// Output installed tool state as JSON
+        #[arg(long)]
+        json: bool,
+    },
+    /// Install a replacement local developer package
     Update {
         /// Name of the tool to update
         name: String,
-        /// Version to update to (defaults to latest)
+        /// Exact semantic version recorded for the replacement package
         #[arg(short, long)]
         version: Option<String>,
+        /// Replacement local unsigned package
+        #[arg(long)]
+        source: Option<PathBuf>,
+        /// Acquisition channel; local sources require developer
+        #[arg(long)]
+        channel: Option<String>,
+    },
+    /// Repair the active exact release from its local package source
+    Repair {
+        /// Name of the tool to repair
+        name: String,
+        /// Original local unsigned package bytes
+        #[arg(long)]
+        source: PathBuf,
+    },
+    /// Activate the most recently retained release
+    Rollback {
+        /// Name of the tool to roll back
+        name: String,
     },
     /// Uninstall a Morphir tool
     Uninstall {
@@ -825,13 +855,33 @@ impl AppSession for MorphirSession {
                 } => run_cache_clean(*dry_run, *all, component.clone(), *json),
             },
             Commands::Tool { action } => match action {
-                ToolAction::Install { name, version } => {
-                    run_tool_install(name.clone(), version.clone())
+                ToolAction::Install {
+                    name,
+                    version,
+                    source,
+                    channel,
+                } => run_tool_install(
+                    name.clone(),
+                    version.clone(),
+                    source.clone(),
+                    channel.clone(),
+                ),
+                ToolAction::List { json } => run_tool_list(*json),
+                ToolAction::Update {
+                    name,
+                    version,
+                    source,
+                    channel,
+                } => run_tool_update(
+                    name.clone(),
+                    version.clone(),
+                    source.clone(),
+                    channel.clone(),
+                ),
+                ToolAction::Repair { name, source } => {
+                    commands::tool::run_tool_repair(name.clone(), source.clone())
                 }
-                ToolAction::List => run_tool_list(),
-                ToolAction::Update { name, version } => {
-                    run_tool_update(name.clone(), version.clone())
-                }
+                ToolAction::Rollback { name } => commands::tool::run_tool_rollback(name.clone()),
                 ToolAction::Uninstall { name } => run_tool_uninstall(name.clone()),
             },
             Commands::Dist { action } => match action {

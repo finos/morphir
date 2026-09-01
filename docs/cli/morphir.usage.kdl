@@ -185,21 +185,47 @@ cmd cache display_order=10 subcommand_required=#true arg_required_else_help=#tru
         flag --json help="Output the plan and execution report as JSON"
     }
 }
-cmd tool display_order=11 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir tools, distributions, and extensions" unknown_flags=error {
-    cmd install display_order=0 args_override_self=#false help="Install a Morphir tool or extension" unknown_flags=error {
-        flag "-v --version" help="Version to install (defaults to latest)" {
+cmd tool display_order=11 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage CLI-installed Morphir tools" unknown_flags=error {
+    cmd install display_order=0 args_override_self=#false help="Install a local developer Morphir tool" unknown_flags=error {
+        flag "-v --version" help="Exact semantic version recorded for the local package" {
             arg <VERSION>
+        }
+        flag --source help="Local unsigned package built for the current machine" {
+            arg <SOURCE>
+        }
+        flag --channel help="Acquisition channel; local sources require developer" {
+            arg <CHANNEL>
         }
         arg <NAME> help="Name of the tool to install"
+        complete source type=path
     }
-    cmd list display_order=1 args_override_self=#false help="List installed Morphir tools" unknown_flags=error
-    cmd update display_order=2 args_override_self=#false help="Update an installed Morphir tool" unknown_flags=error {
-        flag "-v --version" help="Version to update to (defaults to latest)" {
+    cmd list display_order=1 args_override_self=#false help="List installed Morphir tools" unknown_flags=error {
+        flag --json help="Output installed tool state as JSON"
+    }
+    cmd update display_order=2 args_override_self=#false help="Install a replacement local developer package" unknown_flags=error {
+        flag "-v --version" help="Exact semantic version recorded for the replacement package" {
             arg <VERSION>
         }
+        flag --source help="Replacement local unsigned package" {
+            arg <SOURCE>
+        }
+        flag --channel help="Acquisition channel; local sources require developer" {
+            arg <CHANNEL>
+        }
         arg <NAME> help="Name of the tool to update"
+        complete source type=path
     }
-    cmd uninstall display_order=3 args_override_self=#false help="Uninstall a Morphir tool" unknown_flags=error {
+    cmd repair display_order=3 args_override_self=#false help="Repair the active exact release from its local package source" unknown_flags=error {
+        flag --source help="Original local unsigned package bytes" required=#true {
+            arg <SOURCE>
+        }
+        arg <NAME> help="Name of the tool to repair"
+        complete source type=path
+    }
+    cmd rollback display_order=4 args_override_self=#false help="Activate the most recently retained release" unknown_flags=error {
+        arg <NAME> help="Name of the tool to roll back"
+    }
+    cmd uninstall display_order=5 args_override_self=#false help="Uninstall a Morphir tool" unknown_flags=error {
         arg <NAME> help="Name of the tool to uninstall"
     }
 }

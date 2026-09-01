@@ -61,16 +61,22 @@ Report owned and unclassified cache usage
 Remove known disposable cache entries
 .TP
 \fBtool\fR
-Manage Morphir tools, distributions, and extensions
+Manage CLI\-installed Morphir tools
 .TP
 \fBtool install\fR
-Install a Morphir tool or extension
+Install a local developer Morphir tool
 .TP
 \fBtool list\fR
 List installed Morphir tools
 .TP
 \fBtool update\fR
-Update an installed Morphir tool
+Install a replacement local developer package
+.TP
+\fBtool repair\fR
+Repair the active exact release from its local package source
+.TP
+\fBtool rollback\fR
+Activate the most recently retained release
 .TP
 \fBtool uninstall\fR
 Uninstall a Morphir tool
@@ -527,7 +533,7 @@ Limit cleanup to one registered cache component
 \fB\-\-json\fR
 Output the plan and execution report as JSON
 .SH "MORPHIR TOOL INSTALL"
-Install a Morphir tool or extension
+Install a local developer Morphir tool
 .PP
 \fBUsage:\fR morphir tool install [OPTIONS] <NAME>
 .PP
@@ -535,14 +541,30 @@ Install a Morphir tool or extension
 .PP
 .TP
 \fB\-v, \-\-version\fR \fI<VERSION>\fR
-Version to install (defaults to latest)
+Exact semantic version recorded for the local package
+.TP
+\fB\-\-source\fR \fI<SOURCE>\fR
+Local unsigned package built for the current machine
+.TP
+\fB\-\-channel\fR \fI<CHANNEL>\fR
+Acquisition channel; local sources require developer
 \fBArguments:\fR
 .PP
 .TP
 \fB<NAME>\fR
 Name of the tool to install
+.SH "MORPHIR TOOL LIST"
+List installed Morphir tools
+.PP
+\fBUsage:\fR morphir tool list [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-json\fR
+Output installed tool state as JSON
 .SH "MORPHIR TOOL UPDATE"
-Update an installed Morphir tool
+Install a replacement local developer package
 .PP
 \fBUsage:\fR morphir tool update [OPTIONS] <NAME>
 .PP
@@ -550,12 +572,43 @@ Update an installed Morphir tool
 .PP
 .TP
 \fB\-v, \-\-version\fR \fI<VERSION>\fR
-Version to update to (defaults to latest)
+Exact semantic version recorded for the replacement package
+.TP
+\fB\-\-source\fR \fI<SOURCE>\fR
+Replacement local unsigned package
+.TP
+\fB\-\-channel\fR \fI<CHANNEL>\fR
+Acquisition channel; local sources require developer
 \fBArguments:\fR
 .PP
 .TP
 \fB<NAME>\fR
 Name of the tool to update
+.SH "MORPHIR TOOL REPAIR"
+Repair the active exact release from its local package source
+.PP
+\fBUsage:\fR morphir tool repair [OPTIONS] <NAME>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-source\fR \fI<SOURCE>\fR
+Original local unsigned package bytes
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Name of the tool to repair
+.SH "MORPHIR TOOL ROLLBACK"
+Activate the most recently retained release
+.PP
+\fBUsage:\fR morphir tool rollback <NAME>
+.PP
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Name of the tool to roll back
 .SH "MORPHIR TOOL UNINSTALL"
 Uninstall a Morphir tool
 .PP
