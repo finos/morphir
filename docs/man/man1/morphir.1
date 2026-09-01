@@ -99,8 +99,14 @@ Install a Morphir extension
 \fBextension list\fR
 List installed Morphir extensions
 .TP
+\fBextension search\fR
+Search enabled extension repositories
+.TP
 \fBextension repository\fR
 Manage named extension repositories
+.TP
+\fBextension repository init\fR
+Initialize a local repository directory for publication
 .TP
 \fBextension repository add\fR
 Add an enabled local\-directory repository
@@ -119,6 +125,9 @@ Disable a configured repository
 .TP
 \fBextension repository remove\fR
 Remove configuration without deleting endpoint content
+.TP
+\fBextension repository publish\fR
+Publish a verified release bundle to a configured repository
 .TP
 \fBextension repository verify\fR
 Validate repository metadata without installing anything
@@ -618,6 +627,26 @@ Exact semantic version
 .TP
 \fB<NAME>\fR
 Name of the extension to install
+.SH "MORPHIR EXTENSION SEARCH"
+Search enabled extension repositories
+.PP
+\fBUsage:\fR morphir extension search <QUERY>
+.PP
+\fBArguments:\fR
+.PP
+.TP
+\fB<QUERY>\fR
+Extension identity or display\-name text
+.SH "MORPHIR EXTENSION REPOSITORY INIT"
+Initialize a local repository directory for publication
+.PP
+\fBUsage:\fR morphir extension repository init <DIRECTORY>
+.PP
+\fBArguments:\fR
+.PP
+.TP
+\fB<DIRECTORY>\fR
+Repository directory to create or open
 .SH "MORPHIR EXTENSION REPOSITORY ADD"
 Add an enabled local\-directory repository
 .PP
@@ -668,6 +697,21 @@ Remove configuration without deleting endpoint content
 .PP
 \fBUsage:\fR morphir extension repository remove <NAME>
 .PP
+\fBArguments:\fR
+.PP
+.TP
+\fB<NAME>\fR
+Repository name
+.SH "MORPHIR EXTENSION REPOSITORY PUBLISH"
+Publish a verified release bundle to a configured repository
+.PP
+\fBUsage:\fR morphir extension repository publish [OPTIONS] <NAME>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-bundle\fR \fI<BUNDLE>\fR
+Release bundle directory
 \fBArguments:\fR
 .PP
 .TP

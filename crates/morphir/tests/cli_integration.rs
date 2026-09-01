@@ -69,6 +69,40 @@ fn write_test_index(
     }
 }
 
+fn write_test_release_bundle(directory: &std::path::Path) -> PathBuf {
+    let bundle = directory.join("release-bundle");
+    let artifact = "morphir-avro.wasm";
+    let bytes = b"verified avro wasm bytes";
+    let digest = morphir_distribution::Sha256Digest::of_bytes(bytes).to_string();
+    std::fs::create_dir_all(&bundle).unwrap();
+    std::fs::write(bundle.join(artifact), bytes).unwrap();
+    std::fs::write(
+        bundle.join(format!("{artifact}.sha256")),
+        format!("{digest}  {artifact}\n"),
+    )
+    .unwrap();
+    std::fs::write(
+        bundle.join("release.json"),
+        serde_json::to_vec_pretty(&serde_json::json!({
+            "schemaVersion": 1,
+            "shortId": "avro",
+            "extensionId": "morphir-avro",
+            "package": "morphir-avro",
+            "version": "0.1.0",
+            "mepVersions": ["0.1"],
+            "runtime": "wasm",
+            "targets": ["avro"],
+            "irVersions": ["3"],
+            "artifact": artifact,
+            "sha256": digest,
+            "gitCommit": "test-commit"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    bundle
+}
+
 #[cfg(unix)]
 fn write_backend_test_index(directory: &std::path::Path, bytes: &[u8]) -> TestIndex {
     let root = directory.join("backend-index");
@@ -150,6 +184,27 @@ fn add_test_repository(
         morphir_home,
         working_directory,
     )
+}
+
+fn read_cli_log_events(morphir_home: &std::path::Path) -> Vec<serde_json::Value> {
+    std::fs::read_dir(morphir_home.join("logs/cli"))
+        .unwrap()
+        .filter_map(Result::ok)
+        .flat_map(|entry| std::fs::read_dir(entry.path()).into_iter().flatten())
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.extension()
+                .is_some_and(|extension| extension == "jsonl")
+        })
+        .flat_map(|path| {
+            std::fs::read_to_string(path)
+                .unwrap()
+                .lines()
+                .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+                .collect::<Vec<_>>()
+        })
+        .collect()
 }
 
 #[test]
@@ -569,6 +624,228 @@ fn extension_repository_lifecycle_is_persisted_in_morphir_home() {
 }
 
 #[test]
+fn extension_repository_authoring_and_search_form_a_complete_local_workflow() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let repository = temp.path().join("repository");
+    let bundle = write_test_release_bundle(temp.path());
+
+    let init = run_morphir(
+        &[
+            "extension",
+            "repository",
+            "init",
+            repository.to_str().unwrap(),
+        ],
+        &home,
+        temp.path(),
+    );
+    assert!(
+        init.status.success(),
+        "init failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&init.stdout),
+        String::from_utf8_lossy(&init.stderr)
+    );
+    assert!(repository.join("artifacts").is_dir());
+    assert!(repository.join("extensions").is_dir());
+
+    assert!(
+        add_test_repository("local-dev", &repository, &home, temp.path())
+            .status
+            .success()
+    );
+
+    for expected in ["Published", "Already present"] {
+        let publish = run_morphir(
+            &[
+                "extension",
+                "repository",
+                "publish",
+                "local-dev",
+                "--bundle",
+                bundle.to_str().unwrap(),
+            ],
+            &home,
+            temp.path(),
+        );
+        assert!(
+            publish.status.success(),
+            "publish failed: stdout={} stderr={}",
+            String::from_utf8_lossy(&publish.stdout),
+            String::from_utf8_lossy(&publish.stderr)
+        );
+        let stdout = String::from_utf8_lossy(&publish.stdout);
+        assert!(stdout.contains(expected), "{stdout}");
+        assert!(stdout.contains("local-dev/morphir-avro 0.1.0"), "{stdout}");
+    }
+
+    let history =
+        std::fs::read_to_string(repository.join("extensions/morphir-avro.jsonl")).unwrap();
+    assert_eq!(
+        history.lines().count(),
+        1,
+        "repeat publication must be idempotent"
+    );
+    assert!(repository.join("artifacts/morphir-avro.wasm").is_file());
+
+    let search = run_morphir(&["extension", "search", "avro"], &home, temp.path());
+    assert!(
+        search.status.success(),
+        "search failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&search.stdout),
+        String::from_utf8_lossy(&search.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&search.stdout);
+    assert!(stdout.contains("local-dev/morphir-avro"), "{stdout}");
+    assert!(stdout.contains("Morphir Avro"), "{stdout}");
+    assert!(stdout.contains("0.1.0"), "{stdout}");
+
+    let verify = run_morphir(
+        &["extension", "repository", "verify", "local-dev"],
+        &home,
+        temp.path(),
+    );
+    assert!(verify.status.success());
+    assert!(String::from_utf8_lossy(&verify.stdout).contains("1 release"));
+}
+
+#[test]
+fn extension_search_ignores_disabled_repositories() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let repository = temp.path().join("repository");
+    let bundle = write_test_release_bundle(temp.path());
+
+    assert!(
+        run_morphir(
+            &[
+                "extension",
+                "repository",
+                "init",
+                repository.to_str().unwrap(),
+            ],
+            &home,
+            temp.path(),
+        )
+        .status
+        .success()
+    );
+    assert!(
+        add_test_repository("local-dev", &repository, &home, temp.path())
+            .status
+            .success()
+    );
+    assert!(
+        run_morphir(
+            &[
+                "extension",
+                "repository",
+                "publish",
+                "local-dev",
+                "--bundle",
+                bundle.to_str().unwrap(),
+            ],
+            &home,
+            temp.path(),
+        )
+        .status
+        .success()
+    );
+    assert!(
+        run_morphir(
+            &["extension", "repository", "disable", "local-dev"],
+            &home,
+            temp.path(),
+        )
+        .status
+        .success()
+    );
+
+    let search = run_morphir(&["extension", "search", "avro"], &home, temp.path());
+    assert!(search.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&search.stdout),
+        "No extensions found for 'avro'.\n"
+    );
+}
+
+#[test]
+fn extension_repository_publication_and_search_write_correlated_events() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let repository = temp.path().join("repository");
+    let bundle = write_test_release_bundle(temp.path());
+
+    assert!(
+        run_morphir(
+            &[
+                "extension",
+                "repository",
+                "init",
+                repository.to_str().unwrap(),
+            ],
+            &home,
+            temp.path(),
+        )
+        .status
+        .success()
+    );
+    assert!(
+        add_test_repository("local-dev", &repository, &home, temp.path())
+            .status
+            .success()
+    );
+
+    for arguments in [
+        vec![
+            "extension",
+            "repository",
+            "publish",
+            "local-dev",
+            "--bundle",
+            bundle.to_str().unwrap(),
+        ],
+        vec!["extension", "search", "avro"],
+    ] {
+        let output = morphir_command()
+            .args(arguments)
+            .env("MORPHIR_HOME", &home)
+            .env("MORPHIR_LOG_FILE", "true")
+            .env("MORPHIR_LOGGING__FILE_LEVEL", "info")
+            .current_dir(temp.path())
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "command failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    let events = read_cli_log_events(&home);
+    let publication = events
+        .iter()
+        .find(|event| {
+            event["fields"]["event_name"] == "extension.repository.publish"
+                && event["fields"]["operation_id"].is_string()
+        })
+        .expect("publication should emit a correlated structured event");
+    assert_eq!(publication["fields"]["repository"], "local-dev");
+    assert_eq!(publication["fields"]["extension"], "morphir-avro");
+    assert_eq!(publication["fields"]["status"], "published");
+
+    let search = events
+        .iter()
+        .find(|event| {
+            event["fields"]["event_name"] == "extension.catalog.search"
+                && event["fields"]["operation_id"].is_string()
+        })
+        .expect("search should emit a correlated structured event");
+    assert_eq!(search["fields"]["query"], "avro");
+    assert_eq!(search["fields"]["result_count"], 1);
+}
+
+#[test]
 fn extension_repository_operations_write_correlated_structured_events() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
@@ -596,23 +873,8 @@ fn extension_repository_operations_write_correlated_structured_events() {
         .unwrap();
     assert!(output.status.success());
 
-    let event = std::fs::read_dir(home.join("logs/cli"))
-        .unwrap()
-        .filter_map(Result::ok)
-        .flat_map(|entry| std::fs::read_dir(entry.path()).into_iter().flatten())
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        .filter(|path| {
-            path.extension()
-                .is_some_and(|extension| extension == "jsonl")
-        })
-        .flat_map(|path| {
-            std::fs::read_to_string(path)
-                .unwrap()
-                .lines()
-                .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
-                .collect::<Vec<_>>()
-        })
+    let event = read_cli_log_events(&home)
+        .into_iter()
         .find(|event| {
             event["fields"]["event_name"] == "extension.repository.add"
                 && event["fields"]["operation_id"].is_string()

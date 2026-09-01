@@ -17,8 +17,9 @@ use commands::{
     run_diagnostics_path, run_dist_install, run_dist_list, run_dist_uninstall, run_dist_update,
     run_extension_install, run_extension_list, run_extension_repository_add,
     run_extension_repository_disable, run_extension_repository_enable,
-    run_extension_repository_inspect, run_extension_repository_list,
-    run_extension_repository_remove, run_extension_repository_verify, run_extension_uninstall,
+    run_extension_repository_init, run_extension_repository_inspect, run_extension_repository_list,
+    run_extension_repository_publish, run_extension_repository_remove,
+    run_extension_repository_verify, run_extension_search, run_extension_uninstall,
     run_extension_update, run_generate, run_gleam_compile, run_gleam_generate, run_gleam_roundtrip,
     run_kb_add_concept, run_kb_check, run_kb_decision_list, run_kb_decision_show, run_kb_index,
     run_kb_intent_cancel, run_kb_intent_check, run_kb_intent_init, run_kb_intent_list,
@@ -398,6 +399,11 @@ enum ExtensionAction {
     },
     /// List installed Morphir extensions
     List,
+    /// Search enabled extension repositories
+    Search {
+        /// Extension identity or display-name text
+        query: String,
+    },
     /// Manage named extension repositories
     Repository {
         #[command(subcommand)]
@@ -426,6 +432,11 @@ enum ExtensionAction {
 
 #[derive(Clone, Subcommand)]
 enum ExtensionRepositoryAction {
+    /// Initialize a local repository directory for publication
+    Init {
+        /// Repository directory to create or open
+        directory: std::path::PathBuf,
+    },
     /// Add an enabled local-directory repository
     Add {
         /// Stable repository name
@@ -455,6 +466,14 @@ enum ExtensionRepositoryAction {
     Remove {
         /// Repository name
         name: String,
+    },
+    /// Publish a verified release bundle to a configured repository
+    Publish {
+        /// Repository name
+        name: String,
+        /// Release bundle directory
+        #[arg(long)]
+        bundle: std::path::PathBuf,
     },
     /// Validate repository metadata without installing anything
     Verify {
@@ -839,7 +858,13 @@ impl AppSession for MorphirSession {
                     version.clone(),
                 ),
                 ExtensionAction::List => run_extension_list(),
+                ExtensionAction::Search { query } => {
+                    run_extension_search(&self.operation_id, query.clone())
+                }
                 ExtensionAction::Repository { action } => match action {
+                    ExtensionRepositoryAction::Init { directory } => {
+                        run_extension_repository_init(&self.operation_id, directory.clone())
+                    }
                     ExtensionRepositoryAction::Add { name, directory } => {
                         run_extension_repository_add(
                             &self.operation_id,
@@ -861,6 +886,13 @@ impl AppSession for MorphirSession {
                     }
                     ExtensionRepositoryAction::Remove { name } => {
                         run_extension_repository_remove(&self.operation_id, name.clone())
+                    }
+                    ExtensionRepositoryAction::Publish { name, bundle } => {
+                        run_extension_repository_publish(
+                            &self.operation_id,
+                            name.clone(),
+                            bundle.clone(),
+                        )
                     }
                     ExtensionRepositoryAction::Verify { name } => {
                         run_extension_repository_verify(&self.operation_id, name.clone())
