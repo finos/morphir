@@ -130,7 +130,15 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
     arg <INPUT> help="Input file, directory, or remote source (e.g., github:owner/repo, URL)"
     complete output type=path
 }
-cmd config display_order=7 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect the effective Morphir configuration" unknown_flags=error {
+cmd ui display_order=7 args_override_self=#false help="Open the Morphir development workbench in a browser" unknown_flags=error {
+    flag --workspace-extension help="Use one installed workspace-capability extension by ID" {
+        arg <ID>
+    }
+    flag --no-open help="Print the one-time launch URL instead of opening a browser"
+    arg "[WORKSPACE]" help="Morphir development workspace to open. Defaults to the current directory" required=#false
+    complete workspace type=path
+}
+cmd config display_order=8 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect the effective Morphir configuration" unknown_flags=error {
     cmd get display_order=0 args_override_self=#false help="Get one value from the effective configuration" unknown_flags=error {
         flag --config help="Explicit project config file path" {
             arg <CONFIG>
@@ -154,7 +162,40 @@ cmd config display_order=7 subcommand_required=#true arg_required_else_help=#tru
         flag --isolated help="Ignore machine-level and user-level configuration sources" hide=#true
     }
 }
-cmd tool display_order=8 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir tools, distributions, and extensions" unknown_flags=error {
+cmd diagnostics display_order=9 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Locate Morphir logs and collect troubleshooting information" unknown_flags=error {
+    cmd path display_order=0 args_override_self=#false help="Show the local Morphir log locations" unknown_flags=error {
+        flag --json help="Output paths as JSON"
+    }
+    cmd collect display_order=1 args_override_self=#false help="Create a local sanitized diagnostic archive" unknown_flags=error {
+        flag --operation help="Operation ID reported by Morphir" required=#true {
+            arg <OPERATION>
+        }
+        flag --output help="New ZIP archive to create" required=#true {
+            arg <OUTPUT>
+        }
+        complete output type=path
+    }
+    cmd show display_order=2 args_override_self=#false help="Show events correlated with one operation" unknown_flags=error {
+        flag --operation help="Operation ID reported by Morphir" required=#true {
+            arg <OPERATION>
+        }
+        flag --json help="Output events as JSON"
+    }
+}
+cmd cache display_order=10 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect and clean disposable Morphir caches" unknown_flags=error {
+    cmd status display_order=0 args_override_self=#false help="Report owned and unclassified cache usage" unknown_flags=error {
+        flag --json help="Output status as JSON"
+    }
+    cmd clean display_order=1 args_override_self=#false help="Remove known disposable cache entries" unknown_flags=error {
+        flag --dry-run help="Report the cleanup plan without changing files"
+        flag --all help="Remove every known disposable entry instead of applying policy"
+        flag --component help="Limit cleanup to one registered cache component" {
+            arg <COMPONENT>
+        }
+        flag --json help="Output the plan and execution report as JSON"
+    }
+}
+cmd tool display_order=11 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir tools, distributions, and extensions" unknown_flags=error {
     cmd install display_order=0 args_override_self=#false help="Install a Morphir tool or extension" unknown_flags=error {
         flag "-v --version" help="Version to install (defaults to latest)" {
             arg <VERSION>
@@ -172,7 +213,7 @@ cmd tool display_order=8 subcommand_required=#true arg_required_else_help=#true 
         arg <NAME> help="Name of the tool to uninstall"
     }
 }
-cmd dist display_order=9 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir distributions" unknown_flags=error {
+cmd dist display_order=12 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir distributions" unknown_flags=error {
     cmd install display_order=0 args_override_self=#false help="Install a Morphir distribution" unknown_flags=error {
         flag "-v --version" help="Version to install (defaults to latest)" {
             arg <VERSION>
@@ -190,7 +231,7 @@ cmd dist display_order=9 subcommand_required=#true arg_required_else_help=#true 
         arg <NAME> help="Name of the distribution to uninstall"
     }
 }
-cmd extension display_order=10 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir extensions" unknown_flags=error {
+cmd extension display_order=13 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir extensions" unknown_flags=error {
     cmd install display_order=0 args_override_self=#false help="Install a Morphir extension" unknown_flags=error {
         flag --index help="Controlled local extension index directory" required=#true {
             arg <INDEX>
@@ -222,7 +263,7 @@ cmd extension display_order=10 subcommand_required=#true arg_required_else_help=
         arg <NAME> help="Name of the extension to uninstall"
     }
 }
-cmd ir display_order=11 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir IR" unknown_flags=error {
+cmd ir display_order=14 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir IR" unknown_flags=error {
     cmd migrate display_order=0 args_override_self=#false help="Migrate IR between versions" unknown_flags=error {
         long_help #"""
 Migrate IR between versions
@@ -276,7 +317,7 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
         complete output type=path
     }
 }
-cmd kb display_order=12 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage the knowledge base under kb/ — OKF bundles and concept documents" unknown_flags=error {
+cmd kb display_order=15 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage the knowledge base under kb/ — OKF bundles and concept documents" unknown_flags=error {
     cmd list display_order=0 args_override_self=#false help="List bundles, or one bundle\'s concepts" unknown_flags=error {
         flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
             arg <PATH>
@@ -754,7 +795,7 @@ cmd kb display_order=12 subcommand_required=#true arg_required_else_help=#true a
         }
     }
 }
-cmd gleam display_order=13 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Gleam language binding commands" unknown_flags=error {
+cmd gleam display_order=16 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Gleam language binding commands" unknown_flags=error {
     flag --json help="Output as JSON"
     flag --json-lines help="Output as JSON Lines (streaming)"
     cmd compile display_order=0 args_override_self=#false help="Compile Gleam source to Morphir IR" unknown_flags=error {
@@ -806,16 +847,16 @@ cmd gleam display_order=13 subcommand_required=#true arg_required_else_help=#tru
         }
     }
 }
-cmd schema display_order=14 args_override_self=#false help="Generate JSON Schema for Morphir IR" unknown_flags=error {
+cmd schema display_order=17 args_override_self=#false help="Generate JSON Schema for Morphir IR" unknown_flags=error {
     flag "-o --output" help="Output file path (optional)" {
         arg <OUTPUT>
     }
     complete output type=path
 }
-cmd version display_order=15 args_override_self=#false help="Print version information" unknown_flags=error {
+cmd version display_order=18 args_override_self=#false help="Print version information" unknown_flags=error {
     flag --json help="Output version info as JSON"
 }
-cmd usage hide=#true display_order=16 args_override_self=#false help="Output usage spec for documentation generation" unknown_flags=error
+cmd usage hide=#true display_order=19 args_override_self=#false help="Output usage spec for documentation generation" unknown_flags=error
 '
 set -l spec_dir (if set -q XDG_CACHE_HOME; echo $XDG_CACHE_HOME; else; echo $HOME/.cache; end)/usage
 test -d "$spec_dir"; or mkdir -p -m 700 "$spec_dir"

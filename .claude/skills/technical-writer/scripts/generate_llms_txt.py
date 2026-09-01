@@ -123,6 +123,12 @@ KEY_DOCUMENTS = [
     "docs/generate/avro.md",
 ]
 
+# Documents that must remain discoverable in the compact index even when their
+# section is otherwise optional.
+PINNED_COMPACT_DOCUMENTS = {
+    "developers/domain-modeling.md",
+}
+
 
 def find_repo_root() -> Path:
     """Find the repository root by looking for .git or website directory."""
@@ -510,6 +516,15 @@ def generate_compact(sections: Dict[str, List[Dict]], docs_dir: Path) -> str:
     # Core documentation section
     lines.append("## Docs")
     lines.append("")
+
+    pinned_docs = [
+        doc
+        for section_data in sections.values()
+        for doc in section_data['docs']
+        if doc['path'] in PINNED_COMPACT_DOCUMENTS
+    ]
+    for doc in pinned_docs:
+        lines.append(f"- [{doc['title']}]({doc['url']}): {doc['description']}")
 
     # Add priority 1 and 2 sections
     for section_name, section_data in sorted(sections.items(),

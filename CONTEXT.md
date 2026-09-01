@@ -82,9 +82,29 @@ _Avoid_: Morphir package, loaded extension
 A runnable payload for one extension runtime and, when applicable, one operating-system and architecture target.
 _Avoid_: Extension, source package
 
-**Installed extension catalog**:
+**Extension repository**:
+A logical collection of published extension releases, repository metadata, and artifacts, independent of how clients access it.
+_Avoid_: Index, registry when no service is involved, installed extension inventory
+
+**Repository endpoint**:
+A configured location through which a Morphir client accesses one repository, such as a directory, Git checkout, HTTP URL, or OCI reference.
+_Avoid_: Repository, registry, mirror
+
+**Extension registry**:
+A network service that hosts one or more extension repositories.
+_Avoid_: Local repository, catalog, index
+
+**Extension catalog**:
+The searchable view Morphir builds from the enabled extension repositories.
+_Avoid_: Repository, registry, installed extension inventory
+
+**Repository metadata**:
+The backend-specific records used to discover and resolve releases in a repository, such as an index, TUF metadata, or OCI manifests.
+_Avoid_: Repository, catalog, installed inventory
+
+**Installed extension inventory**:
 The host's local record of verified extension distributions available for selection and activation.
-_Avoid_: Package registry, loaded-extension registry
+_Avoid_: Extension catalog, extension repository, loaded-extension registry
 
 ## Tools
 
@@ -100,9 +120,25 @@ _Avoid_: Desktop extension, UI component
 A versioned package that describes a tool and provides one or more platform-specific artifacts.
 _Avoid_: Extension distribution, Morphir package, installed tool
 
-**Installed tool catalog**:
+**Tool repository**:
+An authenticated logical source of tool release descriptors and artifacts governed by one trust root.
+_Avoid_: Repository mirror, installed tool catalog, download cache
+
+**Repository mirror**:
+A location that serves metadata and artifacts for one tool repository without becoming a separate trust authority.
+_Avoid_: Tool repository, release channel
+
+**Trusted repository root**:
+The out-of-band trust anchor and its accepted rotation state for one tool repository.
+_Avoid_: Repository mirror, TLS certificate, signing key
+
+**Tool release descriptor**:
+The immutable record for one exact tool version, including compatibility, channel membership, and platform artifacts.
+_Avoid_: Release channel, tool artifact, installed selection
+
+**Installed tool inventory**:
 The local record of verified tool distributions and the exact release active for each tool.
-_Avoid_: Tool registry, release index, download cache
+_Avoid_: Tool catalog, tool registry, release index, download cache
 
 **Protected release**:
 An installed tool or extension release that cleanup cannot remove because it is active, retained for rollback, pinned, leased by a running process, or referenced by another durable record.

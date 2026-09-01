@@ -36,7 +36,7 @@ This design follows [ADR-0005](../../adr/ADR-0005-cli-managed-desktop.md) and [A
 | Extension | A host-launched capability provider | `morphir extension` |
 | Morphir package | Reusable modeled logic and types | Package commands and build resolution |
 
-The distribution kernel may share value types and effects across these families. Their manifests, catalogs, lifecycle rules, and user-facing commands remain distinct.
+The distribution kernel may share value types and effects across these families. Their manifests, installed inventories, lifecycle rules, and user-facing commands remain distinct.
 
 `component` is an architectural umbrella term and is not a CLI installation noun.
 
@@ -50,9 +50,9 @@ morphir desktop --offline [PATH]
 morphir desktop --wait [PATH]
 ```
 
-`morphir desktop` resolves the active `desktop` tool from the installed tool catalog. If none exists, it installs the default selection and then launches it. Invoking the named application is sufficient consent for this first-use acquisition, so the command reports the download without asking an additional question.
+`morphir desktop` resolves the active `desktop` tool from the installed tool inventory. If none exists, it installs the default selection and then launches it. Invoking the named application is sufficient consent for this first-use acquisition, so the command reports the download without asking an additional question.
 
-`--offline` prohibits registry and artifact network access. It launches a valid active release or fails with a diagnostic that includes the exact installation command to run when network access is available.
+`--offline` prohibits network access to repository endpoints and artifacts. It launches a valid active release or fails with a diagnostic that includes the exact installation command to run when network access is available.
 
 The optional path identifies the workspace or artifact to open. The default is the current directory. The CLI launches Desktop detached by default and returns after successful process creation. `--wait` keeps the CLI in the foreground and returns the Desktop process exit status.
 
@@ -107,7 +107,7 @@ Selection follows this precedence for a first installation:
 
 Project configuration does not silently select a different globally installed Desktop. A future project tool manifest may request local tools through an explicit restore operation, but it does not change the active global Desktop as a side effect of entering a directory.
 
-The catalog records both:
+The installed inventory records both:
 
 - requested selection, such as `channel stable` or `version 0.3.1`;
 - resolved release, including exact version, platform, source provenance, metadata revision, artifact digest, and launch description.
@@ -125,7 +125,7 @@ MORPHIR_HOME/
     desktop/
   config/
     desktop/
-  catalog/
+  catalog/ # Legacy on-disk schema name; the domain term is installed inventory.
     tools.json
     extensions.json
   store/
@@ -146,12 +146,12 @@ The root is one location, not one shared mutable file:
 
 - user-authored policy belongs in configuration;
 - durable application state belongs in a namespaced data directory;
-- active installation state belongs in versioned catalogs;
+- active installation state belongs in versioned inventories;
 - verified immutable content belongs in the content-addressed store;
 - disposable content belongs in cache;
 - coordination files belong in locks and temporary staging belongs in `tmp`.
 
-Each catalog and owned application file carries its own schema version. Components do not require one global home schema upgrade and must not write files owned by another component. The distribution kernel is the only writer for tool and extension catalogs and stores.
+Each inventory and owned application file carries its own schema version. Components do not require one global home schema upgrade and must not write files owned by another component. The distribution kernel is the only writer for tool and extension inventories and stores.
 
 The CLI passes the fully resolved absolute `MORPHIR_HOME` value to Desktop on every launch. This prevents the child process from deriving a different root through environment, symlink, profile, or platform differences.
 
@@ -169,7 +169,7 @@ During a compatibility period, Morphir may read one legacy platform global-user 
 
 The current metadata-only `tools.json` entries do not prove that a runnable artifact exists. Migration follows these rules:
 
-- A verified catalog entry is an installed tool.
+- A verified inventory entry is an installed tool.
 - A legacy entry with no artifact digest and launch description is imported only as historical intent.
 - List output labels such an entry as incomplete rather than installed.
 - Update or repair may turn the intent into a verified installation.
@@ -179,7 +179,7 @@ The current metadata-only `tools.json` entries do not prove that a runnable arti
 
 One tool installation or update runs under a per-tool interprocess lock:
 
-1. Read and validate the installed catalog.
+1. Read and validate the installed inventory.
 2. Resolve the requested selection for the current operating system and architecture.
 3. Check compatibility with the invoking CLI and supported Desktop launch contract.
 4. Acquire metadata and artifact bytes into secure staging beneath Morphir Home.
@@ -187,16 +187,16 @@ One tool installation or update runs under a per-tool interprocess lock:
 6. Extract portable archives while rejecting traversal, unsafe links, device files, and platform path collisions.
 7. Run the packaged application's non-interactive probe.
 8. Atomically publish immutable content into the verified store.
-9. Atomically replace the active catalog entry.
+9. Atomically replace the active inventory entry.
 10. Retain the previously active release for rollback and later garbage collection.
 
-A failure before step 9 leaves the previous catalog untouched. A failure while replacing the catalog restores or retains the previous complete file. Readers never observe a partially extracted release or partially written catalog.
+A failure before step 9 leaves the previous inventory untouched. A failure while replacing the inventory restores or retains the previous complete file. Readers never observe a partially extracted release or partially written inventory.
 
-Uninstall removes active catalog and selection state. Content-addressed bytes may remain until an explicit garbage-collection policy proves that no catalog or running release needs them.
+Uninstall removes active inventory and selection state. Content-addressed bytes may remain until an explicit garbage-collection policy proves that no inventory or running release needs them.
 
 ## Storage maintenance
 
-Morphir separates disposable cache cleanup from installed-artifact pruning. A cache entry is re-creatable content under `cache/`. A verified release under `store/` is installed state even when it is not active. `cache clean` never removes verified releases, and `tool prune` never treats an active catalog entry as disposable.
+Morphir separates disposable cache cleanup from installed-artifact pruning. A cache entry is re-creatable content under `cache/`. A verified release under `store/` is installed state even when it is not active. `cache clean` never removes verified releases, and `tool prune` never treats an active inventory entry as disposable.
 
 ### Manual commands
 
@@ -212,7 +212,7 @@ morphir tool prune [<NAME>] [--dry-run] [--keep <COUNT>] [--older-than <DURATION
 
 `tool prune` removes verified releases only when the maintenance engine proves they are unreachable. It protects:
 
-- every active catalog release;
+- every active inventory release;
 - the configured rollback releases;
 - exact versions pinned by durable configuration or selection state;
 - releases leased by running CLI, Desktop, or extension processes;
@@ -255,11 +255,11 @@ Deletion first renames an eligible entry into a maintenance trash directory bene
 
 Cleanup emits structured events for policy evaluation, reclaimed bytes, skipped protected entries, failures, and elapsed time. Manual and automatic runs receive operation IDs. Troubleshooting output points to the CLI log and names the cache namespace without logging cached content or source credentials.
 
-## Registry and trust
+## Repository and trust
 
-The first remote tool index should expose immutable release records plus mutable channel membership. A channel resolves to an exact record before download. The installed catalog retains the exact metadata revision used for that resolution.
+The first remote tool repository exposes immutable release descriptors plus mutable channel membership through the [tool release metadata v1 profile](../../spec/tool-release-metadata/index.md). A channel resolves to an exact descriptor before download. The installed inventory retains the exact trusted metadata version used for that resolution.
 
-Artifact digests detect corruption only when the metadata carrying the digest is authentic. Public Desktop acquisition therefore requires signed release metadata with a verification root distributed by the CLI. HTTPS remains required but is not the sole publisher-authentication mechanism. Root rotation, revocation, mirrors, and offline metadata expiry need explicit policy before public rollout.
+Artifact digests detect corruption only when the metadata carrying the digest is authentic. Public Desktop acquisition uses The Update Framework 1.0 with an out-of-band trusted root, consistent snapshots, sequential dual-threshold root rotation, signed freshness metadata, and SHA-256 target hashes. Mirrors share one repository identity and trust root. HTTPS remains required but is not the publisher-authentication mechanism. New resolution rejects expired metadata, while an installed release continues to launch from its exact inventory lock unless the client has persisted a trusted revocation.
 
 Network access supports bounded timeouts, proxies, standard certificate stores, resumable downloads where the server permits them, and useful diagnostics. Cached metadata and bytes are verified before reuse.
 
@@ -281,7 +281,7 @@ Windows executables and installers require code signing. The macOS application r
 
 ## Launch contract
 
-The CLI invokes the catalog's exact entry point directly without shell interpolation. It supplies:
+The CLI invokes the installed inventory's exact entry point directly without shell interpolation. It supplies:
 
 - the resolved absolute `MORPHIR_HOME`;
 - the requested workspace or artifact path;
@@ -308,9 +308,9 @@ The first implementation uses structured local events and spans. Its field model
 
 ### Current implementation gaps
 
-The CLI now initializes structured local logging on the ordinary command path, writes per-session files beneath `MORPHIR_HOME/logs/cli`, applies separate console and file filters, and enforces the default age and size retention policy at startup. `MORPHIR_LOGGING__LEVEL` and `MORPHIR_LOGGING__FILE_LEVEL` are canonical, with the older names retained as compatibility aliases. Startup logging is currently environment-controlled and does not yet consume a discovered `[logging]` configuration table. Remaining CLI work includes configuration-file integration, operation and launch correlation, lifecycle spans, log discovery, diagnostic bundles, and redaction sentinel coverage. Tool and extension commands still print some lifecycle details directly instead of emitting structured events.
+The CLI initializes structured local logging on the ordinary command path, writes per-session files beneath `MORPHIR_HOME/logs/cli`, applies separate console and file filters, and enforces the default age and size retention policy at startup. `MORPHIR_LOGGING__LEVEL` and `MORPHIR_LOGGING__FILE_LEVEL` are canonical, with the older names retained as compatibility aliases. CLI operations now have opaque IDs, failures name the exact session log, and `morphir diagnostics path`, `show`, and `collect` provide the first local troubleshooting workflow. The first bundle format contains sanitized correlated events, a system summary, checksums, and explicit exclusions. It does not yet include authenticated crash associations, catalog integrity, or acquisition-policy summaries. Remaining CLI work includes configuration-file integration, acquisition and launch spans, launcher propagation, and broader redaction sentinel coverage. Tool and extension commands still print some lifecycle details directly instead of emitting structured events.
 
-Morphir Desktop currently writes a few smoke messages through `console` and has no file logger, event schema, crash path, operation correlation, or troubleshooting interface. These are release gaps rather than optional refinements.
+Morphir Desktop writes correlated per-process JSON Lines beneath `MORPHIR_HOME/logs/desktop`, records main, renderer, child-process, and startup failures, and keeps Crashpad upload disabled. Startup maintenance bounds completed logs by age and size, preserves live sessions, and removes only expired recognized minidumps. Desktop still needs its troubleshooting interface, diagnostic-bundle action, and correlation with the CLI launch handshake.
 
 ### User experience
 
@@ -380,8 +380,8 @@ artifact.download
 artifact.verify
 artifact.extract
 tool.probe
-catalog.activate
-catalog.rollback
+inventory.activate
+inventory.rollback
 desktop.spawn
 desktop.ready
 desktop.exit
@@ -421,7 +421,7 @@ Tests inject recognizable secret sentinels through every credential and configur
 - crash metadata and dumps associated with that operation when present;
 - CLI, Desktop, operating-system, architecture, and launch-contract versions;
 - sanitized effective acquisition policy and release source identities;
-- installed catalog metadata and integrity status;
+- installed inventory metadata and integrity status;
 - Morphir Home path and permission checks with the user-home prefix normalized;
 - a bundle manifest listing included files, exclusions, and checksums.
 
@@ -439,7 +439,7 @@ External metrics or trace export is opt-in. Enabling an exporter requires an exp
 | Digest mismatch | Quarantine or remove staged bytes; keep active release |
 | Archive escapes staging | Reject release; keep active release |
 | Probe fails | Do not activate candidate |
-| Concurrent install and launch | Launch old active release or wait for a complete catalog transaction |
+| Concurrent install and launch | Launch old active release or wait for a complete inventory transaction |
 | Concurrent updates | Serialize by tool identity |
 | Active bytes modified | Refuse launch and suggest `tool repair desktop` |
 | New Desktop requires newer CLI | Select the newest compatible release or explain the CLI upgrade requirement |
@@ -456,7 +456,7 @@ External metrics or trace export is opt-in. Enabling an exporter requires an exp
 ## Delivery sequence
 
 1. Make Morphir Home the unconditional root for cache and global configuration, then add cross-language conformance fixtures for path resolution and ownership.
-2. Extract generic selection, authenticated acquisition, content-addressed storage, locking, and atomic catalog operations from the extension-specific implementation.
+2. Extract generic selection, authenticated acquisition, content-addressed storage, locking, and atomic inventory operations from the extension-specific implementation.
 3. Define tool release records for archives, launch entry points, probes, and CLI compatibility.
 4. Replace the metadata-only tool commands and migrate legacy `tools.json` intent safely.
 5. Publish signed portable Desktop release artifacts for every supported platform.
@@ -480,7 +480,6 @@ Every implementation step starts with failure-focused tests. Cross-platform acce
 
 ## Remaining policy decisions
 
-- Select the signed metadata format and root-rotation procedure.
 - Decide whether update availability checks are implemented by the CLI, Desktop, or a shared service.
 - Define optional OS shortcut and file-association integration without making it part of portable installation.
 - Choose the optional telemetry-export protocol and configuration after local instrumentation is proven.

@@ -37,11 +37,11 @@ MEP must support:
 - local native processes first, without ruling out WASM or remote execution;
 - a one-file Elm compilation path that does not require a Morphir project.
 
-MEP does not define extension installation, registry storage, daemon discovery, or Morphir IR itself. Those systems use the protocol but have separate formats and lifecycles.
+MEP does not define extension installation, repository storage, daemon discovery, or Morphir IR itself. Those systems use the protocol but have separate formats and lifecycles.
 
 The adjacent [extension distribution and package acquisition design](./distribution-and-acquisition.md) defines how a host resolves, acquires, verifies, installs, and selects extension artifacts. It also records the shared distribution machinery and separate semantics for reusable Morphir model packages.
 
-The Rust host stores its user-global extension registry under `MorphirHome`. Host implementations must use that resolver instead of hardcoding a user-home path, so `MORPHIR_HOME` relocates extension state along with other Morphir state. This changes discovery and installation behavior, not the MEP wire contract.
+The Rust host stores its user-global installed extension inventory under `MorphirHome`. Host implementations must use that resolver instead of hardcoding a user-home path, so `MORPHIR_HOME` relocates extension state along with other Morphir state. This changes discovery and installation behavior, not the MEP wire contract.
 
 ## Roles
 
@@ -580,7 +580,7 @@ Acceptance criteria:
 - unit tests use a fixture extension rather than Morphir Elm;
 - process crashes and malformed frames produce typed host errors;
 - timeouts do not leave child processes running;
-- the registry can select a native extension by language capability.
+- the host can select a native extension from the installed inventory by language capability.
 
 ### Phase 3: connect `morphir compile` to the Elm extension
 
@@ -670,7 +670,7 @@ The implementation should resolve these mismatches rather than preserve them:
 - design documents use names such as `compile/snippet` and `extension/capabilities`, while the Rust SDK uses `morphir.frontend.compile` and `morphir.extension.capabilities`;
 - SDK compile types carry source content, while the current CLI call carries input paths and a list of file paths;
 - SDK source locations are one-based, while editor protocols use zero-based ranges;
-- the current Rust extension registry loads only `.wasm` files despite documentation for native executables;
+- the current Rust extension loader loads only `.wasm` files despite documentation for native executables;
 - the current CLI requires project configuration even though the daemon design documents ad hoc compilation;
 - extension information and capability types are duplicated between the SDK and daemon.
 

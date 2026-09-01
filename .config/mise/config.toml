@@ -25,7 +25,7 @@ jsonschema = "latest"
 # CLI documentation generator (https://usage.jdx.dev/)
 # Pinned: docs:cli commits generated output to docs/cli/ and completions/,
 # and the freshness check in CI fails when a new usage release changes it.
-usage = "6.4.1"
+usage = "6.6.0"
 
 # ===== Initialization Tasks =====
 [tasks.init]
@@ -153,6 +153,10 @@ run = "bun run typecheck"
 dir = "tools"
 depends = ["tools:install"]
 
+[tasks."vendor:morphir-web"]
+description = "Build and vendor a clean morphir-web worktree twice with provenance"
+run = "bun run tools/vendor-morphir-web.ts"
+
 [tasks.check]
 description = "Run all checks"
 depends = [
@@ -247,3 +251,7 @@ run = "python .config/mise/tasks/submodules/add.py"
 [tasks."ci:validate-docs"]
 description = "Validate documentation files"
 run = "python .config/mise/tasks/ci/validate_docs.py"
+
+[tasks."ci:validate-tool-release-metadata"]
+description = "Validate signed tool release metadata fixtures"
+run = "python .config/mise/tasks/ci/validate_tool_release_metadata.py"

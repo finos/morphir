@@ -2,12 +2,12 @@
 title: "Specifications"
 linkTitle: "Specifications"
 weight: 25
-description: "Formal specifications for Morphir configuration and IR"
+description: "Formal specifications for Morphir configuration, IR, and tool distribution"
 ---
 
 # Specifications
 
-This section contains formal specifications for Morphir configuration and IR formats.
+This section contains formal specifications for Morphir configuration, IR formats, and tool distribution.
 
 ## Contents
 
@@ -22,6 +22,8 @@ This section contains formal specifications for Morphir configuration and IR for
 - **[Morphir IR Specification](./ir/morphir-ir-specification/)**: The complete Morphir IR specification document, describing the structure, semantics, and usage of the Morphir IR format.
 
 - **[WebAssembly](./webassembly/)**: Specifications related to WebAssembly (Component Model, WIT, and related Morphir tooling).
+
+- **[Tool release metadata](./tool-release-metadata/)**: The authenticated release descriptor, channel, revocation, root rotation, mirror, and offline policy used by CLI-managed tools.
 
 - **[Morphir IR JSON Schemas](./ir/schemas/)**: JSON schema definitions for all supported format versions of the Morphir IR (available in both YAML and JSON formats):
   - v3 (Current): [YAML](/schemas/morphir-ir-v3.yaml) | [JSON](/schemas/morphir-ir-v3.json)

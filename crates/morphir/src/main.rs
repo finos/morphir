@@ -5,16 +5,19 @@ pub mod commands;
 pub mod error;
 mod help;
 pub mod home;
+mod log_lock;
 mod logging;
 pub mod output;
 
+use morphir::observability;
+
 use commands::{
-    GenerateOptions, MigrateCommandOptions, OutputLayout, compile::CompileOptions, run_compile,
-    run_config_get, run_config_path, run_config_show, run_dist_install, run_dist_list,
-    run_dist_uninstall, run_dist_update, run_extension_install, run_extension_list,
-    run_extension_uninstall, run_extension_update, run_generate, run_gleam_compile,
-    run_gleam_generate, run_gleam_roundtrip, run_kb_add_concept, run_kb_check,
-    run_kb_decision_list, run_kb_decision_show, run_kb_index, run_kb_intent_cancel,
+    GenerateOptions, MigrateCommandOptions, OutputLayout, compile::CompileOptions, run_cache_clean,
+    run_cache_status, run_compile, run_config_get, run_config_path, run_config_show,
+    run_diagnostics_path, run_dist_install, run_dist_list, run_dist_uninstall, run_dist_update,
+    run_extension_install, run_extension_list, run_extension_uninstall, run_extension_update,
+    run_generate, run_gleam_compile, run_gleam_generate, run_gleam_roundtrip, run_kb_add_concept,
+    run_kb_check, run_kb_decision_list, run_kb_decision_show, run_kb_index, run_kb_intent_cancel,
     run_kb_intent_check, run_kb_intent_init, run_kb_intent_list, run_kb_intent_move,
     run_kb_intent_new, run_kb_intent_refine, run_kb_intent_release, run_kb_intent_show,
     run_kb_intent_start, run_kb_intent_supersede, run_kb_list, run_kb_new_bundle, run_kb_query,
@@ -151,11 +154,24 @@ morphir migrate ./morphir-ir.json -o ./morphir-ir-v4/ --output-layout vfs
 See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tools/ir-migrate) for detailed real-world examples including the US Federal Reserve FR 2052a regulation model.")]
     Migrate(MigrateArgs),
 
+    /// Open the Morphir development workbench in a browser
+    Ui(commands::ui::UiArgs),
+
     // ===== Management Commands =====
     /// Inspect the effective Morphir configuration
     Config {
         #[command(subcommand)]
         action: ConfigAction,
+    },
+    /// Locate Morphir logs and collect troubleshooting information
+    Diagnostics {
+        #[command(subcommand)]
+        action: DiagnosticsAction,
+    },
+    /// Inspect and clean disposable Morphir caches
+    Cache {
+        #[command(subcommand)]
+        action: CacheAction,
     },
     /// Manage Morphir tools, distributions, and extensions
     Tool {
@@ -251,6 +267,59 @@ enum ConfigAction {
         /// Ignore machine-level and user-level configuration sources
         #[arg(long, hide = true)]
         isolated: bool,
+    },
+}
+
+#[derive(Clone, Subcommand)]
+enum DiagnosticsAction {
+    /// Show the local Morphir log locations
+    Path {
+        /// Output paths as JSON
+        #[arg(long)]
+        json: bool,
+    },
+    /// Create a local sanitized diagnostic archive
+    Collect {
+        /// Operation ID reported by Morphir
+        #[arg(long)]
+        operation: String,
+        /// New ZIP archive to create
+        #[arg(long)]
+        output: std::path::PathBuf,
+    },
+    /// Show events correlated with one operation
+    Show {
+        /// Operation ID reported by Morphir
+        #[arg(long)]
+        operation: String,
+        /// Output events as JSON
+        #[arg(long)]
+        json: bool,
+    },
+}
+
+#[derive(Clone, Subcommand)]
+enum CacheAction {
+    /// Report owned and unclassified cache usage
+    Status {
+        /// Output status as JSON
+        #[arg(long)]
+        json: bool,
+    },
+    /// Remove known disposable cache entries
+    Clean {
+        /// Report the cleanup plan without changing files
+        #[arg(long)]
+        dry_run: bool,
+        /// Remove every known disposable entry instead of applying policy
+        #[arg(long)]
+        all: bool,
+        /// Limit cleanup to one registered cache component
+        #[arg(long)]
+        component: Option<String>,
+        /// Output the plan and execution report as JSON
+        #[arg(long)]
+        json: bool,
     },
 }
 
@@ -651,6 +720,7 @@ impl AppSession for MorphirSession {
             }
             Commands::Transform { input, output } => run_transform(input.clone(), output.clone()),
             Commands::Migrate(args) => args.run(),
+            Commands::Ui(args) => commands::ui::run_ui(args.clone()).await,
             Commands::Config { action } => match action {
                 ConfigAction::Get {
                     key,
@@ -668,6 +738,24 @@ impl AppSession for MorphirSession {
                     json,
                     isolated,
                 } => run_config_path(config.clone(), *json, *isolated),
+            },
+            Commands::Diagnostics { action } => match action {
+                DiagnosticsAction::Path { json } => run_diagnostics_path(*json),
+                DiagnosticsAction::Show { operation, json } => {
+                    commands::run_diagnostics_show(operation, *json)
+                }
+                DiagnosticsAction::Collect { operation, output } => {
+                    commands::run_diagnostics_collect(operation, output)
+                }
+            },
+            Commands::Cache { action } => match action {
+                CacheAction::Status { json } => run_cache_status(*json),
+                CacheAction::Clean {
+                    dry_run,
+                    all,
+                    component,
+                    json,
+                } => run_cache_clean(*dry_run, *all, component.clone(), *json),
             },
             Commands::Tool { action } => match action {
                 ToolAction::Install { name, version } => {
@@ -827,90 +915,205 @@ impl AppSession for MorphirSession {
     }
 }
 
+fn report_operation_outcome(
+    operation_id: &observability::OperationId,
+    logging_guard: Option<&logging::LogGuard>,
+    exit_code: u8,
+    failed: bool,
+    diagnostic: Option<&str>,
+) {
+    logging::record_operation_finish(operation_id, logging_guard, exit_code, failed, diagnostic);
+    if failed {
+        eprintln!("Operation ID: {operation_id}");
+        if let Some(log) = logging_guard.map(logging::LogGuard::log_path) {
+            eprintln!("Log: {}", log.display());
+        }
+    }
+}
+
+fn operation_diagnostic(raw: Option<String>, exit_code: u8) -> Option<String> {
+    raw.filter(|diagnostic| !diagnostic.trim().is_empty())
+        .or_else(|| {
+            (exit_code != 0).then(|| {
+                format!(
+                    "command exited with status {exit_code}; details were reported by the command"
+                )
+            })
+        })
+        .map(|diagnostic| commands::diagnostics::sanitize_text(&diagnostic))
+}
+
 #[tokio::main]
 async fn main() -> starbase::MainResult {
     use clap::CommandFactory;
+    use tracing::Instrument as _;
 
+    let operation_id = observability::OperationId::new();
     // Keep the guard alive until process exit so non-blocking file logs flush.
-    let _logging_guard = logging::init_from_env();
+    let logging_guard = logging::init_from_env(&operation_id);
+    let operation_span = tracing::debug_span!(
+        target: "morphir::correlation",
+        "cli.operation",
+        operation_id = %operation_id
+    );
 
-    // Check for help/version flags first to print our custom banner
-    let args: Vec<String> = std::env::args().collect();
+    async move {
+        tracing::debug!(
+            schema_version = 1,
+            component = "cli",
+            event_name = "cli.command.dispatch",
+            "CLI command dispatch started"
+        );
+        // Check for help/version flags first to print our custom banner
+        let args: Vec<String> = std::env::args().collect();
 
-    if help::should_show_banner(&args) {
-        help::print_banner();
-    }
-
-    // Handle full help variants
-    if help::should_show_full_help(&args) {
-        help::print_full_help::<Cli>();
-        return Ok(std::process::ExitCode::SUCCESS);
-    }
-
-    // Handle version subcommand early (before starbase) to avoid double execution
-    if args.len() >= 2 && args[1] == "version" {
-        let json = args.iter().any(|a| a == "--json");
-        if let Some(code) = run_version(json)? {
-            return Ok(std::process::ExitCode::from(code));
+        if help::should_show_banner(&args) {
+            help::print_banner();
         }
-        return Ok(std::process::ExitCode::SUCCESS);
-    }
 
-    // Handle usage subcommand early (before starbase) to avoid double execution
-    if args.len() >= 2 && args[1] == "usage" {
-        use clap::CommandFactory;
-        let cli = Cli::command();
-        let spec: usage::Spec = cli.into();
-        println!("{}", spec);
-        return Ok(std::process::ExitCode::SUCCESS);
-    }
+        // Handle full help variants
+        if help::should_show_full_help(&args) {
+            help::print_full_help::<Cli>();
+            report_operation_outcome(&operation_id, logging_guard.as_ref(), 0, false, None);
+            return Ok(std::process::ExitCode::SUCCESS);
+        }
 
-    // Handle migration subcommands early (before starbase) to avoid double execution
-    if (args.len() >= 2 && args[1] == "migrate") || (args.len() >= 3 && args[1] == "ir") {
-        let cli = Cli::parse();
-        let migrate_args = match cli.command {
-            Some(Commands::Migrate(args)) => Some(args),
-            Some(Commands::Ir {
-                action: IrAction::Migrate(args),
-            }) => Some(args),
-            _ => None,
-        };
-        if let Some(migrate_args) = migrate_args {
-            let result = migrate_args.run();
-            match result {
-                Ok(Some(code)) => return Ok(std::process::ExitCode::from(code)),
-                Ok(None) => return Ok(std::process::ExitCode::SUCCESS),
-                Err(e) => {
-                    eprintln!("Error: {}", e);
-                    return Ok(std::process::ExitCode::from(1));
+        // Handle version subcommand early (before starbase) to avoid double execution
+        if args.len() >= 2 && args[1] == "version" {
+            let json = args.iter().any(|a| a == "--json");
+            match run_version(json) {
+                Ok(code) => {
+                    let exit_code = code.unwrap_or(0);
+                    report_operation_outcome(
+                        &operation_id,
+                        logging_guard.as_ref(),
+                        exit_code,
+                        exit_code != 0,
+                        operation_diagnostic(None, exit_code).as_deref(),
+                    );
+                    return Ok(std::process::ExitCode::from(exit_code));
+                }
+                Err(error) => {
+                    let diagnostic = operation_diagnostic(Some(error.to_string()), 1);
+                    report_operation_outcome(
+                        &operation_id,
+                        logging_guard.as_ref(),
+                        1,
+                        true,
+                        diagnostic.as_deref(),
+                    );
+                    return Err(error);
                 }
             }
         }
-    }
 
-    let cli = Cli::parse();
-
-    // Handle case where no command is provided
-    let command = match cli.command {
-        Some(cmd) => cmd,
-        None => {
-            Cli::command().print_help().ok();
+        // Handle usage subcommand early (before starbase) to avoid double execution
+        if args.len() >= 2 && args[1] == "usage" {
+            use clap::CommandFactory;
+            let cli = Cli::command();
+            let spec: usage::Spec = cli.into();
+            println!("{}", spec);
+            report_operation_outcome(&operation_id, logging_guard.as_ref(), 0, false, None);
             return Ok(std::process::ExitCode::SUCCESS);
         }
-    };
 
-    // Create session with command
-    let session = MorphirSession { command };
+        let cli = match Cli::try_parse_from(&args) {
+            Ok(cli) => cli,
+            Err(error) => {
+                let exit_code = u8::try_from(error.exit_code()).unwrap_or(1);
+                let failed = exit_code != 0;
+                let diagnostic = operation_diagnostic(Some(error.to_string()), exit_code);
+                let _ = error.print();
+                report_operation_outcome(
+                    &operation_id,
+                    logging_guard.as_ref(),
+                    exit_code,
+                    failed,
+                    diagnostic.as_deref(),
+                );
+                return Ok(std::process::ExitCode::from(exit_code));
+            }
+        };
 
-    // Initialize and run starbase App.
-    // As of starbase 0.13, run() returns AppRunOutcome rather than a Result;
-    // into_miette_result() preserves the real exit code instead of miette's
-    // default of always reporting 1 on error.
-    App::default()
-        .run(
-            session,
-            |_session| async move { Ok::<_, miette::Report>(None) },
-        )
-        .await
-        .into_miette_result()
+        // Handle case where no command is provided.
+        let command = match cli.command {
+            Some(cmd) => cmd,
+            None => {
+                Cli::command().print_help().ok();
+                report_operation_outcome(&operation_id, logging_guard.as_ref(), 0, false, None);
+                return Ok(std::process::ExitCode::SUCCESS);
+            }
+        };
+
+        // Handle migration subcommands early (before starbase) to avoid double execution.
+        let command = match command {
+            Commands::Migrate(migrate_args)
+            | Commands::Ir {
+                action: IrAction::Migrate(migrate_args),
+            } => {
+                let (exit_code, failed, diagnostic) = match migrate_args.run() {
+                    Ok(Some(code)) => (code, code != 0, operation_diagnostic(None, code)),
+                    Ok(None) => (0, false, None),
+                    Err(error) => (1, true, operation_diagnostic(Some(error.to_string()), 1)),
+                };
+                report_operation_outcome(
+                    &operation_id,
+                    logging_guard.as_ref(),
+                    exit_code,
+                    failed,
+                    diagnostic.as_deref(),
+                );
+                return Ok(std::process::ExitCode::from(exit_code));
+            }
+            command => command,
+        };
+
+        // Create session with command
+        let session = MorphirSession { command };
+
+        // Initialize and run starbase App.
+        // As of starbase 0.13, run() returns AppRunOutcome rather than a Result;
+        // into_miette_result() preserves the real exit code instead of miette's
+        // default of always reporting 1 on error.
+        let outcome = App::default()
+            .run(
+                session,
+                |_session| async move { Ok::<_, miette::Report>(None) },
+            )
+            .await;
+        let failed = outcome.error.is_some() || outcome.exit_code != 0;
+        let diagnostic = operation_diagnostic(
+            outcome.error.as_ref().map(ToString::to_string),
+            outcome.exit_code,
+        );
+        report_operation_outcome(
+            &operation_id,
+            logging_guard.as_ref(),
+            outcome.exit_code,
+            failed,
+            diagnostic.as_deref(),
+        );
+        outcome.into_miette_result()
+    }
+    .instrument(operation_span)
+    .await
+}
+
+#[cfg(test)]
+mod operation_diagnostic_tests {
+    use super::operation_diagnostic;
+
+    #[test]
+    fn nonzero_outcomes_never_record_an_empty_diagnostic() {
+        assert_eq!(operation_diagnostic(None, 0), None);
+        assert_eq!(
+            operation_diagnostic(None, 7).as_deref(),
+            Some("command exited with status 7; details were reported by the command")
+        );
+        assert_eq!(
+            operation_diagnostic(Some("request failed: --api-key LIVE_SECRET".to_owned()), 1)
+                .as_deref(),
+            Some("[REDACTED]")
+        );
+    }
 }

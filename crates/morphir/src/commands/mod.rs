@@ -1,5 +1,7 @@
+pub mod cache;
 pub mod compile;
 pub mod config;
+pub mod diagnostics;
 pub mod dist;
 pub mod extension;
 pub mod generate;
@@ -9,11 +11,14 @@ pub mod migrate;
 pub mod schema;
 pub mod tool;
 pub mod transform;
+pub mod ui;
 pub mod validate;
 pub mod version;
 
+pub use cache::*;
 pub use compile::*;
 pub use config::*;
+pub use diagnostics::*;
 pub use dist::*;
 pub use extension::*;
 pub use generate::*;

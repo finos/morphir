@@ -33,16 +33,20 @@ cap-std = { workspace = true }
 thiserror = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 async-trait = "0.1"
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "sync"] }
+axum = { version = "0.8", features = ["ws"] }
 morphir-core = { path = "../../ecosystem/morphir-rust/crates/morphir-core" }
 morphir-common = { path = "../../ecosystem/morphir-rust/crates/morphir-common" }
 morphir-devkit = { path = "../../ecosystem/morphir-rust/crates/morphir-devkit" }
 morphir-daemon = { path = "../../ecosystem/morphir-rust/crates/morphir-daemon" }
 morphir-extension-sdk = { path = "../../ecosystem/morphir-rust/crates/morphir-extension-sdk" }
 morphir-distribution = { path = "../../ecosystem/morphir-rust/crates/morphir-distribution" }
+morphir-workspace = { path = "../../ecosystem/morphir-rust/crates/morphir-workspace" }
 morphir-okf = { path = "../../ecosystem/morphir-rust/crates/morphir-okf" }
 morphir-kb = { path = "../../ecosystem/morphir-rust/crates/morphir-kb" }
 semver = { workspace = true }
+uuid = { workspace = true }
+zip = { workspace = true }
 chrono = "0.4"
 walkdir = "2"
 fs2 = { workspace = true }
@@ -55,6 +59,9 @@ toml = { workspace = true }
 dirs = "6.0"
 schemars = "1.0"
 indexmap = { version = "2", features = ["serde"] }
+getrandom = "0.3"
+subtle = "2"
+webbrowser = "1"
 usage-lib = { version = "6", features = ["clap", "docs"] }
 unicode-casefold = { workspace = true }
 unicode-normalization = { workspace = true }
@@ -79,6 +86,10 @@ windows-sys = { workspace = true }
 
 [dev-dependencies]
 cucumber = { workspace = true }
+ed25519-dalek = { workspace = true }
+futures-util = "0.3"
+reqwest = { version = "0.13", default-features = false, features = ["cookies", "json", "rustls"] }
+tokio-tungstenite = "0.29"
 
 [build-dependencies]
 chrono = "0.4"
