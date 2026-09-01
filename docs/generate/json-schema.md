@@ -101,8 +101,15 @@ string. Option names use `snake_case`.
 
 The `json-schema` target only ever reads `unsupported` — `version`,
 `projection`, `result_responses`, `error_status`, and `operations` all shape
-`paths`, which JSON Schema documents never have. Setting them alongside
-`--target json-schema` is harmless; they are simply unused. See
+`paths`, which JSON Schema documents never have. Option decoding runs before
+the backend looks at the target, so a value one of these options accepts is
+decoded and validated the same way for both targets; it is only the later use
+of `projection`, `result_responses`, and `operations` to build `paths` that is
+skipped for `json-schema`. A valid but target-irrelevant value — for example
+`--option projection=operations-public --target json-schema` — is simply
+ignored. An *invalid* value is not: `error_status` outside 400 through 599,
+or an `operations` override `path` not starting with `/`, still fails
+generation with `JSC002` regardless of `--target`. See
 [Generate OpenAPI](./openapi.md) for what each of them controls.
 
 ## Options and defaults
