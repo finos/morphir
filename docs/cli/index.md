@@ -17,6 +17,7 @@
 - [`morphir generate [FLAGS]`](generate.md)
 - [`morphir migrate [FLAGS] <INPUT>`](migrate.md)
 - [`morphir ui [--workspace-extension <ID>] [--no-open] [WORKSPACE]`](ui.md)
+- [`morphir playground [--no-open]`](playground.md)
 - [`morphir config <SUBCOMMAND>`](config.md)
 - [`morphir config get [--config <CONFIG>] [--json] <KEY>`](config/get.md)
 - [`morphir config show [--config <CONFIG>] [--json]`](config/show.md)
