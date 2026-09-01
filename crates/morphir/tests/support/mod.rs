@@ -36,6 +36,7 @@ impl CliMother {
         extension_id: &'static str,
         artifact_name: &str,
         name: &str,
+        version: &str,
         backend: Value,
         guest_path: impl AsRef<Path>,
     ) -> Self {
@@ -51,7 +52,15 @@ impl CliMother {
         let home = root.path().join("home");
         let index = root.path().join("index");
         fs::create_dir_all(&project).expect("fixture project should be created");
-        write_wasm_index(&index, extension_id, name, backend, artifact_name, &bytes);
+        write_wasm_index(
+            &index,
+            extension_id,
+            name,
+            version,
+            backend,
+            artifact_name,
+            &bytes,
+        );
 
         Self {
             _root: root,
@@ -99,6 +108,7 @@ pub fn write_wasm_index(
     index: &Path,
     id: &str,
     name: &str,
+    version: &str,
     backend: Value,
     artifact_name: &str,
     bytes: &[u8],
@@ -113,7 +123,7 @@ pub fn write_wasm_index(
         "schemaVersion": 2,
         "id": id,
         "name": name,
-        "version": "0.1.0",
+        "version": version,
         "channels": ["stable"],
         "mepVersions": ["0.1"],
         "capabilities": ["backend"],
@@ -132,7 +142,34 @@ pub fn write_wasm_index(
     .unwrap();
 }
 
+/// The version one ecosystem crate declares, read from its manifest.
+///
+/// The index record a guest is discovered through has to state the same
+/// version the guest reports at initialization, or the CLI fails with
+/// "initialization metadata disagreed with discovery". Reading it from the
+/// manifest keeps an extension version bump from breaking these tests.
+pub fn ecosystem_crate_version(package_name: &str) -> String {
+    let metadata = ecosystem_metadata();
+    let packages = metadata["packages"]
+        .as_array()
+        .expect("cargo metadata should report packages");
+    let package = packages
+        .iter()
+        .find(|package| package["name"] == package_name)
+        .unwrap_or_else(|| panic!("{package_name} should be an ecosystem workspace member"));
+    package["version"]
+        .as_str()
+        .unwrap_or_else(|| panic!("{package_name} should report a version"))
+        .to_owned()
+}
+
 pub fn ecosystem_target_directory() -> PathBuf {
+    let metadata = ecosystem_metadata();
+    PathBuf::from(metadata["target_directory"].as_str().unwrap())
+}
+
+/// `cargo metadata --no-deps` for the ecosystem `morphir-rust` workspace.
+fn ecosystem_metadata() -> Value {
     let manifest =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../ecosystem/morphir-rust/Cargo.toml");
     let output = Command::new(std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into()))
@@ -141,9 +178,8 @@ pub fn ecosystem_target_directory() -> PathBuf {
         .arg(&manifest)
         .output()
         .expect("cargo metadata should start");
-    assert_success(&output, "resolve the ecosystem target directory");
-    let metadata: Value = serde_json::from_slice(&output.stdout).unwrap();
-    PathBuf::from(metadata["target_directory"].as_str().unwrap())
+    assert_success(&output, "read the ecosystem workspace metadata");
+    serde_json::from_slice(&output.stdout).unwrap()
 }
 
 pub fn v4_library() -> Value {

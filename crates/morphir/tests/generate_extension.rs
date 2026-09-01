@@ -14,7 +14,10 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use support::{CliMother, assert_success, ecosystem_target_directory, v3_library, v4_library};
+use support::{
+    CliMother, assert_success, ecosystem_crate_version, ecosystem_target_directory, v3_library,
+    v4_library,
+};
 
 struct AvroCliMother(CliMother);
 
@@ -24,6 +27,7 @@ impl AvroCliMother {
             "morphir-avro",
             "morphir_avro_extension.wasm",
             "Morphir Avro",
+            &ecosystem_crate_version("morphir-avro-extension"),
             json!({ "targets": ["avro"], "irVersions": ["3", "4"] }),
             guest_path,
         ))
