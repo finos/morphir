@@ -3,13 +3,17 @@
 use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
+use cap_std::fs::Dir;
 use chrono::{SecondsFormat, Utc};
 use morphir_devkit::{ConfigLoadOptions, discover_workspace_detailed};
 use morphir_workspace as portable;
 
 use crate::error::CliError;
 
-use super::{WorkspaceCapability, project_model::load_project_model};
+use super::{
+    WorkspaceCapability,
+    project_model::{load_project_model, open_workspace},
+};
 use crate::commands::ui::protocol::{
     DevelopmentWorkbenchDescriptor, DevelopmentWorkbenchKind, DevelopmentWorkbenchRoute,
     DiagnosticSeverity, InspectResult, ProjectModelOpenResult, ProjectSnapshot, ProjectState,
@@ -22,6 +26,7 @@ pub struct NativeWorkspaceProvider {
     manifest: ProviderManifest,
     source: WorkbenchSourceRef,
     workspace: PathBuf,
+    workspace_dir: Dir,
 }
 
 impl NativeWorkspaceProvider {
@@ -47,6 +52,7 @@ impl NativeWorkspaceProvider {
             persistence: None,
         };
         let workspace = discovery.canonical_root;
+        let workspace_dir = open_workspace(&workspace)?;
         Ok(Self {
             manifest: ProviderManifest {
                 id: provider_id,
@@ -63,6 +69,7 @@ impl NativeWorkspaceProvider {
             },
             source,
             workspace,
+            workspace_dir,
         })
     }
 
@@ -123,7 +130,7 @@ impl WorkspaceCapability for NativeWorkspaceProvider {
     ) -> Result<ProjectModelOpenResult, CliError> {
         self.validate_source(source)?;
         let snapshot = self.open(source).await?;
-        load_project_model(&self.workspace, &self.source, snapshot, project_id).await
+        load_project_model(&self.workspace_dir, &self.source, snapshot, project_id).await
     }
 }
 
@@ -357,5 +364,38 @@ mod tests {
                 .await
                 .unwrap_err();
         }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn loads_project_models_from_the_workspace_opened_during_discovery() {
+        let parent = tempfile::tempdir().unwrap();
+        let workspace = parent.path().join("workspace");
+        std::fs::create_dir(&workspace).unwrap();
+        std::fs::write(
+            workspace.join("morphir.toml"),
+            "[project]\nname = \"acme/orders\"\nsource_directory = \"src\"\n",
+        )
+        .unwrap();
+        std::fs::write(workspace.join("morphir-ir.json"), "inside").unwrap();
+        let provider = NativeWorkspaceProvider::discover(&workspace, "session-1").unwrap();
+        let source = provider.initial_sources().pop().unwrap();
+        let project_id = provider.open(&source).await.unwrap().projects[0].id.clone();
+
+        std::fs::rename(&workspace, parent.path().join("original-workspace")).unwrap();
+        std::fs::create_dir(&workspace).unwrap();
+        std::fs::write(
+            workspace.join("morphir.toml"),
+            "[project]\nname = \"acme/orders\"\nsource_directory = \"src\"\n",
+        )
+        .unwrap();
+        std::fs::write(workspace.join("morphir-ir.json"), "outside").unwrap();
+
+        let model = provider
+            .load_project_model(&source, &project_id)
+            .await
+            .unwrap();
+
+        assert_eq!(model.content, "inside");
     }
 }

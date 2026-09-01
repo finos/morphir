@@ -29,12 +29,12 @@ struct NoopProjectModelHooks;
 impl ProjectModelHooks for NoopProjectModelHooks {}
 
 pub(super) async fn load_project_model(
-    workspace: &Path,
+    workspace: &Dir,
     source: &WorkbenchSourceRef,
     snapshot: WorkspaceSnapshot,
     project_id: &str,
 ) -> Result<ProjectModelOpenResult, CliError> {
-    let workspace = workspace.to_path_buf();
+    let workspace = workspace.try_clone().map_err(CliError::from)?;
     let source = source.clone();
     let project_id = project_id.to_owned();
     tokio::task::spawn_blocking(move || load(&workspace, &source, snapshot, &project_id))
@@ -43,7 +43,7 @@ pub(super) async fn load_project_model(
 }
 
 fn load(
-    workspace: &Path,
+    workspace: &Dir,
     source: &WorkbenchSourceRef,
     snapshot: WorkspaceSnapshot,
     project_id: &str,
@@ -58,7 +58,7 @@ fn load(
 }
 
 fn load_with_hooks<H: ProjectModelHooks + ?Sized>(
-    workspace: &Path,
+    workspace: &Dir,
     source: &WorkbenchSourceRef,
     snapshot: WorkspaceSnapshot,
     project_id: &str,
@@ -123,9 +123,12 @@ fn load_with_hooks<H: ProjectModelHooks + ?Sized>(
     })
 }
 
-fn open_project_artifact(workspace: &Path, relative_path: &str) -> Result<File, CliError> {
-    let mut directory =
-        Dir::open_ambient_dir(workspace, cap_std::ambient_authority()).map_err(CliError::from)?;
+pub(super) fn open_workspace(workspace: &Path) -> Result<Dir, CliError> {
+    Dir::open_ambient_dir(workspace, cap_std::ambient_authority()).map_err(CliError::from)
+}
+
+fn open_project_artifact(workspace: &Dir, relative_path: &str) -> Result<File, CliError> {
+    let mut directory = workspace.try_clone().map_err(CliError::from)?;
     if relative_path != "." {
         let components = Path::new(relative_path).components().collect::<Vec<_>>();
         if components.is_empty() {
@@ -227,7 +230,8 @@ mod tests {
             external: external.path().to_path_buf(),
         };
 
-        let result = load_with_hooks(root.path(), &source, snapshot, &project_id, &hooks).unwrap();
+        let workspace = open_workspace(root.path()).unwrap();
+        let result = load_with_hooks(&workspace, &source, snapshot, &project_id, &hooks).unwrap();
 
         assert_eq!(result.content, "inside");
         assert!(
@@ -279,7 +283,8 @@ mod tests {
             }],
         };
 
-        let error = load_project_model(root.path(), &source, snapshot, &project_id)
+        let workspace = open_workspace(root.path()).unwrap();
+        let error = load_project_model(&workspace, &source, snapshot, &project_id)
             .await
             .unwrap_err();
 

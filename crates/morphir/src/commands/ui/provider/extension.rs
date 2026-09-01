@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use cap_std::fs::Dir;
 use chrono::{SecondsFormat, Utc};
 use morphir_common::home::MorphirHome;
 use morphir_daemon::extensions::{
@@ -20,7 +21,11 @@ use morphir_workspace as portable;
 
 use crate::error::CliError;
 
-use super::{WorkspaceCapability, native::qualify_snapshot, project_model::load_project_model};
+use super::{
+    WorkspaceCapability,
+    native::qualify_snapshot,
+    project_model::{load_project_model, open_workspace},
+};
 use crate::commands::ui::protocol::{
     DevelopmentWorkbenchDescriptor, DevelopmentWorkbenchKind, DevelopmentWorkbenchRoute,
     InspectResult, ProjectModelOpenResult, ProviderKind, ProviderManifest, ProviderProvenance,
@@ -32,6 +37,7 @@ pub struct ExtensionWorkspaceProvider {
     manifest: ProviderManifest,
     source: WorkbenchSourceRef,
     workspace: PathBuf,
+    workspace_dir: Dir,
     implementation: ExtensionImplementation,
 }
 
@@ -89,7 +95,9 @@ impl ExtensionWorkspaceProvider {
         let snapshot = candidates.pop().expect("one candidate remains");
         let installed = snapshot.installed();
         let provider_id = format!("cli:{session_id}");
-        let source = source_for(workspace, &provider_id);
+        let workspace = workspace.to_path_buf();
+        let workspace_dir = open_workspace(&workspace)?;
+        let source = source_for(&workspace, &provider_id);
         let manifest = manifest_for(
             &provider_id,
             &format!("{} via Morphir CLI", installed.name()),
@@ -101,7 +109,8 @@ impl ExtensionWorkspaceProvider {
         Ok(Self {
             manifest,
             source,
-            workspace: workspace.to_path_buf(),
+            workspace,
+            workspace_dir,
             implementation: ExtensionImplementation::Installed {
                 home,
                 snapshot: Box::new(snapshot),
@@ -127,6 +136,7 @@ impl ExtensionWorkspaceProvider {
             ),
             source: source_for(workspace, &provider_id),
             workspace: workspace.to_path_buf(),
+            workspace_dir: open_workspace(workspace).unwrap(),
             implementation: ExtensionImplementation::Fixture(Arc::new(snapshot)),
         }
     }
@@ -200,7 +210,7 @@ impl WorkspaceCapability for ExtensionWorkspaceProvider {
     ) -> Result<ProjectModelOpenResult, CliError> {
         self.validate_source(source)?;
         let snapshot = self.open(source).await?;
-        load_project_model(&self.workspace, &self.source, snapshot, project_id).await
+        load_project_model(&self.workspace_dir, &self.source, snapshot, project_id).await
     }
 }
 
