@@ -9,12 +9,11 @@ pub use options::GenerateOptions;
 use crate::error::{CliError, convert_extension_diagnostics};
 use crate::home::MorphirHome;
 use morphir_common::loader::load_ir;
-use morphir_daemon::extensions::registry::ExtensionRegistry;
 use morphir_devkit::{
     discover_config, ensure_morphir_structure, load_config_context, resolve_generate_output,
 };
 use morphir_distribution::list_installed;
-use morphir_extension_sdk::{GenerateRequest, GenerateResult, protocol::methods};
+use morphir_extension_sdk::GenerateRequest;
 use starbase::AppResult;
 use std::path::{Path, PathBuf};
 
@@ -92,6 +91,7 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
         }
         .into());
     }
+    let input_path = resolve_generate_input(input_path);
 
     // Determine output path
     let output_path = if let Some(out) = output {
@@ -109,6 +109,16 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
     let installed = list_installed(&home).map_err(|error| CliError::Extension {
         message: format!("Failed to list installed backend providers: {error}"),
     })?;
+    let registry = crate::extensions::extension_registry(installed)?;
+    let resolved = registry
+        .resolve_backend(
+            &target_lang,
+            &ir_version,
+            morphir_daemon::InvocationPolicy::PreferDirect,
+        )
+        .map_err(|error| CliError::Extension {
+            message: format!("Failed to resolve backend for '{target_lang}': {error}"),
+        })?;
     let workspace = ctx
         .project_root
         .clone()
@@ -120,22 +130,7 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
             error: error.into(),
         })?,
     };
-    let result = match provider::resolve_provider(&installed, &target_lang, &ir_version)? {
-        provider::ProviderRoute::Installed(installed) => {
-            provider::invoke_generate(
-                &home,
-                installed,
-                &workspace,
-                &target_lang,
-                &ir_version,
-                request,
-            )
-            .await?
-        }
-        provider::ProviderRoute::LegacyBuiltin => {
-            invoke_builtin(&workspace, &target_lang, request).await?
-        }
-    };
+    let result = crate::extensions::invoke_backend(&home, &workspace, &resolved, request).await?;
 
     let format = OutputFormat::from_flags(json, json_lines);
 
@@ -177,42 +172,13 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
     Ok(None)
 }
 
-async fn invoke_builtin(
-    workspace: &Path,
-    target: &str,
-    request: GenerateRequest,
-) -> Result<GenerateResult, CliError> {
-    let registry =
-        ExtensionRegistry::for_restricted_generation(workspace.to_path_buf()).map_err(|error| {
-            CliError::Extension {
-                message: format!("Failed to create extension registry: {error}"),
-            }
-        })?;
-    for builtin in morphir_devkit::discover_builtin_extensions() {
-        if let Some(path) = builtin.path {
-            registry
-                .register_builtin(&builtin.id, path)
-                .await
-                .map_err(|error| CliError::Extension {
-                    message: format!(
-                        "Failed to register builtin extension '{}': {error}",
-                        builtin.id
-                    ),
-                })?;
-        }
+fn resolve_generate_input(path: PathBuf) -> PathBuf {
+    let compiled = path.join("morphir-ir.json");
+    if path.is_dir() && compiled.is_file() {
+        compiled
+    } else {
+        path
     }
-    let extension = registry
-        .find_extension_by_target(target)
-        .await
-        .ok_or_else(|| CliError::Extension {
-            message: format!("No extension found for target: {target}"),
-        })?;
-    extension
-        .call(methods::GENERATE, request)
-        .await
-        .map_err(|error| CliError::Extension {
-            message: format!("Extension generate call failed: {error}"),
-        })
 }
 
 fn publish_returned_artifacts(
@@ -245,5 +211,31 @@ mod tests {
             std::fs::read_to_string(output.join("nested/schema.avsc")).unwrap(),
             "{\"type\":\"record\"}"
         );
+    }
+
+    #[test]
+    fn compile_output_directory_resolves_its_host_written_ir_file() {
+        let root = tempdir().unwrap();
+        let compiled = root.path().join("compiled");
+        std::fs::create_dir_all(&compiled).unwrap();
+        std::fs::write(compiled.join("morphir-ir.json"), "{}").unwrap();
+
+        assert_eq!(
+            resolve_generate_input(compiled.clone()),
+            compiled.join("morphir-ir.json")
+        );
+    }
+
+    #[test]
+    fn ordinary_document_tree_directory_stays_a_directory() {
+        let root = tempdir().unwrap();
+        let document_tree = root.path().join("document-tree");
+        std::fs::create_dir_all(&document_tree).unwrap();
+
+        let resolved = resolve_generate_input(document_tree.clone());
+        let ir = load_ir(&resolved).unwrap();
+
+        assert_eq!(resolved, document_tree);
+        assert_eq!(ir["formatVersion"], 4);
     }
 }

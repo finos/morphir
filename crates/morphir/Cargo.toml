@@ -40,6 +40,7 @@ morphir-common = { path = "../../ecosystem/morphir-rust/crates/morphir-common" }
 morphir-devkit = { path = "../../ecosystem/morphir-rust/crates/morphir-devkit" }
 morphir-daemon = { path = "../../ecosystem/morphir-rust/crates/morphir-daemon" }
 morphir-extension-sdk = { path = "../../ecosystem/morphir-rust/crates/morphir-extension-sdk" }
+morphir-gleam-binding = { path = "../../ecosystem/morphir-rust/crates/morphir-gleam-binding" }
 morphir-distribution = { path = "../../ecosystem/morphir-rust/crates/morphir-distribution" }
 morphir-workspace = { path = "../../ecosystem/morphir-rust/crates/morphir-workspace" }
 morphir-okf = { path = "../../ecosystem/morphir-rust/crates/morphir-okf" }

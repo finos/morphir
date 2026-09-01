@@ -36,6 +36,8 @@ analysis, optimization, and cross-platform code generation.
 - [WIT Type Mapping (Archived)](https://morphir.finos.org/docs/user-guides/cli-tools/wit-type-mapping): WIT ↔ Morphir IR type mapping for the Go WIT pipeline is maintained with Morphir Go. See finos/morphir-go. This page is no longer active documentation for the Rust CLI in finos/morphir.
 - [Decorations User Guide](https://morphir.finos.org/docs/user-guides/development-guides/decorations-users-guide): The Morphir IR contains all the domain models and business logic that you defined in your model but sometimes you want to add more information that cannot be captured in the language.
 - [Generate Apache Avro](https://morphir.finos.org/docs/generate/avro): The morphir-avro WASM extension turns public Morphir types and value specifications into Apache Avro schemas or protocols. It accepts Morphir IR v3 and v4.
+- [Generate JSON Schema](https://morphir.finos.org/docs/generate/json-schema): The morphir-openapi WASM extension turns public Morphir types into JSON Schema 2020-12 documents. It also renders OpenAPI documents; see Generate OpenAPI.
+- [Generate OpenAPI](https://morphir.finos.org/docs/generate/openapi): The morphir-openapi WASM extension turns a public Morphir package into an OpenAPI document: its public types become components/schemas, and, depending on the chosen projection mode, its public value...
 - [Attributes](https://morphir.finos.org/docs/spec/draft/attributes): Specification for Attributes in Morphir IR v4
 - [Distribution](https://morphir.finos.org/docs/spec/draft/distribution): Specification for Morphir IR v4 Distributions
 - [Draft Specifications](https://morphir.finos.org/docs/spec/draft/): This section contains the draft specifications for Morphir IR Version 4.

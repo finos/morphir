@@ -1,7 +1,7 @@
 //! Shared fixture machinery for CLI backend-extension end-to-end tests.
 //!
 //! `generate_extension.rs` (Avro) and `generate_openapi_extension.rs`
-//! (morphir-openapi) both build a release WASM guest, write a schema-v2
+//! (morphir-openapi) both build a release WASM guest, write a schema `"1.0"`
 //! local extension index, install it into an isolated `MORPHIR_HOME`, and
 //! run the `morphir` CLI against it. This module holds the parts that are
 //! identical between the two suites: the index record, the isolated
@@ -129,7 +129,7 @@ pub fn write_wasm_index(
     fs::write(&artifact_path, bytes).unwrap();
     let digest = Sha256Digest::of_bytes(bytes);
     let record = json!({
-        "schemaVersion": 2,
+        "schemaVersion": "1.0",
         "id": id,
         "name": name,
         "version": version,

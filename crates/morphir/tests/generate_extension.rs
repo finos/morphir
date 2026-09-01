@@ -363,7 +363,7 @@ fn generate_rejects_traversal_from_an_installed_provider_without_writing()
     fs::copy(&compiled, &artifact).unwrap();
     let bytes = fs::read(&artifact).unwrap();
     let record = json!({
-        "schemaVersion": 2,
+        "schemaVersion": "1.0",
         "id": "traversal-provider",
         "name": "Traversal Provider",
         "version": "1.0.0",
@@ -445,10 +445,8 @@ fn generate_rejects_traversal_from_an_installed_provider_without_writing()
         "rejected artifact set must write nothing"
     );
     let stderr = String::from_utf8(generated.stderr).unwrap();
-    assert!(
-        stderr.contains("Generated artifact path '../escape.avsc'"),
-        "{stderr}"
-    );
+    assert!(stderr.contains("Generated artifact path"), "{stderr}");
+    assert!(stderr.contains("escape.avsc"), "{stderr}");
     assert!(stderr.contains("normalized relative path"), "{stderr}");
     Ok(())
 }

@@ -9,7 +9,7 @@ sidebar_position: 3
 > The OpenAPI and JSON Schema backend has no published release. The
 > extension is registered for independent release and has its own packaging
 > task, but no release has been cut and there is no public extension index,
-> so installation uses a locally built bundle and a local schema-v2 index,
+> so installation uses a locally built bundle and a local schema `"1.0"` index,
 > as shown below. This guide describes the current contract for testing that
 > locally built and installed extension. Do not treat it as an announcement
 > of an available release.
@@ -29,7 +29,7 @@ specifications. It does not evaluate Morphir values or translate computation.
 
 There is no published `morphir-openapi` extension to install yet, and no
 public extension index to install it from. Contributors build the bundle
-with its packaging task, create a schema-v2 local index, and install from
+with its packaging task, create a schema `"1.0"` local index, and install from
 that index. From the `ecosystem/morphir-rust` directory, run:
 
 ```console
@@ -52,7 +52,7 @@ artifact = descriptor["artifact"]
 shutil.copy2(descriptor_path.parent / artifact, index / "artifacts" / artifact)
 
 record = {
-    "schemaVersion": 2,
+    "schemaVersion": "1.0",
     "id": descriptor["extensionId"],
     "name": "Morphir OpenAPI",
     "version": descriptor["version"],
@@ -80,9 +80,10 @@ PY
 
 `release.json` describes the release bundle, and its `targets` list carries
 both `openapi` and `json-schema` straight through into the index record: one
-installed extension serves both. The install command needs the schema-v2
-JSONL record created above, so the descriptor cannot be passed to the CLI
-directly. Install into an isolated contributor home with the root CLI:
+installed extension serves both. The install command needs the JSONL record
+with the quoted `"schemaVersion": "1.0"` string created above, so the descriptor
+cannot be passed to the CLI directly. Install into an isolated contributor home
+with the root CLI:
 
 ```console
 MORPHIR_HOME="$PWD/.morphir/local-home" \
