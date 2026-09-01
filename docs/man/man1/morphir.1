@@ -39,6 +39,18 @@ Show the effective configuration after merging every source
 \fBconfig path\fR
 Show which configuration sources were considered
 .TP
+\fBdiagnostics\fR
+Locate Morphir logs and collect troubleshooting information
+.TP
+\fBdiagnostics path\fR
+Show the local Morphir log locations
+.TP
+\fBdiagnostics collect\fR
+Create a local sanitized diagnostic archive
+.TP
+\fBdiagnostics show\fR
+Show events correlated with one operation
+.TP
 \fBtool\fR
 Manage Morphir tools, distributions, and extensions
 .TP
@@ -407,6 +419,42 @@ Output as JSON
 .TP
 \fB\-\-isolated\fR
 Ignore machine\-level and user\-level configuration sources
+.SH "MORPHIR DIAGNOSTICS PATH"
+Show the local Morphir log locations
+.PP
+\fBUsage:\fR morphir diagnostics path [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-json\fR
+Output paths as JSON
+.SH "MORPHIR DIAGNOSTICS COLLECT"
+Create a local sanitized diagnostic archive
+.PP
+\fBUsage:\fR morphir diagnostics collect [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-operation\fR \fI<OPERATION>\fR
+Operation ID reported by Morphir
+.TP
+\fB\-\-output\fR \fI<OUTPUT>\fR
+New ZIP archive to create
+.SH "MORPHIR DIAGNOSTICS SHOW"
+Show events correlated with one operation
+.PP
+\fBUsage:\fR morphir diagnostics show [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-operation\fR \fI<OPERATION>\fR
+Operation ID reported by Morphir
+.TP
+\fB\-\-json\fR
+Output events as JSON
 .SH "MORPHIR TOOL INSTALL"
 Install a Morphir tool or extension
 .PP

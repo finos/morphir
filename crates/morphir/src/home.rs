@@ -6,3 +6,11 @@
 //! environment variable, falling back to the OS-specific `~/.morphir`).
 
 pub use morphir_common::home::{MORPHIR_HOME_ENV, MorphirHome};
+
+/// Resolve the effective CLI file-log directory for a known Morphir Home.
+pub fn effective_cli_logs_dir(home: &MorphirHome) -> std::path::PathBuf {
+    std::env::var_os("MORPHIR_LOG_DIR")
+        .filter(|path| !path.is_empty())
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| home.cli_logs_dir())
+}

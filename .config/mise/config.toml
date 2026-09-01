@@ -251,3 +251,7 @@ run = "python .config/mise/tasks/submodules/add.py"
 [tasks."ci:validate-docs"]
 description = "Validate documentation files"
 run = "python .config/mise/tasks/ci/validate_docs.py"
+
+[tasks."ci:validate-tool-release-metadata"]
+description = "Validate signed tool release metadata fixtures"
+run = "python .config/mise/tasks/ci/validate_tool_release_metadata.py"

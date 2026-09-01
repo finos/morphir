@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/schemas/tool-release-v1.schema.json",
+  "title": "Morphir tool release descriptor version 1",
+  "description": "An authenticated Morphir tool release descriptor referenced by TUF targets metadata",
+  "examples": [
+    {
+      "schemaVersion": 1,
+      "kind": "morphir-tool-release",
+      "tool": {
+        "id": "desktop",
+        "name": "Morphir Desktop"
+      },
+      "version": "1.0.0",
+      "channels": [ "stable" ],
+      "status": "active",
+      "compatibility": {
+        "morphirCli": ">=0.4.0-alpha.5, <0.5.0"
+      },
+      "artifacts": [
+        {
+          "targetPath": "artifacts/desktop/1.0.0/windows-x86_64.zip",
+          "platform": {
+            "os": "windows",
+            "arch": "x86_64"
+          },
+          "archive": {
+            "format": "zip",
+            "entryPoint": "Morphir Desktop.exe"
+          },
+          "launch": {
+            "kind": "executable",
+            "path": "Morphir Desktop.exe",
+            "args": []
+          }
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "if": {
+    "properties": {
+      "status": {
+        "const": "revoked"
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "channels": {
+        "maxItems": 0
+      }
+    }
+  },
+  "else": {
+    "if": {
+      "properties": {
+        "status": {
+          "const": "yanked"
+        }
+      }
+    },
+    "then": {
+      "properties": {
+        "channels": {
+          "maxItems": 0
+        },
+        "artifacts": {
+          "minItems": 1
+        }
+      }
+    },
+    "else": {
+      "properties": {
+        "artifacts": {
+          "minItems": 1
+        }
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "kind",
+    "tool",
+    "version",
+    "channels",
+    "status",
+    "compatibility",
+    "artifacts"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "morphir-tool-release"
+    },
+    "tool": {
+      "type": "object",
+      "required": [ "id", "name" ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/portableToken"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "\\S",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "version": {
+      "$ref": "#/$defs/semanticVersion"
+    },
+    "channels": {
+      "description": "Channel memberships at initial descriptor publication; current signed targets metadata is authoritative",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/channel"
+      }
+    },
+    "status": {
+      "description": "Release status at initial descriptor publication; current signed targets metadata is authoritative",
+      "enum": [ "active", "yanked", "revoked" ]
+    },
+    "compatibility": {
+      "type": "object",
+      "required": [ "morphirCli" ],
+      "properties": {
+        "morphirCli": {
+          "type": "string",
+          "pattern": "\\S",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "artifacts": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/artifact"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "portableToken": {
+      "type": "string",
+      "pattern": "^[a-z](?:[a-z0-9-]*[a-z0-9])?$"
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "channel": {
+      "type": "string",
+      "pattern": "^(?:stable|preview|insiders|preview/[a-z](?:[a-z0-9-]*[a-z0-9])?)$"
+    },
+    "relativePath": {
+      "type": "string",
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*\\\\)(?!.*\\/$)[^\\u0000\\u000A\\u000D\\u2028\\u2029]+$",
+      "minLength": 1
+    },
+    "platform": {
+      "type": "object",
+      "required": [ "os", "arch" ],
+      "properties": {
+        "os": {
+          "$ref": "#/$defs/portableToken"
+        },
+        "arch": {
+          "type": "string",
+          "pattern": "^[a-z0-9](?:[a-z0-9_-]*[a-z0-9])?$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "artifact": {
+      "type": "object",
+      "required": [ "targetPath", "platform", "archive", "launch" ],
+      "properties": {
+        "targetPath": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "platform": {
+          "$ref": "#/$defs/platform"
+        },
+        "archive": {
+          "type": "object",
+          "required": [ "format", "entryPoint" ],
+          "properties": {
+            "format": {
+              "enum": [ "zip", "tar-gzip", "appimage", "raw" ]
+            },
+            "entryPoint": {
+              "$ref": "#/$defs/relativePath"
+            }
+          },
+          "additionalProperties": false
+        },
+        "launch": {
+          "type": "object",
+          "required": [ "kind", "path", "args" ],
+          "properties": {
+            "kind": {
+              "const": "executable"
+            },
+            "path": {
+              "$ref": "#/$defs/relativePath"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[^\\u0000]*$"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

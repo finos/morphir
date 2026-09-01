@@ -257,9 +257,9 @@ Cleanup emits structured events for policy evaluation, reclaimed bytes, skipped 
 
 ## Registry and trust
 
-The first remote tool index should expose immutable release records plus mutable channel membership. A channel resolves to an exact record before download. The installed catalog retains the exact metadata revision used for that resolution.
+The first remote tool repository exposes immutable release descriptors plus mutable channel membership through the [tool release metadata v1 profile](../../spec/tool-release-metadata/index.md). A channel resolves to an exact descriptor before download. The installed catalog retains the exact trusted metadata version used for that resolution.
 
-Artifact digests detect corruption only when the metadata carrying the digest is authentic. Public Desktop acquisition therefore requires signed release metadata with a verification root distributed by the CLI. HTTPS remains required but is not the sole publisher-authentication mechanism. Root rotation, revocation, mirrors, and offline metadata expiry need explicit policy before public rollout.
+Artifact digests detect corruption only when the metadata carrying the digest is authentic. Public Desktop acquisition uses The Update Framework 1.0 with an out-of-band trusted root, consistent snapshots, sequential dual-threshold root rotation, signed freshness metadata, and SHA-256 target hashes. Mirrors share one repository identity and trust root. HTTPS remains required but is not the publisher-authentication mechanism. New resolution rejects expired metadata, while an installed release continues to launch from its exact catalog lock unless the client has persisted a trusted revocation.
 
 Network access supports bounded timeouts, proxies, standard certificate stores, resumable downloads where the server permits them, and useful diagnostics. Cached metadata and bytes are verified before reuse.
 
@@ -308,9 +308,9 @@ The first implementation uses structured local events and spans. Its field model
 
 ### Current implementation gaps
 
-The CLI now initializes structured local logging on the ordinary command path, writes per-session files beneath `MORPHIR_HOME/logs/cli`, applies separate console and file filters, and enforces the default age and size retention policy at startup. `MORPHIR_LOGGING__LEVEL` and `MORPHIR_LOGGING__FILE_LEVEL` are canonical, with the older names retained as compatibility aliases. Startup logging is currently environment-controlled and does not yet consume a discovered `[logging]` configuration table. Remaining CLI work includes configuration-file integration, operation and launch correlation, lifecycle spans, log discovery, diagnostic bundles, and redaction sentinel coverage. Tool and extension commands still print some lifecycle details directly instead of emitting structured events.
+The CLI initializes structured local logging on the ordinary command path, writes per-session files beneath `MORPHIR_HOME/logs/cli`, applies separate console and file filters, and enforces the default age and size retention policy at startup. `MORPHIR_LOGGING__LEVEL` and `MORPHIR_LOGGING__FILE_LEVEL` are canonical, with the older names retained as compatibility aliases. CLI operations now have opaque IDs, failures name the exact session log, and `morphir diagnostics path`, `show`, and `collect` provide the first local troubleshooting workflow. The first bundle format contains sanitized correlated events, a system summary, checksums, and explicit exclusions. It does not yet include authenticated crash associations, catalog integrity, or acquisition-policy summaries. Remaining CLI work includes configuration-file integration, acquisition and launch spans, launcher propagation, and broader redaction sentinel coverage. Tool and extension commands still print some lifecycle details directly instead of emitting structured events.
 
-Morphir Desktop currently writes a few smoke messages through `console` and has no file logger, event schema, crash path, operation correlation, or troubleshooting interface. These are release gaps rather than optional refinements.
+Morphir Desktop writes correlated per-process JSON Lines beneath `MORPHIR_HOME/logs/desktop`, records main, renderer, child-process, and startup failures, and keeps Crashpad upload disabled. Startup maintenance bounds completed logs by age and size, preserves live sessions, and removes only expired recognized minidumps. Desktop still needs its troubleshooting interface, diagnostic-bundle action, and correlation with the CLI launch handshake.
 
 ### User experience
 
@@ -480,7 +480,6 @@ Every implementation step starts with failure-focused tests. Cross-platform acce
 
 ## Remaining policy decisions
 
-- Select the signed metadata format and root-rotation procedure.
 - Decide whether update availability checks are implemented by the CLI, Desktop, or a shared service.
 - Define optional OS shortcut and file-association integration without making it part of portable installation.
 - Choose the optional telemetry-export protocol and configuration after local instrumentation is proven.

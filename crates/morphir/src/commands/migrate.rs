@@ -61,8 +61,9 @@ pub fn run_migrate(input: String, options: MigrateCommandOptions) -> AppResult<m
             Ok(None)
         }
         Err(error) => {
-            report::error(options.json, &input, &output_name, &error.to_string());
-            Ok(Some(1))
+            let diagnostic = error.to_string();
+            report::error(options.json, &input, &output_name, &diagnostic);
+            Err(miette::miette!(diagnostic))
         }
     }
 }

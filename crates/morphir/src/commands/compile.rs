@@ -1611,9 +1611,9 @@ enabled = true
         let debug = format!("{process:?}");
 
         assert!(debug.contains("morphir-elm"));
-        assert!(debug.contains(&expected_program.to_string_lossy().into_owned()));
+        assert!(debug.contains(&format!("{expected_program:?}")));
         assert!(debug.contains("--stdio"));
-        assert!(debug.contains(&config_dir.to_string_lossy().into_owned()));
+        assert!(debug.contains(&format!("{config_dir:?}")));
         assert!(debug.contains("TASK10_TEST_ENV"));
         assert!(debug.contains("explicit-value"));
     }

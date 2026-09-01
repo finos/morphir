@@ -10,10 +10,8 @@ pub fn run_schema(output: Option<PathBuf>) -> AppResult<miette::Report> {
 }"#;
 
     if let Some(path) = output {
-        if let Err(e) = std::fs::write(&path, message) {
-            eprintln!("Failed to write schema to {:?}: {}", path, e);
-            return Ok(Some(1));
-        }
+        std::fs::write(&path, message)
+            .map_err(|error| miette::miette!("Failed to write schema to {path:?}: {error}"))?;
     } else {
         println!("{}", message);
     }

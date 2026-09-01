@@ -1,0 +1,6 @@
+label: 'Tool release metadata'
+position: 6
+collapsed: false
+link:
+  type: doc
+  id: spec/tool-release-metadata/index

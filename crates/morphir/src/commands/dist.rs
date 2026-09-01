@@ -98,13 +98,8 @@ impl DistRegistry {
 pub fn run_dist_install(name: String, version: Option<String>) -> AppResult<miette::Report> {
     println!("Installing Morphir distribution: {}", name);
 
-    let mut registry = match DistRegistry::load() {
-        Ok(reg) => reg,
-        Err(e) => {
-            eprintln!("Error: Failed to load distribution registry: {}", e);
-            return Ok(Some(1));
-        }
-    };
+    let mut registry = DistRegistry::load()
+        .map_err(|error| miette::miette!("Failed to load distribution registry: {error}"))?;
 
     // Check if distribution is already installed
     if let Some(existing_dist) = registry.get_distribution(&name) {
@@ -129,10 +124,9 @@ pub fn run_dist_install(name: String, version: Option<String>) -> AppResult<miet
 
     // Add distribution to registry
     registry.add_distribution(dist);
-    if let Err(e) = registry.save() {
-        eprintln!("Error: Failed to save distribution registry: {}", e);
-        return Ok(Some(1));
-    }
+    registry
+        .save()
+        .map_err(|error| miette::miette!("Failed to save distribution registry: {error}"))?;
 
     println!(
         "✓ Successfully installed distribution '{}' (version: {})",
@@ -147,13 +141,8 @@ pub fn run_dist_install(name: String, version: Option<String>) -> AppResult<miet
 pub fn run_dist_list() -> AppResult<miette::Report> {
     println!("Listing installed Morphir distributions...\n");
 
-    let registry = match DistRegistry::load() {
-        Ok(reg) => reg,
-        Err(e) => {
-            eprintln!("Error: Failed to load distribution registry: {}", e);
-            return Ok(Some(1));
-        }
-    };
+    let registry = DistRegistry::load()
+        .map_err(|error| miette::miette!("Failed to load distribution registry: {error}"))?;
 
     let distributions = registry.list_distributions();
 
@@ -178,25 +167,13 @@ pub fn run_dist_list() -> AppResult<miette::Report> {
 pub fn run_dist_update(name: String, version: Option<String>) -> AppResult<miette::Report> {
     println!("Updating Morphir distribution: {}", name);
 
-    let mut registry = match DistRegistry::load() {
-        Ok(reg) => reg,
-        Err(e) => {
-            eprintln!("Error: Failed to load distribution registry: {}", e);
-            return Ok(Some(1));
-        }
-    };
+    let mut registry = DistRegistry::load()
+        .map_err(|error| miette::miette!("Failed to load distribution registry: {error}"))?;
 
     // Check if distribution exists
-    let existing_dist = match registry.get_distribution(&name) {
-        Some(dist) => dist.clone(),
-        None => {
-            eprintln!(
-                "Error: Distribution '{}' is not installed. Use 'morphir dist install' first",
-                name
-            );
-            return Ok(Some(1));
-        }
-    };
+    let existing_dist = registry.get_distribution(&name).cloned().ok_or_else(|| {
+        miette::miette!("Distribution '{name}' is not installed. Use 'morphir dist install' first")
+    })?;
 
     let old_version = existing_dist
         .version
@@ -223,10 +200,9 @@ pub fn run_dist_update(name: String, version: Option<String>) -> AppResult<miett
     };
 
     registry.add_distribution(updated_dist);
-    if let Err(e) = registry.save() {
-        eprintln!("Error: Failed to save distribution registry: {}", e);
-        return Ok(Some(1));
-    }
+    registry
+        .save()
+        .map_err(|error| miette::miette!("Failed to save distribution registry: {error}"))?;
 
     println!(
         "✓ Successfully updated distribution '{}' from {} to {}",
@@ -240,27 +216,17 @@ pub fn run_dist_update(name: String, version: Option<String>) -> AppResult<miett
 pub fn run_dist_uninstall(name: String) -> AppResult<miette::Report> {
     println!("Uninstalling Morphir distribution: {}", name);
 
-    let mut registry = match DistRegistry::load() {
-        Ok(reg) => reg,
-        Err(e) => {
-            eprintln!("Error: Failed to load distribution registry: {}", e);
-            return Ok(Some(1));
-        }
-    };
+    let mut registry = DistRegistry::load()
+        .map_err(|error| miette::miette!("Failed to load distribution registry: {error}"))?;
 
     // Remove distribution from registry
-    let removed_dist = match registry.remove_distribution(&name) {
-        Some(dist) => dist,
-        None => {
-            eprintln!("Error: Distribution '{}' is not installed", name);
-            return Ok(Some(1));
-        }
-    };
+    let removed_dist = registry
+        .remove_distribution(&name)
+        .ok_or_else(|| miette::miette!("Distribution '{name}' is not installed"))?;
 
-    if let Err(e) = registry.save() {
-        eprintln!("Error: Failed to save distribution registry: {}", e);
-        return Ok(Some(1));
-    }
+    registry
+        .save()
+        .map_err(|error| miette::miette!("Failed to save distribution registry: {error}"))?;
 
     let version_str = removed_dist.version.as_deref().unwrap_or(DEFAULT_VERSION);
     println!(

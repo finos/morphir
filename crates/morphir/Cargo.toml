@@ -45,6 +45,8 @@ morphir-workspace = { path = "../../ecosystem/morphir-rust/crates/morphir-worksp
 morphir-okf = { path = "../../ecosystem/morphir-rust/crates/morphir-okf" }
 morphir-kb = { path = "../../ecosystem/morphir-rust/crates/morphir-kb" }
 semver = { workspace = true }
+uuid = { workspace = true }
+zip = { workspace = true }
 chrono = "0.4"
 walkdir = "2"
 fs2 = { workspace = true }
@@ -84,6 +86,7 @@ windows-sys = { workspace = true }
 
 [dev-dependencies]
 cucumber = { workspace = true }
+ed25519-dalek = { workspace = true }
 futures-util = "0.3"
 reqwest = { version = "0.13", default-features = false, features = ["cookies", "json", "rustls"] }
 tokio-tungstenite = "0.29"
