@@ -4,7 +4,8 @@ sidebar_label: Distribution and acquisition
 sidebar_position: 3
 status: draft
 tracking:
-  beads: [morphir-ct7h, morphir-h0pf, morphir-uhk3]
+  beads: [morphir-ct7h, morphir-h0pf, morphir-uhk3, morphir-ds9e.9]
+  github_issues: [761]
 ---
 
 # Extension distribution and package acquisition
@@ -46,7 +47,7 @@ The useful lessons are:
 3. Resolve the complete graph before acquiring content.
 4. Verify cached and downloaded bytes before materialization.
 5. Validate the materialized manifest against the selected identity.
-6. Pin the registry-index revision as well as package versions and digests.
+6. Pin the repository-metadata revision as well as package versions and digests.
 7. Treat local workspace replacements as policy over a stable identity, not as publishable dependencies.
 
 ## Shared distribution kernel
@@ -63,7 +64,7 @@ A common distribution kernel should provide pure value types and effects for:
 - content-addressed storage under `MorphirHome`;
 - offline and mirror-aware lookup.
 
-Interpreters provide network, Git, filesystem, credential, archive, and cache behavior. Buildkit, frontends, and the extension host consume resolved or materialized values and do not depend on registry URLs, cache layouts, or credentials.
+Interpreters provide network, Git, filesystem, credential, archive, and cache behavior. Buildkit, frontends, and the extension host consume resolved or materialized values and do not depend on repository endpoints, cache layouts, or credentials.
 
 Package and extension policy remains above this shared kernel:
 
@@ -71,11 +72,11 @@ Package and extension policy remains above this shared kernel:
 - the extension resolver understands capabilities, MEP versions, permissions, runtime kinds, operating systems, architectures, launch arguments, and daemon endpoints;
 - each family validates its own manifest after materialization.
 
-## Registry architecture
+## Repository architecture
 
-The first distributed registry backend should be service-free and mirrorable. A Git-backed index is a good launch option when paired with a local-directory backend for tests and air-gapped use.
+The first distributed repository backend should be service-free and mirrorable. A Git-backed repository is a good launch option when paired with a local-directory backend for development, tests, and air-gapped use.
 
-The index should partition histories by a canonical, filesystem-portable encoding of package identity. Each version record should contain only what resolution needs:
+Repository metadata should partition histories by a canonical, filesystem-portable encoding of package identity. Each version record should contain only what resolution needs:
 
 - exact identity and version;
 - dependency requirements when the package family supports dependencies;
@@ -86,38 +87,40 @@ The index should partition histories by a canonical, filesystem-portable encodin
 
 Presentation fields such as descriptions, licenses, documentation, maintainers, and search keywords may extend the record without becoming inputs to dependency resolution.
 
-The client pins the Git commit used for resolution. A future HTTP registry may expose the same logical operations, but reproducibility must not depend on a mutable `latest` response. Mirrors may provide the same identity and digest from a different location.
+The client pins the Git commit or metadata revision used for resolution. A future registry may expose the same logical operations over HTTP, but reproducibility must not depend on a mutable `latest` response. Multiple endpoints may provide the same repository identity and digest.
 
-### Index and repository topology
+### Repository and catalog topology
 
-Morphir packages and extension distributions use separate logical registry indexes. Each index has its own record schema, validation rules, version history, and resolution policy. A model-package index cannot contain extension records, and an extension index cannot contain model-package records.
+Morphir packages and extension distributions use separate logical repositories. Each repository has its own metadata schema, validation rules, version history, and resolution policy. A model-package repository cannot contain extension records, and an extension repository cannot contain model-package records.
 
-Both indexes implement the same client capability for version discovery, exact-record lookup, provenance, and mirroring. That shared capability does not erase the different record types.
+Both repository kinds implement the same client capability for version discovery, exact-record lookup, provenance, and mirroring. That shared capability does not erase the different record types.
 
-An index is a metadata view, not a Git repository. The Git-file backend may store both indexes in one repository under separate roots, for example `model-packages/` and `extensions/`. Deployments may also place them in separate repositories or expose them through different services. Repository layout is a backend and operational choice. It does not change the logical index boundary.
+A repository is a logical collection, not a directory, Git checkout, or service. Those are repository endpoints. One Git repository may host package and extension repository metadata under separate roots, for example `model-packages/` and `extensions/`. Deployments may also place them at separate endpoints or expose them through different registries. Endpoint layout is a backend and operational choice. It does not change the logical repository boundary.
 
-When one Git repository contains both indexes, a lock records the index kind, logical index identity, repository source, root path, and pinned commit. This prevents the shared repository from making an index reference ambiguous.
+The catalog is a searchable view over enabled repositories. It may merge results, but every result retains its repository identity and endpoint provenance. The catalog is neither the publication authority nor the installed-state record.
+
+When one endpoint contains both repository kinds, a lock records the repository kind, logical repository identity, endpoint, root path, and pinned metadata revision. This prevents the shared endpoint from making a repository reference ambiguous.
 
 ### Release channels
 
-Each index supports release channels as mutable version-selection policy. The first channel model includes:
+Each repository supports release channels as mutable version-selection policy. The first channel model includes:
 
 - `stable` for versions intended for general use;
 - `preview` for pre-release testing, also exposed as `insiders` by products that already use that name;
 - optional segmented preview channels such as `preview/<segment>` for a bounded prototype, compatibility test, or staged rollout.
 
-A segmented preview channel remains part of the same logical index. It does not create a new package identity, extension identity, or registry index. Index policy defines valid segment names, who may publish to them, and whether they inherit candidates from the general preview channel.
+A segmented preview channel remains part of the same logical repository. It does not create a new package identity, extension identity, or repository. Repository policy defines valid segment names, who may publish to them, and whether they inherit candidates from the general preview channel.
 
-A channel request resolves to an exact version before acquisition. The lock records the requested channel, exact selected identity and version, index revision, source, and digest. Reusing the lock never follows a moving channel. Refreshing or changing channels is an explicit resolution operation.
+A channel request resolves to an exact version before acquisition. The lock records the requested channel, exact selected identity and version, repository identity, metadata revision, source, and digest. Reusing the lock never follows a moving channel. Refreshing or changing channels is an explicit resolution operation.
 
-Stable resolution excludes preview versions unless the request or workspace policy opts into them. Promotion changes channel eligibility. It does not let a registry replace locked bytes for an existing exact identity and digest.
+Stable resolution excludes preview versions unless the request or workspace policy opts into them. Promotion changes channel eligibility. It does not let a repository replace locked bytes for an existing exact identity and digest.
 
 ## Morphir package flow
 
 ```mermaid
 flowchart LR
-    Requirement[Package requirement] --> Index[Registry index]
-    Index --> Resolve[Resolve graph]
+    Requirement[Package requirement] --> Repository[Package repository]
+    Repository --> Resolve[Resolve graph]
     Resolve --> Lock[Write or verify lock]
     Lock --> Acquire[Acquire sources]
     Acquire --> Verify[Verify and materialize]
@@ -132,20 +135,20 @@ Compilation receives a prepared source view and runs without package-network acc
 
 ```mermaid
 flowchart LR
-    Request[Capability request] --> Catalog[Installed extension catalog]
-    Catalog --> Resolver[Select distribution and artifact]
-    Resolver --> Acquire[Acquire if explicitly requested]
-    Acquire --> Verify[Verify and install]
-    Verify --> Runtime[Select runtime adapter]
+    Selection[Install selection] --> Repository[Extension repository]
+    Repository --> Verify[Resolve, verify, and install]
+    Verify --> Inventory[Installed extension inventory]
+    Request[Capability request] --> Inventory
+    Inventory --> Runtime[Select runtime adapter]
     Runtime --> MEP[Open MEP session]
 ```
 
-The installed extension catalog is local state, not the distributed registry.
+The installed extension inventory is local state, not a repository or catalog.
 It records the extension ID, name, version, runtime, platform, arguments,
 artifact digest, content-addressed store path, capabilities, MEP versions,
-index provenance, backend metadata, and executable mode. The matching lock also
-records the requested selection and artifact source; the catalog does not. The
-host uses the catalog and lock together to select an artifact and runtime
+repository provenance, backend metadata, and executable mode. The matching lock also
+records the requested selection and artifact source; the inventory does not. The
+host uses the inventory and lock together to select an artifact and runtime
 without contacting a registry during normal execution.
 
 An extension manifest needs:
@@ -174,8 +177,8 @@ it without changing an extension record or the MEP methods.
 
 Installation verifies the selected artifact's SHA-256 before publishing it to
 the content-addressed store. It then records the exact artifact in both the
-catalog and lock. Backend records also lock target IDs and supported Morphir IR
-versions. Normal activation is offline. It loads one catalog and lock snapshot,
+inventory and lock. Backend records also lock target IDs and supported Morphir IR
+versions. Normal activation is offline. It loads one inventory and lock snapshot,
 checks that they agree, canonicalizes the stored artifact under Morphir home,
 rehashes it, and verifies its runtime-specific mode before starting a session.
 
@@ -183,7 +186,7 @@ The MEP handshake is a second check, not a replacement for the lock:
 
 | Stage | Compared values | Result on mismatch |
 |---|---|---|
-| Catalog against lock | Extension ID, name, version, runtime, platform, arguments, digest, capabilities, MEP versions, index provenance, complete backend metadata, and executable mode | Activation stops before guest code runs. |
+| Inventory against lock | Extension ID, name, version, runtime, platform, arguments, digest, capabilities, MEP versions, repository provenance, complete backend metadata, and executable mode | Activation stops before guest code runs. |
 | Installed record against initialization | Extension ID, name, version, capability kinds, and the complete backend capability, including targets, IR versions, and `generate` | The host rejects initialization and does not call the backend. |
 | Requested operation against negotiated capability | Target ID, input IR version, and `generate` support | The host does not send `morphir.backend.generate`. |
 
@@ -211,12 +214,12 @@ The existing `morphir server` command becomes an extension daemon only if it imp
 
 - Normal compilation and generation do not download missing extensions without an explicit install policy.
 - Checksums provide integrity, not publisher authenticity. Signature or provenance verification remains an open policy decision.
-- Registry and Git credentials use protected secret references and never enter identities, locks, manifests, transcripts, or diagnostics.
+- Registry and repository credentials use protected secret references and never enter identities, locks, manifests, transcripts, or diagnostics.
 - Installation uses staging and atomic publication so readers never observe partial content.
 - Archives must reject path traversal, unsafe links, device files, and platform path collisions.
 - Native processes inherit a filtered environment and explicit working directory.
 - Daemon connections require a transport-specific identity, authentication, timeout, and ownership policy.
-- Locks retain the exact registry snapshot, selected records, sources, digests, and transitive package graph.
+- Locks retain the exact repository-metadata snapshot, selected records, sources, digests, and transitive package graph.
 
 ## Current host and guest split
 
@@ -236,13 +239,13 @@ independently built artifact through the production host boundary.
 3. Which version and range rules apply to Morphir-native packages and extensions?
 4. Which signature or build-provenance policy establishes publisher authenticity?
 5. How does a host distinguish a daemon it owns from an endpoint it only connects to?
-6. Which yank and revocation behavior must work before the first public registry?
+6. Which yank and revocation behavior must work before the first public repository?
 
 ## Non-goals
 
 - Copy MoonBit's index schema, resolver, or AGPL implementation.
-- Make MEP responsible for installation or registry storage.
+- Make MEP responsible for installation or repository storage.
 - Treat a Morphir package as an executable extension.
-- Require a network service for the first registry backend.
+- Require a network service for the first repository backend.
 - Let compiler or runtime cache layouts become public package contracts.
 - Infer trust from a checksum alone.
