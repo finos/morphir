@@ -326,6 +326,19 @@ fn contains_json_web_token(value: &str) -> bool {
         .any(json_web_token_candidate)
 }
 
+fn contains_npm_access_token(value: &str) -> bool {
+    value
+        .split(|character: char| !(character.is_ascii_alphanumeric() || character == '_'))
+        .any(|candidate| {
+            candidate.strip_prefix("npm_").is_some_and(|secret| {
+                secret.len() >= 16
+                    && secret
+                        .chars()
+                        .all(|character| character.is_ascii_alphanumeric())
+            })
+        })
+}
+
 fn json_web_token_candidate(candidate: &str) -> bool {
     let mut segments = candidate.split('.');
     let (Some(header), Some(payload), Some(_signature), None) = (
@@ -613,8 +626,10 @@ pub(crate) fn sanitize_text(value: &str) -> String {
         || ["ghp_", "github_pat_", "gho_", "ghu_", "ghs_", "ghr_"]
             .iter()
             .any(|prefix| lower.contains(prefix))
+        || contains_npm_access_token(&value)
         || contains_json_web_token(&value)
         || (lower.contains("-----begin ") && lower.contains("private key-----"))
+        || lower.contains("-----begin pgp private key block-----")
         || lower.contains("password=")
         || lower.contains("token=")
         || lower.contains("secret=")
@@ -1598,6 +1613,28 @@ mod tests {
                 "[REDACTED]"
             );
         }
+    }
+
+    #[test]
+    fn standalone_npm_access_tokens_are_redacted() {
+        assert_eq!(
+            sanitize_text("registry request failed with npm_LIVESECRET1234567890"),
+            "[REDACTED]"
+        );
+        assert_eq!(
+            sanitize_text("npm_package_name is available to scripts"),
+            "npm_package_name is available to scripts"
+        );
+    }
+
+    #[test]
+    fn pgp_private_key_blocks_are_redacted() {
+        assert_eq!(
+            sanitize_text(
+                "-----BEGIN PGP PRIVATE KEY BLOCK-----\nLIVE_SECRET\n-----END PGP PRIVATE KEY BLOCK-----"
+            ),
+            "[REDACTED]"
+        );
     }
 
     #[test]
