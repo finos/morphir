@@ -49,16 +49,31 @@ pub async fn invoke_frontend(
     request: CompileRequest,
 ) -> Result<CompileResult, CliError> {
     match resolved.invocation_mode() {
-        InvocationMode::NativeDirect => resolved
-            .native_frontend()
-            .ok_or_else(|| unavailable_mode(resolved.info().id.as_str(), "native frontend"))?
-            .compile(request)
-            .map_err(|error| CliError::Extension {
-                message: format!(
-                    "Native frontend provider '{}' failed: {error}",
-                    resolved.info().id
-                ),
-            }),
+        InvocationMode::NativeDirect => {
+            // A native provider compiles synchronously, so running it inline
+            // would occupy this task until it returned: it would never reach
+            // an await point, which costs a runtime worker for the duration
+            // and leaves any timeout wrapped around this future unable to
+            // fire. `spawn_blocking` moves the call off the runtime, so the
+            // caller's future stays pollable and a caller that gave up
+            // waiting really can stop waiting.
+            let resolved = resolved.clone();
+            blocking(resolved.info().id.clone(), move || {
+                resolved
+                    .native_frontend()
+                    .ok_or_else(|| {
+                        unavailable_mode(resolved.info().id.as_str(), "native frontend")
+                    })?
+                    .compile(request)
+                    .map_err(|error| CliError::Extension {
+                        message: format!(
+                            "Native frontend provider '{}' failed: {error}",
+                            resolved.info().id
+                        ),
+                    })
+            })
+            .await
+        }
         InvocationMode::NativeMep => {
             let loaded = resolved.native_mep_session().ok_or_else(|| {
                 unavailable_mode(resolved.info().id.as_str(), "native MEP frontend")
@@ -96,16 +111,24 @@ pub async fn invoke_backend(
     request: GenerateRequest,
 ) -> Result<GenerateResult, CliError> {
     match resolved.invocation_mode() {
-        InvocationMode::NativeDirect => resolved
-            .native_backend()
-            .ok_or_else(|| unavailable_mode(resolved.info().id.as_str(), "native backend"))?
-            .generate(request)
-            .map_err(|error| CliError::Extension {
-                message: format!(
-                    "Native backend provider '{}' failed: {error}",
-                    resolved.info().id
-                ),
-            }),
+        InvocationMode::NativeDirect => {
+            // See `invoke_frontend`: a native provider generates
+            // synchronously and must not hold the runtime while it does.
+            let resolved = resolved.clone();
+            blocking(resolved.info().id.clone(), move || {
+                resolved
+                    .native_backend()
+                    .ok_or_else(|| unavailable_mode(resolved.info().id.as_str(), "native backend"))?
+                    .generate(request)
+                    .map_err(|error| CliError::Extension {
+                        message: format!(
+                            "Native backend provider '{}' failed: {error}",
+                            resolved.info().id
+                        ),
+                    })
+            })
+            .await
+        }
         InvocationMode::NativeMep => {
             let loaded = resolved.native_mep_session().ok_or_else(|| {
                 unavailable_mode(resolved.info().id.as_str(), "native MEP backend")
@@ -132,6 +155,27 @@ pub async fn invoke_backend(
             )
             .await
         }
+    }
+}
+
+/// Run one synchronous provider call off the async runtime.
+///
+/// A provider that panics takes its blocking thread with it rather than the
+/// process, so the join failure is reported as an extension failure: the
+/// caller asked an extension to do something and the extension did not
+/// answer, which is the same shape as any other invocation error.
+async fn blocking<R>(
+    provider: String,
+    call: impl FnOnce() -> Result<R, CliError> + Send + 'static,
+) -> Result<R, CliError>
+where
+    R: Send + 'static,
+{
+    match tokio::task::spawn_blocking(call).await {
+        Ok(result) => result,
+        Err(error) => Err(CliError::Extension {
+            message: format!("Native provider '{provider}' did not complete: {error}"),
+        }),
     }
 }
 

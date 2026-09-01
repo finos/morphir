@@ -127,6 +127,10 @@ pub struct NativePlaygroundProvider {
     /// [`extension_working_directory`]: the playground never writes here, it
     /// is only the directory a child process is started in.
     working_directory: PathBuf,
+    /// How long one invocation may take. [`INVOCATION_TIMEOUT`] in
+    /// production; a test shortens it so it can watch the bound lapse without
+    /// waiting two real minutes.
+    timeout: Duration,
 }
 
 impl NativePlaygroundProvider {
@@ -140,6 +144,7 @@ impl NativePlaygroundProvider {
             Arc::new(move || installed_registry(&registry_home)),
             Arc::new(RegistryInvoker),
             working_directory,
+            INVOCATION_TIMEOUT,
         )
     }
 
@@ -148,12 +153,14 @@ impl NativePlaygroundProvider {
         registry: RegistrySource,
         invoker: Arc<dyn ExtensionInvoker>,
         working_directory: PathBuf,
+        timeout: Duration,
     ) -> Self {
         Self {
             home,
             registry,
             invoker,
             working_directory,
+            timeout,
         }
     }
 }
@@ -204,7 +211,7 @@ impl PlaygroundCapability for NativePlaygroundProvider {
         let invocation =
             self.invoker
                 .compile(&self.home, &self.working_directory, &resolved, request);
-        match bounded(invocation).await? {
+        match bounded(invocation, self.timeout).await? {
             Invocation::Answered(result) => Ok(PlaygroundCompileResult {
                 success: result.success,
                 ir_version: result.ir_version,
@@ -220,7 +227,7 @@ impl PlaygroundCapability for NativePlaygroundProvider {
                 success: false,
                 ir_version: None,
                 ir: None,
-                diagnostics: vec![timeout_diagnostic(&provider_id)],
+                diagnostics: vec![timeout_diagnostic(&provider_id, self.timeout)],
                 modules: Vec::new(),
             }),
         }
@@ -255,7 +262,7 @@ impl PlaygroundCapability for NativePlaygroundProvider {
         let invocation =
             self.invoker
                 .generate(&self.home, &self.working_directory, &resolved, request);
-        match bounded(invocation).await? {
+        match bounded(invocation, self.timeout).await? {
             Invocation::Answered(result) => Ok(PlaygroundGenerateResult {
                 success: result.success,
                 artifacts: result.artifacts.iter().map(playground_artifact).collect(),
@@ -268,13 +275,13 @@ impl PlaygroundCapability for NativePlaygroundProvider {
             Invocation::TimedOut => Ok(PlaygroundGenerateResult {
                 success: false,
                 artifacts: Vec::new(),
-                diagnostics: vec![timeout_diagnostic(&provider_id)],
+                diagnostics: vec![timeout_diagnostic(&provider_id, self.timeout)],
             }),
         }
     }
 }
 
-/// Bound one invocation by [`INVOCATION_TIMEOUT`].
+/// Bound one invocation by `timeout`.
 ///
 /// A lapsed bound is `Ok(TimedOut)`, not an error: the caller turns it into a
 /// diagnostic on an otherwise well-formed result, because "the compiler gave
@@ -282,8 +289,9 @@ impl PlaygroundCapability for NativePlaygroundProvider {
 /// connection.
 async fn bounded<R>(
     invocation: impl Future<Output = Result<R, CliError>>,
+    timeout: Duration,
 ) -> Result<Invocation<R>, CliError> {
-    match tokio::time::timeout(INVOCATION_TIMEOUT, invocation).await {
+    match tokio::time::timeout(timeout, invocation).await {
         Ok(answered) => answered.map(Invocation::Answered),
         Err(_elapsed) => Ok(Invocation::TimedOut),
     }
@@ -466,13 +474,13 @@ fn option_map(options: &Value) -> HashMap<String, Value> {
         .unwrap_or_default()
 }
 
-fn timeout_diagnostic(extension_id: &str) -> PlaygroundDiagnostic {
+fn timeout_diagnostic(extension_id: &str, bound: Duration) -> PlaygroundDiagnostic {
     PlaygroundDiagnostic {
         severity: "error".into(),
         code: None,
         message: format!(
             "Extension '{extension_id}' timed out after {}s",
-            INVOCATION_TIMEOUT.as_secs()
+            bound.as_secs()
         ),
         location: None,
     }
@@ -532,7 +540,7 @@ mod tests {
         Backend, BackendCapability, Extension, ExtensionCapabilities, ExtensionInfo, Frontend,
         FrontendCapability, LanguageCapability, NativeExtension,
     };
-    use std::sync::Mutex;
+    use std::sync::{Condvar, Mutex};
 
     /// The one IR release every double in this module speaks. Gleam, the only
     /// built-in, advertises the same one, so a test that registers a double
@@ -587,6 +595,103 @@ mod tests {
 
         fn file_extensions() -> Vec<String> {
             vec![".elm".into()]
+        }
+    }
+
+    /// A latch a test holds closed while it checks something, then opens.
+    ///
+    /// Blocking on this from a provider is what a runaway parser looks like
+    /// from the outside: a thread that is busy and will not yield. The wait
+    /// carries its own upper bound so a regression fails the assertion
+    /// instead of hanging the suite.
+    #[derive(Default)]
+    struct Gate {
+        open: Mutex<bool>,
+        opened: Condvar,
+    }
+
+    impl Gate {
+        fn wait(&self, bound: Duration) {
+            let mut open = self.open.lock().expect("the latch is never poisoned");
+            let deadline = std::time::Instant::now() + bound;
+            while !*open {
+                let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+                if remaining.is_zero() {
+                    return;
+                }
+                let (guard, _) = self
+                    .opened
+                    .wait_timeout(open, remaining)
+                    .expect("the latch is never poisoned");
+                open = guard;
+            }
+        }
+
+        fn open(&self) {
+            *self.open.lock().expect("the latch is never poisoned") = true;
+            self.opened.notify_all();
+        }
+    }
+
+    /// A built-in frontend whose `compile` occupies its thread and never
+    /// yields, the way a pathological input to a real parser would.
+    struct BlockingFrontend {
+        gate: Arc<Gate>,
+    }
+
+    /// The longest a blocked compile stays blocked before giving up on its
+    /// own. Only a safety valve: the test opens the latch as soon as it has
+    /// what it needs.
+    const BLOCKED_COMPILE_BOUND: Duration = Duration::from_secs(10);
+
+    impl Extension for BlockingFrontend {
+        fn info() -> ExtensionInfo {
+            ExtensionInfo {
+                id: "blocking-frontend".into(),
+                name: "Blocking Frontend".into(),
+                version: "1.0.0".into(),
+                ..Default::default()
+            }
+        }
+
+        fn capabilities() -> ExtensionCapabilities {
+            ExtensionCapabilities {
+                frontend: Some(FrontendCapability {
+                    languages: vec![LanguageCapability {
+                        id: "blocking".into(),
+                        file_extensions: vec![".blocking".into()],
+                    }],
+                    ir_versions: vec![IR_VERSION.into()],
+                    compile: true,
+                    incremental: false,
+                    fragments: false,
+                }),
+                ..Default::default()
+            }
+        }
+    }
+
+    impl Frontend for BlockingFrontend {
+        fn compile(
+            &self,
+            _request: CompileRequest,
+        ) -> morphir_extension_sdk::Result<CompileResult> {
+            self.gate.wait(BLOCKED_COMPILE_BOUND);
+            Ok(CompileResult {
+                success: true,
+                ir_version: None,
+                ir: None,
+                diagnostics: vec![],
+                modules: vec![],
+            })
+        }
+
+        fn supported_languages() -> Vec<String> {
+            vec!["blocking".into()]
+        }
+
+        fn file_extensions() -> Vec<String> {
+            vec![".blocking".into()]
         }
     }
 
@@ -833,6 +938,15 @@ mod tests {
         register: impl Fn(&mut ExtensionRegistry) + Send + Sync + 'static,
         invoker: Arc<dyn ExtensionInvoker>,
     ) -> Fixture {
+        fixture_bounded_by(register, invoker, INVOCATION_TIMEOUT)
+    }
+
+    /// As [`fixture`], with the invocation bound the caller names.
+    fn fixture_bounded_by(
+        register: impl Fn(&mut ExtensionRegistry) + Send + Sync + 'static,
+        invoker: Arc<dyn ExtensionInvoker>,
+        timeout: Duration,
+    ) -> Fixture {
         let (home_root, home) = scratch_home();
         let working = tempfile::tempdir().expect("a scratch working directory");
         let root_path = home_root.path().to_path_buf();
@@ -845,6 +959,7 @@ mod tests {
             }),
             invoker,
             working.path().to_path_buf(),
+            timeout,
         );
         Fixture {
             provider,
@@ -1079,6 +1194,54 @@ mod tests {
         );
     }
 
+    /// The bound has to hold for a built-in too.
+    ///
+    /// A built-in is invoked through a synchronous call, so a compile that
+    /// never returns never yields either, and a timeout wrapped around a
+    /// future that is never polled can never fire. The sleeping invoker above
+    /// awaits, which proves only the easy half. This one blocks its thread
+    /// outright, which is what a runaway parser does, and it must still come
+    /// back as a timeout diagnostic rather than wedging the connection.
+    #[tokio::test]
+    async fn a_blocking_built_in_extension_still_yields_a_timeout_diagnostic() {
+        let gate = Arc::new(Gate::default());
+        let registered = Arc::clone(&gate);
+        let fixture = fixture_bounded_by(
+            move |registry: &mut ExtensionRegistry| {
+                registry
+                    .register_builtin(
+                        NativeExtension::frontend_only(BlockingFrontend {
+                            gate: Arc::clone(&registered),
+                        })
+                        .expect("the blocking frontend double is well formed"),
+                    )
+                    .expect("the blocking frontend double registers");
+            },
+            Arc::new(RegistryInvoker),
+            // Real time, not the paused clock the sleeping-invoker test uses:
+            // an outstanding blocking task inhibits tokio's auto-advance, so
+            // a paused clock would never reach the deadline.
+            Duration::from_millis(50),
+        );
+
+        let result = fixture
+            .provider
+            .compile(compile_params("blocking", "anything"))
+            .await
+            .expect("a timeout is reported as a result, not a transport failure");
+        gate.open();
+
+        assert!(!result.success);
+        assert!(
+            result
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.message.contains("timed out")),
+            "diagnostics: {:?}",
+            result.diagnostics
+        );
+    }
+
     /// What actually goes over the wire to a frontend.
     #[tokio::test]
     async fn the_outgoing_compile_request_carries_what_the_caller_asked_for() {
@@ -1217,6 +1380,7 @@ mod tests {
             Arc::new(move || installed_registry(&home)),
             Arc::new(RegistryInvoker),
             working.path().to_path_buf(),
+            INVOCATION_TIMEOUT,
         );
         let watched = [
             working.path().to_path_buf(),
