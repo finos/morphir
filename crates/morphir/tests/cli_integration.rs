@@ -2499,13 +2499,16 @@ fn diagnostics_show_finds_correlated_events_and_redacts_legacy_secrets() {
     let log_dir = morphir_home.join("logs").join("desktop").join("2026-08-30");
     std::fs::create_dir_all(&log_dir).unwrap();
     let operation_id = "op-123e4567-e89b-42d3-a456-426614174000";
+    let launch_id = "launch-123e4567-e89b-42d3-a456-426614174001";
     let events = [
         serde_json::json!({
             "timestamp": "2026-08-30T03:04:05Z",
             "level": "INFO",
             "fields": {
-                "operation_id": operation_id,
-                "event_name": "desktop.session.start",
+                "operation_id": "op-123e4567-e89b-42d3-a456-426614174002",
+                "parent_operation_id": operation_id,
+                "launch_id": launch_id,
+                "event_name": "desktop.ready",
                 "authorization": "Bearer SHOULD_NOT_ESCAPE",
                 "apiKey": "CAMEL_API_KEY_SHOULD_NOT_ESCAPE",
                 "api_key": "SNAKE_API_KEY_SHOULD_NOT_ESCAPE",
@@ -2519,6 +2522,18 @@ fn diagnostics_show_finds_correlated_events_and_redacts_legacy_secrets() {
         }),
         serde_json::json!({
             "timestamp": "2026-08-30T03:04:06Z",
+            "level": "ERROR",
+            "fields": {
+                "operation_id": "op-123e4567-e89b-42d3-a456-426614174002",
+                "parent_operation_id": operation_id,
+                "launch_id": launch_id,
+                "event_name": "desktop.crash",
+                "error_code": "MORPHIR_DESKTOP_RENDERER_CRASHED",
+                "sourceCode": "PRIVATE_PROJECT_CONTENTS"
+            }
+        }),
+        serde_json::json!({
+            "timestamp": "2026-08-30T03:04:07Z",
             "level": "INFO",
             "fields": {
                 "operation_id": "op-123e4567-e89b-42d3-a456-426614174999",
@@ -2550,11 +2565,15 @@ fn diagnostics_show_finds_correlated_events_and_redacts_legacy_secrets() {
     );
     let shown: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(shown["operationId"], operation_id);
-    assert_eq!(shown["events"].as_array().unwrap().len(), 1);
+    assert_eq!(shown["events"].as_array().unwrap().len(), 2);
+    assert_eq!(shown["events"][0]["fields"]["event_name"], "desktop.ready");
+    assert_eq!(shown["events"][0]["fields"]["launch_id"], launch_id);
+    assert_eq!(shown["events"][1]["fields"]["event_name"], "desktop.crash");
     assert_eq!(
-        shown["events"][0]["fields"]["event_name"],
-        "desktop.session.start"
+        shown["events"][1]["fields"]["error_code"],
+        "MORPHIR_DESKTOP_RENDERER_CRASHED"
     );
+    assert!(shown["events"][1]["fields"].get("sourceCode").is_none());
     assert_eq!(shown["events"][0]["fields"]["authorization"], "[REDACTED]");
     for field in ["apiKey", "api_key", "accessKey", "credential"] {
         assert_eq!(shown["events"][0]["fields"][field], "[REDACTED]");
@@ -2573,6 +2592,7 @@ fn diagnostics_show_finds_correlated_events_and_redacts_legacy_secrets() {
     );
     assert_eq!(shown["events"][0]["fields"]["auth_message"], "[REDACTED]");
     assert!(!String::from_utf8_lossy(&output.stdout).contains("SHOULD_NOT_ESCAPE"));
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("PRIVATE_PROJECT_CONTENTS"));
     assert!(!String::from_utf8_lossy(&output.stdout).contains("hunter2"));
     assert!(!String::from_utf8_lossy(&output.stdout).contains("dXNlcjpwYXNz"));
 }
@@ -2624,8 +2644,11 @@ fn diagnostics_collect_creates_an_inspectable_sanitized_archive() {
     let cli_log_root = temp_dir.path().join("private-user-logs");
     let private_workspace = temp_dir.path().join("private-workspace").join("model.json");
     let log_dir = cli_log_root.join("2026-08-30");
+    let desktop_log_dir = morphir_home.join("logs/desktop/2026-08-30");
     std::fs::create_dir_all(&log_dir).unwrap();
+    std::fs::create_dir_all(&desktop_log_dir).unwrap();
     let operation_id = "op-123e4567-e89b-42d3-a456-426614174000";
+    let launch_id = "launch-123e4567-e89b-42d3-a456-426614174001";
     std::fs::write(
         log_dir.join("fixture.jsonl"),
         serde_json::json!({
@@ -2639,6 +2662,24 @@ fn diagnostics_collect_creates_an_inspectable_sanitized_archive() {
                 "diagnostic": format!("failed to open {}", private_workspace.display()),
                 "token": "BUNDLE_SECRET_SENTINEL",
                 "source_url": "https://alice:hunter2@example.com/artifact"
+            }
+        })
+        .to_string(),
+    )
+    .unwrap();
+    std::fs::write(
+        desktop_log_dir.join("fixture.jsonl"),
+        serde_json::json!({
+            "timestamp": "2026-08-30T03:04:06Z",
+            "level": "ERROR",
+            "fields": {
+                "operation_id": "op-123e4567-e89b-42d3-a456-426614174002",
+                "parent_operation_id": operation_id,
+                "launch_id": launch_id,
+                "event_name": "desktop.crash",
+                "error_code": "MORPHIR_DESKTOP_RENDERER_CRASHED",
+                "sourceCode": "PRIVATE_DESKTOP_PROJECT_CONTENTS",
+                "authorization": "Bearer PRIVATE_DESKTOP_CREDENTIAL"
             }
         })
         .to_string(),
@@ -2681,6 +2722,8 @@ fn diagnostics_collect_creates_an_inspectable_sanitized_archive() {
     let combined = entries.values().flatten().copied().collect::<Vec<_>>();
     let combined = String::from_utf8(combined).unwrap();
     assert!(!combined.contains("BUNDLE_SECRET_SENTINEL"));
+    assert!(!combined.contains("PRIVATE_DESKTOP_PROJECT_CONTENTS"));
+    assert!(!combined.contains("PRIVATE_DESKTOP_CREDENTIAL"));
     assert!(!combined.contains("alice"));
     assert!(!combined.contains("hunter2"));
     assert!(combined.contains("https://[REDACTED]@example.com"));
@@ -2690,6 +2733,9 @@ fn diagnostics_collect_creates_an_inspectable_sanitized_archive() {
     assert!(combined.contains("$MORPHIR_LOG_DIR"));
     assert!(!combined.contains(&private_workspace.to_string_lossy().to_string()));
     assert!(combined.contains("$ABSOLUTE_PATH"));
+    assert!(combined.contains(launch_id));
+    assert!(combined.contains("desktop.crash"));
+    assert!(combined.contains("MORPHIR_DESKTOP_RENDERER_CRASHED"));
 
     let manifest: serde_json::Value = serde_json::from_slice(&entries["manifest.json"]).unwrap();
     assert_eq!(manifest["operationId"], operation_id);
