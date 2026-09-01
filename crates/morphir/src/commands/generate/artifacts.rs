@@ -359,6 +359,7 @@ fn acquire_publication<H: ArtifactHooks + ?Sized>(
     hooks: &H,
 ) -> io::Result<AcquiredPublication> {
     let absolute = normalize_existing_output_root(output_root)?;
+    #[cfg(unix)]
     let (parent_path, leaf) = publication_parent_and_leaf(&absolute)?;
 
     #[cfg(unix)]
