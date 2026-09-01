@@ -1363,6 +1363,59 @@ mod tests {
         );
     }
 
+    /// Ordering is load-bearing, not cosmetic.
+    ///
+    /// [`ExtensionRegistry::resolve_frontend`] prefers an installed provider
+    /// over a built-in offering the same language, and the catalog's lookups
+    /// take the first match. If the projection listed built-ins first, the
+    /// picker would name Gleam's built-in while a compile ran the installed
+    /// extension, and the user would be told the wrong thing about their own
+    /// output. The installed provider here shadows the one built-in the CLI
+    /// ships, at the same IR release, so the two orderings really disagree.
+    #[tokio::test]
+    async fn an_installed_provider_shadows_the_built_in_it_replaces() {
+        let (_root, snapshot) = installed_snapshot("installed-gleam", "gleam", "gleam");
+        let registry = extension_registry(vec![snapshot]).expect("the registry assembles");
+        let resolved = registry
+            .resolve_frontend("gleam", IR_VERSION, InvocationPolicy::PreferDirect)
+            .expect("the registry resolves Gleam");
+        assert_eq!(
+            resolved.info().id,
+            "installed-gleam",
+            "this test is only meaningful while the registry prefers the installed provider"
+        );
+
+        let catalog = project_catalog(&registry);
+
+        let frontend = catalog
+            .frontend("gleam")
+            .unwrap_or_else(|| panic!("no Gleam frontend: {catalog:?}"));
+        assert_eq!(
+            frontend.provider.extension_id,
+            resolved.info().id,
+            "the catalog names a provider the compile would not use: {catalog:?}"
+        );
+        assert_eq!(
+            frontend.provider.origin,
+            PlaygroundProviderOrigin::Installed
+        );
+        let target = catalog
+            .target("gleam")
+            .unwrap_or_else(|| panic!("no Gleam target: {catalog:?}"));
+        assert_eq!(
+            target.provider.origin,
+            PlaygroundProviderOrigin::Installed,
+            "the catalog names a provider the generate would not use: {catalog:?}"
+        );
+        assert!(
+            catalog
+                .frontends
+                .iter()
+                .any(|entry| entry.provider.origin == PlaygroundProviderOrigin::Builtin),
+            "shadowed built-ins stay listed, they just come second: {catalog:?}"
+        );
+    }
+
     /// The end of the built-in question: Gleam is not just listed, it runs,
     /// and running it leaves nothing behind.
     ///
