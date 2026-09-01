@@ -1,0 +1,30 @@
+name: Cache Scala native image
+description: >-
+  Restore and save the Mill output directory for the Morphir Scala Elm process
+  extension native image, keyed by the pinned submodule SHA.
+inputs:
+  submodule-path:
+    description: Path to the morphir-scala git submodule.
+    required: false
+    default: ecosystem/morphir-scala
+  graalvm-version:
+    description: GraalVM major version used to build the native image.
+    required: false
+    default: "25"
+runs:
+  using: composite
+  steps:
+    - name: Resolve morphir-scala submodule SHA
+      id: scala-submodule
+      shell: bash
+      run: |
+        sha=$(git rev-parse "HEAD:${{ inputs.submodule-path }}")
+        echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+    - name: Cache Scala native image build output
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.submodule-path }}/out
+        key: morphir-scala-native-${{ inputs.graalvm-version }}-${{ steps.scala-submodule.outputs.sha }}
+        restore-keys: |
+          morphir-scala-native-${{ inputs.graalvm-version }}-
