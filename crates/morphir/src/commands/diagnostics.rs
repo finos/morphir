@@ -1,6 +1,9 @@
 //! Commands for locating local troubleshooting data.
 
-use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+use base64::{
+    Engine as _,
+    engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
+};
 use serde::Serialize;
 use starbase::AppResult;
 use std::cmp::{Ordering, Reverse};
@@ -240,6 +243,36 @@ fn contains_authorization_header(value: &str) -> bool {
                 remainder.is_empty() || remainder.chars().next().is_some_and(char::is_whitespace)
             })
         })
+    })
+}
+
+fn contains_basic_credential(value: &str) -> bool {
+    let lower = value.to_ascii_lowercase();
+    lower.match_indices("basic").any(|(start, _)| {
+        let has_word_boundary = start == 0
+            || lower[..start]
+                .chars()
+                .next_back()
+                .is_some_and(|character| !character.is_ascii_alphanumeric());
+        let rest = &value[start + "basic".len()..];
+        if !has_word_boundary || !rest.chars().next().is_some_and(char::is_whitespace) {
+            return false;
+        }
+
+        let credential = rest.trim_start();
+        let end = credential
+            .char_indices()
+            .find(|(_, character)| {
+                !(character.is_ascii_alphanumeric() || matches!(character, '+' | '/' | '='))
+            })
+            .map(|(index, _)| index)
+            .unwrap_or(credential.len());
+        let credential = &credential[..end];
+        !credential.is_empty()
+            && STANDARD
+                .decode(credential)
+                .ok()
+                .is_some_and(|decoded| decoded.contains(&b':'))
     })
 }
 
@@ -576,6 +609,7 @@ pub(crate) fn sanitize_text(value: &str) -> String {
     let lower = value.to_ascii_lowercase();
     if lower.contains("bearer ")
         || contains_authorization_header(&value)
+        || contains_basic_credential(&value)
         || ["ghp_", "github_pat_", "gho_", "ghu_", "ghs_", "ghr_"]
             .iter()
             .any(|prefix| lower.contains(prefix))
@@ -1581,6 +1615,18 @@ mod tests {
         assert_eq!(
             sanitize_text("parser saw alpha.beta.gamma"),
             "parser saw alpha.beta.gamma"
+        );
+    }
+
+    #[test]
+    fn standalone_basic_credentials_are_redacted() {
+        assert_eq!(
+            sanitize_text("authentication failed for Basic dXNlcjpwYXNz"),
+            "[REDACTED]"
+        );
+        assert_eq!(
+            sanitize_text("a basic authentication failure"),
+            "a basic authentication failure"
         );
     }
 
