@@ -75,7 +75,9 @@ impl ReadinessLogs {
             if *size == cursor.offset {
                 continue;
             }
-            let Ok(bytes) = cursor.read_appended(path, *size, remaining.min(MAX_FILE_BYTES)) else {
+            let Some(bytes) =
+                if_present(cursor.read_appended(path, *size, remaining.min(MAX_FILE_BYTES)))?
+            else {
                 continue;
             };
             remaining -= bytes.len();
@@ -145,6 +147,16 @@ impl LogCursor {
     }
 }
 
+// A log may disappear during rotation. Other I/O failures mean readiness cannot
+// be monitored, not that Desktop failed to become ready.
+fn if_present<T>(result: io::Result<T>) -> io::Result<Option<T>> {
+    match result {
+        Ok(value) => Ok(Some(value)),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+
 fn log_sizes(root: &Path, entry_limit: usize) -> io::Result<BTreeMap<PathBuf, u64>> {
     let mut files = BTreeMap::new();
     // Desktop writes root/YYYY-MM-DD/session.jsonl. Flat roots also support
@@ -159,13 +171,15 @@ fn log_sizes(root: &Path, entry_limit: usize) -> io::Result<BTreeMap<PathBuf, u6
                 "Desktop log discovery exceeded {entry_limit} entries"
             )));
         }
-        let Ok(entry) = entry else { continue };
+        let Some(entry) = if_present(entry.map_err(io::Error::from))? else {
+            continue;
+        };
         if entry.file_type().is_file()
             && entry
                 .path()
                 .extension()
                 .is_some_and(|extension| extension == "jsonl")
-            && let Ok(metadata) = entry.metadata()
+            && let Some(metadata) = if_present(entry.metadata().map_err(io::Error::from))?
         {
             files.insert(entry.into_path(), metadata.len());
         }
@@ -189,6 +203,55 @@ mod tests {
             .unwrap()
             .write_all(bytes)
             .unwrap();
+    }
+
+    #[test]
+    fn only_missing_files_are_ignored() {
+        assert_eq!(if_present(Ok(42)).unwrap(), Some(42));
+        assert_eq!(
+            if_present::<()>(Err(io::ErrorKind::NotFound.into())).unwrap(),
+            None
+        );
+        for kind in [io::ErrorKind::PermissionDenied, io::ErrorKind::Other] {
+            assert_eq!(if_present::<()>(Err(kind.into())).unwrap_err().kind(), kind);
+        }
+    }
+
+    #[test]
+    fn readiness_can_start_before_the_log_directory_exists() {
+        let root = tempfile::tempdir().unwrap();
+        let logs = root.path().join("new-logs");
+        let mut reader = ReadinessLogs::snapshot(&logs).unwrap();
+        assert_eq!(reader.poll("launch-expected").unwrap(), None);
+        fs::create_dir(&logs).unwrap();
+        fs::write(logs.join("new.jsonl"), event("desktop.ready")).unwrap();
+        assert_eq!(
+            reader.poll("launch-expected").unwrap(),
+            Some(DesktopLifecycle::Ready)
+        );
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn unreadable_appended_log_reports_monitoring_failure() {
+        use std::os::windows::fs::OpenOptionsExt;
+
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("locked.jsonl");
+        fs::write(&path, "").unwrap();
+        let mut reader = ReadinessLogs::snapshot(root.path()).unwrap();
+        fs::write(&path, event("desktop.ready")).unwrap();
+        let _exclusive = fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(&path)
+            .unwrap();
+
+        let result = reader.poll("launch-expected");
+        assert!(
+            result.is_err(),
+            "an unreadable log must not become missing readiness: {result:?}"
+        );
     }
 
     #[test]
