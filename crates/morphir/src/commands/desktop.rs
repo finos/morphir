@@ -131,26 +131,49 @@ pub fn run_desktop(operation_id: &OperationId, args: DesktopArgs) -> AppResult<m
     })?;
     drop(active);
 
-    let readiness_status = await_ready(|| child.try_wait(), &mut readiness, &launch).map_err(|failure| {
-        record_launch_failure(
-            operation_id,
-            &launch,
-            failure.code,
-            &version.to_string(),
-            &executable,
-            &desktop_logs,
-        );
-        let _ = child.kill();
-        let _ = child.wait();
-        miette!(
-            "{} ({}) Desktop {} executable: {} logs: {} repair: morphir tool repair desktop --source <package>",
-            failure.message,
-            failure.code.as_str(),
-            version,
-            executable.display(),
-            desktop_logs.display()
-        )
-    })?;
+    let readiness_status = match await_ready(|| child.try_wait(), &mut readiness, &launch) {
+        Ok(status) => status,
+        Err(failure) => {
+            record_launch_failure(
+                operation_id,
+                &launch,
+                failure.code(),
+                &version.to_string(),
+                &executable,
+                &desktop_logs,
+            );
+            if args.wait {
+                let status = match &failure {
+                    ReadyFailure::Exited(status) => Some(*status),
+                    // A shutdown log can precede OS process termination. --wait
+                    // must wait for its real status, not kill it or use the log's code.
+                    ReadyFailure::ReportedExit(_) | ReadyFailure::ForwardingTimedOut => Some(
+                        child
+                            .wait()
+                            .into_diagnostic()
+                            .wrap_err("Failed while waiting for Morphir Desktop to exit")?,
+                    ),
+                    _ => child
+                        .try_wait()
+                        .into_diagnostic()
+                        .wrap_err("Failed to observe Morphir Desktop exit")?,
+                };
+                if let Some(status) = status {
+                    return Ok(Some(portable_exit_code(status)));
+                }
+            }
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(miette!(
+                "{} ({}) Desktop {} executable: {} logs: {} repair: morphir tool repair desktop --source <package>",
+                failure.message(),
+                failure.code().as_str(),
+                version,
+                executable.display(),
+                desktop_logs.display()
+            ));
+        }
+    };
 
     match readiness_status {
         ReadinessStatus::Confirmed => tracing::info!(
@@ -304,9 +327,33 @@ fn should_inherit_environment(name: &std::ffi::OsStr) -> bool {
 }
 
 #[derive(Debug)]
-struct ReadyFailure {
-    code: DesktopLaunchErrorCode,
-    message: String,
+enum ReadyFailure {
+    Exited(ExitStatus),
+    ReportedFailure(Option<String>),
+    ReportedExit(Option<i64>),
+    ForwardingTimedOut,
+    ObservationFailed(std::io::Error),
+    TimedOut,
+}
+
+impl ReadyFailure {
+    fn code(&self) -> DesktopLaunchErrorCode {
+        match self {
+            Self::TimedOut => DesktopLaunchErrorCode::ReadyTimedOut,
+            _ => DesktopLaunchErrorCode::ExitedBeforeReady,
+        }
+    }
+
+    fn message(&self) -> String {
+        match self {
+            Self::Exited(status) => format!("Morphir Desktop exited before reporting readiness. Exit status: {status}."),
+            Self::ReportedFailure(code) => format!("Morphir Desktop reported a launch failure before readiness{}.", code.as_ref().map(|code| format!(" ({code})")).unwrap_or_default()),
+            Self::ReportedExit(code) => format!("Morphir Desktop exited before readiness{}.", code.map(|code| format!(" Exit code: {code}")).unwrap_or_default()),
+            Self::ForwardingTimedOut => "Morphir Desktop exited successfully, but the existing instance did not report readiness during the forwarding grace period.".to_owned(),
+            Self::ObservationFailed(error) => format!("Failed to observe Morphir Desktop startup: {error}."),
+            Self::TimedOut => format!("Morphir Desktop did not report readiness within {} seconds.", READY_TIMEOUT.as_secs()),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -329,6 +376,7 @@ fn await_ready(
     let deadline = Instant::now() + READY_TIMEOUT;
     let mut next_log_poll = Instant::now();
     let mut observed_exit: Option<(ExitStatus, Instant)> = None;
+    let mut forwarded_exit_at: Option<Instant> = None;
     loop {
         let lifecycle = if Instant::now() >= next_log_poll {
             let lifecycle = match readiness.poll(launch.launch_id().as_str()) {
@@ -351,47 +399,33 @@ fn await_ready(
                 DesktopLifecycle::Ready => return Ok(ReadinessStatus::Confirmed),
                 DesktopLifecycle::Failed { error_code }
                 | DesktopLifecycle::Crashed { error_code } => {
-                    return Err(ReadyFailure {
-                        code: DesktopLaunchErrorCode::ExitedBeforeReady,
-                        message: format!(
-                            "Morphir Desktop reported a launch failure before readiness{}.",
-                            error_code
-                                .map(|code| format!(" ({code})"))
-                                .unwrap_or_default()
-                        ),
-                    });
+                    return Err(ReadyFailure::ReportedFailure(error_code));
+                }
+                DesktopLifecycle::Exited { exit_code: Some(0) } => {
+                    // Repeated polls return the last observed event. Start the
+                    // grace once so it stays bounded until forwarded readiness.
+                    forwarded_exit_at.get_or_insert_with(Instant::now);
                 }
                 DesktopLifecycle::Exited { exit_code } => {
-                    return Err(ReadyFailure {
-                        code: DesktopLaunchErrorCode::ExitedBeforeReady,
-                        message: format!(
-                            "Morphir Desktop exited before readiness{}.",
-                            exit_code
-                                .map(|code| format!(" Exit code: {code}"))
-                                .unwrap_or_default()
-                        ),
-                    });
+                    return Err(ReadyFailure::ReportedExit(exit_code));
                 }
             }
         }
         if let Some((status, observed_at)) = observed_exit
             && observed_at.elapsed() >= FORWARDED_READY_GRACE
         {
-            return Err(exited_before_ready(status));
+            return Err(ReadyFailure::Exited(status));
+        }
+        if forwarded_exit_at.is_some_and(|at| at.elapsed() >= FORWARDED_READY_GRACE) {
+            return Err(ReadyFailure::ForwardingTimedOut);
         }
         if observed_exit.is_none()
-            && let Some(status) = poll_child().map_err(startup_observation_failed)?
+            && let Some(status) = poll_child().map_err(ReadyFailure::ObservationFailed)?
         {
             observed_exit = Some((status, Instant::now()));
         }
         if Instant::now() >= deadline {
-            return Err(ReadyFailure {
-                code: DesktopLaunchErrorCode::ReadyTimedOut,
-                message: format!(
-                    "Morphir Desktop did not report readiness within {} seconds.",
-                    READY_TIMEOUT.as_secs()
-                ),
-            });
+            return Err(ReadyFailure::TimedOut);
         }
         thread::sleep(READY_POLL_INTERVAL);
     }
@@ -406,11 +440,11 @@ fn await_unverified(
     loop {
         let status = match observed_exit {
             Some(status) => Some(status),
-            None => poll_child().map_err(startup_observation_failed)?,
+            None => poll_child().map_err(ReadyFailure::ObservationFailed)?,
         };
         if let Some(status) = status {
             if !status.success() {
-                return Err(exited_before_ready(status));
+                return Err(ReadyFailure::Exited(status));
             }
             // A successful short-lived child may have forwarded to an existing
             // Desktop. Without logs, neither readiness nor failure is proven.
@@ -420,22 +454,6 @@ fn await_unverified(
             return Ok(ReadinessStatus::Unverified { reason });
         }
         thread::sleep(READY_POLL_INTERVAL);
-    }
-}
-
-fn exited_before_ready(status: ExitStatus) -> ReadyFailure {
-    ReadyFailure {
-        code: DesktopLaunchErrorCode::ExitedBeforeReady,
-        message: format!(
-            "Morphir Desktop exited before reporting readiness. Exit status: {status}."
-        ),
-    }
-}
-
-fn startup_observation_failed(error: std::io::Error) -> ReadyFailure {
-    ReadyFailure {
-        code: DesktopLaunchErrorCode::ExitedBeforeReady,
-        message: format!("Failed to observe Morphir Desktop startup: {error}."),
     }
 }
 
@@ -499,6 +517,68 @@ fn portable_exit_code(status: ExitStatus) -> u8 {
 mod tests {
     use super::*;
 
+    #[test]
+    fn successful_logged_exit_grace_expires_without_readiness() {
+        let root = tempfile::tempdir().unwrap();
+        let mut readiness = ReadinessLogs::snapshot(root.path());
+        let launch = DesktopLaunchContext::new(&OperationId::new());
+        let fields = serde_json::json!({"fields": {
+            "event_name": "desktop.exit", "launch_id": launch.launch_id().as_str(), "exit_code": 0
+        }});
+        std::fs::write(root.path().join("exit.jsonl"), format!("{fields}\n")).unwrap();
+        let result = await_ready(|| Ok(None), &mut readiness, &launch);
+        assert!(
+            matches!(result, Err(ReadyFailure::ForwardingTimedOut)),
+            "{result:?}"
+        );
+    }
+
+    #[test]
+    fn nonzero_logged_exit_fails_without_forwarding_grace() {
+        let root = tempfile::tempdir().unwrap();
+        let mut readiness = ReadinessLogs::snapshot(root.path());
+        let launch = DesktopLaunchContext::new(&OperationId::new());
+        let fields = serde_json::json!({"fields": {
+            "event_name": "desktop.exit", "launch_id": launch.launch_id().as_str(), "exit_code": 23
+        }});
+        std::fs::write(root.path().join("exit.jsonl"), format!("{fields}\n")).unwrap();
+        let result = await_ready(
+            || panic!("nonzero logged exit must fail immediately"),
+            &mut readiness,
+            &launch,
+        );
+        assert!(
+            matches!(result, Err(ReadyFailure::ReportedExit(Some(23)))),
+            "{result:?}"
+        );
+    }
+
+    #[test]
+    fn successful_logged_exit_allows_forwarded_readiness_in_a_later_poll() {
+        let root = tempfile::tempdir().unwrap();
+        let mut readiness = ReadinessLogs::snapshot(root.path());
+        let launch = DesktopLaunchContext::new(&OperationId::new());
+        let fields = serde_json::json!({"fields": {
+            "event_name": "desktop.exit", "launch_id": launch.launch_id().as_str(), "exit_code": 0
+        }});
+        std::fs::write(root.path().join("exit.jsonl"), format!("{fields}\n")).unwrap();
+        let result = await_ready(
+            || {
+                let ready = serde_json::json!({"fields": {
+                    "event_name": "desktop.ready", "launch_id": launch.launch_id().as_str()
+                }});
+                std::fs::write(root.path().join("ready.jsonl"), format!("{ready}\n")).unwrap();
+                Ok(Some(exit_status(0)))
+            },
+            &mut readiness,
+            &launch,
+        );
+        assert!(
+            matches!(result, Ok(ReadinessStatus::Confirmed)),
+            "{result:?}"
+        );
+    }
+
     fn exit_status(code: u32) -> ExitStatus {
         #[cfg(windows)]
         {
@@ -518,13 +598,7 @@ mod tests {
         let launch = DesktopLaunchContext::new(&OperationId::new());
         let result = await_ready(|| Ok(Some(exit_status(23))), &mut readiness, &launch);
         assert!(
-            matches!(
-                result,
-                Err(ReadyFailure {
-                    code: DesktopLaunchErrorCode::ExitedBeforeReady,
-                    ..
-                })
-            ),
+            matches!(result, Err(ReadyFailure::Exited(_))),
             "a known startup failure must not be reported as started: {result:?}"
         );
     }
@@ -591,13 +665,7 @@ mod tests {
             &mut readiness,
             &launch,
         );
-        assert!(matches!(
-            result,
-            Err(ReadyFailure {
-                code: DesktopLaunchErrorCode::ExitedBeforeReady,
-                ..
-            })
-        ));
+        assert!(matches!(result, Err(ReadyFailure::Exited(_))));
         assert_eq!(polls, 2);
     }
 
@@ -616,13 +684,7 @@ mod tests {
             "unavailable logs".to_owned(),
             Some(exit_status(23)),
         );
-        assert!(matches!(
-            result,
-            Err(ReadyFailure {
-                code: DesktopLaunchErrorCode::ExitedBeforeReady,
-                ..
-            })
-        ));
+        assert!(matches!(result, Err(ReadyFailure::Exited(_))));
     }
 
     #[test]

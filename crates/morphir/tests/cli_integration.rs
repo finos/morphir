@@ -282,6 +282,35 @@ fn desktop_wait_returns_the_desktop_process_exit_status() {
 }
 
 #[test]
+fn desktop_wait_preserves_exits_before_readiness() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let workspace = temp.path().join("sample-workspace");
+    std::fs::create_dir(&workspace).unwrap();
+    install_desktop_launch_fixture(&home, temp.path());
+    std::fs::write(home.join("fixture-exit-code"), "23").unwrap();
+    for readiness in ["silent", "exit"] {
+        std::fs::write(home.join("fixture-readiness"), readiness).unwrap();
+        let output = morphir_command()
+            .args([
+                "desktop",
+                "--offline",
+                "--wait",
+                workspace.to_str().unwrap(),
+            ])
+            .env("MORPHIR_HOME", &home)
+            .output()
+            .expect("failed to launch installed Desktop fixture");
+        assert_eq!(
+            output.status.code(),
+            Some(23),
+            "readiness={readiness}, stderr={}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+}
+
+#[test]
 fn local_developer_desktop_uses_verified_tool_lifecycle() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
