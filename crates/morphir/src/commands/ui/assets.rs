@@ -27,10 +27,21 @@ fn pinned_protocol_version(source: &str, following_field: &str) -> Option<u32> {
         .match_indices(NEEDLE)
         .filter_map(|(index, _)| {
             let tail = &source[index + NEEDLE.len()..];
-            // A schema literal reads `protocolVersion:F(1)`; a value the client
-            // sends reads `protocolVersion:1`.
-            let (digits, tail) = match tail.strip_prefix("F(") {
-                Some(inner) => {
+            // A schema literal reads `protocolVersion:<helper>(1)`; a value the
+            // client sends reads `protocolVersion:1`. The helper's name is
+            // chosen by the minifier and differs between builds, so match any
+            // identifier rather than one build's spelling.
+            let helper = tail
+                .find('(')
+                .filter(|open| {
+                    tail[..*open]
+                        .chars()
+                        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$')
+                })
+                .filter(|open| *open > 0);
+            let (digits, tail) = match helper {
+                Some(open) => {
+                    let inner = &tail[open + 1..];
                     let end = inner.find(')')?;
                     (&inner[..end], &inner[end + 1..])
                 }
