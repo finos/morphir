@@ -46,6 +46,7 @@ use crate::home::MorphirHome;
 
 use super::PlaygroundCapability;
 use super::native::capability;
+use super::sessions::{RegistryOpener, SessionReuseInvoker};
 
 /// How long the playground waits for one extension invocation.
 ///
@@ -64,13 +65,17 @@ type RegistrySource = Arc<dyn Fn() -> Result<ExtensionRegistry, CliError> + Send
 
 /// How the playground reaches a resolved provider.
 ///
-/// Production is [`RegistryInvoker`], which delegates to the CLI's own
-/// extension boundary — the same functions `morphir compile` and `morphir
-/// generate` call — so the playground cannot acquire a private invocation
-/// path. Injectable so a test can drive an invocation that never answers and
-/// observe the timeout without waiting two real minutes.
+/// Production is [`SessionReuseInvoker`] over [`RegistryOpener`], which
+/// delegates to the CLI's own extension boundary — the same functions
+/// `morphir compile` and `morphir generate` call — so the playground cannot
+/// acquire a private invocation path. Injectable so a test can drive an
+/// invocation that never answers and observe the timeout without waiting two
+/// real minutes.
+///
+/// [`SessionReuseInvoker`]: super::sessions::SessionReuseInvoker
+/// [`RegistryOpener`]: super::sessions::RegistryOpener
 #[async_trait]
-trait ExtensionInvoker: Send + Sync {
+pub(super) trait ExtensionInvoker: Send + Sync {
     async fn compile(
         &self,
         home: &MorphirHome,
@@ -86,31 +91,17 @@ trait ExtensionInvoker: Send + Sync {
         resolved: &ResolvedBackend,
         request: GenerateRequest,
     ) -> Result<GenerateResult, CliError>;
-}
 
-struct RegistryInvoker;
-
-#[async_trait]
-impl ExtensionInvoker for RegistryInvoker {
-    async fn compile(
-        &self,
-        home: &MorphirHome,
-        working_directory: &Path,
-        resolved: &ResolvedFrontend,
-        request: CompileRequest,
-    ) -> Result<CompileResult, CliError> {
-        crate::extensions::invoke_frontend(home, working_directory, resolved, request).await
-    }
-
-    async fn generate(
-        &self,
-        home: &MorphirHome,
-        working_directory: &Path,
-        resolved: &ResolvedBackend,
-        request: GenerateRequest,
-    ) -> Result<GenerateResult, CliError> {
-        crate::extensions::invoke_backend(home, working_directory, resolved, request).await
-    }
+    /// Forget any state held for `provider`, after an invocation outlived the
+    /// playground's patience.
+    ///
+    /// A timeout drops the invocation future before any of the invoker's own
+    /// error handling can run, so an invoker that caches per-provider state —
+    /// a session whose actor may still be wedged on the hung exchange — must
+    /// be told out-of-band, or every later request for that provider queues
+    /// behind the same hang and times out too. A no-op for invokers that hold
+    /// nothing.
+    async fn abandon(&self, _provider: &str) {}
 }
 
 /// Either the extension answered, or it outlasted the playground's patience.
@@ -142,7 +133,11 @@ impl NativePlaygroundProvider {
         Self::with_parts(
             home,
             Arc::new(move || installed_registry(&registry_home)),
-            Arc::new(RegistryInvoker),
+            // Session-reusing on purpose: a provider with a session mode pays
+            // activation and the MEP handshake once per session instead of
+            // once per click. See the sessions module for the reuse and
+            // eviction rules.
+            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
             working_directory,
             INVOCATION_TIMEOUT,
         )
@@ -223,13 +218,16 @@ impl PlaygroundCapability for NativePlaygroundProvider {
                     .collect(),
                 modules: result.modules,
             }),
-            Invocation::TimedOut => Ok(PlaygroundCompileResult {
-                success: false,
-                ir_version: None,
-                ir: None,
-                diagnostics: vec![timeout_diagnostic(&provider_id, self.timeout)],
-                modules: Vec::new(),
-            }),
+            Invocation::TimedOut => {
+                self.invoker.abandon(&provider_id).await;
+                Ok(PlaygroundCompileResult {
+                    success: false,
+                    ir_version: None,
+                    ir: None,
+                    diagnostics: vec![timeout_diagnostic(&provider_id, self.timeout)],
+                    modules: Vec::new(),
+                })
+            }
         }
     }
 
@@ -272,11 +270,14 @@ impl PlaygroundCapability for NativePlaygroundProvider {
                     .map(playground_diagnostic)
                     .collect(),
             }),
-            Invocation::TimedOut => Ok(PlaygroundGenerateResult {
-                success: false,
-                artifacts: Vec::new(),
-                diagnostics: vec![timeout_diagnostic(&provider_id, self.timeout)],
-            }),
+            Invocation::TimedOut => {
+                self.invoker.abandon(&provider_id).await;
+                Ok(PlaygroundGenerateResult {
+                    success: false,
+                    artifacts: Vec::new(),
+                    diagnostics: vec![timeout_diagnostic(&provider_id, self.timeout)],
+                })
+            }
         }
     }
 }
@@ -540,7 +541,7 @@ mod tests {
         Backend, BackendCapability, Extension, ExtensionCapabilities, ExtensionInfo, Frontend,
         FrontendCapability, LanguageCapability, NativeExtension,
     };
-    use std::sync::{Condvar, Mutex};
+    use std::sync::{Condvar, Mutex, Mutex as StdMutex};
 
     /// The one IR release every double in this module speaks. Gleam, the only
     /// built-in, advertises the same one, so a test that registers a double
@@ -756,9 +757,7 @@ mod tests {
                 .lock()
                 .expect("the log is never poisoned")
                 .push(request.clone());
-            RegistryInvoker
-                .compile(home, working_directory, resolved, request)
-                .await
+            crate::extensions::invoke_frontend(home, working_directory, resolved, request).await
         }
 
         async fn generate(
@@ -772,15 +771,24 @@ mod tests {
                 .lock()
                 .expect("the log is never poisoned")
                 .push(request.clone());
-            RegistryInvoker
-                .generate(home, working_directory, resolved, request)
-                .await
+            crate::extensions::invoke_backend(home, working_directory, resolved, request).await
         }
     }
 
-    /// An invoker that never answers within the caller's patience.
+    /// An invoker that never answers within the caller's patience, recording
+    /// which providers the playground told it to abandon afterwards.
     struct SleepingInvoker {
         delay: Duration,
+        abandoned: StdMutex<Vec<String>>,
+    }
+
+    impl SleepingInvoker {
+        fn new(delay: Duration) -> Self {
+            Self {
+                delay,
+                abandoned: StdMutex::new(Vec::new()),
+            }
+        }
     }
 
     #[async_trait]
@@ -805,6 +813,13 @@ mod tests {
         ) -> Result<GenerateResult, CliError> {
             tokio::time::sleep(self.delay).await;
             unreachable!("the playground gives up before this invoker answers")
+        }
+
+        async fn abandon(&self, provider: &str) {
+            self.abandoned
+                .lock()
+                .expect("the log is never poisoned")
+                .push(provider.to_owned());
         }
     }
 
@@ -1062,7 +1077,7 @@ mod tests {
                 }],
                 modules: vec![],
             }),
-            Arc::new(RegistryInvoker),
+            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
         );
 
         let result = fixture
@@ -1098,7 +1113,7 @@ mod tests {
                 }],
                 diagnostics: vec![],
             }),
-            Arc::new(RegistryInvoker),
+            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
         );
         let cwd = std::env::current_dir().unwrap();
         let watched = [
@@ -1164,6 +1179,7 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn a_slow_extension_yields_a_timeout_diagnostic() {
+        let slow_invoker: Arc<SleepingInvoker>;
         let fixture = fixture(
             with_frontend(CompileResult {
                 success: true,
@@ -1172,9 +1188,11 @@ mod tests {
                 diagnostics: vec![],
                 modules: vec![],
             }),
-            Arc::new(SleepingInvoker {
-                delay: Duration::from_secs(600),
-            }),
+            {
+                let sleeping = Arc::new(SleepingInvoker::new(Duration::from_secs(600)));
+                slow_invoker = sleeping.clone();
+                sleeping
+            },
         );
 
         let result = fixture
@@ -1191,6 +1209,16 @@ mod tests {
                 .any(|diagnostic| diagnostic.message.contains("timed out")),
             "diagnostics: {:?}",
             result.diagnostics
+        );
+        // The invoker was told to forget the provider: a session-holding
+        // invoker may still be wedged on the hung exchange, and without this
+        // every later request for the provider queues behind the same hang.
+        assert_eq!(
+            *slow_invoker
+                .abandoned
+                .lock()
+                .expect("the log is never poisoned"),
+            vec!["example-frontend".to_owned()]
         );
     }
 
@@ -1217,7 +1245,7 @@ mod tests {
                     )
                     .expect("the blocking frontend double registers");
             },
-            Arc::new(RegistryInvoker),
+            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
             // Real time, not the paused clock the sleeping-invoker test uses:
             // an outstanding blocking task inhibits tokio's auto-advance, so
             // a paused clock would never reach the deadline.
@@ -1431,7 +1459,7 @@ mod tests {
         let provider = NativePlaygroundProvider::with_parts(
             home.clone(),
             Arc::new(move || installed_registry(&home)),
-            Arc::new(RegistryInvoker),
+            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
             working.path().to_path_buf(),
             INVOCATION_TIMEOUT,
         );
