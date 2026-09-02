@@ -124,6 +124,33 @@ fn build_desktop_launch_fixture(fixture_root: &std::path::Path) -> PathBuf {
         archive.finish().unwrap();
         std::fs::remove_file(compiled_executable).unwrap();
         package
+    } else if cfg!(target_os = "linux") {
+        let arch = match std::env::consts::ARCH {
+            "aarch64" => "arm64",
+            "x86_64" => "x64",
+            other => panic!("Unsupported Desktop fixture architecture: {other}"),
+        };
+        let archive_root = format!("morphir-desktop-0.1.0-linux-{arch}");
+        let contents = fixture_root.join(&archive_root);
+        std::fs::create_dir(&contents).unwrap();
+        std::fs::rename(&compiled_executable, contents.join(executable_name)).unwrap();
+        // Match electron-builder's tar layout, including a renamed download.
+        let package = fixture_root.join("renamed-desktop-fixture.tar.gz");
+        let packed = std::process::Command::new("tar")
+            .arg("-czf")
+            .arg(&package)
+            .arg("-C")
+            .arg(fixture_root)
+            .arg(&archive_root)
+            .output()
+            .expect("failed to package Linux Desktop fixture with tar");
+        assert!(
+            packed.status.success(),
+            "{}",
+            String::from_utf8_lossy(&packed.stderr)
+        );
+        std::fs::remove_dir_all(contents).unwrap();
+        package
     } else {
         compiled_executable
     }
