@@ -2,6 +2,16 @@
 
 This document provides guidance for AI assistants and developers working on the **finos/morphir** repository.
 
+## Required checkout setup
+
+Before building or testing, populate the repository's Git submodules:
+
+```shell
+mise run submodules:init
+```
+
+`ecosystem/morphir-rust` is required for the Cargo workspace's path dependencies. Populate `ecosystem/morphir-ui` when changing or rebuilding the UI client; the Rust CLI otherwise serves the checked-in web bundle. If a required submodule is absent, initialize it before diagnosing build failures. See [CONTRIBUTING.md](CONTRIBUTING.md) for first-time setup, the direct Git fallback, and submodule update rules.
+
 ## Project Overview
 
 **finos/morphir** is the Morphir ecosystem umbrella (parent) repository. It coordinates documentation, shared tooling, and integration with language-specific implementations — it is not a single-language Morphir implementation.
