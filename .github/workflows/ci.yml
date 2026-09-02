@@ -19,8 +19,8 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  SCCACHE_GHA_ENABLED: "true"
-  RUSTC_WRAPPER: sccache
+  # setup-rust-ci enables the compiler wrapper after installing sccache.
+  # mise may compile Cargo tools before that action runs on a cold cache.
 
 jobs:
   # Detect what files changed to enable fast-path for docs-only changes

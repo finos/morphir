@@ -226,7 +226,8 @@ This builds the CLI and an unsigned Desktop archive for the current platform, co
 sample model, and installs Desktop into a fresh temporary Morphir Home. Build and dependency
 installation steps may use the network. No existing Morphir installation is changed.
 
-The task opens the installed application with `--offline --wait`. Select `applyLambda` and inspect
+The task opens the installed application with `--offline --wait`. Open **IR Explorer**, select
+`applyLambda` and inspect
 its Insight and XRay views, then close the window. The task moves the original archive aside and
 opens Desktop again offline. Close the second window to finish. Failed build, install or launch
 commands stop the task and return their nonzero exit code.

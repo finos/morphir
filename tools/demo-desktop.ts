@@ -214,7 +214,7 @@ export async function runDemo(demo: Demo, run: Runner = execute): Promise<void> 
 		env: demo.env,
 	};
 	console.log(
-		"First launch: select applyLambda and inspect Insight/XRay. Close Desktop to continue.",
+		"First launch: open IR Explorer, select applyLambda and inspect Insight/XRay. Close Desktop to continue.",
 	);
 	await run(command);
 	// Move only the package generated in this fresh demo directory; never delete user data.
