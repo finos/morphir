@@ -25,6 +25,7 @@ const READY_TIMEOUT: Duration = Duration::from_secs(30);
 const READY_POLL_INTERVAL: Duration = Duration::from_millis(50);
 const LOG_POLL_INTERVAL: Duration = Duration::from_millis(250);
 const FORWARDED_READY_GRACE: Duration = Duration::from_secs(2);
+const UNVERIFIED_STARTUP_GRACE: Duration = Duration::from_secs(2);
 
 /// Launch the active installed Morphir Desktop release.
 #[derive(Args, Clone, Debug)]
@@ -322,9 +323,7 @@ fn await_ready(
     let readiness = match readiness {
         Ok(readiness) => readiness,
         Err(error) => {
-            return Ok(ReadinessStatus::Unverified {
-                reason: error.to_string(),
-            });
+            return await_unverified(&mut poll_child, error.to_string(), None);
         }
     };
     let deadline = Instant::now() + READY_TIMEOUT;
@@ -335,9 +334,11 @@ fn await_ready(
             let lifecycle = match readiness.poll(launch.launch_id().as_str()) {
                 Ok(lifecycle) => lifecycle,
                 Err(error) => {
-                    return Ok(ReadinessStatus::Unverified {
-                        reason: error.to_string(),
-                    });
+                    return await_unverified(
+                        &mut poll_child,
+                        error.to_string(),
+                        observed_exit.map(|(status, _)| status),
+                    );
                 }
             };
             next_log_poll = Instant::now() + LOG_POLL_INTERVAL;
@@ -376,18 +377,10 @@ fn await_ready(
         if let Some((status, observed_at)) = observed_exit
             && observed_at.elapsed() >= FORWARDED_READY_GRACE
         {
-            return Err(ReadyFailure {
-                code: DesktopLaunchErrorCode::ExitedBeforeReady,
-                message: format!(
-                    "Morphir Desktop exited before reporting readiness. Exit status: {status}."
-                ),
-            });
+            return Err(exited_before_ready(status));
         }
         if observed_exit.is_none()
-            && let Some(status) = poll_child().map_err(|error| ReadyFailure {
-                code: DesktopLaunchErrorCode::ExitedBeforeReady,
-                message: format!("Failed to observe Morphir Desktop startup: {error}."),
-            })?
+            && let Some(status) = poll_child().map_err(startup_observation_failed)?
         {
             observed_exit = Some((status, Instant::now()));
         }
@@ -401,6 +394,48 @@ fn await_ready(
             });
         }
         thread::sleep(READY_POLL_INTERVAL);
+    }
+}
+
+fn await_unverified(
+    poll_child: &mut impl FnMut() -> std::io::Result<Option<ExitStatus>>,
+    reason: String,
+    observed_exit: Option<ExitStatus>,
+) -> std::result::Result<ReadinessStatus, ReadyFailure> {
+    let deadline = Instant::now() + UNVERIFIED_STARTUP_GRACE;
+    loop {
+        let status = match observed_exit {
+            Some(status) => Some(status),
+            None => poll_child().map_err(startup_observation_failed)?,
+        };
+        if let Some(status) = status {
+            if !status.success() {
+                return Err(exited_before_ready(status));
+            }
+            // A successful short-lived child may have forwarded to an existing
+            // Desktop. Without logs, neither readiness nor failure is proven.
+            return Ok(ReadinessStatus::Unverified { reason });
+        }
+        if Instant::now() >= deadline {
+            return Ok(ReadinessStatus::Unverified { reason });
+        }
+        thread::sleep(READY_POLL_INTERVAL);
+    }
+}
+
+fn exited_before_ready(status: ExitStatus) -> ReadyFailure {
+    ReadyFailure {
+        code: DesktopLaunchErrorCode::ExitedBeforeReady,
+        message: format!(
+            "Morphir Desktop exited before reporting readiness. Exit status: {status}."
+        ),
+    }
+}
+
+fn startup_observation_failed(error: std::io::Error) -> ReadyFailure {
+    ReadyFailure {
+        code: DesktopLaunchErrorCode::ExitedBeforeReady,
+        message: format!("Failed to observe Morphir Desktop startup: {error}."),
     }
 }
 
@@ -464,6 +499,36 @@ fn portable_exit_code(status: ExitStatus) -> u8 {
 mod tests {
     use super::*;
 
+    fn exit_status(code: u32) -> ExitStatus {
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::ExitStatusExt;
+            ExitStatus::from_raw(code)
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::ExitStatusExt;
+            ExitStatus::from_raw((code as i32) << 8)
+        }
+    }
+
+    #[test]
+    fn unavailable_readiness_does_not_hide_an_immediate_crash() {
+        let mut readiness = Err(std::io::Error::other("unavailable logs"));
+        let launch = DesktopLaunchContext::new(&OperationId::new());
+        let result = await_ready(|| Ok(Some(exit_status(23))), &mut readiness, &launch);
+        assert!(
+            matches!(
+                result,
+                Err(ReadyFailure {
+                    code: DesktopLaunchErrorCode::ExitedBeforeReady,
+                    ..
+                })
+            ),
+            "a known startup failure must not be reported as started: {result:?}"
+        );
+    }
+
     #[test]
     fn log_discovery_cap_before_spawn_does_not_fail_the_launch() {
         let root = tempfile::tempdir().unwrap();
@@ -471,11 +536,16 @@ mod tests {
         let mut readiness = ReadinessLogs::snapshot_with_limit(root.path(), 1);
         assert!(readiness.is_err(), "fixture must reach discovery cap");
         let launch = DesktopLaunchContext::new(&OperationId::new());
+        let mut polls = 0;
         let result = await_ready(
-            || panic!("should bypass unavailable readiness"),
+            || {
+                polls += 1;
+                Ok(None)
+            },
             &mut readiness,
             &launch,
         );
+        assert!(polls > 1, "observe the healthy child for a startup window");
         assert!(
             matches!(result, Ok(ReadinessStatus::Unverified { .. })),
             "log saturation must not fail launch or claim readiness: {result:?}"
@@ -489,15 +559,70 @@ mod tests {
         assert!(readiness.is_ok());
         std::fs::write(root.path().join("unrelated.txt"), "unrelated").unwrap();
         let launch = DesktopLaunchContext::new(&OperationId::new());
+        let mut polls = 0;
         let result = await_ready(
-            || panic!("should bypass unavailable readiness"),
+            || {
+                polls += 1;
+                Ok(None)
+            },
             &mut readiness,
             &launch,
         );
+        assert!(polls > 1, "observe the healthy child for a startup window");
         assert!(
             matches!(result, Ok(ReadinessStatus::Unverified { .. })),
             "log saturation must not fail launch or claim readiness: {result:?}"
         );
+    }
+
+    #[test]
+    fn log_polling_failure_still_observes_a_delayed_crash() {
+        let root = tempfile::tempdir().unwrap();
+        let mut readiness = ReadinessLogs::snapshot_with_limit(root.path(), 1);
+        assert!(readiness.is_ok());
+        std::fs::write(root.path().join("unrelated.txt"), "unrelated").unwrap();
+        let launch = DesktopLaunchContext::new(&OperationId::new());
+        let mut polls = 0;
+        let result = await_ready(
+            || {
+                polls += 1;
+                Ok((polls == 2).then(|| exit_status(23)))
+            },
+            &mut readiness,
+            &launch,
+        );
+        assert!(matches!(
+            result,
+            Err(ReadyFailure {
+                code: DesktopLaunchErrorCode::ExitedBeforeReady,
+                ..
+            })
+        ));
+        assert_eq!(polls, 2);
+    }
+
+    #[test]
+    fn unavailable_logs_do_not_misclassify_successful_forwarding() {
+        let mut readiness = Err(std::io::Error::other("unavailable logs"));
+        let launch = DesktopLaunchContext::new(&OperationId::new());
+        let result = await_ready(|| Ok(Some(exit_status(0))), &mut readiness, &launch);
+        assert!(matches!(result, Ok(ReadinessStatus::Unverified { .. })));
+    }
+
+    #[test]
+    fn unavailable_logs_preserve_an_already_observed_crash() {
+        let result = await_unverified(
+            &mut || panic!("the child has already been observed exiting"),
+            "unavailable logs".to_owned(),
+            Some(exit_status(23)),
+        );
+        assert!(matches!(
+            result,
+            Err(ReadyFailure {
+                code: DesktopLaunchErrorCode::ExitedBeforeReady,
+                ..
+            })
+        ));
     }
 
     #[test]
