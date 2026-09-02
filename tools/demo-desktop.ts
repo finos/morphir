@@ -13,8 +13,11 @@ interface Command {
 }
 export type Runner = (command: Command) => Promise<string>;
 
-export function parseMode(args: readonly string[]): "interactive" | "prepare" | "help" {
-	if (args.length === 0) return "interactive";
+export function parseMode(
+	args: readonly string[],
+	prepareOnly?: string,
+): "interactive" | "prepare" | "help" {
+	if (args.length === 0) return prepareOnly === "true" ? "prepare" : "interactive";
 	if (args.length === 1 && args[0] === "--prepare-only") return "prepare";
 	if (args.length === 1 && args[0] === "--help") return "help";
 	throw new Error(usage);
@@ -228,7 +231,7 @@ export async function runDemo(demo: Demo, run: Runner = execute): Promise<void> 
 }
 
 async function main(): Promise<void> {
-	const mode = parseMode(process.argv.slice(2));
+	const mode = parseMode(process.argv.slice(2), process.env.usage_prepare_only);
 	if (mode === "help") {
 		console.log(
 			`${usage}\nBuild and install an unsigned native Desktop in a fresh temporary Home.\nDefault: two interactive offline launches. --prepare-only: install without opening a window.\nPrerequisites: initialized submodules, Rust, Bun and native build tools. Builds may use the network.\nArtifacts and logs are retained; existing installations are not changed.`,

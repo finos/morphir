@@ -34,8 +34,18 @@ test("only accepts interactive, prepare-only and help modes", () => {
 	expect(parseMode([])).toBe("interactive");
 	expect(parseMode(["--prepare-only"])).toBe("prepare");
 	expect(parseMode(["--help"])).toBe("help");
+	expect(parseMode([], "true")).toBe("prepare");
+	expect(parseMode([], "false")).toBe("interactive");
 	expect(() => parseMode(["--oops"])).toThrow("Usage");
 	expect(() => parseMode(["--prepare-only", "--oops"])).toThrow("Usage");
+});
+
+test("mise task uses the usage field supported by Netlify's bundled mise", () => {
+	const config = Bun.TOML.parse(
+		readFileSync(new URL("../.config/mise/config.toml", import.meta.url), "utf8"),
+	) as { tasks: Record<string, Record<string, unknown>> };
+	expect(config.tasks["demo:desktop"]).not.toHaveProperty("raw_args");
+	expect(config.tasks["demo:desktop"]?.usage).toContain("--prepare-only");
 });
 
 test("isolates Home, profile and logs without mutating inherited environment", () => {
