@@ -25,7 +25,7 @@ jsonschema = "latest"
 # CLI documentation generator (https://usage.jdx.dev/)
 # Pinned: docs:cli commits generated output to docs/cli/ and completions/,
 # and the freshness check in CI fails when a new usage release changes it.
-usage = "6.6.0"
+usage = "6.6.1"
 
 # ===== Initialization Tasks =====
 [tasks.init]
