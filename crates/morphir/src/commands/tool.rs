@@ -235,14 +235,14 @@ fn desktop_archive_contract(source: &Path, os: &str) -> Result<(ArchiveFormat, S
     let lowercase = filename.to_ascii_lowercase();
     match os {
         "windows" if lowercase.ends_with(".zip") => {
-            Ok((ArchiveFormat::Zip, "Morphir Desktop.exe".to_owned()))
+            Ok((ArchiveFormat::Zip, "morphir-desktop.exe".to_owned()))
         }
-        "windows" if filename == "Morphir Desktop.exe" => {
+        "windows" if matches!(filename, "morphir-desktop.exe" | "Morphir Desktop.exe") => {
             Ok((ArchiveFormat::Raw, filename.to_owned()))
         }
         "macos" if lowercase.ends_with(".zip") => Ok((
             ArchiveFormat::Zip,
-            "Morphir Desktop.app/Contents/MacOS/Morphir Desktop".to_owned(),
+            "Morphir Desktop.app/Contents/MacOS/morphir-desktop".to_owned(),
         )),
         "linux" if lowercase.ends_with(".tar.gz") => {
             Ok((ArchiveFormat::TarGzip, "morphir-desktop".to_owned()))
@@ -289,13 +289,13 @@ mod tests {
     fn desktop_archives_use_the_release_contract_entry_points() {
         assert_eq!(
             desktop_archive_contract(Path::new("desktop.zip"), "windows").unwrap(),
-            (ArchiveFormat::Zip, "Morphir Desktop.exe".to_owned())
+            (ArchiveFormat::Zip, "morphir-desktop.exe".to_owned())
         );
         assert_eq!(
             desktop_archive_contract(Path::new("desktop.zip"), "macos").unwrap(),
             (
                 ArchiveFormat::Zip,
-                "Morphir Desktop.app/Contents/MacOS/Morphir Desktop".to_owned(),
+                "Morphir Desktop.app/Contents/MacOS/morphir-desktop".to_owned(),
             )
         );
     }
@@ -307,5 +307,16 @@ mod tests {
             desktop_archive_contract(Path::new(filename), "linux").unwrap(),
             (ArchiveFormat::Appimage, filename.to_owned())
         );
+    }
+
+    #[test]
+    fn windows_raw_packages_accept_the_release_name_and_legacy_fixture_name() {
+        for filename in ["morphir-desktop.exe", "Morphir Desktop.exe"] {
+            assert_eq!(
+                desktop_archive_contract(Path::new(filename), "windows").unwrap(),
+                (ArchiveFormat::Raw, filename.to_owned())
+            );
+        }
+        assert!(desktop_archive_contract(Path::new("unrelated.exe"), "windows").is_err());
     }
 }

@@ -178,6 +178,72 @@ Repair requires the exact original package bytes. Uninstall removes the active s
 lock; content-addressed package bytes remain cache-owned and can be reclaimed with
 `morphir cache clean`.
 
+### Launch the installed Desktop
+
+```shell
+morphir desktop --offline --wait <workspace-directory-or-morphir-ir.json>
+```
+
+The CLI verifies the installed files, opens the selected workspace, and reports Desktop readiness.
+`--wait` keeps the command running until Desktop closes and returns its exit status. Without it,
+the CLI returns after startup. Logs beneath Morphir Home record the same launch ID. Desktop
+records the CLI operation ID as its parent operation ID. The installed app does not need the
+original ZIP or a source checkout.
+
+The developer workflow requires the explicit local installation above. `--offline` never downloads
+a missing release; it reports the installation command instead.
+
+### Desktop installation paths on Windows
+
+Desktop packages declare `longPathAware` for filesystem access. Electron's Chromium runtime still
+uses a [fixed-size buffer for its own executable path](https://github.com/chromium/chromium/blob/main/base/base_paths_win.cc).
+When that path reaches 260 UTF-16 code units, the CLI asks Windows for an existing short filename
+and verifies that it resolves to the same installed executable before launching it. Package
+verification remains unchanged; the CLI does not create aliases or change Windows settings.
+
+If the volume has no usable short filename, the CLI reports the limit before starting Desktop.
+Choose a shorter `MORPHIR_HOME` and install the package there, for example in PowerShell:
+
+```powershell
+$env:MORPHIR_HOME = 'C:\MorphirHome'
+morphir tool install desktop --source <path-to-package.zip> --channel developer --version 0.1.0
+morphir desktop --offline --wait <workspace-directory>
+```
+
+This selects a separate Home; it does not move or delete an existing installation. Keep the same
+`MORPHIR_HOME` value for subsequent commands. Windows long-path support must still be enabled for
+deep project files as described above.
+
+### Run the developer Desktop demo
+
+From an initialized checkout with Rust, Bun and native build tools installed:
+
+```shell
+mise run demo:desktop
+```
+
+This builds the CLI and an unsigned Desktop archive for the current platform, copies the Insight
+sample model, and installs Desktop into a fresh temporary Morphir Home. Build and dependency
+installation steps may use the network. No existing Morphir installation is changed.
+
+The task opens the installed application with `--offline --wait`. Select `applyLambda` and inspect
+its Insight and XRay views, then close the window. The task moves the original archive aside and
+opens Desktop again offline. Close the second window to finish. Failed build, install or launch
+commands stop the task and return their nonzero exit code.
+
+The printed demo directory retains the copied CLI, sample model, installed files, logs and the
+archive as `package.saved`. The task runs the installed CLI outside the checkout. It does not
+disable networking or make the source checkout unreadable, so this is not an OS-isolation test.
+Windows app-data and Linux XDG config directories are also redirected into the demo directory;
+macOS may still use Electron's normal OS profile location.
+
+To build and install without opening a window, or run the orchestration tests without building:
+
+```shell
+mise run demo:desktop -- --prepare-only
+mise run test:desktop-demo
+```
+
 ## Related tooling
 
 | Tool | Repository | Use when |
