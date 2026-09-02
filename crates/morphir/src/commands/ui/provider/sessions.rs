@@ -115,15 +115,52 @@ enum Resolved<'a> {
     Backend(&'a ResolvedBackend),
 }
 
+impl Resolved<'_> {
+    /// Which incarnation of the provider this resolution names.
+    ///
+    /// Version, origin and invocation mode all change when an extension is
+    /// upgraded, reinstalled from a different origin, or re-resolved onto a
+    /// different transport, and any of those invalidates a running session. A
+    /// re-publish of the same version from the same origin is not detected —
+    /// registries make that hard to do by accident, and the session would
+    /// still match what the catalog advertises.
+    fn fingerprint(&self) -> String {
+        let (info, origin, mode) = match self {
+            Resolved::Frontend(frontend) => (
+                frontend.info(),
+                frontend.origin(),
+                frontend.invocation_mode(),
+            ),
+            Resolved::Backend(backend) => {
+                (backend.info(), backend.origin(), backend.invocation_mode())
+            }
+        };
+        format!("{}@{}:{:?}:{:?}", info.id, info.version, origin, mode)
+    }
+}
+
+/// One cached session, remembering which provider incarnation opened it.
+///
+/// The registry is rebuilt per request, so an extension upgraded or
+/// reinstalled while the playground host runs resolves to a new incarnation
+/// under the same provider id. A session opened by the old one must not serve
+/// the new one: the catalog would advertise the upgrade while requests kept
+/// reaching the old binary. The fingerprint is what detects that.
+struct CachedSession {
+    fingerprint: String,
+    handle: SessionHandle,
+}
+
 /// An [`ExtensionInvoker`] that keeps one session per provider across calls.
 ///
-/// Sessions are keyed by provider id alone, not per language or per
-/// operation: a session belongs to one running extension, and an extension
-/// serving two languages — or both compile and generate — serves all of them
-/// over the same negotiated session.
+/// Sessions are keyed by provider id, not per language or per operation: a
+/// session belongs to one running extension, and an extension serving two
+/// languages — or both compile and generate — serves all of them over the
+/// same negotiated session. Within that key, the session is only reused while
+/// the resolution still names the same incarnation (see [`CachedSession`]).
 pub(super) struct SessionReuseInvoker<O> {
     opener: O,
-    sessions: Mutex<HashMap<String, SessionHandle>>,
+    sessions: Mutex<HashMap<String, CachedSession>>,
 }
 
 impl<O> SessionReuseInvoker<O> {
@@ -169,13 +206,23 @@ impl<O: SessionOpener> SessionReuseInvoker<O> {
         P: Serialize + Sync,
         R: DeserializeOwned,
     {
+        let fingerprint = resolved.fingerprint();
         let handle = {
             let mut sessions = self.sessions.lock().await;
             match sessions.get(provider) {
-                Some(handle) => Some(handle.clone()),
-                None => match self.open(home, workspace, resolved).await? {
+                Some(cached) if cached.fingerprint == fingerprint => Some(cached.handle.clone()),
+                // A cached session from a different incarnation is replaced,
+                // not reused: dropping the old handle here is also what lets
+                // its actor stop once nothing else holds it.
+                _ => match self.open(home, workspace, resolved).await? {
                     Some(handle) => {
-                        sessions.insert(provider.to_owned(), handle.clone());
+                        sessions.insert(
+                            provider.to_owned(),
+                            CachedSession {
+                                fingerprint: fingerprint.clone(),
+                                handle: handle.clone(),
+                            },
+                        );
                         Some(handle)
                     }
                     None => None,
@@ -203,7 +250,13 @@ impl<O: SessionOpener> SessionReuseInvoker<O> {
                             ),
                         }
                     })?;
-                    sessions.insert(provider.to_owned(), fresh.clone());
+                    sessions.insert(
+                        provider.to_owned(),
+                        CachedSession {
+                            fingerprint,
+                            handle: fresh.clone(),
+                        },
+                    );
                     fresh
                 };
                 match fresh.invoke::<R>(method, request).await {
@@ -285,6 +338,14 @@ impl<O: SessionOpener> ExtensionInvoker for SessionReuseInvoker<O> {
                     .await
             }
         }
+    }
+
+    /// A timed-out invocation may have left the session's actor wedged on the
+    /// hung exchange. Forgetting the handle is enough: the next request opens
+    /// fresh, and the wedged actor stops on its own once the exchange resolves
+    /// or its process dies, since nothing strong holds it any more.
+    async fn abandon(&self, provider: &str) {
+        self.sessions.lock().await.remove(provider);
     }
 }
 
@@ -741,6 +802,87 @@ mod tests {
             .unwrap_err();
         assert!(error.to_string().contains("scripted rejection"));
         assert_eq!(invoker.opener.frontend_opens.load(Ordering::SeqCst), 1);
+    }
+
+    // Requirement: a timeout drops the invocation future before any error
+    // branch here can run, so the playground tells the invoker out-of-band.
+    // Abandoning must forget the handle — the next request opens fresh
+    // instead of queuing behind a possibly-wedged actor.
+    #[tokio::test]
+    async fn abandoning_a_provider_forgets_its_session() {
+        let fx = fixture();
+        let invoker = SessionReuseInvoker::new(CountingOpener::new());
+
+        invoker
+            .compile(
+                &fx.home,
+                fx.workspace.path(),
+                &fx.frontend,
+                compile_request(),
+            )
+            .await
+            .unwrap();
+        invoker.abandon(&fx.frontend.info().id).await;
+        invoker
+            .compile(
+                &fx.home,
+                fx.workspace.path(),
+                &fx.frontend,
+                compile_request(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(invoker.opener.frontend_opens.load(Ordering::SeqCst), 2);
+    }
+
+    // Requirement: a session is reused only while the resolution still names
+    // the incarnation that opened it. An upgrade mid-run must not keep
+    // serving the old binary under the new catalog entry.
+    #[tokio::test]
+    async fn a_changed_provider_incarnation_replaces_the_cached_session() {
+        let fx = fixture();
+        let invoker = SessionReuseInvoker::new(CountingOpener::new());
+
+        invoker
+            .compile(
+                &fx.home,
+                fx.workspace.path(),
+                &fx.frontend,
+                compile_request(),
+            )
+            .await
+            .unwrap();
+        // Simulate the upgrade: the cached entry claims another incarnation,
+        // as it would after a reinstall changed the resolved version.
+        let provider = fx.frontend.info().id.clone();
+        invoker
+            .sessions
+            .lock()
+            .await
+            .get_mut(&provider)
+            .expect("the first compile cached a session")
+            .fingerprint = "other@0.0.0:Installed:ProcessMep".to_owned();
+
+        invoker
+            .compile(
+                &fx.home,
+                fx.workspace.path(),
+                &fx.frontend,
+                compile_request(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(invoker.opener.frontend_opens.load(Ordering::SeqCst), 2);
+        let sessions = invoker.sessions.lock().await;
+        assert_eq!(
+            sessions
+                .get(&provider)
+                .expect("the replacement was cached")
+                .fingerprint,
+            Resolved::Frontend(&fx.frontend).fingerprint()
+        );
     }
 
     // A native-direct provider has no session; the invoker must not invent

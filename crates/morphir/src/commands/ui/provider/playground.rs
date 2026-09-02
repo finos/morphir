@@ -91,6 +91,17 @@ pub(super) trait ExtensionInvoker: Send + Sync {
         resolved: &ResolvedBackend,
         request: GenerateRequest,
     ) -> Result<GenerateResult, CliError>;
+
+    /// Forget any state held for `provider`, after an invocation outlived the
+    /// playground's patience.
+    ///
+    /// A timeout drops the invocation future before any of the invoker's own
+    /// error handling can run, so an invoker that caches per-provider state —
+    /// a session whose actor may still be wedged on the hung exchange — must
+    /// be told out-of-band, or every later request for that provider queues
+    /// behind the same hang and times out too. A no-op for invokers that hold
+    /// nothing.
+    async fn abandon(&self, _provider: &str) {}
 }
 
 /// Either the extension answered, or it outlasted the playground's patience.
@@ -207,13 +218,16 @@ impl PlaygroundCapability for NativePlaygroundProvider {
                     .collect(),
                 modules: result.modules,
             }),
-            Invocation::TimedOut => Ok(PlaygroundCompileResult {
-                success: false,
-                ir_version: None,
-                ir: None,
-                diagnostics: vec![timeout_diagnostic(&provider_id, self.timeout)],
-                modules: Vec::new(),
-            }),
+            Invocation::TimedOut => {
+                self.invoker.abandon(&provider_id).await;
+                Ok(PlaygroundCompileResult {
+                    success: false,
+                    ir_version: None,
+                    ir: None,
+                    diagnostics: vec![timeout_diagnostic(&provider_id, self.timeout)],
+                    modules: Vec::new(),
+                })
+            }
         }
     }
 
@@ -256,11 +270,14 @@ impl PlaygroundCapability for NativePlaygroundProvider {
                     .map(playground_diagnostic)
                     .collect(),
             }),
-            Invocation::TimedOut => Ok(PlaygroundGenerateResult {
-                success: false,
-                artifacts: Vec::new(),
-                diagnostics: vec![timeout_diagnostic(&provider_id, self.timeout)],
-            }),
+            Invocation::TimedOut => {
+                self.invoker.abandon(&provider_id).await;
+                Ok(PlaygroundGenerateResult {
+                    success: false,
+                    artifacts: Vec::new(),
+                    diagnostics: vec![timeout_diagnostic(&provider_id, self.timeout)],
+                })
+            }
         }
     }
 }
@@ -524,7 +541,7 @@ mod tests {
         Backend, BackendCapability, Extension, ExtensionCapabilities, ExtensionInfo, Frontend,
         FrontendCapability, LanguageCapability, NativeExtension,
     };
-    use std::sync::{Condvar, Mutex};
+    use std::sync::{Condvar, Mutex, Mutex as StdMutex};
 
     /// The one IR release every double in this module speaks. Gleam, the only
     /// built-in, advertises the same one, so a test that registers a double
@@ -758,9 +775,20 @@ mod tests {
         }
     }
 
-    /// An invoker that never answers within the caller's patience.
+    /// An invoker that never answers within the caller's patience, recording
+    /// which providers the playground told it to abandon afterwards.
     struct SleepingInvoker {
         delay: Duration,
+        abandoned: StdMutex<Vec<String>>,
+    }
+
+    impl SleepingInvoker {
+        fn new(delay: Duration) -> Self {
+            Self {
+                delay,
+                abandoned: StdMutex::new(Vec::new()),
+            }
+        }
     }
 
     #[async_trait]
@@ -785,6 +813,13 @@ mod tests {
         ) -> Result<GenerateResult, CliError> {
             tokio::time::sleep(self.delay).await;
             unreachable!("the playground gives up before this invoker answers")
+        }
+
+        async fn abandon(&self, provider: &str) {
+            self.abandoned
+                .lock()
+                .expect("the log is never poisoned")
+                .push(provider.to_owned());
         }
     }
 
@@ -1144,6 +1179,7 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn a_slow_extension_yields_a_timeout_diagnostic() {
+        let slow_invoker: Arc<SleepingInvoker>;
         let fixture = fixture(
             with_frontend(CompileResult {
                 success: true,
@@ -1152,9 +1188,11 @@ mod tests {
                 diagnostics: vec![],
                 modules: vec![],
             }),
-            Arc::new(SleepingInvoker {
-                delay: Duration::from_secs(600),
-            }),
+            {
+                let sleeping = Arc::new(SleepingInvoker::new(Duration::from_secs(600)));
+                slow_invoker = sleeping.clone();
+                sleeping
+            },
         );
 
         let result = fixture
@@ -1171,6 +1209,16 @@ mod tests {
                 .any(|diagnostic| diagnostic.message.contains("timed out")),
             "diagnostics: {:?}",
             result.diagnostics
+        );
+        // The invoker was told to forget the provider: a session-holding
+        // invoker may still be wedged on the hung exchange, and without this
+        // every later request for the provider queues behind the same hang.
+        assert_eq!(
+            *slow_invoker
+                .abandoned
+                .lock()
+                .expect("the log is never poisoned"),
+            vec!["example-frontend".to_owned()]
         );
     }
 
