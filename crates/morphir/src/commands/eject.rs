@@ -9,17 +9,36 @@ use std::path::{Component, Path, PathBuf};
 pub struct EjectReport {
     /// Absolute target directory.
     pub target: PathBuf,
-    /// `value` entries copied.
+    /// `value` entries copied (entry names, e.g. `morphir-ir` for a
+    /// directory-valued entry — not the individual files beneath it).
     pub copied: Vec<String>,
-    /// Entries from the previous eject that were removed as stale.
+    /// Files this function wrote under `target` on a previous eject, paths
+    /// relative to `target`, that were actually deleted because the
+    /// current `value` no longer produces them. A path only appears here if
+    /// something was really removed; a stale bookkeeping entry whose file
+    /// was already gone (deleted by the user, or by an earlier failed run)
+    /// is not reported as a removal.
     pub removed: Vec<String>,
 }
 
-/// Eject the task's `value` entries into `target`, removing entries this
-/// function ejected there before that are no longer in `value`.
+/// Eject the task's `value` entries into `target`.
 ///
-/// Every entry — from the current `value` and from the previous eject's
-/// bookkeeping — is checked before anything is touched: an absolute path or a
+/// What `ejected[target]` remembers, and why it is files and not entries:
+/// a directory-valued entry (a document-tree IR, for example) is merged
+/// into `target` rather than replacing whatever is already there, because
+/// `target` may hold a directory the user created before this function ever
+/// ran. If bookkeeping recorded the *entry name* as owned, a later eject
+/// would see that name in its own history and feel entitled to delete the
+/// whole directory — including content this function never wrote. So
+/// instead this function flattens `value` into the individual files it
+/// actually writes under `target` (`flatten_value_files`) and remembers
+/// exactly that list. A later eject only ever deletes files that are in the
+/// old flattened list and not in the new one, and only ever deletes files —
+/// never a directory wholesale — so foreign content survives no matter how
+/// many times eject runs.
+///
+/// Every entry in `value`, and every file path from a previous eject's
+/// bookkeeping, is checked before anything is touched: an absolute path or a
 /// path containing `..` is rejected outright, since joining it onto `target`
 /// could name a location outside `target` and this function deletes what it
 /// names. See `validate_entry`.
@@ -37,24 +56,33 @@ pub fn eject(paths: &TaskPaths, target: &Path) -> Result<EjectReport, CliError> 
         validate_entry(entry)?;
     }
     let key = target.to_string_lossy().into_owned();
-    let previous = record.ejected.get(&key).cloned().unwrap_or_default();
-    for entry in &previous {
-        validate_entry(entry)?;
+    let previous_files = record.ejected.get(&key).cloned().unwrap_or_default();
+    for file in &previous_files {
+        validate_entry(file)?;
     }
 
     std::fs::create_dir_all(target).map_err(|error| CliError::FileSystem { error })?;
     let canonical_target =
         std::fs::canonicalize(target).map_err(|error| CliError::FileSystem { error })?;
 
+    let new_files = flatten_value_files(paths, &record.value)?;
+
+    // Remove exactly the files this function wrote here before that the
+    // current `value` no longer produces. A directory entry is never
+    // deleted wholesale — only the individual files this function is
+    // recorded as owning — so a directory the user already had before the
+    // first eject, or a file the user added beside/inside an owned
+    // directory afterward, is never at risk.
     let mut removed = Vec::new();
-    for stale in previous
+    for stale in previous_files
         .iter()
-        .filter(|entry| !record.value.contains(entry))
+        .filter(|file| !new_files.contains(file))
     {
         let path = target.join(stale);
-        remove_confined(&path, target, &canonical_target)?;
-        prune_empty_parents(&path, target)?;
-        removed.push(stale.clone());
+        if remove_confined(&path, target, &canonical_target)? {
+            prune_empty_parents(&path, target)?;
+            removed.push(stale.clone());
+        }
     }
 
     let mut copied = Vec::new();
@@ -62,15 +90,10 @@ pub fn eject(paths: &TaskPaths, target: &Path) -> Result<EjectReport, CliError> 
         let source = paths.dest.join(entry);
         let destination = target.join(entry);
         if source.is_dir() {
-            // Only start clean when this entry is something *this function*
-            // ejected here before (`previous`): a re-eject of an owned
-            // directory should not let stale files inside it survive. A
-            // directory that first becomes a value entry now — including one
-            // a user already has at `destination` — is merged into, not
-            // deleted, since it may be theirs.
-            if previous.contains(entry) {
-                remove_confined(&destination, target, &canonical_target)?;
-            }
+            // Always merge: a directory-valued entry never had the
+            // destination wiped first, whether this is the first time it
+            // has been ejected here or the tenth, so any foreign content in
+            // it survives regardless.
             copy_dir(&source, &destination)?;
         } else {
             if let Some(parent) = destination.parent() {
@@ -81,7 +104,7 @@ pub fn eject(paths: &TaskPaths, target: &Path) -> Result<EjectReport, CliError> 
         copied.push(entry.clone());
     }
 
-    record.ejected.insert(key, record.value.clone());
+    record.ejected.insert(key, new_files);
     record
         .write(&paths.result)
         .map_err(|error| CliError::Config { error })?;
@@ -111,12 +134,12 @@ pub fn maybe_eject(
     Ok(Some(report.target.to_string_lossy().into_owned()))
 }
 
-/// Reject a `value`/`ejected` entry that could name a location outside
-/// `target` once joined onto it: an absolute path (`PathBuf::join` discards
-/// the base entirely when the joined path is absolute) or any path
-/// containing a `..` component. Also rejects an entry with no real path
-/// component at all (empty string or bare `.`), which would otherwise name
-/// `target` itself.
+/// Reject a `value` entry or an `ejected` file path that could name a
+/// location outside `target` once joined onto it: an absolute path
+/// (`PathBuf::join` discards the base entirely when the joined path is
+/// absolute) or any path containing a `..` component. Also rejects an entry
+/// with no real path component at all (empty string or bare `.`), which
+/// would otherwise name `target` itself.
 fn validate_entry(entry: &str) -> Result<(), CliError> {
     let path = Path::new(entry);
     let mut has_normal_component = false;
@@ -150,8 +173,10 @@ fn validate_entry(entry: &str) -> Result<(), CliError> {
     Ok(())
 }
 
-/// Remove `path`, first confirming its containing directory still resolves
-/// under `canonical_target` (the canonicalized `target`).
+/// Remove `path` if it exists, first confirming its containing directory
+/// still resolves under `canonical_target` (the canonicalized `target`).
+/// Returns whether anything was actually removed, so callers never report a
+/// removal that did not happen.
 ///
 /// `symlink_metadata` on `path` only protects against `path` itself being a
 /// symlink; it does not stop a symlinked *intermediate* directory (e.g.
@@ -163,38 +188,91 @@ fn validate_entry(entry: &str) -> Result<(), CliError> {
 /// symlink (the user's `-o` can point at one), so both sides are
 /// canonicalized before comparing — comparing `path` directly against the
 /// non-canonical `target` would reject that legitimate case.
-fn remove_confined(path: &Path, target: &Path, canonical_target: &Path) -> Result<(), CliError> {
+///
+/// This check is advisory, not a security boundary: it catches accidental or
+/// stale symlinks sitting in the target, not a hostile actor. It is
+/// inherently TOCTOU-racy — nothing stops a symlink from being swapped in
+/// between the `canonicalize` call here and the removal syscall below.
+/// Closing that fully would need descriptor-relative removal (an `openat`/
+/// `unlinkat` chain anchored at a handle opened on `target`), which this
+/// function does not attempt.
+fn remove_confined(path: &Path, target: &Path, canonical_target: &Path) -> Result<bool, CliError> {
     let parent = path.parent().unwrap_or(target);
-    match std::fs::canonicalize(parent) {
-        Ok(canonical_parent) if canonical_parent.starts_with(canonical_target) => {}
-        Ok(canonical_parent) => {
-            return Err(CliError::Validation {
-                message: format!(
-                    "refusing to remove '{}': its containing directory resolves to '{}', \
-                     which is outside the eject target '{}' (resolved to '{}')",
-                    path.display(),
-                    canonical_parent.display(),
-                    target.display(),
-                    canonical_target.display()
-                ),
-            });
-        }
+    let canonical_parent = match std::fs::canonicalize(parent) {
+        Ok(canonical_parent) => canonical_parent,
         // The parent does not exist, so there is nothing under it to remove.
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
         Err(error) => return Err(CliError::FileSystem { error }),
+    };
+    if !canonical_parent.starts_with(canonical_target) {
+        return Err(CliError::Validation {
+            message: format!(
+                "refusing to remove '{}': its containing directory resolves to '{}', \
+                 which is outside the eject target '{}' (resolved to '{}')",
+                path.display(),
+                canonical_parent.display(),
+                target.display(),
+                canonical_target.display()
+            ),
+        });
     }
     remove_entry(path)
 }
 
-fn remove_entry(path: &Path) -> Result<(), CliError> {
+/// Remove `path` (file or directory) if it exists. Returns whether anything
+/// was actually removed.
+fn remove_entry(path: &Path) -> Result<bool, CliError> {
     match std::fs::symlink_metadata(path) {
-        Ok(metadata) if metadata.is_dir() => {
-            std::fs::remove_dir_all(path).map_err(|error| CliError::FileSystem { error })
-        }
-        Ok(_) => std::fs::remove_file(path).map_err(|error| CliError::FileSystem { error }),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Ok(metadata) if metadata.is_dir() => std::fs::remove_dir_all(path)
+            .map(|()| true)
+            .map_err(|error| CliError::FileSystem { error }),
+        Ok(_) => std::fs::remove_file(path)
+            .map(|()| true)
+            .map_err(|error| CliError::FileSystem { error }),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
         Err(error) => Err(CliError::FileSystem { error }),
     }
+}
+
+/// Every file `record.value` produces, as paths relative to `target`. A
+/// file entry contributes itself; a directory entry contributes every file
+/// beneath it, walked recursively. This is exactly the set of files `eject`
+/// writes under `target` this run, so it is also exactly what
+/// `ejected[target]` should remember owning — see the `eject` doc comment.
+fn flatten_value_files(paths: &TaskPaths, value: &[String]) -> Result<Vec<String>, CliError> {
+    let mut files = Vec::new();
+    for entry in value {
+        let source = paths.dest.join(entry);
+        if source.is_dir() {
+            collect_files(&source, Path::new(entry), &mut files)?;
+        } else {
+            files.push(entry.clone());
+        }
+    }
+    Ok(files)
+}
+
+/// Recursively collect the files under `source` into `files`, naming each
+/// one with `relative` (the entry's own relative path) joined onto its path
+/// within `source`.
+fn collect_files(source: &Path, relative: &Path, files: &mut Vec<String>) -> Result<(), CliError> {
+    let mut children = std::fs::read_dir(source)
+        .map_err(|error| CliError::FileSystem { error })?
+        .collect::<Result<Vec<_>, std::io::Error>>()
+        .map_err(|error| CliError::FileSystem { error })?;
+    children.sort_by_key(std::fs::DirEntry::file_name);
+    for child in children {
+        let file_type = child
+            .file_type()
+            .map_err(|error| CliError::FileSystem { error })?;
+        let child_relative = relative.join(child.file_name());
+        if file_type.is_dir() {
+            collect_files(&child.path(), &child_relative, files)?;
+        } else {
+            files.push(child_relative.to_string_lossy().into_owned());
+        }
+    }
+    Ok(())
 }
 
 fn prune_empty_parents(path: &Path, stop: &Path) -> Result<(), CliError> {
@@ -325,7 +403,9 @@ mod tests {
         let report = eject(&paths, &target).unwrap();
 
         assert!(!target.join("sub/report").exists());
-        assert_eq!(report.removed, vec!["sub/report".to_owned()]);
+        // `removed` is now file-level bookkeeping: the one file this
+        // function actually wrote and deleted, not the entry name.
+        assert_eq!(report.removed, vec!["sub/report/pkg/x.yaml".to_owned()]);
         // The foreign file blocked pruning of `sub`, so `sub` and its foreign
         // content survive even though the entry that used to live there is gone.
         assert!(target.join("sub").is_dir());
@@ -406,10 +486,11 @@ mod tests {
 
     #[test]
     fn first_eject_merges_into_a_foreign_directory_without_deleting_it() {
-        // The task's `value` says a directory belongs at `target`, but
-        // nothing has been ejected there before (`previous` is empty). If
+        // A directory-valued entry is always merged into, never wiped
+        // first, whether or not anything has been ejected here before. If
         // the user already has their own directory at that path, it must be
-        // merged into — not wiped — since this function never put it there.
+        // merged into — not deleted — since this function never put it
+        // there.
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir"]);
         let target = temp.path().join("dist");
@@ -428,11 +509,44 @@ mod tests {
     }
 
     #[test]
+    fn second_eject_after_merging_into_a_foreign_directory_still_keeps_the_foreign_file() {
+        // Regression for the bug in the round-1 fix: merging into a user's
+        // pre-existing directory on the FIRST eject kept `mine.txt`, but
+        // bookkeeping then recorded the whole entry name as owned, so the
+        // SECOND eject saw the entry in its own history and wiped the
+        // directory anyway. Bookkeeping now tracks individual files, so the
+        // foreign file must survive any number of ejects, not just the
+        // first.
+        let temp = tempfile::tempdir().unwrap();
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir"]);
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(target.join("morphir-ir")).unwrap();
+        std::fs::write(target.join("morphir-ir/mine.txt"), "not yours").unwrap();
+
+        eject(&paths, &target).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(target.join("morphir-ir/mine.txt")).unwrap(),
+            "not yours"
+        );
+
+        eject(&paths, &target).unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(target.join("morphir-ir/mine.txt")).unwrap(),
+            "not yours",
+            "a foreign file must survive a SECOND eject, not just the first"
+        );
+        assert!(target.join("morphir-ir/manifest.yaml").is_file());
+        assert!(target.join("morphir-ir/pkg/x.yaml").is_file());
+    }
+
+    #[test]
     fn second_eject_of_a_directory_entry_removes_a_file_no_longer_produced() {
-        // Once an entry has been ejected here before (it is in `previous`),
-        // a re-eject of it must still start clean: a file the task produced
-        // last time but not this time must not survive inside the directory
-        // this function owns.
+        // Once a directory entry has been ejected here before, a re-eject
+        // of it must still drop a file the task produced last time but not
+        // this time — but only that file: a sibling file the task still
+        // produces, and a foreign file the user has placed inside the same
+        // directory, must both survive.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("out");
         let paths = task_with_value(&root, &["morphir-ir"]);
@@ -440,6 +554,7 @@ mod tests {
         eject(&paths, &target).unwrap();
         assert!(target.join("morphir-ir/pkg/x.yaml").is_file());
 
+        std::fs::write(target.join("morphir-ir/foreign.txt"), "mine").unwrap();
         std::fs::remove_file(paths.dest.join("morphir-ir/pkg/x.yaml")).unwrap();
         eject(&paths, &target).unwrap();
 
@@ -448,6 +563,35 @@ mod tests {
             "a file dropped from a directory this function owns must not survive a re-eject"
         );
         assert!(target.join("morphir-ir/manifest.yaml").is_file());
+        assert_eq!(
+            std::fs::read_to_string(target.join("morphir-ir/foreign.txt")).unwrap(),
+            "mine",
+            "a foreign file inside an owned directory must survive a re-eject"
+        );
+    }
+
+    #[test]
+    fn removed_only_lists_files_actually_deleted() {
+        // If a previously-ejected file is already gone by the time a stale
+        // eject runs (the user deleted it, or an earlier run failed
+        // partway), that is not a removal this call performed and must not
+        // be claimed in the report.
+        let temp = tempfile::tempdir().unwrap();
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
+        let target = temp.path().join("dist");
+        eject(&paths, &target).unwrap();
+        std::fs::remove_file(target.join("morphir-ir.json")).unwrap();
+
+        let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
+        record.value = Vec::new();
+        record.write(&paths.result).unwrap();
+        let report = eject(&paths, &target).unwrap();
+
+        assert!(
+            report.removed.is_empty(),
+            "nothing was actually removed by this call: {:?}",
+            report.removed
+        );
     }
 
     #[cfg(unix)]
