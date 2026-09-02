@@ -213,7 +213,7 @@ fn desktop_package(
     version: Version,
     platform: Platform,
 ) -> Result<LocalDeveloperToolPackage> {
-    let (format, entry_point) = desktop_archive_contract(&source, platform.os())?;
+    let (format, entry_point) = desktop_archive_contract(&source, &platform, &version)?;
     LocalDeveloperToolPackage::new(
         source,
         ToolId::parse("desktop").into_diagnostic()?,
@@ -227,13 +227,17 @@ fn desktop_package(
     .into_diagnostic()
 }
 
-fn desktop_archive_contract(source: &Path, os: &str) -> Result<(ArchiveFormat, String)> {
+fn desktop_archive_contract(
+    source: &Path,
+    platform: &Platform,
+    version: &Version,
+) -> Result<(ArchiveFormat, String)> {
     let filename = source
         .file_name()
         .and_then(|name| name.to_str())
         .ok_or_else(|| miette!("Desktop package source must have a UTF-8 filename"))?;
     let lowercase = filename.to_ascii_lowercase();
-    match os {
+    match platform.os() {
         "windows" if lowercase.ends_with(".zip") => {
             Ok((ArchiveFormat::Zip, "morphir-desktop.exe".to_owned()))
         }
@@ -245,7 +249,17 @@ fn desktop_archive_contract(source: &Path, os: &str) -> Result<(ArchiveFormat, S
             "Morphir Desktop.app/Contents/MacOS/morphir-desktop".to_owned(),
         )),
         "linux" if lowercase.ends_with(".tar.gz") => {
-            Ok((ArchiveFormat::TarGzip, "morphir-desktop".to_owned()))
+            let arch = match platform.arch() {
+                "aarch64" => "arm64",
+                "x86_64" => "x64",
+                other => return Err(miette!("Unsupported Linux Desktop architecture: {other}")),
+            };
+            // electron-builder prefixes tar entries with its original artifact stem.
+            // Derive it from package identity, not the potentially renamed download.
+            Ok((
+                ArchiveFormat::TarGzip,
+                format!("morphir-desktop-{version}-linux-{arch}/morphir-desktop"),
+            ))
         }
         "linux" if lowercase.ends_with(".appimage") => {
             Ok((ArchiveFormat::Appimage, filename.to_owned()))
@@ -254,8 +268,8 @@ fn desktop_archive_contract(source: &Path, os: &str) -> Result<(ArchiveFormat, S
         _ => Err(miette!(
             "Unsupported Desktop package '{}' for host platform {}-{}",
             source.display(),
-            os,
-            std::env::consts::ARCH
+            platform.os(),
+            platform.arch()
         )),
     }
 }
@@ -285,14 +299,22 @@ fn provenance_labels(provenance: &ToolProvenance) -> (&'static str, &'static str
 mod tests {
     use super::*;
 
+    fn contract(source: &Path, os: &str) -> Result<(ArchiveFormat, String)> {
+        desktop_archive_contract(
+            source,
+            &Platform::new(os, "x86_64").unwrap(),
+            &Version::new(0, 1, 0),
+        )
+    }
+
     #[test]
     fn desktop_archives_use_the_release_contract_entry_points() {
         assert_eq!(
-            desktop_archive_contract(Path::new("desktop.zip"), "windows").unwrap(),
+            contract(Path::new("desktop.zip"), "windows").unwrap(),
             (ArchiveFormat::Zip, "morphir-desktop.exe".to_owned())
         );
         assert_eq!(
-            desktop_archive_contract(Path::new("desktop.zip"), "macos").unwrap(),
+            contract(Path::new("desktop.zip"), "macos").unwrap(),
             (
                 ArchiveFormat::Zip,
                 "Morphir Desktop.app/Contents/MacOS/morphir-desktop".to_owned(),
@@ -304,19 +326,40 @@ mod tests {
     fn versioned_linux_appimage_uses_its_own_filename_as_the_entry_point() {
         let filename = "morphir-desktop-0.1.0-linux-arm64.AppImage";
         assert_eq!(
-            desktop_archive_contract(Path::new(filename), "linux").unwrap(),
+            contract(Path::new(filename), "linux").unwrap(),
             (ArchiveFormat::Appimage, filename.to_owned())
         );
+    }
+
+    #[test]
+    fn linux_tarball_uses_electron_builders_archive_root() {
+        for (version, arch, builder_arch) in [
+            ("0.1.0", "aarch64", "arm64"),
+            ("1.2.3-preview.4", "x86_64", "x64"),
+        ] {
+            let stem = format!("morphir-desktop-{version}-linux-{builder_arch}");
+            for filename in [format!("{stem}.tar.gz"), "renamed.tar.gz".to_owned()] {
+                assert_eq!(
+                    desktop_archive_contract(
+                        Path::new(&filename),
+                        &Platform::new("linux", arch).unwrap(),
+                        &version.parse().unwrap(),
+                    )
+                    .unwrap(),
+                    (ArchiveFormat::TarGzip, format!("{stem}/morphir-desktop"))
+                );
+            }
+        }
     }
 
     #[test]
     fn windows_raw_packages_accept_the_release_name_and_legacy_fixture_name() {
         for filename in ["morphir-desktop.exe", "Morphir Desktop.exe"] {
             assert_eq!(
-                desktop_archive_contract(Path::new(filename), "windows").unwrap(),
+                contract(Path::new(filename), "windows").unwrap(),
                 (ArchiveFormat::Raw, filename.to_owned())
             );
         }
-        assert!(desktop_archive_contract(Path::new("unrelated.exe"), "windows").is_err());
+        assert!(contract(Path::new("unrelated.exe"), "windows").is_err());
     }
 }
