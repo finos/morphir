@@ -27,6 +27,9 @@ Migrate IR between versions
 \fBui\fR
 Open the Morphir development workbench in a browser
 .TP
+\fBdesktop\fR
+Launch the installed Morphir Desktop application
+.TP
 \fBconfig\fR
 Inspect the effective Morphir configuration
 .TP
@@ -414,6 +417,24 @@ Print the one\-time launch URL instead of opening a browser
 .TP
 \fB<WORKSPACE>\fR
 Morphir development workspace to open. Defaults to the current directory
+.SH "MORPHIR DESKTOP"
+Launch the installed Morphir Desktop application
+.PP
+\fBUsage:\fR morphir desktop [OPTIONS] [<PATH>]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-wait\fR
+Wait for Desktop to exit and return its exit status
+.TP
+\fB\-\-offline\fR
+Prohibit acquisition and launch only an already\-installed release
+\fBArguments:\fR
+.PP
+.TP
+\fB<PATH>\fR
+Workspace directory or Morphir artifact to open (defaults to the current directory)
 .SH "MORPHIR CONFIG GET"
 Get one value from the effective configuration
 .PP
