@@ -133,6 +133,21 @@ pub fn read_value(base: &Path, descriptor: &IrDescriptor) -> Result<serde_json::
         _ => IrVersion::V4,
     };
     match descriptor.layout {
+        IrLayout::SingleFile if format == FormatId::json() && version == IrVersion::V3 => {
+            // A v3 file's `formatVersion` may still read as the historical
+            // `"3.0.0"` string. Round-tripping through the typed classic
+            // distribution (as the pre-record-based `load_ir` always did)
+            // normalizes it to the bare integer `3` that backends expect on
+            // the wire, the same way single-file JSON v3 output ever was.
+            let bytes = std::fs::read(&target).map_err(|error| CliError::FileSystem { error })?;
+            let distribution: morphir_core::ir::classic::Distribution =
+                serde_json::from_slice(&bytes).map_err(|error| CliError::Validation {
+                    message: format!("{} is not valid v3 IR JSON: {error}", target.display()),
+                })?;
+            serde_json::to_value(&distribution).map_err(|error| CliError::Extension {
+                message: format!("Failed to serialize Morphir IR v3: {error}"),
+            })
+        }
         IrLayout::SingleFile if format == FormatId::json() => {
             let bytes = std::fs::read(&target).map_err(|error| CliError::FileSystem { error })?;
             serde_json::from_slice(&bytes).map_err(|error| CliError::Validation {

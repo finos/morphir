@@ -6,15 +6,25 @@ mod provider;
 
 pub use options::GenerateOptions;
 
+use crate::commands::ir_storage;
 use crate::commands::out_context::{OutContext, report_config_warnings};
 use crate::error::{CliError, convert_extension_diagnostics};
 use crate::home::MorphirHome;
-use morphir_common::loader::load_ir;
-use morphir_devkit::{TaskId, discover_config, ensure_morphir_structure, load_config_context};
+use morphir_devkit::{
+    ConfigContext, TaskId, TaskResult, discover_config, ensure_morphir_structure,
+    load_config_context,
+};
 use morphir_distribution::list_installed;
 use morphir_extension_sdk::GenerateRequest;
 use starbase::AppResult;
 use std::path::{Path, PathBuf};
+
+/// The task whose IR generate consumes. Today always `compile`. When
+/// `[pipeline].transforms` exists this returns the last transform instead;
+/// nothing else may hardcode `compile.dest`.
+pub fn resolve_ir_task(_context: &ConfigContext) -> TaskId {
+    TaskId::compile()
+}
 
 /// Run the generate command
 pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report> {
@@ -69,37 +79,50 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
     report_config_warnings(&ctx);
     let out = OutContext::resolve(Some(&ctx), &out, &start_dir);
 
-    // Determine IR input path
-    let input_path = if let Some(inp) = input {
-        PathBuf::from(inp)
-    } else {
-        // Default to the compile task's scratch directory
-        out.task(&TaskId::compile()).dest
-    };
-
-    if !input_path.exists() {
-        return Err(CliError::FileSystem {
-            error: std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("IR input path does not exist: {:?}", input_path),
-            ),
+    // Determine IR input: either an explicit `-i` path, probed directly, or
+    // the IR descriptor recorded by the task `resolve_ir_task` names.
+    let (ir_base, descriptor, input_task) = match input {
+        Some(explicit) => {
+            let path = PathBuf::from(&explicit);
+            let path = if path.is_absolute() {
+                path
+            } else {
+                start_dir.join(path)
+            };
+            if !path.exists() {
+                return Err(CliError::FileSystem {
+                    error: std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        format!("IR input path does not exist: {}", path.display()),
+                    ),
+                }
+                .into());
+            }
+            let (base, descriptor) = ir_storage::probe_external(&path)?;
+            (base, descriptor, None)
         }
-        .into());
-    }
-    let input_path = resolve_generate_input(input_path);
-
-    // Determine output path
-    let output_path = if let Some(out_path) = output {
-        PathBuf::from(out_path)
-    } else {
-        out.prepare_dest(&TaskId::generate(&target_lang))?.dest
+        None => {
+            let task = resolve_ir_task(&ctx);
+            let paths = out.task(&task);
+            let record = TaskResult::read(&paths.result)
+                .map_err(|error| CliError::Config { error })?
+                .ok_or_else(|| CliError::Validation {
+                    message: "compile output missing or incomplete, run `morphir compile` first"
+                        .into(),
+                })?;
+            let descriptor = record.ir.ok_or_else(|| CliError::Validation {
+                message: format!("task '{}' produced no IR descriptor", record.task),
+            })?;
+            (paths.dest, descriptor, Some(task))
+        }
     };
-
-    // Load IR (detect format)
-    let ir_data = load_ir(&input_path).map_err(|e| CliError::FileSystem {
-        error: std::io::Error::other(e),
-    })?;
+    let ir_data = ir_storage::read_value(&ir_base, &descriptor)?;
     let ir_version = provider::detect_ir_major(&ir_data)?;
+
+    let generate_task = TaskId::generate(&target_lang);
+    let generate_paths = out.prepare_dest(&generate_task)?;
+    let output_path = generate_paths.dest.clone();
+
     let home = MorphirHome::resolve().map_err(|error| CliError::Config { error })?;
     let installed = list_installed(&home).map_err(|error| CliError::Extension {
         message: format!("Failed to list installed backend providers: {error}"),
@@ -152,13 +175,29 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
     }
 
     let artifacts = publish_returned_artifacts(&output_path, &result.artifacts)?;
+    let artifacts: Vec<String> = artifacts
+        .into_iter()
+        .filter(|path| path != ".morphir-generated-artifacts.json")
+        .collect();
+
+    let mut record = TaskResult::new(&generate_task, &out.module);
+    record.inputs = input_task
+        .as_ref()
+        .map(|task| vec![task.as_str().to_owned()])
+        .unwrap_or_default();
+    record.value = artifacts.clone();
+    record
+        .write(&generate_paths.result)
+        .map_err(|error| CliError::Config { error })?;
+    let ejected_path =
+        crate::commands::eject::maybe_eject(&generate_paths, output.as_deref(), &start_dir)?;
 
     let output = GenerateOutput {
         success: true,
         artifacts,
         diagnostics,
         output_path: output_path.to_string_lossy().to_string(),
-        ejected_path: None,
+        ejected_path,
     };
     if format == OutputFormat::Human {
         write_generate_human(&output).map_err(CliError::from)?;
@@ -167,15 +206,6 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
     }
 
     Ok(None)
-}
-
-fn resolve_generate_input(path: PathBuf) -> PathBuf {
-    let compiled = path.join("morphir-ir.json");
-    if path.is_dir() && compiled.is_file() {
-        compiled
-    } else {
-        path
-    }
 }
 
 fn publish_returned_artifacts(
@@ -208,31 +238,5 @@ mod tests {
             std::fs::read_to_string(output.join("nested/schema.avsc")).unwrap(),
             "{\"type\":\"record\"}"
         );
-    }
-
-    #[test]
-    fn compile_output_directory_resolves_its_host_written_ir_file() {
-        let root = tempdir().unwrap();
-        let compiled = root.path().join("compiled");
-        std::fs::create_dir_all(&compiled).unwrap();
-        std::fs::write(compiled.join("morphir-ir.json"), "{}").unwrap();
-
-        assert_eq!(
-            resolve_generate_input(compiled.clone()),
-            compiled.join("morphir-ir.json")
-        );
-    }
-
-    #[test]
-    fn ordinary_document_tree_directory_stays_a_directory() {
-        let root = tempdir().unwrap();
-        let document_tree = root.path().join("document-tree");
-        std::fs::create_dir_all(&document_tree).unwrap();
-
-        let resolved = resolve_generate_input(document_tree.clone());
-        let ir = load_ir(&resolved).unwrap();
-
-        assert_eq!(resolved, document_tree);
-        assert_eq!(ir["formatVersion"], 4);
     }
 }

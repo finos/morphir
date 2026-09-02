@@ -780,40 +780,6 @@ targets = ["gleam"]
     src_dir
 }
 
-fn v4_module_with_hello_value() -> serde_json::Value {
-    use indexmap::IndexMap;
-    use morphir_core::ir::v4::{
-        Access, AccessControlled, Documented, Literal, ModuleDefinition, Type, TypeAttributes,
-        Value, ValueAttributes, ValueDefinition,
-    };
-
-    serde_json::to_value(AccessControlled {
-        access: Access::Public,
-        value: ModuleDefinition {
-            types: IndexMap::new(),
-            values: IndexMap::from([(
-                "hello".into(),
-                AccessControlled {
-                    access: Access::Public,
-                    value: Documented::new(
-                        None,
-                        ValueDefinition::new(
-                            vec![],
-                            Type::unit(TypeAttributes::default()),
-                            Value::literal(
-                                ValueAttributes::default(),
-                                Literal::String("world".into()),
-                            ),
-                        ),
-                    ),
-                },
-            )]),
-            doc: None,
-        },
-    })
-    .unwrap()
-}
-
 fn add_test_repository(
     name: &str,
     index: &std::path::Path,
@@ -2109,7 +2075,7 @@ fn gleam_generate_accepts_the_compile_output_directory() {
             "gleam",
             "generate",
             "--input",
-            compile_dir.to_str().unwrap(),
+            compile_dir.join("morphir-ir.json").to_str().unwrap(),
         ],
         &home,
         temp.path(),
@@ -2140,22 +2106,28 @@ fn gleam_generate_accepts_the_compile_output_directory() {
 fn gleam_generate_accepts_a_v4_document_tree_directory() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
-    write_gleam_project(temp.path());
-    let document_tree = temp.path().join("document-tree");
-    let module_dir = document_tree.join("src/example");
-    std::fs::create_dir_all(&module_dir).unwrap();
-    std::fs::write(
-        document_tree.join("morphir.json"),
-        serde_json::to_vec_pretty(&serde_json::json!({"name": "example/hello"})).unwrap(),
-    )
-    .unwrap();
-    std::fs::write(
-        module_dir.join("greeting.json"),
-        serde_json::to_vec_pretty(&v4_module_with_hello_value()).unwrap(),
-    )
-    .unwrap();
-    let config = temp.path().join("morphir.toml");
-    assert!(!document_tree.join("morphir-ir.json").exists());
+    let project = temp.path().join("project");
+    write_gleam_project(&project);
+
+    // Produce a real v4 document tree the way a project actually gets one:
+    // compile with `[ir].layout = "document-tree"`. `generate --input` now
+    // probes a tree through the same `manifest.json`/`manifest.yaml`-rooted
+    // scheme that storage describes, not the older ad hoc `morphir.json` +
+    // loose per-module files layout.
+    let toml = project.join("morphir.toml");
+    let mut content = std::fs::read_to_string(&toml).unwrap();
+    content.push_str("\n[ir]\nlayout = \"document-tree\"\n");
+    std::fs::write(&toml, content).unwrap();
+
+    let compile = run_morphir(&["gleam", "compile"], &home, &project);
+    assert!(
+        compile.status.success(),
+        "compile failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&compile.stdout),
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let document_tree = project.join(".morphir/out/compile.dest/morphir-ir");
+    assert!(document_tree.join("manifest.json").is_file());
 
     let generate = run_morphir(
         &[
@@ -2163,11 +2135,9 @@ fn gleam_generate_accepts_a_v4_document_tree_directory() {
             "generate",
             "--input",
             document_tree.to_str().unwrap(),
-            "--config",
-            config.to_str().unwrap(),
         ],
         &home,
-        &document_tree,
+        &project,
     );
 
     assert!(
@@ -2176,7 +2146,7 @@ fn gleam_generate_accepts_a_v4_document_tree_directory() {
         String::from_utf8_lossy(&generate.stdout),
         String::from_utf8_lossy(&generate.stderr)
     );
-    let generated = temp.path().join(".morphir/out/generate/gleam.dest");
+    let generated = project.join(".morphir/out/generate/gleam.dest");
     let generated_paths = walkdir::WalkDir::new(&generated)
         .into_iter()
         .filter_map(Result::ok)
@@ -2202,6 +2172,16 @@ fn gleam_generate_accepts_a_v4_document_tree_directory() {
         "{generated_source}"
     );
 
+    // Validate with a plain (single-file) config of its own: reusing
+    // `project`'s config would inherit its `[ir].layout = "document-tree"`
+    // override and the validation output would not be the single JSON file
+    // this assertion checks for below.
+    let validation_config = temp.path().join("validation-morphir.toml");
+    std::fs::write(
+        &validation_config,
+        "[project]\nname = \"example/hello\"\nversion = \"1.0.0\"\n\n[frontend]\nlanguage = \"gleam\"\n",
+    )
+    .unwrap();
     let validation_output = temp.path().join("document-tree-validation");
     let validation = run_morphir(
         &[
@@ -2211,6 +2191,8 @@ fn gleam_generate_accepts_a_v4_document_tree_directory() {
             generated.to_str().unwrap(),
             "--output",
             validation_output.to_str().unwrap(),
+            "--config",
+            validation_config.to_str().unwrap(),
         ],
         &home,
         temp.path(),
@@ -2272,7 +2254,12 @@ fn gleam_roundtrip_uses_project_outputs_and_emits_recompilable_gleam() {
 }
 
 #[test]
-fn gleam_roundtrip_uses_the_package_override_compile_output() {
+fn gleam_roundtrip_accepts_a_package_name_override_and_still_succeeds() {
+    // The package name no longer affects any out-directory path (compile
+    // always writes to `compile.dest` regardless of package), so this test
+    // no longer proves anything about paths. What it still proves: `roundtrip`
+    // accepts `--package-name` and the compile/generate pipeline still
+    // completes end to end with it set.
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     write_gleam_project(temp.path());
@@ -3658,5 +3645,79 @@ fn compile_leaves_no_result_record_after_a_failing_rerun() {
     assert!(
         !record_path.exists(),
         "a stale result record from the previous successful run must not survive a failing re-run"
+    );
+}
+
+#[test]
+fn generate_reads_the_compile_record_without_an_input_flag() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_gleam_project(&project);
+    let toml = project.join("morphir.toml");
+    let mut content = std::fs::read_to_string(&toml).unwrap();
+    content.push_str("\n[ir]\nlayout = \"document-tree\"\nformat = \"yaml\"\n");
+    std::fs::write(&toml, content).unwrap();
+
+    let compile = run_morphir(&["gleam", "compile"], &home, &project);
+    assert!(
+        compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let generate = run_morphir(
+        &["gleam", "generate", "-o", "src/generated"],
+        &home,
+        &project,
+    );
+    assert!(
+        generate.status.success(),
+        "{}",
+        String::from_utf8_lossy(&generate.stderr)
+    );
+
+    let record: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(project.join(".morphir/out/generate/gleam.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(record["inputs"], serde_json::json!(["compile"]));
+    let value = record["value"].as_array().unwrap();
+    assert!(!value.is_empty());
+    assert!(
+        value
+            .iter()
+            .all(|entry| entry.as_str() != Some(".morphir-generated-artifacts.json"))
+    );
+    let generated = project.join("src/generated");
+    assert!(
+        walkdir::WalkDir::new(&generated)
+            .into_iter()
+            .filter_map(Result::ok)
+            .any(|entry| entry.path().extension().is_some_and(|ext| ext == "gleam"))
+    );
+    assert!(!generated.join(".morphir-generated-artifacts.json").exists());
+}
+
+#[test]
+fn generate_without_a_compile_record_explains_what_to_run() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_gleam_project(&project);
+    let generate = run_morphir(&["gleam", "generate"], &home, &project);
+    assert!(!generate.status.success());
+    let stderr = String::from_utf8_lossy(&generate.stderr);
+    // The diagnostic renderer may word-wrap a long message across lines,
+    // each continuation prefixed with its own gutter (`  | `); undo that
+    // before matching the exact wording so the assertion doesn't depend on
+    // where a particular terminal width happens to break the line.
+    let unwrapped = stderr
+        .lines()
+        .map(|line| line.trim_start_matches([' ', '×', '│']))
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        unwrapped.contains("compile output missing or incomplete, run `morphir compile` first"),
+        "{stderr}"
     );
 }
