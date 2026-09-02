@@ -19,15 +19,20 @@ pub(super) struct ReadinessLogs {
     cursors: BTreeMap<PathBuf, LogCursor>,
     resume_after: Option<PathBuf>,
     observed: Option<DesktopLifecycle>,
+    discovery_limit: usize,
     #[cfg(test)]
     bytes_read: usize,
 }
 
 impl ReadinessLogs {
     pub(super) fn snapshot(root: &Path) -> io::Result<Self> {
+        Self::snapshot_with_limit(root, MAX_DISCOVERY_ENTRIES)
+    }
+
+    pub(super) fn snapshot_with_limit(root: &Path, discovery_limit: usize) -> io::Result<Self> {
         Ok(Self {
             root: root.to_path_buf(),
-            cursors: log_sizes(root)?
+            cursors: log_sizes(root, discovery_limit)?
                 .into_iter()
                 .map(|(path, offset)| {
                     (
@@ -41,13 +46,14 @@ impl ReadinessLogs {
                 .collect(),
             resume_after: None,
             observed: None,
+            discovery_limit,
             #[cfg(test)]
             bytes_read: 0,
         })
     }
 
     pub(super) fn poll(&mut self, launch_id: &str) -> io::Result<Option<DesktopLifecycle>> {
-        let files = log_sizes(&self.root)?;
+        let files = log_sizes(&self.root, self.discovery_limit)?;
         self.cursors.retain(|path, _| files.contains_key(path));
         let files = files.into_iter().collect::<Vec<_>>();
         let start = self
@@ -139,7 +145,7 @@ impl LogCursor {
     }
 }
 
-fn log_sizes(root: &Path) -> io::Result<BTreeMap<PathBuf, u64>> {
+fn log_sizes(root: &Path, entry_limit: usize) -> io::Result<BTreeMap<PathBuf, u64>> {
     let mut files = BTreeMap::new();
     // Desktop writes root/YYYY-MM-DD/session.jsonl. Flat roots also support
     // configured log writers. Never traverse crash trees or directory links.
@@ -148,10 +154,10 @@ fn log_sizes(root: &Path) -> io::Result<BTreeMap<PathBuf, u64>> {
         .into_iter()
         .enumerate()
     {
-        if index == MAX_DISCOVERY_ENTRIES {
-            return Err(io::Error::other(
-                "Desktop log discovery exceeded 50000 entries",
-            ));
+        if index == entry_limit {
+            return Err(io::Error::other(format!(
+                "Desktop log discovery exceeded {entry_limit} entries"
+            )));
         }
         let Ok(entry) = entry else { continue };
         if entry.file_type().is_file()

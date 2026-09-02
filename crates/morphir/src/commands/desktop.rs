@@ -9,7 +9,7 @@ use serde_json::Value;
 use starbase::AppResult;
 use std::{
     path::{Path, PathBuf},
-    process::{Child, Command, ExitStatus, Stdio},
+    process::{Command, ExitStatus, Stdio},
     thread,
     time::{Duration, Instant},
 };
@@ -111,9 +111,7 @@ pub fn run_desktop(operation_id: &OperationId, args: DesktopArgs) -> AppResult<m
         "Launching Morphir Desktop"
     );
 
-    let mut readiness = ReadinessLogs::snapshot(&desktop_logs)
-        .into_diagnostic()
-        .wrap_err("Failed to prepare Desktop readiness monitoring")?;
+    let mut readiness = ReadinessLogs::snapshot(&desktop_logs);
     let mut child = command.spawn().map_err(|error| {
         record_launch_failure(
             operation_id,
@@ -132,7 +130,7 @@ pub fn run_desktop(operation_id: &OperationId, args: DesktopArgs) -> AppResult<m
     })?;
     drop(active);
 
-    await_ready(&mut child, &mut readiness, &launch).map_err(|failure| {
+    let readiness_status = await_ready(|| child.try_wait(), &mut readiness, &launch).map_err(|failure| {
         record_launch_failure(
             operation_id,
             &launch,
@@ -153,15 +151,25 @@ pub fn run_desktop(operation_id: &OperationId, args: DesktopArgs) -> AppResult<m
         )
     })?;
 
-    tracing::info!(
-        schema_version = 1,
-        component = "cli",
-        event_name = DesktopLaunchEvent::Ready.as_str(),
-        operation_id = %operation_id,
-        launch_id = %launch.launch_id(),
-        desktop_version = %version,
-        "Morphir Desktop is ready"
-    );
+    match readiness_status {
+        ReadinessStatus::Confirmed => tracing::info!(
+            schema_version = 1,
+            component = "cli",
+            event_name = DesktopLaunchEvent::Ready.as_str(),
+            operation_id = %operation_id,
+            launch_id = %launch.launch_id(),
+            desktop_version = %version,
+            "Morphir Desktop is ready"
+        ),
+        ReadinessStatus::Unverified { reason } => tracing::warn!(
+            schema_version = 1,
+            component = "cli",
+            operation_id = %operation_id,
+            launch_id = %launch.launch_id(),
+            desktop_logs = %desktop_logs.display(),
+            "Desktop started, but readiness could not be verified: {reason}. Continuing without terminating Desktop."
+        ),
+    }
 
     if !args.wait {
         return Ok(None);
@@ -300,22 +308,38 @@ struct ReadyFailure {
     message: String,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum ReadinessStatus {
+    Confirmed,
+    Unverified { reason: String },
+}
+
 fn await_ready(
-    child: &mut Child,
-    readiness: &mut ReadinessLogs,
+    mut poll_child: impl FnMut() -> std::io::Result<Option<ExitStatus>>,
+    readiness: &mut std::io::Result<ReadinessLogs>,
     launch: &DesktopLaunchContext,
-) -> std::result::Result<(), ReadyFailure> {
+) -> std::result::Result<ReadinessStatus, ReadyFailure> {
+    let readiness = match readiness {
+        Ok(readiness) => readiness,
+        Err(error) => {
+            return Ok(ReadinessStatus::Unverified {
+                reason: error.to_string(),
+            });
+        }
+    };
     let deadline = Instant::now() + READY_TIMEOUT;
     let mut next_log_poll = Instant::now();
     let mut observed_exit: Option<(ExitStatus, Instant)> = None;
     loop {
         let lifecycle = if Instant::now() >= next_log_poll {
-            let lifecycle = readiness
-                .poll(launch.launch_id().as_str())
-                .map_err(|error| ReadyFailure {
-                    code: DesktopLaunchErrorCode::ReadyTimedOut,
-                    message: format!("Failed to read Desktop readiness logs: {error}."),
-                })?;
+            let lifecycle = match readiness.poll(launch.launch_id().as_str()) {
+                Ok(lifecycle) => lifecycle,
+                Err(error) => {
+                    return Ok(ReadinessStatus::Unverified {
+                        reason: error.to_string(),
+                    });
+                }
+            };
             next_log_poll = Instant::now() + LOG_POLL_INTERVAL;
             lifecycle
         } else {
@@ -323,7 +347,7 @@ fn await_ready(
         };
         if let Some(lifecycle) = lifecycle {
             match lifecycle {
-                DesktopLifecycle::Ready => return Ok(()),
+                DesktopLifecycle::Ready => return Ok(ReadinessStatus::Confirmed),
                 DesktopLifecycle::Failed { error_code }
                 | DesktopLifecycle::Crashed { error_code } => {
                     return Err(ReadyFailure {
@@ -360,7 +384,7 @@ fn await_ready(
             });
         }
         if observed_exit.is_none()
-            && let Some(status) = child.try_wait().map_err(|error| ReadyFailure {
+            && let Some(status) = poll_child().map_err(|error| ReadyFailure {
                 code: DesktopLaunchErrorCode::ExitedBeforeReady,
                 message: format!("Failed to observe Morphir Desktop startup: {error}."),
             })?
@@ -439,6 +463,42 @@ fn portable_exit_code(status: ExitStatus) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn log_discovery_cap_before_spawn_does_not_fail_the_launch() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(root.path().join("unrelated.txt"), "unrelated").unwrap();
+        let mut readiness = ReadinessLogs::snapshot_with_limit(root.path(), 1);
+        assert!(readiness.is_err(), "fixture must reach discovery cap");
+        let launch = DesktopLaunchContext::new(&OperationId::new());
+        let result = await_ready(
+            || panic!("should bypass unavailable readiness"),
+            &mut readiness,
+            &launch,
+        );
+        assert!(
+            matches!(result, Ok(ReadinessStatus::Unverified { .. })),
+            "log saturation must not fail launch or claim readiness: {result:?}"
+        );
+    }
+
+    #[test]
+    fn log_discovery_cap_after_spawn_does_not_fail_the_launch() {
+        let root = tempfile::tempdir().unwrap();
+        let mut readiness = ReadinessLogs::snapshot_with_limit(root.path(), 1);
+        assert!(readiness.is_ok());
+        std::fs::write(root.path().join("unrelated.txt"), "unrelated").unwrap();
+        let launch = DesktopLaunchContext::new(&OperationId::new());
+        let result = await_ready(
+            || panic!("should bypass unavailable readiness"),
+            &mut readiness,
+            &launch,
+        );
+        assert!(
+            matches!(result, Ok(ReadinessStatus::Unverified { .. })),
+            "log saturation must not fail launch or claim readiness: {result:?}"
+        );
+    }
 
     #[test]
     fn readiness_requires_the_requested_launch_id() {
