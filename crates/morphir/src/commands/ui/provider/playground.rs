@@ -46,6 +46,7 @@ use crate::home::MorphirHome;
 
 use super::PlaygroundCapability;
 use super::native::capability;
+use super::sessions::{RegistryOpener, SessionReuseInvoker};
 
 /// How long the playground waits for one extension invocation.
 ///
@@ -64,13 +65,17 @@ type RegistrySource = Arc<dyn Fn() -> Result<ExtensionRegistry, CliError> + Send
 
 /// How the playground reaches a resolved provider.
 ///
-/// Production is [`RegistryInvoker`], which delegates to the CLI's own
-/// extension boundary — the same functions `morphir compile` and `morphir
-/// generate` call — so the playground cannot acquire a private invocation
-/// path. Injectable so a test can drive an invocation that never answers and
-/// observe the timeout without waiting two real minutes.
+/// Production is [`SessionReuseInvoker`] over [`RegistryOpener`], which
+/// delegates to the CLI's own extension boundary — the same functions
+/// `morphir compile` and `morphir generate` call — so the playground cannot
+/// acquire a private invocation path. Injectable so a test can drive an
+/// invocation that never answers and observe the timeout without waiting two
+/// real minutes.
+///
+/// [`SessionReuseInvoker`]: super::sessions::SessionReuseInvoker
+/// [`RegistryOpener`]: super::sessions::RegistryOpener
 #[async_trait]
-trait ExtensionInvoker: Send + Sync {
+pub(super) trait ExtensionInvoker: Send + Sync {
     async fn compile(
         &self,
         home: &MorphirHome,
@@ -86,31 +91,6 @@ trait ExtensionInvoker: Send + Sync {
         resolved: &ResolvedBackend,
         request: GenerateRequest,
     ) -> Result<GenerateResult, CliError>;
-}
-
-struct RegistryInvoker;
-
-#[async_trait]
-impl ExtensionInvoker for RegistryInvoker {
-    async fn compile(
-        &self,
-        home: &MorphirHome,
-        working_directory: &Path,
-        resolved: &ResolvedFrontend,
-        request: CompileRequest,
-    ) -> Result<CompileResult, CliError> {
-        crate::extensions::invoke_frontend(home, working_directory, resolved, request).await
-    }
-
-    async fn generate(
-        &self,
-        home: &MorphirHome,
-        working_directory: &Path,
-        resolved: &ResolvedBackend,
-        request: GenerateRequest,
-    ) -> Result<GenerateResult, CliError> {
-        crate::extensions::invoke_backend(home, working_directory, resolved, request).await
-    }
 }
 
 /// Either the extension answered, or it outlasted the playground's patience.
@@ -142,7 +122,11 @@ impl NativePlaygroundProvider {
         Self::with_parts(
             home,
             Arc::new(move || installed_registry(&registry_home)),
-            Arc::new(RegistryInvoker),
+            // Session-reusing on purpose: a provider with a session mode pays
+            // activation and the MEP handshake once per session instead of
+            // once per click. See the sessions module for the reuse and
+            // eviction rules.
+            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
             working_directory,
             INVOCATION_TIMEOUT,
         )
@@ -756,9 +740,7 @@ mod tests {
                 .lock()
                 .expect("the log is never poisoned")
                 .push(request.clone());
-            RegistryInvoker
-                .compile(home, working_directory, resolved, request)
-                .await
+            crate::extensions::invoke_frontend(home, working_directory, resolved, request).await
         }
 
         async fn generate(
@@ -772,9 +754,7 @@ mod tests {
                 .lock()
                 .expect("the log is never poisoned")
                 .push(request.clone());
-            RegistryInvoker
-                .generate(home, working_directory, resolved, request)
-                .await
+            crate::extensions::invoke_backend(home, working_directory, resolved, request).await
         }
     }
 
@@ -1062,7 +1042,7 @@ mod tests {
                 }],
                 modules: vec![],
             }),
-            Arc::new(RegistryInvoker),
+            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
         );
 
         let result = fixture
@@ -1098,7 +1078,7 @@ mod tests {
                 }],
                 diagnostics: vec![],
             }),
-            Arc::new(RegistryInvoker),
+            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
         );
         let cwd = std::env::current_dir().unwrap();
         let watched = [
@@ -1217,7 +1197,7 @@ mod tests {
                     )
                     .expect("the blocking frontend double registers");
             },
-            Arc::new(RegistryInvoker),
+            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
             // Real time, not the paused clock the sleeping-invoker test uses:
             // an outstanding blocking task inhibits tokio's auto-advance, so
             // a paused clock would never reach the deadline.
@@ -1431,7 +1411,7 @@ mod tests {
         let provider = NativePlaygroundProvider::with_parts(
             home.clone(),
             Arc::new(move || installed_registry(&home)),
-            Arc::new(RegistryInvoker),
+            Arc::new(SessionReuseInvoker::new(RegistryOpener)),
             working.path().to_path_buf(),
             INVOCATION_TIMEOUT,
         );

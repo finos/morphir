@@ -5,7 +5,7 @@ use crate::home::MorphirHome;
 use morphir_daemon::ExtensionRegistry;
 use morphir_daemon::extensions::{
     FailedSession, InvocationMode, InvokeOutcome, Loaded, MepTransport, ResolvedBackend,
-    ResolvedFrontend, Session, activate_transport, protocol::methods,
+    ResolvedFrontend, Session, SessionHandle, activate_transport, protocol::methods, spawn_session,
 };
 use morphir_distribution::{InstalledExtensionSnapshot, activate_installed_snapshot};
 use morphir_extension_sdk::protocol::{InitializeParams, MEP_VERSION, PeerInfo};
@@ -158,6 +158,76 @@ pub async fn invoke_backend(
     }
 }
 
+/// Open a long-lived session to a resolved frontend, or `None` when its
+/// invocation mode has no session to hold.
+///
+/// The returned handle answers any number of MEP invocations over one
+/// negotiated session, ends the session when the last clone is dropped, and
+/// stops itself after five idle minutes. `None` is the native-direct case: an
+/// in-process function call has no process and no handshake, so there is
+/// nothing to keep warm, and the caller should use [`invoke_frontend`].
+pub async fn open_frontend_session(
+    home: &MorphirHome,
+    workspace: &Path,
+    resolved: &ResolvedFrontend,
+) -> Result<Option<SessionHandle>, CliError> {
+    let provider = resolved.info().id.as_str();
+    match resolved.invocation_mode() {
+        InvocationMode::NativeDirect => Ok(None),
+        InvocationMode::NativeMep => {
+            let loaded = resolved
+                .native_mep_session()
+                .ok_or_else(|| unavailable_mode(provider, "native MEP frontend"))?;
+            Ok(Some(open_loaded(loaded, provider).await?))
+        }
+        InvocationMode::ProcessMep | InvocationMode::WasmMep => {
+            let snapshot = resolved
+                .installed_snapshot()
+                .ok_or_else(|| unavailable_mode(provider, "installed MEP frontend"))?;
+            let loaded = installed_loaded(home, workspace, snapshot, provider).await?;
+            Ok(Some(open_loaded(loaded, provider).await?))
+        }
+    }
+}
+
+/// Open a long-lived session to a resolved backend, or `None` when its
+/// invocation mode has no session to hold. See [`open_frontend_session`].
+pub async fn open_backend_session(
+    home: &MorphirHome,
+    workspace: &Path,
+    resolved: &ResolvedBackend,
+) -> Result<Option<SessionHandle>, CliError> {
+    let provider = resolved.info().id.as_str();
+    match resolved.invocation_mode() {
+        InvocationMode::NativeDirect => Ok(None),
+        InvocationMode::NativeMep => {
+            let loaded = resolved
+                .native_mep_session()
+                .ok_or_else(|| unavailable_mode(provider, "native MEP backend"))?;
+            Ok(Some(open_loaded(loaded, provider).await?))
+        }
+        InvocationMode::ProcessMep | InvocationMode::WasmMep => {
+            let snapshot = resolved
+                .installed_snapshot()
+                .ok_or_else(|| unavailable_mode(provider, "installed MEP backend"))?;
+            let loaded = installed_loaded(home, workspace, snapshot, provider).await?;
+            Ok(Some(open_loaded(loaded, provider).await?))
+        }
+    }
+}
+
+/// Initialize a loaded session and hand it to an actor that owns it.
+async fn open_loaded<T: MepTransport + Send + 'static>(
+    loaded: Session<T, Loaded>,
+    provider: &str,
+) -> Result<SessionHandle, CliError> {
+    let ready = loaded
+        .initialize(host_initialize_params())
+        .await
+        .map_err(|failure| session_failure(provider, "initialize", failure))?;
+    Ok(spawn_session(ready))
+}
+
 /// Run one synchronous provider call off the async runtime.
 ///
 /// A provider that panics takes its blocking thread with it rather than the
@@ -197,16 +267,26 @@ where
     P: Serialize,
     R: DeserializeOwned,
 {
+    let loaded = installed_loaded(home, workspace, snapshot, provider).await?;
+    invoke_loaded(loaded, provider, method, request).await
+}
+
+/// Verify and activate an installed extension into a loaded session.
+async fn installed_loaded(
+    home: &MorphirHome,
+    workspace: &Path,
+    snapshot: &InstalledExtensionSnapshot,
+    provider: &str,
+) -> Result<Session<morphir_daemon::extensions::BoxedMepTransport, Loaded>, CliError> {
     let artifact =
         activate_installed_snapshot(home, snapshot).map_err(|error| CliError::Extension {
             message: format!("Failed to verify installed provider '{provider}': {error}"),
         })?;
-    let loaded = activate_transport(artifact, workspace)
+    activate_transport(artifact, workspace)
         .await
         .map_err(|error| CliError::Extension {
             message: format!("Failed to activate installed provider '{provider}': {error}"),
-        })?;
-    invoke_loaded(loaded, provider, method, request).await
+        })
 }
 
 async fn invoke_loaded<T, P, R>(
@@ -276,7 +356,10 @@ fn failed_session_message<T>(failure: &FailedSession<T>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{extension_registry, invoke_backend, invoke_frontend};
+    use super::{
+        extension_registry, invoke_backend, invoke_frontend, open_backend_session,
+        open_frontend_session,
+    };
     use crate::home::MorphirHome;
     use morphir_daemon::{InvocationPolicy, ResolvedBackend, ResolvedFrontend};
     use morphir_extension_sdk::{
@@ -325,6 +408,118 @@ mod tests {
         policy: InvocationPolicy,
     ) -> ResolvedBackend {
         registry.resolve_backend("gleam", "4.0.0", policy).unwrap()
+    }
+
+    // Requirement: a session opened once answers many invocations, and answers
+    // them identically to the one-shot path. This is what the playground's
+    // session reuse stands on: reuse must change the cost of a compile, never
+    // its result.
+    #[tokio::test]
+    async fn an_open_session_answers_repeated_invocations_like_the_one_shot_path() {
+        let temp = tempfile::tempdir().unwrap();
+        let home =
+            MorphirHome::resolve_from(Some(temp.path().join("home").as_os_str()), None).unwrap();
+        let registry = extension_registry([]).unwrap();
+        let resolved = resolve_frontend(&registry, InvocationPolicy::ProtocolOnly);
+        let request = compile_request(&temp.path().join("compile"));
+
+        let handle = open_frontend_session(&home, temp.path(), &resolved)
+            .await
+            .unwrap()
+            .expect("a native MEP frontend has a session to open");
+        let first: morphir_extension_sdk::CompileResult = handle
+            .invoke(
+                morphir_daemon::extensions::protocol::methods::COMPILE,
+                &request,
+            )
+            .await
+            .unwrap();
+        let second: morphir_extension_sdk::CompileResult = handle
+            .invoke(
+                morphir_daemon::extensions::protocol::methods::COMPILE,
+                &request,
+            )
+            .await
+            .unwrap();
+        let one_shot = invoke_frontend(&home, temp.path(), &resolved, request)
+            .await
+            .unwrap();
+        handle.shutdown().await.unwrap();
+
+        assert_eq!(
+            serde_json::to_value(&first).unwrap(),
+            serde_json::to_value(&second).unwrap()
+        );
+        assert_eq!(
+            serde_json::to_value(&second).unwrap(),
+            serde_json::to_value(&one_shot).unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn a_backend_session_opens_and_generates() {
+        let temp = tempfile::tempdir().unwrap();
+        let home =
+            MorphirHome::resolve_from(Some(temp.path().join("home").as_os_str()), None).unwrap();
+        let registry = extension_registry([]).unwrap();
+        let compiled = invoke_frontend(
+            &home,
+            temp.path(),
+            &resolve_frontend(&registry, InvocationPolicy::PreferDirect),
+            compile_request(&temp.path().join("compile")),
+        )
+        .await
+        .unwrap();
+
+        let resolved = resolve_backend(&registry, InvocationPolicy::ProtocolOnly);
+        let handle = open_backend_session(&home, temp.path(), &resolved)
+            .await
+            .unwrap()
+            .expect("a native MEP backend has a session to open");
+        let generated: morphir_extension_sdk::GenerateResult = handle
+            .invoke(
+                morphir_daemon::extensions::protocol::methods::GENERATE,
+                &GenerateRequest {
+                    ir: compiled.ir.unwrap(),
+                    target: "gleam".into(),
+                    options: HashMap::new(),
+                },
+            )
+            .await
+            .unwrap();
+        handle.shutdown().await.unwrap();
+
+        assert!(generated.success);
+    }
+
+    // A native-direct provider is an in-process function call: there is no
+    // process and no negotiated session, so there is nothing to keep warm.
+    // `None` tells the caller to use the one-shot path, rather than an error
+    // telling them something went wrong.
+    #[tokio::test]
+    async fn a_native_direct_provider_has_no_session_to_open() {
+        let temp = tempfile::tempdir().unwrap();
+        let home =
+            MorphirHome::resolve_from(Some(temp.path().join("home").as_os_str()), None).unwrap();
+        let registry = extension_registry([]).unwrap();
+
+        let frontend = open_frontend_session(
+            &home,
+            temp.path(),
+            &resolve_frontend(&registry, InvocationPolicy::PreferDirect),
+        )
+        .await
+        .unwrap();
+        let backend = open_backend_session(
+            &home,
+            temp.path(),
+            &resolve_backend(&registry, InvocationPolicy::PreferDirect),
+        )
+        .await
+        .unwrap();
+
+        assert!(frontend.is_none());
+        assert!(backend.is_none());
     }
 
     #[tokio::test]

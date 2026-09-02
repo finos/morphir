@@ -4,6 +4,7 @@ pub mod extension;
 pub mod native;
 pub mod playground;
 mod project_model;
+mod sessions;
 
 #[cfg(test)]
 mod conformance;
