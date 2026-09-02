@@ -1,6 +1,7 @@
 pub mod cache;
 pub mod compile;
 pub mod config;
+pub mod desktop;
 pub mod diagnostics;
 pub mod dist;
 pub mod extension;
@@ -18,6 +19,7 @@ pub mod version;
 pub use cache::*;
 pub use compile::*;
 pub use config::*;
+pub use desktop::*;
 pub use diagnostics::*;
 pub use dist::*;
 pub use extension::*;
