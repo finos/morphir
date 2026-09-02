@@ -15,6 +15,8 @@ use std::{
 };
 
 mod readiness;
+#[cfg(windows)]
+mod windows;
 use readiness::ReadinessLogs;
 
 const DESKTOP_TOOL_ID: &str = "desktop";
@@ -74,7 +76,11 @@ pub fn run_desktop(operation_id: &OperationId, args: DesktopArgs) -> AppResult<m
     let launch = DesktopLaunchContext::new(operation_id);
     let version = active.version().clone();
     let executable = active.program().to_path_buf();
-    let mut command = Command::new(active.program());
+    #[cfg(windows)]
+    let launch_executable = windows::executable_path(&executable)?;
+    #[cfg(not(windows))]
+    let launch_executable = &executable;
+    let mut command = Command::new(launch_executable);
     command.args(active.args()).arg(&workspace);
     command.env_clear();
     command.envs(std::env::vars_os().filter(|(name, _)| should_inherit_environment(name)));

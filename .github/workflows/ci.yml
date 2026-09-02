@@ -19,8 +19,8 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  SCCACHE_GHA_ENABLED: "true"
-  RUSTC_WRAPPER: sccache
+  # setup-rust-ci enables the compiler wrapper after installing sccache.
+  # mise may compile Cargo tools before that action runs on a cold cache.
 
 jobs:
   # Detect what files changed to enable fast-path for docs-only changes
@@ -31,6 +31,7 @@ jobs:
       rust: ${{ steps.filter.outputs.rust }}
       docs: ${{ steps.filter.outputs.docs }}
       release: ${{ steps.filter.outputs.release }}
+      desktop-demo: ${{ steps.filter.outputs.desktop-demo }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -40,6 +41,13 @@ jobs:
         id: filter
         with:
           filters: |
+            desktop-demo:
+              - 'tools/demo-desktop*'
+              - 'tools/package.json'
+              - 'tools/bun.lock'
+              - 'tools/tsconfig.json'
+              - '.config/mise/config.toml'
+              - '.github/workflows/ci.yml'
             rust:
               - 'Cargo.toml'
               - 'Cargo.lock'
@@ -84,6 +92,25 @@ jobs:
               - 'tests/ci/test_select_release_assets.py'
               - '.github/scripts/select_release_assets.py'
               - '.github/workflows/ci.yml'
+
+  desktop-demo:
+    name: Desktop demo (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: changes
+    if: ${{ needs.changes.outputs.desktop-demo == 'true' }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+        working-directory: tools
+      - run: bun run typecheck
+        working-directory: tools
+      - run: bun test tools/demo-desktop.test.ts
 
   # Fast feedback: formatting + lint (no GraalVM, no Elm build)
   lint:
@@ -374,7 +401,7 @@ jobs:
   check:
     name: All Checks
     runs-on: ubuntu-latest
-    needs: [changes, lint, build-elm-extension, build-scala-extension, morphir-cli-test, check-cli-docs, docs, release-workflow]
+    needs: [changes, lint, build-elm-extension, build-scala-extension, morphir-cli-test, check-cli-docs, docs, release-workflow, desktop-demo]
     if: always()
     steps:
       - name: Check results
@@ -412,6 +439,12 @@ jobs:
           if [[ "${{ needs.changes.outputs.release }}" == "true" ]]; then
             if [[ "${{ needs.release-workflow.result }}" != "success" ]]; then
               echo "release workflow validation failed"
+              exit 1
+            fi
+          fi
+          if [[ "${{ needs.changes.outputs.desktop-demo }}" == "true" ]]; then
+            if [[ "${{ needs.desktop-demo.result }}" != "success" ]]; then
+              echo "Desktop demo tests failed"
               exit 1
             fi
           fi

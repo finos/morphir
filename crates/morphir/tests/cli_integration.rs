@@ -27,9 +27,9 @@ fn write_local_desktop_package(directory: &std::path::Path, version: &str) -> Pa
     #[cfg(any(windows, target_os = "macos"))]
     {
         let executable = if cfg!(windows) {
-            "Morphir Desktop.exe"
+            "morphir-desktop.exe"
         } else {
-            "Morphir Desktop.app/Contents/MacOS/Morphir Desktop"
+            "Morphir Desktop.app/Contents/MacOS/morphir-desktop"
         };
         let package = directory.join(format!("morphir-desktop-{version}.zip"));
         let file = std::fs::File::create(&package).unwrap();
@@ -85,7 +85,7 @@ fn desktop_offline_reports_how_to_install_when_no_active_release_exists() {
 
 fn build_desktop_launch_fixture(fixture_root: &std::path::Path) -> PathBuf {
     let executable_name = if cfg!(windows) {
-        "Morphir Desktop.exe"
+        "morphir-desktop.exe"
     } else {
         "morphir-desktop"
     };
@@ -105,13 +105,17 @@ fn build_desktop_launch_fixture(fixture_root: &std::path::Path) -> PathBuf {
         String::from_utf8_lossy(&compilation.stderr)
     );
 
-    if cfg!(target_os = "macos") {
+    if cfg!(any(windows, target_os = "macos")) {
         let package = fixture_root.join("morphir-desktop-fixture.zip");
         let file = std::fs::File::create(&package).unwrap();
         let mut archive = zip::ZipWriter::new(file);
         archive
             .start_file(
-                "Morphir Desktop.app/Contents/MacOS/Morphir Desktop",
+                if cfg!(target_os = "macos") {
+                    "Morphir Desktop.app/Contents/MacOS/morphir-desktop"
+                } else {
+                    "morphir-desktop.exe"
+                },
                 zip::write::SimpleFileOptions::default().unix_permissions(0o755),
             )
             .unwrap();

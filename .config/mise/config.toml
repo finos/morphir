@@ -157,6 +157,15 @@ depends = ["tools:install"]
 description = "Build and vendor a clean morphir-web worktree twice with provenance"
 run = "bun run tools/vendor-morphir-web.ts"
 
+[tasks."demo:desktop"]
+description = "Build, install and run the real Desktop demo in a fresh temporary Home"
+usage = 'flag "--prepare-only" help="Build and install without opening Desktop"'
+run = "bun run tools/demo-desktop.ts"
+
+[tasks."test:desktop-demo"]
+description = "Test Desktop demo orchestration without building or opening Desktop"
+run = "bun test tools/demo-desktop.test.ts"
+
 [tasks.check]
 description = "Run all checks"
 depends = [

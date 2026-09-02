@@ -25,8 +25,15 @@ class CiRustOptimizationTests(unittest.TestCase):
         )[1].split("  morphir-cli-test:\n", maxsplit=1)[0]
 
     def test_ci_enables_sccache(self) -> None:
-        self.assertIn('SCCACHE_GHA_ENABLED: "true"', self.ci_workflow)
-        self.assertIn("RUSTC_WRAPPER: sccache", self.ci_workflow)
+        # mise can compile Cargo tools before the shared setup action runs.
+        # A global wrapper points those builds at an executable not installed yet.
+        self.assertNotIn("RUSTC_WRAPPER:", self.ci_workflow)
+        self.assertIn("echo 'RUSTC_WRAPPER=sccache'", self.setup_rust_ci_action)
+        self.assertIn("echo 'SCCACHE_GHA_ENABLED=true'", self.setup_rust_ci_action)
+        self.assertLess(
+            self.setup_rust_ci_action.index("uses: mozilla-actions/sccache-action"),
+            self.setup_rust_ci_action.index("echo 'RUSTC_WRAPPER=sccache'"),
+        )
 
     def test_rust_jobs_use_shared_setup_action(self) -> None:
         self.assertEqual(
