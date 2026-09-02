@@ -13,6 +13,7 @@ struct TestIndex {
 fn morphir_command() -> std::process::Command {
     let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"));
     command.env("MORPHIR_LOG_FILE", "false");
+    command.env_remove("MORPHIR_LOG_DIR");
     command
 }
 
@@ -39,6 +40,273 @@ fn write_local_desktop_package(directory: &std::path::Path, version: &str) -> Pa
         std::io::Write::write_all(&mut archive, format!("desktop-{version}").as_bytes()).unwrap();
         archive.finish().unwrap();
         package
+    }
+}
+
+#[test]
+fn desktop_command_exposes_workspace_wait_and_offline_contract() {
+    let output = morphir_command()
+        .args(["desktop", "--help"])
+        .output()
+        .expect("failed to run morphir desktop --help");
+
+    assert!(
+        output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let help = String::from_utf8_lossy(&output.stdout);
+    assert!(help.contains("[PATH]"), "{help}");
+    assert!(help.contains("--wait"), "{help}");
+    assert!(help.contains("--offline"), "{help}");
+}
+
+#[test]
+fn desktop_offline_reports_how_to_install_when_no_active_release_exists() {
+    let temp = TempDir::new().unwrap();
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir(&workspace).unwrap();
+
+    let output = morphir_command()
+        .args(["desktop", "--offline", workspace.to_str().unwrap()])
+        .env("MORPHIR_HOME", temp.path().join("home"))
+        .output()
+        .expect("failed to run morphir desktop");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("Morphir Desktop is not installed"),
+        "{stderr}"
+    );
+    assert!(stderr.contains("morphir tool install desktop"), "{stderr}");
+}
+
+fn build_desktop_launch_fixture(fixture_root: &std::path::Path) -> PathBuf {
+    let executable_name = if cfg!(windows) {
+        "Morphir Desktop.exe"
+    } else {
+        "morphir-desktop"
+    };
+    let compiled_executable = fixture_root.join(executable_name);
+    let fixture_source =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/desktop_launch_fixture.rs");
+    let rustc = std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into());
+    let compilation = std::process::Command::new(rustc)
+        .arg(&fixture_source)
+        .arg("-o")
+        .arg(&compiled_executable)
+        .output()
+        .expect("failed to compile Desktop launch fixture");
+    assert!(
+        compilation.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compilation.stderr)
+    );
+
+    if cfg!(target_os = "macos") {
+        let package = fixture_root.join("morphir-desktop-fixture.zip");
+        let file = std::fs::File::create(&package).unwrap();
+        let mut archive = zip::ZipWriter::new(file);
+        archive
+            .start_file(
+                "Morphir Desktop.app/Contents/MacOS/Morphir Desktop",
+                zip::write::SimpleFileOptions::default().unix_permissions(0o755),
+            )
+            .unwrap();
+        let bytes = std::fs::read(&compiled_executable).unwrap();
+        std::io::Write::write_all(&mut archive, &bytes).unwrap();
+        archive.finish().unwrap();
+        std::fs::remove_file(compiled_executable).unwrap();
+        package
+    } else {
+        compiled_executable
+    }
+}
+
+fn install_desktop_launch_fixture(
+    home: &std::path::Path,
+    fixture_root: &std::path::Path,
+) -> PathBuf {
+    let package = build_desktop_launch_fixture(fixture_root);
+    let install = morphir_command()
+        .args([
+            "tool",
+            "install",
+            "desktop",
+            "--source",
+            package.to_str().unwrap(),
+            "--channel",
+            "developer",
+            "--version",
+            "0.1.0",
+        ])
+        .env("MORPHIR_HOME", home)
+        .output()
+        .expect("failed to install Desktop launch fixture");
+    assert!(
+        install.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
+    );
+    package
+}
+
+#[test]
+fn desktop_launches_the_installed_release_twice_after_its_package_source_is_removed() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let workspace = temp.path().join("sample-workspace");
+    std::fs::create_dir(&workspace).unwrap();
+    let package_source = install_desktop_launch_fixture(&home, temp.path());
+    std::fs::remove_file(&package_source).unwrap();
+
+    for _ in 0..2 {
+        let output = morphir_command()
+            .args([
+                "desktop",
+                "--offline",
+                "--wait",
+                workspace.to_str().unwrap(),
+            ])
+            .env("MORPHIR_HOME", &home)
+            .env("HTTP_PROXY", "http://127.0.0.1:1")
+            .env("HTTPS_PROXY", "http://127.0.0.1:1")
+            .output()
+            .expect("failed to launch installed Desktop fixture");
+        assert!(
+            output.status.success(),
+            "stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    assert!(!package_source.exists());
+    let ready_events = std::fs::read_to_string(home.join("logs/desktop/fixture.jsonl")).unwrap();
+    let ready_events = ready_events
+        .lines()
+        .map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(ready_events.len(), 2);
+    let first_launch = ready_events[0]["fields"]["launch_id"].as_str().unwrap();
+    let second_launch = ready_events[1]["fields"]["launch_id"].as_str().unwrap();
+    assert!(first_launch.starts_with("launch-"));
+    assert!(
+        ready_events[0]["fields"]["parent_operation_id"]
+            .as_str()
+            .unwrap()
+            .starts_with("op-")
+    );
+    assert_ne!(first_launch, second_launch);
+
+    let captures = std::fs::read_to_string(home.join("launches.txt")).unwrap();
+    let expected = format!(
+        "{}|{}|1",
+        workspace.canonicalize().unwrap().display(),
+        home.display()
+    );
+    assert_eq!(
+        captures.lines().collect::<Vec<_>>(),
+        vec![expected.as_str(), expected.as_str()]
+    );
+}
+
+#[test]
+fn desktop_preserves_absolute_and_relative_log_directory_overrides() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir(&workspace).unwrap();
+    install_desktop_launch_fixture(&home, temp.path());
+
+    for configured in [
+        temp.path().join("absolute-logs"),
+        PathBuf::from("relative-logs"),
+    ] {
+        let expected = temp.path().join(&configured);
+        let output = morphir_command()
+            .args([
+                "desktop",
+                "--offline",
+                "--wait",
+                workspace.to_str().unwrap(),
+            ])
+            .env("MORPHIR_HOME", &home)
+            .env("MORPHIR_LOG_DIR", &configured)
+            .current_dir(temp.path())
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let events = std::fs::read_to_string(expected.join("fixture.jsonl"))
+            .expect("Desktop must write readiness in the configured log directory");
+        assert!(events.contains("desktop.ready"));
+        assert!(!home.join("logs/desktop/fixture.jsonl").exists());
+        assert!(!workspace.join("relative-logs").exists());
+    }
+}
+
+#[test]
+fn desktop_wait_returns_the_desktop_process_exit_status() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let workspace = temp.path().join("sample-workspace");
+    std::fs::create_dir(&workspace).unwrap();
+    let package_source = install_desktop_launch_fixture(&home, temp.path());
+    std::fs::remove_file(package_source).unwrap();
+    std::fs::write(home.join("fixture-exit-code"), "23").unwrap();
+
+    let output = morphir_command()
+        .args([
+            "desktop",
+            "--offline",
+            "--wait",
+            workspace.to_str().unwrap(),
+        ])
+        .env("MORPHIR_HOME", &home)
+        .output()
+        .expect("failed to launch installed Desktop fixture");
+
+    assert_eq!(
+        output.status.code(),
+        Some(23),
+        "stderr={}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn desktop_wait_preserves_exits_before_readiness() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let workspace = temp.path().join("sample-workspace");
+    std::fs::create_dir(&workspace).unwrap();
+    install_desktop_launch_fixture(&home, temp.path());
+    std::fs::write(home.join("fixture-exit-code"), "23").unwrap();
+    for readiness in ["silent", "exit"] {
+        std::fs::write(home.join("fixture-readiness"), readiness).unwrap();
+        let output = morphir_command()
+            .args([
+                "desktop",
+                "--offline",
+                "--wait",
+                workspace.to_str().unwrap(),
+            ])
+            .env("MORPHIR_HOME", &home)
+            .output()
+            .expect("failed to launch installed Desktop fixture");
+        assert_eq!(
+            output.status.code(),
+            Some(23),
+            "readiness={readiness}, stderr={}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 }
 
@@ -452,6 +720,9 @@ fn run_morphir(
 }
 
 fn write_gleam_project(project_root: &std::path::Path) -> PathBuf {
+    // Pin project outputs locally; discovery otherwise inherits an ancestor's
+    // .morphir directory, including one in the developer's home directory.
+    std::fs::create_dir_all(project_root.join(".morphir")).unwrap();
     let src_dir = project_root.join("src");
     std::fs::create_dir_all(&src_dir).unwrap();
     std::fs::write(
@@ -1669,9 +1940,13 @@ fn verify_real_installed_elm_provider(
 fn gleam_compile_uses_the_native_frontend_and_writes_valid_v4_ir() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
-    write_gleam_project(temp.path());
+    let project = temp.path().join("project");
+    // Reproduce the developer-home layout without relying on the host machine.
+    let ancestor_morphir = temp.path().join(".morphir");
+    std::fs::create_dir(&ancestor_morphir).unwrap();
+    write_gleam_project(&project);
 
-    let compile = run_morphir(&["gleam", "compile"], &home, temp.path());
+    let compile = run_morphir(&["gleam", "compile"], &home, &project);
 
     assert!(
         compile.status.success(),
@@ -1679,13 +1954,12 @@ fn gleam_compile_uses_the_native_frontend_and_writes_valid_v4_ir() {
         String::from_utf8_lossy(&compile.stdout),
         String::from_utf8_lossy(&compile.stderr)
     );
-    let output = temp
-        .path()
-        .join(".morphir/out/example-hello/compile/gleam/morphir-ir.json");
+    let output = project.join(".morphir/out/example-hello/compile/gleam/morphir-ir.json");
     let bytes = std::fs::read(&output).expect("host should write morphir-ir.json");
     let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(json["formatVersion"], 4);
     serde_json::from_slice::<morphir_core::ir::v4::IRFile>(&bytes).unwrap();
+    assert!(ancestor_morphir.read_dir().unwrap().next().is_none());
 }
 
 #[test]
@@ -1704,9 +1978,10 @@ fn gleam_compile_rejects_a_missing_input_path() {
     assert!(!compile.status.success());
     let stderr = String::from_utf8_lossy(&compile.stderr);
     assert!(
-        stderr.contains("does not exist") || stderr.contains("No such file or directory"),
+        stderr.contains("Source input") && stderr.contains("does not exist"),
         "{stderr}"
     );
+    assert!(stderr.contains("missing"), "{stderr}");
 }
 
 #[test]

@@ -15,7 +15,7 @@ use morphir::observability;
 
 use commands::{
     GenerateOptions, MigrateCommandOptions, OutputLayout, compile::CompileOptions, run_cache_clean,
-    run_cache_status, run_compile, run_config_get, run_config_path, run_config_show,
+    run_cache_status, run_compile, run_config_get, run_config_path, run_config_show, run_desktop,
     run_diagnostics_path, run_dist_install, run_dist_list, run_dist_uninstall, run_dist_update,
     run_extension_install, run_extension_list, run_extension_repository_add,
     run_extension_repository_disable, run_extension_repository_enable,
@@ -162,6 +162,9 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
 
     /// Open the Morphir development workbench in a browser
     Ui(commands::ui::UiArgs),
+
+    /// Launch the installed Morphir Desktop application
+    Desktop(commands::DesktopArgs),
 
     // ===== Management Commands =====
     /// Inspect the effective Morphir configuration
@@ -819,6 +822,7 @@ impl AppSession for MorphirSession {
             Commands::Transform { input, output } => run_transform(input.clone(), output.clone()),
             Commands::Migrate(args) => args.run(),
             Commands::Ui(args) => commands::ui::run_ui(args.clone()).await,
+            Commands::Desktop(args) => run_desktop(&self.operation_id, args.clone()),
             Commands::Config { action } => match action {
                 ConfigAction::Get {
                     key,

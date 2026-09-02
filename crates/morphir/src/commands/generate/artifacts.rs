@@ -161,7 +161,9 @@ struct Transaction {
 }
 
 struct Destination {
-    parent: Dir,
+    // Retain the capability while installing or undoing an installed file, but
+    // release it before pruning a vacated directory (required on Windows).
+    parent: Option<Dir>,
     relative_path: PathBuf,
     leaf: OsString,
     staged: Option<PathBuf>,
@@ -169,6 +171,14 @@ struct Destination {
     rollback: PathBuf,
     hook_index: Option<usize>,
     replace_existing: bool,
+}
+
+impl Destination {
+    fn pinned_parent(&self) -> &Dir {
+        self.parent
+            .as_ref()
+            .expect("pending and installed destinations retain their parent capability")
+    }
 }
 
 struct CommitRecord {
@@ -308,14 +318,19 @@ fn acquire_output_root_from<H: ArtifactHooks + ?Sized>(
     let mut created = Vec::new();
 
     for component in components {
-        hooks.before_output_component_open(&current, &component)?;
+        if let Err(error) = hooks.before_output_component_open(&current, &component) {
+            drop(current);
+            remove_created_output_directories(created);
+            return Err(error);
+        }
         current = match current.open_dir_nofollow(&component) {
             Ok(directory) => directory,
             Err(error) if error.kind() == io::ErrorKind::NotFound => {
                 let parent = match current.try_clone() {
                     Ok(parent) => parent,
                     Err(error) => {
-                        remove_created_output_directories(&created);
+                        drop(current);
+                        remove_created_output_directories(created);
                         return Err(error);
                     }
                 };
@@ -323,7 +338,9 @@ fn acquire_output_root_from<H: ArtifactHooks + ?Sized>(
                     Ok(()) => true,
                     Err(error) if error.kind() == io::ErrorKind::AlreadyExists => false,
                     Err(error) => {
-                        remove_created_output_directories(&created);
+                        drop(parent);
+                        drop(current);
+                        remove_created_output_directories(created);
                         return Err(error);
                     }
                 };
@@ -332,17 +349,21 @@ fn acquire_output_root_from<H: ArtifactHooks + ?Sized>(
                         parent,
                         leaf: component.clone(),
                     });
+                } else {
+                    drop(parent);
                 }
                 match current.open_dir_nofollow(&component) {
                     Ok(directory) => directory,
                     Err(error) => {
-                        remove_created_output_directories(&created);
+                        drop(current);
+                        remove_created_output_directories(created);
                         return Err(error);
                     }
                 }
             }
             Err(error) => {
-                remove_created_output_directories(&created);
+                drop(current);
+                remove_created_output_directories(created);
                 return Err(error);
             }
         };
@@ -547,7 +568,7 @@ fn acquire_file_locked_publication_chain<H: ArtifactHooks + ?Sized>(
             }
             Err(error) => {
                 locks.abandon();
-                remove_created_output_directories(&recovery);
+                remove_created_output_directories(recovery);
                 return Err(error);
             }
         }
@@ -783,7 +804,8 @@ fn open_or_create_output_leaf(
             let creator_parent = match parent.try_clone() {
                 Ok(parent) => parent,
                 Err(error) => {
-                    remove_created_output_directories(&created);
+                    drop(parent);
+                    remove_created_output_directories(created);
                     return Err(error);
                 }
             };
@@ -791,7 +813,9 @@ fn open_or_create_output_leaf(
                 Ok(()) => true,
                 Err(error) if error.kind() == io::ErrorKind::AlreadyExists => false,
                 Err(error) => {
-                    remove_created_output_directories(&created);
+                    drop(creator_parent);
+                    drop(parent);
+                    remove_created_output_directories(created);
                     return Err(error);
                 }
             };
@@ -800,17 +824,21 @@ fn open_or_create_output_leaf(
                     parent: creator_parent,
                     leaf: leaf.clone(),
                 });
+            } else {
+                drop(creator_parent);
             }
             match parent.open_dir_nofollow(&leaf) {
                 Ok(directory) => directory,
                 Err(error) => {
-                    remove_created_output_directories(&created);
+                    drop(parent);
+                    remove_created_output_directories(created);
                     return Err(error);
                 }
             }
         }
         Err(error) => {
-            remove_created_output_directories(&created);
+            drop(parent);
+            remove_created_output_directories(created);
             return Err(error);
         }
     };
@@ -897,7 +925,7 @@ fn acquire_file_publication<H: ArtifactHooks + ?Sized>(
                 Ok(root) => root,
                 Err(error) => {
                     publication_lock.abandon();
-                    remove_created_output_directories(&cleanup_journal);
+                    remove_created_output_directories(cleanup_journal);
                     return Err(error);
                 }
             };
@@ -1008,8 +1036,10 @@ fn output_root_anchor(output_root: &Path) -> io::Result<(Dir, Vec<OsString>)> {
     }
 }
 
-fn remove_created_output_directories(directories: &[CreatedOutputDirectory]) {
-    for directory in directories.iter().rev() {
+fn remove_created_output_directories(directories: Vec<CreatedOutputDirectory>) {
+    // Consume deepest-first so each parent handle closes before its own entry
+    // is removed. Borrowing the whole journal keeps those Windows handles open.
+    for directory in directories.into_iter().rev() {
         let _ = directory.parent.remove_dir(&directory.leaf);
         let _ = sync_dir(&directory.parent);
     }
@@ -1018,7 +1048,7 @@ fn remove_created_output_directories(directories: &[CreatedOutputDirectory]) {
 fn remove_created_output_root(root: AcquiredOutputRoot) {
     let AcquiredOutputRoot { directory, created } = root;
     drop(directory);
-    remove_created_output_directories(&created);
+    remove_created_output_directories(created);
 }
 
 fn abandon_publication(root: AcquiredOutputRoot, lock: PublicationLock) {
@@ -1028,9 +1058,13 @@ fn abandon_publication(root: AcquiredOutputRoot, lock: PublicationLock) {
     // before releasing the target lock, so a waiting writer cannot validate a
     // path that cleanup removes immediately afterward. File-locking platforms
     // may need the post-unlock pass after removing their lock file.
-    remove_created_output_directories(&created);
+    #[cfg(unix)]
+    for directory in created.iter().rev() {
+        let _ = directory.parent.remove_dir(&directory.leaf);
+        let _ = sync_dir(&directory.parent);
+    }
     lock.abandon();
-    remove_created_output_directories(&created);
+    remove_created_output_directories(created);
 }
 
 fn finish_committed_transaction<H: ArtifactHooks + ?Sized>(
@@ -1130,18 +1164,21 @@ fn run_transaction<H: ArtifactHooks + ?Sized>(
         }
     };
     let mut records = Vec::new();
-    commit_destinations(root, transaction, &destinations, &mut records, hooks)?;
+    commit_destinations(root, transaction, &mut destinations, &mut records, hooks)?;
+    for destination in &mut destinations {
+        destination.parent.take();
+    }
     if let Err(error) = remove_vacated_managed_directories(root, stale, managed_directories) {
-        return rollback_failure(error, root, transaction, &destinations, &records, hooks);
+        return rollback_failure(error, root, transaction, &mut destinations, &records, hooks);
     }
     if let Err(error) =
         remove_blocking_managed_directories(root, artifacts, stale, managed_directories)
     {
-        return rollback_failure(error, root, transaction, &destinations, &records, hooks);
+        return rollback_failure(error, root, transaction, &mut destinations, &records, hooks);
     }
     for artifact in artifacts {
         if let Err(error) = preflight_destination(root, &artifact.relative_path) {
-            return rollback_failure(error, root, transaction, &destinations, &records, hooks);
+            return rollback_failure(error, root, transaction, &mut destinations, &records, hooks);
         }
     }
     let artifact_destinations =
@@ -1149,7 +1186,14 @@ fn run_transaction<H: ArtifactHooks + ?Sized>(
             Ok(destinations) => destinations,
             Err(error) => {
                 remove_created_directories(root, &created_directories);
-                return rollback_failure(error, root, transaction, &destinations, &records, hooks);
+                return rollback_failure(
+                    error,
+                    root,
+                    transaction,
+                    &mut destinations,
+                    &records,
+                    hooks,
+                );
             }
         };
     let created_manifest_directories = match retained_created_directories(
@@ -1160,18 +1204,20 @@ fn run_transaction<H: ArtifactHooks + ?Sized>(
     ) {
         Ok(directories) => directories,
         Err(error) => {
+            drop(artifact_destinations);
             remove_created_directories(root, &created_directories);
-            return rollback_failure(error, root, transaction, &destinations, &records, hooks);
+            return rollback_failure(error, root, transaction, &mut destinations, &records, hooks);
         }
     };
     if let Err(error) =
         rewrite_staged_manifest(transaction, artifacts, &created_manifest_directories)
     {
+        drop(artifact_destinations);
         remove_created_directories(root, &created_directories);
-        return rollback_failure(error, root, transaction, &destinations, &records, hooks);
+        return rollback_failure(error, root, transaction, &mut destinations, &records, hooks);
     }
     destinations.extend(artifact_destinations);
-    let result = commit_destinations(root, transaction, &destinations, &mut records, hooks);
+    let result = commit_destinations(root, transaction, &mut destinations, &mut records, hooks);
     drop(destinations);
     if result.is_err() {
         remove_created_directories(root, &created_directories);
@@ -1237,7 +1283,7 @@ fn prepare_stale_destinations(
         }
         let index = artifact_count + offset;
         destinations.push(Destination {
-            parent,
+            parent: Some(parent),
             relative_path: artifact.relative_path.clone(),
             leaf,
             staged: None,
@@ -1266,7 +1312,7 @@ fn prepare_artifact_destinations(
             created,
         )?;
         destinations.push(Destination {
-            parent,
+            parent: Some(parent),
             relative_path: artifact.relative_path.clone(),
             leaf: artifact
                 .relative_path
@@ -1391,7 +1437,7 @@ fn remove_blocking_managed_directories(
 fn commit_destinations<H: ArtifactHooks + ?Sized>(
     root: &Dir,
     transaction: &Dir,
-    destinations: &[Destination],
+    destinations: &mut [Destination],
     records: &mut Vec<CommitRecord>,
     hooks: &H,
 ) -> Result<(), TransactionFailure> {
@@ -1401,7 +1447,7 @@ fn commit_destinations<H: ArtifactHooks + ?Sized>(
             backup: false,
             installed: false,
         });
-        match validate_leaf(&destination.parent, &destination.leaf) {
+        match validate_leaf(destination.pinned_parent(), &destination.leaf) {
             Ok(LeafState::Absent) => {}
             Ok(LeafState::Regular) => {
                 if !destination.replace_existing {
@@ -1453,18 +1499,22 @@ fn commit_destinations<H: ArtifactHooks + ?Sized>(
         if let Some(staged) = &destination.staged {
             let hook = destination.hook_index.map_or_else(
                 || Ok(()),
-                |index| hooks.before_install(index, &destination.parent, &destination.leaf),
+                |index| hooks.before_install(index, destination.pinned_parent(), &destination.leaf),
             );
             if let Err(error) = hook {
                 return rollback_failure(error, root, transaction, destinations, records, hooks);
             }
-            if let Err(error) =
-                install_staged_file(transaction, staged, &destination.parent, &destination.leaf)
-            {
+            if let Err(error) = install_staged_file(
+                transaction,
+                staged,
+                destination.pinned_parent(),
+                &destination.leaf,
+            ) {
                 return rollback_failure(error, root, transaction, destinations, records, hooks);
             }
             records.last_mut().expect("record exists").installed = true;
-            if let Err(error) = sync_file_and_parent(&destination.parent, &destination.leaf) {
+            if let Err(error) = sync_file_and_parent(destination.pinned_parent(), &destination.leaf)
+            {
                 return rollback_failure(error, root, transaction, destinations, records, hooks);
             }
         }
@@ -1506,14 +1556,18 @@ fn move_file_no_replace(
     destination: &OsStr,
 ) -> io::Result<()> {
     use cap_std::fs::OpenOptionsExt as _;
-    use std::mem::{offset_of, size_of};
+    use std::mem::size_of;
     use std::os::windows::ffi::OsStrExt as _;
     use std::os::windows::io::AsRawHandle as _;
     use std::ptr;
-    use windows_sys::Win32::Storage::FileSystem::{
-        DELETE, FILE_RENAME_INFO, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
-        FileRenameInfo, SetFileInformationByHandle,
+    use windows_sys::Wdk::Storage::FileSystem::{
+        FILE_RENAME_INFORMATION, FileRenameInformation, NtSetInformationFile,
     };
+    use windows_sys::Win32::Foundation::RtlNtStatusToDosError;
+    use windows_sys::Win32::Storage::FileSystem::{
+        DELETE, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
+    };
+    use windows_sys::Win32::System::IO::IO_STATUS_BLOCK;
 
     let mut options = OpenOptions::new();
     options
@@ -1527,16 +1581,21 @@ fn move_file_no_replace(
         .checked_mul(size_of::<u16>())
         .and_then(|length| u32::try_from(length).ok())
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "destination is too long"))?;
-    let buffer_bytes = offset_of!(FILE_RENAME_INFO, FileName)
+    // Include the full struct, including its padding, even for a one-unit name.
+    let buffer_bytes = size_of::<FILE_RENAME_INFORMATION>()
         .checked_add(filename_bytes as usize)
+        .and_then(|length| u32::try_from(length).ok())
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "destination is too long"))?;
-    let mut buffer = vec![0_usize; buffer_bytes.div_ceil(size_of::<usize>())];
-    let rename_info = buffer.as_mut_ptr().cast::<FILE_RENAME_INFO>();
+    let mut buffer = vec![0_usize; (buffer_bytes as usize).div_ceil(size_of::<usize>())];
+    let rename_info = buffer.as_mut_ptr().cast::<FILE_RENAME_INFORMATION>();
+    let mut status = IO_STATUS_BLOCK::default();
 
+    // Use the native directory-relative operation: the Win32 wrapper rejects
+    // this RootDirectory/relative-name combination on supported Windows hosts.
     // SAFETY: `buffer` is word-aligned and sized for the fixed header plus the
     // complete UTF-16 filename. Both handles remain open for the duration of
-    // the synchronous call, and the API only reads the supplied buffer.
-    let renamed = unsafe {
+    // the synchronous call; the API reads the buffer and writes `status`.
+    let result = unsafe {
         (*rename_info).Anonymous.ReplaceIfExists = false;
         (*rename_info).RootDirectory = destination_parent.as_raw_handle();
         (*rename_info).FileNameLength = filename_bytes;
@@ -1545,15 +1604,19 @@ fn move_file_no_replace(
             ptr::addr_of_mut!((*rename_info).FileName).cast::<u16>(),
             destination.len(),
         );
-        SetFileInformationByHandle(
+        NtSetInformationFile(
             source_file.as_raw_handle(),
-            FileRenameInfo,
+            &mut status,
             rename_info.cast(),
-            u32::try_from(buffer_bytes).expect("rename buffer length was validated"),
+            buffer_bytes,
+            FileRenameInformation,
         )
     };
-    if renamed == 0 {
-        Err(io::Error::last_os_error())
+    if result < 0 {
+        // SAFETY: This pure conversion accepts any NTSTATUS value.
+        Err(io::Error::from_raw_os_error(
+            unsafe { RtlNtStatusToDosError(result) } as i32,
+        ))
     } else {
         Ok(())
     }
@@ -1577,7 +1640,7 @@ fn move_destination_to_backup(transaction: &Dir, destination: &Destination) -> i
     )?;
     let backup_leaf = destination.backup.file_name().expect("backup has leaf");
     destination
-        .parent
+        .pinned_parent()
         .rename(&destination.leaf, &backup_parent, backup_leaf)
 }
 
@@ -1594,7 +1657,7 @@ fn verify_moved_backup(transaction: &Dir, destination: &Destination) -> io::Resu
             "artifact destination is not a regular file",
         ));
     }
-    sync_dir(&destination.parent)?;
+    sync_dir(destination.pinned_parent())?;
     sync_dir(&backup_parent)
 }
 
@@ -1602,7 +1665,7 @@ fn rollback_failure<H: ArtifactHooks + ?Sized>(
     error: io::Error,
     root: &Dir,
     transaction: &Dir,
-    destinations: &[Destination],
+    destinations: &mut [Destination],
     records: &[CommitRecord],
     hooks: &H,
 ) -> Result<(), TransactionFailure> {
@@ -1617,12 +1680,23 @@ fn rollback_failure<H: ArtifactHooks + ?Sized>(
 fn rollback<H: ArtifactHooks + ?Sized>(
     root: &Dir,
     transaction: &Dir,
-    destinations: &[Destination],
+    destinations: &mut [Destination],
     records: &[CommitRecord],
     hooks: &H,
 ) -> io::Result<()> {
+    // Uninstalled destinations (including ones never reached by commit) need
+    // no pinned parent. Their handles would prevent restoring an ancestor file.
+    for (index, destination) in destinations.iter_mut().enumerate() {
+        if !records
+            .iter()
+            .any(|record| record.index == index && record.installed)
+        {
+            destination.parent.take();
+        }
+    }
     let mut errors = Vec::new();
     for record in records.iter().rev() {
+        let parent = destinations[record.index].parent.take();
         let destination = &destinations[record.index];
         let result: io::Result<()> = (|| {
             if let Some(index) = destination.hook_index {
@@ -1634,11 +1708,14 @@ fn rollback<H: ArtifactHooks + ?Sized>(
                     destination.rollback.parent().expect("rollback has parent"),
                     &mut Vec::new(),
                 )?;
-                destination.parent.rename(
+                let parent = parent.expect("installed destination retains its parent capability");
+                parent.rename(
                     &destination.leaf,
                     &rollback_parent,
                     destination.rollback.file_name().expect("rollback has leaf"),
                 )?;
+                // Drop this handle before restoring a backup over its parent.
+                drop(parent);
             }
             if record.backup {
                 match root.symlink_metadata(&destination.relative_path) {
@@ -2392,6 +2469,16 @@ mod tests {
         }
     }
 
+    fn output_entries_without_publication_lock(output: &Path) -> BTreeSet<OsString> {
+        fs::read_dir(output)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            // Existing outputs on file-locking platforms keep this lock so
+            // subsequent publishers cannot acquire different lock files.
+            .filter(|name| cfg!(unix) || name != OsStr::new(INTERNAL_PUBLICATION_LOCK_PATH))
+            .collect()
+    }
+
     #[test]
     fn installation_moves_the_staged_file_into_place() {
         let root = tempdir().unwrap();
@@ -2417,6 +2504,44 @@ mod tests {
             destination.read_to_string("schema.avsc").unwrap(),
             "generated"
         );
+    }
+
+    #[test]
+    fn installation_supports_short_and_unicode_destination_names() {
+        let root = tempdir().unwrap();
+        let directory = Dir::open_ambient_dir(root.path(), cap_std::ambient_authority()).unwrap();
+        for name in ["a", "schéma-😀.avsc"] {
+            directory.write("staged", "generated").unwrap();
+            install_staged_file(
+                &directory,
+                Path::new("staged"),
+                &directory,
+                OsStr::new(name),
+            )
+            .unwrap();
+            assert!(!directory.exists("staged"));
+            assert_eq!(directory.read_to_string(name).unwrap(), "generated");
+        }
+    }
+
+    #[test]
+    fn installation_never_overwrites_an_existing_destination() {
+        let root = tempdir().unwrap();
+        let directory = Dir::open_ambient_dir(root.path(), cap_std::ambient_authority()).unwrap();
+        directory.write("staged", "generated").unwrap();
+        directory.write("existing", "user-owned").unwrap();
+
+        let error = install_staged_file(
+            &directory,
+            Path::new("staged"),
+            &directory,
+            OsStr::new("existing"),
+        )
+        .unwrap_err();
+
+        assert_eq!(error.kind(), io::ErrorKind::AlreadyExists);
+        assert_eq!(directory.read_to_string("existing").unwrap(), "user-owned");
+        assert_eq!(directory.read_to_string("staged").unwrap(), "generated");
     }
 
     #[test]
@@ -3361,8 +3486,9 @@ mod tests {
     #[test]
     fn failed_publish_restores_the_previous_set() {
         let output = tempdir().unwrap();
-        fs::write(output.path().join("one.avsc"), "old one").unwrap();
-        fs::write(output.path().join("two.avsc"), "old two").unwrap();
+        ArtifactWriter::new(output.path())
+            .write_all(&[text("one.avsc", "old one"), text("two.avsc", "old two")])
+            .unwrap();
         let ops = FailingOps::on_install(1);
         let writer = ArtifactWriter::with_ops(output.path(), &ops);
 
@@ -3380,11 +3506,12 @@ mod tests {
             fs::read_to_string(output.path().join("two.avsc")).unwrap(),
             "old two"
         );
-        let visible = fs::read_dir(output.path())
-            .unwrap()
-            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
-            .collect::<Vec<_>>();
-        assert_eq!(visible.len(), 2, "temporary paths leaked: {visible:?}");
+        assert_eq!(
+            output_entries_without_publication_lock(output.path()),
+            [MANIFEST_PATH, "one.avsc", "two.avsc"]
+                .map(OsString::from)
+                .into()
+        );
     }
 
     struct FailAfterBackupMove;
@@ -3413,7 +3540,10 @@ mod tests {
             fs::read_to_string(output.path().join("schema.avsc")).unwrap(),
             "old"
         );
-        assert_eq!(output.path().read_dir().unwrap().count(), 2);
+        assert_eq!(
+            output_entries_without_publication_lock(output.path()),
+            [MANIFEST_PATH, "schema.avsc"].map(OsString::from).into()
+        );
     }
 
     struct FailPostCommitRootSync;
@@ -3495,7 +3625,7 @@ mod tests {
                 .is_err()
         );
 
-        assert!(output.path().read_dir().unwrap().next().is_none());
+        assert!(output_entries_without_publication_lock(output.path()).is_empty());
     }
 
     #[test]
