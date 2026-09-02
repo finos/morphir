@@ -1,5 +1,6 @@
 //! Compile command for compiling source code to Morphir IR
 
+use crate::commands::out_context::{OutContext, OutOverrides, report_config_warnings};
 use crate::error::CliError;
 use crate::error::convert_extension_diagnostics;
 use crate::home::MorphirHome;
@@ -13,7 +14,7 @@ use morphir_daemon::extensions::{
     SpawnedProcessSession, protocol::methods,
 };
 use morphir_devkit::{
-    discover_config, ensure_morphir_structure, load_config_context, resolve_compile_output,
+    TaskId, discover_config, ensure_morphir_structure, load_config_context,
     resolve_path_relative_to_config,
 };
 use morphir_distribution::{ExtensionId, VerifiedExtensionArtifact, activate_installed};
@@ -1019,9 +1020,12 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
             .unwrap_or_else(|| PathBuf::from("src"));
         resolve_path_relative_to_config(&configured, &context.config_path)
     };
+    report_config_warnings(&context);
+    let out = OutContext::resolve(Some(&context), &OutOverrides::default(), &start_dir);
+    let paths = out.prepare_dest(&TaskId::compile())?;
     let output_dir = output
         .map(PathBuf::from)
-        .unwrap_or_else(|| resolve_compile_output(&package_name, &language, &context.morphir_dir));
+        .unwrap_or_else(|| paths.dest.clone());
     let output_path = output_dir.join("morphir-ir.json");
     let (documents, source_root_uri) = collect_source_documents(&input_path, &language)?;
     let emit_parse_stage = context

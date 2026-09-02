@@ -14,6 +14,7 @@ fn morphir_command() -> std::process::Command {
     let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"));
     command.env("MORPHIR_LOG_FILE", "false");
     command.env_remove("MORPHIR_LOG_DIR");
+    command.env_remove("MORPHIR_OUT_DIR");
     command
 }
 
@@ -1985,7 +1986,7 @@ fn gleam_compile_uses_the_native_frontend_and_writes_valid_v4_ir() {
         String::from_utf8_lossy(&compile.stdout),
         String::from_utf8_lossy(&compile.stderr)
     );
-    let output = project.join(".morphir/out/example-hello/compile/gleam/morphir-ir.json");
+    let output = project.join(".morphir/out/compile.dest/morphir-ir.json");
     let bytes = std::fs::read(&output).expect("host should write morphir-ir.json");
     let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(json["formatVersion"], 4);
@@ -2075,7 +2076,7 @@ fn installed_gleam_frontend_overrides_the_native_provider() {
     let ir: serde_json::Value = serde_json::from_slice(
         &std::fs::read(
             temp.path()
-                .join(".morphir/out/example-hello/compile/gleam/morphir-ir.json"),
+                .join(".morphir/out/compile.dest/morphir-ir.json"),
         )
         .unwrap(),
     )
@@ -2099,7 +2100,7 @@ fn gleam_generate_accepts_the_compile_output_directory() {
         "compile failed: {}",
         String::from_utf8_lossy(&compile.stderr)
     );
-    let compile_dir = temp.path().join(".morphir/out/example-hello/compile/gleam");
+    let compile_dir = temp.path().join(".morphir/out/compile.dest");
 
     let generate = run_morphir(
         &[
@@ -2118,9 +2119,7 @@ fn gleam_generate_accepts_the_compile_output_directory() {
         String::from_utf8_lossy(&generate.stdout),
         String::from_utf8_lossy(&generate.stderr)
     );
-    let generated = temp
-        .path()
-        .join(".morphir/out/example-hello/generate/gleam");
+    let generated = temp.path().join(".morphir/out/generate/gleam.dest");
     assert!(
         walkdir::WalkDir::new(&generated)
             .into_iter()
@@ -2175,9 +2174,7 @@ fn gleam_generate_accepts_a_v4_document_tree_directory() {
         String::from_utf8_lossy(&generate.stdout),
         String::from_utf8_lossy(&generate.stderr)
     );
-    let generated = temp
-        .path()
-        .join(".morphir/out/example-hello/generate/gleam");
+    let generated = temp.path().join(".morphir/out/generate/gleam.dest");
     let generated_paths = walkdir::WalkDir::new(&generated)
         .into_iter()
         .filter_map(Result::ok)
@@ -2239,10 +2236,8 @@ fn gleam_roundtrip_uses_project_outputs_and_emits_recompilable_gleam() {
         String::from_utf8_lossy(&roundtrip.stdout),
         String::from_utf8_lossy(&roundtrip.stderr)
     );
-    let compile_dir = temp.path().join(".morphir/out/example-hello/compile/gleam");
-    let generated = temp
-        .path()
-        .join(".morphir/out/example-hello/generate/gleam");
+    let compile_dir = temp.path().join(".morphir/out/compile.dest");
+    let generated = temp.path().join(".morphir/out/generate/gleam.dest");
     assert!(compile_dir.join("morphir-ir.json").is_file());
     assert!(generated.is_dir());
     assert!(
@@ -2294,12 +2289,10 @@ fn gleam_roundtrip_uses_the_package_override_compile_output() {
     );
     assert!(
         temp.path()
-            .join(".morphir/out/alternate-package/compile/gleam/morphir-ir.json")
+            .join(".morphir/out/compile.dest/morphir-ir.json")
             .is_file()
     );
-    let generated = temp
-        .path()
-        .join(".morphir/out/example-hello/generate/gleam");
+    let generated = temp.path().join(".morphir/out/generate/gleam.dest");
     assert!(
         walkdir::WalkDir::new(&generated)
             .into_iter()
@@ -2604,27 +2597,22 @@ fn test_morphir_dir_discovery() {
 
 #[test]
 fn test_path_resolution() {
-    use morphir_devkit::{resolve_compile_output, resolve_generate_output, sanitize_project_name};
+    use morphir_devkit::{TaskId, TaskPaths};
 
-    let morphir_dir = PathBuf::from(".morphir");
+    let root = PathBuf::from(".morphir/out");
+    let compile = TaskPaths::new(&root, std::path::Path::new(""), &TaskId::compile());
+    assert_eq!(compile.dest, root.join("compile.dest"));
+    assert_eq!(compile.result, root.join("compile.json"));
 
-    // Test compile output resolution
-    let compile_path = resolve_compile_output("My.Project", "gleam", &morphir_dir);
-    assert!(compile_path.to_string_lossy().contains("out"));
-    assert!(compile_path.to_string_lossy().contains("My.Project"));
-    assert!(compile_path.to_string_lossy().contains("compile"));
-    assert!(compile_path.to_string_lossy().contains("gleam"));
-
-    // Test generate output resolution
-    let generate_path = resolve_generate_output("My.Project", "gleam", &morphir_dir);
-    assert!(generate_path.to_string_lossy().contains("out"));
-    assert!(generate_path.to_string_lossy().contains("My.Project"));
-    assert!(generate_path.to_string_lossy().contains("generate"));
-    assert!(generate_path.to_string_lossy().contains("gleam"));
-
-    // Test project name sanitization
-    let sanitized = sanitize_project_name("My/Project");
-    assert_eq!(sanitized, "My-Project");
+    let generate = TaskPaths::new(
+        &root,
+        std::path::Path::new("packages/orders"),
+        &TaskId::generate("My Project"),
+    );
+    assert_eq!(
+        generate.dest,
+        root.join("packages/orders/generate/My-Project.dest")
+    );
 }
 
 #[test]

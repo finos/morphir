@@ -6,12 +6,11 @@ mod provider;
 
 pub use options::GenerateOptions;
 
+use crate::commands::out_context::{OutContext, OutOverrides, report_config_warnings};
 use crate::error::{CliError, convert_extension_diagnostics};
 use crate::home::MorphirHome;
 use morphir_common::loader::load_ir;
-use morphir_devkit::{
-    discover_config, ensure_morphir_structure, load_config_context, resolve_generate_output,
-};
+use morphir_devkit::{TaskId, discover_config, ensure_morphir_structure, load_config_context};
 use morphir_distribution::list_installed;
 use morphir_extension_sdk::GenerateRequest;
 use starbase::AppResult;
@@ -66,20 +65,15 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
     let backend_options = options::merge_options(configured_options, &backend_options)
         .map_err(|error| CliError::Config { error })?;
 
-    // Determine project name
-    let proj_name = ctx
-        .current_project
-        .as_ref()
-        .map(|p| p.name.clone())
-        .or_else(|| ctx.config.project.as_ref().map(|p| p.name.clone()))
-        .unwrap_or_else(|| "default".to_string());
+    report_config_warnings(&ctx);
+    let out = OutContext::resolve(Some(&ctx), &OutOverrides::default(), &start_dir);
 
     // Determine IR input path
     let input_path = if let Some(inp) = input {
         PathBuf::from(inp)
     } else {
-        // Default to compile output for the target language
-        morphir_devkit::resolve_compile_output(&proj_name, &target_lang, &ctx.morphir_dir)
+        // Default to the compile task's scratch directory
+        out.task(&TaskId::compile()).dest
     };
 
     if !input_path.exists() {
@@ -94,10 +88,10 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
     let input_path = resolve_generate_input(input_path);
 
     // Determine output path
-    let output_path = if let Some(out) = output {
-        PathBuf::from(out)
+    let output_path = if let Some(out_path) = output {
+        PathBuf::from(out_path)
     } else {
-        resolve_generate_output(&proj_name, &target_lang, &ctx.morphir_dir)
+        out.prepare_dest(&TaskId::generate(&target_lang))?.dest
     };
 
     // Load IR (detect format)

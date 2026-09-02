@@ -1,9 +1,10 @@
 //! Gleam-specific subcommands
 
 use crate::commands::compile::CompileOptions;
+use crate::commands::out_context::{OutContext, OutOverrides};
 use crate::commands::{GenerateOptions, run_compile, run_generate};
 use crate::error::CliError;
-use morphir_devkit::{discover_config, load_config_context, resolve_compile_output};
+use morphir_devkit::{TaskId, discover_config, load_config_context};
 use starbase::AppResult;
 use std::path::PathBuf;
 
@@ -91,7 +92,7 @@ pub async fn run_gleam_roundtrip(
 }
 
 fn roundtrip_compile_output(
-    package_name: &str,
+    _package_name: &str,
     config_path: Option<&str>,
 ) -> Result<PathBuf, CliError> {
     let start_dir = std::env::current_dir().map_err(|error| CliError::FileSystem { error })?;
@@ -105,9 +106,9 @@ fn roundtrip_compile_output(
             })?
     };
     let context = load_config_context(&config_file).map_err(|error| CliError::Config { error })?;
-    Ok(resolve_compile_output(
-        package_name,
-        "gleam",
-        &context.morphir_dir,
-    ))
+    Ok(
+        OutContext::resolve(Some(&context), &OutOverrides::default(), &start_dir)
+            .task(&TaskId::compile())
+            .dest,
+    )
 }
