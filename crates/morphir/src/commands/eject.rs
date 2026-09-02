@@ -43,6 +43,8 @@ pub fn eject(paths: &TaskPaths, target: &Path) -> Result<EjectReport, CliError> 
     }
 
     std::fs::create_dir_all(target).map_err(|error| CliError::FileSystem { error })?;
+    let canonical_target =
+        std::fs::canonicalize(target).map_err(|error| CliError::FileSystem { error })?;
 
     let mut removed = Vec::new();
     for stale in previous
@@ -50,7 +52,7 @@ pub fn eject(paths: &TaskPaths, target: &Path) -> Result<EjectReport, CliError> 
         .filter(|entry| !record.value.contains(entry))
     {
         let path = target.join(stale);
-        remove_entry(&path)?;
+        remove_confined(&path, target, &canonical_target)?;
         prune_empty_parents(&path, target)?;
         removed.push(stale.clone());
     }
@@ -60,7 +62,15 @@ pub fn eject(paths: &TaskPaths, target: &Path) -> Result<EjectReport, CliError> 
         let source = paths.dest.join(entry);
         let destination = target.join(entry);
         if source.is_dir() {
-            remove_entry(&destination)?;
+            // Only start clean when this entry is something *this function*
+            // ejected here before (`previous`): a re-eject of an owned
+            // directory should not let stale files inside it survive. A
+            // directory that first becomes a value entry now — including one
+            // a user already has at `destination` — is merged into, not
+            // deleted, since it may be theirs.
+            if previous.contains(entry) {
+                remove_confined(&destination, target, &canonical_target)?;
+            }
             copy_dir(&source, &destination)?;
         } else {
             if let Some(parent) = destination.parent() {
@@ -138,6 +148,42 @@ fn validate_entry(entry: &str) -> Result<(), CliError> {
         });
     }
     Ok(())
+}
+
+/// Remove `path`, first confirming its containing directory still resolves
+/// under `canonical_target` (the canonicalized `target`).
+///
+/// `symlink_metadata` on `path` only protects against `path` itself being a
+/// symlink; it does not stop a symlinked *intermediate* directory (e.g.
+/// `target/sub -> /elsewhere`) from redirecting `remove_dir_all`/`remove_file`
+/// onto a location outside `target`. Canonicalizing `path`'s parent and
+/// checking it against the canonicalized target catches that: a legitimate
+/// removal's parent always resolves inside the target, while a symlinked
+/// intermediate resolves elsewhere. `target` itself may legitimately be a
+/// symlink (the user's `-o` can point at one), so both sides are
+/// canonicalized before comparing — comparing `path` directly against the
+/// non-canonical `target` would reject that legitimate case.
+fn remove_confined(path: &Path, target: &Path, canonical_target: &Path) -> Result<(), CliError> {
+    let parent = path.parent().unwrap_or(target);
+    match std::fs::canonicalize(parent) {
+        Ok(canonical_parent) if canonical_parent.starts_with(canonical_target) => {}
+        Ok(canonical_parent) => {
+            return Err(CliError::Validation {
+                message: format!(
+                    "refusing to remove '{}': its containing directory resolves to '{}', \
+                     which is outside the eject target '{}' (resolved to '{}')",
+                    path.display(),
+                    canonical_parent.display(),
+                    target.display(),
+                    canonical_target.display()
+                ),
+            });
+        }
+        // The parent does not exist, so there is nothing under it to remove.
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(CliError::FileSystem { error }),
+    }
+    remove_entry(path)
 }
 
 fn remove_entry(path: &Path) -> Result<(), CliError> {
@@ -319,6 +365,148 @@ mod tests {
             std::fs::read_to_string(foreign.join("secret.txt")).unwrap(),
             "do not touch"
         );
+    }
+
+    #[test]
+    fn previous_ejected_entries_that_could_escape_the_target_are_also_rejected() {
+        // `validate_entry` runs over both `record.value` (covered above) and
+        // the bookkeeping list from a prior eject to this target
+        // (`record.ejected`). Exercise the second loop specifically: a
+        // clean `value` with a malicious entry sitting only in `ejected`.
+        let temp = tempfile::tempdir().unwrap();
+        let paths = task_with_value(&temp.path().join("out"), &[]);
+        let target = temp.path().join("dist");
+
+        let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
+        record.ejected.insert(
+            target.to_string_lossy().into_owned(),
+            vec!["../escape.txt".to_owned()],
+        );
+        record.write(&paths.result).unwrap();
+
+        let error = eject(&paths, &target).unwrap_err();
+        assert!(error.to_string().contains(".."), "{error}");
+    }
+
+    #[test]
+    fn degenerate_value_entries_are_rejected() {
+        // An empty entry, or one made only of `.` components, has no real
+        // path segment and would otherwise resolve to `target` itself.
+        for degenerate in ["", "."] {
+            let temp = tempfile::tempdir().unwrap();
+            let paths = task_with_value(&temp.path().join("out"), &[degenerate]);
+            let target = temp.path().join("dist");
+            let error = eject(&paths, &target).unwrap_err();
+            assert!(
+                error.to_string().contains("does not name a path"),
+                "{error}"
+            );
+        }
+    }
+
+    #[test]
+    fn first_eject_merges_into_a_foreign_directory_without_deleting_it() {
+        // The task's `value` says a directory belongs at `target`, but
+        // nothing has been ejected there before (`previous` is empty). If
+        // the user already has their own directory at that path, it must be
+        // merged into — not wiped — since this function never put it there.
+        let temp = tempfile::tempdir().unwrap();
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir"]);
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(target.join("morphir-ir")).unwrap();
+        std::fs::write(target.join("morphir-ir/mine.txt"), "not yours").unwrap();
+
+        eject(&paths, &target).unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(target.join("morphir-ir/mine.txt")).unwrap(),
+            "not yours",
+            "a foreign file inside a first-time directory entry must survive"
+        );
+        assert!(target.join("morphir-ir/manifest.yaml").is_file());
+        assert!(target.join("morphir-ir/pkg/x.yaml").is_file());
+    }
+
+    #[test]
+    fn second_eject_of_a_directory_entry_removes_a_file_no_longer_produced() {
+        // Once an entry has been ejected here before (it is in `previous`),
+        // a re-eject of it must still start clean: a file the task produced
+        // last time but not this time must not survive inside the directory
+        // this function owns.
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("out");
+        let paths = task_with_value(&root, &["morphir-ir"]);
+        let target = temp.path().join("dist");
+        eject(&paths, &target).unwrap();
+        assert!(target.join("morphir-ir/pkg/x.yaml").is_file());
+
+        std::fs::remove_file(paths.dest.join("morphir-ir/pkg/x.yaml")).unwrap();
+        eject(&paths, &target).unwrap();
+
+        assert!(
+            !target.join("morphir-ir/pkg/x.yaml").exists(),
+            "a file dropped from a directory this function owns must not survive a re-eject"
+        );
+        assert!(target.join("morphir-ir/manifest.yaml").is_file());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn stale_removal_refuses_to_delete_through_a_symlinked_intermediate_directory() {
+        use std::os::unix::fs::symlink;
+
+        // `dist/sub` is a symlink to a directory the eject target does not
+        // own. A stale entry `sub/report` would make `remove_dir_all` land
+        // on `outside/report` through that symlink even though
+        // `symlink_metadata` on the final component (`report`) sees an
+        // ordinary directory. `remove_confined` must refuse instead.
+        let temp = tempfile::tempdir().unwrap();
+        let outside = temp.path().join("outside");
+        std::fs::create_dir_all(outside.join("report")).unwrap();
+        std::fs::write(outside.join("report/marker.txt"), "safe").unwrap();
+
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(&target).unwrap();
+        symlink(&outside, target.join("sub")).unwrap();
+
+        let paths = TaskPaths::new(&temp.path().join("out"), Path::new(""), &TaskId::compile());
+        let mut record = TaskResult::new(&TaskId::compile(), Path::new(""));
+        record.value = Vec::new();
+        record.ejected.insert(
+            target.to_string_lossy().into_owned(),
+            vec!["sub/report".to_owned()],
+        );
+        record.write(&paths.result).unwrap();
+
+        let error = eject(&paths, &target).unwrap_err();
+        assert!(
+            error.to_string().contains("outside the eject target"),
+            "{error}"
+        );
+        assert_eq!(
+            std::fs::read_to_string(outside.join("report/marker.txt")).unwrap(),
+            "safe",
+            "the symlink escape must not let removal reach outside the target"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn ejecting_into_a_symlinked_target_still_works() {
+        // The target itself may legitimately be a symlink (`-o` pointed at
+        // one); that must keep working since it is not an escape.
+        use std::os::unix::fs::symlink;
+
+        let temp = tempfile::tempdir().unwrap();
+        let real_target = temp.path().join("real_dist");
+        std::fs::create_dir_all(&real_target).unwrap();
+        let target = temp.path().join("dist_link");
+        symlink(&real_target, &target).unwrap();
+
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
+        eject(&paths, &target).unwrap();
+
+        assert!(real_target.join("morphir-ir.json").is_file());
     }
 
     #[test]
