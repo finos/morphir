@@ -652,6 +652,9 @@ fn run_morphir(
 }
 
 fn write_gleam_project(project_root: &std::path::Path) -> PathBuf {
+    // Pin project outputs locally; discovery otherwise inherits an ancestor's
+    // .morphir directory, including one in the developer's home directory.
+    std::fs::create_dir_all(project_root.join(".morphir")).unwrap();
     let src_dir = project_root.join("src");
     std::fs::create_dir_all(&src_dir).unwrap();
     std::fs::write(
@@ -1869,9 +1872,13 @@ fn verify_real_installed_elm_provider(
 fn gleam_compile_uses_the_native_frontend_and_writes_valid_v4_ir() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
-    write_gleam_project(temp.path());
+    let project = temp.path().join("project");
+    // Reproduce the developer-home layout without relying on the host machine.
+    let ancestor_morphir = temp.path().join(".morphir");
+    std::fs::create_dir(&ancestor_morphir).unwrap();
+    write_gleam_project(&project);
 
-    let compile = run_morphir(&["gleam", "compile"], &home, temp.path());
+    let compile = run_morphir(&["gleam", "compile"], &home, &project);
 
     assert!(
         compile.status.success(),
@@ -1879,13 +1886,12 @@ fn gleam_compile_uses_the_native_frontend_and_writes_valid_v4_ir() {
         String::from_utf8_lossy(&compile.stdout),
         String::from_utf8_lossy(&compile.stderr)
     );
-    let output = temp
-        .path()
-        .join(".morphir/out/example-hello/compile/gleam/morphir-ir.json");
+    let output = project.join(".morphir/out/example-hello/compile/gleam/morphir-ir.json");
     let bytes = std::fs::read(&output).expect("host should write morphir-ir.json");
     let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(json["formatVersion"], 4);
     serde_json::from_slice::<morphir_core::ir::v4::IRFile>(&bytes).unwrap();
+    assert!(ancestor_morphir.read_dir().unwrap().next().is_none());
 }
 
 #[test]
@@ -1904,9 +1910,10 @@ fn gleam_compile_rejects_a_missing_input_path() {
     assert!(!compile.status.success());
     let stderr = String::from_utf8_lossy(&compile.stderr);
     assert!(
-        stderr.contains("does not exist") || stderr.contains("No such file or directory"),
+        stderr.contains("Source input") && stderr.contains("does not exist"),
         "{stderr}"
     );
+    assert!(stderr.contains("missing"), "{stderr}");
 }
 
 #[test]

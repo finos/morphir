@@ -1118,10 +1118,14 @@ fn collect_source_documents(
     language: &str,
 ) -> Result<(Vec<SourceDocument>, String), CliError> {
     let extension = language_file_extension(language)?;
-    let metadata = std::fs::metadata(input_path).map_err(|error| CliError::FileSystem { error })?;
-    let canonical_input = input_path
-        .canonicalize()
-        .map_err(|error| CliError::FileSystem { error })?;
+    let input_error = |error: std::io::Error| match error.kind() {
+        std::io::ErrorKind::NotFound => CliError::Validation {
+            message: format!("Source input '{}' does not exist", input_path.display()),
+        },
+        _ => CliError::FileSystem { error },
+    };
+    let metadata = std::fs::metadata(input_path).map_err(input_error)?;
+    let canonical_input = input_path.canonicalize().map_err(input_error)?;
     let source_root = if metadata.is_file() {
         canonical_input
             .parent()

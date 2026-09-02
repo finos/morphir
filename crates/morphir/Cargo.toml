@@ -83,7 +83,7 @@ tracing-appender = { workspace = true }
 rustix = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { workspace = true }
+windows-sys = { workspace = true, features = ["Wdk_Storage_FileSystem", "Win32_System_IO"] }
 
 [dev-dependencies]
 cucumber = { workspace = true }
