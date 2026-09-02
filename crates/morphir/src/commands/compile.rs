@@ -543,7 +543,8 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     }
     let out = OutContext::resolve(config_context.as_ref(), &options.out, &start_dir);
     let task = TaskId::compile();
-    let paths = out.prepare_dest(&task)?;
+    let prepared = out.prepare_dest(&task)?;
+    let paths = prepared.paths;
     let output_path = paths.dest.join("morphir-ir.json");
     let context = prepare_single_file_context(
         std::slice::from_ref(&input_path),
@@ -603,6 +604,7 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     let descriptor = crate::commands::ir_storage::v3_json_descriptor();
     record.value = vec![descriptor.path.clone()];
     record.ir = Some(descriptor);
+    record.ejected = prepared.previous_ejected;
     record
         .write(&paths.result)
         .map_err(|error| CliError::Config { error })?;
@@ -1042,7 +1044,8 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     report_config_warnings(&context);
     let out = OutContext::resolve(Some(&context), &out_overrides, &start_dir);
     let task = TaskId::compile();
-    let paths = out.prepare_dest(&task)?;
+    let prepared = out.prepare_dest(&task)?;
+    let paths = prepared.paths;
     let storage = crate::commands::ir_storage::IrStorage::from_config(context.config.ir.as_ref())?;
     let output_path = paths.dest.join(storage.relative_path());
     let (documents, source_root_uri) = collect_source_documents(&input_path, &language)?;
@@ -1127,6 +1130,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     record.language = Some(language_name);
     record.value = vec![descriptor.path.clone()];
     record.ir = Some(descriptor);
+    record.ejected = prepared.previous_ejected;
     record
         .write(&paths.result)
         .map_err(|error| CliError::Config { error })?;

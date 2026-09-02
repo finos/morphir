@@ -120,7 +120,8 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
     let ir_version = provider::detect_ir_major(&ir_data)?;
 
     let generate_task = TaskId::generate(&target_lang);
-    let generate_paths = out.prepare_dest(&generate_task)?;
+    let prepared = out.prepare_dest(&generate_task)?;
+    let generate_paths = prepared.paths;
     let output_path = generate_paths.dest.clone();
 
     let home = MorphirHome::resolve().map_err(|error| CliError::Config { error })?;
@@ -186,6 +187,7 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
         .map(|task| vec![task.as_str().to_owned()])
         .unwrap_or_default();
     record.value = artifacts.clone();
+    record.ejected = prepared.previous_ejected;
     record
         .write(&generate_paths.result)
         .map_err(|error| CliError::Config { error })?;

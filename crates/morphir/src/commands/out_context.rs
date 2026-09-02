@@ -1,7 +1,8 @@
 //! Out root and module path for the running command.
 
 use crate::error::CliError;
-use morphir_devkit::{ConfigContext, TaskId, TaskPaths, module_path, resolve_out_root};
+use morphir_devkit::{ConfigContext, TaskId, TaskPaths, TaskResult, module_path, resolve_out_root};
+use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
@@ -58,12 +59,29 @@ impl OutContext {
     }
 
     /// Locations of one task with an empty `.dest` and no stale result
-    /// record, ready for a run. Starting a task invalidates whatever it
-    /// recorded last time, so the previous `.json` is removed along with the
-    /// previous `.dest`: a run that fails after this point must not leave a
-    /// prior success record behind for a later task to misread as current.
-    pub fn prepare_dest(&self, task: &TaskId) -> Result<TaskPaths, CliError> {
+    /// record, ready for a run, plus the `ejected` map the previous record
+    /// (if any) carried. Starting a task invalidates whatever it recorded
+    /// last time, so the previous `.json` is removed along with the previous
+    /// `.dest`: a run that fails after this point must not leave a prior
+    /// success record behind for a later task to misread as current.
+    ///
+    /// `ejected` describes what is actually on disk at eject targets from
+    /// past runs, not anything about the run that is about to happen, so it
+    /// must survive the record being cleared here: the caller is expected to
+    /// copy `previous_ejected` onto the new record it builds before writing
+    /// it, so that `eject::maybe_eject` sees an accurate previous-files list
+    /// and can remove files a target no longer produces. A failed run
+    /// between two ejects still loses this map — nothing carries it forward
+    /// across the deleted record — which can leave at most one stale file at
+    /// a target; closing that would need an in-progress record that
+    /// `generate` would then have to tell apart from a real one, which is
+    /// out of scope here.
+    pub fn prepare_dest(&self, task: &TaskId) -> Result<PreparedTask, CliError> {
         let paths = self.task(task);
+        let previous_ejected = TaskResult::read(&paths.result)
+            .map_err(|error| CliError::Config { error })?
+            .map(|record| record.ejected)
+            .unwrap_or_default();
         if paths.dest.exists() {
             std::fs::remove_dir_all(&paths.dest).map_err(|error| CliError::FileSystem { error })?;
         }
@@ -73,8 +91,26 @@ impl OutContext {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
             Err(error) => return Err(CliError::FileSystem { error }),
         }
-        Ok(paths)
+        Ok(PreparedTask {
+            paths,
+            previous_ejected,
+        })
     }
+}
+
+/// Result of [`OutContext::prepare_dest`]: a task's paths, ready for a run,
+/// plus the `ejected` map its previous result record carried before that
+/// record was removed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PreparedTask {
+    /// Locations of the task, with a freshly emptied `.dest` and no result
+    /// record on disk.
+    pub paths: TaskPaths,
+    /// The previous result record's `ejected` map, read before the record
+    /// was removed. Empty when there was no previous record. Callers must
+    /// set this on the new record they build for this run, before writing
+    /// it, so that eject bookkeeping survives across runs.
+    pub previous_ejected: BTreeMap<String, Vec<String>>,
 }
 
 /// Print configuration warnings (removed or renamed keys) to stderr.
@@ -127,25 +163,55 @@ mod tests {
     fn prepare_dest_clears_previous_contents() {
         let temp = tempfile::tempdir().unwrap();
         let out = OutContext::resolve(None, &OutOverrides::default(), temp.path());
-        let paths = out.prepare_dest(&TaskId::compile()).unwrap();
-        std::fs::write(paths.dest.join("stale.txt"), "old").unwrap();
-        let paths = out.prepare_dest(&TaskId::compile()).unwrap();
-        assert!(paths.dest.is_dir());
-        assert!(!paths.dest.join("stale.txt").exists());
+        let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
+        std::fs::write(prepared.paths.dest.join("stale.txt"), "old").unwrap();
+        let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
+        assert!(prepared.paths.dest.is_dir());
+        assert!(!prepared.paths.dest.join("stale.txt").exists());
     }
 
     #[test]
     fn prepare_dest_removes_a_stale_result_record() {
         let temp = tempfile::tempdir().unwrap();
         let out = OutContext::resolve(None, &OutOverrides::default(), temp.path());
-        let paths = out.prepare_dest(&TaskId::compile()).unwrap();
-        std::fs::write(&paths.result, "{}").unwrap();
-        assert!(paths.result.is_file());
+        let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
+        TaskResult::new(&TaskId::compile(), Path::new(""))
+            .write(&prepared.paths.result)
+            .unwrap();
+        assert!(prepared.paths.result.is_file());
 
-        let paths = out.prepare_dest(&TaskId::compile()).unwrap();
+        let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
         assert!(
-            !paths.result.exists(),
+            !prepared.paths.result.exists(),
             "a previous run's result record must not survive prepare_dest"
+        );
+    }
+
+    #[test]
+    fn prepare_dest_returns_the_previous_records_ejected_map_and_still_removes_it() {
+        let temp = tempfile::tempdir().unwrap();
+        let out = OutContext::resolve(None, &OutOverrides::default(), temp.path());
+        let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
+        assert!(
+            prepared.previous_ejected.is_empty(),
+            "there is no previous record on the first run"
+        );
+
+        let mut record = TaskResult::new(&TaskId::compile(), Path::new(""));
+        record
+            .ejected
+            .insert("/abs/dist".to_owned(), vec!["morphir-ir.json".to_owned()]);
+        record.write(&prepared.paths.result).unwrap();
+
+        let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
+        assert_eq!(
+            prepared.previous_ejected.get("/abs/dist"),
+            Some(&vec!["morphir-ir.json".to_owned()]),
+            "prepare_dest must carry the previous record's ejected map forward"
+        );
+        assert!(
+            !prepared.paths.result.exists(),
+            "the stale record file is still removed"
         );
     }
 }
