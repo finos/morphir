@@ -62,6 +62,7 @@ pub fn eject(paths: &TaskPaths, target: &Path) -> Result<EjectReport, CliError> 
         validate_entry(file)?;
     }
 
+    reject_non_directory_target(target)?;
     std::fs::create_dir_all(target).map_err(|error| CliError::FileSystem { error })?;
     let canonical_target =
         std::fs::canonicalize(target).map_err(|error| CliError::FileSystem { error })?;
@@ -138,6 +139,31 @@ pub fn maybe_eject(
     };
     let report = eject(paths, &target)?;
     Ok(Some(report.target.to_string_lossy().into_owned()))
+}
+
+/// Reject a `-o` target that already exists as something other than a
+/// directory, with a message that names the path and explains what `-o`
+/// means: someone reusing an old invocation that named `-o` as an exact
+/// output *file* (as this path did before it grew a canonical `.dest`) would
+/// otherwise hit `create_dir_all` failing on that file with a bare "File
+/// exists" `CliError::FileSystem`, naming neither the path nor the reason.
+/// `std::fs::metadata` follows symlinks, so a symlink to a directory passes
+/// (see `remove_confined`'s doc comment: `target` may legitimately be a
+/// symlink); a missing path also passes, since `create_dir_all` creates it.
+fn reject_non_directory_target(target: &Path) -> Result<(), CliError> {
+    match std::fs::metadata(target) {
+        Ok(metadata) if !metadata.is_dir() => Err(CliError::Validation {
+            message: format!(
+                "-o target '{}' already exists and is not a directory; \
+                 -o ejects the task's output into a directory, and the canonical \
+                 output stays under .morphir/out",
+                target.display()
+            ),
+        }),
+        Ok(_) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(CliError::FileSystem { error }),
+    }
 }
 
 /// Reject a `value` entry or an `ejected` file path that could name a
@@ -354,6 +380,24 @@ mod tests {
             record.ejected[&target.to_string_lossy().into_owned()],
             vec!["morphir-ir.json".to_owned()]
         );
+    }
+
+    #[test]
+    fn rejects_a_target_that_is_already_a_plain_file() {
+        let temp = tempfile::tempdir().unwrap();
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
+        let target = temp.path().join("out.json");
+        std::fs::write(&target, "not a directory").unwrap();
+
+        let error = eject(&paths, &target).unwrap_err();
+        let CliError::Validation { message } = error else {
+            panic!("expected a validation error, got {error:?}");
+        };
+        assert!(
+            message.contains(&target.to_string_lossy().into_owned()),
+            "{message}"
+        );
+        assert!(message.contains("directory"), "{message}");
     }
 
     #[test]
