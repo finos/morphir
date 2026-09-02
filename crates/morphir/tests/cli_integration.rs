@@ -3626,3 +3626,35 @@ fn compile_honours_yaml_and_document_tree_storage() {
         );
     }
 }
+
+#[test]
+fn compile_leaves_no_result_record_after_a_failing_rerun() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    let src = write_gleam_project(&project);
+
+    let compile = run_morphir(&["gleam", "compile"], &home, &project);
+    assert!(
+        compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let record_path = project.join(".morphir/out/compile.json");
+    assert!(
+        record_path.is_file(),
+        "first compile should write a result record"
+    );
+
+    // Reproduce the trigger `gleam_compile_rejects_an_empty_source_directory`
+    // uses: an empty source directory fails the next compile after
+    // `prepare_dest` has already cleared `.dest`.
+    std::fs::remove_file(src.join("main.gleam")).unwrap();
+
+    let failing = run_morphir(&["gleam", "compile"], &home, &project);
+    assert!(!failing.status.success());
+    assert!(
+        !record_path.exists(),
+        "a stale result record from the previous successful run must not survive a failing re-run"
+    );
+}

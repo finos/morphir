@@ -57,13 +57,22 @@ impl OutContext {
         TaskPaths::new(&self.root, &self.module, task)
     }
 
-    /// Locations of one task with an empty `.dest`, ready for a run.
+    /// Locations of one task with an empty `.dest` and no stale result
+    /// record, ready for a run. Starting a task invalidates whatever it
+    /// recorded last time, so the previous `.json` is removed along with the
+    /// previous `.dest`: a run that fails after this point must not leave a
+    /// prior success record behind for a later task to misread as current.
     pub fn prepare_dest(&self, task: &TaskId) -> Result<TaskPaths, CliError> {
         let paths = self.task(task);
         if paths.dest.exists() {
             std::fs::remove_dir_all(&paths.dest).map_err(|error| CliError::FileSystem { error })?;
         }
         std::fs::create_dir_all(&paths.dest).map_err(|error| CliError::FileSystem { error })?;
+        match std::fs::remove_file(&paths.result) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(CliError::FileSystem { error }),
+        }
         Ok(paths)
     }
 }
@@ -123,5 +132,20 @@ mod tests {
         let paths = out.prepare_dest(&TaskId::compile()).unwrap();
         assert!(paths.dest.is_dir());
         assert!(!paths.dest.join("stale.txt").exists());
+    }
+
+    #[test]
+    fn prepare_dest_removes_a_stale_result_record() {
+        let temp = tempfile::tempdir().unwrap();
+        let out = OutContext::resolve(None, &OutOverrides::default(), temp.path());
+        let paths = out.prepare_dest(&TaskId::compile()).unwrap();
+        std::fs::write(&paths.result, "{}").unwrap();
+        assert!(paths.result.is_file());
+
+        let paths = out.prepare_dest(&TaskId::compile()).unwrap();
+        assert!(
+            !paths.result.exists(),
+            "a previous run's result record must not survive prepare_dest"
+        );
     }
 }
