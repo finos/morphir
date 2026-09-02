@@ -1928,7 +1928,7 @@ fn verify_real_installed_elm_provider(
 
     std::fs::remove_dir_all(&index.root).unwrap();
     let source = project.join("Example.elm");
-    let output_path = project.join("morphir-ir.json");
+    let output_path = project.join(".morphir/out/compile.dest/morphir-ir.json");
     std::fs::write(
         &source,
         "module Example exposing (add)\n\nadd : Int -> Int -> Int\nadd left right = left + right\n",
@@ -1940,8 +1940,6 @@ fn verify_real_installed_elm_provider(
         "elm",
         "--input",
         source.to_str().unwrap(),
-        "--output",
-        output_path.to_str().unwrap(),
     ];
     if select_explicitly {
         compile_arguments.extend_from_slice(&["--extension", extension_id]);
@@ -1957,6 +1955,10 @@ fn verify_real_installed_elm_provider(
     let ir: serde_json::Value =
         serde_json::from_slice(&std::fs::read(&output_path).unwrap()).unwrap();
     assert_eq!(ir["formatVersion"], 3, "{ir}");
+    let record: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(project.join(".morphir/out/compile.json")).unwrap())
+            .unwrap();
+    assert_eq!(record["ir"]["version"], "v3");
 
     std::fs::write(&installed_path, b"tampered installed bytes").unwrap();
     let rejected = run_morphir(&compile_arguments, &home, &project);

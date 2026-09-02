@@ -538,12 +538,13 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
         .map_err(|error| CliError::Config { error })?;
     let config_dir = config_path.as_deref().and_then(Path::parent);
     let source = read_single_source(&input_path)?;
-    let output_path = options
-        .output
-        .as_deref()
-        .map(Path::new)
-        .map(|path| absolute_from(&start_dir, path))
-        .unwrap_or_else(|| start_dir.join("morphir-ir.json"));
+    if let Some(context) = config_context.as_ref() {
+        report_config_warnings(context);
+    }
+    let out = OutContext::resolve(config_context.as_ref(), &options.out, &start_dir);
+    let task = TaskId::compile();
+    let paths = out.prepare_dest(&task)?;
+    let output_path = paths.dest.join("morphir-ir.json");
     let context = prepare_single_file_context(
         std::slice::from_ref(&input_path),
         &source,
@@ -597,13 +598,23 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     let typed_ir = serde_json::to_value(&distribution).map_err(|error| CliError::Extension {
         message: format!("Failed to serialize validated classic Morphir IR: {error}"),
     })?;
+    let mut record = TaskResult::new(&task, &out.module);
+    record.language = Some(context.language_id.clone());
+    let descriptor = crate::commands::ir_storage::v3_json_descriptor();
+    record.value = vec![descriptor.path.clone()];
+    record.ir = Some(descriptor);
+    record
+        .write(&paths.result)
+        .map_err(|error| CliError::Config { error })?;
+    let ejected_path =
+        crate::commands::eject::maybe_eject(&paths, options.output.as_deref(), &start_dir)?;
     let output = CompileOutput {
         success: true,
         ir: Some(typed_ir),
         diagnostics,
         modules: compile_result.modules,
         output_path: context.output_path.to_string_lossy().into_owned(),
-        ejected_path: None,
+        ejected_path,
     };
     write_compile_output(format, &output)?;
     Ok(None)
