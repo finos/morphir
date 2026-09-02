@@ -4,6 +4,7 @@ pub mod config;
 pub mod desktop;
 pub mod diagnostics;
 pub mod dist;
+pub mod eject;
 pub mod extension;
 pub mod generate;
 pub mod gleam;
