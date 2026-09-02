@@ -12,7 +12,7 @@ use serde_saphyr::granit_parser::{Scanner, StrInput, TokenType};
 const PROBE_BYTES: u64 = 64 * 1024;
 
 #[derive(Clone, Debug)]
-pub(super) struct InputSelection {
+pub(crate) struct InputSelection {
     pub format: FormatId,
     pub version: IrVersion,
     pub layout: Layout,
@@ -46,7 +46,7 @@ pub(super) fn resolve_output_format(
     Ok(explicit.or(extension).unwrap_or_else(FormatId::yaml))
 }
 
-pub(super) fn resolve_input(
+pub(crate) fn resolve_input(
     path: &Path,
     explicit: Option<FormatId>,
 ) -> Result<InputSelection, TransportDiagnostic> {

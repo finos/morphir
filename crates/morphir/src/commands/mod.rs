@@ -7,6 +7,7 @@ pub mod dist;
 pub mod extension;
 pub mod generate;
 pub mod gleam;
+pub mod ir_storage;
 pub mod kb;
 pub mod migrate;
 pub mod out_context;
