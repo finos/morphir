@@ -7,7 +7,10 @@ use std::{
 
 fn main() {
     let home = PathBuf::from(env::var_os("MORPHIR_HOME").expect("MORPHIR_HOME"));
-    let logs = home.join("logs/desktop");
+    let logs = env::var_os("MORPHIR_LOG_DIR")
+        .filter(|path| !path.is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| home.join("logs/desktop"));
     fs::create_dir_all(&logs).expect("create Desktop logs");
     let launch_id = env::var("MORPHIR_LAUNCH_ID").expect("MORPHIR_LAUNCH_ID");
     let parent_operation_id =

@@ -8,12 +8,14 @@ use morphir_distribution::{DistributionError, ToolId, activate_installed_tool};
 use serde_json::Value;
 use starbase::AppResult;
 use std::{
-    fs,
     path::{Path, PathBuf},
     process::{Child, Command, ExitStatus, Stdio},
     thread,
     time::{Duration, Instant},
 };
+
+mod readiness;
+use readiness::ReadinessLogs;
 
 const DESKTOP_TOOL_ID: &str = "desktop";
 const LAUNCH_CONTRACT_VERSION_ENV: &str = "MORPHIR_DESKTOP_LAUNCH_CONTRACT_VERSION";
@@ -21,6 +23,7 @@ const DESKTOP_WORKSPACE_ENV: &str = "MORPHIR_DESKTOP_WORKSPACE";
 const LAUNCH_CONTRACT_VERSION: &str = "1";
 const READY_TIMEOUT: Duration = Duration::from_secs(30);
 const READY_POLL_INTERVAL: Duration = Duration::from_millis(50);
+const LOG_POLL_INTERVAL: Duration = Duration::from_millis(250);
 const FORWARDED_READY_GRACE: Duration = Duration::from_secs(2);
 
 /// Launch the active installed Morphir Desktop release.
@@ -50,6 +53,7 @@ enum DesktopLifecycle {
 pub fn run_desktop(operation_id: &OperationId, args: DesktopArgs) -> AppResult<miette::Report> {
     let workspace = resolve_workspace(args.path.as_deref())?;
     let home = resolve_absolute_home()?;
+    let desktop_logs = resolve_desktop_logs(&home)?;
     let tool_id = ToolId::parse(DESKTOP_TOOL_ID).into_diagnostic()?;
     let active = match activate_installed_tool(&home, &tool_id) {
         Ok(active) => active,
@@ -74,6 +78,8 @@ pub fn run_desktop(operation_id: &OperationId, args: DesktopArgs) -> AppResult<m
     command.env_clear();
     command.envs(std::env::vars_os().filter(|(name, _)| should_inherit_environment(name)));
     command.env(MORPHIR_HOME_ENV, home.root());
+    // Resolve relative overrides before changing the child's working directory.
+    command.env("MORPHIR_LOG_DIR", &desktop_logs);
     command.env(LAUNCH_CONTRACT_VERSION_ENV, LAUNCH_CONTRACT_VERSION);
     command.env(DESKTOP_WORKSPACE_ENV, &workspace);
     for (name, value) in launch.child_environment() {
@@ -105,6 +111,9 @@ pub fn run_desktop(operation_id: &OperationId, args: DesktopArgs) -> AppResult<m
         "Launching Morphir Desktop"
     );
 
+    let mut readiness = ReadinessLogs::snapshot(&desktop_logs)
+        .into_diagnostic()
+        .wrap_err("Failed to prepare Desktop readiness monitoring")?;
     let mut child = command.spawn().map_err(|error| {
         record_launch_failure(
             operation_id,
@@ -112,25 +121,25 @@ pub fn run_desktop(operation_id: &OperationId, args: DesktopArgs) -> AppResult<m
             DesktopLaunchErrorCode::SpawnFailed,
             &version.to_string(),
             &executable,
-            &home.desktop_logs_dir(),
+            &desktop_logs,
         );
         miette!(
             "Failed to launch Morphir Desktop {version} from {}: {error}. Desktop logs: {}. \
              Repair with: morphir tool repair desktop --source <package>",
             executable.display(),
-            home.desktop_logs_dir().display()
+            desktop_logs.display()
         )
     })?;
     drop(active);
 
-    await_ready(&mut child, &home.desktop_logs_dir(), &launch).map_err(|failure| {
+    await_ready(&mut child, &mut readiness, &launch).map_err(|failure| {
         record_launch_failure(
             operation_id,
             &launch,
             failure.code,
             &version.to_string(),
             &executable,
-            &home.desktop_logs_dir(),
+            &desktop_logs,
         );
         let _ = child.kill();
         let _ = child.wait();
@@ -140,7 +149,7 @@ pub fn run_desktop(operation_id: &OperationId, args: DesktopArgs) -> AppResult<m
             failure.code.as_str(),
             version,
             executable.display(),
-            home.desktop_logs_dir().display()
+            desktop_logs.display()
         )
     })?;
 
@@ -214,6 +223,16 @@ fn resolve_absolute_home() -> Result<MorphirHome> {
         .map_err(|error| miette!("Failed to resolve Morphir Home: {error}"))
 }
 
+fn resolve_desktop_logs(home: &MorphirHome) -> Result<PathBuf> {
+    let configured = std::env::var_os("MORPHIR_LOG_DIR")
+        .filter(|path| !path.is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| home.desktop_logs_dir());
+    std::path::absolute(configured)
+        .into_diagnostic()
+        .wrap_err("Failed to resolve the Desktop log directory")
+}
+
 fn workspace_directory(workspace: &Path) -> &Path {
     if workspace.is_dir() {
         workspace
@@ -283,13 +302,26 @@ struct ReadyFailure {
 
 fn await_ready(
     child: &mut Child,
-    desktop_logs: &Path,
+    readiness: &mut ReadinessLogs,
     launch: &DesktopLaunchContext,
 ) -> std::result::Result<(), ReadyFailure> {
     let deadline = Instant::now() + READY_TIMEOUT;
+    let mut next_log_poll = Instant::now();
     let mut observed_exit: Option<(ExitStatus, Instant)> = None;
     loop {
-        if let Some(lifecycle) = find_lifecycle_event(desktop_logs, launch.launch_id().as_str()) {
+        let lifecycle = if Instant::now() >= next_log_poll {
+            let lifecycle = readiness
+                .poll(launch.launch_id().as_str())
+                .map_err(|error| ReadyFailure {
+                    code: DesktopLaunchErrorCode::ReadyTimedOut,
+                    message: format!("Failed to read Desktop readiness logs: {error}."),
+                })?;
+            next_log_poll = Instant::now() + LOG_POLL_INTERVAL;
+            lifecycle
+        } else {
+            None
+        };
+        if let Some(lifecycle) = lifecycle {
             match lifecycle {
                 DesktopLifecycle::Ready => return Ok(()),
                 DesktopLifecycle::Failed { error_code }
@@ -346,45 +378,6 @@ fn await_ready(
         }
         thread::sleep(READY_POLL_INTERVAL);
     }
-}
-
-fn find_lifecycle_event(log_root: &Path, launch_id: &str) -> Option<DesktopLifecycle> {
-    let mut files = walkdir::WalkDir::new(log_root)
-        .into_iter()
-        .filter_map(std::result::Result::ok)
-        .filter(|entry| entry.file_type().is_file())
-        .filter(|entry| {
-            entry
-                .path()
-                .extension()
-                .is_some_and(|extension| extension == "jsonl")
-        })
-        .map(|entry| entry.into_path())
-        .collect::<Vec<_>>();
-    files.sort_by_key(|path| {
-        fs::metadata(path)
-            .and_then(|metadata| metadata.modified())
-            .ok()
-    });
-    files.reverse();
-    let mut terminal = None;
-    for path in files {
-        let Ok(contents) = fs::read_to_string(path) else {
-            continue;
-        };
-        for event in contents
-            .lines()
-            .rev()
-            .filter_map(|line| serde_json::from_str::<Value>(line).ok())
-        {
-            match lifecycle_from_event(&event, launch_id) {
-                Some(DesktopLifecycle::Ready) => return Some(DesktopLifecycle::Ready),
-                Some(lifecycle) if terminal.is_none() => terminal = Some(lifecycle),
-                _ => {}
-            }
-        }
-    }
-    terminal
 }
 
 fn lifecycle_from_event(event: &Value, launch_id: &str) -> Option<DesktopLifecycle> {
@@ -484,8 +477,9 @@ mod tests {
     #[test]
     fn a_recorded_ready_event_wins_over_a_later_exit() {
         let temporary = tempfile::tempdir().unwrap();
+        let mut readiness = ReadinessLogs::snapshot(temporary.path()).unwrap();
         let log = temporary.path().join("desktop.jsonl");
-        fs::write(
+        std::fs::write(
             log,
             concat!(
                 "{\"fields\":{\"event_name\":\"desktop.ready\",\"launch_id\":\"launch-expected\"}}\n",
@@ -495,7 +489,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            find_lifecycle_event(temporary.path(), "launch-expected"),
+            readiness.poll("launch-expected").unwrap(),
             Some(DesktopLifecycle::Ready)
         );
     }

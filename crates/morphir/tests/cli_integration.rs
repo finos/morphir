@@ -13,6 +13,7 @@ struct TestIndex {
 fn morphir_command() -> std::process::Command {
     let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_morphir"));
     command.env("MORPHIR_LOG_FILE", "false");
+    command.env_remove("MORPHIR_LOG_DIR");
     command
 }
 
@@ -211,6 +212,44 @@ fn desktop_launches_the_installed_release_twice_after_its_package_source_is_remo
         captures.lines().collect::<Vec<_>>(),
         vec![expected.as_str(), expected.as_str()]
     );
+}
+
+#[test]
+fn desktop_preserves_absolute_and_relative_log_directory_overrides() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir(&workspace).unwrap();
+    install_desktop_launch_fixture(&home, temp.path());
+
+    for configured in [
+        temp.path().join("absolute-logs"),
+        PathBuf::from("relative-logs"),
+    ] {
+        let expected = temp.path().join(&configured);
+        let output = morphir_command()
+            .args([
+                "desktop",
+                "--offline",
+                "--wait",
+                workspace.to_str().unwrap(),
+            ])
+            .env("MORPHIR_HOME", &home)
+            .env("MORPHIR_LOG_DIR", &configured)
+            .current_dir(temp.path())
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let events = std::fs::read_to_string(expected.join("fixture.jsonl"))
+            .expect("Desktop must write readiness in the configured log directory");
+        assert!(events.contains("desktop.ready"));
+        assert!(!home.join("logs/desktop/fixture.jsonl").exists());
+        assert!(!workspace.join("relative-logs").exists());
+    }
 }
 
 #[test]
