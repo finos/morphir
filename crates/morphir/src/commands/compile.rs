@@ -14,7 +14,7 @@ use morphir_daemon::extensions::{
     SpawnedProcessSession, protocol::methods,
 };
 use morphir_devkit::{
-    TaskId, discover_config, ensure_morphir_structure, load_config_context,
+    TaskId, TaskResult, discover_config, ensure_morphir_structure, load_config_context,
     resolve_path_relative_to_config,
 };
 use morphir_distribution::{ExtensionId, VerifiedExtensionArtifact, activate_installed};
@@ -586,6 +586,7 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
             diagnostics,
             modules: Vec::new(),
             output_path: context.output_path.to_string_lossy().into_owned(),
+            ejected_path: None,
         };
         write_compile_output(format, &output)?;
         return Ok(Some(1));
@@ -602,6 +603,7 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
         diagnostics,
         modules: compile_result.modules,
         output_path: context.output_path.to_string_lossy().into_owned(),
+        ejected_path: None,
     };
     write_compile_output(format, &output)?;
     Ok(None)
@@ -933,6 +935,9 @@ fn write_compile_output(
             if output.success {
                 eprintln!("Compilation successful");
                 eprintln!("Output: {}", output.output_path);
+                if let Some(ejected) = &output.ejected_path {
+                    eprintln!("Ejected: {ejected}");
+                }
             }
             for diagnostic in &output.diagnostics {
                 let location = diagnostic
@@ -963,7 +968,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         project: _project,
         json,
         json_lines,
-        out,
+        out: out_overrides,
     } = options;
     let start_dir = std::env::current_dir().map_err(|error| CliError::FileSystem { error })?;
     let config_file = if let Some(config) = config_path {
@@ -1024,12 +1029,11 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         resolve_path_relative_to_config(&configured, &context.config_path)
     };
     report_config_warnings(&context);
-    let out = OutContext::resolve(Some(&context), &out, &start_dir);
-    let paths = out.prepare_dest(&TaskId::compile())?;
-    let output_dir = output
-        .map(PathBuf::from)
-        .unwrap_or_else(|| paths.dest.clone());
-    let output_path = output_dir.join("morphir-ir.json");
+    let out = OutContext::resolve(Some(&context), &out_overrides, &start_dir);
+    let task = TaskId::compile();
+    let paths = out.prepare_dest(&task)?;
+    let storage = crate::commands::ir_storage::IrStorage::from_config(context.config.ir.as_ref())?;
+    let output_path = paths.dest.join(storage.relative_path());
     let (documents, source_root_uri) = collect_source_documents(&input_path, &language)?;
     let emit_parse_stage = context
         .config
@@ -1058,6 +1062,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         .map_err(|error| CliError::Extension {
             message: format!("Failed to resolve frontend for '{language}': {error}"),
         })?;
+    let language_name = language.clone();
     let request = CompileRequest {
         language_id: language,
         documents,
@@ -1070,7 +1075,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
             types_only: false,
             ir_version: "4.0.0".into(),
             extra: HashMap::from([
-                ("outputDir".into(), serde_json::json!(output_dir)),
+                ("outputDir".into(), serde_json::json!(paths.dest)),
                 ("sourceRootUri".into(), serde_json::json!(source_root_uri)),
                 ("emitParseStage".into(), serde_json::json!(emit_parse_stage)),
                 (
@@ -1099,13 +1104,22 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
             diagnostics,
             modules: vec![],
             output_path: output_path.to_string_lossy().into_owned(),
+            ejected_path: None,
         };
         let message = compilation_failure_message(&result);
         write_compile_output(format, &output)?;
         return Err(CliError::Compilation { message }.into());
     }
     let ir_file = validate_v4_compile_result(&result)?;
-    write_v4_ir(&output_path, &ir_file)?;
+    let descriptor = crate::commands::ir_storage::write_v4(&paths.dest, &storage, &ir_file)?;
+    let mut record = TaskResult::new(&task, &out.module);
+    record.language = Some(language_name);
+    record.value = vec![descriptor.path.clone()];
+    record.ir = Some(descriptor);
+    record
+        .write(&paths.result)
+        .map_err(|error| CliError::Config { error })?;
+    let ejected_path = crate::commands::eject::maybe_eject(&paths, output.as_deref(), &start_dir)?;
     let ir = serde_json::to_value(&ir_file).map_err(|error| CliError::Extension {
         message: format!("Failed to serialize validated Morphir IR v4: {error}"),
     })?;
@@ -1115,6 +1129,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         diagnostics,
         modules: result.modules,
         output_path: output_path.to_string_lossy().into_owned(),
+        ejected_path,
     };
     write_compile_output(format, &output)?;
     Ok(None)
@@ -1290,17 +1305,6 @@ fn normalize_ir_version_text(version: &str) -> Option<NormalizedFormatVersion> {
         ScalarValue::String(version.to_owned())
     };
     NormalizedFormatVersion::from_scalar(&scalar, &SupportTable::reference()).ok()
-}
-
-fn write_v4_ir(output_path: &Path, ir: &morphir_core::ir::v4::IRFile) -> Result<(), CliError> {
-    let output_dir = output_path.parent().ok_or_else(|| CliError::Validation {
-        message: format!("Compile output '{}' has no parent", output_path.display()),
-    })?;
-    std::fs::create_dir_all(output_dir).map_err(|error| CliError::FileSystem { error })?;
-    let bytes = serde_json::to_vec_pretty(ir).map_err(|error| CliError::Extension {
-        message: format!("Failed to serialize validated Morphir IR v4: {error}"),
-    })?;
-    std::fs::write(output_path, bytes).map_err(|error| CliError::FileSystem { error })
 }
 
 #[cfg(test)]

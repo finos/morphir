@@ -138,6 +138,7 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
             artifacts: vec![],
             diagnostics,
             output_path: output_path.to_string_lossy().to_string(),
+            ejected_path: None,
         };
         if format == OutputFormat::Human {
             write_generate_human(&output).map_err(CliError::from)?;
@@ -157,6 +158,7 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
         artifacts,
         diagnostics,
         output_path: output_path.to_string_lossy().to_string(),
+        ejected_path: None,
     };
     if format == OutputFormat::Human {
         write_generate_human(&output).map_err(CliError::from)?;

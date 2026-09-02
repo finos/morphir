@@ -3552,3 +3552,77 @@ fn out_dir_flag_beats_env_which_beats_the_default() {
     );
     assert!(!project.join("env-out-2").exists());
 }
+
+#[test]
+fn compile_writes_a_result_record_and_ejects_only_the_value() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_gleam_project(&project);
+
+    let compile = run_morphir(&["gleam", "compile", "-o", "dist/ir"], &home, &project);
+    assert!(
+        compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let dest = project.join(".morphir/out/compile.dest");
+    assert!(
+        dest.join("morphir-ir.json").is_file(),
+        "canonical output missing"
+    );
+    let record: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(project.join(".morphir/out/compile.json")).unwrap())
+            .unwrap();
+    assert_eq!(record["schema"], 1);
+    assert_eq!(record["task"], "compile");
+    assert_eq!(record["language"], "gleam");
+    assert_eq!(record["value"], serde_json::json!(["morphir-ir.json"]));
+    assert_eq!(record["ir"]["layout"], "single-file");
+    assert_eq!(record["ir"]["format"], "json");
+
+    let ejected = project.join("dist/ir");
+    assert!(ejected.join("morphir-ir.json").is_file());
+    assert!(
+        !ejected.join("parse").exists(),
+        "parse stage must not eject"
+    );
+    let stderr = String::from_utf8_lossy(&compile.stderr);
+    assert!(stderr.contains("Ejected:"), "{stderr}");
+}
+
+#[test]
+fn compile_honours_yaml_and_document_tree_storage() {
+    for (config, expected) in [
+        ("[ir]\nformat = \"yaml\"\n", "morphir-ir.yaml"),
+        (
+            "[ir]\nlayout = \"document-tree\"\n",
+            "morphir-ir/manifest.json",
+        ),
+    ] {
+        let temp = TempDir::new().unwrap();
+        let home = temp.path().join("home");
+        let project = temp.path().join("project");
+        write_gleam_project(&project);
+        let toml = project.join("morphir.toml");
+        let mut content = std::fs::read_to_string(&toml).unwrap();
+        content.push('\n');
+        content.push_str(config);
+        std::fs::write(&toml, content).unwrap();
+
+        let compile = run_morphir(&["gleam", "compile"], &home, &project);
+        assert!(
+            compile.status.success(),
+            "{}",
+            String::from_utf8_lossy(&compile.stderr)
+        );
+        assert!(
+            project
+                .join(".morphir/out/compile.dest")
+                .join(expected)
+                .is_file(),
+            "missing {expected}"
+        );
+    }
+}
