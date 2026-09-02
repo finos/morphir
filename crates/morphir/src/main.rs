@@ -166,6 +166,9 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
     /// Launch the installed Morphir Desktop application
     Desktop(commands::DesktopArgs),
 
+    /// Open a scratch Morphir Playground in a browser, with no workspace required
+    Playground(commands::playground::PlaygroundArgs),
+
     // ===== Management Commands =====
     /// Inspect the effective Morphir configuration
     Config {
@@ -823,6 +826,7 @@ impl AppSession for MorphirSession {
             Commands::Migrate(args) => args.run(),
             Commands::Ui(args) => commands::ui::run_ui(args.clone()).await,
             Commands::Desktop(args) => run_desktop(&self.operation_id, args.clone()),
+            Commands::Playground(args) => commands::playground::run_playground(args.clone()).await,
             Commands::Config { action } => match action {
                 ConfigAction::Get {
                     key,

@@ -7,7 +7,7 @@ use clap::Args;
 
 use provider::{
     SessionCapabilities, WorkspaceCapability, extension::ExtensionWorkspaceProvider,
-    native::NativeWorkspaceProvider,
+    native::NativeWorkspaceProvider, playground::NativePlaygroundProvider,
 };
 use server::BoundUiHost;
 
@@ -46,12 +46,19 @@ pub async fn run_ui(args: UiArgs) -> Result<Option<u8>, miette::Report> {
         ));
     }
     let session_id = generate_session_id()?;
+    // Resolved up front: both the workspace-extension branch and the
+    // playground read extensions out of the same Morphir Home.
     let home = crate::home::MorphirHome::resolve()
         .map_err(|error| miette::miette!("Unable to resolve Morphir Home: {error}"))?;
     let provider: Arc<dyn WorkspaceCapability> = match args.workspace_extension.as_deref() {
         Some(extension_id) => Arc::new(
-            ExtensionWorkspaceProvider::select(home, &workspace, &session_id, Some(extension_id))
-                .map_err(miette::Report::new)?,
+            ExtensionWorkspaceProvider::select(
+                home.clone(),
+                &workspace,
+                &session_id,
+                Some(extension_id),
+            )
+            .map_err(miette::Report::new)?,
         ),
         None => Arc::new(
             NativeWorkspaceProvider::discover(&workspace, &session_id)
@@ -62,16 +69,7 @@ pub async fn run_ui(args: UiArgs) -> Result<Option<u8>, miette::Report> {
         session_id,
         SessionCapabilities {
             workspace: Some(provider),
-            // No playground provider, deliberately. The web client vendored
-            // under `assets/` validates the session manifest against a schema
-            // that requires *every* provider it lists to advertise all four
-            // core workspace capabilities at version 1. A playground provider
-            // advertises `morphir/playground/*` instead, so including one
-            // makes that client reject the whole manifest -- breaking `morphir
-            // ui` itself, not just the playground. The provider stays wired up
-            // and tested; it gets attached here once a client that understands
-            // it is vendored.
-            playground: None,
+            playground: Some(Arc::new(NativePlaygroundProvider::new(home))),
             ..Default::default()
         },
     )
