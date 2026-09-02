@@ -3721,3 +3721,75 @@ fn generate_without_a_compile_record_explains_what_to_run() {
         "{stderr}"
     );
 }
+
+#[test]
+fn workspace_members_write_under_the_workspace_out_root() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let workspace = temp.path().join("ws");
+    std::fs::create_dir_all(workspace.join(".morphir")).unwrap();
+    std::fs::write(
+        workspace.join("morphir.toml"),
+        "[workspace]\nmembers = [\"packages/*\"]\n",
+    )
+    .unwrap();
+    let member = workspace.join("packages/orders");
+    write_gleam_project(&member);
+    std::fs::remove_dir_all(member.join(".morphir")).unwrap();
+
+    let compile = run_morphir(&["gleam", "compile"], &home, &member);
+    assert!(
+        compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let dest = workspace.join(".morphir/out/packages/orders/compile.dest/morphir-ir.json");
+    assert!(dest.is_file(), "expected {}", dest.display());
+    assert!(
+        !member.join(".morphir/out").exists(),
+        "member must not get its own out root"
+    );
+    let record: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(workspace.join(".morphir/out/packages/orders/compile.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(record["module"], "packages/orders");
+}
+
+#[test]
+fn re_ejecting_after_a_storage_change_removes_the_stale_file() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_gleam_project(&project);
+    let first = run_morphir(&["gleam", "compile", "-o", "dist"], &home, &project);
+    assert!(
+        first.status.success(),
+        "{}",
+        String::from_utf8_lossy(&first.stderr)
+    );
+    assert!(project.join("dist/morphir-ir.json").is_file());
+    std::fs::write(project.join("dist/keep.txt"), "mine").unwrap();
+
+    let toml = project.join("morphir.toml");
+    let mut content = std::fs::read_to_string(&toml).unwrap();
+    content.push_str("\n[ir]\nformat = \"yaml\"\n");
+    std::fs::write(&toml, content).unwrap();
+    let second = run_morphir(&["gleam", "compile", "-o", "dist"], &home, &project);
+    assert!(
+        second.status.success(),
+        "{}",
+        String::from_utf8_lossy(&second.stderr)
+    );
+
+    assert!(
+        !project.join("dist/morphir-ir.json").exists(),
+        "stale eject not removed"
+    );
+    assert!(project.join("dist/morphir-ir.yaml").is_file());
+    assert!(
+        project.join("dist/keep.txt").is_file(),
+        "foreign file touched"
+    );
+}
