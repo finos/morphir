@@ -2,6 +2,7 @@
 
 use crate::error::CliError;
 use morphir_devkit::{TaskPaths, TaskResult};
+use std::collections::HashSet;
 use std::path::{Component, Path, PathBuf};
 
 /// What one eject did.
@@ -66,17 +67,22 @@ pub fn eject(paths: &TaskPaths, target: &Path) -> Result<EjectReport, CliError> 
         std::fs::canonicalize(target).map_err(|error| CliError::FileSystem { error })?;
 
     let new_files = flatten_value_files(paths, &record.value)?;
+    let new_files_lookup: HashSet<&str> = new_files.iter().map(String::as_str).collect();
 
     // Remove exactly the files this function wrote here before that the
     // current `value` no longer produces. A directory entry is never
     // deleted wholesale — only the individual files this function is
     // recorded as owning — so a directory the user already had before the
     // first eject, or a file the user added beside/inside an owned
-    // directory afterward, is never at risk.
+    // directory afterward, is never at risk. `remove_confined` itself
+    // refuses to remove anything that turns out to be a directory (see its
+    // doc comment), which also protects against a record written by an
+    // older build of this scheme that still names a directory entry rather
+    // than a flattened file path.
     let mut removed = Vec::new();
     for stale in previous_files
         .iter()
-        .filter(|file| !new_files.contains(file))
+        .filter(|file| !new_files_lookup.contains(file.as_str()))
     {
         let path = target.join(stale);
         if remove_confined(&path, target, &canonical_target)? {
@@ -173,21 +179,21 @@ fn validate_entry(entry: &str) -> Result<(), CliError> {
     Ok(())
 }
 
-/// Remove `path` if it exists, first confirming its containing directory
-/// still resolves under `canonical_target` (the canonicalized `target`).
-/// Returns whether anything was actually removed, so callers never report a
-/// removal that did not happen.
+/// Remove `path` if it is a file that exists, first confirming its
+/// containing directory still resolves under `canonical_target` (the
+/// canonicalized `target`). Returns whether anything was actually removed,
+/// so callers never report a removal that did not happen.
 ///
 /// `symlink_metadata` on `path` only protects against `path` itself being a
 /// symlink; it does not stop a symlinked *intermediate* directory (e.g.
-/// `target/sub -> /elsewhere`) from redirecting `remove_dir_all`/`remove_file`
-/// onto a location outside `target`. Canonicalizing `path`'s parent and
-/// checking it against the canonicalized target catches that: a legitimate
-/// removal's parent always resolves inside the target, while a symlinked
-/// intermediate resolves elsewhere. `target` itself may legitimately be a
-/// symlink (the user's `-o` can point at one), so both sides are
-/// canonicalized before comparing — comparing `path` directly against the
-/// non-canonical `target` would reject that legitimate case.
+/// `target/sub -> /elsewhere`) from redirecting `remove_file` onto a
+/// location outside `target`. Canonicalizing `path`'s parent and checking it
+/// against the canonicalized target catches that: a legitimate removal's
+/// parent always resolves inside the target, while a symlinked intermediate
+/// resolves elsewhere. `target` itself may legitimately be a symlink (the
+/// user's `-o` can point at one), so both sides are canonicalized before
+/// comparing — comparing `path` directly against the non-canonical `target`
+/// would reject that legitimate case.
 ///
 /// This check is advisory, not a security boundary: it catches accidental or
 /// stale symlinks sitting in the target, not a hostile actor. It is
@@ -219,13 +225,21 @@ fn remove_confined(path: &Path, target: &Path, canonical_target: &Path) -> Resul
     remove_entry(path)
 }
 
-/// Remove `path` (file or directory) if it exists. Returns whether anything
-/// was actually removed.
+/// Remove `path` if it is a file that exists. Returns whether anything was
+/// actually removed.
+///
+/// A directory at `path` is never removed here, even recursively — this
+/// function only ever deletes files this module wrote, and a directory is
+/// not one of those, whether it is foreign content the user created, or a
+/// directory that a record written by an older build of this scheme still
+/// lists by entry name rather than by the file paths beneath it (the
+/// bookkeeping this module writes today is always flattened to files, but a
+/// stale record on disk from before that change is not). `prune_empty_parents`
+/// is the only place a directory is ever removed, and only once emptying it
+/// out file by file has left it with nothing inside.
 fn remove_entry(path: &Path) -> Result<bool, CliError> {
     match std::fs::symlink_metadata(path) {
-        Ok(metadata) if metadata.is_dir() => std::fs::remove_dir_all(path)
-            .map(|()| true)
-            .map_err(|error| CliError::FileSystem { error }),
+        Ok(metadata) if metadata.is_dir() => Ok(false),
         Ok(_) => std::fs::remove_file(path)
             .map(|()| true)
             .map_err(|error| CliError::FileSystem { error }),
@@ -590,6 +604,71 @@ mod tests {
         assert!(
             report.removed.is_empty(),
             "nothing was actually removed by this call: {:?}",
+            report.removed
+        );
+    }
+
+    #[test]
+    fn a_legacy_entry_shaped_stale_path_that_is_a_directory_is_never_deleted() {
+        // Round 2 rewrote `ejected[target]` from entry names to flattened
+        // file paths. A record written by an EARLIER build of this branch
+        // still has an entry name like `morphir-ir` in that list. If the
+        // current run's `value` no longer includes it, it looks stale by
+        // that old bookkeeping — but it names a real directory the merge
+        // logic wrote into, not a file this function is allowed to delete,
+        // so it must survive untouched and must not be reported as removed.
+        let temp = tempfile::tempdir().unwrap();
+        let paths = task_with_value(&temp.path().join("out"), &[]);
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(target.join("morphir-ir/pkg")).unwrap();
+        std::fs::write(target.join("morphir-ir/manifest.yaml"), "a: 1").unwrap();
+        std::fs::write(target.join("morphir-ir/pkg/x.yaml"), "b: 2").unwrap();
+
+        let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
+        record.ejected.insert(
+            target.to_string_lossy().into_owned(),
+            vec!["morphir-ir".to_owned()],
+        );
+        record.write(&paths.result).unwrap();
+
+        let report = eject(&paths, &target).unwrap();
+
+        assert!(target.join("morphir-ir/manifest.yaml").is_file());
+        assert!(target.join("morphir-ir/pkg/x.yaml").is_file());
+        assert!(
+            report.removed.is_empty(),
+            "a directory must never be reported as removed: {:?}",
+            report.removed
+        );
+    }
+
+    #[test]
+    fn a_stale_file_path_the_user_replaced_with_a_directory_is_never_deleted() {
+        // Eject wrote `morphir-ir.json` as a file. The user later removes it
+        // and creates their own directory of the same name. When the task
+        // stops producing that entry, the path looks stale by file-path
+        // bookkeeping — but it no longer names a file this function wrote,
+        // so it must not be deleted.
+        let temp = tempfile::tempdir().unwrap();
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
+        let target = temp.path().join("dist");
+        eject(&paths, &target).unwrap();
+        assert!(target.join("morphir-ir.json").is_file());
+
+        std::fs::remove_file(target.join("morphir-ir.json")).unwrap();
+        std::fs::create_dir_all(target.join("morphir-ir.json/mine")).unwrap();
+        std::fs::write(target.join("morphir-ir.json/mine/keep.txt"), "mine").unwrap();
+
+        let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
+        record.value = Vec::new();
+        record.write(&paths.result).unwrap();
+        let report = eject(&paths, &target).unwrap();
+
+        assert!(target.join("morphir-ir.json").is_dir());
+        assert!(target.join("morphir-ir.json/mine/keep.txt").is_file());
+        assert!(
+            report.removed.is_empty(),
+            "a directory must never be reported as removed: {:?}",
             report.removed
         );
     }
