@@ -6,7 +6,7 @@ mod provider;
 
 pub use options::GenerateOptions;
 
-use crate::commands::out_context::{OutContext, OutOverrides, report_config_warnings};
+use crate::commands::out_context::{OutContext, report_config_warnings};
 use crate::error::{CliError, convert_extension_diagnostics};
 use crate::home::MorphirHome;
 use morphir_common::loader::load_ir;
@@ -28,6 +28,7 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
         backend_options,
         json,
         json_lines,
+        out,
     } = options;
     // Discover config if not provided
     let start_dir = std::env::current_dir().map_err(|e| CliError::FileSystem { error: e })?;
@@ -66,7 +67,7 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
         .map_err(|error| CliError::Config { error })?;
 
     report_config_warnings(&ctx);
-    let out = OutContext::resolve(Some(&ctx), &OutOverrides::default(), &start_dir);
+    let out = OutContext::resolve(Some(&ctx), &out, &start_dir);
 
     // Determine IR input path
     let input_path = if let Some(inp) = input {

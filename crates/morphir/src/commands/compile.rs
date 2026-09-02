@@ -49,6 +49,8 @@ pub struct CompileOptions {
     pub json: bool,
     /// Output JSON lines format
     pub json_lines: bool,
+    /// Out root overrides.
+    pub out: OutOverrides,
 }
 
 /// Run the compile command
@@ -961,6 +963,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         project: _project,
         json,
         json_lines,
+        out,
     } = options;
     let start_dir = std::env::current_dir().map_err(|error| CliError::FileSystem { error })?;
     let config_file = if let Some(config) = config_path {
@@ -1021,7 +1024,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         resolve_path_relative_to_config(&configured, &context.config_path)
     };
     report_config_warnings(&context);
-    let out = OutContext::resolve(Some(&context), &OutOverrides::default(), &start_dir);
+    let out = OutContext::resolve(Some(&context), &out, &start_dir);
     let paths = out.prepare_dest(&TaskId::compile())?;
     let output_dir = output
         .map(PathBuf::from)

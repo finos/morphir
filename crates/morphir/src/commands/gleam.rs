@@ -9,7 +9,9 @@ use starbase::AppResult;
 use std::path::PathBuf;
 
 /// Run Gleam compile command (convenience wrapper)
+#[allow(clippy::too_many_arguments)]
 pub async fn run_gleam_compile(
+    out: OutOverrides,
     input: Option<String>,
     output: Option<String>,
     package_name: Option<String>,
@@ -28,12 +30,14 @@ pub async fn run_gleam_compile(
         project,
         json,
         json_lines,
+        out,
     })
     .await
 }
 
 /// Run Gleam generate command (convenience wrapper)
 pub async fn run_gleam_generate(
+    out: OutOverrides,
     input: Option<String>,
     output: Option<String>,
     config_path: Option<String>,
@@ -50,12 +54,15 @@ pub async fn run_gleam_generate(
         backend_options: Vec::new(),
         json,
         json_lines,
+        out,
     })
     .await
 }
 
 /// Run Gleam roundtrip (compile then generate)
+#[allow(clippy::too_many_arguments)]
 pub async fn run_gleam_roundtrip(
+    out: OutOverrides,
     input: Option<String>,
     output: Option<String>,
     package_name: Option<String>,
@@ -66,10 +73,11 @@ pub async fn run_gleam_roundtrip(
 ) -> AppResult<miette::Report> {
     let generate_input = package_name
         .as_deref()
-        .map(|package_name| roundtrip_compile_output(package_name, config_path.as_deref()))
+        .map(|package_name| roundtrip_compile_output(&out, package_name, config_path.as_deref()))
         .transpose()?
         .map(|path| path.to_string_lossy().into_owned());
     run_gleam_compile(
+        out.clone(),
         input,
         None,
         package_name,
@@ -81,6 +89,7 @@ pub async fn run_gleam_roundtrip(
     .await?;
 
     run_gleam_generate(
+        out,
         generate_input,
         output,
         config_path,
@@ -92,6 +101,7 @@ pub async fn run_gleam_roundtrip(
 }
 
 fn roundtrip_compile_output(
+    out: &OutOverrides,
     _package_name: &str,
     config_path: Option<&str>,
 ) -> Result<PathBuf, CliError> {
@@ -106,9 +116,7 @@ fn roundtrip_compile_output(
             })?
     };
     let context = load_config_context(&config_file).map_err(|error| CliError::Config { error })?;
-    Ok(
-        OutContext::resolve(Some(&context), &OutOverrides::default(), &start_dir)
-            .task(&TaskId::compile())
-            .dest,
-    )
+    Ok(OutContext::resolve(Some(&context), out, &start_dir)
+        .task(&TaskId::compile())
+        .dest)
 }

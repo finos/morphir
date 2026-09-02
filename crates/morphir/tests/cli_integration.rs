@@ -3506,3 +3506,49 @@ fn migrate_accepts_partial_and_encoding_flags() {
     assert!(help.contains("--input-format"));
     assert!(help.contains("--output-format"));
 }
+
+#[test]
+fn out_dir_flag_beats_env_which_beats_the_default() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_gleam_project(&project);
+
+    let by_env = morphir_command()
+        .args(["gleam", "compile"])
+        .env("MORPHIR_HOME", &home)
+        .env("MORPHIR_OUT_DIR", "env-out")
+        .current_dir(&project)
+        .output()
+        .unwrap();
+    assert!(
+        by_env.status.success(),
+        "{}",
+        String::from_utf8_lossy(&by_env.stderr)
+    );
+    assert!(
+        project
+            .join("env-out/compile.dest/morphir-ir.json")
+            .is_file()
+    );
+    assert!(!project.join(".morphir/out").exists());
+
+    let by_flag = morphir_command()
+        .args(["--out-dir", "flag-out", "gleam", "compile"])
+        .env("MORPHIR_HOME", &home)
+        .env("MORPHIR_OUT_DIR", "env-out-2")
+        .current_dir(&project)
+        .output()
+        .unwrap();
+    assert!(
+        by_flag.status.success(),
+        "{}",
+        String::from_utf8_lossy(&by_flag.stderr)
+    );
+    assert!(
+        project
+            .join("flag-out/compile.dest/morphir-ir.json")
+            .is_file()
+    );
+    assert!(!project.join("env-out-2").exists());
+}

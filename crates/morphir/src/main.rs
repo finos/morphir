@@ -48,6 +48,10 @@ struct Cli {
     #[arg(short = 'V', long, action = clap::ArgAction::Version)]
     version: Option<bool>,
 
+    /// Relocate the out root (default: <workspace>/.morphir/out). Also MORPHIR_OUT_DIR.
+    #[arg(long, global = true, value_name = "PATH")]
+    out_dir: Option<std::path::PathBuf>,
+
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -767,6 +771,7 @@ enum KbDecisionAction {
 struct MorphirSession {
     command: Commands,
     operation_id: observability::OperationId,
+    out: commands::OutOverrides,
 }
 
 #[async_trait::async_trait]
@@ -797,6 +802,7 @@ impl AppSession for MorphirSession {
                     project: project.clone(),
                     json: *json,
                     json_lines: *json_lines,
+                    out: self.out.clone(),
                 })
                 .await
             }
@@ -819,6 +825,7 @@ impl AppSession for MorphirSession {
                     backend_options: option.clone(),
                     json: *json,
                     json_lines: *json_lines,
+                    out: self.out.clone(),
                 })
                 .await
             }
@@ -1025,6 +1032,7 @@ impl AppSession for MorphirSession {
                     project,
                 } => {
                     run_gleam_compile(
+                        self.out.clone(),
                         input.clone(),
                         output.clone(),
                         package_name.clone(),
@@ -1042,6 +1050,7 @@ impl AppSession for MorphirSession {
                     project,
                 } => {
                     run_gleam_generate(
+                        self.out.clone(),
                         input.clone(),
                         output.clone(),
                         config.clone(),
@@ -1059,6 +1068,7 @@ impl AppSession for MorphirSession {
                     project,
                 } => {
                     run_gleam_roundtrip(
+                        self.out.clone(),
                         input.clone(),
                         output.clone(),
                         package_name.clone(),
@@ -1203,6 +1213,9 @@ async fn main() -> starbase::MainResult {
             }
         };
 
+        // Read before `cli.command` is moved below.
+        let out_dir = cli.out_dir.clone();
+
         // Handle case where no command is provided.
         let command = match cli.command {
             Some(cmd) => cmd,
@@ -1240,6 +1253,7 @@ async fn main() -> starbase::MainResult {
         let session = MorphirSession {
             command,
             operation_id: operation_id.clone(),
+            out: commands::OutOverrides::from_process(out_dir),
         };
 
         // Initialize and run starbase App.
