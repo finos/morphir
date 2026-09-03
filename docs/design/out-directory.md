@@ -25,8 +25,9 @@ of what it produced.
 
 Task ids are path-like: `compile`, `generate/<target>`, `transform/<name>`.
 `<task>.dest/` is cleared before each run. `<task>.json` is written only after
-the task succeeds, so a `.dest` without a matching `.json` is always treated
-as incomplete and rerun.
+the task succeeds, so a `.dest` without a matching `.json` is treated as
+missing; nothing reruns it automatically, and the user must run the task
+again.
 
 ## Root resolution
 
