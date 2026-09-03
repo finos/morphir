@@ -53,6 +53,21 @@ pub fn install(paths: &TaskPaths, target: &Path) -> Result<InstallReport, CliErr
             ),
         })?;
 
+    // A record with an empty `value` is either a genuinely empty product or
+    // a tombstone (see `out_context::prepare_dest`) left by a run that
+    // started but did not finish — either way there is nothing to install.
+    // Every caller today runs `install` right after writing a successful
+    // record, so a tombstone can never actually reach this function, but the
+    // guard costs nothing and keeps that true if a future caller changes.
+    if record.value.is_empty() {
+        return Err(CliError::Validation {
+            message: format!(
+                "task result at {} has no product to install; run the task first",
+                paths.result.display()
+            ),
+        });
+    }
+
     for entry in &record.value {
         validate_entry(entry)?;
     }
@@ -522,8 +537,13 @@ mod tests {
         std::fs::create_dir_all(target.join("mine/nested")).unwrap();
         std::fs::write(target.join("mine/nested/file.txt"), "mine too").unwrap();
 
+        // `sub/report` drops out of `value` entirely, but `value` itself
+        // must stay non-empty (an empty `value` is rejected as having
+        // nothing to install — see `install`'s tombstone guard), so a
+        // harmless, unrelated entry takes its place.
+        std::fs::write(paths.dest.join("keep.txt"), "kept").unwrap();
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
-        record.value = Vec::new();
+        record.value = vec!["keep.txt".to_owned()];
         record.write(&paths.result).unwrap();
         let report = install(&paths, &target).unwrap();
 
@@ -577,9 +597,11 @@ mod tests {
         // `validate_entry` runs over both `record.value` (covered above) and
         // the bookkeeping list from a prior install to this target
         // (`record.installed`). Exercise the second loop specifically: a
-        // clean `value` with a malicious entry sitting only in `installed`.
+        // clean `value` (non-empty, but with nothing malicious in it — see
+        // `install`'s tombstone guard for why it can't be empty) with a
+        // malicious entry sitting only in `installed`.
         let temp = tempfile::tempdir().unwrap();
-        let paths = task_with_value(&temp.path().join("out"), &[]);
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
         let target = temp.path().join("dist");
         std::fs::create_dir_all(&target).unwrap();
 
@@ -707,8 +729,12 @@ mod tests {
         install(&paths, &target).unwrap();
         std::fs::remove_file(target.join("morphir-ir.json")).unwrap();
 
+        // `morphir-ir.json` drops out of `value`, but `value` itself must
+        // stay non-empty (see `install`'s tombstone guard), so a harmless,
+        // unrelated entry takes its place.
+        std::fs::write(paths.dest.join("keep.txt"), "kept").unwrap();
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
-        record.value = Vec::new();
+        record.value = vec!["keep.txt".to_owned()];
         record.write(&paths.result).unwrap();
         let report = install(&paths, &target).unwrap();
 
@@ -728,8 +754,11 @@ mod tests {
         // that old bookkeeping — but it names a real directory the merge
         // logic wrote into, not a file this function is allowed to delete,
         // so it must survive untouched and must not be reported as removed.
+        // `value` carries an unrelated entry rather than being empty (see
+        // `install`'s tombstone guard); it plays no part in what is under
+        // test here.
         let temp = tempfile::tempdir().unwrap();
-        let paths = task_with_value(&temp.path().join("out"), &[]);
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
         let target = temp.path().join("dist");
         std::fs::create_dir_all(target.join("morphir-ir/pkg")).unwrap();
         std::fs::write(target.join("morphir-ir/manifest.yaml"), "a: 1").unwrap();
@@ -769,8 +798,12 @@ mod tests {
         std::fs::create_dir_all(target.join("morphir-ir.json/mine")).unwrap();
         std::fs::write(target.join("morphir-ir.json/mine/keep.txt"), "mine").unwrap();
 
+        // `morphir-ir.json` drops out of `value`, but `value` itself must
+        // stay non-empty (see `install`'s tombstone guard), so a harmless,
+        // unrelated entry takes its place.
+        std::fs::write(paths.dest.join("other.txt"), "kept").unwrap();
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
-        record.value = Vec::new();
+        record.value = vec!["other.txt".to_owned()];
         record.write(&paths.result).unwrap();
         let report = install(&paths, &target).unwrap();
 
@@ -803,8 +836,13 @@ mod tests {
         symlink(&outside, target.join("sub")).unwrap();
 
         let paths = TaskPaths::new(&temp.path().join("out"), Path::new(""), &TaskId::compile());
+        // `value` needs one harmless entry (see `install`'s tombstone
+        // guard); it plays no part in the symlink escape under test, which
+        // comes entirely from the stale `installed` bookkeeping below.
+        std::fs::create_dir_all(&paths.dest).unwrap();
+        std::fs::write(paths.dest.join("keep.txt"), "kept").unwrap();
         let mut record = TaskResult::new(&TaskId::compile(), Path::new(""));
-        record.value = Vec::new();
+        record.value = vec!["keep.txt".to_owned()];
         record
             .installed
             .insert(canonical_key(&target), vec!["sub/report".to_owned()]);
@@ -847,6 +885,50 @@ mod tests {
         let paths = TaskPaths::new(temp.path(), Path::new(""), &TaskId::compile());
         let error = install(&paths, &temp.path().join("dist")).unwrap_err();
         assert!(error.to_string().contains("no result record"), "{error}");
+    }
+
+    #[test]
+    fn a_tombstone_shaped_record_is_rejected_rather_than_wiping_the_ledger() {
+        // A record present but with an empty `value` — the shape
+        // `out_context::prepare_dest` leaves behind as a tombstone after a
+        // failed run — must not be treated as "produce nothing and remove
+        // everything previously installed". Every caller in the CLI runs
+        // `install` right after a successful `record.write`, so this is not
+        // reachable today, but the guard protects against a future caller
+        // (or a hand-crafted record) doing so and silently deleting a whole
+        // install target's contents.
+        let temp = tempfile::tempdir().unwrap();
+        let paths = TaskPaths::new(&temp.path().join("out"), Path::new(""), &TaskId::compile());
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(&target).unwrap();
+        std::fs::write(target.join("morphir-ir.json"), "previously installed").unwrap();
+
+        let mut record = TaskResult::new(&TaskId::compile(), Path::new(""));
+        record.value = Vec::new();
+        record.installed.insert(
+            std::fs::canonicalize(&target)
+                .unwrap()
+                .to_string_lossy()
+                .into_owned(),
+            vec!["morphir-ir.json".to_owned()],
+        );
+        record.write(&paths.result).unwrap();
+
+        let error = install(&paths, &target).unwrap_err();
+        let CliError::Validation { message } = error else {
+            panic!("expected a validation error, got {error:?}");
+        };
+        assert!(message.contains("no product to install"), "{message}");
+        assert_eq!(
+            std::fs::read_to_string(target.join("morphir-ir.json")).unwrap(),
+            "previously installed",
+            "a tombstone-shaped record must not delete previously installed files"
+        );
+        let record_after = TaskResult::read(&paths.result).unwrap().unwrap();
+        assert!(
+            !record_after.installed.is_empty(),
+            "a rejected install must not overwrite the ledger with an empty one"
+        );
     }
 
     #[test]
@@ -934,8 +1016,12 @@ mod tests {
         install(&paths, &target).unwrap();
         assert!(target.join("morphir-ir.json").is_file());
 
+        // `morphir-ir.json` drops out of `value`, but `value` itself must
+        // stay non-empty (see `install`'s tombstone guard), so a harmless,
+        // unrelated entry takes its place.
+        std::fs::write(paths.dest.join("keep.txt"), "kept").unwrap();
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
-        record.value = Vec::new();
+        record.value = vec!["keep.txt".to_owned()];
         record.write(&paths.result).unwrap();
 
         let dotted_target = temp.path().join(".").join("dist");

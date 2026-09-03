@@ -65,18 +65,33 @@ impl OutContext {
     ///
     /// The previous `.json`, if there is one, is not deleted — it is
     /// overwritten with a TOMBSTONE: the same record with `value` and
-    /// `inputs` emptied and `language` and `ir` set to `None`, but
-    /// `installed` (and `completedAt`) left exactly as they were. If the run
-    /// that is about to happen succeeds, the caller overwrites the tombstone
-    /// with a real record built from `previous_installed`, same as always.
-    /// If it fails instead, the tombstone is what stays on disk: `generate`
-    /// treats a tombstone the same as a missing record (see its IR-input
-    /// resolution), and a later `install::maybe_install` still finds the
-    /// ledger of what an earlier successful run put at each `-o` target, so
-    /// it does not mistake its own earlier output for foreign content. A
-    /// plain delete-on-start, which is what this function used to do, loses
-    /// that ledger the moment any run fails, which is the bug a tombstone
-    /// fixes.
+    /// `inputs` emptied, `language` and `ir` set to `None`, and `extra` (the
+    /// `#[serde(flatten)]` catch-all for fields this version does not know,
+    /// such as a future `inputsHash`) cleared too — a tombstone's `.dest` is
+    /// empty, so nothing computed from the previous `.dest` may ride along
+    /// on it. `installed` (and `completedAt`) are left exactly as they were.
+    /// If the run that is about to happen succeeds, the caller overwrites
+    /// the tombstone with a real record built from `previous_installed`,
+    /// same as always. If it fails instead, the tombstone is what stays on
+    /// disk: `generate` treats a tombstone the same as a missing record (see
+    /// its IR-input resolution), and a later `install::maybe_install` still
+    /// finds the ledger of what an earlier successful run put at each `-o`
+    /// target, so it does not mistake its own earlier output for foreign
+    /// content. A plain delete-on-start, which is what this function used to
+    /// do, loses that ledger the moment any run fails, which is the bug a
+    /// tombstone fixes.
+    ///
+    /// The tombstone is written *before* `.dest` is cleared, not after: if
+    /// the process were to crash (or `record.write` itself were to fail)
+    /// between the two, writing the tombstone first means the failure leaves
+    /// the previous run's SUCCESSFUL record sitting beside its own intact
+    /// `.dest` — a state every reader already treats as a complete,
+    /// consumable run. Clearing `.dest` first and writing the tombstone
+    /// second would instead risk leaving the full previous record (still
+    /// claiming a real `ir`) beside an empty `.dest`, which would make
+    /// `generate` try to read IR that is no longer there and fail deep
+    /// inside `read_value` with a raw I/O error instead of the friendly
+    /// missing-record message.
     ///
     /// `installed` describes what is actually on disk at install targets
     /// from past runs, not anything about the run that is about to happen,
@@ -90,11 +105,11 @@ impl OutContext {
     /// bookkeeping, not a precondition of this run: this function treats it
     /// as absent rather than failing the run over it. It prints one
     /// `warning: ...` line naming the file and the decode error, proceeds
-    /// with an empty `previous_installed`, and removes the file below rather
-    /// than trying to turn something unreadable into a tombstone.
-    /// `TaskResult::read` itself stays strict — callers that genuinely need
-    /// the record (`generate` reading its input) still get a hard error from
-    /// a corrupt one.
+    /// with an empty `previous_installed`, and removes the file rather than
+    /// trying to turn something unreadable into a tombstone. `TaskResult::read`
+    /// itself stays strict — callers that genuinely need the record
+    /// (`generate` reading its input) still get a hard error from a corrupt
+    /// one.
     pub fn prepare_dest(&self, task: &TaskId) -> Result<PreparedTask, CliError> {
         let paths = self.task(task);
         let previous = TaskResult::read(&paths.result);
@@ -109,16 +124,13 @@ impl OutContext {
                 BTreeMap::new()
             }
         };
-        if paths.dest.exists() {
-            std::fs::remove_dir_all(&paths.dest).map_err(|error| CliError::FileSystem { error })?;
-        }
-        std::fs::create_dir_all(&paths.dest).map_err(|error| CliError::FileSystem { error })?;
         match previous {
             Ok(Some(mut record)) => {
                 record.value = Vec::new();
                 record.ir = None;
                 record.inputs = Vec::new();
                 record.language = None;
+                record.extra = BTreeMap::new();
                 record
                     .write(&paths.result)
                     .map_err(|error| CliError::Config { error })?;
@@ -130,6 +142,10 @@ impl OutContext {
                 Err(error) => return Err(CliError::FileSystem { error }),
             },
         }
+        if paths.dest.exists() {
+            std::fs::remove_dir_all(&paths.dest).map_err(|error| CliError::FileSystem { error })?;
+        }
+        std::fs::create_dir_all(&paths.dest).map_err(|error| CliError::FileSystem { error })?;
         Ok(PreparedTask {
             paths,
             previous_installed,
@@ -225,6 +241,9 @@ mod tests {
             format: "json".to_owned(),
             version: "v4".to_owned(),
         });
+        record
+            .extra
+            .insert("inputsHash".to_owned(), serde_json::json!("sha256:abc"));
         record.write(&prepared.paths.result).unwrap();
 
         let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
@@ -237,6 +256,12 @@ mod tests {
         assert!(tombstone.value.is_empty(), "a tombstone has no value");
         assert!(tombstone.inputs.is_empty(), "a tombstone has no inputs");
         assert!(tombstone.language.is_none(), "a tombstone has no language");
+        assert!(
+            tombstone.extra.is_empty(),
+            "a tombstone must not carry forward unknown fields like inputsHash, \
+             since they were computed from a .dest the tombstone no longer has: {:?}",
+            tombstone.extra
+        );
     }
 
     #[test]

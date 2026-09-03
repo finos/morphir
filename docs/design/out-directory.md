@@ -77,17 +77,24 @@ directory. Unknown fields are preserved across a read-modify-write cycle.
 
 Starting a task does not delete its previous record outright: if one exists
 and can be read, it is overwritten with a TOMBSTONE — the same record with
-`value` and `inputs` emptied and `language` and `ir` set to `null`, but
-`installed` and `completedAt` left exactly as they were. If the run
-succeeds, it overwrites the tombstone with a real record. If it fails, the
-tombstone is what stays on disk. This keeps the install ledger available
-across a failing run: without it, a failed `compile` between two `-o`
-installs would lose track of what an earlier successful run had put at the
-target, and the next `install` would see its own earlier output as foreign
-content it never wrote and refuse to run. `generate` treats a tombstone
-(`ir` absent and `value` empty) the same as a missing record — a record
-whose `value` is non-empty but `ir` is absent is a different case, and gets
-its own "produced no IR descriptor" error. A record that fails to decode
+`value` and `inputs` emptied, `installed` and `completedAt` left exactly as
+they were, and `language` and `ir` omitted (both are `skip_serializing_if =
+"Option::is_none"`, so setting them to `None` drops the keys from the JSON
+entirely rather than writing `null`). `extra` — the catch-all for fields
+this version does not know, such as a future `inputsHash` — is cleared too,
+since it may hold values computed from the previous `.dest`, which a
+tombstone no longer has. If the run succeeds, it overwrites the tombstone
+with a real record. If it fails, the tombstone is what stays on disk. This
+keeps the install ledger available across a failing run: without it, a
+failed `compile` between two `-o` installs would lose track of what an
+earlier successful run had put at the target, and the next `install` would
+see its own earlier output as foreign content it never wrote and refuse to
+run. `generate` treats a tombstone (`ir` absent and `value` empty) the same
+as a missing record — a record whose `value` is non-empty but `ir` is
+absent is a different case, and gets its own "produced no IR descriptor"
+error. `install` itself refuses a tombstone-shaped record outright (an
+empty `value`) rather than treating it as "nothing to copy, so remove
+everything previously installed". A record that fails to decode
 (hand-edited, truncated, or written by an incompatible version) is removed
 outright instead of being turned into a tombstone, since there is nothing
 reliable to preserve from it.

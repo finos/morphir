@@ -3590,6 +3590,37 @@ fn compile_writes_a_result_record_and_installs_only_the_value() {
 }
 
 #[test]
+fn compile_json_output_carries_installed_path_when_o_is_given() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    write_gleam_project(&project);
+
+    let compile = run_morphir(
+        &["gleam", "--json", "compile", "-o", "dist/ir"],
+        &home,
+        &project,
+    );
+    assert!(
+        compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let output: serde_json::Value = serde_json::from_slice(&compile.stdout).unwrap();
+    assert_eq!(output["success"], true);
+    let installed_path = output["installed_path"]
+        .as_str()
+        .expect("installed_path must be a string when -o is given");
+    // Compare canonicalized paths on both sides: macOS symlinks `/var` to
+    // `/private/var`, and `installed_path` is the canonicalized target.
+    assert_eq!(
+        std::fs::canonicalize(installed_path).unwrap(),
+        std::fs::canonicalize(project.join("dist/ir")).unwrap()
+    );
+}
+
+#[test]
 fn compile_honours_yaml_and_document_tree_storage() {
     for (config, expected) in [
         ("[ir]\nformat = \"yaml\"\n", "morphir-ir.yaml"),
