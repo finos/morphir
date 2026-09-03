@@ -219,6 +219,19 @@ pub fn install(
     // exactly the files it introduced (not ones merely overwritten, which
     // were already ours) can be deleted, and the ledger can be written to
     // match what is left on disk before the error is returned.
+    //
+    // The *failing* copy's own destination is part of that too: `fs::copy`
+    // creates the destination file before it starts moving bytes into it, so
+    // a failure partway through a single file's copy (disk full, say) can
+    // leave a truncated file sitting there even though `fs::copy` itself
+    // never returned `Ok`. Left untracked, that file would be neither rolled
+    // back nor recorded in the ledger — foreign content the very next install
+    // would refuse to run past, which is the wedge this whole scheme exists
+    // to prevent. So the failing destination is folded into `copied_files`
+    // too, whenever pre-flight's guarantee (see above: anything that already
+    // existed at a destination before the copy loop ran was either owned or
+    // this install never started) means anything found there now can only be
+    // this run's own partial write.
     let mut copied = Vec::new();
     let mut copied_files: Vec<String> = Vec::new();
     let mut copy_failure: Option<CliError> = None;
@@ -245,6 +258,9 @@ pub fn install(
             match std::fs::copy(&source, &destination) {
                 Ok(_) => copied_files.push(entry.clone()),
                 Err(error) => {
+                    if copy_failure_left_a_file(&destination) {
+                        copied_files.push(entry.clone());
+                    }
                     copy_failure = Some(CliError::FileSystem { error });
                     break 'copy;
                 }
@@ -254,14 +270,19 @@ pub fn install(
     }
 
     if let Some(error) = copy_failure {
-        roll_back_partial_copy(&copied_files, &previous_files_lookup, target)?;
-        let removed_lookup: HashSet<&str> = removed.iter().map(String::as_str).collect();
-        let ledger_after_rollback: Vec<String> = previous_files
-            .iter()
-            .filter(|file| !removed_lookup.contains(file.as_str()))
-            .cloned()
-            .collect();
-        record.installed.insert(key, ledger_after_rollback);
+        let (ledger, error) = handle_copy_failure(
+            error,
+            CopyFailureContext {
+                copied_files: &copied_files,
+                previous_files: &previous_files,
+                previous_files_lookup: &previous_files_lookup,
+                removed: &removed,
+                new_files: &new_files,
+                resolved_new_files: &resolved_new_files,
+                target,
+            },
+        );
+        record.installed.insert(key, ledger);
         record
             .write(&paths.result)
             .map_err(|write_error| CliError::Config { error: write_error })?;
@@ -912,11 +933,42 @@ fn copy_dir(
         if file_type.is_dir() {
             copy_dir(&entry.path(), &target, &child_relative, copied_files)?;
         } else {
-            std::fs::copy(entry.path(), &target).map_err(|error| CliError::FileSystem { error })?;
-            copied_files.push(child_relative.to_string_lossy().into_owned());
+            match std::fs::copy(entry.path(), &target) {
+                Ok(_) => copied_files.push(child_relative.to_string_lossy().into_owned()),
+                Err(error) => {
+                    // Same reasoning as the file-entry branch in `install`:
+                    // a failure partway through this one file's copy can
+                    // still have created it, and pre-flight already
+                    // guarantees anything found here now is this run's own.
+                    if copy_failure_left_a_file(&target) {
+                        copied_files.push(child_relative.to_string_lossy().into_owned());
+                    }
+                    return Err(CliError::FileSystem { error });
+                }
+            }
         }
     }
     Ok(())
+}
+
+/// Whether a copy attempt that just failed to write `destination` still
+/// left something sitting there, and so must be folded into this run's own
+/// output for rollback purposes.
+///
+/// A copy can fail two different ways: it can fail before writing anything
+/// at all — no permission to create the destination in its parent
+/// directory, say — in which case there is nothing at `destination` to
+/// clean up. Or it can fail partway through, after `fs::copy` has already
+/// created (and started writing) the destination file — disk full
+/// mid-stream, for instance — in which case a truncated file is left
+/// behind. The two are told apart the only reliable way: by asking whether
+/// anything is at `destination` now. Pre-flight (see `install`'s conflict
+/// scan) already guarantees that anything found there once the copy loop is
+/// running was either already owned by a previous install or did not exist
+/// when this run started, so anything this check finds can only be this
+/// run's own failed write.
+fn copy_failure_left_a_file(destination: &Path) -> bool {
+    std::fs::symlink_metadata(destination).is_ok()
 }
 
 /// Undo everything a copy phase wrote before it failed partway through: every
@@ -928,25 +980,158 @@ fn copy_dir(
 /// left alone; only content this run introduced for the first time is rolled
 /// back. Deleting it, rather than leaving it on disk, is what keeps the next
 /// install from later finding it and refusing the whole run as foreign
-/// content it never wrote (`copied_files` are not yet, and after this
-/// rollback never become, part of the ledger).
+/// content it never wrote.
+///
+/// This never stops early: every file in `copied_files` is attempted, even
+/// after an earlier one failed to delete, so one stubborn file (a read-only
+/// parent directory, say) does not leave the rest of this run's output
+/// stranded on disk and unrecorded as well. Every deletion failure is
+/// collected and returned instead of raised, so the caller can decide what
+/// to do about a rollback that could not fully finish — in particular, it
+/// still has to write a ledger that matches whatever is actually left on
+/// disk. An empty `Vec` means every file this run introduced was cleaned up.
 fn roll_back_partial_copy(
     copied_files: &[String],
     previously_owned: &HashSet<&str>,
     target: &Path,
-) -> Result<(), CliError> {
+) -> Vec<CliError> {
+    let mut errors = Vec::new();
     for file in copied_files {
         if previously_owned.contains(file.as_str()) {
             continue;
         }
         let path = target.join(file);
         match std::fs::remove_file(&path) {
-            Ok(()) => prune_empty_parents(&path, target)?,
+            Ok(()) => {
+                // `prune_empty_parents` never actually returns an error (a
+                // failed prune is silently left in place), but it is typed
+                // to return a `Result` for callers that might want to know
+                // otherwise, so any future error is folded in here rather
+                // than silently ignored.
+                if let Err(error) = prune_empty_parents(&path, target) {
+                    errors.push(error);
+                }
+            }
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-            Err(error) => return Err(CliError::FileSystem { error }),
+            // `std::io::Error`'s own message never names the path it
+            // happened to (`"Operation not permitted (os error 1)"` alone
+            // says nothing about which file), so the path is folded in here,
+            // where it is still in scope, rather than left for a caller to
+            // reconstruct later.
+            Err(error) => errors.push(CliError::Validation {
+                message: format!("could not remove '{}': {error}", path.display()),
+            }),
         }
     }
-    Ok(())
+    errors
+}
+
+/// A short, human-readable description of `error`'s cause, for folding one
+/// `CliError` into the message of another. `CliError`'s own `Display` is
+/// deliberately terse for most variants (`"File system error"`, with the
+/// real detail only reachable through `source()`), which is fine when it is
+/// the only error being reported but not enough when several are being
+/// combined into one message.
+fn describe(error: &CliError) -> String {
+    match error {
+        CliError::FileSystem { error } => error.to_string(),
+        other => other.to_string(),
+    }
+}
+
+/// Bundles `handle_copy_failure`'s inputs so they can be passed as one
+/// argument instead of seven: every field is a borrow from state `install`
+/// already built before the copy loop ran.
+struct CopyFailureContext<'a> {
+    /// Every file this run wrote, including a failing copy's own partial
+    /// destination — see `copy_failure_left_a_file`.
+    copied_files: &'a [String],
+    /// The ledger as it was before this run touched anything.
+    previous_files: &'a [String],
+    /// `previous_files`, as a lookup set.
+    previous_files_lookup: &'a HashSet<&'a str>,
+    /// Files the stale-removal pass, earlier in `install`, actually deleted.
+    removed: &'a [String],
+    /// This run's `value`, flattened to the files it would have written on a
+    /// full success, in the spelling `install` writes them with.
+    new_files: &'a [String],
+    /// `new_files`, resolved — the form the ledger records.
+    resolved_new_files: &'a [String],
+    /// The install target.
+    target: &'a Path,
+}
+
+/// Everything that has to happen once a copy has failed partway through: roll
+/// back (best-effort) what this run introduced, compute the ledger that
+/// matches whatever is actually left on disk afterward, and settle on the
+/// error to report.
+///
+/// The ledger written here is the previous ledger minus whatever the stale
+/// removal pass already deleted, plus — this is the part a plain "roll back,
+/// then reuse the pre-copy ledger" approach misses — any file `copied_files`
+/// names that rollback could not remove. That second part is what keeps the
+/// ledger honest when rollback itself hits an error: a file rollback failed
+/// to delete is still really on disk, so the ledger has to keep owning it,
+/// in the same resolved form the successful-install path would have
+/// recorded it in, or the next install would find it and refuse to run past
+/// it as foreign content.
+///
+/// Rollback failing does not make the original copy failure any less true,
+/// so it is always the error reported — but silently dropping a rollback
+/// failure would hide that some of this run's files are still sitting on
+/// disk unrecorded, so when rollback did hit errors they are folded into the
+/// message alongside it.
+fn handle_copy_failure(
+    copy_error: CliError,
+    context: CopyFailureContext<'_>,
+) -> (Vec<String>, CliError) {
+    let CopyFailureContext {
+        copied_files,
+        previous_files,
+        previous_files_lookup,
+        removed,
+        new_files,
+        resolved_new_files,
+        target,
+    } = context;
+    let rollback_errors = roll_back_partial_copy(copied_files, previous_files_lookup, target);
+
+    let spelled_to_resolved: HashMap<&str, &str> = new_files
+        .iter()
+        .map(String::as_str)
+        .zip(resolved_new_files.iter().map(String::as_str))
+        .collect();
+    let removed_lookup: HashSet<&str> = removed.iter().map(String::as_str).collect();
+    let mut ledger: Vec<String> = previous_files
+        .iter()
+        .filter(|file| !removed_lookup.contains(file.as_str()))
+        .cloned()
+        .collect();
+    for file in copied_files {
+        if previous_files_lookup.contains(file.as_str()) {
+            // Already owned before this run started; already in `ledger`
+            // via `previous_files` above.
+            continue;
+        }
+        if std::fs::symlink_metadata(target.join(file)).is_ok()
+            && let Some(resolved) = spelled_to_resolved.get(file.as_str())
+        {
+            ledger.push((*resolved).to_owned());
+        }
+    }
+
+    if rollback_errors.is_empty() {
+        return (ledger, copy_error);
+    }
+
+    let mut message = format!("install failed while copying: {}", describe(&copy_error));
+    for rollback_error in &rollback_errors {
+        message.push_str(&format!(
+            "; rolling back a file this run wrote also failed: {}",
+            describe(rollback_error)
+        ));
+    }
+    (ledger, CliError::Validation { message })
 }
 
 #[cfg(test)]
@@ -1657,6 +1842,165 @@ mod tests {
         assert_eq!(
             report.copied,
             vec!["a.json".to_owned(), "sub/b.json".to_owned()]
+        );
+    }
+
+    /// `copy_failure_left_a_file` is what decides whether a failing copy's
+    /// own destination gets folded into `copied_files` for rollback (see the
+    /// comment above the copy loop in `install`). Real end-to-end coverage
+    /// of the case it exists for — `fs::copy` creating a destination file
+    /// and then failing partway through writing it, disk-full mid-stream —
+    /// is not practical to trigger deterministically in a test: the only two
+    /// portable ways a real `fs::copy` call can fail either fail before ever
+    /// touching the destination (no permission to create it) or fail while
+    /// opening the source (which also never touches the destination), and
+    /// pre-flight already refuses the whole install before the copy loop
+    /// runs if a destination exists without being previously owned, so the
+    /// "something else already there" case can never legitimately reach this
+    /// check either. So the condition itself is exercised directly instead.
+    #[test]
+    fn copy_failure_left_a_file_reports_whether_the_destination_exists() {
+        let temp = tempfile::tempdir().unwrap();
+        let destination = temp.path().join("partial.json");
+        assert!(
+            !copy_failure_left_a_file(&destination),
+            "nothing is there yet"
+        );
+
+        std::fs::write(&destination, "truncated").unwrap();
+        assert!(
+            copy_failure_left_a_file(&destination),
+            "a copy that failed mid-write still left a file behind"
+        );
+    }
+
+    /// `handle_copy_failure` is what `install` calls once a copy has failed;
+    /// it rolls back this run's own files (best-effort — see
+    /// `roll_back_partial_copy`), computes the ledger to write, and settles
+    /// on the error to report. Exercising a rollback *deletion* failure
+    /// end-to-end through `install` runs into the same difficulty as above:
+    /// a file only becomes eligible for rollback by having been newly
+    /// created during this same run, which means its parent directory was
+    /// writable a moment ago — there is no portable, non-racy way to make
+    /// that same directory refuse a deletion moments later without also
+    /// having refused the creation. So this calls `handle_copy_failure`
+    /// directly, with a `copied_files` entry that names a real directory on
+    /// disk rather than a file: `std::fs::remove_file` refuses to remove a
+    /// directory on every platform, which forces the same kind of failure a
+    /// stubborn permission problem would, deterministically.
+    #[test]
+    fn handle_copy_failure_is_best_effort_and_keeps_the_ledger_matching_disk() {
+        let temp = tempfile::tempdir().unwrap();
+        let target = temp.path().join("dist");
+        // Stands in for a file this run introduced that rollback then fails
+        // to remove: a directory, so `remove_file` errors deterministically.
+        std::fs::create_dir_all(target.join("stuck")).unwrap();
+        // A second file this run introduced that rollback *can* remove, to
+        // confirm a failure on one entry does not stop the others.
+        std::fs::write(target.join("removable.json"), "new").unwrap();
+        assert!(target.join("removable.json").exists());
+
+        let copied_files = vec!["stuck".to_owned(), "removable.json".to_owned()];
+        let previous_files = vec!["kept.json".to_owned()];
+        let previous_files_lookup: HashSet<&str> =
+            previous_files.iter().map(String::as_str).collect();
+        let removed: Vec<String> = Vec::new();
+        let new_files = vec![
+            "stuck".to_owned(),
+            "removable.json".to_owned(),
+            "never-reached.json".to_owned(),
+        ];
+        let resolved_new_files = new_files.clone();
+
+        let copy_error = CliError::FileSystem {
+            error: std::io::Error::other("could not copy never-reached.json"),
+        };
+        let (ledger, error) = handle_copy_failure(
+            copy_error,
+            CopyFailureContext {
+                copied_files: &copied_files,
+                previous_files: &previous_files,
+                previous_files_lookup: &previous_files_lookup,
+                removed: &removed,
+                new_files: &new_files,
+                resolved_new_files: &resolved_new_files,
+                target: &target,
+            },
+        );
+
+        assert!(
+            !target.join("removable.json").exists(),
+            "rollback still removes what it can, even though another entry failed"
+        );
+        assert!(
+            target.join("stuck").is_dir(),
+            "the entry rollback could not remove is left in place, not lost"
+        );
+
+        assert_eq!(
+            ledger,
+            vec!["kept.json".to_owned(), "stuck".to_owned()],
+            "the ledger keeps the previously owned file and adds back the one \
+             rollback could not remove, so it matches what is really on disk"
+        );
+
+        let CliError::Validation { message } = error else {
+            panic!("expected a validation error combining both failures, got {error:?}");
+        };
+        assert!(
+            message.contains("could not copy never-reached.json"),
+            "{message}"
+        );
+        assert!(
+            message.contains("rolling back") && message.to_lowercase().contains("stuck"),
+            "{message}"
+        );
+    }
+
+    /// A ledger entry naming a FILE, not a directory, swapped for a symlink
+    /// to a file OUTSIDE the target altogether. Only the inside-target case
+    /// (`an_owned_file_swapped_for_a_symlink_to_another_file_in_the_target_is_refused`)
+    /// was covered before.
+    ///
+    /// This actually lands on a different check than that sibling test:
+    /// `confined_destination` resolves every destination `record.value`
+    /// still names, before `reject_moved_ledger_entries` ever runs, and an
+    /// outside-pointing symlink fails that resolution outright — an
+    /// inside-target symlink resolves fine there and only trips
+    /// `reject_moved_ledger_entries` afterward, which is why the sibling
+    /// test exercises the later check instead. Either way the property this
+    /// test is after — refused before any write, and the file behind the
+    /// link never touched — holds.
+    #[cfg(unix)]
+    #[test]
+    fn an_owned_file_swapped_for_a_symlink_pointing_outside_the_target_is_refused() {
+        use std::os::unix::fs::symlink;
+
+        let temp = tempfile::tempdir().unwrap();
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
+        let target = temp.path().join("dist");
+        install_here(&paths, &target).unwrap();
+        assert!(target.join("morphir-ir.json").is_file());
+
+        // A file entirely outside the install target.
+        let outside = temp.path().join("outside");
+        std::fs::create_dir_all(&outside).unwrap();
+        std::fs::write(outside.join("secret.txt"), "not ours").unwrap();
+
+        // The user removes the file Morphir wrote and puts a symlink to the
+        // outside file in its place.
+        std::fs::remove_file(target.join("morphir-ir.json")).unwrap();
+        symlink(outside.join("secret.txt"), target.join("morphir-ir.json")).unwrap();
+
+        let error = install_here(&paths, &target).unwrap_err();
+        let message = error.to_string();
+        assert!(message.contains("outside the install target"), "{message}");
+        assert!(message.contains("morphir-ir.json"), "{message}");
+
+        assert_eq!(
+            std::fs::read_to_string(outside.join("secret.txt")).unwrap(),
+            "not ours",
+            "the file outside the target must be refused before any write, untouched"
         );
     }
 

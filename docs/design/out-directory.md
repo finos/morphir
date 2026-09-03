@@ -173,6 +173,19 @@ under the target resolves somewhere new, its entries no longer match, and the
 files at the new location are the user's — so install refuses, naming the
 link, rather than deleting or overwriting through it.
 
+If a copy fails partway through — the disk fills up, say — install does not
+leave the target in a state the next install cannot make sense of. Every
+file this run added, including a partially written file the failing copy
+itself left behind, is removed; a file this run merely overwrote, which was
+already owned from an earlier install, is left as it is rather than deleted.
+The ledger is then rewritten so it matches whatever is actually left on disk
+— previously owned files that are still there, minus any this run correctly
+retired, plus anything this run added that could not be cleaned up — and the
+original copy failure is returned. Cleanup itself is best-effort: one file
+that cannot be removed does not stop the rest from being cleaned up, and does
+not stop the ledger from being written; it is just kept in the ledger,
+since it is still really on disk.
+
 The whole install — the conflict scan, the removals, the copies, and the
 ledger write — runs under an exclusive lock on the install target. The task
 lock is not enough here: `compile -o dist` and `generate -o dist` hold
