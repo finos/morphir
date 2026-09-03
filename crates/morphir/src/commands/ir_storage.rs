@@ -13,7 +13,9 @@ use morphir_devkit::{IrDescriptor, IrLayout};
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
-const SINGLE_FILE_STEM: &str = "morphir-ir";
+/// Base name for IR under `.dest`: `morphir-ir.json`/`morphir-ir.yaml` for
+/// single-file storage, `morphir-ir/` for the document-tree directory.
+const IR_STEM: &str = "morphir-ir";
 
 /// Storage compile writes, from `[ir].layout` and `[ir].format`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,7 +55,7 @@ impl IrStorage {
     /// File or directory name inside `.dest`.
     pub fn relative_path(&self) -> &'static str {
         match (self.layout, self.format.as_str()) {
-            (IrLayout::DocumentTree, _) => SINGLE_FILE_STEM,
+            (IrLayout::DocumentTree, _) => IR_STEM,
             (IrLayout::SingleFile, "yaml") => "morphir-ir.yaml",
             (IrLayout::SingleFile, _) => "morphir-ir.json",
         }
@@ -249,7 +251,7 @@ fn probe_compile_output_directory(path: &Path) -> Result<(PathBuf, IrDescriptor)
             return probe_external(&candidate);
         }
     }
-    let tree = path.join(SINGLE_FILE_STEM);
+    let tree = path.join(IR_STEM);
     if tree.is_dir() {
         return probe_external(&tree);
     }

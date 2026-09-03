@@ -102,6 +102,12 @@ format_version = 3
 # When true, the tooling will reject IR with any validation warnings.
 strict_mode = false
 
+# Storage layout compile writes: "single-file" or "document-tree".
+layout = "single-file"
+
+# Serialization format compile writes: "json" or "yaml".
+format = "json"
+
 # =============================================================================
 # Code Generation Settings
 # =============================================================================

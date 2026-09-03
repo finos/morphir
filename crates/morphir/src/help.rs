@@ -58,52 +58,6 @@ pub fn print_full_help<C: clap::CommandFactory>() {
     cmd.print_help().ok();
 }
 
-/// Print Gleam command examples and usage
-#[allow(dead_code)]
-pub fn print_gleam_help() {
-    println!();
-    println!("Gleam Language Binding Commands");
-    println!("=================================");
-    println!();
-    println!("The Gleam binding provides frontend (Gleam → Morphir IR) and backend");
-    println!("(Morphir IR → Gleam) functionality through the Morphir CLI.");
-    println!();
-    println!("Examples:");
-    println!();
-    println!("  # Compile Gleam source to Morphir IR");
-    println!("  morphir gleam compile --input src/");
-    println!();
-    println!("  # Generate Gleam code from Morphir IR");
-    println!("  morphir gleam generate --input .morphir/out/compile.dest/");
-    println!();
-    println!("  # Roundtrip test (compile then generate)");
-    println!("  morphir gleam roundtrip --input src/");
-    println!();
-    println!("  # With configuration file (morphir.toml)");
-    println!("  morphir gleam compile  # Uses config for paths");
-    println!();
-    println!("  # JSON output for programmatic use");
-    println!("  morphir gleam compile --json");
-    println!("  morphir gleam compile --json-lines  # Streaming output");
-    println!();
-    println!("Configuration:");
-    println!();
-    println!("  Create a morphir.toml file in your project root:");
-    println!();
-    println!("    [project]");
-    println!("    name = \"my-package\"");
-    println!("    source_directory = \"src\"");
-    println!();
-    println!("    [frontend]");
-    println!("    language = \"gleam\"");
-    println!();
-    println!("Output Structure:");
-    println!();
-    println!("  IR output:     .morphir/out/compile.dest/");
-    println!("  Generated code: .morphir/out/generate/gleam.dest/");
-    println!();
-}
-
 /// Determine if the banner should be shown based on command-line arguments.
 pub fn should_show_banner(args: &[String]) -> bool {
     args.len() == 1

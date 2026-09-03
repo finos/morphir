@@ -178,7 +178,7 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
     let artifacts = publish_returned_artifacts(&output_path, &result.artifacts)?;
     let artifacts: Vec<String> = artifacts
         .into_iter()
-        .filter(|path| path != ".morphir-generated-artifacts.json")
+        .filter(|path| path != artifacts::MANIFEST_PATH)
         .collect();
 
     let mut record = TaskResult::new(&generate_task, &out.module);

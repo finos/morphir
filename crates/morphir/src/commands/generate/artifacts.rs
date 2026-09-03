@@ -15,7 +15,7 @@ use unicode_casefold::UnicodeCaseFold as _;
 use unicode_normalization::UnicodeNormalization as _;
 
 static NEXT_TRANSACTION_ID: AtomicU64 = AtomicU64::new(0);
-const MANIFEST_PATH: &str = ".morphir-generated-artifacts.json";
+pub(crate) const MANIFEST_PATH: &str = ".morphir-generated-artifacts.json";
 const MANIFEST_SCHEMA_VERSION: u32 = 2;
 const LEGACY_MANIFEST_SCHEMA_VERSION: u32 = 1;
 const PUBLICATION_LOCK_PREFIX: &str = ".morphir-artifact-publication-";
