@@ -101,9 +101,13 @@ pub fn install(
     }
 
     reject_non_directory_target(target)?;
-    std::fs::create_dir_all(target).map_err(|error| CliError::FileSystem { error })?;
-    let canonical_target =
-        std::fs::canonicalize(target).map_err(|error| CliError::FileSystem { error })?;
+    // `target` itself is not created here: every check below that can
+    // refuse the whole install still has to run first, and a refused install
+    // must leave no new directory behind. See `canonicalize_for_install` for
+    // how a path that may not exist yet is canonicalized well enough to key
+    // the lock and the ledger on; `target` is actually created further down,
+    // once nothing can refuse the install anymore.
+    let canonical_target = canonicalize_for_install(target)?;
     reject_target_inside_dest(&canonical_target, &paths.dest)?;
 
     // Computed once and threaded through everywhere below that has to agree
@@ -196,6 +200,17 @@ pub fn install(
             ),
         });
     }
+
+    // Every check above that can refuse the whole install — the tombstone
+    // guard, an escaping `value` or ledger entry, `target` existing as
+    // something other than a directory, `target` being (or lying inside) the
+    // task's own scratch directory, a symbolic link below the target, two
+    // outputs colliding, and foreign content already sitting at a
+    // destination — has now run, and every one of them worked without
+    // `target` actually existing on disk. Only now is it actually created,
+    // so a refused install never leaves a new, empty (or partially built)
+    // directory behind.
+    std::fs::create_dir_all(target).map_err(|error| CliError::FileSystem { error })?;
 
     // Remove exactly the files this function wrote here before that the
     // current `value` no longer produces. A directory entry is never
@@ -530,43 +545,130 @@ fn reject_target_inside_dest(canonical_target: &Path, dest: &Path) -> Result<(),
     Ok(())
 }
 
-/// Reject a `value` entry or an `installed` file path that could name a
-/// location outside `target` once joined onto it: an absolute path
-/// (`PathBuf::join` discards the base entirely when the joined path is
-/// absolute) or any path containing a `..` component. Also rejects an entry
-/// with no real path component at all (empty string or bare `.`), which
-/// would otherwise name `target` itself.
-fn validate_entry(entry: &str) -> Result<(), CliError> {
+/// Canonicalize `target` well enough to key the install lock and the ledger
+/// on, before `target` necessarily exists.
+///
+/// `install` used to create `target` before canonicalizing it, purely
+/// because `std::fs::canonicalize` needs a real path — but that meant a
+/// refused install (a `..` entry, a symlink below the target, a colliding
+/// destination, foreign content already there) still left a freshly created,
+/// empty target directory behind, since the directory went up before any of
+/// those checks ran. `target` is now created only after every check that can
+/// refuse the install has passed (see `install`'s body), so this function
+/// has to produce a canonical-enough path *before* that, from whatever part
+/// of `target` already exists.
+///
+/// It walks up from `target` to the nearest ancestor that does exist,
+/// canonicalizes that (resolving any symlinks, and normalizing case, in the
+/// existing part of the path), and joins the remaining components — the ones
+/// that do not exist yet — onto it exactly as given. Those components cannot
+/// be symlinks, or differ from what is about to be written, since nothing is
+/// there yet and `install` goes on to create precisely them, with precisely
+/// these names; a filesystem that silently renamed a freshly created
+/// directory (case-folding or Unicode normalization on write) would break
+/// that assumption, but nothing in this scheme relies on such a filesystem
+/// resolving names any way other than literally.
+///
+/// A `target` that already exists — the ordinary case for a second install
+/// to the same place — canonicalizes directly on the first try, with no
+/// difference from a plain `std::fs::canonicalize(target)` call.
+fn canonicalize_for_install(target: &Path) -> Result<PathBuf, CliError> {
+    let mut existing = target;
+    let mut missing_components = Vec::new();
+    loop {
+        match std::fs::canonicalize(existing) {
+            Ok(canonical_prefix) => {
+                let mut canonical_target = canonical_prefix;
+                for component in missing_components.into_iter().rev() {
+                    canonical_target.push(component);
+                }
+                return Ok(canonical_target);
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                let name = existing.file_name().ok_or_else(|| CliError::Validation {
+                    message: format!(
+                        "-o target '{}' has no existing ancestor directory to resolve it against",
+                        target.display()
+                    ),
+                })?;
+                missing_components.push(name);
+                existing = existing.parent().ok_or_else(|| CliError::Validation {
+                    message: format!(
+                        "-o target '{}' has no existing ancestor directory to resolve it against",
+                        target.display()
+                    ),
+                })?;
+            }
+            Err(error) => return Err(CliError::FileSystem { error }),
+        }
+    }
+}
+
+/// Why [`confine_relative_path`] refused a path: an absolute path or a `..`
+/// component could name a location outside whatever base the caller is
+/// about to join it onto, and a path with no real component at all would
+/// name the base itself.
+pub(crate) enum PathConfinementViolation {
+    /// The path contains a `..` component.
+    ParentDir,
+    /// The path is absolute (`PathBuf::join` discards the base entirely when
+    /// the joined path is absolute).
+    Absolute,
+    /// The path has no real path component at all (empty string, or made
+    /// only of `.` components).
+    Empty,
+}
+
+/// Is `entry` safe to join onto a base directory without the result
+/// possibly naming a location outside it? Shared by `install`'s `value`/
+/// `installed` entries and `ir_storage::read_value`'s descriptor path — both
+/// join an attacker-influenceable relative path (task result JSON a user
+/// could hand-edit) onto a directory and must not let it escape.
+///
+/// This only classifies the violation; callers format their own message,
+/// since what the path may not escape — an install target, a record's base
+/// directory — differs by caller.
+pub(crate) fn confine_relative_path(entry: &str) -> Result<(), PathConfinementViolation> {
     let path = Path::new(entry);
     let mut has_normal_component = false;
     for component in path.components() {
         match component {
             Component::Normal(_) => has_normal_component = true,
             Component::CurDir => {}
-            Component::ParentDir => {
-                return Err(CliError::Validation {
-                    message: format!(
-                        "task result entry '{entry}' contains '..'; refusing to install it"
-                    ),
-                });
-            }
+            Component::ParentDir => return Err(PathConfinementViolation::ParentDir),
             Component::RootDir | Component::Prefix(_) => {
-                return Err(CliError::Validation {
-                    message: format!(
-                        "task result entry '{entry}' is an absolute path; refusing to install it"
-                    ),
-                });
+                return Err(PathConfinementViolation::Absolute);
             }
         }
     }
     if !has_normal_component {
-        return Err(CliError::Validation {
+        return Err(PathConfinementViolation::Empty);
+    }
+    Ok(())
+}
+
+/// Reject a `value` entry or an `installed` file path that could name a
+/// location outside `target` once joined onto it. See
+/// [`confine_relative_path`].
+fn validate_entry(entry: &str) -> Result<(), CliError> {
+    match confine_relative_path(entry) {
+        Ok(()) => Ok(()),
+        Err(PathConfinementViolation::ParentDir) => Err(CliError::Validation {
+            message: format!(
+                "task result entry '{entry}' contains '..'; refusing to install it"
+            ),
+        }),
+        Err(PathConfinementViolation::Absolute) => Err(CliError::Validation {
+            message: format!(
+                "task result entry '{entry}' is an absolute path; refusing to install it"
+            ),
+        }),
+        Err(PathConfinementViolation::Empty) => Err(CliError::Validation {
             message: format!(
                 "task result entry '{entry}' does not name a path under the install target; refusing to install it"
             ),
-        });
+        }),
     }
-    Ok(())
 }
 
 /// Refuse the install when any path component below `target` is a symbolic
@@ -2523,10 +2625,51 @@ mod tests {
     fn install_refuses_a_target_nested_inside_the_tasks_own_dest() {
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
-        let target = paths.dest.join("nested");
+        // Two levels deep and neither exists yet, so this also confirms no
+        // intermediate directory is created along the way.
+        let target = paths.dest.join("a/nested");
 
         let error = install_here(&paths, &target).unwrap_err();
         assert!(error.to_string().contains("scratch directory"), "{error}");
+        // `target` did not exist before this call, and this check refuses
+        // the install without ever creating anything: a refused install
+        // must not leave a new directory behind, at any level.
+        assert!(
+            !target.parent().unwrap().exists(),
+            "a refused install must not create any part of the target directory"
+        );
+    }
+
+    /// The same property as `install_refuses_a_target_nested_inside_the_tasks_own_dest`,
+    /// for a refusal that used to run strictly after `create_dir_all(target)`:
+    /// a symbolic link below the target. Here `target` already exists (the
+    /// symlink has to be reachable somewhere under it), so what this adds is
+    /// confirming the *reordering* did not stop `install` from still
+    /// refusing the install and leaving the pre-existing target otherwise
+    /// untouched — no new file or directory beyond the symlink itself.
+    #[cfg(unix)]
+    #[test]
+    fn a_target_refused_over_a_symlink_gains_no_new_directory_entries() {
+        use std::os::unix::fs::symlink;
+
+        let temp = tempfile::tempdir().unwrap();
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(&target).unwrap();
+        symlink(
+            temp.path().join("outside/gone"),
+            target.join("morphir-ir.json"),
+        )
+        .unwrap();
+
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
+        let error = install_here(&paths, &target).unwrap_err();
+        assert!(error.to_string().contains("symbolic link"), "{error}");
+        // Only the symlink itself is there; nothing else was created.
+        let entries: Vec<_> = std::fs::read_dir(&target)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        assert_eq!(entries, vec![std::ffi::OsString::from("morphir-ir.json")]);
     }
 
     /// The user replaces an installed directory with a link to a sibling

@@ -1,5 +1,6 @@
 //! Write and read IR in the storage declared by `[ir]` and the task record.
 
+use crate::commands::install::{PathConfinementViolation, confine_relative_path};
 use crate::commands::migrate::format::resolve_input;
 use crate::error::CliError;
 use morphir_common::config::model::IrSection;
@@ -123,8 +124,37 @@ pub fn v3_json_descriptor() -> IrDescriptor {
     }
 }
 
+/// Reject a task record's IR descriptor path that could name a location
+/// outside `base` once joined onto it. The descriptor comes from a task
+/// record (`compile.json` or similar) that a JSON-editing hand could have
+/// altered after the task wrote it, so it is checked the same way
+/// `install::validate_entry` checks a record's `value`/`installed` entries —
+/// see [`confine_relative_path`] — before it is ever joined onto a real
+/// directory and read.
+fn validate_descriptor_path(path: &str) -> Result<(), CliError> {
+    match confine_relative_path(path) {
+        Ok(()) => Ok(()),
+        Err(PathConfinementViolation::ParentDir) => Err(CliError::Validation {
+            message: format!(
+                "the task record's IR descriptor path '{path}' contains '..'; refusing to read it"
+            ),
+        }),
+        Err(PathConfinementViolation::Absolute) => Err(CliError::Validation {
+            message: format!(
+                "the task record's IR descriptor path '{path}' is an absolute path; refusing to read it"
+            ),
+        }),
+        Err(PathConfinementViolation::Empty) => Err(CliError::Validation {
+            message: format!(
+                "the task record's IR descriptor path '{path}' does not name a path under the record's base directory; refusing to read it"
+            ),
+        }),
+    }
+}
+
 /// Load the IR described by `descriptor` (relative to `base`) as a JSON value.
 pub fn read_value(base: &Path, descriptor: &IrDescriptor) -> Result<serde_json::Value, CliError> {
+    validate_descriptor_path(&descriptor.path)?;
     let target = base.join(&descriptor.path);
     let format =
         FormatId::new(descriptor.format.clone()).map_err(|error| CliError::Validation {
@@ -370,6 +400,26 @@ mod tests {
         assert!(temp.path().join("morphir-ir/manifest.json").is_file());
         let value = read_value(temp.path(), &descriptor).unwrap();
         assert_eq!(value["formatVersion"], 4);
+    }
+
+    #[test]
+    fn read_value_refuses_a_descriptor_path_that_escapes_the_base_directory() {
+        // Stand in for a hand-edited record: `write_v4` never produces a
+        // descriptor like this, but nothing stops a user (or a bug) from
+        // editing `compile.json` on disk before `generate` reads it back.
+        let temp = tempfile::tempdir().unwrap();
+        let descriptor = IrDescriptor {
+            path: "../../x".to_owned(),
+            layout: IrLayout::SingleFile,
+            format: "json".to_owned(),
+            version: "v4".to_owned(),
+        };
+        let error = read_value(temp.path(), &descriptor).unwrap_err();
+        let CliError::Validation { message } = error else {
+            panic!("expected a validation error, got {error:?}");
+        };
+        assert!(message.contains(".."), "{message}");
+        assert!(message.contains("record"), "{message}");
     }
 
     #[test]
