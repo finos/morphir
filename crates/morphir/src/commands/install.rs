@@ -740,9 +740,21 @@ fn probe_case_sensitivity_with_marker(lock_dir: &Path) -> Option<bool> {
 /// whether case matters is a property of the filesystem and not of the path.
 ///
 /// So each new destination that exists and has no entry by name is compared
-/// by identity against the previous entries still on disk.
-/// `same_file::Handle` asks the filesystem, which is the only thing that
-/// knows. A match means install owns the file, under a name it now spells
+/// against the previous entries still on disk on TWO counts, and has to
+/// satisfy both.
+///
+/// It has to be the same file: `same_file::Handle` asks the filesystem,
+/// which is the only thing that knows. And the two paths have to be the same
+/// path but for letter case — the same parent directory, and names equal
+/// under case folding. Identity alone is not enough, because a hard link is
+/// also the same file: a foreign `notes.txt` the user hard-linked to a file
+/// install owns would otherwise be adopted as a rename of it, and the copy
+/// would then write through the shared inode and truncate the user's file.
+/// A case-only difference is the one thing this exists to recognise, so it
+/// is the one thing it accepts; anything else is foreign content and is
+/// refused as such.
+///
+/// A match means install owns the file, under a name it now spells
 /// differently: it is not foreign content, and the entry under the old
 /// spelling is not stale. The ledger is rewritten from this run's paths, so
 /// the new spelling replaces the old one there without any extra work.
@@ -773,10 +785,24 @@ fn renamed_previous_files(
             continue;
         };
         for previous in owned.get(&handle).into_iter().flatten() {
+            if !differ_only_in_case(previous, candidate) {
+                continue;
+            }
             renamed.insert((*previous).clone(), (*candidate).clone());
         }
     }
     Ok(renamed)
+}
+
+/// Are these two relative paths the same path but for letter case?
+///
+/// `to_lowercase` is a Unicode simple case fold, the same one
+/// `reject_colliding_destinations` uses, and adequate for the same reason: it
+/// only decides which paths get compared, never anything written to disk.
+/// The comparison is on the whole path, so the parent directories have to
+/// match exactly as well.
+fn differ_only_in_case(left: &str, right: &str) -> bool {
+    left.to_lowercase() == right.to_lowercase()
 }
 
 /// A handle identifying the file at `path`, or `None` when there is nothing
@@ -2561,38 +2587,76 @@ mod tests {
         }
     }
 
-    /// Two ledger entries that are hard links to each other are one file, so
-    /// a map keyed by that file has to remember both names. Keeping only one
-    /// of them left the other looking stale, and it was deleted.
+    /// A hard link is the same file, but it is not a case-only rename. The
+    /// user hard-links their own `mine.txt` to a file install owns, and this
+    /// run happens to produce an output called `mine.txt`. Adopting it as a
+    /// rename — which any same-inode match used to do — would let the copy
+    /// write through the shared inode and truncate the user's file and the
+    /// owned one together. It is foreign content, and is refused as such.
+    #[cfg(unix)]
     #[test]
-    fn hard_linked_ledger_entries_are_all_kept_when_one_of_them_matches() {
+    fn a_foreign_hard_link_to_a_file_we_own_is_refused_rather_than_adopted() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("out");
         let target = temp.path().join("dist");
         std::fs::create_dir_all(&target).unwrap();
 
-        // Three names, one file: two of them are in the ledger, and the third
-        // is the one this run writes.
         std::fs::write(target.join("one.txt"), "generated").unwrap();
-        std::fs::hard_link(target.join("one.txt"), target.join("two.txt")).unwrap();
-        std::fs::hard_link(target.join("one.txt"), target.join("three.txt")).unwrap();
+        std::fs::hard_link(target.join("one.txt"), target.join("mine.txt")).unwrap();
 
-        let paths = task_with_one_file(&root, "three.txt");
+        let paths = task_with_one_file(&root, "mine.txt");
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
-        record.installed.insert(
-            canonical_key(&target),
-            vec!["one.txt".to_owned(), "two.txt".to_owned()],
-        );
+        record
+            .installed
+            .insert(canonical_key(&target), vec!["one.txt".to_owned()]);
         record.write(&paths.result).unwrap();
 
-        let report = install_here(&paths, &target).unwrap();
-        assert!(
-            report.removed.is_empty(),
-            "every name for a file this run rewrites is ours: {:?}",
-            report.removed
+        let error = install_here(&paths, &target).unwrap_err();
+        let CliError::Validation { message } = error else {
+            panic!("expected a validation error, got {error:?}");
+        };
+        assert!(message.contains("mine.txt"), "{message}");
+        assert!(message.contains("did not write"), "{message}");
+
+        assert_eq!(
+            std::fs::read_to_string(target.join("one.txt")).unwrap(),
+            "generated",
+            "the shared inode must not be written through"
         );
-        assert!(target.join("one.txt").exists());
-        assert!(target.join("two.txt").exists());
+    }
+
+    /// Two ledger entries that are hard links to each other are one file, so
+    /// a map keyed by that file has to remember both names. Keeping only one
+    /// of them left the other looking stale, and it was deleted. Only names
+    /// that differ from the new spelling in letter case alone are matched at
+    /// all now, and two such names can only be two names on a case-sensitive
+    /// filesystem, so that is where this can be set up.
+    #[cfg(unix)]
+    #[test]
+    fn every_ledger_entry_matching_by_case_is_kept_not_only_the_last() {
+        let temp = tempfile::tempdir().unwrap();
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(&target).unwrap();
+        if is_case_insensitive(&target) {
+            return;
+        }
+
+        std::fs::write(target.join("One.txt"), "generated").unwrap();
+        std::fs::hard_link(target.join("One.txt"), target.join("ONE.txt")).unwrap();
+        std::fs::hard_link(target.join("One.txt"), target.join("one.txt")).unwrap();
+
+        let previous = vec!["One.txt".to_owned(), "ONE.txt".to_owned()];
+        let candidate = "one.txt".to_owned();
+        let renamed = renamed_previous_files(&target, &previous, &[&candidate]).unwrap();
+
+        assert_eq!(
+            renamed,
+            BTreeMap::from([
+                ("ONE.txt".to_owned(), "one.txt".to_owned()),
+                ("One.txt".to_owned(), "one.txt".to_owned()),
+            ]),
+            "every name for the matched file is recognised, not just the last"
+        );
     }
 
     #[test]
