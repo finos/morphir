@@ -9,7 +9,7 @@ Compile source code to Morphir IR
 - **`-l --language <LANGUAGE>`** — Source language (e.g., gleam, elm)
 - **`--extension <EXTENSION>`** — Extension provider id for single-file Elm compilation. Defaults to morphir- followed by the language name
 - **`-i --input <INPUT>`** — Input source directory or file. An installed or configured Elm process accepts one .elm file
-- **`-o --output <OUTPUT>`** — Output directory
+- **`-o --output <OUTPUT>`** — Install task outputs into this directory after the run. Canonical output stays under .morphir/out
 - **`--package-name <PACKAGE_NAME>`** — Package name override
 - **`--config <CONFIG>`** — Explicit config file path. An Elm command is a development override for the installed extension
 - **`--project <PROJECT>`** — Project name (for workspaces)

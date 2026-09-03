@@ -6,16 +6,27 @@ mod provider;
 
 pub use options::GenerateOptions;
 
+use crate::commands::ir_storage;
+use crate::commands::out_context::{
+    OutContext, SharedTaskLock, report_config_warnings, task_lock_path,
+};
 use crate::error::{CliError, convert_extension_diagnostics};
 use crate::home::MorphirHome;
-use morphir_common::loader::load_ir;
 use morphir_devkit::{
-    discover_config, ensure_morphir_structure, load_config_context, resolve_generate_output,
+    ConfigContext, TaskId, TaskResult, discover_config, ensure_morphir_structure,
+    load_config_context,
 };
 use morphir_distribution::list_installed;
 use morphir_extension_sdk::GenerateRequest;
 use starbase::AppResult;
 use std::path::{Path, PathBuf};
+
+/// The task whose IR generate consumes. Today always `compile`. When
+/// `[pipeline].transforms` exists this returns the last transform instead;
+/// nothing else may hardcode `compile.dest`.
+pub fn resolve_ir_task(_context: &ConfigContext) -> TaskId {
+    TaskId::compile()
+}
 
 /// Run the generate command
 pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report> {
@@ -29,6 +40,7 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
         backend_options,
         json,
         json_lines,
+        out,
     } = options;
     // Discover config if not provided
     let start_dir = std::env::current_dir().map_err(|e| CliError::FileSystem { error: e })?;
@@ -66,45 +78,78 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
     let backend_options = options::merge_options(configured_options, &backend_options)
         .map_err(|error| CliError::Config { error })?;
 
-    // Determine project name
-    let proj_name = ctx
-        .current_project
-        .as_ref()
-        .map(|p| p.name.clone())
-        .or_else(|| ctx.config.project.as_ref().map(|p| p.name.clone()))
-        .unwrap_or_else(|| "default".to_string());
+    report_config_warnings(&ctx);
+    let out = OutContext::resolve(Some(&ctx), &out, &start_dir);
 
-    // Determine IR input path
-    let input_path = if let Some(inp) = input {
-        PathBuf::from(inp)
-    } else {
-        // Default to compile output for the target language
-        morphir_devkit::resolve_compile_output(&proj_name, &target_lang, &ctx.morphir_dir)
-    };
-
-    if !input_path.exists() {
-        return Err(CliError::FileSystem {
-            error: std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("IR input path does not exist: {:?}", input_path),
-            ),
+    // Determine IR input: either an explicit `-i` path, probed directly, or
+    // the IR descriptor recorded by the task `resolve_ir_task` names.
+    // The fourth element is a shared lock on the input task, held until the
+    // IR has been read out of its `.dest`. See `SharedTaskLock`.
+    let (ir_base, descriptor, input_task, input_lock) = match input {
+        Some(explicit) => {
+            let path = PathBuf::from(&explicit);
+            let path = if path.is_absolute() {
+                path
+            } else {
+                start_dir.join(path)
+            };
+            if !path.exists() {
+                return Err(CliError::FileSystem {
+                    error: std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        format!("IR input path does not exist: {}", path.display()),
+                    ),
+                }
+                .into());
+            }
+            let (base, descriptor) = ir_storage::probe_external(&path)?;
+            (base, descriptor, None, None)
         }
-        .into());
-    }
-    let input_path = resolve_generate_input(input_path);
-
-    // Determine output path
-    let output_path = if let Some(out) = output {
-        PathBuf::from(out)
-    } else {
-        resolve_generate_output(&proj_name, &target_lang, &ctx.morphir_dir)
+        None => {
+            let task = resolve_ir_task(&ctx);
+            let paths = out.task(&task)?;
+            // Take the input task's lock, shared, before its record is read
+            // and hold it until the IR itself has been read below. A compile
+            // starting in between takes the same lock exclusively, tombstones
+            // the record, and empties `compile.dest` — so without this the
+            // descriptor read here would point at files that are gone by the
+            // time the IR reader looks for them.
+            let lock = SharedTaskLock::acquire(&task_lock_path(&paths))?;
+            let record =
+                TaskResult::read(&paths.result).map_err(|error| CliError::Config { error })?;
+            // A missing record and a tombstone (left behind by
+            // `prepare_dest` when a run starts, and still there if that run
+            // failed) both mean the same thing here: there is no compile
+            // output to read. A record that succeeded but produced no IR is
+            // different — the task ran and produced *something*, just not IR
+            // — and keeps its own message.
+            let record = match record {
+                Some(record) if !record.tombstone => record,
+                _ => {
+                    return Err(CliError::Validation {
+                        message:
+                            "compile output missing or incomplete, run `morphir compile` first"
+                                .into(),
+                    }
+                    .into());
+                }
+            };
+            let descriptor = record.ir.ok_or_else(|| CliError::Validation {
+                message: format!("task '{}' produced no IR descriptor", record.task),
+            })?;
+            (paths.dest, descriptor, Some(task), Some(lock))
+        }
     };
-
-    // Load IR (detect format)
-    let ir_data = load_ir(&input_path).map_err(|e| CliError::FileSystem {
-        error: std::io::Error::other(e),
-    })?;
+    let ir_data = ir_storage::read_value(&ir_base, &descriptor)?;
+    // The IR is in memory, so the input task may run again.
+    drop(input_lock);
     let ir_version = provider::detect_ir_major(&ir_data)?;
+
+    let generate_task = TaskId::generate(&target_lang);
+    let prepared = out.prepare_dest(&generate_task)?;
+    let generate_paths = prepared.paths;
+    let output_path = generate_paths.dest.clone();
+
     let home = MorphirHome::resolve().map_err(|error| CliError::Config { error })?;
     let installed = list_installed(&home).map_err(|error| CliError::Extension {
         message: format!("Failed to list installed backend providers: {error}"),
@@ -143,6 +188,7 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
             artifacts: vec![],
             diagnostics,
             output_path: output_path.to_string_lossy().to_string(),
+            installed_path: None,
         };
         if format == OutputFormat::Human {
             write_generate_human(&output).map_err(CliError::from)?;
@@ -156,12 +202,37 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
     }
 
     let artifacts = publish_returned_artifacts(&output_path, &result.artifacts)?;
+    let artifacts: Vec<String> = artifacts
+        .into_iter()
+        .filter(|path| path != artifacts::MANIFEST_PATH)
+        .collect();
+
+    let mut record = TaskResult::new(&generate_task, &out.module);
+    record.inputs = input_task
+        .as_ref()
+        .map(|task| vec![task.as_str().to_owned()])
+        .unwrap_or_default();
+    record.value = artifacts.clone();
+    record.installed = prepared.previous_installed;
+    record
+        .write(&generate_paths.result)
+        .map_err(|error| CliError::Config { error })?;
+    let installed_path = crate::commands::install::maybe_install(
+        &generate_paths,
+        output.as_deref(),
+        &start_dir,
+        &out.root,
+    )?;
+    // The task is finished: its record is written and its install is done, so
+    // the next run of this task may start.
+    drop(prepared.lock);
 
     let output = GenerateOutput {
         success: true,
         artifacts,
         diagnostics,
         output_path: output_path.to_string_lossy().to_string(),
+        installed_path,
     };
     if format == OutputFormat::Human {
         write_generate_human(&output).map_err(CliError::from)?;
@@ -170,15 +241,6 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
     }
 
     Ok(None)
-}
-
-fn resolve_generate_input(path: PathBuf) -> PathBuf {
-    let compiled = path.join("morphir-ir.json");
-    if path.is_dir() && compiled.is_file() {
-        compiled
-    } else {
-        path
-    }
 }
 
 fn publish_returned_artifacts(
@@ -211,31 +273,5 @@ mod tests {
             std::fs::read_to_string(output.join("nested/schema.avsc")).unwrap(),
             "{\"type\":\"record\"}"
         );
-    }
-
-    #[test]
-    fn compile_output_directory_resolves_its_host_written_ir_file() {
-        let root = tempdir().unwrap();
-        let compiled = root.path().join("compiled");
-        std::fs::create_dir_all(&compiled).unwrap();
-        std::fs::write(compiled.join("morphir-ir.json"), "{}").unwrap();
-
-        assert_eq!(
-            resolve_generate_input(compiled.clone()),
-            compiled.join("morphir-ir.json")
-        );
-    }
-
-    #[test]
-    fn ordinary_document_tree_directory_stays_a_directory() {
-        let root = tempdir().unwrap();
-        let document_tree = root.path().join("document-tree");
-        std::fs::create_dir_all(&document_tree).unwrap();
-
-        let resolved = resolve_generate_input(document_tree.clone());
-        let ir = load_ir(&resolved).unwrap();
-
-        assert_eq!(resolved, document_tree);
-        assert_eq!(ir["formatVersion"], 4);
     }
 }

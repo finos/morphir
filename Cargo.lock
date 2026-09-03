@@ -3990,6 +3990,7 @@ dependencies = [
  "libc",
  "morphir-config",
  "morphir-core",
+ "morphir-workspace",
  "nbformat",
  "reqwest",
  "same-file",

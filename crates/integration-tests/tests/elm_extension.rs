@@ -33,6 +33,9 @@ struct CompileOutput {
     diagnostics: Vec<CompileDiagnostic>,
     modules: Vec<String>,
     output_path: String,
+    /// Absolute install target, present only when `-o` was given and the
+    /// compile succeeded.
+    installed_path: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -61,6 +64,17 @@ fn write_elm_extension_config(directory: &Path, extension: &Path) -> PathBuf {
     config_path
 }
 
+/// The task's canonical output, which is where compile always writes its IR:
+/// `-o` only installs a copy of it afterwards.
+fn canonical_ir_path(directory: &Path) -> PathBuf {
+    directory.join(".morphir/out/compile.dest/morphir-ir.json")
+}
+
+/// The task's result record, beside that `.dest` directory.
+fn result_record_path(directory: &Path) -> PathBuf {
+    directory.join(".morphir/out/compile.json")
+}
+
 fn run_elm_compile(
     directory: &Path,
     extension: &Path,
@@ -70,6 +84,12 @@ fn run_elm_compile(
     run_elm_compile_with_output_flag(directory, extension, source_name, source, "--json")
 }
 
+/// Run `morphir compile` on one Elm file, returning the process output and the
+/// directory `-o` pointed at.
+///
+/// `-o` names an install DIRECTORY, not an output file: the task always runs to
+/// `.morphir/out/compile.dest/`, and `-o` copies its product into the directory
+/// afterwards.
 fn run_elm_compile_with_output_flag(
     directory: &Path,
     extension: &Path,
@@ -78,7 +98,7 @@ fn run_elm_compile_with_output_flag(
     output_flag: &str,
 ) -> (Output, PathBuf) {
     let input_path = directory.join(source_name);
-    let output_path = directory.join("morphir-ir.json");
+    let install_target = directory.join("out");
     let config_path = write_elm_extension_config(directory, extension);
     std::fs::write(&input_path, source).expect("write Elm input");
     let cli = CliTestContext::get_morphir_binary().expect("find pre-built morphir CLI");
@@ -93,7 +113,7 @@ fn run_elm_compile_with_output_flag(
             "--config",
             config_path.to_str().expect("UTF-8 config path"),
             "--output",
-            output_path.to_str().expect("UTF-8 output path"),
+            install_target.to_str().expect("UTF-8 install target"),
             output_flag,
         ])
         .current_dir(directory)
@@ -101,7 +121,27 @@ fn run_elm_compile_with_output_flag(
         .output()
         .expect("run morphir compile");
 
-    (output, output_path)
+    (output, install_target)
+}
+
+/// A failed compile writes no IR anywhere: not to the canonical location under
+/// the out root, and not to the `-o` install target, which install never even
+/// reaches.
+fn assert_no_ir_was_written(directory: &Path, install_target: &Path) {
+    assert!(
+        !canonical_ir_path(directory).exists(),
+        "failed compile should not write canonical IR"
+    );
+    assert!(
+        !install_target.join("morphir-ir.json").exists(),
+        "failed compile should not install IR"
+    );
+}
+
+/// `std::fs::canonicalize`, falling back to the path itself when it does not
+/// exist, so a failing assertion still names something readable.
+fn canonicalize(path: &Path) -> PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }
 
 fn parse_compile_output(output: &Output) -> CompileOutput {
@@ -119,7 +159,7 @@ fn parse_compile_output(output: &Output) -> CompileOutput {
 fn elm_extension_compiles_a_single_file_to_classic_ir() {
     let extension = elm_extension_binary();
     let temp_dir = TempDir::new().expect("create temporary project");
-    let (process, output_path) =
+    let (process, install_target) =
         run_elm_compile(temp_dir.path(), &extension, "Example.elm", VALID_ELM);
 
     assert!(
@@ -136,12 +176,67 @@ fn elm_extension_compiles_a_single_file_to_classic_ir() {
     );
     assert!(output.diagnostics.iter().all(|item| item.level != "error"));
     assert!(output.modules.iter().any(|module| module == "Example"));
-    assert_eq!(Path::new(&output.output_path), output_path);
 
-    let distribution: Distribution = serde_json::from_slice(
-        &std::fs::read(&output_path).expect("read generated morphir-ir.json"),
+    // `output_path` reports the task's canonical `.dest` directory, not the
+    // IR file inside it — the same thing `generate` reports — which is under
+    // the out root and not the `-o` target.
+    let reported = PathBuf::from(&output.output_path);
+    assert!(
+        reported.ends_with(Path::new(".morphir/out/compile.dest")),
+        "output_path should name the canonical task .dest directory, got {}",
+        output.output_path
+    );
+    assert!(
+        canonicalize(&reported).starts_with(canonicalize(temp_dir.path())),
+        "output_path should sit under the project, got {}",
+        output.output_path
+    );
+    assert!(
+        canonical_ir_path(temp_dir.path()).is_file(),
+        "the canonical IR file should exist under the out root"
+    );
+    let ir_via_output_path: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(reported.join("morphir-ir.json")).expect("read IR via output_path"),
     )
-    .expect("output file should contain classic Morphir IR");
+    .expect("IR under output_path should be JSON");
+    assert_eq!(
+        Some(ir_via_output_path),
+        output.ir,
+        "the IR reachable via output_path should be the same IR the CLI reported inline"
+    );
+
+    // `installed_path` reports where `-o` put the copy. The CLI canonicalizes
+    // the target, so both sides are canonicalized before comparing: on macOS a
+    // temporary directory's /var resolves to /private/var.
+    let installed_path = output
+        .installed_path
+        .as_deref()
+        .expect("compile with -o should report installed_path");
+    assert_eq!(
+        canonicalize(Path::new(installed_path)),
+        canonicalize(&install_target)
+    );
+
+    // The result record survives the run and is a real result, not a tombstone.
+    let record: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(result_record_path(temp_dir.path())).expect("read compile.json"),
+    )
+    .expect("compile.json should be JSON");
+    assert!(
+        record.get("tombstone").is_none(),
+        "a successful run leaves no tombstone flag: {record}"
+    );
+    assert!(
+        record.get("ir").is_some(),
+        "a successful compile record names its IR: {record}"
+    );
+
+    // The installed copy is the one a user consumes, so validate that one.
+    let installed_ir = install_target.join("morphir-ir.json");
+    let distribution: Distribution = serde_json::from_slice(
+        &std::fs::read(&installed_ir).expect("read installed morphir-ir.json"),
+    )
+    .expect("installed file should contain classic Morphir IR");
     let DistributionBody::Library(_, _, package) = distribution.distribution;
     assert!(
         package.modules.iter().any(|module| {
@@ -159,7 +254,7 @@ fn elm_extension_compiles_a_single_file_to_classic_ir() {
 fn elm_extension_reports_structured_diagnostics_for_invalid_source() {
     let extension = elm_extension_binary();
     let temp_dir = TempDir::new().expect("create temporary project");
-    let (process, output_path) =
+    let (process, install_target) =
         run_elm_compile(temp_dir.path(), &extension, "Invalid.elm", INVALID_ELM);
 
     assert!(
@@ -174,7 +269,7 @@ fn elm_extension_reports_structured_diagnostics_for_invalid_source() {
         output.modules.is_empty(),
         "failed compile should not contain modules"
     );
-    assert!(!output_path.exists(), "failed compile should not write IR");
+    assert_no_ir_was_written(temp_dir.path(), &install_target);
     assert!(
         output.diagnostics.iter().any(|diagnostic| {
             diagnostic.level == "error"
@@ -195,7 +290,7 @@ fn elm_extension_diagnoses_a_malformed_module_header_in_structured_output() {
 
     for output_flag in ["--json", "--json-lines"] {
         let temp_dir = TempDir::new().expect("create temporary project");
-        let (process, output_path) = run_elm_compile_with_output_flag(
+        let (process, install_target) = run_elm_compile_with_output_flag(
             temp_dir.path(),
             &extension,
             "Malformed.elm",
@@ -215,7 +310,7 @@ fn elm_extension_diagnoses_a_malformed_module_header_in_structured_output() {
             output.modules.is_empty(),
             "failed compile should not contain modules"
         );
-        assert!(!output_path.exists(), "failed compile should not write IR");
+        assert_no_ir_was_written(temp_dir.path(), &install_target);
 
         let diagnostic = output
             .diagnostics

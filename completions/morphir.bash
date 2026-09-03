@@ -31,7 +31,11 @@ args_override_self #false
 usage "Usage: morphir [OPTIONS] [COMMAND]"
 flag --help-all help="Print help including experimental commands"
 flag "-V --version" help="Print version" action=version
-cmd compile display_order=2 args_override_self=#false help="Compile source code to Morphir IR" unknown_flags=error {
+flag --out-dir help="Relocate the out root, which defaults to .morphir/out under the workspace root. MORPHIR_OUT_DIR does the same" global=#true {
+    arg <PATH>
+}
+complete path type=path
+cmd compile display_order=3 args_override_self=#false help="Compile source code to Morphir IR" unknown_flags=error {
     flag "-l --language" help="Source language (e.g., gleam, elm)" {
         arg <LANGUAGE>
     }
@@ -41,7 +45,7 @@ cmd compile display_order=2 args_override_self=#false help="Compile source code 
     flag "-i --input" help="Input source directory or file. An installed or configured Elm process accepts one .elm file" {
         arg <INPUT>
     }
-    flag "-o --output" help="Output directory" {
+    flag "-o --output" help="Install task outputs into this directory after the run. Canonical output stays under .morphir/out" {
         arg <OUTPUT>
     }
     flag --package-name help="Package name override" {
@@ -56,14 +60,14 @@ cmd compile display_order=2 args_override_self=#false help="Compile source code 
     flag --json help="Output as JSON"
     flag --json-lines help="Output as JSON Lines (streaming)"
 }
-cmd generate display_order=3 args_override_self=#false help="Generate code from Morphir IR" unknown_flags=error {
+cmd generate display_order=4 args_override_self=#false help="Generate code from Morphir IR" unknown_flags=error {
     flag "-t --target" help="Target language or format" {
         arg <TARGET>
     }
     flag "-i --input" help="Path to the Morphir IR file or directory" {
         arg <INPUT>
     }
-    flag "-o --output" help="Output directory" {
+    flag "-o --output" help="Install task outputs into this directory after the run. Canonical output stays under .morphir/out" {
         arg <OUTPUT>
     }
     flag --config help="Explicit config file path" {
@@ -78,12 +82,12 @@ cmd generate display_order=3 args_override_self=#false help="Generate code from 
     flag --json help="Output as JSON"
     flag --json-lines help="Output as JSON Lines (streaming)"
 }
-cmd validate hide=#true display_order=4 args_override_self=#false help="[Experimental] Validate Morphir IR models" unknown_flags=error {
+cmd validate hide=#true display_order=5 args_override_self=#false help="[Experimental] Validate Morphir IR models" unknown_flags=error {
     flag "-i --input" help="Path to the Morphir IR file or directory" {
         arg <INPUT>
     }
 }
-cmd transform hide=#true display_order=5 args_override_self=#false help="[Experimental] Transform Morphir IR" unknown_flags=error {
+cmd transform hide=#true display_order=6 args_override_self=#false help="[Experimental] Transform Morphir IR" unknown_flags=error {
     flag "-i --input" help="Path to the Morphir IR file or directory" {
         arg <INPUT>
     }
@@ -91,7 +95,7 @@ cmd transform hide=#true display_order=5 args_override_self=#false help="[Experi
         arg <OUTPUT>
     }
 }
-cmd migrate display_order=6 args_override_self=#false help="Migrate IR between versions" unknown_flags=error {
+cmd migrate display_order=7 args_override_self=#false help="Migrate IR between versions" unknown_flags=error {
     long_help #"""
 Migrate IR between versions
 
@@ -143,7 +147,7 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
     arg <INPUT> help="Input file, directory, or remote source (e.g., github:owner/repo, URL)"
     complete output type=path
 }
-cmd ui display_order=7 args_override_self=#false help="Open the Morphir development workbench in a browser" unknown_flags=error {
+cmd ui display_order=8 args_override_self=#false help="Open the Morphir development workbench in a browser" unknown_flags=error {
     flag --workspace-extension help="Use one installed workspace-capability extension by ID" {
         arg <ID>
     }
@@ -151,16 +155,16 @@ cmd ui display_order=7 args_override_self=#false help="Open the Morphir developm
     arg "[WORKSPACE]" help="Morphir development workspace to open. Defaults to the current directory" required=#false
     complete workspace type=path
 }
-cmd desktop display_order=8 args_override_self=#false help="Launch the installed Morphir Desktop application" unknown_flags=error {
+cmd desktop display_order=9 args_override_self=#false help="Launch the installed Morphir Desktop application" unknown_flags=error {
     flag --wait help="Wait for Desktop to exit and return its exit status"
     flag --offline help="Prohibit acquisition and launch only an already-installed release"
     arg "[PATH]" help="Workspace directory or Morphir artifact to open (defaults to the current directory)" required=#false
     complete path type=path
 }
-cmd playground display_order=9 args_override_self=#false help="Open a scratch Morphir Playground in a browser, with no workspace required" unknown_flags=error {
+cmd playground display_order=10 args_override_self=#false help="Open a scratch Morphir Playground in a browser, with no workspace required" unknown_flags=error {
     flag --no-open help="Print the one-time launch URL instead of opening a browser"
 }
-cmd config display_order=10 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect the effective Morphir configuration" unknown_flags=error {
+cmd config display_order=11 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect the effective Morphir configuration" unknown_flags=error {
     cmd get display_order=0 args_override_self=#false help="Get one value from the effective configuration" unknown_flags=error {
         flag --config help="Explicit project config file path" {
             arg <CONFIG>
@@ -184,7 +188,7 @@ cmd config display_order=10 subcommand_required=#true arg_required_else_help=#tr
         flag --isolated help="Ignore machine-level and user-level configuration sources" hide=#true
     }
 }
-cmd diagnostics display_order=11 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Locate Morphir logs and collect troubleshooting information" unknown_flags=error {
+cmd diagnostics display_order=12 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Locate Morphir logs and collect troubleshooting information" unknown_flags=error {
     cmd path display_order=0 args_override_self=#false help="Show the local Morphir log locations" unknown_flags=error {
         flag --json help="Output paths as JSON"
     }
@@ -204,7 +208,7 @@ cmd diagnostics display_order=11 subcommand_required=#true arg_required_else_hel
         flag --json help="Output events as JSON"
     }
 }
-cmd cache display_order=12 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect and clean disposable Morphir caches" unknown_flags=error {
+cmd cache display_order=13 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect and clean disposable Morphir caches" unknown_flags=error {
     cmd status display_order=0 args_override_self=#false help="Report owned and unclassified cache usage" unknown_flags=error {
         flag --json help="Output status as JSON"
     }
@@ -217,7 +221,7 @@ cmd cache display_order=12 subcommand_required=#true arg_required_else_help=#tru
         flag --json help="Output the plan and execution report as JSON"
     }
 }
-cmd tool display_order=13 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage CLI-installed Morphir tools" unknown_flags=error {
+cmd tool display_order=14 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage CLI-installed Morphir tools" unknown_flags=error {
     cmd install display_order=0 args_override_self=#false help="Install a local developer Morphir tool" unknown_flags=error {
         flag "-v --version" help="Exact semantic version recorded for the local package" {
             arg <VERSION>
@@ -261,7 +265,7 @@ cmd tool display_order=13 subcommand_required=#true arg_required_else_help=#true
         arg <NAME> help="Name of the tool to uninstall"
     }
 }
-cmd dist display_order=14 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir distributions" unknown_flags=error {
+cmd dist display_order=15 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir distributions" unknown_flags=error {
     cmd install display_order=0 args_override_self=#false help="Install a Morphir distribution" unknown_flags=error {
         flag "-v --version" help="Version to install (defaults to latest)" {
             arg <VERSION>
@@ -279,7 +283,7 @@ cmd dist display_order=14 subcommand_required=#true arg_required_else_help=#true
         arg <NAME> help="Name of the distribution to uninstall"
     }
 }
-cmd extension display_order=15 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir extensions" unknown_flags=error {
+cmd extension display_order=16 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir extensions" unknown_flags=error {
     cmd install display_order=0 args_override_self=#false help="Install a Morphir extension" unknown_flags=error {
         flag --repository help="Named extension repository configured in Morphir Home" required=#true {
             arg <REPOSITORY>
@@ -348,7 +352,7 @@ cmd extension display_order=15 subcommand_required=#true arg_required_else_help=
         arg <NAME> help="Name of the extension to uninstall"
     }
 }
-cmd ir display_order=16 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir IR" unknown_flags=error {
+cmd ir display_order=17 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage Morphir IR" unknown_flags=error {
     cmd migrate display_order=0 args_override_self=#false help="Migrate IR between versions" unknown_flags=error {
         long_help #"""
 Migrate IR between versions
@@ -402,7 +406,7 @@ See the [IR Migration Guide](https://morphir.finos.org/docs/user-guides/cli-tool
         complete output type=path
     }
 }
-cmd kb display_order=17 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage the knowledge base under kb/ — OKF bundles and concept documents" unknown_flags=error {
+cmd kb display_order=18 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Manage the knowledge base under kb/ — OKF bundles and concept documents" unknown_flags=error {
     cmd list display_order=0 args_override_self=#false help="List bundles, or one bundle's concepts" unknown_flags=error {
         flag --kb help="Path to the knowledge base root (the directory holding bundles/). Auto-detected when omitted" {
             arg <PATH>
@@ -880,14 +884,14 @@ cmd kb display_order=17 subcommand_required=#true arg_required_else_help=#true a
         }
     }
 }
-cmd gleam display_order=18 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Gleam language binding commands" unknown_flags=error {
+cmd gleam display_order=19 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Gleam language binding commands" unknown_flags=error {
     flag --json help="Output as JSON"
     flag --json-lines help="Output as JSON Lines (streaming)"
     cmd compile display_order=0 args_override_self=#false help="Compile Gleam source to Morphir IR" unknown_flags=error {
         flag "-i --input" help="Input source directory or file" {
             arg <INPUT>
         }
-        flag "-o --output" help="Output directory" {
+        flag "-o --output" help="Install task outputs into this directory after the run. Canonical output stays under .morphir/out" {
             arg <OUTPUT>
         }
         flag --package-name help="Package name override" {
@@ -904,7 +908,7 @@ cmd gleam display_order=18 subcommand_required=#true arg_required_else_help=#tru
         flag "-i --input" help="Path to the Morphir IR file or directory" {
             arg <INPUT>
         }
-        flag "-o --output" help="Output directory" {
+        flag "-o --output" help="Install task outputs into this directory after the run. Canonical output stays under .morphir/out" {
             arg <OUTPUT>
         }
         flag --config help="Explicit config file path" {
@@ -918,7 +922,7 @@ cmd gleam display_order=18 subcommand_required=#true arg_required_else_help=#tru
         flag "-i --input" help="Input source directory or file" {
             arg <INPUT>
         }
-        flag "-o --output" help="Output directory" {
+        flag "-o --output" help="Install task outputs into this directory after the run. Canonical output stays under .morphir/out" {
             arg <OUTPUT>
         }
         flag --package-name help="Package name override" {
@@ -932,16 +936,16 @@ cmd gleam display_order=18 subcommand_required=#true arg_required_else_help=#tru
         }
     }
 }
-cmd schema display_order=19 args_override_self=#false help="Generate JSON Schema for Morphir IR" unknown_flags=error {
+cmd schema display_order=20 args_override_self=#false help="Generate JSON Schema for Morphir IR" unknown_flags=error {
     flag "-o --output" help="Output file path (optional)" {
         arg <OUTPUT>
     }
     complete output type=path
 }
-cmd version display_order=20 args_override_self=#false help="Print version information" unknown_flags=error {
+cmd version display_order=21 args_override_self=#false help="Print version information" unknown_flags=error {
     flag --json help="Output version info as JSON"
 }
-cmd usage hide=#true display_order=21 args_override_self=#false help="Output usage spec for documentation generation" unknown_flags=error
+cmd usage hide=#true display_order=22 args_override_self=#false help="Output usage spec for documentation generation" unknown_flags=error
 __USAGE_EOF__
     # shellcheck disable=SC2207
 	COMPREPLY=($(compgen -W "$(command usage complete-word --shell bash -f "$spec_file" --cword="$cword" -- "${words[@]}")" -- "$cur"))

@@ -1,9 +1,10 @@
 //! Compile command for compiling source code to Morphir IR
 
+use crate::commands::out_context::{OutContext, OutOverrides, report_config_warnings};
 use crate::error::CliError;
 use crate::error::convert_extension_diagnostics;
 use crate::home::MorphirHome;
-use morphir_common::config::model::MorphirConfig;
+use morphir_common::config::model::{IrSection, MorphirConfig};
 use morphir_core::format_version::{
     NormalizedFormatVersion, ReleaseTriplet, ScalarValue, SupportTable,
 };
@@ -13,8 +14,8 @@ use morphir_daemon::extensions::{
     SpawnedProcessSession, protocol::methods,
 };
 use morphir_devkit::{
-    discover_config, ensure_morphir_structure, load_config_context, resolve_compile_output,
-    resolve_path_relative_to_config,
+    ConfigContext, IrDescriptor, TaskId, TaskResult, discover_config, ensure_morphir_structure,
+    load_config_context, resolve_path_relative_to_config,
 };
 use morphir_distribution::{ExtensionId, VerifiedExtensionArtifact, activate_installed};
 use morphir_extension_sdk::{
@@ -48,6 +49,8 @@ pub struct CompileOptions {
     pub json: bool,
     /// Output JSON lines format
     pub json_lines: bool,
+    /// Out root overrides.
+    pub out: OutOverrides,
 }
 
 /// Run the compile command
@@ -512,6 +515,37 @@ fn filtered_process_environment() -> Vec<(OsString, OsString)> {
     .collect()
 }
 
+/// Warn when a config's `[ir]` section asks for a layout or format other
+/// than what single-file Elm compile actually writes. This path always
+/// produces classic v3 JSON (`descriptor`) regardless of `[ir]`, unlike
+/// project-mode compile, which reads `[ir]` through `IrStorage::from_config`
+/// to pick its output layout and format.
+fn warn_if_ir_storage_settings_are_ignored(
+    config_context: Option<&ConfigContext>,
+    descriptor: &IrDescriptor,
+) {
+    let Some(ir) = config_context.and_then(|context| context.config.ir.as_ref()) else {
+        return;
+    };
+    if ir_storage_settings_apply_to_single_file_compile(ir) {
+        return;
+    }
+    eprintln!(
+        "warning: single-file Elm compile always writes classic v3 JSON ({}); \
+         the [ir] layout/format settings do not apply to it",
+        descriptor.path
+    );
+}
+
+/// Whether a config's `[ir]` section matches what single-file Elm compile
+/// actually writes (classic v3 JSON): `layout = "single-file"` and
+/// `format = "json"`. Split out from `warn_if_ir_storage_settings_are_ignored`
+/// so the condition itself is unit-testable without needing to capture
+/// stderr.
+fn ir_storage_settings_apply_to_single_file_compile(ir: &IrSection) -> bool {
+    ir.layout == "single-file" && ir.format == "json"
+}
+
 async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::Report> {
     use crate::output::{CompileOutput, OutputFormat};
 
@@ -534,13 +568,25 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
         .transpose()
         .map_err(|error| CliError::Config { error })?;
     let config_dir = config_path.as_deref().and_then(Path::parent);
+    if let Some(context) = config_context.as_ref() {
+        report_config_warnings(context);
+    }
+    let out = OutContext::resolve(config_context.as_ref(), &options.out, &start_dir);
+    let task = TaskId::compile();
+    // `prepare_dest` takes the task lock and replaces the previous record
+    // with a tombstone, and it runs before anything that can fail the run.
+    // Reading the source first — which is what this used to do — meant a
+    // deleted or unreadable input returned before the tombstone was written,
+    // so the PREVIOUS run's successful record stayed on disk beside a `.dest`
+    // that no longer matched it, and `generate` went on consuming IR from a
+    // compile that had just failed. The provider path has always been in this
+    // order; this one now matches it.
+    let prepared = out.prepare_dest(&task)?;
+    let paths = prepared.paths;
     let source = read_single_source(&input_path)?;
-    let output_path = options
-        .output
-        .as_deref()
-        .map(Path::new)
-        .map(|path| absolute_from(&start_dir, path))
-        .unwrap_or_else(|| start_dir.join("morphir-ir.json"));
+    let descriptor = crate::commands::ir_storage::v3_json_descriptor();
+    warn_if_ir_storage_settings_are_ignored(config_context.as_ref(), &descriptor);
+    let output_path = paths.dest.join(&descriptor.path);
     let context = prepare_single_file_context(
         std::slice::from_ref(&input_path),
         &source,
@@ -582,7 +628,11 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
             ir: None,
             diagnostics,
             modules: Vec::new(),
-            output_path: context.output_path.to_string_lossy().into_owned(),
+            // The task's `.dest` directory, not the IR file inside it — see
+            // `generate`, which reports the same thing, and
+            // `docs/design/out-directory.md`'s output envelope section.
+            output_path: paths.dest.to_string_lossy().into_owned(),
+            installed_path: None,
         };
         write_compile_output(format, &output)?;
         return Ok(Some(1));
@@ -593,12 +643,33 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     let typed_ir = serde_json::to_value(&distribution).map_err(|error| CliError::Extension {
         message: format!("Failed to serialize validated classic Morphir IR: {error}"),
     })?;
+    let mut record = TaskResult::new(&task, &out.module);
+    record.language = Some(context.language_id.clone());
+    record.value = vec![descriptor.path.clone()];
+    record.ir = Some(descriptor);
+    record.installed = prepared.previous_installed;
+    record
+        .write(&paths.result)
+        .map_err(|error| CliError::Config { error })?;
+    let installed_path = crate::commands::install::maybe_install(
+        &paths,
+        options.output.as_deref(),
+        &start_dir,
+        &out.root,
+    )?;
+    // The task is finished: its record is written and its install is done, so
+    // the next run of this task may start.
+    drop(prepared.lock);
     let output = CompileOutput {
         success: true,
         ir: Some(typed_ir),
         diagnostics,
         modules: compile_result.modules,
-        output_path: context.output_path.to_string_lossy().into_owned(),
+        // The task's `.dest` directory, not the IR file inside it — see
+        // `generate`, which reports the same thing, and
+        // `docs/design/out-directory.md`'s output envelope section.
+        output_path: paths.dest.to_string_lossy().into_owned(),
+        installed_path,
     };
     write_compile_output(format, &output)?;
     Ok(None)
@@ -930,6 +1001,9 @@ fn write_compile_output(
             if output.success {
                 eprintln!("Compilation successful");
                 eprintln!("Output: {}", output.output_path);
+                if let Some(installed) = &output.installed_path {
+                    eprintln!("Installed: {installed}");
+                }
             }
             for diagnostic in &output.diagnostics {
                 let location = diagnostic
@@ -960,6 +1034,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         project: _project,
         json,
         json_lines,
+        out: out_overrides,
     } = options;
     let start_dir = std::env::current_dir().map_err(|error| CliError::FileSystem { error })?;
     let config_file = if let Some(config) = config_path {
@@ -1019,10 +1094,12 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
             .unwrap_or_else(|| PathBuf::from("src"));
         resolve_path_relative_to_config(&configured, &context.config_path)
     };
-    let output_dir = output
-        .map(PathBuf::from)
-        .unwrap_or_else(|| resolve_compile_output(&package_name, &language, &context.morphir_dir));
-    let output_path = output_dir.join("morphir-ir.json");
+    report_config_warnings(&context);
+    let out = OutContext::resolve(Some(&context), &out_overrides, &start_dir);
+    let task = TaskId::compile();
+    let prepared = out.prepare_dest(&task)?;
+    let paths = prepared.paths;
+    let storage = crate::commands::ir_storage::IrStorage::from_config(context.config.ir.as_ref())?;
     let (documents, source_root_uri) = collect_source_documents(&input_path, &language)?;
     let emit_parse_stage = context
         .config
@@ -1051,6 +1128,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         .map_err(|error| CliError::Extension {
             message: format!("Failed to resolve frontend for '{language}': {error}"),
         })?;
+    let language_name = language.clone();
     let request = CompileRequest {
         language_id: language,
         documents,
@@ -1063,7 +1141,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
             types_only: false,
             ir_version: "4.0.0".into(),
             extra: HashMap::from([
-                ("outputDir".into(), serde_json::json!(output_dir)),
+                ("outputDir".into(), serde_json::json!(paths.dest)),
                 ("sourceRootUri".into(), serde_json::json!(source_root_uri)),
                 ("emitParseStage".into(), serde_json::json!(emit_parse_stage)),
                 (
@@ -1091,14 +1169,31 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
             ir: None,
             diagnostics,
             modules: vec![],
-            output_path: output_path.to_string_lossy().into_owned(),
+            // The task's `.dest` directory, not the IR file inside it — see
+            // `generate`, which reports the same thing, and
+            // `docs/design/out-directory.md`'s output envelope section.
+            output_path: paths.dest.to_string_lossy().into_owned(),
+            installed_path: None,
         };
         let message = compilation_failure_message(&result);
         write_compile_output(format, &output)?;
         return Err(CliError::Compilation { message }.into());
     }
     let ir_file = validate_v4_compile_result(&result)?;
-    write_v4_ir(&output_path, &ir_file)?;
+    let descriptor = crate::commands::ir_storage::write_v4(&paths.dest, &storage, &ir_file)?;
+    let mut record = TaskResult::new(&task, &out.module);
+    record.language = Some(language_name);
+    record.value = vec![descriptor.path.clone()];
+    record.ir = Some(descriptor);
+    record.installed = prepared.previous_installed;
+    record
+        .write(&paths.result)
+        .map_err(|error| CliError::Config { error })?;
+    let installed_path =
+        crate::commands::install::maybe_install(&paths, output.as_deref(), &start_dir, &out.root)?;
+    // The task is finished: its record is written and its install is done, so
+    // the next run of this task may start.
+    drop(prepared.lock);
     let ir = serde_json::to_value(&ir_file).map_err(|error| CliError::Extension {
         message: format!("Failed to serialize validated Morphir IR v4: {error}"),
     })?;
@@ -1107,7 +1202,11 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         ir: Some(ir),
         diagnostics,
         modules: result.modules,
-        output_path: output_path.to_string_lossy().into_owned(),
+        // The task's `.dest` directory, not the IR file inside it — see
+        // `generate`, which reports the same thing, and
+        // `docs/design/out-directory.md`'s output envelope section.
+        output_path: paths.dest.to_string_lossy().into_owned(),
+        installed_path,
     };
     write_compile_output(format, &output)?;
     Ok(None)
@@ -1285,17 +1384,6 @@ fn normalize_ir_version_text(version: &str) -> Option<NormalizedFormatVersion> {
     NormalizedFormatVersion::from_scalar(&scalar, &SupportTable::reference()).ok()
 }
 
-fn write_v4_ir(output_path: &Path, ir: &morphir_core::ir::v4::IRFile) -> Result<(), CliError> {
-    let output_dir = output_path.parent().ok_or_else(|| CliError::Validation {
-        message: format!("Compile output '{}' has no parent", output_path.display()),
-    })?;
-    std::fs::create_dir_all(output_dir).map_err(|error| CliError::FileSystem { error })?;
-    let bytes = serde_json::to_vec_pretty(ir).map_err(|error| CliError::Extension {
-        message: format!("Failed to serialize validated Morphir IR v4: {error}"),
-    })?;
-    std::fs::write(output_path, bytes).map_err(|error| CliError::FileSystem { error })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1315,12 +1403,101 @@ mod tests {
 
     const ELM_SOURCE: &str = "module Example exposing (add)\n\nadd left right = left + right\n";
 
+    /// A single-file compile whose input has since been deleted must leave a
+    /// TOMBSTONE, not the previous run's successful record: `generate` treats
+    /// a tombstone as a missing compile, but it happily consumes a successful
+    /// record, so leaving the old one there makes a failed compile look like
+    /// a fresh one.
+    ///
+    /// A real end-to-end single-file compile needs the Elm extension, so it
+    /// is not something a unit test can run. This exercises the ordering
+    /// itself instead: the failure comes from `read_single_source`, so the
+    /// run reaches the tombstone only if `prepare_dest` happens first.
+    #[tokio::test]
+    async fn a_single_file_compile_that_cannot_read_its_input_still_leaves_a_tombstone() {
+        let temp = TempDir::new().unwrap();
+        let out_dir = temp.path().join("out");
+        let missing_input = temp.path().join("Missing.elm");
+
+        // Stand in for a previous, successful compile: a real record beside a
+        // `.dest`, exactly what a completed run leaves.
+        let out = OutContext::resolve(
+            None,
+            &OutOverrides {
+                flag: Some(out_dir.clone()),
+                env: None,
+            },
+            temp.path(),
+        );
+        let task = TaskId::compile();
+        let paths = out.task(&task).unwrap();
+        std::fs::create_dir_all(&paths.dest).unwrap();
+        let mut previous = TaskResult::new(&task, &out.module);
+        previous.value = vec!["morphir-ir.json".to_owned()];
+        previous.write(&paths.result).unwrap();
+
+        let options = CompileOptions {
+            language: Some("elm".to_owned()),
+            extension: None,
+            input: Some(missing_input.to_string_lossy().into_owned()),
+            output: None,
+            package_name: None,
+            config_path: None,
+            project: None,
+            json: false,
+            json_lines: false,
+            out: OutOverrides {
+                flag: Some(out_dir),
+                env: None,
+            },
+        };
+
+        run_single_file_compile(options)
+            .await
+            .expect_err("a missing input must fail the compile");
+
+        let record = TaskResult::read(&paths.result).unwrap().unwrap();
+        assert!(
+            record.tombstone,
+            "the previous successful record must have been replaced by a tombstone"
+        );
+        assert!(record.value.is_empty(), "{:?}", record.value);
+    }
+
     #[test]
     fn compile_result_version_accepts_only_supported_v4_spellings() {
         assert!(is_semantic_v4("4"));
         assert!(is_semantic_v4("4.0.0"));
         assert!(!is_semantic_v4("4.0"));
         assert!(!is_semantic_v4("4.0.1"));
+    }
+
+    #[test]
+    fn ir_storage_settings_only_apply_to_single_file_compile_when_default() {
+        let default_ir = IrSection {
+            format_version: 3,
+            layout: "single-file".to_owned(),
+            format: "json".to_owned(),
+            mode: None,
+            strict_mode: false,
+        };
+        assert!(ir_storage_settings_apply_to_single_file_compile(
+            &default_ir
+        ));
+
+        let document_tree = IrSection {
+            layout: "document-tree".to_owned(),
+            ..default_ir.clone()
+        };
+        assert!(!ir_storage_settings_apply_to_single_file_compile(
+            &document_tree
+        ));
+
+        let yaml = IrSection {
+            format: "yaml".to_owned(),
+            ..default_ir
+        };
+        assert!(!ir_storage_settings_apply_to_single_file_compile(&yaml));
     }
 
     fn v4_compile_result(

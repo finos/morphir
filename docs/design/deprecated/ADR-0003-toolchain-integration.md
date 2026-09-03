@@ -1,5 +1,7 @@
 # ADR-0003: Toolchain Integration Framework
 
+> Superseded for output layout by [docs/design/out-directory.md](../out-directory.md).
+
 **Status:** Proposed
 **Date:** 2026-01-08
 **Authors:** Morphir Team

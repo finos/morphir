@@ -1,6 +1,6 @@
 //! Convert concrete Morphir IR versions, serialization profiles, and layouts.
 
-mod format;
+pub(crate) mod format;
 mod publication;
 mod report;
 

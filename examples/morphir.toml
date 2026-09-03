@@ -31,9 +31,9 @@ version = "^3.0.0"
 # containing this configuration file.
 root = ""
 
-# Output directory for generated artifacts, relative to workspace root.
-# Default: ".morphir"
-output_dir = ".morphir"
+# Out directory for every task in the workspace, relative to workspace root.
+# Default: ".morphir/out"
+out_dir = ".morphir/out"
 
 # Workspace members: glob patterns for discovering member projects.
 # Similar to Cargo/npm workspaces. Each matched directory should contain
@@ -101,6 +101,12 @@ format_version = 3
 # Enable strict mode for IR validation.
 # When true, the tooling will reject IR with any validation warnings.
 strict_mode = false
+
+# Storage layout compile writes: "single-file" or "document-tree".
+layout = "single-file"
+
+# Serialization format compile writes: "json" or "yaml".
+format = "json"
 
 # =============================================================================
 # Code Generation Settings

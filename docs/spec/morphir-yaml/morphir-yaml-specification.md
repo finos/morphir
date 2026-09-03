@@ -172,7 +172,7 @@ morphir:
   version: "^3.0.0"
 
 workspace:
-  output_dir: .morphir
+  out_dir: .morphir/out
   members:
     - packages/*
   exclude:
@@ -196,6 +196,8 @@ project:
 ir:
   format_version: 3
   strict_mode: true
+  layout: single-file
+  format: json
 
 codegen:
   targets:

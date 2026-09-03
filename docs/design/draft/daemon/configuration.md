@@ -134,7 +134,7 @@ language = "ocaml"
 
 ```toml
 [workspace]
-output_dir = ".morphir"
+out_dir = ".morphir/out"
 members = ["packages/*"]     # Glob patterns for project discovery
 exclude = ["packages/old-*"]
 default_member = "packages/core"

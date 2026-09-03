@@ -1,3 +1,4 @@
+use crate::commands::out_context::OutOverrides;
 use anyhow::{Context, Result, anyhow, bail};
 use morphir_common::config::model::CodegenSection;
 use serde_json::{Map, Value};
@@ -21,6 +22,8 @@ pub struct GenerateOptions {
     pub json: bool,
     /// Emit JSON Lines output.
     pub json_lines: bool,
+    /// Out root overrides.
+    pub out: OutOverrides,
 }
 
 pub(super) fn target_options(codegen: Option<&CodegenSection>, target: &str) -> Result<Value> {
