@@ -18,8 +18,10 @@ scope here.
   hand.
 - The release tag is `v<version>`, for example `v0.4.0-alpha.6`. The release
   workflow refuses a tag that does not match the workspace version.
-- Alpha versions use the `MAJOR.MINOR.PATCH-alpha.N` spelling. Bump only `N`
-  for another alpha of the same target version.
+- Prerelease versions use the `MAJOR.MINOR.PATCH-<stage>.N` spelling, for
+  example `0.4.0-alpha.6` or `0.4.0-rc.1`. Bump only `N` for another
+  prerelease of the same stage and target version. Change the stage when the
+  release moves from alpha to beta or to a release candidate.
 - Tags point at a commit on `main`. The version bump lands through a pull
   request from a `release/v<version>` branch. Tag the merge commit, not the
   branch tip.
@@ -61,10 +63,14 @@ git -C ecosystem/morphir-rust branch -r --contains "$(git -C ecosystem/morphir-r
 
 ### Automated checks
 
-These are the gates CI enforces. Run them locally in this order:
+Run the aggregate first, then the gates CI enforces:
 
 ```bash
-# Formatting and Clippy
+# Formatting, Clippy, schema lint, example validation, naming corpus,
+# and metaschema validation
+mise run check
+
+# Formatting and Clippy on their own
 mise run fmt-check:rust
 mise run lint:rust
 
@@ -88,14 +94,11 @@ cargo build --locked --release --package morphir
 target/release/morphir --version
 ```
 
-On macOS, four `morphir-common` tests in `cache_maintenance_inventory` fail
-because APFS is case-insensitive. They pass on Linux CI and are not a release
-blocker.
-
-`mise run check` is not a usable gate today. It depends on `examples:validate`
-and `fixtures:validate`, which no longer exist, and on `lint:schema`, which
-reports several hundred style findings that CI does not enforce. Use the
-individual tasks above until `check` is repaired.
+`lint:schema` excludes the rules the schemas do not satisfy yet; the list is
+in `.config/mise/config.toml`. `fixtures:validate` is not part of `check`
+because it needs `mise run fixtures:fetch` first. Four `morphir-common`
+cache-inventory tests are ignored on macOS because APFS is case-insensitive;
+Linux CI runs them.
 
 CI also runs `mise run docs:cli` and fails if the generated CLI docs drift.
 Run it locally when a command's help text changed and commit the result.

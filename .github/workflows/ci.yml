@@ -341,6 +341,10 @@ jobs:
         run: rustup target add wasm32-unknown-unknown
 
       - name: Build WASM extension guests
+        # setup-rust-ci exports RUSTFLAGS for the mold linker; rust-lld
+        # rejects -fuse-ld=mold for the wasm32 target.
+        env:
+          RUSTFLAGS: ""
         run: >-
           cargo build --locked --release
           --manifest-path ecosystem/morphir-rust/Cargo.toml

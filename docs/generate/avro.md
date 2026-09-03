@@ -17,82 +17,56 @@ The `morphir-avro` WASM extension turns public Morphir types and value
 specifications into Apache Avro schemas or protocols. It accepts Morphir IR v3
 and v4. It does not evaluate Morphir values or translate computation.
 
-## Build and install the local extension
+## Install the published extension
 
-There is no published Avro extension to install yet. Contributors can build the
-WASM guest, create a schema `"1.0"` local repository, and install from that
-repository. From the `ecosystem/morphir-rust` directory, run:
+Release bundles are published from
+[finos/morphir-rust](https://github.com/finos/morphir-rust/releases) under
+the tag `extension/avro/v<version>`. Each release carries three assets: the
+`.wasm` artifact, its `.sha256` checksum, and a `<artifact>.release.json`
+descriptor. There is no public extension index yet, so you publish the bundle
+into a local repository and install from it.
+
+Download the assets into one directory, rename the descriptor to
+`release.json`, and keep only those three files in the directory:
+
+```console
+mkdir -p bundles/avro
+gh release download extension/avro/v0.1.1 -R finos/morphir-rust --dir bundles/avro
+mv bundles/avro/*.release.json bundles/avro/release.json
+```
+
+Then create a repository, register it, publish the bundle, and install:
+
+```console
+morphir extension repository init repositories/local
+morphir extension repository add local --directory repositories/local
+morphir extension repository publish local --bundle bundles/avro
+morphir extension install --repository local morphir-avro
+morphir extension list
+```
+
+`publish` verifies the SHA-256 in `release.json` against the artifact and the
+checksum file before it writes anything. `install` verifies
+the artifact again, stores the module by content digest, and writes matching
+lock and catalog state. After that the extension runs offline: the repository
+directory is only needed to install or update.
+
+Set `MORPHIR_HOME` to an empty directory first to keep this out of your
+regular home, and keep the same value when running generation.
+
+## Build and install a local extension
+
+Contributors can build the bundle from `ecosystem/morphir-rust` with its
+packaging task and publish it the same way. The task writes `release.json`,
+the artifact, and the checksum into one directory:
 
 ```console
 mise run extension:artifact:avro
-
-bundle=.morphir/build/extensions/avro
-index=.morphir/build/index
-mkdir -p "$index/artifacts" "$index/extensions"
-
-python3 - "$bundle/release.json" "$index" <<'PY'
-import json
-import pathlib
-import shutil
-import sys
-
-descriptor_path = pathlib.Path(sys.argv[1])
-index = pathlib.Path(sys.argv[2])
-descriptor = json.loads(descriptor_path.read_text(encoding="utf-8"))
-artifact = descriptor["artifact"]
-shutil.copy2(descriptor_path.parent / artifact, index / "artifacts" / artifact)
-
-record = {
-    "schemaVersion": "1.0",
-    "id": descriptor["extensionId"],
-    "name": "Morphir Avro",
-    "version": descriptor["version"],
-    "channels": ["stable"],
-    "mepVersions": descriptor["mepVersions"],
-    "capabilities": ["backend"],
-    "backend": {
-        "targets": descriptor["targets"],
-        "irVersions": descriptor["irVersions"],
-    },
-    "artifacts": [{
-        "runtime": "wasm",
-        "source": {"kind": "local-file", "path": f"artifacts/{artifact}"},
-        "sha256": descriptor["sha256"],
-        "filename": artifact,
-        "args": [],
-        "executable": False,
-    }],
-}
-
-history = index / "extensions" / "morphir-avro.jsonl"
-history.write_text(json.dumps(record, separators=(",", ":")) + "\n", encoding="utf-8")
-PY
 ```
 
-`release.json` describes the release bundle. The install command needs the
-JSONL record with the quoted `"schemaVersion": "1.0"` string created above, so
-the descriptor cannot be passed to the CLI directly. Register the directory as
-a named repository in an isolated contributor home, then install with the root
-CLI:
-
-```console
-MORPHIR_HOME="$PWD/.morphir/local-home" \
-  mise exec -- cargo run --manifest-path ../../Cargo.toml -p morphir -- \
-  extension repository add local-avro --directory "$PWD/.morphir/build/index"
-
-MORPHIR_HOME="$PWD/.morphir/local-home" \
-  mise exec -- cargo run --manifest-path ../../Cargo.toml -p morphir -- \
-  extension install --repository local-avro morphir-avro
-
-MORPHIR_HOME="$PWD/.morphir/local-home" \
-  mise exec -- cargo run --manifest-path ../../Cargo.toml -p morphir -- \
-  extension list
-```
-
-Keep the same `MORPHIR_HOME` value when running generation. Installation
-verifies the SHA-256 from the repository, stores the module by content digest,
-and writes matching lock and catalog state. These commands do not publish the
-extension.
+Publish `.morphir/build/extensions/avro` with
+`morphir extension repository publish` as shown above. These commands
+do not publish the extension anywhere public.
 
 ## Run the generator
 
