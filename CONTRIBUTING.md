@@ -4,11 +4,14 @@ Thank you for contributing to Morphir. Read the [contribution and governance pol
 
 ## Populate the required submodules
 
-This repository uses Git submodules under `ecosystem/`. Populate them before running Cargo, tests, or ecosystem builds:
+This repository uses Git submodules under `ecosystem/`. Before running a `mise` task, review the repository configuration and trust it, then populate the submodules:
 
 ```bash
+mise trust .config/mise/config.toml
 mise run submodules:init
 ```
+
+Current `mise` releases auto-trust project configuration in normal mode. The explicit command also supports older releases. Paranoid mode requires content-bound trust, so run it again after the configuration changes.
 
 The command initializes every submodule recursively at the revision recorded by this repository. In particular:
 
@@ -22,7 +25,7 @@ For a complete first-time setup, including Git hooks, run:
 mise run init
 ```
 
-If `mise` is not available yet, initialize the submodules directly:
+If `mise` is not available or you do not want to trust the project configuration yet, initialize the submodules directly:
 
 ```bash
 git submodule update --init --recursive

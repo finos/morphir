@@ -4,13 +4,14 @@ This document provides guidance for AI assistants and developers working on the 
 
 ## Required checkout setup
 
-Before building or testing, populate the repository's Git submodules:
+Before building or testing, review and trust the repository's `mise` configuration, then populate its Git submodules:
 
 ```shell
+mise trust .config/mise/config.toml
 mise run submodules:init
 ```
 
-`ecosystem/morphir-rust` is required for the Cargo workspace's path dependencies. Populate `ecosystem/morphir-ui` when changing or rebuilding the UI client; the Rust CLI otherwise serves the checked-in web bundle. If a required submodule is absent, initialize it before diagnosing build failures. See [CONTRIBUTING.md](CONTRIBUTING.md) for first-time setup, the direct Git fallback, and submodule update rules.
+Current `mise` releases auto-trust project configuration in normal mode; the explicit command also supports older releases. Paranoid mode requires content-bound trust, so run it again after the configuration changes. `ecosystem/morphir-rust` is required for the Cargo workspace's path dependencies. Populate `ecosystem/morphir-ui` when changing or rebuilding the UI client; the Rust CLI otherwise serves the checked-in web bundle. If a required submodule is absent, initialize it before diagnosing build failures. See [CONTRIBUTING.md](CONTRIBUTING.md) for first-time setup, the direct Git fallback, and submodule update rules.
 
 ## Project Overview
 
