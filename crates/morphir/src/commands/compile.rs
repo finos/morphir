@@ -568,14 +568,22 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
         .transpose()
         .map_err(|error| CliError::Config { error })?;
     let config_dir = config_path.as_deref().and_then(Path::parent);
-    let source = read_single_source(&input_path)?;
     if let Some(context) = config_context.as_ref() {
         report_config_warnings(context);
     }
     let out = OutContext::resolve(config_context.as_ref(), &options.out, &start_dir);
     let task = TaskId::compile();
+    // `prepare_dest` takes the task lock and replaces the previous record
+    // with a tombstone, and it runs before anything that can fail the run.
+    // Reading the source first — which is what this used to do — meant a
+    // deleted or unreadable input returned before the tombstone was written,
+    // so the PREVIOUS run's successful record stayed on disk beside a `.dest`
+    // that no longer matched it, and `generate` went on consuming IR from a
+    // compile that had just failed. The provider path has always been in this
+    // order; this one now matches it.
     let prepared = out.prepare_dest(&task)?;
     let paths = prepared.paths;
+    let source = read_single_source(&input_path)?;
     let descriptor = crate::commands::ir_storage::v3_json_descriptor();
     warn_if_ir_storage_settings_are_ignored(config_context.as_ref(), &descriptor);
     let output_path = paths.dest.join(&descriptor.path);
@@ -1383,6 +1391,67 @@ mod tests {
     use tempfile::TempDir;
 
     const ELM_SOURCE: &str = "module Example exposing (add)\n\nadd left right = left + right\n";
+
+    /// A single-file compile whose input has since been deleted must leave a
+    /// TOMBSTONE, not the previous run's successful record: `generate` treats
+    /// a tombstone as a missing compile, but it happily consumes a successful
+    /// record, so leaving the old one there makes a failed compile look like
+    /// a fresh one.
+    ///
+    /// A real end-to-end single-file compile needs the Elm extension, so it
+    /// is not something a unit test can run. This exercises the ordering
+    /// itself instead: the failure comes from `read_single_source`, so the
+    /// run reaches the tombstone only if `prepare_dest` happens first.
+    #[tokio::test]
+    async fn a_single_file_compile_that_cannot_read_its_input_still_leaves_a_tombstone() {
+        let temp = TempDir::new().unwrap();
+        let out_dir = temp.path().join("out");
+        let missing_input = temp.path().join("Missing.elm");
+
+        // Stand in for a previous, successful compile: a real record beside a
+        // `.dest`, exactly what a completed run leaves.
+        let out = OutContext::resolve(
+            None,
+            &OutOverrides {
+                flag: Some(out_dir.clone()),
+                env: None,
+            },
+            temp.path(),
+        );
+        let task = TaskId::compile();
+        let paths = out.task(&task).unwrap();
+        std::fs::create_dir_all(&paths.dest).unwrap();
+        let mut previous = TaskResult::new(&task, &out.module);
+        previous.value = vec!["morphir-ir.json".to_owned()];
+        previous.write(&paths.result).unwrap();
+
+        let options = CompileOptions {
+            language: Some("elm".to_owned()),
+            extension: None,
+            input: Some(missing_input.to_string_lossy().into_owned()),
+            output: None,
+            package_name: None,
+            config_path: None,
+            project: None,
+            json: false,
+            json_lines: false,
+            out: OutOverrides {
+                flag: Some(out_dir),
+                env: None,
+            },
+        };
+
+        run_single_file_compile(options)
+            .await
+            .expect_err("a missing input must fail the compile");
+
+        let record = TaskResult::read(&paths.result).unwrap().unwrap();
+        assert!(
+            record.tombstone,
+            "the previous successful record must have been replaced by a tombstone"
+        );
+        assert!(record.value.is_empty(), "{:?}", record.value);
+    }
 
     #[test]
     fn compile_result_version_accepts_only_supported_v4_spellings() {
