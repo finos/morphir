@@ -442,7 +442,11 @@ pub fn install_lock_path(out_root: &Path, canonical_target: &Path) -> PathBuf {
 /// raw, un-folded path is fine for that one internal use: it only has to name
 /// a stable scratch directory for the lifetime of one probe call, not agree
 /// with the identity the outer lock key settles on.
-fn install_lock_path_for(out_root: &Path, canonical_target: &Path, case_insensitive: bool) -> PathBuf {
+fn install_lock_path_for(
+    out_root: &Path,
+    canonical_target: &Path,
+    case_insensitive: bool,
+) -> PathBuf {
     use std::hash::{Hash, Hasher};
 
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
@@ -490,7 +494,11 @@ fn install_lock_path_for(out_root: &Path, canonical_target: &Path, case_insensit
 /// never anything written to disk.
 fn ledger_key(canonical_target: &Path, case_insensitive: bool) -> String {
     let key = canonical_target.to_string_lossy().into_owned();
-    if case_insensitive { key.to_lowercase() } else { key }
+    if case_insensitive {
+        key.to_lowercase()
+    } else {
+        key
+    }
 }
 
 /// Reject a `-o` target that already exists as something other than a
@@ -654,9 +662,7 @@ fn validate_entry(entry: &str) -> Result<(), CliError> {
     match confine_relative_path(entry) {
         Ok(()) => Ok(()),
         Err(PathConfinementViolation::ParentDir) => Err(CliError::Validation {
-            message: format!(
-                "task result entry '{entry}' contains '..'; refusing to install it"
-            ),
+            message: format!("task result entry '{entry}' contains '..'; refusing to install it"),
         }),
         Err(PathConfinementViolation::Absolute) => Err(CliError::Validation {
             message: format!(
@@ -2086,7 +2092,13 @@ mod tests {
         assert!(matches!(error, CliError::Copy { .. }), "{error}");
         let message = error.to_string();
         assert!(
-            message.contains(&target.join("sub").join("b.json").to_string_lossy().into_owned()),
+            message.contains(
+                &target
+                    .join("sub")
+                    .join("b.json")
+                    .to_string_lossy()
+                    .into_owned()
+            ),
             "{message}"
         );
         assert!(message.contains("copy"), "{message}");
