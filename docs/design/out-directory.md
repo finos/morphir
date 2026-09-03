@@ -87,7 +87,11 @@ it has done so, and still writes its output under
 what Morphir writes, not about where a declared member reads from. A
 member directory that is there but does not resolve at all — a link with
 nothing at the far end — is skipped with a warning, since Morphir cannot
-say what it would load.
+say what it would load. This declared-path identity only applies when the
+member is reached through its declared spelling: running a command from
+inside the symlink's physical target, rather than through
+`packages/<name>`, discovers no enclosing workspace at all, and the project
+is treated as standalone.
 
 ## Result record
 
@@ -165,8 +169,12 @@ deleting it once the task stops producing it. A destination the ledger does
 not name by string may still be a file install wrote under a different
 spelling: on a case-insensitive filesystem a generated `Foo.gleam` that comes
 back as `foo.gleam` is the very same file. Install compares such a
-destination against its ledger by filesystem identity, keeps it as its own,
-and records the new spelling in place of the old one.
+destination against its ledger by filesystem identity, but identity alone is
+not enough to adopt it as a rename: the two names also have to differ only
+by letter case, or a foreign file the user hard-linked to one install owns
+would be mistaken for a rename of it, and the copy would then write through
+the shared inode and corrupt both. Once both hold, install keeps the file as
+its own and records the new spelling in place of the old one.
 
 Nothing below the target may be a symbolic link. The target itself may be
 one — `-o` pointing at a link is ordinary, and install canonicalises it
@@ -255,9 +263,10 @@ against:
   derives the workspace root, the project root, or the out root from it,
   so a later `chdir` cannot move the out root.
 - **Two runs of one task.** Each task holds an exclusive lock on
-  `<task>.lock` from before `.dest` is cleared until the record is
-  written, and a reader holds the same lock shared, so a compile cannot
-  clear `.dest` under a generate that is reading it.
+  `<task>.lock` from before `.dest` is cleared through the end of its own
+  `-o` install, not only until the record is written, and a reader holds
+  the same lock shared, so a compile cannot clear `.dest` under a generate
+  that is reading it.
 - **Two installs to one target.** An exclusive lock keyed on the canonical
   target — not on the task and not on the out root — covers the conflict
   scan, the removals, the copies, and the ledger write, so
