@@ -147,7 +147,12 @@ anything, install also checks every file it is about to write against the
 target: if a file already sits there and install did not write it on a
 previous run, install refuses the whole operation and lists every such
 conflicting path, rather than overwriting foreign content and later
-deleting it once the task stops producing it. It resolves every destination
+deleting it once the task stops producing it. A destination the ledger does
+not name by string may still be a file install wrote under a different
+spelling: on a case-insensitive filesystem a generated `Foo.gleam` that comes
+back as `foo.gleam` is the very same file. Install compares such a
+destination against its ledger by filesystem identity, keeps it as its own,
+and records the new spelling in place of the old one. It resolves every destination
 against the filesystem in that same pass: a symlink already in the target
 that leads out of it — `dist/morphir-ir` pointing at `/outside`, say — is
 refused by name, because `create_dir_all` and a file copy would otherwise

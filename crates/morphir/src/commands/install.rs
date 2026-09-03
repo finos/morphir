@@ -3,7 +3,8 @@
 use crate::commands::out_context::TaskLock;
 use crate::error::CliError;
 use morphir_devkit::{TaskPaths, TaskResult};
-use std::collections::HashSet;
+use same_file::Handle;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
 
 /// What one install did.
@@ -140,10 +141,18 @@ pub fn install(
     // the whole install instead, before any copy or removal, so the target is
     // left exactly as it was.
     let previous_files_lookup: HashSet<&str> = previous_files.iter().map(String::as_str).collect();
-    let mut conflicts: Vec<String> = new_files
+    let unmatched: Vec<&String> = new_files
         .iter()
         .filter(|file| !previous_files_lookup.contains(file.as_str()))
         .filter(|file| std::fs::symlink_metadata(target.join(file)).is_ok())
+        .collect();
+    // A destination the ledger does not name may still be a file the ledger
+    // owns, written under a different spelling. See `renamed_previous_files`.
+    let renamed = renamed_previous_files(target, &previous_files, &unmatched)?;
+    let renamed_to: HashSet<&str> = renamed.values().map(String::as_str).collect();
+    let mut conflicts: Vec<String> = unmatched
+        .into_iter()
+        .filter(|file| !renamed_to.contains(file.as_str()))
         .cloned()
         .collect();
     if !conflicts.is_empty() {
@@ -179,6 +188,9 @@ pub fn install(
     for stale in previous_files
         .iter()
         .filter(|file| !new_files_lookup.contains(file.as_str()))
+        // A ledger entry this run is about to rewrite under a different
+        // spelling names the same file, so it is not stale.
+        .filter(|file| !renamed.contains_key(file.as_str()))
     {
         let path = target.join(stale);
         if remove_confined(&path, target, &canonical_target)? {
@@ -427,6 +439,64 @@ fn confined_destination(
         }
     }
     Ok(())
+}
+
+/// Previous ledger entries this run rewrites under a different spelling, as
+/// `old spelling -> new spelling`.
+///
+/// The ledger records each path exactly as install spelled it. On a
+/// case-insensitive filesystem a generated name that changes only in case
+/// between runs — `Foo.gleam` becoming `foo.gleam` — is a different string
+/// but the very same file: a string-only lookup finds no previous entry,
+/// `symlink_metadata` finds the file sitting there, and the reinstall is
+/// refused as though the user had put it there. Comparing the strings
+/// case-insensitively instead would only move the guesswork around, since
+/// whether case matters is a property of the filesystem and not of the path.
+///
+/// So each new destination that exists and has no entry by name is compared
+/// by identity against the previous entries still on disk.
+/// `same_file::Handle` asks the filesystem, which is the only thing that
+/// knows. A match means install owns the file, under a name it now spells
+/// differently: it is not foreign content, and the entry under the old
+/// spelling is not stale. The ledger is rewritten from this run's paths, so
+/// the new spelling replaces the old one there without any extra work.
+///
+/// `candidates` is only the destinations that both exist and failed to match
+/// by name, which is normally none at all, so no handle is opened in the
+/// ordinary case.
+fn renamed_previous_files(
+    target: &Path,
+    previous_files: &[String],
+    candidates: &[&String],
+) -> Result<BTreeMap<String, String>, CliError> {
+    if candidates.is_empty() {
+        return Ok(BTreeMap::new());
+    }
+    let mut owned: HashMap<Handle, &String> = HashMap::new();
+    for file in previous_files {
+        if let Some(handle) = handle_for(&target.join(file))? {
+            owned.insert(handle, file);
+        }
+    }
+    let mut renamed = BTreeMap::new();
+    for candidate in candidates {
+        let Some(handle) = handle_for(&target.join(candidate))? else {
+            continue;
+        };
+        if let Some(previous) = owned.get(&handle) {
+            renamed.insert((*previous).clone(), (*candidate).clone());
+        }
+    }
+    Ok(renamed)
+}
+
+/// A handle identifying the file at `path`, or `None` when nothing is there.
+fn handle_for(path: &Path) -> Result<Option<Handle>, CliError> {
+    match Handle::from_path(path) {
+        Ok(handle) => Ok(Some(handle)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(CliError::FileSystem { error }),
+    }
 }
 
 /// Refuse an owned destination whose path now runs through a symbolic link.
@@ -1509,6 +1579,81 @@ mod tests {
             .expect("the install proceeds once the other run releases the lock");
         installing.join().unwrap();
         assert!(target.join("morphir-ir.json").is_file());
+    }
+
+    /// A task whose `.dest` holds exactly one generated file.
+    fn task_with_one_file(root: &Path, name: &str) -> TaskPaths {
+        let paths = TaskPaths::new(root, Path::new(""), &TaskId::compile()).unwrap();
+        std::fs::create_dir_all(&paths.dest).unwrap();
+        std::fs::write(paths.dest.join(name), "generated").unwrap();
+        let mut record = TaskResult::new(&TaskId::compile(), Path::new(""));
+        record.value = vec![name.to_owned()];
+        record.write(&paths.result).unwrap();
+        paths
+    }
+
+    /// Does this directory's filesystem tell two spellings of one name apart?
+    /// The answer is a property of the filesystem the tests are running on,
+    /// so it is measured rather than assumed.
+    fn is_case_insensitive(directory: &Path) -> bool {
+        let probe = directory.join("MorphirCaseProbe");
+        std::fs::write(&probe, "probe").unwrap();
+        let insensitive = directory.join("morphircaseprobe").exists();
+        std::fs::remove_file(&probe).unwrap();
+        insensitive
+    }
+
+    /// A generated name that changes only in case between runs used to be
+    /// refused: the ledger did not hold the new spelling, but the file was
+    /// sitting there, so install called its own output foreign content.
+    #[test]
+    fn a_ledger_entry_that_differs_only_in_case_is_recognised_as_ours() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("out");
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(&target).unwrap();
+        let insensitive = is_case_insensitive(&target);
+
+        let paths = task_with_one_file(&root, "Foo.gleam");
+        install_here(&paths, &target).unwrap();
+        let key = canonical_key(&target);
+        assert_eq!(
+            TaskResult::read(&paths.result).unwrap().unwrap().installed[&key],
+            vec!["Foo.gleam".to_owned()]
+        );
+
+        // The next run generates the same thing under a different case.
+        std::fs::remove_file(paths.dest.join("Foo.gleam")).unwrap();
+        std::fs::write(paths.dest.join("foo.gleam"), "generated again").unwrap();
+        let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
+        record.value = vec!["foo.gleam".to_owned()];
+        record.write(&paths.result).unwrap();
+
+        let report = install_here(&paths, &target).expect("install must not refuse its own file");
+        assert_eq!(report.copied, vec!["foo.gleam".to_owned()]);
+        assert_eq!(
+            TaskResult::read(&paths.result).unwrap().unwrap().installed[&key],
+            vec!["foo.gleam".to_owned()],
+            "the ledger holds the spelling this run wrote"
+        );
+        assert_eq!(
+            std::fs::read_to_string(target.join("foo.gleam")).unwrap(),
+            "generated again"
+        );
+
+        if insensitive {
+            // One file under two spellings. The old entry names it too, so it
+            // is not stale and nothing is removed.
+            assert!(
+                report.removed.is_empty(),
+                "the old spelling names the same file: {:?}",
+                report.removed
+            );
+        } else {
+            // Two names, two files. The old one is retired as usual.
+            assert_eq!(report.removed, vec!["Foo.gleam".to_owned()]);
+            assert!(!target.join("Foo.gleam").exists());
+        }
     }
 
     #[test]
