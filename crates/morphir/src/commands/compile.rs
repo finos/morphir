@@ -628,7 +628,10 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
             ir: None,
             diagnostics,
             modules: Vec::new(),
-            output_path: context.output_path.to_string_lossy().into_owned(),
+            // The task's `.dest` directory, not the IR file inside it — see
+            // `generate`, which reports the same thing, and
+            // `docs/design/out-directory.md`'s output envelope section.
+            output_path: paths.dest.to_string_lossy().into_owned(),
             installed_path: None,
         };
         write_compile_output(format, &output)?;
@@ -662,7 +665,10 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
         ir: Some(typed_ir),
         diagnostics,
         modules: compile_result.modules,
-        output_path: context.output_path.to_string_lossy().into_owned(),
+        // The task's `.dest` directory, not the IR file inside it — see
+        // `generate`, which reports the same thing, and
+        // `docs/design/out-directory.md`'s output envelope section.
+        output_path: paths.dest.to_string_lossy().into_owned(),
         installed_path,
     };
     write_compile_output(format, &output)?;
@@ -1094,7 +1100,6 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     let prepared = out.prepare_dest(&task)?;
     let paths = prepared.paths;
     let storage = crate::commands::ir_storage::IrStorage::from_config(context.config.ir.as_ref())?;
-    let output_path = paths.dest.join(storage.relative_path());
     let (documents, source_root_uri) = collect_source_documents(&input_path, &language)?;
     let emit_parse_stage = context
         .config
@@ -1164,7 +1169,10 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
             ir: None,
             diagnostics,
             modules: vec![],
-            output_path: output_path.to_string_lossy().into_owned(),
+            // The task's `.dest` directory, not the IR file inside it — see
+            // `generate`, which reports the same thing, and
+            // `docs/design/out-directory.md`'s output envelope section.
+            output_path: paths.dest.to_string_lossy().into_owned(),
             installed_path: None,
         };
         let message = compilation_failure_message(&result);
@@ -1194,7 +1202,10 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         ir: Some(ir),
         diagnostics,
         modules: result.modules,
-        output_path: output_path.to_string_lossy().into_owned(),
+        // The task's `.dest` directory, not the IR file inside it — see
+        // `generate`, which reports the same thing, and
+        // `docs/design/out-directory.md`'s output envelope section.
+        output_path: paths.dest.to_string_lossy().into_owned(),
         installed_path,
     };
     write_compile_output(format, &output)?;

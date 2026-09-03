@@ -177,12 +177,13 @@ fn elm_extension_compiles_a_single_file_to_classic_ir() {
     assert!(output.diagnostics.iter().all(|item| item.level != "error"));
     assert!(output.modules.iter().any(|module| module == "Example"));
 
-    // `output_path` reports the canonical location the task ran to, which is
-    // under the out root and not the `-o` target.
+    // `output_path` reports the task's canonical `.dest` directory, not the
+    // IR file inside it — the same thing `generate` reports — which is under
+    // the out root and not the `-o` target.
     let reported = PathBuf::from(&output.output_path);
     assert!(
-        reported.ends_with(Path::new(".morphir/out/compile.dest/morphir-ir.json")),
-        "output_path should name the canonical task output, got {}",
+        reported.ends_with(Path::new(".morphir/out/compile.dest")),
+        "output_path should name the canonical task .dest directory, got {}",
         output.output_path
     );
     assert!(
@@ -193,6 +194,15 @@ fn elm_extension_compiles_a_single_file_to_classic_ir() {
     assert!(
         canonical_ir_path(temp_dir.path()).is_file(),
         "the canonical IR file should exist under the out root"
+    );
+    let ir_via_output_path: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(reported.join("morphir-ir.json")).expect("read IR via output_path"),
+    )
+    .expect("IR under output_path should be JSON");
+    assert_eq!(
+        Some(ir_via_output_path),
+        output.ir,
+        "the IR reachable via output_path should be the same IR the CLI reported inline"
     );
 
     // `installed_path` reports where `-o` put the copy. The CLI canonicalizes
