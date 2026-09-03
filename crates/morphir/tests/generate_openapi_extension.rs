@@ -134,12 +134,13 @@ fn selects_the_extension_by_target_rather_than_by_id() {
     let stderr = String::from_utf8_lossy(&output.stderr);
     // `morphir-openapi` is installed and advertises `openapi` and
     // `json-schema`, not `not-a-target`, so the host must not dispatch to
-    // it: it falls through to the legacy-builtin lookup, which also has no
-    // match, and reports the target as unresolved.
+    // it: no provider matches and the target is reported as unresolved,
+    // with the installed extension listed among the candidates it rejected.
     assert!(
-        stderr.contains("No extension found for target: not-a-target"),
+        stderr.contains("no provider supports backend.generate for target 'not-a-target'"),
         "{stderr}"
     );
+    assert!(stderr.contains("morphir-openapi"), "{stderr}");
 }
 
 #[test]

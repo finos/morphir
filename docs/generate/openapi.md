@@ -6,13 +6,13 @@ sidebar_position: 3
 
 # Generate OpenAPI
 
-> The OpenAPI and JSON Schema backend has no published release. The
-> extension is registered for independent release and has its own packaging
-> task, but no release has been cut and there is no public extension index,
-> so installation uses a locally built bundle and a local schema `"1.0"` index,
-> as shown below. This guide describes the current contract for testing that
-> locally built and installed extension. Do not treat it as an announcement
-> of an available release.
+> The OpenAPI and JSON Schema backend ships as one WASM release bundle from
+> [finos/morphir-rust](https://github.com/finos/morphir-rust/releases), tagged
+> `extension/openapi/v<version>`. There is no public extension index yet, so
+> you publish the bundle into a local repository with
+> `morphir extension repository publish` and install from it. This guide also
+> covers the contract for a locally built extension. Rename the downloaded
+> `<artifact>.release.json` to `release.json` before publishing.
 
 The `morphir-openapi` WASM extension turns a public Morphir package into an
 OpenAPI document: its public types become `components/schemas`, and,

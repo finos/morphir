@@ -6,9 +6,12 @@ sidebar_position: 1
 
 # Generate Apache Avro
 
-> The Avro backend is accepted but not released. This guide describes the
-> current contract for testing a locally built and installed extension. Do not
-> treat it as an announcement of an available release.
+> The Avro backend ships as a WASM release bundle from
+> [finos/morphir-rust](https://github.com/finos/morphir-rust/releases), tagged
+> `extension/avro/v<version>`. There is no public extension index yet, so you
+> publish the bundle into a local repository and install from it. This guide
+> covers that flow and the contract for a locally built extension. Rename the
+> downloaded `<artifact>.release.json` to `release.json` before publishing.
 
 The `morphir-avro` WASM extension turns public Morphir types and value
 specifications into Apache Avro schemas or protocols. It accepts Morphir IR v3
