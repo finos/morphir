@@ -105,6 +105,11 @@ Names inside `.dest`: `morphir-ir.json`, `morphir-ir.yaml`, `morphir-ir/`.
 `document-tree`. Setting `ir.mode` prints a warning. An explicit `ir.layout`
 always wins over `ir.mode` when both are set.
 
+The single-file Elm compile path (`morphir compile --input <file>` without a
+project config) always writes classic v3 JSON and ignores `[ir]` entirely; if
+a `--config` was given whose `[ir].layout` or `[ir].format` asks for
+something else, it prints a warning that those settings do not apply.
+
 `generate -i <path>` accepts any of:
 
 - a single IR file (`morphir-ir.json` or `morphir-ir.yaml`)

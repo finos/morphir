@@ -4,7 +4,7 @@ use crate::commands::out_context::{OutContext, OutOverrides, report_config_warni
 use crate::error::CliError;
 use crate::error::convert_extension_diagnostics;
 use crate::home::MorphirHome;
-use morphir_common::config::model::MorphirConfig;
+use morphir_common::config::model::{IrSection, MorphirConfig};
 use morphir_core::format_version::{
     NormalizedFormatVersion, ReleaseTriplet, ScalarValue, SupportTable,
 };
@@ -14,8 +14,8 @@ use morphir_daemon::extensions::{
     SpawnedProcessSession, protocol::methods,
 };
 use morphir_devkit::{
-    TaskId, TaskResult, discover_config, ensure_morphir_structure, load_config_context,
-    resolve_path_relative_to_config,
+    ConfigContext, IrDescriptor, TaskId, TaskResult, discover_config, ensure_morphir_structure,
+    load_config_context, resolve_path_relative_to_config,
 };
 use morphir_distribution::{ExtensionId, VerifiedExtensionArtifact, activate_installed};
 use morphir_extension_sdk::{
@@ -515,6 +515,37 @@ fn filtered_process_environment() -> Vec<(OsString, OsString)> {
     .collect()
 }
 
+/// Warn when a config's `[ir]` section asks for a layout or format other
+/// than what single-file Elm compile actually writes. This path always
+/// produces classic v3 JSON (`descriptor`) regardless of `[ir]`, unlike
+/// project-mode compile, which reads `[ir]` through `IrStorage::from_config`
+/// to pick its output layout and format.
+fn warn_if_ir_storage_settings_are_ignored(
+    config_context: Option<&ConfigContext>,
+    descriptor: &IrDescriptor,
+) {
+    let Some(ir) = config_context.and_then(|context| context.config.ir.as_ref()) else {
+        return;
+    };
+    if ir_storage_settings_apply_to_single_file_compile(ir) {
+        return;
+    }
+    eprintln!(
+        "warning: single-file Elm compile always writes classic v3 JSON ({}); \
+         the [ir] layout/format settings do not apply to it",
+        descriptor.path
+    );
+}
+
+/// Whether a config's `[ir]` section matches what single-file Elm compile
+/// actually writes (classic v3 JSON): `layout = "single-file"` and
+/// `format = "json"`. Split out from `warn_if_ir_storage_settings_are_ignored`
+/// so the condition itself is unit-testable without needing to capture
+/// stderr.
+fn ir_storage_settings_apply_to_single_file_compile(ir: &IrSection) -> bool {
+    ir.layout == "single-file" && ir.format == "json"
+}
+
 async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::Report> {
     use crate::output::{CompileOutput, OutputFormat};
 
@@ -545,7 +576,9 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     let task = TaskId::compile();
     let prepared = out.prepare_dest(&task)?;
     let paths = prepared.paths;
-    let output_path = paths.dest.join("morphir-ir.json");
+    let descriptor = crate::commands::ir_storage::v3_json_descriptor();
+    warn_if_ir_storage_settings_are_ignored(config_context.as_ref(), &descriptor);
+    let output_path = paths.dest.join(&descriptor.path);
     let context = prepare_single_file_context(
         std::slice::from_ref(&input_path),
         &source,
@@ -601,7 +634,6 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     })?;
     let mut record = TaskResult::new(&task, &out.module);
     record.language = Some(context.language_id.clone());
-    let descriptor = crate::commands::ir_storage::v3_json_descriptor();
     record.value = vec![descriptor.path.clone()];
     record.ir = Some(descriptor);
     record.ejected = prepared.previous_ejected;
@@ -1347,6 +1379,34 @@ mod tests {
         assert!(is_semantic_v4("4.0.0"));
         assert!(!is_semantic_v4("4.0"));
         assert!(!is_semantic_v4("4.0.1"));
+    }
+
+    #[test]
+    fn ir_storage_settings_only_apply_to_single_file_compile_when_default() {
+        let default_ir = IrSection {
+            format_version: 3,
+            layout: "single-file".to_owned(),
+            format: "json".to_owned(),
+            mode: None,
+            strict_mode: false,
+        };
+        assert!(ir_storage_settings_apply_to_single_file_compile(
+            &default_ir
+        ));
+
+        let document_tree = IrSection {
+            layout: "document-tree".to_owned(),
+            ..default_ir.clone()
+        };
+        assert!(!ir_storage_settings_apply_to_single_file_compile(
+            &document_tree
+        ));
+
+        let yaml = IrSection {
+            format: "yaml".to_owned(),
+            ..default_ir
+        };
+        assert!(!ir_storage_settings_apply_to_single_file_compile(&yaml));
     }
 
     fn v4_compile_result(
