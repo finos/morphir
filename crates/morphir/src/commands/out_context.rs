@@ -64,12 +64,17 @@ impl OutContext {
     /// cleared here.
     ///
     /// The previous `.json`, if there is one, is not deleted — it is
-    /// overwritten with a TOMBSTONE: the same record with `value` and
-    /// `inputs` emptied, `language` and `ir` set to `None`, and `extra` (the
-    /// `#[serde(flatten)]` catch-all for fields this version does not know,
-    /// such as a future `inputsHash`) cleared too — a tombstone's `.dest` is
-    /// empty, so nothing computed from the previous `.dest` may ride along
-    /// on it. `installed` (and `completedAt`) are left exactly as they were.
+    /// overwritten with a TOMBSTONE: the same record with `tombstone` set to
+    /// true, `value` and `inputs` emptied, `language` and `ir` set to `None`,
+    /// and `extra` (the `#[serde(flatten)]` catch-all for fields this version
+    /// does not know, such as a future `inputsHash`) cleared too — a
+    /// tombstone's `.dest` is empty, so nothing computed from the previous
+    /// `.dest` may ride along on it. `installed` (and `completedAt`) are left
+    /// exactly as they were.
+    ///
+    /// The `tombstone` flag is what readers go by. An empty `value` says
+    /// nothing on its own: a run can succeed and produce no artifacts at all,
+    /// and such a run still has to retire whatever it installed last time.
     /// If the run that is about to happen succeeds, the caller overwrites
     /// the tombstone with a real record built from `previous_installed`,
     /// same as always. If it fails instead, the tombstone is what stays on
@@ -126,6 +131,7 @@ impl OutContext {
         };
         match previous {
             Ok(Some(mut record)) => {
+                record.tombstone = true;
                 record.value = Vec::new();
                 record.ir = None;
                 record.inputs = Vec::new();
@@ -252,6 +258,7 @@ mod tests {
             "the previous record must survive as a tombstone, not be deleted"
         );
         let tombstone = TaskResult::read(&prepared.paths.result).unwrap().unwrap();
+        assert!(tombstone.tombstone, "a tombstone says so outright");
         assert!(tombstone.ir.is_none(), "a tombstone has no ir");
         assert!(tombstone.value.is_empty(), "a tombstone has no value");
         assert!(tombstone.inputs.is_empty(), "a tombstone has no inputs");

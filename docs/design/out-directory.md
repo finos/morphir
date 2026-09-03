@@ -26,9 +26,10 @@ of what it produced.
 Task ids are path-like: `compile`, `generate/<target>`, `transform/<name>`.
 `<task>.dest/` is cleared before each run. `<task>.json` is written in full
 only after the task succeeds; a run that fails instead leaves a tombstone
-(see [Result record](#result-record)) with no `ir` and an empty `value`, so
-the task's output is treated as missing either way — nothing reruns it
-automatically, and the user must run the task again.
+(see [Result record](#result-record)), a record marked `"tombstone": true`
+that keeps no product, so the task's output is treated as missing either
+way — nothing reruns it automatically, and the user must run the task
+again.
 
 ## Root resolution
 
@@ -47,9 +48,18 @@ member's task records live under `<workspace>/.morphir/out/<member path>/`,
 where `<member path>` is the member's directory relative to the workspace
 root. A member never gets an out root of its own.
 
-`[workspace].out_dir` only has effect in the workspace root configuration. If
-a member's own config sets it, the CLI warns that the setting is ignored and
-falls back to the workspace's own `out_dir` (or the default).
+`[workspace].out_dir` only has effect in the workspace configuration. A
+member may not set it, in its own `morphir.toml` or in a `morphir.user.toml`
+beside it: the out root is shared by the whole workspace, so one member
+setting it would move every other member's output too. The CLI warns and
+names the file, and the workspace's own `out_dir` (or the default) stands.
+A `morphir.user.toml` next to the *workspace* configuration may still set
+it, since that speaks for the whole workspace.
+
+A `members` entry or a `default_member` that leaves the workspace directory
+— `../outside`, an absolute path, or one written with backslashes — is
+skipped with a warning naming it, rather than pulling a configuration in
+from outside the workspace.
 
 ## Result record
 
@@ -89,12 +99,19 @@ keeps the install ledger available across a failing run: without it, a
 failed `compile` between two `-o` installs would lose track of what an
 earlier successful run had put at the target, and the next `install` would
 see its own earlier output as foreign content it never wrote and refuse to
-run. `generate` treats a tombstone (`ir` absent and `value` empty) the same
-as a missing record — a record whose `value` is non-empty but `ir` is
-absent is a different case, and gets its own "produced no IR descriptor"
-error. `install` itself refuses a tombstone-shaped record outright (an
-empty `value`) rather than treating it as "nothing to copy, so remove
-everything previously installed". A record that fails to decode
+run.
+
+A tombstone says so outright, through `"tombstone": true`. The flag is
+omitted from an ordinary record, so records written before it existed read
+back as ordinary results. Readers go by the flag and not by the shape,
+because an empty `value` means something quite different on a record that
+succeeded: the task ran and had nothing to emit this time. `generate`
+treats a tombstone the same as a missing record, while a successful record
+with no `ir` gets its own "produced no IR descriptor" error. `install`
+refuses a tombstone, since installing one would mean "copy nothing, and
+remove everything previously installed"; a successful record with an empty
+`value` installs normally, which retires the files the last run put at the
+target and leaves an empty ledger for it. A record that fails to decode
 (hand-edited, truncated, or written by an incompatible version) is removed
 outright instead of being turned into a tombstone, since there is nothing
 reliable to preserve from it.
@@ -114,7 +131,12 @@ anything, install also checks every file it is about to write against the
 target: if a file already sits there and install did not write it on a
 previous run, install refuses the whole operation and lists every such
 conflicting path, rather than overwriting foreign content and later
-deleting it once the task stops producing it. This is the Zig `zig-out`
+deleting it once the task stops producing it. It resolves every destination
+against the filesystem in that same pass: a symlink already in the target
+that leads out of it — `dist/morphir-ir` pointing at `/outside`, say — is
+refused by name, because `create_dir_all` and a file copy would otherwise
+follow it and write outside the target. A symlink that lands back inside
+the target is ordinary and still works. This is the Zig `zig-out`
 install step; `.dest` is the cache, and `-o` only ever adds or retires files
 it owns there.
 

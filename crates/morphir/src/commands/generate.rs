@@ -106,13 +106,14 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
             let paths = out.task(&task);
             let record =
                 TaskResult::read(&paths.result).map_err(|error| CliError::Config { error })?;
-            // A missing record and a tombstone (no `ir`, empty `value`, left
-            // behind by `prepare_dest` after a failed run) both mean the
-            // same thing here: there is no compile output to read. A record
-            // that has a `value` but no `ir` is different — the task ran and
-            // produced *something*, just not IR — and keeps its own message.
+            // A missing record and a tombstone (left behind by
+            // `prepare_dest` when a run starts, and still there if that run
+            // failed) both mean the same thing here: there is no compile
+            // output to read. A record that succeeded but produced no IR is
+            // different — the task ran and produced *something*, just not IR
+            // — and keeps its own message.
             let record = match record {
-                Some(record) if record.ir.is_some() || !record.value.is_empty() => record,
+                Some(record) if !record.tombstone => record,
                 _ => {
                     return Err(CliError::Validation {
                         message:
