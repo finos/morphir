@@ -275,7 +275,7 @@ pub fn install(
                     if copy_failure_left_a_file(&destination) {
                         copied_files.push(entry.clone());
                     }
-                    copy_failure = Some(CliError::FileSystem { error });
+                    copy_failure = Some(copy_error(&source, &destination, error));
                     break 'copy;
                 }
             }
@@ -1068,7 +1068,8 @@ fn copy_dir(
         if file_type.is_dir() {
             copy_dir(&entry.path(), &target, &child_relative, copied_files)?;
         } else {
-            match std::fs::copy(entry.path(), &target) {
+            let source = entry.path();
+            match std::fs::copy(&source, &target) {
                 Ok(_) => copied_files.push(child_relative.to_string_lossy().into_owned()),
                 Err(error) => {
                     // Same reasoning as the file-entry branch in `install`:
@@ -1078,7 +1079,7 @@ fn copy_dir(
                     if copy_failure_left_a_file(&target) {
                         copied_files.push(child_relative.to_string_lossy().into_owned());
                     }
-                    return Err(CliError::FileSystem { error });
+                    return Err(copy_error(&source, &target, error));
                 }
             }
         }
@@ -1175,6 +1176,21 @@ fn describe(error: &CliError) -> String {
     match error {
         CliError::FileSystem { error } => error.to_string(),
         other => other.to_string(),
+    }
+}
+
+/// A failed `std::fs::copy` from `source` to `destination`, as a
+/// [`CliError::Copy`] that names both paths rather than the bare
+/// [`CliError::FileSystem`] `fs::copy`'s own `io::Error` would otherwise
+/// produce (`"File system error / Permission denied (os error 13)"`, with no
+/// indication of which file, or where it was headed). The original
+/// `io::Error` is kept as the new error's `#[source]`, so nothing about the
+/// underlying cause is lost — only which copy it happened during is added.
+fn copy_error(source: &Path, destination: &Path, error: std::io::Error) -> CliError {
+    CliError::Copy {
+        from: source.to_path_buf(),
+        to: destination.to_path_buf(),
+        error,
     }
 }
 
@@ -1965,7 +1981,13 @@ mod tests {
             .unwrap();
 
         let error = result.unwrap_err();
-        assert!(matches!(error, CliError::FileSystem { .. }), "{error}");
+        assert!(matches!(error, CliError::Copy { .. }), "{error}");
+        let message = error.to_string();
+        assert!(
+            message.contains(&target.join("sub").join("b.json").to_string_lossy().into_owned()),
+            "{message}"
+        );
+        assert!(message.contains("copy"), "{message}");
         assert!(
             !target.join("a.json").exists(),
             "the file this run copied before the failure must be rolled back"

@@ -2,6 +2,7 @@
 
 use crate::output::{Diagnostic, OutputFormat};
 use miette::Diagnostic as MietteDiagnostic;
+use std::path::PathBuf;
 
 /// A provider-neutral workspace discovery failure retained at host boundaries.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -64,6 +65,21 @@ pub enum CliError {
     #[error("File system error")]
     #[diagnostic(code(cli::filesystem_error))]
     FileSystem {
+        #[source]
+        error: std::io::Error,
+    },
+
+    /// A copy step's own failure, naming the source and destination it was
+    /// copying between. `install` (see `crate::commands::install`) raises
+    /// this instead of a bare [`CliError::FileSystem`] for a failed
+    /// `std::fs::copy`, so the message a user sees says which file could not
+    /// be copied where, rather than just "File system error" with the
+    /// underlying `io::Error` as its only detail.
+    #[error("install's copy step failed: could not copy '{from}' to '{to}': {error}")]
+    #[diagnostic(code(cli::install_copy_error))]
+    Copy {
+        from: PathBuf,
+        to: PathBuf,
         #[source]
         error: std::io::Error,
     },
