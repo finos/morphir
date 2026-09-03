@@ -275,7 +275,7 @@ An empty value is treated as unset.
 ## CLI Commands
 
 Task output always lands under the out root (`<workspace>/.morphir/out` by
-default). `-o` ejects a task's declared outputs to another directory after
+default). `-o` installs a task's declared outputs to another directory after
 the run. `--out-dir` or `MORPHIR_OUT_DIR` relocates the root. See
 [Out directory](design/out-directory.md) for the full layout.
 

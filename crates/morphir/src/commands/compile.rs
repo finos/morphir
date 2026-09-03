@@ -621,7 +621,7 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
             diagnostics,
             modules: Vec::new(),
             output_path: context.output_path.to_string_lossy().into_owned(),
-            ejected_path: None,
+            installed_path: None,
         };
         write_compile_output(format, &output)?;
         return Ok(Some(1));
@@ -636,19 +636,19 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     record.language = Some(context.language_id.clone());
     record.value = vec![descriptor.path.clone()];
     record.ir = Some(descriptor);
-    record.ejected = prepared.previous_ejected;
+    record.installed = prepared.previous_installed;
     record
         .write(&paths.result)
         .map_err(|error| CliError::Config { error })?;
-    let ejected_path =
-        crate::commands::eject::maybe_eject(&paths, options.output.as_deref(), &start_dir)?;
+    let installed_path =
+        crate::commands::install::maybe_install(&paths, options.output.as_deref(), &start_dir)?;
     let output = CompileOutput {
         success: true,
         ir: Some(typed_ir),
         diagnostics,
         modules: compile_result.modules,
         output_path: context.output_path.to_string_lossy().into_owned(),
-        ejected_path,
+        installed_path,
     };
     write_compile_output(format, &output)?;
     Ok(None)
@@ -980,8 +980,8 @@ fn write_compile_output(
             if output.success {
                 eprintln!("Compilation successful");
                 eprintln!("Output: {}", output.output_path);
-                if let Some(ejected) = &output.ejected_path {
-                    eprintln!("Ejected: {ejected}");
+                if let Some(installed) = &output.installed_path {
+                    eprintln!("Installed: {installed}");
                 }
             }
             for diagnostic in &output.diagnostics {
@@ -1150,7 +1150,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
             diagnostics,
             modules: vec![],
             output_path: output_path.to_string_lossy().into_owned(),
-            ejected_path: None,
+            installed_path: None,
         };
         let message = compilation_failure_message(&result);
         write_compile_output(format, &output)?;
@@ -1162,11 +1162,12 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
     record.language = Some(language_name);
     record.value = vec![descriptor.path.clone()];
     record.ir = Some(descriptor);
-    record.ejected = prepared.previous_ejected;
+    record.installed = prepared.previous_installed;
     record
         .write(&paths.result)
         .map_err(|error| CliError::Config { error })?;
-    let ejected_path = crate::commands::eject::maybe_eject(&paths, output.as_deref(), &start_dir)?;
+    let installed_path =
+        crate::commands::install::maybe_install(&paths, output.as_deref(), &start_dir)?;
     let ir = serde_json::to_value(&ir_file).map_err(|error| CliError::Extension {
         message: format!("Failed to serialize validated Morphir IR v4: {error}"),
     })?;
@@ -1176,7 +1177,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         diagnostics,
         modules: result.modules,
         output_path: output_path.to_string_lossy().into_owned(),
-        ejected_path,
+        installed_path,
     };
     write_compile_output(format, &output)?;
     Ok(None)

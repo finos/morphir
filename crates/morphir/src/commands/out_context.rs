@@ -59,19 +59,19 @@ impl OutContext {
     }
 
     /// Locations of one task with an empty `.dest` and no stale result
-    /// record, ready for a run, plus the `ejected` map the previous record
+    /// record, ready for a run, plus the `installed` map the previous record
     /// (if any) carried. Starting a task invalidates whatever it recorded
     /// last time, so the previous `.json` is removed along with the previous
     /// `.dest`: a run that fails after this point must not leave a prior
     /// success record behind for a later task to misread as current.
     ///
-    /// `ejected` describes what is actually on disk at eject targets from
+    /// `installed` describes what is actually on disk at install targets from
     /// past runs, not anything about the run that is about to happen, so it
     /// must survive the record being cleared here: the caller is expected to
-    /// copy `previous_ejected` onto the new record it builds before writing
-    /// it, so that `eject::maybe_eject` sees an accurate previous-files list
+    /// copy `previous_installed` onto the new record it builds before writing
+    /// it, so that `install::maybe_install` sees an accurate previous-files list
     /// and can remove files a target no longer produces. A failed run
-    /// between two ejects still loses this map — nothing carries it forward
+    /// between two installs still loses this map — nothing carries it forward
     /// across the deleted record — which can leave at most one stale file at
     /// a target; closing that would need an in-progress record that
     /// `generate` would then have to tell apart from a real one, which is
@@ -82,14 +82,14 @@ impl OutContext {
     /// bookkeeping, not a precondition of this run: this function treats it
     /// as absent rather than failing the run over it. It prints one
     /// `warning: ...` line naming the file and the decode error, proceeds
-    /// with an empty `previous_ejected`, and still removes the file below,
+    /// with an empty `previous_installed`, and still removes the file below,
     /// same as a record that parsed cleanly. `TaskResult::read` itself stays
     /// strict — callers that genuinely need the record (`generate` reading
     /// its input) still get a hard error from a corrupt one.
     pub fn prepare_dest(&self, task: &TaskId) -> Result<PreparedTask, CliError> {
         let paths = self.task(task);
-        let previous_ejected = match TaskResult::read(&paths.result) {
-            Ok(record) => record.map(|record| record.ejected).unwrap_or_default(),
+        let previous_installed = match TaskResult::read(&paths.result) {
+            Ok(record) => record.map(|record| record.installed).unwrap_or_default(),
             Err(error) => {
                 eprintln!(
                     "warning: could not read previous task record at {}: {error}",
@@ -109,24 +109,24 @@ impl OutContext {
         }
         Ok(PreparedTask {
             paths,
-            previous_ejected,
+            previous_installed,
         })
     }
 }
 
 /// Result of [`OutContext::prepare_dest`]: a task's paths, ready for a run,
-/// plus the `ejected` map its previous result record carried before that
+/// plus the `installed` map its previous result record carried before that
 /// record was removed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreparedTask {
     /// Locations of the task, with a freshly emptied `.dest` and no result
     /// record on disk.
     pub paths: TaskPaths,
-    /// The previous result record's `ejected` map, read before the record
+    /// The previous result record's `installed` map, read before the record
     /// was removed. Empty when there was no previous record. Callers must
     /// set this on the new record they build for this run, before writing
-    /// it, so that eject bookkeeping survives across runs.
-    pub previous_ejected: BTreeMap<String, Vec<String>>,
+    /// it, so that install bookkeeping survives across runs.
+    pub previous_installed: BTreeMap<String, Vec<String>>,
 }
 
 /// Print configuration warnings (removed or renamed keys) to stderr.
@@ -204,26 +204,26 @@ mod tests {
     }
 
     #[test]
-    fn prepare_dest_returns_the_previous_records_ejected_map_and_still_removes_it() {
+    fn prepare_dest_returns_the_previous_records_installed_map_and_still_removes_it() {
         let temp = tempfile::tempdir().unwrap();
         let out = OutContext::resolve(None, &OutOverrides::default(), temp.path());
         let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
         assert!(
-            prepared.previous_ejected.is_empty(),
+            prepared.previous_installed.is_empty(),
             "there is no previous record on the first run"
         );
 
         let mut record = TaskResult::new(&TaskId::compile(), Path::new(""));
         record
-            .ejected
+            .installed
             .insert("/abs/dist".to_owned(), vec!["morphir-ir.json".to_owned()]);
         record.write(&prepared.paths.result).unwrap();
 
         let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
         assert_eq!(
-            prepared.previous_ejected.get("/abs/dist"),
+            prepared.previous_installed.get("/abs/dist"),
             Some(&vec!["morphir-ir.json".to_owned()]),
-            "prepare_dest must carry the previous record's ejected map forward"
+            "prepare_dest must carry the previous record's installed map forward"
         );
         assert!(
             !prepared.paths.result.exists(),
@@ -243,8 +243,8 @@ mod tests {
             .prepare_dest(&TaskId::compile())
             .expect("a corrupt previous record must not fail the run");
         assert!(
-            prepared.previous_ejected.is_empty(),
-            "a corrupt record carries no ejected bookkeeping forward"
+            prepared.previous_installed.is_empty(),
+            "a corrupt record carries no installed bookkeeping forward"
         );
         assert!(
             !prepared.paths.result.exists(),

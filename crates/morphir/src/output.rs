@@ -70,9 +70,9 @@ pub struct CompileOutput {
     pub diagnostics: Vec<Diagnostic>,
     pub modules: Vec<String>,
     pub output_path: String,
-    /// Absolute eject target when `-o` was given.
+    /// Absolute install target when `-o` was given.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub ejected_path: Option<String>,
+    pub installed_path: Option<String>,
 }
 
 /// Generate command output structure
@@ -82,9 +82,9 @@ pub struct GenerateOutput {
     pub artifacts: Vec<String>,
     pub diagnostics: Vec<Diagnostic>,
     pub output_path: String,
-    /// Absolute eject target when `-o` was given.
+    /// Absolute install target when `-o` was given.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub ejected_path: Option<String>,
+    pub installed_path: Option<String>,
 }
 
 /// Write a human-readable generation result to the appropriate standard stream.
@@ -94,8 +94,8 @@ pub fn write_generate_human(output: &GenerateOutput) -> io::Result<()> {
         let mut writer = stdout.lock();
         writeln!(writer, "Code generation successful!")?;
         writeln!(writer, "Output: {}", output.output_path)?;
-        if let Some(ejected) = &output.ejected_path {
-            writeln!(writer, "Ejected: {ejected}")?;
+        if let Some(installed) = &output.installed_path {
+            writeln!(writer, "Installed: {installed}")?;
         }
         if !output.artifacts.is_empty() {
             writeln!(writer, "Artifacts:")?;

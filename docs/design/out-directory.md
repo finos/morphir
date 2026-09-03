@@ -60,34 +60,34 @@ falls back to the workspace's own `out_dir` (or the default).
       "inputs": [],
       "value": ["morphir-ir"],
       "ir": {"path": "morphir-ir", "layout": "document-tree", "format": "json", "version": "v4"},
-      "ejected": {"/abs/dist": ["morphir-ir/manifest.json", "morphir-ir/Module.json"]},
+      "installed": {"/abs/dist": ["morphir-ir/manifest.json", "morphir-ir/Module.json"]},
       "completedAt": "2026-09-02T10:00:00Z"
     }
 
 `value` lists the task's product as paths relative to `.dest`. Parse-stage
 files and bookkeeping manifests are never in `value`. `ir` is present on
 tasks that produce IR; generate reads IR through it, so JSON, YAML, and
-document-tree storage all work. `inputs` records provenance. `ejected` maps
-each target directory `-o` has ever pointed at to the individual *files* eject
+document-tree storage all work. `inputs` records provenance. `installed` maps
+each target directory `-o` has ever pointed at to the individual *files* install
 wrote there — not the `value` entry names — because a `value` entry can name
-a whole directory (a document-tree IR, for example) and eject must be able to
+a whole directory (a document-tree IR, for example) and install must be able to
 tell its own files apart from content a user placed in or beside that
 directory. Unknown fields are preserved across a read-modify-write cycle.
 
-## Eject
+## Install
 
 `-o <path>` no longer redirects a task. The task runs to `.dest`, then the
-`value` entries are copied to `<path>`. Eject never deletes `<path>`, and
-never deletes a directory wholesale — a re-eject only removes the individual
+`value` entries are copied to `<path>`. Install never deletes `<path>`, and
+never deletes a directory wholesale — a re-install only removes the individual
 files it wrote earlier that the current run no longer produces, then removes
 any directories that are left empty by that. Anything else under `<path>`,
 including a directory a user created inside a directory-valued entry before
-or after the first eject, is left alone. If `<path>` already exists as a
-plain file rather than a directory, eject refuses and names the path in its
+or after the first install, is left alone. If `<path>` already exists as a
+plain file rather than a directory, install refuses and names the path in its
 error rather than failing on a confusing filesystem error. Before copying
-anything, eject also checks every file it is about to write against the
-target: if a file already sits there and eject did not write it on a
-previous run, eject refuses the whole operation and lists every such
+anything, install also checks every file it is about to write against the
+target: if a file already sits there and install did not write it on a
+previous run, install refuses the whole operation and lists every such
 conflicting path, rather than overwriting foreign content and later
 deleting it once the task stops producing it. This is the Zig `zig-out`
 install step; `.dest` is the cache, and `-o` only ever adds or retires files

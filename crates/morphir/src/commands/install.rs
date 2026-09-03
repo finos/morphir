@@ -5,15 +5,15 @@ use morphir_devkit::{TaskPaths, TaskResult};
 use std::collections::HashSet;
 use std::path::{Component, Path, PathBuf};
 
-/// What one eject did.
+/// What one install did.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EjectReport {
+pub struct InstallReport {
     /// Absolute target directory.
     pub target: PathBuf,
     /// `value` entries copied (entry names, e.g. `morphir-ir` for a
     /// directory-valued entry — not the individual files beneath it).
     pub copied: Vec<String>,
-    /// Files this function wrote under `target` on a previous eject, paths
+    /// Files this function wrote under `target` on a previous install, paths
     /// relative to `target`, that were actually deleted because the
     /// current `value` no longer produces them. A path only appears here if
     /// something was really removed; a stale bookkeeping entry whose file
@@ -22,28 +22,28 @@ pub struct EjectReport {
     pub removed: Vec<String>,
 }
 
-/// Eject the task's `value` entries into `target`.
+/// Install the task's `value` entries into `target`.
 ///
-/// What `ejected[target]` remembers, and why it is files and not entries:
+/// What `installed[target]` remembers, and why it is files and not entries:
 /// a directory-valued entry (a document-tree IR, for example) is merged
 /// into `target` rather than replacing whatever is already there, because
 /// `target` may hold a directory the user created before this function ever
-/// ran. If bookkeeping recorded the *entry name* as owned, a later eject
+/// ran. If bookkeeping recorded the *entry name* as owned, a later install
 /// would see that name in its own history and feel entitled to delete the
 /// whole directory — including content this function never wrote. So
 /// instead this function flattens `value` into the individual files it
 /// actually writes under `target` (`flatten_value_files`) and remembers
-/// exactly that list. A later eject only ever deletes files that are in the
+/// exactly that list. A later install only ever deletes files that are in the
 /// old flattened list and not in the new one, and only ever deletes files —
 /// never a directory wholesale — so foreign content survives no matter how
-/// many times eject runs.
+/// many times install runs.
 ///
-/// Every entry in `value`, and every file path from a previous eject's
+/// Every entry in `value`, and every file path from a previous install's
 /// bookkeeping, is checked before anything is touched: an absolute path or a
 /// path containing `..` is rejected outright, since joining it onto `target`
 /// could name a location outside `target` and this function deletes what it
 /// names. See `validate_entry`.
-pub fn eject(paths: &TaskPaths, target: &Path) -> Result<EjectReport, CliError> {
+pub fn install(paths: &TaskPaths, target: &Path) -> Result<InstallReport, CliError> {
     let mut record = TaskResult::read(&paths.result)
         .map_err(|error| CliError::Config { error })?
         .ok_or_else(|| CliError::Validation {
@@ -67,7 +67,7 @@ pub fn eject(paths: &TaskPaths, target: &Path) -> Result<EjectReport, CliError> 
     // `./dist` (or any other two spellings of the same directory) share one
     // bookkeeping entry instead of shadowing each other.
     let key = canonical_target.to_string_lossy().into_owned();
-    let previous_files = record.ejected.get(&key).cloned().unwrap_or_default();
+    let previous_files = record.installed.get(&key).cloned().unwrap_or_default();
     for file in &previous_files {
         validate_entry(file)?;
     }
@@ -77,10 +77,10 @@ pub fn eject(paths: &TaskPaths, target: &Path) -> Result<EjectReport, CliError> 
 
     // Before touching anything: a file this run would write that already
     // exists at the destination and is NOT one this function wrote last time
-    // is foreign content — it belongs to the user, not to a previous eject.
+    // is foreign content — it belongs to the user, not to a previous install.
     // Copying over it would silently overwrite it, and a later run whose
     // artifact set shrinks would then delete it as if it were ours. Refuse
-    // the whole eject instead, before any copy or removal, so the target is
+    // the whole install instead, before any copy or removal, so the target is
     // left exactly as it was.
     let previous_files_lookup: HashSet<&str> = previous_files.iter().map(String::as_str).collect();
     let mut conflicts: Vec<String> = new_files
@@ -93,7 +93,7 @@ pub fn eject(paths: &TaskPaths, target: &Path) -> Result<EjectReport, CliError> 
         conflicts.sort();
         return Err(CliError::Validation {
             message: format!(
-                "eject target '{}' already contains files Morphir did not write: {}; \
+                "install target '{}' already contains files Morphir did not write: {}; \
                  move them aside or choose a different -o target",
                 target.display(),
                 conflicts.join(", ")
@@ -105,7 +105,7 @@ pub fn eject(paths: &TaskPaths, target: &Path) -> Result<EjectReport, CliError> 
     // current `value` no longer produces. A directory entry is never
     // deleted wholesale — only the individual files this function is
     // recorded as owning — so a directory the user already had before the
-    // first eject, or a file the user added beside/inside an owned
+    // first install, or a file the user added beside/inside an owned
     // directory afterward, is never at risk. `remove_confined` itself
     // refuses to remove anything that turns out to be a directory (see its
     // doc comment), which also protects against a record written by an
@@ -130,7 +130,7 @@ pub fn eject(paths: &TaskPaths, target: &Path) -> Result<EjectReport, CliError> 
         if source.is_dir() {
             // Always merge: a directory-valued entry never had the
             // destination wiped first, whether this is the first time it
-            // has been ejected here or the tenth, so any foreign content in
+            // has been installed here or the tenth, so any foreign content in
             // it survives regardless.
             copy_dir(&source, &destination)?;
         } else {
@@ -142,19 +142,19 @@ pub fn eject(paths: &TaskPaths, target: &Path) -> Result<EjectReport, CliError> 
         copied.push(entry.clone());
     }
 
-    record.ejected.insert(key, new_files);
+    record.installed.insert(key, new_files);
     record
         .write(&paths.result)
         .map_err(|error| CliError::Config { error })?;
-    Ok(EjectReport {
+    Ok(InstallReport {
         target: target.to_path_buf(),
         copied,
         removed,
     })
 }
 
-/// Eject when `-o` was given. Relative targets resolve against `cwd`.
-pub fn maybe_eject(
+/// Install when `-o` was given. Relative targets resolve against `cwd`.
+pub fn maybe_install(
     paths: &TaskPaths,
     output: Option<&str>,
     cwd: &Path,
@@ -168,7 +168,7 @@ pub fn maybe_eject(
     } else {
         cwd.join(target)
     };
-    let report = eject(paths, &target)?;
+    let report = install(paths, &target)?;
     Ok(Some(report.target.to_string_lossy().into_owned()))
 }
 
@@ -186,7 +186,7 @@ fn reject_non_directory_target(target: &Path) -> Result<(), CliError> {
         Ok(metadata) if !metadata.is_dir() => Err(CliError::Validation {
             message: format!(
                 "-o target '{}' already exists and is not a directory; \
-                 -o ejects the task's output into a directory, and the canonical \
+                 -o installs the task's output into a directory, and the canonical \
                  output stays under .morphir/out",
                 target.display()
             ),
@@ -198,7 +198,7 @@ fn reject_non_directory_target(target: &Path) -> Result<(), CliError> {
 }
 
 /// Reject a `-o` target that is the task's own scratch directory, or a path
-/// inside it. `eject` copies from `paths.dest` to `target`; if the two are
+/// inside it. `install` copies from `paths.dest` to `target`; if the two are
 /// the same location (or `target` is nested under `dest`), a copy's source
 /// and destination alias each other, and `fs::copy` truncates the
 /// destination — and therefore the source — before reading it. Both sides
@@ -215,7 +215,7 @@ fn reject_target_inside_dest(canonical_target: &Path, dest: &Path) -> Result<(),
         return Err(CliError::Validation {
             message: format!(
                 "-o target '{}' is the task's own scratch directory ('{}') or lies inside it; \
-                 the eject target must be outside the task's scratch directory",
+                 the install target must be outside the task's scratch directory",
                 canonical_target.display(),
                 canonical_dest.display()
             ),
@@ -224,7 +224,7 @@ fn reject_target_inside_dest(canonical_target: &Path, dest: &Path) -> Result<(),
     Ok(())
 }
 
-/// Reject a `value` entry or an `ejected` file path that could name a
+/// Reject a `value` entry or an `installed` file path that could name a
 /// location outside `target` once joined onto it: an absolute path
 /// (`PathBuf::join` discards the base entirely when the joined path is
 /// absolute) or any path containing a `..` component. Also rejects an entry
@@ -240,14 +240,14 @@ fn validate_entry(entry: &str) -> Result<(), CliError> {
             Component::ParentDir => {
                 return Err(CliError::Validation {
                     message: format!(
-                        "task result entry '{entry}' contains '..'; refusing to eject it"
+                        "task result entry '{entry}' contains '..'; refusing to install it"
                     ),
                 });
             }
             Component::RootDir | Component::Prefix(_) => {
                 return Err(CliError::Validation {
                     message: format!(
-                        "task result entry '{entry}' is an absolute path; refusing to eject it"
+                        "task result entry '{entry}' is an absolute path; refusing to install it"
                     ),
                 });
             }
@@ -256,7 +256,7 @@ fn validate_entry(entry: &str) -> Result<(), CliError> {
     if !has_normal_component {
         return Err(CliError::Validation {
             message: format!(
-                "task result entry '{entry}' does not name a path under the eject target; refusing to eject it"
+                "task result entry '{entry}' does not name a path under the install target; refusing to install it"
             ),
         });
     }
@@ -298,7 +298,7 @@ fn remove_confined(path: &Path, target: &Path, canonical_target: &Path) -> Resul
         return Err(CliError::Validation {
             message: format!(
                 "refusing to remove '{}': its containing directory resolves to '{}', \
-                 which is outside the eject target '{}' (resolved to '{}')",
+                 which is outside the install target '{}' (resolved to '{}')",
                 path.display(),
                 canonical_parent.display(),
                 target.display(),
@@ -334,9 +334,9 @@ fn remove_entry(path: &Path) -> Result<bool, CliError> {
 
 /// Every file `record.value` produces, as paths relative to `target`. A
 /// file entry contributes itself; a directory entry contributes every file
-/// beneath it, walked recursively. This is exactly the set of files `eject`
+/// beneath it, walked recursively. This is exactly the set of files `install`
 /// writes under `target` this run, so it is also exactly what
-/// `ejected[target]` should remember owning — see the `eject` doc comment.
+/// `installed[target]` should remember owning — see the `install` doc comment.
 fn flatten_value_files(paths: &TaskPaths, value: &[String]) -> Result<Vec<String>, CliError> {
     let mut files = Vec::new();
     for entry in value {
@@ -410,7 +410,7 @@ mod tests {
     use morphir_devkit::{TaskId, TaskPaths, TaskResult};
     use std::path::Path;
 
-    /// The key `eject` uses for `record.ejected`: the canonicalized path,
+    /// The key `install` uses for `record.installed`: the canonicalized path,
     /// not whatever string the test wrote. `path` must already exist.
     fn canonical_key(path: &Path) -> String {
         std::fs::canonicalize(path)
@@ -438,13 +438,13 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
         let target = temp.path().join("dist");
-        let report = eject(&paths, &target).unwrap();
+        let report = install(&paths, &target).unwrap();
         assert!(target.join("morphir-ir.json").is_file());
         assert!(!target.join("parse").exists());
         assert_eq!(report.copied, vec!["morphir-ir.json".to_owned()]);
         let record = TaskResult::read(&paths.result).unwrap().unwrap();
         assert_eq!(
-            record.ejected[&canonical_key(&target)],
+            record.installed[&canonical_key(&target)],
             vec!["morphir-ir.json".to_owned()]
         );
     }
@@ -456,7 +456,7 @@ mod tests {
         let target = temp.path().join("out.json");
         std::fs::write(&target, "not a directory").unwrap();
 
-        let error = eject(&paths, &target).unwrap_err();
+        let error = install(&paths, &target).unwrap_err();
         let CliError::Validation { message } = error else {
             panic!("expected a validation error, got {error:?}");
         };
@@ -472,24 +472,24 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir"]);
         let target = temp.path().join("dist");
-        eject(&paths, &target).unwrap();
+        install(&paths, &target).unwrap();
         assert!(target.join("morphir-ir/manifest.yaml").is_file());
         assert!(target.join("morphir-ir/pkg/x.yaml").is_file());
     }
 
     #[test]
-    fn re_eject_removes_stale_entries_and_keeps_foreign_files() {
+    fn re_install_removes_stale_entries_and_keeps_foreign_files() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("out");
         let paths = task_with_value(&root, &["morphir-ir.json"]);
         let target = temp.path().join("dist");
-        eject(&paths, &target).unwrap();
+        install(&paths, &target).unwrap();
         std::fs::write(target.join("README.md"), "mine").unwrap();
 
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
         record.value = vec!["morphir-ir".to_owned()];
         record.write(&paths.result).unwrap();
-        let report = eject(&paths, &target).unwrap();
+        let report = install(&paths, &target).unwrap();
 
         assert!(!target.join("morphir-ir.json").exists());
         assert!(target.join("morphir-ir/manifest.yaml").is_file());
@@ -498,8 +498,8 @@ mod tests {
     }
 
     #[test]
-    fn re_eject_removes_a_stale_directory_entry_and_keeps_a_foreign_directory_beside_it() {
-        // Same property as `re_eject_removes_stale_entries_and_keeps_foreign_files`,
+    fn re_install_removes_a_stale_directory_entry_and_keeps_a_foreign_directory_beside_it() {
+        // Same property as `re_install_removes_stale_entries_and_keeps_foreign_files`,
         // but for a directory entry: a foreign directory placed inside the
         // stale entry's parent must block pruning of that parent, and a
         // foreign top-level directory must be untouched.
@@ -513,7 +513,7 @@ mod tests {
         record.write(&paths.result).unwrap();
 
         let target = temp.path().join("dist");
-        eject(&paths, &target).unwrap();
+        install(&paths, &target).unwrap();
         assert!(target.join("sub/report/pkg/x.yaml").is_file());
 
         // A foreign file inside the entry's parent directory, and a foreign
@@ -525,7 +525,7 @@ mod tests {
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
         record.value = Vec::new();
         record.write(&paths.result).unwrap();
-        let report = eject(&paths, &target).unwrap();
+        let report = install(&paths, &target).unwrap();
 
         assert!(!target.join("sub/report").exists());
         // `removed` is now file-level bookkeeping: the one file this
@@ -552,7 +552,7 @@ mod tests {
             "sub/../../foreign_target/secret.txt",
         ] {
             let paths = task_with_value(&temp.path().join("out"), &[bad_entry]);
-            let error = eject(&paths, &target).unwrap_err();
+            let error = install(&paths, &target).unwrap_err();
             assert!(error.to_string().contains(".."), "{error}");
             assert!(!target.exists(), "target must not be created on rejection");
         }
@@ -561,7 +561,7 @@ mod tests {
         let absolute_entry_text = foreign.join("secret.txt");
         let absolute_entry_text = absolute_entry_text.to_string_lossy().into_owned();
         let paths = task_with_value(&temp.path().join("out2"), &[&absolute_entry_text]);
-        let error = eject(&paths, &target).unwrap_err();
+        let error = install(&paths, &target).unwrap_err();
         assert!(error.to_string().contains("absolute"), "{error}");
         assert!(!target.exists());
 
@@ -573,11 +573,11 @@ mod tests {
     }
 
     #[test]
-    fn previous_ejected_entries_that_could_escape_the_target_are_also_rejected() {
+    fn previous_installed_entries_that_could_escape_the_target_are_also_rejected() {
         // `validate_entry` runs over both `record.value` (covered above) and
-        // the bookkeeping list from a prior eject to this target
-        // (`record.ejected`). Exercise the second loop specifically: a
-        // clean `value` with a malicious entry sitting only in `ejected`.
+        // the bookkeeping list from a prior install to this target
+        // (`record.installed`). Exercise the second loop specifically: a
+        // clean `value` with a malicious entry sitting only in `installed`.
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &[]);
         let target = temp.path().join("dist");
@@ -585,11 +585,11 @@ mod tests {
 
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
         record
-            .ejected
+            .installed
             .insert(canonical_key(&target), vec!["../escape.txt".to_owned()]);
         record.write(&paths.result).unwrap();
 
-        let error = eject(&paths, &target).unwrap_err();
+        let error = install(&paths, &target).unwrap_err();
         assert!(error.to_string().contains(".."), "{error}");
     }
 
@@ -601,7 +601,7 @@ mod tests {
             let temp = tempfile::tempdir().unwrap();
             let paths = task_with_value(&temp.path().join("out"), &[degenerate]);
             let target = temp.path().join("dist");
-            let error = eject(&paths, &target).unwrap_err();
+            let error = install(&paths, &target).unwrap_err();
             assert!(
                 error.to_string().contains("does not name a path"),
                 "{error}"
@@ -610,9 +610,9 @@ mod tests {
     }
 
     #[test]
-    fn first_eject_merges_into_a_foreign_directory_without_deleting_it() {
+    fn first_install_merges_into_a_foreign_directory_without_deleting_it() {
         // A directory-valued entry is always merged into, never wiped
-        // first, whether or not anything has been ejected here before. If
+        // first, whether or not anything has been installed here before. If
         // the user already has their own directory at that path, it must be
         // merged into — not deleted — since this function never put it
         // there.
@@ -622,7 +622,7 @@ mod tests {
         std::fs::create_dir_all(target.join("morphir-ir")).unwrap();
         std::fs::write(target.join("morphir-ir/mine.txt"), "not yours").unwrap();
 
-        eject(&paths, &target).unwrap();
+        install(&paths, &target).unwrap();
 
         assert_eq!(
             std::fs::read_to_string(target.join("morphir-ir/mine.txt")).unwrap(),
@@ -634,13 +634,13 @@ mod tests {
     }
 
     #[test]
-    fn second_eject_after_merging_into_a_foreign_directory_still_keeps_the_foreign_file() {
+    fn second_install_after_merging_into_a_foreign_directory_still_keeps_the_foreign_file() {
         // Regression for the bug in the round-1 fix: merging into a user's
-        // pre-existing directory on the FIRST eject kept `mine.txt`, but
+        // pre-existing directory on the FIRST install kept `mine.txt`, but
         // bookkeeping then recorded the whole entry name as owned, so the
-        // SECOND eject saw the entry in its own history and wiped the
+        // SECOND install saw the entry in its own history and wiped the
         // directory anyway. Bookkeeping now tracks individual files, so the
-        // foreign file must survive any number of ejects, not just the
+        // foreign file must survive any number of installs, not just the
         // first.
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir"]);
@@ -648,26 +648,26 @@ mod tests {
         std::fs::create_dir_all(target.join("morphir-ir")).unwrap();
         std::fs::write(target.join("morphir-ir/mine.txt"), "not yours").unwrap();
 
-        eject(&paths, &target).unwrap();
+        install(&paths, &target).unwrap();
         assert_eq!(
             std::fs::read_to_string(target.join("morphir-ir/mine.txt")).unwrap(),
             "not yours"
         );
 
-        eject(&paths, &target).unwrap();
+        install(&paths, &target).unwrap();
 
         assert_eq!(
             std::fs::read_to_string(target.join("morphir-ir/mine.txt")).unwrap(),
             "not yours",
-            "a foreign file must survive a SECOND eject, not just the first"
+            "a foreign file must survive a SECOND install, not just the first"
         );
         assert!(target.join("morphir-ir/manifest.yaml").is_file());
         assert!(target.join("morphir-ir/pkg/x.yaml").is_file());
     }
 
     #[test]
-    fn second_eject_of_a_directory_entry_removes_a_file_no_longer_produced() {
-        // Once a directory entry has been ejected here before, a re-eject
+    fn second_install_of_a_directory_entry_removes_a_file_no_longer_produced() {
+        // Once a directory entry has been installed here before, a re-install
         // of it must still drop a file the task produced last time but not
         // this time — but only that file: a sibling file the task still
         // produces, and a foreign file the user has placed inside the same
@@ -676,41 +676,41 @@ mod tests {
         let root = temp.path().join("out");
         let paths = task_with_value(&root, &["morphir-ir"]);
         let target = temp.path().join("dist");
-        eject(&paths, &target).unwrap();
+        install(&paths, &target).unwrap();
         assert!(target.join("morphir-ir/pkg/x.yaml").is_file());
 
         std::fs::write(target.join("morphir-ir/foreign.txt"), "mine").unwrap();
         std::fs::remove_file(paths.dest.join("morphir-ir/pkg/x.yaml")).unwrap();
-        eject(&paths, &target).unwrap();
+        install(&paths, &target).unwrap();
 
         assert!(
             !target.join("morphir-ir/pkg/x.yaml").exists(),
-            "a file dropped from a directory this function owns must not survive a re-eject"
+            "a file dropped from a directory this function owns must not survive a re-install"
         );
         assert!(target.join("morphir-ir/manifest.yaml").is_file());
         assert_eq!(
             std::fs::read_to_string(target.join("morphir-ir/foreign.txt")).unwrap(),
             "mine",
-            "a foreign file inside an owned directory must survive a re-eject"
+            "a foreign file inside an owned directory must survive a re-install"
         );
     }
 
     #[test]
     fn removed_only_lists_files_actually_deleted() {
-        // If a previously-ejected file is already gone by the time a stale
-        // eject runs (the user deleted it, or an earlier run failed
+        // If a previously-installed file is already gone by the time a stale
+        // install runs (the user deleted it, or an earlier run failed
         // partway), that is not a removal this call performed and must not
         // be claimed in the report.
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
         let target = temp.path().join("dist");
-        eject(&paths, &target).unwrap();
+        install(&paths, &target).unwrap();
         std::fs::remove_file(target.join("morphir-ir.json")).unwrap();
 
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
         record.value = Vec::new();
         record.write(&paths.result).unwrap();
-        let report = eject(&paths, &target).unwrap();
+        let report = install(&paths, &target).unwrap();
 
         assert!(
             report.removed.is_empty(),
@@ -721,7 +721,7 @@ mod tests {
 
     #[test]
     fn a_legacy_entry_shaped_stale_path_that_is_a_directory_is_never_deleted() {
-        // Round 2 rewrote `ejected[target]` from entry names to flattened
+        // Round 2 rewrote `installed[target]` from entry names to flattened
         // file paths. A record written by an EARLIER build of this branch
         // still has an entry name like `morphir-ir` in that list. If the
         // current run's `value` no longer includes it, it looks stale by
@@ -737,11 +737,11 @@ mod tests {
 
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
         record
-            .ejected
+            .installed
             .insert(canonical_key(&target), vec!["morphir-ir".to_owned()]);
         record.write(&paths.result).unwrap();
 
-        let report = eject(&paths, &target).unwrap();
+        let report = install(&paths, &target).unwrap();
 
         assert!(target.join("morphir-ir/manifest.yaml").is_file());
         assert!(target.join("morphir-ir/pkg/x.yaml").is_file());
@@ -754,7 +754,7 @@ mod tests {
 
     #[test]
     fn a_stale_file_path_the_user_replaced_with_a_directory_is_never_deleted() {
-        // Eject wrote `morphir-ir.json` as a file. The user later removes it
+        // Install wrote `morphir-ir.json` as a file. The user later removes it
         // and creates their own directory of the same name. When the task
         // stops producing that entry, the path looks stale by file-path
         // bookkeeping — but it no longer names a file this function wrote,
@@ -762,7 +762,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
         let target = temp.path().join("dist");
-        eject(&paths, &target).unwrap();
+        install(&paths, &target).unwrap();
         assert!(target.join("morphir-ir.json").is_file());
 
         std::fs::remove_file(target.join("morphir-ir.json")).unwrap();
@@ -772,7 +772,7 @@ mod tests {
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
         record.value = Vec::new();
         record.write(&paths.result).unwrap();
-        let report = eject(&paths, &target).unwrap();
+        let report = install(&paths, &target).unwrap();
 
         assert!(target.join("morphir-ir.json").is_dir());
         assert!(target.join("morphir-ir.json/mine/keep.txt").is_file());
@@ -788,7 +788,7 @@ mod tests {
     fn stale_removal_refuses_to_delete_through_a_symlinked_intermediate_directory() {
         use std::os::unix::fs::symlink;
 
-        // `dist/sub` is a symlink to a directory the eject target does not
+        // `dist/sub` is a symlink to a directory the install target does not
         // own. A stale entry `sub/report` would make `remove_dir_all` land
         // on `outside/report` through that symlink even though
         // `symlink_metadata` on the final component (`report`) sees an
@@ -806,13 +806,13 @@ mod tests {
         let mut record = TaskResult::new(&TaskId::compile(), Path::new(""));
         record.value = Vec::new();
         record
-            .ejected
+            .installed
             .insert(canonical_key(&target), vec!["sub/report".to_owned()]);
         record.write(&paths.result).unwrap();
 
-        let error = eject(&paths, &target).unwrap_err();
+        let error = install(&paths, &target).unwrap_err();
         assert!(
-            error.to_string().contains("outside the eject target"),
+            error.to_string().contains("outside the install target"),
             "{error}"
         );
         assert_eq!(
@@ -824,7 +824,7 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn ejecting_into_a_symlinked_target_still_works() {
+    fn installing_into_a_symlinked_target_still_works() {
         // The target itself may legitimately be a symlink (`-o` pointed at
         // one); that must keep working since it is not an escape.
         use std::os::unix::fs::symlink;
@@ -836,7 +836,7 @@ mod tests {
         symlink(&real_target, &target).unwrap();
 
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
-        eject(&paths, &target).unwrap();
+        install(&paths, &target).unwrap();
 
         assert!(real_target.join("morphir-ir.json").is_file());
     }
@@ -845,23 +845,23 @@ mod tests {
     fn missing_record_is_an_error() {
         let temp = tempfile::tempdir().unwrap();
         let paths = TaskPaths::new(temp.path(), Path::new(""), &TaskId::compile());
-        let error = eject(&paths, &temp.path().join("dist")).unwrap_err();
+        let error = install(&paths, &temp.path().join("dist")).unwrap_err();
         assert!(error.to_string().contains("no result record"), "{error}");
     }
 
     #[test]
-    fn a_foreign_file_at_a_path_eject_would_write_blocks_the_whole_eject() {
-        // A file eject did not write, sitting exactly where the current
+    fn a_foreign_file_at_a_path_install_would_write_blocks_the_whole_install() {
+        // A file install did not write, sitting exactly where the current
         // `value` would write one, must not be silently overwritten (and
         // therefore must not later be deleted as if it were ours). The
-        // whole eject is refused instead, and nothing on disk changes.
+        // whole install is refused instead, and nothing on disk changes.
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
         let target = temp.path().join("dist");
         std::fs::create_dir_all(&target).unwrap();
         std::fs::write(target.join("morphir-ir.json"), "not ours").unwrap();
 
-        let error = eject(&paths, &target).unwrap_err();
+        let error = install(&paths, &target).unwrap_err();
         let CliError::Validation { message } = error else {
             panic!("expected a validation error, got {error:?}");
         };
@@ -879,13 +879,13 @@ mod tests {
         );
         let record = TaskResult::read(&paths.result).unwrap().unwrap();
         assert!(
-            record.ejected.is_empty(),
-            "no bookkeeping must be recorded when the eject is refused"
+            record.installed.is_empty(),
+            "no bookkeeping must be recorded when the install is refused"
         );
     }
 
     #[test]
-    fn a_foreign_file_inside_a_directory_entry_also_blocks_the_eject() {
+    fn a_foreign_file_inside_a_directory_entry_also_blocks_the_install() {
         // Same property, but the conflicting path is one of the individual
         // files flattened out of a directory-valued entry, not a top-level
         // file entry.
@@ -895,7 +895,7 @@ mod tests {
         std::fs::create_dir_all(target.join("morphir-ir")).unwrap();
         std::fs::write(target.join("morphir-ir/manifest.yaml"), "not ours").unwrap();
 
-        let error = eject(&paths, &target).unwrap_err();
+        let error = install(&paths, &target).unwrap_err();
         assert!(
             error.to_string().contains("morphir-ir/manifest.yaml"),
             "{error}"
@@ -908,30 +908,30 @@ mod tests {
     }
 
     #[test]
-    fn re_ejecting_over_a_file_we_wrote_last_time_still_succeeds() {
+    fn re_installing_over_a_file_we_wrote_last_time_still_succeeds() {
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
         let target = temp.path().join("dist");
-        eject(&paths, &target).unwrap();
+        install(&paths, &target).unwrap();
 
-        // Ejecting again over the exact same, still-owned file must not be
+        // Installing again over the exact same, still-owned file must not be
         // treated as a conflict.
-        eject(&paths, &target).unwrap();
+        install(&paths, &target).unwrap();
         assert!(target.join("morphir-ir.json").is_file());
     }
 
     #[test]
-    fn re_ejecting_with_a_different_spelling_of_the_same_target_still_finds_prior_bookkeeping() {
-        // `ejected` is keyed on the canonicalized target, so `dist` and
+    fn re_installing_with_a_different_spelling_of_the_same_target_still_finds_prior_bookkeeping() {
+        // `installed` is keyed on the canonicalized target, so `dist` and
         // `./dist` share bookkeeping instead of shadowing each other: a
-        // stale file from the first eject must still be recognized and
+        // stale file from the first install must still be recognized and
         // removed on the second, even though the two calls spell `target`
         // differently.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("out");
         let paths = task_with_value(&root, &["morphir-ir.json"]);
         let target = temp.path().join("dist");
-        eject(&paths, &target).unwrap();
+        install(&paths, &target).unwrap();
         assert!(target.join("morphir-ir.json").is_file());
 
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
@@ -939,18 +939,18 @@ mod tests {
         record.write(&paths.result).unwrap();
 
         let dotted_target = temp.path().join(".").join("dist");
-        let report = eject(&paths, &dotted_target).unwrap();
+        let report = install(&paths, &dotted_target).unwrap();
 
         assert!(!target.join("morphir-ir.json").exists());
         assert_eq!(report.removed, vec!["morphir-ir.json".to_owned()]);
     }
 
     #[test]
-    fn eject_refuses_a_target_that_is_the_tasks_own_dest() {
+    fn install_refuses_a_target_that_is_the_tasks_own_dest() {
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
 
-        let error = eject(&paths, &paths.dest).unwrap_err();
+        let error = install(&paths, &paths.dest).unwrap_err();
         let CliError::Validation { message } = error else {
             panic!("expected a validation error, got {error:?}");
         };
@@ -958,24 +958,24 @@ mod tests {
     }
 
     #[test]
-    fn eject_refuses_a_target_nested_inside_the_tasks_own_dest() {
+    fn install_refuses_a_target_nested_inside_the_tasks_own_dest() {
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
         let target = paths.dest.join("nested");
 
-        let error = eject(&paths, &target).unwrap_err();
+        let error = install(&paths, &target).unwrap_err();
         assert!(error.to_string().contains("scratch directory"), "{error}");
     }
 
     #[test]
-    fn maybe_eject_resolves_relative_targets_against_cwd() {
+    fn maybe_install_resolves_relative_targets_against_cwd() {
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
-        assert_eq!(maybe_eject(&paths, None, temp.path()).unwrap(), None);
-        let ejected = maybe_eject(&paths, Some("dist/ir"), temp.path())
+        assert_eq!(maybe_install(&paths, None, temp.path()).unwrap(), None);
+        let installed = maybe_install(&paths, Some("dist/ir"), temp.path())
             .unwrap()
             .unwrap();
-        assert_eq!(ejected, temp.path().join("dist/ir").to_string_lossy());
+        assert_eq!(installed, temp.path().join("dist/ir").to_string_lossy());
         assert!(temp.path().join("dist/ir/morphir-ir.json").is_file());
     }
 }

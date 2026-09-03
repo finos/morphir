@@ -70,7 +70,7 @@ enum Commands {
         /// Input source directory or file. An installed or configured Elm process accepts one .elm file.
         #[arg(short, long)]
         input: Option<String>,
-        /// Eject task outputs to this directory after the run. Canonical output stays under .morphir/out.
+        /// Install task outputs into this directory after the run. Canonical output stays under .morphir/out.
         #[arg(short, long)]
         output: Option<String>,
         /// Package name override
@@ -97,7 +97,7 @@ enum Commands {
         /// Path to the Morphir IR file or directory
         #[arg(short, long)]
         input: Option<String>,
-        /// Eject task outputs to this directory after the run. Canonical output stays under .morphir/out.
+        /// Install task outputs into this directory after the run. Canonical output stays under .morphir/out.
         #[arg(short, long)]
         output: Option<String>,
         /// Explicit config file path
@@ -530,7 +530,7 @@ enum GleamAction {
         /// Input source directory or file
         #[arg(short, long)]
         input: Option<String>,
-        /// Eject task outputs to this directory after the run. Canonical output stays under .morphir/out.
+        /// Install task outputs into this directory after the run. Canonical output stays under .morphir/out.
         #[arg(short, long)]
         output: Option<String>,
         /// Package name override
@@ -548,7 +548,7 @@ enum GleamAction {
         /// Path to the Morphir IR file or directory
         #[arg(short, long)]
         input: Option<String>,
-        /// Eject task outputs to this directory after the run. Canonical output stays under .morphir/out.
+        /// Install task outputs into this directory after the run. Canonical output stays under .morphir/out.
         #[arg(short, long)]
         output: Option<String>,
         /// Explicit config file path
@@ -563,7 +563,7 @@ enum GleamAction {
         /// Input source directory or file
         #[arg(short, long)]
         input: Option<String>,
-        /// Eject task outputs to this directory after the run. Canonical output stays under .morphir/out.
+        /// Install task outputs into this directory after the run. Canonical output stays under .morphir/out.
         #[arg(short, long)]
         output: Option<String>,
         /// Package name override

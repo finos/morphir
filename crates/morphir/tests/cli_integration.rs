@@ -3551,7 +3551,7 @@ fn out_dir_flag_beats_env_which_beats_the_default() {
 }
 
 #[test]
-fn compile_writes_a_result_record_and_ejects_only_the_value() {
+fn compile_writes_a_result_record_and_installs_only_the_value() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let project = temp.path().join("project");
@@ -3579,14 +3579,14 @@ fn compile_writes_a_result_record_and_ejects_only_the_value() {
     assert_eq!(record["ir"]["layout"], "single-file");
     assert_eq!(record["ir"]["format"], "json");
 
-    let ejected = project.join("dist/ir");
-    assert!(ejected.join("morphir-ir.json").is_file());
+    let installed = project.join("dist/ir");
+    assert!(installed.join("morphir-ir.json").is_file());
     assert!(
-        !ejected.join("parse").exists(),
-        "parse stage must not eject"
+        !installed.join("parse").exists(),
+        "parse stage must not install"
     );
     let stderr = String::from_utf8_lossy(&compile.stderr);
-    assert!(stderr.contains("Ejected:"), "{stderr}");
+    assert!(stderr.contains("Installed:"), "{stderr}");
 }
 
 #[test]
@@ -3771,7 +3771,7 @@ fn workspace_members_write_under_the_workspace_out_root() {
 }
 
 #[test]
-fn re_ejecting_after_a_storage_change_removes_the_stale_file() {
+fn re_installing_after_a_storage_change_removes_the_stale_file() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let project = temp.path().join("project");
@@ -3798,7 +3798,7 @@ fn re_ejecting_after_a_storage_change_removes_the_stale_file() {
 
     assert!(
         !project.join("dist/morphir-ir.json").exists(),
-        "stale eject not removed"
+        "stale install not removed"
     );
     assert!(project.join("dist/morphir-ir.yaml").is_file());
     assert!(

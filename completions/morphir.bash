@@ -45,7 +45,7 @@ cmd compile display_order=3 args_override_self=#false help="Compile source code 
     flag "-i --input" help="Input source directory or file. An installed or configured Elm process accepts one .elm file" {
         arg <INPUT>
     }
-    flag "-o --output" help="Eject task outputs to this directory after the run. Canonical output stays under .morphir/out" {
+    flag "-o --output" help="Install task outputs into this directory after the run. Canonical output stays under .morphir/out" {
         arg <OUTPUT>
     }
     flag --package-name help="Package name override" {
@@ -67,7 +67,7 @@ cmd generate display_order=4 args_override_self=#false help="Generate code from 
     flag "-i --input" help="Path to the Morphir IR file or directory" {
         arg <INPUT>
     }
-    flag "-o --output" help="Eject task outputs to this directory after the run. Canonical output stays under .morphir/out" {
+    flag "-o --output" help="Install task outputs into this directory after the run. Canonical output stays under .morphir/out" {
         arg <OUTPUT>
     }
     flag --config help="Explicit config file path" {
@@ -891,7 +891,7 @@ cmd gleam display_order=19 subcommand_required=#true arg_required_else_help=#tru
         flag "-i --input" help="Input source directory or file" {
             arg <INPUT>
         }
-        flag "-o --output" help="Eject task outputs to this directory after the run. Canonical output stays under .morphir/out" {
+        flag "-o --output" help="Install task outputs into this directory after the run. Canonical output stays under .morphir/out" {
             arg <OUTPUT>
         }
         flag --package-name help="Package name override" {
@@ -908,7 +908,7 @@ cmd gleam display_order=19 subcommand_required=#true arg_required_else_help=#tru
         flag "-i --input" help="Path to the Morphir IR file or directory" {
             arg <INPUT>
         }
-        flag "-o --output" help="Eject task outputs to this directory after the run. Canonical output stays under .morphir/out" {
+        flag "-o --output" help="Install task outputs into this directory after the run. Canonical output stays under .morphir/out" {
             arg <OUTPUT>
         }
         flag --config help="Explicit config file path" {
@@ -922,7 +922,7 @@ cmd gleam display_order=19 subcommand_required=#true arg_required_else_help=#tru
         flag "-i --input" help="Input source directory or file" {
             arg <INPUT>
         }
-        flag "-o --output" help="Eject task outputs to this directory after the run. Canonical output stays under .morphir/out" {
+        flag "-o --output" help="Install task outputs into this directory after the run. Canonical output stays under .morphir/out" {
             arg <OUTPUT>
         }
         flag --package-name help="Package name override" {

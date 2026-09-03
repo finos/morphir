@@ -162,7 +162,7 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
             artifacts: vec![],
             diagnostics,
             output_path: output_path.to_string_lossy().to_string(),
-            ejected_path: None,
+            installed_path: None,
         };
         if format == OutputFormat::Human {
             write_generate_human(&output).map_err(CliError::from)?;
@@ -187,19 +187,19 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
         .map(|task| vec![task.as_str().to_owned()])
         .unwrap_or_default();
     record.value = artifacts.clone();
-    record.ejected = prepared.previous_ejected;
+    record.installed = prepared.previous_installed;
     record
         .write(&generate_paths.result)
         .map_err(|error| CliError::Config { error })?;
-    let ejected_path =
-        crate::commands::eject::maybe_eject(&generate_paths, output.as_deref(), &start_dir)?;
+    let installed_path =
+        crate::commands::install::maybe_install(&generate_paths, output.as_deref(), &start_dir)?;
 
     let output = GenerateOutput {
         success: true,
         artifacts,
         diagnostics,
         output_path: output_path.to_string_lossy().to_string(),
-        ejected_path,
+        installed_path,
     };
     if format == OutputFormat::Human {
         write_generate_human(&output).map_err(CliError::from)?;
