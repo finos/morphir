@@ -2,8 +2,8 @@
 
 pub(super) fn generated_asset(path: &str) -> Option<EmbeddedAsset> {
     match path {
-        "assets/index-BVMw2RD_.js" => Some(EmbeddedAsset { bytes: include_bytes!("assets/index-BVMw2RD_.js"), content_type: "text/javascript; charset=utf-8", immutable: true }),
-        "assets/index-DqZEY8rj.css" => Some(EmbeddedAsset { bytes: include_bytes!("assets/index-DqZEY8rj.css"), content_type: "text/css; charset=utf-8", immutable: true }),
+        "assets/index-BXFbSMkL.css" => Some(EmbeddedAsset { bytes: include_bytes!("assets/index-BXFbSMkL.css"), content_type: "text/css; charset=utf-8", immutable: true }),
+        "assets/index-Cr56YVE4.js" => Some(EmbeddedAsset { bytes: include_bytes!("assets/index-Cr56YVE4.js"), content_type: "text/javascript; charset=utf-8", immutable: true }),
         "assets/morphir_workspace_wasm_bg-CF-6Vjk6.wasm" => Some(EmbeddedAsset { bytes: include_bytes!("assets/morphir_workspace_wasm_bg-CF-6Vjk6.wasm"), content_type: "application/wasm", immutable: true }),
         "index.html" => Some(EmbeddedAsset { bytes: include_bytes!("index.html"), content_type: "text/html; charset=utf-8", immutable: false }),
         _ => None,
