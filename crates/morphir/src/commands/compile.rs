@@ -640,8 +640,12 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
     record
         .write(&paths.result)
         .map_err(|error| CliError::Config { error })?;
-    let installed_path =
-        crate::commands::install::maybe_install(&paths, options.output.as_deref(), &start_dir)?;
+    let installed_path = crate::commands::install::maybe_install(
+        &paths,
+        options.output.as_deref(),
+        &start_dir,
+        &out.root,
+    )?;
     // The task is finished: its record is written and its install is done, so
     // the next run of this task may start.
     drop(prepared.lock);
@@ -1170,7 +1174,7 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         .write(&paths.result)
         .map_err(|error| CliError::Config { error })?;
     let installed_path =
-        crate::commands::install::maybe_install(&paths, output.as_deref(), &start_dir)?;
+        crate::commands::install::maybe_install(&paths, output.as_deref(), &start_dir, &out.root)?;
     // The task is finished: its record is written and its install is done, so
     // the next run of this task may start.
     drop(prepared.lock);

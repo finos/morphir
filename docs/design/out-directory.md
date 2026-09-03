@@ -159,7 +159,19 @@ only ever creates real directories, so if a directory it wrote earlier is a
 symlink now, someone swapped it in afterwards, and the files under it are the
 user's rather than Morphir's. Install walks the components between the target
 and each file in the ledger, and names the link in its error rather than
-deleting or overwriting through it. This is the Zig `zig-out`
+deleting or overwriting through it.
+
+The whole install — the conflict scan, the removals, the copies, and the
+ledger write — runs under an exclusive lock on the install target. The task
+lock is not enough here: `compile -o dist` and `generate -o dist` hold
+different task locks, so without a target lock both can find one destination
+absent, both write it, and both record themselves as owning it. The lock is
+keyed on the canonical target, so two spellings of one directory are one
+directory, and the lock file lives at
+`<out root>/install-locks/<hash>.lock` rather than inside the target, where
+the conflict scan would read it as foreign content.
+
+This is the Zig `zig-out`
 install step; `.dest` is the cache, and `-o` only ever adds or retires files
 it owns there.
 

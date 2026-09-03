@@ -1,5 +1,6 @@
 //! Copy a task's declared value to a user path after the run.
 
+use crate::commands::out_context::TaskLock;
 use crate::error::CliError;
 use morphir_devkit::{TaskPaths, TaskResult};
 use std::collections::HashSet;
@@ -48,7 +49,17 @@ pub struct InstallReport {
 /// is also resolved against the filesystem before the first byte is written:
 /// see `confined_destination`. Both checks run in the pre-flight scan, so an
 /// install that is going to be refused writes nothing at all.
-pub fn install(paths: &TaskPaths, target: &Path) -> Result<InstallReport, CliError> {
+///
+/// All of that runs under an exclusive lock on the install target, taken as
+/// soon as the target is canonicalized and held until the ledger is written.
+/// `out_root` is where that lock file lives; see `install_lock_path` for why
+/// it is keyed on the target rather than on the task, and why it is not
+/// written into the target itself.
+pub fn install(
+    paths: &TaskPaths,
+    target: &Path,
+    out_root: &Path,
+) -> Result<InstallReport, CliError> {
     let mut record = TaskResult::read(&paths.result)
         .map_err(|error| CliError::Config { error })?
         .ok_or_else(|| CliError::Validation {
@@ -89,6 +100,14 @@ pub fn install(paths: &TaskPaths, target: &Path) -> Result<InstallReport, CliErr
     let canonical_target =
         std::fs::canonicalize(target).map_err(|error| CliError::FileSystem { error })?;
     reject_target_inside_dest(&canonical_target, &paths.dest)?;
+
+    // Everything from here on — the conflict scan, the stale removals, the
+    // copies, and the ledger write — runs with this held. Dropped when the
+    // function returns, whichever way it returns.
+    let _target_lock = TaskLock::acquire(
+        &install_lock_path(out_root, &canonical_target),
+        "installing to this target",
+    )?;
 
     // Keyed on the canonical target, not the raw `-o` string, so `dist` and
     // `./dist` (or any other two spellings of the same directory) share one
@@ -199,10 +218,13 @@ pub fn install(paths: &TaskPaths, target: &Path) -> Result<InstallReport, CliErr
 }
 
 /// Install when `-o` was given. Relative targets resolve against `cwd`.
+/// `out_root` is where the install target's lock file goes; see
+/// `install_lock_path`.
 pub fn maybe_install(
     paths: &TaskPaths,
     output: Option<&str>,
     cwd: &Path,
+    out_root: &Path,
 ) -> Result<Option<String>, CliError> {
     let Some(output) = output else {
         return Ok(None);
@@ -213,8 +235,43 @@ pub fn maybe_install(
     } else {
         cwd.join(target)
     };
-    let report = install(paths, &target)?;
+    let report = install(paths, &target, out_root)?;
     Ok(Some(report.target.to_string_lossy().into_owned()))
+}
+
+/// The lock file guarding one install target:
+/// `<out root>/install-locks/<hash of the canonical target>.lock`.
+///
+/// Keyed on the target rather than on the task, because the thing two runs
+/// collide over is the directory they are both writing into. `compile -o
+/// dist` and `generate -o dist` hold different task locks, so without this
+/// both can find `dist/morphir-ir.json` absent, both write it, and both
+/// record themselves as owning it.
+///
+/// The lock file does not go inside the target. Install's pre-flight scan
+/// treats anything under the target that it did not write as foreign content
+/// and refuses the run, so a lock file there would make install refuse
+/// itself. The out root is Morphir's own directory and already holds the
+/// task locks, so it is where this one belongs too.
+///
+/// The name is a hex `DefaultHasher` digest of the canonical target's bytes.
+/// It is not a cryptographic hash — `sha2` is not a dependency of this crate
+/// — and it does not need to be: two different targets whose digests
+/// collided would merely take turns with each other, which costs a little
+/// time and gets no answer wrong. `DefaultHasher` is not guaranteed stable
+/// across Rust releases either, which does not matter here, because every
+/// process contending for one lock is the same binary.
+pub fn install_lock_path(out_root: &Path, canonical_target: &Path) -> PathBuf {
+    use std::hash::{Hash, Hasher};
+
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    canonical_target
+        .as_os_str()
+        .as_encoded_bytes()
+        .hash(&mut hasher);
+    out_root
+        .join("install-locks")
+        .join(format!("{:016x}.lock", hasher.finish()))
 }
 
 /// Reject a `-o` target that already exists as something other than a
@@ -570,6 +627,18 @@ mod tests {
     use morphir_devkit::{TaskId, TaskPaths, TaskResult};
     use std::path::Path;
 
+    /// The out root a task's `TaskPaths` were built under. Every test here
+    /// uses the root module, so the record sits directly in the out root.
+    fn out_root_of(paths: &TaskPaths) -> PathBuf {
+        paths.result.parent().unwrap().to_path_buf()
+    }
+
+    /// `install` with the out root the task was built under, which is where
+    /// the install target's lock file goes.
+    fn install_here(paths: &TaskPaths, target: &Path) -> Result<InstallReport, CliError> {
+        install(paths, target, &out_root_of(paths))
+    }
+
     /// The key `install` uses for `record.installed`: the canonicalized path,
     /// not whatever string the test wrote. `path` must already exist.
     fn canonical_key(path: &Path) -> String {
@@ -598,7 +667,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
         let target = temp.path().join("dist");
-        let report = install(&paths, &target).unwrap();
+        let report = install_here(&paths, &target).unwrap();
         assert!(target.join("morphir-ir.json").is_file());
         assert!(!target.join("parse").exists());
         assert_eq!(report.copied, vec!["morphir-ir.json".to_owned()]);
@@ -616,7 +685,7 @@ mod tests {
         let target = temp.path().join("out.json");
         std::fs::write(&target, "not a directory").unwrap();
 
-        let error = install(&paths, &target).unwrap_err();
+        let error = install_here(&paths, &target).unwrap_err();
         let CliError::Validation { message } = error else {
             panic!("expected a validation error, got {error:?}");
         };
@@ -632,7 +701,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir"]);
         let target = temp.path().join("dist");
-        install(&paths, &target).unwrap();
+        install_here(&paths, &target).unwrap();
         assert!(target.join("morphir-ir/manifest.yaml").is_file());
         assert!(target.join("morphir-ir/pkg/x.yaml").is_file());
     }
@@ -643,13 +712,13 @@ mod tests {
         let root = temp.path().join("out");
         let paths = task_with_value(&root, &["morphir-ir.json"]);
         let target = temp.path().join("dist");
-        install(&paths, &target).unwrap();
+        install_here(&paths, &target).unwrap();
         std::fs::write(target.join("README.md"), "mine").unwrap();
 
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
         record.value = vec!["morphir-ir".to_owned()];
         record.write(&paths.result).unwrap();
-        let report = install(&paths, &target).unwrap();
+        let report = install_here(&paths, &target).unwrap();
 
         assert!(!target.join("morphir-ir.json").exists());
         assert!(target.join("morphir-ir/manifest.yaml").is_file());
@@ -673,7 +742,7 @@ mod tests {
         record.write(&paths.result).unwrap();
 
         let target = temp.path().join("dist");
-        install(&paths, &target).unwrap();
+        install_here(&paths, &target).unwrap();
         assert!(target.join("sub/report/pkg/x.yaml").is_file());
 
         // A foreign file inside the entry's parent directory, and a foreign
@@ -685,7 +754,7 @@ mod tests {
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
         record.value = Vec::new();
         record.write(&paths.result).unwrap();
-        let report = install(&paths, &target).unwrap();
+        let report = install_here(&paths, &target).unwrap();
 
         assert!(!target.join("sub/report").exists());
         // `removed` is now file-level bookkeeping: the one file this
@@ -712,7 +781,7 @@ mod tests {
             "sub/../../foreign_target/secret.txt",
         ] {
             let paths = task_with_value(&temp.path().join("out"), &[bad_entry]);
-            let error = install(&paths, &target).unwrap_err();
+            let error = install_here(&paths, &target).unwrap_err();
             assert!(error.to_string().contains(".."), "{error}");
             assert!(!target.exists(), "target must not be created on rejection");
         }
@@ -721,7 +790,7 @@ mod tests {
         let absolute_entry_text = foreign.join("secret.txt");
         let absolute_entry_text = absolute_entry_text.to_string_lossy().into_owned();
         let paths = task_with_value(&temp.path().join("out2"), &[&absolute_entry_text]);
-        let error = install(&paths, &target).unwrap_err();
+        let error = install_here(&paths, &target).unwrap_err();
         assert!(error.to_string().contains("absolute"), "{error}");
         assert!(!target.exists());
 
@@ -749,7 +818,7 @@ mod tests {
             .insert(canonical_key(&target), vec!["../escape.txt".to_owned()]);
         record.write(&paths.result).unwrap();
 
-        let error = install(&paths, &target).unwrap_err();
+        let error = install_here(&paths, &target).unwrap_err();
         assert!(error.to_string().contains(".."), "{error}");
     }
 
@@ -761,7 +830,7 @@ mod tests {
             let temp = tempfile::tempdir().unwrap();
             let paths = task_with_value(&temp.path().join("out"), &[degenerate]);
             let target = temp.path().join("dist");
-            let error = install(&paths, &target).unwrap_err();
+            let error = install_here(&paths, &target).unwrap_err();
             assert!(
                 error.to_string().contains("does not name a path"),
                 "{error}"
@@ -782,7 +851,7 @@ mod tests {
         std::fs::create_dir_all(target.join("morphir-ir")).unwrap();
         std::fs::write(target.join("morphir-ir/mine.txt"), "not yours").unwrap();
 
-        install(&paths, &target).unwrap();
+        install_here(&paths, &target).unwrap();
 
         assert_eq!(
             std::fs::read_to_string(target.join("morphir-ir/mine.txt")).unwrap(),
@@ -808,13 +877,13 @@ mod tests {
         std::fs::create_dir_all(target.join("morphir-ir")).unwrap();
         std::fs::write(target.join("morphir-ir/mine.txt"), "not yours").unwrap();
 
-        install(&paths, &target).unwrap();
+        install_here(&paths, &target).unwrap();
         assert_eq!(
             std::fs::read_to_string(target.join("morphir-ir/mine.txt")).unwrap(),
             "not yours"
         );
 
-        install(&paths, &target).unwrap();
+        install_here(&paths, &target).unwrap();
 
         assert_eq!(
             std::fs::read_to_string(target.join("morphir-ir/mine.txt")).unwrap(),
@@ -836,12 +905,12 @@ mod tests {
         let root = temp.path().join("out");
         let paths = task_with_value(&root, &["morphir-ir"]);
         let target = temp.path().join("dist");
-        install(&paths, &target).unwrap();
+        install_here(&paths, &target).unwrap();
         assert!(target.join("morphir-ir/pkg/x.yaml").is_file());
 
         std::fs::write(target.join("morphir-ir/foreign.txt"), "mine").unwrap();
         std::fs::remove_file(paths.dest.join("morphir-ir/pkg/x.yaml")).unwrap();
-        install(&paths, &target).unwrap();
+        install_here(&paths, &target).unwrap();
 
         assert!(
             !target.join("morphir-ir/pkg/x.yaml").exists(),
@@ -864,13 +933,13 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
         let target = temp.path().join("dist");
-        install(&paths, &target).unwrap();
+        install_here(&paths, &target).unwrap();
         std::fs::remove_file(target.join("morphir-ir.json")).unwrap();
 
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
         record.value = Vec::new();
         record.write(&paths.result).unwrap();
-        let report = install(&paths, &target).unwrap();
+        let report = install_here(&paths, &target).unwrap();
 
         assert!(
             report.removed.is_empty(),
@@ -901,7 +970,7 @@ mod tests {
             .insert(canonical_key(&target), vec!["morphir-ir".to_owned()]);
         record.write(&paths.result).unwrap();
 
-        let report = install(&paths, &target).unwrap();
+        let report = install_here(&paths, &target).unwrap();
 
         assert!(target.join("morphir-ir/manifest.yaml").is_file());
         assert!(target.join("morphir-ir/pkg/x.yaml").is_file());
@@ -922,7 +991,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
         let target = temp.path().join("dist");
-        install(&paths, &target).unwrap();
+        install_here(&paths, &target).unwrap();
         assert!(target.join("morphir-ir.json").is_file());
 
         std::fs::remove_file(target.join("morphir-ir.json")).unwrap();
@@ -932,7 +1001,7 @@ mod tests {
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
         record.value = Vec::new();
         record.write(&paths.result).unwrap();
-        let report = install(&paths, &target).unwrap();
+        let report = install_here(&paths, &target).unwrap();
 
         assert!(target.join("morphir-ir.json").is_dir());
         assert!(target.join("morphir-ir.json/mine/keep.txt").is_file());
@@ -974,7 +1043,7 @@ mod tests {
             .insert(canonical_key(&target), vec!["sub/report".to_owned()]);
         record.write(&paths.result).unwrap();
 
-        let error = install(&paths, &target).unwrap_err();
+        let error = install_here(&paths, &target).unwrap_err();
         assert!(error.to_string().contains("symbolic link"), "{error}");
         assert!(error.to_string().contains("sub"), "{error}");
         assert_eq!(
@@ -1002,7 +1071,7 @@ mod tests {
         symlink(&outside, target.join("morphir-ir")).unwrap();
 
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir"]);
-        let error = install(&paths, &target).unwrap_err();
+        let error = install_here(&paths, &target).unwrap_err();
         let CliError::Validation { message } = error else {
             panic!("expected a validation error, got {error:?}");
         };
@@ -1037,7 +1106,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir"]);
         let target = temp.path().join("dist");
-        install(&paths, &target).unwrap();
+        install_here(&paths, &target).unwrap();
         assert!(target.join("morphir-ir/manifest.yaml").is_file());
 
         let outside = temp.path().join("outside");
@@ -1046,7 +1115,7 @@ mod tests {
         std::fs::remove_dir_all(target.join("morphir-ir")).unwrap();
         symlink(&outside, target.join("morphir-ir")).unwrap();
 
-        let error = install(&paths, &target).unwrap_err();
+        let error = install_here(&paths, &target).unwrap_err();
         assert!(
             error.to_string().contains("outside the install target"),
             "{error}"
@@ -1071,7 +1140,7 @@ mod tests {
         symlink(target.join("real"), target.join("morphir-ir")).unwrap();
 
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir"]);
-        install(&paths, &target).unwrap();
+        install_here(&paths, &target).unwrap();
 
         assert!(target.join("real/manifest.yaml").is_file());
         assert!(target.join("real/pkg/x.yaml").is_file());
@@ -1095,7 +1164,7 @@ mod tests {
         .unwrap();
 
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
-        let error = install(&paths, &target).unwrap_err();
+        let error = install_here(&paths, &target).unwrap_err();
         assert!(
             error.to_string().contains("symbolic link with no target"),
             "{error}"
@@ -1116,7 +1185,7 @@ mod tests {
         symlink(&real_target, &target).unwrap();
 
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
-        install(&paths, &target).unwrap();
+        install_here(&paths, &target).unwrap();
 
         assert!(real_target.join("morphir-ir.json").is_file());
     }
@@ -1125,7 +1194,7 @@ mod tests {
     fn missing_record_is_an_error() {
         let temp = tempfile::tempdir().unwrap();
         let paths = TaskPaths::new(temp.path(), Path::new(""), &TaskId::compile()).unwrap();
-        let error = install(&paths, &temp.path().join("dist")).unwrap_err();
+        let error = install_here(&paths, &temp.path().join("dist")).unwrap_err();
         assert!(error.to_string().contains("no result record"), "{error}");
     }
 
@@ -1163,7 +1232,7 @@ mod tests {
         record.tombstone = true;
         record.write(&paths.result).unwrap();
 
-        let error = install(&paths, &target).unwrap_err();
+        let error = install_here(&paths, &target).unwrap_err();
         let CliError::Validation { message } = error else {
             panic!("expected a validation error, got {error:?}");
         };
@@ -1190,7 +1259,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let (paths, target) = a_target_with_one_previously_installed_file(temp.path());
 
-        let report = install(&paths, &target).unwrap();
+        let report = install_here(&paths, &target).unwrap();
 
         assert!(report.copied.is_empty());
         assert_eq!(report.removed, vec!["morphir-ir.json".to_owned()]);
@@ -1218,7 +1287,7 @@ mod tests {
         std::fs::create_dir_all(&target).unwrap();
         std::fs::write(target.join("morphir-ir.json"), "not ours").unwrap();
 
-        let error = install(&paths, &target).unwrap_err();
+        let error = install_here(&paths, &target).unwrap_err();
         let CliError::Validation { message } = error else {
             panic!("expected a validation error, got {error:?}");
         };
@@ -1252,7 +1321,7 @@ mod tests {
         std::fs::create_dir_all(target.join("morphir-ir")).unwrap();
         std::fs::write(target.join("morphir-ir/manifest.yaml"), "not ours").unwrap();
 
-        let error = install(&paths, &target).unwrap_err();
+        let error = install_here(&paths, &target).unwrap_err();
         assert!(
             error.to_string().contains("morphir-ir/manifest.yaml"),
             "{error}"
@@ -1269,11 +1338,11 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
         let target = temp.path().join("dist");
-        install(&paths, &target).unwrap();
+        install_here(&paths, &target).unwrap();
 
         // Installing again over the exact same, still-owned file must not be
         // treated as a conflict.
-        install(&paths, &target).unwrap();
+        install_here(&paths, &target).unwrap();
         assert!(target.join("morphir-ir.json").is_file());
     }
 
@@ -1288,7 +1357,7 @@ mod tests {
         let root = temp.path().join("out");
         let paths = task_with_value(&root, &["morphir-ir.json"]);
         let target = temp.path().join("dist");
-        install(&paths, &target).unwrap();
+        install_here(&paths, &target).unwrap();
         assert!(target.join("morphir-ir.json").is_file());
 
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
@@ -1296,7 +1365,7 @@ mod tests {
         record.write(&paths.result).unwrap();
 
         let dotted_target = temp.path().join(".").join("dist");
-        let report = install(&paths, &dotted_target).unwrap();
+        let report = install_here(&paths, &dotted_target).unwrap();
 
         assert!(!target.join("morphir-ir.json").exists());
         assert_eq!(report.removed, vec!["morphir-ir.json".to_owned()]);
@@ -1307,7 +1376,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
 
-        let error = install(&paths, &paths.dest).unwrap_err();
+        let error = install_here(&paths, &paths.dest).unwrap_err();
         let CliError::Validation { message } = error else {
             panic!("expected a validation error, got {error:?}");
         };
@@ -1320,7 +1389,7 @@ mod tests {
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
         let target = paths.dest.join("nested");
 
-        let error = install(&paths, &target).unwrap_err();
+        let error = install_here(&paths, &target).unwrap_err();
         assert!(error.to_string().contains("scratch directory"), "{error}");
     }
 
@@ -1335,7 +1404,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir"]);
         let target = temp.path().join("dist");
-        install(&paths, &target).unwrap();
+        install_here(&paths, &target).unwrap();
         assert!(target.join("morphir-ir/manifest.yaml").is_file());
 
         let foreign = target.join("other");
@@ -1350,7 +1419,7 @@ mod tests {
         record.value = Vec::new();
         record.write(&paths.result).unwrap();
 
-        let message = install(&paths, &target).unwrap_err().to_string();
+        let message = install_here(&paths, &target).unwrap_err().to_string();
         assert!(message.contains("symbolic link"), "{message}");
         assert!(message.contains("morphir-ir"), "{message}");
         assert_eq!(
@@ -1360,12 +1429,98 @@ mod tests {
         );
     }
 
+    /// The lock is the target's, not the task's: two tasks installing to one
+    /// directory have to take turns, and two spellings of one directory are
+    /// one directory.
+    #[test]
+    fn the_install_lock_is_keyed_on_the_target_and_lives_under_the_out_root() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("out");
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(&target).unwrap();
+        let canonical_target = std::fs::canonicalize(&target).unwrap();
+        let dotted = std::fs::canonicalize(temp.path().join("./dist")).unwrap();
+
+        let lock_path = install_lock_path(&root, &canonical_target);
+        assert_eq!(lock_path, install_lock_path(&root, &dotted));
+        assert_ne!(
+            lock_path,
+            install_lock_path(&root, &std::fs::canonicalize(temp.path()).unwrap())
+        );
+        assert!(lock_path.starts_with(&root), "{}", lock_path.display());
+        assert!(
+            !lock_path.starts_with(&canonical_target),
+            "the lock file must stay out of the target, or the conflict scan \
+             would read it as foreign content: {}",
+            lock_path.display()
+        );
+
+        // An install really does create it, and it survives the run.
+        let paths = task_with_value(&root, &["morphir-ir.json"]);
+        install(&paths, &target, &root).unwrap();
+        assert!(lock_path.is_file());
+    }
+
+    /// Two runs installing to one target used to both see a destination as
+    /// absent, both write it, and both claim it in their own ledger. Distinct
+    /// task locks do not help, because the tasks are different.
+    #[test]
+    fn an_install_waits_for_another_run_installing_to_the_same_target() {
+        use std::sync::mpsc::{RecvTimeoutError, channel};
+        use std::time::Duration;
+
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("out");
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(&target).unwrap();
+        let canonical_target = std::fs::canonicalize(&target).unwrap();
+
+        // Stand in for another Morphir run part-way through its own install
+        // to this target, under some other task entirely.
+        let lock_path = install_lock_path(&root, &canonical_target);
+        std::fs::create_dir_all(lock_path.parent().unwrap()).unwrap();
+        let held = std::fs::OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .read(true)
+            .write(true)
+            .open(&lock_path)
+            .unwrap();
+        fs2::FileExt::try_lock_exclusive(&held).expect("nothing holds it yet");
+
+        let paths = task_with_value(&root, &["morphir-ir.json"]);
+        let (running_root, running_target) = (root.clone(), target.clone());
+        let (finished, waiting) = channel();
+        let installing = std::thread::spawn(move || {
+            let report = install(&paths, &running_target, &running_root).unwrap();
+            finished.send(()).unwrap();
+            report
+        });
+
+        assert_eq!(
+            waiting.recv_timeout(Duration::from_millis(250)),
+            Err(RecvTimeoutError::Timeout),
+            "an install must wait while another run holds the target's lock"
+        );
+
+        fs2::FileExt::unlock(&held).unwrap();
+        waiting
+            .recv_timeout(Duration::from_secs(30))
+            .expect("the install proceeds once the other run releases the lock");
+        installing.join().unwrap();
+        assert!(target.join("morphir-ir.json").is_file());
+    }
+
     #[test]
     fn maybe_install_resolves_relative_targets_against_cwd() {
         let temp = tempfile::tempdir().unwrap();
-        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
-        assert_eq!(maybe_install(&paths, None, temp.path()).unwrap(), None);
-        let installed = maybe_install(&paths, Some("dist/ir"), temp.path())
+        let root = temp.path().join("out");
+        let paths = task_with_value(&root, &["morphir-ir.json"]);
+        assert_eq!(
+            maybe_install(&paths, None, temp.path(), &root).unwrap(),
+            None
+        );
+        let installed = maybe_install(&paths, Some("dist/ir"), temp.path(), &root)
             .unwrap()
             .unwrap();
         assert_eq!(installed, temp.path().join("dist/ir").to_string_lossy());

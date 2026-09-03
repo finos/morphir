@@ -135,7 +135,7 @@ impl OutContext {
     /// take its turn.
     pub fn prepare_dest(&self, task: &TaskId) -> Result<PreparedTask, CliError> {
         let paths = self.task(task)?;
-        let lock = TaskLock::acquire(&task_lock_path(&paths))?;
+        let lock = TaskLock::acquire(&task_lock_path(&paths), "this task")?;
         let previous = TaskResult::read(&paths.result);
         let previous_installed = match &previous {
             Ok(Some(record)) => record.installed.clone(),
@@ -206,10 +206,11 @@ fn is_contended(error: &std::io::Error) -> bool {
 }
 
 /// The one line printed to stderr when a lock is not free straight away, so a
-/// run that appears to hang says why.
-fn announce_wait(path: &Path) {
+/// run that appears to hang says why. `subject` names what is being waited
+/// for, in a form that reads after "finish".
+fn announce_wait(subject: &str, path: &Path) {
     eprintln!(
-        "waiting for another Morphir run to finish this task ({})",
+        "waiting for another Morphir run to finish {subject} ({})",
         path.display()
     );
 }
@@ -229,13 +230,18 @@ pub struct TaskLock {
 
 impl TaskLock {
     /// Take the lock, waiting for whoever holds it. Prints one line to stderr
-    /// if the wait is not instant, so a run that appears to hang says why.
-    fn acquire(path: &Path) -> Result<Self, CliError> {
+    /// if the wait is not instant, so a run that appears to hang says why;
+    /// `subject` names what is being waited for in that line.
+    ///
+    /// Tasks are not the only thing worth locking. `install` uses this on a
+    /// lock keyed by its install target, so that two runs of *different*
+    /// tasks writing to one `-o` directory take turns.
+    pub fn acquire(path: &Path, subject: &str) -> Result<Self, CliError> {
         let file = open_lock_file(path)?;
         match fs2::FileExt::try_lock_exclusive(&file) {
             Ok(()) => {}
             Err(error) if is_contended(&error) => {
-                announce_wait(path);
+                announce_wait(subject, path);
                 fs2::FileExt::lock_exclusive(&file)
                     .map_err(|error| CliError::FileSystem { error })?;
             }
@@ -283,7 +289,7 @@ impl SharedTaskLock {
         match fs2::FileExt::try_lock_shared(&file) {
             Ok(()) => {}
             Err(error) if is_contended(&error) => {
-                announce_wait(path);
+                announce_wait("this task", path);
                 fs2::FileExt::lock_shared(&file).map_err(|error| CliError::FileSystem { error })?;
             }
             Err(error) => return Err(CliError::FileSystem { error }),
