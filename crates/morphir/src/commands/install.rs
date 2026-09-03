@@ -43,6 +43,11 @@ pub struct InstallReport {
 /// path containing `..` is rejected outright, since joining it onto `target`
 /// could name a location outside `target` and this function deletes what it
 /// names. See `validate_entry`.
+///
+/// Text alone does not settle where a path leads, though, so every destination
+/// is also resolved against the filesystem before the first byte is written:
+/// see `confined_destination`. Both checks run in the pre-flight scan, so an
+/// install that is going to be refused writes nothing at all.
 pub fn install(paths: &TaskPaths, target: &Path) -> Result<InstallReport, CliError> {
     let mut record = TaskResult::read(&paths.result)
         .map_err(|error| CliError::Config { error })?
@@ -89,6 +94,17 @@ pub fn install(paths: &TaskPaths, target: &Path) -> Result<InstallReport, CliErr
 
     let new_files = flatten_value_files(paths, &record.value)?;
     let new_files_lookup: HashSet<&str> = new_files.iter().map(String::as_str).collect();
+
+    // Before touching anything: every location this run would create or write
+    // has to resolve inside the target. A symlink already sitting in the
+    // target redirects `create_dir_all` and `fs::copy` without any of the
+    // textual checks above noticing. The entries themselves are checked as
+    // well as the flattened files, because a directory entry with nothing
+    // under it flattens to no files at all and would still have
+    // `copy_dir` create it.
+    for destination in new_files.iter().chain(record.value.iter()) {
+        confined_destination(destination, target, &canonical_target)?;
+    }
 
     // Before touching anything: a file this run would write that already
     // exists at the destination and is NOT one this function wrote last time
@@ -274,6 +290,70 @@ fn validate_entry(entry: &str) -> Result<(), CliError> {
                 "task result entry '{entry}' does not name a path under the install target; refusing to install it"
             ),
         });
+    }
+    Ok(())
+}
+
+/// Confirm that `relative`, joined onto `target`, still names a location
+/// inside `target` once the symlinks along the way are followed.
+///
+/// `validate_entry` catches the textual escapes (`..` and absolute paths) but
+/// not a symlink already sitting in the target: with `dist/morphir-ir`
+/// pointing at `/outside`, `create_dir_all` and `fs::copy` follow it without
+/// complaint and the install writes outside `dist` altogether. Worse, a user
+/// who replaces an owned directory with such a symlink slips past the
+/// foreign-content conflict check too, because the paths beneath it are ones
+/// this function already owns.
+///
+/// The destination usually does not exist yet, so the nearest ancestor that
+/// does is canonicalized instead, and has to resolve under the canonical
+/// target — the same rule `remove_confined` applies on the removal side. A
+/// path that exists but does not resolve is a dangling symlink, which
+/// `fs::copy` would follow to wherever it points, so it is refused rather
+/// than walked past.
+///
+/// Like `remove_confined`, this is advisory rather than a security boundary:
+/// it catches an accidental or stale symlink in the target, and it is
+/// inherently racy, since nothing stops one from appearing between this check
+/// and the write.
+fn confined_destination(
+    relative: &str,
+    target: &Path,
+    canonical_target: &Path,
+) -> Result<(), CliError> {
+    let destination = target.join(relative);
+    let mut candidate = Some(destination.as_path());
+    while let Some(path) = candidate {
+        match std::fs::canonicalize(path) {
+            Ok(resolved) if resolved.starts_with(canonical_target) => return Ok(()),
+            Ok(resolved) => {
+                return Err(CliError::Validation {
+                    message: format!(
+                        "refusing to install '{}': it resolves to '{}', which is outside the \
+                         install target '{}' (resolved to '{}')",
+                        destination.display(),
+                        resolved.display(),
+                        target.display(),
+                        canonical_target.display()
+                    ),
+                });
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                if std::fs::symlink_metadata(path).is_ok() {
+                    return Err(CliError::Validation {
+                        message: format!(
+                            "refusing to install '{}': '{}' is a symbolic link with no target, \
+                             so writing through it could land outside the install target '{}'",
+                            destination.display(),
+                            path.display(),
+                            target.display()
+                        ),
+                    });
+                }
+                candidate = path.parent();
+            }
+            Err(error) => return Err(CliError::FileSystem { error }),
+        }
     }
     Ok(())
 }
@@ -857,6 +937,124 @@ mod tests {
             std::fs::read_to_string(outside.join("report/marker.txt")).unwrap(),
             "safe",
             "the symlink escape must not let removal reach outside the target"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlinked_intermediate_directory_stops_the_copy_before_it_starts() {
+        use std::os::unix::fs::symlink;
+
+        // `dist/morphir-ir` is a symlink to a directory the target does not
+        // own. `create_dir_all` and `fs::copy` would follow it happily and
+        // write the whole entry outside `dist`.
+        let temp = tempfile::tempdir().unwrap();
+        let outside = temp.path().join("outside");
+        std::fs::create_dir_all(&outside).unwrap();
+        std::fs::write(outside.join("manifest.yaml"), "safe").unwrap();
+
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(&target).unwrap();
+        symlink(&outside, target.join("morphir-ir")).unwrap();
+
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir"]);
+        let error = install(&paths, &target).unwrap_err();
+        let CliError::Validation { message } = error else {
+            panic!("expected a validation error, got {error:?}");
+        };
+        assert!(message.contains("outside the install target"), "{message}");
+        assert!(message.contains("morphir-ir"), "{message}");
+
+        assert_eq!(
+            std::fs::read_to_string(outside.join("manifest.yaml")).unwrap(),
+            "safe",
+            "the file outside the target must not be overwritten"
+        );
+        assert!(
+            !outside.join("pkg").exists(),
+            "nothing may be created outside the target"
+        );
+        let record = TaskResult::read(&paths.result).unwrap().unwrap();
+        assert!(
+            record.installed.is_empty(),
+            "a refused install records no bookkeeping"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn replacing_an_owned_directory_with_a_symlink_is_refused_on_the_next_install() {
+        use std::os::unix::fs::symlink;
+
+        // The conflict check alone cannot catch this: every path under
+        // `morphir-ir` is one this function wrote last time, so it is not
+        // foreign content, and the copy would follow the new symlink out of
+        // the target.
+        let temp = tempfile::tempdir().unwrap();
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir"]);
+        let target = temp.path().join("dist");
+        install(&paths, &target).unwrap();
+        assert!(target.join("morphir-ir/manifest.yaml").is_file());
+
+        let outside = temp.path().join("outside");
+        std::fs::create_dir_all(&outside).unwrap();
+        std::fs::write(outside.join("manifest.yaml"), "not ours").unwrap();
+        std::fs::remove_dir_all(target.join("morphir-ir")).unwrap();
+        symlink(&outside, target.join("morphir-ir")).unwrap();
+
+        let error = install(&paths, &target).unwrap_err();
+        assert!(
+            error.to_string().contains("outside the install target"),
+            "{error}"
+        );
+        assert_eq!(
+            std::fs::read_to_string(outside.join("manifest.yaml")).unwrap(),
+            "not ours"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlink_that_stays_inside_the_target_is_followed_as_usual() {
+        use std::os::unix::fs::symlink;
+
+        // A symlink is only a problem when it leads out of the target. One
+        // that lands back inside it is an ordinary part of the user's layout
+        // and must keep working.
+        let temp = tempfile::tempdir().unwrap();
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(target.join("real")).unwrap();
+        symlink(target.join("real"), target.join("morphir-ir")).unwrap();
+
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir"]);
+        install(&paths, &target).unwrap();
+
+        assert!(target.join("real/manifest.yaml").is_file());
+        assert!(target.join("real/pkg/x.yaml").is_file());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_dangling_symlink_at_a_destination_is_refused_rather_than_written_through() {
+        use std::os::unix::fs::symlink;
+
+        // The link resolves to nothing, so canonicalizing it says "not
+        // found" — but `fs::copy` would still create the file at the far end
+        // of it, which is outside the target.
+        let temp = tempfile::tempdir().unwrap();
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(&target).unwrap();
+        symlink(
+            temp.path().join("outside/gone"),
+            target.join("morphir-ir.json"),
+        )
+        .unwrap();
+
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
+        let error = install(&paths, &target).unwrap_err();
+        assert!(
+            error.to_string().contains("symbolic link with no target"),
+            "{error}"
         );
     }
 
