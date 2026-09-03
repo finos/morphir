@@ -194,8 +194,14 @@ pub fn read_value(base: &Path, descriptor: &IrDescriptor) -> Result<serde_json::
     }
 }
 
-/// Probe an explicit `-i` path (file or document-tree directory).
+/// Probe an explicit `-i` path: an IR file, a document-tree directory (a
+/// `manifest.json`/`manifest.yaml` root), or a compile-output directory (a
+/// `.dest` directory, or any older directory shaped like one) that holds
+/// `morphir-ir.json`, `morphir-ir.yaml`, or a `morphir-ir/` document tree.
 pub fn probe_external(path: &Path) -> Result<(PathBuf, IrDescriptor), CliError> {
+    if path.is_dir() && !is_document_tree_root(path) {
+        return probe_compile_output_directory(path);
+    }
     let selection = resolve_input(path, None).map_err(transport)?;
     let name = path
         .file_name()
@@ -216,6 +222,45 @@ pub fn probe_external(path: &Path) -> Result<(PathBuf, IrDescriptor), CliError> 
             },
         },
     ))
+}
+
+/// Whether `path` has a document-tree manifest at its root. Only checks for
+/// presence — an ambiguous pair (`manifest.json` *and* `manifest.yaml`) is
+/// still surfaced by `discover_document_tree_format`'s own diagnostic once
+/// `resolve_input` runs.
+fn is_document_tree_root(path: &Path) -> bool {
+    ["manifest.json", "manifest.yaml"]
+        .into_iter()
+        .any(|name| path.join(name).is_file())
+}
+
+/// Probe a directory that is not itself a document-tree root for the IR
+/// artifact it holds. `discover_document_tree_format`'s "no supported
+/// manifest" diagnostic is correct for a hand-authored document tree missing
+/// its manifest, but misleading for a compile-output directory (a `.dest`
+/// directory, or any directory shaped like the classic `morphir-ir.json`
+/// compile output) — such a directory was never meant to have one, so this
+/// looks for what it *does* produce instead: a single-file JSON/YAML
+/// artifact, or its own nested `morphir-ir/` document tree.
+fn probe_compile_output_directory(path: &Path) -> Result<(PathBuf, IrDescriptor), CliError> {
+    for name in ["morphir-ir.json", "morphir-ir.yaml"] {
+        let candidate = path.join(name);
+        if candidate.is_file() {
+            return probe_external(&candidate);
+        }
+    }
+    let tree = path.join(SINGLE_FILE_STEM);
+    if tree.is_dir() {
+        return probe_external(&tree);
+    }
+    Err(CliError::Validation {
+        message: format!(
+            "'{}' has no Morphir IR: looked for a document-tree manifest \
+             (manifest.json, manifest.yaml), a single-file artifact \
+             (morphir-ir.json, morphir-ir.yaml), and a morphir-ir/ document tree",
+            path.display()
+        ),
+    })
 }
 
 fn codec<'registry>(
@@ -329,5 +374,43 @@ mod tests {
         let (_, descriptor) = probe_external(&temp.path().join("morphir-ir.json")).unwrap();
         assert_eq!(descriptor.layout, IrLayout::SingleFile);
         assert_eq!(descriptor.format, "json");
+    }
+
+    #[test]
+    fn probe_external_finds_the_single_file_artifact_in_a_manifest_less_directory() {
+        // A `.dest` directory (or any older compile-output directory) is
+        // not itself a document-tree root: it holds `morphir-ir.json`
+        // directly, with no `manifest.json`/`manifest.yaml`. `probe_external`
+        // must still resolve the directory to that file rather than treating
+        // it as a malformed document tree.
+        let temp = tempfile::tempdir().unwrap();
+        let compile_dest = temp.path().join("compile.dest");
+        let storage = IrStorage::from_config(None).unwrap();
+        write_v4(&compile_dest, &storage, &sample_ir()).unwrap();
+        assert!(!compile_dest.join("manifest.json").exists());
+
+        let (base, descriptor) = probe_external(&compile_dest).unwrap();
+
+        assert_eq!(base, compile_dest);
+        assert_eq!(descriptor.path, "morphir-ir.json");
+        assert_eq!(descriptor.layout, IrLayout::SingleFile);
+        assert_eq!(descriptor.format, "json");
+        let value = read_value(&base, &descriptor).unwrap();
+        assert_eq!(value["formatVersion"], 4);
+    }
+
+    #[test]
+    fn probe_external_reports_what_it_looked_for_in_an_empty_directory() {
+        let temp = tempfile::tempdir().unwrap();
+        let empty = temp.path().join("empty");
+        std::fs::create_dir_all(&empty).unwrap();
+
+        let error = probe_external(&empty).unwrap_err();
+
+        let message = error.to_string();
+        assert!(message.contains(&empty.display().to_string()), "{message}");
+        assert!(message.contains("morphir-ir.json"), "{message}");
+        assert!(message.contains("morphir-ir.yaml"), "{message}");
+        assert!(message.contains("manifest"), "{message}");
     }
 }

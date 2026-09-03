@@ -2075,7 +2075,7 @@ fn gleam_generate_accepts_the_compile_output_directory() {
             "gleam",
             "generate",
             "--input",
-            compile_dir.join("morphir-ir.json").to_str().unwrap(),
+            compile_dir.to_str().unwrap(),
         ],
         &home,
         temp.path(),
@@ -2100,6 +2100,14 @@ fn gleam_generate_accepts_the_compile_output_directory() {
         !temp.path().join("main.gleam").exists(),
         "the backend published main.gleam outside the host output directory"
     );
+
+    // An explicit `-i` has no task provenance: nothing recorded it as this
+    // run's input.
+    let record: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(temp.path().join(".morphir/out/generate/gleam.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(record["inputs"], serde_json::json!([]));
 }
 
 #[test]
@@ -3708,12 +3716,17 @@ fn generate_without_a_compile_record_explains_what_to_run() {
     assert!(!generate.status.success());
     let stderr = String::from_utf8_lossy(&generate.stderr);
     // The diagnostic renderer may word-wrap a long message across lines,
-    // each continuation prefixed with its own gutter (`  | `); undo that
-    // before matching the exact wording so the assertion doesn't depend on
-    // where a particular terminal width happens to break the line.
+    // each continuation prefixed with its own gutter (`  | `); strip that
+    // before flowing the text back to one line (the `split_whitespace`
+    // idiom used above for wrapped `--help` output), so the assertion
+    // doesn't depend on where a particular terminal width happens to break
+    // the line.
     let unwrapped = stderr
         .lines()
         .map(|line| line.trim_start_matches([' ', '×', '│']))
+        .collect::<Vec<_>>()
+        .join(" ")
+        .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ");
     assert!(
