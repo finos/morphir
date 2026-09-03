@@ -620,6 +620,15 @@ fn resolve_directory(path: &Path) -> Result<PathBuf, CliError> {
 /// directory inside the same target resolves inside the target, so every
 /// check on the path is satisfied.
 ///
+/// A ledger entry's own final component can be swapped for a link too, and
+/// `resolved_relative` alone would not notice: it only resolves the parent
+/// directory, never the file itself, so `dist/foo` becoming a link to
+/// `dist/other` still resolves to `foo`. Left unchecked, the ledger would
+/// keep treating `foo` as owned (skipping the foreign-content check) while
+/// `fs::copy` follows the link and overwrites `other` instead. So the final
+/// component is checked directly, with `symlink_metadata`, before the
+/// resolved-location comparison ever runs.
+///
 /// Like the other symlink checks here this is advisory rather than a security
 /// boundary, and inherently racy: nothing stops a link from being swapped in
 /// between this check and the removal.
@@ -629,6 +638,24 @@ fn reject_moved_ledger_entries(
     canonical_target: &Path,
 ) -> Result<(), CliError> {
     for file in previous_files {
+        let full = target.join(file);
+        if let Ok(metadata) = std::fs::symlink_metadata(&full)
+            && metadata.is_symlink()
+        {
+            let points_at = std::fs::read_link(&full)
+                .map(|link| link.display().to_string())
+                .unwrap_or_else(|_| "<unreadable>".to_owned());
+            return Err(CliError::Validation {
+                message: format!(
+                    "refusing to install into '{}': '{}' is a symbolic link to '{points_at}', \
+                     so the file Morphir installed at '{file}' is no longer there; the file \
+                     there is not the one Morphir wrote. Remove the link or choose a \
+                     different -o target",
+                    target.display(),
+                    full.display(),
+                ),
+            });
+        }
         let now = resolved_relative(file, target, canonical_target)?;
         if now == *file {
             continue;
@@ -1312,6 +1339,44 @@ mod tests {
         assert_eq!(
             std::fs::read_to_string(outside.join("manifest.yaml")).unwrap(),
             "not ours"
+        );
+    }
+
+    /// A ledger entry naming a FILE, not a directory, swapped for a symlink
+    /// to another file that is itself inside the target. Every check but
+    /// this one is satisfied: the link resolves inside the target (so
+    /// `confined_destination` passes), and `foo` is still a name the ledger
+    /// owns (so the foreign-content conflict check never runs on it) — but
+    /// `foo` is no longer the file Morphir wrote, and `fs::copy` would follow
+    /// the link and overwrite `other` in its place.
+    #[cfg(unix)]
+    #[test]
+    fn an_owned_file_swapped_for_a_symlink_to_another_file_in_the_target_is_refused() {
+        use std::os::unix::fs::symlink;
+
+        let temp = tempfile::tempdir().unwrap();
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
+        let target = temp.path().join("dist");
+        install_here(&paths, &target).unwrap();
+        assert!(target.join("morphir-ir.json").is_file());
+
+        // A foreign file elsewhere in the target.
+        std::fs::write(target.join("other.json"), "not ours").unwrap();
+
+        // The user removes the file Morphir wrote and puts a symlink to that
+        // foreign file in its place.
+        std::fs::remove_file(target.join("morphir-ir.json")).unwrap();
+        symlink(target.join("other.json"), target.join("morphir-ir.json")).unwrap();
+
+        let error = install_here(&paths, &target).unwrap_err();
+        let message = error.to_string();
+        assert!(message.contains("symbolic link"), "{message}");
+        assert!(message.contains("morphir-ir.json"), "{message}");
+        assert!(message.contains("other.json"), "{message}");
+        assert_eq!(
+            std::fs::read_to_string(target.join("other.json")).unwrap(),
+            "not ours",
+            "the file behind the symlink must survive untouched"
         );
     }
 
