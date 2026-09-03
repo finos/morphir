@@ -48,7 +48,7 @@ struct Cli {
     #[arg(short = 'V', long, action = clap::ArgAction::Version)]
     version: Option<bool>,
 
-    /// Relocate the out root (default: <workspace>/.morphir/out). Also MORPHIR_OUT_DIR.
+    /// Relocate the out root, which defaults to .morphir/out under the workspace root. MORPHIR_OUT_DIR does the same.
     #[arg(long, global = true, value_name = "PATH")]
     out_dir: Option<std::path::PathBuf>,
 

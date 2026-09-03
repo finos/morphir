@@ -8,7 +8,7 @@
 - **Usage:** `morphir [FLAGS] <SUBCOMMAND>`
 
 ## Global Flags
-- **`--out-dir <PATH>`** — Relocate the out root (default: <workspace>/.morphir/out). Also MORPHIR_OUT_DIR
+- **`--out-dir <PATH>`** — Relocate the out root, which defaults to .morphir/out under the workspace root. MORPHIR_OUT_DIR does the same
 
 ## Flags
 - **`--help-all`** — Print help including experimental commands

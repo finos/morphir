@@ -28,7 +28,7 @@ args_override_self #false
 usage "Usage: morphir [OPTIONS] [COMMAND]"
 flag --help-all help="Print help including experimental commands"
 flag "-V --version" help="Print version" action=version
-flag --out-dir help="Relocate the out root (default: <workspace>/.morphir/out). Also MORPHIR_OUT_DIR" global=#true {
+flag --out-dir help="Relocate the out root, which defaults to .morphir/out under the workspace root. MORPHIR_OUT_DIR does the same" global=#true {
     arg <PATH>
 }
 complete path type=path

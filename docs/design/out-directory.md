@@ -12,16 +12,18 @@ of what it produced.
 
 ## Layout
 
-    <workspace>/.morphir/out/
-    ├── compile.dest/            # root module scratch: IR plus parse stage
-    ├── compile.json             # root module result record
-    ├── generate/
-    │   ├── scala.dest/
-    │   └── scala.json
-    └── packages/orders/         # member module, path relative to the workspace root
-        ├── compile.dest/
-        ├── compile.json
-        └── generate/…
+```text
+<workspace>/.morphir/out/
+├── compile.dest/            # root module scratch: IR plus parse stage
+├── compile.json             # root module result record
+├── generate/
+│   ├── scala.dest/
+│   └── scala.json
+└── packages/orders/         # member module, path relative to the workspace root
+    ├── compile.dest/
+    ├── compile.json
+    └── generate/…
+```
 
 Task ids are path-like: `compile`, `generate/<target>`, `transform/<name>`.
 A run also takes an exclusive lock on `<task>.lock` beside the other two,
@@ -70,17 +72,19 @@ from outside the workspace.
 
 ## Result record
 
-    {
-      "schema": 1,
-      "task": "compile",
-      "module": "packages/orders",
-      "language": "gleam",
-      "inputs": [],
-      "value": ["morphir-ir"],
-      "ir": {"path": "morphir-ir", "layout": "document-tree", "format": "json", "version": "v4"},
-      "installed": {"/abs/dist": ["morphir-ir/manifest.json", "morphir-ir/Module.json"]},
-      "completedAt": "2026-09-02T10:00:00Z"
-    }
+```json
+{
+  "schema": 1,
+  "task": "compile",
+  "module": "packages/orders",
+  "language": "gleam",
+  "inputs": [],
+  "value": ["morphir-ir"],
+  "ir": {"path": "morphir-ir", "layout": "document-tree", "format": "json", "version": "v4"},
+  "installed": {"/abs/dist": ["morphir-ir/manifest.json", "morphir-ir/Module.json"]},
+  "completedAt": "2026-09-02T10:00:00Z"
+}
+```
 
 `value` lists the task's product as paths relative to `.dest`. Parse-stage
 files and bookkeeping manifests are never in `value`. `ir` is present on
@@ -149,9 +153,11 @@ it owns there.
 
 ## IR storage
 
-    [ir]
-    layout = "single-file"   # or "document-tree"
-    format = "json"          # or "yaml"
+```toml
+[ir]
+layout = "single-file"   # or "document-tree"
+format = "json"          # or "yaml"
+```
 
 Names inside `.dest`: `morphir-ir.json`, `morphir-ir.yaml`, `morphir-ir/`.
 
