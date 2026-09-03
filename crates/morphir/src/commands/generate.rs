@@ -7,7 +7,9 @@ mod provider;
 pub use options::GenerateOptions;
 
 use crate::commands::ir_storage;
-use crate::commands::out_context::{OutContext, report_config_warnings};
+use crate::commands::out_context::{
+    OutContext, SharedTaskLock, report_config_warnings, task_lock_path,
+};
 use crate::error::{CliError, convert_extension_diagnostics};
 use crate::home::MorphirHome;
 use morphir_devkit::{
@@ -81,7 +83,9 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
 
     // Determine IR input: either an explicit `-i` path, probed directly, or
     // the IR descriptor recorded by the task `resolve_ir_task` names.
-    let (ir_base, descriptor, input_task) = match input {
+    // The fourth element is a shared lock on the input task, held until the
+    // IR has been read out of its `.dest`. See `SharedTaskLock`.
+    let (ir_base, descriptor, input_task, input_lock) = match input {
         Some(explicit) => {
             let path = PathBuf::from(&explicit);
             let path = if path.is_absolute() {
@@ -99,11 +103,18 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
                 .into());
             }
             let (base, descriptor) = ir_storage::probe_external(&path)?;
-            (base, descriptor, None)
+            (base, descriptor, None, None)
         }
         None => {
             let task = resolve_ir_task(&ctx);
             let paths = out.task(&task)?;
+            // Take the input task's lock, shared, before its record is read
+            // and hold it until the IR itself has been read below. A compile
+            // starting in between takes the same lock exclusively, tombstones
+            // the record, and empties `compile.dest` — so without this the
+            // descriptor read here would point at files that are gone by the
+            // time the IR reader looks for them.
+            let lock = SharedTaskLock::acquire(&task_lock_path(&paths))?;
             let record =
                 TaskResult::read(&paths.result).map_err(|error| CliError::Config { error })?;
             // A missing record and a tombstone (left behind by
@@ -126,10 +137,12 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
             let descriptor = record.ir.ok_or_else(|| CliError::Validation {
                 message: format!("task '{}' produced no IR descriptor", record.task),
             })?;
-            (paths.dest, descriptor, Some(task))
+            (paths.dest, descriptor, Some(task), Some(lock))
         }
     };
     let ir_data = ir_storage::read_value(&ir_base, &descriptor)?;
+    // The IR is in memory, so the input task may run again.
+    drop(input_lock);
     let ir_version = provider::detect_ir_major(&ir_data)?;
 
     let generate_task = TaskId::generate(&target_lang);

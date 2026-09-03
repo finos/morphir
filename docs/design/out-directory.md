@@ -31,7 +31,12 @@ held from the moment `.dest` is cleared until the record is written and any
 `-o` install is finished. Two runs of the same task in one workspace share
 one `.dest` and one `.json`, so the second waits for the first — it prints
 one line saying so — rather than deleting a directory the first is still
-writing into. The lock file stays on disk between runs and is empty.
+writing into. A command that only *reads* a finished task takes the same
+lock shared rather than exclusively: `generate` holds `compile.lock` from
+before it reads `compile.json` until it has read the IR out of
+`compile.dest`, so a compile starting in between cannot clear that directory
+under it. Several readers may hold the shared lock at once. The lock file
+stays on disk between runs and is empty.
 
 `<task>.dest/` is cleared before each run. `<task>.json` is written in full
 only after the task succeeds; a run that fails instead leaves a tombstone

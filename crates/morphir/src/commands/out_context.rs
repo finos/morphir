@@ -185,6 +185,35 @@ pub fn task_lock_path(paths: &TaskPaths) -> PathBuf {
     paths.result.with_extension("lock")
 }
 
+/// Open the lock file at `path`, creating it and its parents if they are not
+/// there yet, and leaving whatever it holds alone.
+fn open_lock_file(path: &Path) -> Result<File, CliError> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| CliError::FileSystem { error })?;
+    }
+    std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .read(true)
+        .write(true)
+        .open(path)
+        .map_err(|error| CliError::FileSystem { error })
+}
+
+/// Is this the error `fs2` reports when a lock is already held?
+fn is_contended(error: &std::io::Error) -> bool {
+    error.raw_os_error() == fs2::lock_contended_error().raw_os_error()
+}
+
+/// The one line printed to stderr when a lock is not free straight away, so a
+/// run that appears to hang says why.
+fn announce_wait(path: &Path) {
+    eprintln!(
+        "waiting for another Morphir run to finish this task ({})",
+        path.display()
+    );
+}
+
 /// An exclusive advisory lock on one task, held for as long as this value
 /// lives.
 ///
@@ -202,23 +231,11 @@ impl TaskLock {
     /// Take the lock, waiting for whoever holds it. Prints one line to stderr
     /// if the wait is not instant, so a run that appears to hang says why.
     fn acquire(path: &Path) -> Result<Self, CliError> {
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|error| CliError::FileSystem { error })?;
-        }
-        let file = std::fs::OpenOptions::new()
-            .create(true)
-            .truncate(false)
-            .read(true)
-            .write(true)
-            .open(path)
-            .map_err(|error| CliError::FileSystem { error })?;
+        let file = open_lock_file(path)?;
         match fs2::FileExt::try_lock_exclusive(&file) {
             Ok(()) => {}
-            Err(error) if error.raw_os_error() == fs2::lock_contended_error().raw_os_error() => {
-                eprintln!(
-                    "waiting for another Morphir run to finish this task ({})",
-                    path.display()
-                );
+            Err(error) if is_contended(&error) => {
+                announce_wait(path);
                 fs2::FileExt::lock_exclusive(&file)
                     .map_err(|error| CliError::FileSystem { error })?;
             }
@@ -232,6 +249,51 @@ impl Drop for TaskLock {
     fn drop(&mut self) {
         // Closing the file releases the lock anyway; unlocking first just
         // makes the release explicit. Nothing useful can be done if it fails.
+        drop(fs2::FileExt::unlock(&self.file));
+    }
+}
+
+/// A shared advisory lock on one task, held for as long as this value lives.
+///
+/// This is what a *reader* of a finished task takes. `prepare_dest` holds the
+/// exclusive lock on the same file from before it reads the previous record
+/// until the run is over, so a reader holding this one knows the task's
+/// `.json` and `.dest` will still be there, and still describe each other,
+/// for as long as it keeps reading.
+///
+/// `generate` is the reader today: it reads `compile.json` for the IR
+/// descriptor and then reads the IR itself out of `compile.dest`. Without the
+/// lock, a `compile` starting between those two reads tombstones the record
+/// and empties `.dest`, and `generate` fails deep inside the IR reader on a
+/// file that was there a moment ago.
+///
+/// Several readers may hold it at once, which is the point: two `generate`
+/// runs for different targets both want the same compile output and neither
+/// changes it.
+#[derive(Debug)]
+pub struct SharedTaskLock {
+    file: File,
+}
+
+impl SharedTaskLock {
+    /// Take the shared lock, waiting for whoever holds it exclusively. Prints
+    /// the same one-line notice the exclusive lock does.
+    pub fn acquire(path: &Path) -> Result<Self, CliError> {
+        let file = open_lock_file(path)?;
+        match fs2::FileExt::try_lock_shared(&file) {
+            Ok(()) => {}
+            Err(error) if is_contended(&error) => {
+                announce_wait(path);
+                fs2::FileExt::lock_shared(&file).map_err(|error| CliError::FileSystem { error })?;
+            }
+            Err(error) => return Err(CliError::FileSystem { error }),
+        }
+        Ok(Self { file })
+    }
+}
+
+impl Drop for SharedTaskLock {
+    fn drop(&mut self) {
         drop(fs2::FileExt::unlock(&self.file));
     }
 }
@@ -438,6 +500,65 @@ mod tests {
         fs2::FileExt::try_lock_exclusive(&contender)
             .expect("dropping the prepared task releases the lock");
         fs2::FileExt::unlock(&contender).unwrap();
+    }
+
+    /// `generate` reads its input task's record and then its IR out of the
+    /// same task's `.dest`. A `compile` starting between those two reads
+    /// tombstones the record and empties `.dest`, so the reader has to hold
+    /// the task's lock, shared, across both.
+    #[test]
+    fn a_reader_waits_for_a_run_of_the_task_it_reads() {
+        use std::sync::mpsc::{RecvTimeoutError, channel};
+        use std::time::Duration;
+
+        let temp = tempfile::tempdir().unwrap();
+        let out = OutContext::resolve(None, &OutOverrides::default(), temp.path());
+        let lock_path = task_lock_path(&out.task(&TaskId::compile()).unwrap());
+
+        // A run of the task is under way: `prepare_dest` holds the lock
+        // exclusively from before it reads the previous record until the run
+        // is over.
+        let running = out.prepare_dest(&TaskId::compile()).unwrap();
+
+        // `try_lock_shared` observes the contention without hanging the test.
+        let contender = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&lock_path)
+            .unwrap();
+        let error = fs2::FileExt::try_lock_shared(&contender)
+            .expect_err("the running task holds the lock exclusively");
+        assert_eq!(
+            error.raw_os_error(),
+            fs2::lock_contended_error().raw_os_error()
+        );
+        drop(contender);
+
+        // And the reader really waits rather than reading a half-cleared task.
+        let reader_path = lock_path.clone();
+        let (finished, waiting) = channel();
+        let reader = std::thread::spawn(move || {
+            let lock = SharedTaskLock::acquire(&reader_path).unwrap();
+            finished.send(()).unwrap();
+            lock
+        });
+        assert_eq!(
+            waiting.recv_timeout(Duration::from_millis(250)),
+            Err(RecvTimeoutError::Timeout),
+            "the reader must wait while the task is being run"
+        );
+
+        drop(running);
+        waiting
+            .recv_timeout(Duration::from_secs(30))
+            .expect("the reader proceeds once the run releases the lock");
+        let held = reader.join().unwrap();
+
+        // Readers do not block each other: two generates for different
+        // targets both want the same compile output and neither changes it.
+        let second = SharedTaskLock::acquire(&lock_path).expect("shared locks share");
+        drop(second);
+        drop(held);
     }
 
     #[test]
