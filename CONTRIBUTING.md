@@ -31,10 +31,16 @@ If `mise` is not available or you do not want to trust the project configuration
 git submodule update --init --recursive
 ```
 
-Check the populated revisions and local state with:
+If you used `mise`, check the populated revisions and local state with:
 
 ```bash
 mise run submodules:status
+```
+
+For the direct Git fallback, use:
+
+```bash
+git submodule status
 ```
 
 Do not replace pinned submodule revisions with the latest upstream commits unless your contribution intentionally updates those revisions.
