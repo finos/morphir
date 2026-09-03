@@ -185,7 +185,11 @@ leave the target in a state the next install cannot make sense of. Every
 file this run added, including a partially written file the failing copy
 itself left behind, is removed; a file this run merely overwrote, which was
 already owned from an earlier install, is left as it is rather than deleted.
-The ledger is then rewritten so it matches whatever is actually left on disk
+Because ownership is tracked by resolved location, that comparison uses the
+same resolved form on both sides — a file this run copied through a symlink
+is recognized as already owned, and left alone, exactly as it would be if it
+had been written under its resolved spelling directly. The ledger is then
+rewritten so it matches whatever is actually left on disk
 — previously owned files that are still there, minus any this run correctly
 retired, plus anything this run added that could not be cleaned up — and the
 original copy failure is returned. Cleanup itself is best-effort: one file

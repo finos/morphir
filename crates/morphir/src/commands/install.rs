@@ -1051,6 +1051,15 @@ fn copy_failure_left_a_file(destination: &Path) -> bool {
 /// install from later finding it and refusing the whole run as foreign
 /// content it never wrote.
 ///
+/// `previously_owned` holds the ledger's RESOLVED paths (the form `install`
+/// records, see `resolved_relative`), while `copied_files` holds the SPELLED
+/// paths the copy loop actually wrote to. Comparing one against the other
+/// directly would miss ownership reached through an internal symlink —
+/// `dist/morphir-ir/x` copied this run and `dist/real/x` owned from a
+/// previous one are the same file when `morphir-ir` links to `real`, but the
+/// two strings never match — so `resolved_of` maps each spelled path to the
+/// same resolved form before the ownership check runs.
+///
 /// This never stops early: every file in `copied_files` is attempted, even
 /// after an earlier one failed to delete, so one stubborn file (a read-only
 /// parent directory, say) does not leave the rest of this run's output
@@ -1062,11 +1071,16 @@ fn copy_failure_left_a_file(destination: &Path) -> bool {
 fn roll_back_partial_copy(
     copied_files: &[String],
     previously_owned: &HashSet<&str>,
+    resolved_of: &HashMap<&str, &str>,
     target: &Path,
 ) -> Vec<CliError> {
     let mut errors = Vec::new();
     for file in copied_files {
-        if previously_owned.contains(file.as_str()) {
+        let resolved = resolved_of
+            .get(file.as_str())
+            .copied()
+            .unwrap_or(file.as_str());
+        if previously_owned.contains(resolved) {
             continue;
         }
         let path = target.join(file);
@@ -1163,13 +1177,25 @@ fn handle_copy_failure(
         resolved_new_files,
         target,
     } = context;
-    let rollback_errors = roll_back_partial_copy(copied_files, previous_files_lookup, target);
-
+    // `copied_files` holds the SPELLED paths the copy loop wrote to;
+    // `previous_files_lookup` holds the ledger's RESOLVED paths. This map is
+    // built first, before either use below, so both the rollback and the
+    // ledger rebuild compare ownership resolved-to-resolved rather than
+    // spelled-to-resolved — see `roll_back_partial_copy`'s doc comment for
+    // why the mismatch matters.
     let spelled_to_resolved: HashMap<&str, &str> = new_files
         .iter()
         .map(String::as_str)
         .zip(resolved_new_files.iter().map(String::as_str))
         .collect();
+
+    let rollback_errors = roll_back_partial_copy(
+        copied_files,
+        previous_files_lookup,
+        &spelled_to_resolved,
+        target,
+    );
+
     let removed_lookup: HashSet<&str> = removed.iter().map(String::as_str).collect();
     let mut ledger: Vec<String> = previous_files
         .iter()
@@ -1177,15 +1203,17 @@ fn handle_copy_failure(
         .cloned()
         .collect();
     for file in copied_files {
-        if previous_files_lookup.contains(file.as_str()) {
+        let resolved = spelled_to_resolved
+            .get(file.as_str())
+            .copied()
+            .unwrap_or(file.as_str());
+        if previous_files_lookup.contains(resolved) {
             // Already owned before this run started; already in `ledger`
             // via `previous_files` above.
             continue;
         }
-        if std::fs::symlink_metadata(target.join(file)).is_ok()
-            && let Some(resolved) = spelled_to_resolved.get(file.as_str())
-        {
-            ledger.push((*resolved).to_owned());
+        if std::fs::symlink_metadata(target.join(file)).is_ok() {
+            ledger.push(resolved.to_owned());
         }
     }
 
@@ -1911,6 +1939,76 @@ mod tests {
         assert_eq!(
             report.copied,
             vec!["a.json".to_owned(), "sub/b.json".to_owned()]
+        );
+    }
+
+    /// Ownership has to be compared resolved-to-resolved, not spelled-to-
+    /// resolved. `dist/morphir-ir` links to `dist/real`, so the first install
+    /// records `real/manifest.yaml` as owned. A second install re-copies the
+    /// same file through the symlink — so `copied_files` names it
+    /// `morphir-ir/manifest.yaml`, the spelled form — and then fails on a
+    /// later entry. Before the fix, `roll_back_partial_copy` compared that
+    /// spelled name directly against the ledger's resolved names, never found
+    /// a match, and deleted a file this run did not introduce; the rebuilt
+    /// ledger, suffering the same mismatch, still went on claiming the file
+    /// was there.
+    #[cfg(unix)]
+    #[test]
+    fn rollback_does_not_delete_a_previously_owned_file_reached_through_a_symlink() {
+        use std::os::unix::fs::PermissionsExt;
+        use std::os::unix::fs::symlink;
+
+        redirect_morphir_home_for_tests();
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("out");
+        let paths = TaskPaths::new(&root, Path::new(""), &TaskId::compile()).unwrap();
+        std::fs::create_dir_all(paths.dest.join("morphir-ir")).unwrap();
+        std::fs::write(paths.dest.join("morphir-ir/manifest.yaml"), "a: 1").unwrap();
+        let mut record = TaskResult::new(&TaskId::compile(), Path::new(""));
+        record.value = vec!["morphir-ir".to_owned()];
+        record.write(&paths.result).unwrap();
+
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(target.join("real")).unwrap();
+        symlink(target.join("real"), target.join("morphir-ir")).unwrap();
+
+        // First install: writes through the symlink, and the ledger records
+        // the resolved location `real/manifest.yaml`.
+        install_here(&paths, &target).unwrap();
+        assert!(target.join("real/manifest.yaml").is_file());
+        assert_eq!(
+            TaskResult::read(&paths.result).unwrap().unwrap().installed[&canonical_key(&target)],
+            vec!["real/manifest.yaml".to_owned()]
+        );
+
+        // Second install: a new entry whose destination directory is
+        // read-only, so its copy fails after `morphir-ir` — the previously
+        // owned entry — has already been re-copied through the symlink.
+        std::fs::create_dir_all(paths.dest.join("sub")).unwrap();
+        std::fs::write(paths.dest.join("sub/b.json"), "second").unwrap();
+        let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
+        record.value = vec!["morphir-ir".to_owned(), "sub/b.json".to_owned()];
+        record.write(&paths.result).unwrap();
+
+        std::fs::create_dir_all(target.join("sub")).unwrap();
+        std::fs::set_permissions(target.join("sub"), std::fs::Permissions::from_mode(0o500))
+            .unwrap();
+        let result = install_here(&paths, &target);
+        std::fs::set_permissions(target.join("sub"), std::fs::Permissions::from_mode(0o700))
+            .unwrap();
+
+        let error = result.unwrap_err();
+        assert!(matches!(error, CliError::FileSystem { .. }), "{error}");
+
+        assert!(
+            target.join("real/manifest.yaml").is_file(),
+            "a file already owned before this run started must not be rolled back as \
+             though this run introduced it, just because it was reached through a symlink"
+        );
+        assert_eq!(
+            TaskResult::read(&paths.result).unwrap().unwrap().installed[&canonical_key(&target)],
+            vec!["real/manifest.yaml".to_owned()],
+            "the ledger must still list the file that rollback correctly left in place"
         );
     }
 
