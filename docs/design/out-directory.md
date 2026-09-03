@@ -158,13 +158,20 @@ that leads out of it — `dist/morphir-ir` pointing at `/outside`, say — is
 refused by name, because `create_dir_all` and a file copy would otherwise
 follow it and write outside the target.
 
-A symlink that lands back inside the target is ordinary for a path install
-does not own, and still works. For a path it does own it is refused: install
-only ever creates real directories, so if a directory it wrote earlier is a
-symlink now, someone swapped it in afterwards, and the files under it are the
-user's rather than Morphir's. Install walks the components between the target
-and each file in the ledger, and names the link in its error rather than
-deleting or overwriting through it.
+A symlink that lands back inside the target is an ordinary part of a user's
+layout — `dist/morphir-ir` pointing at `dist/real` — and keeps working, on
+every install and not just the first. Install owns a path by where it
+*resolves*, not by how it is spelled: the ledger records each file relative to
+the canonical target with the links between them followed, so the example
+above is recorded as `real/manifest.yaml`.
+
+That is what tells a supported layout apart from a directory install created
+and the user later replaced with a link. A link that was already there
+resolves the same way on the next run, so its ledger entries still match and
+the install proceeds. A real directory swapped for a link to somewhere else
+under the target resolves somewhere new, its entries no longer match, and the
+files at the new location are the user's — so install refuses, naming the
+link, rather than deleting or overwriting through it.
 
 The whole install — the conflict scan, the removals, the copies, and the
 ledger write — runs under an exclusive lock on the install target. The task

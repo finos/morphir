@@ -120,7 +120,6 @@ pub fn install(
     }
 
     let new_files = flatten_value_files(paths, &record.value)?;
-    let new_files_lookup: HashSet<&str> = new_files.iter().map(String::as_str).collect();
 
     // Before touching anything: every location this run would create or write
     // has to resolve inside the target. A symlink already sitting in the
@@ -133,6 +132,21 @@ pub fn install(
         confined_destination(destination, target, &canonical_target)?;
     }
 
+    // Before touching anything: every path the ledger owns must still lead
+    // where it led when install wrote it. See `reject_moved_ledger_entries`.
+    reject_moved_ledger_entries(&previous_files, target, &canonical_target)?;
+
+    // Ownership is compared by resolved location, not by the text of a path:
+    // `dist/morphir-ir/x` and `dist/real/x` are one file when `morphir-ir` is
+    // a link to `real`, and the ledger records the resolved form. `new_files`
+    // keeps the spelled form alongside, because that is where the copy reads
+    // and writes.
+    let resolved_new_files = new_files
+        .iter()
+        .map(|file| resolved_relative(file, target, &canonical_target))
+        .collect::<Result<Vec<String>, CliError>>()?;
+    let new_files_lookup: HashSet<&str> = resolved_new_files.iter().map(String::as_str).collect();
+
     // Before touching anything: a file this run would write that already
     // exists at the destination and is NOT one this function wrote last time
     // is foreign content — it belongs to the user, not to a previous install.
@@ -141,19 +155,21 @@ pub fn install(
     // the whole install instead, before any copy or removal, so the target is
     // left exactly as it was.
     let previous_files_lookup: HashSet<&str> = previous_files.iter().map(String::as_str).collect();
-    let unmatched: Vec<&String> = new_files
+    let unmatched: Vec<(&String, &String)> = new_files
         .iter()
-        .filter(|file| !previous_files_lookup.contains(file.as_str()))
-        .filter(|file| std::fs::symlink_metadata(target.join(file)).is_ok())
+        .zip(resolved_new_files.iter())
+        .filter(|(_, resolved)| !previous_files_lookup.contains(resolved.as_str()))
+        .filter(|(spelled, _)| std::fs::symlink_metadata(target.join(spelled)).is_ok())
         .collect();
     // A destination the ledger does not name may still be a file the ledger
     // owns, written under a different spelling. See `renamed_previous_files`.
-    let renamed = renamed_previous_files(target, &previous_files, &unmatched)?;
+    let candidates: Vec<&String> = unmatched.iter().map(|(_, resolved)| *resolved).collect();
+    let renamed = renamed_previous_files(target, &previous_files, &candidates)?;
     let renamed_to: HashSet<&str> = renamed.values().map(String::as_str).collect();
     let mut conflicts: Vec<String> = unmatched
         .into_iter()
-        .filter(|file| !renamed_to.contains(file.as_str()))
-        .cloned()
+        .filter(|(_, resolved)| !renamed_to.contains(resolved.as_str()))
+        .map(|(spelled, _)| spelled.clone())
         .collect();
     if !conflicts.is_empty() {
         conflicts.sort();
@@ -165,13 +181,6 @@ pub fn install(
                 conflicts.join(", ")
             ),
         });
-    }
-
-    // Before touching anything: every directory between the target and a
-    // file this function wrote must still be a real directory. See
-    // `reject_symlinked_ancestors`.
-    for file in &previous_files {
-        reject_symlinked_ancestors(file, target)?;
     }
 
     // Remove exactly the files this function wrote here before that the
@@ -218,7 +227,7 @@ pub fn install(
         copied.push(entry.clone());
     }
 
-    record.installed.insert(key, new_files);
+    record.installed.insert(key, resolved_new_files);
     record
         .write(&paths.result)
         .map_err(|error| CliError::Config { error })?;
@@ -472,82 +481,190 @@ fn renamed_previous_files(
     if candidates.is_empty() {
         return Ok(BTreeMap::new());
     }
-    let mut owned: HashMap<Handle, &String> = HashMap::new();
+    // One handle can stand for several ledger entries: two entries that are
+    // hard links to each other are one file, and a map keeping only the last
+    // of them would leave the other unprotected from stale removal.
+    let mut owned: HashMap<Handle, Vec<&String>> = HashMap::new();
     for file in previous_files {
-        if let Some(handle) = handle_for(&target.join(file))? {
-            owned.insert(handle, file);
+        if let Some(handle) = handle_for(&target.join(file)) {
+            owned.entry(handle).or_default().push(file);
         }
     }
     let mut renamed = BTreeMap::new();
     for candidate in candidates {
-        let Some(handle) = handle_for(&target.join(candidate))? else {
+        let Some(handle) = handle_for(&target.join(candidate)) else {
             continue;
         };
-        if let Some(previous) = owned.get(&handle) {
+        for previous in owned.get(&handle).into_iter().flatten() {
             renamed.insert((*previous).clone(), (*candidate).clone());
         }
     }
     Ok(renamed)
 }
 
-/// A handle identifying the file at `path`, or `None` when nothing is there.
-fn handle_for(path: &Path) -> Result<Option<Handle>, CliError> {
-    match Handle::from_path(path) {
-        Ok(handle) => Ok(Some(handle)),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(CliError::FileSystem { error }),
+/// A handle identifying the file at `path`, or `None` when there is nothing
+/// there or it cannot be opened.
+///
+/// A destination that exists but will not open — no permission to read it,
+/// say — is one install cannot show to be its own, so it is left out of the
+/// comparison. That lands the caller on the "already contains files Morphir
+/// did not write" refusal, which names the path and says what to do about it,
+/// rather than on a bare I/O error from a check the user never asked for.
+fn handle_for(path: &Path) -> Option<Handle> {
+    Handle::from_path(path).ok()
+}
+
+/// Where a destination really is, as a path relative to the canonical install
+/// target.
+///
+/// `target.join(relative)` is where install writes; this is where that lands
+/// once the symbolic links between the target and the file have been
+/// followed. For an ordinary path the two are the same text. For one that
+/// runs through a link inside the target — `dist/morphir-ir` pointing at
+/// `dist/real`, a layout install has always supported — the resolved form
+/// names the real location, `real/...`.
+///
+/// This is the form the ledger records, which is what makes it possible to
+/// tell the supported layout apart from a directory that was swapped for a
+/// link after install created it. The link that was there when a file was
+/// written resolves the same way next time, so the recorded path still
+/// matches. A real directory replaced by a link resolves somewhere new, so it
+/// does not. See `reject_moved_ledger_entries`.
+///
+/// Only the directories above the file are resolved, never the file itself: a
+/// destination often does not exist yet, and a file that is a link is
+/// replaced rather than followed. Components that do not exist yet resolve to
+/// themselves, since `create_dir_all` will make them as real directories.
+fn resolved_relative(
+    relative: &str,
+    target: &Path,
+    canonical_target: &Path,
+) -> Result<String, CliError> {
+    let path = Path::new(relative);
+    let name = path.file_name().ok_or_else(|| CliError::Validation {
+        message: format!("task result entry '{relative}' does not name a file"),
+    })?;
+    let parent = path.parent().unwrap_or_else(|| Path::new(""));
+    let resolved_parent = resolve_directory(&target.join(parent))?;
+    let inside = resolved_parent
+        .strip_prefix(canonical_target)
+        .map_err(|_| CliError::Validation {
+            message: format!(
+                "refusing to install '{}': it resolves to '{}', which is outside the \
+                 install target '{}' (resolved to '{}')",
+                target.join(relative).display(),
+                resolved_parent.join(name).display(),
+                target.display(),
+                canonical_target.display()
+            ),
+        })?;
+    Ok(inside.join(name).to_string_lossy().into_owned())
+}
+
+/// Canonicalize a directory path, tolerating trailing components that do not
+/// exist yet: the deepest existing ancestor is canonicalized and the missing
+/// names are appended unchanged.
+///
+/// A component that does not resolve but is *there* is a dangling symbolic
+/// link, which writing through would follow to wherever it points, so it is
+/// refused rather than walked past — the same rule `confined_destination`
+/// applies.
+fn resolve_directory(path: &Path) -> Result<PathBuf, CliError> {
+    let mut missing: Vec<std::ffi::OsString> = Vec::new();
+    let mut candidate = path.to_path_buf();
+    loop {
+        match std::fs::canonicalize(&candidate) {
+            Ok(mut resolved) => {
+                for name in missing.iter().rev() {
+                    resolved.push(name);
+                }
+                return Ok(resolved);
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                if std::fs::symlink_metadata(&candidate).is_ok() {
+                    return Err(CliError::Validation {
+                        message: format!(
+                            "refusing to install through '{}': it is a symbolic link with no \
+                             target, so writing through it could land outside the install target",
+                            candidate.display()
+                        ),
+                    });
+                }
+                let Some(name) = candidate.file_name().map(ToOwned::to_owned) else {
+                    return Err(CliError::FileSystem { error });
+                };
+                missing.push(name);
+                if !candidate.pop() {
+                    return Err(CliError::FileSystem { error });
+                }
+            }
+            Err(error) => return Err(CliError::FileSystem { error }),
+        }
     }
 }
 
-/// Refuse an owned destination whose path now runs through a symbolic link.
+/// Refuse the install when a path the ledger owns no longer leads where it
+/// led when install wrote it.
 ///
-/// `install` only ever creates real directories under the target, so every
-/// directory between the target and a file it wrote was a real directory at
-/// the time it was written. If one of them is a symbolic link now, someone
-/// swapped it in afterwards, and the ledger's paths no longer name what the
-/// ledger thinks they name: `remove_entry` unlinks a file through the link,
-/// and the copy step writes over one. Either way the file that is destroyed
-/// is the user's, not Morphir's.
+/// The ledger records each file by its resolved location (see
+/// `resolved_relative`), so recomputing that location and comparing settles
+/// the question outright. A symbolic link that was already part of the user's
+/// layout resolves the same way every run, so its entries match and the
+/// install proceeds. A real directory that install created and the user has
+/// since replaced with a link to somewhere else under the target resolves
+/// somewhere new, so its entries do not match — and the files at the new
+/// location are the user's, not Morphir's. Without this, `remove_entry` would
+/// unlink one of them and the copy step would write over another.
 ///
-/// `confined_destination` does not catch this. A link pointing at a sibling
-/// directory *inside* the same target resolves inside the target, so every
-/// containment check is satisfied and the paths beneath the link are ones
-/// this function already owns.
-///
-/// Only the components strictly between the target and the file are checked.
-/// The file itself may be a link for all this cares — `remove_entry` unlinks
-/// the link rather than what it points at, and a copy replaces it — and
-/// `target` itself may legitimately be one, since `-o` can name a symlinked
-/// directory. A component that does not exist ends the walk: there is
-/// nothing below it to reach.
+/// The plain containment check cannot catch this: a link to a sibling
+/// directory inside the same target resolves inside the target, so every
+/// check on the path is satisfied.
 ///
 /// Like the other symlink checks here this is advisory rather than a security
 /// boundary, and inherently racy: nothing stops a link from being swapped in
 /// between this check and the removal.
-fn reject_symlinked_ancestors(relative: &str, target: &Path) -> Result<(), CliError> {
+fn reject_moved_ledger_entries(
+    previous_files: &[String],
+    target: &Path,
+    canonical_target: &Path,
+) -> Result<(), CliError> {
+    for file in previous_files {
+        let now = resolved_relative(file, target, canonical_target)?;
+        if now == *file {
+            continue;
+        }
+        let culprit = symlinked_ancestor(file, target);
+        let named = match &culprit {
+            Some(path) => format!("'{}' is a symbolic link", path.display()),
+            None => format!("'{}' has moved", target.join(file).display()),
+        };
+        return Err(CliError::Validation {
+            message: format!(
+                "refusing to install into '{}': {named}, so the file Morphir installed at \
+                 '{file}' now resolves to '{now}'; the file there is not the one Morphir \
+                 wrote. Remove the link or choose a different -o target",
+                target.display()
+            ),
+        });
+    }
+    Ok(())
+}
+
+/// The first component between `target` and `relative` that is a symbolic
+/// link, used only to name the culprit in an error message.
+fn symlinked_ancestor(relative: &str, target: &Path) -> Option<PathBuf> {
     let components: Vec<Component<'_>> = Path::new(relative).components().collect();
     let ancestors = components.len().saturating_sub(1);
     let mut path = target.to_path_buf();
     for component in components.into_iter().take(ancestors) {
         path.push(component);
         match std::fs::symlink_metadata(&path) {
-            Ok(metadata) if metadata.is_symlink() => {
-                return Err(CliError::Validation {
-                    message: format!(
-                        "refusing to install '{}': '{}' is a symbolic link, but Morphir \
-                         installed it as a real directory; the files under it are not the \
-                         ones Morphir wrote. Remove the link or choose a different -o target",
-                        target.join(relative).display(),
-                        path.display()
-                    ),
-                });
-            }
+            Ok(metadata) if metadata.is_symlink() => return Some(path),
             Ok(_) => {}
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
-            Err(error) => return Err(CliError::FileSystem { error }),
+            Err(_) => return None,
         }
     }
-    Ok(())
+    None
 }
 
 /// Remove `path` if it is a file that exists, first confirming its
@@ -1091,9 +1208,9 @@ mod tests {
         // own. A stale entry `sub/report` would make `remove_dir_all` land
         // on `outside/report` through that symlink even though
         // `symlink_metadata` on the final component (`report`) sees an
-        // ordinary directory. The pre-flight scan refuses first, naming the
-        // link (`reject_symlinked_ancestors`); `remove_confined` would refuse
-        // on its own if the scan ever let this through.
+        // ordinary directory. The pre-flight scan refuses first, because
+        // `sub/report` no longer resolves inside the target at all;
+        // `remove_confined` would refuse on its own if it ever got that far.
         let temp = tempfile::tempdir().unwrap();
         let outside = temp.path().join("outside");
         std::fs::create_dir_all(outside.join("report")).unwrap();
@@ -1114,8 +1231,10 @@ mod tests {
         record.write(&paths.result).unwrap();
 
         let error = install_here(&paths, &target).unwrap_err();
-        assert!(error.to_string().contains("symbolic link"), "{error}");
-        assert!(error.to_string().contains("sub"), "{error}");
+        assert!(
+            error.to_string().contains("outside the install target"),
+            "{error}"
+        );
         assert_eq!(
             std::fs::read_to_string(outside.join("report/marker.txt")).unwrap(),
             "safe",
@@ -1203,7 +1322,10 @@ mod tests {
 
         // A symlink is only a problem when it leads out of the target. One
         // that lands back inside it is an ordinary part of the user's layout
-        // and must keep working.
+        // and must keep working — on the second install as much as the first,
+        // which is where owning paths by their spelling used to go wrong: the
+        // ledger named `morphir-ir/...`, the link was still a link, and the
+        // reinstall was refused over a layout the user never changed.
         let temp = tempfile::tempdir().unwrap();
         let target = temp.path().join("dist");
         std::fs::create_dir_all(target.join("real")).unwrap();
@@ -1214,6 +1336,32 @@ mod tests {
 
         assert!(target.join("real/manifest.yaml").is_file());
         assert!(target.join("real/pkg/x.yaml").is_file());
+
+        // The ledger owns the files where they really are.
+        let installed = TaskResult::read(&paths.result).unwrap().unwrap().installed
+            [&canonical_key(&target)]
+            .clone();
+        assert_eq!(
+            installed,
+            vec![
+                "real/manifest.yaml".to_owned(),
+                "real/pkg/x.yaml".to_owned()
+            ],
+            "the ledger records the resolved location, not the spelling"
+        );
+
+        let report = install_here(&paths, &target).expect("the second install must work too");
+        assert!(
+            report.removed.is_empty(),
+            "nothing moved, so nothing is stale: {:?}",
+            report.removed
+        );
+        assert!(target.join("real/manifest.yaml").is_file());
+        assert_eq!(
+            TaskResult::read(&paths.result).unwrap().unwrap().installed[&canonical_key(&target)],
+            installed,
+            "and the ledger is unchanged"
+        );
     }
 
     #[cfg(unix)]
@@ -1654,6 +1802,40 @@ mod tests {
             assert_eq!(report.removed, vec!["Foo.gleam".to_owned()]);
             assert!(!target.join("Foo.gleam").exists());
         }
+    }
+
+    /// Two ledger entries that are hard links to each other are one file, so
+    /// a map keyed by that file has to remember both names. Keeping only one
+    /// of them left the other looking stale, and it was deleted.
+    #[test]
+    fn hard_linked_ledger_entries_are_all_kept_when_one_of_them_matches() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("out");
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(&target).unwrap();
+
+        // Three names, one file: two of them are in the ledger, and the third
+        // is the one this run writes.
+        std::fs::write(target.join("one.txt"), "generated").unwrap();
+        std::fs::hard_link(target.join("one.txt"), target.join("two.txt")).unwrap();
+        std::fs::hard_link(target.join("one.txt"), target.join("three.txt")).unwrap();
+
+        let paths = task_with_one_file(&root, "three.txt");
+        let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
+        record.installed.insert(
+            canonical_key(&target),
+            vec!["one.txt".to_owned(), "two.txt".to_owned()],
+        );
+        record.write(&paths.result).unwrap();
+
+        let report = install_here(&paths, &target).unwrap();
+        assert!(
+            report.removed.is_empty(),
+            "every name for a file this run rewrites is ours: {:?}",
+            report.removed
+        );
+        assert!(target.join("one.txt").exists());
+        assert!(target.join("two.txt").exists());
     }
 
     #[test]
