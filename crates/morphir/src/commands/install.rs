@@ -46,10 +46,14 @@ pub struct InstallReport {
 /// could name a location outside `target` and this function deletes what it
 /// names. See `validate_entry`.
 ///
-/// Text alone does not settle where a path leads, though, so every destination
-/// is also resolved against the filesystem before the first byte is written:
-/// see `confined_destination`. Both checks run in the pre-flight scan, so an
-/// install that is going to be refused writes nothing at all.
+/// Text alone does not settle where a path leads, though, so every component
+/// of every one of those paths is also checked against the filesystem before
+/// the first byte is written: nothing below the target may be a symbolic
+/// link. See `reject_symlinks_below_target`. With that rule in place a file
+/// has exactly one spelling under the target, so the ledger records each path
+/// as plain text and ownership is a string comparison. Both checks run in the
+/// pre-flight scan, so an install that is going to be refused writes nothing
+/// at all.
 ///
 /// All of that runs under an exclusive lock on the install target, taken as
 /// soon as the target is canonicalized and held until the ledger is written.
@@ -121,47 +125,28 @@ pub fn install(
 
     let new_files = flatten_value_files(paths, &record.value)?;
 
-    // Before touching anything: every location this run would create or write
-    // has to resolve inside the target. A symlink already sitting in the
-    // target redirects `create_dir_all` and `fs::copy` without any of the
-    // textual checks above noticing. The entries themselves are checked as
-    // well as the flattened files, because a directory entry with nothing
-    // under it flattens to no files at all and would still have
-    // `copy_dir` create it.
-    for destination in new_files.iter().chain(record.value.iter()) {
-        confined_destination(destination, target, &canonical_target)?;
+    // Before touching anything: nothing below the target may be a symbolic
+    // link. See `reject_symlinks_below_target`. The entries themselves are
+    // checked as well as the flattened files, because a directory entry with
+    // nothing under it flattens to no files at all and would still have
+    // `copy_dir` create it, and the ledger's own paths are checked because
+    // this run may delete what they name.
+    for path in new_files
+        .iter()
+        .chain(record.value.iter())
+        .chain(previous_files.iter())
+    {
+        reject_symlinks_below_target(path, target)?;
     }
 
-    // Before touching anything: every path the ledger owns must still lead
-    // where it led when install wrote it. See `reject_moved_ledger_entries`.
-    reject_moved_ledger_entries(&previous_files, target, &canonical_target)?;
+    let new_files_lookup: HashSet<&str> = new_files.iter().map(String::as_str).collect();
 
-    // Ownership is compared by resolved location, not by the text of a path:
-    // `dist/morphir-ir/x` and `dist/real/x` are one file when `morphir-ir` is
-    // a link to `real`, and the ledger records the resolved form. `new_files`
-    // keeps the spelled form alongside, because that is where the copy reads
-    // and writes.
-    let resolved_new_files = new_files
-        .iter()
-        .map(|file| resolved_relative(file, target, &canonical_target))
-        .collect::<Result<Vec<String>, CliError>>()?;
-    let new_files_lookup: HashSet<&str> = resolved_new_files.iter().map(String::as_str).collect();
-
-    // Before touching anything: two spelled outputs can resolve to the same
-    // real file. `a -> real` and `b -> real` inside the target make
-    // `a/config` and `b/config` one location on disk, so both would pass
-    // every check above on their own, and the second copy would silently
-    // overwrite the first with whichever entry happened to run last.
-    // `resolved_new_files` is where that collision shows up: two different
-    // spelled entries sharing one resolved destination. Refuse the whole
-    // install rather than let one silently clobber the other.
-    reject_colliding_destinations(
-        &new_files,
-        &resolved_new_files,
-        target,
-        &canonical_target,
-        out_root,
-    )?;
+    // Before touching anything: two output paths can name one file. On a
+    // filesystem that does not distinguish letter case, `a/Config` and
+    // `a/config` are the same file, so the second copy would silently
+    // overwrite the first with whichever entry happened to run last. Refuse
+    // the whole install rather than let one clobber the other.
+    reject_colliding_destinations(&new_files, target, &canonical_target, out_root)?;
 
     // Before touching anything: a file this run would write that already
     // exists at the destination and is NOT one this function wrote last time
@@ -171,21 +156,19 @@ pub fn install(
     // the whole install instead, before any copy or removal, so the target is
     // left exactly as it was.
     let previous_files_lookup: HashSet<&str> = previous_files.iter().map(String::as_str).collect();
-    let unmatched: Vec<(&String, &String)> = new_files
+    let unmatched: Vec<&String> = new_files
         .iter()
-        .zip(resolved_new_files.iter())
-        .filter(|(_, resolved)| !previous_files_lookup.contains(resolved.as_str()))
-        .filter(|(spelled, _)| std::fs::symlink_metadata(target.join(spelled)).is_ok())
+        .filter(|file| !previous_files_lookup.contains(file.as_str()))
+        .filter(|file| std::fs::symlink_metadata(target.join(file)).is_ok())
         .collect();
     // A destination the ledger does not name may still be a file the ledger
     // owns, written under a different spelling. See `renamed_previous_files`.
-    let candidates: Vec<&String> = unmatched.iter().map(|(_, resolved)| *resolved).collect();
-    let renamed = renamed_previous_files(target, &previous_files, &candidates)?;
+    let renamed = renamed_previous_files(target, &previous_files, &unmatched)?;
     let renamed_to: HashSet<&str> = renamed.values().map(String::as_str).collect();
     let mut conflicts: Vec<String> = unmatched
         .into_iter()
-        .filter(|(_, resolved)| !renamed_to.contains(resolved.as_str()))
-        .map(|(spelled, _)| spelled.clone())
+        .filter(|file| !renamed_to.contains(file.as_str()))
+        .cloned()
         .collect();
     if !conflicts.is_empty() {
         conflicts.sort();
@@ -293,8 +276,6 @@ pub fn install(
                 previous_files: &previous_files,
                 previous_files_lookup: &previous_files_lookup,
                 removed: &removed,
-                new_files: &new_files,
-                resolved_new_files: &resolved_new_files,
                 target,
             },
         );
@@ -305,7 +286,7 @@ pub fn install(
         return Err(error);
     }
 
-    record.installed.insert(key, resolved_new_files);
+    record.installed.insert(key, new_files);
     record
         .write(&paths.result)
         .map_err(|error| CliError::Config { error })?;
@@ -490,98 +471,81 @@ fn validate_entry(entry: &str) -> Result<(), CliError> {
     Ok(())
 }
 
-/// Confirm that `relative`, joined onto `target`, still names a location
-/// inside `target` once the symlinks along the way are followed.
+/// Refuse the install when any path component below `target` is a symbolic
+/// link.
 ///
-/// `validate_entry` catches the textual escapes (`..` and absolute paths) but
-/// not a symlink already sitting in the target: with `dist/morphir-ir`
-/// pointing at `/outside`, `create_dir_all` and `fs::copy` follow it without
-/// complaint and the install writes outside `dist` altogether. Worse, a user
-/// who replaces an owned directory with such a symlink slips past the
-/// foreign-content conflict check too, because the paths beneath it are ones
-/// this function already owns.
+/// `target` itself may be a link: `-o` pointing at one is an ordinary thing to
+/// do, and it is canonicalized before anything else happens. Below that,
+/// everything install writes to, and everything its ledger claims to own, has
+/// to be a real file or a real directory.
 ///
-/// The destination usually does not exist yet, so the nearest ancestor that
-/// does is canonicalized instead, and has to resolve under the canonical
-/// target — the same rule `remove_confined` applies on the removal side. A
-/// path that exists but does not resolve is a dangling symlink, which
-/// `fs::copy` would follow to wherever it points, so it is refused rather
-/// than walked past.
+/// One rule replaces a whole family of hazards. A link that leads out of the
+/// target — `dist/morphir-ir` pointing at `/outside` — makes `create_dir_all`
+/// and `fs::copy` write outside the target. A link with nothing at the far end
+/// makes them create the file wherever it points. A directory install created
+/// and the user later swapped for a link means the ledger's paths no longer
+/// name the files install wrote. A link that stays inside the target makes two
+/// different output paths one file. Every one of those is a symbolic link
+/// under the target, so refusing all of them, by name and before anything is
+/// touched, settles all of them at once — and leaves the ledger free to record
+/// each file exactly as install spells it.
 ///
-/// Like `remove_confined`, this is advisory rather than a security boundary:
-/// it catches an accidental or stale symlink in the target, and it is
-/// inherently racy, since nothing stops one from appearing between this check
-/// and the write.
-fn confined_destination(
-    relative: &str,
-    target: &Path,
-    canonical_target: &Path,
-) -> Result<(), CliError> {
-    let destination = target.join(relative);
-    let mut candidate = Some(destination.as_path());
-    while let Some(path) = candidate {
-        match std::fs::canonicalize(path) {
-            Ok(resolved) if resolved.starts_with(canonical_target) => return Ok(()),
-            Ok(resolved) => {
+/// A component that is not on disk ends the walk: nothing exists below a path
+/// that does not exist, so there is nothing further to check.
+///
+/// Like `remove_confined`, this is advisory rather than a security boundary.
+/// It catches an accidental or stale link in the target, and it is inherently
+/// racy, since nothing stops one from appearing between this check and the
+/// write.
+fn reject_symlinks_below_target(relative: &str, target: &Path) -> Result<(), CliError> {
+    let mut path = target.to_path_buf();
+    // `validate_entry` has already refused everything but ordinary names, so
+    // every component here is one directory step below the last.
+    for component in Path::new(relative).components() {
+        let Component::Normal(name) = component else {
+            continue;
+        };
+        path.push(name);
+        match std::fs::symlink_metadata(&path) {
+            Ok(metadata) if metadata.is_symlink() => {
+                let points_at = std::fs::read_link(&path)
+                    .map(|link| format!(" to '{}'", link.display()))
+                    .unwrap_or_default();
                 return Err(CliError::Validation {
                     message: format!(
-                        "refusing to install '{}': it resolves to '{}', which is outside the \
-                         install target '{}' (resolved to '{}')",
-                        destination.display(),
-                        resolved.display(),
+                        "refusing to install into '{}': '{}' is a symbolic link{points_at}, and \
+                         an -o target may not contain symbolic links; point -o at the real \
+                         directory instead, or remove the link",
                         target.display(),
-                        canonical_target.display()
+                        path.display()
                     ),
                 });
             }
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                if std::fs::symlink_metadata(path).is_ok() {
-                    return Err(CliError::Validation {
-                        message: format!(
-                            "refusing to install '{}': '{}' is a symbolic link with no target, \
-                             so writing through it could land outside the install target '{}'",
-                            destination.display(),
-                            path.display(),
-                            target.display()
-                        ),
-                    });
-                }
-                candidate = path.parent();
-            }
+            Ok(_) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
             Err(error) => return Err(CliError::FileSystem { error }),
         }
     }
     Ok(())
 }
 
-/// Refuse the install when two entries in `spelled` resolve to the same
-/// location under `target`.
+/// Refuse the install when two of `destinations` name the same file under
+/// `target`.
 ///
-/// `spelled` and `resolved` are parallel: `spelled[i]` is the path `install`
-/// would write to, and `resolved[i]` is where that really lands once the
-/// symlinks in `target` are followed (see `resolved_relative`). An internal
-/// symlink layout such as `a -> real` and `b -> real` makes two different
-/// entries — `a/config` and `b/config`, say — the same file on disk. Nothing
-/// earlier catches that: each one individually resolves inside `target`, so
-/// the containment checks pass, and the second copy would silently overwrite
-/// whatever the first one wrote.
+/// Nothing below the target is a symbolic link by the time this runs (see
+/// `reject_symlinks_below_target`), so two output paths can only be one file
+/// by being the same text — or by differing in nothing but letter case on a
+/// filesystem that does not distinguish it, which is the default on macOS and
+/// Windows. On a case-sensitive filesystem `a/Config` and `a/config` really
+/// are two files; on a case-insensitive one they are one file, and the second
+/// copy would silently overwrite the first. So the grouping key case-folds
+/// every path when the target's filesystem turns out not to tell case apart;
+/// see `target_filesystem_is_case_insensitive`.
 ///
-/// `resolved_relative` only resolves the directories above a destination,
-/// never the file name itself, so two entries that differ only in the case
-/// of their final component — `a/Config` and `a/config` — resolve to two
-/// different strings even with no symlink involved at all. On a
-/// case-sensitive filesystem those really are two different files. On a
-/// case-insensitive one — the default on macOS and Windows — they are the
-/// same file, exactly the clobber this check exists to prevent. So the
-/// grouping key case-folds every resolved path first when the target's
-/// filesystem turns out to be case-insensitive; see
-/// `target_filesystem_is_case_insensitive`.
-///
-/// The error lists every colliding group so the user can see which spelled
-/// paths are fighting over which destination.
+/// The error lists every colliding group so the user can see which paths are
+/// fighting over one file.
 fn reject_colliding_destinations(
-    spelled: &[String],
-    resolved: &[String],
+    destinations: &[String],
     target: &Path,
     canonical_target: &Path,
     out_root: &Path,
@@ -599,15 +563,15 @@ fn reject_colliding_destinations(
         }
     };
 
-    let mut by_destination: BTreeMap<String, Vec<(&String, &String)>> = BTreeMap::new();
-    for (spelled, resolved) in spelled.iter().zip(resolved.iter()) {
+    let mut by_destination: BTreeMap<String, Vec<&String>> = BTreeMap::new();
+    for destination in destinations {
         by_destination
-            .entry(fold(resolved))
+            .entry(fold(destination))
             .or_default()
-            .push((spelled, resolved));
+            .push(destination);
     }
 
-    let mut collisions: Vec<Vec<(&String, &String)>> = by_destination
+    let mut collisions: Vec<Vec<&String>> = by_destination
         .into_values()
         .filter(|group| group.len() > 1)
         .collect();
@@ -615,37 +579,31 @@ fn reject_colliding_destinations(
         return Ok(());
     }
     for group in &mut collisions {
-        group.sort_by(|left, right| left.0.cmp(right.0));
+        group.sort();
     }
 
     let groups = collisions
         .iter()
         .map(|group| {
-            let spelled_list = group
+            group
                 .iter()
-                .map(|(spelled, _)| spelled.as_str())
+                .map(|destination| destination.as_str())
                 .collect::<Vec<_>>()
-                .join(", ");
-            // Any entry's own resolved form names the shared destination;
-            // on a case-insensitive filesystem the group's entries may spell
-            // it with different case, but they still name one file.
-            let destination = group[0].1;
-            format!("{spelled_list} all resolve to '{destination}'")
+                .join(", ")
         })
         .collect::<Vec<_>>()
         .join("; ");
 
     let reason = if case_insensitive {
-        "an internal symlink, or letter case this filesystem does not distinguish, makes two \
-         output paths land on the same file"
+        "letter case this filesystem does not distinguish makes two output paths one file"
     } else {
-        "an internal symlink makes two output paths land on the same file"
+        "two output paths are the same file"
     };
 
     Err(CliError::Validation {
         message: format!(
-            "install target '{}' would write more than one output path to the same \
-             destination: {groups}; {reason}, so the install cannot proceed",
+            "install target '{}' would write more than one output path to the same file: \
+             {groups}; {reason}, so the install cannot proceed",
             target.display()
         ),
     })
@@ -831,186 +789,6 @@ fn renamed_previous_files(
 /// rather than on a bare I/O error from a check the user never asked for.
 fn handle_for(path: &Path) -> Option<Handle> {
     Handle::from_path(path).ok()
-}
-
-/// Where a destination really is, as a path relative to the canonical install
-/// target.
-///
-/// `target.join(relative)` is where install writes; this is where that lands
-/// once the symbolic links between the target and the file have been
-/// followed. For an ordinary path the two are the same text. For one that
-/// runs through a link inside the target — `dist/morphir-ir` pointing at
-/// `dist/real`, a layout install has always supported — the resolved form
-/// names the real location, `real/...`.
-///
-/// This is the form the ledger records, which is what makes it possible to
-/// tell the supported layout apart from a directory that was swapped for a
-/// link after install created it. The link that was there when a file was
-/// written resolves the same way next time, so the recorded path still
-/// matches. A real directory replaced by a link resolves somewhere new, so it
-/// does not. See `reject_moved_ledger_entries`.
-///
-/// Only the directories above the file are resolved, never the file itself: a
-/// destination often does not exist yet, and a file that is a link is
-/// replaced rather than followed. Components that do not exist yet resolve to
-/// themselves, since `create_dir_all` will make them as real directories.
-fn resolved_relative(
-    relative: &str,
-    target: &Path,
-    canonical_target: &Path,
-) -> Result<String, CliError> {
-    let path = Path::new(relative);
-    let name = path.file_name().ok_or_else(|| CliError::Validation {
-        message: format!("task result entry '{relative}' does not name a file"),
-    })?;
-    let parent = path.parent().unwrap_or_else(|| Path::new(""));
-    let resolved_parent = resolve_directory(&target.join(parent))?;
-    let inside = resolved_parent
-        .strip_prefix(canonical_target)
-        .map_err(|_| CliError::Validation {
-            message: format!(
-                "refusing to install '{}': it resolves to '{}', which is outside the \
-                 install target '{}' (resolved to '{}')",
-                target.join(relative).display(),
-                resolved_parent.join(name).display(),
-                target.display(),
-                canonical_target.display()
-            ),
-        })?;
-    Ok(inside.join(name).to_string_lossy().into_owned())
-}
-
-/// Canonicalize a directory path, tolerating trailing components that do not
-/// exist yet: the deepest existing ancestor is canonicalized and the missing
-/// names are appended unchanged.
-///
-/// A component that does not resolve but is *there* is a dangling symbolic
-/// link, which writing through would follow to wherever it points, so it is
-/// refused rather than walked past — the same rule `confined_destination`
-/// applies.
-fn resolve_directory(path: &Path) -> Result<PathBuf, CliError> {
-    let mut missing: Vec<std::ffi::OsString> = Vec::new();
-    let mut candidate = path.to_path_buf();
-    loop {
-        match std::fs::canonicalize(&candidate) {
-            Ok(mut resolved) => {
-                for name in missing.iter().rev() {
-                    resolved.push(name);
-                }
-                return Ok(resolved);
-            }
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                if std::fs::symlink_metadata(&candidate).is_ok() {
-                    return Err(CliError::Validation {
-                        message: format!(
-                            "refusing to install through '{}': it is a symbolic link with no \
-                             target, so writing through it could land outside the install target",
-                            candidate.display()
-                        ),
-                    });
-                }
-                let Some(name) = candidate.file_name().map(ToOwned::to_owned) else {
-                    return Err(CliError::FileSystem { error });
-                };
-                missing.push(name);
-                if !candidate.pop() {
-                    return Err(CliError::FileSystem { error });
-                }
-            }
-            Err(error) => return Err(CliError::FileSystem { error }),
-        }
-    }
-}
-
-/// Refuse the install when a path the ledger owns no longer leads where it
-/// led when install wrote it.
-///
-/// The ledger records each file by its resolved location (see
-/// `resolved_relative`), so recomputing that location and comparing settles
-/// the question outright. A symbolic link that was already part of the user's
-/// layout resolves the same way every run, so its entries match and the
-/// install proceeds. A real directory that install created and the user has
-/// since replaced with a link to somewhere else under the target resolves
-/// somewhere new, so its entries do not match — and the files at the new
-/// location are the user's, not Morphir's. Without this, `remove_entry` would
-/// unlink one of them and the copy step would write over another.
-///
-/// The plain containment check cannot catch this: a link to a sibling
-/// directory inside the same target resolves inside the target, so every
-/// check on the path is satisfied.
-///
-/// A ledger entry's own final component can be swapped for a link too, and
-/// `resolved_relative` alone would not notice: it only resolves the parent
-/// directory, never the file itself, so `dist/foo` becoming a link to
-/// `dist/other` still resolves to `foo`. Left unchecked, the ledger would
-/// keep treating `foo` as owned (skipping the foreign-content check) while
-/// `fs::copy` follows the link and overwrites `other` instead. So the final
-/// component is checked directly, with `symlink_metadata`, before the
-/// resolved-location comparison ever runs.
-///
-/// Like the other symlink checks here this is advisory rather than a security
-/// boundary, and inherently racy: nothing stops a link from being swapped in
-/// between this check and the removal.
-fn reject_moved_ledger_entries(
-    previous_files: &[String],
-    target: &Path,
-    canonical_target: &Path,
-) -> Result<(), CliError> {
-    for file in previous_files {
-        let full = target.join(file);
-        if let Ok(metadata) = std::fs::symlink_metadata(&full)
-            && metadata.is_symlink()
-        {
-            let points_at = std::fs::read_link(&full)
-                .map(|link| link.display().to_string())
-                .unwrap_or_else(|_| "<unreadable>".to_owned());
-            return Err(CliError::Validation {
-                message: format!(
-                    "refusing to install into '{}': '{}' is a symbolic link to '{points_at}', \
-                     so the file Morphir installed at '{file}' is no longer there; the file \
-                     there is not the one Morphir wrote. Remove the link or choose a \
-                     different -o target",
-                    target.display(),
-                    full.display(),
-                ),
-            });
-        }
-        let now = resolved_relative(file, target, canonical_target)?;
-        if now == *file {
-            continue;
-        }
-        let culprit = symlinked_ancestor(file, target);
-        let named = match &culprit {
-            Some(path) => format!("'{}' is a symbolic link", path.display()),
-            None => format!("'{}' has moved", target.join(file).display()),
-        };
-        return Err(CliError::Validation {
-            message: format!(
-                "refusing to install into '{}': {named}, so the file Morphir installed at \
-                 '{file}' now resolves to '{now}'; the file there is not the one Morphir \
-                 wrote. Remove the link or choose a different -o target",
-                target.display()
-            ),
-        });
-    }
-    Ok(())
-}
-
-/// The first component between `target` and `relative` that is a symbolic
-/// link, used only to name the culprit in an error message.
-fn symlinked_ancestor(relative: &str, target: &Path) -> Option<PathBuf> {
-    let components: Vec<Component<'_>> = Path::new(relative).components().collect();
-    let ancestors = components.len().saturating_sub(1);
-    let mut path = target.to_path_buf();
-    for component in components.into_iter().take(ancestors) {
-        path.push(component);
-        match std::fs::symlink_metadata(&path) {
-            Ok(metadata) if metadata.is_symlink() => return Some(path),
-            Ok(_) => {}
-            Err(_) => return None,
-        }
-    }
-    None
 }
 
 /// Remove `path` if it is a file that exists, first confirming its
@@ -1213,14 +991,9 @@ fn copy_failure_left_a_file(destination: &Path) -> bool {
 /// install from later finding it and refusing the whole run as foreign
 /// content it never wrote.
 ///
-/// `previously_owned` holds the ledger's RESOLVED paths (the form `install`
-/// records, see `resolved_relative`), while `copied_files` holds the SPELLED
-/// paths the copy loop actually wrote to. Comparing one against the other
-/// directly would miss ownership reached through an internal symlink —
-/// `dist/morphir-ir/x` copied this run and `dist/real/x` owned from a
-/// previous one are the same file when `morphir-ir` links to `real`, but the
-/// two strings never match — so `resolved_of` maps each spelled path to the
-/// same resolved form before the ownership check runs.
+/// Both lists hold paths spelled exactly as install writes them, so the
+/// comparison is a plain string match. Nothing below the target is a symbolic
+/// link (see `reject_symlinks_below_target`), so one file has one spelling.
 ///
 /// This never stops early: every file in `copied_files` is attempted, even
 /// after an earlier one failed to delete, so one stubborn file (a read-only
@@ -1233,16 +1006,11 @@ fn copy_failure_left_a_file(destination: &Path) -> bool {
 fn roll_back_partial_copy(
     copied_files: &[String],
     previously_owned: &HashSet<&str>,
-    resolved_of: &HashMap<&str, &str>,
     target: &Path,
 ) -> Vec<CliError> {
     let mut errors = Vec::new();
     for file in copied_files {
-        let resolved = resolved_of
-            .get(file.as_str())
-            .copied()
-            .unwrap_or(file.as_str());
-        if previously_owned.contains(resolved) {
+        if previously_owned.contains(file.as_str()) {
             continue;
         }
         let path = target.join(file);
@@ -1297,11 +1065,6 @@ struct CopyFailureContext<'a> {
     previous_files_lookup: &'a HashSet<&'a str>,
     /// Files the stale-removal pass, earlier in `install`, actually deleted.
     removed: &'a [String],
-    /// This run's `value`, flattened to the files it would have written on a
-    /// full success, in the spelling `install` writes them with.
-    new_files: &'a [String],
-    /// `new_files`, resolved — the form the ledger records.
-    resolved_new_files: &'a [String],
     /// The install target.
     target: &'a Path,
 }
@@ -1317,9 +1080,9 @@ struct CopyFailureContext<'a> {
 /// names that rollback could not remove. That second part is what keeps the
 /// ledger honest when rollback itself hits an error: a file rollback failed
 /// to delete is still really on disk, so the ledger has to keep owning it,
-/// in the same resolved form the successful-install path would have
-/// recorded it in, or the next install would find it and refuse to run past
-/// it as foreign content.
+/// spelled the way the successful-install path would have recorded it, or
+/// the next install would find it and refuse to run past it as foreign
+/// content.
 ///
 /// Rollback failing does not make the original copy failure any less true,
 /// so it is always the error reported — but silently dropping a rollback
@@ -1335,28 +1098,9 @@ fn handle_copy_failure(
         previous_files,
         previous_files_lookup,
         removed,
-        new_files,
-        resolved_new_files,
         target,
     } = context;
-    // `copied_files` holds the SPELLED paths the copy loop wrote to;
-    // `previous_files_lookup` holds the ledger's RESOLVED paths. This map is
-    // built first, before either use below, so both the rollback and the
-    // ledger rebuild compare ownership resolved-to-resolved rather than
-    // spelled-to-resolved — see `roll_back_partial_copy`'s doc comment for
-    // why the mismatch matters.
-    let spelled_to_resolved: HashMap<&str, &str> = new_files
-        .iter()
-        .map(String::as_str)
-        .zip(resolved_new_files.iter().map(String::as_str))
-        .collect();
-
-    let rollback_errors = roll_back_partial_copy(
-        copied_files,
-        previous_files_lookup,
-        &spelled_to_resolved,
-        target,
-    );
+    let rollback_errors = roll_back_partial_copy(copied_files, previous_files_lookup, target);
 
     let removed_lookup: HashSet<&str> = removed.iter().map(String::as_str).collect();
     let mut ledger: Vec<String> = previous_files
@@ -1365,17 +1109,13 @@ fn handle_copy_failure(
         .cloned()
         .collect();
     for file in copied_files {
-        let resolved = spelled_to_resolved
-            .get(file.as_str())
-            .copied()
-            .unwrap_or(file.as_str());
-        if previous_files_lookup.contains(resolved) {
+        if previous_files_lookup.contains(file.as_str()) {
             // Already owned before this run started; already in `ledger`
             // via `previous_files` above.
             continue;
         }
         if std::fs::symlink_metadata(target.join(file)).is_ok() {
-            ledger.push(resolved.to_owned());
+            ledger.push(file.clone());
         }
     }
 
@@ -1818,11 +1558,11 @@ mod tests {
         use std::os::unix::fs::symlink;
 
         // `dist/sub` is a symlink to a directory the install target does not
-        // own. A stale entry `sub/report` would make `remove_dir_all` land
-        // on `outside/report` through that symlink even though
+        // own. A stale entry `sub/report` would make the removal land on
+        // `outside/report` through that symlink even though
         // `symlink_metadata` on the final component (`report`) sees an
-        // ordinary directory. The pre-flight scan refuses first, because
-        // `sub/report` no longer resolves inside the target at all;
+        // ordinary directory. The pre-flight scan walks every component of
+        // every ledger path and refuses first, naming `sub`;
         // `remove_confined` would refuse on its own if it ever got that far.
         let temp = tempfile::tempdir().unwrap();
         let outside = temp.path().join("outside");
@@ -1844,10 +1584,9 @@ mod tests {
         record.write(&paths.result).unwrap();
 
         let error = install_here(&paths, &target).unwrap_err();
-        assert!(
-            error.to_string().contains("outside the install target"),
-            "{error}"
-        );
+        let message = error.to_string();
+        assert!(message.contains("is a symbolic link"), "{message}");
+        assert!(message.contains("sub"), "{message}");
         assert_eq!(
             std::fs::read_to_string(outside.join("report/marker.txt")).unwrap(),
             "safe",
@@ -1877,8 +1616,12 @@ mod tests {
         let CliError::Validation { message } = error else {
             panic!("expected a validation error, got {error:?}");
         };
-        assert!(message.contains("outside the install target"), "{message}");
+        assert!(message.contains("is a symbolic link"), "{message}");
         assert!(message.contains("morphir-ir"), "{message}");
+        assert!(
+            message.contains("may not contain symbolic links"),
+            "{message}"
+        );
 
         assert_eq!(
             std::fs::read_to_string(outside.join("manifest.yaml")).unwrap(),
@@ -1918,10 +1661,9 @@ mod tests {
         symlink(&outside, target.join("morphir-ir")).unwrap();
 
         let error = install_here(&paths, &target).unwrap_err();
-        assert!(
-            error.to_string().contains("outside the install target"),
-            "{error}"
-        );
+        let message = error.to_string();
+        assert!(message.contains("is a symbolic link"), "{message}");
+        assert!(message.contains("morphir-ir"), "{message}");
         assert_eq!(
             std::fs::read_to_string(outside.join("manifest.yaml")).unwrap(),
             "not ours"
@@ -1929,12 +1671,12 @@ mod tests {
     }
 
     /// A ledger entry naming a FILE, not a directory, swapped for a symlink
-    /// to another file that is itself inside the target. Every check but
-    /// this one is satisfied: the link resolves inside the target (so
-    /// `confined_destination` passes), and `foo` is still a name the ledger
-    /// owns (so the foreign-content conflict check never runs on it) — but
-    /// `foo` is no longer the file Morphir wrote, and `fs::copy` would follow
-    /// the link and overwrite `other` in its place.
+    /// to another file that is itself inside the target. The link leads
+    /// nowhere unusual, and the name it sits at is still one the ledger owns,
+    /// so the foreign-content conflict check never runs on it — but the file
+    /// there is no longer the one Morphir wrote, and `fs::copy` would follow
+    /// the link and overwrite `other` in its place. The no-symlinks rule
+    /// catches it whatever the link points at.
     #[cfg(unix)]
     #[test]
     fn an_owned_file_swapped_for_a_symlink_to_another_file_in_the_target_is_refused() {
@@ -1966,52 +1708,70 @@ mod tests {
         );
     }
 
+    /// A symbolic link that stays inside the target used to be followed as
+    /// an ordinary part of the user's layout, with the ledger recording where
+    /// each file really landed. That support is what most of this module's
+    /// complexity paid for, and it is gone: anything below the target has to
+    /// be a real directory now, wherever the link leads. Install says so by
+    /// name and suggests pointing `-o` at the real directory instead.
     #[cfg(unix)]
     #[test]
-    fn a_symlink_that_stays_inside_the_target_is_followed_as_usual() {
+    fn a_symlinked_directory_inside_the_target_is_refused_even_though_it_stays_inside() {
         use std::os::unix::fs::symlink;
 
-        // A symlink is only a problem when it leads out of the target. One
-        // that lands back inside it is an ordinary part of the user's layout
-        // and must keep working — on the second install as much as the first,
-        // which is where owning paths by their spelling used to go wrong: the
-        // ledger named `morphir-ir/...`, the link was still a link, and the
-        // reinstall was refused over a layout the user never changed.
         let temp = tempfile::tempdir().unwrap();
         let target = temp.path().join("dist");
         std::fs::create_dir_all(target.join("real")).unwrap();
         symlink(target.join("real"), target.join("morphir-ir")).unwrap();
 
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir"]);
-        install_here(&paths, &target).unwrap();
-
-        assert!(target.join("real/manifest.yaml").is_file());
-        assert!(target.join("real/pkg/x.yaml").is_file());
-
-        // The ledger owns the files where they really are.
-        let installed = TaskResult::read(&paths.result).unwrap().unwrap().installed
-            [&canonical_key(&target)]
-            .clone();
-        assert_eq!(
-            installed,
-            vec![
-                "real/manifest.yaml".to_owned(),
-                "real/pkg/x.yaml".to_owned()
-            ],
-            "the ledger records the resolved location, not the spelling"
-        );
-
-        let report = install_here(&paths, &target).expect("the second install must work too");
+        let error = install_here(&paths, &target).unwrap_err();
+        let CliError::Validation { message } = error else {
+            panic!("expected a validation error, got {error:?}");
+        };
+        assert!(message.contains("is a symbolic link"), "{message}");
+        assert!(message.contains("morphir-ir"), "{message}");
         assert!(
-            report.removed.is_empty(),
-            "nothing moved, so nothing is stale: {:?}",
-            report.removed
+            message.contains("point -o at the real directory"),
+            "{message}"
         );
-        assert!(target.join("real/manifest.yaml").is_file());
+
+        assert!(
+            std::fs::read_dir(target.join("real")).unwrap().count() == 0,
+            "nothing may be written through the link"
+        );
+        let record = TaskResult::read(&paths.result).unwrap().unwrap();
+        assert!(
+            record.installed.is_empty(),
+            "a refused install records no bookkeeping"
+        );
+    }
+
+    /// The same rule for a FILE the user put in the way, rather than a
+    /// directory: a symlink sitting exactly where install would write, at a
+    /// path no previous install owns. The foreign-content check would name it
+    /// too, but the symlink rule runs first and says the more useful thing.
+    #[cfg(unix)]
+    #[test]
+    fn a_symlinked_file_the_user_placed_at_a_destination_is_refused() {
+        use std::os::unix::fs::symlink;
+
+        let temp = tempfile::tempdir().unwrap();
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(&target).unwrap();
+        std::fs::write(target.join("mine.json"), "the user's file").unwrap();
+        symlink(target.join("mine.json"), target.join("morphir-ir.json")).unwrap();
+
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
+        let error = install_here(&paths, &target).unwrap_err();
+        let message = error.to_string();
+        assert!(message.contains("is a symbolic link"), "{message}");
+        assert!(message.contains("morphir-ir.json"), "{message}");
+
         assert_eq!(
-            TaskResult::read(&paths.result).unwrap().unwrap().installed[&canonical_key(&target)],
-            installed,
-            "and the ledger is unchanged"
+            std::fs::read_to_string(target.join("mine.json")).unwrap(),
+            "the user's file",
+            "the file behind the link is the user's and must survive"
         );
     }
 
@@ -2020,9 +1780,9 @@ mod tests {
     fn a_dangling_symlink_at_a_destination_is_refused_rather_than_written_through() {
         use std::os::unix::fs::symlink;
 
-        // The link resolves to nothing, so canonicalizing it says "not
-        // found" — but `fs::copy` would still create the file at the far end
-        // of it, which is outside the target.
+        // The link has nothing at the far end, so `symlink_metadata` is the
+        // only thing that sees it at all — and `fs::copy` would happily
+        // create the file where it points, which is outside the target.
         let temp = tempfile::tempdir().unwrap();
         let target = temp.path().join("dist");
         std::fs::create_dir_all(&target).unwrap();
@@ -2034,10 +1794,9 @@ mod tests {
 
         let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
         let error = install_here(&paths, &target).unwrap_err();
-        assert!(
-            error.to_string().contains("symbolic link with no target"),
-            "{error}"
-        );
+        let message = error.to_string();
+        assert!(message.contains("is a symbolic link"), "{message}");
+        assert!(message.contains("morphir-ir.json"), "{message}");
     }
 
     /// The second of a two-file install fails partway through — its
@@ -2104,76 +1863,6 @@ mod tests {
         );
     }
 
-    /// Ownership has to be compared resolved-to-resolved, not spelled-to-
-    /// resolved. `dist/morphir-ir` links to `dist/real`, so the first install
-    /// records `real/manifest.yaml` as owned. A second install re-copies the
-    /// same file through the symlink — so `copied_files` names it
-    /// `morphir-ir/manifest.yaml`, the spelled form — and then fails on a
-    /// later entry. Before the fix, `roll_back_partial_copy` compared that
-    /// spelled name directly against the ledger's resolved names, never found
-    /// a match, and deleted a file this run did not introduce; the rebuilt
-    /// ledger, suffering the same mismatch, still went on claiming the file
-    /// was there.
-    #[cfg(unix)]
-    #[test]
-    fn rollback_does_not_delete_a_previously_owned_file_reached_through_a_symlink() {
-        use std::os::unix::fs::PermissionsExt;
-        use std::os::unix::fs::symlink;
-
-        redirect_morphir_home_for_tests();
-        let temp = tempfile::tempdir().unwrap();
-        let root = temp.path().join("out");
-        let paths = TaskPaths::new(&root, Path::new(""), &TaskId::compile()).unwrap();
-        std::fs::create_dir_all(paths.dest.join("morphir-ir")).unwrap();
-        std::fs::write(paths.dest.join("morphir-ir/manifest.yaml"), "a: 1").unwrap();
-        let mut record = TaskResult::new(&TaskId::compile(), Path::new(""));
-        record.value = vec!["morphir-ir".to_owned()];
-        record.write(&paths.result).unwrap();
-
-        let target = temp.path().join("dist");
-        std::fs::create_dir_all(target.join("real")).unwrap();
-        symlink(target.join("real"), target.join("morphir-ir")).unwrap();
-
-        // First install: writes through the symlink, and the ledger records
-        // the resolved location `real/manifest.yaml`.
-        install_here(&paths, &target).unwrap();
-        assert!(target.join("real/manifest.yaml").is_file());
-        assert_eq!(
-            TaskResult::read(&paths.result).unwrap().unwrap().installed[&canonical_key(&target)],
-            vec!["real/manifest.yaml".to_owned()]
-        );
-
-        // Second install: a new entry whose destination directory is
-        // read-only, so its copy fails after `morphir-ir` — the previously
-        // owned entry — has already been re-copied through the symlink.
-        std::fs::create_dir_all(paths.dest.join("sub")).unwrap();
-        std::fs::write(paths.dest.join("sub/b.json"), "second").unwrap();
-        let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
-        record.value = vec!["morphir-ir".to_owned(), "sub/b.json".to_owned()];
-        record.write(&paths.result).unwrap();
-
-        std::fs::create_dir_all(target.join("sub")).unwrap();
-        std::fs::set_permissions(target.join("sub"), std::fs::Permissions::from_mode(0o500))
-            .unwrap();
-        let result = install_here(&paths, &target);
-        std::fs::set_permissions(target.join("sub"), std::fs::Permissions::from_mode(0o700))
-            .unwrap();
-
-        let error = result.unwrap_err();
-        assert!(matches!(error, CliError::FileSystem { .. }), "{error}");
-
-        assert!(
-            target.join("real/manifest.yaml").is_file(),
-            "a file already owned before this run started must not be rolled back as \
-             though this run introduced it, just because it was reached through a symlink"
-        );
-        assert_eq!(
-            TaskResult::read(&paths.result).unwrap().unwrap().installed[&canonical_key(&target)],
-            vec!["real/manifest.yaml".to_owned()],
-            "the ledger must still list the file that rollback correctly left in place"
-        );
-    }
-
     /// `copy_failure_left_a_file` is what decides whether a failing copy's
     /// own destination gets folded into `copied_files` for rollback (see the
     /// comment above the copy loop in `install`). Real end-to-end coverage
@@ -2234,12 +1923,6 @@ mod tests {
         let previous_files_lookup: HashSet<&str> =
             previous_files.iter().map(String::as_str).collect();
         let removed: Vec<String> = Vec::new();
-        let new_files = vec![
-            "stuck".to_owned(),
-            "removable.json".to_owned(),
-            "never-reached.json".to_owned(),
-        ];
-        let resolved_new_files = new_files.clone();
 
         let copy_error = CliError::FileSystem {
             error: std::io::Error::other("could not copy never-reached.json"),
@@ -2251,8 +1934,6 @@ mod tests {
                 previous_files: &previous_files,
                 previous_files_lookup: &previous_files_lookup,
                 removed: &removed,
-                new_files: &new_files,
-                resolved_new_files: &resolved_new_files,
                 target: &target,
             },
         );
@@ -2292,14 +1973,10 @@ mod tests {
     /// was covered before.
     ///
     /// This actually lands on a different check than that sibling test:
-    /// `confined_destination` resolves every destination `record.value`
-    /// still names, before `reject_moved_ledger_entries` ever runs, and an
-    /// outside-pointing symlink fails that resolution outright — an
-    /// inside-target symlink resolves fine there and only trips
-    /// `reject_moved_ledger_entries` afterward, which is why the sibling
-    /// test exercises the later check instead. Either way the property this
-    /// test is after — refused before any write, and the file behind the
-    /// link never touched — holds.
+    /// The same rule refuses this whether the link leads out of the target or
+    /// back into it; the sibling test covers the inside-pointing case. Either
+    /// way the property this test is after — refused before any write, and
+    /// the file behind the link never touched — holds.
     #[cfg(unix)]
     #[test]
     fn an_owned_file_swapped_for_a_symlink_pointing_outside_the_target_is_refused() {
@@ -2323,7 +2000,7 @@ mod tests {
 
         let error = install_here(&paths, &target).unwrap_err();
         let message = error.to_string();
-        assert!(message.contains("outside the install target"), "{message}");
+        assert!(message.contains("is a symbolic link"), "{message}");
         assert!(message.contains("morphir-ir.json"), "{message}");
 
         assert_eq!(
@@ -2501,54 +2178,12 @@ mod tests {
     /// so without a dedicated check the second copy would silently overwrite
     /// the first. The whole install must be refused instead, and nothing may
     /// be written.
-    #[cfg(unix)]
-    #[test]
-    fn two_spelled_outputs_resolving_to_the_same_destination_are_refused() {
-        use std::os::unix::fs::symlink;
-
-        let temp = tempfile::tempdir().unwrap();
-        let root = temp.path().join("out");
-        let paths = TaskPaths::new(&root, Path::new(""), &TaskId::compile()).unwrap();
-        std::fs::create_dir_all(paths.dest.join("a")).unwrap();
-        std::fs::create_dir_all(paths.dest.join("b")).unwrap();
-        std::fs::write(paths.dest.join("a/config"), "from a").unwrap();
-        std::fs::write(paths.dest.join("b/config"), "from b").unwrap();
-        let mut record = TaskResult::new(&TaskId::compile(), Path::new(""));
-        record.value = vec!["a/config".to_owned(), "b/config".to_owned()];
-        record.write(&paths.result).unwrap();
-
-        let target = temp.path().join("dist");
-        std::fs::create_dir_all(target.join("real")).unwrap();
-        symlink(target.join("real"), target.join("a")).unwrap();
-        symlink(target.join("real"), target.join("b")).unwrap();
-
-        let error = install_here(&paths, &target).unwrap_err();
-        let CliError::Validation { message } = error else {
-            panic!("expected a validation error, got {error:?}");
-        };
-        assert!(message.contains("a/config"), "{message}");
-        assert!(message.contains("b/config"), "{message}");
-        assert!(message.contains("real/config"), "{message}");
-
-        assert!(
-            !target.join("real/config").exists(),
-            "neither output may be written when they collide on one destination"
-        );
-        let record_after = TaskResult::read(&paths.result).unwrap().unwrap();
-        assert!(
-            record_after.installed.is_empty(),
-            "no bookkeeping must be recorded when the install is refused"
-        );
-    }
-
-    /// `resolved_relative` keeps a destination's final component verbatim —
-    /// it only resolves the directories above it — so `a/Config` and
-    /// `a/config` resolve to two different strings even with no symlink
-    /// involved at all. On a case-sensitive filesystem those really are two
-    /// different files. On a case-insensitive one they are the same file,
-    /// and the second copy would silently overwrite the first — the exact
-    /// clobber this collision check exists to prevent. Which branch runs is
-    /// decided by probing the host filesystem, the same way
+    /// `a/Config` and `a/config` are two different strings. On a
+    /// case-sensitive filesystem they really are two different files. On a
+    /// case-insensitive one they are the same file, and the second copy would
+    /// silently overwrite the first — the exact clobber this collision check
+    /// exists to prevent. Which branch runs is decided by probing the host
+    /// filesystem, the same way
     /// `a_ledger_entry_that_differs_only_in_case_is_recognised_as_ours` does.
     #[test]
     fn case_only_output_collisions_are_refused_on_case_insensitive_filesystems() {
