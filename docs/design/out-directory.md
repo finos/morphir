@@ -75,6 +75,20 @@ A `members` entry or a `default_member` that leaves the workspace directory
 skipped with a warning naming it, rather than pulling a configuration in
 from outside the workspace.
 
+That rule is about the spelling. A member is identified by the path it is
+*declared* at, relative to the workspace root, the way a Mill module is
+identified by its position in the build, and the declared path is what
+places the member's output. The directory that path names may be a
+symbolic link leading anywhere, including outside the workspace — linking
+a sibling checkout into `packages/` is an ordinary way to work. Morphir
+reads that member's sources from wherever the link leads, warns once that
+it has done so, and still writes its output under
+`<workspace>/.morphir/out/<declared path>/`. Confinement is a rule about
+what Morphir writes, not about where a declared member reads from. A
+member directory that is there but does not resolve at all — a link with
+nothing at the far end — is skipped with a warning, since Morphir cannot
+say what it would load.
+
 ## Result record
 
 ```json
@@ -152,49 +166,35 @@ not name by string may still be a file install wrote under a different
 spelling: on a case-insensitive filesystem a generated `Foo.gleam` that comes
 back as `foo.gleam` is the very same file. Install compares such a
 destination against its ledger by filesystem identity, keeps it as its own,
-and records the new spelling in place of the old one. It resolves every destination
-against the filesystem in that same pass: a symlink already in the target
-that leads out of it — `dist/morphir-ir` pointing at `/outside`, say — is
-refused by name, because `create_dir_all` and a file copy would otherwise
-follow it and write outside the target.
+and records the new spelling in place of the old one.
 
-A symlink that lands back inside the target is an ordinary part of a user's
-layout — `dist/morphir-ir` pointing at `dist/real` — and keeps working, on
-every install and not just the first. Install owns a path by where it
-*resolves*, not by how it is spelled: the ledger records each file relative to
-the canonical target with the links between them followed, so the example
-above is recorded as `real/manifest.yaml`.
+Nothing below the target may be a symbolic link. The target itself may be
+one — `-o` pointing at a link is ordinary, and install canonicalises it
+first — but every component of every path install would write, and of
+every path its ledger owns, has to be a real file or a real directory. The
+pre-flight scan walks those components with `symlink_metadata` and refuses
+the whole install before touching anything, naming the link and saying to
+point `-o` at the real directory instead. One rule settles a family of
+hazards that used to take one check each: a link leading out of the target
+(`dist/morphir-ir` pointing at `/outside`), a link with nothing at the far
+end, a directory install created that the user later swapped for a link,
+and two output paths made one file by a link inside the target. It also
+means a file has exactly one spelling under the target, so the ledger
+records each path as plain text and ownership is a string comparison.
 
-That is what tells a supported layout apart from a directory install created
-and the user later replaced with a link. A link that was already there
-resolves the same way on the next run, so its ledger entries still match and
-the install proceeds. A real directory swapped for a link to somewhere else
-under the target resolves somewhere new, its entries no longer match, and the
-files at the new location are the user's — so install refuses, naming the
-link, rather than deleting or overwriting through it.
-
-Resolving every destination also catches two differently spelled outputs
-landing on one file: `dist/a` and `dist/b` both linking to `dist/real` makes
-`a/config` and `b/config` the same destination, `real/config`. Install checks
-for that collision before writing anything and refuses the whole run, naming
-every colliding spelling and the destination they share, rather than letting
-the second copy silently overwrite the first. On a filesystem that does not
-distinguish letter case — the default on macOS and Windows — two outputs
-whose destinations differ only in case, such as `a/Config` and `a/config`,
-are the same collision even with no symlink involved, so install probes the
-target's case sensitivity and folds case before comparing when it is not
-distinguished.
+Two output paths can still name one file with no link involved. On a
+filesystem that does not distinguish letter case — the default on macOS
+and Windows — `a/Config` and `a/config` are the same file, and the second
+copy would silently overwrite the first. Install probes the target's case
+sensitivity, folds case before comparing when it is not distinguished, and
+refuses the whole run naming every colliding path.
 
 If a copy fails partway through — the disk fills up, say — install does not
 leave the target in a state the next install cannot make sense of. Every
 file this run added, including a partially written file the failing copy
 itself left behind, is removed; a file this run merely overwrote, which was
 already owned from an earlier install, is left as it is rather than deleted.
-Because ownership is tracked by resolved location, that comparison uses the
-same resolved form on both sides — a file this run copied through a symlink
-is recognized as already owned, and left alone, exactly as it would be if it
-had been written under its resolved spelling directly. The ledger is then
-rewritten so it matches whatever is actually left on disk
+The ledger is then rewritten so it matches whatever is actually left on disk
 — previously owned files that are still there, minus any this run correctly
 retired, plus anything this run added that could not be cleaned up — and the
 original copy failure is returned. Cleanup itself is best-effort: one file
@@ -223,6 +223,53 @@ This is the Zig `zig-out`
 install step; `.dest` is the cache, and `-o` only ever adds or retires files
 it owns there.
 
+### Threat model
+
+None of these checks is a security boundary — each one is inherently racy,
+since nothing stops the filesystem from changing between a check and the
+syscall after it. They are there to stop an ordinary mistake, a stale
+layout, or a surprising filesystem from making Morphir delete or overwrite
+something it does not own. What the install and out-root code defends
+against:
+
+- **Escaping the target at a path join.** Every `value` entry and every
+  ledger path is refused if it is absolute or holds `..`, before it is
+  joined onto anything. Task ids and module paths are checked the same way
+  before they are joined onto the out root, and `workspace.out_dir` is
+  refused if it is absolute or holds `..`.
+- **Symbolic links below the target.** Every component of every
+  destination and every ledger path has to be a real file or directory;
+  see above. The removal side also confirms a file's containing directory
+  still resolves under the canonical target before unlinking anything.
+- **Case-insensitive filesystems.** Two outputs differing only in letter
+  case are one file on macOS and Windows, so install probes the target and
+  folds case before comparing. The same property in reverse — a generated
+  name that comes back with different case between runs — is matched by
+  filesystem identity rather than by string, so install still recognises
+  its own file.
+- **Windows drive prefixes and backslash separators.** `C:\out` and
+  `..\outside` are refused wherever a relative path is expected: member
+  entries, task id segments, module paths, and `workspace.out_dir`.
+- **Relative configuration paths after a change of directory.** The
+  configuration path is made absolute as it is loaded, before anything
+  derives the workspace root, the project root, or the out root from it,
+  so a later `chdir` cannot move the out root.
+- **Two runs of one task.** Each task holds an exclusive lock on
+  `<task>.lock` from before `.dest` is cleared until the record is
+  written, and a reader holds the same lock shared, so a compile cannot
+  clear `.dest` under a generate that is reading it.
+- **Two installs to one target.** An exclusive lock keyed on the canonical
+  target — not on the task and not on the out root — covers the conflict
+  scan, the removals, the copies, and the ledger write, so
+  `compile -o dist` and `generate -o dist` take turns.
+- **A copy that fails partway through.** Everything this run introduced is
+  rolled back, and the ledger is rewritten to match what is really left on
+  disk, so the next install is not wedged by output it cannot account for.
+- **Dangling links and hard links.** A dangling link below the target is
+  refused by the symlink rule. Two ledger entries that are hard links to
+  each other are one file, so a match on one keeps both from being retired
+  as stale.
+
 ## IR storage
 
 ```toml
@@ -235,8 +282,11 @@ Names inside `.dest`: `morphir-ir.json`, `morphir-ir.yaml`, `morphir-ir/`.
 
 `ir.mode` (`classic`/`vfs`) is still accepted as a deprecated alias for
 `ir.layout` for one release: `classic` maps to `single-file` and `vfs` maps to
-`document-tree`. Setting `ir.mode` prints a warning. An explicit `ir.layout`
-always wins over `ir.mode` when both are set.
+`document-tree`. Setting `ir.mode` prints a warning. The alias is applied
+inside each configuration layer before the layers are merged, so a `mode` in
+a higher-precedence layer beats a `layout` in a lower one, exactly as two
+`layout` settings would. Within one layer an explicit `ir.layout` wins over
+an `ir.mode` beside it, and Morphir warns that the `mode` had no effect.
 
 The single-file Elm compile path (`morphir compile --input <file>` without a
 project config) always writes classic v3 JSON and ignores `[ir]` entirely; if
