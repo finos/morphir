@@ -83,9 +83,14 @@ any directories that are left empty by that. Anything else under `<path>`,
 including a directory a user created inside a directory-valued entry before
 or after the first eject, is left alone. If `<path>` already exists as a
 plain file rather than a directory, eject refuses and names the path in its
-error rather than failing on a confusing filesystem error. This is the Zig
-`zig-out` install step; `.dest` is the cache, and `-o` only ever adds or
-retires files it owns there.
+error rather than failing on a confusing filesystem error. Before copying
+anything, eject also checks every file it is about to write against the
+target: if a file already sits there and eject did not write it on a
+previous run, eject refuses the whole operation and lists every such
+conflicting path, rather than overwriting foreign content and later
+deleting it once the task stops producing it. This is the Zig `zig-out`
+install step; `.dest` is the cache, and `-o` only ever adds or retires files
+it owns there.
 
 ## IR storage
 

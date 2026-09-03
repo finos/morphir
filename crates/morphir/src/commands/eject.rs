@@ -56,19 +56,50 @@ pub fn eject(paths: &TaskPaths, target: &Path) -> Result<EjectReport, CliError> 
     for entry in &record.value {
         validate_entry(entry)?;
     }
-    let key = target.to_string_lossy().into_owned();
-    let previous_files = record.ejected.get(&key).cloned().unwrap_or_default();
-    for file in &previous_files {
-        validate_entry(file)?;
-    }
 
     reject_non_directory_target(target)?;
     std::fs::create_dir_all(target).map_err(|error| CliError::FileSystem { error })?;
     let canonical_target =
         std::fs::canonicalize(target).map_err(|error| CliError::FileSystem { error })?;
+    reject_target_inside_dest(&canonical_target, &paths.dest)?;
+
+    // Keyed on the canonical target, not the raw `-o` string, so `dist` and
+    // `./dist` (or any other two spellings of the same directory) share one
+    // bookkeeping entry instead of shadowing each other.
+    let key = canonical_target.to_string_lossy().into_owned();
+    let previous_files = record.ejected.get(&key).cloned().unwrap_or_default();
+    for file in &previous_files {
+        validate_entry(file)?;
+    }
 
     let new_files = flatten_value_files(paths, &record.value)?;
     let new_files_lookup: HashSet<&str> = new_files.iter().map(String::as_str).collect();
+
+    // Before touching anything: a file this run would write that already
+    // exists at the destination and is NOT one this function wrote last time
+    // is foreign content — it belongs to the user, not to a previous eject.
+    // Copying over it would silently overwrite it, and a later run whose
+    // artifact set shrinks would then delete it as if it were ours. Refuse
+    // the whole eject instead, before any copy or removal, so the target is
+    // left exactly as it was.
+    let previous_files_lookup: HashSet<&str> = previous_files.iter().map(String::as_str).collect();
+    let mut conflicts: Vec<String> = new_files
+        .iter()
+        .filter(|file| !previous_files_lookup.contains(file.as_str()))
+        .filter(|file| std::fs::symlink_metadata(target.join(file)).is_ok())
+        .cloned()
+        .collect();
+    if !conflicts.is_empty() {
+        conflicts.sort();
+        return Err(CliError::Validation {
+            message: format!(
+                "eject target '{}' already contains files Morphir did not write: {}; \
+                 move them aside or choose a different -o target",
+                target.display(),
+                conflicts.join(", ")
+            ),
+        });
+    }
 
     // Remove exactly the files this function wrote here before that the
     // current `value` no longer produces. A directory entry is never
@@ -164,6 +195,33 @@ fn reject_non_directory_target(target: &Path) -> Result<(), CliError> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(error) => Err(CliError::FileSystem { error }),
     }
+}
+
+/// Reject a `-o` target that is the task's own scratch directory, or a path
+/// inside it. `eject` copies from `paths.dest` to `target`; if the two are
+/// the same location (or `target` is nested under `dest`), a copy's source
+/// and destination alias each other, and `fs::copy` truncates the
+/// destination — and therefore the source — before reading it. Both sides
+/// are canonicalized before comparing, the same way `remove_confined` does,
+/// so a symlinked `dest` or `target` cannot slip past a textual comparison.
+fn reject_target_inside_dest(canonical_target: &Path, dest: &Path) -> Result<(), CliError> {
+    let canonical_dest = match std::fs::canonicalize(dest) {
+        Ok(canonical_dest) => canonical_dest,
+        // `dest` does not exist, so `target` cannot be inside it.
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(CliError::FileSystem { error }),
+    };
+    if canonical_target.starts_with(&canonical_dest) {
+        return Err(CliError::Validation {
+            message: format!(
+                "-o target '{}' is the task's own scratch directory ('{}') or lies inside it; \
+                 the eject target must be outside the task's scratch directory",
+                canonical_target.display(),
+                canonical_dest.display()
+            ),
+        });
+    }
+    Ok(())
 }
 
 /// Reject a `value` entry or an `ejected` file path that could name a
@@ -352,6 +410,15 @@ mod tests {
     use morphir_devkit::{TaskId, TaskPaths, TaskResult};
     use std::path::Path;
 
+    /// The key `eject` uses for `record.ejected`: the canonicalized path,
+    /// not whatever string the test wrote. `path` must already exist.
+    fn canonical_key(path: &Path) -> String {
+        std::fs::canonicalize(path)
+            .unwrap()
+            .to_string_lossy()
+            .into_owned()
+    }
+
     fn task_with_value(root: &Path, value: &[&str]) -> TaskPaths {
         let paths = TaskPaths::new(root, Path::new(""), &TaskId::compile());
         std::fs::create_dir_all(paths.dest.join("parse")).unwrap();
@@ -377,7 +444,7 @@ mod tests {
         assert_eq!(report.copied, vec!["morphir-ir.json".to_owned()]);
         let record = TaskResult::read(&paths.result).unwrap().unwrap();
         assert_eq!(
-            record.ejected[&target.to_string_lossy().into_owned()],
+            record.ejected[&canonical_key(&target)],
             vec!["morphir-ir.json".to_owned()]
         );
     }
@@ -514,12 +581,12 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let paths = task_with_value(&temp.path().join("out"), &[]);
         let target = temp.path().join("dist");
+        std::fs::create_dir_all(&target).unwrap();
 
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
-        record.ejected.insert(
-            target.to_string_lossy().into_owned(),
-            vec!["../escape.txt".to_owned()],
-        );
+        record
+            .ejected
+            .insert(canonical_key(&target), vec!["../escape.txt".to_owned()]);
         record.write(&paths.result).unwrap();
 
         let error = eject(&paths, &target).unwrap_err();
@@ -669,10 +736,9 @@ mod tests {
         std::fs::write(target.join("morphir-ir/pkg/x.yaml"), "b: 2").unwrap();
 
         let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
-        record.ejected.insert(
-            target.to_string_lossy().into_owned(),
-            vec!["morphir-ir".to_owned()],
-        );
+        record
+            .ejected
+            .insert(canonical_key(&target), vec!["morphir-ir".to_owned()]);
         record.write(&paths.result).unwrap();
 
         let report = eject(&paths, &target).unwrap();
@@ -739,10 +805,9 @@ mod tests {
         let paths = TaskPaths::new(&temp.path().join("out"), Path::new(""), &TaskId::compile());
         let mut record = TaskResult::new(&TaskId::compile(), Path::new(""));
         record.value = Vec::new();
-        record.ejected.insert(
-            target.to_string_lossy().into_owned(),
-            vec!["sub/report".to_owned()],
-        );
+        record
+            .ejected
+            .insert(canonical_key(&target), vec!["sub/report".to_owned()]);
         record.write(&paths.result).unwrap();
 
         let error = eject(&paths, &target).unwrap_err();
@@ -782,6 +847,124 @@ mod tests {
         let paths = TaskPaths::new(temp.path(), Path::new(""), &TaskId::compile());
         let error = eject(&paths, &temp.path().join("dist")).unwrap_err();
         assert!(error.to_string().contains("no result record"), "{error}");
+    }
+
+    #[test]
+    fn a_foreign_file_at_a_path_eject_would_write_blocks_the_whole_eject() {
+        // A file eject did not write, sitting exactly where the current
+        // `value` would write one, must not be silently overwritten (and
+        // therefore must not later be deleted as if it were ours). The
+        // whole eject is refused instead, and nothing on disk changes.
+        let temp = tempfile::tempdir().unwrap();
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(&target).unwrap();
+        std::fs::write(target.join("morphir-ir.json"), "not ours").unwrap();
+
+        let error = eject(&paths, &target).unwrap_err();
+        let CliError::Validation { message } = error else {
+            panic!("expected a validation error, got {error:?}");
+        };
+        assert!(message.contains("morphir-ir.json"), "{message}");
+        assert!(message.contains("did not write"), "{message}");
+
+        assert_eq!(
+            std::fs::read_to_string(target.join("morphir-ir.json")).unwrap(),
+            "not ours",
+            "the foreign file must be untouched"
+        );
+        assert!(
+            std::fs::read_dir(&target).unwrap().count() == 1,
+            "nothing else must be created in the target"
+        );
+        let record = TaskResult::read(&paths.result).unwrap().unwrap();
+        assert!(
+            record.ejected.is_empty(),
+            "no bookkeeping must be recorded when the eject is refused"
+        );
+    }
+
+    #[test]
+    fn a_foreign_file_inside_a_directory_entry_also_blocks_the_eject() {
+        // Same property, but the conflicting path is one of the individual
+        // files flattened out of a directory-valued entry, not a top-level
+        // file entry.
+        let temp = tempfile::tempdir().unwrap();
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir"]);
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(target.join("morphir-ir")).unwrap();
+        std::fs::write(target.join("morphir-ir/manifest.yaml"), "not ours").unwrap();
+
+        let error = eject(&paths, &target).unwrap_err();
+        assert!(
+            error.to_string().contains("morphir-ir/manifest.yaml"),
+            "{error}"
+        );
+        assert_eq!(
+            std::fs::read_to_string(target.join("morphir-ir/manifest.yaml")).unwrap(),
+            "not ours"
+        );
+        assert!(!target.join("morphir-ir/pkg").exists());
+    }
+
+    #[test]
+    fn re_ejecting_over_a_file_we_wrote_last_time_still_succeeds() {
+        let temp = tempfile::tempdir().unwrap();
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
+        let target = temp.path().join("dist");
+        eject(&paths, &target).unwrap();
+
+        // Ejecting again over the exact same, still-owned file must not be
+        // treated as a conflict.
+        eject(&paths, &target).unwrap();
+        assert!(target.join("morphir-ir.json").is_file());
+    }
+
+    #[test]
+    fn re_ejecting_with_a_different_spelling_of_the_same_target_still_finds_prior_bookkeeping() {
+        // `ejected` is keyed on the canonicalized target, so `dist` and
+        // `./dist` share bookkeeping instead of shadowing each other: a
+        // stale file from the first eject must still be recognized and
+        // removed on the second, even though the two calls spell `target`
+        // differently.
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("out");
+        let paths = task_with_value(&root, &["morphir-ir.json"]);
+        let target = temp.path().join("dist");
+        eject(&paths, &target).unwrap();
+        assert!(target.join("morphir-ir.json").is_file());
+
+        let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
+        record.value = Vec::new();
+        record.write(&paths.result).unwrap();
+
+        let dotted_target = temp.path().join(".").join("dist");
+        let report = eject(&paths, &dotted_target).unwrap();
+
+        assert!(!target.join("morphir-ir.json").exists());
+        assert_eq!(report.removed, vec!["morphir-ir.json".to_owned()]);
+    }
+
+    #[test]
+    fn eject_refuses_a_target_that_is_the_tasks_own_dest() {
+        let temp = tempfile::tempdir().unwrap();
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
+
+        let error = eject(&paths, &paths.dest).unwrap_err();
+        let CliError::Validation { message } = error else {
+            panic!("expected a validation error, got {error:?}");
+        };
+        assert!(message.contains("scratch directory"), "{message}");
+    }
+
+    #[test]
+    fn eject_refuses_a_target_nested_inside_the_tasks_own_dest() {
+        let temp = tempfile::tempdir().unwrap();
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir.json"]);
+        let target = paths.dest.join("nested");
+
+        let error = eject(&paths, &target).unwrap_err();
+        assert!(error.to_string().contains("scratch directory"), "{error}");
     }
 
     #[test]
