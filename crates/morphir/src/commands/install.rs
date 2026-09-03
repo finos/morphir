@@ -139,6 +139,13 @@ pub fn install(paths: &TaskPaths, target: &Path) -> Result<InstallReport, CliErr
         });
     }
 
+    // Before touching anything: every directory between the target and a
+    // file this function wrote must still be a real directory. See
+    // `reject_symlinked_ancestors`.
+    for file in &previous_files {
+        reject_symlinked_ancestors(file, target)?;
+    }
+
     // Remove exactly the files this function wrote here before that the
     // current `value` no longer produces. A directory entry is never
     // deleted wholesale — only the individual files this function is
@@ -359,6 +366,57 @@ fn confined_destination(
                 }
                 candidate = path.parent();
             }
+            Err(error) => return Err(CliError::FileSystem { error }),
+        }
+    }
+    Ok(())
+}
+
+/// Refuse an owned destination whose path now runs through a symbolic link.
+///
+/// `install` only ever creates real directories under the target, so every
+/// directory between the target and a file it wrote was a real directory at
+/// the time it was written. If one of them is a symbolic link now, someone
+/// swapped it in afterwards, and the ledger's paths no longer name what the
+/// ledger thinks they name: `remove_entry` unlinks a file through the link,
+/// and the copy step writes over one. Either way the file that is destroyed
+/// is the user's, not Morphir's.
+///
+/// `confined_destination` does not catch this. A link pointing at a sibling
+/// directory *inside* the same target resolves inside the target, so every
+/// containment check is satisfied and the paths beneath the link are ones
+/// this function already owns.
+///
+/// Only the components strictly between the target and the file are checked.
+/// The file itself may be a link for all this cares — `remove_entry` unlinks
+/// the link rather than what it points at, and a copy replaces it — and
+/// `target` itself may legitimately be one, since `-o` can name a symlinked
+/// directory. A component that does not exist ends the walk: there is
+/// nothing below it to reach.
+///
+/// Like the other symlink checks here this is advisory rather than a security
+/// boundary, and inherently racy: nothing stops a link from being swapped in
+/// between this check and the removal.
+fn reject_symlinked_ancestors(relative: &str, target: &Path) -> Result<(), CliError> {
+    let components: Vec<Component<'_>> = Path::new(relative).components().collect();
+    let ancestors = components.len().saturating_sub(1);
+    let mut path = target.to_path_buf();
+    for component in components.into_iter().take(ancestors) {
+        path.push(component);
+        match std::fs::symlink_metadata(&path) {
+            Ok(metadata) if metadata.is_symlink() => {
+                return Err(CliError::Validation {
+                    message: format!(
+                        "refusing to install '{}': '{}' is a symbolic link, but Morphir \
+                         installed it as a real directory; the files under it are not the \
+                         ones Morphir wrote. Remove the link or choose a different -o target",
+                        target.join(relative).display(),
+                        path.display()
+                    ),
+                });
+            }
+            Ok(_) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
             Err(error) => return Err(CliError::FileSystem { error }),
         }
     }
@@ -894,7 +952,9 @@ mod tests {
         // own. A stale entry `sub/report` would make `remove_dir_all` land
         // on `outside/report` through that symlink even though
         // `symlink_metadata` on the final component (`report`) sees an
-        // ordinary directory. `remove_confined` must refuse instead.
+        // ordinary directory. The pre-flight scan refuses first, naming the
+        // link (`reject_symlinked_ancestors`); `remove_confined` would refuse
+        // on its own if the scan ever let this through.
         let temp = tempfile::tempdir().unwrap();
         let outside = temp.path().join("outside");
         std::fs::create_dir_all(outside.join("report")).unwrap();
@@ -915,10 +975,8 @@ mod tests {
         record.write(&paths.result).unwrap();
 
         let error = install(&paths, &target).unwrap_err();
-        assert!(
-            error.to_string().contains("outside the install target"),
-            "{error}"
-        );
+        assert!(error.to_string().contains("symbolic link"), "{error}");
+        assert!(error.to_string().contains("sub"), "{error}");
         assert_eq!(
             std::fs::read_to_string(outside.join("report/marker.txt")).unwrap(),
             "safe",
@@ -1264,6 +1322,42 @@ mod tests {
 
         let error = install(&paths, &target).unwrap_err();
         assert!(error.to_string().contains("scratch directory"), "{error}");
+    }
+
+    /// The user replaces an installed directory with a link to a sibling
+    /// directory under the same target. Every containment check is satisfied
+    /// — the link resolves inside the target — but the paths beneath it are
+    /// ones the ledger says Morphir owns, while the files they now name are
+    /// the user's.
+    #[cfg(unix)]
+    #[test]
+    fn an_owned_directory_swapped_for_a_symlink_inside_the_target_is_refused() {
+        let temp = tempfile::tempdir().unwrap();
+        let paths = task_with_value(&temp.path().join("out"), &["morphir-ir"]);
+        let target = temp.path().join("dist");
+        install(&paths, &target).unwrap();
+        assert!(target.join("morphir-ir/manifest.yaml").is_file());
+
+        let foreign = target.join("other");
+        std::fs::create_dir_all(&foreign).unwrap();
+        std::fs::write(foreign.join("manifest.yaml"), "the user's file").unwrap();
+        std::fs::remove_dir_all(target.join("morphir-ir")).unwrap();
+        std::os::unix::fs::symlink(&foreign, target.join("morphir-ir")).unwrap();
+
+        // This run produces nothing, so every owned file is due for removal,
+        // and each one now resolves through the link onto the user's file.
+        let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
+        record.value = Vec::new();
+        record.write(&paths.result).unwrap();
+
+        let message = install(&paths, &target).unwrap_err().to_string();
+        assert!(message.contains("symbolic link"), "{message}");
+        assert!(message.contains("morphir-ir"), "{message}");
+        assert_eq!(
+            std::fs::read_to_string(foreign.join("manifest.yaml")).unwrap(),
+            "the user's file",
+            "the file behind the link is the user's and must survive"
+        );
     }
 
     #[test]

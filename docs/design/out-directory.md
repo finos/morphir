@@ -146,8 +146,15 @@ deleting it once the task stops producing it. It resolves every destination
 against the filesystem in that same pass: a symlink already in the target
 that leads out of it — `dist/morphir-ir` pointing at `/outside`, say — is
 refused by name, because `create_dir_all` and a file copy would otherwise
-follow it and write outside the target. A symlink that lands back inside
-the target is ordinary and still works. This is the Zig `zig-out`
+follow it and write outside the target.
+
+A symlink that lands back inside the target is ordinary for a path install
+does not own, and still works. For a path it does own it is refused: install
+only ever creates real directories, so if a directory it wrote earlier is a
+symlink now, someone swapped it in afterwards, and the files under it are the
+user's rather than Morphir's. Install walks the components between the target
+and each file in the ledger, and names the link in its error rather than
+deleting or overwriting through it. This is the Zig `zig-out`
 install step; `.dest` is the cache, and `-o` only ever adds or retires files
 it owns there.
 
