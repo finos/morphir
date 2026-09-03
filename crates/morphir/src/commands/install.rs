@@ -155,7 +155,13 @@ pub fn install(
     // `resolved_new_files` is where that collision shows up: two different
     // spelled entries sharing one resolved destination. Refuse the whole
     // install rather than let one silently clobber the other.
-    reject_colliding_destinations(&new_files, &resolved_new_files, target)?;
+    reject_colliding_destinations(
+        &new_files,
+        &resolved_new_files,
+        target,
+        &canonical_target,
+        out_root,
+    )?;
 
     // Before touching anything: a file this run would write that already
     // exists at the destination and is NOT one this function wrote last time
@@ -558,53 +564,197 @@ fn confined_destination(
 /// entries — `a/config` and `b/config`, say — the same file on disk. Nothing
 /// earlier catches that: each one individually resolves inside `target`, so
 /// the containment checks pass, and the second copy would silently overwrite
-/// whatever the first one wrote. The error lists every colliding group so the
-/// user can see which spelled paths are fighting over which destination.
+/// whatever the first one wrote.
+///
+/// `resolved_relative` only resolves the directories above a destination,
+/// never the file name itself, so two entries that differ only in the case
+/// of their final component — `a/Config` and `a/config` — resolve to two
+/// different strings even with no symlink involved at all. On a
+/// case-sensitive filesystem those really are two different files. On a
+/// case-insensitive one — the default on macOS and Windows — they are the
+/// same file, exactly the clobber this check exists to prevent. So the
+/// grouping key case-folds every resolved path first when the target's
+/// filesystem turns out to be case-insensitive; see
+/// `target_filesystem_is_case_insensitive`.
+///
+/// The error lists every colliding group so the user can see which spelled
+/// paths are fighting over which destination.
 fn reject_colliding_destinations(
     spelled: &[String],
     resolved: &[String],
     target: &Path,
+    canonical_target: &Path,
+    out_root: &Path,
 ) -> Result<(), CliError> {
-    let mut by_destination: BTreeMap<&str, Vec<&String>> = BTreeMap::new();
+    let case_insensitive = target_filesystem_is_case_insensitive(canonical_target, out_root);
+
+    // `to_lowercase` is a Unicode simple case fold, which is adequate here:
+    // it only decides which entries get compared against each other, never
+    // anything written to disk.
+    let fold = |value: &str| -> String {
+        if case_insensitive {
+            value.to_lowercase()
+        } else {
+            value.to_owned()
+        }
+    };
+
+    let mut by_destination: BTreeMap<String, Vec<(&String, &String)>> = BTreeMap::new();
     for (spelled, resolved) in spelled.iter().zip(resolved.iter()) {
         by_destination
-            .entry(resolved.as_str())
+            .entry(fold(resolved))
             .or_default()
-            .push(spelled);
+            .push((spelled, resolved));
     }
 
-    let mut collisions: Vec<(&str, Vec<&String>)> = by_destination
-        .into_iter()
-        .filter(|(_, spelled)| spelled.len() > 1)
+    let mut collisions: Vec<Vec<(&String, &String)>> = by_destination
+        .into_values()
+        .filter(|group| group.len() > 1)
         .collect();
     if collisions.is_empty() {
         return Ok(());
     }
-    for (_, spelled) in &mut collisions {
-        spelled.sort();
+    for group in &mut collisions {
+        group.sort_by(|left, right| left.0.cmp(right.0));
     }
 
     let groups = collisions
         .iter()
-        .map(|(resolved, spelled)| {
-            let spelled_list = spelled
+        .map(|group| {
+            let spelled_list = group
                 .iter()
-                .map(|path| path.as_str())
+                .map(|(spelled, _)| spelled.as_str())
                 .collect::<Vec<_>>()
                 .join(", ");
-            format!("{spelled_list} all resolve to '{resolved}'")
+            // Any entry's own resolved form names the shared destination;
+            // on a case-insensitive filesystem the group's entries may spell
+            // it with different case, but they still name one file.
+            let destination = group[0].1;
+            format!("{spelled_list} all resolve to '{destination}'")
         })
         .collect::<Vec<_>>()
         .join("; ");
 
+    let reason = if case_insensitive {
+        "an internal symlink, or letter case this filesystem does not distinguish, makes two \
+         output paths land on the same file"
+    } else {
+        "an internal symlink makes two output paths land on the same file"
+    };
+
     Err(CliError::Validation {
         message: format!(
             "install target '{}' would write more than one output path to the same \
-             destination: {groups}; an internal symlink makes two output paths land on \
-             the same file, so the install cannot proceed",
+             destination: {groups}; {reason}, so the install cannot proceed",
             target.display()
         ),
     })
+}
+
+/// Best-effort probe: does the filesystem holding `canonical_target` treat
+/// two names that differ only in letter case as the same file?
+///
+/// The answer is what tells `reject_colliding_destinations` whether it also
+/// has to fold case before comparing destinations — see that function's doc
+/// comment for why a case-only difference matters at all.
+///
+/// The probe avoids writing into the user's own directory wherever it can:
+/// it first looks for something already on disk under `canonical_target` —
+/// an existing entry, or failing that the target directory itself — and asks
+/// whether a case-swapped spelling of its final path component resolves to
+/// the very same file, by filesystem identity (`same_file::Handle`), the
+/// same trick `renamed_previous_files` uses. That settles the question
+/// without creating anything.
+///
+/// Nothing under the target can always settle it, though — an empty target
+/// whose own name happens to have no letter to swap case on, say — so as a
+/// last resort a small marker file is created, probed, and removed under the
+/// install lock's own directory: inside the user-global Morphir home, never
+/// inside the target. That directory is not guaranteed to share a filesystem
+/// with the target, which is the tradeoff for not touching the user's tree.
+///
+/// If even that is inconclusive, the answer is `true`. Assuming
+/// case-insensitive is the safe direction: at worst it makes
+/// `reject_colliding_destinations` refuse an install over a collision that
+/// was never real, which the user can work around, while assuming
+/// case-sensitive when the filesystem is not would let two outputs silently
+/// clobber each other — the exact failure this whole check exists to
+/// prevent.
+fn target_filesystem_is_case_insensitive(canonical_target: &Path, out_root: &Path) -> bool {
+    let mut candidates: Vec<PathBuf> = std::fs::read_dir(canonical_target)
+        .map(|entries| entries.flatten().map(|entry| entry.path()).collect())
+        .unwrap_or_default();
+    candidates.push(canonical_target.to_path_buf());
+
+    for candidate in &candidates {
+        if let Some(result) = probe_case_sensitivity_at(candidate) {
+            return result;
+        }
+    }
+
+    let lock_dir = install_lock_path(out_root, canonical_target)
+        .parent()
+        .map(Path::to_path_buf);
+    if let Some(lock_dir) = lock_dir
+        && let Some(result) = probe_case_sensitivity_with_marker(&lock_dir)
+    {
+        return result;
+    }
+
+    true
+}
+
+/// Does a case-swapped spelling of `path`'s final component name the same
+/// file as `path`, by filesystem identity? `None` when the question could
+/// not even be asked — nothing at `path`, or its final component has no
+/// letter whose case can be swapped.
+fn probe_case_sensitivity_at(path: &Path) -> Option<bool> {
+    let original = handle_for(path)?;
+    let swapped_path = case_swapped_sibling(path)?;
+    let swapped = handle_for(&swapped_path)?;
+    Some(original == swapped)
+}
+
+/// `path` with its final path component's letters case-swapped (upper to
+/// lower and back), or `None` when that component has no letter to swap —
+/// digits, punctuation, or an empty name, none of which can answer whether
+/// case matters.
+fn case_swapped_sibling(path: &Path) -> Option<PathBuf> {
+    let name = path.file_name()?.to_str()?;
+    let swapped: String = name
+        .chars()
+        .map(|character| {
+            if character.is_uppercase() {
+                character.to_lowercase().next().unwrap_or(character)
+            } else if character.is_lowercase() {
+                character.to_uppercase().next().unwrap_or(character)
+            } else {
+                character
+            }
+        })
+        .collect();
+    if swapped == name {
+        None
+    } else {
+        Some(path.with_file_name(swapped))
+    }
+}
+
+/// Creates a small marker file under `lock_dir`, probes whether a
+/// case-swapped spelling of it names the same file, and removes it again.
+/// `None` if the marker could not even be created — `lock_dir` is not
+/// writable, say.
+fn probe_case_sensitivity_with_marker(lock_dir: &Path) -> Option<bool> {
+    std::fs::create_dir_all(lock_dir).ok()?;
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_nanos())
+        .unwrap_or_default();
+    let marker = lock_dir.join(format!(".case-probe-{}-{nanos}", std::process::id()));
+    std::fs::write(&marker, []).ok()?;
+    let result = probe_case_sensitivity_at(&marker);
+    let _ = std::fs::remove_file(&marker);
+    result
 }
 
 /// Previous ledger entries this run rewrites under a different spelling, as
@@ -2377,6 +2527,57 @@ mod tests {
             record_after.installed.is_empty(),
             "no bookkeeping must be recorded when the install is refused"
         );
+    }
+
+    /// `resolved_relative` keeps a destination's final component verbatim —
+    /// it only resolves the directories above it — so `a/Config` and
+    /// `a/config` resolve to two different strings even with no symlink
+    /// involved at all. On a case-sensitive filesystem those really are two
+    /// different files. On a case-insensitive one they are the same file,
+    /// and the second copy would silently overwrite the first — the exact
+    /// clobber this collision check exists to prevent. Which branch runs is
+    /// decided by probing the host filesystem, the same way
+    /// `a_ledger_entry_that_differs_only_in_case_is_recognised_as_ours` does.
+    #[test]
+    fn case_only_output_collisions_are_refused_on_case_insensitive_filesystems() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("out");
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(&target).unwrap();
+        let insensitive = is_case_insensitive(&target);
+
+        let paths = TaskPaths::new(&root, Path::new(""), &TaskId::compile()).unwrap();
+        std::fs::create_dir_all(paths.dest.join("a")).unwrap();
+        std::fs::write(paths.dest.join("a/Config"), "upper").unwrap();
+        std::fs::write(paths.dest.join("a/config"), "lower").unwrap();
+        let mut record = TaskResult::new(&TaskId::compile(), Path::new(""));
+        record.value = vec!["a/Config".to_owned(), "a/config".to_owned()];
+        record.write(&paths.result).unwrap();
+
+        let result = install_here(&paths, &target);
+
+        if insensitive {
+            let error = result.unwrap_err();
+            let CliError::Validation { message } = error else {
+                panic!("expected a validation error, got {error:?}");
+            };
+            assert!(message.contains("a/Config"), "{message}");
+            assert!(message.contains("a/config"), "{message}");
+            let record_after = TaskResult::read(&paths.result).unwrap().unwrap();
+            assert!(
+                record_after.installed.is_empty(),
+                "no bookkeeping must be recorded when the install is refused"
+            );
+        } else {
+            let report =
+                result.expect("differently cased names are different files on this filesystem");
+            assert_eq!(
+                report.copied,
+                vec!["a/Config".to_owned(), "a/config".to_owned()]
+            );
+            assert!(target.join("a/Config").is_file());
+            assert!(target.join("a/config").is_file());
+        }
     }
 
     #[test]

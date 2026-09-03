@@ -178,7 +178,12 @@ landing on one file: `dist/a` and `dist/b` both linking to `dist/real` makes
 `a/config` and `b/config` the same destination, `real/config`. Install checks
 for that collision before writing anything and refuses the whole run, naming
 every colliding spelling and the destination they share, rather than letting
-the second copy silently overwrite the first.
+the second copy silently overwrite the first. On a filesystem that does not
+distinguish letter case — the default on macOS and Windows — two outputs
+whose destinations differ only in case, such as `a/Config` and `a/config`,
+are the same collision even with no symlink involved, so install probes the
+target's case sensitivity and folds case before comparing when it is not
+distinguished.
 
 If a copy fails partway through — the disk fills up, say — install does not
 leave the target in a state the next install cannot make sense of. Every
