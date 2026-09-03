@@ -261,7 +261,7 @@ pub fn maybe_install(
 }
 
 /// The lock file guarding one install target:
-/// `<out root>/install-locks/<hash of the canonical target>.lock`.
+/// `<Morphir home>/locks/install/<hash of the canonical target>.lock`.
 ///
 /// Keyed on the target rather than on the task, because the thing two runs
 /// collide over is the directory they are both writing into. `compile -o
@@ -269,11 +269,25 @@ pub fn maybe_install(
 /// both can find `dist/morphir-ir.json` absent, both write it, and both
 /// record themselves as owning it.
 ///
-/// The lock file does not go inside the target. Install's pre-flight scan
-/// treats anything under the target that it did not write as foreign content
-/// and refuses the run, so a lock file there would make install refuse
-/// itself. The out root is Morphir's own directory and already holds the
-/// task locks, so it is where this one belongs too.
+/// The lock lives under the user-global Morphir home directory, not under
+/// `out_root`, because the target is what two runs actually collide over,
+/// and two different workspaces (two different out roots) can both name the
+/// same `-o` target. A lock keyed on `out_root` as well as the target would
+/// let one workspace's run and another's both believe they hold the lock for
+/// the same directory. `out_root` is kept as a parameter only for the
+/// fallback below.
+///
+/// The lock file does not go inside the target either way. Install's
+/// pre-flight scan treats anything under the target that it did not write as
+/// foreign content and refuses the run, so a lock file there would make
+/// install refuse itself.
+///
+/// If the Morphir home directory cannot be resolved (see
+/// [`crate::home::MorphirHome::resolve`]), the lock falls back to
+/// `<out_root>/install-locks/<hash>.lock`, the out root already being
+/// Morphir's own directory and already holding the task locks. That fallback
+/// reintroduces the per-out-root problem this function otherwise avoids, so
+/// it prints one line to stderr saying so.
 ///
 /// The name is a hex `DefaultHasher` digest of the canonical target's bytes.
 /// It is not a cryptographic hash — `sha2` is not a dependency of this crate
@@ -290,9 +304,21 @@ pub fn install_lock_path(out_root: &Path, canonical_target: &Path) -> PathBuf {
         .as_os_str()
         .as_encoded_bytes()
         .hash(&mut hasher);
-    out_root
-        .join("install-locks")
-        .join(format!("{:016x}.lock", hasher.finish()))
+    let file_name = format!("{:016x}.lock", hasher.finish());
+
+    match crate::home::MorphirHome::resolve() {
+        Ok(home) => home.locks_dir().join("install").join(file_name),
+        Err(error) => {
+            eprintln!(
+                "warning: could not resolve the Morphir home directory ({error}); the \
+                 install lock for '{}' will live under the out root instead of the \
+                 user-global lock directory, so a different workspace's out root would \
+                 not share it",
+                canonical_target.display()
+            );
+            out_root.join("install-locks").join(file_name)
+        }
+    }
 }
 
 /// Reject a `-o` target that already exists as something other than a
@@ -841,15 +867,43 @@ mod tests {
     use morphir_devkit::{TaskId, TaskPaths, TaskResult};
     use std::path::Path;
 
+    /// Points `MORPHIR_HOME` at a sandbox directory under the OS temp
+    /// directory, once for the whole test binary process, so `install`'s
+    /// calls to `MorphirHome::resolve()` (by way of `install_lock_path`)
+    /// never touch the developer's real Morphir home while these tests run.
+    /// Every entry point below that reaches `install_lock_path` — directly
+    /// or through `install_here` — calls this first.
+    ///
+    /// A `std::sync::Once` makes this safe under parallel test execution: it
+    /// runs exactly once, before any test in this binary can have read
+    /// `MORPHIR_HOME`, and the value is never changed again afterward, so
+    /// there is nothing for two threads to race over.
+    fn redirect_morphir_home_for_tests() {
+        static INIT: std::sync::Once = std::sync::Once::new();
+        INIT.call_once(|| {
+            let home = std::env::temp_dir()
+                .join(format!("morphir-install-tests-home-{}", std::process::id()));
+            std::fs::create_dir_all(&home).expect("create a sandbox Morphir home for tests");
+            // SAFETY: set exactly once, from `Once::call_once`, before any
+            // test reads `MORPHIR_HOME`, and never changed again.
+            unsafe {
+                std::env::set_var(crate::home::MORPHIR_HOME_ENV, &home);
+            }
+        });
+    }
+
     /// The out root a task's `TaskPaths` were built under. Every test here
     /// uses the root module, so the record sits directly in the out root.
     fn out_root_of(paths: &TaskPaths) -> PathBuf {
         paths.result.parent().unwrap().to_path_buf()
     }
 
-    /// `install` with the out root the task was built under, which is where
-    /// the install target's lock file goes.
+    /// `install` with the out root the task was built under. The install
+    /// target's lock file itself now lives under the sandboxed
+    /// `MORPHIR_HOME` (see `redirect_morphir_home_for_tests`), not under this
+    /// out root.
     fn install_here(paths: &TaskPaths, target: &Path) -> Result<InstallReport, CliError> {
+        redirect_morphir_home_for_tests();
         install(paths, target, &out_root_of(paths))
     }
 
@@ -1716,7 +1770,8 @@ mod tests {
     /// directory have to take turns, and two spellings of one directory are
     /// one directory.
     #[test]
-    fn the_install_lock_is_keyed_on_the_target_and_lives_under_the_out_root() {
+    fn the_install_lock_is_keyed_on_the_target_and_lives_under_the_morphir_home() {
+        redirect_morphir_home_for_tests();
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("out");
         let target = temp.path().join("dist");
@@ -1730,7 +1785,17 @@ mod tests {
             lock_path,
             install_lock_path(&root, &std::fs::canonicalize(temp.path()).unwrap())
         );
-        assert!(lock_path.starts_with(&root), "{}", lock_path.display());
+        let home = crate::home::MorphirHome::resolve().unwrap();
+        assert!(
+            lock_path.starts_with(home.locks_dir().join("install")),
+            "the lock lives in the user-global Morphir home, not the out root: {}",
+            lock_path.display()
+        );
+        assert!(
+            !lock_path.starts_with(&root),
+            "the lock no longer lives under the out root: {}",
+            lock_path.display()
+        );
         assert!(
             !lock_path.starts_with(&canonical_target),
             "the lock file must stay out of the target, or the conflict scan \
@@ -1744,6 +1809,42 @@ mod tests {
         assert!(lock_path.is_file());
     }
 
+    /// Two different `OutContext`s — standing in for two different
+    /// workspaces — installing to the same `-o` target must share one lock,
+    /// not one each, or two workspaces racing to install into the same
+    /// directory would both believe they hold it.
+    #[test]
+    fn two_out_contexts_with_different_roots_derive_the_same_install_lock_path_for_one_target() {
+        use crate::commands::out_context::{OutContext, OutOverrides};
+
+        redirect_morphir_home_for_tests();
+        let temp = tempfile::tempdir().unwrap();
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(&target).unwrap();
+        let canonical_target = std::fs::canonicalize(&target).unwrap();
+
+        let workspace_a = OutContext::resolve(
+            None,
+            &OutOverrides::default(),
+            &temp.path().join("workspace-a"),
+        );
+        let workspace_b = OutContext::resolve(
+            None,
+            &OutOverrides::default(),
+            &temp.path().join("workspace-b"),
+        );
+        assert_ne!(
+            workspace_a.root, workspace_b.root,
+            "the two out roots must genuinely differ for this test to mean anything"
+        );
+
+        assert_eq!(
+            install_lock_path(&workspace_a.root, &canonical_target),
+            install_lock_path(&workspace_b.root, &canonical_target),
+            "two out roots installing to the same target must derive the same lock path"
+        );
+    }
+
     /// Two runs installing to one target used to both see a destination as
     /// absent, both write it, and both claim it in their own ledger. Distinct
     /// task locks do not help, because the tasks are different.
@@ -1752,6 +1853,7 @@ mod tests {
         use std::sync::mpsc::{RecvTimeoutError, channel};
         use std::time::Duration;
 
+        redirect_morphir_home_for_tests();
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("out");
         let target = temp.path().join("dist");
@@ -1905,6 +2007,7 @@ mod tests {
 
     #[test]
     fn maybe_install_resolves_relative_targets_against_cwd() {
+        redirect_morphir_home_for_tests();
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("out");
         let paths = task_with_value(&root, &["morphir-ir.json"]);

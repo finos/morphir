@@ -178,10 +178,17 @@ ledger write — runs under an exclusive lock on the install target. The task
 lock is not enough here: `compile -o dist` and `generate -o dist` hold
 different task locks, so without a target lock both can find one destination
 absent, both write it, and both record themselves as owning it. The lock is
-keyed on the canonical target, so two spellings of one directory are one
-directory, and the lock file lives at
-`<out root>/install-locks/<hash>.lock` rather than inside the target, where
-the conflict scan would read it as foreign content.
+keyed on the canonical target alone, not on the out root as well, so two
+spellings of one directory are one directory, and two different workspaces
+(two different out roots) that both name the same `-o` target share the one
+lock too, rather than each believing it holds an uncontested lock of its own.
+The lock file lives at `<Morphir home>/locks/install/<hash>.lock` — the
+user-global Morphir home directory, not inside the target, where the
+conflict scan would read it as foreign content. If the Morphir home
+directory cannot be resolved, install falls back to
+`<out root>/install-locks/<hash>.lock` and says so on stderr; that fallback
+is per out root again, which is the tradeoff of not having a home directory
+to key off.
 
 This is the Zig `zig-out`
 install step; `.dest` is the cache, and `-o` only ever adds or retires files
