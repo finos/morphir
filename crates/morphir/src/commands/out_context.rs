@@ -4,6 +4,7 @@ use crate::error::CliError;
 use morphir_devkit::{ConfigContext, TaskId, TaskPaths, TaskResult, module_path, resolve_out_root};
 use std::collections::BTreeMap;
 use std::ffi::OsString;
+use std::fs::File;
 use std::path::{Path, PathBuf};
 
 /// Environment variable that relocates the out root.
@@ -115,8 +116,19 @@ impl OutContext {
     /// itself stays strict — callers that genuinely need the record
     /// (`generate` reading its input) still get a hard error from a corrupt
     /// one.
+    ///
+    /// Everything from here on runs under an exclusive lock on the task, taken
+    /// before the previous record is even read and released only when the
+    /// returned [`PreparedTask`] is dropped. Two runs of the same task in one
+    /// workspace share one `.dest` and one `.json`, so without it one run
+    /// deletes `.dest` while the other is writing into it, and whichever
+    /// finishes last overwrites the other's record — including its install
+    /// ledger. Waiting is the right answer rather than failing: the second run
+    /// wants the same task done, and once the first is finished it can simply
+    /// take its turn.
     pub fn prepare_dest(&self, task: &TaskId) -> Result<PreparedTask, CliError> {
         let paths = self.task(task);
+        let lock = TaskLock::acquire(&task_lock_path(&paths))?;
         let previous = TaskResult::read(&paths.result);
         let previous_installed = match &previous {
             Ok(Some(record)) => record.installed.clone(),
@@ -155,7 +167,65 @@ impl OutContext {
         Ok(PreparedTask {
             paths,
             previous_installed,
+            lock,
         })
+    }
+}
+
+/// The lock file guarding one task: `<task>.lock`, beside its `.dest` and
+/// `.json`.
+pub fn task_lock_path(paths: &TaskPaths) -> PathBuf {
+    paths.result.with_extension("lock")
+}
+
+/// An exclusive advisory lock on one task, held for as long as this value
+/// lives.
+///
+/// The lock is advisory, so it only keeps out other Morphir runs, which is
+/// exactly the scope of the problem: nothing stops a user from deleting
+/// `.dest` by hand while a run is in progress. The lock file itself is left on
+/// disk between runs — removing it would race with another process that has
+/// just opened it — and is empty, so it costs nothing to keep.
+#[derive(Debug)]
+pub struct TaskLock {
+    file: File,
+}
+
+impl TaskLock {
+    /// Take the lock, waiting for whoever holds it. Prints one line to stderr
+    /// if the wait is not instant, so a run that appears to hang says why.
+    fn acquire(path: &Path) -> Result<Self, CliError> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|error| CliError::FileSystem { error })?;
+        }
+        let file = std::fs::OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .read(true)
+            .write(true)
+            .open(path)
+            .map_err(|error| CliError::FileSystem { error })?;
+        match fs2::FileExt::try_lock_exclusive(&file) {
+            Ok(()) => {}
+            Err(error) if error.raw_os_error() == fs2::lock_contended_error().raw_os_error() => {
+                eprintln!(
+                    "waiting for another Morphir run to finish this task ({})",
+                    path.display()
+                );
+                fs2::FileExt::lock_exclusive(&file)
+                    .map_err(|error| CliError::FileSystem { error })?;
+            }
+            Err(error) => return Err(CliError::FileSystem { error }),
+        }
+        Ok(Self { file })
+    }
+}
+
+impl Drop for TaskLock {
+    fn drop(&mut self) {
+        // Closing the file releases the lock anyway; unlocking first just
+        // makes the release explicit. Nothing useful can be done if it fails.
+        drop(fs2::FileExt::unlock(&self.file));
     }
 }
 
@@ -163,7 +233,7 @@ impl OutContext {
 /// plus the `installed` map its previous result record carried before that
 /// record was overwritten with a tombstone (or removed, if it was
 /// unreadable).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct PreparedTask {
     /// Locations of the task, with a freshly emptied `.dest`. The result
     /// record, if there was one, is now a tombstone rather than gone.
@@ -173,6 +243,9 @@ pub struct PreparedTask {
     /// Callers must set this on the new record they build for this run,
     /// before writing it, so that install bookkeeping survives across runs.
     pub previous_installed: BTreeMap<String, Vec<String>>,
+    /// The task's exclusive lock. Callers hold it until the run's record is
+    /// written and its install is finished, then drop it.
+    pub lock: TaskLock,
 }
 
 /// Print configuration warnings (removed or renamed keys) to stderr.
@@ -227,6 +300,10 @@ mod tests {
         let out = OutContext::resolve(None, &OutOverrides::default(), temp.path());
         let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
         std::fs::write(prepared.paths.dest.join("stale.txt"), "old").unwrap();
+        // The task lock is held until `prepared` is dropped, and a second
+        // `prepare_dest` for the same task waits for it, so a test standing in
+        // for two consecutive runs has to end the first one first.
+        drop(prepared);
         let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
         assert!(prepared.paths.dest.is_dir());
         assert!(!prepared.paths.dest.join("stale.txt").exists());
@@ -252,6 +329,7 @@ mod tests {
             .insert("inputsHash".to_owned(), serde_json::json!("sha256:abc"));
         record.write(&prepared.paths.result).unwrap();
 
+        drop(prepared);
         let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
         assert!(
             prepared.paths.result.is_file(),
@@ -287,6 +365,7 @@ mod tests {
             .insert("/abs/dist".to_owned(), vec!["morphir-ir.json".to_owned()]);
         record.write(&prepared.paths.result).unwrap();
 
+        drop(prepared);
         let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
         assert_eq!(
             prepared.previous_installed.get("/abs/dist"),
@@ -314,6 +393,7 @@ mod tests {
         std::fs::write(&prepared.paths.result, "not valid json").unwrap();
         assert!(prepared.paths.result.is_file());
 
+        drop(prepared);
         let prepared = out
             .prepare_dest(&TaskId::compile())
             .expect("a corrupt previous record must not fail the run");
@@ -325,5 +405,61 @@ mod tests {
             !prepared.paths.result.exists(),
             "the corrupt record file is still removed"
         );
+    }
+
+    #[test]
+    fn prepare_dest_holds_an_exclusive_lock_on_the_task() {
+        let temp = tempfile::tempdir().unwrap();
+        let out = OutContext::resolve(None, &OutOverrides::default(), temp.path());
+        let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
+
+        let lock_path = task_lock_path(&prepared.paths);
+        assert_eq!(lock_path, temp.path().join(".morphir/out/compile.lock"));
+        let contender = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&lock_path)
+            .unwrap();
+        let error = fs2::FileExt::try_lock_exclusive(&contender)
+            .expect_err("the prepared task holds the lock");
+        assert_eq!(
+            error.raw_os_error(),
+            fs2::lock_contended_error().raw_os_error()
+        );
+
+        drop(prepared);
+        fs2::FileExt::try_lock_exclusive(&contender)
+            .expect("dropping the prepared task releases the lock");
+        fs2::FileExt::unlock(&contender).unwrap();
+    }
+
+    #[test]
+    fn a_second_prepare_dest_waits_for_the_first_to_finish() {
+        use std::sync::mpsc::{RecvTimeoutError, channel};
+        use std::time::Duration;
+
+        let temp = tempfile::tempdir().unwrap();
+        let out = OutContext::resolve(None, &OutOverrides::default(), temp.path());
+        let first = out.prepare_dest(&TaskId::compile()).unwrap();
+
+        let second_out = out.clone();
+        let (finished, waiting) = channel();
+        let second = std::thread::spawn(move || {
+            let prepared = second_out.prepare_dest(&TaskId::compile()).unwrap();
+            finished.send(()).unwrap();
+            prepared
+        });
+
+        assert_eq!(
+            waiting.recv_timeout(Duration::from_millis(250)),
+            Err(RecvTimeoutError::Timeout),
+            "the second run must wait while the first holds the task lock"
+        );
+
+        drop(first);
+        waiting
+            .recv_timeout(Duration::from_secs(30))
+            .expect("the second run proceeds once the first releases the lock");
+        second.join().unwrap();
     }
 }

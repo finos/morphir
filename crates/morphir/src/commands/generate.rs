@@ -206,6 +206,9 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
         .map_err(|error| CliError::Config { error })?;
     let installed_path =
         crate::commands::install::maybe_install(&generate_paths, output.as_deref(), &start_dir)?;
+    // The task is finished: its record is written and its install is done, so
+    // the next run of this task may start.
+    drop(prepared.lock);
 
     let output = GenerateOutput {
         success: true,

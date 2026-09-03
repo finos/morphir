@@ -642,6 +642,9 @@ async fn run_single_file_compile(options: CompileOptions) -> AppResult<miette::R
         .map_err(|error| CliError::Config { error })?;
     let installed_path =
         crate::commands::install::maybe_install(&paths, options.output.as_deref(), &start_dir)?;
+    // The task is finished: its record is written and its install is done, so
+    // the next run of this task may start.
+    drop(prepared.lock);
     let output = CompileOutput {
         success: true,
         ir: Some(typed_ir),
@@ -1168,6 +1171,9 @@ async fn run_provider_compile(options: CompileOptions) -> AppResult<miette::Repo
         .map_err(|error| CliError::Config { error })?;
     let installed_path =
         crate::commands::install::maybe_install(&paths, output.as_deref(), &start_dir)?;
+    // The task is finished: its record is written and its install is done, so
+    // the next run of this task may start.
+    drop(prepared.lock);
     let ir = serde_json::to_value(&ir_file).map_err(|error| CliError::Extension {
         message: format!("Failed to serialize validated Morphir IR v4: {error}"),
     })?;

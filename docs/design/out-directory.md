@@ -24,6 +24,13 @@ of what it produced.
         └── generate/…
 
 Task ids are path-like: `compile`, `generate/<target>`, `transform/<name>`.
+A run also takes an exclusive lock on `<task>.lock` beside the other two,
+held from the moment `.dest` is cleared until the record is written and any
+`-o` install is finished. Two runs of the same task in one workspace share
+one `.dest` and one `.json`, so the second waits for the first — it prints
+one line saying so — rather than deleting a directory the first is still
+writing into. The lock file stays on disk between runs and is empty.
+
 `<task>.dest/` is cleared before each run. `<task>.json` is written in full
 only after the task succeeds; a run that fails instead leaves a tombstone
 (see [Result record](#result-record)), a record marked `"tombstone": true`
