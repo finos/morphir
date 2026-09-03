@@ -147,6 +147,16 @@ pub fn install(
         .collect::<Result<Vec<String>, CliError>>()?;
     let new_files_lookup: HashSet<&str> = resolved_new_files.iter().map(String::as_str).collect();
 
+    // Before touching anything: two spelled outputs can resolve to the same
+    // real file. `a -> real` and `b -> real` inside the target make
+    // `a/config` and `b/config` one location on disk, so both would pass
+    // every check above on their own, and the second copy would silently
+    // overwrite the first with whichever entry happened to run last.
+    // `resolved_new_files` is where that collision shows up: two different
+    // spelled entries sharing one resolved destination. Refuse the whole
+    // install rather than let one silently clobber the other.
+    reject_colliding_destinations(&new_files, &resolved_new_files, target)?;
+
     // Before touching anything: a file this run would write that already
     // exists at the destination and is NOT one this function wrote last time
     // is foreign content — it belongs to the user, not to a previous install.
@@ -536,6 +546,65 @@ fn confined_destination(
         }
     }
     Ok(())
+}
+
+/// Refuse the install when two entries in `spelled` resolve to the same
+/// location under `target`.
+///
+/// `spelled` and `resolved` are parallel: `spelled[i]` is the path `install`
+/// would write to, and `resolved[i]` is where that really lands once the
+/// symlinks in `target` are followed (see `resolved_relative`). An internal
+/// symlink layout such as `a -> real` and `b -> real` makes two different
+/// entries — `a/config` and `b/config`, say — the same file on disk. Nothing
+/// earlier catches that: each one individually resolves inside `target`, so
+/// the containment checks pass, and the second copy would silently overwrite
+/// whatever the first one wrote. The error lists every colliding group so the
+/// user can see which spelled paths are fighting over which destination.
+fn reject_colliding_destinations(
+    spelled: &[String],
+    resolved: &[String],
+    target: &Path,
+) -> Result<(), CliError> {
+    let mut by_destination: BTreeMap<&str, Vec<&String>> = BTreeMap::new();
+    for (spelled, resolved) in spelled.iter().zip(resolved.iter()) {
+        by_destination
+            .entry(resolved.as_str())
+            .or_default()
+            .push(spelled);
+    }
+
+    let mut collisions: Vec<(&str, Vec<&String>)> = by_destination
+        .into_iter()
+        .filter(|(_, spelled)| spelled.len() > 1)
+        .collect();
+    if collisions.is_empty() {
+        return Ok(());
+    }
+    for (_, spelled) in &mut collisions {
+        spelled.sort();
+    }
+
+    let groups = collisions
+        .iter()
+        .map(|(resolved, spelled)| {
+            let spelled_list = spelled
+                .iter()
+                .map(|path| path.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("{spelled_list} all resolve to '{resolved}'")
+        })
+        .collect::<Vec<_>>()
+        .join("; ");
+
+    Err(CliError::Validation {
+        message: format!(
+            "install target '{}' would write more than one output path to the same \
+             destination: {groups}; an internal symlink makes two output paths land on \
+             the same file, so the install cannot proceed",
+            target.display()
+        ),
+    })
 }
 
 /// Previous ledger entries this run rewrites under a different spelling, as
@@ -2164,6 +2233,52 @@ mod tests {
             "not ours"
         );
         assert!(!target.join("morphir-ir/pkg").exists());
+    }
+
+    /// `dist/a` and `dist/b` both link to `dist/real`, so the entries
+    /// `a/config` and `b/config` name one file on disk. Every earlier check
+    /// passes each of them individually — both resolve inside the target —
+    /// so without a dedicated check the second copy would silently overwrite
+    /// the first. The whole install must be refused instead, and nothing may
+    /// be written.
+    #[cfg(unix)]
+    #[test]
+    fn two_spelled_outputs_resolving_to_the_same_destination_are_refused() {
+        use std::os::unix::fs::symlink;
+
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("out");
+        let paths = TaskPaths::new(&root, Path::new(""), &TaskId::compile()).unwrap();
+        std::fs::create_dir_all(paths.dest.join("a")).unwrap();
+        std::fs::create_dir_all(paths.dest.join("b")).unwrap();
+        std::fs::write(paths.dest.join("a/config"), "from a").unwrap();
+        std::fs::write(paths.dest.join("b/config"), "from b").unwrap();
+        let mut record = TaskResult::new(&TaskId::compile(), Path::new(""));
+        record.value = vec!["a/config".to_owned(), "b/config".to_owned()];
+        record.write(&paths.result).unwrap();
+
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(target.join("real")).unwrap();
+        symlink(target.join("real"), target.join("a")).unwrap();
+        symlink(target.join("real"), target.join("b")).unwrap();
+
+        let error = install_here(&paths, &target).unwrap_err();
+        let CliError::Validation { message } = error else {
+            panic!("expected a validation error, got {error:?}");
+        };
+        assert!(message.contains("a/config"), "{message}");
+        assert!(message.contains("b/config"), "{message}");
+        assert!(message.contains("real/config"), "{message}");
+
+        assert!(
+            !target.join("real/config").exists(),
+            "neither output may be written when they collide on one destination"
+        );
+        let record_after = TaskResult::read(&paths.result).unwrap().unwrap();
+        assert!(
+            record_after.installed.is_empty(),
+            "no bookkeeping must be recorded when the install is refused"
+        );
     }
 
     #[test]

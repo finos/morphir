@@ -173,6 +173,13 @@ under the target resolves somewhere new, its entries no longer match, and the
 files at the new location are the user's — so install refuses, naming the
 link, rather than deleting or overwriting through it.
 
+Resolving every destination also catches two differently spelled outputs
+landing on one file: `dist/a` and `dist/b` both linking to `dist/real` makes
+`a/config` and `b/config` the same destination, `real/config`. Install checks
+for that collision before writing anything and refuses the whole run, naming
+every colliding spelling and the destination they share, rather than letting
+the second copy silently overwrite the first.
+
 If a copy fails partway through — the disk fills up, say — install does not
 leave the target in a state the next install cannot make sense of. Every
 file this run added, including a partially written file the failing copy
