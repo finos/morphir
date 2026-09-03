@@ -74,7 +74,7 @@ pub fn print_gleam_help() {
     println!("  morphir gleam compile --input src/");
     println!();
     println!("  # Generate Gleam code from Morphir IR");
-    println!("  morphir gleam generate --input .morphir/out/<project>/compile/gleam/");
+    println!("  morphir gleam generate --input .morphir/out/compile.dest/");
     println!();
     println!("  # Roundtrip test (compile then generate)");
     println!("  morphir gleam roundtrip --input src/");
@@ -99,8 +99,8 @@ pub fn print_gleam_help() {
     println!();
     println!("Output Structure:");
     println!();
-    println!("  IR output:     .morphir/out/<project>/compile/gleam/");
-    println!("  Generated code: .morphir/out/<project>/generate/gleam/");
+    println!("  IR output:     .morphir/out/compile.dest/");
+    println!("  Generated code: .morphir/out/generate/gleam.dest/");
     println!();
 }
 

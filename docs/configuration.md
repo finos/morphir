@@ -130,9 +130,13 @@ Workspace paths:
 # Workspace root (usually left empty)
 root = ""
 
-# Output directory for generated artifacts
-output_dir = ".morphir"
+# Out directory for every task in the workspace, relative to the workspace root
+out_dir = ".morphir/out"
 ```
+
+`out_dir` only applies when it is set in the workspace root configuration. See
+[Out directory](design/out-directory.md) for how every task's output is laid
+out under it, and how `-o` and `--out-dir` interact with it.
 
 ### [ir]
 
@@ -145,7 +149,17 @@ format_version = 3
 
 # Enable strict validation
 strict_mode = false
+
+# Storage compile writes: single-file or document-tree
+layout = "single-file"
+
+# Serialization format: json or yaml
+format = "json"
 ```
+
+`mode` (`classic` or `vfs`) is a deprecated alias for `layout` (`classic` maps
+to `single-file`, `vfs` maps to `document-tree`) and prints a warning; an
+explicit `layout` wins if both are set.
 
 ### [codegen]
 
@@ -248,6 +262,7 @@ Some environment variables control Morphir directly rather than overriding a con
 | `MORPHIR_HOME` | Relocates the Morphir home directory, which holds user-global state such as the tool, distribution, and extension registries and fallback log output; when set, caches also relocate under `$MORPHIR_HOME/cache` | `$HOME/.morphir` on Linux/macOS, `%USERPROFILE%\.morphir` on Windows |
 | `MORPHIR_LOG_DIR` | Overrides the CLI log output directory | `$MORPHIR_HOME/logs/cli` |
 | `MORPHIR_LOG_FILE` | Enables or disables local CLI file logging | `true` when Morphir Home resolves; otherwise console-only |
+| `MORPHIR_OUT_DIR` | Relocates the out root every task writes under, resolved relative to the current directory | `<workspace_root>/.morphir/out`, or `[workspace].out_dir` if set |
 
 Relocating the home directory is useful for testing, CI, or sandboxed environments where the real user home is unavailable or should stay untouched:
 
@@ -258,6 +273,11 @@ export MORPHIR_HOME=/tmp/morphir-test-home
 An empty value is treated as unset.
 
 ## CLI Commands
+
+Task output always lands under the out root (`<workspace>/.morphir/out` by
+default). `-o` ejects a task's declared outputs to another directory after
+the run. `--out-dir` or `MORPHIR_OUT_DIR` relocates the root. See
+[Out directory](design/out-directory.md) for the full layout.
 
 ### View Configuration
 

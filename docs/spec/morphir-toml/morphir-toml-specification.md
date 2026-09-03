@@ -73,7 +73,7 @@ All top-level keys are optional; absent sections use defaults.
 ### `[workspace]`
 
 - **`root`** (`string`, optional): Workspace root directory. Empty means “directory containing the config file”.
-- **`output_dir`** (`string`, optional, default: `".morphir"`): Output directory for generated artifacts, relative to the workspace root.
+- **`out_dir`** (`string`, optional, default: `".morphir/out"`): Out directory for every task in the workspace, relative to the workspace root. Ignored, with a warning, when set in a workspace member's own configuration. `workspace.output_dir` is a removed alias that produces a warning.
 - **`members`** (`string[]`, optional): Glob patterns used to discover workspace member projects.
 - **`exclude`** (`string[]`, optional): Glob patterns excluded from member discovery.
 - **`default_member`** (`string`, optional): Default member path when none is specified.
@@ -89,7 +89,6 @@ All top-level keys are optional; absent sections use defaults.
 - **`license`** (`string`, optional): SPDX license identifier.
 - **`repository`** (`string`, optional): URL of the project's source repository.
 - **`authors`** (`string[]`, optional): Project authors.
-- **`output_directory`** (`string`, optional, default: `".morphir/out"`): Directory for project-level build output.
 
 #### `[project.decorations.<decorationId>]`
 
@@ -104,7 +103,9 @@ Decorations are sidecar metadata schemas/values attached to IR nodes.
 
 - **`format_version`** (`int`, optional, default: `4`): IR format version (supported range: 1–10). Version 4 is where active development happens. Version 3 remains supported; a project stays on it by setting this field explicitly.
 - **`strict_mode`** (`bool`, optional, default: `false`): When true, validation warnings are treated as errors.
-- **`mode`** (`string`, optional, default: `"vfs"`): One of `classic`, `vfs`.
+- **`layout`** (`string`, optional, default: `"single-file"`): Storage layout compile writes. One of `single-file`, `document-tree`.
+- **`format`** (`string`, optional, default: `"json"`): Serialization format compile writes. One of `json`, `yaml`.
+- **`mode`** (`string`, optional): Deprecated alias for `layout`. One of `classic` (maps to `single-file`), `vfs` (maps to `document-tree`). Setting it prints a warning; an explicit `layout` wins if both are set.
 
 ### `[codegen]`
 

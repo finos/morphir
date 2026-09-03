@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Breaking:** compile and generate always write under the workspace out root (`<workspace>/.morphir/out/<module>/<task>.dest`) and write a `<task>.json` result record. `-o` now ejects the task's declared outputs to the given directory after the run instead of redirecting the task; on the single-file Elm compile path, `-o` used to take a file path and write the IR there directly, and now takes a directory like every other command. `--out-dir` and `MORPHIR_OUT_DIR` relocate the root. Config: `[workspace].output_dir` is now `[workspace].out_dir` (default `.morphir/out`), `[project].output_directory` is removed, `[ir].mode` is replaced by `[ir].layout` and `[ir].format` (`ir.mode` still works for one release as a deprecated alias, with a warning). Generate reads compile output through the record, so `[ir]` YAML and document-tree storage now flow through to backends, and `generate -i` also accepts a compile-output directory in addition to an IR file or a document-tree directory.
+
 ## [0.4.0-alpha.4] - 2026-01-13
 
 ### Added

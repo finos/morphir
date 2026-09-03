@@ -7,7 +7,7 @@ Compile Gleam source to Morphir IR
 
 ## Flags
 - **`-i --input <INPUT>`** — Input source directory or file
-- **`-o --output <OUTPUT>`** — Output directory
+- **`-o --output <OUTPUT>`** — Eject task outputs to this directory after the run. Canonical output stays under .morphir/out
 - **`--package-name <PACKAGE_NAME>`** — Package name override
 - **`--config <CONFIG>`** — Explicit config file path
 - **`--project <PROJECT>`** — Project name (for workspaces)

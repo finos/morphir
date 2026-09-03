@@ -94,9 +94,6 @@ source_directory = "src"
 # Modules exposed as public API
 exposed_modules = ["Domain.User", "Domain.Order", "Domain.Product"]
 
-# Output directory for build artifacts
-output_directory = ".morphir-dist"
-
 # Keywords for package discovery
 keywords = ["domain", "orders", "e-commerce"]
 ```
@@ -114,7 +111,6 @@ keywords = ["domain", "orders", "e-commerce"]
 | `homepage` | string | None | Homepage URL |
 | `source_directory` | string | `"src"` | Source code directory |
 | `exposed_modules` | array | All modules | Modules in the public API |
-| `output_directory` | string | `".morphir-dist"` | Build output directory |
 | `keywords` | array | `[]` | Keywords for discovery |
 
 ### Package Name Format
@@ -152,8 +148,8 @@ exclude = [
 # Default member for commands without --project flag
 default_member = "packages/core"
 
-# Shared output directory
-output_dir = ".morphir"
+# Out directory for every task in the workspace
+out_dir = ".morphir/out"
 
 # Parallel build settings
 parallel = true
@@ -167,7 +163,7 @@ max_jobs = 4
 | `members` | array | `[]` | Glob patterns for member discovery |
 | `exclude` | array | `[]` | Patterns to exclude from discovery |
 | `default_member` | string | None | Default project for commands |
-| `output_dir` | string | `".morphir"` | Workspace output directory |
+| `out_dir` | string | `".morphir/out"` | Out directory for every task in the workspace |
 | `parallel` | bool | `true` | Enable parallel builds |
 | `max_jobs` | integer | CPU count | Maximum parallel jobs |
 
@@ -663,7 +659,7 @@ version = "^4.0.0"
 members = ["packages/*", "apps/*"]
 exclude = ["packages/deprecated-*"]
 default_member = "packages/core"
-output_dir = ".morphir"
+out_dir = ".morphir/out"
 
 # Shared settings inherited by all projects
 [frontend]
@@ -709,7 +705,6 @@ depends = ["check", "test", "build"]
 | Field | Constraint |
 |-------|------------|
 | `source_directory` | Must exist, relative path |
-| `output_directory` | Relative path |
 | `dependencies.*.path` | Must contain `morphir.toml` |
 
 ## Error Messages

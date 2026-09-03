@@ -319,8 +319,8 @@ See [Configuration System](./configuration.md) for full configuration documentat
 version = "^4.0.0"
 
 [workspace]
-# Output directory for workspace-level artifacts
-output_dir = ".morphir"
+# Out directory for every task in the workspace
+out_dir = ".morphir/out"
 
 # Glob patterns for discovering member projects
 members = ["packages/*"]

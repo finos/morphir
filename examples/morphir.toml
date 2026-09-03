@@ -31,9 +31,9 @@ version = "^3.0.0"
 # containing this configuration file.
 root = ""
 
-# Output directory for generated artifacts, relative to workspace root.
-# Default: ".morphir"
-output_dir = ".morphir"
+# Out directory for every task in the workspace, relative to workspace root.
+# Default: ".morphir/out"
+out_dir = ".morphir/out"
 
 # Workspace members: glob patterns for discovering member projects.
 # Similar to Cargo/npm workspaces. Each matched directory should contain

@@ -198,7 +198,7 @@ run = "echo 'Starting build...'"
 [tasks."post:build"]
 description = "Run after morphir build"
 run = [
-    "cp .morphir-dist/morphir-ir.json dist/",
+    "cp .morphir/out/compile.dest/morphir-ir.json dist/",
     "echo 'Build complete'"
 ]
 
@@ -302,7 +302,7 @@ Use `sources` and `outputs` for incremental execution:
 [tasks.codegen]
 description = "Generate TypeScript (incremental)"
 run = "morphir codegen typescript --output generated/"
-sources = ["src/**/*.morphir", ".morphir-dist/**/*.json"]
+sources = ["src/**/*.morphir", ".morphir/out/compile.dest/**"]
 outputs = ["generated/**/*.ts"]
 ```
 
@@ -369,7 +369,7 @@ run = "morphir workspace watch"
 
 [tasks."post:build"]
 description = "Auto-format generated code"
-run = "prettier --write .morphir-dist/"
+run = "prettier --write .morphir/out/generate/typescript.dest/"
 
 [tasks."post:codegen"]
 description = "Format generated TypeScript"

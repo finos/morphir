@@ -50,8 +50,8 @@ The presence of `[workspace]` section triggers workspace mode, enabling:
 # Workspace root directory (empty = directory containing this file)
 root = ""
 
-# Output directory for workspace-level artifacts
-output_dir = ".morphir"
+# Out directory for every task in the workspace
+out_dir = ".morphir/out"
 
 # Glob patterns for discovering member projects
 members = [
@@ -75,7 +75,7 @@ default_member = "packages/core"
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `root` | string | `""` | Workspace root directory. Empty means the directory containing the config file. |
-| `output_dir` | string | `".morphir"` | Output directory for generated artifacts, relative to workspace root. |
+| `out_dir` | string | `".morphir/out"` | Out directory for every task in the workspace, relative to workspace root. |
 | `members` | string[] | `[]` | Glob patterns for discovering workspace member projects. Each matching directory with a `morphir.toml` becomes a member. |
 | `exclude` | string[] | `[]` | Glob patterns excluded from member discovery. |
 | `default_member` | string | `""` | Default member path when none is specified in commands. |
@@ -271,7 +271,7 @@ morphir --workspace-root /path/to/ws build  # Explicit workspace root
 version = "^4.0.0"
 
 [workspace]
-output_dir = ".morphir"
+out_dir = ".morphir/out"
 members = ["packages/*", "apps/*"]
 exclude = ["packages/experimental-*"]
 default_member = "packages/core"

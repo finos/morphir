@@ -8,7 +8,7 @@ Generate code from Morphir IR
 ## Flags
 - **`-t --target <TARGET>`** — Target language or format
 - **`-i --input <INPUT>`** — Path to the Morphir IR file or directory
-- **`-o --output <OUTPUT>`** — Output directory
+- **`-o --output <OUTPUT>`** — Eject task outputs to this directory after the run. Canonical output stays under .morphir/out
 - **`--config <CONFIG>`** — Explicit config file path
 - **`--project <PROJECT>`** — Project name (for workspaces)
 - **`--option <KEY=VALUE>…`** — Override a backend option as KEY=VALUE. May be repeated

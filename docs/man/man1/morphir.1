@@ -13,6 +13,9 @@ Print help including experimental commands
 .TP
 \fB\-V, \-\-version\fR
 Print version
+.TP
+\fB\-\-out\-dir\fR \fI<PATH>\fR
+Relocate the out root (default: <workspace>/.morphir/out). Also MORPHIR_OUT_DIR
 .SH COMMANDS
 .TP
 \fBcompile\fR
@@ -287,7 +290,7 @@ Extension provider id for single\-file Elm compilation. Defaults to morphir\- fo
 Input source directory or file. An installed or configured Elm process accepts one .elm file
 .TP
 \fB\-o, \-\-output\fR \fI<OUTPUT>\fR
-Output directory
+Eject task outputs to this directory after the run. Canonical output stays under .morphir/out
 .TP
 \fB\-\-package\-name\fR \fI<PACKAGE_NAME>\fR
 Package name override
@@ -318,7 +321,7 @@ Target language or format
 Path to the Morphir IR file or directory
 .TP
 \fB\-o, \-\-output\fR \fI<OUTPUT>\fR
-Output directory
+Eject task outputs to this directory after the run. Canonical output stays under .morphir/out
 .TP
 \fB\-\-config\fR \fI<CONFIG>\fR
 Explicit config file path
@@ -1725,7 +1728,7 @@ Compile Gleam source to Morphir IR
 Input source directory or file
 .TP
 \fB\-o, \-\-output\fR \fI<OUTPUT>\fR
-Output directory
+Eject task outputs to this directory after the run. Canonical output stays under .morphir/out
 .TP
 \fB\-\-package\-name\fR \fI<PACKAGE_NAME>\fR
 Package name override
@@ -1747,7 +1750,7 @@ Generate Gleam code from Morphir IR
 Path to the Morphir IR file or directory
 .TP
 \fB\-o, \-\-output\fR \fI<OUTPUT>\fR
-Output directory
+Eject task outputs to this directory after the run. Canonical output stays under .morphir/out
 .TP
 \fB\-\-config\fR \fI<CONFIG>\fR
 Explicit config file path
@@ -1766,7 +1769,7 @@ Roundtrip: compile then generate (for testing)
 Input source directory or file
 .TP
 \fB\-o, \-\-output\fR \fI<OUTPUT>\fR
-Output directory
+Eject task outputs to this directory after the run. Canonical output stays under .morphir/out
 .TP
 \fB\-\-package\-name\fR \fI<PACKAGE_NAME>\fR
 Package name override

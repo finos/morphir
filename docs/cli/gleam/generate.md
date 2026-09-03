@@ -7,6 +7,6 @@ Generate Gleam code from Morphir IR
 
 ## Flags
 - **`-i --input <INPUT>`** — Path to the Morphir IR file or directory
-- **`-o --output <OUTPUT>`** — Output directory
+- **`-o --output <OUTPUT>`** — Eject task outputs to this directory after the run. Canonical output stays under .morphir/out
 - **`--config <CONFIG>`** — Explicit config file path
 - **`--project <PROJECT>`** — Project name (for workspaces)
