@@ -55,8 +55,15 @@ impl OutContext {
     }
 
     /// Locations of one task.
-    pub fn task(&self, task: &TaskId) -> TaskPaths {
-        TaskPaths::new(&self.root, &self.module, task)
+    ///
+    /// `TaskPaths::new` checks the module path, since joining an absolute one
+    /// (or one holding `..`) onto the out root would place the task outside
+    /// it. `module_path` never produces such a path, so this only fails when
+    /// the configuration context is not what it claims to be.
+    pub fn task(&self, task: &TaskId) -> Result<TaskPaths, CliError> {
+        TaskPaths::new(&self.root, &self.module, task).map_err(|error| CliError::Validation {
+            message: error.to_string(),
+        })
     }
 
     /// Locations of one task with an empty `.dest`, ready for a run, plus
@@ -127,7 +134,7 @@ impl OutContext {
     /// wants the same task done, and once the first is finished it can simply
     /// take its turn.
     pub fn prepare_dest(&self, task: &TaskId) -> Result<PreparedTask, CliError> {
-        let paths = self.task(task);
+        let paths = self.task(task)?;
         let lock = TaskLock::acquire(&task_lock_path(&paths))?;
         let previous = TaskResult::read(&paths.result);
         let previous_installed = match &previous {
@@ -278,7 +285,7 @@ mod tests {
         let out = OutContext::resolve(Some(&context), &OutOverrides::default(), Path::new("/x"));
         assert_eq!(out.root, temp.path().join(".morphir/out"));
         assert_eq!(out.module, PathBuf::new());
-        let paths = out.task(&TaskId::compile());
+        let paths = out.task(&TaskId::compile()).unwrap();
         assert_eq!(paths.dest, temp.path().join(".morphir/out/compile.dest"));
     }
 

@@ -522,7 +522,7 @@ mod tests {
     }
 
     fn task_with_value(root: &Path, value: &[&str]) -> TaskPaths {
-        let paths = TaskPaths::new(root, Path::new(""), &TaskId::compile());
+        let paths = TaskPaths::new(root, Path::new(""), &TaskId::compile()).unwrap();
         std::fs::create_dir_all(paths.dest.join("parse")).unwrap();
         std::fs::write(paths.dest.join("morphir-ir.json"), "{}").unwrap();
         std::fs::write(paths.dest.join("parse/main.json"), "{}").unwrap();
@@ -607,7 +607,7 @@ mod tests {
         // foreign top-level directory must be untouched.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("out");
-        let paths = TaskPaths::new(&root, Path::new(""), &TaskId::compile());
+        let paths = TaskPaths::new(&root, Path::new(""), &TaskId::compile()).unwrap();
         std::fs::create_dir_all(paths.dest.join("sub/report/pkg")).unwrap();
         std::fs::write(paths.dest.join("sub/report/pkg/x.yaml"), "b: 2").unwrap();
         let mut record = TaskResult::new(&TaskId::compile(), Path::new(""));
@@ -904,7 +904,8 @@ mod tests {
         std::fs::create_dir_all(&target).unwrap();
         symlink(&outside, target.join("sub")).unwrap();
 
-        let paths = TaskPaths::new(&temp.path().join("out"), Path::new(""), &TaskId::compile());
+        let paths =
+            TaskPaths::new(&temp.path().join("out"), Path::new(""), &TaskId::compile()).unwrap();
         std::fs::create_dir_all(&paths.dest).unwrap();
         let mut record = TaskResult::new(&TaskId::compile(), Path::new(""));
         record.value = Vec::new();
@@ -1065,7 +1066,7 @@ mod tests {
     #[test]
     fn missing_record_is_an_error() {
         let temp = tempfile::tempdir().unwrap();
-        let paths = TaskPaths::new(temp.path(), Path::new(""), &TaskId::compile());
+        let paths = TaskPaths::new(temp.path(), Path::new(""), &TaskId::compile()).unwrap();
         let error = install(&paths, &temp.path().join("dist")).unwrap_err();
         assert!(error.to_string().contains("no result record"), "{error}");
     }
@@ -1074,7 +1075,7 @@ mod tests {
     /// with a record that produces nothing this time. Returns the task paths
     /// and the target.
     fn a_target_with_one_previously_installed_file(temp: &Path) -> (TaskPaths, PathBuf) {
-        let paths = TaskPaths::new(&temp.join("out"), Path::new(""), &TaskId::compile());
+        let paths = TaskPaths::new(&temp.join("out"), Path::new(""), &TaskId::compile()).unwrap();
         std::fs::create_dir_all(&paths.dest).unwrap();
         let target = temp.join("dist");
         std::fs::create_dir_all(&target).unwrap();

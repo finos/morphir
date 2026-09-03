@@ -103,7 +103,7 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
         }
         None => {
             let task = resolve_ir_task(&ctx);
-            let paths = out.task(&task);
+            let paths = out.task(&task)?;
             let record =
                 TaskResult::read(&paths.result).map_err(|error| CliError::Config { error })?;
             // A missing record and a tombstone (left behind by

@@ -2597,7 +2597,7 @@ fn test_path_resolution() {
     use morphir_devkit::{TaskId, TaskPaths};
 
     let root = PathBuf::from(".morphir/out");
-    let compile = TaskPaths::new(&root, std::path::Path::new(""), &TaskId::compile());
+    let compile = TaskPaths::new(&root, std::path::Path::new(""), &TaskId::compile()).unwrap();
     assert_eq!(compile.dest, root.join("compile.dest"));
     assert_eq!(compile.result, root.join("compile.json"));
 
@@ -2605,7 +2605,8 @@ fn test_path_resolution() {
         &root,
         std::path::Path::new("packages/orders"),
         &TaskId::generate("My Project"),
-    );
+    )
+    .unwrap();
     assert_eq!(
         generate.dest,
         root.join("packages/orders/generate/My-Project.dest")
