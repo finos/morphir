@@ -76,12 +76,28 @@ impl OutContext {
     /// a target; closing that would need an in-progress record that
     /// `generate` would then have to tell apart from a real one, which is
     /// out of scope here.
+    ///
+    /// A record that exists but fails to decode (hand-edited, truncated, or
+    /// written by an incompatible version) is the *previous* run's
+    /// bookkeeping, not a precondition of this run: this function treats it
+    /// as absent rather than failing the run over it. It prints one
+    /// `warning: ...` line naming the file and the decode error, proceeds
+    /// with an empty `previous_ejected`, and still removes the file below,
+    /// same as a record that parsed cleanly. `TaskResult::read` itself stays
+    /// strict — callers that genuinely need the record (`generate` reading
+    /// its input) still get a hard error from a corrupt one.
     pub fn prepare_dest(&self, task: &TaskId) -> Result<PreparedTask, CliError> {
         let paths = self.task(task);
-        let previous_ejected = TaskResult::read(&paths.result)
-            .map_err(|error| CliError::Config { error })?
-            .map(|record| record.ejected)
-            .unwrap_or_default();
+        let previous_ejected = match TaskResult::read(&paths.result) {
+            Ok(record) => record.map(|record| record.ejected).unwrap_or_default(),
+            Err(error) => {
+                eprintln!(
+                    "warning: could not read previous task record at {}: {error}",
+                    paths.result.display()
+                );
+                BTreeMap::new()
+            }
+        };
         if paths.dest.exists() {
             std::fs::remove_dir_all(&paths.dest).map_err(|error| CliError::FileSystem { error })?;
         }
@@ -212,6 +228,27 @@ mod tests {
         assert!(
             !prepared.paths.result.exists(),
             "the stale record file is still removed"
+        );
+    }
+
+    #[test]
+    fn prepare_dest_treats_an_unreadable_record_as_absent() {
+        let temp = tempfile::tempdir().unwrap();
+        let out = OutContext::resolve(None, &OutOverrides::default(), temp.path());
+        let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
+        std::fs::write(&prepared.paths.result, "not valid json").unwrap();
+        assert!(prepared.paths.result.is_file());
+
+        let prepared = out
+            .prepare_dest(&TaskId::compile())
+            .expect("a corrupt previous record must not fail the run");
+        assert!(
+            prepared.previous_ejected.is_empty(),
+            "a corrupt record carries no ejected bookkeeping forward"
+        );
+        assert!(
+            !prepared.paths.result.exists(),
+            "the corrupt record file is still removed"
         );
     }
 }
