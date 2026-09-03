@@ -208,8 +208,21 @@ pub fn install(
         }
     }
 
+    // A copy failing partway through must not leave the target in a state
+    // the *next* install cannot make sense of: everything up to the failing
+    // entry is already on disk, but the ledger below is only written once
+    // every entry has copied, so without a rollback the next run would read
+    // the OLD ledger, find files this run wrote that it does not know about,
+    // and refuse the whole install as foreign content — wedging `-o` until
+    // someone clears the target by hand. `copied_files` tracks every file
+    // actually written this run, incrementally, so that if a copy does fail,
+    // exactly the files it introduced (not ones merely overwritten, which
+    // were already ours) can be deleted, and the ledger can be written to
+    // match what is left on disk before the error is returned.
     let mut copied = Vec::new();
-    for entry in &record.value {
+    let mut copied_files: Vec<String> = Vec::new();
+    let mut copy_failure: Option<CliError> = None;
+    'copy: for entry in &record.value {
         let source = paths.dest.join(entry);
         let destination = target.join(entry);
         if source.is_dir() {
@@ -217,14 +230,42 @@ pub fn install(
             // destination wiped first, whether this is the first time it
             // has been installed here or the tenth, so any foreign content in
             // it survives regardless.
-            copy_dir(&source, &destination)?;
-        } else {
-            if let Some(parent) = destination.parent() {
-                std::fs::create_dir_all(parent).map_err(|error| CliError::FileSystem { error })?;
+            if let Err(error) = copy_dir(&source, &destination, Path::new(entry), &mut copied_files)
+            {
+                copy_failure = Some(error);
+                break 'copy;
             }
-            std::fs::copy(&source, &destination).map_err(|error| CliError::FileSystem { error })?;
+        } else {
+            if let Some(parent) = destination.parent()
+                && let Err(error) = std::fs::create_dir_all(parent)
+            {
+                copy_failure = Some(CliError::FileSystem { error });
+                break 'copy;
+            }
+            match std::fs::copy(&source, &destination) {
+                Ok(_) => copied_files.push(entry.clone()),
+                Err(error) => {
+                    copy_failure = Some(CliError::FileSystem { error });
+                    break 'copy;
+                }
+            }
         }
         copied.push(entry.clone());
+    }
+
+    if let Some(error) = copy_failure {
+        roll_back_partial_copy(&copied_files, &previous_files_lookup, target)?;
+        let removed_lookup: HashSet<&str> = removed.iter().map(String::as_str).collect();
+        let ledger_after_rollback: Vec<String> = previous_files
+            .iter()
+            .filter(|file| !removed_lookup.contains(file.as_str()))
+            .cloned()
+            .collect();
+        record.installed.insert(key, ledger_after_rollback);
+        record
+            .write(&paths.result)
+            .map_err(|write_error| CliError::Config { error: write_error })?;
+        return Err(error);
     }
 
     record.installed.insert(key, resolved_new_files);
@@ -844,18 +885,65 @@ fn prune_empty_parents(path: &Path, stop: &Path) -> Result<(), CliError> {
     Ok(())
 }
 
-fn copy_dir(source: &Path, destination: &Path) -> Result<(), CliError> {
+/// Recursively copy `source` to `destination`, appending the path of every
+/// file actually copied — relative to `target` (`relative` is the entry's own
+/// relative path, the same root `flatten_value_files`/`collect_files` walk
+/// from) — to `copied_files` as it goes.
+///
+/// `copied_files` grows incrementally, file by file, rather than only being
+/// filled in once the whole copy has succeeded, so a caller whose call fails
+/// partway through still has an accurate record of exactly what this call
+/// wrote before the failure — the list `roll_back_partial_copy` needs to
+/// clean up after it.
+fn copy_dir(
+    source: &Path,
+    destination: &Path,
+    relative: &Path,
+    copied_files: &mut Vec<String>,
+) -> Result<(), CliError> {
     std::fs::create_dir_all(destination).map_err(|error| CliError::FileSystem { error })?;
     for entry in std::fs::read_dir(source).map_err(|error| CliError::FileSystem { error })? {
         let entry = entry.map_err(|error| CliError::FileSystem { error })?;
         let target = destination.join(entry.file_name());
+        let child_relative = relative.join(entry.file_name());
         let file_type = entry
             .file_type()
             .map_err(|error| CliError::FileSystem { error })?;
         if file_type.is_dir() {
-            copy_dir(&entry.path(), &target)?;
+            copy_dir(&entry.path(), &target, &child_relative, copied_files)?;
         } else {
             std::fs::copy(entry.path(), &target).map_err(|error| CliError::FileSystem { error })?;
+            copied_files.push(child_relative.to_string_lossy().into_owned());
+        }
+    }
+    Ok(())
+}
+
+/// Undo everything a copy phase wrote before it failed partway through: every
+/// path in `copied_files` that is not in `previously_owned` is deleted, and
+/// its now-empty parent directories under `target` are pruned.
+///
+/// A path already in `previously_owned` was written by an earlier, completed
+/// install — this run merely overwrote it — so it is ours either way and is
+/// left alone; only content this run introduced for the first time is rolled
+/// back. Deleting it, rather than leaving it on disk, is what keeps the next
+/// install from later finding it and refusing the whole run as foreign
+/// content it never wrote (`copied_files` are not yet, and after this
+/// rollback never become, part of the ledger).
+fn roll_back_partial_copy(
+    copied_files: &[String],
+    previously_owned: &HashSet<&str>,
+    target: &Path,
+) -> Result<(), CliError> {
+    for file in copied_files {
+        if previously_owned.contains(file.as_str()) {
+            continue;
+        }
+        let path = target.join(file);
+        match std::fs::remove_file(&path) {
+            Ok(()) => prune_empty_parents(&path, target)?,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(CliError::FileSystem { error }),
         }
     }
     Ok(())
@@ -1505,6 +1593,70 @@ mod tests {
         assert!(
             error.to_string().contains("symbolic link with no target"),
             "{error}"
+        );
+    }
+
+    /// The second of a two-file install fails partway through — its
+    /// destination directory is read-only — after the first file has already
+    /// been copied. Without a rollback, the first file would sit on disk
+    /// unrecorded, and the next install would see it as foreign content it
+    /// never wrote and refuse to run at all.
+    #[cfg(unix)]
+    #[test]
+    fn a_failed_copy_rolls_back_what_this_run_wrote_and_leaves_the_ledger_matching_disk() {
+        use std::os::unix::fs::PermissionsExt;
+
+        redirect_morphir_home_for_tests();
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("out");
+        let paths = TaskPaths::new(&root, Path::new(""), &TaskId::compile()).unwrap();
+        std::fs::create_dir_all(&paths.dest).unwrap();
+        std::fs::write(paths.dest.join("a.json"), "first").unwrap();
+        std::fs::create_dir_all(paths.dest.join("sub")).unwrap();
+        std::fs::write(paths.dest.join("sub/b.json"), "second").unwrap();
+        let mut record = TaskResult::new(&TaskId::compile(), Path::new(""));
+        record.value = vec!["a.json".to_owned(), "sub/b.json".to_owned()];
+        record.write(&paths.result).unwrap();
+
+        let target = temp.path().join("dist");
+        std::fs::create_dir_all(target.join("sub")).unwrap();
+        // The second entry's destination directory cannot be written into,
+        // so its copy fails after the first entry has already landed.
+        std::fs::set_permissions(target.join("sub"), std::fs::Permissions::from_mode(0o500))
+            .unwrap();
+
+        let result = install_here(&paths, &target);
+        // Restore write permission regardless of the outcome, so the temp
+        // directory can be cleaned up and the follow-up install below can run.
+        std::fs::set_permissions(target.join("sub"), std::fs::Permissions::from_mode(0o700))
+            .unwrap();
+
+        let error = result.unwrap_err();
+        assert!(matches!(error, CliError::FileSystem { .. }), "{error}");
+        assert!(
+            !target.join("a.json").exists(),
+            "the file this run copied before the failure must be rolled back"
+        );
+        assert!(
+            !target.join("sub/b.json").exists(),
+            "the copy that failed must not leave a partial file behind"
+        );
+
+        let record_after = TaskResult::read(&paths.result).unwrap().unwrap();
+        assert_eq!(
+            record_after.installed.get(&canonical_key(&target)),
+            Some(&Vec::<String>::new()),
+            "the ledger must be rewritten to match what is actually left on disk"
+        );
+
+        // Fixing the permissions and installing again must not be wedged by
+        // whatever the failed attempt left behind.
+        let report = install_here(&paths, &target).expect("a later install must not be wedged");
+        assert!(target.join("a.json").is_file());
+        assert!(target.join("sub/b.json").is_file());
+        assert_eq!(
+            report.copied,
+            vec!["a.json".to_owned(), "sub/b.json".to_owned()]
         );
     }
 
