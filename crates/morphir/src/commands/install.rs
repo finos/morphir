@@ -106,19 +106,34 @@ pub fn install(
         std::fs::canonicalize(target).map_err(|error| CliError::FileSystem { error })?;
     reject_target_inside_dest(&canonical_target, &paths.dest)?;
 
+    // Computed once and threaded through everywhere below that has to agree
+    // on whether the target filesystem tells letter case apart: the install
+    // lock's name, the ledger's key, and the destination-collision scan.
+    let case_insensitive = target_filesystem_is_case_insensitive(&canonical_target, out_root);
+
     // Everything from here on — the conflict scan, the stale removals, the
     // copies, and the ledger write — runs with this held. Dropped when the
     // function returns, whichever way it returns.
     let _target_lock = TaskLock::acquire(
-        &install_lock_path(out_root, &canonical_target),
+        &install_lock_path_for(out_root, &canonical_target, case_insensitive),
         "installing to this target",
     )?;
 
     // Keyed on the canonical target, not the raw `-o` string, so `dist` and
     // `./dist` (or any other two spellings of the same directory) share one
-    // bookkeeping entry instead of shadowing each other.
-    let key = canonical_target.to_string_lossy().into_owned();
-    let previous_files = record.installed.get(&key).cloned().unwrap_or_default();
+    // bookkeeping entry instead of shadowing each other; case-folded too,
+    // when the filesystem does not distinguish it, so `dist` and `DIST` do
+    // the same — see `ledger_key`. `raw_key` is the un-folded spelling: a
+    // ledger written before this fix keyed itself that way, so it is checked
+    // as a fallback and, once this run writes back under `key`, is retired.
+    let key = ledger_key(&canonical_target, case_insensitive);
+    let raw_key = canonical_target.to_string_lossy().into_owned();
+    let previous_files = record
+        .installed
+        .get(&key)
+        .or_else(|| record.installed.get(&raw_key))
+        .cloned()
+        .unwrap_or_default();
     for file in &previous_files {
         validate_entry(file)?;
     }
@@ -146,7 +161,7 @@ pub fn install(
     // `a/config` are the same file, so the second copy would silently
     // overwrite the first with whichever entry happened to run last. Refuse
     // the whole install rather than let one clobber the other.
-    reject_colliding_destinations(&new_files, target, &canonical_target, out_root)?;
+    reject_colliding_destinations(&new_files, target, case_insensitive)?;
 
     // Before touching anything: a file this run would write that already
     // exists at the destination and is NOT one this function wrote last time
@@ -279,6 +294,9 @@ pub fn install(
                 target,
             },
         );
+        // Retire a pre-fix, un-folded entry for this same target: from here
+        // on this target's bookkeeping lives only under `key`.
+        record.installed.remove(&raw_key);
         record.installed.insert(key, ledger);
         record
             .write(&paths.result)
@@ -297,6 +315,9 @@ pub fn install(
     // is left alone; a file the stale-removal pass deleted cannot be brought
     // back, but a ledger entry whose file is already gone is something every
     // later install handles without complaint.
+    // Retire a pre-fix, un-folded entry for this same target: from here on
+    // this target's bookkeeping lives only under `key`.
+    record.installed.remove(&raw_key);
     record.installed.insert(key, new_files);
     if let Err(write_error) = record.write(&paths.result) {
         let rollback_errors = roll_back_partial_copy(&copied_files, &previous_files_lookup, target);
@@ -381,14 +402,46 @@ pub fn maybe_install(
 /// time and gets no answer wrong. `DefaultHasher` is not guaranteed stable
 /// across Rust releases either, which does not matter here, because every
 /// process contending for one lock is the same binary.
+///
+/// The name is hashed from the canonical target's bytes case-folded to lower
+/// case when the target filesystem does not distinguish letter case (see
+/// [`target_filesystem_is_case_insensitive`]) — otherwise two spellings of one
+/// directory, `dist` and `DIST`, would hash to two different names and hold
+/// two different locks, even though a write through either spelling lands on
+/// the same file. See [`ledger_key`] for the matching fold on the ledger
+/// side.
 pub fn install_lock_path(out_root: &Path, canonical_target: &Path) -> PathBuf {
+    let case_insensitive = target_filesystem_is_case_insensitive(canonical_target, out_root);
+    install_lock_path_for(out_root, canonical_target, case_insensitive)
+}
+
+/// The lock path computation itself, taking the case-insensitivity answer as
+/// a parameter instead of probing for it.
+///
+/// Split out from [`install_lock_path`] so that
+/// [`target_filesystem_is_case_insensitive`] — which needs a lock-adjacent
+/// scratch directory for its own marker-file fallback probe — can call this
+/// directly with `case_insensitive: false`. It cannot call the public
+/// wrapper, which would probe case-insensitivity to decide how to compute the
+/// very path the probe itself is trying to use, an infinite recursion. The
+/// raw, un-folded path is fine for that one internal use: it only has to name
+/// a stable scratch directory for the lifetime of one probe call, not agree
+/// with the identity the outer lock key settles on.
+fn install_lock_path_for(out_root: &Path, canonical_target: &Path, case_insensitive: bool) -> PathBuf {
     use std::hash::{Hash, Hasher};
 
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    canonical_target
-        .as_os_str()
-        .as_encoded_bytes()
-        .hash(&mut hasher);
+    if case_insensitive {
+        canonical_target
+            .to_string_lossy()
+            .to_lowercase()
+            .hash(&mut hasher);
+    } else {
+        canonical_target
+            .as_os_str()
+            .as_encoded_bytes()
+            .hash(&mut hasher);
+    }
     let file_name = format!("{:016x}.lock", hasher.finish());
 
     match crate::home::MorphirHome::resolve() {
@@ -404,6 +457,25 @@ pub fn install_lock_path(out_root: &Path, canonical_target: &Path) -> PathBuf {
             out_root.join("install-locks").join(file_name)
         }
     }
+}
+
+/// The key `install`'s ledger (`record.installed`) uses for `canonical_target`,
+/// folded the same way [`install_lock_path`] folds the lock's name: to lower
+/// case, when the target filesystem does not distinguish letter case. Without
+/// this, `-o dist` followed by `-o DIST` — the same directory on a
+/// case-insensitive filesystem, since `std::fs::canonicalize` (`realpath` on
+/// macOS) preserves the spelling it was given rather than correcting it to
+/// the spelling already on disk — would key the ledger on two different
+/// strings, so the second install would see an empty previous-files list and
+/// refuse its own first install's output as foreign content.
+///
+/// `to_lowercase` is the same Unicode simple case fold
+/// `reject_colliding_destinations` uses elsewhere in this file: adequate
+/// here too, since it only decides which ledger entries are the same key,
+/// never anything written to disk.
+fn ledger_key(canonical_target: &Path, case_insensitive: bool) -> String {
+    let key = canonical_target.to_string_lossy().into_owned();
+    if case_insensitive { key.to_lowercase() } else { key }
 }
 
 /// Reject a `-o` target that already exists as something other than a
@@ -573,11 +645,8 @@ fn reject_symlinks_below_target(relative: &str, target: &Path) -> Result<(), Cli
 fn reject_colliding_destinations(
     destinations: &[String],
     target: &Path,
-    canonical_target: &Path,
-    out_root: &Path,
+    case_insensitive: bool,
 ) -> Result<(), CliError> {
-    let case_insensitive = target_filesystem_is_case_insensitive(canonical_target, out_root);
-
     // `to_lowercase` is a Unicode simple case fold, which is adequate here:
     // it only decides which entries get compared against each other, never
     // anything written to disk.
@@ -640,7 +709,9 @@ fn reject_colliding_destinations(
 ///
 /// The answer is what tells `reject_colliding_destinations` whether it also
 /// has to fold case before comparing destinations — see that function's doc
-/// comment for why a case-only difference matters at all.
+/// comment for why a case-only difference matters at all — and what tells
+/// [`install_lock_path`] and [`ledger_key`] whether the lock name and the
+/// ledger key need the same fold, for the same reason.
 ///
 /// The probe avoids writing into the user's own directory wherever it can:
 /// it first looks for something already on disk under `canonical_target` —
@@ -676,7 +747,10 @@ fn target_filesystem_is_case_insensitive(canonical_target: &Path, out_root: &Pat
         }
     }
 
-    let lock_dir = install_lock_path(out_root, canonical_target)
+    // The raw, un-folded lock path — never the public `install_lock_path`,
+    // which would probe this very function to decide how to compute it. See
+    // `install_lock_path_for`'s doc comment.
+    let lock_dir = install_lock_path_for(out_root, canonical_target, false)
         .parent()
         .map(Path::to_path_buf);
     if let Some(lock_dir) = lock_dir
@@ -1231,13 +1305,17 @@ mod tests {
         install(paths, target, &out_root_of(paths))
     }
 
-    /// The key `install` uses for `record.installed`: the canonicalized path,
-    /// not whatever string the test wrote. `path` must already exist.
+    /// The key `install` uses for `record.installed`: the canonicalized
+    /// path, case-folded exactly the way `ledger_key` folds it when the
+    /// current host's filesystem does not distinguish letter case, so this
+    /// matches whatever `install` actually wrote regardless of which kind of
+    /// filesystem the test suite happens to run on. `path` must already
+    /// exist.
     fn canonical_key(path: &Path) -> String {
-        std::fs::canonicalize(path)
-            .unwrap()
-            .to_string_lossy()
-            .into_owned()
+        let canonical = std::fs::canonicalize(path).unwrap();
+        let case_insensitive =
+            target_filesystem_is_case_insensitive(&canonical, path.parent().unwrap_or(&canonical));
+        ledger_key(&canonical, case_insensitive)
     }
 
     fn task_with_value(root: &Path, value: &[&str]) -> TaskPaths {
@@ -2348,6 +2426,63 @@ mod tests {
 
         assert!(!target.join("morphir-ir.json").exists());
         assert_eq!(report.removed, vec!["morphir-ir.json".to_owned()]);
+    }
+
+    /// I-1: the ledger and the install lock used to key themselves on the
+    /// canonical target's exact spelling. `std::fs::canonicalize`
+    /// (`realpath` on macOS) does not correct the spelling it is given to
+    /// the one already on disk, so on a case-insensitive filesystem `-o
+    /// dist` followed by `-o DIST` used to canonicalize to two different
+    /// strings for what is really one directory: the second install saw an
+    /// empty previous-files list and refused its own first install's output
+    /// as foreign content, and the two spellings held two different locks.
+    #[test]
+    fn reinstalling_under_a_case_swapped_spelling_of_the_target_is_case_stable() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("out");
+        let paths = task_with_value(&root, &["morphir-ir.json"]);
+        let target = temp.path().join("dist");
+        install_here(&paths, &target).unwrap();
+        assert!(target.join("morphir-ir.json").is_file());
+
+        let swapped_target = temp.path().join("DIST");
+
+        if is_case_insensitive(temp.path()) {
+            // The same directory under a different spelling: the second
+            // install must find the first install's bookkeeping rather than
+            // refusing its own output as foreign, so dropping the produced
+            // entry now must remove the file the first install actually
+            // wrote.
+            let mut record = TaskResult::read(&paths.result).unwrap().unwrap();
+            record.value = Vec::new();
+            record.write(&paths.result).unwrap();
+
+            let report = install_here(&paths, &swapped_target).unwrap();
+
+            assert!(!target.join("morphir-ir.json").exists());
+            assert_eq!(report.removed, vec!["morphir-ir.json".to_owned()]);
+
+            // Both spellings are one directory, so they must also share one
+            // lock file, or two processes using the two different spellings
+            // could both believe they hold the lock at once.
+            assert_eq!(
+                install_lock_path(&root, &std::fs::canonicalize(&target).unwrap()),
+                install_lock_path(&root, &std::fs::canonicalize(&swapped_target).unwrap()),
+                "both spellings of the target must derive one lock path"
+            );
+        } else {
+            // A genuinely case-sensitive filesystem: the two spellings name
+            // two different directories, and installing to the second must
+            // leave the first untouched.
+            install_here(&paths, &swapped_target).unwrap();
+            assert!(target.join("morphir-ir.json").is_file());
+            assert!(swapped_target.join("morphir-ir.json").is_file());
+            assert_ne!(
+                std::fs::canonicalize(&target).unwrap(),
+                std::fs::canonicalize(&swapped_target).unwrap(),
+                "on a case-sensitive filesystem the two spellings must be different directories"
+            );
+        }
     }
 
     #[test]
