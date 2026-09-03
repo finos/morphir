@@ -325,7 +325,19 @@ mod tests {
                 .relative_path(),
             "morphir-ir"
         );
-        assert!(IrStorage::from_config(Some(&section("blob", "json"))).is_err());
+        // An unrecognized `ir.layout` value can no longer reach here through
+        // ordinary config loading — `IrSection`'s `Deserialize` now rejects it
+        // first — but `IrStorage::from_config` keeps its own check too, in
+        // case a record or config value is ever built by hand rather than
+        // decoded. Bypass `Deserialize` to exercise that fallback directly.
+        let unrecognized_layout = IrSection {
+            format_version: 4,
+            layout: "blob".to_owned(),
+            format: "json".to_owned(),
+            mode: None,
+            strict_mode: false,
+        };
+        assert!(IrStorage::from_config(Some(&unrecognized_layout)).is_err());
     }
 
     #[test]
