@@ -24,10 +24,11 @@ of what it produced.
         └── generate/…
 
 Task ids are path-like: `compile`, `generate/<target>`, `transform/<name>`.
-`<task>.dest/` is cleared before each run. `<task>.json` is written only after
-the task succeeds, so a `.dest` without a matching `.json` is treated as
-missing; nothing reruns it automatically, and the user must run the task
-again.
+`<task>.dest/` is cleared before each run. `<task>.json` is written in full
+only after the task succeeds; a run that fails instead leaves a tombstone
+(see [Result record](#result-record)) with no `ir` and an empty `value`, so
+the task's output is treated as missing either way — nothing reruns it
+automatically, and the user must run the task again.
 
 ## Root resolution
 
@@ -73,6 +74,23 @@ wrote there — not the `value` entry names — because a `value` entry can name
 a whole directory (a document-tree IR, for example) and install must be able to
 tell its own files apart from content a user placed in or beside that
 directory. Unknown fields are preserved across a read-modify-write cycle.
+
+Starting a task does not delete its previous record outright: if one exists
+and can be read, it is overwritten with a TOMBSTONE — the same record with
+`value` and `inputs` emptied and `language` and `ir` set to `null`, but
+`installed` and `completedAt` left exactly as they were. If the run
+succeeds, it overwrites the tombstone with a real record. If it fails, the
+tombstone is what stays on disk. This keeps the install ledger available
+across a failing run: without it, a failed `compile` between two `-o`
+installs would lose track of what an earlier successful run had put at the
+target, and the next `install` would see its own earlier output as foreign
+content it never wrote and refuse to run. `generate` treats a tombstone
+(`ir` absent and `value` empty) the same as a missing record — a record
+whose `value` is non-empty but `ir` is absent is a different case, and gets
+its own "produced no IR descriptor" error. A record that fails to decode
+(hand-edited, truncated, or written by an incompatible version) is removed
+outright instead of being turned into a tombstone, since there is nothing
+reliable to preserve from it.
 
 ## Install
 

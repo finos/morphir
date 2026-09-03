@@ -3625,7 +3625,100 @@ fn compile_honours_yaml_and_document_tree_storage() {
 }
 
 #[test]
-fn compile_leaves_no_result_record_after_a_failing_rerun() {
+fn compile_leaves_a_tombstone_record_after_a_failing_rerun() {
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    let src = write_gleam_project(&project);
+
+    let compile = run_morphir(&["gleam", "compile", "-o", "dist"], &home, &project);
+    assert!(
+        compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let record_path = project.join(".morphir/out/compile.json");
+    assert!(
+        record_path.is_file(),
+        "first compile should write a result record"
+    );
+    let record: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&record_path).unwrap()).unwrap();
+    let installed_before = record["installed"].clone();
+    assert_ne!(
+        installed_before,
+        serde_json::json!({}),
+        "the first compile ran with -o and should have recorded an install target"
+    );
+
+    // Reproduce the trigger `gleam_compile_rejects_an_empty_source_directory`
+    // uses: an empty source directory fails the next compile after
+    // `prepare_dest` has already cleared `.dest`.
+    std::fs::remove_file(src.join("main.gleam")).unwrap();
+
+    let failing = run_morphir(&["gleam", "compile"], &home, &project);
+    assert!(!failing.status.success());
+    assert!(
+        record_path.is_file(),
+        "a failing re-run must leave a tombstone record behind, not delete it"
+    );
+    let tombstone: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&record_path).unwrap()).unwrap();
+    assert!(
+        tombstone.get("ir").is_none(),
+        "a tombstone has no ir: {tombstone}"
+    );
+    assert_eq!(
+        tombstone["value"],
+        serde_json::json!([]),
+        "a tombstone has an empty value"
+    );
+    assert_eq!(
+        tombstone["installed"], installed_before,
+        "a tombstone must still carry the install ledger from the last successful run"
+    );
+}
+
+#[test]
+fn a_failing_compile_does_not_wedge_the_next_successful_install() {
+    // The routine sequence this guards: `compile -o dist` succeeds, the next
+    // compile fails on a source error, the user fixes it, and `compile -o
+    // dist` succeeds again. Before the tombstone fix, the failing compile in
+    // the middle lost the install ledger entirely (`prepare_dest` deleted
+    // the record outright), so the second `-o dist` saw its own earlier
+    // output sitting in `dist/` as foreign content it never wrote and
+    // refused to run — the user had no way out short of deleting `dist/`
+    // themselves.
+    let temp = TempDir::new().unwrap();
+    let home = temp.path().join("home");
+    let project = temp.path().join("project");
+    let src = write_gleam_project(&project);
+    let dist = project.join("dist");
+
+    let first = run_morphir(&["gleam", "compile", "-o", "dist"], &home, &project);
+    assert!(
+        first.status.success(),
+        "{}",
+        String::from_utf8_lossy(&first.stderr)
+    );
+    assert!(dist.join("morphir-ir.json").is_file());
+
+    std::fs::remove_file(src.join("main.gleam")).unwrap();
+    let failing = run_morphir(&["gleam", "compile", "-o", "dist"], &home, &project);
+    assert!(!failing.status.success());
+
+    std::fs::write(src.join("main.gleam"), "pub fn main() {\n  Nil\n}\n").unwrap();
+    let second = run_morphir(&["gleam", "compile", "-o", "dist"], &home, &project);
+    assert!(
+        second.status.success(),
+        "the second -o dist must not be wedged by the failing compile in between: {}",
+        String::from_utf8_lossy(&second.stderr)
+    );
+    assert!(dist.join("morphir-ir.json").is_file());
+}
+
+#[test]
+fn generate_after_a_failing_compile_reports_the_missing_record_message() {
     let temp = TempDir::new().unwrap();
     let home = temp.path().join("home");
     let project = temp.path().join("project");
@@ -3637,22 +3730,28 @@ fn compile_leaves_no_result_record_after_a_failing_rerun() {
         "{}",
         String::from_utf8_lossy(&compile.stderr)
     );
-    let record_path = project.join(".morphir/out/compile.json");
-    assert!(
-        record_path.is_file(),
-        "first compile should write a result record"
-    );
 
-    // Reproduce the trigger `gleam_compile_rejects_an_empty_source_directory`
-    // uses: an empty source directory fails the next compile after
-    // `prepare_dest` has already cleared `.dest`.
     std::fs::remove_file(src.join("main.gleam")).unwrap();
-
     let failing = run_morphir(&["gleam", "compile"], &home, &project);
     assert!(!failing.status.success());
+
+    let generate = run_morphir(&["gleam", "generate"], &home, &project);
+    assert!(!generate.status.success());
+    let stderr = String::from_utf8_lossy(&generate.stderr);
+    // See `generate_without_a_compile_record_explains_what_to_run` for why
+    // the message is reflowed before matching: the diagnostic renderer may
+    // word-wrap it across lines, each prefixed with its own gutter.
+    let unwrapped = stderr
+        .lines()
+        .map(|line| line.trim_start_matches([' ', '×', '│']))
+        .collect::<Vec<_>>()
+        .join(" ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
     assert!(
-        !record_path.exists(),
-        "a stale result record from the previous successful run must not survive a failing re-run"
+        unwrapped.contains("compile output missing or incomplete, run `morphir compile` first"),
+        "{stderr}"
     );
 }
 

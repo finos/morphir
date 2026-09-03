@@ -104,12 +104,24 @@ pub async fn run_generate(options: GenerateOptions) -> AppResult<miette::Report>
         None => {
             let task = resolve_ir_task(&ctx);
             let paths = out.task(&task);
-            let record = TaskResult::read(&paths.result)
-                .map_err(|error| CliError::Config { error })?
-                .ok_or_else(|| CliError::Validation {
-                    message: "compile output missing or incomplete, run `morphir compile` first"
-                        .into(),
-                })?;
+            let record =
+                TaskResult::read(&paths.result).map_err(|error| CliError::Config { error })?;
+            // A missing record and a tombstone (no `ir`, empty `value`, left
+            // behind by `prepare_dest` after a failed run) both mean the
+            // same thing here: there is no compile output to read. A record
+            // that has a `value` but no `ir` is different — the task ran and
+            // produced *something*, just not IR — and keeps its own message.
+            let record = match record {
+                Some(record) if record.ir.is_some() || !record.value.is_empty() => record,
+                _ => {
+                    return Err(CliError::Validation {
+                        message:
+                            "compile output missing or incomplete, run `morphir compile` first"
+                                .into(),
+                    }
+                    .into());
+                }
+            };
             let descriptor = record.ir.ok_or_else(|| CliError::Validation {
                 message: format!("task '{}' produced no IR descriptor", record.task),
             })?;

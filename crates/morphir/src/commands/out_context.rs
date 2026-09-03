@@ -58,38 +58,49 @@ impl OutContext {
         TaskPaths::new(&self.root, &self.module, task)
     }
 
-    /// Locations of one task with an empty `.dest` and no stale result
-    /// record, ready for a run, plus the `installed` map the previous record
-    /// (if any) carried. Starting a task invalidates whatever it recorded
-    /// last time, so the previous `.json` is removed along with the previous
-    /// `.dest`: a run that fails after this point must not leave a prior
-    /// success record behind for a later task to misread as current.
+    /// Locations of one task with an empty `.dest`, ready for a run, plus
+    /// the `installed` map the previous record (if any) carried. Starting a
+    /// task invalidates whatever `.dest` held last time, so `.dest` is
+    /// cleared here.
     ///
-    /// `installed` describes what is actually on disk at install targets from
-    /// past runs, not anything about the run that is about to happen, so it
-    /// must survive the record being cleared here: the caller is expected to
-    /// copy `previous_installed` onto the new record it builds before writing
-    /// it, so that `install::maybe_install` sees an accurate previous-files list
-    /// and can remove files a target no longer produces. A failed run
-    /// between two installs still loses this map — nothing carries it forward
-    /// across the deleted record — which can leave at most one stale file at
-    /// a target; closing that would need an in-progress record that
-    /// `generate` would then have to tell apart from a real one, which is
-    /// out of scope here.
+    /// The previous `.json`, if there is one, is not deleted — it is
+    /// overwritten with a TOMBSTONE: the same record with `value` and
+    /// `inputs` emptied and `language` and `ir` set to `None`, but
+    /// `installed` (and `completedAt`) left exactly as they were. If the run
+    /// that is about to happen succeeds, the caller overwrites the tombstone
+    /// with a real record built from `previous_installed`, same as always.
+    /// If it fails instead, the tombstone is what stays on disk: `generate`
+    /// treats a tombstone the same as a missing record (see its IR-input
+    /// resolution), and a later `install::maybe_install` still finds the
+    /// ledger of what an earlier successful run put at each `-o` target, so
+    /// it does not mistake its own earlier output for foreign content. A
+    /// plain delete-on-start, which is what this function used to do, loses
+    /// that ledger the moment any run fails, which is the bug a tombstone
+    /// fixes.
+    ///
+    /// `installed` describes what is actually on disk at install targets
+    /// from past runs, not anything about the run that is about to happen,
+    /// so it must survive independently of the tombstone: the caller is
+    /// expected to copy `previous_installed` onto the new record it builds
+    /// before writing it, so that `install::maybe_install` sees an accurate
+    /// previous-files list and can remove files a target no longer produces.
     ///
     /// A record that exists but fails to decode (hand-edited, truncated, or
     /// written by an incompatible version) is the *previous* run's
     /// bookkeeping, not a precondition of this run: this function treats it
     /// as absent rather than failing the run over it. It prints one
     /// `warning: ...` line naming the file and the decode error, proceeds
-    /// with an empty `previous_installed`, and still removes the file below,
-    /// same as a record that parsed cleanly. `TaskResult::read` itself stays
-    /// strict — callers that genuinely need the record (`generate` reading
-    /// its input) still get a hard error from a corrupt one.
+    /// with an empty `previous_installed`, and removes the file below rather
+    /// than trying to turn something unreadable into a tombstone.
+    /// `TaskResult::read` itself stays strict — callers that genuinely need
+    /// the record (`generate` reading its input) still get a hard error from
+    /// a corrupt one.
     pub fn prepare_dest(&self, task: &TaskId) -> Result<PreparedTask, CliError> {
         let paths = self.task(task);
-        let previous_installed = match TaskResult::read(&paths.result) {
-            Ok(record) => record.map(|record| record.installed).unwrap_or_default(),
+        let previous = TaskResult::read(&paths.result);
+        let previous_installed = match &previous {
+            Ok(Some(record)) => record.installed.clone(),
+            Ok(None) => BTreeMap::new(),
             Err(error) => {
                 eprintln!(
                     "warning: could not read previous task record at {}: {error}",
@@ -102,10 +113,22 @@ impl OutContext {
             std::fs::remove_dir_all(&paths.dest).map_err(|error| CliError::FileSystem { error })?;
         }
         std::fs::create_dir_all(&paths.dest).map_err(|error| CliError::FileSystem { error })?;
-        match std::fs::remove_file(&paths.result) {
-            Ok(()) => {}
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-            Err(error) => return Err(CliError::FileSystem { error }),
+        match previous {
+            Ok(Some(mut record)) => {
+                record.value = Vec::new();
+                record.ir = None;
+                record.inputs = Vec::new();
+                record.language = None;
+                record
+                    .write(&paths.result)
+                    .map_err(|error| CliError::Config { error })?;
+            }
+            Ok(None) => {}
+            Err(_) => match std::fs::remove_file(&paths.result) {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(CliError::FileSystem { error }),
+            },
         }
         Ok(PreparedTask {
             paths,
@@ -116,16 +139,17 @@ impl OutContext {
 
 /// Result of [`OutContext::prepare_dest`]: a task's paths, ready for a run,
 /// plus the `installed` map its previous result record carried before that
-/// record was removed.
+/// record was overwritten with a tombstone (or removed, if it was
+/// unreadable).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreparedTask {
-    /// Locations of the task, with a freshly emptied `.dest` and no result
-    /// record on disk.
+    /// Locations of the task, with a freshly emptied `.dest`. The result
+    /// record, if there was one, is now a tombstone rather than gone.
     pub paths: TaskPaths,
     /// The previous result record's `installed` map, read before the record
-    /// was removed. Empty when there was no previous record. Callers must
-    /// set this on the new record they build for this run, before writing
-    /// it, so that install bookkeeping survives across runs.
+    /// was turned into a tombstone. Empty when there was no previous record.
+    /// Callers must set this on the new record they build for this run,
+    /// before writing it, so that install bookkeeping survives across runs.
     pub previous_installed: BTreeMap<String, Vec<String>>,
 }
 
@@ -187,24 +211,36 @@ mod tests {
     }
 
     #[test]
-    fn prepare_dest_removes_a_stale_result_record() {
+    fn prepare_dest_leaves_the_previous_record_as_a_tombstone_instead_of_deleting_it() {
         let temp = tempfile::tempdir().unwrap();
         let out = OutContext::resolve(None, &OutOverrides::default(), temp.path());
         let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
-        TaskResult::new(&TaskId::compile(), Path::new(""))
-            .write(&prepared.paths.result)
-            .unwrap();
-        assert!(prepared.paths.result.is_file());
+        let mut record = TaskResult::new(&TaskId::compile(), Path::new(""));
+        record.language = Some("gleam".to_owned());
+        record.inputs = vec!["parse".to_owned()];
+        record.value = vec!["morphir-ir.json".to_owned()];
+        record.ir = Some(morphir_devkit::IrDescriptor {
+            path: "morphir-ir.json".to_owned(),
+            layout: morphir_devkit::IrLayout::SingleFile,
+            format: "json".to_owned(),
+            version: "v4".to_owned(),
+        });
+        record.write(&prepared.paths.result).unwrap();
 
         let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
         assert!(
-            !prepared.paths.result.exists(),
-            "a previous run's result record must not survive prepare_dest"
+            prepared.paths.result.is_file(),
+            "the previous record must survive as a tombstone, not be deleted"
         );
+        let tombstone = TaskResult::read(&prepared.paths.result).unwrap().unwrap();
+        assert!(tombstone.ir.is_none(), "a tombstone has no ir");
+        assert!(tombstone.value.is_empty(), "a tombstone has no value");
+        assert!(tombstone.inputs.is_empty(), "a tombstone has no inputs");
+        assert!(tombstone.language.is_none(), "a tombstone has no language");
     }
 
     #[test]
-    fn prepare_dest_returns_the_previous_records_installed_map_and_still_removes_it() {
+    fn prepare_dest_leaves_a_tombstone_with_the_installed_map_intact_and_no_ir() {
         let temp = tempfile::tempdir().unwrap();
         let out = OutContext::resolve(None, &OutOverrides::default(), temp.path());
         let prepared = out.prepare_dest(&TaskId::compile()).unwrap();
@@ -226,9 +262,16 @@ mod tests {
             "prepare_dest must carry the previous record's installed map forward"
         );
         assert!(
-            !prepared.paths.result.exists(),
-            "the stale record file is still removed"
+            prepared.paths.result.is_file(),
+            "the record must be left on disk as a tombstone, not removed"
         );
+        let tombstone = TaskResult::read(&prepared.paths.result).unwrap().unwrap();
+        assert_eq!(
+            tombstone.installed.get("/abs/dist"),
+            Some(&vec!["morphir-ir.json".to_owned()]),
+            "the tombstone written to disk must keep the installed map intact"
+        );
+        assert!(tombstone.ir.is_none(), "a tombstone has no ir");
     }
 
     #[test]
