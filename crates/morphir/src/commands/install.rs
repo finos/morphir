@@ -286,10 +286,36 @@ pub fn install(
         return Err(error);
     }
 
+    // Every copy succeeded. If the ledger that records them cannot be
+    // written — the filesystem holding the out root is full, or the record's
+    // directory is read-only — the target is left holding files no ledger on
+    // disk names, and the NEXT install refuses the whole run as foreign
+    // content it never wrote: the same wedge the copy-failure rollback
+    // exists to prevent, reached one step later. So this run's new files are
+    // rolled back too, leaving the target as the ledger still on disk
+    // describes it. A file this run only overwrote was already owned, so it
+    // is left alone; a file the stale-removal pass deleted cannot be brought
+    // back, but a ledger entry whose file is already gone is something every
+    // later install handles without complaint.
     record.installed.insert(key, new_files);
-    record
-        .write(&paths.result)
-        .map_err(|error| CliError::Config { error })?;
+    if let Err(write_error) = record.write(&paths.result) {
+        let rollback_errors = roll_back_partial_copy(&copied_files, &previous_files_lookup, target);
+        if rollback_errors.is_empty() {
+            return Err(CliError::Config { error: write_error });
+        }
+        let mut message = format!(
+            "install copied every file but could not write the result record at '{}': \
+             {write_error}",
+            paths.result.display()
+        );
+        for rollback_error in &rollback_errors {
+            message.push_str(&format!(
+                "; rolling back a file this run wrote also failed: {}",
+                describe(rollback_error)
+            ));
+        }
+        return Err(CliError::Validation { message });
+    }
     Ok(InstallReport {
         target: target.to_path_buf(),
         copied,
@@ -2585,6 +2611,45 @@ mod tests {
             assert_eq!(report.removed, vec!["Foo.gleam".to_owned()]);
             assert!(!target.join("Foo.gleam").exists());
         }
+    }
+
+    /// Every copy succeeds and then the ledger cannot be written: the
+    /// directory holding the result record is read-only, which stands in for
+    /// a full disk. The files this run wrote have to come back off the
+    /// target, or the next install would find output no ledger names and
+    /// refuse the whole run as foreign content — wedging `-o` until someone
+    /// cleared the target by hand.
+    #[cfg(unix)]
+    #[test]
+    fn a_ledger_that_cannot_be_written_rolls_back_what_this_run_copied() {
+        use std::os::unix::fs::PermissionsExt;
+
+        redirect_morphir_home_for_tests();
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("out");
+        let paths = task_with_value(&root, &["morphir-ir.json"]);
+        let target = temp.path().join("dist");
+
+        let record_dir = paths.result.parent().unwrap().to_path_buf();
+        std::fs::set_permissions(&record_dir, std::fs::Permissions::from_mode(0o500)).unwrap();
+        let result = install(&paths, &target, &root);
+        std::fs::set_permissions(&record_dir, std::fs::Permissions::from_mode(0o700)).unwrap();
+
+        let error = result.expect_err("a ledger that cannot be written must fail the install");
+        assert!(
+            error.to_string().to_lowercase().contains("config")
+                || error.to_string().contains("result record"),
+            "{error}"
+        );
+        assert!(
+            !target.join("morphir-ir.json").exists(),
+            "a file this run wrote must not be left behind unrecorded"
+        );
+
+        // And the record on disk still says nothing was installed here, so
+        // the next install starts from a state it can make sense of.
+        let record = TaskResult::read(&paths.result).unwrap().unwrap();
+        assert!(record.installed.is_empty(), "{:?}", record.installed);
     }
 
     /// A hard link is the same file, but it is not a case-only rename. The
