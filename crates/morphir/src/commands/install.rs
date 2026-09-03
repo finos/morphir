@@ -708,11 +708,23 @@ fn target_filesystem_is_case_insensitive(canonical_target: &Path, out_root: &Pat
 /// file as `path`, by filesystem identity? `None` when the question could
 /// not even be asked — nothing at `path`, or its final component has no
 /// letter whose case can be swapped.
+///
+/// A swapped spelling that is simply NOT THERE is an answer, not a failure to
+/// ask: the filesystem distinguishes the two names, so it is case-sensitive.
+/// Treating that as "could not tell" made every probe on a case-sensitive
+/// filesystem inconclusive — the swapped name never exists there — and the
+/// caller then fell back to assuming case-insensitive, which refuses installs
+/// of two outputs that really are two different files.
 fn probe_case_sensitivity_at(path: &Path) -> Option<bool> {
     let original = handle_for(path)?;
     let swapped_path = case_swapped_sibling(path)?;
-    let swapped = handle_for(&swapped_path)?;
-    Some(original == swapped)
+    match Handle::from_path(&swapped_path) {
+        Ok(swapped) => Some(original == swapped),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Some(false),
+        // Something is there but will not open — no permission to read it,
+        // say. That settles nothing.
+        Err(_) => None,
+    }
 }
 
 /// `path` with its final path component's letters case-swapped (upper to
@@ -2577,7 +2589,40 @@ mod tests {
             );
             assert!(target.join("a/Config").is_file());
             assert!(target.join("a/config").is_file());
+            assert_eq!(
+                std::fs::read_to_string(target.join("a/Config")).unwrap(),
+                "upper"
+            );
+            assert_eq!(
+                std::fs::read_to_string(target.join("a/config")).unwrap(),
+                "lower"
+            );
+            let record_after = TaskResult::read(&paths.result).unwrap().unwrap();
+            assert_eq!(
+                record_after.installed[&canonical_key(&target)],
+                vec!["a/Config".to_owned(), "a/config".to_owned()],
+                "two different files get two ledger entries"
+            );
         }
+    }
+
+    /// The probe has to give an answer on either kind of filesystem, and the
+    /// same answer the filesystem itself gives. It used to shrug on a
+    /// case-sensitive one — the case-swapped spelling is never there, which it
+    /// read as "cannot tell" rather than as "these are two names" — and the
+    /// caller then assumed case-insensitive and refused installs of two
+    /// outputs that really were two different files.
+    #[test]
+    fn the_case_sensitivity_probe_answers_on_either_kind_of_filesystem() {
+        let temp = tempfile::tempdir().unwrap();
+        let marker = temp.path().join("Probe");
+        std::fs::write(&marker, "x").unwrap();
+
+        assert_eq!(
+            probe_case_sensitivity_at(&marker),
+            Some(is_case_insensitive(temp.path())),
+            "the probe must answer, and agree with the filesystem"
+        );
     }
 
     #[test]
