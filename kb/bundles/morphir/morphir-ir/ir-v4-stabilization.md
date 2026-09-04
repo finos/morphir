@@ -101,7 +101,7 @@ marked *mechanical* need no decision; rows marked *decision* appear again under 
 | Bare array as a value | `Value` lists `type: array` as "Shorthand for List" | `ListValue` and `TupleValue` both say "Bare arrays are NOT allowed for values" | Decision. The design rationale for forbidding it (List and Tuple would be ambiguous) still holds, so the likely fix removes the arm. |
 | `Hole`, `Native`, `External` missing from `Value` | The schema header, `whats-new.md`, the Rust `Value` enum, and the technical-writer checklist all list them as v4 value expressions | The `Value` `oneOf` has no arm for any of them | Mechanical once the field layout is chosen; see the vocabulary decision. |
 | Attributes on values | `ValueAttributes` is defined, and the spec's own examples write `"attributes": {}` on `Variable`, `Apply`, `Reference`, `Field`, `Tuple`, `Constructor` | Only `LiteralValue` and `LiteralPattern` accept an `attributes` member; every other value wrapper is `additionalProperties: false` or a bare string | Decision. Either every value node gains an expanded form with attributes, or the spec examples drop them. |
-| Legacy name array item pattern | `morphir-ir-v4.yaml` line 64: `^[a-z0-9]+$` | `morphir-ir-v4-document-tree-files.yaml` line 41: `^[a-z][a-z0-9]*$` | Mechanical. Pick one; the corpus decides. |
+| Legacy name array item pattern | `morphir-ir-v4.yaml` line 64: `^[a-z0-9]+$` | `morphir-ir-v4-document-tree-files.yaml` line 41: `^[a-z][a-z0-9]*$` | Mechanical. Pick one; the kit decides. |
 | `FileStem` pattern | `morphir-ir-v4.yaml`: allows a `__[0-9a-f]{8}` truncation suffix | `naming-conformance.json` `notes`: no suffix; tree schema: `FileStem` absent | Mechanical. Define `FileStem` once in the tree schema with the suffix. |
 | Document-tree schema has no root | The file is a definitions-only catalog; nothing composes the four file kinds into a root | `document-tree-files.md` describes four validatable file kinds | Mechanical. Bead `morphir-bx6v`. Its metaschema finding is already fixed; the missing root is not. |
 | Document-tree bodies are unvalidated | `TypeDefinition`, `TypeSpecification`, `ValueDefinition` in the tree schema are `additionalProperties: true` stubs with a comment "these would be `$ref` in practice" | The core schema defines them fully | Decision. Cross-file `$ref` to the core schema, or a build step that inlines it. |
@@ -194,9 +194,9 @@ The mechanical prose corrections in this note are limited to statements that alr
 
 ## Unresolved
 
-The tiebreak has moved from the schema to the corpus, and the specification of 2026-09-04 makes the schema a
+The tiebreak has moved from the schema to the kit, and the specification of 2026-09-04 makes the schema a
 generated artifact of the TypeScript codecs. What remains unresolved is the order in which a Morphir metamodel, if
-one is written, replaces the TypeScript model as the root; nothing in the corpus depends on which comes first.
+one is written, replaces the TypeScript model as the root; nothing in the kit depends on which comes first.
 
 How often the vocabulary conflicts bite real users is unmeasured. Every v4 artifact in circulation today was written
 by the Rust CLI, so the Rust vocabulary is what exists on disk, and changing the encoder without a migration note
