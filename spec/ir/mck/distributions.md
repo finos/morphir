@@ -61,5 +61,5 @@ website/static/ir/examples/v4/complete-example.json
 ```
 
 ```text
-spec/ir/corpus/documents/complete-example.yaml
+spec/ir/mck/documents/complete-example.yaml
 ```

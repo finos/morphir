@@ -46,10 +46,10 @@ settled and where, what still contradicts, and which decisions nobody has made. 
 `morphir-ir-v4-stabilize`](#tracking) partitions the work; this page is its narrative home and is updated as items
 close.
 
-The stabilization rule is that **the conformance corpus at `spec/ir/corpus/` is the tiebreak.** A case in the
-corpus states the meaning of a spelling by example; the TypeScript reference model in
-`ecosystem/morphir-typescript` defines the shape; every binding is driven through the corpus by
-`morphir-conformance`. Prose that disagrees with a case is corrected to the case. Where no case exists the
+The stabilization rule is that **the Morphir Compatibility Kit (MCK) at `spec/ir/mck/` is the tiebreak.** A case in the
+kit states the meaning of a spelling by example; the TypeScript reference model in
+`ecosystem/morphir-typescript` defines the shape; every binding is driven through the kit by
+the mck driver. Prose that disagrees with a case is corrected to the case. Where no case exists the
 question is open, it appears under [Open decisions](#open-decisions), and it is closed by writing the case and
 the codec together. The design is recorded in the approved specification of 2026-09-04 (kept outside the
 repository under `.dev/`), and its first migration step landed on this date. The schema-as-tiebreak rule this
@@ -202,15 +202,15 @@ How often the vocabulary conflicts bite real users is unmeasured. Every v4 artif
 by the Rust CLI, so the Rust vocabulary is what exists on disk, and changing the encoder without a migration note
 would strand those files.
 
-## Corpus
+## The Morphir Compatibility Kit
 
-`spec/ir/corpus/README.md` is the contract. Every settled row in the tables above has an active case; every
+`spec/ir/mck/README.md` is the contract. MCK is the branded name of the conformance corpus the specification of 2026-09-04 describes; the two terms mean the same thing. Every settled row in the tables above has an active case; every
 decision row about a spelling has a `pending` case naming its bead; rows about schema structure (document-tree
 body validation, the `session.jsonl` and `deco` scope) have none, because they are not spellings. Case IDs
-(`types-0003`) are stable and are the way beads and decision records cite the corpus.
+(`types-0003`) are stable and are the way beads and decision records cite the kit.
 
 Rejection-only cases such as names-0003 are active. The Record spelling case (types-0005) and the whole-document
-case (distributions-0004) are pending on the vocabulary decision, and the review of the seed corpus found that the
+case (distributions-0004) are pending on the vocabulary decision, and the review of the seed kit found that the
 v4 schema validates any content inside an access-controlled definition, so it never decided that spelling.
 
 ## Tracking

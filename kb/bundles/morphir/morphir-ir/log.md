@@ -2,7 +2,8 @@
 
 ## 2026-09-04
 
-* **Update**: The corpus at `spec/ir/corpus/` replaces the schema as the tiebreak; the kb note now says so. Added the `morphir-typescript` and `morphir-gleam` submodules; the conformance parser and `check` command live in the former.
+* **Update**: The corpus at `spec/ir/mck/` replaces the schema as the tiebreak; the kb note now says so. Added the `morphir-typescript` and `morphir-gleam` submodules; the mck parser and check command live in the former.
+* **Update**: Renamed the hand-written conformance corpus to the Morphir Compatibility Kit (MCK): spec/ir/mck/, the @finos/morphir-mck package, and the mck command. The generated naming and format-version corpora keep their names.
 
 ## 2026-09-03
 

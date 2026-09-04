@@ -116,15 +116,15 @@ description = "Validate schemas against metaschema"
 # because a Windows box may carry only the WSL launcher.
 run = "bun run tools/validate-schemas.ts"
 
-[tasks."corpus:check"]
-description = "Parse the IR conformance corpus and report structural errors"
+[tasks."mck:check"]
+description = "Parse the Morphir Compatibility Kit case files and validate the report schema"
 # The parser lives in the morphir-typescript submodule; the driver that runs
-# bindings against the corpus arrives with plan 2.
+# bindings against the kit arrives with plan 2.
 run = [
     "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
-    "bun run ecosystem/morphir-typescript/packages/conformance/src/cli.ts check spec/ir/corpus",
-    "jsonschema metaschema spec/ir/corpus/report.schema.json",
-    "jsonschema validate spec/ir/corpus/report.schema.json spec/ir/corpus/report.example.json",
+    "bun run ecosystem/morphir-typescript/packages/mck/src/cli.ts check spec/ir/mck",
+    "jsonschema metaschema spec/ir/mck/report.schema.json",
+    "jsonschema validate spec/ir/mck/report.schema.json spec/ir/mck/report.example.json",
 ]
 
 [tasks."hooks:install"]
@@ -186,7 +186,7 @@ depends = [
     "fixtures:validate",
     "fixtures:naming-corpus-check",
     "schema:validate",
-    "corpus:check",
+    "mck:check",
 ]
 
 # ===== Testing Tasks =====

@@ -11,8 +11,8 @@ This directory holds **git submodules** for Morphir ecosystem repositories. Use 
 - **morphir-python** – Python implementation of Morphir tooling.
 - **morphir-scala** – Scala implementation of Morphir tooling. Mill build, cross-compiled to JVM, JS, and Scala Native.
 - **morphir-ui** – Morphir's UI monorepo: the morphir-desktop (Electron) and morphir-web apps sharing one Svelte + Effect application (moonrepo + mise + bun toolchain).
-- **morphir-typescript** – TypeScript binding for the Morphir IR: the reference semantic model, the version and profile codecs, and the `morphir-conformance` driver that runs the IR corpus at `spec/ir/corpus/` against every binding. Bun workspace; runtime-neutral (Node, Bun, Deno, browser).
-- **morphir-gleam** – Gleam models and tooling for the BEAM ecosystem. `packages/morphir_models` is the Gleam mirror of the IR model, checked by the conformance driver.
+- **morphir-typescript** – TypeScript binding for the Morphir IR: the reference semantic model, the version and profile codecs, and the mck driver that runs the Morphir Compatibility Kit at `spec/ir/mck/` against every binding. Bun workspace; runtime-neutral (Node, Bun, Deno, browser).
+- **morphir-gleam** – Gleam models and tooling for the BEAM ecosystem. `packages/morphir_models` is the Gleam mirror of the IR model, checked by the mck driver.
 
 Do not edit submodule content in-place for long-term changes. Prefer contributing in the submodule's own repo and then updating the submodule ref in finos/morphir when intentional.
 

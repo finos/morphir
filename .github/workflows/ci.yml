@@ -30,7 +30,7 @@ jobs:
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
       docs: ${{ steps.filter.outputs.docs }}
-      corpus: ${{ steps.filter.outputs.corpus }}
+      mck: ${{ steps.filter.outputs.mck }}
       release: ${{ steps.filter.outputs.release }}
       desktop-demo: ${{ steps.filter.outputs.desktop-demo }}
     steps:
@@ -81,8 +81,8 @@ jobs:
               - '**/*.md'
               - 'spec/ir/**'
               - '.github/workflows/ci.yml'
-            corpus:
-              - 'spec/ir/corpus/**'
+            mck:
+              - 'spec/ir/mck/**'
               - 'ecosystem/morphir-typescript'
               - '.config/mise/config.toml'
               - '.github/workflows/ci.yml'
@@ -381,7 +381,7 @@ jobs:
     name: Docs
     runs-on: ubuntu-latest
     needs: changes
-    if: ${{ needs.changes.outputs.docs == 'true' || needs.changes.outputs.corpus == 'true' }}
+    if: ${{ needs.changes.outputs.docs == 'true' || needs.changes.outputs.mck == 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -398,8 +398,8 @@ jobs:
       - name: Validate published examples
         run: mise run examples:validate
 
-      - name: Check the conformance corpus
-        run: mise run corpus:check
+      - name: Check the Morphir Compatibility Kit
+        run: mise run mck:check
 
   release-workflow:
     name: Release workflow
@@ -445,7 +445,7 @@ jobs:
             fi
           fi
           # Check if docs job was required and passed
-          if [[ "${{ needs.changes.outputs.docs }}" == "true" || "${{ needs.changes.outputs.corpus }}" == "true" ]]; then
+          if [[ "${{ needs.changes.outputs.docs }}" == "true" || "${{ needs.changes.outputs.mck }}" == "true" ]]; then
             if [[ "${{ needs.docs.result }}" != "success" ]]; then
               echo "docs failed"
               exit 1

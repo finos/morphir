@@ -3,7 +3,7 @@
 	"binding": "morphir-typescript",
 	"language": "typescript",
 	"driverVersion": "0.1.0",
-	"corpusVersion": "d6e6ad62",
+	"kitVersion": "d6e6ad62",
 	"startedAt": "2026-09-04T00:00:00.000Z",
 	"records": [
 		{
@@ -39,7 +39,7 @@
 			"profile": "json",
 			"role": "canonical",
 			"fenceIndex": 0,
-			"result": "corpus-error",
+			"result": "kit-error",
 			"message": "case has no data fences (types-0099)",
 			"durationMs": 0
 		},

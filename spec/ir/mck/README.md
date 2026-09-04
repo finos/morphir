@@ -1,12 +1,11 @@
-# Morphir IR conformance corpus
+# Morphir Compatibility Kit (MCK)
 
-This directory is the executable contract for the Morphir IR serialization profiles. Every binding (TypeScript,
-Gleam, Python, and later Scala and Rust) is driven through it by `morphir-conformance`, the driver in
-finos/morphir-typescript. A binding is compatible with the specification at a corpus version when the driver
-reports no failures against it.
+This directory is the Morphir Compatibility Kit: the executable contract for the Morphir IR serialization profiles.
+Every binding (TypeScript, Gleam, Python, and later Scala and Rust) is driven through it by the mck driver in
+finos/morphir-typescript. A binding is MCK-compatible at a kit version when the driver reports no failures against it.
 
-The corpus states meaning by example. The semantic model lives in TypeScript; the YAML profile is the reference
-text form; JSON is the second profile. When a spec page and a corpus case disagree, the case wins and the page is
+The kit states meaning by example. The semantic model lives in TypeScript; the YAML profile is the reference
+text form; JSON is the second profile. When a spec page and a kit case disagree, the case wins and the page is
 corrected. Design rationale is in `kb/bundles/morphir/morphir-ir/ir-v4-stabilization.md`.
 
 ## Files
@@ -22,7 +21,7 @@ corrected. Design rationale is in `kb/bundles/morphir/morphir-ir/ir-v4-stabiliza
 | `document-tree.md` | manifest, module, and node files; layout equivalence |
 | `versions.md` | cross-version reading and writing |
 | `documents/` | large fixtures referenced by path |
-| `report.schema.json` | the JSON Schema of a driver report |
+| `report.schema.json` | the JSON Schema of an MCK report |
 
 ## A case
 
@@ -51,7 +50,7 @@ Fences are the data. The info string is `<language> <role> [key=value ...]`.
 | `file` | One document of a multi-file input (a document tree). | `path=<logical path>` required; `set=<name>` groups files |
 
 Languages are `yaml`, `json`, and `text` (a list of paths, one per line, relative to the repository root; the
-corpus's own fixtures live under `spec/ir/corpus/documents/`). In a report, a text fence takes the profile of the
+kit's own fixtures live under `spec/ir/mck/documents/`). In a report, a text fence takes the profile of the
 file's extension: `.json` is `json`, `.yaml` or `.yml` is `yaml`. A fence with any other info string, such as a
 `ts` illustration, is prose and is ignored.
 
@@ -81,7 +80,7 @@ Reference: ["morphir/SDK:list#list", a]
 
 ## Errors the parser reports
 
-Running `morphir-conformance check spec/ir/corpus` fails on: a malformed or duplicate ID; an ID whose topic does not
+Running `mck check spec/ir/mck` fails on: a malformed or duplicate ID; an ID whose topic does not
 match the file; an unknown heading key or value; a data fence before the first case; more than one `canonical` per
 language in a case; an active case that has `accepted` or `file` fences but no `canonical`; a case with no data
 fences at all; a `pending` case carrying anything but `rejected` fences; an unknown language, role, or key; a
@@ -94,6 +93,6 @@ fence; a fence key without a value or with a duplicate key. Nothing is skipped s
 2. Write the prose: why the case exists, and the decision or bead it belongs to.
 3. Write the YAML `canonical` fence first, then the JSON one, then every `accepted` spelling the profile allows,
    then `rejected` spellings with their diagnostic.
-4. Run `mise run corpus:check`.
+4. Run `mise run mck:check`.
 5. If the case decides something that was open, record the decision in
    `kb/bundles/morphir/morphir-ir/decisions/` and close its bead.
