@@ -30,6 +30,7 @@ jobs:
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
       docs: ${{ steps.filter.outputs.docs }}
+      corpus: ${{ steps.filter.outputs.corpus }}
       release: ${{ steps.filter.outputs.release }}
       desktop-demo: ${{ steps.filter.outputs.desktop-demo }}
     steps:
@@ -78,8 +79,12 @@ jobs:
               - 'website/**'
               - 'docs/**'
               - '**/*.md'
-              # the script the Docs job runs
-              - '.config/mise/tasks/ci/validate_docs.py'
+              - 'spec/ir/**'
+              - '.github/workflows/ci.yml'
+            corpus:
+              - 'spec/ir/corpus/**'
+              - 'ecosystem/morphir-typescript'
+              - '.config/mise/config.toml'
               - '.github/workflows/ci.yml'
             release:
               - '.github/workflows/release.yml'
@@ -372,19 +377,29 @@ jobs:
             exit 1
           fi
 
-  # Docs: lightweight job for documentation changes (fast-path)
-  # Note: This job intentionally does NOT install mise to stay fast
   docs:
-    name: Docs
+    name: Docs and spec artifacts
     runs-on: ubuntu-latest
     needs: changes
-    if: ${{ needs.changes.outputs.docs == 'true' }}
+    if: ${{ needs.changes.outputs.docs == 'true' || needs.changes.outputs.corpus == 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Validate documentation
-        run: python3 .config/mise/tasks/ci/validate_docs.py
+      - name: Install mise
+        uses: jdx/mise-action@v4
+
+      - name: Initialize (CI mode)
+        run: mise run init -- --ci
+
+      - name: Validate schemas against the metaschema
+        run: mise run schema:validate
+
+      - name: Validate published examples
+        run: mise run examples:validate
+
+      - name: Check the conformance corpus
+        run: mise run corpus:check
 
   release-workflow:
     name: Release workflow
