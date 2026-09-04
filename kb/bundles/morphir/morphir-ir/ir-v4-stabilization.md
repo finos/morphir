@@ -122,6 +122,7 @@ marked *mechanical* need no decision; rows marked *decision* appear again under 
 | Migration guide encoding | `docs/spec/ir/schemas/migration-guide.md` V3 to V4 describes v4 as tagged arrays with attribute objects: `["Variable", {source, constraints, extensions}, name]`, and names as `"value-in-u-s-d"` | Wrapper objects, uppercase initialisms | Rewrite. The page describes a format that never existed. |
 | Migration guide loss table | Lists `Constructor`, `List`, `FieldFunction`, `LetRecursion`, `Destructure`, `UpdateRecord`, `Unit` as v4-only and omits `Hole`, `Native`, `External`; treats V4 to V3 as lossy but possible | All seven exist in v3; the CLI refuses V4 to V3 with `unsupported_v4_downgrade` | Rewrite. Bead `morphir-diwy` owns the downgrade rules. |
 | Module documentation | `docs/spec/ir/schemas/v4/index.md` shows `{doc, value}` nested under the access wrapper; `docs/design/draft/ir/packages.md` says no module docs | Schema accepts `doc` flattened beside `access` and the variant, and also the nested `{doc, value}` form; `ModuleDefinition.doc` exists | Decision on the canonical spelling; the nested form is the odd one out. |
+| SDK package name | Spec pages and both examples write `morphir/sdk` | names-0004 decodes the legacy array to `morphir/SDK`, a different name under decision 0001 | Decision. Case names-0006, bead `morphir-ir-v4-stabilize.1`. |
 
 ### Between schema and implementations
 
@@ -167,9 +168,10 @@ These cannot be closed by editing prose. Each needs a maintainer decision, and e
 5. **Scope of design-only features for 4.0.0.** `DocumentLiteral`, layered decorations under `deco/`, `$meta`,
    `$ref`, and `session.jsonl` exist only in the design documents. Each either enters the schema or is marked as
    post-4.0.
-6. **Exact-release support policy for `4.1.0`.** morphir-ui recognizes but rejects it by design. The
-   format-version contract permits per-implementation tables. Decide whether the reference table stays at `4.0.0`
-   until a `4.1.0` revision is actually specified.
+6. **Exact-release support table.** The format-version contract's reference table is `3.0.0` and `4.0.0`, and
+   distributions-0001 pins that a reader rejects `"4.1.0"` with `unsupported_format_version_revision`. What remains
+   open, in bead `morphir-ir-v4-stabilize.8`, is where each implementation publishes its own table and what changes
+   when a `4.1.0` revision is actually specified.
 7. **Legacy-name compatibility boundary.** GitHub issue #793: migrate the books fixture to `product-ID`, or define
    a documented compatibility rule without weakening the canonical parser.
 8. **Naming codec home.** [Decision 0003](/decisions/0003-the-naming-codec-is-modelled-in-morphir.md) is still
@@ -192,10 +194,9 @@ The mechanical prose corrections in this note are limited to statements that alr
 
 ## Unresolved
 
-The stabilization rule assumes the schema is the right thing to stabilize. The JSON profile page at
-`docs/spec/ir/schemas/v4/json-profile.md` says the schema is only a bootstrap and that a later specification may express the model in Morphir IR itself. If
-that happens before v4 ships, the schema becomes generated output and the tiebreak moves to the model. Nothing here
-depends on which comes first, but the beads that edit the schema by hand would then be redundant.
+The tiebreak has moved from the schema to the corpus, and the specification of 2026-09-04 makes the schema a
+generated artifact of the TypeScript codecs. What remains unresolved is the order in which a Morphir metamodel, if
+one is written, replaces the TypeScript model as the root; nothing in the corpus depends on which comes first.
 
 How often the vocabulary conflicts bite real users is unmeasured. Every v4 artifact in circulation today was written
 by the Rust CLI, so the Rust vocabulary is what exists on disk, and changing the encoder without a migration note
@@ -204,13 +205,13 @@ would strand those files.
 ## Corpus
 
 `spec/ir/corpus/README.md` is the contract. Every settled row in the tables above has an active case; every
-decision row has a `pending` case naming its bead, so the report shows the open decisions as `skipped` rather than
-hiding them. Case IDs (`types-0003`) are stable and are the way beads and decision records cite the corpus.
+decision row about a spelling has a `pending` case naming its bead; rows about schema structure (document-tree
+body validation, the `session.jsonl` and `deco` scope) have none, because they are not spellings. Case IDs
+(`types-0003`) are stable and are the way beads and decision records cite the corpus.
 
-Two seed cases (names-0003, distributions-0003) are marked pending only because the grammar does not yet allow an
-active case whose fences are all rejected; that allowance is scheduled for plan 2. The Record spelling case
-(types-0005) is pending on the vocabulary decision, and the review of the seed corpus found that the v4 schema
-validates any content inside an access-controlled definition, so it never decided that spelling.
+Rejection-only cases such as names-0003 are active. The Record spelling case (types-0005) and the whole-document
+case (distributions-0004) are pending on the vocabulary decision, and the review of the seed corpus found that the
+v4 schema validates any content inside an access-controlled definition, so it never decided that spelling.
 
 ## Tracking
 
