@@ -8,10 +8,6 @@ A v3 tagged array with capitalized tags decodes to the same value the v4 spellin
 ["Literal", {}, ["WholeNumberLiteral", 42]]
 ```
 
-## versions-0002: Writing a Hole to v3 is refused {node=Value status=pending}
+## versions-0002: Writing a Hole to v3 is refused {node=Value version=3 status=pending}
 
-The CLI refuses v4 to v3 downgrade with `unsupported_v4_downgrade`. Bead morphir-diwy specifies the rules; until then this case records the refusal.
-
-```json rejected diagnostic=unsupported_v4_downgrade
-{ "Hole": { "reason": { "UnresolvedReference": { "target": "my-org/project:module#deleted" } } } }
-```
+The CLI refuses a v4 to v3 downgrade with `unsupported_v4_downgrade`. The corpus grammar has no role for a write refusal yet; plan 2 adds one, and bead morphir-diwy specifies the rules. Until then this case is prose only.

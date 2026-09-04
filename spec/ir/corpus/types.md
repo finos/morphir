@@ -18,6 +18,10 @@ a
 morphir/SDK:basics#int
 ```
 
+```json canonical
+"morphir/SDK:basics#int"
+```
+
 ```json accepted
 { "Reference": "morphir/SDK:basics#int" }
 ```

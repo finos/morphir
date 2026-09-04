@@ -91,7 +91,3 @@ ExpressionBody:
 ## definitions-0006: Documentation on a definition {node=AccessControlledTypeDefinition status=pending}
 
 The schema accepts `doc` flattened beside `access` and nested as `{doc, value}`. Bead morphir-ir-v4-stabilize.5 picks the canonical spelling; the flattened form is what the CLI writes and both examples use.
-
-```json rejected diagnostic=unknown_member
-{ "access": "Public", "documentation": "x", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } }
-```

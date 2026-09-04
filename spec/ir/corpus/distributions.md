@@ -44,7 +44,7 @@ distribution:
 { "distribution": { "Library": { "packageName": "example", "dependencies": {}, "def": { "modules": {} } } }, "formatVersion": 4 }
 ```
 
-## distributions-0003: A v3 tagged-array distribution is not a v4 document {node=Distribution status=pending}
+## distributions-0003: A v3 tagged-array distribution is not a v4 document {node=Distribution}
 
 `tests/bdd/fixtures/ir/v4/v4-library-distribution.json` carried this shape. Bead morphir-ir-v4-stabilize.11.
 
@@ -52,14 +52,14 @@ distribution:
 { "formatVersion": 4, "distribution": ["Library", "example/v4-test", {}, { "modules": [] }] }
 ```
 
-## distributions-0004: Complete library, JSON and YAML agree {node=Distribution}
+## distributions-0004: Complete library, JSON and YAML agree {node=Distribution status=pending}
 
-The published example and its hand-written YAML rendering must decode identically.
+The complete example writes record fields under a fields member, which types-0005 leaves to bead morphir-ir-v4-stabilize.1. Until that decision lands, this whole-document case is pending and its two renderings are illustrations only.
 
-```text canonical
+```text
 website/static/ir/examples/v4/complete-example.json
 ```
 
-```text accepted
-documents/complete-example.yaml
+```text
+spec/ir/corpus/documents/complete-example.yaml
 ```

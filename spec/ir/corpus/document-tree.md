@@ -24,6 +24,10 @@ types: [user, user-ID]
 values: [get-user]
 ```
 
+```json canonical
+{ "formatVersion": 4, "path": "my-org/domain", "types": ["user", "user-ID"], "values": ["get-user"] }
+```
+
 ```json accepted
 { "formatVersion": 4, "module": "my-org/domain", "types": ["user", "user-ID"], "values": ["get-user"] }
 ```

@@ -50,8 +50,13 @@ Fences are the data. The info string is `<language> <role> [key=value ...]`.
 | `rejected` | A spelling a reader must refuse with the named diagnostic, or decode as a different node. | exactly one of `diagnostic=<code>` or `expect=<Kind>` |
 | `file` | One document of a multi-file input (a document tree). | `path=<logical path>` required; `set=<name>` groups files |
 
-Languages are `yaml`, `json`, and `text` (a list of paths under `documents/`). A fence with any other info string,
-such as a `ts` illustration, is prose and is ignored.
+Languages are `yaml`, `json`, and `text` (a list of paths, one per line, relative to the repository root; the
+corpus's own fixtures live under `spec/ir/corpus/documents/`). In a report, a text fence takes the profile of the
+file's extension: `.json` is `json`, `.yaml` or `.yml` is `yaml`. A fence with any other info string, such as a
+`ts` illustration, is prose and is ignored.
+
+A fence whose info string is only a language, such as a bare `yaml` or `json` block, is an illustration and is
+ignored by the parser. Pending cases use these to show the spellings under discussion.
 
 ```yaml canonical
 Reference: ["morphir/SDK:list#list", a]
@@ -72,15 +77,16 @@ Reference: ["morphir/SDK:list#list", a]
 2. Decodes every `rejected` fence and requires the named diagnostic, or the named node kind for `expect=`.
 3. Builds each `file` set into a document tree, reads it, and compares with the case's `canonical` single-file
    document; writes it back and compares the emitted files with the fences.
-4. Reports a `pending` case as `skipped`.
+4. Reports a `pending` case as `skipped`. A case whose fences are all `rejected` is active and is checked normally.
 
 ## Errors the parser reports
 
 Running `morphir-conformance check spec/ir/corpus` fails on: a malformed or duplicate ID; an ID whose topic does not
 match the file; an unknown heading key or value; a data fence before the first case; more than one `canonical` per
-language in a case; an active case with no `canonical`; a `pending` case carrying anything but `rejected` fences;
-an unknown language, role, or key; a `rejected` fence without exactly one of `diagnostic` and `expect`; a `file`
-fence without `path`. Nothing is skipped silently.
+language in a case; an active case that has `accepted` or `file` fences but no `canonical`; a case with no data
+fences at all; a `pending` case carrying anything but `rejected` fences; an unknown language, role, or key; a
+`rejected` fence without exactly one of `diagnostic` and `expect`; a `file` fence without `path`; an unterminated
+fence; a fence key without a value or with a duplicate key. Nothing is skipped silently.
 
 ## Adding a case
 
