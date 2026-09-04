@@ -266,7 +266,7 @@ pub type DistributionMode {
   VfsMode
 }
 
-/// VFS distribution manifest (format.json)
+/// VFS distribution manifest (manifest.json)
 pub type VfsManifest {
   VfsManifest(
     format_version: String,
@@ -388,7 +388,7 @@ pub type VfsNodeHeader {
 
 ### Type File
 
-File: `.morphir-dist/pkg/my-org/domain/types/user.type.json`
+File: `.morphir-dist/pkg/my-org/domain/user.type.json`
 
 ```json
 {
@@ -401,7 +401,7 @@ File: `.morphir-dist/pkg/my-org/domain/types/user.type.json`
           "fields": {
             "created-at": { "Reference": { "fqname": "my-org/sdk:local-date-time#local-date-time" } },
             "email": { "Reference": { "fqname": "morphir/sdk:string#string" } },
-            "user-(id)": { "Reference": { "fqname": "my-org/domain:types#user-(id)" } }
+            "user-ID": { "Reference": { "fqname": "my-org/domain:types#user-ID" } }
           }
         }
       }
@@ -412,7 +412,7 @@ File: `.morphir-dist/pkg/my-org/domain/types/user.type.json`
 
 ### Value File
 
-File: `.morphir-dist/pkg/my-org/domain/values/get-user-by-email.value.json`
+File: `.morphir-dist/pkg/my-org/domain/get-user-by-email.value.json`
 
 ```json
 {
@@ -452,14 +452,14 @@ File: `.morphir-dist/pkg/my-org/domain/module.json`
 {
   "formatVersion": "4.0.0",
   "path": "my-org/domain",
-  "types": ["user", "user-(id)", "order"],
+  "types": ["user", "user-ID", "order"],
   "values": ["get-user-by-email", "create-order", "validate-user"]
 }
 ```
 
 ### Format File (Library Distribution)
 
-File: `.morphir-dist/format.json`
+File: `.morphir-dist/manifest.json`
 
 ```json
 {
@@ -473,7 +473,7 @@ File: `.morphir-dist/format.json`
 
 ### Format File (Specs Distribution)
 
-File: `.morphir-dist/format.json`
+File: `.morphir-dist/manifest.json`
 
 ```json
 {
@@ -487,7 +487,7 @@ File: `.morphir-dist/format.json`
 
 ### Format File (Application Distribution)
 
-File: `.morphir-dist/format.json`
+File: `.morphir-dist/manifest.json`
 
 ```json
 {
@@ -553,7 +553,7 @@ For Specs distributions (or dependencies), files contain specifications instead 
 
 ### Type Specification File
 
-File: `.morphir-dist/pkg/morphir/sdk/types/int.type.json`
+File: `.morphir-dist/pkg/morphir/sdk/int.type.json`
 
 ```json
 {
@@ -568,7 +568,7 @@ File: `.morphir-dist/pkg/morphir/sdk/types/int.type.json`
 
 ### Value Specification File
 
-File: `.morphir-dist/pkg/morphir/sdk/values/add.value.json`
+File: `.morphir-dist/pkg/morphir/sdk/add.value.json`
 
 ```json
 {

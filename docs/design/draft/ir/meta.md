@@ -240,7 +240,7 @@ File: `.morphir-dist/pkg/my-org/domain/module.json`
 
 ### Format File
 
-File: `.morphir-dist/format.json`
+File: `.morphir-dist/manifest.json`
 
 ```json
 {

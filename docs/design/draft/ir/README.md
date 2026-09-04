@@ -107,22 +107,13 @@ For process and WASM extension runtimes, MEP, and verified installation, see
 
 ## Schema Architecture
 
-The v4 schema specification uses **separate root schemas with shared `$ref` definitions**.
+The v4 format is described by two schema files under `website/static/schemas/`. The modular hierarchy this
+section once proposed was never built; see the [schema architecture](../../../spec/draft/schemas.md) page.
 
 ```
-schemas/v4/
-├── common/                 # Shared $ref definitions
-│   ├── naming.yaml             # Path, Name, FQName, Locator
-│   ├── types.yaml              # Type expressions & definitions
-│   ├── values.yaml             # Value expressions & definitions
-│   └── access.yaml             # AccessControlled wrapper
-├── classic/                # Single-blob mode
-│   └── distribution.yaml       # Root: Distribution
-└── vfs/                    # Discrete mode
-    ├── format.yaml             # .morphir-dist/format.json
-    ├── module.yaml             # module.json schema
-    ├── type-node.yaml          # *.type.json schema
-    └── value-node.yaml         # *.value.json schema
+website/static/schemas/
+├── morphir-ir-v4.yaml                       # Root: single-file distribution (Classic mode)
+└── morphir-ir-v4-document-tree-files.yaml   # manifest, module, *.type and *.value file kinds
 ```
 
 ### VFS Granularity
@@ -137,17 +128,15 @@ The VFS mode uses **one file per definition**:
 
 ```
 .morphir-dist/
-├── format.json            # Layout metadata and spec version (semver)
+├── manifest.json          # Distribution metadata and format version
 ├── morphir.toml           # Project-level configuration
-├── session.jsonl          # Append-only transaction journal
+├── session.jsonl          # Append-only transaction journal (design only; not in the spec or schema)
 ├── pkg/                   # Local project IR (Namespace-to-Directory)
 │   └── my-org/
 │       └── my-project/
 │           ├── module.json       # Module manifest
-│           ├── types/
-│           │   └── user.type.json
-│           └── values/
-│               └── login.value.json
+│           ├── user.type.json    # Definition files sit flat in the module directory
+│           └── login.value.json
 ├── deps/                  # Dependency IR (versioned)
 │   └── morphir/
 │       └── sdk/
@@ -163,7 +152,7 @@ The VFS mode uses **one file per definition**:
 
 | File | Content | Purpose |
 |------|---------|---------|
-| `format.json` | Distribution metadata | Layout version, distribution type, package name |
+| `manifest.json` | Distribution metadata | Format version, distribution type, package name |
 | `module.json` | Module manifest | Lists types and values in the module |
 | `*.type.json` | Type definition OR specification | TypeDefinition or TypeSpecification |
 | `*.value.json` | Value definition OR specification | ValueDefinition or ValueSpecification |

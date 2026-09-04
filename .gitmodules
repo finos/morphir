@@ -20,3 +20,9 @@
 [submodule "ecosystem/morphir-ui"]
 	path = ecosystem/morphir-ui
 	url = https://github.com/finos/morphir-ui.git
+[submodule "ecosystem/morphir-typescript"]
+	path = ecosystem/morphir-typescript
+	url = https://github.com/finos/morphir-typescript.git
+[submodule "ecosystem/morphir-gleam"]
+	path = ecosystem/morphir-gleam
+	url = https://github.com/finos/morphir-gleam.git

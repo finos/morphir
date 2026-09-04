@@ -1,0 +1,56 @@
+{
+	"contractVersion": 1,
+	"binding": "morphir-typescript",
+	"language": "typescript",
+	"driverVersion": "0.1.0",
+	"kitVersion": "d6e6ad62",
+	"startedAt": "2026-09-04T00:00:00.000Z",
+	"records": [
+		{
+			"caseId": "types-0001",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"path": "current",
+			"result": "pass",
+			"durationMs": 3.2
+		},
+		{
+			"caseId": "distributions-0003",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "rejected",
+			"fenceIndex": 0,
+			"path": "current",
+			"expectedDiagnostic": "invalid_distribution_shape",
+			"observedDiagnostic": {
+				"code": "unknown_member",
+				"stage": "semantic",
+				"cursor": "$.distribution",
+				"message": "unexpected array shape for distribution"
+			},
+			"result": "fail",
+			"durationMs": 5.7
+		},
+		{
+			"caseId": "types-0099",
+			"irVersion": 4,
+			"profile": "json",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"result": "kit-error",
+			"message": "case has no data fences (types-0099)",
+			"durationMs": 0
+		},
+		{
+			"caseId": "types-0005",
+			"irVersion": 4,
+			"profile": "yaml",
+			"role": "canonical",
+			"fenceIndex": 0,
+			"result": "skipped",
+			"durationMs": 0
+		}
+	]
+}

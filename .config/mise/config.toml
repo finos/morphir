@@ -141,6 +141,17 @@ description = "Validate schemas against metaschema"
 # because a Windows box may carry only the WSL launcher.
 run = "bun run tools/validate-schemas.ts"
 
+[tasks."mck:check"]
+description = "Parse the Morphir Compatibility Kit case files and validate the report schema"
+# The parser lives in the morphir-typescript submodule; the driver that runs
+# bindings against the kit arrives with plan 2.
+run = [
+    "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
+    "bun run ecosystem/morphir-typescript/packages/mck/src/cli.ts check spec/ir/mck",
+    "jsonschema metaschema spec/ir/mck/report.schema.json",
+    "jsonschema validate spec/ir/mck/report.schema.json spec/ir/mck/report.example.json",
+]
+
 [tasks."hooks:install"]
 description = "Activate the checked-in git hooks in .husky"
 run = "bun run tools/install-git-hooks.ts"
@@ -201,6 +212,7 @@ depends = [
     "examples:validate",
     "fixtures:naming-corpus-check",
     "schema:validate",
+    "mck:check",
 ]
 
 # ===== Testing Tasks =====
@@ -283,10 +295,6 @@ description = "Add a new submodule under ecosystem/. Usage: mise run submodules:
 run = "python .config/mise/tasks/submodules/add.py"
 
 # ===== CI Tasks =====
-[tasks."ci:validate-docs"]
-description = "Validate documentation files"
-run = "python .config/mise/tasks/ci/validate_docs.py"
-
 [tasks."ci:validate-tool-release-metadata"]
 description = "Validate signed tool release metadata fixtures"
 run = "python .config/mise/tasks/ci/validate_tool_release_metadata.py"

@@ -34,7 +34,7 @@ See [Distribution Structure](../ir/distributions.md) for the complete IR format 
 my-org-core-1.0.0.morphir.tgz
 ├── morphir.toml              # Package metadata
 ├── .morphir-dist/            # Distribution (VFS mode, recommended)
-│   ├── format.json           # Distribution manifest
+│   ├── manifest.json         # Distribution manifest
 │   ├── pkg/
 │   │   └── my-org/
 │   │       └── core/
@@ -95,7 +95,7 @@ keywords = ["domain", "finance", "morphir"]
 
 ### Distribution Manifest
 
-The `.morphir-dist/format.json` identifies the distribution:
+The `.morphir-dist/manifest.json` identifies the distribution:
 
 ```json
 {

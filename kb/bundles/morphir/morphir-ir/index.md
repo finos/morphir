@@ -10,6 +10,10 @@ The Morphir IR: its data model, naming, canonical serialization and distribution
 format itself rather than any one implementation of it, so it applies equally to the Elm, Scala, Rust and MoonBit
 toolchains under `ecosystem/`.
 
+## Design Notes
+
+* [IR v4 stabilization](/ir-v4-stabilization.md) - The one register of what IR v4 has settled, where its sources still contradict each other, and which decisions remain open before the format can be called stable.
+
 ## Decisions
 
 * [Names encode initialisms as uppercase segments](/decisions/0001-name-canonicalization-and-initialism-encoding.md) - IR v4 marks an initialism by writing its canonical segment in uppercase, and projects names onto the document tree through a defined escape.

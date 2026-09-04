@@ -1,0 +1,50 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://morphir.finos.org/spec/ir/mck/report.schema.json",
+	"title": "Morphir Compatibility Kit report",
+	"description": "One record per MCK case fence, written by the mck driver for one binding.",
+	"type": "object",
+	"required": ["contractVersion", "binding", "language", "driverVersion", "kitVersion", "startedAt", "records"],
+	"additionalProperties": false,
+	"properties": {
+		"contractVersion": { "const": 1 },
+		"binding": { "type": "string", "minLength": 1, "description": "Name the adapter reported in capabilities, e.g. morphir-gleam" },
+		"language": { "type": "string", "minLength": 1 },
+		"driverVersion": { "type": "string" },
+		"kitVersion": { "type": "string", "description": "Git commit or package version of the kit that was run" },
+		"startedAt": { "type": "string", "format": "date-time" },
+		"records": { "type": "array", "items": { "$ref": "#/definitions/Record" } }
+	},
+	"definitions": {
+		"Result": { "enum": ["pass", "fail", "kit-error", "skipped"] },
+		"Diagnostic": {
+			"type": "object",
+			"required": ["code"],
+			"additionalProperties": false,
+			"properties": {
+				"code": { "type": "string" },
+				"stage": { "enum": ["syntax", "normalization", "semantic"] },
+				"cursor": { "type": "string" },
+				"message": { "type": "string" }
+			}
+		},
+		"Record": {
+			"type": "object",
+			"required": ["caseId", "irVersion", "profile", "role", "fenceIndex", "result", "durationMs"],
+			"additionalProperties": false,
+			"properties": {
+				"caseId": { "type": "string", "pattern": "^[a-z][a-z0-9-]*-[0-9]{4}$" },
+				"irVersion": { "type": "integer", "minimum": 1 },
+				"profile": { "enum": ["json", "yaml", "tree"] },
+				"role": { "enum": ["canonical", "accepted", "rejected", "file"] },
+				"fenceIndex": { "type": "integer", "minimum": 0 },
+				"path": { "enum": ["current", "pinned"] },
+				"result": { "$ref": "#/definitions/Result" },
+				"expectedDiagnostic": { "type": "string" },
+				"observedDiagnostic": { "$ref": "#/definitions/Diagnostic" },
+				"message": { "type": "string" },
+				"durationMs": { "type": "number", "minimum": 0 }
+			}
+		}
+	}
+}

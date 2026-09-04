@@ -25,16 +25,14 @@ The **Document Tree** layout follows a strict directory structure:
 
 ```text
 .morphir-dist/
-├── format.json            # Layout metadata and spec version
+├── manifest.json          # Distribution metadata and format version
 ├── morphir.toml           # Project-level configuration
 ├── pkg/                   # Local project IR
 │   └── my-org/
 │       └── my-project/
 │           ├── module.json       # Module manifest
-│           ├── types/
-│           │   └── user.type.json
-│           └── values/
-│               └── login.value.json
+│           ├── user.type.json    # Definition files sit flat in the module directory
+│           └── login.value.json
 ├── deps/                  # Dependency IR
 │   └── morphir/
 │       └── sdk/
