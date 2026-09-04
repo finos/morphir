@@ -1,5 +1,14 @@
 # Log
 
+## 2026-09-04
+
+* **Update**: The corpus at `spec/ir/corpus/` replaces the schema as the tiebreak; the kb note now says so. Added the `morphir-typescript` and `morphir-gleam` submodules; the conformance parser and `check` command live in the former.
+
+## 2026-09-03
+
+* **Creation**: Added [IR v4 stabilization](/ir-v4-stabilization.md), the narrative home for closing the v4 draft. It consolidates the divergence registers from the morphir-scala knowledge base, the open beads, GitHub issues #792 to #795, and a fresh read of the schemas and the Rust and morphir-ui codecs at commit `64dc34ed`. Two findings are new: the Rust v4 type decoder reads a bare array as a parameterized `Reference` (the rule closed bead `morphir-j442` rejected), and the Rust encoder's member names (`attrs`, `thenBranch`, `arg`, `result`) do not validate against the schema.
+* **Update**: The 2026-08-30 note that the schemas still carried the retired name encoding is out of date. Both v4 schemas now carry the uppercase-segment patterns and the escaped `FileStem` pattern.
+
 ## 2026-08-30
 
 * **Update**: Implemented decisions 0001 and 0002 in `ecosystem/morphir-rust/crates/morphir-core/src/naming/`. `Name` now stores `Segment::Word` and `Segment::Initialism`, writes the style named by `CANONICAL_STYLE`, decodes both styles and the legacy array, and projects onto the document tree through `to_file_stem`.
