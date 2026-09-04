@@ -71,20 +71,20 @@ V4 supports compact string representations for Names, Paths, and FQNames:
 
 **Name:**
 ```
-Array:  ["value", "in", "u", "s", "d"]
-String: "value-in-(usd)"
+Array:  ["value", "in", "u", "s", "d"]   (legacy; decodes to the string below)
+String: "value-in-USD"
 ```
 
 **Path:**
 ```
-Array:  [["morphir"], ["sdk"]]
-String: "morphir/sdk"
+Array:  [["morphir"], ["s", "d", "k"]]
+String: "morphir/SDK"
 ```
 
 **FQName:**
 ```
-Array:  [["morphir/sdk"], ["list"], ["map"]]
-String: "morphir/sdk:list#map"
+Array:  [[["morphir"], ["s", "d", "k"]], [["list"]], ["map"]]
+String: "morphir/SDK:list#map"
 ```
 
 **Annotations:**
@@ -177,41 +177,41 @@ Version 4 supports both array and string formats for names:
 
 #### Name
 
-A **Name** represents a human-readable identifier.
+A **Name** represents a human-readable identifier. Segments are joined by `-`. A lowercase segment is a word; an uppercase segment is an initialism. A mixed-case segment is invalid.
 
-- **Array format**: `["value", "in", "u", "s", "d"]`
-- **String format**: `"value-in-(usd)"`
-- **Pattern**: `^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$`
+- **Array format (legacy)**: `["value", "in", "u", "s", "d"]`, where a run of two or more single-letter words decodes to one initialism
+- **String format**: `"value-in-USD"`
+- **Pattern**: `^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$`
 
 #### Path
 
 A **Path** represents a hierarchical location.
 
-- **Array format**: `[["morphir"], ["sdk"]]`
-- **String format**: `"morphir/sdk"`
-- **Pattern**: `^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*$`
+- **Array format (legacy)**: `[["morphir"], ["s", "d", "k"]]`
+- **String format**: `"morphir/SDK"`
+- **Pattern**: `^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*(/([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*)*$`
 
 #### FQName
 
 A **Fully-Qualified Name** provides globally unique identifiers.
 
-- **Array format**: `[pkg, mod, name]`
+- **Array format (legacy)**: `[pkg, mod, name]`
 - **String format**: `"pkg:mod#name"`
-- **Pattern**: `^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*:([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*#([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$`
+- **Pattern**: the Path pattern, then `:`, then the Path pattern, then `#`, then the Name pattern
+
+The full grammar, the document-tree filename escape, and the conformance corpus are in the [naming specification](../../../draft/names.md).
 
 ### Access Control
 
-Same as V3:
+V4 accepts three spellings of an access-controlled value. The tag form is canonical:
 
-```yaml
-AccessControlled:
-  type: object
-  required: ["access", "value"]
-  properties:
-    access:
-      enum: ["Public", "Private"]
-    value: {}
+```json
+{ "Public": { ... } }                                      // canonical; "Private", "pub", "public", "private" also accepted
+{ "access": "Public", "TypeAliasDefinition": { ... } }     // flattened: access beside the definition variant
+{ "access": "Public", "value": { ... } }                   // legacy V3 shape
 ```
+
+The flattened form is what the document-tree files and the published examples use. Encoders should output the canonical form; decoders must accept all three.
 
 ## Distribution and Package Structure
 
@@ -458,12 +458,13 @@ Same as V3, but with `TypeAttributes`:
 
 ### Type Expressions
 
-- **Variable**: `{"Variable": {"name": Name}}`
-- **Reference**: `{"Reference": {"fqname": FQName, "args": [Type]}}`
-- **Tuple**: `{"Tuple": [Type]}`
-- **Record**: `{"Record": {"fieldName": Type}}`
-- **ExtensibleRecord**: `{"ExtensibleRecord": {"variable": Name, "fields": {"fieldName": Type}}}`
-- **Function**: `{"Function": {"argument": Type, "return": Type}}`
+- **Variable**: a bare Name string, `"a"`
+- **Reference** (no arguments): a bare FQName string, `"morphir/SDK:basics#int"`
+- **Reference** (with arguments): `{"Reference": [FQName, Type, ...]}`; the expanded `{"Reference": {"fqname": FQName, "args": [Type]}}` is accepted
+- **Tuple**: `{"Tuple": [Type, ...]}`; a bare array `[Type, ...]` is also a tuple, and `{"Tuple": {"elements": [...]}}` is accepted
+- **Record**: `{"Record": {"field-name": Type}}`
+- **ExtensibleRecord**: `{"ExtensibleRecord": {"variable": Name, "fields": {"field-name": Type}}}`
+- **Function**: `{"Function": {"argumentType": Type, "returnType": Type}}`
 - **Unit**: `{"Unit": {}}`
 
 ### Type Specifications

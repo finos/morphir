@@ -134,8 +134,8 @@ When using the Granular style, the Document Tree mode enforces a "one file per d
       "body": {
         "Record": {
           "fields": {
-            "user-id": "morphir/(sdk):string#string",
-            "email": "morphir/(sdk):string#string"
+            "user-id": "morphir/SDK:string#string",
+            "email": "morphir/SDK:string#string"
           }
         }
       }

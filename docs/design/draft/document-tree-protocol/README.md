@@ -87,7 +87,7 @@ The Document Tree mode supports two levels of granularity for modules:
 
 ```
 .morphir-dist/
-├── format.json            # Layout metadata and spec version (semver)
+├── manifest.json          # Distribution metadata and format version
 ├── morphir.toml           # Project-level configuration
 ├── session.jsonl          # Append-only transaction journal
 ├── pkg/                   # Local project IR (Namespace-to-Directory)

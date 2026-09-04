@@ -115,13 +115,16 @@ V4 introduces compact string representations for Names, Paths, and FQNames as an
 
 **String format (V4 only):**
 ```json
-"value-in-u-s-d"
+"value-in-USD"
 ```
 
-**Pattern**: Words joined by hyphens. Parenthesized words use `-(word)` syntax:
+**Pattern**: Segments joined by hyphens. A lowercase segment is a word; an uppercase segment is an initialism. A legacy array collapses each run of two or more single-letter words into one initialism on decode:
 ```json
-["my", "add", "operator"]  ↔  "my-add-(operator)"
+["value", "in", "u", "s", "d"]  ↔  "value-in-USD"
+["get", "h", "t", "m", "l"]     ↔  "get-HTML"
 ```
+
+See the [naming specification](../../../draft/names.md) for the full grammar and the document-tree filename escape.
 
 #### Path
 
@@ -132,7 +135,7 @@ V4 introduces compact string representations for Names, Paths, and FQNames as an
 
 **String format (V4 only):**
 ```json
-"morphir/s-d-k/list"
+"morphir/SDK/list"
 ```
 
 **Pattern**: Names joined by `/` separators.
@@ -150,7 +153,7 @@ V4 introduces compact string representations for Names, Paths, and FQNames as an
 
 **String format (V4 only):**
 ```json
-"morphir/s-d-k:list#map"
+"morphir/SDK:list#map"
 ```
 
 **Pattern**: `package:module#name` where:
@@ -182,20 +185,26 @@ V4 supports compact shorthand notation for types and values when attributes are 
 { "Reference": { "fqname": "morphir/sdk:basics#int" } }  // canonical
 
 // Parameterized type: List Int
-["morphir/sdk:list#list", "morphir/sdk:basics#int"]      // shorthand
+{ "Reference": ["morphir/sdk:list#list", "morphir/sdk:basics#int"] }      // canonical
 
 // Nested: List (Maybe Int)
-["morphir/sdk:list#list", ["morphir/sdk:maybe#maybe", "morphir/sdk:basics#int"]]
+{ "Reference": ["morphir/sdk:list#list", { "Reference": ["morphir/sdk:maybe#maybe", "morphir/sdk:basics#int"] }] }
 
 // Mixed: Result String a (variable as type arg)
-["morphir/sdk:result#result", "morphir/sdk:string#string", "a"]
+{ "Reference": ["morphir/sdk:result#result", "morphir/sdk:string#string", "a"] }
+
+// Tuple: (Int, String)
+["morphir/sdk:basics#int", "morphir/sdk:string#string"]   // shorthand
+{ "Tuple": ["morphir/sdk:basics#int", "morphir/sdk:string#string"] }   // canonical
 ```
 
 **Disambiguation Logic:**
 - If string contains `:` and `#` → FQName reference
 - If string (no special chars) → Variable name
-- If array → Parameterized type (first element is FQName, rest are type args)
+- If array → Tuple type (each element is a type)
 - If object → Canonical wrapper object format
+
+A parameterized reference always carries the `Reference` wrapper. A bare array is never a reference: a tuple of two plain types and a reference with one argument would otherwise have the same shape.
 
 #### Value Shorthand
 
@@ -240,24 +249,20 @@ V4 supports inline documentation for types and values within module definitions.
 **Example:**
 ```json
 {
-  "types": [
-    [
-      ["user", "id"],
-      {
-        "access": "Public",
-        "value": {
-          "doc": "Unique identifier for a user in the system",
-          "value": {
-            "TypeAliasDefinition": {
-              "body": "morphir/sdk:string#string"
-            }
-          }
-        }
+  "types": {
+    "user-ID": {
+      "access": "Public",
+      "doc": "Unique identifier for a user in the system",
+      "TypeAliasDefinition": {
+        "typeParams": [],
+        "typeExp": "morphir/sdk:string#string"
       }
-    ]
-  ]
+    }
+  }
 }
 ```
+
+Modules key their types and values by canonical name. The `doc` member sits beside `access` and the definition variant; the nested `{ "doc": ..., "value": ... }` wrapper is also accepted on input.
 
 **Benefits:**
 - **Self-documenting IR**: Documentation travels with code
@@ -490,8 +495,10 @@ IncompleteBody(
 
 **V4:**
 ```json
-{ "IntegerLiteral": { "value": 42 } }
+{ "IntegerLiteral": 42 }
 ```
+
+The expanded `{ "IntegerLiteral": { "value": 42 } }` form is accepted on input.
 
 **Reason**: "Whole number" traditionally means non-negative integers, but Morphir supports negative integers. "IntegerLiteral" is more accurate.
 

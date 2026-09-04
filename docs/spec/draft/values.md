@@ -36,7 +36,7 @@ Value expressions use object wrappers to distinguish expression types, with comp
 A literal constant value.
 
 - **Structure**: `Literal attributes literal`
-- **JSON**: `{"Literal": {"IntLiteral": 42}}` or `{"Literal": {"StringLiteral": "hello"}}`
+- **JSON**: `{"Literal": {"IntegerLiteral": 42}}` or `{"Literal": {"StringLiteral": "hello"}}`
 
 ### Constructor
 
@@ -50,14 +50,17 @@ Reference to a custom type constructor.
 A tuple value with multiple elements.
 
 - **Structure**: `Tuple attributes elements`
-- **JSON**: `{"Tuple": {"elements": [{"Variable": "x"}, {"Literal": {"IntLiteral": 1}}]}}`
+- **JSON (canonical)**: `{"Tuple": [{"Variable": "x"}, {"Literal": {"IntegerLiteral": 1}}]}`
+- **JSON (expanded)**: `{"Tuple": {"elements": [...]}}`
+- A bare array is not a tuple value; it would be ambiguous with a list value
 
 ### List
 
 A list of values.
 
 - **Structure**: `List attributes elements`
-- **JSON**: `{"List": {"items": [{"Literal": {"IntLiteral": 1}}, {"Literal": {"IntLiteral": 2}}]}}`
+- **JSON (canonical)**: `{"List": [{"Literal": {"IntegerLiteral": 1}}, {"Literal": {"IntegerLiteral": 2}}]}`
+- **JSON (expanded)**: `{"List": {"items": [...]}}`
 
 ### Record
 
@@ -68,7 +71,7 @@ A record value with named fields.
   - attributes: `ValueAttributes`
   - fields: Dictionary of field names to values (`Dict Name Value`)
 - **Note**: Field order does not affect equality—two records with the same fields in different orders are considered equal
-- **JSON (compact)**: `{"Record": {"name": {"Variable": "x"}, "age": {"Literal": {"IntLiteral": 25}}}}`
+- **JSON (compact)**: `{"Record": {"name": {"Variable": "x"}, "age": {"Literal": {"IntegerLiteral": 25}}}}`
   - Fields stored directly under `Record` without a wrapper
   - Field names use kebab-case
 
@@ -105,7 +108,7 @@ A function that extracts a field.
 Function application.
 
 - **Structure**: `Apply attributes function argument`
-- **JSON**: `{"Apply": {"function": {"Reference": "morphir/sdk:basics#add"}, "argument": {"Literal": {"IntLiteral": 1}}}}`
+- **JSON**: `{"Apply": {"function": {"Reference": "morphir/sdk:basics#add"}, "argument": {"Literal": {"IntegerLiteral": 1}}}}`
 
 ### Lambda
 
@@ -180,7 +183,7 @@ Value expressions use object wrappers to distinguish expression types:
 |------------------|-------------|---------|
 | Variable | `{"Variable": name}` | `{"Variable": "x"}` |
 | Reference | `{"Reference": fqname}` | `{"Reference": "morphir/sdk:basics#add"}` |
-| Literal | `{"Literal": {...}}` | `{"Literal": {"IntLiteral": 42}}` |
+| Literal | `{"Literal": {...}}` | `{"Literal": {"IntegerLiteral": 42}}` |
 | Constructor | `{"Constructor": fqname}` | `{"Constructor": "morphir/sdk:maybe#just"}` |
 | Record | `{"Record": {fields}}` | `{"Record": {"name": {...}}}` |
 | Apply | `{"Apply": {...}}` | `{"Apply": {"function": {...}, "argument": {...}}}` |

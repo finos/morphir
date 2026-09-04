@@ -7,7 +7,7 @@ Use this checklist when reviewing specification documents (`docs/spec/`) against
 ### Canonical String Format Consistency
 - [ ] FQName examples use correct format: `package/path:module/path#local-name`
 - [ ] Path examples use correct format: `segment/segment` (not mixed with FQName separators)
-- [ ] Name examples use correct format: `kebab-case` with `(abbreviations)` for letter sequences
+- [ ] Name examples use correct format: lowercase segments joined by `-`, with an initialism written as an uppercase segment (`value-in-USD`, `user-ID`); the parenthesized `(usd)` form is retired
 - [ ] No confusion between paths and FQNames (paths don't have `:` or `#`)
 
 ### Common Naming Errors
@@ -15,7 +15,8 @@ Use this checklist when reviewing specification documents (`docs/spec/`) against
 |-------|---------|---------|
 | Path with FQName separators | `morphir/sdk:string` | `morphir/sdk` (path) or `morphir/sdk:string#string` (FQName) |
 | Missing local name in FQName | `morphir/sdk:list` | `morphir/sdk:list#map` |
-| Abbreviation not marked | `morphir/sdk` | `morphir/(sdk)` only if S-D-K, else `morphir/sdk` for word "sdk" |
+| Initialism not marked | `morphir/sdk` | `morphir/SDK` when the segment is the initialism S-D-K, else `morphir/sdk` for the word "sdk" |
+| Retired parenthesized form | `morphir/(sdk)`, `user-(id)` | `morphir/SDK`, `user-ID` (document-tree filename: `user-_id.type.json`) |
 
 ## Type/Value Node Consistency
 
@@ -50,7 +51,7 @@ Use this checklist when reviewing specification documents (`docs/spec/`) against
 - [ ] Default values documented where applicable
 
 ### Schema Alignment
-- [ ] JSON Schema YAML (`docs/spec/ir/schemas/v4/morphir-ir-v4.yaml`) matches design doc examples
+- [ ] JSON Schema YAML (`website/static/schemas/morphir-ir-v4.yaml` and `morphir-ir-v4-document-tree-files.yaml`) matches design doc examples; where they disagree, the schema is the tiebreak (see `kb/bundles/morphir/morphir-ir/ir-v4-stabilization.md`)
 - [ ] Distribution variants match: Library, Specs, Application all present
 - [ ] Distribution uses wrapper object format: `{ "Library": { ... } }` not array format
 - [ ] Field names match design: `"def"` not `"packageDefinition"`, `"spec"` not `"packageSpecification"`

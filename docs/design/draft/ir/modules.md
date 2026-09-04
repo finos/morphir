@@ -248,13 +248,13 @@ Public interface of a module (used in dependencies):
           "Record": {
             "fields": {
               "email": { "Reference": { "fqname": "morphir/sdk:string#string" } },
-              "user-(id)": { "Reference": { "fqname": "my-org/domain:types#user-(id)" } }
+              "user-ID": { "Reference": { "fqname": "my-org/domain:types#user-ID" } }
             }
           }
         }
       }
     },
-    "user-(id)": {
+    "user-ID": {
       "OpaqueTypeSpecification": {}
     }
   },
@@ -285,7 +285,7 @@ Full implementation of a module:
           "Record": {
             "fields": {
               "email": { "Reference": { "fqname": "morphir/sdk:string#string" } },
-              "user-(id)": { "Reference": { "fqname": "my-org/domain:types#user-(id)" } }
+              "user-ID": { "Reference": { "fqname": "my-org/domain:types#user-ID" } }
             }
           }
         }

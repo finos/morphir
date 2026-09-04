@@ -58,7 +58,9 @@ A composition of multiple types in a fixed order.
 - **Components**:
   - attributes: `TypeAttributes`
   - elements: Element types in order (`List Type`)
-- **JSON**: `{"Tuple": {"elements": ["morphir/sdk:int#int", "morphir/sdk:string#string"]}}`
+- **JSON (canonical)**: `{"Tuple": ["morphir/sdk:int#int", "morphir/sdk:string#string"]}`
+- **JSON (compact)**: `["morphir/sdk:int#int", "morphir/sdk:string#string"]` — a bare array in type position is always a tuple
+- **JSON (expanded)**: `{"Tuple": {"elements": ["morphir/sdk:int#int", "morphir/sdk:string#string"]}}`
 
 ### Record
 
@@ -117,13 +119,14 @@ Type expressions use maximally compact forms where context is unambiguous:
 | Reference (no args) | Bare FQName string | `"morphir/sdk:int#int"` |
 | Reference (with args) | Array with fqname + args | `{"Reference": ["morphir/sdk:list#list", "a"]}` |
 | Record | Object with field map | `{"Record": {"name": "morphir/sdk:string#string"}}` |
-| Tuple | Object with elements | `{"Tuple": {"elements": [...]}}` |
+| Tuple | Bare array, or wrapper with array | `["a", "b"]` or `{"Tuple": ["a", "b"]}` |
 | Function | Object with argument and return | `{"Function": {"argumentType": ..., "returnType": ...}}` |
 | Unit | Empty object | `{"Unit": {}}` |
 
 **Disambiguation**: Variables and References without args are both strings, but can be distinguished:
 - Variables: simple name without special characters (e.g., `"a"`, `"comparable"`)
 - References: FQName format with `:` and `#` (e.g., `"morphir/sdk:int#int"`)
+- A bare array is always a Tuple. A Reference with type arguments always carries the `Reference` wrapper, so `["morphir/sdk:int#int", "morphir/sdk:string#string"]` is the pair `(Int, String)`, never a parameterized reference
 
 ### Expanded Format
 
@@ -134,7 +137,7 @@ For tooling that prefers explicit structure, an expanded format is available:
 | Variable | Object with name key | `{"Variable": {"name": "a"}}` |
 | Reference | Object with fqname and args | `{"Reference": {"fqname": "morphir/sdk:list#list", "args": ["a"]}}` |
 | Record | Object with field map | `{"Record": {"name": "morphir/sdk:string#string"}}` |
-| Tuple | Object with elements | `{"Tuple": {"elements": [...]}}` |
+| Tuple | Wrapper with elements | `{"Tuple": {"elements": [...]}}` |
 | Function | Object with argument and return | `{"Function": {"argumentType": ..., "returnType": ...}}` |
 | Unit | Empty object | `{"Unit": {}}` |
 
@@ -188,7 +191,7 @@ type alias Pair a b = ( a, b )
 {
   "TypeAliasSpecification": {
     "typeParams": ["a", "b"],
-    "type": { "Tuple": { "elements": ["a", "b"] } }
+    "type": { "Tuple": ["a", "b"] }
   }
 }
 ```
@@ -207,7 +210,7 @@ type alias Person = { name : String, age : Int, email : Maybe String }
       "Record": {
         "name": "morphir/sdk:string#string",
         "age": "morphir/sdk:basics#int",
-        "email": ["morphir/sdk:maybe#maybe", "morphir/sdk:string#string"]
+        "email": { "Reference": ["morphir/sdk:maybe#maybe", "morphir/sdk:string#string"] }
       }
     }
   }
@@ -341,7 +344,7 @@ type List a = Nil | Cons a (List a)
     "typeParams": ["a"],
     "constructors": {
       "nil": [],
-      "cons": [["head", "a"], ["tail", ["morphir/sdk:list#list", "a"]]]
+      "cons": [["head", "a"], ["tail", { "Reference": ["morphir/sdk:list#list", "a"] }]]
     }
   }
 }
@@ -455,7 +458,7 @@ type NonEmpty a
 {
   "DerivedTypeSpecification": {
     "typeParams": ["a"],
-    "baseType": ["morphir/sdk:list#list", "a"],
+    "baseType": { "Reference": ["morphir/sdk:list#list", "a"] },
     "fromBaseType": "my-org/collections:non-empty#from-list",
     "toBaseType": "my-org/collections:non-empty#to-list"
   }
