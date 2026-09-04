@@ -49,12 +49,27 @@ fn avro_guest_path() -> PathBuf {
         .join("morphir_avro_extension.wasm")
 }
 
-fn assert_generate_shape(value: &Value, success: bool, output: &Path) {
+/// The canonical task destination that `output_path` reports. `-o` installs
+/// the declared outputs into the requested directory after the run.
+fn avro_dest(fixture: &CliMother) -> PathBuf {
+    fixture.project.join(".morphir/out/generate/avro.dest")
+}
+
+fn assert_generate_shape(value: &Value, success: bool, dest: &Path, installed: Option<&Path>) {
     assert_eq!(value["success"], success);
     assert!(value["artifacts"].is_array(), "{value}");
     assert!(value["diagnostics"].is_array(), "{value}");
-    assert_eq!(value["output_path"], output.to_string_lossy().as_ref());
-    assert_eq!(value.as_object().unwrap().len(), 4, "{value}");
+    assert_eq!(value["output_path"], dest.to_string_lossy().as_ref());
+    match installed {
+        Some(installed) => {
+            assert_eq!(
+                value["installed_path"],
+                installed.to_string_lossy().as_ref()
+            );
+            assert_eq!(value.as_object().unwrap().len(), 5, "{value}");
+        }
+        None => assert_eq!(value.as_object().unwrap().len(), 4, "{value}"),
+    }
 }
 
 fn compile_traversal_provider(directory: &Path) -> io::Result<PathBuf> {
@@ -126,7 +141,7 @@ unsupported = "warn-and-skip"
 
     assert_success(&generated, "generate v4 Avro IDL");
     let report: Value = serde_json::from_slice(&generated.stdout).unwrap();
-    assert_generate_shape(&report, true, &output_root);
+    assert_generate_shape(&report, true, &avro_dest(&fixture), Some(&output_root));
     assert_eq!(
         report["artifacts"],
         json!([
@@ -201,7 +216,7 @@ fn generate_avro_supports_v3_json_and_json_lines_reporting() {
     let stdout = String::from_utf8(generated.stdout).unwrap();
     assert_eq!(stdout.lines().count(), 1, "{stdout}");
     let report: Value = serde_json::from_str(stdout.trim()).unwrap();
-    assert_generate_shape(&report, true, &output_root);
+    assert_generate_shape(&report, true, &avro_dest(&fixture), Some(&output_root));
     let paths = report["artifacts"].as_array().unwrap();
     assert!(!paths.is_empty(), "{report}");
     assert!(
@@ -245,7 +260,7 @@ fn generate_avro_reports_typed_failure_without_artifact_writes() {
 
     assert!(!failed.status.success());
     let report: Value = serde_json::from_slice(&failed.stdout).unwrap();
-    assert_generate_shape(&report, false, &output_root);
+    assert_generate_shape(&report, false, &avro_dest(&fixture), None);
     assert_eq!(report["artifacts"], json!([]));
     assert_eq!(report["diagnostics"][0]["level"], "error");
     assert_eq!(report["diagnostics"][0]["code"], "AVRO004");
@@ -318,7 +333,7 @@ fn generate_avro_partial_output_reports_warnings_and_validated_paths() {
 
     assert_success(&generated, "generate partial v4 output");
     let report: Value = serde_json::from_slice(&generated.stdout).unwrap();
-    assert_generate_shape(&report, true, &output_root);
+    assert_generate_shape(&report, true, &avro_dest(&fixture), Some(&output_root));
     assert!(
         !report["artifacts"].as_array().unwrap().is_empty(),
         "{report}"

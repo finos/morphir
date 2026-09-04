@@ -337,6 +337,26 @@ jobs:
         # integration-tests finds the CLI binary in target/release/morphir
         run: cargo test --locked --package integration-tests
 
+      - name: Add WASM target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Build WASM extension guests
+        # setup-rust-ci exports RUSTFLAGS for the mold linker; rust-lld
+        # rejects -fuse-ld=mold for the wasm32 target.
+        env:
+          RUSTFLAGS: ""
+        run: >-
+          cargo build --locked --release
+          --manifest-path ecosystem/morphir-rust/Cargo.toml
+          -p morphir-avro-extension -p morphir-openapi-extension
+          --target wasm32-unknown-unknown
+
+      - name: Run WASM extension integration tests
+        run: >-
+          cargo test --locked --package morphir
+          --test generate_extension --test generate_openapi_extension
+          -- --ignored --nocapture
+
   # Generate and diff-check CLI reference docs — parallel with extension builds
   # and integration tests (only needs a debug morphir build, not extensions).
   check-cli-docs:
