@@ -84,6 +84,10 @@ jobs:
             mck:
               - 'spec/ir/mck/**'
               - 'ecosystem/morphir-typescript'
+              # the Gleam mirror is checked by the mck driver once its adapter
+              # lands; routing its pointer bumps here keeps them from skipping
+              # every validation job in the meantime
+              - 'ecosystem/morphir-gleam'
               - '.config/mise/config.toml'
               - '.github/workflows/ci.yml'
             release:
