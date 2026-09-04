@@ -68,22 +68,18 @@ Tuple: ["morphir/SDK:basics#int", "morphir/SDK:string#string"]
 { "Tuple": { "elements": ["morphir/SDK:basics#int", "morphir/SDK:string#string"] } }
 ```
 
-## types-0005: Record type {node=Type}
+## types-0005: Record type {node=Type status=pending}
 
-Fields sit directly under `Record`. The `{"Record": {"fields": {...}}}` shape in older spec examples is not accepted.
+The schema's RecordType definition writes fields directly under Record, while the published complete example, the document-tree specification page, and the Rust CLI output write them under a fields member. Both validate today because the schema does not check definition bodies. Bead morphir-ir-v4-stabilize.1 decides the canonical spelling; until then this case is pending and both spellings appear below as illustrations only.
 
-```yaml canonical
+```yaml
 Record:
   name: morphir/SDK:string#string
   age: morphir/SDK:basics#int
 ```
 
-```json canonical
-{ "Record": { "name": "morphir/SDK:string#string", "age": "morphir/SDK:basics#int" } }
-```
-
-```json rejected diagnostic=unknown_member
-{ "Record": { "fields": { "name": "morphir/SDK:string#string" } } }
+```json
+{ "Record": { "fields": { "name": "morphir/SDK:string#string", "age": "morphir/SDK:basics#int" } } }
 ```
 
 ## types-0006: Extensible record type {node=Type}
