@@ -10,7 +10,7 @@ end
 
 set _usage_spec_morphir 'name morphir
 bin morphir
-version "0.4.0-alpha.5"
+version "0.4.0-alpha.6"
 about "CLI for working with Morphir IR - functional domain modeling and business logic"
 unknown_flags error
 disable_version_flag #true

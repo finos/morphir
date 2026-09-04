@@ -7,8 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-alpha.6] - 2026-09-03
+
+First alpha of the Rust Morphir CLI with run-time extensions. The previous
+alpha, 0.4.0-alpha.5, only moved the release pipeline to the Rust binary.
+
+### Added
+- **Extensions**: `morphir extension` manages Morphir Extension Protocol (MEP) providers. `install`, `update`, `uninstall`, `list`, and `search` acquire verified process and WASM extensions from configured repositories with SHA-256 content verification, exact lock files, and offline activation (#729, #765, #770)
+- **Extension repositories**: `morphir extension repository` adds, lists, enables, disables, inspects, verifies, and removes repositories, and `init` plus `publish` author a local repository from a release bundle (#765, #770)
+- **WASM backends**: `morphir generate` routes to installed WASM backends. Apache Avro (`avro`), OpenAPI (`openapi`), and JSON Schema (`json-schema`) targets are served by the `morphir-avro` and `morphir-openapi` extensions released from finos/morphir-rust. Backend options come from `[codegen.<target>]` in `morphir.toml` and repeatable `--option KEY=VALUE` flags (#745, #766)
+- **Compile providers**: `morphir compile` compiles Elm through an installed Morphir Elm or Morphir Scala process extension, selectable with `--provider` (#726, #733, #736)
+- **Gleam**: the Gleam backend ships as a built-in provider
+- **Migrate**: `morphir migrate` converts Morphir IR between format versions, with YAML as the primary output format (#720, #732)
+- **Knowledge base**: `morphir kb` checks, scaffolds, indexes, syncs, and renders Open Knowledge Format bundles (#722)
+- **Desktop**: `morphir desktop` acquires, installs, and launches verified Morphir Desktop packages, including unsigned local packages, with correlated launch logs (#741, #746, #773, #777, #779, #782, #784)
+- **Playground**: `morphir playground` serves the vendored Playground client over the Morphir Playground protocol and reuses one extension session across invocations (#778, #783)
+- **Web workbench**: `morphir ui` serves the connected web workbench with workspace navigation and the Insight and XRay views (#756, #757, #790)
+- **Cache**: `morphir cache status` and `morphir cache clean` inspect and prune the content-addressed store (#753)
+- **Home**: `MORPHIR_HOME` relocates the Morphir home directory (#712)
+- **Config**: secret values can come from commands and the system keyring (#710)
+- **Out directory**: every task writes under `.morphir/out` and records a task result; `-o` installs the declared outputs into the requested directory (#789)
+
 ### Changed
-- **Breaking:** compile and generate always write under the workspace out root (`<workspace>/.morphir/out/<module>/<task>.dest`) and write a `<task>.json` result record. `-o` now installs the task's declared outputs to the given directory after the run instead of redirecting the task; on the single-file Elm compile path, `-o` used to take a file path and write the IR there directly, and now takes a directory like every other command. `--out-dir` and `MORPHIR_OUT_DIR` relocate the root. Config: `[workspace].output_dir` is now `[workspace].out_dir` (default `.morphir/out`), `[project].output_directory` is removed, `[ir].mode` is replaced by `[ir].layout` and `[ir].format` (`ir.mode` still works for one release as a deprecated alias, with a warning). Generate reads compile output through the record, so `[ir]` YAML and document-tree storage now flow through to backends, and `generate -i` also accepts a compile-output directory in addition to an IR file or a document-tree directory. The single-file Elm compile path still always writes classic v3 JSON regardless of `[ir]`; it now warns when a given `--config`'s `[ir].layout` or `[ir].format` asks for something else, since those settings do not apply to it. `output_path` in a command's JSON result is the task's canonical `.dest` directory for every command, not an artifact file inside it.
+- **Breaking:** compile and generate always write under the workspace out root (`<workspace>/.morphir/out/<module>/<task>.dest`) and write a `<task>.json` result record. `-o` now installs the task's declared outputs to the given directory after the run instead of redirecting the task; on the single-file Elm compile path, `-o` used to take a file path and write the IR there directly, and now takes a directory like every other command. `--out-dir` and `MORPHIR_OUT_DIR` relocate the root. Config: `[workspace].output_dir` is now `[workspace].out_dir` (default `.morphir/out`), `[project].output_directory` is removed, `[ir].mode` is replaced by `[ir].layout` and `[ir].format` (`ir.mode` still works for one release as a deprecated alias, with a warning). Generate reads compile output through the record, so `[ir]` YAML and document-tree storage now flow through to backends, and `generate -i` also accepts a compile-output directory in addition to an IR file or a document-tree directory. The single-file Elm compile path still always writes classic v3 JSON regardless of `[ir]`; it now warns when a given `--config`'s `[ir].layout` or `[ir].format` asks for something else, since those settings do not apply to it. `output_path` in a command's JSON result is the task's canonical `.dest` directory for every command, not an artifact file inside it. (#789)
+- Morphir IR v4 name canonicalization and initialism encoding follow the accepted conformance corpus (#744)
+- The v3 and later `formatVersion` contract is defined and enforced (#738)
+- The CLI reference under `docs/cli` is generated from the CLI usage spec and checked in CI (#714)
+
+### Fixed
+- Installed extensions no longer fail at initialize when the display name in the repository record differs from the name the guest reports. `extension repository publish` derived "Morphir Openapi" from the identifier while the guest reports "Morphir OpenAPI", so every published OpenAPI bundle failed with "initialization metadata disagreed with discovery". A release bundle may now declare its `name` in `release.json`
+
+### Removed
+- `morphir-live` is retired. The web workbench in `morphir ui` replaces it (#739, #740)
+
+### Infrastructure
+- Release workflow builds the CLI for six targets and uploads only assets whose checksum changed (#703, #704)
+- CI builds the Morphir Elm and Morphir Scala process extensions and runs the installed-extension integration tests against them; it now also builds the Avro and OpenAPI WASM guests and runs the WASM backend tests (#754)
+
+## [0.4.0-alpha.5] - 2026-08-25
+
+### Changed
+- The release pipeline now packages the Rust `morphir` CLI for Linux, macOS, and Windows on x86_64 and aarch64 (#703, #704)
 
 ## [0.4.0-alpha.4] - 2026-01-13
 

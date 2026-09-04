@@ -1,154 +1,245 @@
 ---
 name: release-manager
-description: Assists with Morphir release management, including pre-release verification, changelog generation, and release coordination. Use when preparing releases, checking release readiness, or managing version bumps.
+description: Assists with Morphir CLI release management for finos/morphir, including pre-release verification, extension verification, version bumps, tagging, and release coordination. Use when preparing releases, checking release readiness, or managing version bumps.
 user-invocable: true
 ---
 
 # Release Manager Skill
 
-You are a release management assistant specialized in Morphir releases. You help ensure releases are properly verified, documented, and coordinated.
+You are a release management assistant for the Morphir CLI released from
+**finos/morphir**. The release is the Rust `morphir` binary built from
+`crates/morphir`. Go tooling is released from finos/morphir-go and is out of
+scope here.
 
-## Capabilities
+## Release policy
 
-1. **Pre-Release Verification** - Run all checks before releasing
-2. **Changelog Management** - Generate and review changelogs
-3. **Version Management** - Coordinate version bumps
-4. **Release Coordination** - Manage the release workflow
+- One workspace version lives in the root `Cargo.toml` under
+  `[workspace.package]`. Every crate inherits it. Never set a crate version by
+  hand.
+- The release tag is `v<version>`, for example `v0.4.0-alpha.6`. The release
+  workflow refuses a tag that does not match the workspace version.
+- Prerelease versions use the `MAJOR.MINOR.PATCH-<stage>.N` spelling, for
+  example `0.4.0-alpha.6` or `0.4.0-rc.1`. Bump only `N` for another
+  prerelease of the same stage and target version. Change the stage when the
+  release moves from alpha to beta or to a release candidate.
+- Tags point at a commit on `main`. The version bump lands through a pull
+  request from a `release/v<version>` branch. Tag the merge commit, not the
+  branch tip.
+- Any tag with a `-` in it publishes as a GitHub prerelease. The workflow sets
+  this flag itself.
+- Do not add AI co-authors or AI attribution to the release commit, pull
+  request, or release notes. This breaks EasyCLA.
 
-## Pre-Release Verification Checklist
+## Files that carry the version
 
-Before any release, run the following verification steps:
+| File | What to change |
+|------|----------------|
+| `Cargo.toml` | `[workspace.package] version` |
+| `Cargo.lock` | Regenerate with `cargo update --workspace --offline` after the bump |
+| `tests/ci/test_release_workflow.py` | The expected version strings in `test_workspace_uses_release_prerelease_version` |
+| `.github/workflows/release.yml` | The example tag in the `workflow_dispatch` input description |
+| `INSTALLING.md` | The `mise use -g github:finos/morphir@<version>` example and the pinned `mise.toml` snippet |
+| `docs/getting-started/morphir-cli.md` | The same two mise install examples |
+| `CHANGELOG.md` | Move `[Unreleased]` into a `[<version>] - <date>` section and add a fresh empty `[Unreleased]` |
+| `docs/cli/`, `docs/man/`, `completions/` | Generated. Run `mise run docs:cli` after the release build and commit the result; CI fails on drift |
 
-### Automated Checks
+Check for other references before the bump:
 
 ```bash
-# 1. Run all formatting checks
-mise run fmt-check
+git grep -n "$(python3 -c 'import pathlib,tomllib;print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])')" -- ':!Cargo.lock' ':!CHANGELOG.md'
+```
 
-# 2. Run all linters
-mise run lint
+## Pre-release verification
 
-# 3. Run all tests
+Run every gate from a clean checkout of `main` with the submodules populated.
+`ecosystem/morphir-rust` must be present because the CLI has path dependencies
+into it. Confirm its pinned commit is on `morphir-rust` `main`, not on a pull
+request branch:
+
+```bash
+git -C ecosystem/morphir-rust fetch origin main
+git -C ecosystem/morphir-rust branch -r --contains "$(git -C ecosystem/morphir-rust rev-parse HEAD)"
+```
+
+### Automated checks
+
+Run the aggregate first, then the gates CI enforces:
+
+```bash
+# Formatting, Clippy, schema lint, example validation, naming corpus,
+# and metaschema validation
+mise run check
+
+# Formatting and Clippy on their own
+mise run fmt-check:rust
+mise run lint:rust
+
+# Rust unit and integration tests. CI gates on the morphir and
+# integration-tests packages; `mise run test` also runs the pinned
+# ecosystem/morphir-rust crates.
+cargo test --locked --package morphir
 mise run test
 
-# 4. Validate schemas against metaschema
+# Release workflow and CI helper tests (Python)
+python3 -B -m unittest discover -s tests/ci
+
+# Documentation, tool metadata, schema, and naming-corpus checks
+mise run ci:validate-docs
+mise run ci:validate-tool-release-metadata
 mise run schema:validate
+mise run fixtures:naming-corpus-check
 
-# 5. Validate documentation examples
-mise run examples:validate
-
-# 6. Validate fixtures
-mise run fixtures:validate
-
-# 7. Verify schema sync (YAML/JSON)
-mise run docs:schema:verify
-
-# 8. Full check pipeline (runs all of the above)
-mise run check
+# Release binary
+cargo build --locked --release --package morphir
+target/release/morphir --version
 ```
 
-### Manual Verification
+`lint:schema` excludes the rules the schemas do not satisfy yet; the list is
+in `.config/mise/config.toml`. `fixtures:validate` is not part of `check`
+because it needs `mise run fixtures:fetch` first. Four `morphir-common`
+cache-inventory tests are ignored on macOS because APFS is case-insensitive;
+Linux CI runs them.
 
-- [ ] CHANGELOG.md is updated with all notable changes
-- [ ] Version numbers are consistent across all files
-- [ ] Breaking changes are documented with migration guides
-- [ ] All CI pipelines are green
-- [ ] Documentation site builds successfully
+CI also runs `mise run docs:cli` and fails if the generated CLI docs drift.
+Run it locally when a command's help text changed and commit the result.
 
-## Release Workflow
+### Extension verification
 
-### 1. Prepare Release
+The CLI ships with no extensions. Extensions install from repositories at run
+time, so the release must prove the installed-extension paths still work.
+
+**Process extensions (Elm, Scala).** CI builds the Morphir Elm extension and
+the Morphir Scala Elm extension and runs the `elm_extension` and
+`cli_integration` ignored tests against them. A green CI run on the release
+commit covers these. To run the Elm path locally:
 
 ```bash
-# Ensure all checks pass
-mise run check
-
-# Generate changelog (if using git-cliff)
-git cliff --unreleased --tag vX.Y.Z > CHANGELOG-next.md
-
-# Review and merge changelog
+mise -C ecosystem/morphir-elm run build:mep-extension
+MORPHIR_ELM_EXTENSION_BIN="$PWD/ecosystem/morphir-elm/dist/morphir-elm-extension/morphir-elm-extension" \
+  cargo test --locked --package integration-tests --test elm_extension -- --ignored --nocapture
 ```
 
-### 2. Create Release
+**WASM extensions (Avro, OpenAPI).** CI builds the Avro and OpenAPI guests
+from `ecosystem/morphir-rust` and runs the ignored `generate_extension` and
+`generate_openapi_extension` tests against them. To run them locally:
 
 ```bash
-# Create release branch (if applicable)
-git checkout -b release/vX.Y.Z
-
-# Update version numbers
-# - Cargo.toml
-# - package.json (if applicable)
-# - Any other version files
-
-# Commit version bump
-git commit -am "chore: bump version to X.Y.Z"
-
-# Create tag
-git tag -a vX.Y.Z -m "Release vX.Y.Z"
-
-# Push
-git push origin release/vX.Y.Z --tags
+rustup target add wasm32-unknown-unknown
+cargo build --locked --release --manifest-path ecosystem/morphir-rust/Cargo.toml \
+  -p morphir-avro-extension -p morphir-openapi-extension --target wasm32-unknown-unknown
+cargo test --locked -p morphir --test generate_extension --test generate_openapi_extension -- --ignored
 ```
 
-### 3. Post-Release
+Then prove the published bundles against the release binary in a clean home.
+Published bundles come from finos/morphir-rust releases tagged
+`extension/<short-id>/v<version>`. The publish command requires the descriptor
+to be named `release.json` and the bundle directory to hold exactly the
+descriptor, the `.wasm` artifact, and its `.sha256` file:
 
-- [ ] Verify GitHub release is created
-- [ ] Verify documentation site is updated
-- [ ] Verify npm/cargo packages are published (if applicable)
-- [ ] Announce release in appropriate channels
+```bash
+export MORPHIR_HOME="$(mktemp -d)"
+bin=target/release/morphir
+mkdir -p bundles/avro && gh release download extension/avro/v0.1.1 -R finos/morphir-rust --dir bundles/avro
+mv bundles/avro/*.release.json bundles/avro/release.json
 
-## CI Integration
+$bin extension repository init repo
+$bin extension repository add local --directory repo
+$bin extension repository publish local --bundle bundles/avro
+$bin extension search avro
+$bin extension install --repository local morphir-avro
+$bin extension list
+$bin generate --target avro --input website/static/ir/examples/v3/greeting-example.json --output out/avro
+```
 
-The following checks should be part of CI and must pass before release:
+Repeat the same steps for `extension/openapi/v<version>` with
+`morphir-openapi` and the `openapi` and `json-schema` targets. Every command
+must succeed and the generate step must write artifacts.
 
-| Check | Task | Required |
-|-------|------|----------|
-| Formatting | `mise run fmt-check` | ✓ |
-| Linting | `mise run lint` | ✓ |
-| Tests | `mise run test` | ✓ |
-| Schema validation | `mise run schema:validate` | ✓ |
-| Example validation | `mise run examples:validate` | ✓ |
-| Fixture validation | `mise run fixtures:validate` | ✓ |
-| Schema sync | `mise run docs:schema:verify` | ✓ |
+### Manual verification
 
-## Task Reference
+- [ ] `CHANGELOG.md` has a section for this version with every user-visible
+      change since the previous tag. Breaking changes are marked and describe
+      the migration.
+- [ ] Version references listed above all agree.
+- [ ] CI on `main` is green for the commit you will tag.
+- [ ] Open dependency pull requests that touch `Cargo.lock` are either merged
+      or deliberately left out.
+- [ ] The docs site builds if docs changed: `cd website && npm ci && npm run build`.
 
-| Task | Description |
-|------|-------------|
-| `mise run check` | Run all checks (formatting, linting, validation) |
-| `mise run fmt` | Format all code |
-| `mise run fmt:rust` | Format Rust code only |
-| `mise run fmt:schema` | Format JSON Schema files only |
-| `mise run lint` | Run all linters |
-| `mise run lint:rust` | Run Clippy only |
-| `mise run lint:schema` | Lint JSON Schema files only |
-| `mise run test` | Run all tests |
-| `mise run schema:validate` | Validate schemas against metaschema |
-| `mise run examples:validate` | Validate doc examples against schemas |
-| `mise run fixtures:validate` | Validate fixture files against schemas |
-| `mise run docs:schema:verify` | Verify YAML/JSON schema sync |
+## Release workflow
+
+### 1. Prepare the release branch
+
+```bash
+git switch main && git pull --ff-only
+git submodule update --init --recursive
+git switch -c release/v<version>
+```
+
+Update every file in the version table. Then:
+
+```bash
+cargo update --workspace --offline
+# run every gate from "Automated checks" and "Extension verification"
+git commit -am "chore: prepare v<version> release"
+git push -u origin release/v<version>
+gh pr create --title "chore: prepare v<version> release" --body "<summary and verification>"
+```
+
+### 2. Merge and tag
+
+Wait for CI on the pull request to pass, then merge. Merge on green CI.
+Bot reviews land after the checks and are advisory.
+
+```bash
+git switch main && git pull --ff-only
+git tag -a v<version> -m "Release v<version>"
+git push origin v<version>
+```
+
+Pushing the tag starts `.github/workflows/release.yml`. It validates the tag
+against the workspace version, builds the CLI for six targets, packages
+`.tgz` and `.zip` archives with `.sha256` files, and creates the GitHub
+release with generated notes. Re-running the workflow only uploads assets
+whose hash changed.
+
+If the tag already exists and the workflow needs to run again:
+
+```bash
+gh workflow run release.yml -f tag=v<version>
+```
+
+### 3. Post-release
+
+- [ ] `gh release view v<version>` shows twelve CLI assets (six archives with
+      checksums) and the prerelease flag for alpha versions.
+- [ ] Install the published build on one machine and run
+      `morphir --version`:
+      `mise use -g github:finos/morphir@<version>` or `cargo binstall morphir`.
+- [ ] Repeat the WASM extension steps above against the installed binary.
+- [ ] Close the release bead with `bd close`.
 
 ## Troubleshooting
 
-### Schema Validation Failures
+### Release tag does not match workspace version
 
-If `schema:validate` fails:
-1. Check the specific error message
-2. Validate the schema file syntax
-3. Ensure the schema follows JSON Schema draft-07/2019-09/2020-12 as appropriate
+The `release-info` job exits with that message when `Cargo.toml` at the tag
+does not carry the tagged version. Delete the tag, fix the version on `main`
+through a pull request, and tag again.
 
-### Example Validation Failures
+### Cargo reports a stale lockfile
 
-If `examples:validate` fails:
-1. Check which files failed with `mise run examples:validate --verbose`
-2. Ensure `formatVersion` field is present in example files
-3. Verify examples match the schema for their version
+`--locked` builds fail after a version bump until `Cargo.lock` is regenerated.
+Run `cargo update --workspace --offline` and commit the lockfile.
 
-### Fixture Validation Failures
+### Path dependency into ecosystem/morphir-rust is missing
 
-If `fixtures:validate` fails:
-1. Fixtures may need to be refetched: `mise run fixtures:fetch`
-2. Check if fixtures are valid Morphir IR format
-3. Ensure fixtures are in the expected locations:
-   - `.morphir/testing/fixtures/`
-   - `tests/bdd/testdata/morphir-ir/`
+The submodule is empty. Run `git submodule update --init --recursive`. In a git
+worktree, also run `git -C ecosystem/morphir-rust reset --hard HEAD` if the
+index is empty after the update.
+
+### Extension publish rejects the bundle
+
+`release bundle has no release.json` means the descriptor still has its
+download name. `release bundle files do not match release.json` means an extra
+file sits in the bundle directory. Keep only the three expected files.
