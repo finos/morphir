@@ -378,7 +378,7 @@ jobs:
           fi
 
   docs:
-    name: Docs and spec artifacts
+    name: Docs
     runs-on: ubuntu-latest
     needs: changes
     if: ${{ needs.changes.outputs.docs == 'true' || needs.changes.outputs.corpus == 'true' }}
@@ -445,7 +445,7 @@ jobs:
             fi
           fi
           # Check if docs job was required and passed
-          if [[ "${{ needs.changes.outputs.docs }}" == "true" ]]; then
+          if [[ "${{ needs.changes.outputs.docs }}" == "true" || "${{ needs.changes.outputs.corpus }}" == "true" ]]; then
             if [[ "${{ needs.docs.result }}" != "success" ]]; then
               echo "docs failed"
               exit 1

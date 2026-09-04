@@ -124,6 +124,7 @@ run = [
     "bun install --frozen-lockfile --cwd ecosystem/morphir-typescript",
     "bun run ecosystem/morphir-typescript/packages/conformance/src/cli.ts check spec/ir/corpus",
     "jsonschema metaschema spec/ir/corpus/report.schema.json",
+    "jsonschema validate spec/ir/corpus/report.schema.json spec/ir/corpus/report.example.json",
 ]
 
 [tasks."hooks:install"]
