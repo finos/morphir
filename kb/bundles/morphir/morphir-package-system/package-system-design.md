@@ -723,10 +723,11 @@ The implementation should reuse reviewed standards and libraries for signatures 
 3. Verify the registry snapshot and release status.
 4. Verify the Package release statement.
 5. Match the release ID and release-manifest digest.
-6. Verify the Package content digest.
+6. Read the expected Package content digest from the verified release statement.
 7. Verify each transport digest while acquiring content.
-8. Safely materialize and validate the bundle.
-9. Match embedded Distribution identity, release kind, IR format, and manifest metadata.
+8. Safely materialize the bundle in a fresh staging area.
+9. Recompute the Package content digest from the manifest and acquired declared content, then compare it with the signed expected digest.
+10. Match embedded Distribution identity, release kind, IR format, and manifest metadata.
 
 Authority or integrity failure is terminal. The client may try another authorized mirror for availability, but must not silently relax trust or choose a different release.
 
