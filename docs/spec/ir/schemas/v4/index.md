@@ -444,10 +444,7 @@ A complete Library distribution example showing the full structure:
                     "outputType": "morphir/SDK:basics#float",
                     "body": {
                       "Literal": {
-                        "attributes": {},
-                        "literal": {
-                          "FloatLiteral": 0
-                        }
+                        "FloatLiteral": 0.0
                       }
                     }
                   }

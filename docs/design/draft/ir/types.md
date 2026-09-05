@@ -434,16 +434,27 @@ Decoding also accepts the legacy array format for backwards compatibility:
 
 ```json
 // shorthand
-{ "Function": { "arg": "morphir/SDK:basics#int", "result": "morphir/SDK:string#string" } }
+{
+  "Function": {
+    "parameterType": "morphir/SDK:basics#int",
+    "returnType": "morphir/SDK:string#string"
+  }
+}
 
 // canonical
 {
   "Function": {
-    "arg": { "Reference": { "fqname": "morphir/SDK:basics#int" } },
-    "result": { "Reference": { "fqname": "morphir/SDK:string#string" } }
+    "parameterType": { "Reference": { "fqname": "morphir/SDK:basics#int" } },
+    "returnType": { "Reference": { "fqname": "morphir/SDK:string#string" } }
   }
 }
 ```
+
+:::note
+`parameterType` and `returnType` are the canonical member names (decision 0007).
+The spellings `arg`/`result` and `argumentType` are legacy. A reader accepts them
+for one release, reports a warning, and normalizes them to the canonical names.
+:::
 
 ### Unit
 

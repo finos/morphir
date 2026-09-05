@@ -2199,7 +2199,7 @@
       ],
       "oneOf": [
         {
-          "description": "Object mapping constructor names to their argument lists",
+          "description": "Object mapping constructor names to their parameter lists (decision 0007)",
           "type": "object",
           "additionalProperties": {
             "type": "array",
@@ -3837,7 +3837,7 @@
       "additionalProperties": false
     },
     "ExternalBody": {
-      "description": "External definition body (decision 0008): one or more per-target bindings and an\noptional fallback body, so a Gleam-style external with a body encodes faithfully.\nThe single-binding spelling with top-level externalName/targetPlatform is a legacy\nspelling readers accept for one release (decision 0006); it is not valid here.\n",
+      "description": "External definition body (decision 0008): one or more per-target bindings and an\noptional fallback body, so a Gleam-style external with a body encodes faithfully.\nThe single-binding spelling with top-level externalName/targetPlatform is a legacy\nspelling readers accept for one release (decision 0006); it is not valid here.\nA targetPlatform value must be unique within externals; JSON Schema cannot express\nthat constraint, so readers enforce it (decision 0008).\n",
       "examples": [
         {
           "inputTypes": {

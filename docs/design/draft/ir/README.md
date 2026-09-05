@@ -139,7 +139,7 @@ The VFS mode uses **one file per definition**:
 │           └── login.value.json
 ├── deps/                  # Dependency IR (versioned)
 │   └── morphir/
-│       └── sdk/
+│       └── _sdk/          # the escaped directory for the SDK package (decision 0011)
 │           └── 1.2.0/
 │               └── ...
 └── deco/                  # Decorations (layered metadata) (out of 4.0.0)

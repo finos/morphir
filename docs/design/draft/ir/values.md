@@ -523,7 +523,7 @@ V4 follows a **permissive input, canonical output** policy for TupleValue.
 | Expanded | `{ "Tuple": { "elements": [value1, ...] } }` | Wrapper with object |
 
 :::warning
-Bare arrays are **NOT** allowed for TupleValue. This would be ambiguous with ListValue. The wrapper is required to distinguish tuples from lists.
+A Tuple always carries its wrapper. A bare array at value position is a List (decision 0009), so `[value1, value2]` on its own never decodes to a Tuple.
 :::
 
 ```json
@@ -554,9 +554,10 @@ V4 follows a **permissive input, canonical output** policy for ListValue.
 |--------|---------|-------|
 | **Canonical** | `{ "List": [value1, value2, ...] }` | Wrapper with array |
 | Expanded | `{ "List": { "items": [value1, ...] } }` | Wrapper with object |
+| Shorthand | `[value1, value2, ...]` | Bare array |
 
-:::warning
-Bare arrays are **NOT** allowed for ListValue. This would be ambiguous with TupleValue. The wrapper is required to distinguish lists from tuples.
+:::note
+A bare array at value position is a List (decision 0009). There is no ambiguity with Tuple, because a Tuple always carries its wrapper. Writers still emit the canonical wrapped form.
 :::
 
 ```json

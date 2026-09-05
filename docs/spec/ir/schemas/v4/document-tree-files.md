@@ -673,81 +673,62 @@ When type/value files are part of a PackageSpecification:
       "outputType": "morphir/SDK:basics#float",
       "body": {
         "LetDefinition": {
-          "attributes": {},
-          "valueName": "subtotal",
-          "valueDefinition": {
+          "name": "subtotal",
+          "definition": {
             "ExpressionBody": {
               "inputTypes": {},
               "outputType": "morphir/SDK:basics#float",
               "body": {
                 "Apply": {
-                  "attributes": {},
                   "function": {
                     "Reference": {
-                      "attributes": {},
-                      "fqname": "morphir/SDK:list#sum",
-                      "args": []
+                      "fqname": "morphir/SDK:list#sum"
                     }
                   },
                   "argument": {
                     "Field": {
-                      "attributes": {},
-                      "subject": {
+                      "target": {
                         "Variable": {
-                          "attributes": {},
                           "name": "order"
                         }
                       },
-                      "fieldName": "line-items"
+                      "name": "line-items"
                     }
                   }
                 }
               }
             }
           },
-          "inValue": {
+          "in": {
             "Apply": {
-              "attributes": {},
               "function": {
                 "Reference": {
-                  "attributes": {},
-                  "fqname": "morphir/SDK:basics#multiply",
-                  "args": []
+                  "fqname": "morphir/SDK:basics#multiply"
                 }
               },
               "argument": {
                 "Tuple": {
-                  "attributes": {},
                   "elements": [
                     {
                       "Variable": {
-                        "attributes": {},
                         "name": "subtotal"
                       }
                     },
                     {
                       "Apply": {
-                        "attributes": {},
                         "function": {
                           "Reference": {
-                            "attributes": {},
-                            "fqname": "morphir/SDK:basics#add",
-                            "args": []
+                            "fqname": "morphir/SDK:basics#add"
                           }
                         },
                         "argument": {
                           "Tuple": {
-                            "attributes": {},
                             "elements": [
                               {
-                                "Literal": {
-                                  "attributes": {},
-                                  "literal": { "FloatLiteral": 1.0 }
-                                }
+                                "Literal": { "FloatLiteral": 1.0 }
                               },
                               {
                                 "Variable": {
-                                  "attributes": {},
                                   "name": "tax-rate"
                                 }
                               }

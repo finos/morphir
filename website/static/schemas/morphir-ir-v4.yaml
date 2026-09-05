@@ -1266,7 +1266,7 @@ definitions:
             items:
               - $ref: "#/definitions/Name"
               - $ref: "#/definitions/Type"
-        description: "Object mapping constructor names to their argument lists"
+        description: "Object mapping constructor names to their parameter lists (decision 0007)"
       # Legacy array format
       - type: array
         items:
@@ -2177,6 +2177,8 @@ definitions:
       optional fallback body, so a Gleam-style external with a body encodes faithfully.
       The single-binding spelling with top-level externalName/targetPlatform is a legacy
       spelling readers accept for one release (decision 0006); it is not valid here.
+      A targetPlatform value must be unique within externals; JSON Schema cannot express
+      that constraint, so readers enforce it (decision 0008).
     examples:
       - { "inputTypes": { "msg": "morphir/SDK:string#string" }, "outputType": "morphir/SDK:basics#unit", "externals": [{ "targetPlatform": "javascript", "externalName": "console.log" }] }
 

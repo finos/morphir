@@ -80,7 +80,5 @@ distribution:
                   outputType: "morphir/SDK:basics#float"
                   body:
                     Literal:
-                      attributes: {}
-                      literal:
-                        FloatLiteral: 0
+                      FloatLiteral: 0.0
             doc: Data tables module for regulatory reporting

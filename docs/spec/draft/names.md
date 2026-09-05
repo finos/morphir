@@ -143,8 +143,8 @@ set `pathBudget` in `manifest.json`:
 
 Recording it unconditionally is what keeps the flipped default safe. A reader that cannot satisfy the recorded
 budget says so once, up front, instead of failing to open files one at a time, and no consumer has to guess what an
-unmarked tree assumed. For a tree written before this field existed, a reader treats a missing `pathBudget` as 4000
-and SHOULD warn.
+unmarked tree assumed. A manifest without `pathBudget` is invalid (decision 0012). There is no inferred default; a
+reader rejects such a tree rather than guessing a budget for it.
 
 Tooling SHOULD report when a tree written under the `long` budget contains a path over 260 characters, since that is
 the point at which it stops being checkout-safe on a stock Windows box.

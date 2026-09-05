@@ -132,7 +132,9 @@ interface Result {
 	message: string;
 }
 
-const CASE_HEADING = /^##\s+([a-z][a-z-]*-\d{4}):\s*(.*)$/;
+// The same shape the kit parser accepts, so a heading this tool cannot read is a
+// heading the kit reads, and the difference is silent coverage loss.
+const CASE_HEADING = /^##\s+([a-z][a-z0-9-]*-\d{4}):\s*(.*)$/;
 const FENCE_OPEN = /^```(\S+)((?:\s+\S+)*)\s*$/;
 
 /** Reads `key=value` pairs out of a `{ .. }` suffix on a case heading. */
@@ -178,8 +180,16 @@ interface OpenFence {
 	readonly line: number;
 }
 
-function collectFences(file: string, text: string): Fence[] {
+/** What one kit file yielded: its data fences, and any heading this tool could not read. */
+interface FileScan {
+	readonly fences: Fence[];
+	/** `## ` headings the case grammar rejects, as `file:line: heading`. */
+	readonly badHeadings: string[];
+}
+
+function collectFences(file: string, text: string): FileScan {
 	const fences: Fence[] = [];
+	const badHeadings: string[] = [];
 	const lines = text.split(/\r?\n/);
 	let current: ActiveCase | null = null;
 	let open: OpenFence | null = null;
@@ -230,7 +240,10 @@ function collectFences(file: string, text: string): Fence[] {
 			current = null;
 			const heading = line.match(CASE_HEADING);
 			const id = heading?.[1];
-			if (heading === null || id === undefined) continue;
+			if (heading === null || id === undefined) {
+				badHeadings.push(`${file}:${offset + 1}: ${line.trim()}`);
+				continue;
+			}
 			const keys = headingKeys(heading[2] ?? "");
 			if (keys.status === "pending") continue;
 			if (keys.version !== undefined && keys.version !== SUPPORTED_VERSION) {
@@ -240,7 +253,7 @@ function collectFences(file: string, text: string): Fence[] {
 		}
 	}
 
-	return fences;
+	return { fences, badHeadings };
 }
 
 // ---------------------------------------------------------------- validation
@@ -299,17 +312,23 @@ function failureMessage(instance: string, target: Target): string {
 
 // ---------------------------------------------------------------- entry point
 
+// README.md is prose, not a case file; the kit loader skips it the same way.
 const glob = new Glob("*.md");
-const kitFiles = (await Array.fromAsync(glob.scan({ cwd: kitDir }))).sort();
+const kitFiles = (await Array.fromAsync(glob.scan({ cwd: kitDir })))
+	.filter((name) => name !== "README.md")
+	.sort();
 if (kitFiles.length === 0) {
 	console.error(`error: no kit case files found in ${kitDir}`);
 	process.exit(1);
 }
 
 const fences: Fence[] = [];
+const badHeadings: string[] = [];
 for (const name of kitFiles) {
 	const file = path.join(kitDir, name);
-	fences.push(...collectFences(name, await Bun.file(file).text()));
+	const scan = collectFences(name, await Bun.file(file).text());
+	fences.push(...scan.fences);
+	badHeadings.push(...scan.badHeadings);
 }
 
 const results: Result[] = fences.map((fence) => ({
@@ -390,4 +409,28 @@ for (const { fence, outcome, message } of results) {
 console.log(
 	`\n${ok} ok, ${rejected} rejected as expected, ${failed} failed, ${skipped} skipped`,
 );
-if (failed > 0) process.exit(1);
+
+// A heading the kit reads and this tool does not, and a node kind with no schema
+// target, both drop fences silently. Coverage loss is a failure, not a pass.
+let coverageLoss = false;
+if (badHeadings.length > 0) {
+	coverageLoss = true;
+	console.log(
+		`\nFAIL ${badHeadings.length} "## " heading(s) the case grammar rejects:`,
+	);
+	for (const heading of badHeadings) console.log(`  ${heading}`);
+}
+if (skipped > 0) {
+	coverageLoss = true;
+	const kinds = [
+		...new Set(
+			results
+				.filter((result) => result.outcome === "skip")
+				.map((result) => result.fence.node || "unset"),
+		),
+	].sort();
+	console.log(
+		`\nFAIL ${skipped} fence(s) skipped; add a NODE_TARGETS entry for: ${kinds.join(", ")}`,
+	);
+}
+if (failed > 0 || coverageLoss) process.exit(1);
