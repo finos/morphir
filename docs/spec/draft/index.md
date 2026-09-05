@@ -71,4 +71,4 @@ A `ValueSpecification` contains only the function signature (input types and out
 - **Explicit Attributes**: Attributes include source location, constraints (for types), and inferred types (for values).
 - **Module.json**: First-class support for `module.json` files containing full module definitions.
 - **Incomplete Definitions**: New `IncompleteTypeDefinition` and `IncompleteBody` support best-effort compilation.
-- **Native and External Values**: First-class support for platform builtins and FFI.
+- **Native and External Bodies**: Platform builtins and FFI bindings as value definition bodies (`NativeBody`, `ExternalBody`), never as expressions (decision 0008).

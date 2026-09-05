@@ -528,6 +528,7 @@ Same as V3, but with `TypeAttributes`:
 - **ExtensibleRecord**: `{"ExtensibleRecord": {"variable": Name, "fields": {"field-name": Type}}}`
 - **Function**: `{"Function": {"parameterType": Type, "returnType": Type}}`
 - **Unit**: `{"Unit": {}}`
+- Every node also has an expanded spelling whose payload starts with `attributes` (decision 0005).
 
 ### Type Specifications
 
@@ -579,7 +580,7 @@ Same as V3 with `ValueAttributes`:
 
 ### Literals
 
-Same as V3:
+The six V3 literals plus one:
 
 - **BoolLiteral**
 - **CharLiteral**
@@ -587,6 +588,7 @@ Same as V3:
 - **IntegerLiteral**
 - **FloatLiteral**
 - **DecimalLiteral**
+- **DocumentLiteral** (decision 0013)
 
 ## Migration
 
@@ -607,6 +609,7 @@ Possible but **lossy**:
 - Inferred types are lost
 - Inline documentation is lost
 - New value expressions must be transformed
+- A `DocumentLiteral` cannot be downgraded; the writer refuses with `unsupported_v4_downgrade`
 
 See [Migration Guide - V4 → V3](../migration-guide/#v4--v3) for details.
 
