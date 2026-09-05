@@ -646,8 +646,18 @@
         },
         {
           "type": "object",
+          "oneOf": [
+            {
+              "required": [ "TypeAliasDefinition" ]
+            },
+            {
+              "required": [ "CustomTypeDefinition" ]
+            },
+            {
+              "required": [ "IncompleteTypeDefinition" ]
+            }
+          ],
           "required": [ "access" ],
-          "minProperties": 2,
           "properties": {
             "access": {
               "$ref": "#/definitions/Access"
@@ -758,8 +768,21 @@
         },
         {
           "type": "object",
+          "oneOf": [
+            {
+              "required": [ "ExpressionBody" ]
+            },
+            {
+              "required": [ "NativeBody" ]
+            },
+            {
+              "required": [ "ExternalBody" ]
+            },
+            {
+              "required": [ "IncompleteBody" ]
+            }
+          ],
           "required": [ "access" ],
-          "minProperties": 2,
           "properties": {
             "access": {
               "$ref": "#/definitions/Access"

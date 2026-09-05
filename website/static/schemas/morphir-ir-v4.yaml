@@ -391,10 +391,11 @@ definitions:
           access: { $ref: "#/definitions/Access" }
           doc: { $ref: "#/definitions/Doc" }
           value: { $ref: "#/definitions/DocumentedTypeDefinition" }
-      # Flattened: the definition variant sits beside "access"
+      # Flattened: the definition variant sits beside "access". The oneOf pins
+      # exactly one variant key, so neither a bodiless entry nor two variants at
+      # once validates.
       - type: object
         required: ["access"]
-        minProperties: 2
         additionalProperties: false
         properties:
           access: { $ref: "#/definitions/Access" }
@@ -402,6 +403,10 @@ definitions:
           TypeAliasDefinition: { $ref: "#/definitions/TypeAliasDefinitionBody" }
           CustomTypeDefinition: { $ref: "#/definitions/CustomTypeDefinitionBody" }
           IncompleteTypeDefinition: { $ref: "#/definitions/IncompleteTypeDefinitionBody" }
+        oneOf:
+          - required: ["TypeAliasDefinition"]
+          - required: ["CustomTypeDefinition"]
+          - required: ["IncompleteTypeDefinition"]
     description: |
       An access-controlled type definition, the entry shape of ModuleDefinition.types.
       Canonical: { "Public": { "doc": "...", "TypeAliasDefinition": {...} } }
@@ -450,10 +455,11 @@ definitions:
           access: { $ref: "#/definitions/Access" }
           doc: { $ref: "#/definitions/Doc" }
           value: { $ref: "#/definitions/DocumentedValueDefinition" }
-      # Flattened: the body variant sits beside "access"
+      # Flattened: the body variant sits beside "access". The oneOf pins exactly
+      # one variant key, so neither a bodiless entry nor two variants at once
+      # validates.
       - type: object
         required: ["access"]
-        minProperties: 2
         additionalProperties: false
         properties:
           access: { $ref: "#/definitions/Access" }
@@ -462,6 +468,11 @@ definitions:
           NativeBody: { $ref: "#/definitions/NativeBody" }
           ExternalBody: { $ref: "#/definitions/ExternalBody" }
           IncompleteBody: { $ref: "#/definitions/IncompleteBody" }
+        oneOf:
+          - required: ["ExpressionBody"]
+          - required: ["NativeBody"]
+          - required: ["ExternalBody"]
+          - required: ["IncompleteBody"]
     description: |
       An access-controlled value definition, the entry shape of ModuleDefinition.values.
       Canonical: { "Public": { "doc": "...", "ExpressionBody": {...} } }
