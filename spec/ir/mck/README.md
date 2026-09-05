@@ -45,7 +45,7 @@ Fences are the data. The info string is `<language> <role> [key=value ...]`.
 | Role | Meaning | Keys |
 | --- | --- | --- |
 | `canonical` | The spelling a writer must emit for this profile. At most one per language per case. | none |
-| `accepted` | A spelling a reader must normalize to the same value as `canonical`. | none |
+| `accepted` | A spelling a reader must normalize to the same value as `canonical`. With `warning=<code>` the reader must also report exactly that warning diagnostic (the one-release window of decision 0006); without it the reader must accept silently. | optional `warning=<code>` |
 | `rejected` | A spelling a reader must refuse with the named diagnostic, or decode as a different node. | exactly one of `diagnostic=<code>` or `expect=<Kind>` |
 | `file` | One document of a multi-file input (a document tree). | `path=<logical path>` required; `set=<name>` groups files |
 
@@ -93,6 +93,7 @@ fence; a fence key without a value or with a duplicate key. Nothing is skipped s
 2. Write the prose: why the case exists, and the decision or bead it belongs to.
 3. Write the YAML `canonical` fence first, then the JSON one, then every `accepted` spelling the profile allows,
    then `rejected` spellings with their diagnostic.
+   A legacy spelling that decision 0006 keeps for one release is an `accepted` fence with `warning=legacy_spelling`; at the release that closes the window it becomes `rejected diagnostic=unknown_member`.
 4. Run `mise run mck:check`.
 5. If the case decides something that was open, record the decision in
    `kb/bundles/morphir/morphir-ir/decisions/` and close its bead.
