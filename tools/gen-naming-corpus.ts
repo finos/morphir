@@ -273,7 +273,8 @@ function truncate(escapedStem: string, available: number): string {
 
 const TRUNCATIONS: readonly (readonly [Name, number])[] = [
 	[[w("customer"), w("relationship"), w("management"), w("record")], 25],
-	[[w("value"), w("in"), i("usd"), w("per"), w("unit")], 16], // cut lands on "-_" and both are dropped
+	[[w("value"), w("in"), i("usd"), w("per"), w("unit")], 16], // cut lands inside "value-": the trailing "-" is dropped
+	[[w("value"), w("in"), i("usd")], 20], // cut lands on "-_" (the initialism's prefix): both are dropped
 ];
 
 // ---------------------------------------------------------------- build

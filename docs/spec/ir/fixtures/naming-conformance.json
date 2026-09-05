@@ -942,6 +942,12 @@
       "available": 16,
       "truncatedStem": "value__1b878a36",
       "hostVerified": true
+    },
+    {
+      "escapedStem": "value-in-_usd",
+      "available": 20,
+      "truncatedStem": "value-in__b5c6a9d3",
+      "hostVerified": true
     }
   ]
 }
