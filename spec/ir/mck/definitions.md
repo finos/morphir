@@ -156,6 +156,12 @@ ExternalBody:
 { "ExternalBody": { "inputTypes": { "x": "morphir/SDK:basics#int" }, "outputType": "morphir/SDK:basics#int", "externals": [{ "targetPlatform": "erlang", "externalName": "math:abs" }, { "targetPlatform": "javascript", "externalName": "Math.abs" }], "body": { "Variable": "x" } } }
 ```
 
+Decision 0008: targetPlatform values are unique within externals.
+
+```json rejected diagnostic=duplicate_member
+{ "ExternalBody": { "inputTypes": { "x": "morphir/SDK:basics#int" }, "outputType": "morphir/SDK:basics#int", "externals": [{ "targetPlatform": "javascript", "externalName": "a" }, { "targetPlatform": "javascript", "externalName": "b" }] } }
+```
+
 ## definitions-0009: Native body {node=ValueDefinition}
 
 ```yaml canonical
