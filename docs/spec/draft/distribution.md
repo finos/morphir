@@ -68,10 +68,10 @@ Contains only the public interface (`TypeSpecification`, `ValueSpecification`).
 
 ```json
 // Full form
-{ "Specs": { "packageName": "morphir/sdk", "dependencies": {...}, "spec": {...} } }
+{ "Specs": { "packageName": "morphir/SDK", "dependencies": {...}, "spec": {...} } }
 
 // Compact form
-{ "Specs": { "packageName": "morphir/sdk" } }
+{ "Specs": { "packageName": "morphir/SDK" } }
 ```
 
 ### Application Distribution

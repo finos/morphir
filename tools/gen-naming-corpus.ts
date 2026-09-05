@@ -1,5 +1,7 @@
 // Generates docs/spec/ir/fixtures/naming-conformance.json, the shared conformance
-// corpus for Morphir IR v4 name canonicalization.
+// corpus for Morphir IR v4 name canonicalization, including the decision 0012
+// path-length truncation cases (host-verified: they depend on a SHA-256 digest
+// the Morphir SDK cannot express).
 //
 //   bun run gen-naming-corpus.ts            # write the corpus
 //   bun run gen-naming-corpus.ts --check    # verify it and its vendored copy
@@ -74,6 +76,13 @@ interface FqNameCase {
 	readonly documentTreePath: string;
 }
 
+interface TruncationCase {
+	readonly escapedStem: string;
+	readonly available: number; // characters the stem may occupy, suffix included
+	readonly truncatedStem: string;
+	readonly hostVerified: true; // needs SHA-256, which the Morphir SDK cannot express
+}
+
 interface Corpus {
 	readonly contractVersion: number;
 	readonly description: string;
@@ -90,6 +99,7 @@ interface Corpus {
 	readonly rejectCases: readonly RejectCase[];
 	readonly pathCases: readonly PathCase[];
 	readonly fqNameCases: readonly FqNameCase[];
+	readonly truncationCases: readonly TruncationCase[];
 }
 
 /** A Name is a non-empty sequence of segments. */
@@ -114,7 +124,7 @@ const i = (text: string): Segment => ({ kind: "initialism", text });
 
 const P_UP = "^([a-z0-9]+|[A-Z0-9]+)(-([a-z0-9]+|[A-Z0-9]+))*$";
 const P_DB = "^(--)?[a-z0-9]+(--?[a-z0-9]+)*$";
-const P_ST = "^_?[a-z0-9]+(-_?[a-z0-9]+)*_?$";
+const P_ST = "^_?[a-z0-9]+(-_?[a-z0-9]+)*(__[0-9a-f]{8})?_?$";
 
 const encUpper = (segs: Name): string =>
 	segs
@@ -252,6 +262,21 @@ const FQNAMES: readonly FqSpec[] = [
 	{ pkg: [[w("my"), w("org")]], mod: [[w("domain")]], name: [w("value"), w("in"), i("usd")] },
 ];
 
+// Decision 0012: keep `available - 10` characters of the escaped stem, drop
+// trailing "-" and "_" so the stem stays well-formed, append "__" and the first
+// eight hex digits of SHA-256(escaped stem).
+function truncate(escapedStem: string, available: number): string {
+	const digest = new Bun.CryptoHasher("sha256").update(escapedStem).digest("hex").slice(0, 8);
+	const kept = escapedStem.slice(0, Math.max(1, available - 10)).replace(/[-_]+$/, "");
+	return `${kept}__${digest}`;
+}
+
+const TRUNCATIONS: readonly (readonly [Name, number])[] = [
+	[[w("customer"), w("relationship"), w("management"), w("record")], 25],
+	[[w("value"), w("in"), i("usd"), w("per"), w("unit")], 16], // cut lands inside "value-": the trailing "-" is dropped
+	[[w("value"), w("in"), i("usd")], 20], // cut lands on "-_" (the initialism's prefix): both are dropped
+];
+
 // ---------------------------------------------------------------- build
 
 function build(): string {
@@ -320,6 +345,16 @@ function build(): string {
 		}
 	}
 
+	const truncationCases: TruncationCase[] = TRUNCATIONS.map(([segs, available]) => {
+		const escapedStem = escapeName(segs);
+		const truncatedStem = truncate(escapedStem, available);
+		if (!reSt.test(truncatedStem)) failures.push(`fileStem pattern: ${truncatedStem}`);
+		if (truncatedStem.length > available) {
+			failures.push(`truncated stem too long: ${truncatedStem} (${truncatedStem.length} > ${available})`);
+		}
+		return { escapedStem, available, truncatedStem, hostVerified: true };
+	});
+
 	const doc: Corpus = {
 		contractVersion: 1,
 		description:
@@ -330,7 +365,7 @@ function build(): string {
 			'legacyDecodeCases apply the rule from decision 0001: a maximal run of two or more single-letter words collapses into one initialism, and a run of one stays a word. That run-of-one rule is what makes a single-letter type variable decode as the word "a" rather than as an initialism.',
 			'The legacy array ["f","r","2052","a"] is inherently ambiguous, because the multi-character token 2052 breaks the letter run. The deterministic result recorded here renders identically to FR2052A in both PascalCase conventions but differs in snakeCase. Implementations must match the recorded value rather than guess.',
 			"rejectCases record validity per style. An input legal under one style and not the other is the disjointness property that decision 0002 relies on for its union decoder.",
-			"Path-length truncation from decision 0001 is not covered here, because it depends on a SHA-256 digest that the Morphir SDK cannot express. Those cases are host-verified.",
+			"truncationCases are host-verified: they depend on SHA-256, which the Morphir SDK cannot express, so a host binding computes the digest and compares. The rule is decision 0012's: keep available-10 characters of the escaped stem, drop trailing '-' and '_', append '__' and eight hex digits.",
 		],
 		patterns: { name: { uppercase: P_UP, doubledHyphen: P_DB }, fileStem: P_ST },
 		reservedDeviceStems: RESERVED,
@@ -354,6 +389,7 @@ function build(): string {
 			},
 			documentTreePath: `pkg/${pathStr(f.pkg, escapeName)}/${pathStr(f.mod, escapeName)}/${escapeName(f.name)}.value.json`,
 		})),
+		truncationCases,
 	};
 
 	if (failures.length > 0) {

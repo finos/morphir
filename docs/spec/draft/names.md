@@ -105,10 +105,12 @@ written on Linux checks out on Windows and macOS.
 
 ### Path length
 
-When a path would exceed the **path budget** measured from the distribution root, the stem is truncated and suffixed
-with `__` followed by the first 8 hex digits of the SHA-256 of the untruncated stem. A truncated name is not
-recoverable from its filename, so the module's `module.json` must then carry a `fileNames` map from canonical name
-to filename stem.
+When a path would exceed the **path budget** measured from the distribution root, the stem is truncated: the writer
+keeps as many leading characters of the escaped stem as the budget allows for the stem less ten, removes any
+trailing `-` or `_` so the stem stays well-formed, and appends `__` followed by the first 8 hex digits of the
+SHA-256 of the untruncated escaped stem. A truncated name is not recoverable from its filename, so the module's
+manifest must then carry a `fileNames` map from canonical name to filename stem, and the name still appears under
+`types` or `values`.
 
 **The default budget is 4000.** Long paths are the ordinary case: `PATH_MAX` on Linux and macOS is 4096, and Windows
 10 version 1607 and later lifts `MAX_PATH` through the `LongPathsEnabled` setting. Defaulting to the most
@@ -141,8 +143,8 @@ set `pathBudget` in `manifest.json`:
 
 Recording it unconditionally is what keeps the flipped default safe. A reader that cannot satisfy the recorded
 budget says so once, up front, instead of failing to open files one at a time, and no consumer has to guess what an
-unmarked tree assumed. For a tree written before this field existed, a reader treats a missing `pathBudget` as 4000
-and SHOULD warn.
+unmarked tree assumed. A manifest without `pathBudget` is invalid (decision 0012). There is no inferred default; a
+reader rejects such a tree rather than guessing a budget for it.
 
 Tooling SHOULD report when a tree written under the `long` budget contains a path over 260 characters, since that is
 the point at which it stops being checkout-safe on a stock Windows box.

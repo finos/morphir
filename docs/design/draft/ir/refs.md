@@ -6,6 +6,8 @@ sidebar_position: 11
 
 # Node References ($ref)
 
+> **Status:** Out of v4.0.0 and not reserved (decision 0014): a reader must not need a resolution pass to know what a node means.
+
 The `$ref` mechanism provides structural deduplication within VFS JSON files, reducing repetition of common node patterns.
 
 ## Design Principles
@@ -20,7 +22,7 @@ The `$ref` mechanism provides structural deduplication within VFS JSON files, re
 
 | Mechanism | Purpose | Scope | Example |
 |-----------|---------|-------|---------|
-| **FQName** | Semantic type/value reference | Cross-package | `"morphir/sdk:string#string"` |
+| **FQName** | Semantic type/value reference | Cross-package | `"morphir/SDK:string#string"` |
 | **`$ref`** | Structural deduplication | File-local | `{ "$ref": "user" }` |
 
 These are complementary:
@@ -42,7 +44,7 @@ Reusable nodes are defined in a top-level `$defs` object:
     "date-time": { "Reference": { "fqname": "my-org/sdk:date-time#date-time" } },
     "maybe-user": {
       "Reference": {
-        "fqname": "morphir/sdk:maybe#maybe",
+        "fqname": "morphir/SDK:maybe#maybe",
         "args": [{ "$ref": "user" }]
       }
     }
@@ -160,11 +162,11 @@ pub type FileWithDefs(a) {
             "updated-by": { "Reference": { "fqname": "my-org/domain:types#user" } },
             "updated-at": { "Reference": { "fqname": "my-org/sdk:date-time#date-time" } },
             "deleted-by": { "Reference": {
-              "fqname": "morphir/sdk:maybe#maybe",
+              "fqname": "morphir/SDK:maybe#maybe",
               "args": [{ "Reference": { "fqname": "my-org/domain:types#user" } }]
             } },
             "deleted-at": { "Reference": {
-              "fqname": "morphir/sdk:maybe#maybe",
+              "fqname": "morphir/SDK:maybe#maybe",
               "args": [{ "Reference": { "fqname": "my-org/sdk:date-time#date-time" } }]
             } }
           }
@@ -184,11 +186,11 @@ pub type FileWithDefs(a) {
     "user": { "Reference": { "fqname": "my-org/domain:types#user" } },
     "date-time": { "Reference": { "fqname": "my-org/sdk:date-time#date-time" } },
     "maybe-user": { "Reference": {
-      "fqname": "morphir/sdk:maybe#maybe",
+      "fqname": "morphir/SDK:maybe#maybe",
       "args": [{ "$ref": "user" }]
     } },
     "maybe-date-time": { "Reference": {
-      "fqname": "morphir/sdk:maybe#maybe",
+      "fqname": "morphir/SDK:maybe#maybe",
       "args": [{ "$ref": "date-time" }]
     } }
   },
@@ -226,7 +228,7 @@ pub type FileWithDefs(a) {
     },
     "validation-error": {
       "Apply": {
-        "function": { "Reference": { "fqname": "morphir/sdk:result#err" } },
+        "function": { "Reference": { "fqname": "morphir/SDK:result#err" } },
         "args": [{ "Literal": { "StringLiteral": "Validation failed" } }]
       }
     }
@@ -255,16 +257,16 @@ References can reference other definitions:
 ```json
 {
   "$defs": {
-    "string": { "Reference": { "fqname": "morphir/sdk:string#string" } },
+    "string": { "Reference": { "fqname": "morphir/SDK:string#string" } },
     "list-of-string": {
       "Reference": {
-        "fqname": "morphir/sdk:list#list",
+        "fqname": "morphir/SDK:list#list",
         "args": [{ "$ref": "string" }]
       }
     },
     "maybe-list-of-string": {
       "Reference": {
-        "fqname": "morphir/sdk:maybe#maybe",
+        "fqname": "morphir/SDK:maybe#maybe",
         "args": [{ "$ref": "list-of-string" }]
       }
     }
@@ -345,7 +347,7 @@ This is an optimization - files can be written fully expanded.
 {
   "$defs": {
     "user": "my-org/domain:types#user",
-    "list-of-users": ["morphir/sdk:list#list", { "$ref": "user" }]
+    "list-of-users": ["morphir/SDK:list#list", { "$ref": "user" }]
   },
   "def": {
     "TypeAliasDefinition": {
@@ -371,7 +373,7 @@ This is an optimization - files can be written fully expanded.
   "formatVersion": "4.0.0",
   "name": "user",
   "$meta": { "source": "src/User.elm", "compiler": "morphir-elm 3.0.0" },
-  "$defs": { "string": "morphir/sdk:string#string" },
+  "$defs": { "string": "morphir/SDK:string#string" },
   "def": { ... }
 }
 ```

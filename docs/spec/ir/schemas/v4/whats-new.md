@@ -178,24 +178,25 @@ V4 supports compact shorthand notation for types and values when attributes are 
 ```json
 // Variable
 "a"                                    // shorthand
-{ "Variable": { "name": "a" } }        // canonical
+{ "Variable": { "name": "a" } }        // expanded, attributes omitted
+{ "Variable": { "attributes": {}, "name": "a" } }        // expanded (attributes first)
 
 // Simple reference (no type args)
-"morphir/sdk:basics#int"                           // shorthand
-{ "Reference": { "fqname": "morphir/sdk:basics#int" } }  // canonical
+"morphir/SDK:basics#int"                           // shorthand
+{ "Reference": { "fqname": "morphir/SDK:basics#int" } }  // accepted
 
 // Parameterized type: List Int
-{ "Reference": ["morphir/sdk:list#list", "morphir/sdk:basics#int"] }      // canonical
+{ "Reference": ["morphir/SDK:list#list", "morphir/SDK:basics#int"] }      // canonical
 
 // Nested: List (Maybe Int)
-{ "Reference": ["morphir/sdk:list#list", { "Reference": ["morphir/sdk:maybe#maybe", "morphir/sdk:basics#int"] }] }
+{ "Reference": ["morphir/SDK:list#list", { "Reference": ["morphir/SDK:maybe#maybe", "morphir/SDK:basics#int"] }] }
 
 // Mixed: Result String a (variable as type arg)
-{ "Reference": ["morphir/sdk:result#result", "morphir/sdk:string#string", "a"] }
+{ "Reference": ["morphir/SDK:result#result", "morphir/SDK:string#string", "a"] }
 
 // Tuple: (Int, String)
-["morphir/sdk:basics#int", "morphir/sdk:string#string"]   // shorthand
-{ "Tuple": ["morphir/sdk:basics#int", "morphir/sdk:string#string"] }   // canonical
+["morphir/SDK:basics#int", "morphir/SDK:string#string"]   // shorthand
+{ "Tuple": ["morphir/SDK:basics#int", "morphir/SDK:string#string"] }   // canonical
 ```
 
 **Disambiguation Logic:**
@@ -216,7 +217,7 @@ true                                   // shorthand for BoolLiteral
 42                                     // shorthand for IntegerLiteral
 
 // References & Variables
-"morphir/sdk:basics#add"               // shorthand for Reference
+"morphir/SDK:basics#add"               // shorthand for Reference
 "x"                                    // shorthand for Variable
 
 // Lists
@@ -228,7 +229,7 @@ true                                   // shorthand for BoolLiteral
 - If string contains `:` and `#` → FQName reference
 - If string (no special chars) → Variable name
 - If boolean/number → Literal
-- If array → List value
+- If array → List value (decision 0009; a Tuple always carries its wrapper)
 - If object → Canonical wrapper object format
 
 #### Ultra-compact Patterns
@@ -255,14 +256,14 @@ V4 supports inline documentation for types and values within module definitions.
       "doc": "Unique identifier for a user in the system",
       "TypeAliasDefinition": {
         "typeParams": [],
-        "typeExp": "morphir/sdk:string#string"
+        "typeExp": "morphir/SDK:string#string"
       }
     }
   }
 }
 ```
 
-Modules key their types and values by canonical name. The `doc` member sits beside `access` and the definition variant; the nested `{ "doc": ..., "value": ... }` wrapper is also accepted on input.
+Modules key their types and values by canonical name. The `doc` member is placed first beside the variant (decision 0010). The nested `{ "doc": ..., "value": ... }` wrapper is accepted on input for one release and reported as `legacy_spelling` (decision 0006).
 
 **Benefits:**
 - **Self-documenting IR**: Documentation travels with code
@@ -342,7 +343,7 @@ Hole(
         "target": "my-org/project:module#deleted-function"
       }
     },
-    "expectedType": "morphir/sdk:basics#int"
+    "expectedType": "morphir/SDK:basics#int"
   }
 }
 ```
@@ -352,72 +353,7 @@ Hole(
 - Preserving partial IR during refactoring
 - Marking incomplete implementations
 
-#### Native
-
-Represents a native platform operation with no IR body.
-
-**Structure:**
-```gleam
-Native(
-  attributes: attributes,
-  fqname: FQName,
-  native_info: NativeInfo
-)
-```
-
-**NativeInfo:**
-```gleam
-NativeInfo(
-  hint: NativeHint,          // Arithmetic, Comparison, StringOp, CollectionOp, PlatformSpecific
-  description: Option(String)
-)
-```
-
-**Example:**
-```json
-{
-  "Native": {
-    "fqname": "morphir/sdk:basics#add",
-    "nativeInfo": {
-      "hint": { "Arithmetic": {} },
-      "description": "Integer addition"
-    }
-  }
-}
-```
-
-**Use cases:**
-- Representing SDK builtins (add, subtract, string operations)
-- Platform-specific operations (database queries, HTTP calls)
-- Operations that cannot be expressed in pure IR
-
-#### External
-
-Represents an external FFI call to another platform.
-
-**Structure:**
-```gleam
-External(
-  attributes: attributes,
-  external_name: String,
-  target_platform: String
-)
-```
-
-**Example:**
-```json
-{
-  "External": {
-    "externalName": "calculateTaxRate",
-    "targetPlatform": "JavaScript"
-  }
-}
-```
-
-**Use cases:**
-- FFI calls to JavaScript, Python, etc.
-- Integration with platform-specific libraries
-- Interop with non-Morphir code
+Native and external operations are definition bodies, not expressions (decision 0008); see section 7.
 
 ---
 
@@ -443,10 +379,10 @@ NativeBody(
 {
   "NativeBody": {
     "inputTypes": {
-      "a": "morphir/sdk:basics#int",
-      "b": "morphir/sdk:basics#int"
+      "a": "morphir/SDK:basics#int",
+      "b": "morphir/SDK:basics#int"
     },
-    "outputType": "morphir/sdk:basics#int",
+    "outputType": "morphir/SDK:basics#int",
     "nativeInfo": {
       "hint": { "Arithmetic": {} }
     }
@@ -463,10 +399,22 @@ For external FFI definitions.
 ExternalBody(
   input_types: List(#(Name, Type(attributes))),
   output_type: Type(attributes),
-  external_name: String,
-  target_platform: String
+  externals: List(ExternalBinding),
+  body: Option(Value(attributes))
+)
+
+ExternalBinding(
+  target_platform: String,
+  external_name: String
 )
 ```
+
+**Example:**
+```json
+{ "ExternalBody": { "inputTypes": { "x": "morphir/SDK:basics#int" }, "outputType": "morphir/SDK:basics#int", "externals": [{ "targetPlatform": "erlang", "externalName": "math:abs" }, { "targetPlatform": "javascript", "externalName": "Math.abs" }], "body": { "Variable": "x" } } }
+```
+
+The single-binding spelling with top-level `externalName`/`targetPlatform` is accepted for one release (decision 0006).
 
 #### IncompleteBody
 
@@ -504,6 +452,14 @@ The expanded `{ "IntegerLiteral": { "value": 42 } }` form is accepted on input.
 
 **Migration**: Decoders should accept both `WholeNumberLiteral` and `IntegerLiteral` for backwards compatibility. Encoders should output `IntegerLiteral`.
 
+#### DocumentLiteral (new)
+
+```json
+{ "DocumentLiteral": { "name": "Alice", "age": 30, "tags": ["admin", "user"], "metadata": null } }
+```
+
+The payload is the document itself; there is no `{ "value": ... }` spelling. Number lexemes are preserved. A document cannot be pattern matched. Typed `morphir/SDK:document#document` (decision 0013).
+
 ---
 
 ### 9. Permissive Input, Canonical Output Policy
@@ -519,17 +475,17 @@ This applies to all V4 constructs. The table below summarizes key formats:
 |-----------|-----------------|---------------|
 | **Access** | `"Public"`, `"Private"` | `"public"`, `"private"`, `"pub"` |
 | **AccessControlled** | `{ "Public": {...} }` | `{ "pub": {...} }`, `{ "access": "Public", "value": {...} }` |
-| **ReferenceType (no args)** | `"morphir/sdk:basics#int"` | `{ "Reference": "..." }`, `{ "Reference": { "fqname": "..." } }` |
+| **ReferenceType (no args)** | `"morphir/SDK:basics#int"` | `{ "Reference": "..." }`, `{ "Reference": { "fqname": "..." } }` |
 | **ReferenceType (with args)** | `{ "Reference": ["fqname", t1, ...] }` | `{ "Reference": { "fqname": "...", "args": [...] } }` |
 | **TupleType** | `{ "Tuple": [t1, t2, ...] }` | `[t1, t2, ...]`, `{ "Tuple": { "elements": [...] } }` |
 | **TuplePattern** | `{ "TuplePattern": [p1, p2, ...] }` | `[p1, p2, ...]`, `{ "TuplePattern": { "patterns": [...] } }` |
 | **TupleValue** | `{ "Tuple": [v1, v2, ...] }` | `{ "Tuple": { "elements": [...] } }` (NO bare arrays) |
-| **ListValue** | `{ "List": [v1, v2, ...] }` | `{ "List": { "items": [...] } }` (NO bare arrays) |
+| **ListValue** | `{ "List": [v1, v2, ...] }` | `[v1, v2, ...]`, `{ "List": { "items": [...] } }` |
 | **Literals** | `{ "IntegerLiteral": 42 }` | `{ "IntegerLiteral": { "value": 42 } }`, `{ "WholeNumberLiteral": 42 }` |
 
 :::note Design Rationale
 - **TupleType** allows bare arrays because ReferenceType does NOT (avoiding ambiguity)
-- **TupleValue/ListValue** do NOT allow bare arrays because they would be ambiguous with each other
+- A bare array is a List, and a Tuple always carries its wrapper, so the two cannot be confused (decision 0009)
 - **Access abbreviations** like `"pub"` improve ergonomics for hand-written IR
 :::
 
@@ -548,8 +504,8 @@ V4 moves from **tagged arrays** to **wrapper objects** for the canonical format:
 ```json
 {
   "Apply": {
-    "function": { "Reference": { "fqname": "..." } },
-    "argument": { "Literal": { "literal": {...} } }
+    "function": { "Reference": "..." },
+    "argument": { "Literal": { "IntegerLiteral": 1 } }
   }
 }
 ```
@@ -578,7 +534,7 @@ Unlike attributes (used for implementation-level metadata like source locations)
 **Compact Shorthand:**
 ```json
 "annotations": [
-  "morphir/sdk:annotations#stable",
+  "morphir/SDK:annotations#stable",
   "my-org/sdk:annotations#deprecated:Use new-version instead"
 ]
 ```

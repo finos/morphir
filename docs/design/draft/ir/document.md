@@ -6,12 +6,14 @@ sidebar_position: 9
 
 # Document Type
 
+> **Status:** In v4.0.0 per [decision 0013](../../../../kb/bundles/morphir/morphir-ir/decisions/0013-document-literal-is-in-v4-with-a-raw-payload.md); the SDK exposes construction, inspection and navigation only (no merge, equality, or ordering).
+
 The Document type provides a first-class, schema-less JSON-like data structure within the Morphir IR for representing untyped or dynamically-typed data.
 
 ## Design Principles
 
 - **Value-Level Concern**: Document is a Literal variant, not a Type variant
-- **SDK Type**: The type is `morphir/sdk:document#document` - a built-in reference
+- **SDK Type**: The type is `morphir/SDK:document#document` - a built-in reference
 - **Platform Native**: Operations are specs-only; backends implement natively
 - **JSON-Compatible**: Structure maps directly to JSON for easy interop
 
@@ -82,7 +84,7 @@ pub type Literal {
 
 ### Type Reference
 
-Document values have the type `morphir/sdk:document#document`:
+Document values have the type `morphir/SDK:document#document`:
 
 ```gleam
 // The Document type is a simple opaque type in the SDK
@@ -91,7 +93,7 @@ Document values have the type `morphir/sdk:document#document`:
 fn document_type() -> Type(a) {
   Reference(
     attributes: default_attributes(),
-    fqname: fqname_from_string("morphir/sdk:document#document"),
+    fqname: fqname_from_string("morphir/SDK:document#document"),
     args: [],
   )
 }
@@ -99,83 +101,15 @@ fn document_type() -> Type(a) {
 
 ## JSON Serialization
 
-### DocumentValue Encoding
+Decision 0013 settled the encoding: the payload of `DocumentLiteral` is the document itself, verbatim. There are no `Doc*` wrappers on the wire and no `{ "value": ... }` spelling, so `{ "DocumentLiteral": { "value": 1 } }` is the one-member document `{"value": 1}`.
 
 ```json
-// DocNull
-{ "DocNull": {} }
-
-// DocBool
-{ "DocBool": true }
-
-// DocInt
-{ "DocInt": 42 }
-
-// DocFloat
-{ "DocFloat": 3.14 }
-
-// DocString
-{ "DocString": "hello" }
-
-// DocArray
-{ "DocArray": [
-    { "DocInt": 1 },
-    { "DocInt": 2 },
-    { "DocInt": 3 }
-  ]
-}
-
-// DocObject
-{ "DocObject": {
-    "name": { "DocString": "Alice" },
-    "age": { "DocInt": 30 },
-    "active": { "DocBool": true }
-  }
-}
+{ "DocumentLiteral": { "name": "Alice", "age": 30, "tags": ["admin", "user"], "metadata": null } }
 ```
 
-### Shorthand Encoding
+Readers preserve number lexemes (`9007199254740993` and `0.10` survive a round trip); a binding that narrows them to a 64-bit float fails kit case `patterns-and-literals-0006`. A `DocumentLiteral` cannot appear in a `LiteralPattern` (`patterns-and-literals-0007`), and a v4 to v3 downgrade of a document refuses with `unsupported_v4_downgrade`.
 
-For compact representation, Document values can use JSON directly when unambiguous:
-
-```json
-// Shorthand (when context is clear)
-{
-  "DocumentLiteral": {
-    "name": "Alice",
-    "age": 30,
-    "tags": ["admin", "user"],
-    "metadata": null
-  }
-}
-
-// Canonical (explicit wrappers)
-{
-  "DocumentLiteral": {
-    "DocObject": {
-      "name": { "DocString": "Alice" },
-      "age": { "DocInt": 30 },
-      "tags": { "DocArray": [
-        { "DocString": "admin" },
-        { "DocString": "user" }
-      ]},
-      "metadata": { "DocNull": {} }
-    }
-  }
-}
-```
-
-### Decoding Rules
-
-| JSON Value | DocumentValue |
-|------------|---------------|
-| `null` | `DocNull` |
-| `true`/`false` | `DocBool` |
-| Integer number | `DocInt` |
-| Floating number | `DocFloat` |
-| String | `DocString` |
-| Array | `DocArray` |
-| Object | `DocObject` |
+The in-memory `DocumentValue` above is one binding's choice of representation; the wire format does not depend on it.
 
 ## SDK Specification
 
@@ -423,16 +357,16 @@ File: `.morphir-dist/pkg/my-org/api/values/parse-response.value.json`
     "value": {
       "ExpressionBody": {
         "inputTypes": {
-          "response": "morphir/sdk:document#document"
+          "response": "morphir/SDK:document#document"
         },
-        "outputType": ["morphir/sdk:maybe#maybe", "my-org/api:types#user"],
+        "outputType": ["morphir/SDK:maybe#maybe", "my-org/api:types#user"],
         "body": {
           "Apply": {
-            "function": { "Reference": { "fqname": "morphir/sdk:maybe#and-then" } },
+            "function": { "Reference": { "fqname": "morphir/SDK:maybe#and-then" } },
             "args": [
               {
                 "Apply": {
-                  "function": { "Reference": { "fqname": "morphir/sdk:document#get" } },
+                  "function": { "Reference": { "fqname": "morphir/SDK:document#get" } },
                   "args": [
                     { "Literal": { "StringLiteral": "data" } },
                     { "Variable": { "name": "response" } }

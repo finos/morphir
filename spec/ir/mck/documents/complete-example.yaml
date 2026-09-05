@@ -3,7 +3,7 @@ distribution:
   Library:
     packageName: regulation
     dependencies:
-      morphir/sdk:
+      morphir/SDK:
         modules:
           basics:
             types:
@@ -16,9 +16,9 @@ distribution:
             values:
               add:
                 inputs:
-                  a: "morphir/sdk:basics#int"
-                  b: "morphir/sdk:basics#int"
-                output: "morphir/sdk:basics#int"
+                  a: "morphir/SDK:basics#int"
+                  b: "morphir/SDK:basics#int"
+                output: "morphir/SDK:basics#int"
           list:
             types:
               list:
@@ -27,22 +27,22 @@ distribution:
                     - a
                   typeExp:
                     Reference:
-                      - "morphir/sdk:list#list"
+                      - "morphir/SDK:list#list"
                       - a
             values:
               map:
                 inputs:
                   f:
                     Function:
-                      argumentType: a
+                      parameterType: a
                       returnType: b
                   list:
                     Reference:
-                      - "morphir/sdk:list#list"
+                      - "morphir/SDK:list#list"
                       - a
                 output:
                   Reference:
-                    - "morphir/sdk:list#list"
+                    - "morphir/SDK:list#list"
                     - b
     def:
       modules:
@@ -69,7 +69,7 @@ distribution:
                       fields:
                         assets:
                           Reference:
-                            - "morphir/sdk:list#list"
+                            - "morphir/SDK:list#list"
                             - "regulation:u-s/f-r-2052-a/data-tables/inflows#assets"
             values:
               calculate-total:
@@ -77,10 +77,8 @@ distribution:
                 ExpressionBody:
                   inputTypes:
                     tables: "regulation:u-s/f-r-2052-a/data-tables#data-tables"
-                  outputType: "morphir/sdk:basics#float"
+                  outputType: "morphir/SDK:basics#float"
                   body:
                     Literal:
-                      attributes: {}
-                      literal:
-                        FloatLiteral: 0
+                      FloatLiteral: 0.0
             doc: Data tables module for regulatory reporting

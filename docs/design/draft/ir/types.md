@@ -47,13 +47,13 @@ V4 follows a **permissive input, canonical output** policy. Decoders accept mult
 **Examples:**
 ```json
 // Canonical (encoders should output this)
-{ "Public": { "TypeAliasDefinition": { "body": "morphir/sdk:string#string" } } }
+{ "Public": { "TypeAliasDefinition": { "body": "morphir/SDK:string#string" } } }
 { "Private": { "CustomTypeDefinition": { "params": [], "constructors": {} } } }
 
 // Accepted alternatives
-{ "pub": { "TypeAliasDefinition": { "body": "morphir/sdk:string#string" } } }
-{ "public": { "TypeAliasDefinition": { "body": "morphir/sdk:string#string" } } }
-{ "access": "Public", "value": { "TypeAliasDefinition": { "body": "morphir/sdk:string#string" } } }
+{ "pub": { "TypeAliasDefinition": { "body": "morphir/SDK:string#string" } } }
+{ "public": { "TypeAliasDefinition": { "body": "morphir/SDK:string#string" } } }
+{ "access": "Public", "value": { "TypeAliasDefinition": { "body": "morphir/SDK:string#string" } } }
 ```
 
 ## Type Expressions
@@ -222,9 +222,9 @@ For compact, readable IRs, type expressions support shorthand forms when attribu
 
 | Form | Interpretation | Disambiguation |
 |------|----------------|----------------|
-| `"morphir/sdk:basics#int"` | Type.Reference (no args) | Contains `:` and `#` → FQName |
+| `"morphir/SDK:basics#int"` | Type.Reference (no args) | Contains `:` and `#` → FQName |
 | `"a"` | Type.Variable | No `:` or `#` → variable name |
-| `["morphir/sdk:list#list", ...]` | Type.Reference with args | Array → parameterized type |
+| `["morphir/SDK:list#list", ...]` | Type.Reference with args | Array → parameterized type |
 
 #### Disambiguation Logic
 
@@ -247,26 +247,26 @@ else if object:
 { "Variable": { "name": "a" } }        // canonical
 
 // Simple reference (no type args)
-"morphir/sdk:basics#int"                           // shorthand
-{ "Reference": { "fqname": "morphir/sdk:basics#int" } }  // canonical
+"morphir/SDK:basics#int"                           // shorthand
+{ "Reference": { "fqname": "morphir/SDK:basics#int" } }  // canonical
 
 // Parameterized type: List Int
-["morphir/sdk:list#list", "morphir/sdk:basics#int"]      // shorthand
+["morphir/SDK:list#list", "morphir/SDK:basics#int"]      // shorthand
 {
   "Reference": {
-    "fqname": "morphir/sdk:list#list",
-    "args": [{ "Reference": { "fqname": "morphir/sdk:basics#int" } }]
+    "fqname": "morphir/SDK:list#list",
+    "args": [{ "Reference": { "fqname": "morphir/SDK:basics#int" } }]
   }
 }  // canonical
 
 // Parameterized type: Dict String Int
-["morphir/sdk:dict#dict", "morphir/sdk:string#string", "morphir/sdk:basics#int"]
+["morphir/SDK:dict#dict", "morphir/SDK:string#string", "morphir/SDK:basics#int"]
 
 // Nested: List (Maybe Int)
-["morphir/sdk:list#list", ["morphir/sdk:maybe#maybe", "morphir/sdk:basics#int"]]
+["morphir/SDK:list#list", ["morphir/SDK:maybe#maybe", "morphir/SDK:basics#int"]]
 
 // Mixed: Result String a (variable as type arg)
-["morphir/sdk:result#result", "morphir/sdk:string#string", "a"]
+["morphir/SDK:result#result", "morphir/SDK:string#string", "a"]
 ```
 
 #### Encoding/Decoding Rules
@@ -301,17 +301,17 @@ V4 follows a **permissive input, canonical output** policy for Reference types.
 
 | Format | Example | Notes |
 |--------|---------|-------|
-| **Canonical** | `"morphir/sdk:basics#int"` | Bare FQName string |
-| Wrapper with FQName | `{ "Reference": "morphir/sdk:basics#int" }` | Accepted |
-| Wrapper with object | `{ "Reference": { "fqname": "morphir/sdk:basics#int" } }` | Expanded form |
+| **Canonical** | `"morphir/SDK:basics#int"` | Bare FQName string |
+| Wrapper with FQName | `{ "Reference": "morphir/SDK:basics#int" }` | Accepted |
+| Wrapper with object | `{ "Reference": { "fqname": "morphir/SDK:basics#int" } }` | Expanded form |
 
 ```json
 // Canonical (encoders should output this)
-"morphir/sdk:basics#int"
+"morphir/SDK:basics#int"
 
 // Accepted alternatives
-{ "Reference": "morphir/sdk:basics#int" }
-{ "Reference": { "fqname": "morphir/sdk:basics#int" } }
+{ "Reference": "morphir/SDK:basics#int" }
+{ "Reference": { "fqname": "morphir/SDK:basics#int" } }
 ```
 
 #### With Type Arguments
@@ -322,23 +322,23 @@ V4 follows a **permissive input, canonical output** policy for Reference types.
 | Wrapper with object | `{ "Reference": { "fqname": "...", "args": [...] } }` | Expanded form |
 
 :::warning
-Bare arrays (e.g., `["morphir/sdk:list#list", "a"]`) are **NOT** allowed for Reference at the top level—this would conflict with TupleType which uses bare arrays.
+Bare arrays (e.g., `["morphir/SDK:list#list", "a"]`) are **NOT** allowed for Reference at the top level—this would conflict with TupleType which uses bare arrays.
 :::
 
 ```json
 // Canonical (encoders should output this for types with args)
-{ "Reference": ["morphir/sdk:list#list", "morphir/sdk:basics#int"] }
+{ "Reference": ["morphir/SDK:list#list", "morphir/SDK:basics#int"] }
 
 // Expanded form (accepted)
 {
   "Reference": {
-    "fqname": "morphir/sdk:list#list",
-    "args": ["morphir/sdk:basics#int"]
+    "fqname": "morphir/SDK:list#list",
+    "args": ["morphir/SDK:basics#int"]
   }
 }
 
 // Dict String Int
-{ "Reference": ["morphir/sdk:dict#dict", "morphir/sdk:string#string", "morphir/sdk:basics#int"] }
+{ "Reference": ["morphir/SDK:dict#dict", "morphir/SDK:string#string", "morphir/SDK:basics#int"] }
 ```
 
 ### Tuple (TupleType)
@@ -357,20 +357,20 @@ Bare arrays are unambiguous for TupleType because ReferenceType does **not** all
 
 ```json
 // Bare array (most compact, accepted)
-["morphir/sdk:basics#int", "morphir/sdk:string#string"]
+["morphir/SDK:basics#int", "morphir/SDK:string#string"]
 
 // Canonical (encoders should output this)
-{ "Tuple": ["morphir/sdk:basics#int", "morphir/sdk:string#string"] }
+{ "Tuple": ["morphir/SDK:basics#int", "morphir/SDK:string#string"] }
 
 // Expanded form (accepted)
 {
   "Tuple": {
-    "elements": ["morphir/sdk:basics#int", "morphir/sdk:string#string"]
+    "elements": ["morphir/SDK:basics#int", "morphir/SDK:string#string"]
   }
 }
 
 // With nested types
-{ "Tuple": ["a", "b", ["morphir/sdk:list#list", "c"]] }
+{ "Tuple": ["a", "b", ["morphir/SDK:list#list", "c"]] }
 ```
 
 ### Record
@@ -382,8 +382,8 @@ Field names as object keys, values are the field types:
 {
   "Record": {
     "fields": {
-      "user-name": "morphir/sdk:string#string",
-      "age": "morphir/sdk:basics#int"
+      "user-name": "morphir/SDK:string#string",
+      "age": "morphir/SDK:basics#int"
     }
   }
 }
@@ -392,8 +392,8 @@ Field names as object keys, values are the field types:
 {
   "Record": {
     "fields": {
-      "user-name": { "Reference": { "fqname": "morphir/sdk:string#string" } },
-      "age": { "Reference": { "fqname": "morphir/sdk:basics#int" } }
+      "user-name": { "Reference": { "fqname": "morphir/SDK:string#string" } },
+      "age": { "Reference": { "fqname": "morphir/SDK:basics#int" } }
     }
   }
 }
@@ -407,7 +407,7 @@ Field names as object keys, values are the field types:
   "ExtensibleRecord": {
     "variable": "a",
     "fields": {
-      "name": "morphir/sdk:string#string"
+      "name": "morphir/SDK:string#string"
     }
   }
 }
@@ -417,7 +417,7 @@ Field names as object keys, values are the field types:
   "ExtensibleRecord": {
     "variable": "a",
     "fields": {
-      "name": { "Reference": { "fqname": "morphir/sdk:string#string" } }
+      "name": { "Reference": { "fqname": "morphir/SDK:string#string" } }
     }
   }
 }
@@ -434,16 +434,27 @@ Decoding also accepts the legacy array format for backwards compatibility:
 
 ```json
 // shorthand
-{ "Function": { "arg": "morphir/sdk:basics#int", "result": "morphir/sdk:string#string" } }
+{
+  "Function": {
+    "parameterType": "morphir/SDK:basics#int",
+    "returnType": "morphir/SDK:string#string"
+  }
+}
 
 // canonical
 {
   "Function": {
-    "arg": { "Reference": { "fqname": "morphir/sdk:basics#int" } },
-    "result": { "Reference": { "fqname": "morphir/sdk:string#string" } }
+    "parameterType": { "Reference": { "fqname": "morphir/SDK:basics#int" } },
+    "returnType": { "Reference": { "fqname": "morphir/SDK:string#string" } }
   }
 }
 ```
+
+:::note
+`parameterType` and `returnType` are the canonical member names (decision 0007).
+The spellings `arg`/`result` and `argumentType` are legacy. A reader accepts them
+for one release, reports a warning, and normalizes them to the canonical names.
+:::
 
 ### Unit
 
@@ -479,7 +490,7 @@ Decoding also accepts the legacy array format for backwards compatibility:
 ```json
 {
   "TypeAliasDefinition": {
-    "body": { "Reference": { "fqname": "morphir/sdk:string#string" } }
+    "body": { "Reference": { "fqname": "morphir/SDK:string#string" } }
   }
 }
 ```
@@ -509,7 +520,7 @@ Decoding also accepts the legacy array format for backwards compatibility:
 {
   "DerivedTypeSpecification": {
     "details": {
-      "baseType": { "Reference": { "fqname": "morphir/sdk:string#string" } },
+      "baseType": { "Reference": { "fqname": "morphir/SDK:string#string" } },
       "fromBaseType": "my-org/sdk:local-date#from-string",
       "toBaseType": "my-org/sdk:local-date#to-string"
     }

@@ -152,6 +152,10 @@ run = [
     "jsonschema validate spec/ir/mck/report.schema.json spec/ir/mck/report.example.json",
 ]
 
+[tasks."mck:schema-check"]
+description = "Validate every accepted MCK JSON fence against the v4 schema"
+run = "bun run tools/validate-mck-fences.ts"
+
 [tasks."hooks:install"]
 description = "Activate the checked-in git hooks in .husky"
 run = "bun run tools/install-git-hooks.ts"
@@ -213,6 +217,7 @@ depends = [
     "fixtures:naming-corpus-check",
     "schema:validate",
     "mck:check",
+    "mck:schema-check",
 ]
 
 # ===== Testing Tasks =====
