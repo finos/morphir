@@ -563,13 +563,13 @@ Attributes are serialized with omission of empty/None fields for compactness:
 
 ```json
 // Minimal (all defaults)
-{ "Reference": { "fqname": "morphir/sdk:basics#int" } }
+{ "Reference": { "fqname": "morphir/SDK:basics#int" } }
 
 // With source location only
 {
   "Reference": {
     "attributes": { "source": { "file": "src/Domain.elm", "line": 42, "col": 5 } },
-    "fqname": "morphir/sdk:basics#int"
+    "fqname": "morphir/SDK:basics#int"
   }
 }
 
@@ -581,7 +581,7 @@ Attributes are serialized with omission of empty/None fields for compactness:
         "numeric": { "Signed": { "bits": 32 } }
       }
     },
-    "fqname": "morphir/sdk:int#int32"
+    "fqname": "morphir/SDK:int#int32"
   }
 }
 
@@ -593,7 +593,7 @@ Attributes are serialized with omission of empty/None fields for compactness:
         "numeric": { "Bounded": { "min": 0, "max": 100 } }
       }
     },
-    "fqname": "morphir/sdk:basics#int"
+    "fqname": "morphir/SDK:basics#int"
   }
 }
 ```

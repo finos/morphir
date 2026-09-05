@@ -43,7 +43,7 @@ For simple annotations, a string format is supported: `fqname:value`.
 | Single Value (1 arg) | `"package:module#name:value"` | FQName followed by colon and value |
 
 **Examples:**
-- `"morphir/sdk:annotations#stable"`
+- `"morphir/SDK:annotations#stable"`
 - `"my-org/sdk:annotations#deprecated:Use new-function instead"`
 - `"my-org/sdk:annotations#version:1.0.0"`
 
@@ -98,13 +98,13 @@ def oldMethod(x: Int): Int = ???
 {
   "annotations": [
     {
-      "name": "morphir/sdk:annotations#deprecated",
+      "name": "morphir/SDK:annotations#deprecated",
       "arguments": [
         { "Literal": { "StringLiteral": "Use newMethod instead" } },
         { "Literal": { "StringLiteral": "2.0.0" } }
       ]
     },
-    "morphir/sdk:annotations#stable"
+    "morphir/SDK:annotations#stable"
   ]
 }
 ```
@@ -191,7 +191,7 @@ Annotations are only supported on **Specification** types in Morphir IR v4.
       { "name": "my-org/sdk:annotations#json-name", "arguments": [{ "Literal": { "StringLiteral": "user_id" } }] }
     ],
     "typeParams": [],
-    "typeExp": "morphir/sdk:string#string"
+    "typeExp": "morphir/SDK:string#string"
   }
 }
 ```

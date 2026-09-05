@@ -6,6 +6,8 @@ sidebar_position: 10
 
 # File Metadata ($meta)
 
+> **Status:** Out of v4.0.0; the name `$meta` is reserved and ignored by readers ([decision 0014](../../../../kb/bundles/morphir/morphir-ir/decisions/0014-scope-of-v4-0-0-for-design-only-features.md)).
+
 The `$meta` key provides a standard location for file-level metadata in VFS JSON files without polluting the main schema.
 
 ## Design Principles
@@ -176,8 +178,8 @@ File: `.morphir-dist/pkg/my-org/domain/types/user.type.json`
       "body": {
         "Record": {
           "fields": {
-            "email": "morphir/sdk:string#string",
-            "name": "morphir/sdk:string#string"
+            "email": "morphir/SDK:string#string",
+            "name": "morphir/SDK:string#string"
           }
         }
       }

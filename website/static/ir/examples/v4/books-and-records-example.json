@@ -4,7 +4,7 @@
     "Library": {
       "packageName": "morphir/reference/model",
       "dependencies": {
-        "morphir/sdk": {
+        "morphir/SDK": {
           "modules": {
             "basics": {
               "types": {
@@ -38,7 +38,7 @@
                     ],
                     "typeExp": {
                       "Reference": [
-                        "morphir/sdk:dict#dict",
+                        "morphir/SDK:dict#dict",
                         "k",
                         "v"
                       ]
@@ -56,11 +56,11 @@
           "books-and-records": {
             "Public": {
               "types": {
-                "product-(i-d)": {
+                "product-ID": {
                   "Public": {
                     "TypeAliasDefinition": {
                       "typeParams": [],
-                      "typeExp": "morphir/sdk:string#string"
+                      "typeExp": "morphir/SDK:string#string"
                     }
                   }
                 },
@@ -68,7 +68,7 @@
                   "Public": {
                     "TypeAliasDefinition": {
                       "typeParams": [],
-                      "typeExp": "morphir/sdk:basics#float"
+                      "typeExp": "morphir/SDK:basics#float"
                     }
                   }
                 },
@@ -76,7 +76,7 @@
                   "Public": {
                     "TypeAliasDefinition": {
                       "typeParams": [],
-                      "typeExp": "morphir/sdk:basics#int"
+                      "typeExp": "morphir/SDK:basics#int"
                     }
                   }
                 },
@@ -86,9 +86,11 @@
                       "typeParams": [],
                       "typeExp": {
                         "Record": {
-                          "product": "morphir/reference/model:books-and-records#product-(i-d)",
-                          "price": "morphir/reference/model:books-and-records#price",
-                          "quantity": "morphir/reference/model:books-and-records#quantity"
+                          "fields": {
+                            "product": "morphir/reference/model:books-and-records#product-ID",
+                            "price": "morphir/reference/model:books-and-records#price",
+                            "quantity": "morphir/reference/model:books-and-records#quantity"
+                          }
                         }
                       }
                     }
@@ -98,17 +100,16 @@
                   "Public": {
                     "CustomTypeDefinition": {
                       "typeParams": [],
-                      "accessControlledConstructors": {
-                        "Public": {
-                          "open-deal": {
-                            "product": "morphir/reference/model:books-and-records#product-(i-d)",
-                            "price": "morphir/reference/model:books-and-records#price",
-                            "quantity": "morphir/reference/model:books-and-records#quantity"
-                          },
-                          "close-deal": {
-                            "product": "morphir/reference/model:books-and-records#product-(i-d)"
-                          }
-                        }
+                      "access": "Public",
+                      "constructors": {
+                        "open-deal": [
+                          ["product", "morphir/reference/model:books-and-records#product-ID"],
+                          ["price", "morphir/reference/model:books-and-records#price"],
+                          ["quantity", "morphir/reference/model:books-and-records#quantity"]
+                        ],
+                        "close-deal": [
+                          ["product", "morphir/reference/model:books-and-records#product-ID"]
+                        ]
                       }
                     }
                   }
@@ -117,29 +118,28 @@
                   "Public": {
                     "CustomTypeDefinition": {
                       "typeParams": [],
-                      "accessControlledConstructors": {
-                        "Public": {
-                          "deal-opened": {
-                            "product": "morphir/reference/model:books-and-records#product-(i-d)",
-                            "price": "morphir/reference/model:books-and-records#price",
-                            "quantity": "morphir/reference/model:books-and-records#quantity"
-                          },
-                          "deal-closed": {
-                            "product": "morphir/reference/model:books-and-records#product-(i-d)"
-                          },
-                          "deal-not-found": {
-                            "product": "morphir/reference/model:books-and-records#product-(i-d)"
-                          },
-                          "duplicate-deal": {
-                            "product": "morphir/reference/model:books-and-records#product-(i-d)"
-                          },
-                          "invalid-price": {
-                            "price": "morphir/reference/model:books-and-records#price"
-                          },
-                          "invalid-quantity": {
-                            "quantity": "morphir/reference/model:books-and-records#quantity"
-                          }
-                        }
+                      "access": "Public",
+                      "constructors": {
+                        "deal-opened": [
+                          ["product", "morphir/reference/model:books-and-records#product-ID"],
+                          ["price", "morphir/reference/model:books-and-records#price"],
+                          ["quantity", "morphir/reference/model:books-and-records#quantity"]
+                        ],
+                        "deal-closed": [
+                          ["product", "morphir/reference/model:books-and-records#product-ID"]
+                        ],
+                        "deal-not-found": [
+                          ["product", "morphir/reference/model:books-and-records#product-ID"]
+                        ],
+                        "duplicate-deal": [
+                          ["product", "morphir/reference/model:books-and-records#product-ID"]
+                        ],
+                        "invalid-price": [
+                          ["price", "morphir/reference/model:books-and-records#price"]
+                        ],
+                        "invalid-quantity": [
+                          ["quantity", "morphir/reference/model:books-and-records#quantity"]
+                        ]
                       }
                     }
                   }
@@ -150,8 +150,8 @@
                       "typeParams": [],
                       "typeExp": {
                         "Reference": [
-                          "morphir/sdk:dict#dict",
-                          "morphir/reference/model:books-and-records#product-(i-d)",
+                          "morphir/SDK:dict#dict",
+                          "morphir/reference/model:books-and-records#product-ID",
                           "morphir/reference/model:books-and-records#deal"
                         ]
                       }
@@ -162,9 +162,9 @@
               "values": {
                 "open-deal": {
                   "Public": {
-                    "ExpressionBody": {
+                    "IncompleteBody": {
                       "inputTypes": {
-                        "product": "morphir/reference/model:books-and-records#product-(i-d)",
+                        "product": "morphir/reference/model:books-and-records#product-ID",
                         "price": "morphir/reference/model:books-and-records#price",
                         "quantity": "morphir/reference/model:books-and-records#quantity",
                         "book": "morphir/reference/model:books-and-records#book"
@@ -175,20 +175,17 @@
                           "morphir/reference/model:books-and-records#deal-event"
                         ]
                       },
-                      "body": {
-                        "Hole": {
-                          "attributes": {},
-                          "message": "Implementation pending"
-                        }
+                      "incompleteness": {
+                        "Draft": {}
                       }
                     }
                   }
                 },
                 "close-deal": {
                   "Public": {
-                    "ExpressionBody": {
+                    "IncompleteBody": {
                       "inputTypes": {
-                        "product": "morphir/reference/model:books-and-records#product-(i-d)",
+                        "product": "morphir/reference/model:books-and-records#product-ID",
                         "book": "morphir/reference/model:books-and-records#book"
                       },
                       "outputType": {
@@ -197,11 +194,8 @@
                           "morphir/reference/model:books-and-records#deal-event"
                         ]
                       },
-                      "body": {
-                        "Hole": {
-                          "attributes": {},
-                          "message": "Implementation pending"
-                        }
+                      "incompleteness": {
+                        "Draft": {}
                       }
                     }
                   }

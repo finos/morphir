@@ -42,12 +42,12 @@ A reference to another type or type alias.
   - fqName: Fully-qualified name of the referenced type (`FQName`)
   - args: List of type arguments (`List Type`)
 - **Examples**:
-  - `String` → FQName: `morphir/sdk:string#string`
-  - `List Int` → FQName: `morphir/sdk:list#list` with type argument `morphir/sdk:basics#int`
-  - `Dict String Int` → FQName: `morphir/sdk:dict#dict` with type arguments
-- **JSON (compact, no type args)**: `"morphir/sdk:string#string"` — bare FQName string
-- **JSON (compact, with type args)**: `{"Reference": ["morphir/sdk:list#list", "a"]}` — array with FQName first, followed by type args
-- **JSON (expanded)**: `{"Reference": {"fqname": "morphir/sdk:list#list", "args": [...]}}` — object with fqname and args keys
+  - `String` → FQName: `morphir/SDK:string#string`
+  - `List Int` → FQName: `morphir/SDK:list#list` with type argument `morphir/SDK:basics#int`
+  - `Dict String Int` → FQName: `morphir/SDK:dict#dict` with type arguments
+- **JSON (compact, no type args)**: `"morphir/SDK:string#string"` — bare FQName string
+- **JSON (compact, with type args)**: `{"Reference": ["morphir/SDK:list#list", "a"]}` — array with FQName first, followed by type args
+- **JSON (expanded)**: `{"Reference": {"fqname": "morphir/SDK:list#list", "args": [...]}}` — object with fqname and args keys
 - **Legacy format**: `[["morphir"], ["s", "d", "k"]], [["string"]], ["string"]]` (package, module, local name arrays)
 
 ### Tuple
@@ -58,9 +58,9 @@ A composition of multiple types in a fixed order.
 - **Components**:
   - attributes: `TypeAttributes`
   - elements: Element types in order (`List Type`)
-- **JSON (canonical)**: `{"Tuple": ["morphir/sdk:int#int", "morphir/sdk:string#string"]}`
-- **JSON (compact)**: `["morphir/sdk:int#int", "morphir/sdk:string#string"]` — a bare array in type position is always a tuple
-- **JSON (expanded)**: `{"Tuple": {"elements": ["morphir/sdk:int#int", "morphir/sdk:string#string"]}}`
+- **JSON (canonical)**: `{"Tuple": ["morphir/SDK:int#int", "morphir/SDK:string#string"]}`
+- **JSON (compact)**: `["morphir/SDK:int#int", "morphir/SDK:string#string"]` — a bare array in type position is always a tuple
+- **JSON (expanded)**: `{"Tuple": {"elements": ["morphir/SDK:int#int", "morphir/SDK:string#string"]}}`
 
 ### Record
 
@@ -70,9 +70,9 @@ A composition of named fields with their types.
 - **Components**:
   - attributes: `TypeAttributes`
   - fields: Dictionary of field names to types
-- **JSON (compact)**: `{"Record": {"field-name": "morphir/sdk:string#string", "age": "morphir/sdk:int#int"}}`
-  - Fields are stored directly under `Record` without a wrapper
-  - Field names use kebab-case
+- **JSON (canonical)**: `{"Record": {"fields": {"field-name": "morphir/SDK:string#string", "age": "morphir/SDK:basics#int"}}}`
+- **JSON (expanded)**: `{"Record": {"attributes": {...}, "fields": {...}}}`
+- Fields live under `fields` so `attributes` can sit beside them (decision 0004). The field map directly under `Record` is accepted for one release and reported as `legacy_spelling` (decision 0006).
 
 ### ExtensibleRecord
 
@@ -83,18 +83,19 @@ A record type that can be extended with additional fields.
   - attributes: `TypeAttributes`
   - variable: Type variable representing the extension (`Name`)
   - fields: Known fields (dictionary of names to types)
-- **JSON**: `{"ExtensibleRecord": {"variable": "a", "fields": {"name": "morphir/sdk:string#string"}}}`
+- **JSON**: `{"ExtensibleRecord": {"variable": "a", "fields": {"name": "morphir/SDK:string#string"}}}`
 
 ### Function
 
 Represents a function type.
 
-- **Structure**: `Function attributes argumentType returnType`
+- **Structure**: `Function attributes parameterType returnType`
 - **Components**:
   - attributes: `TypeAttributes`
-  - argumentType: Argument type (`Type`)
+  - parameterType: Parameter type (`Type`)
   - returnType: Return type (`Type`)
-- **JSON**: `{"Function": {"argumentType": "morphir/sdk:int#int", "returnType": "morphir/sdk:string#string"}}`
+- **JSON**: `{"Function": {"parameterType": "morphir/SDK:int#int", "returnType": "morphir/SDK:string#string"}}`
+- `argumentType`, and the Rust encoder's `arg`/`result`, are accepted for one release (decisions 0006, 0007).
 
 ### Unit
 
@@ -116,17 +117,17 @@ Type expressions use maximally compact forms where context is unambiguous:
 | Type Expression | JSON Format | Example |
 |-----------------|-------------|---------|
 | Variable | Bare name string | `"a"` |
-| Reference (no args) | Bare FQName string | `"morphir/sdk:int#int"` |
-| Reference (with args) | Array with fqname + args | `{"Reference": ["morphir/sdk:list#list", "a"]}` |
-| Record | Object with field map | `{"Record": {"name": "morphir/sdk:string#string"}}` |
+| Reference (no args) | Bare FQName string | `"morphir/SDK:int#int"` |
+| Reference (with args) | Array with fqname + args | `{"Reference": ["morphir/SDK:list#list", "a"]}` |
+| Record | Object with fields wrapper | `{"Record": {"fields": {"name": "morphir/SDK:string#string"}}}` |
 | Tuple | Bare array, or wrapper with array | `["a", "b"]` or `{"Tuple": ["a", "b"]}` |
-| Function | Object with argument and return | `{"Function": {"argumentType": ..., "returnType": ...}}` |
+| Function | Object with parameter and return | `{"Function": {"parameterType": ..., "returnType": ...}}` |
 | Unit | Empty object | `{"Unit": {}}` |
 
 **Disambiguation**: Variables and References without args are both strings, but can be distinguished:
 - Variables: simple name without special characters (e.g., `"a"`, `"comparable"`)
-- References: FQName format with `:` and `#` (e.g., `"morphir/sdk:int#int"`)
-- A bare array is always a Tuple. A Reference with type arguments always carries the `Reference` wrapper, so `["morphir/sdk:int#int", "morphir/sdk:string#string"]` is the pair `(Int, String)`, never a parameterized reference
+- References: FQName format with `:` and `#` (e.g., `"morphir/SDK:int#int"`)
+- A bare array is always a Tuple. A Reference with type arguments always carries the `Reference` wrapper, so `["morphir/SDK:int#int", "morphir/SDK:string#string"]` is the pair `(Int, String)`, never a parameterized reference
 
 ### Expanded Format
 
@@ -134,14 +135,14 @@ For tooling that prefers explicit structure, an expanded format is available:
 
 | Type Expression | JSON Format | Example |
 |-----------------|-------------|---------|
-| Variable | Object with name key | `{"Variable": {"name": "a"}}` |
-| Reference | Object with fqname and args | `{"Reference": {"fqname": "morphir/sdk:list#list", "args": ["a"]}}` |
-| Record | Object with field map | `{"Record": {"name": "morphir/sdk:string#string"}}` |
-| Tuple | Wrapper with elements | `{"Tuple": {"elements": [...]}}` |
-| Function | Object with argument and return | `{"Function": {"argumentType": ..., "returnType": ...}}` |
-| Unit | Empty object | `{"Unit": {}}` |
+| Variable | Object with attributes and name | `{"Variable": {"attributes": {...}, "name": "a"}}` |
+| Reference | Object with attributes, fqname and args | `{"Reference": {"attributes": {...}, "fqname": "morphir/SDK:list#list", "args": ["a"]}}` |
+| Record | Object with attributes and fields | `{"Record": {"attributes": {...}, "fields": {...}}}` |
+| Tuple | Object with attributes and elements | `{"Tuple": {"attributes": {...}, "elements": [...]}}` |
+| Function | Object with attributes, parameter and return | `{"Function": {"attributes": {...}, "parameterType": ..., "returnType": ...}}` |
+| Unit | Object with attributes | `{"Unit": {"attributes": {...}}}` |
 
-**Note**: The expanded format is identical to compact for Record, Tuple, Function, and Unit types. Use `morphir ir migrate --expanded` to produce expanded format output.
+**Note**: Every node's expanded payload starts with an optional `attributes` member (decision 0005). Writers use the compact form whenever attributes are empty; an expanded payload with empty attributes is accepted and never written.
 
 ## Type Specifications
 
@@ -176,7 +177,7 @@ type alias UserId = String
 {
   "TypeAliasSpecification": {
     "typeParams": [],
-    "type": "morphir/sdk:string#string"
+    "type": "morphir/SDK:string#string"
   }
 }
 ```
@@ -208,9 +209,11 @@ type alias Person = { name : String, age : Int, email : Maybe String }
     "typeParams": [],
     "type": {
       "Record": {
-        "name": "morphir/sdk:string#string",
-        "age": "morphir/sdk:basics#int",
-        "email": { "Reference": ["morphir/sdk:maybe#maybe", "morphir/sdk:string#string"] }
+        "fields": {
+          "name": "morphir/SDK:string#string",
+          "age": "morphir/SDK:basics#int",
+          "email": { "Reference": ["morphir/SDK:maybe#maybe", "morphir/SDK:string#string"] }
+        }
       }
     }
   }
@@ -227,7 +230,7 @@ type alias Predicate a = a -> Bool
 {
   "TypeAliasSpecification": {
     "typeParams": ["a"],
-    "type": { "Function": { "argumentType": "a", "returnType": "morphir/sdk:basics#bool" } }
+    "type": { "Function": { "parameterType": "a", "returnType": "morphir/SDK:basics#bool" } }
   }
 }
 ```
@@ -344,7 +347,7 @@ type List a = Nil | Cons a (List a)
     "typeParams": ["a"],
     "constructors": {
       "nil": [],
-      "cons": [["head", "a"], ["tail", { "Reference": ["morphir/sdk:list#list", "a"] }]]
+      "cons": [["head", "a"], ["tail", { "Reference": ["morphir/SDK:list#list", "a"] }]]
     }
   }
 }
@@ -365,13 +368,13 @@ type PaymentMethod
     "typeParams": [],
     "constructors": {
       "credit-card": [
-        ["number", "morphir/sdk:string#string"],
-        ["expiry", "morphir/sdk:string#string"],
-        ["cvv", "morphir/sdk:string#string"]
+        ["number", "morphir/SDK:string#string"],
+        ["expiry", "morphir/SDK:string#string"],
+        ["cvv", "morphir/SDK:string#string"]
       ],
       "bank-transfer": [
-        ["account-number", "morphir/sdk:string#string"],
-        ["routing-number", "morphir/sdk:string#string"]
+        ["account-number", "morphir/SDK:string#string"],
+        ["routing-number", "morphir/SDK:string#string"]
       ],
       "cash": []
     }
@@ -400,9 +403,9 @@ type LocalDate
 {
   "DerivedTypeSpecification": {
     "typeParams": [],
-    "baseType": "morphir/sdk:string#string",
-    "fromBaseType": "morphir/sdk:local-date#from-i-s-o",
-    "toBaseType": "morphir/sdk:local-date#to-i-s-o"
+    "baseType": "morphir/SDK:string#string",
+    "fromBaseType": "morphir/SDK:local-date#from-i-s-o",
+    "toBaseType": "morphir/SDK:local-date#to-i-s-o"
   }
 }
 ```
@@ -418,9 +421,9 @@ type Decimal
 {
   "DerivedTypeSpecification": {
     "typeParams": [],
-    "baseType": "morphir/sdk:string#string",
-    "fromBaseType": "morphir/sdk:decimal#from-string",
-    "toBaseType": "morphir/sdk:decimal#to-string"
+    "baseType": "morphir/SDK:string#string",
+    "fromBaseType": "morphir/SDK:decimal#from-string",
+    "toBaseType": "morphir/SDK:decimal#to-string"
   }
 }
 ```
@@ -437,8 +440,10 @@ type Money
     "typeParams": [],
     "baseType": {
       "Record": {
-        "amount": "morphir/sdk:decimal#decimal",
-        "currency": "morphir/sdk:string#string"
+        "fields": {
+          "amount": "morphir/SDK:decimal#decimal",
+          "currency": "morphir/SDK:string#string"
+        }
       }
     },
     "fromBaseType": "my-org/finance:money#from-record",
@@ -458,7 +463,7 @@ type NonEmpty a
 {
   "DerivedTypeSpecification": {
     "typeParams": ["a"],
-    "baseType": { "Reference": ["morphir/sdk:list#list", "a"] },
+    "baseType": { "Reference": ["morphir/SDK:list#list", "a"] },
     "fromBaseType": "my-org/collections:non-empty#from-list",
     "toBaseType": "my-org/collections:non-empty#to-list"
   }

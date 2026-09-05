@@ -52,14 +52,34 @@ distribution:
 { "formatVersion": 4, "distribution": ["Library", "example/v4-test", {}, { "modules": [] }] }
 ```
 
-## distributions-0004: Complete library, JSON and YAML agree {node=Distribution status=pending}
+## distributions-0004: Complete library, JSON and YAML agree {node=Distribution}
 
-The complete example writes record fields under a fields member, which types-0005 leaves to bead morphir-ir-v4-stabilize.1. Until that decision lands, this whole-document case is pending and its two renderings are illustrations only.
+The published complete example and its YAML rendering are the same distribution. Both write record fields under `fields` (decision 0004), the SDK as `morphir/SDK` (decision 0011), and the list function's `parameterType` (decision 0007).
 
-```text
+```text canonical
 website/static/ir/examples/v4/complete-example.json
 ```
 
-```text
+```text canonical
 spec/ir/mck/documents/complete-example.yaml
+```
+
+## distributions-0005: The SDK dependency is keyed morphir/SDK {node=Distribution}
+
+Decision 0011. `morphir/sdk` is a valid name for some other package, so it is not rejected; it is simply not the SDK.
+
+```yaml canonical
+formatVersion: 4
+distribution:
+  Library:
+    packageName: example
+    dependencies:
+      morphir/SDK:
+        modules: {}
+    def:
+      modules: {}
+```
+
+```json canonical
+{ "formatVersion": 4, "distribution": { "Library": { "packageName": "example", "dependencies": { "morphir/SDK": { "modules": {} } }, "def": { "modules": {} } } } }
 ```

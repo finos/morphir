@@ -6,6 +6,8 @@ sidebar_position: 8
 
 # Decorations
 
+> **Status:** Out of v4.0.0 (decision 0014); returns as its own design with a specified merge algebra the kit can pin.
+
 Decorations provide a way to attach additional metadata to IR nodes without modifying the core IR structure. They are stored separately from the IR in a layered, composable system.
 
 ## Design Principles
