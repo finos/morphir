@@ -4,7 +4,7 @@
     "Library": {
       "packageName": "regulation",
       "dependencies": {
-        "morphir/sdk": {
+        "morphir/SDK": {
           "modules": {
             "basics": {
               "types": {
@@ -21,10 +21,10 @@
               "values": {
                 "add": {
                   "inputs": {
-                    "a": "morphir/sdk:basics#int",
-                    "b": "morphir/sdk:basics#int"
+                    "a": "morphir/SDK:basics#int",
+                    "b": "morphir/SDK:basics#int"
                   },
-                  "output": "morphir/sdk:basics#int"
+                  "output": "morphir/SDK:basics#int"
                 }
               }
             },
@@ -37,7 +37,7 @@
                     ],
                     "typeExp": {
                       "Reference": [
-                        "morphir/sdk:list#list",
+                        "morphir/SDK:list#list",
                         "a"
                       ]
                     }
@@ -49,20 +49,20 @@
                   "inputs": {
                     "f": {
                       "Function": {
-                        "argumentType": "a",
+                        "parameterType": "a",
                         "returnType": "b"
                       }
                     },
                     "list": {
                       "Reference": [
-                        "morphir/sdk:list#list",
+                        "morphir/SDK:list#list",
                         "a"
                       ]
                     }
                   },
                   "output": {
                     "Reference": [
-                      "morphir/sdk:list#list",
+                      "morphir/SDK:list#list",
                       "b"
                     ]
                   }
@@ -102,7 +102,7 @@
                         "fields": {
                           "assets": {
                             "Reference": [
-                              "morphir/sdk:list#list",
+                              "morphir/SDK:list#list",
                               "regulation:u-s/f-r-2052-a/data-tables/inflows#assets"
                             ]
                           }
@@ -119,7 +119,7 @@
                     "inputTypes": {
                       "tables": "regulation:u-s/f-r-2052-a/data-tables#data-tables"
                     },
-                    "outputType": "morphir/sdk:basics#float",
+                    "outputType": "morphir/SDK:basics#float",
                     "body": {
                       "Literal": {
                         "attributes": {},
