@@ -8,12 +8,12 @@ experimental = true
 
 [tools]
 # Core tools
-rust = "1.98.0"
+rust = "1.98.1"
 python = "3.14.7"
 
 # JavaScript runtimes for website and tooling
 node = "24.20.0"
-bun = "1.4.0"
+bun = "1.4.2"
 "npm:morphir-elm" = { version = "2.100.0", allow_low_downloads = true }
 
 # Rust tools
