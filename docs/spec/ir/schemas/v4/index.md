@@ -467,7 +467,7 @@ A complete Library distribution example showing the full structure:
 > - Distribution uses `{ "Library": { ... } }` wrapper
 > - Modules are objects keyed by module path: `{ "module/path": {...} }`
 > - Types and values within modules are objects keyed by name: `{ "type-name": {...} }`
-> - Record fields are objects keyed by field name: `{ "field-name": type }`
+> - A Record carries its fields under a `fields` member, itself an object keyed by field name (decision 0004): `{"Record": {"fields": {"field-name": type}}}`
 > - Dependencies are objects keyed by package name: `{ "package/name": spec }`
 
 ### Module Definition
