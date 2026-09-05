@@ -2,7 +2,7 @@
 
 ## 2026-09-05
 
-* **Update**: Implemented decisions 0004 to 0014 (plan 2d): kit cases flipped and extended to 74, reference codec, both schemas, examples, specification and design pages, and the naming corpus's truncation cases. The remaining open decision is the 4.1.0 support policy (bead morphir-ir-v4-stabilize.8).
+* **Update**: Implemented decisions 0004 to 0014 (plan 2d): kit cases flipped and extended to 74, reference codec, both schemas, examples, specification and design pages, and the naming corpus's truncation cases. The remaining open decisions are the 4.1.0 support policy and the naming codec's home (decision 0003).
 
 ## 2026-09-04
 

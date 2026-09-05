@@ -164,7 +164,7 @@ stays open. The kit flips, schema, example, and prose changes that implement the
 landed on 2026-09-05: the kit carries 74 cases with the records' spellings (`accepted warning=legacy_spelling`
 marks the one-release window), the reference codec passes every JSON fence, both schemas and every accepted
 fence agree (`mise run mck:schema-check`), and the examples and pages are rewritten. Item 6 is the only open
-decision.
+spelling decision. Item 8, where the naming codec model lives, stays open under decision 0003.
 
 These cannot be closed by editing prose. Each needs a maintainer decision, and each has a bead.
 
