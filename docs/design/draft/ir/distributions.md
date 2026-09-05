@@ -553,7 +553,7 @@ For Specs distributions (or dependencies), files contain specifications instead 
 
 ### Type Specification File
 
-File: `.morphir-dist/pkg/morphir/sdk/int.type.json`
+File: `.morphir-dist/pkg/morphir/_sdk/int.type.json`
 
 ```json
 {
@@ -568,7 +568,7 @@ File: `.morphir-dist/pkg/morphir/sdk/int.type.json`
 
 ### Value Specification File
 
-File: `.morphir-dist/pkg/morphir/sdk/add.value.json`
+File: `.morphir-dist/pkg/morphir/_sdk/add.value.json`
 
 ```json
 {

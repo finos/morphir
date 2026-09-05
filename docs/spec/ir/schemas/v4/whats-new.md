@@ -178,12 +178,12 @@ V4 supports compact shorthand notation for types and values when attributes are 
 ```json
 // Variable
 "a"                                    // shorthand
-{ "Variable": { "name": "a" } }        // expanded (attributes first)
-{ "Variable": { "attributes": {}, "name": "a" } }
+{ "Variable": { "name": "a" } }        // expanded, attributes omitted
+{ "Variable": { "attributes": {}, "name": "a" } }        // expanded (attributes first)
 
 // Simple reference (no type args)
 "morphir/SDK:basics#int"                           // shorthand
-{ "Reference": { "fqname": "morphir/SDK:basics#int" } }  // canonical
+{ "Reference": { "fqname": "morphir/SDK:basics#int" } }  // accepted
 
 // Parameterized type: List Int
 { "Reference": ["morphir/SDK:list#list", "morphir/SDK:basics#int"] }      // canonical
@@ -480,12 +480,12 @@ This applies to all V4 constructs. The table below summarizes key formats:
 | **TupleType** | `{ "Tuple": [t1, t2, ...] }` | `[t1, t2, ...]`, `{ "Tuple": { "elements": [...] } }` |
 | **TuplePattern** | `{ "TuplePattern": [p1, p2, ...] }` | `[p1, p2, ...]`, `{ "TuplePattern": { "patterns": [...] } }` |
 | **TupleValue** | `{ "Tuple": [v1, v2, ...] }` | `{ "Tuple": { "elements": [...] } }` (NO bare arrays) |
-| **ListValue** | `{ "List": [v1, v2, ...] }` | `{ "List": { "items": [...] } }` (NO bare arrays) |
+| **ListValue** | `{ "List": [v1, v2, ...] }` | `[v1, v2, ...]`, `{ "List": { "items": [...] } }` |
 | **Literals** | `{ "IntegerLiteral": 42 }` | `{ "IntegerLiteral": { "value": 42 } }`, `{ "WholeNumberLiteral": 42 }` |
 
 :::note Design Rationale
 - **TupleType** allows bare arrays because ReferenceType does NOT (avoiding ambiguity)
-- **TupleValue/ListValue** do NOT allow bare arrays because they would be ambiguous with each other
+- A bare array is a List, and a Tuple always carries its wrapper, so the two cannot be confused (decision 0009)
 - **Access abbreviations** like `"pub"` improve ergonomics for hand-written IR
 :::
 
