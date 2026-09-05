@@ -336,7 +336,7 @@ Single-blob `morphir-ir.json`:
     "Library": {
       "packageName": "my-org/my-project",
       "dependencies": {
-        "morphir/sdk": {
+        "morphir/SDK": {
           "modules": {
             "basics": { "types": { "...": "..." }, "values": { "...": "..." } },
             "string": { "types": { "...": "..." }, "values": { "...": "..." } },
@@ -400,7 +400,7 @@ File: `.morphir-dist/pkg/my-org/domain/user.type.json`
         "Record": {
           "fields": {
             "created-at": { "Reference": { "fqname": "my-org/sdk:local-date-time#local-date-time" } },
-            "email": { "Reference": { "fqname": "morphir/sdk:string#string" } },
+            "email": { "Reference": { "fqname": "morphir/SDK:string#string" } },
             "user-ID": { "Reference": { "fqname": "my-org/domain:types#user-ID" } }
           }
         }
@@ -423,17 +423,17 @@ File: `.morphir-dist/pkg/my-org/domain/get-user-by-email.value.json`
     "value": {
       "ExpressionBody": {
         "inputTypes": {
-          "email": { "Reference": { "fqname": "morphir/sdk:string#string" } },
+          "email": { "Reference": { "fqname": "morphir/SDK:string#string" } },
           "users": {
             "Reference": {
-              "fqname": "morphir/sdk:list#list",
+              "fqname": "morphir/SDK:list#list",
               "args": [{ "Reference": { "fqname": "my-org/domain:types#user" } }]
             }
           }
         },
         "outputType": {
           "Reference": {
-            "fqname": "morphir/sdk:maybe#maybe",
+            "fqname": "morphir/SDK:maybe#maybe",
             "args": [{ "Reference": { "fqname": "my-org/domain:types#user" } }]
           }
         },
@@ -479,7 +479,7 @@ File: `.morphir-dist/manifest.json`
 {
   "formatVersion": "4.0.0",
   "distribution": "Specs",
-  "package": "morphir/sdk",
+  "package": "morphir/SDK",
   "version": "3.0.0",
   "created": "2026-01-15T12:00:00Z"
 }
@@ -580,10 +580,10 @@ File: `.morphir-dist/pkg/morphir/sdk/add.value.json`
       "This is a native operation implemented per-platform."
     ],
     "inputs": {
-      "a": { "Reference": { "fqname": "morphir/sdk:basics#int" } },
-      "b": { "Reference": { "fqname": "morphir/sdk:basics#int" } }
+      "a": { "Reference": { "fqname": "morphir/SDK:basics#int" } },
+      "b": { "Reference": { "fqname": "morphir/SDK:basics#int" } }
     },
-    "output": { "Reference": { "fqname": "morphir/sdk:basics#int" } }
+    "output": { "Reference": { "fqname": "morphir/SDK:basics#int" } }
   }
 }
 ```

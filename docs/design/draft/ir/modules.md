@@ -247,7 +247,7 @@ Public interface of a module (used in dependencies):
         "body": {
           "Record": {
             "fields": {
-              "email": { "Reference": { "fqname": "morphir/sdk:string#string" } },
+              "email": { "Reference": { "fqname": "morphir/SDK:string#string" } },
               "user-ID": { "Reference": { "fqname": "my-org/domain:types#user-ID" } }
             }
           }
@@ -262,9 +262,9 @@ Public interface of a module (used in dependencies):
     "validate-email": {
       "doc": "Check if an email address is valid",
       "inputs": {
-        "email": { "Reference": { "fqname": "morphir/sdk:string#string" } }
+        "email": { "Reference": { "fqname": "morphir/SDK:string#string" } }
       },
-      "output": { "Reference": { "fqname": "morphir/sdk:basics#bool" } }
+      "output": { "Reference": { "fqname": "morphir/SDK:basics#bool" } }
     }
   }
 }
@@ -284,7 +284,7 @@ Full implementation of a module:
         "body": {
           "Record": {
             "fields": {
-              "email": { "Reference": { "fqname": "morphir/sdk:string#string" } },
+              "email": { "Reference": { "fqname": "morphir/SDK:string#string" } },
               "user-ID": { "Reference": { "fqname": "my-org/domain:types#user-ID" } }
             }
           }
@@ -297,9 +297,9 @@ Full implementation of a module:
       "TypeAliasDefinition": {
         "body": {
           "Reference": {
-            "fqname": "morphir/sdk:dict#dict",
+            "fqname": "morphir/SDK:dict#dict",
             "args": [
-              { "Reference": { "fqname": "morphir/sdk:string#string" } },
+              { "Reference": { "fqname": "morphir/SDK:string#string" } },
               { "Reference": { "fqname": "my-org/domain:types#user" } }
             ]
           }
@@ -313,9 +313,9 @@ Full implementation of a module:
       "doc": "Check if an email address is valid",
       "ExpressionBody": {
         "inputTypes": {
-          "email": { "Reference": { "fqname": "morphir/sdk:string#string" } }
+          "email": { "Reference": { "fqname": "morphir/SDK:string#string" } }
         },
-        "outputType": { "Reference": { "fqname": "morphir/sdk:basics#bool" } },
+        "outputType": { "Reference": { "fqname": "morphir/SDK:basics#bool" } },
         "body": { "Variable": { "name": "..." } }
       }
     }

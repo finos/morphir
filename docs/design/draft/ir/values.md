@@ -6,6 +6,8 @@ sidebar_position: 4
 
 # Values Module
 
+> **Status:** `Hole` stays a value expression; `Native` and `External` are removed from it and are definition bodies only ([decision 0008](../../../../kb/bundles/morphir/morphir-ir/decisions/0008-hole-is-an-expression-native-and-external-are-definition-bodies.md)). Bare arrays are lists and bare scalars are literals at value position ([decision 0009](../../../../kb/bundles/morphir/morphir-ir/decisions/0009-bare-arrays-are-lists-and-bare-scalars-are-literals-at-value-position.md)).
+
 This module defines the value expressions, literals, patterns, and value definitions for Morphir IR.
 
 ## Literals
@@ -221,20 +223,6 @@ pub type Value(attributes) {
     reason: HoleReason,
     expected_type: Option(Type(attributes)),
   )
-
-  /// Native platform operation (no IR body)
-  Native(
-    attributes: attributes,
-    fqname: FQName,
-    native_info: NativeInfo,
-  )
-
-  /// External FFI call
-  External(
-    attributes: attributes,
-    external_name: String,
-    target_platform: String,
-  )
 }
 
 /// Information about native operations
@@ -280,12 +268,12 @@ pub type ValueDefinitionBody(attributes) {
     native_info: NativeInfo,
   )
 
-  /// External FFI (no IR body)
+  /// External FFI: per-target bindings with an optional fallback body
   ExternalBody(
     input_types: List(#(Name, Type(attributes))),
     output_type: Type(attributes),
-    external_name: String,
-    target_platform: String,
+    externals: List(ExternalBinding),
+    body: Option(Value(attributes)),
   )
 
   /// Incomplete definition (v4 - best-effort support)
@@ -295,6 +283,11 @@ pub type ValueDefinitionBody(attributes) {
     incompleteness: Incompleteness,
     partial_body: Option(Value(attributes)),
   )
+}
+
+/// One target's binding for an external operation
+pub type ExternalBinding {
+  ExternalBinding(target_platform: String, external_name: String)
 }
 
 /// Top-level value definition (in a module)
@@ -428,7 +421,7 @@ Bare arrays are unambiguous for TuplePattern because no other pattern type uses 
 ```json
 {
   "ConstructorPattern": {
-    "constructor": "morphir/sdk:maybe#just",
+    "constructor": "morphir/SDK:maybe#just",
     "args": [
       { "AsPattern": { "value": { "WildcardPattern": {} } } }
     ]
@@ -511,13 +504,13 @@ V4 supports compact shorthand for value expressions when attributes are empty.
 #### Reference
 
 ```json
-{ "Reference": { "fqname": "morphir/sdk:list#map" } }
+{ "Reference": { "fqname": "morphir/SDK:list#map" } }
 ```
 
 #### Constructor
 
 ```json
-{ "Constructor": { "fqname": "morphir/sdk:maybe#just" } }
+{ "Constructor": { "fqname": "morphir/SDK:maybe#just" } }
 ```
 
 #### Tuple (TupleValue)
@@ -621,7 +614,7 @@ Bare arrays are **NOT** allowed for ListValue. This would be ambiguous with Tupl
 ```json
 {
   "Apply": {
-    "function": { "Reference": { "fqname": "morphir/sdk:list#map" } },
+    "function": { "Reference": { "fqname": "morphir/SDK:list#map" } },
     "argument": { "Variable": { "name": "transform" } }
   }
 }
@@ -637,7 +630,7 @@ Bare arrays are **NOT** allowed for ListValue. This would be ambiguous with Tupl
       "Apply": {
         "function": {
           "Apply": {
-            "function": { "Reference": { "fqname": "morphir/sdk:basics#add" } },
+            "function": { "Reference": { "fqname": "morphir/SDK:basics#add" } },
             "argument": { "Variable": { "name": "x" } }
           }
         },
@@ -658,7 +651,7 @@ Name becomes the key:
     "x": {
       "def": {
         "ExpressionBody": {
-          "outputType": { "Reference": { "fqname": "morphir/sdk:basics#int" } },
+          "outputType": { "Reference": { "fqname": "morphir/SDK:basics#int" } },
           "body": { "Literal": { "literal": { "IntegerLiteral": { "value": 42 } } } }
         }
       },
@@ -666,7 +659,7 @@ Name becomes the key:
         "Apply": {
           "function": {
             "Apply": {
-              "function": { "Reference": { "fqname": "morphir/sdk:basics#add" } },
+              "function": { "Reference": { "fqname": "morphir/SDK:basics#add" } },
               "argument": { "Variable": { "name": "x" } }
             }
           },
@@ -688,15 +681,15 @@ Binding names as keys:
     "bindings": {
       "is-even": {
         "ExpressionBody": {
-          "inputTypes": [["n", { "Reference": { "fqname": "morphir/sdk:basics#int" } }]],
-          "outputType": { "Reference": { "fqname": "morphir/sdk:basics#bool" } },
+          "inputTypes": [["n", { "Reference": { "fqname": "morphir/SDK:basics#int" } }]],
+          "outputType": { "Reference": { "fqname": "morphir/SDK:basics#bool" } },
           "body": { "Variable": { "name": "..." } }
         }
       },
       "is-odd": {
         "ExpressionBody": {
-          "inputTypes": [["n", { "Reference": { "fqname": "morphir/sdk:basics#int" } }]],
-          "outputType": { "Reference": { "fqname": "morphir/sdk:basics#bool" } },
+          "inputTypes": [["n", { "Reference": { "fqname": "morphir/SDK:basics#int" } }]],
+          "outputType": { "Reference": { "fqname": "morphir/SDK:basics#bool" } },
           "body": { "Variable": { "name": "..." } }
         }
       }
@@ -726,11 +719,11 @@ Binding names as keys:
     "subject": { "Variable": { "name": "maybe-value" } },
     "cases": [
       [
-        { "ConstructorPattern": { "constructor": "morphir/sdk:maybe#just", "args": [{ "AsPattern": { "v": { "WildcardPattern": {} } } }] } },
+        { "ConstructorPattern": { "constructor": "morphir/SDK:maybe#just", "args": [{ "AsPattern": { "v": { "WildcardPattern": {} } } }] } },
         { "Variable": { "name": "v" } }
       ],
       [
-        { "ConstructorPattern": { "constructor": "morphir/sdk:maybe#nothing" } },
+        { "ConstructorPattern": { "constructor": "morphir/SDK:maybe#nothing" } },
         { "Literal": { "literal": { "IntegerLiteral": { "value": 0 } } } }
       ]
     ]
@@ -759,24 +752,13 @@ Binding names as keys:
     "reason": {
       "UnresolvedReference": { "target": "my-org/project:module#deleted-function" }
     },
-    "expectedType": { "Reference": { "fqname": "morphir/sdk:basics#int" } }
+    "expectedType": { "Reference": { "fqname": "morphir/SDK:basics#int" } }
   }
 }
 ```
 
-#### Native (v4 - platform operation)
-
-```json
-{
-  "Native": {
-    "fqname": "morphir/sdk:basics#add",
-    "nativeInfo": {
-      "hint": { "Arithmetic": {} },
-      "description": "Integer addition"
-    }
-  }
-}
-```
+Decision 0008 removes `Native` and `External` as value expressions. A native or foreign operation is always a
+definition (`NativeBody` or `ExternalBody`); every use site is a `Reference` to it.
 
 ### Value Definition Examples
 
@@ -788,14 +770,14 @@ Input names as keys:
 {
   "ExpressionBody": {
     "inputTypes": {
-      "x": { "Reference": { "fqname": "morphir/sdk:basics#int" } }
+      "x": { "Reference": { "fqname": "morphir/SDK:basics#int" } }
     },
-    "outputType": { "Reference": { "fqname": "morphir/sdk:basics#int" } },
+    "outputType": { "Reference": { "fqname": "morphir/SDK:basics#int" } },
     "body": {
       "Apply": {
         "function": {
           "Apply": {
-            "function": { "Reference": { "fqname": "morphir/sdk:basics#add" } },
+            "function": { "Reference": { "fqname": "morphir/SDK:basics#add" } },
             "argument": { "Variable": { "name": "x" } }
           }
         },
@@ -812,13 +794,31 @@ Input names as keys:
 {
   "NativeBody": {
     "inputTypes": {
-      "a": { "Reference": { "fqname": "morphir/sdk:basics#int" } },
-      "b": { "Reference": { "fqname": "morphir/sdk:basics#int" } }
+      "a": { "Reference": { "fqname": "morphir/SDK:basics#int" } },
+      "b": { "Reference": { "fqname": "morphir/SDK:basics#int" } }
     },
-    "outputType": { "Reference": { "fqname": "morphir/sdk:basics#int" } },
+    "outputType": { "Reference": { "fqname": "morphir/SDK:basics#int" } },
     "nativeInfo": {
       "hint": { "Arithmetic": {} }
     }
+  }
+}
+```
+
+#### ExternalBody (external operation, two bindings and a fallback)
+
+```json
+{
+  "ExternalBody": {
+    "inputTypes": {
+      "x": { "Reference": { "fqname": "morphir/SDK:basics#int" } }
+    },
+    "outputType": { "Reference": { "fqname": "morphir/SDK:basics#int" } },
+    "externals": [
+      { "targetPlatform": "erlang", "externalName": "math:abs" },
+      { "targetPlatform": "javascript", "externalName": "Math.abs" }
+    ],
+    "body": { "Variable": { "name": "x" } }
   }
 }
 ```
@@ -829,10 +829,10 @@ Input names as keys:
 {
   "ValueSpecification": {
     "inputs": {
-      "x": { "Reference": { "fqname": "morphir/sdk:basics#int" } },
-      "y": { "Reference": { "fqname": "morphir/sdk:basics#int" } }
+      "x": { "Reference": { "fqname": "morphir/SDK:basics#int" } },
+      "y": { "Reference": { "fqname": "morphir/SDK:basics#int" } }
     },
-    "output": { "Reference": { "fqname": "morphir/sdk:basics#int" } }
+    "output": { "Reference": { "fqname": "morphir/SDK:basics#int" } }
   }
 }
 ```

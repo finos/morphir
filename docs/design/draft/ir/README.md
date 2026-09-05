@@ -59,10 +59,10 @@ This specification is organized into the following sections:
 | [Modules](./modules.md) | Draft | Module structure, documentation, and serialization |
 | [Packages](./packages.md) | Draft | Package specifications and definitions |
 | [Distributions](./distributions.md) | Draft | Distribution types, semantic versioning, and VFS layout |
-| [Decorations](./decorations.md) | Partial | Layered metadata system for IR annotations |
-| [Document](./document.md) | Draft | Schema-less JSON-like data type |
-| [Metadata](./meta.md) | Draft | File-level metadata (`$meta`) |
-| [References](./refs.md) | Draft | Node references (`$ref`) for deduplication |
+| [Decorations](./decorations.md) | Out of 4.0.0 (decision 0014) | Layered metadata system for IR annotations |
+| [Document](./document.md) | In 4.0.0 (decision 0013) | Schema-less JSON-like data type |
+| [Metadata](./meta.md) | Out of 4.0.0 (decision 0014) | File-level metadata (`$meta`) |
+| [References](./refs.md) | Out of 4.0.0 (decision 0014) | Node references (`$ref`) for deduplication |
 
 For process and WASM extension runtimes, MEP, and verified installation, see
 [Extensions](../extensions/README.mdx).
@@ -130,7 +130,7 @@ The VFS mode uses **one file per definition**:
 .morphir-dist/
 ├── manifest.json          # Distribution metadata and format version
 ├── morphir.toml           # Project-level configuration
-├── session.jsonl          # Append-only transaction journal (design only; not in the spec or schema)
+├── session.jsonl          # Append-only transaction journal (design only; not in the spec or schema; out of the IR per decision 0014)
 ├── pkg/                   # Local project IR (Namespace-to-Directory)
 │   └── my-org/
 │       └── my-project/
@@ -142,10 +142,10 @@ The VFS mode uses **one file per definition**:
 │       └── sdk/
 │           └── 1.2.0/
 │               └── ...
-└── deco/                  # Decorations (layered metadata)
-    ├── format.json            # Decoration system metadata
-    ├── schemas/               # Local schema cache
-    └── layers/                # Decoration layers (core, tooling, user)
+└── deco/                  # Decorations (layered metadata) (out of 4.0.0)
+    ├── format.json            # Decoration system metadata (out of 4.0.0)
+    ├── schemas/               # Local schema cache (out of 4.0.0)
+    └── layers/                # Decoration layers (core, tooling, user) (out of 4.0.0)
 ```
 
 ### VFS File Types
@@ -156,7 +156,7 @@ The VFS mode uses **one file per definition**:
 | `module.json` | Module manifest | Lists types and values in the module |
 | `*.type.json` | Type definition OR specification | TypeDefinition or TypeSpecification |
 | `*.value.json` | Value definition OR specification | ValueDefinition or ValueSpecification |
-| `session.jsonl` | Transaction journal | Append-only log for crash recovery |
+| `session.jsonl` | Transaction journal | Append-only log for crash recovery; out of the IR per decision 0014 |
 
 ### VFS File Polymorphism
 
