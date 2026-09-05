@@ -152,6 +152,16 @@ marked *mechanical* need no decision; rows marked *decision* appear again under 
 
 ## Open decisions
 
+On 2026-09-04 the maintainer took every spelling decision below through the kit's pending cases, one at a time,
+and the outcomes are Decision Records 0004 to 0014 in [decisions](/decisions/index.md): Record fields under a
+`fields` member (0004), attributes as an optional first payload member (0005), the schema's member names with a
+one-release window (0006), parameters versus arguments (0007), Hole as an expression with native and external
+operations as definition bodies (0008), bare arrays as lists and bare scalars as literals (0009), a flattened `doc`
+member (0010), the SDK package as `morphir/SDK` (0011), one legacy name grammar and one FileStem (0012),
+`DocumentLiteral` in 4.0.0 (0013), and the scope of the remaining design-only features (0014). Items 1 to 5 and 7
+below are therefore decided; the list is kept as the record of what was asked. Item 6 (the exact-release table)
+stays open. The kit flips, schema, example, and prose changes that implement the records are plan 2d.
+
 These cannot be closed by editing prose. Each needs a maintainer decision, and each has a bead.
 
 1. **Value node vocabulary.** One table of member names for every value node, and one rule for where

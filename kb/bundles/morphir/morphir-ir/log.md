@@ -2,6 +2,15 @@
 
 ## 2026-09-04
 
+* **Creation**: Added [decision 0004](/decisions/0004-record-fields-are-spelled-under-a-fields-member.md) and [decision 0005](/decisions/0005-attributes-are-an-optional-first-member-of-every-node-payload.md), the first two spelling decisions closed through the Morphir Compatibility Kit; both were surfaced by the reference codec's first run against the kit.
+* **Creation**: Added [decision 0006](/decisions/0006-node-member-names-follow-the-schema-with-a-one-release-window.md) and [decision 0007](/decisions/0007-parameters-are-declared-and-arguments-are-applied.md): the schema's member names are canonical with a one-release window for the Rust spellings, and a Function type has a parameterType while constructors have parameters.
+* **Creation**: Added [decision 0008](/decisions/0008-hole-is-an-expression-native-and-external-are-definition-bodies.md): Hole stays an expression, Native and External expressions are removed, and ExternalBody carries per-target bindings with an optional fallback body.
+* **Creation**: Added [decision 0009](/decisions/0009-bare-arrays-are-lists-and-bare-scalars-are-literals-at-value-position.md): at value position a bare array is a List, bare scalars are literals, and Tuple stays wrapped.
+* **Creation**: Added [decision 0010](/decisions/0010-documentation-is-a-flattened-doc-member.md): documentation is a flattened doc member, first beside the variant, and a document-tree node file carries it in one place.
+* **Creation**: Added [decision 0011](/decisions/0011-the-sdk-package-is-named-morphir-slash-sdk-uppercase.md): the SDK package is morphir/SDK; every morphir/sdk in published v4 material is rewritten.
+* **Creation**: Added [decision 0012](/decisions/0012-one-legacy-name-grammar-and-one-file-stem-definition.md): one legacy word grammar in both schemas, FileStem defined once with its truncation suffix, pathBudget kept required, fileNames added to the module manifest.
+* **Creation**: Added [decision 0013](/decisions/0013-document-literal-is-in-v4-with-a-raw-payload.md): DocumentLiteral joins v4.0.0 with a raw JSON payload, no pattern matching, and a small SDK.
+* **Creation**: Added [decision 0014](/decisions/0014-scope-of-v4-0-0-for-design-only-features.md): decorations, $ref and the session journal are out of 4.0.0, $meta is reserved, and the books fixture migrates to product-ID.
 * **Update**: The corpus at `spec/ir/mck/` replaces the schema as the tiebreak; the kb note now says so. Added the `morphir-typescript` and `morphir-gleam` submodules; the mck parser and check command live in the former.
 * **Update**: Renamed the hand-written conformance corpus to the Morphir Compatibility Kit (MCK): spec/ir/mck/, the @finos/morphir-mck package, and the mck command. The generated naming and format-version corpora keep their names.
 
