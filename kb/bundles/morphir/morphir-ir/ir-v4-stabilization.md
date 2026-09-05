@@ -160,7 +160,11 @@ operations as definition bodies (0008), bare arrays as lists and bare scalars as
 member (0010), the SDK package as `morphir/SDK` (0011), one legacy name grammar and one FileStem (0012),
 `DocumentLiteral` in 4.0.0 (0013), and the scope of the remaining design-only features (0014). Items 1 to 5 and 7
 below are therefore decided; the list is kept as the record of what was asked. Item 6 (the exact-release table)
-stays open. The kit flips, schema, example, and prose changes that implement the records are plan 2d.
+stays open. The kit flips, schema, example, and prose changes that implement the records are plan 2d. Plan 2d
+landed on 2026-09-05: the kit carries 74 cases with the records' spellings (`accepted warning=legacy_spelling`
+marks the one-release window), the reference codec passes every JSON fence, both schemas and every accepted
+fence agree (`mise run mck:schema-check`), and the examples and pages are rewritten. Item 6 is the only open
+decision.
 
 These cannot be closed by editing prose. Each needs a maintainer decision, and each has a bead.
 
@@ -219,9 +223,8 @@ decision row about a spelling has a `pending` case naming its bead; rows about s
 body validation, the `session.jsonl` and `deco` scope) have none, because they are not spellings. Case IDs
 (`types-0003`) are stable and are the way beads and decision records cite the kit.
 
-Rejection-only cases such as names-0003 are active. The Record spelling case (types-0005) and the whole-document
-case (distributions-0004) are pending on the vocabulary decision, and the review of the seed kit found that the
-v4 schema validates any content inside an access-controlled definition, so it never decided that spelling.
+Rejection-only cases such as names-0003 are active. No case is pending except versions-0002. It is a write
+refusal the kit grammar cannot express until plan 2b.
 
 ## Tracking
 
