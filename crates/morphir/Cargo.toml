@@ -60,7 +60,7 @@ toml = { workspace = true }
 dirs = "6.0"
 schemars = "1.0"
 indexmap = { version = "2", features = ["serde"] }
-getrandom = "0.3"
+getrandom = "0.4"
 subtle = "2"
 webbrowser = "1"
 usage-lib = { version = "6", features = ["clap", "docs"] }
@@ -93,7 +93,7 @@ tokio = { version = "1", features = ["test-util"] }
 ed25519-dalek = { workspace = true }
 futures-util = "0.3"
 reqwest = { version = "0.13", default-features = false, features = ["cookies", "json", "rustls"] }
-tokio-tungstenite = "0.29"
+tokio-tungstenite = "0.30"
 
 [build-dependencies]
 chrono = "0.4"
