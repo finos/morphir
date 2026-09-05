@@ -965,6 +965,7 @@ Scope:
 - Convention exports
 - Workspace overrides and snapshots
 - Explicit local trust policy
+- Package release statements signed and verified through an explicitly trusted local development key
 - Core build, resolve, pack, verify, publish, sync, and tree operations
 
 Exit criterion: the complete offline workflow passes the shared conformance cases and reproduces the same Package content digest across two implementations.
@@ -976,7 +977,7 @@ Add:
 - Static Git or HTTPS registry index
 - Deterministic downloadable archive
 - Well-known authority discovery
-- Signed delegations and Package release statements
+- Signed delegations and Package release statement verification across independent clients
 - Mirrors, offline cache, and vendoring
 - Yank, revoke, and tombstone status
 - Structural compatibility checks

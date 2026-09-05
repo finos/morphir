@@ -191,7 +191,7 @@ The canonical identity of a Morphir package release, consisting of its Package p
 _Avoid_: Package requirement, source descriptor, content digest
 
 **Morphir package PURL**:
-The standardized external Package URL representation of an exact Package release ID for SBOM, provenance, catalog, vulnerability, and repository interoperability. It does not represent requirements, sources, dependency slots, exports, or unpublished snapshots.
+An external Package URL representation proposed for upstream registration as the `morphir` package type. After registration, it provides a standardized exact release identifier for SBOM, provenance, catalog, vulnerability, and repository interoperability. It does not represent requirements, sources, dependency slots, exports, or unpublished snapshots.
 _Avoid_: Package release ID in domain APIs, Package requirement, Module reference
 
 **Morphir package release**:
