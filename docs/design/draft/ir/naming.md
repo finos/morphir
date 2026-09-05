@@ -33,7 +33,7 @@ not yet been rewritten.
 Name:    words joined by `-`, abbreviations in `()`    →  value-in-(usd)
 Path:    names joined by `/`                           →  main/domain/orders
 QName:   {module-path}#{local}                         →  main/domain#user-account
-FQName:  {package}:{module}#{local}                    →  morphir/sdk:list#map
+FQName:  {package}:{module}#{local}                    →  morphir/SDK:list#map
 ```
 
 **Abbreviation handling:** Consecutive single-letter words are grouped in parentheses:
@@ -545,9 +545,9 @@ let fqn = FQName(
   module_path(path_unchecked([name_unchecked(["list"])])),
   name_unchecked(["map"]),
 )
-fqname_to_string(fqn)  // "morphir/sdk:list#map"
+fqname_to_string(fqn)  // "morphir/SDK:list#map"
 
-let parsed = fqname_from_string("morphir/sdk:list#map")
+let parsed = fqname_from_string("morphir/SDK:list#map")
 // Ok(fqn) - lossless round-trip
 ```
 
@@ -582,13 +582,13 @@ Path:
   description: "Canonical path: names joined by /"
   examples:
     - "main/domain"
-    - "morphir/sdk"
+    - "morphir/SDK"
 
 FQName:
   type: string
   pattern: "^([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*:([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*(/([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*)*#([a-z0-9]+|\\([a-z0-9]+\\))(-([a-z0-9]+|\\([a-z0-9]+\\)))*$"
   description: "Canonical FQName: package:module#name"
   examples:
-    - "morphir/sdk:list#map"
+    - "morphir/SDK:list#map"
     - "my-org/project:main/domain#get-(html)"
 ```

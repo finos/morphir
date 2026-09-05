@@ -83,6 +83,8 @@ jobs:
               - '.github/workflows/ci.yml'
             mck:
               - 'spec/ir/mck/**'
+              # checks every kit fence against the v4 JSON Schemas
+              - 'tools/validate-mck-fences.ts'
               - 'ecosystem/morphir-typescript'
               # the Gleam mirror is checked by the mck driver once its adapter
               # lands; routing its pointer bumps here keeps them from skipping
@@ -424,6 +426,9 @@ jobs:
 
       - name: Check the Morphir Compatibility Kit
         run: mise run mck:check
+
+      - name: Check kit fences against the v4 schemas
+        run: mise run mck:schema-check
 
   release-workflow:
     name: Release workflow

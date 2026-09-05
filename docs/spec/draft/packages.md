@@ -34,7 +34,7 @@ A package maps to a directory structure within the `.morphir-dist` root:
 - **Local Packages**: Located in `pkg/{package-path}/`.
     - Example: `pkg/my-org/my-project/`
 - **Dependencies**: Located in `deps/{package-path}/{version}/`.
-    - Example: `deps/morphir/sdk/1.2.0/`
+    - Example: `deps/morphir/_sdk/1.2.0/`
 
 ## Namespace Mapping
 

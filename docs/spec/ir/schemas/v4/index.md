@@ -90,7 +90,7 @@ String: "morphir/SDK:list#map"
 **Annotations:**
 V4 introduces structured annotations for semantic metadata:
 ```json
-"annotations": ["morphir/sdk:annotations#stable"]
+"annotations": ["morphir/SDK:annotations#stable"]
 ```
 
 **Benefits:**
@@ -111,7 +111,7 @@ V4 supports inline documentation for types and values:
       "doc": "Unique identifier for a user in the system",
       "TypeAliasSpecification": {
         "typeParams": [],
-        "typeExp": "morphir/sdk:string#string"
+        "typeExp": "morphir/SDK:string#string"
       }
     }
   }
@@ -141,8 +141,8 @@ List.map Just [1, 2, 3]
   "Apply": {
     "function": {
       "Apply": {
-        "function": "morphir/sdk:list#map",
-        "argument": "morphir/sdk:maybe#Just"
+        "function": "morphir/SDK:list#map",
+        "argument": "morphir/SDK:maybe#Just"
       }
     },
     "argument": [1, 2, 3]
@@ -235,7 +235,7 @@ distribution:
     "Library": {
       "packageName": "my-org/my-project",
       "dependencies": {
-        "morphir/sdk": { "modules": [...] }
+        "morphir/SDK": { "modules": [...] }
       },
       "def": { "modules": [...] }
     }
@@ -249,7 +249,7 @@ distribution:
   "formatVersion": 4,
   "distribution": {
     "Specs": {
-      "packageName": "morphir/sdk",
+      "packageName": "morphir/SDK",
       "dependencies": {
         "other/pkg": { "modules": [...] }
       },
@@ -267,7 +267,7 @@ distribution:
     "Application": {
       "packageName": "my-org/my-app",
       "dependencies": {
-        "morphir/sdk": { "modules": [...] }
+        "morphir/SDK": { "modules": [...] }
       },
       "def": { "modules": [...] },
       "entryPoints": {
@@ -321,26 +321,73 @@ A complete Library distribution example showing the full structure:
 
 ```json
 {
-  "formatVersion": 4,
+  "formatVersion": "4.0.0",
   "distribution": {
     "Library": {
       "packageName": "regulation",
       "dependencies": {
-        "morphir/sdk": {
+        "morphir/SDK": {
           "modules": {
             "basics": {
               "types": {
-                "int": { "OpaqueTypeSpecification": {} },
-                "float": { "OpaqueTypeSpecification": {} },
-                "bool": { "OpaqueTypeSpecification": {} }
+                "int": {
+                  "OpaqueTypeSpecification": {}
+                },
+                "float": {
+                  "OpaqueTypeSpecification": {}
+                },
+                "bool": {
+                  "OpaqueTypeSpecification": {}
+                }
               },
               "values": {
                 "add": {
                   "inputs": {
-                    "a": "morphir/sdk:basics#int",
-                    "b": "morphir/sdk:basics#int"
+                    "a": "morphir/SDK:basics#int",
+                    "b": "morphir/SDK:basics#int"
                   },
-                  "output": "morphir/sdk:basics#int"
+                  "output": "morphir/SDK:basics#int"
+                }
+              }
+            },
+            "list": {
+              "types": {
+                "list": {
+                  "TypeAliasSpecification": {
+                    "typeParams": [
+                      "a"
+                    ],
+                    "typeExp": {
+                      "Reference": [
+                        "morphir/SDK:list#list",
+                        "a"
+                      ]
+                    }
+                  }
+                }
+              },
+              "values": {
+                "map": {
+                  "inputs": {
+                    "f": {
+                      "Function": {
+                        "parameterType": "a",
+                        "returnType": "b"
+                      }
+                    },
+                    "list": {
+                      "Reference": [
+                        "morphir/SDK:list#list",
+                        "a"
+                      ]
+                    }
+                  },
+                  "output": {
+                    "Reference": [
+                      "morphir/SDK:list#list",
+                      "b"
+                    ]
+                  }
                 }
               }
             }
@@ -367,6 +414,24 @@ A complete Library distribution example showing the full structure:
                       }
                     }
                   }
+                },
+                "inflows": {
+                  "access": "Public",
+                  "TypeAliasDefinition": {
+                    "typeParams": [],
+                    "typeExp": {
+                      "Record": {
+                        "fields": {
+                          "assets": {
+                            "Reference": [
+                              "morphir/SDK:list#list",
+                              "regulation:u-s/f-r-2052-a/data-tables/inflows#assets"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
               },
               "values": {
@@ -374,18 +439,12 @@ A complete Library distribution example showing the full structure:
                   "access": "Public",
                   "ExpressionBody": {
                     "inputTypes": {
-                      "tables": {
-                        "typeAttributes": {},
-                        "type": "regulation:u-s/f-r-2052-a/data-tables#data-tables"
-                      }
+                      "tables": "regulation:u-s/f-r-2052-a/data-tables#data-tables"
                     },
-                    "outputType": "morphir/sdk:basics#float",
+                    "outputType": "morphir/SDK:basics#float",
                     "body": {
                       "Literal": {
-                        "attributes": {},
-                        "literal": {
-                          "FloatLiteral": 0.0
-                        }
+                        "FloatLiteral": 0.0
                       }
                     }
                   }
@@ -405,7 +464,7 @@ A complete Library distribution example showing the full structure:
 > - Distribution uses `{ "Library": { ... } }` wrapper
 > - Modules are objects keyed by module path: `{ "module/path": {...} }`
 > - Types and values within modules are objects keyed by name: `{ "type-name": {...} }`
-> - Record fields are objects keyed by field name: `{ "field-name": type }`
+> - A Record carries its fields under a `fields` member, itself an object keyed by field name (decision 0004): `{"Record": {"fields": {"field-name": type}}}`
 > - Dependencies are objects keyed by package name: `{ "package/name": spec }`
 
 ### Module Definition
@@ -462,10 +521,11 @@ Same as V3, but with `TypeAttributes`:
 - **Reference** (no arguments): a bare FQName string, `"morphir/SDK:basics#int"`
 - **Reference** (with arguments): `{"Reference": [FQName, Type, ...]}`; the expanded `{"Reference": {"fqname": FQName, "args": [Type]}}` is accepted
 - **Tuple**: `{"Tuple": [Type, ...]}`; a bare array `[Type, ...]` is also a tuple, and `{"Tuple": {"elements": [...]}}` is accepted
-- **Record**: `{"Record": {"field-name": Type}}`
+- **Record**: `{"Record": {"fields": {"field-name": Type}}}`
 - **ExtensibleRecord**: `{"ExtensibleRecord": {"variable": Name, "fields": {"field-name": Type}}}`
-- **Function**: `{"Function": {"argumentType": Type, "returnType": Type}}`
+- **Function**: `{"Function": {"parameterType": Type, "returnType": Type}}`
 - **Unit**: `{"Unit": {}}`
+- Every node also has an expanded spelling whose payload starts with `attributes` (decision 0005).
 
 ### Type Specifications
 
@@ -517,7 +577,7 @@ Same as V3 with `ValueAttributes`:
 
 ### Literals
 
-Same as V3:
+The six V3 literals plus one:
 
 - **BoolLiteral**
 - **CharLiteral**
@@ -525,6 +585,7 @@ Same as V3:
 - **IntegerLiteral**
 - **FloatLiteral**
 - **DecimalLiteral**
+- **DocumentLiteral** (decision 0013)
 
 ## Migration
 
@@ -545,6 +606,7 @@ Possible but **lossy**:
 - Inferred types are lost
 - Inline documentation is lost
 - New value expressions must be transformed
+- A `DocumentLiteral` cannot be downgraded; the writer refuses with `unsupported_v4_downgrade`
 
 See [Migration Guide - V4 → V3](../migration-guide/#v4--v3) for details.
 

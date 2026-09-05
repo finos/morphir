@@ -26,6 +26,7 @@ Literal constant values used in value expressions.
 - **IntegerLiteral**: Integer (arbitrary precision, includes negatives)
 - **FloatLiteral**: Floating-point number
 - **DecimalLiteral**: Arbitrary-precision decimal (stored as string for precision)
+- **DocumentLiteral**: A schema-less JSON-like document carried verbatim, typed `morphir/SDK:document#document`; cannot be pattern matched (decision 0013)
 
 ## Value Expressions
 
@@ -43,7 +44,7 @@ A literal constant value.
 Reference to a custom type constructor.
 
 - **Structure**: `Constructor attributes fqName`
-- **JSON**: `{"Constructor": "morphir/sdk:maybe#just"}`
+- **JSON**: `{"Constructor": "morphir/SDK:maybe#just"}`
 
 ### Tuple
 
@@ -52,7 +53,7 @@ A tuple value with multiple elements.
 - **Structure**: `Tuple attributes elements`
 - **JSON (canonical)**: `{"Tuple": [{"Variable": "x"}, {"Literal": {"IntegerLiteral": 1}}]}`
 - **JSON (expanded)**: `{"Tuple": {"elements": [...]}}`
-- A bare array is not a tuple value; it would be ambiguous with a list value
+- A bare array at value position is a List, never a tuple (decision 0009)
 
 ### List
 
@@ -60,7 +61,8 @@ A list of values.
 
 - **Structure**: `List attributes elements`
 - **JSON (canonical)**: `{"List": [{"Literal": {"IntegerLiteral": 1}}, {"Literal": {"IntegerLiteral": 2}}]}`
-- **JSON (expanded)**: `{"List": {"items": [...]}}`
+- **JSON (accepted)**: a bare array `[1, 2, 3]` (decision 0009)
+- **JSON (expanded)**: `{"List": {"attributes": {...}, "items": [...]}}`
 
 ### Record
 
@@ -71,9 +73,9 @@ A record value with named fields.
   - attributes: `ValueAttributes`
   - fields: Dictionary of field names to values (`Dict Name Value`)
 - **Note**: Field order does not affect equality—two records with the same fields in different orders are considered equal
-- **JSON (compact)**: `{"Record": {"name": {"Variable": "x"}, "age": {"Literal": {"IntegerLiteral": 25}}}}`
-  - Fields stored directly under `Record` without a wrapper
-  - Field names use kebab-case
+- **JSON (canonical)**: `{"Record": {"fields": {"name": {"Variable": "x"}, "age": {"Literal": {"IntegerLiteral": 25}}}}}`
+- **JSON (expanded)**: `{"Record": {"attributes": {...}, "fields": {...}}}`
+- Fields live under `fields` so `attributes` can sit beside them (decision 0004). The field map directly under `Record` is accepted for one release and reported as `legacy_spelling` (decision 0006).
 
 ### Variable
 
@@ -87,7 +89,7 @@ Reference to a variable in scope.
 Reference to a defined value (function or constant).
 
 - **Structure**: `Reference attributes fqName`
-- **JSON**: `{"Reference": "morphir/sdk:basics#add"}` — FQName directly under Reference
+- **JSON**: `{"Reference": "morphir/SDK:basics#add"}` — FQName directly under Reference
 
 ### Field
 
@@ -108,7 +110,7 @@ A function that extracts a field.
 Function application.
 
 - **Structure**: `Apply attributes function argument`
-- **JSON**: `{"Apply": {"function": {"Reference": "morphir/sdk:basics#add"}, "argument": {"Literal": {"IntegerLiteral": 1}}}}`
+- **JSON**: `{"Apply": {"function": {"Reference": "morphir/SDK:basics#add"}, "argument": {"Literal": {"IntegerLiteral": 1}}}}`
 
 ### Lambda
 
@@ -182,17 +184,17 @@ Value expressions use object wrappers to distinguish expression types:
 | Value Expression | JSON Format | Example |
 |------------------|-------------|---------|
 | Variable | `{"Variable": name}` | `{"Variable": "x"}` |
-| Reference | `{"Reference": fqname}` | `{"Reference": "morphir/sdk:basics#add"}` |
+| Reference | `{"Reference": fqname}` | `{"Reference": "morphir/SDK:basics#add"}` |
 | Literal | `{"Literal": {...}}` | `{"Literal": {"IntegerLiteral": 42}}` |
-| Constructor | `{"Constructor": fqname}` | `{"Constructor": "morphir/sdk:maybe#just"}` |
-| Record | `{"Record": {fields}}` | `{"Record": {"name": {...}}}` |
+| Constructor | `{"Constructor": fqname}` | `{"Constructor": "morphir/SDK:maybe#just"}` |
+| Record | `{"Record": {"fields": {...}}}` | `{"Record": {"fields": {"name": {...}}}}` |
 | Apply | `{"Apply": {...}}` | `{"Apply": {"function": {...}, "argument": {...}}}` |
 | Unit | `{"Unit": {}}` | `{"Unit": {}}` |
+| Bare boolean/number | literal shorthand | `true`, `42` |
+| Bare array | List shorthand | `[1, 2]` |
 
 **Key differences from Type expressions**:
-- Value expressions always use object wrappers (e.g., `{"Variable": "x"}`)
-- Type expressions can use bare strings for Variables and References without args
-- This distinction allows parsers to unambiguously identify expression types in any context
+- A bare string is a Variable or a Reference, never a StringLiteral; a bare boolean or number is a literal; a bare array is a List; a Tuple always carries its wrapper (decision 0009).
 
 ### Hole (v4)
 
@@ -207,30 +209,11 @@ An incomplete or broken reference, enabling best-effort compilation.
   - Reference to a deleted/renamed function
   - Placeholder during incremental development
   - Representing compilation errors without failing the entire build
-
-### Native (v4)
-
-A native platform operation with no IR body.
-
-- **Structure**: `Native attributes fqName nativeInfo`
-- **Components**:
-  - attributes: `ValueAttributes`
-  - fqName: Fully-qualified name of the native operation (`FQName`)
-  - nativeInfo: Information about the native operation (`NativeInfo`)
-
-### External (v4)
-
-An external FFI (Foreign Function Interface) call.
-
-- **Structure**: `External attributes externalName targetPlatform`
-- **Components**:
-  - attributes: `ValueAttributes`
-  - externalName: Name of the external function (`String`)
-  - targetPlatform: Target platform identifier (`String`)
+- Native and external operations are not expressions; they are the definition bodies `NativeBody` and `ExternalBody` (decision 0008).
 
 ## NativeInfo (v4)
 
-Information about native operations.
+Information about native operations, used by `NativeBody`.
 
 - **Structure**: `NativeInfo hint description`
 - **Components**:
@@ -301,12 +284,13 @@ A native/builtin operation with no IR body.
 
 An external FFI operation with no IR body.
 
-- **Structure**: `ExternalBody inputTypes outputType externalName targetPlatform`
+- **Structure**: `ExternalBody inputTypes outputType externals body`
 - **Components**:
   - inputTypes: List of parameter names and types (`List (Name, Type)`)
   - outputType: Return type (`Type`)
-  - externalName: Name of the external function (`String`)
-  - targetPlatform: Target platform identifier (`String`)
+  - externals: Per-target bindings (`List { targetPlatform : String, externalName : String }`), at least one
+  - body: Optional fallback expression (`Maybe Value`)
+- The single-binding spelling with top-level `externalName`/`targetPlatform` is accepted for one release (decision 0006).
 
 #### IncompleteBody (v4)
 
@@ -328,7 +312,7 @@ A **Value Specification** defines the public interface of a value—the function
 - API documentation generation from signatures
 - Separate compilation of dependent modules
 
-**Deriving specifications**: A specification is derived from any `ValueDefinitionBody` by extracting the input types and output type. The implementation details (`body`, `nativeInfo`, `externalName`, etc.) are discarded.
+**Deriving specifications**: A specification is derived from any `ValueDefinitionBody` by extracting the input types and output type. The implementation details (`body`, `nativeInfo`, `externals`, etc.) are discarded.
 
 - **Structure**: `ValueSpecification inputs output`
 - **Components**:

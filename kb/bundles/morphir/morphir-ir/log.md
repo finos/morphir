@@ -1,5 +1,9 @@
 # Log
 
+## 2026-09-05
+
+* **Update**: Implemented decisions 0004 to 0014 (plan 2d): kit cases flipped and extended to 74, reference codec, both schemas, examples, specification and design pages, and the naming corpus's truncation cases. The remaining open decisions are the 4.1.0 support policy and the naming codec's home (decision 0003).
+
 ## 2026-09-04
 
 * **Creation**: Added [decision 0004](/decisions/0004-record-fields-are-spelled-under-a-fields-member.md) and [decision 0005](/decisions/0005-attributes-are-an-optional-first-member-of-every-node-payload.md), the first two spelling decisions closed through the Morphir Compatibility Kit; both were surfaced by the reference codec's first run against the kit.

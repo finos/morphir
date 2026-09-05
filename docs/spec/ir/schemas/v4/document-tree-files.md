@@ -48,6 +48,7 @@ The corresponding JSON tree replaces each `.yaml` extension with `.json`.
 - [`formatVersion`](#formatversion): IR format version
 - `distribution`: Distribution type (`"Library"`, `"Specs"`, or `"Application"`)
 - `package`: Package name (canonical path format, e.g., `"my-org/my-project"`)
+- `pathBudget`: Path budget in characters from the distribution root (decision 0012; 4000 default profile, 200 portable)
 
 **Optional Fields**:
 - `version`: Package version (semantic version string)
@@ -63,6 +64,7 @@ The corresponding JSON tree replaces each `.yaml` extension with `.json`.
   "formatVersion": 4,
   "distribution": "Library",
   "package": "my-org/my-project",
+  "pathBudget": 4000,
   "version": "1.2.0",
   "created": "2026-01-15T12:00:00Z",
   "layout": "VfsMode"
@@ -75,6 +77,7 @@ The corresponding JSON tree replaces each `.yaml` extension with `.json`.
   "formatVersion": 4,
   "distribution": "Specs",
   "package": "morphir/SDK",
+  "pathBudget": 4000,
   "version": "3.0.0",
   "created": "2026-01-15T12:00:00Z",
   "layout": "VfsMode"
@@ -87,6 +90,7 @@ The corresponding JSON tree replaces each `.yaml` extension with `.json`.
   "formatVersion": 4,
   "distribution": "Application",
   "package": "my-org/my-cli",
+  "pathBudget": 4000,
   "version": "2.0.0",
   "created": "2026-01-15T12:00:00Z",
   "layout": "VfsMode",
@@ -122,6 +126,7 @@ The corresponding JSON tree replaces each `.yaml` extension with `.json`.
 - `doc`: Module-level documentation (string or array of strings)
 - `types`: Either array of type names (manifest style) or object with inline definitions (inline style)
 - `values`: Either array of value names (manifest style) or object with inline definitions (inline style)
+- `fileNames`: Canonical name to truncated file stem, for names whose stem was truncated for the path budget (decision 0012); every key must also appear in `types` or `values`
 
 **Encoding Styles**:
 
@@ -135,6 +140,19 @@ Lists type/value names; definitions in separate files:
   "doc": "Domain model for main application",
   "types": ["user", "user-ID", "order"],
   "values": ["get-user-by-email", "create-order", "validate-user"]
+}
+```
+
+**Example with a truncated stem**:
+```json
+{
+  "formatVersion": 4,
+  "path": "domain",
+  "types": ["customer-relationship-management-record"],
+  "values": [],
+  "fileNames": {
+    "customer-relationship-management-record": "customer-relati__44a101f8"
+  }
 }
 ```
 
@@ -201,7 +219,7 @@ Contains definitions directly:
   - `spec`: Type specification (interface) - contains `TypeAliasSpecification`, `OpaqueTypeSpecification`, `CustomTypeSpecification`, or `DerivedTypeSpecification`
 
 **Optional Fields**:
-- `doc`: Documentation (string or array of strings) - can be at top level or nested in `def`/`spec`
+- `doc`: Documentation (string or array of strings), nested inside `def` or `spec` (decision 0010)
 
 **File Naming**:
 - Use the escaped stem, `escape(name)`, not the canonical name
@@ -215,9 +233,9 @@ Contains definitions directly:
 {
   "formatVersion": 4,
   "name": "user",
-  "doc": "Represents a user in the system",
   "def": {
     "access": "Public",
+    "doc": "Represents a user in the system",
     "TypeAliasDefinition": {
       "typeParams": [],
       "typeExp": {
@@ -287,7 +305,7 @@ Contains definitions directly:
   - `spec`: Value specification (interface) - contains `inputs` (object) and `output` (type)
 
 **Optional Fields**:
-- `doc`: Documentation (string or array of strings) - can be at top level or nested in `def`/`spec`
+- `doc`: Documentation (string or array of strings), nested inside `def` or `spec` (decision 0010)
 
 **File Naming**:
 - Use the escaped stem, `escape(name)`, not the canonical name
@@ -301,9 +319,9 @@ Contains definitions directly:
 {
   "formatVersion": 4,
   "name": "get-user-by-email",
-  "doc": "Retrieve a user by email address",
   "def": {
     "access": "Public",
+    "doc": "Retrieve a user by email address",
     "ExpressionBody": {
       "inputTypes": {
         "email": "morphir/SDK:string#string",
@@ -484,10 +502,7 @@ is also accepted. Prerelease and build metadata are rejected.
 - Single-line: `"doc": "Brief description"`
 - Multi-line: `"doc": ["Line 1", "Line 2", "Line 3"]`
 
-**Location**: Can appear at:
-- Top level of file
-- Nested in `def` or `spec` object
-- Both (top-level takes precedence for display)
+**Location**: Inside `def` or `spec`, first beside the variant (decision 0010). Not at the top level of a node file.
 
 ### def
 
@@ -644,12 +659,12 @@ When type/value files are part of a PackageSpecification:
 {
   "formatVersion": 4,
   "name": "calculate-total",
-  "doc": [
-    "Calculate the total price of an order including tax.",
-    "Applies discounts and regional tax rates."
-  ],
   "def": {
     "access": "Public",
+    "doc": [
+      "Calculate the total price of an order including tax.",
+      "Applies discounts and regional tax rates."
+    ],
     "ExpressionBody": {
       "inputTypes": {
         "order": "my-org/domain:orders#order",
@@ -658,81 +673,62 @@ When type/value files are part of a PackageSpecification:
       "outputType": "morphir/SDK:basics#float",
       "body": {
         "LetDefinition": {
-          "attributes": {},
-          "valueName": "subtotal",
-          "valueDefinition": {
+          "name": "subtotal",
+          "definition": {
             "ExpressionBody": {
               "inputTypes": {},
               "outputType": "morphir/SDK:basics#float",
               "body": {
                 "Apply": {
-                  "attributes": {},
                   "function": {
                     "Reference": {
-                      "attributes": {},
-                      "fqname": "morphir/SDK:list#sum",
-                      "args": []
+                      "fqname": "morphir/SDK:list#sum"
                     }
                   },
                   "argument": {
                     "Field": {
-                      "attributes": {},
-                      "subject": {
+                      "target": {
                         "Variable": {
-                          "attributes": {},
                           "name": "order"
                         }
                       },
-                      "fieldName": "line-items"
+                      "name": "line-items"
                     }
                   }
                 }
               }
             }
           },
-          "inValue": {
+          "in": {
             "Apply": {
-              "attributes": {},
               "function": {
                 "Reference": {
-                  "attributes": {},
-                  "fqname": "morphir/SDK:basics#multiply",
-                  "args": []
+                  "fqname": "morphir/SDK:basics#multiply"
                 }
               },
               "argument": {
                 "Tuple": {
-                  "attributes": {},
                   "elements": [
                     {
                       "Variable": {
-                        "attributes": {},
                         "name": "subtotal"
                       }
                     },
                     {
                       "Apply": {
-                        "attributes": {},
                         "function": {
                           "Reference": {
-                            "attributes": {},
-                            "fqname": "morphir/SDK:basics#add",
-                            "args": []
+                            "fqname": "morphir/SDK:basics#add"
                           }
                         },
                         "argument": {
                           "Tuple": {
-                            "attributes": {},
                             "elements": [
                               {
-                                "Literal": {
-                                  "attributes": {},
-                                  "literal": { "FloatLiteral": 1.0 }
-                                }
+                                "Literal": { "FloatLiteral": 1.0 }
                               },
                               {
                                 "Variable": {
-                                  "attributes": {},
                                   "name": "tax-rate"
                                 }
                               }
@@ -836,9 +832,9 @@ When type/value files are part of a PackageSpecification:
 {
   "formatVersion": 4,
   "name": "user",
-  "doc": "Represents a user in the system",
   "def": {
     "access": "Public",
+    "doc": "Represents a user in the system",
     "TypeAliasDefinition": {
       "typeParams": [],
       "typeExp": {
@@ -882,9 +878,9 @@ When type/value files are part of a PackageSpecification:
 {
   "formatVersion": 4,
   "name": "get-user-by-email",
-  "doc": "Retrieve a user by their email address",
   "def": {
     "access": "Public",
+    "doc": "Retrieve a user by their email address",
     "ExpressionBody": {
       "inputTypes": {
         "email": "morphir/SDK:string#string",
@@ -1006,12 +1002,17 @@ A filename is the **escaped stem** of a Name, not the canonical name. See
 - One of `types`/`values` can be array, other can be object
 - Consistency is preferred
 
+**`fileNames`**:
+- `fileNames` values must match `FileStem`
+- Each key must be listed in `types` or `values`
+
 ### Distribution Manifest Validation
 
 **Required for all distributions**:
 - `formatVersion`: Must satisfy the [shared v3-and-later contract](../../format-version.md)
 - `distribution`: Must be `"Library"`, `"Specs"`, or `"Application"`
 - `package`: Must be valid PackageName (canonical format)
+- `pathBudget`: Must be present (decision 0012)
 
 **Required for Application distributions**:
 - `entryPoints`: Must be present and non-empty object
@@ -1168,6 +1169,14 @@ Module-level metadata is stored in `module.json`. Additional metadata can be inc
 - `deprecated`: Boolean indicating if module is deprecated
 - `since`: Version when module was introduced
 - `extensions`: Object for tool-specific metadata
+
+### Reserved: $meta
+
+A top-level `$meta` member in any document-tree file is reserved (decision 0014). Readers ignore it and never report it as unknown; writers never emit it. It is not specified in 4.0.0.
+
+### Not part of a distribution
+
+`session.jsonl`, the daemon's transaction journal, is workspace state and is never read as part of a distribution (decision 0014).
 
 ## File Format Comparison
 

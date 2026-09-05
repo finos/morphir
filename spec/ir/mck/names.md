@@ -74,10 +74,48 @@ morphir/SDK:list#map
 [[["morphir"], ["s", "d", "k"]], [["list"]], ["map"]]
 ```
 
-## names-0006: The SDK package name {node=Path status=pending}
+## names-0006: The SDK package name {node=Path}
 
-Decision 0001 makes an uppercase segment an initialism, so the legacy array [["morphir"], ["s", "d", "k"]] decodes to morphir/SDK, and names-0004 pins that. Every published v4 example and every spec page writes morphir/sdk, which under the same decision is a different package whose second segment is the word sdk. One of them is wrong. Bead morphir-ir-v4-stabilize.1 owns the answer together with the value vocabulary, because every fixture changes with it.
+Decision 0011: the SDK's canonical package name is `morphir/SDK`, because morphir-elm's `Path.fromString` splits `SDK` into single-letter words that decision 0001 decodes as one initialism. `morphir/sdk` is a different, valid name and is not rejected; distributions-0005 pins the dependency key.
 
-## names-0007: Legacy array item grammar and the FileStem suffix {node=Name status=pending}
+```yaml canonical
+morphir/SDK
+```
 
-The core schema accepts legacy array items matching ^[a-z0-9]+$ while the document-tree schema requires ^[a-z][a-z0-9]*$, so ["item", "2"] is legal in one and not the other. The core schema's FileStem allows a __[0-9a-f]{8} truncation suffix that the naming corpus omits. Bead morphir-ir-v4-stabilize.13 applies decision 0001's consequences to both schemas; this case becomes active when it does.
+```json canonical
+"morphir/SDK"
+```
+
+```json accepted
+[["morphir"], ["s", "d", "k"]]
+```
+
+## names-0007: Legacy array items may be digits {node=Name}
+
+Decision 0012: both schemas use the core legacy word grammar `^[a-z0-9]+$`, so a digits-only word is legal. `["f", "r", "2052", "a"]` decodes as the naming corpus records: the letter run `f r` is one initialism, `2052` breaks the run, and the trailing `a` is a run of one, so a word.
+
+```yaml canonical
+item-2
+```
+
+```json canonical
+"item-2"
+```
+
+```json accepted
+["item", "2"]
+```
+
+## names-0008: A digit word breaks an initialism run {node=Name}
+
+```yaml canonical
+FR-2052-a
+```
+
+```json canonical
+"FR-2052-a"
+```
+
+```json accepted
+["f", "r", "2052", "a"]
+```
