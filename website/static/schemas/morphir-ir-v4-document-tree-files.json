@@ -622,7 +622,7 @@
           "enum": [ "Classic", "VfsMode" ]
         },
         "pathBudget": {
-          "description": "Maximum path length, in characters from the distribution root, that this\ntree was written against. A stem that would exceed it is truncated and\nsuffixed with \"__\" plus eight hex digits, and the module then records the\nmapping in its \"fileNames\".\n\n4000 is the default and suits Linux, macOS, and Windows with long paths\nenabled. 200 is the portable profile, for Windows without\nLongPathsEnabled and for stock Git for Windows, which ships\ncore.longpaths=false.\n\nRequired (decision 0012): writers always state the budget so a reader can\nrefuse a tree it cannot open before opening files one at a time.\n",
+          "description": "Maximum path length, in characters from the distribution root, that this\ntree was written against. A stem that would exceed it is truncated and\nsuffixed with \"__\" plus eight hex digits, and the module then records the\nmapping in its \"fileNames\".\n\n4000 suits Linux, macOS, and Windows with long paths\nenabled. 200 is the portable profile, for Windows without\nLongPathsEnabled and for stock Git for Windows, which ships\ncore.longpaths=false.\n\nRequired (decision 0012): writers always state the budget so a reader can\nrefuse a tree it cannot open before opening files one at a time.\n",
           "examples": [ 4000, 200 ],
           "type": "integer",
           "minimum": 64

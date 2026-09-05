@@ -353,19 +353,55 @@ definitions:
       Canonical: { "doc": "...", "inputs": {...}, "output": ... }
 
   AccessControlledTypeDefinition:
-    allOf:
-      - $ref: "#/definitions/AccessControlled"
-      # Only the keyed and nested spellings carry the definition as a payload; in
-      # the flattened spelling the variant sits beside "access", so no property
-      # here applies to it.
+    # anyOf rather than oneOf: the legacy { access, value } form and the flattened
+    # form share the "access" member, so exactly-one matching cannot hold.
+    anyOf:
+      # Canonical: the access level is the key
+      - oneOf:
+          - type: object
+            required: ["Public"]
+            additionalProperties: false
+            properties:
+              Public: { $ref: "#/definitions/DocumentedTypeDefinition" }
+          - type: object
+            required: ["Private"]
+            additionalProperties: false
+            properties:
+              Private: { $ref: "#/definitions/DocumentedTypeDefinition" }
+          - type: object
+            required: ["public"]
+            additionalProperties: false
+            properties:
+              public: { $ref: "#/definitions/DocumentedTypeDefinition" }
+          - type: object
+            required: ["private"]
+            additionalProperties: false
+            properties:
+              private: { $ref: "#/definitions/DocumentedTypeDefinition" }
+          - type: object
+            required: ["pub"]
+            additionalProperties: false
+            properties:
+              pub: { $ref: "#/definitions/DocumentedTypeDefinition" }
+      # Legacy: access and value members
       - type: object
+        required: ["access", "value"]
+        additionalProperties: false
         properties:
-          Public: { $ref: "#/definitions/DocumentedTypeDefinition" }
-          Private: { $ref: "#/definitions/DocumentedTypeDefinition" }
-          public: { $ref: "#/definitions/DocumentedTypeDefinition" }
-          private: { $ref: "#/definitions/DocumentedTypeDefinition" }
-          pub: { $ref: "#/definitions/DocumentedTypeDefinition" }
+          access: { $ref: "#/definitions/Access" }
+          doc: { $ref: "#/definitions/Doc" }
           value: { $ref: "#/definitions/DocumentedTypeDefinition" }
+      # Flattened: the definition variant sits beside "access"
+      - type: object
+        required: ["access"]
+        minProperties: 2
+        additionalProperties: false
+        properties:
+          access: { $ref: "#/definitions/Access" }
+          doc: { $ref: "#/definitions/Doc" }
+          TypeAliasDefinition: { $ref: "#/definitions/TypeAliasDefinitionBody" }
+          CustomTypeDefinition: { $ref: "#/definitions/CustomTypeDefinitionBody" }
+          IncompleteTypeDefinition: { $ref: "#/definitions/IncompleteTypeDefinitionBody" }
     description: |
       An access-controlled type definition, the entry shape of ModuleDefinition.types.
       Canonical: { "Public": { "doc": "...", "TypeAliasDefinition": {...} } }
@@ -377,16 +413,55 @@ definitions:
       - { "access": "Public", "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } }
 
   AccessControlledValueDefinition:
-    allOf:
-      - $ref: "#/definitions/AccessControlled"
+    # anyOf for the same reason as AccessControlledTypeDefinition.
+    anyOf:
+      # Canonical: the access level is the key
+      - oneOf:
+          - type: object
+            required: ["Public"]
+            additionalProperties: false
+            properties:
+              Public: { $ref: "#/definitions/DocumentedValueDefinition" }
+          - type: object
+            required: ["Private"]
+            additionalProperties: false
+            properties:
+              Private: { $ref: "#/definitions/DocumentedValueDefinition" }
+          - type: object
+            required: ["public"]
+            additionalProperties: false
+            properties:
+              public: { $ref: "#/definitions/DocumentedValueDefinition" }
+          - type: object
+            required: ["private"]
+            additionalProperties: false
+            properties:
+              private: { $ref: "#/definitions/DocumentedValueDefinition" }
+          - type: object
+            required: ["pub"]
+            additionalProperties: false
+            properties:
+              pub: { $ref: "#/definitions/DocumentedValueDefinition" }
+      # Legacy: access and value members
       - type: object
+        required: ["access", "value"]
+        additionalProperties: false
         properties:
-          Public: { $ref: "#/definitions/DocumentedValueDefinition" }
-          Private: { $ref: "#/definitions/DocumentedValueDefinition" }
-          public: { $ref: "#/definitions/DocumentedValueDefinition" }
-          private: { $ref: "#/definitions/DocumentedValueDefinition" }
-          pub: { $ref: "#/definitions/DocumentedValueDefinition" }
+          access: { $ref: "#/definitions/Access" }
+          doc: { $ref: "#/definitions/Doc" }
           value: { $ref: "#/definitions/DocumentedValueDefinition" }
+      # Flattened: the body variant sits beside "access"
+      - type: object
+        required: ["access"]
+        minProperties: 2
+        additionalProperties: false
+        properties:
+          access: { $ref: "#/definitions/Access" }
+          doc: { $ref: "#/definitions/Doc" }
+          ExpressionBody: { $ref: "#/definitions/ExpressionBody" }
+          NativeBody: { $ref: "#/definitions/NativeBody" }
+          ExternalBody: { $ref: "#/definitions/ExternalBody" }
+          IncompleteBody: { $ref: "#/definitions/IncompleteBody" }
     description: |
       An access-controlled value definition, the entry shape of ModuleDefinition.values.
       Canonical: { "Public": { "doc": "...", "ExpressionBody": {...} } }
@@ -634,7 +709,7 @@ definitions:
   # - Variables: bare name string (e.g., "a")
   # - References without args: bare FQName string (e.g., "morphir/SDK:int#int")
   # - References with args: {"Reference": {"fqname": "...", "args": [...]}}
-  # - Records: {"Record": {field-map}}
+  # - Records: {"Record": {"fields": {field-map}}}
   # - Other types: {"TypeName": {...}}
   #
   Type:
@@ -1059,6 +1134,18 @@ definitions:
       - $ref: "#/definitions/CustomTypeDefinition"
       - $ref: "#/definitions/IncompleteTypeDefinition"
 
+  TypeAliasDefinitionBody:
+    type: object
+    required: ["typeParams", "typeExp"]
+    properties:
+      typeParams:
+        type: array
+        items: { $ref: "#/definitions/Name" }
+      typeExp: { $ref: "#/definitions/Type" }
+    description: "The payload under a \"TypeAliasDefinition\" key."
+    examples:
+      - { "typeParams": [], "typeExp": "morphir/SDK:string#string" }
+
   TypeAliasDefinition:
     oneOf:
       # V4 wrapper object format (canonical)
@@ -1067,14 +1154,7 @@ definitions:
         additionalProperties: false
         properties:
           doc: { $ref: "#/definitions/Doc" }
-          TypeAliasDefinition:
-            type: object
-            required: ["typeParams", "typeExp"]
-            properties:
-              typeParams:
-                type: array
-                items: { $ref: "#/definitions/Name" }
-              typeExp: { $ref: "#/definitions/Type" }
+          TypeAliasDefinition: { $ref: "#/definitions/TypeAliasDefinitionBody" }
       # Legacy tagged array format
       - type: array
         items:
@@ -1088,7 +1168,22 @@ definitions:
       Legacy format: ["TypeAliasDefinition", [...], ...]
     examples:
       - { "TypeAliasDefinition": { "typeParams": [], "typeExp": "morphir/SDK:string#string" } }
-      - { "TypeAliasDefinition": { "typeParams": [], "typeExp": { "Record": { "name": "morphir/SDK:string#string", "age": "morphir/SDK:basics#int" } } } }
+      - { "TypeAliasDefinition": { "typeParams": [], "typeExp": { "Record": { "fields": { "name": "morphir/SDK:string#string", "age": "morphir/SDK:basics#int" } } } } }
+
+  CustomTypeDefinitionBody:
+    type: object
+    required: ["typeParams", "constructors"]
+    properties:
+      typeParams:
+        type: array
+        items: { $ref: "#/definitions/Name" }
+      access:
+        enum: ["Public", "Private"]
+        description: "Visibility of constructors"
+      constructors: { $ref: "#/definitions/Constructors" }
+    description: "The payload under a \"CustomTypeDefinition\" key."
+    examples:
+      - { "typeParams": ["a"], "access": "Public", "constructors": { "just": [["value", "a"]], "nothing": [] } }
 
   CustomTypeDefinition:
     oneOf:
@@ -1098,17 +1193,7 @@ definitions:
         additionalProperties: false
         properties:
           doc: { $ref: "#/definitions/Doc" }
-          CustomTypeDefinition:
-            type: object
-            required: ["typeParams", "constructors"]
-            properties:
-              typeParams:
-                type: array
-                items: { $ref: "#/definitions/Name" }
-              access:
-                enum: ["Public", "Private"]
-                description: "Visibility of constructors"
-              constructors: { $ref: "#/definitions/Constructors" }
+          CustomTypeDefinition: { $ref: "#/definitions/CustomTypeDefinitionBody" }
       # Legacy tagged array format
       - type: array
         items:
@@ -1126,21 +1211,26 @@ definitions:
     examples:
       - { "CustomTypeDefinition": { "typeParams": ["a"], "access": "Public", "constructors": { "just": [["value", "a"]], "nothing": [] } } }
 
+  IncompleteTypeDefinitionBody:
+    type: object
+    required: ["typeParams", "incompleteness"]
+    properties:
+      typeParams:
+        type: array
+        items: { $ref: "#/definitions/Name" }
+      incompleteness: { $ref: "#/definitions/Incompleteness" }
+      partialTypeExp: { $ref: "#/definitions/Type" }
+    description: "The payload under an \"IncompleteTypeDefinition\" key."
+    examples:
+      - { "typeParams": [], "incompleteness": { "Draft": {} } }
+
   IncompleteTypeDefinition:
     type: object
     required: ["IncompleteTypeDefinition"]
     additionalProperties: false
     properties:
       doc: { $ref: "#/definitions/Doc" }
-      IncompleteTypeDefinition:
-        type: object
-        required: ["typeParams", "incompleteness"]
-        properties:
-          typeParams:
-            type: array
-            items: { $ref: "#/definitions/Name" }
-          incompleteness: { $ref: "#/definitions/Incompleteness" }
-          partialTypeExp: { $ref: "#/definitions/Type" }
+      IncompleteTypeDefinition: { $ref: "#/definitions/IncompleteTypeDefinitionBody" }
     description: |
       Incomplete type definition (V4 feature for best-effort support).
       Used when a type definition cannot be fully resolved.
@@ -1192,7 +1282,7 @@ definitions:
   # - {"Variable": "name"}
   # - {"Reference": "fqname"}
   # - {"Literal": {...}}
-  # - {"Record": {field-map}}
+  # - {"Record": {"fields": {field-map}}}
   # - {"Apply": {"function": ..., "argument": ...}}
   # etc.
   #

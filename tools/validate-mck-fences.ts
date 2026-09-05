@@ -1,13 +1,16 @@
 // Validates every canonical and accepted JSON fence of the Morphir Compatibility
-// Kit against the v4 JSON Schema, so the kit and the schema cannot drift.
+// Kit against the v4 JSON Schemas, so the kit and the schemas cannot drift.
 //
 //   bun run tools/validate-mck-fences.ts
 //
 // A case heading names the model type its fences decode to (`{node=Type}`); the
-// node maps to a definition of website/static/schemas/morphir-ir-v4.json, and the
-// fence body must validate against it. Fences carrying `warning=` are the legacy
-// spellings of decision 0006: a reader normalizes them and reports the warning,
-// but the schema deliberately does not describe them, so they are skipped here.
+// node maps to a definition of morphir-ir-v4.json or, for document-tree files, of
+// morphir-ir-v4-document-tree-files.json, and the fence body must validate against
+// it. A fence carrying `warning=` is a legacy spelling of decision 0006: a reader
+// normalizes it and reports the warning, but the schema describes only the
+// canonical and expanded forms, so such a fence must be REJECTED here. The
+// exception is the nested { "doc", "value" } wrapper of decision 0010, which the
+// schema still describes for one release.
 import { Glob } from "bun";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
@@ -18,42 +21,92 @@ const repositoryRoot = path.dirname(
 	path.dirname(fileURLToPath(import.meta.url)),
 );
 const kitDir = path.join(repositoryRoot, "spec", "ir", "mck");
-const schemaPath = path.join(
-	repositoryRoot,
-	"website",
-	"static",
-	"schemas",
-	"morphir-ir-v4.json",
-);
+const schemaDir = path.join(repositoryRoot, "website", "static", "schemas");
+const irSchema = path.join(schemaDir, "morphir-ir-v4.json");
+const treeSchema = path.join(schemaDir, "morphir-ir-v4-document-tree-files.json");
 
 /** The IR version this checker knows how to validate. */
 const SUPPORTED_VERSION = "4";
 
+/** A schema file and the location inside it a node's fences must validate against. */
+interface Target {
+	/** Absolute path of the schema file. */
+	readonly schema: string;
+	/** JSON pointer into that schema; "" is the root schema. */
+	readonly pointer: string;
+}
+
+/** Model type named by a case heading, mapped to where its fences are checked. */
+const NODE_TARGETS: ReadonlyMap<string, Target> = new Map<string, Target>([
+	["Distribution", { schema: irSchema, pointer: "" }],
+	["FormatVersion", { schema: irSchema, pointer: "#/definitions/FormatVersion" }],
+	["Name", { schema: irSchema, pointer: "#/definitions/Name" }],
+	["Path", { schema: irSchema, pointer: "#/definitions/Path" }],
+	["FQName", { schema: irSchema, pointer: "#/definitions/FQName" }],
+	["Type", { schema: irSchema, pointer: "#/definitions/Type" }],
+	["Value", { schema: irSchema, pointer: "#/definitions/Value" }],
+	["Pattern", { schema: irSchema, pointer: "#/definitions/Pattern" }],
+	["Literal", { schema: irSchema, pointer: "#/definitions/Literal" }],
+	[
+		"TypeSpecification",
+		{ schema: irSchema, pointer: "#/definitions/TypeSpecification" },
+	],
+	[
+		"TypeDefinition",
+		{ schema: irSchema, pointer: "#/definitions/TypeDefinition" },
+	],
+	[
+		"ValueSpecification",
+		{ schema: irSchema, pointer: "#/definitions/ValueSpecification" },
+	],
+	[
+		"ValueDefinition",
+		{ schema: irSchema, pointer: "#/definitions/ValueDefinition" },
+	],
+	[
+		"ModuleSpecification",
+		{ schema: irSchema, pointer: "#/definitions/ModuleSpecification" },
+	],
+	[
+		"ModuleDefinition",
+		{ schema: irSchema, pointer: "#/definitions/ModuleDefinition" },
+	],
+	[
+		"AccessControlledTypeDefinition",
+		{ schema: irSchema, pointer: "#/definitions/AccessControlledTypeDefinition" },
+	],
+	[
+		"AccessControlledValueDefinition",
+		{ schema: irSchema, pointer: "#/definitions/AccessControlledValueDefinition" },
+	],
+	[
+		"DistributionManifestFile",
+		{ schema: treeSchema, pointer: "#/definitions/DistributionManifestFile" },
+	],
+	[
+		"ModuleManifestFile",
+		{ schema: treeSchema, pointer: "#/definitions/ModuleManifestFile" },
+	],
+	[
+		"TypeDefinitionFile",
+		{ schema: treeSchema, pointer: "#/definitions/TypeDefinitionFile" },
+	],
+	[
+		"ValueDefinitionFile",
+		{ schema: treeSchema, pointer: "#/definitions/ValueDefinitionFile" },
+	],
+]);
+
 /**
- * Model type named by a case heading, mapped to the schema location its fences
- * must validate against. `""` is the root schema rather than a definition.
+ * Cases whose `warning=` fence is the nested { "doc", "value" } wrapper. Decision
+ * 0010 keeps that shape valid in the schema for one release even though a reader
+ * reports legacy_spelling for it, so these fences must validate rather than fail.
+ * An explicit list, because nothing in the fence itself distinguishes them.
  */
-const NODE_ENTRYPOINTS: Readonly<Record<string, string>> = {
-	Distribution: "",
-	FormatVersion: "#/definitions/FormatVersion",
-	Name: "#/definitions/Name",
-	Path: "#/definitions/Path",
-	FQName: "#/definitions/FQName",
-	Type: "#/definitions/Type",
-	Value: "#/definitions/Value",
-	Pattern: "#/definitions/Pattern",
-	Literal: "#/definitions/Literal",
-	TypeSpecification: "#/definitions/TypeSpecification",
-	TypeDefinition: "#/definitions/TypeDefinition",
-	ValueSpecification: "#/definitions/ValueSpecification",
-	ValueDefinition: "#/definitions/ValueDefinition",
-	ModuleSpecification: "#/definitions/ModuleSpecification",
-	ModuleDefinition: "#/definitions/ModuleDefinition",
-	AccessControlledTypeDefinition:
-		"#/definitions/AccessControlledTypeDefinition",
-	AccessControlledValueDefinition:
-		"#/definitions/AccessControlledValueDefinition",
-};
+const DOC_WRAPPER_CASES: ReadonlySet<string> = new Set([
+	"definitions-0006",
+	"definitions-0010",
+]);
 
 // ---------------------------------------------------------------- the kit
 
@@ -62,15 +115,19 @@ interface Fence {
 	readonly node: string;
 	readonly index: number;
 	readonly role: string;
+	/** The legacy-spelling code this fence carries, if any. */
+	readonly warning: string | null;
 	readonly body: string;
 	readonly sourceFile: string;
 	readonly line: number;
 }
 
-type Outcome = "ok" | "fail" | "skip";
+type Outcome = "ok" | "rejected" | "fail" | "skip";
 
 interface Result {
 	readonly fence: Fence;
+	/** Whether the schema is expected to accept this fence. */
+	readonly expectValid: boolean;
 	outcome: Outcome;
 	message: string;
 }
@@ -80,10 +137,11 @@ const FENCE_OPEN = /^```(\S+)((?:\s+\S+)*)\s*$/;
 
 /** Reads `key=value` pairs out of a `{ .. }` suffix on a case heading. */
 function headingKeys(title: string): Record<string, string> {
-	const braces = title.match(/\{([^}]*)\}\s*$/);
 	const keys: Record<string, string> = {};
-	if (!braces) return keys;
-	for (const pair of braces[1].split(/\s+/)) {
+	const braces = title.match(/\{([^}]*)\}\s*$/);
+	const inner = braces?.[1];
+	if (inner === undefined) return keys;
+	for (const pair of inner.split(/\s+/)) {
 		const [name, value] = pair.split("=");
 		if (name && value !== undefined) keys[name] = value;
 	}
@@ -113,48 +171,38 @@ interface ActiveCase {
 	count: number;
 }
 
+interface OpenFence {
+	readonly language: string;
+	readonly role: string;
+	readonly keys: Record<string, string>;
+	readonly line: number;
+}
+
 function collectFences(file: string, text: string): Fence[] {
 	const fences: Fence[] = [];
 	const lines = text.split(/\r?\n/);
 	let current: ActiveCase | null = null;
-	let open: {
-		language: string;
-		role: string;
-		keys: Record<string, string>;
-	} | null = null;
+	let open: OpenFence | null = null;
 	let body: string[] = [];
-	let openLine = 0;
 
 	for (const [offset, line] of lines.entries()) {
-		if (open) {
+		if (open !== null) {
 			if (line.trimEnd() === "```") {
-				if (
-					current &&
+				const isData =
 					open.language === "json" &&
-					(open.role === "canonical" || open.role === "accepted")
-				) {
+					(open.role === "canonical" || open.role === "accepted");
+				if (current !== null && isData) {
 					current.count += 1;
-					if (open.keys.warning === undefined) {
-						fences.push({
-							caseId: current.id,
-							node: current.node,
-							index: current.count,
-							role: open.role,
-							body: body.join("\n"),
-							sourceFile: file,
-							line: openLine,
-						});
-					} else {
-						fences.push({
-							caseId: current.id,
-							node: "",
-							index: current.count,
-							role: "window",
-							body: "",
-							sourceFile: file,
-							line: openLine,
-						});
-					}
+					fences.push({
+						caseId: current.id,
+						node: current.node,
+						index: current.count,
+						role: open.role,
+						warning: open.keys.warning ?? null,
+						body: body.join("\n"),
+						sourceFile: file,
+						line: open.line,
+					});
 				}
 				open = null;
 				body = [];
@@ -165,24 +213,30 @@ function collectFences(file: string, text: string): Fence[] {
 		}
 
 		const fenceOpen = line.match(FENCE_OPEN);
-		if (fenceOpen) {
+		const language = fenceOpen?.[1];
+		if (fenceOpen !== null && language !== undefined) {
 			const info = fenceInfo(fenceOpen[2] ?? "");
-			open = { language: fenceOpen[1], role: info.role, keys: info.keys };
+			open = {
+				language,
+				role: info.role,
+				keys: info.keys,
+				line: offset + 1,
+			};
 			body = [];
-			openLine = offset + 1;
 			continue;
 		}
 
 		if (line.startsWith("## ")) {
-			const heading = line.match(CASE_HEADING);
 			current = null;
-			if (!heading) continue;
-			const keys = headingKeys(heading[2]);
+			const heading = line.match(CASE_HEADING);
+			const id = heading?.[1];
+			if (heading === null || id === undefined) continue;
+			const keys = headingKeys(heading[2] ?? "");
 			if (keys.status === "pending") continue;
 			if (keys.version !== undefined && keys.version !== SUPPORTED_VERSION) {
 				continue;
 			}
-			current = { id: heading[1], node: keys.node ?? "", count: 0 };
+			current = { id, node: keys.node ?? "", count: 0 };
 		}
 	}
 
@@ -194,17 +248,25 @@ function collectFences(file: string, text: string): Fence[] {
 /** Runs the jsonschema CLI over a directory of instances at one entry point. */
 function validateDirectory(
 	directory: string,
-	entrypoint: string,
+	target: Target,
 ): Map<string, boolean> {
-	const args = ["validate", schemaPath, directory, "--verbose", "--continue"];
-	if (entrypoint !== "") args.push("--entrypoint", entrypoint);
+	const args = [
+		"validate",
+		target.schema,
+		directory,
+		"--verbose",
+		"--continue",
+	];
+	if (target.pointer !== "") args.push("--entrypoint", target.pointer);
 	const run = Bun.spawnSync(["jsonschema", ...args], { cwd: repositoryRoot });
 	const output = `${run.stdout.toString()}\n${run.stderr.toString()}`;
 	const verdicts = new Map<string, boolean>();
 	for (const line of output.split(/\r?\n/)) {
 		const match = line.match(/^(ok|fail):\s+(.*)$/);
-		if (!match) continue;
-		verdicts.set(path.basename(match[2].trim()), match[1] === "ok");
+		const verdict = match?.[1];
+		const file = match?.[2];
+		if (verdict === undefined || file === undefined) continue;
+		verdicts.set(path.basename(file.trim()), verdict === "ok");
 	}
 	return verdicts;
 }
@@ -214,9 +276,9 @@ function validateDirectory(
  * every branch of every union it tried, so the most informative single line is
  * the one about the deepest place in the instance it got to.
  */
-function failureMessage(instance: string, entrypoint: string): string {
-	const args = ["validate", schemaPath, instance];
-	if (entrypoint !== "") args.push("--entrypoint", entrypoint);
+function failureMessage(instance: string, target: Target): string {
+	const args = ["validate", target.schema, instance];
+	if (target.pointer !== "") args.push("--entrypoint", target.pointer);
 	const run = Bun.spawnSync(["jsonschema", ...args], { cwd: repositoryRoot });
 	const output = `${run.stdout.toString()}\n${run.stderr.toString()}`;
 	const lines = output.split(/\r?\n/).map((line) => line.trim());
@@ -225,11 +287,11 @@ function failureMessage(instance: string, entrypoint: string): string {
 	for (const [offset, line] of lines.entries()) {
 		if (!line.startsWith("The ")) continue;
 		const at = lines[offset + 1]?.match(/^at instance location "([^"]*)"/);
-		if (!at) continue;
-		const depth = at[1].length;
-		if (depth > bestDepth) {
-			bestDepth = depth;
-			best = at[1] === "" ? line : `${line} at ${at[1]}`;
+		const location = at?.[1];
+		if (location === undefined) continue;
+		if (location.length > bestDepth) {
+			bestDepth = location.length;
+			best = location === "" ? line : `${line} at ${location}`;
 		}
 	}
 	return best === "" ? "schema validation failed" : best;
@@ -252,31 +314,26 @@ for (const name of kitFiles) {
 
 const results: Result[] = fences.map((fence) => ({
 	fence,
+	expectValid: fence.warning === null || DOC_WRAPPER_CASES.has(fence.caseId),
 	outcome: "skip",
 	message: "",
 }));
 
 const workspace = mkdtempSync(path.join(os.tmpdir(), "mck-fences-"));
 try {
-	const byNode = new Map<string, Result[]>();
+	const byNode = new Map<string, { target: Target; group: Result[] }>();
 	for (const result of results) {
-		const { fence } = result;
-		if (fence.role === "window") {
-			result.message = "skipped (window)";
+		const target = NODE_TARGETS.get(result.fence.node);
+		if (target === undefined) {
+			result.message = `skipped (node=${result.fence.node || "unset"})`;
 			continue;
 		}
-		const entrypoint = NODE_ENTRYPOINTS[fence.node];
-		if (entrypoint === undefined) {
-			result.message = `skipped (node=${fence.node || "unset"})`;
-			continue;
-		}
-		const group = byNode.get(fence.node) ?? [];
-		group.push(result);
-		byNode.set(fence.node, group);
+		const entry = byNode.get(result.fence.node) ?? { target, group: [] };
+		entry.group.push(result);
+		byNode.set(result.fence.node, entry);
 	}
 
-	for (const [node, group] of byNode) {
-		const entrypoint = NODE_ENTRYPOINTS[node];
+	for (const [node, { target, group }] of byNode) {
 		const directory = path.join(workspace, node);
 		mkdirSync(directory, { recursive: true });
 		const instances = new Map<string, Result>();
@@ -285,17 +342,21 @@ try {
 			writeFileSync(path.join(directory, name), result.fence.body);
 			instances.set(name, result);
 		}
-		const verdicts = validateDirectory(directory, entrypoint);
+		const verdicts = validateDirectory(directory, target);
 		for (const [name, result] of instances) {
-			const passed = verdicts.get(name);
-			if (passed === true) {
-				result.outcome = "ok";
-			} else {
+			const accepted = verdicts.get(name);
+			if (accepted === undefined) {
+				result.outcome = "fail";
+				result.message = "the validator reported no verdict for this instance";
+			} else if (accepted === result.expectValid) {
+				result.outcome = accepted ? "ok" : "rejected";
+			} else if (accepted) {
 				result.outcome = "fail";
 				result.message =
-					passed === undefined
-						? "the validator reported no verdict for this instance"
-						: failureMessage(path.join(directory, name), entrypoint);
+					"the schema accepted a window spelling it must reject (decision 0006)";
+			} else {
+				result.outcome = "fail";
+				result.message = failureMessage(path.join(directory, name), target);
 			}
 		}
 	}
@@ -304,6 +365,7 @@ try {
 }
 
 let ok = 0;
+let rejected = 0;
 let failed = 0;
 let skipped = 0;
 for (const { fence, outcome, message } of results) {
@@ -311,6 +373,9 @@ for (const { fence, outcome, message } of results) {
 	if (outcome === "ok") {
 		ok += 1;
 		console.log(`${label}: ok`);
+	} else if (outcome === "rejected") {
+		rejected += 1;
+		console.log(`${label}: ok (rejected as expected)`);
 	} else if (outcome === "skip") {
 		skipped += 1;
 		console.log(`${label}: ${message}`);
@@ -322,5 +387,7 @@ for (const { fence, outcome, message } of results) {
 	}
 }
 
-console.log(`\n${ok} ok, ${failed} failed, ${skipped} skipped`);
+console.log(
+	`\n${ok} ok, ${rejected} rejected as expected, ${failed} failed, ${skipped} skipped`,
+);
 if (failed > 0) process.exit(1);

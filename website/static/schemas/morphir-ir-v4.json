@@ -573,32 +573,99 @@
           }
         }
       ],
-      "allOf": [
+      "anyOf": [
         {
-          "$ref": "#/definitions/AccessControlled"
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [ "Public" ],
+              "properties": {
+                "Public": {
+                  "$ref": "#/definitions/DocumentedTypeDefinition"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "Private" ],
+              "properties": {
+                "Private": {
+                  "$ref": "#/definitions/DocumentedTypeDefinition"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "public" ],
+              "properties": {
+                "public": {
+                  "$ref": "#/definitions/DocumentedTypeDefinition"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "private" ],
+              "properties": {
+                "private": {
+                  "$ref": "#/definitions/DocumentedTypeDefinition"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "pub" ],
+              "properties": {
+                "pub": {
+                  "$ref": "#/definitions/DocumentedTypeDefinition"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
         },
         {
           "type": "object",
+          "required": [ "access", "value" ],
           "properties": {
-            "Public": {
-              "$ref": "#/definitions/DocumentedTypeDefinition"
+            "access": {
+              "$ref": "#/definitions/Access"
             },
-            "Private": {
-              "$ref": "#/definitions/DocumentedTypeDefinition"
-            },
-            "public": {
-              "$ref": "#/definitions/DocumentedTypeDefinition"
-            },
-            "private": {
-              "$ref": "#/definitions/DocumentedTypeDefinition"
-            },
-            "pub": {
-              "$ref": "#/definitions/DocumentedTypeDefinition"
+            "doc": {
+              "$ref": "#/definitions/Doc"
             },
             "value": {
               "$ref": "#/definitions/DocumentedTypeDefinition"
             }
-          }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "access" ],
+          "minProperties": 2,
+          "properties": {
+            "access": {
+              "$ref": "#/definitions/Access"
+            },
+            "doc": {
+              "$ref": "#/definitions/Doc"
+            },
+            "TypeAliasDefinition": {
+              "$ref": "#/definitions/TypeAliasDefinitionBody"
+            },
+            "CustomTypeDefinition": {
+              "$ref": "#/definitions/CustomTypeDefinitionBody"
+            },
+            "IncompleteTypeDefinition": {
+              "$ref": "#/definitions/IncompleteTypeDefinitionBody"
+            }
+          },
+          "additionalProperties": false
         }
       ]
     },
@@ -618,32 +685,102 @@
           }
         }
       ],
-      "allOf": [
+      "anyOf": [
         {
-          "$ref": "#/definitions/AccessControlled"
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [ "Public" ],
+              "properties": {
+                "Public": {
+                  "$ref": "#/definitions/DocumentedValueDefinition"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "Private" ],
+              "properties": {
+                "Private": {
+                  "$ref": "#/definitions/DocumentedValueDefinition"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "public" ],
+              "properties": {
+                "public": {
+                  "$ref": "#/definitions/DocumentedValueDefinition"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "private" ],
+              "properties": {
+                "private": {
+                  "$ref": "#/definitions/DocumentedValueDefinition"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "pub" ],
+              "properties": {
+                "pub": {
+                  "$ref": "#/definitions/DocumentedValueDefinition"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
         },
         {
           "type": "object",
+          "required": [ "access", "value" ],
           "properties": {
-            "Public": {
-              "$ref": "#/definitions/DocumentedValueDefinition"
+            "access": {
+              "$ref": "#/definitions/Access"
             },
-            "Private": {
-              "$ref": "#/definitions/DocumentedValueDefinition"
-            },
-            "public": {
-              "$ref": "#/definitions/DocumentedValueDefinition"
-            },
-            "private": {
-              "$ref": "#/definitions/DocumentedValueDefinition"
-            },
-            "pub": {
-              "$ref": "#/definitions/DocumentedValueDefinition"
+            "doc": {
+              "$ref": "#/definitions/Doc"
             },
             "value": {
               "$ref": "#/definitions/DocumentedValueDefinition"
             }
-          }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "access" ],
+          "minProperties": 2,
+          "properties": {
+            "access": {
+              "$ref": "#/definitions/Access"
+            },
+            "doc": {
+              "$ref": "#/definitions/Doc"
+            },
+            "ExpressionBody": {
+              "$ref": "#/definitions/ExpressionBody"
+            },
+            "NativeBody": {
+              "$ref": "#/definitions/NativeBody"
+            },
+            "ExternalBody": {
+              "$ref": "#/definitions/ExternalBody"
+            },
+            "IncompleteBody": {
+              "$ref": "#/definitions/IncompleteBody"
+            }
+          },
+          "additionalProperties": false
         }
       ]
     },
@@ -1792,6 +1929,28 @@
         }
       ]
     },
+    "TypeAliasDefinitionBody": {
+      "description": "The payload under a \"TypeAliasDefinition\" key.",
+      "examples": [
+        {
+          "typeParams": [],
+          "typeExp": "morphir/SDK:string#string"
+        }
+      ],
+      "type": "object",
+      "required": [ "typeParams", "typeExp" ],
+      "properties": {
+        "typeParams": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Name"
+          }
+        },
+        "typeExp": {
+          "$ref": "#/definitions/Type"
+        }
+      }
+    },
     "TypeAliasDefinition": {
       "description": "Type alias definition (implementation).\nV4 format: { \"TypeAliasDefinition\": { \"typeParams\": [...], \"typeExp\": ... } }\nLegacy format: [\"TypeAliasDefinition\", [...], ...]\n",
       "examples": [
@@ -1806,8 +1965,10 @@
             "typeParams": [],
             "typeExp": {
               "Record": {
-                "name": "morphir/SDK:string#string",
-                "age": "morphir/SDK:basics#int"
+                "fields": {
+                  "name": "morphir/SDK:string#string",
+                  "age": "morphir/SDK:basics#int"
+                }
               }
             }
           }
@@ -1822,19 +1983,7 @@
               "$ref": "#/definitions/Doc"
             },
             "TypeAliasDefinition": {
-              "type": "object",
-              "required": [ "typeParams", "typeExp" ],
-              "properties": {
-                "typeParams": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/Name"
-                  }
-                },
-                "typeExp": {
-                  "$ref": "#/definitions/Type"
-                }
-              }
+              "$ref": "#/definitions/TypeAliasDefinitionBody"
             }
           },
           "additionalProperties": false
@@ -1857,6 +2006,38 @@
           ]
         }
       ]
+    },
+    "CustomTypeDefinitionBody": {
+      "description": "The payload under a \"CustomTypeDefinition\" key.",
+      "examples": [
+        {
+          "typeParams": [ "a" ],
+          "access": "Public",
+          "constructors": {
+            "just": [
+              [ "value", "a" ]
+            ],
+            "nothing": []
+          }
+        }
+      ],
+      "type": "object",
+      "required": [ "typeParams", "constructors" ],
+      "properties": {
+        "typeParams": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Name"
+          }
+        },
+        "access": {
+          "description": "Visibility of constructors",
+          "enum": [ "Public", "Private" ]
+        },
+        "constructors": {
+          "$ref": "#/definitions/Constructors"
+        }
+      }
     },
     "CustomTypeDefinition": {
       "description": "Custom type definition (sum type implementation).\nV4 format: { \"CustomTypeDefinition\": { \"typeParams\": [...], \"access\": \"Public\", \"constructors\": {...} } }\nLegacy format: [\"CustomTypeDefinition\", [...], { \"access\": ..., \"value\": [...] }]\n",
@@ -1883,23 +2064,7 @@
               "$ref": "#/definitions/Doc"
             },
             "CustomTypeDefinition": {
-              "type": "object",
-              "required": [ "typeParams", "constructors" ],
-              "properties": {
-                "typeParams": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/Name"
-                  }
-                },
-                "access": {
-                  "description": "Visibility of constructors",
-                  "enum": [ "Public", "Private" ]
-                },
-                "constructors": {
-                  "$ref": "#/definitions/Constructors"
-                }
-              }
+              "$ref": "#/definitions/CustomTypeDefinitionBody"
             }
           },
           "additionalProperties": false
@@ -1934,6 +2099,33 @@
         }
       ]
     },
+    "IncompleteTypeDefinitionBody": {
+      "description": "The payload under an \"IncompleteTypeDefinition\" key.",
+      "examples": [
+        {
+          "typeParams": [],
+          "incompleteness": {
+            "Draft": {}
+          }
+        }
+      ],
+      "type": "object",
+      "required": [ "typeParams", "incompleteness" ],
+      "properties": {
+        "typeParams": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Name"
+          }
+        },
+        "incompleteness": {
+          "$ref": "#/definitions/Incompleteness"
+        },
+        "partialTypeExp": {
+          "$ref": "#/definitions/Type"
+        }
+      }
+    },
     "IncompleteTypeDefinition": {
       "description": "Incomplete type definition (V4 feature for best-effort support).\nUsed when a type definition cannot be fully resolved.\n",
       "examples": [
@@ -1959,22 +2151,7 @@
           "$ref": "#/definitions/Doc"
         },
         "IncompleteTypeDefinition": {
-          "type": "object",
-          "required": [ "typeParams", "incompleteness" ],
-          "properties": {
-            "typeParams": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Name"
-              }
-            },
-            "incompleteness": {
-              "$ref": "#/definitions/Incompleteness"
-            },
-            "partialTypeExp": {
-              "$ref": "#/definitions/Type"
-            }
-          }
+          "$ref": "#/definitions/IncompleteTypeDefinitionBody"
         }
       },
       "additionalProperties": false
