@@ -125,6 +125,14 @@ def validate_file(
 
 def main() -> int:
     """Main entry point."""
+    # The status markers below are non-ASCII. On Windows the console's default
+    # code page (cp1252) cannot encode them, which crashes the script instead
+    # of reporting validation results. Force UTF-8 output where supported.
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
+
     verbose = "--verbose" in sys.argv or "-v" in sys.argv
     json_output = "--json" in sys.argv
 
